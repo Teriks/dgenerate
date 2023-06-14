@@ -126,11 +126,11 @@ Install into environment:
 
 .. code-block:: bash
 
-    pip install git+git://github.com/Teriks/dgenerate --extra-index-url https://download.pytorch.org/whl/cu118/
+    pip install git+https://github.com/Teriks/dgenerate.git --extra-index-url https://download.pytorch.org/whl/cu118/
 
     # if you want a specific version
 
-    pip install git+git://github.com/Teriks/dgenerate@v0.2.0 --extra-index-url https://download.pytorch.org/whl/cu118/
+    pip install git+https://github.com/Teriks/dgenerate.git@v0.2.0 --extra-index-url https://download.pytorch.org/whl/cu118/
 
 Run **dgenerate** to generate images, you must have the environment active for the command to be found:
 
@@ -226,11 +226,11 @@ Install into environment:
 
 .. code-block:: bash
 
-    pip3 install git+git://github.com/Teriks/dgenerate
+    pip3 install git+https://github.com/Teriks/dgenerate.git
 
     # if you want a specific version
 
-    pip3 install git+git://github.com/Teriks/dgenerate@v0.2.0
+    pip3 install git+https://github.com/Teriks/dgenerate.git@v0.2.0
 
 
 Run **dgenerate** to generate images, you must have the environment active for the command to be found:
