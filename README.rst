@@ -254,7 +254,7 @@ Run **dgenerate** to generate images, you must have the environment active for t
 Usage Examples
 ==============
 
-Generate an astronaut riding a horse using 5 different random seeds, 3 difference inference-steps values, 3 difference guidance-scale values.
+Generate an astronaut riding a horse using 5 different random seeds, 3 different inference-steps values, 3 different guidance-scale values.
 
 Adjust output size to 512x512 and output generated images to 'astronaut' folder.
 
