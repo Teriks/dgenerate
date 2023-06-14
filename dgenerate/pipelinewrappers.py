@@ -22,20 +22,21 @@
 try:
     import jax
     import jax.numpy as jnp
-    from diffusers import FlaxStableDiffusionPipeline, FlaxStableDiffusionImg2ImgPipeline
     from flax.jax_utils import replicate
     from flax.training.common_utils import shard
+    from diffusers import FlaxStableDiffusionPipeline, FlaxStableDiffusionImg2ImgPipeline
 
     _have_jax_flax = True
+
+    import os
+
+    os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
+    os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"] = "platform"
 except ImportError:
     _have_jax_flax = False
 
-import os
 import torch
 from diffusers import DiffusionPipeline, StableDiffusionImg2ImgPipeline
-
-os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
-os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"] = "platform"
 
 
 def supported_models():
@@ -83,7 +84,8 @@ def _call_flax(wrapper, args, kwargs):
     args['prng_seed'] = jax.random.split(jax.random.PRNGKey(kwargs.get('seed', 0)), 1)
 
     if 'image' in args:
-        prompt_ids, processed_images = wrapper._pipeline.prepare_inputs(prompt=kwargs.get('prompt', ''), image=args['image'])
+        prompt_ids, processed_images = wrapper._pipeline.prepare_inputs(prompt=kwargs.get('prompt', ''),
+                                                                        image=args['image'])
         args['width'] = processed_images[0].shape[2]
         args['height'] = processed_images[0].shape[1]
         args['image'] = shard(processed_images)
@@ -140,10 +142,10 @@ class DiffusionPipelineImg2ImgWrapper:
             if not have_jax_flax():
                 raise NotImplementedError('flax and jax are not installed')
 
-            self._pipeline, self._params = FlaxStableDiffusionImg2ImgPipeline.from_pretrained(model_path,
-                                                                                              revision=revision,
-                                                                                              dtype=_get_flax_dtype(
-                                                                                                  dtype))
+            self._pipeline, self._params = \
+                FlaxStableDiffusionImg2ImgPipeline.from_pretrained(model_path,
+                                                                   revision=revision,
+                                                                   dtype=_get_flax_dtype(dtype))
         else:
             self._pipeline = StableDiffusionImg2ImgPipeline.from_pretrained(model_path,
                                                                             torch_dtype=_get_torch_dtype(dtype),

@@ -35,7 +35,7 @@ Help
     options:
       -h, --help            show this help message and exit
       --model-type MODEL_TYPE
-                            Use when loading different model types. Currently supported: torch, flax. (default: torch)
+                            Use when loading different model types. Currently supported: torch. (default: torch)
       --revision REVISION   The model revision to use, (The git branch / tag, default is "main")
       -d DEVICE, --device DEVICE
                             cuda / cpu. (default: cuda)
@@ -43,8 +43,9 @@ Help
                             Model precision: float16 / float32 / auto. (default: auto)
       -s OUTPUT_SIZE, --output-size OUTPUT_SIZE
                             Image output size. If an image seed is used it will be resized to this dimension with aspect
-                            ratio maintained. If only one integer value is provided, that is the value for both
-                            dimensions. X/Y dimension values should be separated by "x". (default: 512x512)
+                            ratio maintained, width will be fixed and a new height will be calculated. If only one integer
+                            value is provided, that is the value for both dimensions. X/Y dimension values should be
+                            separated by "x". (default: 512x512)
       -o OUTPUT_PATH, --output-path OUTPUT_PATH
                             Output path for generated images and files. This directory will be created if it does not
                             exist. (default: ./output)
@@ -112,7 +113,7 @@ Create a virtual environment using virtualenv from the command prompt in a direc
 
 .. code-block:: bash
 
-    pip install virtualenv
+    pip install virtualenv wheel
     python -m venv dgenerate_environment
 
 
@@ -130,7 +131,7 @@ Install into environment:
 
     # if you want a specific version
 
-    pip install git+https://github.com/Teriks/dgenerate.git@v0.2.0 --extra-index-url https://download.pytorch.org/whl/cu118/
+    pip install git+https://github.com/Teriks/dgenerate.git@v0.2.1 --extra-index-url https://download.pytorch.org/whl/cu118/
 
 Run **dgenerate** to generate images, you must have the environment active for the command to be found:
 
@@ -188,7 +189,7 @@ Install Python 3.10+ (Debian / Ubuntu)
 .. code-block:: bash
 
     sudo apt update && sudo apt upgrade
-    sudo apt install python3.10 python3-virtualenv
+    sudo apt install python3.10 python3-virtualenv python3-wheel
 
 
 Optional Prerequisite JAX / Flax
@@ -230,7 +231,7 @@ Install into environment:
 
     # if you want a specific version
 
-    pip3 install git+https://github.com/Teriks/dgenerate.git@v0.2.0
+    pip3 install git+https://github.com/Teriks/dgenerate.git@v0.2.1
 
 
 Run **dgenerate** to generate images, you must have the environment active for the command to be found:

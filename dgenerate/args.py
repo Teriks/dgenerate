@@ -89,9 +89,10 @@ def _type_output_size(size):
 
 parser.add_argument('-s', '--output-size', action='store', default=(512, 512), type=_type_output_size,
                     help='Image output size. '
-                         'If an image seed is used it will be resized to this dimension with aspect ratio maintained. '
-                         'If only one integer value is provided, that is the value for both dimensions. '
-                         'X/Y dimension values should be separated by "x".  (default: 512x512)')
+                         'If an image seed is used it will be resized to this dimension with aspect ratio '
+                         'maintained, width will be fixed and a new height will be calculated. If only one integer '
+                         'value is provided, that is the value for both dimensions. X/Y dimension values should '
+                         'be separated by "x".  (default: 512x512)')
 
 parser.add_argument('-o', '--output-path', action='store', default=os.path.join(os.getcwd(), 'output'),
                     help='Output path for generated images and files. '
