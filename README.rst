@@ -220,7 +220,7 @@ Activate the environment:
 
 .. code-block:: bash
 
-    source dgenerate_environment\bin\activate
+    source dgenerate_environment/bin/activate
 
 Install into environment:
 
