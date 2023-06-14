@@ -1,0 +1,233 @@
+# Copyright (c) 2023, Teriks
+#
+# dgenerate is distributed under the following BSD 3-Clause License
+#
+# Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in
+#    the documentation and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived
+#    from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+# ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+import os
+import random
+import argparse
+from .pipelinewrappers import supported_models
+
+parser = argparse.ArgumentParser(
+    prog='dgenerate',
+    description='Stable diffusion batch image generation tool with '
+                'support for video / gif / webp animation transcoding.')
+
+parser.add_argument('model_path', action='store',
+                    help='huggingface model repository, repository slug/URI or path to folder on disk.')
+
+
+def _from_model_type(val):
+    val = val.lower()
+    if val not in supported_models():
+        raise argparse.ArgumentTypeError(f'Must be one of: {", ".join(supported_models())}. Unknown value: {val}')
+    return val
+
+
+parser.add_argument('--model-type', action='store', default='torch', type=_from_model_type,
+                    help=f'Use when loading different model types. '
+                         f'Currently supported: {", ".join(supported_models())}. (default: torch)')
+
+parser.add_argument('--revision', action='store', default="main",
+                    help='The model revision to use, (The git branch / tag, default is "main")')
+
+
+def _type_device(device):
+    if device.lower() not in {'cuda', 'cpu'}:
+        raise argparse.ArgumentTypeError(f'Must be cuda or cpu. Unknown value: {device}')
+    return device
+
+
+parser.add_argument('-d', '--device', action='store', default='cuda', type=_type_device,
+                    help='cuda / cpu. (default: cuda)')
+
+
+def _type_dtype(dtype):
+    dtype = dtype.lower()
+
+    if dtype not in {'float16', 'float32', 'auto'}:
+        raise argparse.ArgumentTypeError('Must be float16, float32, or auto.')
+    else:
+        return dtype
+
+
+parser.add_argument('-t', '--dtype', action='store', default='auto', type=_type_dtype,
+                    help='Model precision: float16 / float32 / auto. (default: auto)')
+
+
+def _type_output_size(size):
+    r = size.lower().split('x')
+    if len(r) < 2:
+        x, y = int(r[0]), int(r[0])
+    else:
+        x, y = int(r[0]), int(r[1])
+
+    if x % 8 != 0:
+        raise argparse.ArgumentTypeError('Output X dimension must be divisible by 8.')
+
+    if y % 8 != 0:
+        raise argparse.ArgumentTypeError('Output Y dimension must be divisible by 8.')
+
+    return x, y
+
+
+parser.add_argument('-s', '--output-size', action='store', default=(512, 512), type=_type_output_size,
+                    help='Image output size. '
+                         'If an image seed is used it will be resized to this dimension with aspect ratio maintained. '
+                         'If only one integer value is provided, that is the value for both dimensions. '
+                         'X/Y dimension values should be separated by "x".  (default: 512x512)')
+
+parser.add_argument('-o', '--output-path', action='store', default=os.path.join(os.getcwd(), 'output'),
+                    help='Output path for generated images and files. '
+                         'This directory will be created if it does not exist. (default: ./output)')
+
+
+def _type_prompts(prompt):
+    pn = prompt.strip().split(';')
+    pl = len(pn)
+    if pl == 0:
+        return {'prompt': ''}
+    elif pl == 1:
+        return {'prompt': pn[0].rstrip()}
+    elif pl == 2:
+        return {'prompt': pn[0].rstrip(), 'negative_prompt': pn[1].lstrip()}
+    else:
+        raise argparse.ArgumentTypeError(
+            f'Parse error, too many values, only a prompt and optional negative prompt are accepted')
+
+
+parser.add_argument('-p', '--prompts', nargs='+', action='store',
+                    default=[{'prompt': ''}],
+                    type=_type_prompts,
+                    help='List of prompts to try, an image group is generated for each prompt, '
+                         'prompt data is split by ; (semi-colon). The first value is the positive '
+                         'text influence, things you want to see. The Second value is negative '
+                         'influence IE. things you don\'t want to see. '
+                         'Example: --prompts "shrek flying a tesla over detroit; clouds, rain, missiles". '
+                         '(default: [(empty string)])')
+
+seed_options = parser.add_mutually_exclusive_group()
+
+seed_options.add_argument('-se', '--seeds', nargs='+', action='store', default=[random.randint(0, 99999999999999)],
+                          type=int,
+                          help='List of seeds to try, define fixed seeds to achieve deterministic output. '
+                               'This argument may not be used when --gse/--gen-seeds is used. '
+                               '(default: [randint(0, 99999999999999)])')
+
+
+def _type_gen_seeds(val):
+    return [random.randint(0, 99999999999999) for i in range(0, int(val))]
+
+
+seed_options.add_argument('-gse', '--gen-seeds', action='store', default=None, type=_type_gen_seeds,
+                          help='Auto generate N random seeds to try. This argument may not '
+                               'be used when -se/--seeds is used.')
+
+
+def _type_animation_format(val):
+    val = val.lower()
+    if val not in {'mp4', 'gif', 'webp'}:
+        raise argparse.ArgumentTypeError(f'Must be mp4, gif, or webp. Unknown value: {val}')
+    return val
+
+
+parser.add_argument('-af', '--animation-format', action='store', default='mp4', type=_type_animation_format,
+                    help='Output format when generating an animation from an input video / gif / webp etc. '
+                         'Value must be one of "mp4", "gif", or "webp". (default: mp4)')
+
+
+def _type_frame_start(val):
+    val = int(val)
+    if val < 0:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 0')
+    return val
+
+
+parser.add_argument('-fs', '--frame-start', action='store', default=0, type=_type_frame_start,
+                    help='Starting frame slice point for animated files, the specified frame will be included.')
+
+
+def _type_frame_end(val):
+    val = int(val)
+    if val < 0:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 0')
+    return val
+
+
+parser.add_argument('-fe', '--frame-end', action='store', default=None, type=_type_frame_end,
+                    help='Ending frame slice point for animated files, the specified frame will be included.')
+
+parser.add_argument('-is', '--image-seeds', action='store', nargs='*', default=[],
+                    help='List of image seeds to try when processing image seeds, these may '
+                         'be URLs or file paths. Videos / GIFs / WEBP files will result in frames '
+                         'being rendered as well as an animated output file being generated if more '
+                         'than one frame is available in the input file.')
+
+
+def _type_image_seed_strengths(val):
+    val = float(val)
+    if val <= 0:
+        raise argparse.ArgumentTypeError('Must be greater than 0')
+    return val
+
+
+parser.add_argument('-iss', '--image-seed-strengths', action='store', nargs='*', default=[0.8],
+                    type=_type_image_seed_strengths,
+                    help='List of image seed strengths to try. Closer to 0 means high usage of the seed image '
+                         '(less noise convolution), 1 effectively means no usage (high noise convolution). '
+                         'Low values will produce something closer or more relevant to the input image, high '
+                         'values will give the AI more creative freedom. (default: [0.8])')
+
+
+def _type_guidance_scale(val):
+    val = float(val)
+    if val < 0:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 0')
+    return val
+
+
+parser.add_argument('-gs', '--guidance-scales', action='store', nargs='*', default=[5], type=_type_guidance_scale,
+                    help='List of guidance scales to try. Guidance scale effects how much your '
+                         'text prompt is considered. Low values draw more data from images unrelated '
+                         'to text prompt. (default: [5])'
+                    )
+
+
+def _type_inference_steps(val):
+    val = int(val)
+    if val <= 0:
+        raise argparse.ArgumentTypeError('Must be greater than 0')
+    return val
+
+
+parser.add_argument('-ifs', '--inference-steps', action='store', nargs='*', default=[30], type=_type_inference_steps,
+                    help='Lists of inference steps values to try. The amount of inference (denoising) steps '
+                         'effects image clarity to a degree, higher values bring the image closer to what '
+                         'the AI is targeting for the content of the image. Values between 30-40 '
+                         'produce good results, higher values may improve image quality and or '
+                         'change image content. (default: [30])')
+
+
+def parse_args():
+    args = parser.parse_args()
+
+    if args.gen_seeds is not None:
+        args.seeds = args.gen_seeds
+
+    return args
