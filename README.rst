@@ -368,3 +368,75 @@ Output to an MP4.  See ``--help`` for information about formats supported by ``-
     --guidance-scales 10 \
     --output-size 512x512 \
     --animation-format mp4
+
+
+Animation Slicing
+-----------------
+
+Animated inputs can be sliced by a frame range, currently this only works globally so
+if you provide multiple animated inputs they will all be sliced in an identical manner 
+using the provided slice setting. Individual slice settings per image seed will probably 
+be added in the future.
+
+Perhaps you only want to run diffusion on the first frame of an animated input in
+order to save time in finding good parameters for generating every frame. You could
+do something like this in order to test different parameters on only the first frame,
+which will be much faster than rendering the entire video/gif outright.
+
+The slice range is inclusive, meaning that the frames pecified by ``--frame-start`` and ``--frame-end``
+will be included in the slice.  Both slice points do not have to be specified at the same time, IE, you can slice
+the tail end of a video out, or seek to a certain frame in the video and start from there if you wanted, by only specifying a start, or an end parameter instead of both simultaneously.
+
+
+.. code-block:: bash
+
+    dgenerate CompVis/stable-diffusion-v1-4 \
+    --prompts "an astronaut riding a horse" \
+    --image-seeds https://upload.wikimedia.org/wikipedia/commons/7/7b/Muybridge_race_horse_~_big_transp.gif \
+    --image-seed-strengths 0.5 \
+    --output-path astronaut \
+    --inference-steps 50 \
+    --guidance-scales 10 \
+    --output-size 512x512 \
+    --animation-format mp4 \
+    --frame-start 0 \
+    --frame-end 0
+    
+
+Manual Seed Specification / Deterministic Output
+------------------------------------------------
+
+If you generate an image you like using a random seed, you can later reuse that seed in another generation.
+
+Output images have the name format ``s_(seed)....png`` the first number being the random seed used for generation of that 
+particular image.
+
+Reusing a seed has the effect of perfectly reproducing the image in the case that all other parameters are left alone, 
+including output size and model version.
+
+Updates to the backing model may affect determinism in the generation.
+
+Specifying a seed directly and changing the prompt slightly, or parameters such as image seed strength if using a seed image,
+guidance scale, or inference steps, will allow for generating variations close to the original
+image which may possess all of the original qualities about the image that you liked as well as
+additional qualities.  You can further manipulate the AI into producing results that you want with this method.
+
+Changing output resolution will drastically affect image content when reusing a seed to the point where trying to
+reuse a seed with a different output size is pointless.
+
+The following command demonstrates manually specifying two different seeds to try: **1234567890**, and **9876543210**
+
+.. code-block:: bash
+
+    dgenerate CompVis/stable-diffusion-v1-4 \
+    --prompts "an astronaut riding a horse" \
+    --seeds 1234567890 9876543210 \
+    --output-path astronaut \
+    --inference-steps 50 \
+    --guidance-scales 10 \
+    --output-size 512x512
+
+
+
+
+
