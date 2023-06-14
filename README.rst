@@ -30,7 +30,7 @@ Help
     Stable diffusion batch image generation tool with support for video / gif / webp animation transcoding.
 
     positional arguments:
-      model_path            huggingface model repository (PyTorch models only), huggingface URI or filepath.
+      model_path            huggingface model repository, repository slug/URI or path to folder on disk.
 
     options:
       -h, --help            show this help message and exit
