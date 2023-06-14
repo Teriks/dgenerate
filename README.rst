@@ -353,6 +353,8 @@ Animated Output
 
 When an animated image seed is given, animated output will be produced in the format of your choosing.
 
+In addition, every frame will be written to the output folder as a uniquely named image.
+
 Use a GIF of a man riding a horse to create an animation of an astronaut riding a horse.
 
 Output to an MP4.  See ``--help`` for information about formats supported by ``--animation-format``
@@ -387,9 +389,13 @@ The slice range is inclusive, meaning that the frames pecified by ``--frame-star
 will be included in the slice.  Both slice points do not have to be specified at the same time, IE, you can slice
 the tail end of a video out, or seek to a certain frame in the video and start from there if you wanted, by only specifying a start, or an end parameter instead of both simultaneously.
 
+If your slice only results in the processing of a single frame, it will be treated as a normal image seed and only image output will be produced instead of an animation.
+
 
 .. code-block:: bash
-
+    
+    # Generate using only the first frame
+    
     dgenerate CompVis/stable-diffusion-v1-4 \
     --prompts "an astronaut riding a horse" \
     --image-seeds https://upload.wikimedia.org/wikipedia/commons/7/7b/Muybridge_race_horse_~_big_transp.gif \
