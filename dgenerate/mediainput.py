@@ -28,6 +28,7 @@ import mimetypes
 import PIL.Image
 import PIL.ImageOps
 import PIL.ImageSequence
+from fake_useragent import UserAgent
 
 
 class AnimationFrame:
@@ -52,7 +53,7 @@ def _resize_image(size, img):
     width = size[0]
     w_percent = (width / float(img.size[0]))
     hsize = int((float(img.size[1]) * float(w_percent)))
-    return img.resize((width, hsize), PIL.Image.LANCZOS)
+    return img.resize((width - width % 8, hsize - hsize % 8), PIL.Image.LANCZOS)
 
 
 def _is_frame_in_slice(idx, frame_start, frame_end):
@@ -151,7 +152,8 @@ def _exif_orient(image):
 
 def iterate_image_seed(url, frame_start=0, frame_end=None, resize_resolution=None):
     if url.startswith('http://') or url.startswith('https://'):
-        req = requests.get(url)
+        headers = {'User-Agent': UserAgent().chrome}
+        req = requests.get(url, headers=headers)
         mime_type = req.headers['content-type']
         data = req.content
     else:

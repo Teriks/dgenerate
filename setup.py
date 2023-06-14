@@ -54,7 +54,8 @@ setup(name='dgenerate',
                         'Requests~=2.31.0',
                         'av~=10.0.0',
                         'Pillow~=9.5.0',
-                        'torch~=2.0.1'],
+                        'torch~=2.0.1',
+                        'fake-useragent~=1.1.3'],
       entry_points={
           'console_scripts': [
               'dgenerate = dgenerate:main',

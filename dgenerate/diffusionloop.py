@@ -25,10 +25,11 @@ import math
 import os
 import time
 from pathlib import Path
-from torch import Generator
+
 from .mediainput import iterate_image_seed
 from .mediaoutput import VideoWriter, GifWebpWriter
 from .pipelinewrappers import DiffusionPipelineWrapper, DiffusionPipelineImg2ImgWrapper, supported_models
+
 
 def _underline(msg):
     return msg + '\n' + ('=' * len(max(msg.split('\n'), key=len)))
@@ -50,9 +51,6 @@ class DiffusionArgContext:
         self.image_seed_strength = image_seed_strength
         self.guidance_scale = guidance_scale
         self.inference_steps = inference_steps
-
-    def get_generator(self, device):
-        return Generator(device=device).manual_seed(self.seed)
 
 
 def iterate_diffusion_args(prompts, seeds, image_seed_strengths, guidance_scales, inference_steps_list):
@@ -145,12 +143,6 @@ class DiffusionRenderLoop:
             raise ValueError(
                 'DiffusionRenderLoop.frame_start must be an integer value less than DiffusionRenderLoop.frame_end')
 
-    def create_generator(self, manual_seed=None):
-        if manual_seed is None:
-            return Generator(device=self.device)
-        else:
-            return Generator(device=self.device).manual_seed(manual_seed)
-
     @property
     def num_generation_steps(self):
         return (max(len(self.image_seeds), 1) *
@@ -215,8 +207,6 @@ class DiffusionRenderLoop:
         self._last_frame_time = 0
         self._frame_time_sum = 0
         self._generation_step += 1
-
-        show_keys = ('strength', 'num_inference_steps', 'guidance_scale')
 
         prompt_format = []
 
