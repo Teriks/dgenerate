@@ -19,7 +19,7 @@ Generation utilizes https://huggingface.co pytorch and optionally flax models.
 Help
 ----
 
-.. code-block:: bash
+.. code-block::
 
     usage: dgenerate [-h] [--model-type MODEL_TYPE] [--revision REVISION] [-d DEVICE] [-t DTYPE] [-s OUTPUT_SIZE]
                      [-o OUTPUT_PATH] [-p PROMPTS [PROMPTS ...]] [-se SEEDS [SEEDS ...] | -gse GEN_SEEDS]
