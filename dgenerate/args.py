@@ -178,7 +178,14 @@ parser.add_argument('-is', '--image-seeds', action='store', nargs='*', default=[
                     help='List of image seeds to try when processing image seeds, these may '
                          'be URLs or file paths. Videos / GIFs / WEBP files will result in frames '
                          'being rendered as well as an animated output file being generated if more '
-                         'than one frame is available in the input file.')
+                         'than one frame is available in the input file. Inpainting for static images can be '
+                         'achieved by specifying a black and white mask image in each image seed string using '
+                         'a semicolon as the seperating character, like so: "my-seed-image.png;my-image-mask.png", '
+                         'white areas of the mask indicate where generated content is to be placed in your seed '
+                         'image. Output dimensions specific to the image seed can be specified by placing the '
+                         'dimension at the end of the string following a semicolon like so: '
+                         '"my-seed-image.png;512x512" or "my-seed-image.png;my-image-mask.png;512x512". '
+                         'Inpainting masks can be downloaded for you from a URL or be a path to a file on disk.')
 
 
 def _type_image_seed_strengths(val):
