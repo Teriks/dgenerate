@@ -15,7 +15,17 @@ GIF's and WebP can also be processed, with memory constraints.
 
 Generation utilizes https://huggingface.co pytorch and optionally flax models.
 
+This software requires an Nvidia GPU supporting CUDA 11.8+, CPU rendering is possible but extraordinarily slow.
+
+----
+
+.. _Windows Install: /#windows-install
+.. _Linux or WSL Install: /#linux-or-wsl-install
 .. _Usage Examples: /#usage-examples
+
+For Windows install instructions jump to: `Windows Install`_
+
+For Linux or WSL (Windows subsystem for Linux) install instructions jump to: `Linux or WSL Install`_
 
 For usage examples jump to: `Usage Examples`_
 
