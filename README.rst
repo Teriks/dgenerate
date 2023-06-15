@@ -393,7 +393,7 @@ Per Image Seed Resizing
 If you want to specify multiple image seeds that will have different output sizes.
 You can override the globally specified output size by specifying it at the end of each provided image seed.
 
-This will work when using an mask image for inpainting as well.
+This will work when using a mask image for inpainting as well.
 
 The syntax is: ``--image-seeds "my-image-seed.png;512x512"`` or ``--image-seeds "my-image-seed.png;my-mask-image.png;512x512"``
 
