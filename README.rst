@@ -418,7 +418,7 @@ Output images have the name format: ``s_(seed)_st_(image-seed-strength)_g_(guida
 particular image.
 
 Reusing a seed has the effect of perfectly reproducing the image in the case that all other parameters are left alone, 
-including output size and model version.
+including prompt, output size, and model version.
 
 Updates to the backing model may affect determinism in the generation.
 
