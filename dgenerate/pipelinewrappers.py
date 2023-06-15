@@ -25,7 +25,7 @@ try:
     from flax.jax_utils import replicate
     from flax.training.common_utils import shard
     from diffusers import FlaxStableDiffusionPipeline, FlaxStableDiffusionImg2ImgPipeline, \
-        FlaxStableDiffusionInpaintPipeline
+    FlaxStableDiffusionInpaintPipeline, StableDiffusionInpaintPipelineLegacy
 
     _have_jax_flax = True
 
@@ -104,12 +104,19 @@ def _call_flax(wrapper, args, kwargs):
         wrapper._pipeline.numpy_to_pil(images.reshape((images.shape[0],) + images.shape[-3:])))
 
 
-def _call_torch(self, args, kwargs):
+def _call_torch(wrapper, args, kwargs):
     args['num_images_per_prompt'] = kwargs.get('num_images_per_prompt', 1)
-    args['generator'] = torch.Generator(device=self._device).manual_seed(kwargs.get('seed', 0))
+    args['generator'] = torch.Generator(device=wrapper._device).manual_seed(kwargs.get('seed', 0))
     args['prompt'] = kwargs.get('prompt', '')
     args['negative_prompt'] = kwargs.get('negative_prompt', None)
-    return PipelineResultWrapper(self._pipeline(**args).images)
+
+    if 'mask_image' in args:
+        if isinstance(wrapper._pipeline, StableDiffusionInpaintPipelineLegacy):
+            # Not necessary, will cause an error
+            args.pop('width')
+            args.pop('height')
+
+    return PipelineResultWrapper(wrapper._pipeline(**args).images)
 
 
 class PipelineResultWrapper:
@@ -146,7 +153,7 @@ class DiffusionPipelineWrapper:
                                                                revision=self._revision).to(self._device)
 
     def __call__(self, **kwargs):
-        args = _pipeline_defaults(kwargs)
+        args = _pipeline_defaults(self._pipeline, kwargs)
 
         self._lazy_init_pipeline()
 
