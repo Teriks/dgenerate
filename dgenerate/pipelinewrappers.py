@@ -153,7 +153,7 @@ class DiffusionPipelineWrapper:
                                                                revision=self._revision).to(self._device)
 
     def __call__(self, **kwargs):
-        args = _pipeline_defaults(self._pipeline, kwargs)
+        args = _pipeline_defaults(kwargs)
 
         self._lazy_init_pipeline()
 
