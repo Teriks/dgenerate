@@ -358,7 +358,7 @@ Adjust output size to 512x512 and output generated images to 'astronaut' folder.
 Inpainting
 ----------
 
-Inpainting on an images can be preformed by providing a mask image with your image seed. This mask should be a black and white image
+Inpainting on an image can be preformed by providing a mask image with your image seed. This mask should be a black and white image
 of identical size to your image seed.  White areas of the mask image will be used to tell the AI what areas of the seed image should be filled
 in with generated content.
 
