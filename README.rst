@@ -135,7 +135,7 @@ Install into environment:
 
     # if you want a specific version
 
-    pip install git+https://github.com/Teriks/dgenerate.git@v0.2.1 --extra-index-url https://download.pytorch.org/whl/cu118/
+    pip install git+https://github.com/Teriks/dgenerate.git@v0.2.2 --extra-index-url https://download.pytorch.org/whl/cu118/
 
 Run **dgenerate** to generate images, you must have the environment active for the command to be found:
 
@@ -235,7 +235,7 @@ Install into environment:
 
     # if you want a specific version
 
-    pip3 install git+https://github.com/Teriks/dgenerate.git@v0.2.1
+    pip3 install git+https://github.com/Teriks/dgenerate.git@v0.2.2
 
 
 Run **dgenerate** to generate images, you must have the environment active for the command to be found:
