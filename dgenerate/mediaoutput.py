@@ -21,6 +21,7 @@
 
 import av
 
+
 class VideoWriter:
     def __init__(self, filename, fps):
         self.filename = filename
