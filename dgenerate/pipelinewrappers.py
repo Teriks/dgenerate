@@ -56,11 +56,14 @@ def _pipeline_defaults(kwargs):
     args['guidance_scale'] = float(kwargs.get('guidance_scale', 5))
     args['num_inference_steps'] = kwargs.get('num_inference_steps', 30)
     if 'image' in kwargs:
-        args['image'] = kwargs['image']
+        image = kwargs['image']
+        args['image'] = image
         args['strength'] = float(kwargs.get('strength', 0.8))
         mask_image = kwargs.get('mask_image')
         if mask_image is not None:
             args['mask_image'] = mask_image
+            args['width'] = image.size[0]
+            args['height'] = image.size[1]
     else:
         args['height'] = kwargs.get('height', 512)
         args['width'] = kwargs.get('width', 512)
@@ -121,9 +124,9 @@ class DiffusionPipelineWrapper:
         self._model_path = model_path
         self._pipeline = None
         self._flax_params = None
-        self._revision=revision
-        self._dtype=dtype
-        self._device=device
+        self._revision = revision
+        self._dtype = dtype
+        self._device = device
 
     def _lazy_init_pipeline(self):
         if self._pipeline is not None:
@@ -135,7 +138,8 @@ class DiffusionPipelineWrapper:
 
             self._pipeline, self._flax_params = FlaxStableDiffusionPipeline.from_pretrained(self._model_path,
                                                                                             revision=self._revision,
-                                                                                            dtype=_get_flax_dtype(self._dtype))
+                                                                                            dtype=_get_flax_dtype(
+                                                                                                self._dtype))
         else:
             self._pipeline = DiffusionPipeline.from_pretrained(self._model_path,
                                                                torch_dtype=_get_torch_dtype(self._dtype),
