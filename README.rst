@@ -397,7 +397,7 @@ areas over the dog in the original image, causing the dog to be replaced with an
     --prompts "Face of a yellow cat, high resolution, sitting on a park bench" \
     --image-seed-strengths 0.8 \
     --guidance-scale 10 \
-    --inference-steps 100 \
+    --inference-steps 100
 
 
 Per Image Seed Resizing
@@ -419,7 +419,7 @@ When one dimension is specified, that dimension is the width, and the height is 
     --prompts "Face of a yellow cat, high resolution, sitting on a park bench" \
     --image-seed-strengths 0.8 \
     --guidance-scale 10 \
-    --inference-steps 100 \
+    --inference-steps 100
 
 
 Animated Output
