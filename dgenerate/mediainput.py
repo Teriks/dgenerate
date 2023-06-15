@@ -57,7 +57,14 @@ def _resize_image(size, img):
     width = size[0]
     w_percent = (width / float(img.size[0]))
     hsize = int((float(img.size[1]) * float(w_percent)))
-    return img.resize((width - width % 8, hsize - hsize % 8), PIL.Image.LANCZOS)
+
+    size = (width - width % 8, hsize - hsize % 8)
+
+    if img.size[0] == size[0] and img.size[1] == size[1]:
+        # probably less costly
+        return img.copy()
+
+    return img.resize(size, PIL.Image.LANCZOS)
 
 
 def _is_frame_in_slice(idx, frame_start, frame_end):
