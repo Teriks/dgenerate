@@ -318,10 +318,19 @@ class DiffusionRenderLoop:
                                              self.output_size)) as image_obj:
                     with image_obj as image_seed_obj:
                         self._with_image_seed_pre_generation(args_ctx, image_seed_obj)
-                        with diffusion_model(**args_ctx.args,
-                                             image=image_seed_obj.image,
-                                             seed=args_ctx.seed).images[0] as gen_img:
-                            self._write_image_seed_gen_image(args_ctx, gen_img)
+
+                        if image_seed_obj.mask_image is not None:
+                            with image_seed_obj.mask_image as mask_image, \
+                                    diffusion_model(**args_ctx.args,
+                                                    image=image_seed_obj.image,
+                                                    mask_image=mask_image,
+                                                    seed=args_ctx.seed).images[0] as gen_img:
+                                self._write_image_seed_gen_image(args_ctx, gen_img)
+                        else:
+                            with diffusion_model(**args_ctx.args,
+                                                 image=image_seed_obj.image,
+                                                 seed=args_ctx.seed).images[0] as gen_img:
+                                self._write_image_seed_gen_image(args_ctx, gen_img)
 
     @staticmethod
     def _get_animation_writer(animation_format, out_filename, fps, duration):

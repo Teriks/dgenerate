@@ -135,7 +135,7 @@ Install into environment:
 
     # if you want a specific version
 
-    pip install git+https://github.com/Teriks/dgenerate.git@v0.2.2 --extra-index-url https://download.pytorch.org/whl/cu118/
+    pip install git+https://github.com/Teriks/dgenerate.git@v0.3.0 --extra-index-url https://download.pytorch.org/whl/cu118/
 
 Run **dgenerate** to generate images, you must have the environment active for the command to be found:
 
@@ -235,7 +235,7 @@ Install into environment:
 
     # if you want a specific version
 
-    pip3 install git+https://github.com/Teriks/dgenerate.git@v0.2.2
+    pip3 install git+https://github.com/Teriks/dgenerate.git@v0.3.0
 
 
 Run **dgenerate** to generate images, you must have the environment active for the command to be found:
@@ -346,6 +346,60 @@ Adjust output size to 512x512 and output generated images to 'astronaut' folder.
     --inference-steps 30 40 50 \
     --guidance-scales 5 7 10 \
     --output-size 512x512
+
+
+Inpainting
+----------
+
+Inpainting on an images can be preformed by providing a mask image with your image seed. This mask should be a black and white image
+of identical size to your image seed.  White areas of the mask image will be used to tell the AI what areas of the seed image should be filled
+in with generated content.
+
+Inpainting is currently only supported on images, but will be supported on animated inputs in the future.
+
+In order to use inpainting, specify your image seed like so: ``--image-seeds "my-image-seed.png;my-mask-image.png"``
+
+The format is your image seed and mask image seperated by ``;``
+
+Mask images can be downloaded from URL's just like image seeds, however for this example the syntax specifies a file on disk for brevity.
+
+**my-image-seed.png**: https://raw.githubusercontent.com/CompVis/latent-diffusion/main/data/inpainting_examples/overture-creations-5sI6fQgYIuo.png
+
+**my-mask-image.png**: https://raw.githubusercontent.com/CompVis/latent-diffusion/main/data/inpainting_examples/overture-creations-5sI6fQgYIuo_mask.png
+
+The command below generates a cat sitting on a bench with the images from the links above, the mask image masks out
+areas over the dog in the original image, causing the dog to be replaced with an AI generated cat.
+
+.. code-block:: bash
+
+    dgenerate CompVis/stable-diffusion-v1-4 \
+    --image-seeds "my-image-seed.png;my-mask-image.png" \
+    --prompts "Face of a yellow cat, high resolution, sitting on a park bench" \
+    --image-seed-strengths 0.8 \
+    --guidance-scale 10 \
+    --inference-steps 100 \
+
+
+Per Image Seed Resizing
+-----------------------
+
+If you want to specify multiple image seeds that will have different output sizes.
+You can override the globally specified output size by specifying it at the end of each provided image seed.
+
+This will work when using an mask image for inpainting as well.
+
+The syntax is: ``--image-seeds "my-image-seed.png;512x512"`` or ``--image-seeds "my-image-seed.png;my-mask-image.png;512x512"``
+
+When one dimension is specified, that dimension is the width, and the height is calculated from the aspect ratio of the input image.
+
+.. code-block:: bash
+
+    dgenerate CompVis/stable-diffusion-v1-4 \
+    --image-seeds "my-image-seed.png;1024" "my-image-seed.png;my-mask-image.png;512x512" \
+    --prompts "Face of a yellow cat, high resolution, sitting on a park bench" \
+    --image-seed-strengths 0.8 \
+    --guidance-scale 10 \
+    --inference-steps 100 \
 
 
 Animated Output

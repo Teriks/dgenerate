@@ -19,14 +19,17 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-__version__ = "0.2.2"
+__version__ = "0.3.0"
 
+import sys
 import warnings
+
 import diffusers
 import transformers
 
 from .args import parse_args
 from .diffusionloop import DiffusionRenderLoop
+from .mediainput import ImageSeedParseError
 
 warnings.filterwarnings("ignore")
 transformers.logging.set_verbosity(transformers.logging.CRITICAL)
@@ -58,4 +61,8 @@ def main():
     # ============================
 
     # run the render loop
-    render_loop.run()
+    try:
+        render_loop.run()
+    except ImageSeedParseError as e:
+        print("Error:", e, file=sys.stderr)
+        exit(1)
