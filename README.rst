@@ -15,6 +15,10 @@ GIF's and WebP can also be processed, with memory constraints.
 
 Generation utilizes https://huggingface.co pytorch and optionally flax models.
 
+.. _Usage Examples: /#usage-examples
+
+For usage examples jump to: `Usage Examples`_
+
 
 Help
 ----
@@ -256,7 +260,6 @@ Run **dgenerate** to generate images, you must have the environment active for t
     --output-path output \
     --inference-steps 40 \
     --guidance-scales 10
-
 
 Usage Examples
 ==============
