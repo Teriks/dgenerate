@@ -589,8 +589,8 @@ Manual Seed Specification / Deterministic Output
 
 If you generate an image you like using a random seed, you can later reuse that seed in another generation.
 
-Output images have the name format: ``s_(seed)_st_(image-seed-strength)_g_(guidance-scale)_i_(inference-steps)_step_(generation-step).png``, the first number being the random seed used for generation of that 
-particular image.
+Output images have the name format: ``s_(seed)_st_(image-seed-strength)_g_(guidance-scale)_i_(inference-steps)_step_(generation-step).png``,
+the first number being the random seed used for generation of that particular image.
 
 Reusing a seed has the effect of perfectly reproducing the image in the case that all other parameters are left alone, 
 including prompt, output size, and model version.
