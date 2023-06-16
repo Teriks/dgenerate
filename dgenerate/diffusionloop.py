@@ -361,11 +361,21 @@ class DiffusionRenderLoop:
                                                     self.output_size):
                     with image_obj as image_seed_obj:
                         self._animation_frame_pre_generation(args_ctx, image_seed_obj)
-                        with diffusion_model(**args_ctx.args,
-                                             seed=args_ctx.seed,
-                                             image=image_seed_obj.image).images[0] as gen_img:
-                            video_writer.write(gen_img)
-                            self._write_animation_frame(args_ctx, image_seed_obj, gen_img)
-                            next_frame_terminates_anim = image_seed_obj.frame_index == (image_seed_obj.total_frames - 1)
+
+                        if image_seed_obj.mask_image is not None:
+                            with diffusion_model(**args_ctx.args,
+                                                 seed=args_ctx.seed,
+                                                 image=image_seed_obj.image,
+                                                 mask_image=image_seed_obj.mask_image).images[0] as gen_img:
+                                video_writer.write(gen_img)
+                                self._write_animation_frame(args_ctx, image_seed_obj, gen_img)
+                        else:
+                            with diffusion_model(**args_ctx.args,
+                                                 seed=args_ctx.seed,
+                                                 image=image_seed_obj.image).images[0] as gen_img:
+                                video_writer.write(gen_img)
+                                self._write_animation_frame(args_ctx, image_seed_obj, gen_img)
+
+                        next_frame_terminates_anim = image_seed_obj.frame_index == (image_seed_obj.total_frames - 1)
 
                 video_writer.end()
