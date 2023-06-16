@@ -86,42 +86,80 @@ class MaskImageSizeMismatchError(Exception):
             f'{mask_size}, their sizes must be equal.')
 
 
-def _calculate_total_video_frames(container, frame_end, frame_start):
-    total_frames = container.streams.video[0].frames
-    if total_frames <= 0:
-        # webm decode bug?
-        total_frames = sum(1 for i in container.decode(video=0))
-        container.seek(0, whence='time')
-    total_frames = _total_frames_slice(total_frames, frame_start, frame_end)
-    return total_frames
+class AnimationReader:
+    # interface
+    def __init__(self, width, height, anim_fps, anim_frame_duration, total_frames):
+        self._width = width
+        self._height = height
+        self._anim_fps = anim_fps
+        self._anim_frame_duration = anim_frame_duration
+        self._total_frames = total_frames
 
+    @property
+    def width(self):
+        return self._width
 
-class VideoReader:
+    @property
+    def size(self):
+        return self._width, self._height
 
-    def __init__(self, filename, resize_resolution):
-        self._filename = filename
-        self._container = av.open(filename, 'r')
-        self.width = int(self._container.streams.video[0].width)
-        self.height = int(self._container.streams.video[0].height)
-        self.anim_fps = int(self._container.streams.video[0].average_rate)
-        self.anim_frame_duration = 1000 // self.anim_fps
-        self.total_frames = self._container.streams.video[0].frames
-        self.resize_resolution = resize_resolution
-        if self.total_frames <= 0:
-            # webm decode bug?
-            self.total_frames = sum(1 for i in self._container.decode(video=0))
-            self._container.seek(0, whence='time')
-        self._iter = self._container.decode(video=0)
+    @property
+    def height(self):
+        return self._height
+
+    @property
+    def anim_fps(self):
+        return self._anim_fps
+
+    @property
+    def anim_frame_duration(self):
+        return self._anim_frame_duration
+
+    @property
+    def total_frames(self):
+        return self._total_frames
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self._container.close()
+        pass
 
     def __iter__(self):
         return self
 
+    def __next__(self):
+        raise StopIteration
+
+    def frame_slice_count(self, frame_start=0, frame_end=None):
+        return _total_frames_slice(self.total_frames, frame_start, frame_end)
+
+
+class VideoReader(AnimationReader):
+    def __init__(self, filename, resize_resolution):
+        self._filename = filename
+        self._container = av.open(filename, 'r')
+        self.resize_resolution = resize_resolution
+
+        width = int(self._container.streams.video[0].width)
+        height = int(self._container.streams.video[0].height)
+        anim_fps = int(self._container.streams.video[0].average_rate)
+        anim_frame_duration = 1000 // anim_fps
+        total_frames = self._container.streams.video[0].frames
+
+        if total_frames <= 0:
+            # webm decode bug?
+            total_frames = sum(1 for i in self._container.decode(video=0))
+            self._container.seek(0, whence='time')
+        self._iter = self._container.decode(video=0)
+
+        super().__init__(width=width,
+                         height=height,
+                         anim_fps=anim_fps,
+                         anim_frame_duration=anim_frame_duration,
+                         total_frames=total_frames)
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._container.close()
     def frame_slice_count(self, frame_start=0, frame_end=None):
         return _total_frames_slice(self.total_frames, frame_start, frame_end)
 
@@ -134,24 +172,26 @@ class VideoReader:
                     return _RGB(r_img)
 
 
-class GifWebpReader:
+class GifWebpReader(AnimationReader):
     def __init__(self, file, resize_resolution):
         self._img = PIL.Image.open(file)
         self._iter = PIL.ImageSequence.Iterator(self._img)
-        self.total_frames = self._img.n_frames
-        self.anim_frame_duration = self._img.info['duration']
-        self.anim_fps = 1000 // self.anim_frame_duration
         self.resize_resolution = resize_resolution
-        self.size = self._img.size
 
-    def __enter__(self):
-        return self
+        total_frames = self._img.n_frames
+        anim_frame_duration = self._img.info['duration']
+        anim_fps = 1000 // anim_frame_duration
+        width = self._img.size[0]
+        height = self._img.size[1]
+
+        super().__init__(width=width,
+                         height=height,
+                         anim_fps=anim_fps,
+                         anim_frame_duration=anim_frame_duration,
+                         total_frames=total_frames)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._img.close()
-
-    def __iter__(self):
-        return self
 
     def frame_slice_count(self, frame_start=0, frame_end=None):
         return _total_frames_slice(self.total_frames, frame_start, frame_end)
@@ -165,24 +205,26 @@ class GifWebpReader:
                     return _RGB(r_img)
 
 
-class MockImageVideoReader:
+class MockImageAnimationReader(AnimationReader):
     def __init__(self, img, resize_resolution, image_repetitions):
         self._img = img
         self._idx = 0
-        self.total_frames = image_repetitions
-        self.anim_fps = 30
-        self.anim_frame_duration = 1000 // self.anim_fps
         self.resize_resolution = resize_resolution
-        self.size = self._img.size
 
-    def __enter__(self):
-        return self
+        total_frames = image_repetitions
+        anim_fps = 30
+        anim_frame_duration = 1000 // anim_fps
+        width = self._img.size[0]
+        height = self._img.size[1]
+
+        super().__init__(width=width,
+                         height=height,
+                         anim_fps=anim_fps,
+                         anim_frame_duration=anim_frame_duration,
+                         total_frames=total_frames)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._img.close()
-
-    def __iter__(self):
-        return self
 
     def frame_slice_count(self, frame_start=0, frame_end=None):
         return _total_frames_slice(self.total_frames, frame_start, frame_end)
@@ -201,7 +243,7 @@ def create_animation_reader(file, resize_resolution=None, image_repetitions=1):
     elif isinstance(file, str):
         return VideoReader(file, resize_resolution)
     elif isinstance(file, PIL.Image.Image):
-        return MockImageVideoReader(file, resize_resolution, image_repetitions)
+        return MockImageAnimationReader(file, resize_resolution, image_repetitions)
     else:
         raise ValueError(
             'File must be a filename indicating an encoded video on disk, '
