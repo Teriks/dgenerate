@@ -19,10 +19,13 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import argparse
 import os
 import random
-import argparse
-from .pipelinewrappers import supported_models
+
+from .mediaoutput import supported_animation_writer_formats
+from .pipelinewrappers import supported_model_types
+from .textprocessing import oxford_comma
 
 parser = argparse.ArgumentParser(
     prog='dgenerate',
@@ -35,14 +38,15 @@ parser.add_argument('model_path', action='store',
 
 def _from_model_type(val):
     val = val.lower()
-    if val not in supported_models():
-        raise argparse.ArgumentTypeError(f'Must be one of: {", ".join(supported_models())}. Unknown value: {val}')
+    if val not in supported_model_types():
+        raise argparse.ArgumentTypeError(
+            f'Must be one of: {oxford_comma(supported_model_types(), "or")}. Unknown value: {val}')
     return val
 
 
 parser.add_argument('--model-type', action='store', default='torch', type=_from_model_type,
                     help=f'Use when loading different model types. '
-                         f'Currently supported: {", ".join(supported_models())}. (default: torch)')
+                         f'Currently supported: {oxford_comma(supported_model_types(), "or")}. (default: torch)')
 
 parser.add_argument('--revision', action='store', default="main",
                     help='The model revision to use, (The git branch / tag, default is "main")')
@@ -143,14 +147,16 @@ seed_options.add_argument('-gse', '--gen-seeds', action='store', default=None, t
 
 def _type_animation_format(val):
     val = val.lower()
-    if val not in {'mp4', 'gif', 'webp'}:
-        raise argparse.ArgumentTypeError(f'Must be mp4, gif, or webp. Unknown value: {val}')
+    if val not in supported_animation_writer_formats():
+        raise argparse.ArgumentTypeError(
+            f'Must be {oxford_comma(supported_animation_writer_formats(), "or")}. Unknown value: {val}')
     return val
 
 
 parser.add_argument('-af', '--animation-format', action='store', default='mp4', type=_type_animation_format,
                     help='Output format when generating an animation from an input video / gif / webp etc. '
-                         'Value must be one of "mp4", "gif", or "webp". (default: mp4)')
+                         f'Value must be one of: {oxford_comma(supported_animation_writer_formats(), "or")}. '
+                         f'(default: mp4)')
 
 
 def _type_frame_start(val):

@@ -26,13 +26,10 @@ import os
 import time
 from pathlib import Path
 
-from .mediainput import iterate_image_seed
-from .mediaoutput import VideoWriter, GifWebpWriter
-from .pipelinewrappers import DiffusionPipelineWrapper, DiffusionPipelineImg2ImgWrapper, supported_models
-
-
-def _underline(msg):
-    return msg + '\n' + ('=' * len(max(msg.split('\n'), key=len)))
+from .mediainput import iterate_image_seed, get_image_seed_info
+from .mediaoutput import create_animation_writer, supported_animation_writer_formats
+from .pipelinewrappers import DiffusionPipelineWrapper, DiffusionPipelineImg2ImgWrapper, supported_model_types
+from .textprocessing import oxford_comma, underline
 
 
 def _isiterable(obj):
@@ -111,16 +108,19 @@ class DiffusionRenderLoop:
     def _enforce_state(self):
         if self.dtype not in {'float32', 'float16', 'auto'}:
             raise ValueError('DiffusionRenderLoop.torch_dtype must be float32, float16, or auto')
-        if self.model_type not in supported_models():
-            raise ValueError(f'DiffusionRenderLoop.model_type must be one of: {", ".join(supported_models())}')
+        if self.model_type not in supported_model_types():
+            raise ValueError(
+                f'DiffusionRenderLoop.model_type must be one of: {oxford_comma(supported_model_types(), "or")}')
         if self.model_path is None:
             raise ValueError('DiffusionRenderLoop.model_path must not be None')
         if self.output_path is None:
             raise ValueError('DiffusionRenderLoop.output_path must not be None')
         if not isinstance(self.device, str) or self.device.lower() not in ('cuda', 'cpu'):
             raise ValueError('DiffusionRenderLoop.device must be "cuda" or "cpu"')
-        if not isinstance(self.animation_format, str) or self.animation_format.lower() not in ('gif', 'webp', 'mp4'):
-            raise ValueError('DiffusionRenderLoop.animation_format must be "gif" or "webp" or "mp4"')
+        if not (isinstance(self.animation_format, str) or
+                self.animation_format.lower() not in supported_animation_writer_formats()):
+            raise ValueError(f'DiffusionRenderLoop.animation_format must be one of: '
+                             f'{oxford_comma(supported_animation_writer_formats(), "or")}')
         if self.output_size is None:
             raise ValueError('DiffusionRenderLoop.output_size must not be None')
         if not _isiterable(self.prompts):
@@ -156,11 +156,6 @@ class DiffusionRenderLoop:
     def generation_step(self):
         return self._generation_step
 
-    @staticmethod
-    def _get_image_seed_info(image_seed, frame_start, frame_end):
-        with next(iterate_image_seed(image_seed, frame_start, frame_end)) as seed:
-            return seed.is_animation_frame, seed.fps, seed.duration
-
     def _gen_filename(self, *args, ext):
         return os.path.join(self.output_path, '_'.join(str(s).replace('.', '-') for s in args) + '.' + ext)
 
@@ -182,7 +177,7 @@ class DiffusionRenderLoop:
                                       'step', self._generation_step + 1,
                                       ext='png')
         img.save(filename)
-        print(_underline(f'Wrote File: {filename}'))
+        print(underline(f'Wrote File: {filename}'))
 
     def _write_image_seed_gen_image(self, args_ctx, img):
         filename = self._gen_filename('s', args_ctx.seed,
@@ -192,7 +187,7 @@ class DiffusionRenderLoop:
                                       'step', self._generation_step + 1,
                                       ext='png')
         img.save(filename)
-        print(_underline(f'Wrote File: {filename}'))
+        print(underline(f'Wrote File: {filename}'))
 
     def _write_prompt_only_image(self, args_ctx, img):
         filename = self._gen_filename('s', args_ctx.seed,
@@ -201,7 +196,7 @@ class DiffusionRenderLoop:
                                       'step', self._generation_step + 1,
                                       ext='png')
         img.save(filename)
-        print(_underline(f'Wrote File: {filename}'))
+        print(underline(f'Wrote File: {filename}'))
 
     def _pre_generation_step(self, args_ctx):
         self._last_frame_time = 0
@@ -233,7 +228,7 @@ class DiffusionRenderLoop:
 
         inputs = '\n'.join(inputs)
 
-        print(_underline(
+        print(underline(
             f'Generation step {self._generation_step + 1} / {self.num_generation_steps}\n'
             + inputs + prompt_format
         ))
@@ -251,7 +246,7 @@ class DiffusionRenderLoop:
             eta = str(datetime.timedelta(seconds=eta_seconds))
 
         self._last_frame_time = time.time()
-        print(_underline(
+        print(underline(
             f'Generating frame {image_seed_obj.frame_index + 1} / {image_seed_obj.total_frames}, Completion ETA: {eta}'))
 
     def _with_image_seed_pre_generation(self, args_ctx, image_seed_obj):
@@ -267,10 +262,10 @@ class DiffusionRenderLoop:
         generation_steps = self.num_generation_steps
 
         if generation_steps == 0:
-            print(_underline(f'Options resulted in no generation steps, nothing to do.'))
+            print(underline(f'Options resulted in no generation steps, nothing to do.'))
             return
 
-        print(_underline(f'Beginning {generation_steps} generation steps...'))
+        print(underline(f'Beginning {generation_steps} generation steps...'))
 
         if self.image_seeds is not None and len(self.image_seeds) > 0:
             self._render_with_image_seeds()
@@ -301,15 +296,14 @@ class DiffusionRenderLoop:
 
         for image_seed in self.image_seeds:
 
-            print(_underline(f'Processing Image Seed: {image_seed}'))
+            print(underline(f'Processing Image Seed: {image_seed}'))
             arg_iterator = iterate_diffusion_args(self.prompts, self.seeds, self.image_seed_strengths,
                                                   self.guidance_scales, self.inference_steps)
 
-            is_animation, fps, duration = DiffusionRenderLoop._get_image_seed_info(image_seed,
-                                                                                   self.frame_start,
-                                                                                   self.frame_end)
-            if is_animation:
-                self._render_animation(image_seed, diffusion_model, arg_iterator, fps, duration)
+            seed_info = get_image_seed_info(image_seed, self.frame_start, self.frame_end)
+
+            if seed_info.is_animation:
+                self._render_animation(image_seed, diffusion_model, arg_iterator, seed_info.fps)
                 break
 
             for args_ctx in arg_iterator:
@@ -332,11 +326,7 @@ class DiffusionRenderLoop:
                                                  seed=args_ctx.seed).images[0] as gen_img:
                                 self._write_image_seed_gen_image(args_ctx, gen_img)
 
-    @staticmethod
-    def _get_animation_writer(animation_format, out_filename, fps, duration):
-        return VideoWriter(out_filename, fps) if animation_format == 'mp4' else GifWebpWriter(out_filename, duration)
-
-    def _render_animation(self, image_seed, diffusion_model, arg_iterator, fps, duration):
+    def _render_animation(self, image_seed, diffusion_model, arg_iterator, fps):
         animation_format_lower = self.animation_format.lower()
         first_args_ctx = next(arg_iterator)
 
@@ -344,7 +334,7 @@ class DiffusionRenderLoop:
                                                     animation_format_lower)
         next_frame_terminates_anim = False
 
-        with self._get_animation_writer(animation_format_lower, out_filename, fps, duration) as video_writer:
+        with create_animation_writer(animation_format_lower, out_filename, fps) as video_writer:
 
             for args_ctx in itertools.chain([first_args_ctx], arg_iterator):
                 self._pre_generation_step(args_ctx)
@@ -355,7 +345,7 @@ class DiffusionRenderLoop:
                         new_file=self._gen_animation_filename(args_ctx, self._generation_step,
                                                               animation_format_lower))
 
-                print(_underline(f'Writing Animation: {video_writer.filename}'))
+                print(underline(f'Writing Animation: {video_writer.filename}'))
 
                 for image_obj in iterate_image_seed(image_seed, self.frame_start, self.frame_end,
                                                     self.output_size):
