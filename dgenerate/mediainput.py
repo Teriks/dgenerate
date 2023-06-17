@@ -602,7 +602,7 @@ def iterate_image_seed(uri, frame_start=0, frame_end=None, resize_resolution=Non
                 if _mime_type_is_static_image(mask_mime_type):
                     with PIL.Image.open(io.BytesIO(mask_data)) as mask_img:
                         if o_img.size != mask_img.size:
-                            raise MaskImageSizeMismatchError(img.size, mask_img.size)
+                            raise MaskImageSizeMismatchError(o_img.size, mask_img.size)
 
                         with _RGB(mask_img) as mask_rgb_img, _exif_orient(mask_rgb_img) as mask_o_img:
                             if resize_resolution is not None:
