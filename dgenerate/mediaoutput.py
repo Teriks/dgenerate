@@ -22,8 +22,26 @@
 import av
 
 
-class VideoWriter:
+class AnimationWriter:
+    def __init__(self):
+        pass
+
+    def end(self, new_file=None):
+        pass
+
+    def write(self, pil_img_rgb):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+
+class VideoWriter(AnimationWriter):
     def __init__(self, filename, fps):
+        super().__init__()
         self.filename = filename
         self.fps = fps
         self._container = None
@@ -43,9 +61,6 @@ class VideoWriter:
             self._container = None
             self._stream = None
 
-    def __enter__(self):
-        return self
-
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._cleanup()
 
@@ -62,8 +77,9 @@ class VideoWriter:
             self._container.mux(packet)
 
 
-class GifWebpWriter:
+class GifWebpWriter(AnimationWriter):
     def __init__(self, filename, duration):
+        super().__init__()
         self.collected_frames = []
         self.filename = filename
         self.duration = duration
@@ -83,11 +99,16 @@ class GifWebpWriter:
         if new_file:
             self.filename = new_file
 
-    def __enter__(self):
-        return self
-
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._cleanup()
 
     def write(self, img):
         self.collected_frames.append(img.copy())
+
+
+def supported_animation_writer_formats():
+    return {'mp4', 'gif', 'webp'}
+
+
+def create_animation_writer(animation_format, out_filename, fps):
+    return VideoWriter(out_filename, fps) if animation_format == 'mp4' else GifWebpWriter(out_filename, 1000 / fps)

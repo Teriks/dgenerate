@@ -25,7 +25,7 @@ try:
     from flax.jax_utils import replicate
     from flax.training.common_utils import shard
     from diffusers import FlaxStableDiffusionPipeline, FlaxStableDiffusionImg2ImgPipeline, \
-    FlaxStableDiffusionInpaintPipeline, StableDiffusionInpaintPipelineLegacy
+        FlaxStableDiffusionInpaintPipeline, StableDiffusionInpaintPipelineLegacy
 
     _have_jax_flax = True
 
@@ -40,7 +40,7 @@ import torch
 from diffusers import DiffusionPipeline, StableDiffusionImg2ImgPipeline, StableDiffusionInpaintPipeline
 
 
-def supported_models():
+def supported_model_types():
     if have_jax_flax():
         return {'torch', 'flax'}
     else:
