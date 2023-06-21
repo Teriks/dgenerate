@@ -32,9 +32,9 @@ from .pipelinewrappers import DiffusionPipelineWrapper, DiffusionPipelineImg2Img
 from .textprocessing import oxford_comma, underline
 
 
-def _isiterable(obj):
+def _has_len(obj):
     try:
-        iter(obj)
+        len(obj)
         return True
     except TypeError:
         return False
@@ -121,20 +121,20 @@ class DiffusionRenderLoop:
                 self.animation_format.lower() not in supported_animation_writer_formats()):
             raise ValueError(f'DiffusionRenderLoop.animation_format must be one of: '
                              f'{oxford_comma(supported_animation_writer_formats(), "or")}')
-        if self.output_size is None:
-            raise ValueError('DiffusionRenderLoop.output_size must not be None')
-        if not _isiterable(self.prompts):
-            raise ValueError('DiffusionRenderLoop.prompts must be iterable')
-        if not _isiterable(self.seeds):
-            raise ValueError('DiffusionRenderLoop.seeds must be iterable')
-        if not _isiterable(self.image_seeds):
-            raise ValueError('DiffusionRenderLoop.seeds must be iterable')
-        if not _isiterable(self.image_seed_strengths):
-            raise ValueError('DiffusionRenderLoop.seeds must be iterable')
-        if not _isiterable(self.guidance_scales):
-            raise ValueError('DiffusionRenderLoop.guidance_scales must be iterable')
-        if not _isiterable(self.inference_steps):
-            raise ValueError('DiffusionRenderLoop.inference_steps must be iterable')
+        if not _has_len(self.prompts):
+            raise ValueError('DiffusionRenderLoop.prompts must have len')
+        if not _has_len(self.seeds):
+            raise ValueError('DiffusionRenderLoop.seeds must have len')
+        if not _has_len(self.image_seeds):
+            raise ValueError('DiffusionRenderLoop.image_seeds must have len')
+        if self.output_size is None and len(self.image_seeds) == 0:
+            raise ValueError('DiffusionRenderLoop.output_size must not be None when no image seeds specified')
+        if not _has_len(self.image_seed_strengths):
+            raise ValueError('DiffusionRenderLoop.seeds must have len')
+        if not _has_len(self.guidance_scales):
+            raise ValueError('DiffusionRenderLoop.guidance_scales must have len')
+        if not _has_len(self.inference_steps):
+            raise ValueError('DiffusionRenderLoop.inference_steps must have len')
         if not isinstance(self.frame_start, int) or not self.frame_start >= 0:
             raise ValueError('DiffusionRenderLoop.frame_start must be an integer value greater than or equal to zero')
         if self.frame_end is not None and (not isinstance(self.frame_end, int) or not self.frame_end >= 0):
@@ -267,7 +267,7 @@ class DiffusionRenderLoop:
 
         print(underline(f'Beginning {generation_steps} generation steps...'))
 
-        if self.image_seeds is not None and len(self.image_seeds) > 0:
+        if len(self.image_seeds) > 0:
             self._render_with_image_seeds()
         else:
 

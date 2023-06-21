@@ -89,17 +89,33 @@ def _get_torch_dtype(dtype):
 def _call_flax(wrapper, args, kwargs):
     args['prng_seed'] = jax.random.split(jax.random.PRNGKey(kwargs.get('seed', 0)), 1)
 
+    processed_masks = None
+
     if 'image' in args:
-        prompt_ids, processed_images = wrapper._pipeline.prepare_inputs(prompt=kwargs.get('prompt', ''),
-                                                                        image=args['image'])
+        if 'mask_image' in args:
+            prompt_ids, processed_images, processed_masks = \
+                wrapper._pipeline.prepare_inputs(prompt=kwargs.get('prompt', ''),
+                                                 image=args['image'],
+                                                 mask=args['mask_image'])
+
+            args['masked_image'] = shard(processed_images)
+            args['mask'] = shard(processed_masks)
+
+            args.pop('strength')
+            args.pop('image')
+            args.pop('mask_image')
+        else:
+            prompt_ids, processed_images = wrapper._pipeline.prepare_inputs(prompt=kwargs.get('prompt', ''),
+                                                                            image=args['image'])
+            args['image'] = shard(processed_images)
+
         args['width'] = processed_images[0].shape[2]
         args['height'] = processed_images[0].shape[1]
-        args['image'] = shard(processed_images)
     else:
         prompt_ids = wrapper._pipeline.prepare_inputs([kwargs.get('prompt', '')])
 
-    images = wrapper._pipeline(prompt_ids=shard(prompt_ids), params=replicate(wrapper._flax_params), **args, jit=True)[
-        0]
+    images = wrapper._pipeline(prompt_ids=shard(prompt_ids), params=replicate(wrapper._flax_params),
+                               **args, jit=True)[0]
     return PipelineResultWrapper(
         wrapper._pipeline.numpy_to_pil(images.reshape((images.shape[0],) + images.shape[-3:])))
 
