@@ -244,7 +244,7 @@ def parse_args():
     if args.gen_seeds is not None:
         args.seeds = args.gen_seeds
 
-    if len(args.image_seeds) == 0:
+    if len(args.image_seeds) == 0 and args.output_size is None:
         args.output_size = (512, 512)
 
     return args
