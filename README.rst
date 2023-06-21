@@ -351,7 +351,11 @@ Generate this image using 5 different seeds, 3 different inference-step values, 
 
 In addition this image will be generated using 3 different image seed strengths.
 
-Adjust output size to 512x512 and output generated images to 'astronaut' folder.
+Adjust output size to 512x512 and output generated images to 'astronaut' folder, if the image seed
+is not a 1:1 aspect ratio the width will be fixed to the requested width and the height of the output image
+calculated to maintain aspect ratio.
+
+If you do not adjust the output size of the generated image, the size of the input image seed will be used.
 
 135 uniquely named images will be generated (5x3x3x3)
 
@@ -405,10 +409,11 @@ areas over the dog in the original image, causing the dog to be replaced with an
 Per Image Seed Resizing
 -----------------------
 
-If you want to specify multiple image seeds that will have different output sizes.
-You can override the globally specified output size by specifying it at the end of each provided image seed.
+If you want to specify multiple image seeds that will have different output sizes irrespective
+of their input size or a globally defined output size defined with ``--output-size``,
+You can specify their output size individually at the end of each provided image seed.
 
-This will work when using a mask image for inpainting as well.
+This will work when using a mask image for inpainting as well, including when using animated inputs.
 
 The syntax is: ``--image-seeds "my-image-seed.png;512x512"`` or ``--image-seeds "my-image-seed.png;my-mask-image.png;512x512"``
 
@@ -436,6 +441,11 @@ In addition, every frame will be written to the output folder as a uniquely name
 Use a GIF of a man riding a horse to create an animation of an astronaut riding a horse.
 
 Output to an MP4.  See ``--help`` for information about formats supported by ``--animation-format``
+
+If the animation is not 1:1 aspect ratio, the width will be fixed to the width of the
+requested output size, and the height calculated to match the aspect ratio of the animation.
+
+If you do not set an output size, the size of the input animation will be used.
 
 .. code-block:: bash
 

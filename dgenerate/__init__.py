@@ -21,22 +21,26 @@
 
 __version__ = "0.4.0"
 
-import sys
-import warnings
 
-import diffusers
-import transformers
+def run_diffusion():
+    import sys
 
-from .args import parse_args
-from .diffusionloop import DiffusionRenderLoop
-from .mediainput import ImageSeedParseError, MaskImageSizeMismatchError
+    import warnings
 
-warnings.filterwarnings("ignore")
-transformers.logging.set_verbosity(transformers.logging.CRITICAL)
-diffusers.logging.set_verbosity(diffusers.logging.CRITICAL)
+    import diffusers
+    import transformers
 
+    from .args import parse_args
+    from .diffusionloop import DiffusionRenderLoop
+    from .mediainput import ImageSeedParseError, MaskImageSizeMismatchError
 
-def main():
+    # The above modules take long enough to import that they must be in here in
+    # order to handle keyboard interrupts without issues
+
+    warnings.filterwarnings("ignore")
+    transformers.logging.set_verbosity(transformers.logging.CRITICAL)
+    diffusers.logging.set_verbosity(diffusers.logging.CRITICAL)
+
     arguments = parse_args()
 
     render_loop = DiffusionRenderLoop()
@@ -57,12 +61,17 @@ def main():
     render_loop.guidance_scales = arguments.guidance_scales
     render_loop.inference_steps = arguments.inference_steps
 
-    # ============================
-    # ============================
-
     # run the render loop
     try:
         render_loop.run()
     except (ImageSeedParseError, MaskImageSizeMismatchError) as e:
         print("Error:", e, file=sys.stderr)
+        exit(1)
+
+
+def main():
+    try:
+        run_diffusion()
+    except KeyboardInterrupt:
+        print("Aborting due to keyboard interrupt!")
         exit(1)

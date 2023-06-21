@@ -43,7 +43,7 @@ class VideoWriter(AnimationWriter):
     def __init__(self, filename, fps):
         super().__init__()
         self.filename = filename
-        self.fps = fps
+        self.fps = round(fps)
         self._container = None
         self._stream = None
 
