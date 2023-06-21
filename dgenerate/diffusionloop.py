@@ -86,6 +86,9 @@ def iterate_diffusion_args(prompts, seeds, image_seed_strengths, guidance_scales
 class DiffusionRenderLoop:
     def __init__(self):
         self._generation_step = -1
+        self._frame_time_sum = 0
+        self._last_frame_time = 0
+
         self.model_path = None
         self.model_type = 'torch'
         self.device = 'cuda'
@@ -102,8 +105,6 @@ class DiffusionRenderLoop:
         self.image_seed_strengths = []
         self.guidance_scales = []
         self.inference_steps = []
-        self._frame_time_sum = 0
-        self._last_frame_time = 0
 
     def _enforce_state(self):
         if self.dtype not in {'float32', 'float16', 'auto'}:
@@ -258,6 +259,8 @@ class DiffusionRenderLoop:
         Path(self.output_path).mkdir(parents=True, exist_ok=True)
 
         self._generation_step = -1
+        self._frame_time_sum = 0
+        self._last_frame_time = 0
 
         generation_steps = self.num_generation_steps
 

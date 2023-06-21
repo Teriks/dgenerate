@@ -129,18 +129,13 @@ parser.add_argument('-p', '--prompts', nargs='+', action='store',
 
 seed_options = parser.add_mutually_exclusive_group()
 
-seed_options.add_argument('-se', '--seeds', nargs='+', action='store', default=[random.randint(0, 99999999999999)],
+seed_options.add_argument('-se', '--seeds', nargs='+', action='store', default=None,
                           type=int,
                           help='List of seeds to try, define fixed seeds to achieve deterministic output. '
                                'This argument may not be used when --gse/--gen-seeds is used. '
                                '(default: [randint(0, 99999999999999)])')
 
-
-def _type_gen_seeds(val):
-    return [random.randint(0, 99999999999999) for i in range(0, int(val))]
-
-
-seed_options.add_argument('-gse', '--gen-seeds', action='store', default=None, type=_type_gen_seeds,
+seed_options.add_argument('-gse', '--gen-seeds', action='store', default=None, type=int,
                           help='Auto generate N random seeds to try. This argument may not '
                                'be used when -se/--seeds is used.')
 
@@ -238,11 +233,13 @@ parser.add_argument('-ifs', '--inference-steps', action='store', nargs='*', defa
                          'change image content. (default: [30])')
 
 
-def parse_args():
-    args = parser.parse_args()
+def parse_args(args=None, namespace=None):
+    args = parser.parse_args(args, namespace)
 
     if args.gen_seeds is not None:
-        args.seeds = args.gen_seeds
+        args.seeds = [random.randint(0, 99999999999999) for i in range(0, int(args.gen_seeds))]
+    elif args.seeds is None:
+        args.seeds = [random.randint(0, 99999999999999)]
 
     if args.output_size is None and len(args.image_seeds) == 0:
         args.output_size = (512, 512)

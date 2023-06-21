@@ -156,7 +156,7 @@ Install into environment:
 
     # if you want a specific version
 
-    pip install git+https://github.com/Teriks/dgenerate.git@v0.4.0 --extra-index-url https://download.pytorch.org/whl/cu118/
+    pip install git+https://github.com/Teriks/dgenerate.git@v0.5.0 --extra-index-url https://download.pytorch.org/whl/cu118/
 
 Run **dgenerate** to generate images, you must have the environment active for the command to be found:
 
@@ -256,7 +256,7 @@ Install into environment:
 
     # if you want a specific version
 
-    pip3 install git+https://github.com/Teriks/dgenerate.git@v0.4.0
+    pip3 install git+https://github.com/Teriks/dgenerate.git@v0.5.0
 
 
 Run **dgenerate** to generate images, you must have the environment active for the command to be found:
@@ -626,6 +626,73 @@ The following command demonstrates manually specifying two different seeds to tr
     --inference-steps 50 \
     --guidance-scales 10 \
     --output-size 512x512
+
+Batch Processing Arguments From STDIN
+-------------------------------------
+
+Program arguments seperated by new lines can be read from STDIN and processed in batch with model caching,
+in order to increase speed when many invocations with different arguments are desired.
+
+Loading the necessary libraries and bringing models into memory is quite slow, so using the program this
+way allows for multiple invocations using different arguments, without needing to load the libraries and
+models multiple times, only the first time, or in the case of models the first time the model is encountered.
+
+Changing ``--model-type`` or ``--revision`` when loading a model from a repository or file path that has
+already been used will cause a cache miss, and a new instance of the model will be created for what is
+specified in those arguments.
+
+When loading multiple different models be aware that they will all be retained in memory for the duration
+of program execution, so memory may become and issue if you are not careful.
+
+Also be careful about file overwrites, you must specify a seed and or file output path directly to
+insure the results of previous invocations are not overwritten by coincidence when using this feature
+
+Environmental variables will be expanded in the provided input to **STDIN** when using this feature.
+
+Empty lines and comments starting with ``#`` will be ignored.
+
+The Following is an example input file **my-arguments.txt**:
+
+.. code-block::
+
+    # Comments in the file will be ignored
+
+    # Guarantee unique file names are generated under the output directory by specifying unique seeds
+
+    CompVis/stable-diffusion-v1-4 --prompts "an astronaut riding a horse" --seeds 41509644783027 --output-path output --inference-steps 30 --guidance-scales 10
+    CompVis/stable-diffusion-v1-4 --prompts "a cowboy riding a horse" --seeds 78553317097366 --output-path output --inference-steps 30 --guidance-scales 10
+    CompVis/stable-diffusion-v1-4 --prompts "a martian riding a horse" --seeds 22797399276707 --output-path output --inference-steps 30 --guidance-scales 10
+
+    # Guarantee that no overwrites happen by specifying different output paths for each invocation
+
+    stabilityai/stable-diffusion-2-1 --prompts "an astronaut riding a horse" --output-path unique_output_1  --inference-steps 30 --guidance-scales 10
+    stabilityai/stable-diffusion-2-1 --prompts "a cowboy riding a horse" --output-path unique_output_2 --inference-steps 30 --guidance-scales 10
+    stabilityai/stable-diffusion-2-1 --prompts "a martian riding a horse" --output-path unique_output_3  --inference-steps 30 --guidance-scales 10
+
+
+To utilize the file on Linux, pipe it into the command or use redirection:
+
+.. code-block:: bash
+
+    # Pipe
+    cat my-arguments.txt | dgenerate
+
+    # Redirection
+    dgenerate < my-arguments.txt
+
+
+On Windows CMD:
+
+.. code-block:: bash
+
+    dgenerate < my-arguments.txt
+
+
+On Windows Powershell:
+
+.. code-block:: powershell
+
+    Get-Content my-arguments.txt | dgenerate
 
 
 
