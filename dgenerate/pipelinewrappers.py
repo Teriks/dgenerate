@@ -39,6 +39,106 @@ except ImportError:
 import torch
 from diffusers import DiffusionPipeline, StableDiffusionImg2ImgPipeline, StableDiffusionInpaintPipeline
 
+_TORCH_MODEL_CACHE = dict()
+_FLAX_MODEL_CACHE = dict()
+
+_TORCH_IMG2IMG_MODEL_CACHE = dict()
+_FLAX_IMG2IMG_MODEL_CACHE = dict()
+
+_TORCH_INPAINT_MODEL_CACHE = dict()
+_FLAX_INPAINT_MODEL_CACHE = dict()
+
+
+def clear_model_cache():
+    _TORCH_MODEL_CACHE.clear()
+    _FLAX_MODEL_CACHE.clear()
+    _TORCH_IMG2IMG_MODEL_CACHE.clear()
+    _FLAX_IMG2IMG_MODEL_CACHE.clear()
+    _TORCH_INPAINT_MODEL_CACHE.clear()
+    _FLAX_INPAINT_MODEL_CACHE.clear()
+
+
+def _create_torch_diffusion_pipeline(model_path, revision, torch_dtype):
+    cache_key = model_path + revision + str(torch_dtype)
+    catch_hit = _TORCH_MODEL_CACHE.get(cache_key)
+
+    if catch_hit is None:
+        pipeline = DiffusionPipeline.from_pretrained(model_path, revision=revision, torch_dtype=torch_dtype)
+        _TORCH_MODEL_CACHE[cache_key] = pipeline
+        return pipeline
+    else:
+        return catch_hit
+
+
+def _create_flax_diffusion_pipeline(model_path, revision, flax_dtype):
+    cache_key = model_path + revision + str(flax_dtype)
+    catch_hit = _FLAX_MODEL_CACHE.get(cache_key)
+
+    if catch_hit is None:
+        pipeline, params = FlaxStableDiffusionPipeline.from_pretrained(model_path,
+                                                                       revision=revision,
+                                                                       dtype=flax_dtype)
+        _FLAX_MODEL_CACHE[cache_key] = (pipeline, params)
+        return pipeline, params
+    else:
+        return catch_hit
+
+
+def _create_torch_img2img_diffusion_pipeline(model_path, revision, torch_dtype):
+    cache_key = model_path + revision + str(torch_dtype)
+    catch_hit = _TORCH_IMG2IMG_MODEL_CACHE.get(cache_key)
+
+    if catch_hit is None:
+        pipeline = StableDiffusionImg2ImgPipeline.from_pretrained(model_path,
+                                                                  revision=revision,
+                                                                  torch_dtype=torch_dtype)
+        _TORCH_IMG2IMG_MODEL_CACHE[cache_key] = pipeline
+        return pipeline
+    else:
+        return catch_hit
+
+
+def _create_flax_img2img_diffusion_pipeline(model_path, revision, flax_dtype):
+    cache_key = model_path + revision + str(flax_dtype)
+    catch_hit = _FLAX_IMG2IMG_MODEL_CACHE.get(cache_key)
+
+    if catch_hit is None:
+        pipeline, params = FlaxStableDiffusionImg2ImgPipeline.from_pretrained(model_path,
+                                                                              revision=revision,
+                                                                              dtype=flax_dtype)
+        _FLAX_IMG2IMG_MODEL_CACHE[cache_key] = (pipeline, params)
+        return pipeline
+    else:
+        return catch_hit
+
+
+def _create_torch_inpaint_diffusion_pipeline(model_path, revision, torch_dtype):
+    cache_key = model_path + revision + str(torch_dtype)
+    catch_hit = _TORCH_INPAINT_MODEL_CACHE.get(cache_key)
+
+    if catch_hit is None:
+        pipeline = StableDiffusionInpaintPipeline.from_pretrained(model_path,
+                                                                  revision=revision,
+                                                                  torch_dtype=torch_dtype)
+        _TORCH_INPAINT_MODEL_CACHE[cache_key] = pipeline
+        return pipeline
+    else:
+        return catch_hit
+
+
+def _create_flax_inpaint_diffusion_pipeline(model_path, revision, flax_dtype):
+    cache_key = model_path + revision + str(flax_dtype)
+    catch_hit = _FLAX_INPAINT_MODEL_CACHE.get(cache_key)
+
+    if catch_hit is None:
+        pipeline, params = FlaxStableDiffusionInpaintPipeline.from_pretrained(model_path,
+                                                                              revision=revision,
+                                                                              dtype=flax_dtype)
+        _FLAX_INPAINT_MODEL_CACHE[cache_key] = (pipeline, params)
+        return pipeline
+    else:
+        return catch_hit
+
 
 def supported_model_types():
     if have_jax_flax():
@@ -159,14 +259,15 @@ class DiffusionPipelineWrapper:
             if not have_jax_flax():
                 raise NotImplementedError('flax and jax are not installed')
 
-            self._pipeline, self._flax_params = FlaxStableDiffusionPipeline.from_pretrained(self._model_path,
-                                                                                            revision=self._revision,
-                                                                                            dtype=_get_flax_dtype(
-                                                                                                self._dtype))
+            self._pipeline, self._flax_params = \
+                _create_flax_diffusion_pipeline(self._model_path,
+                                                revision=self._revision,
+                                                flax_dtype=_get_flax_dtype(self._dtype))
         else:
-            self._pipeline = DiffusionPipeline.from_pretrained(self._model_path,
-                                                               torch_dtype=_get_torch_dtype(self._dtype),
-                                                               revision=self._revision).to(self._device)
+            self._pipeline = \
+                _create_torch_diffusion_pipeline(self._model_path,
+                                                 revision=self._revision,
+                                                 torch_dtype=_get_torch_dtype(self._dtype)).to(self._device)
 
     def __call__(self, **kwargs):
         args = _pipeline_defaults(kwargs)
@@ -198,13 +299,14 @@ class DiffusionPipelineImg2ImgWrapper:
                 raise NotImplementedError('flax and jax are not installed')
 
             self._pipeline, self._flax_params = \
-                FlaxStableDiffusionImg2ImgPipeline.from_pretrained(self._model_path,
-                                                                   revision=self._revision,
-                                                                   dtype=_get_flax_dtype(self._dtype))
+                _create_flax_img2img_diffusion_pipeline(self._model_path,
+                                                        revision=self._revision,
+                                                        flax_dtype=_get_flax_dtype(self._dtype))
         else:
-            self._pipeline = StableDiffusionImg2ImgPipeline.from_pretrained(self._model_path,
-                                                                            torch_dtype=_get_torch_dtype(self._dtype),
-                                                                            revision=self._revision).to(self._device)
+            self._pipeline = \
+                _create_torch_img2img_diffusion_pipeline(self._model_path,
+                                                         revision=self._revision,
+                                                         torch_dtype=_get_torch_dtype(self._dtype)).to(self._device)
 
     def _lazy_init_intpaint(self):
         if self._pipeline is not None:
@@ -215,13 +317,14 @@ class DiffusionPipelineImg2ImgWrapper:
                 raise NotImplementedError('flax and jax are not installed')
 
             self._pipeline, self._flax_params = \
-                FlaxStableDiffusionInpaintPipeline.from_pretrained(self._model_path,
-                                                                   revision=self._revision,
-                                                                   dtype=_get_flax_dtype(self._dtype))
+                _create_flax_inpaint_diffusion_pipeline(self._model_path,
+                                                        revision=self._revision,
+                                                        flax_dtype=_get_flax_dtype(self._dtype))
         else:
-            self._pipeline = StableDiffusionInpaintPipeline.from_pretrained(self._model_path,
-                                                                            torch_dtype=_get_torch_dtype(self._dtype),
-                                                                            revision=self._revision).to(self._device)
+            self._pipeline = \
+                _create_torch_inpaint_diffusion_pipeline(self._model_path,
+                                                         revision=self._revision,
+                                                         torch_dtype=_get_torch_dtype(self._dtype)).to(self._device)
 
     def __call__(self, **kwargs):
         args = _pipeline_defaults(kwargs)

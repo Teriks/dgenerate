@@ -19,11 +19,13 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 
 def run_diffusion():
+    import os
     import sys
+    import shlex
 
     import warnings
 
@@ -31,6 +33,7 @@ def run_diffusion():
     import transformers
 
     from .args import parse_args
+    from .textprocessing import underline
     from .diffusionloop import DiffusionRenderLoop
     from .mediainput import ImageSeedParseError, MaskImageSizeMismatchError
 
@@ -41,32 +44,43 @@ def run_diffusion():
     transformers.logging.set_verbosity(transformers.logging.CRITICAL)
     diffusers.logging.set_verbosity(diffusers.logging.CRITICAL)
 
-    arguments = parse_args()
+    def parse_and_run(with_args=None):
+        arguments = parse_args(with_args)
 
-    render_loop = DiffusionRenderLoop()
-    render_loop.model_path = arguments.model_path
-    render_loop.model_type = arguments.model_type
-    render_loop.revision = arguments.revision
-    render_loop.device = arguments.device
-    render_loop.dtype = arguments.dtype
-    render_loop.output_size = arguments.output_size
-    render_loop.output_path = arguments.output_path
-    render_loop.prompts = arguments.prompts
-    render_loop.seeds = arguments.seeds
-    render_loop.image_seeds = arguments.image_seeds
-    render_loop.animation_format = arguments.animation_format
-    render_loop.frame_start = arguments.frame_start
-    render_loop.frame_end = arguments.frame_end
-    render_loop.image_seed_strengths = arguments.image_seed_strengths
-    render_loop.guidance_scales = arguments.guidance_scales
-    render_loop.inference_steps = arguments.inference_steps
+        render_loop = DiffusionRenderLoop()
+        render_loop.model_path = arguments.model_path
+        render_loop.model_type = arguments.model_type
+        render_loop.revision = arguments.revision
+        render_loop.device = arguments.device
+        render_loop.dtype = arguments.dtype
+        render_loop.output_size = arguments.output_size
+        render_loop.output_path = arguments.output_path
+        render_loop.prompts = arguments.prompts
+        render_loop.seeds = arguments.seeds
+        render_loop.image_seeds = arguments.image_seeds
+        render_loop.animation_format = arguments.animation_format
+        render_loop.frame_start = arguments.frame_start
+        render_loop.frame_end = arguments.frame_end
+        render_loop.image_seed_strengths = arguments.image_seed_strengths
+        render_loop.guidance_scales = arguments.guidance_scales
+        render_loop.inference_steps = arguments.inference_steps
 
-    # run the render loop
-    try:
-        render_loop.run()
-    except (ImageSeedParseError, MaskImageSizeMismatchError) as e:
-        print("Error:", e, file=sys.stderr)
-        exit(1)
+        # run the render loop
+        try:
+            render_loop.run()
+        except (ImageSeedParseError, MaskImageSizeMismatchError) as e:
+            print("Error:", e, file=sys.stderr)
+            exit(1)
+
+    if not sys.stdin.isatty():
+        for line in sys.stdin:
+            line = line.strip()
+            if line == '' or line.startswith('#'):
+                continue
+            print(underline("Processing Arguments: " + line))
+            parse_and_run(shlex.split(os.path.expandvars(line)))
+    else:
+        parse_and_run()
 
 
 def main():
