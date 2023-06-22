@@ -19,7 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 
 
 def run_diffusion():
@@ -51,6 +51,7 @@ def run_diffusion():
         render_loop.model_path = arguments.model_path
         render_loop.model_type = arguments.model_type
         render_loop.revision = arguments.revision
+        render_loop.variant = arguments.variant
         render_loop.device = arguments.device
         render_loop.dtype = arguments.dtype
         render_loop.output_size = arguments.output_size

@@ -94,6 +94,7 @@ class DiffusionRenderLoop:
         self.device = 'cuda'
         self.dtype = 'float16'
         self.revision = 'main'
+        self.variant = None
         self.output_size = (512, 512)
         self.output_path = os.path.join(os.getcwd(), 'output')
         self.prompts = []
@@ -109,6 +110,10 @@ class DiffusionRenderLoop:
     def _enforce_state(self):
         if self.dtype not in {'float32', 'float16', 'auto'}:
             raise ValueError('DiffusionRenderLoop.torch_dtype must be float32, float16, or auto')
+        if self.revision is not None and not isinstance(self.revision, str):
+            raise ValueError('DiffusionRenderLoop.revision must be None or a string')
+        if self.variant is not None and not isinstance(self.variant, str):
+            raise ValueError('DiffusionRenderLoop.variant must be None or a string')
         if self.model_type not in supported_model_types():
             raise ValueError(
                 f'DiffusionRenderLoop.model_type must be one of: {oxford_comma(supported_model_types(), "or")}')
@@ -278,7 +283,8 @@ class DiffusionRenderLoop:
                                                        dtype=self.dtype,
                                                        device=self.device,
                                                        model_type=self.model_type,
-                                                       revision=self.revision)
+                                                       revision=self.revision,
+                                                       variant=self.variant)
 
             for args_ctx in iterate_diffusion_args(self.prompts, self.seeds, [], self.guidance_scales,
                                                    self.inference_steps):
@@ -295,7 +301,8 @@ class DiffusionRenderLoop:
                                                           dtype=self.dtype,
                                                           device=self.device,
                                                           model_type=self.model_type,
-                                                          revision=self.revision)
+                                                          revision=self.revision,
+                                                          variant=self.variant)
 
         for image_seed in self.image_seeds:
 

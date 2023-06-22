@@ -52,6 +52,11 @@ parser.add_argument('--revision', action='store', default="main",
                     help='The model revision to use, (The git branch / tag, default is "main")')
 
 
+parser.add_argument('--variant', action='store', default=None,
+                    help='If specified load weights from "variant" filename, e.g. "pytorch_model.<variant>.bin". '
+                         'This option is ignored if using flax.')
+
+
 def _type_device(device):
     if device.lower() not in {'cuda', 'cpu'}:
         raise argparse.ArgumentTypeError(f'Must be cuda or cpu. Unknown value: {device}')

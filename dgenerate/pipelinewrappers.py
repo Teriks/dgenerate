@@ -58,12 +58,15 @@ def clear_model_cache():
     _FLAX_INPAINT_MODEL_CACHE.clear()
 
 
-def _create_torch_diffusion_pipeline(model_path, revision, torch_dtype):
-    cache_key = model_path + revision + str(torch_dtype)
+def _create_torch_diffusion_pipeline(model_path, revision, variant, torch_dtype):
+    cache_key = model_path + revision + variant + str(torch_dtype)
     catch_hit = _TORCH_MODEL_CACHE.get(cache_key)
 
     if catch_hit is None:
-        pipeline = DiffusionPipeline.from_pretrained(model_path, revision=revision, torch_dtype=torch_dtype)
+        pipeline = DiffusionPipeline.from_pretrained(model_path,
+                                                     revision=revision,
+                                                     variant=variant,
+                                                     torch_dtype=torch_dtype)
         _TORCH_MODEL_CACHE[cache_key] = pipeline
         return pipeline
     else:
@@ -84,13 +87,14 @@ def _create_flax_diffusion_pipeline(model_path, revision, flax_dtype):
         return catch_hit
 
 
-def _create_torch_img2img_diffusion_pipeline(model_path, revision, torch_dtype):
-    cache_key = model_path + revision + str(torch_dtype)
+def _create_torch_img2img_diffusion_pipeline(model_path, revision, variant, torch_dtype):
+    cache_key = model_path + revision + variant + str(torch_dtype)
     catch_hit = _TORCH_IMG2IMG_MODEL_CACHE.get(cache_key)
 
     if catch_hit is None:
         pipeline = StableDiffusionImg2ImgPipeline.from_pretrained(model_path,
                                                                   revision=revision,
+                                                                  variant=variant,
                                                                   torch_dtype=torch_dtype)
         _TORCH_IMG2IMG_MODEL_CACHE[cache_key] = pipeline
         return pipeline
@@ -112,13 +116,14 @@ def _create_flax_img2img_diffusion_pipeline(model_path, revision, flax_dtype):
         return catch_hit
 
 
-def _create_torch_inpaint_diffusion_pipeline(model_path, revision, torch_dtype):
-    cache_key = model_path + revision + str(torch_dtype)
+def _create_torch_inpaint_diffusion_pipeline(model_path, revision, variant, torch_dtype):
+    cache_key = model_path + revision + variant + str(torch_dtype)
     catch_hit = _TORCH_INPAINT_MODEL_CACHE.get(cache_key)
 
     if catch_hit is None:
         pipeline = StableDiffusionInpaintPipeline.from_pretrained(model_path,
                                                                   revision=revision,
+                                                                  variant=variant,
                                                                   torch_dtype=torch_dtype)
         _TORCH_INPAINT_MODEL_CACHE[cache_key] = pipeline
         return pipeline
@@ -241,13 +246,14 @@ class PipelineResultWrapper:
 
 
 class DiffusionPipelineWrapper:
-    def __init__(self, model_path, dtype, device='cuda', model_type='torch', revision='main'):
+    def __init__(self, model_path, dtype, device='cuda', model_type='torch', revision='main', variant=None):
         self._device = device
         self._model_type = model_type
         self._model_path = model_path
         self._pipeline = None
         self._flax_params = None
         self._revision = revision
+        self._variant = variant
         self._dtype = dtype
         self._device = device
 
@@ -266,7 +272,7 @@ class DiffusionPipelineWrapper:
         else:
             self._pipeline = \
                 _create_torch_diffusion_pipeline(self._model_path,
-                                                 revision=self._revision,
+                                                 revision=self._revision, variant=self._variant,
                                                  torch_dtype=_get_torch_dtype(self._dtype)).to(self._device)
 
     def __call__(self, **kwargs):
@@ -281,11 +287,12 @@ class DiffusionPipelineWrapper:
 
 
 class DiffusionPipelineImg2ImgWrapper:
-    def __init__(self, model_path, dtype, device='cuda', model_type='torch', revision='main'):
+    def __init__(self, model_path, dtype, device='cuda', model_type='torch', revision='main', variant=None):
         self._device = device
         self._model_type = model_type.strip().lower()
         self._model_path = model_path
         self._revision = revision
+        self._variant = variant
         self._dtype = dtype
         self._pipeline = None
         self._flax_params = None
@@ -305,7 +312,7 @@ class DiffusionPipelineImg2ImgWrapper:
         else:
             self._pipeline = \
                 _create_torch_img2img_diffusion_pipeline(self._model_path,
-                                                         revision=self._revision,
+                                                         revision=self._revision, variant=self._variant,
                                                          torch_dtype=_get_torch_dtype(self._dtype)).to(self._device)
 
     def _lazy_init_intpaint(self):
@@ -323,7 +330,7 @@ class DiffusionPipelineImg2ImgWrapper:
         else:
             self._pipeline = \
                 _create_torch_inpaint_diffusion_pipeline(self._model_path,
-                                                         revision=self._revision,
+                                                         revision=self._revision, variant=self._variant,
                                                          torch_dtype=_get_torch_dtype(self._dtype)).to(self._device)
 
     def __call__(self, **kwargs):
