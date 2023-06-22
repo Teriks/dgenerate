@@ -637,9 +637,9 @@ Loading the necessary libraries and bringing models into memory is quite slow, s
 way allows for multiple invocations using different arguments, without needing to load the libraries and
 models multiple times, only the first time, or in the case of models the first time the model is encountered.
 
-Changing ``--model-type`` or ``--revision`` when loading a model from a repository or file path that has
-already been used will cause a cache miss, and a new instance of the model will be created for what is
-specified in those arguments.
+Changing ``--model-type`` or ``--revision`` or ``--variant`` when loading a model from a repository or
+file path that has already been used will cause a cache miss, and a new instance of the model will be
+created for what is specified in those arguments.
 
 When loading multiple different models be aware that they will all be retained in memory for the duration
 of program execution, so memory may become and issue if you are not careful.
