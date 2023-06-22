@@ -35,8 +35,8 @@ Help
 
 .. code-block::
 
-    usage: dgenerate [-h] [--model-type MODEL_TYPE] [--revision REVISION] [-d DEVICE] [-t DTYPE] [-s OUTPUT_SIZE]
-                     [-o OUTPUT_PATH] [-p PROMPTS [PROMPTS ...]] [-se SEEDS [SEEDS ...] | -gse GEN_SEEDS]
+    usage: dgenerate [-h] [--model-type MODEL_TYPE] [--revision REVISION] [--variant VARIANT] [-d DEVICE] [-t DTYPE]
+                     [-s OUTPUT_SIZE] [-o OUTPUT_PATH] [-p PROMPTS [PROMPTS ...]] [-se SEEDS [SEEDS ...] | -gse GEN_SEEDS]
                      [-af ANIMATION_FORMAT] [-fs FRAME_START] [-fe FRAME_END] [-is [IMAGE_SEEDS ...]]
                      [-iss [IMAGE_SEED_STRENGTHS ...]] [-gs [GUIDANCE_SCALES ...]] [-ifs [INFERENCE_STEPS ...]]
                      model_path
@@ -51,6 +51,8 @@ Help
       --model-type MODEL_TYPE
                             Use when loading different model types. Currently supported: torch. (default: torch)
       --revision REVISION   The model revision to use, (The git branch / tag, default is "main")
+      --variant VARIANT     If specified load weights from "variant" filename, e.g. "pytorch_model.<variant>.bin". This
+                            option is ignored if using flax.
       -d DEVICE, --device DEVICE
                             cuda / cpu. (default: cuda)
       -t DTYPE, --dtype DTYPE
@@ -59,7 +61,7 @@ Help
                             Image output size. If an image seed is used it will be resized to this dimension with aspect
                             ratio maintained, width will be fixed and a new height will be calculated. If only one integer
                             value is provided, that is the value for both dimensions. X/Y dimension values should be
-                            separated by "x". (default: 512x512)
+                            separated by "x". (default: 512x512 when no image seeds are specified)
       -o OUTPUT_PATH, --output-path OUTPUT_PATH
                             Output path for generated images and files. This directory will be created if it does not
                             exist. (default: ./output)
@@ -75,7 +77,7 @@ Help
                             Auto generate N random seeds to try. This argument may not be used when -se/--seeds is used.
       -af ANIMATION_FORMAT, --animation-format ANIMATION_FORMAT
                             Output format when generating an animation from an input video / gif / webp etc. Value must be
-                            one of "mp4", "gif", or "webp". (default: mp4)
+                            one of: gif, webp, or mp4. (default: mp4)
       -fs FRAME_START, --frame-start FRAME_START
                             Starting frame slice point for animated files, the specified frame will be included.
       -fe FRAME_END, --frame-end FRAME_END
