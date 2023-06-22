@@ -59,7 +59,7 @@ def clear_model_cache():
 
 
 def _create_torch_diffusion_pipeline(model_path, revision, variant, torch_dtype):
-    cache_key = model_path + revision + variant + str(torch_dtype)
+    cache_key = model_path + revision + '' if variant is None else variant + str(torch_dtype)
     catch_hit = _TORCH_MODEL_CACHE.get(cache_key)
 
     if catch_hit is None:
@@ -88,7 +88,7 @@ def _create_flax_diffusion_pipeline(model_path, revision, flax_dtype):
 
 
 def _create_torch_img2img_diffusion_pipeline(model_path, revision, variant, torch_dtype):
-    cache_key = model_path + revision + variant + str(torch_dtype)
+    cache_key = model_path + revision + '' if variant is None else variant + str(torch_dtype)
     catch_hit = _TORCH_IMG2IMG_MODEL_CACHE.get(cache_key)
 
     if catch_hit is None:
@@ -117,7 +117,7 @@ def _create_flax_img2img_diffusion_pipeline(model_path, revision, flax_dtype):
 
 
 def _create_torch_inpaint_diffusion_pipeline(model_path, revision, variant, torch_dtype):
-    cache_key = model_path + revision + variant + str(torch_dtype)
+    cache_key = model_path + revision + '' if variant is None else variant + str(torch_dtype)
     catch_hit = _TORCH_INPAINT_MODEL_CACHE.get(cache_key)
 
     if catch_hit is None:
