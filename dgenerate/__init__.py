@@ -19,7 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 
 
 def run_diffusion():
@@ -35,6 +35,7 @@ def run_diffusion():
     from .args import parse_args
     from .textprocessing import underline
     from .diffusionloop import DiffusionRenderLoop
+    from .pipelinewrappers import clear_model_cache
     from .mediainput import ImageSeedParseError, MaskImageSizeMismatchError
 
     # The above modules take long enough to import that they must be in here in
@@ -77,6 +78,9 @@ def run_diffusion():
         for line in sys.stdin:
             line = line.strip()
             if line == '' or line.startswith('#'):
+                continue
+            if line.startswith('\\clear_model_cache'):
+                clear_model_cache()
                 continue
             print(underline("Processing Arguments: " + line))
             parse_and_run(shlex.split(os.path.expandvars(line)))
