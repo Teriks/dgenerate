@@ -25,7 +25,7 @@ try:
     from flax.jax_utils import replicate
     from flax.training.common_utils import shard
     from diffusers import FlaxStableDiffusionPipeline, FlaxStableDiffusionImg2ImgPipeline, \
-        FlaxStableDiffusionInpaintPipeline, StableDiffusionInpaintPipelineLegacy
+        FlaxStableDiffusionInpaintPipeline
 
     _have_jax_flax = True
 
@@ -37,7 +37,7 @@ except ImportError:
     _have_jax_flax = False
 
 import torch
-from diffusers import DiffusionPipeline, StableDiffusionImg2ImgPipeline, StableDiffusionInpaintPipeline
+from diffusers import DiffusionPipeline, StableDiffusionImg2ImgPipeline, StableDiffusionInpaintPipeline, StableDiffusionInpaintPipelineLegacy
 
 _TORCH_MODEL_CACHE = dict()
 _FLAX_MODEL_CACHE = dict()
