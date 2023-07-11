@@ -61,6 +61,14 @@ def _resize_image_calc(new_size, old_size):
     return size
 
 
+def _is_aligned_by_8(x, y):
+    return x % 8 == 0 and y % 8 == 0
+
+
+def _align_by_8(x, y):
+    return x - x % 8, y - y % 8
+
+
 def _resize_image(size, img):
     new_size = _resize_image_calc(size, img.size)
 
@@ -148,6 +156,9 @@ class VideoReader(AnimationReader):
         if self.resize_resolution is None:
             width = int(self._container.streams.video[0].width)
             height = int(self._container.streams.video[0].height)
+            if not _is_aligned_by_8(width, height):
+                width, height = _align_by_8(width, height)
+                self.resize_resolution = (width, height)
         else:
             width, height = _resize_image_calc(self.resize_resolution,
                                                (int(self._container.streams.video[0].width),
@@ -197,6 +208,9 @@ class GifWebpReader(AnimationReader):
         if self.resize_resolution is None:
             width = self._img.size[0]
             height = self._img.size[1]
+            if not _is_aligned_by_8(width, height):
+                width, height = _align_by_8(width, height)
+                self.resize_resolution = (width, height)
         else:
             width, height = _resize_image_calc(self.resize_resolution, self._img.size)
 
@@ -234,6 +248,9 @@ class MockImageAnimationReader(AnimationReader):
         if self.resize_resolution is None:
             width = self._img.size[0]
             height = self._img.size[1]
+            if not _is_aligned_by_8(width, height):
+                width, height = _align_by_8(width, height)
+                self.resize_resolution = (width, height)
         else:
             width, height = _resize_image_calc(self.resize_resolution, self._img.size)
 
@@ -478,7 +495,12 @@ def _write_to_file(data, filepath):
 def _create_and_exif_orient_pil_img(data, resize_resolution=None):
     if resize_resolution is None:
         with PIL.Image.open(io.BytesIO(data)) as img, _RGB(img) as rgb_img:
-            return _exif_orient(rgb_img)
+            e_img = _exif_orient(rgb_img)
+            if not _is_aligned_by_8(e_img.width, e_img.height):
+                with e_img:
+                    return _resize_image(_align_by_8(e_img.width, e_img.height), e_img)
+            else:
+                return e_img
     else:
         with PIL.Image.open(io.BytesIO(data)) as img, _RGB(img) as rgb_img, _exif_orient(rgb_img) as o_img:
             return _resize_image(resize_resolution, o_img)
