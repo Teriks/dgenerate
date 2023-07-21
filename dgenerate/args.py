@@ -25,7 +25,7 @@ import random
 
 from .mediaoutput import supported_animation_writer_formats
 from .pipelinewrappers import supported_model_types
-from .textprocessing import oxford_comma
+from .textprocessing import oxford_comma, is_valid_device_string
 
 parser = argparse.ArgumentParser(
     prog='dgenerate',
@@ -58,13 +58,13 @@ parser.add_argument('--variant', action='store', default=None,
 
 
 def _type_device(device):
-    if device.lower() not in {'cuda', 'cpu'}:
+    if not is_valid_device_string(device):
         raise argparse.ArgumentTypeError(f'Must be cuda or cpu. Unknown value: {device}')
     return device
 
 
 parser.add_argument('-d', '--device', action='store', default='cuda', type=_type_device,
-                    help='cuda / cpu. (default: cuda)')
+                    help='cuda / cpu. (default: cuda). Use: cuda:0, cuda:1, cuda:2, etc. to specify a specific GPU.')
 
 
 def _type_dtype(dtype):

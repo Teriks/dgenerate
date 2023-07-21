@@ -29,7 +29,7 @@ from pathlib import Path
 from .mediainput import iterate_image_seed, get_image_seed_info
 from .mediaoutput import create_animation_writer, supported_animation_writer_formats
 from .pipelinewrappers import DiffusionPipelineWrapper, DiffusionPipelineImg2ImgWrapper, supported_model_types
-from .textprocessing import oxford_comma, underline
+from .textprocessing import oxford_comma, underline, is_valid_device_string
 
 
 def _has_len(obj):
@@ -121,7 +121,7 @@ class DiffusionRenderLoop:
             raise ValueError('DiffusionRenderLoop.model_path must not be None')
         if self.output_path is None:
             raise ValueError('DiffusionRenderLoop.output_path must not be None')
-        if not isinstance(self.device, str) or self.device.lower() not in ('cuda', 'cpu'):
+        if not isinstance(self.device, str) or not is_valid_device_string(self.device):
             raise ValueError('DiffusionRenderLoop.device must be "cuda" or "cpu"')
         if not (isinstance(self.animation_format, str) or
                 self.animation_format.lower() not in supported_animation_writer_formats()):
