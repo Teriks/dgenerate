@@ -19,6 +19,13 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import re
+
+
+def is_valid_device_string(device):
+    return re.match(r'^(cpu|cuda(:[0-9]+)?)$', device)
+
+
 def oxford_comma(elements, conjunction):
     cnt = len(elements)
     elements = (str(i) for i in elements)
