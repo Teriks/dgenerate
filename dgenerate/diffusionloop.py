@@ -19,6 +19,8 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import re
+import torch
 import datetime
 import itertools
 import math
@@ -29,7 +31,24 @@ from pathlib import Path
 from .mediainput import iterate_image_seed, get_image_seed_info
 from .mediaoutput import create_animation_writer, supported_animation_writer_formats
 from .pipelinewrappers import DiffusionPipelineWrapper, DiffusionPipelineImg2ImgWrapper, supported_model_types
-from .textprocessing import oxford_comma, underline, is_valid_device_string
+from .textprocessing import oxford_comma, underline
+
+
+class InvalidDeviceOrdinalException(Exception):
+    pass
+
+
+def is_valid_device_string(device, raise_ordinal=True):
+    match = re.match(r'^(?:cpu|cuda(?::([0-9]+))?)$', device)
+    if match:
+        if match.lastindex:
+            ordinal = int(match[1])
+            valid_ordinal = ordinal < torch.cuda.device_count()
+            if raise_ordinal and not valid_ordinal:
+                raise InvalidDeviceOrdinalException(f'CUDA device ordinal {ordinal} is invalid, no such device exists.')
+            return valid_ordinal
+        return True
+    return False
 
 
 def _has_len(obj):

@@ -25,7 +25,8 @@ import random
 
 from .mediaoutput import supported_animation_writer_formats
 from .pipelinewrappers import supported_model_types
-from .textprocessing import oxford_comma, is_valid_device_string
+from .textprocessing import oxford_comma
+from .diffusionloop import is_valid_device_string, InvalidDeviceOrdinalException
 
 parser = argparse.ArgumentParser(
     prog='dgenerate',
@@ -58,8 +59,12 @@ parser.add_argument('--variant', action='store', default=None,
 
 
 def _type_device(device):
-    if not is_valid_device_string(device):
-        raise argparse.ArgumentTypeError(f'Must be cuda or cpu. Unknown value: {device}')
+    try:
+        if not is_valid_device_string(device):
+            raise argparse.ArgumentTypeError(f'Must be cuda or cpu. Unknown value: {device}')
+    except InvalidDeviceOrdinalException as e:
+        raise argparse.ArgumentTypeError(e)
+
     return device
 
 
