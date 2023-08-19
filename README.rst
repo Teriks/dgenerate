@@ -48,8 +48,8 @@ Help
     animation transcoding.
 
     positional arguments:
-      model_path            huggingface model repository, repository slug/URI or path to
-                            folder on disk.
+      model_path            huggingface model repository, repository slug/URI, path to
+                            folder on disk, or path to .cpkt or .safetensors file.
 
     options:
       -h, --help            show this help message and exit

@@ -37,7 +37,8 @@ except ImportError:
     _have_jax_flax = False
 
 import torch
-from diffusers import DiffusionPipeline, StableDiffusionImg2ImgPipeline, StableDiffusionInpaintPipeline, StableDiffusionInpaintPipelineLegacy
+from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline, StableDiffusionInpaintPipeline, \
+    StableDiffusionInpaintPipelineLegacy
 
 _TORCH_MODEL_CACHE = dict()
 _FLAX_MODEL_CACHE = dict()
@@ -47,6 +48,10 @@ _FLAX_IMG2IMG_MODEL_CACHE = dict()
 
 _TORCH_INPAINT_MODEL_CACHE = dict()
 _FLAX_INPAINT_MODEL_CACHE = dict()
+
+
+def _is_single_file_load(path):
+    return path.endswith('.ckpt') or path.endswith('.safetensors')
 
 
 def clear_model_cache():
@@ -63,10 +68,16 @@ def _create_torch_diffusion_pipeline(model_path, revision, variant, torch_dtype)
     catch_hit = _TORCH_MODEL_CACHE.get(cache_key)
 
     if catch_hit is None:
-        pipeline = DiffusionPipeline.from_pretrained(model_path,
-                                                     revision=revision,
-                                                     variant=variant,
-                                                     torch_dtype=torch_dtype)
+        if _is_single_file_load(model_path):
+            pipeline = StableDiffusionPipeline.from_single_file(model_path,
+                                                                revision=revision,
+                                                                variant=variant,
+                                                                torch_dtype=torch_dtype)
+        else:
+            pipeline = StableDiffusionPipeline.from_pretrained(model_path,
+                                                               revision=revision,
+                                                               variant=variant,
+                                                               torch_dtype=torch_dtype)
         _TORCH_MODEL_CACHE[cache_key] = pipeline
         return pipeline
     else:
@@ -92,10 +103,16 @@ def _create_torch_img2img_diffusion_pipeline(model_path, revision, variant, torc
     catch_hit = _TORCH_IMG2IMG_MODEL_CACHE.get(cache_key)
 
     if catch_hit is None:
-        pipeline = StableDiffusionImg2ImgPipeline.from_pretrained(model_path,
-                                                                  revision=revision,
-                                                                  variant=variant,
-                                                                  torch_dtype=torch_dtype)
+        if _is_single_file_load(model_path):
+            pipeline = StableDiffusionImg2ImgPipeline.from_single_file(model_path,
+                                                                       revision=revision,
+                                                                       variant=variant,
+                                                                       torch_dtype=torch_dtype)
+        else:
+            pipeline = StableDiffusionImg2ImgPipeline.from_pretrained(model_path,
+                                                                      revision=revision,
+                                                                      variant=variant,
+                                                                      torch_dtype=torch_dtype)
         _TORCH_IMG2IMG_MODEL_CACHE[cache_key] = pipeline
         return pipeline
     else:
@@ -121,10 +138,16 @@ def _create_torch_inpaint_diffusion_pipeline(model_path, revision, variant, torc
     catch_hit = _TORCH_INPAINT_MODEL_CACHE.get(cache_key)
 
     if catch_hit is None:
-        pipeline = StableDiffusionInpaintPipeline.from_pretrained(model_path,
-                                                                  revision=revision,
-                                                                  variant=variant,
-                                                                  torch_dtype=torch_dtype)
+        if _is_single_file_load(model_path):
+            pipeline = StableDiffusionInpaintPipeline.from_single_file(model_path,
+                                                                       revision=revision,
+                                                                       variant=variant,
+                                                                       torch_dtype=torch_dtype)
+        else:
+            pipeline = StableDiffusionInpaintPipeline.from_pretrained(model_path,
+                                                                      revision=revision,
+                                                                      variant=variant,
+                                                                      torch_dtype=torch_dtype)
         _TORCH_INPAINT_MODEL_CACHE[cache_key] = pipeline
         return pipeline
     else:
