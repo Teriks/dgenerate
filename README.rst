@@ -667,7 +667,7 @@ Specifying a VAE
 
 To specify a VAE directly use ``--vae``.
 
-The syntax for ``--vae`` is "AutoEncoderClass;(URL or file path)", where the URL or file path
+The syntax for ``--vae`` is ``AutoEncoderClass;(URL or file path)``, where the URL or file path
 is a HuggingFace repository slug, or a file path to a .pt, .pth, or .safetensors file.
 
 Available encoder classes for torch models are:
