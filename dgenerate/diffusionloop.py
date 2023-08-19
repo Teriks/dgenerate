@@ -109,6 +109,8 @@ class DiffusionRenderLoop:
         self._last_frame_time = 0
 
         self.model_path = None
+        self.vae = None
+        self.safety_checker = False
         self.model_type = 'torch'
         self.device = 'cuda'
         self.dtype = 'float16'
@@ -129,6 +131,8 @@ class DiffusionRenderLoop:
     def _enforce_state(self):
         if self.dtype not in {'float32', 'float16', 'auto'}:
             raise ValueError('DiffusionRenderLoop.torch_dtype must be float32, float16, or auto')
+        if not isinstance(self.safety_checker, bool):
+            raise ValueError('DiffusionRenderLoop.safety_checker must be True or False (bool)')
         if self.revision is not None and not isinstance(self.revision, str):
             raise ValueError('DiffusionRenderLoop.revision must be None or a string')
         if self.variant is not None and not isinstance(self.variant, str):
@@ -138,6 +142,8 @@ class DiffusionRenderLoop:
                 f'DiffusionRenderLoop.model_type must be one of: {oxford_comma(supported_model_types(), "or")}')
         if self.model_path is None:
             raise ValueError('DiffusionRenderLoop.model_path must not be None')
+        if self.vae is not None and not isinstance(self.vae, str):
+            raise ValueError('DiffusionRenderLoop.vae must be a string: AutoencoderClass;PATH')
         if self.output_path is None:
             raise ValueError('DiffusionRenderLoop.output_path must not be None')
         if not isinstance(self.device, str) or not is_valid_device_string(self.device):
@@ -303,7 +309,9 @@ class DiffusionRenderLoop:
                                                        device=self.device,
                                                        model_type=self.model_type,
                                                        revision=self.revision,
-                                                       variant=self.variant)
+                                                       variant=self.variant,
+                                                       vae=self.vae,
+                                                       safety_checker=self.safety_checker)
 
             for args_ctx in iterate_diffusion_args(self.prompts, self.seeds, [], self.guidance_scales,
                                                    self.inference_steps):
@@ -321,7 +329,9 @@ class DiffusionRenderLoop:
                                                           device=self.device,
                                                           model_type=self.model_type,
                                                           revision=self.revision,
-                                                          variant=self.variant)
+                                                          variant=self.variant,
+                                                          vae=self.vae,
+                                                          safety_checker=self.safety_checker)
 
         for image_seed in self.image_seeds:
 
