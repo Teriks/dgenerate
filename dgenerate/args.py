@@ -34,7 +34,8 @@ parser = argparse.ArgumentParser(
                 'support for video / gif / webp animation transcoding.')
 
 parser.add_argument('model_path', action='store',
-                    help='huggingface model repository, repository slug/URI or path to folder on disk.')
+                    help='huggingface model repository, repository slug/URI, path to folder on disk, '
+                         'or path to a .cpkt or .safetensors file.')
 
 
 def _from_model_type(val):
