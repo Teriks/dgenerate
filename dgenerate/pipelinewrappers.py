@@ -25,7 +25,7 @@ try:
     from flax.jax_utils import replicate
     from flax.training.common_utils import shard
     from diffusers import FlaxStableDiffusionPipeline, FlaxStableDiffusionImg2ImgPipeline, \
-        FlaxStableDiffusionInpaintPipeline
+    FlaxStableDiffusionInpaintPipeline, FlaxAutoencoderKL
 
     _have_jax_flax = True
 
@@ -38,7 +38,7 @@ except ImportError:
 
 import torch
 from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline, StableDiffusionInpaintPipeline, \
-    StableDiffusionInpaintPipelineLegacy
+    StableDiffusionInpaintPipelineLegacy, AutoencoderKL, AsymmetricAutoencoderKL, AutoencoderTiny
 
 _TORCH_MODEL_CACHE = dict()
 _FLAX_MODEL_CACHE = dict()
@@ -50,8 +50,62 @@ _TORCH_INPAINT_MODEL_CACHE = dict()
 _FLAX_INPAINT_MODEL_CACHE = dict()
 
 
-def _is_single_file_load(path):
+class InvalidVaePath(Exception):
+    pass
+
+
+def _is_single_file_model_load(path):
     return path.endswith('.ckpt') or path.endswith('.safetensors')
+
+
+def _is_single_file_vae_load(path):
+    return path.endswith('.pt') or path.endswith('.pth') or path.endswith('.safetensors')
+
+
+def _load_pytorch_vae(path):
+    parts = path.split(';', 1)
+
+    if len(parts) != 2:
+        raise InvalidVaePath(f'VAE path must contain auto encoder class name and path to the encoder URL or file.')
+
+    encoder_name = parts[0].strip()
+
+    if encoder_name == "AutoencoderKL":
+        encoder = AutoencoderKL
+    elif encoder_name == "AsymmetricAutoencoderKL":
+        encoder = AsymmetricAutoencoderKL
+    elif encoder_name == "AutoencoderTiny":
+        encoder = AutoencoderTiny
+    else:
+        raise InvalidVaePath(f'Unknown VAE encoder class {encoder_name}')
+
+    path = parts[1].strip()
+
+    if _is_single_file_vae_load(path):
+        return encoder.from_single_file(path)
+    else:
+        return encoder.from_pretrained(path)
+
+
+def _load_flax_vae(path):
+    parts = path.split(';', 1)
+
+    if len(parts) != 2:
+        raise InvalidVaePath(f'VAE path must contain auto encoder class name and path to the encoder URL or file.')
+
+    encoder_name = parts[0].strip()
+
+    if encoder_name == "FlaxAutoencoderKL":
+        encoder = FlaxAutoencoderKL
+    else:
+        raise InvalidVaePath(f'Unknown VAE flax encoder class {encoder_name}')
+
+    path = parts[1].strip()
+
+    if _is_single_file_vae_load(path):
+        return encoder.from_single_file(path)
+    else:
+        return encoder.from_pretrained(path)
 
 
 def clear_model_cache():
@@ -63,105 +117,147 @@ def clear_model_cache():
     _FLAX_INPAINT_MODEL_CACHE.clear()
 
 
-def _create_torch_diffusion_pipeline(model_path, revision, variant, torch_dtype):
+def _create_torch_diffusion_pipeline(model_path, revision, variant, torch_dtype, vae=None, safety_checker=False):
     cache_key = model_path + revision + '' if variant is None else variant + str(torch_dtype)
     catch_hit = _TORCH_MODEL_CACHE.get(cache_key)
 
     if catch_hit is None:
-        if _is_single_file_load(model_path):
+        kwargs = {'safety_checker': None} if not safety_checker else {}
+
+        if vae is not None:
+            kwargs['vae'] = _load_pytorch_vae(vae)
+
+        if _is_single_file_model_load(model_path):
             pipeline = StableDiffusionPipeline.from_single_file(model_path,
                                                                 revision=revision,
                                                                 variant=variant,
-                                                                torch_dtype=torch_dtype)
+                                                                torch_dtype=torch_dtype,
+                                                                **kwargs)
         else:
             pipeline = StableDiffusionPipeline.from_pretrained(model_path,
                                                                revision=revision,
                                                                variant=variant,
-                                                               torch_dtype=torch_dtype)
+                                                               torch_dtype=torch_dtype,
+                                                               **kwargs)
         _TORCH_MODEL_CACHE[cache_key] = pipeline
         return pipeline
     else:
         return catch_hit
 
 
-def _create_flax_diffusion_pipeline(model_path, revision, flax_dtype):
+def _create_flax_diffusion_pipeline(model_path, revision, flax_dtype, vae=None, safety_checker=False):
     cache_key = model_path + revision + str(flax_dtype)
     catch_hit = _FLAX_MODEL_CACHE.get(cache_key)
 
     if catch_hit is None:
+        kwargs = {'safety_checker': None} if not safety_checker else {}
+
+        if vae is not None:
+            kwargs['vae'] = _load_flax_vae(vae)
+
         pipeline, params = FlaxStableDiffusionPipeline.from_pretrained(model_path,
                                                                        revision=revision,
-                                                                       dtype=flax_dtype)
+                                                                       dtype=flax_dtype,
+                                                                       **kwargs)
         _FLAX_MODEL_CACHE[cache_key] = (pipeline, params)
         return pipeline, params
     else:
         return catch_hit
 
 
-def _create_torch_img2img_diffusion_pipeline(model_path, revision, variant, torch_dtype):
+def _create_torch_img2img_diffusion_pipeline(model_path, revision, variant, torch_dtype, vae=None,
+                                             safety_checker=False):
     cache_key = model_path + revision + '' if variant is None else variant + str(torch_dtype)
     catch_hit = _TORCH_IMG2IMG_MODEL_CACHE.get(cache_key)
 
     if catch_hit is None:
-        if _is_single_file_load(model_path):
+        kwargs = {'safety_checker': None} if not safety_checker else {}
+
+        if vae is not None:
+            kwargs['vae'] = _load_pytorch_vae(vae)
+
+        if _is_single_file_model_load(model_path):
             pipeline = StableDiffusionImg2ImgPipeline.from_single_file(model_path,
                                                                        revision=revision,
                                                                        variant=variant,
-                                                                       torch_dtype=torch_dtype)
+                                                                       torch_dtype=torch_dtype,
+                                                                       **kwargs)
         else:
             pipeline = StableDiffusionImg2ImgPipeline.from_pretrained(model_path,
                                                                       revision=revision,
                                                                       variant=variant,
-                                                                      torch_dtype=torch_dtype)
+                                                                      torch_dtype=torch_dtype,
+                                                                      **kwargs)
         _TORCH_IMG2IMG_MODEL_CACHE[cache_key] = pipeline
         return pipeline
     else:
         return catch_hit
 
 
-def _create_flax_img2img_diffusion_pipeline(model_path, revision, flax_dtype):
+def _create_flax_img2img_diffusion_pipeline(model_path, revision, flax_dtype, vae=None, safety_checker=False):
     cache_key = model_path + revision + str(flax_dtype)
     catch_hit = _FLAX_IMG2IMG_MODEL_CACHE.get(cache_key)
 
     if catch_hit is None:
+        kwargs = {'safety_checker': None} if not safety_checker else {}
+
+        if vae is not None:
+            kwargs['vae'] = _load_flax_vae(vae)
+
         pipeline, params = FlaxStableDiffusionImg2ImgPipeline.from_pretrained(model_path,
                                                                               revision=revision,
-                                                                              dtype=flax_dtype)
+                                                                              dtype=flax_dtype,
+                                                                              **kwargs)
         _FLAX_IMG2IMG_MODEL_CACHE[cache_key] = (pipeline, params)
         return pipeline
     else:
         return catch_hit
 
 
-def _create_torch_inpaint_diffusion_pipeline(model_path, revision, variant, torch_dtype):
+def _create_torch_inpaint_diffusion_pipeline(model_path, revision, variant, torch_dtype, vae=None,
+                                             safety_checker=False):
     cache_key = model_path + revision + '' if variant is None else variant + str(torch_dtype)
     catch_hit = _TORCH_INPAINT_MODEL_CACHE.get(cache_key)
 
     if catch_hit is None:
-        if _is_single_file_load(model_path):
+        kwargs = {'safety_checker': None} if not safety_checker else {}
+
+        if vae is not None:
+            kwargs['vae'] = _load_pytorch_vae(vae)
+
+        if _is_single_file_model_load(model_path):
             pipeline = StableDiffusionInpaintPipeline.from_single_file(model_path,
                                                                        revision=revision,
                                                                        variant=variant,
-                                                                       torch_dtype=torch_dtype)
+                                                                       torch_dtype=torch_dtype,
+                                                                       **kwargs)
         else:
             pipeline = StableDiffusionInpaintPipeline.from_pretrained(model_path,
                                                                       revision=revision,
                                                                       variant=variant,
-                                                                      torch_dtype=torch_dtype)
+                                                                      torch_dtype=torch_dtype,
+                                                                      **kwargs)
+
         _TORCH_INPAINT_MODEL_CACHE[cache_key] = pipeline
         return pipeline
     else:
         return catch_hit
 
 
-def _create_flax_inpaint_diffusion_pipeline(model_path, revision, flax_dtype):
+def _create_flax_inpaint_diffusion_pipeline(model_path, revision, flax_dtype, vae=None, safety_checker=False):
     cache_key = model_path + revision + str(flax_dtype)
     catch_hit = _FLAX_INPAINT_MODEL_CACHE.get(cache_key)
 
     if catch_hit is None:
+        kwargs = {'safety_checker': None} if not safety_checker else {}
+
+        if vae is not None:
+            kwargs['vae'] = _load_flax_vae(vae)
+
         pipeline, params = FlaxStableDiffusionInpaintPipeline.from_pretrained(model_path,
                                                                               revision=revision,
-                                                                              dtype=flax_dtype)
+                                                                              dtype=flax_dtype,
+                                                                              **kwargs)
         _FLAX_INPAINT_MODEL_CACHE[cache_key] = (pipeline, params)
         return pipeline
     else:
@@ -269,7 +365,7 @@ class PipelineResultWrapper:
 
 
 class DiffusionPipelineWrapper:
-    def __init__(self, model_path, dtype, device='cuda', model_type='torch', revision='main', variant=None):
+    def __init__(self, model_path, dtype, device='cuda', model_type='torch', revision='main', variant=None, vae=None, safety_checker=False):
         self._device = device
         self._model_type = model_type
         self._model_path = model_path
@@ -279,6 +375,8 @@ class DiffusionPipelineWrapper:
         self._variant = variant
         self._dtype = dtype
         self._device = device
+        self._vae = vae
+        self._safety_checker = safety_checker
 
     def _lazy_init_pipeline(self):
         if self._pipeline is not None:
@@ -291,12 +389,14 @@ class DiffusionPipelineWrapper:
             self._pipeline, self._flax_params = \
                 _create_flax_diffusion_pipeline(self._model_path,
                                                 revision=self._revision,
-                                                flax_dtype=_get_flax_dtype(self._dtype))
+                                                flax_dtype=_get_flax_dtype(self._dtype),
+                                                vae=self._vae, safety_checker=self._safety_checker)
         else:
             self._pipeline = \
                 _create_torch_diffusion_pipeline(self._model_path,
                                                  revision=self._revision, variant=self._variant,
-                                                 torch_dtype=_get_torch_dtype(self._dtype)).to(self._device)
+                                                 torch_dtype=_get_torch_dtype(self._dtype),
+                                                 vae=self._vae, safety_checker=self._safety_checker).to(self._device)
 
     def __call__(self, **kwargs):
         args = _pipeline_defaults(kwargs)
@@ -310,7 +410,7 @@ class DiffusionPipelineWrapper:
 
 
 class DiffusionPipelineImg2ImgWrapper:
-    def __init__(self, model_path, dtype, device='cuda', model_type='torch', revision='main', variant=None):
+    def __init__(self, model_path, dtype, device='cuda', model_type='torch', revision='main', variant=None, vae=None, safety_checker=False):
         self._device = device
         self._model_type = model_type.strip().lower()
         self._model_path = model_path
@@ -319,6 +419,8 @@ class DiffusionPipelineImg2ImgWrapper:
         self._dtype = dtype
         self._pipeline = None
         self._flax_params = None
+        self._vae = vae
+        self._safety_checker = safety_checker
 
     def _lazy_init_img2img(self):
         if self._pipeline is not None:
@@ -331,12 +433,14 @@ class DiffusionPipelineImg2ImgWrapper:
             self._pipeline, self._flax_params = \
                 _create_flax_img2img_diffusion_pipeline(self._model_path,
                                                         revision=self._revision,
-                                                        flax_dtype=_get_flax_dtype(self._dtype))
+                                                        flax_dtype=_get_flax_dtype(self._dtype),
+                                                        vae=self._vae, safety_checker=self._safety_checker)
         else:
             self._pipeline = \
                 _create_torch_img2img_diffusion_pipeline(self._model_path,
                                                          revision=self._revision, variant=self._variant,
-                                                         torch_dtype=_get_torch_dtype(self._dtype)).to(self._device)
+                                                         torch_dtype=_get_torch_dtype(self._dtype),
+                                                         vae=self._vae, safety_checker=self._safety_checker).to(self._device)
 
     def _lazy_init_intpaint(self):
         if self._pipeline is not None:
@@ -349,12 +453,14 @@ class DiffusionPipelineImg2ImgWrapper:
             self._pipeline, self._flax_params = \
                 _create_flax_inpaint_diffusion_pipeline(self._model_path,
                                                         revision=self._revision,
-                                                        flax_dtype=_get_flax_dtype(self._dtype))
+                                                        flax_dtype=_get_flax_dtype(self._dtype),
+                                                        vae=self._vae, safety_checker=self._safety_checker)
         else:
             self._pipeline = \
                 _create_torch_inpaint_diffusion_pipeline(self._model_path,
                                                          revision=self._revision, variant=self._variant,
-                                                         torch_dtype=_get_torch_dtype(self._dtype)).to(self._device)
+                                                         torch_dtype=_get_torch_dtype(self._dtype),
+                                                         vae=self._vae, safety_checker=self._safety_checker).to(self._device)
 
     def __call__(self, **kwargs):
         args = _pipeline_defaults(kwargs)

@@ -19,7 +19,9 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-__version__ = "0.9.0"
+__version__ = "0.10.0"
+
+from dgenerate.pipelinewrappers import InvalidVaePath
 
 
 def run_diffusion():
@@ -66,11 +68,13 @@ def run_diffusion():
         render_loop.image_seed_strengths = arguments.image_seed_strengths
         render_loop.guidance_scales = arguments.guidance_scales
         render_loop.inference_steps = arguments.inference_steps
+        render_loop.vae = arguments.vae
+        render_loop.safety_checker = arguments.safety_checker
 
         # run the render loop
         try:
             render_loop.run()
-        except (ImageSeedParseError, MaskImageSizeMismatchError) as e:
+        except (ImageSeedParseError, MaskImageSizeMismatchError, InvalidVaePath) as e:
             print("Error:", e, file=sys.stderr)
             exit(1)
 

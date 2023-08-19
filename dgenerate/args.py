@@ -38,6 +38,20 @@ parser.add_argument('model_path', action='store',
                          'or path to a .cpkt or .safetensors file.')
 
 
+parser.add_argument('--vae', action='store', default=None,
+                    help=f'Specify a VAE. When using torch models the syntax '
+                         f'is: "AutoEncoderClass;(URL or file path)". Examples: "AutoencoderKL;vae.pt", '
+                         f'"AsymmetricAutoencoderKL;vae.pt", "AutoencoderTiny;vae.pt". When using a Flax model, '
+                         f'there is currently only one available encoder class: "AutoencoderKL;vae.pt". '
+                         f'Hugging face URI/slugs, .pt, .pth, and .safetensors files are accepted.')
+
+parser.add_argument('--safety-checker', action='store_true', default=False,
+                    help=f'Enable safety checker loading, this is off by default. '
+                         f'When turned on images with NSFW content detected may result in solid black output. '
+                         f'Some pretrained models have settings indicating a safety checker is not to be loaded, '
+                         f'in that case this option has no effect.')
+
+
 def _from_model_type(val):
     val = val.lower()
     if val not in supported_model_types():
