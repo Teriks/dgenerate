@@ -222,6 +222,10 @@ First update your system and install build-essential
     sudo apt install build-essential
 
 
+Install cuDNN 8.9.1: https://developer.nvidia.com/rdp/cudnn-download
+
+You need a developer account, see documentation for installation on Nvidias website.
+
 Then install CUDA Toolkit 11.8: https://developer.nvidia.com/cuda-11-8-0-download-archive
 
 OR
