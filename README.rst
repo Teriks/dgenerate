@@ -692,7 +692,7 @@ Available encoder classes for torch models are:
 
 Available encoder classes for flax models are:
 
-* AutoencoderKL
+* FlaxAutoencoderKL
 
 .. code-block:: bash
 
