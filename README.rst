@@ -35,8 +35,8 @@ Help
 
 .. code-block::
 
-    usage: dgenerate [-h] [--vae VAE] [--safety-checker] [--model-type MODEL_TYPE]
-                     [--revision REVISION] [--variant VARIANT] [-d DEVICE] [-t DTYPE]
+    usage: dgenerate [-h] [--model-type MODEL_TYPE] [--revision REVISION] [--variant VARIANT]
+                     [--vae VAE] [--scheduler SCHEDULER] [--safety-checker] [-d DEVICE] [-t DTYPE]
                      [-s OUTPUT_SIZE] [-o OUTPUT_PATH] [-p PROMPTS [PROMPTS ...]]
                      [-se SEEDS [SEEDS ...] | -gse GEN_SEEDS] [-af ANIMATION_FORMAT]
                      [-fs FRAME_START] [-fe FRAME_END] [-is [IMAGE_SEEDS ...]]
@@ -53,92 +53,99 @@ Help
 
     options:
       -h, --help            show this help message and exit
-      --vae VAE             Specify a VAE. When using torch models the syntax is:
-                            "AutoEncoderClass;(URL or file path)". Examples:
-                            "AutoencoderKL;vae.pt", "AsymmetricAutoencoderKL;vae.pt",
-                            "AutoencoderTiny;vae.pt". When using a Flax model, there is
-                            currently only one available encoder class: "AutoencoderKL;vae.pt".
-                            Hugging face URI/slugs, .pt, .pth, and .safetensors files are
-                            accepted.
-      --safety-checker      Enable safety checker loading, this is off by default. When turned
-                            on images with NSFW content detected may result in solid black
-                            output. Some pretrained models have settings indicating a safety
-                            checker is not to be loaded, in that case this option has no effect.
       --model-type MODEL_TYPE
-                            Use when loading different model types. Currently supported: torch.
-                            (default: torch)
+                            Use when loading different model types. Currently supported: torch or
+                            flax. (default: torch)
       --revision REVISION   The model revision to use, (The git branch / tag, default is "main")
       --variant VARIANT     If specified load weights from "variant" filename, e.g.
                             "pytorch_model.<variant>.bin". This option is ignored if using flax.
+      --vae VAE             Specify a VAE. When using torch models the syntax is:
+                            "AutoEncoderClass;(URL or file path)". Examples: "AutoencoderKL;vae.pt",
+                            "AsymmetricAutoencoderKL;vae.pt", "AutoencoderTiny;vae.pt". When using a
+                            Flax model, there is currently only one available encoder class:
+                            "AutoencoderKL;vae.pt". Hugging face URI/slugs, .pt, .pth, and
+                            .safetensors files are accepted.
+      --scheduler SCHEDULER
+                            Specify a Scheduler. Torch compatible schedulers: (DDIMScheduler,
+                            DDPMScheduler, PNDMScheduler, LMSDiscreteScheduler,
+                            EulerDiscreteScheduler, HeunDiscreteScheduler,
+                            EulerAncestralDiscreteScheduler, DPMSolverMultistepScheduler,
+                            DPMSolverSinglestepScheduler, KDPM2DiscreteScheduler,
+                            KDPM2AncestralDiscreteScheduler, DEISMultistepScheduler,
+                            UniPCMultistepScheduler, DPMSolverSDEScheduler). Flax compatible
+                            schedulers: (FlaxDDIMScheduler, FlaxDDPMScheduler, FlaxPNDMScheduler,
+                            FlaxLMSDiscreteScheduler, FlaxDPMSolverMultistepScheduler)
+      --safety-checker      Enable safety checker loading, this is off by default. When turned on
+                            images with NSFW content detected may result in solid black output. Some
+                            pretrained models have settings indicating a safety checker is not to be
+                            loaded, in that case this option has no effect.
       -d DEVICE, --device DEVICE
                             cuda / cpu. (default: cuda). Use: cuda:0, cuda:1, cuda:2, etc. to
                             specify a specific GPU.
       -t DTYPE, --dtype DTYPE
                             Model precision: float16 / float32 / auto. (default: auto)
       -s OUTPUT_SIZE, --output-size OUTPUT_SIZE
-                            Image output size. If an image seed is used it will be resized to
-                            this dimension with aspect ratio maintained, width will be fixed and
-                            a new height will be calculated. If only one integer value is
-                            provided, that is the value for both dimensions. X/Y dimension
-                            values should be separated by "x". (default: 512x512 when no image
-                            seeds are specified)
+                            Image output size. If an image seed is used it will be resized to this
+                            dimension with aspect ratio maintained, width will be fixed and a new
+                            height will be calculated. If only one integer value is provided, that
+                            is the value for both dimensions. X/Y dimension values should be
+                            separated by "x". (default: 512x512 when no image seeds are specified)
       -o OUTPUT_PATH, --output-path OUTPUT_PATH
                             Output path for generated images and files. This directory will be
                             created if it does not exist. (default: ./output)
       -p PROMPTS [PROMPTS ...], --prompts PROMPTS [PROMPTS ...]
                             List of prompts to try, an image group is generated for each prompt,
-                            prompt data is split by ; (semi-colon). The first value is the
-                            positive text influence, things you want to see. The Second value is
-                            negative influence IE. things you don't want to see. Example:
-                            --prompts "shrek flying a tesla over detroit; clouds, rain,
-                            missiles". (default: [(empty string)])
+                            prompt data is split by ; (semi-colon). The first value is the positive
+                            text influence, things you want to see. The Second value is negative
+                            influence IE. things you don't want to see. Example: --prompts "shrek
+                            flying a tesla over detroit; clouds, rain, missiles". (default: [(empty
+                            string)])
       -se SEEDS [SEEDS ...], --seeds SEEDS [SEEDS ...]
                             List of seeds to try, define fixed seeds to achieve deterministic
-                            output. This argument may not be used when --gse/--gen-seeds is
-                            used. (default: [randint(0, 99999999999999)])
+                            output. This argument may not be used when --gse/--gen-seeds is used.
+                            (default: [randint(0, 99999999999999)])
       -gse GEN_SEEDS, --gen-seeds GEN_SEEDS
-                            Auto generate N random seeds to try. This argument may not be used
-                            when -se/--seeds is used.
+                            Auto generate N random seeds to try. This argument may not be used when
+                            -se/--seeds is used.
       -af ANIMATION_FORMAT, --animation-format ANIMATION_FORMAT
-                            Output format when generating an animation from an input video / gif
-                            / webp etc. Value must be one of: gif, mp4, or webp. (default: mp4)
+                            Output format when generating an animation from an input video / gif /
+                            webp etc. Value must be one of: mp4, gif, or webp. (default: mp4)
       -fs FRAME_START, --frame-start FRAME_START
-                            Starting frame slice point for animated files, the specified frame
-                            will be included.
+                            Starting frame slice point for animated files, the specified frame will
+                            be included.
       -fe FRAME_END, --frame-end FRAME_END
-                            Ending frame slice point for animated files, the specified frame
-                            will be included.
+                            Ending frame slice point for animated files, the specified frame will be
+                            included.
       -is [IMAGE_SEEDS ...], --image-seeds [IMAGE_SEEDS ...]
                             List of image seeds to try when processing image seeds, these may be
                             URLs or file paths. Videos / GIFs / WEBP files will result in frames
                             being rendered as well as an animated output file being generated if
                             more than one frame is available in the input file. Inpainting for
-                            static images can be achieved by specifying a black and white mask
-                            image in each image seed string using a semicolon as the seperating
-                            character, like so: "my-seed-image.png;my-image-mask.png", white
-                            areas of the mask indicate where generated content is to be placed
-                            in your seed image. Output dimensions specific to the image seed can
-                            be specified by placing the dimension at the end of the string
-                            following a semicolon like so: "my-seed-image.png;512x512" or "my-
-                            seed-image.png;my-image-mask.png;512x512". Inpainting masks can be
-                            downloaded for you from a URL or be a path to a file on disk.
+                            static images can be achieved by specifying a black and white mask image
+                            in each image seed string using a semicolon as the seperating character,
+                            like so: "my-seed-image.png;my-image-mask.png", white areas of the mask
+                            indicate where generated content is to be placed in your seed image.
+                            Output dimensions specific to the image seed can be specified by placing
+                            the dimension at the end of the string following a semicolon like so:
+                            "my-seed-image.png;512x512" or "my-seed-image.png;my-image-
+                            mask.png;512x512". Inpainting masks can be downloaded for you from a URL
+                            or be a path to a file on disk.
       -iss [IMAGE_SEED_STRENGTHS ...], --image-seed-strengths [IMAGE_SEED_STRENGTHS ...]
-                            List of image seed strengths to try. Closer to 0 means high usage of
-                            the seed image (less noise convolution), 1 effectively means no
-                            usage (high noise convolution). Low values will produce something
-                            closer or more relevant to the input image, high values will give
-                            the AI more creative freedom. (default: [0.8])
+                            List of image seed strengths to try. Closer to 0 means high usage of the
+                            seed image (less noise convolution), 1 effectively means no usage (high
+                            noise convolution). Low values will produce something closer or more
+                            relevant to the input image, high values will give the AI more creative
+                            freedom. (default: [0.8])
       -gs [GUIDANCE_SCALES ...], --guidance-scales [GUIDANCE_SCALES ...]
                             List of guidance scales to try. Guidance scale effects how much your
                             text prompt is considered. Low values draw more data from images
                             unrelated to text prompt. (default: [5])
       -ifs [INFERENCE_STEPS ...], --inference-steps [INFERENCE_STEPS ...]
                             Lists of inference steps values to try. The amount of inference
-                            (denoising) steps effects image clarity to a degree, higher values
-                            bring the image closer to what the AI is targeting for the content
-                            of the image. Values between 30-40 produce good results, higher
-                            values may improve image quality and or change image content.
-                            (default: [30])
+                            (denoising) steps effects image clarity to a degree, higher values bring
+                            the image closer to what the AI is targeting for the content of the
+                            image. Values between 30-40 produce good results, higher values may
+                            improve image quality and or change image content. (default: [30])
 
 
 Windows Install
@@ -207,7 +214,15 @@ Run **dgenerate** to generate images, you must have the environment active for t
 Linux or WSL Install
 ====================
 
-Install CUDA Toolkit 11.8: https://developer.nvidia.com/cuda-11-8-0-download-archive
+First update your system and install build-essential
+
+.. code-block:: bash
+
+    sudo apt update && sudo apt upgrade
+    sudo apt install build-essential
+
+
+Then install CUDA Toolkit 11.8: https://developer.nvidia.com/cuda-11-8-0-download-archive
 
 OR
 
@@ -223,10 +238,10 @@ I recommend using the runfile option:
     wget https://developer.download.nvidia.com/compute/cuda/11.8.0/local_installers/cuda_11.8.0_520.61.05_linux.run
     sudo sh cuda_11.8.0_520.61.05_linux.run
 
-    # CUDA Toolkit 12.1.1 For Ubuntu / Debian / WSL
+    # CUDA Toolkit 12.2.1 For Ubuntu / Debian / WSL
 
-    wget https://developer.download.nvidia.com/compute/cuda/12.1.1/local_installers/cuda_12.1.1_530.30.02_linux.run
-    sudo sh cuda_12.1.1_530.30.02_linux.run
+    wget wget https://developer.download.nvidia.com/compute/cuda/12.2.1/local_installers/cuda_12.2.1_535.86.10_linux.run
+    sudo sh cuda_12.2.1_535.86.10_linux.run
 
 
 Do not attempt to install a driver from the prompts if using WSL.
@@ -247,7 +262,6 @@ Install Python 3.10+ (Debian / Ubuntu)
 
 .. code-block:: bash
 
-    sudo apt update && sudo apt upgrade
     sudo apt install python3.10 python3-virtualenv python3-wheel
 
 
