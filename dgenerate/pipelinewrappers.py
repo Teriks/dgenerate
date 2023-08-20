@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+from diffusers.pipelines.stable_diffusion import FlaxStableDiffusionSafetyChecker
 
 try:
     import jax
@@ -142,7 +143,6 @@ def _disabled_safety_checker(images, clip_input):
     else:
         return images, False
 
-
 def _create_torch_diffusion_pipeline(model_path, revision, variant, torch_dtype, vae=None, scheduler=None,
                                      safety_checker=False):
     cache_key = model_path + revision + '' if variant is None else variant + str(torch_dtype)
@@ -196,8 +196,8 @@ def _create_flax_diffusion_pipeline(model_path, revision, flax_dtype, vae=None, 
 
         _load_scheduler(pipeline, scheduler)
 
-        # if not safety_checker:
-        #    pipeline.safety_checker = _disabled_safety_checker
+        if not safety_checker:
+            pipeline.safety_checker = None
 
         _FLAX_MODEL_CACHE[cache_key] = (pipeline, params)
         return pipeline, params
@@ -255,7 +255,11 @@ def _create_flax_img2img_diffusion_pipeline(model_path, revision, flax_dtype, va
                                                                               revision=revision,
                                                                               dtype=flax_dtype,
                                                                               **kwargs)
+
         _load_scheduler(pipeline, scheduler)
+
+        if not safety_checker:
+            pipeline.safety_checker = None
 
         _FLAX_IMG2IMG_MODEL_CACHE[cache_key] = (pipeline, params)
         return pipeline, params
@@ -315,6 +319,9 @@ def _create_flax_inpaint_diffusion_pipeline(model_path, revision, flax_dtype, va
                                                                               **kwargs)
 
         _load_scheduler(pipeline, scheduler)
+
+        if not safety_checker:
+            pipeline.safety_checker = None
 
         _FLAX_INPAINT_MODEL_CACHE[cache_key] = (pipeline, params)
         return pipeline, params
