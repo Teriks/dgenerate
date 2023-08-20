@@ -23,10 +23,15 @@ import argparse
 import os
 import random
 
+from diffusers.schedulers import KarrasDiffusionSchedulers
+
 from .mediaoutput import supported_animation_writer_formats
-from .pipelinewrappers import supported_model_types
+from .pipelinewrappers import supported_model_types, have_jax_flax
 from .textprocessing import oxford_comma
 from .diffusionloop import is_valid_device_string, InvalidDeviceOrdinalException
+
+if have_jax_flax():
+    from diffusers.schedulers import FlaxKarrasDiffusionSchedulers
 
 parser = argparse.ArgumentParser(
     prog='dgenerate',
@@ -36,20 +41,6 @@ parser = argparse.ArgumentParser(
 parser.add_argument('model_path', action='store',
                     help='huggingface model repository, repository slug/URI, path to folder on disk, '
                          'or path to a .cpkt or .safetensors file.')
-
-
-parser.add_argument('--vae', action='store', default=None,
-                    help=f'Specify a VAE. When using torch models the syntax '
-                         f'is: "AutoEncoderClass;(URL or file path)". Examples: "AutoencoderKL;vae.pt", '
-                         f'"AsymmetricAutoencoderKL;vae.pt", "AutoencoderTiny;vae.pt". When using a Flax model, '
-                         f'there is currently only one available encoder class: "AutoencoderKL;vae.pt". '
-                         f'Hugging face URI/slugs, .pt, .pth, and .safetensors files are accepted.')
-
-parser.add_argument('--safety-checker', action='store_true', default=False,
-                    help=f'Enable safety checker loading, this is off by default. '
-                         f'When turned on images with NSFW content detected may result in solid black output. '
-                         f'Some pretrained models have settings indicating a safety checker is not to be loaded, '
-                         f'in that case this option has no effect.')
 
 
 def _from_model_type(val):
@@ -67,10 +58,26 @@ parser.add_argument('--model-type', action='store', default='torch', type=_from_
 parser.add_argument('--revision', action='store', default="main",
                     help='The model revision to use, (The git branch / tag, default is "main")')
 
-
 parser.add_argument('--variant', action='store', default=None,
                     help='If specified load weights from "variant" filename, e.g. "pytorch_model.<variant>.bin". '
                          'This option is ignored if using flax.')
+
+parser.add_argument('--vae', action='store', default=None,
+                    help=f'Specify a VAE. When using torch models the syntax '
+                         f'is: "AutoEncoderClass;(URL or file path)". Examples: "AutoencoderKL;vae.pt", '
+                         f'"AsymmetricAutoencoderKL;vae.pt", "AutoencoderTiny;vae.pt". When using a Flax model, '
+                         f'there is currently only one available encoder class: "AutoencoderKL;vae.pt". '
+                         f'Hugging face URI/slugs, .pt, .pth, and .safetensors files are accepted.')
+
+parser.add_argument('--scheduler', action='store', default=None,
+                    help=f'Specify a Scheduler. torch compatible schedulers: ({", ".join(e.name for e in KarrasDiffusionSchedulers)}). ' +
+                         (f'flax compatible schedulers: ({", ".join(e.name for e in FlaxKarrasDiffusionSchedulers)})' if have_jax_flax() else ''))
+
+parser.add_argument('--safety-checker', action='store_true', default=False,
+                    help=f'Enable safety checker loading, this is off by default. '
+                         f'When turned on images with NSFW content detected may result in solid black output. '
+                         f'Some pretrained models have settings indicating a safety checker is not to be loaded, '
+                         f'in that case this option has no effect.')
 
 
 def _type_device(device):

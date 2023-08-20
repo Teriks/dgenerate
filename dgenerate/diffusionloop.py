@@ -110,6 +110,7 @@ class DiffusionRenderLoop:
 
         self.model_path = None
         self.vae = None
+        self.scheduler = None
         self.safety_checker = False
         self.model_type = 'torch'
         self.device = 'cuda'
@@ -144,6 +145,8 @@ class DiffusionRenderLoop:
             raise ValueError('DiffusionRenderLoop.model_path must not be None')
         if self.vae is not None and not isinstance(self.vae, str):
             raise ValueError('DiffusionRenderLoop.vae must be a string: AutoencoderClass;PATH')
+        if self.scheduler is not None and not isinstance(self.scheduler, str):
+            raise ValueError('DiffusionRenderLoop.scheduler must be a string that names a compatible scheduler class.')
         if self.output_path is None:
             raise ValueError('DiffusionRenderLoop.output_path must not be None')
         if not isinstance(self.device, str) or not is_valid_device_string(self.device):
@@ -311,6 +314,7 @@ class DiffusionRenderLoop:
                                                        revision=self.revision,
                                                        variant=self.variant,
                                                        vae=self.vae,
+                                                       scheduler=self.scheduler,
                                                        safety_checker=self.safety_checker)
 
             for args_ctx in iterate_diffusion_args(self.prompts, self.seeds, [], self.guidance_scales,
@@ -331,6 +335,7 @@ class DiffusionRenderLoop:
                                                           revision=self.revision,
                                                           variant=self.variant,
                                                           vae=self.vae,
+                                                          scheduler=self.scheduler,
                                                           safety_checker=self.safety_checker)
 
         for image_seed in self.image_seeds:

@@ -37,6 +37,7 @@ except ImportError:
     _have_jax_flax = False
 
 import torch
+from PIL import Image
 from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline, StableDiffusionInpaintPipeline, \
     StableDiffusionInpaintPipelineLegacy, AutoencoderKL, AsymmetricAutoencoderKL, AutoencoderTiny
 
@@ -54,6 +55,10 @@ class InvalidVaePath(Exception):
     pass
 
 
+class InvalidSchedulerName(Exception):
+    pass
+
+
 def _is_single_file_model_load(path):
     return path.endswith('.ckpt') or path.endswith('.safetensors')
 
@@ -68,7 +73,7 @@ def _load_pytorch_vae(path):
     if len(parts) != 2:
         raise InvalidVaePath(f'VAE path must contain auto encoder class name and path to the encoder URL or file.')
 
-    encoder_name = parts[0].strip()
+    encoder_name = parts[0].strip().lower()
 
     if encoder_name == "AutoencoderKL":
         encoder = AutoencoderKL
@@ -108,6 +113,19 @@ def _load_flax_vae(path):
         return encoder.from_pretrained(path)
 
 
+def _load_scheduler(pipeline, scheduler_name=None):
+    if scheduler_name is None:
+        return
+
+    for i in pipeline.scheduler.compatibles:
+        if i.__name__.endswith(scheduler_name):
+            pipeline.scheduler = i.from_config(pipeline.scheduler.config)
+            return
+
+    raise InvalidSchedulerName(f'Scheduler named "{scheduler_name}" is not a valid compatible scheduler, '
+                               f'options are:\n\n{chr(10).join(sorted(i.__name__.split(".")[-1] for i in pipeline.scheduler.compatibles))}')
+
+
 def clear_model_cache():
     _TORCH_MODEL_CACHE.clear()
     _FLAX_MODEL_CACHE.clear()
@@ -125,7 +143,8 @@ def _disabled_safety_checker(images, clip_input):
         return images, False
 
 
-def _create_torch_diffusion_pipeline(model_path, revision, variant, torch_dtype, vae=None, safety_checker=False):
+def _create_torch_diffusion_pipeline(model_path, revision, variant, torch_dtype, vae=None, scheduler=None,
+                                     safety_checker=False):
     cache_key = model_path + revision + '' if variant is None else variant + str(torch_dtype)
     catch_hit = _TORCH_MODEL_CACHE.get(cache_key)
 
@@ -148,6 +167,8 @@ def _create_torch_diffusion_pipeline(model_path, revision, variant, torch_dtype,
                                                                torch_dtype=torch_dtype,
                                                                **kwargs)
 
+        _load_scheduler(pipeline, scheduler)
+
         if not safety_checker:
             pipeline.safety_checker = _disabled_safety_checker
 
@@ -157,7 +178,8 @@ def _create_torch_diffusion_pipeline(model_path, revision, variant, torch_dtype,
         return catch_hit
 
 
-def _create_flax_diffusion_pipeline(model_path, revision, flax_dtype, vae=None, safety_checker=False):
+def _create_flax_diffusion_pipeline(model_path, revision, flax_dtype, vae=None, scheduler=None,
+                                    safety_checker=False):
     cache_key = model_path + revision + str(flax_dtype)
     catch_hit = _FLAX_MODEL_CACHE.get(cache_key)
 
@@ -171,8 +193,11 @@ def _create_flax_diffusion_pipeline(model_path, revision, flax_dtype, vae=None, 
                                                                        revision=revision,
                                                                        dtype=flax_dtype,
                                                                        **kwargs)
-        if not safety_checker:
-            pipeline.safety_checker = _disabled_safety_checker
+
+        _load_scheduler(pipeline, scheduler)
+
+        # if not safety_checker:
+        #    pipeline.safety_checker = _disabled_safety_checker
 
         _FLAX_MODEL_CACHE[cache_key] = (pipeline, params)
         return pipeline, params
@@ -180,7 +205,7 @@ def _create_flax_diffusion_pipeline(model_path, revision, flax_dtype, vae=None, 
         return catch_hit
 
 
-def _create_torch_img2img_diffusion_pipeline(model_path, revision, variant, torch_dtype, vae=None,
+def _create_torch_img2img_diffusion_pipeline(model_path, revision, variant, torch_dtype, vae=None, scheduler=None,
                                              safety_checker=False):
     cache_key = model_path + revision + '' if variant is None else variant + str(torch_dtype)
     catch_hit = _TORCH_IMG2IMG_MODEL_CACHE.get(cache_key)
@@ -203,6 +228,9 @@ def _create_torch_img2img_diffusion_pipeline(model_path, revision, variant, torc
                                                                       variant=variant,
                                                                       torch_dtype=torch_dtype,
                                                                       **kwargs)
+
+        _load_scheduler(pipeline, scheduler)
+
         if not safety_checker:
             pipeline.safety_checker = _disabled_safety_checker
 
@@ -212,7 +240,8 @@ def _create_torch_img2img_diffusion_pipeline(model_path, revision, variant, torc
         return catch_hit
 
 
-def _create_flax_img2img_diffusion_pipeline(model_path, revision, flax_dtype, vae=None, safety_checker=False):
+def _create_flax_img2img_diffusion_pipeline(model_path, revision, flax_dtype, vae=None, scheduler=None,
+                                            safety_checker=False):
     cache_key = model_path + revision + str(flax_dtype)
     catch_hit = _FLAX_IMG2IMG_MODEL_CACHE.get(cache_key)
 
@@ -226,16 +255,15 @@ def _create_flax_img2img_diffusion_pipeline(model_path, revision, flax_dtype, va
                                                                               revision=revision,
                                                                               dtype=flax_dtype,
                                                                               **kwargs)
-        if not safety_checker:
-            pipeline.safety_checker = _disabled_safety_checker
+        _load_scheduler(pipeline, scheduler)
 
         _FLAX_IMG2IMG_MODEL_CACHE[cache_key] = (pipeline, params)
-        return pipeline
+        return pipeline, params
     else:
         return catch_hit
 
 
-def _create_torch_inpaint_diffusion_pipeline(model_path, revision, variant, torch_dtype, vae=None,
+def _create_torch_inpaint_diffusion_pipeline(model_path, revision, variant, torch_dtype, vae=None, scheduler=None,
                                              safety_checker=False):
     cache_key = model_path + revision + '' if variant is None else variant + str(torch_dtype)
     catch_hit = _TORCH_INPAINT_MODEL_CACHE.get(cache_key)
@@ -259,6 +287,8 @@ def _create_torch_inpaint_diffusion_pipeline(model_path, revision, variant, torc
                                                                       torch_dtype=torch_dtype,
                                                                       **kwargs)
 
+        _load_scheduler(pipeline, scheduler)
+
         if not safety_checker:
             pipeline.safety_checker = _disabled_safety_checker
 
@@ -268,7 +298,8 @@ def _create_torch_inpaint_diffusion_pipeline(model_path, revision, variant, torc
         return catch_hit
 
 
-def _create_flax_inpaint_diffusion_pipeline(model_path, revision, flax_dtype, vae=None, safety_checker=False):
+def _create_flax_inpaint_diffusion_pipeline(model_path, revision, flax_dtype, vae=None, scheduler=None,
+                                            safety_checker=False):
     cache_key = model_path + revision + str(flax_dtype)
     catch_hit = _FLAX_INPAINT_MODEL_CACHE.get(cache_key)
 
@@ -282,11 +313,11 @@ def _create_flax_inpaint_diffusion_pipeline(model_path, revision, flax_dtype, va
                                                                               revision=revision,
                                                                               dtype=flax_dtype,
                                                                               **kwargs)
-        if not safety_checker:
-            pipeline.safety_checker = _disabled_safety_checker
+
+        _load_scheduler(pipeline, scheduler)
 
         _FLAX_INPAINT_MODEL_CACHE[cache_key] = (pipeline, params)
-        return pipeline
+        return pipeline, params
     else:
         return catch_hit
 
@@ -337,17 +368,31 @@ def _get_torch_dtype(dtype):
             None: None}[dtype.lower()]
 
 
+def _image_grid(imgs, rows, cols):
+    w, h = imgs[0].size
+
+    grid = Image.new('RGB', size=(cols * w, rows * h))
+    for i, img in enumerate(imgs):
+        grid.paste(img, box=(i % cols * w, i // cols * h))
+        img.close()
+
+    return grid
+
+
 def _call_flax(wrapper, args, kwargs):
-    args['prng_seed'] = jax.random.split(jax.random.PRNGKey(kwargs.get('seed', 0)), 1)
+    device_count = jax.device_count()
+
+    args['prng_seed'] = jax.random.split(jax.random.PRNGKey(kwargs.get('seed', 0)), device_count)
 
     processed_masks = None
 
     if 'image' in args:
         if 'mask_image' in args:
+
             prompt_ids, processed_images, processed_masks = \
-                wrapper._pipeline.prepare_inputs(prompt=kwargs.get('prompt', ''),
-                                                 image=args['image'],
-                                                 mask=args['mask_image'])
+                wrapper._pipeline.prepare_inputs(prompt=[kwargs.get('prompt', '')] * device_count,
+                                                 image=[args['image']] * device_count,
+                                                 mask=[args['mask_image']] * device_count)
 
             args['masked_image'] = shard(processed_images)
             args['mask'] = shard(processed_masks)
@@ -356,19 +401,22 @@ def _call_flax(wrapper, args, kwargs):
             args.pop('image')
             args.pop('mask_image')
         else:
-            prompt_ids, processed_images = wrapper._pipeline.prepare_inputs(prompt=kwargs.get('prompt', ''),
-                                                                            image=args['image'])
+            prompt_ids, processed_images = wrapper._pipeline.prepare_inputs(
+                prompt=[kwargs.get('prompt', '')] * device_count,
+                image=[args['image']] * device_count)
             args['image'] = shard(processed_images)
 
         args['width'] = processed_images[0].shape[2]
         args['height'] = processed_images[0].shape[1]
     else:
-        prompt_ids = wrapper._pipeline.prepare_inputs([kwargs.get('prompt', '')])
+        prompt_ids = wrapper._pipeline.prepare_inputs([kwargs.get('prompt', '')] * device_count)
 
     images = wrapper._pipeline(prompt_ids=shard(prompt_ids), params=replicate(wrapper._flax_params),
                                **args, jit=True)[0]
+
     return PipelineResultWrapper(
-        wrapper._pipeline.numpy_to_pil(images.reshape((images.shape[0],) + images.shape[-3:])))
+        [_image_grid(wrapper._pipeline.numpy_to_pil(images.reshape((images.shape[0],) + images.shape[-3:])),
+                     device_count, 1)])
 
 
 def _call_torch(wrapper, args, kwargs):
@@ -393,6 +441,7 @@ class PipelineResultWrapper:
 
 class DiffusionPipelineWrapper:
     def __init__(self, model_path, dtype, device='cuda', model_type='torch', revision='main', variant=None, vae=None,
+                 scheduler=None,
                  safety_checker=False):
         self._device = device
         self._model_type = model_type
@@ -405,6 +454,7 @@ class DiffusionPipelineWrapper:
         self._device = device
         self._vae = vae
         self._safety_checker = safety_checker
+        self._scheduler = scheduler
 
     def _lazy_init_pipeline(self):
         if self._pipeline is not None:
@@ -418,13 +468,15 @@ class DiffusionPipelineWrapper:
                 _create_flax_diffusion_pipeline(self._model_path,
                                                 revision=self._revision,
                                                 flax_dtype=_get_flax_dtype(self._dtype),
-                                                vae=self._vae, safety_checker=self._safety_checker)
+                                                vae=self._vae, scheduler=self._scheduler,
+                                                safety_checker=self._safety_checker)
         else:
             self._pipeline = \
                 _create_torch_diffusion_pipeline(self._model_path,
                                                  revision=self._revision, variant=self._variant,
                                                  torch_dtype=_get_torch_dtype(self._dtype),
-                                                 vae=self._vae, safety_checker=self._safety_checker).to(self._device)
+                                                 vae=self._vae, scheduler=self._scheduler,
+                                                 safety_checker=self._safety_checker).to(self._device)
 
     def __call__(self, **kwargs):
         args = _pipeline_defaults(kwargs)
@@ -439,6 +491,7 @@ class DiffusionPipelineWrapper:
 
 class DiffusionPipelineImg2ImgWrapper:
     def __init__(self, model_path, dtype, device='cuda', model_type='torch', revision='main', variant=None, vae=None,
+                 scheduler=None,
                  safety_checker=False):
         self._device = device
         self._model_type = model_type.strip().lower()
@@ -450,6 +503,7 @@ class DiffusionPipelineImg2ImgWrapper:
         self._flax_params = None
         self._vae = vae
         self._safety_checker = safety_checker
+        self._scheduler = scheduler
 
     def _lazy_init_img2img(self):
         if self._pipeline is not None:
@@ -463,13 +517,15 @@ class DiffusionPipelineImg2ImgWrapper:
                 _create_flax_img2img_diffusion_pipeline(self._model_path,
                                                         revision=self._revision,
                                                         flax_dtype=_get_flax_dtype(self._dtype),
-                                                        vae=self._vae, safety_checker=self._safety_checker)
+                                                        vae=self._vae, scheduler=self._scheduler,
+                                                        safety_checker=self._safety_checker)
         else:
             self._pipeline = \
                 _create_torch_img2img_diffusion_pipeline(self._model_path,
                                                          revision=self._revision, variant=self._variant,
                                                          torch_dtype=_get_torch_dtype(self._dtype),
-                                                         vae=self._vae, safety_checker=self._safety_checker).to(
+                                                         vae=self._vae, scheduler=self._scheduler,
+                                                         safety_checker=self._safety_checker).to(
                     self._device)
 
     def _lazy_init_intpaint(self):
@@ -484,13 +540,15 @@ class DiffusionPipelineImg2ImgWrapper:
                 _create_flax_inpaint_diffusion_pipeline(self._model_path,
                                                         revision=self._revision,
                                                         flax_dtype=_get_flax_dtype(self._dtype),
-                                                        vae=self._vae, safety_checker=self._safety_checker)
+                                                        vae=self._vae, scheduler=self._scheduler,
+                                                        safety_checker=self._safety_checker)
         else:
             self._pipeline = \
                 _create_torch_inpaint_diffusion_pipeline(self._model_path,
                                                          revision=self._revision, variant=self._variant,
                                                          torch_dtype=_get_torch_dtype(self._dtype),
-                                                         vae=self._vae, safety_checker=self._safety_checker).to(
+                                                         vae=self._vae, scheduler=self._scheduler,
+                                                         safety_checker=self._safety_checker).to(
                     self._device)
 
     def __call__(self, **kwargs):
