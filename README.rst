@@ -221,7 +221,6 @@ First update your system and install build-essential
     sudo apt update && sudo apt upgrade
     sudo apt install build-essential
 
-
 Install CUDA Toolkit 12.*: https://developer.nvidia.com/cuda-downloads
 
 I recommend using the runfile option:
@@ -676,7 +675,7 @@ Available encoder classes for torch models are:
 
 Available encoder classes for flax models are:
 
-* AutoencoderKL
+* FlaxAutoencoderKL
 
 .. code-block:: bash
 
