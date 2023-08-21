@@ -66,8 +66,8 @@ Help
                             "AutoencoderKL;vae.pt". Hugging face URI/slugs, .pt, .pth, and
                             .safetensors files are accepted.
       --scheduler SCHEDULER
-                            Specify a Scheduler. Torch compatible schedulers: (DDIMScheduler,
-                            DDPMScheduler, PNDMScheduler, LMSDiscreteScheduler,
+                            Specify a Scheduler by name. Torch compatible schedulers:
+                            (DDIMScheduler, DDPMScheduler, PNDMScheduler, LMSDiscreteScheduler,
                             EulerDiscreteScheduler, HeunDiscreteScheduler,
                             EulerAncestralDiscreteScheduler, DPMSolverMultistepScheduler,
                             DPMSolverSinglestepScheduler, KDPM2DiscreteScheduler,
@@ -197,7 +197,7 @@ Install into environment:
 
     # if you want a specific version
 
-    pip install git+https://github.com/Teriks/dgenerate.git@v0.10.0 --extra-index-url https://download.pytorch.org/whl/cu118/
+    pip install git+https://github.com/Teriks/dgenerate.git@v0.11.0 --extra-index-url https://download.pytorch.org/whl/cu118/
 
 Run **dgenerate** to generate images, you must have the environment active for the command to be found:
 
@@ -222,29 +222,22 @@ First update your system and install build-essential
     sudo apt install build-essential
 
 
-Then install CUDA Toolkit 11.8: https://developer.nvidia.com/cuda-11-8-0-download-archive
-
-OR
-
 Install CUDA Toolkit 12.*: https://developer.nvidia.com/cuda-downloads
-
 
 I recommend using the runfile option:
 
 .. code-block:: bash
-
-    # CUDA Toolkit 11.8 For Ubuntu / Debian / WSL
-
-    wget https://developer.download.nvidia.com/compute/cuda/11.8.0/local_installers/cuda_11.8.0_520.61.05_linux.run
-    sudo sh cuda_11.8.0_520.61.05_linux.run
 
     # CUDA Toolkit 12.2.1 For Ubuntu / Debian / WSL
 
     wget wget https://developer.download.nvidia.com/compute/cuda/12.2.1/local_installers/cuda_12.2.1_535.86.10_linux.run
     sudo sh cuda_12.2.1_535.86.10_linux.run
 
-
 Do not attempt to install a driver from the prompts if using WSL.
+
+Install cuDNN 8.9.1 for CUDA 12.X from archived releases: https://developer.nvidia.com/rdp/cudnn-download
+
+You need a developer account, see documentation for installation on Nvidias website.
 
 Add libraries to linker path:
 
@@ -259,26 +252,9 @@ Add libraries to linker path:
 Install Python 3.10+ (Debian / Ubuntu)
 --------------------------------------
 
-
 .. code-block:: bash
 
-    sudo apt install python3.10 python3-virtualenv python3-wheel
-
-
-Optional Prerequisite JAX / Flax
---------------------------------
-
-Install Jax / Flax to add the ability to load flax models. This is very buggy / slow and I don't recommend.
-
-.. code-block:: bash
-
-    # Select what is appropriate considering which CUDA toolkit you installed
-
-    # CUDA 11 installation
-    pip install --upgrade flax "jax[cuda11_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-
-    # CUDA 12 installation
-    pip install --upgrade flax "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    sudo apt install python3.10 python3.10-venv python3-wheel
 
 
 Install dgenerate
@@ -296,7 +272,15 @@ Activate the environment:
 
     source dgenerate_environment/bin/activate
 
-Install into environment:
+
+Optionally install Jax / Flax to add the ability to load flax models. This is very buggy / slow and I don't recommend.
+
+.. code-block:: bash
+
+    pip install --upgrade flax~=0.7.2 "jax[cuda12_pip]~=0.4.14" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+
+
+Install dgenerate into the environment:
 
 .. code-block:: bash
 
@@ -304,7 +288,7 @@ Install into environment:
 
     # if you want a specific version
 
-    pip3 install git+https://github.com/Teriks/dgenerate.git@v0.10.0
+    pip3 install git+https://github.com/Teriks/dgenerate.git@v0.11.0
 
 
 Run **dgenerate** to generate images, you must have the environment active for the command to be found:

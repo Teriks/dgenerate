@@ -70,8 +70,8 @@ parser.add_argument('--vae', action='store', default=None,
                          f'Hugging face URI/slugs, .pt, .pth, and .safetensors files are accepted.')
 
 parser.add_argument('--scheduler', action='store', default=None,
-                    help=f'Specify a Scheduler. torch compatible schedulers: ({", ".join(e.name for e in KarrasDiffusionSchedulers)}). ' +
-                         (f'flax compatible schedulers: ({", ".join(e.name for e in FlaxKarrasDiffusionSchedulers)})' if have_jax_flax() else ''))
+                    help=f'Specify a Scheduler by name. Torch compatible schedulers: ({", ".join(e.name for e in KarrasDiffusionSchedulers)}). ' +
+                         (f'Flax compatible schedulers: ({", ".join(e.name for e in FlaxKarrasDiffusionSchedulers)})' if have_jax_flax() else ''))
 
 parser.add_argument('--safety-checker', action='store_true', default=False,
                     help=f'Enable safety checker loading, this is off by default. '

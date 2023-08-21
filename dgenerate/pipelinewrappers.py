@@ -143,6 +143,7 @@ def _disabled_safety_checker(images, clip_input):
     else:
         return images, False
 
+
 def _create_torch_diffusion_pipeline(model_path, revision, variant, torch_dtype, vae=None, scheduler=None,
                                      safety_checker=False):
     cache_key = model_path + revision + '' if variant is None else variant + str(torch_dtype)
