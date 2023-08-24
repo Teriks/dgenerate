@@ -22,6 +22,7 @@
 import argparse
 import os
 import random
+from . import __version__
 
 from diffusers.schedulers import KarrasDiffusionSchedulers
 
@@ -78,6 +79,9 @@ parser.add_argument('--safety-checker', action='store_true', default=False,
                          f'When turned on images with NSFW content detected may result in solid black output. '
                          f'Some pretrained models have settings indicating a safety checker is not to be loaded, '
                          f'in that case this option has no effect.')
+
+
+parser.add_argument('--version', action='version', version=f"dgenerate v{__version__}")
 
 
 def _type_device(device):
