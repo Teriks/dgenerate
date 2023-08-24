@@ -73,7 +73,7 @@ def _load_pytorch_vae(path):
     if len(parts) != 2:
         raise InvalidVaePath(f'VAE path must contain auto encoder class name and path to the encoder URL or file.')
 
-    encoder_name = parts[0].strip().lower()
+    encoder_name = parts[0].strip()
 
     if encoder_name == "AutoencoderKL":
         encoder = AutoencoderKL

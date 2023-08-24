@@ -287,7 +287,7 @@ Install dgenerate into the environment:
 
     # if you want a specific version
 
-    pip3 install git+https://github.com/Teriks/dgenerate.git@v0.12.0
+    pip3 install git+https://github.com/Teriks/dgenerate.git@v0.13.0
 
 
 Run **dgenerate** to generate images, you must have the environment active for the command to be found:
