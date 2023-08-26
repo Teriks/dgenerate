@@ -70,6 +70,12 @@ parser.add_argument('--vae', action='store', default=None,
                          f'there is currently only one available encoder class: "AutoencoderKL;vae.pt". '
                          f'Hugging face URI/slugs, .pt, .pth, and .safetensors files are accepted.')
 
+parser.add_argument('--lora', action='store', default=None,
+                    help=f'Specify a LoRA and scale factor (flax not supported). This should be a '
+                         f'hugging face url or path to model file on disk (for example, a .safetensors file), and a '
+                         f'floating point number between 0.0 and 1.0 seperated by a semicolon. If no scale '
+                         f'factor is provided, 1.0 is assumed. Example: --lora "my_lora.safetensors;1.0"')
+
 parser.add_argument('--scheduler', action='store', default=None,
                     help=f'Specify a Scheduler by name. Torch compatible schedulers: ({", ".join(e.name for e in KarrasDiffusionSchedulers)}). ' +
                          (f'Flax compatible schedulers: ({", ".join(e.name for e in FlaxKarrasDiffusionSchedulers)})' if have_jax_flax() else ''))

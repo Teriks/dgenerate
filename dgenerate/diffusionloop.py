@@ -110,6 +110,7 @@ class DiffusionRenderLoop:
 
         self.model_path = None
         self.vae = None
+        self.lora = None
         self.scheduler = None
         self.safety_checker = False
         self.model_type = 'torch'
@@ -314,6 +315,7 @@ class DiffusionRenderLoop:
                                                        revision=self.revision,
                                                        variant=self.variant,
                                                        vae=self.vae,
+                                                       lora=self.lora,
                                                        scheduler=self.scheduler,
                                                        safety_checker=self.safety_checker)
 
@@ -335,6 +337,7 @@ class DiffusionRenderLoop:
                                                           revision=self.revision,
                                                           variant=self.variant,
                                                           vae=self.vae,
+                                                          lora=self.lora,
                                                           scheduler=self.scheduler,
                                                           safety_checker=self.safety_checker)
 

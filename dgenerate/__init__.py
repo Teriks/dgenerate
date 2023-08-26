@@ -19,9 +19,9 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-__version__ = "0.13.0"
+__version__ = "0.14.0"
 
-from dgenerate.pipelinewrappers import InvalidVaePath, InvalidSchedulerName
+from dgenerate.pipelinewrappers import InvalidVaePathError, InvalidSchedulerName, InvalidLoRAPathError
 
 
 def run_diffusion():
@@ -69,13 +69,20 @@ def run_diffusion():
         render_loop.guidance_scales = arguments.guidance_scales
         render_loop.inference_steps = arguments.inference_steps
         render_loop.vae = arguments.vae
+        render_loop.lora = arguments.lora
         render_loop.scheduler = arguments.scheduler
         render_loop.safety_checker = arguments.safety_checker
 
         # run the render loop
         try:
             render_loop.run()
-        except (ImageSeedParseError, MaskImageSizeMismatchError, InvalidVaePath, InvalidSchedulerName) as e:
+        except (ImageSeedParseError,
+                MaskImageSizeMismatchError,
+                InvalidVaePathError,
+                InvalidLoRAPathError,
+                InvalidSchedulerName,
+                NotImplementedError,
+                EnvironmentError) as e:
             print("Error:", e, file=sys.stderr)
             exit(1)
 
