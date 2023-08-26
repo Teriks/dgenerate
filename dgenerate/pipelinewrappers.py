@@ -51,7 +51,7 @@ _TORCH_INPAINT_MODEL_CACHE = dict()
 _FLAX_INPAINT_MODEL_CACHE = dict()
 
 
-class InvalidVaePath(Exception):
+class InvalidVaePathError(Exception):
     pass
 
 
@@ -71,7 +71,7 @@ def _load_pytorch_vae(path):
     parts = path.split(';', 1)
 
     if len(parts) != 2:
-        raise InvalidVaePath(f'VAE path must contain auto encoder class name and path to the encoder URL or file.')
+        raise InvalidVaePathError(f'VAE path must contain auto encoder class name and path to the encoder URL or file.')
 
     encoder_name = parts[0].strip()
 
@@ -82,7 +82,7 @@ def _load_pytorch_vae(path):
     elif encoder_name == "AutoencoderTiny":
         encoder = AutoencoderTiny
     else:
-        raise InvalidVaePath(f'Unknown VAE encoder class {encoder_name}')
+        raise InvalidVaePathError(f'Unknown VAE encoder class {encoder_name}')
 
     path = parts[1].strip()
 
@@ -92,18 +92,34 @@ def _load_pytorch_vae(path):
         return encoder.from_pretrained(path)
 
 
+class InvalidLoRAPathError(Exception):
+    pass
+
+
+def _parse_lora(path):
+    parts = path.split(';', 1)
+
+    try:
+        if len(parts) == 2:
+            return parts[0].strip(), float(parts[1].strip())
+        else:
+            return parts[0].strip(), 1.0
+    except Exception as e:
+        raise InvalidLoRAPathError(e)
+
+
 def _load_flax_vae(path):
     parts = path.split(';', 1)
 
     if len(parts) != 2:
-        raise InvalidVaePath(f'VAE path must contain auto encoder class name and path to the encoder URL or file.')
+        raise InvalidVaePathError(f'VAE path must contain auto encoder class name and path to the encoder URL or file.')
 
     encoder_name = parts[0].strip()
 
     if encoder_name == "FlaxAutoencoderKL":
         encoder = FlaxAutoencoderKL
     else:
-        raise InvalidVaePath(f'Unknown VAE flax encoder class {encoder_name}')
+        raise InvalidVaePathError(f'Unknown VAE flax encoder class {encoder_name}')
 
     path = parts[1].strip()
 
@@ -143,7 +159,7 @@ def _disabled_safety_checker(images, clip_input):
         return images, False
 
 
-def _create_torch_diffusion_pipeline(model_path, revision, variant, torch_dtype, vae=None, scheduler=None,
+def _create_torch_diffusion_pipeline(model_path, revision, variant, torch_dtype, vae=None, lora=None, scheduler=None,
                                      safety_checker=False):
     cache_key = model_path + revision + '' if variant is None else variant + str(torch_dtype)
     catch_hit = _TORCH_MODEL_CACHE.get(cache_key)
@@ -168,6 +184,9 @@ def _create_torch_diffusion_pipeline(model_path, revision, variant, torch_dtype,
                                                                **kwargs)
 
         _load_scheduler(pipeline, scheduler)
+
+        if lora is not None:
+            pipeline.load_lora_weights(lora)
 
         if not safety_checker:
             pipeline.safety_checker = _disabled_safety_checker
@@ -205,7 +224,8 @@ def _create_flax_diffusion_pipeline(model_path, revision, flax_dtype, vae=None, 
         return catch_hit
 
 
-def _create_torch_img2img_diffusion_pipeline(model_path, revision, variant, torch_dtype, vae=None, scheduler=None,
+def _create_torch_img2img_diffusion_pipeline(model_path, revision, variant, torch_dtype, vae=None, lora=None,
+                                             scheduler=None,
                                              safety_checker=False):
     cache_key = model_path + revision + '' if variant is None else variant + str(torch_dtype)
     catch_hit = _TORCH_IMG2IMG_MODEL_CACHE.get(cache_key)
@@ -230,6 +250,9 @@ def _create_torch_img2img_diffusion_pipeline(model_path, revision, variant, torc
                                                                       **kwargs)
 
         _load_scheduler(pipeline, scheduler)
+
+        if lora is not None:
+            pipeline.load_lora_weights(lora)
 
         if not safety_checker:
             pipeline.safety_checker = _disabled_safety_checker
@@ -267,7 +290,8 @@ def _create_flax_img2img_diffusion_pipeline(model_path, revision, flax_dtype, va
         return catch_hit
 
 
-def _create_torch_inpaint_diffusion_pipeline(model_path, revision, variant, torch_dtype, vae=None, scheduler=None,
+def _create_torch_inpaint_diffusion_pipeline(model_path, revision, variant, torch_dtype, vae=None, lora=None,
+                                             scheduler=None,
                                              safety_checker=False):
     cache_key = model_path + revision + '' if variant is None else variant + str(torch_dtype)
     catch_hit = _TORCH_INPAINT_MODEL_CACHE.get(cache_key)
@@ -292,6 +316,9 @@ def _create_torch_inpaint_diffusion_pipeline(model_path, revision, variant, torc
                                                                       **kwargs)
 
         _load_scheduler(pipeline, scheduler)
+
+        if lora is not None:
+            pipeline.load_lora_weights(lora)
 
         if not safety_checker:
             pipeline.safety_checker = _disabled_safety_checker
@@ -438,6 +465,7 @@ def _call_torch(wrapper, args, kwargs):
             args.pop('width')
             args.pop('height')
 
+
     return PipelineResultWrapper(wrapper._pipeline(**args).images)
 
 
@@ -447,7 +475,14 @@ class PipelineResultWrapper:
 
 
 class DiffusionPipelineWrapper:
-    def __init__(self, model_path, dtype, device='cuda', model_type='torch', revision='main', variant=None, vae=None,
+    def __init__(self, model_path,
+                 dtype,
+                 device='cuda',
+                 model_type='torch',
+                 revision='main',
+                 variant=None,
+                 vae=None,
+                 lora=None,
                  scheduler=None,
                  safety_checker=False):
         self._device = device
@@ -462,6 +497,12 @@ class DiffusionPipelineWrapper:
         self._vae = vae
         self._safety_checker = safety_checker
         self._scheduler = scheduler
+        self._lora = None
+        self._lora_scale = None
+        if lora is not None:
+            if model_type == "flax":
+                raise NotImplementedError("LoRA loading is not implemented for flax.")
+            self._lora, self._lora_scale = _parse_lora(lora)
 
     def _lazy_init_pipeline(self):
         if self._pipeline is not None:
@@ -482,11 +523,14 @@ class DiffusionPipelineWrapper:
                 _create_torch_diffusion_pipeline(self._model_path,
                                                  revision=self._revision, variant=self._variant,
                                                  torch_dtype=_get_torch_dtype(self._dtype),
-                                                 vae=self._vae, scheduler=self._scheduler,
+                                                 vae=self._vae, lora=self._lora, scheduler=self._scheduler,
                                                  safety_checker=self._safety_checker).to(self._device)
 
     def __call__(self, **kwargs):
         args = _pipeline_defaults(kwargs)
+
+        if self._lora_scale is not None:
+            args['cross_attention_kwargs'] = {'scale': self._lora_scale}
 
         self._lazy_init_pipeline()
 
@@ -497,7 +541,14 @@ class DiffusionPipelineWrapper:
 
 
 class DiffusionPipelineImg2ImgWrapper:
-    def __init__(self, model_path, dtype, device='cuda', model_type='torch', revision='main', variant=None, vae=None,
+    def __init__(self, model_path,
+                 dtype,
+                 device='cuda',
+                 model_type='torch',
+                 revision='main',
+                 variant=None,
+                 vae=None,
+                 lora=None,
                  scheduler=None,
                  safety_checker=False):
         self._device = device
@@ -511,6 +562,12 @@ class DiffusionPipelineImg2ImgWrapper:
         self._vae = vae
         self._safety_checker = safety_checker
         self._scheduler = scheduler
+        self._lora = None
+        self._lora_scale = None
+        if lora is not None:
+            if model_type == "flax":
+                raise NotImplementedError("LoRA loading is not implemented for flax.")
+            self._lora, self._lora_scale = _parse_lora(lora)
 
     def _lazy_init_img2img(self):
         if self._pipeline is not None:
@@ -531,7 +588,7 @@ class DiffusionPipelineImg2ImgWrapper:
                 _create_torch_img2img_diffusion_pipeline(self._model_path,
                                                          revision=self._revision, variant=self._variant,
                                                          torch_dtype=_get_torch_dtype(self._dtype),
-                                                         vae=self._vae, scheduler=self._scheduler,
+                                                         vae=self._vae, lora=self._lora, scheduler=self._scheduler,
                                                          safety_checker=self._safety_checker).to(
                     self._device)
 
@@ -554,12 +611,15 @@ class DiffusionPipelineImg2ImgWrapper:
                 _create_torch_inpaint_diffusion_pipeline(self._model_path,
                                                          revision=self._revision, variant=self._variant,
                                                          torch_dtype=_get_torch_dtype(self._dtype),
-                                                         vae=self._vae, scheduler=self._scheduler,
+                                                         vae=self._vae, lora=self._lora, scheduler=self._scheduler,
                                                          safety_checker=self._safety_checker).to(
                     self._device)
 
     def __call__(self, **kwargs):
         args = _pipeline_defaults(kwargs)
+
+        if self._lora_scale is not None:
+            args['cross_attention_kwargs'] = {'scale': self._lora_scale}
 
         if 'mask_image' in args:
             self._lazy_init_intpaint()

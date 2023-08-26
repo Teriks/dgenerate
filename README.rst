@@ -36,12 +36,12 @@ Help
 .. code-block::
 
     usage: dgenerate [-h] [--model-type MODEL_TYPE] [--revision REVISION] [--variant VARIANT]
-                     [--vae VAE] [--scheduler SCHEDULER] [--safety-checker] [-d DEVICE] [-t DTYPE]
-                     [-s OUTPUT_SIZE] [-o OUTPUT_PATH] [-p PROMPTS [PROMPTS ...]]
-                     [-se SEEDS [SEEDS ...] | -gse GEN_SEEDS] [-af ANIMATION_FORMAT]
-                     [-fs FRAME_START] [-fe FRAME_END] [-is [IMAGE_SEEDS ...]]
-                     [-iss [IMAGE_SEED_STRENGTHS ...]] [-gs [GUIDANCE_SCALES ...]]
-                     [-ifs [INFERENCE_STEPS ...]]
+                     [--vae VAE] [--lora LORA] [--scheduler SCHEDULER] [--safety-checker]
+                     [--version] [-d DEVICE] [-t DTYPE] [-s OUTPUT_SIZE] [-o OUTPUT_PATH]
+                     [-p PROMPTS [PROMPTS ...]] [-se SEEDS [SEEDS ...] | -gse GEN_SEEDS]
+                     [-af ANIMATION_FORMAT] [-fs FRAME_START] [-fe FRAME_END]
+                     [-is [IMAGE_SEEDS ...]] [-iss [IMAGE_SEED_STRENGTHS ...]]
+                     [-gs [GUIDANCE_SCALES ...]] [-ifs [INFERENCE_STEPS ...]]
                      model_path
 
     Stable diffusion batch image generation tool with support for video / gif / webp animation
@@ -54,17 +54,22 @@ Help
     options:
       -h, --help            show this help message and exit
       --model-type MODEL_TYPE
-                            Use when loading different model types. Currently supported: torch or
-                            flax. (default: torch)
+                            Use when loading different model types. Currently supported: torch.
+                            (default: torch)
       --revision REVISION   The model revision to use, (The git branch / tag, default is "main")
       --variant VARIANT     If specified load weights from "variant" filename, e.g.
                             "pytorch_model.<variant>.bin". This option is ignored if using flax.
       --vae VAE             Specify a VAE. When using torch models the syntax is:
-                            "AutoEncoderClass;(URL or file path)". Examples: "AutoencoderKL;vae.pt",
-                            "AsymmetricAutoencoderKL;vae.pt", "AutoencoderTiny;vae.pt". When using a
-                            Flax model, there is currently only one available encoder class:
-                            "AutoencoderKL;vae.pt". Hugging face URI/slugs, .pt, .pth, and
-                            .safetensors files are accepted.
+                            "AutoEncoderClass;(URL or file path)". Examples:
+                            "AutoencoderKL;vae.pt", "AsymmetricAutoencoderKL;vae.pt",
+                            "AutoencoderTiny;vae.pt". When using a Flax model, there is currently
+                            only one available encoder class: "AutoencoderKL;vae.pt". Hugging face
+                            URI/slugs, .pt, .pth, and .safetensors files are accepted.
+      --lora LORA           Specify a LoRA and scale factor (flax not supported). This should be a
+                            hugging face url or path to model file on disk (for example, a
+                            .safetensors file), and a floating point number between 0.0 and 1.0
+                            seperated by a semicolon. If no scale factor is provided, 1.0 is
+                            assumed. Example: --lora "my_lora.safetensors;1.0"
       --scheduler SCHEDULER
                             Specify a Scheduler by name. Torch compatible schedulers:
                             (DDIMScheduler, DDPMScheduler, PNDMScheduler, LMSDiscreteScheduler,
@@ -72,13 +77,12 @@ Help
                             EulerAncestralDiscreteScheduler, DPMSolverMultistepScheduler,
                             DPMSolverSinglestepScheduler, KDPM2DiscreteScheduler,
                             KDPM2AncestralDiscreteScheduler, DEISMultistepScheduler,
-                            UniPCMultistepScheduler, DPMSolverSDEScheduler). Flax compatible
-                            schedulers: (FlaxDDIMScheduler, FlaxDDPMScheduler, FlaxPNDMScheduler,
-                            FlaxLMSDiscreteScheduler, FlaxDPMSolverMultistepScheduler)
+                            UniPCMultistepScheduler, DPMSolverSDEScheduler).
       --safety-checker      Enable safety checker loading, this is off by default. When turned on
-                            images with NSFW content detected may result in solid black output. Some
-                            pretrained models have settings indicating a safety checker is not to be
-                            loaded, in that case this option has no effect.
+                            images with NSFW content detected may result in solid black output.
+                            Some pretrained models have settings indicating a safety checker is not
+                            to be loaded, in that case this option has no effect.
+      --version             show program's version number and exit
       -d DEVICE, --device DEVICE
                             cuda / cpu. (default: cuda). Use: cuda:0, cuda:1, cuda:2, etc. to
                             specify a specific GPU.
@@ -109,44 +113,43 @@ Help
                             -se/--seeds is used.
       -af ANIMATION_FORMAT, --animation-format ANIMATION_FORMAT
                             Output format when generating an animation from an input video / gif /
-                            webp etc. Value must be one of: mp4, gif, or webp. (default: mp4)
+                            webp etc. Value must be one of: gif, webp, or mp4. (default: mp4)
       -fs FRAME_START, --frame-start FRAME_START
                             Starting frame slice point for animated files, the specified frame will
                             be included.
       -fe FRAME_END, --frame-end FRAME_END
-                            Ending frame slice point for animated files, the specified frame will be
-                            included.
+                            Ending frame slice point for animated files, the specified frame will
+                            be included.
       -is [IMAGE_SEEDS ...], --image-seeds [IMAGE_SEEDS ...]
                             List of image seeds to try when processing image seeds, these may be
                             URLs or file paths. Videos / GIFs / WEBP files will result in frames
                             being rendered as well as an animated output file being generated if
                             more than one frame is available in the input file. Inpainting for
-                            static images can be achieved by specifying a black and white mask image
-                            in each image seed string using a semicolon as the seperating character,
-                            like so: "my-seed-image.png;my-image-mask.png", white areas of the mask
-                            indicate where generated content is to be placed in your seed image.
-                            Output dimensions specific to the image seed can be specified by placing
-                            the dimension at the end of the string following a semicolon like so:
-                            "my-seed-image.png;512x512" or "my-seed-image.png;my-image-
-                            mask.png;512x512". Inpainting masks can be downloaded for you from a URL
-                            or be a path to a file on disk.
+                            static images can be achieved by specifying a black and white mask
+                            image in each image seed string using a semicolon as the seperating
+                            character, like so: "my-seed-image.png;my-image-mask.png", white areas
+                            of the mask indicate where generated content is to be placed in your
+                            seed image. Output dimensions specific to the image seed can be
+                            specified by placing the dimension at the end of the string following a
+                            semicolon like so: "my-seed-image.png;512x512" or "my-seed-
+                            image.png;my-image-mask.png;512x512". Inpainting masks can be
+                            downloaded for you from a URL or be a path to a file on disk.
       -iss [IMAGE_SEED_STRENGTHS ...], --image-seed-strengths [IMAGE_SEED_STRENGTHS ...]
-                            List of image seed strengths to try. Closer to 0 means high usage of the
-                            seed image (less noise convolution), 1 effectively means no usage (high
-                            noise convolution). Low values will produce something closer or more
-                            relevant to the input image, high values will give the AI more creative
-                            freedom. (default: [0.8])
+                            List of image seed strengths to try. Closer to 0 means high usage of
+                            the seed image (less noise convolution), 1 effectively means no usage
+                            (high noise convolution). Low values will produce something closer or
+                            more relevant to the input image, high values will give the AI more
+                            creative freedom. (default: [0.8])
       -gs [GUIDANCE_SCALES ...], --guidance-scales [GUIDANCE_SCALES ...]
                             List of guidance scales to try. Guidance scale effects how much your
                             text prompt is considered. Low values draw more data from images
                             unrelated to text prompt. (default: [5])
       -ifs [INFERENCE_STEPS ...], --inference-steps [INFERENCE_STEPS ...]
                             Lists of inference steps values to try. The amount of inference
-                            (denoising) steps effects image clarity to a degree, higher values bring
-                            the image closer to what the AI is targeting for the content of the
-                            image. Values between 30-40 produce good results, higher values may
+                            (denoising) steps effects image clarity to a degree, higher values
+                            bring the image closer to what the AI is targeting for the content of
+                            the image. Values between 30-40 produce good results, higher values may
                             improve image quality and or change image content. (default: [30])
-
 
 Windows Install
 ===============
@@ -197,7 +200,7 @@ Install into environment:
 
     # if you want a specific version
 
-    pip install git+https://github.com/Teriks/dgenerate.git@v0.13.0 --extra-index-url https://download.pytorch.org/whl/cu118/
+    pip install git+https://github.com/Teriks/dgenerate.git@v0.14.0 --extra-index-url https://download.pytorch.org/whl/cu118/
 
 Run **dgenerate** to generate images, you must have the environment active for the command to be found:
 
@@ -287,7 +290,7 @@ Install dgenerate into the environment:
 
     # if you want a specific version
 
-    pip3 install git+https://github.com/Teriks/dgenerate.git@v0.13.0
+    pip3 install git+https://github.com/Teriks/dgenerate.git@v0.14.0
 
 
 Run **dgenerate** to generate images, you must have the environment active for the command to be found:
@@ -686,6 +689,33 @@ Available encoder classes for flax models are:
     --inference-steps 50 \
     --guidance-scales 10 \
     --output-size 512x512
+
+
+Specifying a LoRA finetune
+--------------------------
+
+To specify a LoRA finetune model use ``--lora``
+
+The LoRA scale can be specified after the model path by placing a ``;`` (semicolon) and
+then a float indicating the scale value.
+
+When a scale is not specified, 1.0 is assumed.
+
+You can provide a path to a hugging face repo or a
+model file on disk such as a .safetensors file.
+
+.. code-block:: bash
+
+    # Don't expect great results with this example,
+    # Try models and LoRA's downloaded from CivitAI
+
+    dgenerate runwayml/stable-diffusion-v1-5 \
+    --lora "pcuenq/pokemon-lora;0.5" \
+    --prompts "Gengar standing in a field at night under a full moon, highquality, masterpiece, digital art" \
+    --inference-steps 40 \
+    --guidance-scales 10 \
+    --gen-seeds 5 \
+    --output-size 800
 
 
 Batch Processing Arguments From STDIN
