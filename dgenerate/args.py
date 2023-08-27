@@ -66,13 +66,15 @@ parser.add_argument('--variant', action='store', default=None,
 parser.add_argument('--vae', action='store', default=None,
                     help=f'Specify a VAE. When using torch models the syntax '
                          f'is: "AutoEncoderClass;(URL or file path)". Examples: "AutoencoderKL;vae.pt", '
-                         f'"AsymmetricAutoencoderKL;vae.pt", "AutoencoderTiny;vae.pt". When using a Flax model, '
-                         f'there is currently only one available encoder class: "AutoencoderKL;vae.pt". '
-                         f'Hugging face URI/slugs, .pt, .pth, and .safetensors files are accepted.')
+                         f'"AsymmetricAutoencoderKL;hugginface/vae", "AutoencoderTiny;hugginface/vae". '
+                         f'When using a Flax model, there is currently only one available encoder '
+                         f'class: "FlaxAutoencoderKL;vae.pt". huggingface URI/slugs, .pt, .pth, and .safetensors '
+                         f'files are accepted for AutoencoderKL and FlaxAutoencoderKL, other encoders can only accept '
+                         f'huggingface URI/slugs or a path to a folder on disk with the model configuration.')
 
 parser.add_argument('--lora', action='store', default=None,
                     help=f'Specify a LoRA and scale factor (flax not supported). This should be a '
-                         f'hugging face url or path to model file on disk (for example, a .safetensors file), and a '
+                         f'huggingface url or path to model file on disk (for example, a .safetensors file), and a '
                          f'floating point number between 0.0 and 1.0 seperated by a semicolon. If no scale '
                          f'factor is provided, 1.0 is assumed. Example: --lora "my_lora.safetensors;1.0"')
 
