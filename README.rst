@@ -54,7 +54,7 @@ Help
     options:
       -h, --help            show this help message and exit
       --model-type MODEL_TYPE
-                            Use when loading different model types. Currently supported: torch.
+                            Use when loading different model types. Currently supported: torch or flax.
                             (default: torch)
       --revision REVISION   The model revision to use, (The git branch / tag, default is "main")
       --variant VARIANT     If specified load weights from "variant" filename, e.g.
