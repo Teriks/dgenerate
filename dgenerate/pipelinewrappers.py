@@ -86,7 +86,14 @@ def _load_pytorch_vae(path):
 
     path = parts[1].strip()
 
-    if _is_single_file_vae_load(path):
+    can_single_file_load = hasattr(encoder, 'from_single_file')
+    single_file_load_path = _is_single_file_vae_load(path)
+
+    if single_file_load_path and not can_single_file_load:
+        raise NotImplementedError(f'{encoder_name} is not capable of loading from a single file, '
+                                  f'must be loaded from a huggingface repository slug or folder on disk.')
+
+    if single_file_load_path:
         return encoder.from_single_file(path)
     else:
         return encoder.from_pretrained(path)

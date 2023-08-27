@@ -54,19 +54,22 @@ Help
     options:
       -h, --help            show this help message and exit
       --model-type MODEL_TYPE
-                            Use when loading different model types. Currently supported: torch.
+                            Use when loading different model types. Currently supported: torch or flax.
                             (default: torch)
       --revision REVISION   The model revision to use, (The git branch / tag, default is "main")
       --variant VARIANT     If specified load weights from "variant" filename, e.g.
                             "pytorch_model.<variant>.bin". This option is ignored if using flax.
       --vae VAE             Specify a VAE. When using torch models the syntax is:
                             "AutoEncoderClass;(URL or file path)". Examples:
-                            "AutoencoderKL;vae.pt", "AsymmetricAutoencoderKL;vae.pt",
-                            "AutoencoderTiny;vae.pt". When using a Flax model, there is currently
-                            only one available encoder class: "AutoencoderKL;vae.pt". Hugging face
-                            URI/slugs, .pt, .pth, and .safetensors files are accepted.
+                            "AutoencoderKL;vae.pt", "AsymmetricAutoencoderKL;hugginface/vae",
+                            "AutoencoderTiny;hugginface/vae". When using a Flax model, there is
+                            currently only one available encoder class:
+                            "FlaxAutoencoderKL;vae.pt". huggingface URI/slugs, .pt, .pth, and
+                            .safetensors files are accepted for AutoencoderKL and
+                            FlaxAutoencoderKL, other encoders can only accept huggingface
+                            URI/slugs or a path to a folder on disk with the model configuration.
       --lora LORA           Specify a LoRA and scale factor (flax not supported). This should be a
-                            hugging face url or path to model file on disk (for example, a
+                            huggingface url or path to model file on disk (for example, a
                             .safetensors file), and a floating point number between 0.0 and 1.0
                             seperated by a semicolon. If no scale factor is provided, 1.0 is
                             assumed. Example: --lora "my_lora.safetensors;1.0"
@@ -80,8 +83,8 @@ Help
                             UniPCMultistepScheduler, DPMSolverSDEScheduler).
       --safety-checker      Enable safety checker loading, this is off by default. When turned on
                             images with NSFW content detected may result in solid black output.
-                            Some pretrained models have settings indicating a safety checker is not
-                            to be loaded, in that case this option has no effect.
+                            Some pretrained models have settings indicating a safety checker is
+                            not to be loaded, in that case this option has no effect.
       --version             show program's version number and exit
       -d DEVICE, --device DEVICE
                             cuda / cpu. (default: cuda). Use: cuda:0, cuda:1, cuda:2, etc. to
@@ -99,24 +102,24 @@ Help
                             created if it does not exist. (default: ./output)
       -p PROMPTS [PROMPTS ...], --prompts PROMPTS [PROMPTS ...]
                             List of prompts to try, an image group is generated for each prompt,
-                            prompt data is split by ; (semi-colon). The first value is the positive
-                            text influence, things you want to see. The Second value is negative
-                            influence IE. things you don't want to see. Example: --prompts "shrek
-                            flying a tesla over detroit; clouds, rain, missiles". (default: [(empty
-                            string)])
+                            prompt data is split by ; (semi-colon). The first value is the
+                            positive text influence, things you want to see. The Second value is
+                            negative influence IE. things you don't want to see. Example:
+                            --prompts "shrek flying a tesla over detroit; clouds, rain, missiles".
+                            (default: [(empty string)])
       -se SEEDS [SEEDS ...], --seeds SEEDS [SEEDS ...]
                             List of seeds to try, define fixed seeds to achieve deterministic
                             output. This argument may not be used when --gse/--gen-seeds is used.
                             (default: [randint(0, 99999999999999)])
       -gse GEN_SEEDS, --gen-seeds GEN_SEEDS
-                            Auto generate N random seeds to try. This argument may not be used when
-                            -se/--seeds is used.
+                            Auto generate N random seeds to try. This argument may not be used
+                            when -se/--seeds is used.
       -af ANIMATION_FORMAT, --animation-format ANIMATION_FORMAT
                             Output format when generating an animation from an input video / gif /
-                            webp etc. Value must be one of: gif, webp, or mp4. (default: mp4)
+                            webp etc. Value must be one of: webp, gif, or mp4. (default: mp4)
       -fs FRAME_START, --frame-start FRAME_START
-                            Starting frame slice point for animated files, the specified frame will
-                            be included.
+                            Starting frame slice point for animated files, the specified frame
+                            will be included.
       -fe FRAME_END, --frame-end FRAME_END
                             Ending frame slice point for animated files, the specified frame will
                             be included.
@@ -130,8 +133,8 @@ Help
                             character, like so: "my-seed-image.png;my-image-mask.png", white areas
                             of the mask indicate where generated content is to be placed in your
                             seed image. Output dimensions specific to the image seed can be
-                            specified by placing the dimension at the end of the string following a
-                            semicolon like so: "my-seed-image.png;512x512" or "my-seed-
+                            specified by placing the dimension at the end of the string following
+                            a semicolon like so: "my-seed-image.png;512x512" or "my-seed-
                             image.png;my-image-mask.png;512x512". Inpainting masks can be
                             downloaded for you from a URL or be a path to a file on disk.
       -iss [IMAGE_SEED_STRENGTHS ...], --image-seed-strengths [IMAGE_SEED_STRENGTHS ...]
@@ -148,8 +151,8 @@ Help
                             Lists of inference steps values to try. The amount of inference
                             (denoising) steps effects image clarity to a degree, higher values
                             bring the image closer to what the AI is targeting for the content of
-                            the image. Values between 30-40 produce good results, higher values may
-                            improve image quality and or change image content. (default: [30])
+                            the image. Values between 30-40 produce good results, higher values
+                            may improve image quality and or change image content. (default: [30])
 
 Windows Install
 ===============
@@ -200,7 +203,7 @@ Install into environment:
 
     # if you want a specific version
 
-    pip install git+https://github.com/Teriks/dgenerate.git@v0.14.0 --extra-index-url https://download.pytorch.org/whl/cu118/
+    pip install git+https://github.com/Teriks/dgenerate.git@v0.15.0 --extra-index-url https://download.pytorch.org/whl/cu118/
 
 Run **dgenerate** to generate images, you must have the environment active for the command to be found:
 
@@ -290,7 +293,7 @@ Install dgenerate into the environment:
 
     # if you want a specific version
 
-    pip3 install git+https://github.com/Teriks/dgenerate.git@v0.14.0
+    pip3 install git+https://github.com/Teriks/dgenerate.git@v0.15.0
 
 
 Run **dgenerate** to generate images, you must have the environment active for the command to be found:
