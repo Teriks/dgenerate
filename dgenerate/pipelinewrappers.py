@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import numbers
 
 try:
     import jax
@@ -39,7 +40,9 @@ except ImportError:
 import torch
 from PIL import Image
 from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline, StableDiffusionInpaintPipeline, \
-    StableDiffusionInpaintPipelineLegacy, AutoencoderKL, AsymmetricAutoencoderKL, AutoencoderTiny
+    StableDiffusionInpaintPipelineLegacy, StableDiffusionXLPipeline, StableDiffusionXLImg2ImgPipeline, \
+    StableDiffusionXLInpaintPipeline, \
+    AutoencoderKL, AsymmetricAutoencoderKL, AutoencoderTiny
 
 _TORCH_MODEL_CACHE = dict()
 _FLAX_MODEL_CACHE = dict()
@@ -166,9 +169,30 @@ def _disabled_safety_checker(images, clip_input):
         return images, False
 
 
-def _create_torch_diffusion_pipeline(model_path, revision, variant, torch_dtype, vae=None, lora=None, scheduler=None,
-                                     safety_checker=False):
-    cache_key = model_path + revision + '' if variant is None else variant + str(torch_dtype)
+def _pipeline_cache_key(args_dict):
+    def value_hash(obj):
+        if isinstance(obj, dict):
+            return '{' + _pipeline_cache_key(obj) + '}'
+        elif obj is None or isinstance(obj, (str, numbers.Number)):
+            return str(obj)
+        else:
+            return f'<{obj.__class__.__name__}:{str(id(obj))}>'
+
+    return ','.join(f'{k}={value_hash(v)}' for k, v in sorted(args_dict.items()))
+
+
+def _create_torch_diffusion_pipeline(model_path,
+                                     revision,
+                                     variant,
+                                     torch_dtype,
+                                     vae=None,
+                                     lora=None,
+                                     scheduler=None,
+                                     safety_checker=False,
+                                     sdxl=False,
+                                     extra_args=None):
+    cache_key = _pipeline_cache_key(locals())
+
     catch_hit = _TORCH_MODEL_CACHE.get(cache_key)
 
     if catch_hit is None:
@@ -177,18 +201,23 @@ def _create_torch_diffusion_pipeline(model_path, revision, variant, torch_dtype,
         if vae is not None:
             kwargs['vae'] = _load_pytorch_vae(vae)
 
+        if extra_args is not None:
+            kwargs.update(extra_args)
+
+        pipeline_class = StableDiffusionXLPipeline if sdxl else StableDiffusionPipeline
+
         if _is_single_file_model_load(model_path):
-            pipeline = StableDiffusionPipeline.from_single_file(model_path,
-                                                                revision=revision,
-                                                                variant=variant,
-                                                                torch_dtype=torch_dtype,
-                                                                **kwargs)
+            pipeline = pipeline_class.from_single_file(model_path,
+                                                       revision=revision,
+                                                       variant=variant,
+                                                       torch_dtype=torch_dtype,
+                                                       **kwargs)
         else:
-            pipeline = StableDiffusionPipeline.from_pretrained(model_path,
-                                                               revision=revision,
-                                                               variant=variant,
-                                                               torch_dtype=torch_dtype,
-                                                               **kwargs)
+            pipeline = pipeline_class.from_pretrained(model_path,
+                                                      revision=revision,
+                                                      variant=variant,
+                                                      torch_dtype=torch_dtype,
+                                                      **kwargs)
 
         _load_scheduler(pipeline, scheduler)
 
@@ -204,9 +233,15 @@ def _create_torch_diffusion_pipeline(model_path, revision, variant, torch_dtype,
         return catch_hit
 
 
-def _create_flax_diffusion_pipeline(model_path, revision, flax_dtype, vae=None, scheduler=None,
-                                    safety_checker=False):
-    cache_key = model_path + revision + str(flax_dtype)
+def _create_flax_diffusion_pipeline(model_path,
+                                    revision,
+                                    flax_dtype,
+                                    vae=None,
+                                    scheduler=None,
+                                    safety_checker=False,
+                                    extra_args=None):
+    cache_key = _pipeline_cache_key(locals())
+
     catch_hit = _FLAX_MODEL_CACHE.get(cache_key)
 
     if catch_hit is None:
@@ -214,6 +249,9 @@ def _create_flax_diffusion_pipeline(model_path, revision, flax_dtype, vae=None, 
 
         if vae is not None:
             kwargs['vae'] = _load_flax_vae(vae)
+
+        if extra_args is not None:
+            kwargs.update(extra_args)
 
         pipeline, params = FlaxStableDiffusionPipeline.from_pretrained(model_path,
                                                                        revision=revision,
@@ -231,10 +269,18 @@ def _create_flax_diffusion_pipeline(model_path, revision, flax_dtype, vae=None, 
         return catch_hit
 
 
-def _create_torch_img2img_diffusion_pipeline(model_path, revision, variant, torch_dtype, vae=None, lora=None,
+def _create_torch_img2img_diffusion_pipeline(model_path,
+                                             revision,
+                                             variant,
+                                             torch_dtype,
+                                             vae=None,
+                                             lora=None,
                                              scheduler=None,
-                                             safety_checker=False):
-    cache_key = model_path + revision + '' if variant is None else variant + str(torch_dtype)
+                                             safety_checker=False,
+                                             sdxl=False,
+                                             extra_args=None):
+    cache_key = _pipeline_cache_key(locals())
+
     catch_hit = _TORCH_IMG2IMG_MODEL_CACHE.get(cache_key)
 
     if catch_hit is None:
@@ -243,18 +289,23 @@ def _create_torch_img2img_diffusion_pipeline(model_path, revision, variant, torc
         if vae is not None:
             kwargs['vae'] = _load_pytorch_vae(vae)
 
+        if extra_args is not None:
+            kwargs.update(extra_args)
+
+        pipeline_class = StableDiffusionXLImg2ImgPipeline if sdxl else StableDiffusionImg2ImgPipeline
+
         if _is_single_file_model_load(model_path):
-            pipeline = StableDiffusionImg2ImgPipeline.from_single_file(model_path,
-                                                                       revision=revision,
-                                                                       variant=variant,
-                                                                       torch_dtype=torch_dtype,
-                                                                       **kwargs)
+            pipeline = pipeline_class.from_single_file(model_path,
+                                                       revision=revision,
+                                                       variant=variant,
+                                                       torch_dtype=torch_dtype,
+                                                       **kwargs)
         else:
-            pipeline = StableDiffusionImg2ImgPipeline.from_pretrained(model_path,
-                                                                      revision=revision,
-                                                                      variant=variant,
-                                                                      torch_dtype=torch_dtype,
-                                                                      **kwargs)
+            pipeline = pipeline_class.from_pretrained(model_path,
+                                                      revision=revision,
+                                                      variant=variant,
+                                                      torch_dtype=torch_dtype,
+                                                      **kwargs)
 
         _load_scheduler(pipeline, scheduler)
 
@@ -270,9 +321,15 @@ def _create_torch_img2img_diffusion_pipeline(model_path, revision, variant, torc
         return catch_hit
 
 
-def _create_flax_img2img_diffusion_pipeline(model_path, revision, flax_dtype, vae=None, scheduler=None,
-                                            safety_checker=False):
-    cache_key = model_path + revision + str(flax_dtype)
+def _create_flax_img2img_diffusion_pipeline(model_path,
+                                            revision,
+                                            flax_dtype,
+                                            vae=None,
+                                            scheduler=None,
+                                            safety_checker=False,
+                                            extra_args=None):
+    cache_key = _pipeline_cache_key(locals())
+
     catch_hit = _FLAX_IMG2IMG_MODEL_CACHE.get(cache_key)
 
     if catch_hit is None:
@@ -280,6 +337,9 @@ def _create_flax_img2img_diffusion_pipeline(model_path, revision, flax_dtype, va
 
         if vae is not None:
             kwargs['vae'] = _load_flax_vae(vae)
+
+        if extra_args is not None:
+            kwargs.update(extra_args)
 
         pipeline, params = FlaxStableDiffusionImg2ImgPipeline.from_pretrained(model_path,
                                                                               revision=revision,
@@ -297,10 +357,18 @@ def _create_flax_img2img_diffusion_pipeline(model_path, revision, flax_dtype, va
         return catch_hit
 
 
-def _create_torch_inpaint_diffusion_pipeline(model_path, revision, variant, torch_dtype, vae=None, lora=None,
+def _create_torch_inpaint_diffusion_pipeline(model_path,
+                                             revision,
+                                             variant,
+                                             torch_dtype,
+                                             vae=None,
+                                             lora=None,
                                              scheduler=None,
-                                             safety_checker=False):
-    cache_key = model_path + revision + '' if variant is None else variant + str(torch_dtype)
+                                             safety_checker=False,
+                                             sdxl=False,
+                                             extra_args=None):
+    cache_key = _pipeline_cache_key(locals())
+
     catch_hit = _TORCH_INPAINT_MODEL_CACHE.get(cache_key)
 
     if catch_hit is None:
@@ -309,18 +377,23 @@ def _create_torch_inpaint_diffusion_pipeline(model_path, revision, variant, torc
         if vae is not None:
             kwargs['vae'] = _load_pytorch_vae(vae)
 
+        if extra_args is not None:
+            kwargs.update(extra_args)
+
+        pipeline_class = StableDiffusionXLInpaintPipeline if sdxl else StableDiffusionInpaintPipeline
+
         if _is_single_file_model_load(model_path):
-            pipeline = StableDiffusionInpaintPipeline.from_single_file(model_path,
-                                                                       revision=revision,
-                                                                       variant=variant,
-                                                                       torch_dtype=torch_dtype,
-                                                                       **kwargs)
+            pipeline = pipeline_class.from_single_file(model_path,
+                                                       revision=revision,
+                                                       variant=variant,
+                                                       torch_dtype=torch_dtype,
+                                                       **kwargs)
         else:
-            pipeline = StableDiffusionInpaintPipeline.from_pretrained(model_path,
-                                                                      revision=revision,
-                                                                      variant=variant,
-                                                                      torch_dtype=torch_dtype,
-                                                                      **kwargs)
+            pipeline = pipeline_class.from_pretrained(model_path,
+                                                      revision=revision,
+                                                      variant=variant,
+                                                      torch_dtype=torch_dtype,
+                                                      **kwargs)
 
         _load_scheduler(pipeline, scheduler)
 
@@ -336,9 +409,15 @@ def _create_torch_inpaint_diffusion_pipeline(model_path, revision, variant, torc
         return catch_hit
 
 
-def _create_flax_inpaint_diffusion_pipeline(model_path, revision, flax_dtype, vae=None, scheduler=None,
-                                            safety_checker=False):
-    cache_key = model_path + revision + str(flax_dtype)
+def _create_flax_inpaint_diffusion_pipeline(model_path,
+                                            revision,
+                                            flax_dtype,
+                                            vae=None,
+                                            scheduler=None,
+                                            safety_checker=False,
+                                            extra_args=None):
+    cache_key = _pipeline_cache_key(locals())
+
     catch_hit = _FLAX_INPAINT_MODEL_CACHE.get(cache_key)
 
     if catch_hit is None:
@@ -346,6 +425,9 @@ def _create_flax_inpaint_diffusion_pipeline(model_path, revision, flax_dtype, va
 
         if vae is not None:
             kwargs['vae'] = _load_flax_vae(vae)
+
+        if extra_args is not None:
+            kwargs.update(extra_args)
 
         pipeline, params = FlaxStableDiffusionInpaintPipeline.from_pretrained(model_path,
                                                                               revision=revision,
@@ -365,9 +447,9 @@ def _create_flax_inpaint_diffusion_pipeline(model_path, revision, flax_dtype, va
 
 def supported_model_types():
     if have_jax_flax():
-        return {'torch', 'flax'}
+        return ['torch', 'torch-sdxl', 'flax']
     else:
-        return {'torch'}
+        return ['torch', 'torch-sdxl']
 
 
 def have_jax_flax():
@@ -472,8 +554,23 @@ def _call_torch(wrapper, args, kwargs):
             args.pop('width')
             args.pop('height')
 
+    if wrapper._sdxl_refiner_pipeline is not None:
+        high_noise_fraction = kwargs.get('sdxl_high_noise_fraction', 0.8)
+        image = wrapper._pipeline(**args,
+                                  denoising_end=high_noise_fraction,
+                                  output_type="latent").images
 
-    return PipelineResultWrapper(wrapper._pipeline(**args).images)
+        args['image'] = image
+
+        # Will not exist for img2img sdxl with refiner
+        args.pop('width', None)
+        args.pop('height', None)
+
+        return PipelineResultWrapper(
+            wrapper._sdxl_refiner_pipeline(**args, denoising_start=high_noise_fraction).images)
+
+    else:
+        return PipelineResultWrapper(wrapper._pipeline(**args).images)
 
 
 class PipelineResultWrapper:
@@ -491,7 +588,8 @@ class DiffusionPipelineWrapper:
                  vae=None,
                  lora=None,
                  scheduler=None,
-                 safety_checker=False):
+                 safety_checker=False,
+                 sdxl_refiner_path=None):
         self._device = device
         self._model_type = model_type
         self._model_path = model_path
@@ -506,6 +604,8 @@ class DiffusionPipelineWrapper:
         self._scheduler = scheduler
         self._lora = None
         self._lora_scale = None
+        self._sdxl_refiner_path = sdxl_refiner_path
+        self._sdxl_refiner_pipeline = None
         if lora is not None:
             if model_type == "flax":
                 raise NotImplementedError("LoRA loading is not implemented for flax.")
@@ -525,9 +625,35 @@ class DiffusionPipelineWrapper:
                                                 flax_dtype=_get_flax_dtype(self._dtype),
                                                 vae=self._vae, scheduler=self._scheduler,
                                                 safety_checker=self._safety_checker)
+        elif self._sdxl_refiner_path is not None:
+            if self._model_type != 'torch-sdxl':
+                raise NotImplementedError('Only Stable Diffusion XL models support refiners, '
+                                          'please use --model-type torch-sdxl if you are trying to load an sdxl model.')
+
+            self._pipeline = \
+                _create_torch_diffusion_pipeline(self._model_path, sdxl=True,
+                                                 revision=self._revision, variant=self._variant,
+                                                 torch_dtype=_get_torch_dtype(self._dtype),
+                                                 vae=self._vae, lora=self._lora, scheduler=self._scheduler,
+                                                 safety_checker=self._safety_checker)
+
+            self._sdxl_refiner_pipeline = \
+                _create_torch_img2img_diffusion_pipeline(self._sdxl_refiner_path, sdxl=True,
+                                                         revision=self._revision, variant=self._variant,
+                                                         torch_dtype=_get_torch_dtype(self._dtype),
+                                                         lora=self._lora, scheduler=self._scheduler,
+                                                         safety_checker=self._safety_checker,
+                                                         extra_args={'vae': self._pipeline.vae,
+                                                                     'text_encoder_2': self._pipeline.text_encoder_2})
+            if self._device.startswith('cuda'):
+                gpu_id = _gpu_id_from_cuda_device(self._device)
+                self._pipeline.enable_model_cpu_offload(gpu_id)
+                self._sdxl_refiner_pipeline.enable_model_cpu_offload(gpu_id)
+
+
         else:
             self._pipeline = \
-                _create_torch_diffusion_pipeline(self._model_path,
+                _create_torch_diffusion_pipeline(self._model_path, sdxl=self._model_type == 'torch-sdxl',
                                                  revision=self._revision, variant=self._variant,
                                                  torch_dtype=_get_torch_dtype(self._dtype),
                                                  vae=self._vae, lora=self._lora, scheduler=self._scheduler,
@@ -547,6 +673,11 @@ class DiffusionPipelineWrapper:
             return _call_torch(self, args, kwargs)
 
 
+def _gpu_id_from_cuda_device(device):
+    parts = device.split(':', 1)
+    return parts[1] if len(parts) == 2 else 0
+
+
 class DiffusionPipelineImg2ImgWrapper:
     def __init__(self, model_path,
                  dtype,
@@ -557,7 +688,8 @@ class DiffusionPipelineImg2ImgWrapper:
                  vae=None,
                  lora=None,
                  scheduler=None,
-                 safety_checker=False):
+                 safety_checker=False,
+                 sdxl_refiner_path=None):
         self._device = device
         self._model_type = model_type.strip().lower()
         self._model_path = model_path
@@ -571,6 +703,8 @@ class DiffusionPipelineImg2ImgWrapper:
         self._scheduler = scheduler
         self._lora = None
         self._lora_scale = None
+        self._sdxl_refiner_path = sdxl_refiner_path
+        self._sdxl_refiner_pipeline = None
         if lora is not None:
             if model_type == "flax":
                 raise NotImplementedError("LoRA loading is not implemented for flax.")
@@ -590,16 +724,41 @@ class DiffusionPipelineImg2ImgWrapper:
                                                         flax_dtype=_get_flax_dtype(self._dtype),
                                                         vae=self._vae, scheduler=self._scheduler,
                                                         safety_checker=self._safety_checker)
-        else:
+        elif self._sdxl_refiner_path is not None:
+            if self._model_type != 'torch-sdxl':
+                raise NotImplementedError('Only Stable Diffusion XL models support refiners, '
+                                          'please use --model-type torch-sdxl if you are trying to load an sdxl model.')
+
             self._pipeline = \
-                _create_torch_img2img_diffusion_pipeline(self._model_path,
+                _create_torch_img2img_diffusion_pipeline(self._model_path, sdxl=self._model_type == 'torch-sdxl',
                                                          revision=self._revision, variant=self._variant,
                                                          torch_dtype=_get_torch_dtype(self._dtype),
                                                          vae=self._vae, lora=self._lora, scheduler=self._scheduler,
-                                                         safety_checker=self._safety_checker).to(
-                    self._device)
+                                                         safety_checker=self._safety_checker)
 
-    def _lazy_init_intpaint(self):
+            self._sdxl_refiner_pipeline = \
+                _create_torch_img2img_diffusion_pipeline(self._sdxl_refiner_path, sdxl=True,
+                                                         revision=self._revision, variant=self._variant,
+                                                         torch_dtype=_get_torch_dtype(self._dtype),
+                                                         lora=self._lora, scheduler=self._scheduler,
+                                                         safety_checker=self._safety_checker,
+                                                         extra_args={'vae': self._pipeline.vae,
+                                                                     'text_encoder_2': self._pipeline.text_encoder_2})
+
+            if self._device.startswith('cuda'):
+                gpu_id = _gpu_id_from_cuda_device(self._device)
+                self._pipeline.enable_model_cpu_offload(gpu_id)
+                self._sdxl_refiner_pipeline.enable_model_cpu_offload(gpu_id)
+
+        else:
+            self._pipeline = \
+                _create_torch_img2img_diffusion_pipeline(self._model_path, sdxl=self._model_type == 'torch-sdxl',
+                                                         revision=self._revision, variant=self._variant,
+                                                         torch_dtype=_get_torch_dtype(self._dtype),
+                                                         vae=self._vae, lora=self._lora, scheduler=self._scheduler,
+                                                         safety_checker=self._safety_checker).to(self._device)
+
+    def _lazy_init_inpaint(self):
         if self._pipeline is not None:
             return
 
@@ -613,14 +772,40 @@ class DiffusionPipelineImg2ImgWrapper:
                                                         flax_dtype=_get_flax_dtype(self._dtype),
                                                         vae=self._vae, scheduler=self._scheduler,
                                                         safety_checker=self._safety_checker)
-        else:
+        elif self._sdxl_refiner_path is not None:
+            if self._model_type != 'torch-sdxl':
+                raise NotImplementedError('Only Stable Diffusion XL models support refiners, '
+                                          'please use --model-type torch-sdxl if you are trying to load an sdxl model.')
+
             self._pipeline = \
-                _create_torch_inpaint_diffusion_pipeline(self._model_path,
+                _create_torch_inpaint_diffusion_pipeline(self._model_path, sdxl=self._model_type == 'torch-sdxl',
                                                          revision=self._revision, variant=self._variant,
                                                          torch_dtype=_get_torch_dtype(self._dtype),
                                                          vae=self._vae, lora=self._lora, scheduler=self._scheduler,
-                                                         safety_checker=self._safety_checker).to(
-                    self._device)
+                                                         safety_checker=self._safety_checker)
+
+            self._sdxl_refiner_pipeline = \
+                _create_torch_inpaint_diffusion_pipeline(self._sdxl_refiner_path, sdxl=True,
+                                                         revision=self._revision, variant=self._variant,
+                                                         torch_dtype=_get_torch_dtype(self._dtype),
+                                                         lora=self._lora, scheduler=self._scheduler,
+                                                         safety_checker=self._safety_checker,
+                                                         extra_args={'vae': self._pipeline.vae,
+                                                                     'text_encoder_2': self._pipeline.text_encoder_2})
+
+            if self._device.startswith('cuda'):
+                gpu_id = _gpu_id_from_cuda_device(self._device)
+                self._pipeline.enable_model_cpu_offload(gpu_id)
+                self._sdxl_refiner_pipeline.enable_model_cpu_offload(gpu_id)
+
+        else:
+            self._pipeline = \
+                _create_torch_inpaint_diffusion_pipeline(self._model_path, sdxl=self._model_type == 'torch-sdxl',
+                                                         revision=self._revision, variant=self._variant,
+                                                         torch_dtype=_get_torch_dtype(self._dtype),
+                                                         vae=self._vae, lora=self._lora, scheduler=self._scheduler,
+                                                         safety_checker=self._safety_checker)
+            self._pipeline.enable_model_cpu_offload(0)
 
     def __call__(self, **kwargs):
         args = _pipeline_defaults(kwargs)
@@ -629,7 +814,7 @@ class DiffusionPipelineImg2ImgWrapper:
             args['cross_attention_kwargs'] = {'scale': self._lora_scale}
 
         if 'mask_image' in args:
-            self._lazy_init_intpaint()
+            self._lazy_init_inpaint()
         else:
             self._lazy_init_img2img()
 

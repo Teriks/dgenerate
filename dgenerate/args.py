@@ -82,12 +82,28 @@ parser.add_argument('--scheduler', action='store', default=None,
                     help=f'Specify a Scheduler by name. Torch compatible schedulers: ({", ".join(e.name for e in KarrasDiffusionSchedulers)}). ' +
                          (f'Flax compatible schedulers: ({", ".join(e.name for e in FlaxKarrasDiffusionSchedulers)})' if have_jax_flax() else ''))
 
+parser.add_argument('--sdxl-refiner', action='store', default=None,
+                    help='Stable Diffusion XL (torch-sdxl) refiner model path. '
+                         'huggingface model repository slug/URI, path to folder on disk, '
+                         'or path to a .cpkt or .safetensors file.')
+
+
+def _type_sdxl_high_noise_fractions(val):
+    try:
+        val = float(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be a floating point number')
+
+    if val <= 0:
+        raise argparse.ArgumentTypeError('Must be greater than 0')
+    return val
+
+
 parser.add_argument('--safety-checker', action='store_true', default=False,
                     help=f'Enable safety checker loading, this is off by default. '
                          f'When turned on images with NSFW content detected may result in solid black output. '
                          f'Some pretrained models have settings indicating a safety checker is not to be loaded, '
                          f'in that case this option has no effect.')
-
 
 parser.add_argument('--version', action='version', version=f"dgenerate v{__version__}")
 
@@ -199,7 +215,11 @@ parser.add_argument('-af', '--animation-format', action='store', default='mp4', 
 
 
 def _type_frame_start(val):
-    val = int(val)
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+
     if val < 0:
         raise argparse.ArgumentTypeError('Must be greater than or equal to 0')
     return val
@@ -210,7 +230,11 @@ parser.add_argument('-fs', '--frame-start', action='store', default=0, type=_typ
 
 
 def _type_frame_end(val):
-    val = int(val)
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+
     if val < 0:
         raise argparse.ArgumentTypeError('Must be greater than or equal to 0')
     return val
@@ -234,7 +258,11 @@ parser.add_argument('-is', '--image-seeds', action='store', nargs='*', default=[
 
 
 def _type_image_seed_strengths(val):
-    val = float(val)
+    try:
+        val = float(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be a floating point number')
+
     if val <= 0:
         raise argparse.ArgumentTypeError('Must be greater than 0')
     return val
@@ -249,7 +277,11 @@ parser.add_argument('-iss', '--image-seed-strengths', action='store', nargs='*',
 
 
 def _type_guidance_scale(val):
-    val = float(val)
+    try:
+        val = float(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be a floating point number')
+
     if val < 0:
         raise argparse.ArgumentTypeError('Must be greater than or equal to 0')
     return val
@@ -263,7 +295,11 @@ parser.add_argument('-gs', '--guidance-scales', action='store', nargs='*', defau
 
 
 def _type_inference_steps(val):
-    val = int(val)
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+
     if val <= 0:
         raise argparse.ArgumentTypeError('Must be greater than 0')
     return val
@@ -275,6 +311,13 @@ parser.add_argument('-ifs', '--inference-steps', action='store', nargs='*', defa
                          'the AI is targeting for the content of the image. Values between 30-40 '
                          'produce good results, higher values may improve image quality and or '
                          'change image content. (default: [30])')
+
+
+parser.add_argument('-hnf', '--sdxl-high-noise-fractions', action='store', nargs='*', default=[0.8],
+                    type=_type_sdxl_high_noise_fractions,
+                    help='High noise fraction for Stable Diffusion XL (torch-sdxl), this fraction of inference steps '
+                         'will be processed by the base model, while the rest will be processed by the refiner model. '
+                         'Multiple values to this argument will result in additional generation steps for each value.')
 
 
 def parse_args(args=None, namespace=None):
