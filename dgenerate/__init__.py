@@ -19,7 +19,9 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-__version__ = "0.15.0"
+__version__ = "0.16.0"
+
+import torch
 
 from dgenerate.pipelinewrappers import InvalidVaePathError, InvalidSchedulerName, InvalidLoRAPathError
 
@@ -72,6 +74,8 @@ def run_diffusion():
         render_loop.lora = arguments.lora
         render_loop.scheduler = arguments.scheduler
         render_loop.safety_checker = arguments.safety_checker
+        render_loop.sdxl_refiner_path = arguments.sdxl_refiner
+        render_loop.sdxl_high_noise_fractions = arguments.sdxl_high_noise_fractions
 
         # run the render loop
         try:
@@ -81,6 +85,7 @@ def run_diffusion():
                 InvalidVaePathError,
                 InvalidLoRAPathError,
                 InvalidSchedulerName,
+                torch.cuda.OutOfMemoryError,
                 NotImplementedError,
                 EnvironmentError) as e:
             print("Error:", e, file=sys.stderr)
