@@ -456,25 +456,6 @@ def have_jax_flax():
     return _have_jax_flax
 
 
-def _pipeline_defaults(kwargs):
-    args = dict()
-    args['guidance_scale'] = float(kwargs.get('guidance_scale', 5))
-    args['num_inference_steps'] = kwargs.get('num_inference_steps', 30)
-    if 'image' in kwargs:
-        image = kwargs['image']
-        args['image'] = image
-        args['strength'] = float(kwargs.get('strength', 0.8))
-        mask_image = kwargs.get('mask_image')
-        if mask_image is not None:
-            args['mask_image'] = mask_image
-            args['width'] = image.size[0]
-            args['height'] = image.size[1]
-    else:
-        args['height'] = kwargs.get('height', 512)
-        args['width'] = kwargs.get('width', 512)
-    return args
-
-
 def _get_flax_dtype(dtype):
     return {'float16': jnp.bfloat16,
             'float32': jnp.float32,
@@ -502,84 +483,14 @@ def _image_grid(imgs, rows, cols):
     return grid
 
 
-def _call_flax(wrapper, args, kwargs):
-    device_count = jax.device_count()
-
-    args['prng_seed'] = jax.random.split(jax.random.PRNGKey(kwargs.get('seed', 0)), device_count)
-
-    processed_masks = None
-
-    if 'image' in args:
-        if 'mask_image' in args:
-
-            prompt_ids, processed_images, processed_masks = \
-                wrapper._pipeline.prepare_inputs(prompt=[kwargs.get('prompt', '')] * device_count,
-                                                 image=[args['image']] * device_count,
-                                                 mask=[args['mask_image']] * device_count)
-
-            args['masked_image'] = shard(processed_images)
-            args['mask'] = shard(processed_masks)
-
-            args.pop('strength')
-            args.pop('image')
-            args.pop('mask_image')
-        else:
-            prompt_ids, processed_images = wrapper._pipeline.prepare_inputs(
-                prompt=[kwargs.get('prompt', '')] * device_count,
-                image=[args['image']] * device_count)
-            args['image'] = shard(processed_images)
-
-        args['width'] = processed_images[0].shape[2]
-        args['height'] = processed_images[0].shape[1]
-    else:
-        prompt_ids = wrapper._pipeline.prepare_inputs([kwargs.get('prompt', '')] * device_count)
-
-    images = wrapper._pipeline(prompt_ids=shard(prompt_ids), params=replicate(wrapper._flax_params),
-                               **args, jit=True)[0]
-
-    return PipelineResultWrapper(
-        [_image_grid(wrapper._pipeline.numpy_to_pil(images.reshape((images.shape[0],) + images.shape[-3:])),
-                     device_count, 1)])
-
-
-def _call_torch(wrapper, args, kwargs):
-    args['num_images_per_prompt'] = kwargs.get('num_images_per_prompt', 1)
-    args['generator'] = torch.Generator(device=wrapper._device).manual_seed(kwargs.get('seed', 0))
-    args['prompt'] = kwargs.get('prompt', '')
-    args['negative_prompt'] = kwargs.get('negative_prompt', None)
-
-    if 'mask_image' in args:
-        if isinstance(wrapper._pipeline, StableDiffusionInpaintPipelineLegacy):
-            # Not necessary, will cause an error
-            args.pop('width')
-            args.pop('height')
-
-    if wrapper._sdxl_refiner_pipeline is not None:
-        high_noise_fraction = kwargs.get('sdxl_high_noise_fraction', 0.8)
-        image = wrapper._pipeline(**args,
-                                  denoising_end=high_noise_fraction,
-                                  output_type="latent").images
-
-        args['image'] = image
-
-        # Will not exist for img2img sdxl with refiner
-        args.pop('width', None)
-        args.pop('height', None)
-
-        return PipelineResultWrapper(
-            wrapper._sdxl_refiner_pipeline(**args, denoising_start=high_noise_fraction).images)
-
-    else:
-        return PipelineResultWrapper(wrapper._pipeline(**args).images)
-
-
 class PipelineResultWrapper:
     def __init__(self, images):
         self.images = images
 
 
-class DiffusionPipelineWrapper:
-    def __init__(self, model_path,
+class DiffusionPipelineWrapperBase:
+    def __init__(self,
+                 model_path,
                  dtype,
                  device='cuda',
                  model_type='torch',
@@ -591,7 +502,7 @@ class DiffusionPipelineWrapper:
                  safety_checker=False,
                  sdxl_refiner_path=None):
         self._device = device
-        self._model_type = model_type
+        self._model_type = model_type.strip().lower()
         self._model_path = model_path
         self._pipeline = None
         self._flax_params = None
@@ -610,6 +521,190 @@ class DiffusionPipelineWrapper:
             if model_type == "flax":
                 raise NotImplementedError("LoRA loading is not implemented for flax.")
             self._lora, self._lora_scale = _parse_lora(lora)
+
+    def _pipeline_defaults(self, kwargs):
+        args = dict()
+        args['guidance_scale'] = float(kwargs.get('guidance_scale', 5))
+        args['num_inference_steps'] = kwargs.get('num_inference_steps', 30)
+        if 'image' in kwargs:
+            image = kwargs['image']
+            args['image'] = image
+            args['strength'] = float(kwargs.get('strength', 0.8))
+            mask_image = kwargs.get('mask_image')
+            if mask_image is not None:
+                args['mask_image'] = mask_image
+                args['width'] = image.size[0]
+                args['height'] = image.size[1]
+        else:
+            args['height'] = kwargs.get('height', 512)
+            args['width'] = kwargs.get('width', 512)
+
+        if self._lora_scale is not None:
+            args['cross_attention_kwargs'] = {'scale': self._lora_scale}
+
+        return args
+
+    def _call_flax(self, args, kwargs):
+        device_count = jax.device_count()
+
+        args['prng_seed'] = jax.random.split(jax.random.PRNGKey(kwargs.get('seed', 0)), device_count)
+
+        processed_masks = None
+
+        if 'image' in args:
+            if 'mask_image' in args:
+
+                prompt_ids, processed_images, processed_masks = \
+                    self._pipeline.prepare_inputs(prompt=[kwargs.get('prompt', '')] * device_count,
+                                                  image=[args['image']] * device_count,
+                                                  mask=[args['mask_image']] * device_count)
+
+                args['masked_image'] = shard(processed_images)
+                args['mask'] = shard(processed_masks)
+
+                args.pop('strength')
+                args.pop('image')
+                args.pop('mask_image')
+            else:
+                prompt_ids, processed_images = self._pipeline.prepare_inputs(
+                    prompt=[kwargs.get('prompt', '')] * device_count,
+                    image=[args['image']] * device_count)
+                args['image'] = shard(processed_images)
+
+            args['width'] = processed_images[0].shape[2]
+            args['height'] = processed_images[0].shape[1]
+        else:
+            prompt_ids = self._pipeline.prepare_inputs([kwargs.get('prompt', '')] * device_count)
+
+        images = self._pipeline(prompt_ids=shard(prompt_ids), params=replicate(self._flax_params),
+                                **args, jit=True)[0]
+
+        return PipelineResultWrapper(
+            [_image_grid(self._pipeline.numpy_to_pil(images.reshape((images.shape[0],) + images.shape[-3:])),
+                         device_count, 1)])
+
+    def _call_torch(self, args, kwargs):
+        args['num_images_per_prompt'] = kwargs.get('num_images_per_prompt', 1)
+        args['generator'] = torch.Generator(device=self._device).manual_seed(kwargs.get('seed', 0))
+        args['prompt'] = kwargs.get('prompt', '')
+        args['negative_prompt'] = kwargs.get('negative_prompt', None)
+
+        if isinstance(self._pipeline, StableDiffusionInpaintPipelineLegacy):
+            # Not necessary, will cause an error
+            args.pop('width')
+            args.pop('height')
+
+        if self._sdxl_refiner_pipeline is not None:
+            high_noise_fraction = kwargs.get('sdxl_high_noise_fraction', 0.8)
+            image = self._pipeline(**args,
+                                   denoising_end=high_noise_fraction,
+                                   output_type="latent").images
+
+            args['image'] = image
+
+            if not isinstance(self._sdxl_refiner_pipeline, StableDiffusionXLInpaintPipeline):
+                # Width / Height not necessary for any other refiner
+                if not (isinstance(self._pipeline, StableDiffusionXLImg2ImgPipeline) and \
+                        isinstance(self._sdxl_refiner_pipeline, StableDiffusionXLImg2ImgPipeline)):
+                    # Width / Height does not get passed to img2img
+                    args.pop('width')
+                    args.pop('height')
+
+            return PipelineResultWrapper(
+                self._sdxl_refiner_pipeline(**args, denoising_start=high_noise_fraction).images)
+
+        else:
+            return PipelineResultWrapper(self._pipeline(**args).images)
+
+    def __call__(self, **kwargs):
+        args = self._pipeline_defaults(kwargs)
+        if self._model_type == 'flax':
+            return self._call_flax(args, kwargs)
+        else:
+            return self._call_torch(args, kwargs)
+
+    @property
+    def revision(self):
+        return self._revision
+
+    @property
+    def safety_checker(self):
+        return self._safety_checker
+
+    @property
+    def sdxl_refiner_pipeline(self):
+        return self._sdxl_refiner_pipeline
+
+    @property
+    def variant(self):
+        return self._variant
+
+    @property
+    def dtype(self):
+        return self._dtype
+
+    @property
+    def device(self):
+        return self._device
+
+    @property
+    def model_path(self):
+        return self._model_path
+
+    @property
+    def scheduler(self):
+        return self._scheduler
+
+    @property
+    def lora_scale(self):
+        return self._lora_scale
+
+    @property
+    def sdxl_refiner_path(self):
+        return self._sdxl_refiner_path
+
+    @property
+    def pipeline(self):
+        return self._pipeline
+
+    @property
+    def vae(self):
+        return self._vae
+
+    @property
+    def model_type(self):
+        return self._model_type
+
+    @property
+    def lora(self):
+        return self._lora
+
+
+class DiffusionPipelineWrapper(DiffusionPipelineWrapperBase):
+    def __init__(self,
+                 model_path,
+                 dtype,
+                 device='cuda',
+                 model_type='torch',
+                 revision='main',
+                 variant=None,
+                 vae=None,
+                 lora=None,
+                 scheduler=None,
+                 safety_checker=False,
+                 sdxl_refiner_path=None):
+
+        super().__init__(model_path,
+                         dtype,
+                         device,
+                         model_type,
+                         revision,
+                         variant,
+                         vae,
+                         lora,
+                         scheduler,
+                         safety_checker,
+                         sdxl_refiner_path)
 
     def _lazy_init_pipeline(self):
         if self._pipeline is not None:
@@ -649,8 +744,6 @@ class DiffusionPipelineWrapper:
                 gpu_id = _gpu_id_from_cuda_device(self._device)
                 self._pipeline.enable_model_cpu_offload(gpu_id)
                 self._sdxl_refiner_pipeline.enable_model_cpu_offload(gpu_id)
-
-
         else:
             self._pipeline = \
                 _create_torch_diffusion_pipeline(self._model_path, sdxl=self._model_type == 'torch-sdxl',
@@ -660,17 +753,9 @@ class DiffusionPipelineWrapper:
                                                  safety_checker=self._safety_checker).to(self._device)
 
     def __call__(self, **kwargs):
-        args = _pipeline_defaults(kwargs)
-
-        if self._lora_scale is not None:
-            args['cross_attention_kwargs'] = {'scale': self._lora_scale}
-
         self._lazy_init_pipeline()
 
-        if self._model_type == 'flax':
-            return _call_flax(self, args, kwargs)
-        else:
-            return _call_torch(self, args, kwargs)
+        return super().__call__(**kwargs)
 
 
 def _gpu_id_from_cuda_device(device):
@@ -678,8 +763,9 @@ def _gpu_id_from_cuda_device(device):
     return parts[1] if len(parts) == 2 else 0
 
 
-class DiffusionPipelineImg2ImgWrapper:
-    def __init__(self, model_path,
+class DiffusionPipelineImg2ImgWrapper(DiffusionPipelineWrapperBase):
+    def __init__(self,
+                 model_path,
                  dtype,
                  device='cuda',
                  model_type='torch',
@@ -690,25 +776,18 @@ class DiffusionPipelineImg2ImgWrapper:
                  scheduler=None,
                  safety_checker=False,
                  sdxl_refiner_path=None):
-        self._device = device
-        self._model_type = model_type.strip().lower()
-        self._model_path = model_path
-        self._revision = revision
-        self._variant = variant
-        self._dtype = dtype
-        self._pipeline = None
-        self._flax_params = None
-        self._vae = vae
-        self._safety_checker = safety_checker
-        self._scheduler = scheduler
-        self._lora = None
-        self._lora_scale = None
-        self._sdxl_refiner_path = sdxl_refiner_path
-        self._sdxl_refiner_pipeline = None
-        if lora is not None:
-            if model_type == "flax":
-                raise NotImplementedError("LoRA loading is not implemented for flax.")
-            self._lora, self._lora_scale = _parse_lora(lora)
+
+        super().__init__(model_path,
+                         dtype,
+                         device,
+                         model_type,
+                         revision,
+                         variant,
+                         vae,
+                         lora,
+                         scheduler,
+                         safety_checker,
+                         sdxl_refiner_path)
 
     def _lazy_init_img2img(self):
         if self._pipeline is not None:
@@ -808,17 +887,9 @@ class DiffusionPipelineImg2ImgWrapper:
             self._pipeline.enable_model_cpu_offload(0)
 
     def __call__(self, **kwargs):
-        args = _pipeline_defaults(kwargs)
-
-        if self._lora_scale is not None:
-            args['cross_attention_kwargs'] = {'scale': self._lora_scale}
-
-        if 'mask_image' in args:
+        if 'mask_image' in kwargs:
             self._lazy_init_inpaint()
         else:
             self._lazy_init_img2img()
 
-        if self._model_type == 'flax':
-            return _call_flax(self, args, kwargs)
-        else:
-            return _call_torch(self, args, kwargs)
+        return super().__call__(**kwargs)
