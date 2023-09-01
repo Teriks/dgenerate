@@ -97,6 +97,7 @@ def run_diffusion():
             print("Error:", e, file=sys.stderr)
             exit(1)
 
+    continuation = ''
     if not sys.stdin.isatty():
         for line in sys.stdin:
             line = line.strip()
@@ -105,8 +106,14 @@ def run_diffusion():
             if line.startswith('\\clear_model_cache'):
                 clear_model_cache()
                 continue
-            print(underline("Processing Arguments: " + line))
-            parse_and_run(shlex.split(os.path.expandvars(line)))
+
+            if line.endswith('\\'):
+                continuation += ' '+line.rstrip(' \\')
+            else:
+                args = (continuation+' '+line).lstrip()
+                print(underline("Processing Arguments: " + args))
+                parse_and_run(shlex.split(os.path.expandvars(args)))
+                continuation = ''
     else:
         parse_and_run()
 
