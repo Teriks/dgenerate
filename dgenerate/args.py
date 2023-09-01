@@ -51,17 +51,27 @@ def _from_model_type(val):
             f'Must be one of: {oxford_comma(supported_model_types(), "or")}. Unknown value: {val}')
     return val
 
+def _type_dtype(dtype):
+    dtype = dtype.lower()
+
+    if dtype not in {'float16', 'float32', 'auto'}:
+        raise argparse.ArgumentTypeError('Must be float16, float32, or auto.')
+    else:
+        return dtype
+
 
 parser.add_argument('--model-type', action='store', default='torch', type=_from_model_type,
                     help=f'Use when loading different model types. '
                          f'Currently supported: {oxford_comma(supported_model_types(), "or")}. (default: torch)')
 
 parser.add_argument('--revision', action='store', default="main",
-                    help='The model revision to use, (The git branch / tag, default is "main")')
+                    help='The model revision to use when loading from a huggingface repository, '
+                         '(The git branch / tag, default is "main")')
 
 parser.add_argument('--variant', action='store', default=None,
-                    help='If specified load weights from "variant" filename, e.g. "pytorch_model.<variant>.bin". '
-                         'This option is ignored if using flax.')
+                    help='If specified when loading from a huggingface repository or folder, load weights '
+                         'from "variant" filename, e.g. "pytorch_model.<variant>.safetensors". '
+                         'Defaults to automatic selection. This option is ignored if using flax.')
 
 parser.add_argument('--vae', action='store', default=None,
                     help=f'Specify a VAE. When using torch models the syntax '
@@ -71,6 +81,22 @@ parser.add_argument('--vae', action='store', default=None,
                          f'class: "FlaxAutoencoderKL;vae.pt". huggingface URI/slugs, .pt, .pth, and .safetensors '
                          f'files are accepted for AutoencoderKL and FlaxAutoencoderKL, other encoders can only accept '
                          f'huggingface URI/slugs or a path to a folder on disk with the model configuration.')
+
+
+parser.add_argument('--vae-revision', action='store', default="main",
+                    help='The model revision to use for the VAE when specified manually and '
+                         'loading from huggingface repository, (The git branch / tag, default is "main")')
+
+parser.add_argument('--vae-variant', action='store', default=None,
+                    help='VAE model variant when manually specifying a VAE, defaults to the value of --variant. '
+                         'If specified when loading from a huggingface repository or folder, '
+                         'load weights from "variant" filename, e.g. "pytorch_model.<variant>.safetensors. '
+                         'Defaults to automatic selection. This option is ignored if using flax.')
+
+parser.add_argument('--vae-dtype', action='store', default=None, type=_type_dtype,
+                    help='VAE model precision when manually specifying a VAE, '
+                         'defaults to the value of -t/--dtype. One of: float16 / float32 / auto.')
+
 
 parser.add_argument('--lora', action='store', default=None,
                     help=f'Specify a LoRA and scale factor (flax not supported). This should be a '
@@ -86,6 +112,19 @@ parser.add_argument('--sdxl-refiner', action='store', default=None,
                     help='Stable Diffusion XL (torch-sdxl) refiner model path. '
                          'huggingface model repository slug/URI, path to folder on disk, '
                          'or path to a .cpkt or .safetensors file.')
+
+parser.add_argument('--sdxl-refiner-revision', action='store', default="main",
+                    help='The model revision to use for the sdxl refiner when '
+                         'loading from huggingface repository, (The git branch / tag, default is "main")')
+
+parser.add_argument('--sdxl-refiner-variant', action='store', default=None,
+                    help='Stable Diffusion XL (torch-sdxl) refiner model variant, defaults to the value of --variant. '
+                         'If specified when loading from a huggingface repository or folder, '
+                         'load weights from "variant" filename, e.g. "pytorch_model.<variant>.safetensors')
+
+parser.add_argument('--sdxl-refiner-dtype', action='store', default=None, type=_type_dtype,
+                    help='Stable Diffusion XL (torch-sdxl) refiner model precision, '
+                         'defaults to the value of -t/--dtype. One of: float16 / float32 / auto.')
 
 
 def _type_sdxl_high_noise_fractions(val):
@@ -120,15 +159,6 @@ def _type_device(device):
 
 parser.add_argument('-d', '--device', action='store', default='cuda', type=_type_device,
                     help='cuda / cpu. (default: cuda). Use: cuda:0, cuda:1, cuda:2, etc. to specify a specific GPU.')
-
-
-def _type_dtype(dtype):
-    dtype = dtype.lower()
-
-    if dtype not in {'float16', 'float32', 'auto'}:
-        raise argparse.ArgumentTypeError('Must be float16, float32, or auto.')
-    else:
-        return dtype
 
 
 parser.add_argument('-t', '--dtype', action='store', default='auto', type=_type_dtype,

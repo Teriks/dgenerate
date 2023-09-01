@@ -121,14 +121,20 @@ class DiffusionRenderLoop:
 
         self.model_path = None
         self.sdxl_refiner_path = None
+        self.sdxl_refiner_revision = None
+        self.sdxl_refiner_variant = None
+        self.sdxl_refiner_dtype = None
         self.sdxl_high_noise_fractions = []
         self.vae = None
+        self.vae_revision = None
+        self.vae_variant = None
+        self.vae_dtype =  None
         self.lora = None
         self.scheduler = None
         self.safety_checker = False
         self.model_type = 'torch'
         self.device = 'cuda'
-        self.dtype = 'float16'
+        self.dtype = 'auto'
         self.revision = 'main'
         self.variant = None
         self.output_size = (512, 512)
@@ -145,13 +151,25 @@ class DiffusionRenderLoop:
 
     def _enforce_state(self):
         if self.dtype not in {'float32', 'float16', 'auto'}:
-            raise ValueError('DiffusionRenderLoop.torch_dtype must be float32, float16, or auto')
+            raise ValueError('DiffusionRenderLoop.torch_dtype must be float32, float16 or auto')
+        if self.sdxl_refiner_dtype not in {'float32', 'float16', 'auto', None}:
+            raise ValueError('DiffusionRenderLoop.sdxl_refiner_dtype must be float32, float16, auto, or None')
+        if self.vae_dtype not in {'float32', 'float16', 'auto', None}:
+            raise ValueError('DiffusionRenderLoop.vae_dtype must be float32, float16, auto, or None')
         if not isinstance(self.safety_checker, bool):
             raise ValueError('DiffusionRenderLoop.safety_checker must be True or False (bool)')
         if self.revision is not None and not isinstance(self.revision, str):
             raise ValueError('DiffusionRenderLoop.revision must be None or a string')
+        if self.sdxl_refiner_revision is not None and not isinstance(self.sdxl_refiner_revision, str):
+            raise ValueError('DiffusionRenderLoop.sdxl_refiner_revision must be None or a string')
+        if self.vae_revision is not None and not isinstance(self.vae_revision, str):
+            raise ValueError('DiffusionRenderLoop.vae_revision must be None or a string')
         if self.variant is not None and not isinstance(self.variant, str):
             raise ValueError('DiffusionRenderLoop.variant must be None or a string')
+        if self.sdxl_refiner_variant is not None and not isinstance(self.sdxl_refiner_variant, str):
+            raise ValueError('DiffusionRenderLoop.sdxl_refiner_variant must be None or a string')
+        if self.vae_variant is not None and not isinstance(self.vae_variant, str):
+            raise ValueError('DiffusionRenderLoop.vae_variant must be None or a string')
         if self.model_type not in supported_model_types():
             raise ValueError(
                 f'DiffusionRenderLoop.model_type must be one of: {oxford_comma(supported_model_types(), "or")}')
@@ -354,10 +372,16 @@ class DiffusionRenderLoop:
                                                        revision=self.revision,
                                                        variant=self.variant,
                                                        vae=self.vae,
+                                                       vae_revision=self.vae_revision,
+                                                       vae_variant=self.vae_variant,
+                                                       vae_dtype=self.vae_dtype,
                                                        lora=self.lora,
                                                        scheduler=self.scheduler,
                                                        safety_checker=self.safety_checker,
-                                                       sdxl_refiner_path=self.sdxl_refiner_path)
+                                                       sdxl_refiner_path=self.sdxl_refiner_path,
+                                                       sdxl_refiner_revision=self.sdxl_refiner_revision,
+                                                       sdxl_refiner_variant=self.sdxl_refiner_variant,
+                                                       sdxl_refiner_dtype=self.sdxl_refiner_dtype)
 
             sdxl_high_noise_fractions = self.sdxl_high_noise_fractions if self.sdxl_refiner_path is not None else None
             for args_ctx in iterate_diffusion_args(prompts=self.prompts,
@@ -383,10 +407,16 @@ class DiffusionRenderLoop:
                                                           revision=self.revision,
                                                           variant=self.variant,
                                                           vae=self.vae,
+                                                          vae_revision=self.vae_revision,
+                                                          vae_variant=self.vae_variant,
+                                                          vae_dtype=self.vae_dtype,
                                                           lora=self.lora,
                                                           scheduler=self.scheduler,
                                                           safety_checker=self.safety_checker,
-                                                          sdxl_refiner_path=self.sdxl_refiner_path)
+                                                          sdxl_refiner_path=self.sdxl_refiner_path,
+                                                          sdxl_refiner_revision=self.sdxl_refiner_revision,
+                                                          sdxl_refiner_variant=self.sdxl_refiner_variant,
+                                                          sdxl_refiner_dtype=self.sdxl_refiner_dtype)
 
         for image_seed in self.image_seeds:
 
