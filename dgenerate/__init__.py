@@ -19,7 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-__version__ = "0.16.0"
+__version__ = "0.17.0"
 
 import torch
 
@@ -71,10 +71,16 @@ def run_diffusion():
         render_loop.guidance_scales = arguments.guidance_scales
         render_loop.inference_steps = arguments.inference_steps
         render_loop.vae = arguments.vae
+        render_loop.vae_revision = arguments.vae_revision
+        render_loop.vae_variant = arguments.vae_variant
+        render_loop.vae_dtype = arguments.vae_dtype
         render_loop.lora = arguments.lora
         render_loop.scheduler = arguments.scheduler
         render_loop.safety_checker = arguments.safety_checker
         render_loop.sdxl_refiner_path = arguments.sdxl_refiner
+        render_loop.sdxl_refiner_revision = arguments.sdxl_refiner_revision
+        render_loop.sdxl_refiner_variant = arguments.sdxl_refiner_variant
+        render_loop.sdxl_refiner_dtype = arguments.sdxl_refiner_dtype
         render_loop.sdxl_high_noise_fractions = arguments.sdxl_high_noise_fractions
 
         # run the render loop
