@@ -57,7 +57,16 @@ class InvalidSchedulerName(Exception):
 
 
 def _is_single_file_model_load(path):
-    return len(os.path.splitext(path)[1]) > 0
+    ext = os.path.splitext(path)[1]
+    if len(ext) == 0:
+        return False
+
+    try:
+        int(ext)
+    except ValueError:
+        return False
+
+    return True
 
 
 def _load_pytorch_vae(path,
@@ -248,6 +257,7 @@ def _create_torch_diffusion_pipeline(pipeline_type,
             kwargs.update(extra_args)
 
         if _is_single_file_model_load(model_path):
+            print(model_path)
             if model_subfolder is not None:
                 raise NotImplementedError('Single file model loads do not support the subfolder option.')
             pipeline = pipeline_class.from_single_file(model_path,
