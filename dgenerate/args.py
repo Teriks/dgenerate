@@ -85,7 +85,7 @@ parser.add_argument('--auth-token', action='store', default=None,
 parser.add_argument('--vae', action='store', default=None,
                     help=f'Specify a VAE. When using torch models the syntax '
                          f'is: "AutoEncoderClass;(URL or file path)". Examples: "AutoencoderKL;vae.pt", '
-                         f'"AsymmetricAutoencoderKL;hugginface/vae", "AutoencoderTiny;hugginface/vae". '
+                         f'"AsymmetricAutoencoderKL;huggingface/vae", "AutoencoderTiny;huggingface/vae". '
                          f'When using a Flax model, there is currently only one available encoder '
                          f'class: "FlaxAutoencoderKL;vae.pt". huggingface URI/slugs, .pt, .pth, and .safetensors '
                          f'files are accepted for AutoencoderKL and FlaxAutoencoderKL, other encoders can only accept '
