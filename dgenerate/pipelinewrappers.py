@@ -267,7 +267,6 @@ def _create_torch_diffusion_pipeline(pipeline_type,
         _load_scheduler(pipeline, scheduler)
 
         if lora is not None:
-
             pipeline.load_lora_weights(lora,
                                        weight_name=lora_weight_name,
                                        revision=lora_revision,
@@ -652,6 +651,9 @@ class DiffusionPipelineWrapperBase:
                     args.pop('width')
                     args.pop('height')
 
+            # refiner does not use LoRA
+            args.pop('cross_attention_kwargs')
+
             return PipelineResultWrapper(
                 self._sdxl_refiner_pipeline(**args, denoising_start=high_noise_fraction).images)
 
@@ -721,10 +723,6 @@ class DiffusionPipelineWrapperBase:
                                                  self._sdxl_refiner_dtype is not None else _get_torch_dtype(
                                                      self._dtype),
 
-                                                 lora=self._lora,
-                                                 lora_weight_name=self._lora_weight_name,
-                                                 lora_revision=self._lora_revision,
-                                                 lora_subfolder=self._lora_subfolder,
                                                  scheduler=self._scheduler,
                                                  safety_checker=self._safety_checker,
                                                  auth_token=self._auth_token,
