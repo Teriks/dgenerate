@@ -80,16 +80,19 @@ parser.add_argument('--subfolder', action='store', default=None,
 
 parser.add_argument('--auth-token', action='store', default=None,
                     help='Huggingface auth token. '
-                         'Optional, may be required to access certain repositories.')
+                         'Required to download restricted repositories that have access permissions '
+                         'granted to your huggingface account.')
 
 parser.add_argument('--vae', action='store', default=None,
                     help=f'Specify a VAE. When using torch models the syntax '
                          f'is: "AutoEncoderClass;(URL or file path)". Examples: "AutoencoderKL;vae.pt", '
                          f'"AsymmetricAutoencoderKL;huggingface/vae", "AutoencoderTiny;huggingface/vae". '
                          f'When using a Flax model, there is currently only one available encoder '
-                         f'class: "FlaxAutoencoderKL;vae.pt". huggingface URI/slugs, .pt, .pth, and .safetensors '
-                         f'files are accepted for AutoencoderKL and FlaxAutoencoderKL, other encoders can only accept '
-                         f'huggingface URI/slugs or a path to a folder on disk with the model configuration.')
+                         f'class: "FlaxAutoencoderKL;vae.pt". huggingface URI/slugs, .pt, .pth, .bin, '
+                         f'.ckpt, and .safetensors files are accepted for AutoencoderKL. '
+                         f'FlaxAutoencoderKL accepts  huggingface URI/slugs and .msgpack files. '
+                         f'other encoders can only accept huggingface URI/slugs or a path to '
+                         f'a folder on disk with the model configuration.')
 
 
 parser.add_argument('--vae-revision', action='store', default="main",
@@ -113,9 +116,10 @@ parser.add_argument('--vae-subfolder', action='store', default=None,
 
 parser.add_argument('--lora', action='store', default=None,
                     help=f'Specify a LoRA and scale factor (flax not supported). This should be a '
-                         f'huggingface url or path to model file on disk (for example, a .safetensors file), and a '
-                         f'floating point number between 0.0 and 1.0 seperated by a semicolon. If no scale '
-                         f'factor is provided, 1.0 is assumed. Example: --lora "my_lora.safetensors;1.0"')
+                         f'huggingface url or path to model file on disk (for example, a .pt, .pth, .bin, '
+                         f'.ckpt, or .safetensors file), and a floating point number between 0.0 and 1.0 '
+                         f'seperated by a semicolon. If no scale factor is provided, 1.0 is assumed. '
+                         f'Example: --lora "my_lora.safetensors;1.0"')
 
 parser.add_argument('--lora-weight-name', action='store', default=None,
                     help=f'Specify the name of the LoRA model file when loading '
@@ -131,16 +135,15 @@ parser.add_argument('--lora-subfolder', action='store', default=None,
                          'If specified when loading from a huggingface repository or folder on disk, '
                          'load weights from the specified subfolder')
 
-
-
 parser.add_argument('--scheduler', action='store', default=None,
-                    help=f'Specify a Scheduler by name. Torch compatible schedulers: ({", ".join(e.name for e in KarrasDiffusionSchedulers)}). ' +
+                    help=f'Specify a Scheduler by name. '
+                         f'Torch compatible schedulers: ({", ".join(e.name for e in KarrasDiffusionSchedulers)}). ' +
                          (f'Flax compatible schedulers: ({", ".join(e.name for e in FlaxKarrasDiffusionSchedulers)})' if have_jax_flax() else ''))
 
 parser.add_argument('--sdxl-refiner', action='store', default=None,
                     help='Stable Diffusion XL (torch-sdxl) refiner model path. '
                          'huggingface model repository slug/URI, path to folder on disk, '
-                         'or path to a .cpkt or .safetensors file.')
+                         'or path to a .pt, .pth, .bin, .cpkt, or .safetensors file.')
 
 parser.add_argument('--sdxl-refiner-revision', action='store', default="main",
                     help='The model revision to use for the sdxl refiner when '
