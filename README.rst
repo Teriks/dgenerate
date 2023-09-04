@@ -72,15 +72,16 @@ Help
                             Main model subfolder. If specified when loading from a huggingface repository or
                             folder, load weights from the specified subfolder
       --auth-token AUTH_TOKEN
-                            Huggingface auth token. Optional, may be required to access certain
-                            repositories.
+                            Huggingface auth token. Required to download restricted repositories that have
+                            access permissions granted to your huggingface account.
       --vae VAE             Specify a VAE. When using torch models the syntax is: "AutoEncoderClass;(URL or
                             file path)". Examples: "AutoencoderKL;vae.pt",
                             "AsymmetricAutoencoderKL;huggingface/vae", "AutoencoderTiny;huggingface/vae".
                             When using a Flax model, there is currently only one available encoder class:
-                            "FlaxAutoencoderKL;vae.pt". huggingface URI/slugs, .pt, .pth, and .safetensors
-                            files are accepted for AutoencoderKL and FlaxAutoencoderKL, other encoders can
-                            only accept huggingface URI/slugs or a path to a folder on disk with the model
+                            "FlaxAutoencoderKL;vae.pt". huggingface URI/slugs, .pt, .pth, .bin, .ckpt, and
+                            .safetensors files are accepted for AutoencoderKL. FlaxAutoencoderKL accepts
+                            huggingface URI/slugs and .msgpack files. other encoders can only accept
+                            huggingface URI/slugs or a path to a folder on disk with the model
                             configuration.
       --vae-revision VAE_REVISION
                             The model revision to use for the VAE when specified manually and loading from
@@ -97,10 +98,10 @@ Help
                             VAE model subfolder. If specified when loading from a huggingface repository or
                             folder, load weights from the specified subfolder
       --lora LORA           Specify a LoRA and scale factor (flax not supported). This should be a
-                            huggingface url or path to model file on disk (for example, a .safetensors
-                            file), and a floating point number between 0.0 and 1.0 seperated by a semicolon.
-                            If no scale factor is provided, 1.0 is assumed. Example: --lora
-                            "my_lora.safetensors;1.0"
+                            huggingface url or path to model file on disk (for example, a .pt, .pth, .bin,
+                            .ckpt, or .safetensors file), and a floating point number between 0.0 and 1.0
+                            seperated by a semicolon. If no scale factor is provided, 1.0 is assumed.
+                            Example: --lora "my_lora.safetensors;1.0"
       --lora-weight-name LORA_WEIGHT_NAME
                             Specify the name of the LoRA model file when loading from a huggingface
                             repository or folder on disk.
@@ -119,8 +120,8 @@ Help
                             UniPCMultistepScheduler, DPMSolverSDEScheduler).
       --sdxl-refiner SDXL_REFINER
                             Stable Diffusion XL (torch-sdxl) refiner model path. huggingface model
-                            repository slug/URI, path to folder on disk, or path to a .cpkt or .safetensors
-                            file.
+                            repository slug/URI, path to folder on disk, or path to a .pt, .pth, .bin,
+                            .cpkt, or .safetensors file.
       --sdxl-refiner-revision SDXL_REFINER_REVISION
                             The model revision to use for the sdxl refiner when loading from huggingface
                             repository, (The git branch / tag, default is "main")
@@ -169,7 +170,7 @@ Help
                             -se/--seeds is used.
       -af ANIMATION_FORMAT, --animation-format ANIMATION_FORMAT
                             Output format when generating an animation from an input video / gif / webp etc.
-                            Value must be one of: mp4, gif, or webp. (default: mp4)
+                            Value must be one of: webp, gif, or mp4. (default: mp4)
       -fs FRAME_START, --frame-start FRAME_START
                             Starting frame slice point for animated files, the specified frame will be
                             included.
