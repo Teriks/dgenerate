@@ -403,10 +403,11 @@ recommended to prevent out of memory conditions on the average GPU :)
 .. code-block:: bash
 
     dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
-    --sdxl_high_noise_fractions 0.6 0.7 0.8 \
-    --inference-steps 30 \
+    --sdxl-high-noise-fractions 0.6 0.7 0.8 \
+    --inference-steps 50 \
+    --guidance-scale 12 \
     --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
-    --prompts "real photo of an astronaut riding a horse on the surface of the moon" \
+    --prompts "real photo of an astronaut riding a horse on the moon" \
     --variant fp16 --dtype float16 \
     --output-size 1024
     
