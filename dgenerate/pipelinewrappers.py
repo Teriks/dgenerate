@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import os
+from collections import namedtuple
 
 try:
     import jax
@@ -63,7 +64,8 @@ def _load_pytorch_vae(path,
                       revision,
                       variant,
                       torch_dtype,
-                      subfolder):
+                      subfolder,
+                      use_auth_token):
 
     parts = path.split(';', 1)
 
@@ -101,7 +103,8 @@ def _load_pytorch_vae(path,
                                        revision=revision,
                                        variant=variant,
                                        torch_dtype=torch_dtype,
-                                       subfolder=subfolder)
+                                       subfolder=subfolder,
+                                       use_auth_token=use_auth_token)
 
 
 class InvalidLoRAPathError(Exception):
@@ -123,7 +126,8 @@ def _parse_lora(path):
 def _load_flax_vae(path,
                    revision,
                    flax_dtype,
-                   subfolder):
+                   subfolder,
+                   use_auth_token):
     parts = path.split(';', 1)
 
     if len(parts) != 2:
@@ -148,7 +152,8 @@ def _load_flax_vae(path,
         return encoder.from_pretrained(path,
                                        revision=revision,
                                        dtype=flax_dtype,
-                                       subfolder=subfolder)
+                                       subfolder=subfolder,
+                                       use_auth_token=use_auth_token)
 
 
 def _load_scheduler(pipeline, scheduler_name=None):
@@ -207,11 +212,13 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                                      vae_torch_dtype=None,
                                      vae_subfolder=None,
                                      lora=None,
+                                     lora_weight_name=None,
                                      lora_revision=None,
                                      lora_subfolder=None,
                                      scheduler=None,
                                      safety_checker=False,
                                      sdxl=False,
+                                     auth_token=None,
                                      extra_args=None):
     cache_key = _pipeline_cache_key(locals())
 
@@ -234,7 +241,8 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                                               revision=vae_revision,
                                               variant=vae_variant,
                                               torch_dtype=vae_torch_dtype if vae_torch_dtype is not None else torch_dtype,
-                                              subfolder=vae_subfolder)
+                                              subfolder=vae_subfolder,
+                                              use_auth_token=auth_token)
 
         if extra_args is not None:
             kwargs.update(extra_args)
@@ -253,14 +261,22 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                                                       variant=variant,
                                                       torch_dtype=torch_dtype,
                                                       subfolder=model_subfolder,
+                                                      use_auth_token=auth_token,
                                                       **kwargs)
 
         _load_scheduler(pipeline, scheduler)
 
         if lora is not None:
+            print(lora,
+                  lora_weight_name,
+                  lora_revision,
+                  lora_subfolder)
+
             pipeline.load_lora_weights(lora,
+                                       weight_name=lora_weight_name,
                                        revision=lora_revision,
-                                       subfolder=lora_subfolder)
+                                       subfolder=lora_subfolder,
+                                       use_auth_token=auth_token)
 
         if not safety_checker:
             pipeline.safety_checker = _disabled_safety_checker
@@ -282,6 +298,7 @@ def _create_flax_diffusion_pipeline(pipeline_type,
                                     vae_subfolder=None,
                                     scheduler=None,
                                     safety_checker=False,
+                                    auth_token=None,
                                     extra_args=None):
     cache_key = _pipeline_cache_key(locals())
 
@@ -303,7 +320,8 @@ def _create_flax_diffusion_pipeline(pipeline_type,
             kwargs['vae'] = _load_flax_vae(vae,
                                            revision=vae_revision,
                                            flax_dtype=vae_flax_dtype if vae_flax_dtype is not None else flax_dtype,
-                                           subfolder=vae_subfolder)
+                                           subfolder=vae_subfolder,
+                                           use_auth_token=auth_token)
 
         if extra_args is not None:
             kwargs.update(extra_args)
@@ -312,6 +330,7 @@ def _create_flax_diffusion_pipeline(pipeline_type,
                                                           revision=revision,
                                                           dtype=flax_dtype,
                                                           subfolder=model_subfolder,
+                                                          use_auth_token=auth_token,
                                                           **kwargs)
 
         _load_scheduler(pipeline, scheduler)
@@ -390,6 +409,7 @@ class DiffusionPipelineWrapperBase:
                  vae_dtype=None,
                  vae_subfolder=None,
                  lora=None,
+                 lora_weight_name=None,
                  lora_revision=None,
                  lora_subfolder=None,
                  scheduler=None,
@@ -398,11 +418,9 @@ class DiffusionPipelineWrapperBase:
                  sdxl_refiner_revision=None,
                  sdxl_refiner_variant=None,
                  sdxl_refiner_dtype=None,
-                 sdxl_refiner_subfolder=None):
+                 sdxl_refiner_subfolder=None,
+                 auth_token=None):
 
-        self._sdxl_refiner_subfolder = sdxl_refiner_subfolder
-        self._lora_revision = lora_revision
-        self._lora_subfolder = lora_subfolder
         self._vae_subfolder = vae_subfolder
         self._model_subfolder = model_subfolder
         self._device = device
@@ -420,13 +438,18 @@ class DiffusionPipelineWrapperBase:
         self._vae_dtype = vae_dtype
         self._safety_checker = safety_checker
         self._scheduler = scheduler
-        self._lora = None
+        self._lora = lora
+        self._lora_weight_name = lora_weight_name
         self._lora_scale = None
+        self._lora_revision = lora_revision
+        self._lora_subfolder = lora_subfolder
         self._sdxl_refiner_path = sdxl_refiner_path
         self._sdxl_refiner_pipeline = None
         self._sdxl_refiner_revision = sdxl_refiner_revision
         self._sdxl_refiner_variant = sdxl_refiner_variant
         self._sdxl_refiner_dtype = sdxl_refiner_dtype
+        self._sdxl_refiner_subfolder = sdxl_refiner_subfolder
+        self._auth_token = auth_token
 
         if lora is not None:
             if model_type == "flax":
@@ -474,6 +497,10 @@ class DiffusionPipelineWrapperBase:
         return self._revision
 
     @property
+    def lora_weight_name(self):
+        return self._lora_weight_name
+
+    @property
     def lora_revision(self):
         return self._lora_revision
 
@@ -482,12 +509,12 @@ class DiffusionPipelineWrapperBase:
         return self._sdxl_refiner_pipeline
 
     @property
-    def sdxl_refiner_subfolder(self):
-        return self._sdxl_refiner_subfolder
-
-    @property
     def variant(self):
         return self._variant
+
+    @property
+    def sdxl_refiner_subfolder(self):
+        return self._sdxl_refiner_subfolder
 
     @property
     def device(self):
@@ -518,12 +545,12 @@ class DiffusionPipelineWrapperBase:
         return self._vae
 
     @property
-    def lora_subfolder(self):
-        return self._lora_subfolder
-
-    @property
     def model_type(self):
         return self._model_type
+
+    @property
+    def lora_subfolder(self):
+        return self._lora_subfolder
 
     @property
     def model_subfolder(self):
@@ -536,6 +563,10 @@ class DiffusionPipelineWrapperBase:
     @property
     def vae_dtype(self):
         return self._vae_dtype
+
+    @property
+    def auth_token(self):
+        return self._auth_token
 
     def _pipeline_defaults(self, kwargs):
         args = dict()
@@ -640,36 +671,50 @@ class DiffusionPipelineWrapperBase:
                 raise NotImplementedError('flax and jax are not installed')
 
             self._pipeline, self._flax_params = \
-                _create_flax_diffusion_pipeline(pipeline_type, self._model_path,
+                _create_flax_diffusion_pipeline(pipeline_type,
+                                                self._model_path,
                                                 revision=self._revision,
                                                 flax_dtype=_get_flax_dtype(self._dtype),
-                                                vae=self._vae, vae_revision=self._vae_revision,
+                                                vae=self._vae,
+                                                vae_revision=self._vae_revision,
+                                                vae_subfolder=self._vae_subfolder,
                                                 vae_flax_dtype=_get_flax_dtype(self._vae_dtype),
                                                 scheduler=self._scheduler,
-                                                safety_checker=self._safety_checker)
+                                                safety_checker=self._safety_checker,
+                                                auth_token=self._auth_token)
         elif self._sdxl_refiner_path is not None:
             if self._model_type != 'torch-sdxl':
                 raise NotImplementedError('Only Stable Diffusion XL models support refiners, '
                                           'please use --model-type torch-sdxl if you are trying to load an sdxl model.')
 
             self._pipeline = \
-                _create_torch_diffusion_pipeline(pipeline_type, self._model_path,
-                                                 model_subfolder=self._model_subfolder, sdxl=True,
-                                                 revision=self._revision, variant=self._variant,
+                _create_torch_diffusion_pipeline(pipeline_type,
+                                                 self._model_path,
+                                                 model_subfolder=self._model_subfolder,
+                                                 sdxl=True,
+                                                 revision=self._revision,
+                                                 variant=self._variant,
                                                  torch_dtype=_get_torch_dtype(self._dtype),
-                                                 vae=self._vae, vae_revision=self._vae_revision,
+                                                 vae=self._vae,
+                                                 vae_revision=self._vae_revision,
                                                  vae_variant=self._vae_variant,
                                                  vae_torch_dtype=_get_torch_dtype(self._vae_dtype),
                                                  vae_subfolder=self._vae_subfolder,
-                                                 lora=self._lora, lora_revision=self._lora_revision,
-                                                 lora_subfolder=self._lora_subfolder, scheduler=self._scheduler,
-                                                 safety_checker=self._safety_checker)
+                                                 lora=self._lora,
+                                                 lora_weight_name=self._lora_weight_name,
+                                                 lora_revision=self._lora_revision,
+                                                 lora_subfolder=self._lora_subfolder,
+                                                 scheduler=self._scheduler,
+                                                 safety_checker=self._safety_checker,
+                                                 auth_token=self._auth_token)
 
             refiner_pipeline_type = _PipelineTypes.IMG2IMG if pipeline_type is _PipelineTypes.BASIC else pipeline_type
 
             self._sdxl_refiner_pipeline = \
-                _create_torch_diffusion_pipeline(refiner_pipeline_type, self._sdxl_refiner_path,
-                                                 model_subfolder=self._sdxl_refiner_subfolder, sdxl=True,
+                _create_torch_diffusion_pipeline(refiner_pipeline_type,
+                                                 self._sdxl_refiner_path,
+                                                 model_subfolder=self._sdxl_refiner_subfolder,
+                                                 sdxl=True,
 
                                                  revision=self._sdxl_refiner_revision,
 
@@ -680,9 +725,13 @@ class DiffusionPipelineWrapperBase:
                                                  self._sdxl_refiner_dtype is not None else _get_torch_dtype(
                                                      self._dtype),
 
-                                                 lora=self._lora, lora_revision=self._lora_revision,
-                                                 lora_subfolder=self._lora_subfolder, scheduler=self._scheduler,
+                                                 lora=self._lora,
+                                                 lora_weight_name=self._lora_weight_name,
+                                                 lora_revision=self._lora_revision,
+                                                 lora_subfolder=self._lora_subfolder,
+                                                 scheduler=self._scheduler,
                                                  safety_checker=self._safety_checker,
+                                                 auth_token=self._auth_token,
                                                  extra_args={'vae': self._pipeline.vae,
                                                              'text_encoder_2': self._pipeline.text_encoder_2})
 
@@ -693,18 +742,25 @@ class DiffusionPipelineWrapperBase:
 
         else:
             self._pipeline = \
-                _create_torch_diffusion_pipeline(pipeline_type, self._model_path,
+                _create_torch_diffusion_pipeline(pipeline_type,
+                                                 self._model_path,
                                                  model_subfolder=self._model_subfolder,
                                                  sdxl=self._model_type == 'torch-sdxl',
-                                                 revision=self._revision, variant=self._variant,
+                                                 revision=self._revision,
+                                                 variant=self._variant,
                                                  torch_dtype=_get_torch_dtype(self._dtype),
-                                                 vae=self._vae, vae_revision=self._vae_revision,
+                                                 vae=self._vae,
+                                                 vae_revision=self._vae_revision,
                                                  vae_variant=self._vae_variant,
                                                  vae_torch_dtype=_get_torch_dtype(self._vae_dtype),
                                                  vae_subfolder=self._vae_subfolder,
-                                                 lora=self._lora, lora_revision=self._lora_revision,
-                                                 lora_subfolder=self._lora_subfolder, scheduler=self._scheduler,
-                                                 safety_checker=self._safety_checker).to(self._device)
+                                                 lora=self._lora,
+                                                 lora_weight_name=self._lora_weight_name,
+                                                 lora_revision=self._lora_revision,
+                                                 lora_subfolder=self._lora_subfolder,
+                                                 scheduler=self._scheduler,
+                                                 safety_checker=self._safety_checker,
+                                                 auth_token=self._auth_token).to(self._device)
 
     def __call__(self, **kwargs):
         args = self._pipeline_defaults(kwargs)
@@ -729,6 +785,7 @@ class DiffusionPipelineWrapper(DiffusionPipelineWrapperBase):
                  vae_dtype=None,
                  vae_subfolder=None,
                  lora=None,
+                 lora_weight_name=None,
                  lora_revision=None,
                  lora_subfolder=None,
                  scheduler=None,
@@ -737,8 +794,8 @@ class DiffusionPipelineWrapper(DiffusionPipelineWrapperBase):
                  sdxl_refiner_revision=None,
                  sdxl_refiner_variant=None,
                  sdxl_refiner_dtype=None,
-                 sdxl_refiner_subfolder=None):
-
+                 sdxl_refiner_subfolder=None,
+                 auth_token=None):
         super().__init__(
             model_path,
             dtype,
@@ -753,6 +810,7 @@ class DiffusionPipelineWrapper(DiffusionPipelineWrapperBase):
             vae_dtype,
             vae_subfolder,
             lora,
+            lora_weight_name,
             lora_revision,
             lora_subfolder,
             scheduler,
@@ -761,7 +819,8 @@ class DiffusionPipelineWrapper(DiffusionPipelineWrapperBase):
             sdxl_refiner_revision,
             sdxl_refiner_variant,
             sdxl_refiner_dtype,
-            sdxl_refiner_subfolder)
+            sdxl_refiner_subfolder,
+            auth_token)
 
     def __call__(self, **kwargs):
         self._lazy_init_pipeline(_PipelineTypes.BASIC)
@@ -784,6 +843,7 @@ class DiffusionPipelineImg2ImgWrapper(DiffusionPipelineWrapperBase):
                  vae_dtype=None,
                  vae_subfolder=None,
                  lora=None,
+                 lora_weight_name=None,
                  lora_revision=None,
                  lora_subfolder=None,
                  scheduler=None,
@@ -792,7 +852,8 @@ class DiffusionPipelineImg2ImgWrapper(DiffusionPipelineWrapperBase):
                  sdxl_refiner_revision=None,
                  sdxl_refiner_variant=None,
                  sdxl_refiner_dtype=None,
-                 sdxl_refiner_subfolder=None):
+                 sdxl_refiner_subfolder=None,
+                 auth_token=None):
 
         super().__init__(
             model_path,
@@ -808,6 +869,7 @@ class DiffusionPipelineImg2ImgWrapper(DiffusionPipelineWrapperBase):
             vae_dtype,
             vae_subfolder,
             lora,
+            lora_weight_name,
             lora_revision,
             lora_subfolder,
             scheduler,
@@ -816,7 +878,8 @@ class DiffusionPipelineImg2ImgWrapper(DiffusionPipelineWrapperBase):
             sdxl_refiner_revision,
             sdxl_refiner_variant,
             sdxl_refiner_dtype,
-            sdxl_refiner_subfolder)
+            sdxl_refiner_subfolder,
+            auth_token)
 
     def __call__(self, **kwargs):
         if 'mask_image' in kwargs:

@@ -78,6 +78,10 @@ parser.add_argument('--subfolder', action='store', default=None,
                          'If specified when loading from a huggingface repository or folder, '
                          'load weights from the specified subfolder')
 
+parser.add_argument('--auth-token', action='store', default=None,
+                    help='Huggingface auth token. '
+                         'Optional, may be required to access certain repositories.')
+
 parser.add_argument('--vae', action='store', default=None,
                     help=f'Specify a VAE. When using torch models the syntax '
                          f'is: "AutoEncoderClass;(URL or file path)". Examples: "AutoencoderKL;vae.pt", '
@@ -113,6 +117,11 @@ parser.add_argument('--lora', action='store', default=None,
                          f'floating point number between 0.0 and 1.0 seperated by a semicolon. If no scale '
                          f'factor is provided, 1.0 is assumed. Example: --lora "my_lora.safetensors;1.0"')
 
+parser.add_argument('--lora-weight-name', action='store', default=None,
+                    help=f'Specify the name of the LoRA model file when loading '
+                         f'from a huggingface repository or folder on disk. Do not include the file '
+                         f'extension, use --lora-use-safetensors if specifying a .safetensors file.')
+
 parser.add_argument('--lora-revision', action='store', default=None,
                     help='LoRA model variant. '
                          'The model revision to use for the LoRA model when '
@@ -120,8 +129,10 @@ parser.add_argument('--lora-revision', action='store', default=None,
 
 parser.add_argument('--lora-subfolder', action='store', default=None,
                     help='LoRA model subfolder. '
-                         'If specified when loading from a huggingface repository or folder, '
+                         'If specified when loading from a huggingface repository or folder on disk, '
                          'load weights from the specified subfolder')
+
+
 
 parser.add_argument('--scheduler', action='store', default=None,
                     help=f'Specify a Scheduler by name. Torch compatible schedulers: ({", ".join(e.name for e in KarrasDiffusionSchedulers)}). ' +
