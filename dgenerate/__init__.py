@@ -99,7 +99,8 @@ def run_diffusion():
                 InvalidLoRAPathError,
                 InvalidSchedulerName,
                 torch.cuda.OutOfMemoryError,
-                NotImplementedError) as e:
+                NotImplementedError,
+                EnvironmentError) as e:
             print("Error:", e, file=sys.stderr)
             exit(1)
 
