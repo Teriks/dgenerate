@@ -36,9 +36,10 @@ Help
 .. code-block::
 
     usage: dgenerate [-h] [--model-type MODEL_TYPE] [--revision REVISION] [--variant VARIANT]
-                     [--subfolder SUBFOLDER] [--vae VAE] [--vae-revision VAE_REVISION]
-                     [--vae-variant VAE_VARIANT] [--vae-dtype VAE_DTYPE]
-                     [--vae-subfolder VAE_SUBFOLDER] [--lora LORA] [--lora-revision LORA_REVISION]
+                     [--subfolder SUBFOLDER] [--auth-token AUTH_TOKEN] [--vae VAE]
+                     [--vae-revision VAE_REVISION] [--vae-variant VAE_VARIANT]
+                     [--vae-dtype VAE_DTYPE] [--vae-subfolder VAE_SUBFOLDER] [--lora LORA]
+                     [--lora-weight-name LORA_WEIGHT_NAME] [--lora-revision LORA_REVISION]
                      [--lora-subfolder LORA_SUBFOLDER] [--scheduler SCHEDULER]
                      [--sdxl-refiner SDXL_REFINER] [--sdxl-refiner-revision SDXL_REFINER_REVISION]
                      [--sdxl-refiner-variant SDXL_REFINER_VARIANT]
@@ -72,6 +73,9 @@ Help
       --subfolder SUBFOLDER
                             Main model subfolder. If specified when loading from a huggingface
                             repository or folder, load weights from the specified subfolder
+      --auth-token AUTH_TOKEN
+                            Huggingface auth token. Optional, may be required to access certain
+                            repositories.
       --vae VAE             Specify a VAE. When using torch models the syntax is:
                             "AutoEncoderClass;(URL or file path)". Examples: "AutoencoderKL;vae.pt",
                             "AsymmetricAutoencoderKL;hugginface/vae",
@@ -101,13 +105,17 @@ Help
                             .safetensors file), and a floating point number between 0.0 and 1.0
                             seperated by a semicolon. If no scale factor is provided, 1.0 is assumed.
                             Example: --lora "my_lora.safetensors;1.0"
+      --lora-weight-name LORA_WEIGHT_NAME
+                            Specify the name of the LoRA model file when loading from a huggingface
+                            repository or folder on disk. Do not include the file extension, use
+                            --lora-use-safetensors if specifying a .safetensors file.
       --lora-revision LORA_REVISION
                             LoRA model variant. The model revision to use for the LoRA model when
                             loading from huggingface repository, (The git branch / tag, default is
                             "main")
       --lora-subfolder LORA_SUBFOLDER
                             LoRA model subfolder. If specified when loading from a huggingface
-                            repository or folder, load weights from the specified subfolder
+                            repository or folder on disk, load weights from the specified subfolder
       --scheduler SCHEDULER
                             Specify a Scheduler by name. Torch compatible schedulers: (DDIMScheduler,
                             DDPMScheduler, PNDMScheduler, LMSDiscreteScheduler,
@@ -170,7 +178,7 @@ Help
                             -se/--seeds is used.
       -af ANIMATION_FORMAT, --animation-format ANIMATION_FORMAT
                             Output format when generating an animation from an input video / gif /
-                            webp etc. Value must be one of: gif, mp4, or webp. (default: mp4)
+                            webp etc. Value must be one of: mp4, webp, or gif. (default: mp4)
       -fs FRAME_START, --frame-start FRAME_START
                             Starting frame slice point for animated files, the specified frame will
                             be included.
