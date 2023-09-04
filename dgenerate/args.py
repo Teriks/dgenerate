@@ -73,6 +73,11 @@ parser.add_argument('--variant', action='store', default=None,
                          'from "variant" filename, e.g. "pytorch_model.<variant>.safetensors". '
                          'Defaults to automatic selection. This option is ignored if using flax.')
 
+parser.add_argument('--subfolder', action='store', default=None,
+                    help='Main model subfolder. '
+                         'If specified when loading from a huggingface repository or folder, '
+                         'load weights from the specified subfolder')
+
 parser.add_argument('--vae', action='store', default=None,
                     help=f'Specify a VAE. When using torch models the syntax '
                          f'is: "AutoEncoderClass;(URL or file path)". Examples: "AutoencoderKL;vae.pt", '
@@ -97,12 +102,26 @@ parser.add_argument('--vae-dtype', action='store', default=None, type=_type_dtyp
                     help='VAE model precision when manually specifying a VAE, '
                          'defaults to the value of -t/--dtype. One of: float16 / float32 / auto.')
 
+parser.add_argument('--vae-subfolder', action='store', default=None,
+                    help='VAE model subfolder. '
+                         'If specified when loading from a huggingface repository or folder, '
+                         'load weights from the specified subfolder')
 
 parser.add_argument('--lora', action='store', default=None,
                     help=f'Specify a LoRA and scale factor (flax not supported). This should be a '
                          f'huggingface url or path to model file on disk (for example, a .safetensors file), and a '
                          f'floating point number between 0.0 and 1.0 seperated by a semicolon. If no scale '
                          f'factor is provided, 1.0 is assumed. Example: --lora "my_lora.safetensors;1.0"')
+
+parser.add_argument('--lora-revision', action='store', default=None,
+                    help='LoRA model variant. '
+                         'The model revision to use for the LoRA model when '
+                         'loading from huggingface repository, (The git branch / tag, default is "main")')
+
+parser.add_argument('--lora-subfolder', action='store', default=None,
+                    help='LoRA model subfolder. '
+                         'If specified when loading from a huggingface repository or folder, '
+                         'load weights from the specified subfolder')
 
 parser.add_argument('--scheduler', action='store', default=None,
                     help=f'Specify a Scheduler by name. Torch compatible schedulers: ({", ".join(e.name for e in KarrasDiffusionSchedulers)}). ' +
@@ -121,6 +140,12 @@ parser.add_argument('--sdxl-refiner-variant', action='store', default=None,
                     help='Stable Diffusion XL (torch-sdxl) refiner model variant, defaults to the value of --variant. '
                          'If specified when loading from a huggingface repository or folder, '
                          'load weights from "variant" filename, e.g. "pytorch_model.<variant>.safetensors')
+
+
+parser.add_argument('--sdxl-refiner-subfolder', action='store', default=None,
+                    help='Stable Diffusion XL (torch-sdxl) refiner model subfolder. '
+                         'If specified when loading from a huggingface repository or folder, '
+                         'load weights from the specified subfolder')
 
 parser.add_argument('--sdxl-refiner-dtype', action='store', default=None, type=_type_dtype,
                     help='Stable Diffusion XL (torch-sdxl) refiner model precision, '

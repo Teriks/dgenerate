@@ -120,16 +120,21 @@ class DiffusionRenderLoop:
         self._last_frame_time = 0
 
         self.model_path = None
+        self.model_subfolder = None
         self.sdxl_refiner_path = None
         self.sdxl_refiner_revision = None
         self.sdxl_refiner_variant = None
         self.sdxl_refiner_dtype = None
+        self.sdxl_refiner_subfolder = None
         self.sdxl_high_noise_fractions = []
         self.vae = None
         self.vae_revision = None
         self.vae_variant = None
-        self.vae_dtype =  None
+        self.vae_dtype = None
+        self.vae_subfolder = None
         self.lora = None
+        self.lora_revision = None
+        self.lora_subfolder = None
         self.scheduler = None
         self.safety_checker = False
         self.model_type = 'torch'
@@ -175,6 +180,18 @@ class DiffusionRenderLoop:
                 f'DiffusionRenderLoop.model_type must be one of: {oxford_comma(supported_model_types(), "or")}')
         if self.model_path is None:
             raise ValueError('DiffusionRenderLoop.model_path must not be None')
+        if self.model_subfolder is not None and not isinstance(self.model_subfolder, str):
+            raise ValueError('DiffusionRenderLoop.model_subfolder must be None or str')
+        if self.vae_subfolder is not None and not isinstance(self.vae_subfolder, str):
+            raise ValueError('DiffusionRenderLoop.vae_subfolder must be None or str')
+        if self.lora is not None and not isinstance(self.lora, str):
+            raise ValueError('DiffusionRenderLoop.lora must be None or str')
+        if self.lora_revision is not None and not isinstance(self.lora_revision, str):
+            raise ValueError('DiffusionRenderLoop.lora_revision must be None or str')
+        if self.lora_subfolder is not None and not isinstance(self.lora_subfolder, str):
+            raise ValueError('DiffusionRenderLoop.lora_subfolder must be None or str')
+        if self.sdxl_refiner_subfolder is not None and not isinstance(self.sdxl_refiner_subfolder, str):
+            raise ValueError('DiffusionRenderLoop.sdxl_refiner_subfolder must be None or str')
         if self.sdxl_refiner_path is not None and not isinstance(self.sdxl_refiner_path, str):
             raise ValueError('DiffusionRenderLoop.sdxl_refiner_path must be None or a string')
         if self.vae is not None and not isinstance(self.vae, str):
@@ -366,6 +383,7 @@ class DiffusionRenderLoop:
         else:
 
             diffusion_model = DiffusionPipelineWrapper(self.model_path,
+                                                       model_subfolder=self.model_subfolder,
                                                        dtype=self.dtype,
                                                        device=self.device,
                                                        model_type=self.model_type,
@@ -375,13 +393,17 @@ class DiffusionRenderLoop:
                                                        vae_revision=self.vae_revision,
                                                        vae_variant=self.vae_variant,
                                                        vae_dtype=self.vae_dtype,
+                                                       vae_subfolder=self.vae_subfolder,
                                                        lora=self.lora,
+                                                       lora_revision=self.lora_revision,
+                                                       lora_subfolder=self.lora_subfolder,
                                                        scheduler=self.scheduler,
                                                        safety_checker=self.safety_checker,
                                                        sdxl_refiner_path=self.sdxl_refiner_path,
                                                        sdxl_refiner_revision=self.sdxl_refiner_revision,
                                                        sdxl_refiner_variant=self.sdxl_refiner_variant,
-                                                       sdxl_refiner_dtype=self.sdxl_refiner_dtype)
+                                                       sdxl_refiner_dtype=self.sdxl_refiner_dtype,
+                                                       sdxl_refiner_subfolder=self.sdxl_refiner_subfolder)
 
             sdxl_high_noise_fractions = self.sdxl_high_noise_fractions if self.sdxl_refiner_path is not None else None
             for args_ctx in iterate_diffusion_args(prompts=self.prompts,
@@ -390,7 +412,6 @@ class DiffusionRenderLoop:
                                                    guidance_scales=self.guidance_scales,
                                                    inference_steps_list=self.inference_steps,
                                                    sdxl_high_noise_fractions=sdxl_high_noise_fractions):
-
                 self._pre_generation_step(args_ctx)
                 self._pre_generation(args_ctx)
                 with diffusion_model(**args_ctx.args,
@@ -401,6 +422,7 @@ class DiffusionRenderLoop:
 
     def _render_with_image_seeds(self):
         diffusion_model = DiffusionPipelineImg2ImgWrapper(self.model_path,
+                                                          model_subfolder=self.model_subfolder,
                                                           dtype=self.dtype,
                                                           device=self.device,
                                                           model_type=self.model_type,
@@ -410,13 +432,17 @@ class DiffusionRenderLoop:
                                                           vae_revision=self.vae_revision,
                                                           vae_variant=self.vae_variant,
                                                           vae_dtype=self.vae_dtype,
+                                                          vae_subfolder=self.vae_subfolder,
                                                           lora=self.lora,
+                                                          lora_revision=self.lora_revision,
+                                                          lora_subfolder=self.lora_subfolder,
                                                           scheduler=self.scheduler,
                                                           safety_checker=self.safety_checker,
                                                           sdxl_refiner_path=self.sdxl_refiner_path,
                                                           sdxl_refiner_revision=self.sdxl_refiner_revision,
                                                           sdxl_refiner_variant=self.sdxl_refiner_variant,
-                                                          sdxl_refiner_dtype=self.sdxl_refiner_dtype)
+                                                          sdxl_refiner_dtype=self.sdxl_refiner_dtype,
+                                                          sdxl_refiner_subfolder=self.sdxl_refiner_subfolder)
 
         for image_seed in self.image_seeds:
 

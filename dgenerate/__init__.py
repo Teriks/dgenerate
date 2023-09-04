@@ -54,6 +54,7 @@ def run_diffusion():
 
         render_loop = DiffusionRenderLoop()
         render_loop.model_path = arguments.model_path
+        render_loop.model_subfolder = arguments.subfolder
         render_loop.model_type = arguments.model_type
         render_loop.revision = arguments.revision
         render_loop.variant = arguments.variant
@@ -74,13 +75,17 @@ def run_diffusion():
         render_loop.vae_revision = arguments.vae_revision
         render_loop.vae_variant = arguments.vae_variant
         render_loop.vae_dtype = arguments.vae_dtype
+        render_loop.vae_subfolder = arguments.vae_subfolder
         render_loop.lora = arguments.lora
+        render_loop.lora_revision = arguments.lora_revision
+        render_loop.lora_subfolder = arguments.lora_subfolder
         render_loop.scheduler = arguments.scheduler
         render_loop.safety_checker = arguments.safety_checker
         render_loop.sdxl_refiner_path = arguments.sdxl_refiner
         render_loop.sdxl_refiner_revision = arguments.sdxl_refiner_revision
         render_loop.sdxl_refiner_variant = arguments.sdxl_refiner_variant
         render_loop.sdxl_refiner_dtype = arguments.sdxl_refiner_dtype
+        render_loop.sdxl_refiner_subfolder = arguments.sdxl_refiner_subfolder
         render_loop.sdxl_high_noise_fractions = arguments.sdxl_high_noise_fractions
 
         # run the render loop

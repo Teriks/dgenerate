@@ -36,10 +36,13 @@ Help
 .. code-block::
 
     usage: dgenerate [-h] [--model-type MODEL_TYPE] [--revision REVISION] [--variant VARIANT]
-                     [--vae VAE] [--vae-revision VAE_REVISION] [--vae-variant VAE_VARIANT]
-                     [--vae-dtype VAE_DTYPE] [--lora LORA] [--scheduler SCHEDULER]
+                     [--subfolder SUBFOLDER] [--vae VAE] [--vae-revision VAE_REVISION]
+                     [--vae-variant VAE_VARIANT] [--vae-dtype VAE_DTYPE]
+                     [--vae-subfolder VAE_SUBFOLDER] [--lora LORA] [--lora-revision LORA_REVISION]
+                     [--lora-subfolder LORA_SUBFOLDER] [--scheduler SCHEDULER]
                      [--sdxl-refiner SDXL_REFINER] [--sdxl-refiner-revision SDXL_REFINER_REVISION]
                      [--sdxl-refiner-variant SDXL_REFINER_VARIANT]
+                     [--sdxl-refiner-subfolder SDXL_REFINER_SUBFOLDER]
                      [--sdxl-refiner-dtype SDXL_REFINER_DTYPE] [--safety-checker] [--version]
                      [-d DEVICE] [-t DTYPE] [-s OUTPUT_SIZE] [-o OUTPUT_PATH]
                      [-p PROMPTS [PROMPTS ...]] [-se SEEDS [SEEDS ...] | -gse GEN_SEEDS]
@@ -66,6 +69,9 @@ Help
                             weights from "variant" filename, e.g.
                             "pytorch_model.<variant>.safetensors". Defaults to automatic selection.
                             This option is ignored if using flax.
+      --subfolder SUBFOLDER
+                            Main model subfolder. If specified when loading from a huggingface
+                            repository or folder, load weights from the specified subfolder
       --vae VAE             Specify a VAE. When using torch models the syntax is:
                             "AutoEncoderClass;(URL or file path)". Examples: "AutoencoderKL;vae.pt",
                             "AsymmetricAutoencoderKL;hugginface/vae",
@@ -87,11 +93,21 @@ Help
       --vae-dtype VAE_DTYPE
                             VAE model precision when manually specifying a VAE, defaults to the value
                             of -t/--dtype. One of: float16 / float32 / auto.
+      --vae-subfolder VAE_SUBFOLDER
+                            VAE model subfolder. If specified when loading from a huggingface
+                            repository or folder, load weights from the specified subfolder
       --lora LORA           Specify a LoRA and scale factor (flax not supported). This should be a
                             huggingface url or path to model file on disk (for example, a
                             .safetensors file), and a floating point number between 0.0 and 1.0
                             seperated by a semicolon. If no scale factor is provided, 1.0 is assumed.
                             Example: --lora "my_lora.safetensors;1.0"
+      --lora-revision LORA_REVISION
+                            LoRA model variant. The model revision to use for the LoRA model when
+                            loading from huggingface repository, (The git branch / tag, default is
+                            "main")
+      --lora-subfolder LORA_SUBFOLDER
+                            LoRA model subfolder. If specified when loading from a huggingface
+                            repository or folder, load weights from the specified subfolder
       --scheduler SCHEDULER
                             Specify a Scheduler by name. Torch compatible schedulers: (DDIMScheduler,
                             DDPMScheduler, PNDMScheduler, LMSDiscreteScheduler,
@@ -112,6 +128,10 @@ Help
                             value of --variant. If specified when loading from a huggingface
                             repository or folder, load weights from "variant" filename, e.g.
                             "pytorch_model.<variant>.safetensors
+      --sdxl-refiner-subfolder SDXL_REFINER_SUBFOLDER
+                            Stable Diffusion XL (torch-sdxl) refiner model subfolder. If specified
+                            when loading from a huggingface repository or folder, load weights from
+                            the specified subfolder
       --sdxl-refiner-dtype SDXL_REFINER_DTYPE
                             Stable Diffusion XL (torch-sdxl) refiner model precision, defaults to the
                             value of -t/--dtype. One of: float16 / float32 / auto.
@@ -150,7 +170,7 @@ Help
                             -se/--seeds is used.
       -af ANIMATION_FORMAT, --animation-format ANIMATION_FORMAT
                             Output format when generating an animation from an input video / gif /
-                            webp etc. Value must be one of: webp, gif, or mp4. (default: mp4)
+                            webp etc. Value must be one of: gif, mp4, or webp. (default: mp4)
       -fs FRAME_START, --frame-start FRAME_START
                             Starting frame slice point for animated files, the specified frame will
                             be included.
@@ -784,6 +804,8 @@ Environmental variables will be expanded in the provided input to **STDIN** when
 
 Empty lines and comments starting with ``#`` will be ignored.
 
+You can create a multiline continuation using ``\`` to indicate that a line continues.
+
 The Following is an example input file **my-arguments.txt**:
 
 .. code-block::
@@ -800,7 +822,15 @@ The Following is an example input file **my-arguments.txt**:
 
     stabilityai/stable-diffusion-2-1 --prompts "an astronaut riding a horse" --output-path unique_output_1  --inference-steps 30 --guidance-scales 10
     stabilityai/stable-diffusion-2-1 --prompts "a cowboy riding a horse" --output-path unique_output_2 --inference-steps 30 --guidance-scales 10
-    stabilityai/stable-diffusion-2-1 --prompts "a martian riding a horse" --output-path unique_output_3  --inference-steps 30 --guidance-scales 10
+
+    # Multiline continuations are possible by using \
+
+    stabilityai/stable-diffusion-2-1 --prompts "a martian riding a horse" \
+    --output-path unique_output_3  \
+
+    # There can be comments or newlines within the continuation
+    --inference-steps 30 \
+    --guidance-scales 10
 
 
 To utilize the file on Linux, pipe it into the command or use redirection:
