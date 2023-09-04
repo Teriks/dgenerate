@@ -119,8 +119,7 @@ parser.add_argument('--lora', action='store', default=None,
 
 parser.add_argument('--lora-weight-name', action='store', default=None,
                     help=f'Specify the name of the LoRA model file when loading '
-                         f'from a huggingface repository or folder on disk. Do not include the file '
-                         f'extension, use --lora-use-safetensors if specifying a .safetensors file.')
+                         f'from a huggingface repository or folder on disk.')
 
 parser.add_argument('--lora-revision', action='store', default=None,
                     help='LoRA model variant. '
