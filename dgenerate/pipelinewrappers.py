@@ -57,16 +57,21 @@ class InvalidSchedulerName(Exception):
 
 
 def _is_single_file_model_load(path):
-    ext = os.path.splitext(path)[1]
+    path, ext = os.path.splitext(path)
+
+    if path.startswith('http://') or path.startswith('https://'):
+        return True
+
+    if os.path.isdir(path):
+        return True
+
     if len(ext) == 0:
         return False
 
-    try:
-        int(ext)
-    except ValueError:
-        return False
+    if ext in {'.pt', '.pth', '.bin', '.msgpack', '.ckpt', '.safetensors'}:
+        return True
 
-    return True
+    return False
 
 
 def _load_pytorch_vae(path,
