@@ -397,6 +397,8 @@ Adjust output size to 512x512 and output generated images to 'astronaut' folder.
 
 SDXL is supported and can be used to generate highly realistic images.
 
+Prompt only generation, img2img, and inpainting is supported for SDXL.
+
 Refiner models can be specified, fp16 model variant and a datatype of float16 is
 recommended to prevent out of memory conditions on the average GPU :)
 
