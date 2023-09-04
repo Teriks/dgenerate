@@ -267,10 +267,6 @@ def _create_torch_diffusion_pipeline(pipeline_type,
         _load_scheduler(pipeline, scheduler)
 
         if lora is not None:
-            print(lora,
-                  lora_weight_name,
-                  lora_revision,
-                  lora_subfolder)
 
             pipeline.load_lora_weights(lora,
                                        weight_name=lora_weight_name,
