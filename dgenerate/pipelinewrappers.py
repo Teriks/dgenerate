@@ -652,7 +652,7 @@ class DiffusionPipelineWrapperBase:
                     args.pop('height')
 
             # refiner does not use LoRA
-            args.pop('cross_attention_kwargs')
+            args.pop('cross_attention_kwargs', None)
 
             return PipelineResultWrapper(
                 self._sdxl_refiner_pipeline(**args, denoising_start=high_noise_fraction).images)

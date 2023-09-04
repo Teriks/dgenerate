@@ -393,6 +393,22 @@ Adjust output size to 512x512 and output generated images to 'astronaut' folder.
     --inference-steps 30 40 50 \
     --guidance-scales 5 7 10 \
     --output-size 512x512
+
+
+SDXL is supported and can be used to generate highly realistic images.
+
+Refiner models can be specified, fp16 model variant and a datatype of float16 is
+recommended to prevent out of memory conditions on the average GPU :)
+
+.. code-block:: bash
+
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    --sdxl_high_noise_fractions 0.6 0.7 0.8 \
+    --inference-steps 30 \
+    --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
+    --prompts "real photo of an astronaut riding a horse on the surface of the moon" \
+    --variant fp16 --dtype float16 \
+    --output-size 1024
     
     
 Negative Prompt
@@ -786,6 +802,22 @@ model file on disk such as a .safetensors file.
     --guidance-scales 10 \
     --gen-seeds 5 \
     --output-size 800
+
+
+Specifying the file in a repository directly can be done with ``--lora-weight-name``
+
+Shown below is an SDXL compatible LoRA being used with the SDXL base model and a refiner
+
+.. code-block:: bash
+
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    --inference-steps 30 \
+    --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
+    --prompts "sketch of a horse by Leonardo da Vinci" \
+    --variant fp16 --dtype float16 \
+    --lora "goofyai/SDXL-Lora-Collection;1.0" \
+    --lora-weight-name leonardo_illustration.safetensors \
+    --output-size 1024
 
 
 Batch Processing Arguments From STDIN
