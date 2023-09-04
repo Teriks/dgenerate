@@ -77,6 +77,7 @@ def run_diffusion():
         render_loop.vae_dtype = arguments.vae_dtype
         render_loop.vae_subfolder = arguments.vae_subfolder
         render_loop.lora = arguments.lora
+        render_loop.lora_weight_name = arguments.lora_weight_name
         render_loop.lora_revision = arguments.lora_revision
         render_loop.lora_subfolder = arguments.lora_subfolder
         render_loop.scheduler = arguments.scheduler
@@ -87,6 +88,7 @@ def run_diffusion():
         render_loop.sdxl_refiner_dtype = arguments.sdxl_refiner_dtype
         render_loop.sdxl_refiner_subfolder = arguments.sdxl_refiner_subfolder
         render_loop.sdxl_high_noise_fractions = arguments.sdxl_high_noise_fractions
+        render_loop.auth_token = arguments.auth_token
 
         # run the render loop
         try:
@@ -97,8 +99,7 @@ def run_diffusion():
                 InvalidLoRAPathError,
                 InvalidSchedulerName,
                 torch.cuda.OutOfMemoryError,
-                NotImplementedError,
-                EnvironmentError) as e:
+                NotImplementedError) as e:
             print("Error:", e, file=sys.stderr)
             exit(1)
 
