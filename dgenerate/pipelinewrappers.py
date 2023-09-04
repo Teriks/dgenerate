@@ -57,7 +57,7 @@ class InvalidSchedulerName(Exception):
 
 
 def _is_single_file_model_load(path):
-    return os.path.isfile(path)
+    return len(os.path.splitext(path)[1]) > 0
 
 
 def _load_pytorch_vae(path,
