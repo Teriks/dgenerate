@@ -66,7 +66,6 @@ def _load_pytorch_vae(path,
                       variant,
                       torch_dtype,
                       subfolder):
-    print(locals())
 
     parts = path.split(';', 1)
 
