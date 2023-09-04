@@ -45,8 +45,6 @@ from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline, S
 
 _TORCH_MODEL_CACHE = dict()
 _FLAX_MODEL_CACHE = dict()
-_FLAX_IMG2IMG_MODEL_CACHE = dict()
-_FLAX_INPAINT_MODEL_CACHE = dict()
 
 
 class InvalidVaePathError(Exception):
@@ -169,8 +167,6 @@ def _load_scheduler(pipeline, scheduler_name=None):
 def clear_model_cache():
     _TORCH_MODEL_CACHE.clear()
     _FLAX_MODEL_CACHE.clear()
-    _FLAX_IMG2IMG_MODEL_CACHE.clear()
-    _FLAX_INPAINT_MODEL_CACHE.clear()
 
 
 def _disabled_safety_checker(images, clip_input):
