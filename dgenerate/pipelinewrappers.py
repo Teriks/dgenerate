@@ -107,9 +107,16 @@ def _load_pytorch_vae(path,
     if single_file_load_path:
         if subfolder is not None:
             raise NotImplementedError('Single file VAE loads do not support the subfolder option.')
-        return encoder.from_single_file(path,
-                                        revision=revision,
-                                        torch_dtype=torch_dtype)
+
+        if encoder is AutoencoderKL:
+            # There is a bug in their cast
+            return encoder.from_single_file(path, revision=revision).\
+                to(device=None, dtype=torch_dtype, non_blocking=False)
+        else:
+            return encoder.from_single_file(path,
+                                            revision=revision,
+                                            torch_dtype=torch_dtype)
+
     else:
         return encoder.from_pretrained(path,
                                        revision=revision,
