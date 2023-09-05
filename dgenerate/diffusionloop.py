@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import datetime
+import textwrap
 import itertools
 import math
 import os
@@ -33,7 +34,7 @@ import torch
 from .mediainput import iterate_image_seed, get_image_seed_info
 from .mediaoutput import create_animation_writer, supported_animation_writer_formats
 from .pipelinewrappers import DiffusionPipelineWrapper, DiffusionPipelineImg2ImgWrapper, supported_model_types
-from .textprocessing import oxford_comma, underline
+from .textprocessing import oxford_comma, underline, long_text_wrap_width
 
 
 class InvalidDeviceOrdinalException(Exception):
@@ -127,6 +128,8 @@ class DiffusionRenderLoop:
         self.sdxl_refiner_dtype = None
         self.sdxl_refiner_subfolder = None
         self.sdxl_high_noise_fractions = []
+        self.sdxl_original_size = None
+        self.sdxl_target_size = None
         self.vae = None
         self.vae_revision = None
         self.vae_variant = None
@@ -220,6 +223,12 @@ class DiffusionRenderLoop:
             raise ValueError('DiffusionRenderLoop.image_seeds must have len')
         if self.output_size is None and len(self.image_seeds) == 0:
             raise ValueError('DiffusionRenderLoop.output_size must not be None when no image seeds specified')
+        if self.output_size is not None and not isinstance(self.output_size, tuple):
+            raise ValueError('DiffusionRenderLoop.output_size must be None or a tuple')
+        if self.sdxl_original_size is not None and not isinstance(self.sdxl_original_size, tuple):
+            raise ValueError('DiffusionRenderLoop.sdxl_original_size must be None or a tuple')
+        if self.sdxl_target_size is not None and not isinstance(self.sdxl_target_size, tuple):
+            raise ValueError('DiffusionRenderLoop.sdxl_target_size must be None or a tuple')
         if not _has_len(self.image_seed_strengths):
             raise ValueError('DiffusionRenderLoop.seeds must have len')
         if not _has_len(self.guidance_scales):
@@ -317,14 +326,23 @@ class DiffusionRenderLoop:
 
         prompt_format = []
 
+        prompt_wrap_width = long_text_wrap_width()
+
         val = args_ctx.prompt["prompt"]
         if val is not None and len(val) > 0:
-            prompt_format.append(f'Prompt: "{val}"')
+            header = 'Prompt: '
+            val = textwrap.fill(val, width=prompt_wrap_width-len(header),
+                                     subsequent_indent=' '*len(header))
+            prompt_format.append(f'{header}"{val}"')
 
         if 'negative_prompt' in args_ctx.prompt:
             val = args_ctx.prompt["negative_prompt"]
             if val is not None and len(val) > 0:
-                prompt_format.append(f'Negative Prompt: "{val}"')
+                header = 'Negative Prompt: '
+                val = textwrap.fill(val,
+                                    width=prompt_wrap_width-len(header),
+                                    subsequent_indent=' '*len(header))
+                prompt_format.append(f'{header}"{val}"')
 
         prompt_format = '\n'.join(prompt_format)
         if len(prompt_format) > 0:
@@ -425,7 +443,9 @@ class DiffusionRenderLoop:
                 with diffusion_model(**args_ctx.args,
                                      seed=args_ctx.seed,
                                      width=self.output_size[0],
-                                     height=self.output_size[1]).images[0] as gen_img:
+                                     height=self.output_size[1],
+                                     sdxl_original_size=self.sdxl_original_size,
+                                     sdxl_target_size=self.sdxl_target_size).images[0] as gen_img:
                     self._write_prompt_only_image(args_ctx, gen_img)
 
     def _render_with_image_seeds(self):
@@ -484,12 +504,16 @@ class DiffusionRenderLoop:
                                     diffusion_model(**args_ctx.args,
                                                     image=image_seed_obj.image,
                                                     mask_image=mask_image,
-                                                    seed=args_ctx.seed).images[0] as gen_img:
+                                                    seed=args_ctx.seed,
+                                                    sdxl_original_size=self.sdxl_original_size,
+                                                    sdxl_target_size=self.sdxl_target_size).images[0] as gen_img:
                                 self._write_image_seed_gen_image(args_ctx, gen_img)
                         else:
                             with diffusion_model(**args_ctx.args,
                                                  image=image_seed_obj.image,
-                                                 seed=args_ctx.seed).images[0] as gen_img:
+                                                 seed=args_ctx.seed,
+                                                 sdxl_original_size=self.sdxl_original_size,
+                                                 sdxl_target_size=self.sdxl_target_size).images[0] as gen_img:
                                 self._write_image_seed_gen_image(args_ctx, gen_img)
 
     def _render_animation(self, image_seed, diffusion_model, arg_iterator, fps):
@@ -522,13 +546,17 @@ class DiffusionRenderLoop:
                             with diffusion_model(**args_ctx.args,
                                                  seed=args_ctx.seed,
                                                  image=image_seed_obj.image,
-                                                 mask_image=image_seed_obj.mask_image).images[0] as gen_img:
+                                                 mask_image=image_seed_obj.mask_image,
+                                                 sdxl_original_size=self.sdxl_original_size,
+                                                 sdxl_target_size=self.sdxl_target_size).images[0] as gen_img:
                                 video_writer.write(gen_img)
                                 self._write_animation_frame(args_ctx, image_seed_obj, gen_img)
                         else:
                             with diffusion_model(**args_ctx.args,
                                                  seed=args_ctx.seed,
-                                                 image=image_seed_obj.image).images[0] as gen_img:
+                                                 image=image_seed_obj.image,
+                                                 sdxl_original_size=self.sdxl_original_size,
+                                                 sdxl_target_size=self.sdxl_target_size).images[0] as gen_img:
                                 video_writer.write(gen_img)
                                 self._write_animation_frame(args_ctx, image_seed_obj, gen_img)
 

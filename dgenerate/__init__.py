@@ -19,7 +19,9 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-__version__ = "0.16.4"
+__version__ = "0.17.0"
+
+import textwrap
 
 import torch
 
@@ -37,7 +39,7 @@ def run_diffusion():
     import transformers
 
     from .args import parse_args
-    from .textprocessing import underline
+    from .textprocessing import underline, long_text_wrap_width
     from .diffusionloop import DiffusionRenderLoop
     from .pipelinewrappers import clear_model_cache
     from .mediainput import ImageSeedParseError, MaskImageSizeMismatchError
@@ -88,6 +90,8 @@ def run_diffusion():
         render_loop.sdxl_refiner_dtype = arguments.sdxl_refiner_dtype
         render_loop.sdxl_refiner_subfolder = arguments.sdxl_refiner_subfolder
         render_loop.sdxl_high_noise_fractions = arguments.sdxl_high_noise_fractions
+        render_loop.sdxl_original_size = arguments.sdxl_original_size
+        render_loop.sdxl_target_size = arguments.sdxl_target_size
         render_loop.auth_token = arguments.auth_token
 
         # run the render loop
@@ -118,7 +122,13 @@ def run_diffusion():
                 continuation += ' '+line.rstrip(' \\')
             else:
                 args = (continuation+' '+line).lstrip()
-                print(underline("Processing Arguments: " + args))
+
+                header = "Processing Arguments: "
+                args_wrapped = textwrap.fill(args,
+                                     width=long_text_wrap_width()-len(header),
+                                     subsequent_indent=' '*len(header))
+
+                print(underline(header + args_wrapped))
                 parse_and_run(shlex.split(os.path.expandvars(args)))
                 continuation = ''
     else:

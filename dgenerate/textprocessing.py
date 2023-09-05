@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import shutil
 
 
 def oxford_comma(elements, conjunction):
@@ -38,5 +39,9 @@ def oxford_comma(elements, conjunction):
     return output
 
 
+def long_text_wrap_width():
+    return min(shutil.get_terminal_size(fallback=(150, 0))[0], 150)
+
+
 def underline(msg):
-    return msg + '\n' + ('=' * len(max(msg.split('\n'), key=len)))
+    return msg + '\n' + ('=' * min(len(max(msg.split('\n'), key=len)), long_text_wrap_width()))
