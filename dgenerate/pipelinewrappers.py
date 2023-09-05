@@ -619,6 +619,11 @@ class DiffusionPipelineWrapperBase:
         return args
 
     def _call_flax(self, args, kwargs):
+        if kwargs.get('sdxl_original_size', None) is not None:
+            raise NotImplementedError('original-size micro-conditioning may only be used with SDXL models.')
+        if kwargs.get('sdxl_target_size', None) is not None:
+            raise NotImplementedError('target-size micro-conditioning may only be used with SDXL models.')
+
         device_count = jax.device_count()
 
         args['prng_seed'] = jax.random.split(jax.random.PRNGKey(kwargs.get('seed', 0)), device_count)
@@ -658,6 +663,20 @@ class DiffusionPipelineWrapperBase:
                          device_count, 1)])
 
     def _call_torch(self, args, kwargs):
+        sdxl_original_size = kwargs.get('sdxl_original_size', None)
+        sdxl_target_size = kwargs.get('sdxl_target_size', None)
+
+        if self._model_type != 'torch-sdxl':
+            if sdxl_original_size is not None:
+                raise NotImplementedError('original-size micro-conditioning may only be used with SDXL models.')
+            if sdxl_target_size is not None:
+                raise NotImplementedError('target-size micro-conditioning may only be used with SDXL models.')
+        else:
+            if sdxl_original_size is not None:
+                args['target_size'] = sdxl_target_size
+            if sdxl_target_size is not None:
+                args['original_size'] = sdxl_original_size
+
         args['num_images_per_prompt'] = kwargs.get('num_images_per_prompt', 1)
         args['generator'] = torch.Generator(device=self._device).manual_seed(kwargs.get('seed', 0))
         args['prompt'] = kwargs.get('prompt', '')

@@ -22,14 +22,14 @@
 import argparse
 import os
 import random
-from . import __version__
 
 from diffusers.schedulers import KarrasDiffusionSchedulers
 
+from . import __version__
+from .diffusionloop import is_valid_device_string, InvalidDeviceOrdinalException
 from .mediaoutput import supported_animation_writer_formats
 from .pipelinewrappers import supported_model_types, have_jax_flax
 from .textprocessing import oxford_comma
-from .diffusionloop import is_valid_device_string, InvalidDeviceOrdinalException
 
 if have_jax_flax():
     from diffusers.schedulers import FlaxKarrasDiffusionSchedulers
@@ -50,6 +50,7 @@ def _from_model_type(val):
         raise argparse.ArgumentTypeError(
             f'Must be one of: {oxford_comma(supported_model_types(), "or")}. Unknown value: {val}')
     return val
+
 
 def _type_dtype(dtype):
     dtype = dtype.lower()
@@ -92,7 +93,6 @@ parser.add_argument('--vae', action='store', default=None,
                          f'URI/slugs, .pt, .pth, .bin, .ckpt, and .safetensors files. '
                          f'Other encoders can only accept huggingface URI/slugs or a path to '
                          f'a folder on disk with the model configuration and model file(s).')
-
 
 parser.add_argument('--vae-revision', action='store', default="main",
                     help='The model revision to use for the VAE when specified manually and '
@@ -137,7 +137,8 @@ parser.add_argument('--lora-subfolder', action='store', default=None,
 parser.add_argument('--scheduler', action='store', default=None,
                     help=f'Specify a Scheduler by name. '
                          f'Torch compatible schedulers: ({", ".join(e.name for e in KarrasDiffusionSchedulers)}). ' +
-                         (f'Flax compatible schedulers: ({", ".join(e.name for e in FlaxKarrasDiffusionSchedulers)})' if have_jax_flax() else ''))
+                         (
+                             f'Flax compatible schedulers: ({", ".join(e.name for e in FlaxKarrasDiffusionSchedulers)})' if have_jax_flax() else ''))
 
 parser.add_argument('--sdxl-refiner', action='store', default=None,
                     help='Stable Diffusion XL (torch-sdxl) refiner model path. '
@@ -153,7 +154,6 @@ parser.add_argument('--sdxl-refiner-variant', action='store', default=None,
                          'If specified when loading from a huggingface repository or folder, '
                          'load weights from "variant" filename, e.g. "pytorch_model.<variant>.safetensors')
 
-
 parser.add_argument('--sdxl-refiner-subfolder', action='store', default=None,
                     help='Stable Diffusion XL (torch-sdxl) refiner model subfolder. '
                          'If specified when loading from a huggingface repository or folder, '
@@ -162,6 +162,30 @@ parser.add_argument('--sdxl-refiner-subfolder', action='store', default=None,
 parser.add_argument('--sdxl-refiner-dtype', action='store', default=None, type=_type_dtype,
                     help='Stable Diffusion XL (torch-sdxl) refiner model precision, '
                          'defaults to the value of -t/--dtype. One of: float16 / float32 / auto.')
+
+
+def _type_micro_conditioning_size(size):
+    if size is None:
+        return None
+
+    r = size.lower().split('x')
+    if len(r) < 2:
+        return int(r[0]), int(r[0])
+    else:
+        return int(r[0]), int(r[1])
+
+
+parser.add_argument('--sdxl-original-size', action='store', default=None, type=_type_micro_conditioning_size,
+                    help='Stable Diffusion XL (torch-sdxl) micro-conditioning parameter in the format (WIDTHxHEIGHT). '
+                         'If not the same as --sdxl-target-size the image will appear to be down or upsampled. '
+                         '--sdxl-original-size defaults to --output-size if not specified. Part of SDXL\'s micro-conditioning as '
+                         'explained in section 2.2 of [https://huggingface.co/papers/2307.01952]')
+
+parser.add_argument('--sdxl-target-size', action='store', default=None, type=_type_micro_conditioning_size,
+                    help='Stable Diffusion XL (torch-sdxl) micro-conditioning parameter in the format (WIDTHxHEIGHT). '
+                         'For most cases, --sdxl-target-size should be set to the desired height and width of the generated image. If '
+                         'not specified it will default to --output-size. Part of SDXL\'s micro-conditioning as explained in '
+                         'section 2.2 of [https://huggingface.co/papers/2307.01952]')
 
 
 def _type_sdxl_high_noise_fractions(val):
@@ -196,7 +220,6 @@ def _type_device(device):
 
 parser.add_argument('-d', '--device', action='store', default='cuda', type=_type_device,
                     help='cuda / cpu. (default: cuda). Use: cuda:0, cuda:1, cuda:2, etc. to specify a specific GPU.')
-
 
 parser.add_argument('-t', '--dtype', action='store', default='auto', type=_type_dtype,
                     help='Model precision: float16 / float32 / auto. (default: auto)')
@@ -378,7 +401,6 @@ parser.add_argument('-ifs', '--inference-steps', action='store', nargs='*', defa
                          'the AI is targeting for the content of the image. Values between 30-40 '
                          'produce good results, higher values may improve image quality and or '
                          'change image content. (default: [30])')
-
 
 parser.add_argument('-hnf', '--sdxl-high-noise-fractions', action='store', nargs='*', default=[0.8],
                     type=_type_sdxl_high_noise_fractions,
