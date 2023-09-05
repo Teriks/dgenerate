@@ -19,7 +19,6 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import os
-from collections import namedtuple
 
 try:
     import jax
@@ -80,7 +79,6 @@ def _load_pytorch_vae(path,
                       torch_dtype,
                       subfolder,
                       use_auth_token):
-
     parts = path.split(';', 1)
 
     if len(parts) != 2:
@@ -156,7 +154,15 @@ def _load_flax_vae(path,
 
     path = parts[1].strip()
 
-    if _is_single_file_model_load(path):
+    can_single_file_load = hasattr(encoder, 'from_single_file')
+    single_file_load_path = _is_single_file_model_load(path)
+
+    if single_file_load_path and not can_single_file_load:
+        raise NotImplementedError(f'{encoder_name} is not capable of loading from a single file, '
+                                  f'must be loaded from a huggingface repository slug or folder on disk.')
+
+    if single_file_load_path:
+        # in the future this will be supported?
         if subfolder is not None:
             raise NotImplementedError('Single file VAE loads do not support the subfolder option.')
         return encoder.from_single_file(path,
@@ -325,13 +331,15 @@ def _create_flax_diffusion_pipeline(pipeline_type,
 
     if catch_hit is None:
         kwargs = {}
+        vae_params = None
 
         if vae is not None:
-            kwargs['vae'] = _load_flax_vae(vae,
-                                           revision=vae_revision,
-                                           flax_dtype=vae_flax_dtype if vae_flax_dtype is not None else flax_dtype,
-                                           subfolder=vae_subfolder,
-                                           use_auth_token=auth_token)
+            vae, vae_params = _load_flax_vae(vae,
+                                             subfolder=vae_subfolder,
+                                             revision=vae_revision,
+                                             flax_dtype=vae_flax_dtype if vae_flax_dtype is not None else flax_dtype,
+                                             use_auth_token=auth_token)
+            kwargs['vae'] = vae
 
         if extra_args is not None:
             kwargs.update(extra_args)
@@ -342,6 +350,9 @@ def _create_flax_diffusion_pipeline(pipeline_type,
                                                           subfolder=model_subfolder,
                                                           use_auth_token=auth_token,
                                                           **kwargs)
+
+        if vae_params is not None:
+            params['vae'] = vae_params
 
         _load_scheduler(pipeline, scheduler)
 
@@ -695,6 +706,7 @@ class DiffusionPipelineWrapperBase:
                                                 scheduler=self._scheduler,
                                                 safety_checker=self._safety_checker,
                                                 auth_token=self._auth_token)
+
         elif self._sdxl_refiner_path is not None:
             if self._model_type != 'torch-sdxl':
                 raise NotImplementedError('Only Stable Diffusion XL models support refiners, '
