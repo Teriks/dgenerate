@@ -78,11 +78,10 @@ Help
                             file path)". Examples: "AutoencoderKL;vae.pt",
                             "AsymmetricAutoencoderKL;huggingface/vae", "AutoencoderTiny;huggingface/vae".
                             When using a Flax model, there is currently only one available encoder class:
-                            "FlaxAutoencoderKL;vae.pt". huggingface URI/slugs, .pt, .pth, .bin, .ckpt, and
-                            .safetensors files are accepted for AutoencoderKL. FlaxAutoencoderKL accepts
-                            huggingface URI/slugs and .msgpack files. other encoders can only accept
-                            huggingface URI/slugs or a path to a folder on disk with the model
-                            configuration.
+                            "FlaxAutoencoderKL;huggingface/vae". AutoencoderKL accepts huggingface
+                            URI/slugs, .pt, .pth, .bin, .ckpt, and .safetensors files. Other encoders can
+                            only accept huggingface URI/slugs or a path to a folder on disk with the model
+                            configuration and model file(s).
       --vae-revision VAE_REVISION
                             The model revision to use for the VAE when specified manually and loading from
                             huggingface repository, (The git branch / tag, default is "main")
@@ -170,7 +169,7 @@ Help
                             -se/--seeds is used.
       -af ANIMATION_FORMAT, --animation-format ANIMATION_FORMAT
                             Output format when generating an animation from an input video / gif / webp etc.
-                            Value must be one of: webp, gif, or mp4. (default: mp4)
+                            Value must be one of: webp, mp4, or gif. (default: mp4)
       -fs FRAME_START, --frame-start FRAME_START
                             Starting frame slice point for animated files, the specified frame will be
                             included.
