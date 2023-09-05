@@ -274,6 +274,7 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                                                        revision=revision,
                                                        variant=variant,
                                                        torch_dtype=torch_dtype,
+                                                       use_safe_tensors=model_path.endswith('.safetensors'),
                                                        **kwargs)
         else:
             pipeline = pipeline_class.from_pretrained(model_path,
