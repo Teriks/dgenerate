@@ -88,11 +88,10 @@ parser.add_argument('--vae', action='store', default=None,
                          f'is: "AutoEncoderClass;(URL or file path)". Examples: "AutoencoderKL;vae.pt", '
                          f'"AsymmetricAutoencoderKL;huggingface/vae", "AutoencoderTiny;huggingface/vae". '
                          f'When using a Flax model, there is currently only one available encoder '
-                         f'class: "FlaxAutoencoderKL;vae.pt". huggingface URI/slugs, .pt, .pth, .bin, '
-                         f'.ckpt, and .safetensors files are accepted for AutoencoderKL. '
-                         f'FlaxAutoencoderKL accepts  huggingface URI/slugs and .msgpack files. '
-                         f'other encoders can only accept huggingface URI/slugs or a path to '
-                         f'a folder on disk with the model configuration.')
+                         f'class: "FlaxAutoencoderKL;huggingface/vae". AutoencoderKL accepts huggingface '
+                         f'URI/slugs, .pt, .pth, .bin, .ckpt, and .safetensors files. '
+                         f'Other encoders can only accept huggingface URI/slugs or a path to '
+                         f'a folder on disk with the model configuration and model file(s).')
 
 
 parser.add_argument('--vae-revision', action='store', default="main",
