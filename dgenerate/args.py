@@ -253,6 +253,12 @@ parser.add_argument('-o', '--output-path', action='store', default=os.path.join(
                          'This directory will be created if it does not exist. (default: ./output)')
 
 
+parser.add_argument('-op', '--output-prefix', action='store', default=None, type=str,
+                    help='Name prefix for generated images and files. '
+                         'This prefix will be added to the beginning of every generated file, '
+                         'followed by an underscore.')
+
+
 def _type_prompts(prompt):
     pn = prompt.strip().split(';')
     pl = len(pn)

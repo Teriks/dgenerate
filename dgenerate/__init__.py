@@ -19,7 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-__version__ = "0.17.0"
+__version__ = "0.18.0"
 
 import textwrap
 
@@ -64,6 +64,7 @@ def run_diffusion():
         render_loop.dtype = arguments.dtype
         render_loop.output_size = arguments.output_size
         render_loop.output_path = arguments.output_path
+        render_loop.output_prefix = arguments.output_prefix
         render_loop.prompts = arguments.prompts
         render_loop.seeds = arguments.seeds
         render_loop.image_seeds = arguments.image_seeds
