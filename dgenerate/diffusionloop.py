@@ -148,6 +148,7 @@ class DiffusionRenderLoop:
         self.variant = None
         self.output_size = (512, 512)
         self.output_path = os.path.join(os.getcwd(), 'output')
+        self.output_prefix = None
         self.prompts = []
         self.seeds = [0]
         self.image_seeds = []
@@ -206,9 +207,11 @@ class DiffusionRenderLoop:
         if self.vae is not None and not isinstance(self.vae, str):
             raise ValueError('DiffusionRenderLoop.vae must be a string: AutoencoderClass;PATH')
         if self.scheduler is not None and not isinstance(self.scheduler, str):
-            raise ValueError('DiffusionRenderLoop.scheduler must be a string that names a compatible scheduler class.')
+            raise ValueError('DiffusionRenderLoop.scheduler must be a string that names a compatible scheduler class')
         if self.output_path is None:
             raise ValueError('DiffusionRenderLoop.output_path must not be None')
+        if self.output_prefix is not None and not isinstance(self.output_prefix, str):
+            raise ValueError('DiffusionRenderLoop.output_prefix must be None or a str')
         if not isinstance(self.device, str) or not is_valid_device_string(self.device):
             raise ValueError('DiffusionRenderLoop.device must be "cuda" or "cpu"')
         if not (isinstance(self.animation_format, str) or
@@ -260,7 +263,8 @@ class DiffusionRenderLoop:
         return self._generation_step
 
     def _gen_filename(self, *args, ext):
-        return os.path.join(self.output_path, '_'.join(str(s).replace('.', '-') for s in args) + '.' + ext)
+        return os.path.join(self.output_path, f'{self.output_prefix+"_" if self.output_prefix is not None else ""}'+'_'.
+                            join(str(s).replace('.', '-') for s in args) + '.' + ext)
 
     def _gen_animation_filename(self, args_ctx: DiffusionArgContext, generation_step, animation_format):
 
