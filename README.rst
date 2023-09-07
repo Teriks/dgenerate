@@ -282,11 +282,11 @@ Install into environment:
 
 .. code-block:: bash
 
-    pip install git+https://github.com/Teriks/dgenerate.git --extra-index-url https://download.pytorch.org/whl/cu118/
+    pip install git+https://github.com/Teriks/dgenerate.git
 
     # if you want a specific version
 
-    pip install git+https://github.com/Teriks/dgenerate.git@v0.18.0 --extra-index-url https://download.pytorch.org/whl/cu118/
+    pip install git+https://github.com/Teriks/dgenerate.git@v0.18.1
 
 Run **dgenerate** to generate images, you must have the environment active for the command to be found:
 
@@ -361,22 +361,21 @@ Activate the environment:
     source dgenerate_environment/bin/activate
 
 
-Optionally install Jax / Flax to add the ability to load flax models. This is very buggy / slow and I don't recommend.
-
-.. code-block:: bash
-
-    pip install --upgrade flax~=0.7.2 "jax[cuda12_pip]~=0.4.14" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-
-
 Install dgenerate into the environment:
 
 .. code-block:: bash
 
     pip3 install git+https://github.com/Teriks/dgenerate.git
 
-    # if you want a specific version
+    # With flax/jax support
+    pip3 install dgenerate[flax] @ git+https://github.com/Teriks/dgenerate.git
 
-    pip3 install git+https://github.com/Teriks/dgenerate.git@v0.18.0
+    # If you want a specific version
+
+    pip3 install git+https://github.com/Teriks/dgenerate.git@v0.18.1
+
+    # With flax/jax support
+    pip3 install dgenerate[flax] @ git+https://github.com/Teriks/dgenerate.git@v0.18.1
 
 
 Run **dgenerate** to generate images, you must have the environment active for the command to be found:
