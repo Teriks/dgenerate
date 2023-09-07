@@ -27,10 +27,10 @@ pillow = "^10.0.0"
 torch = { version = "2.0.1+cu118", source = "pytorch" }
 fake-useragent = "^1.1.3"
 flax = { version = "0.7.2", optional = true}
-jaxlib = { version = "0.4.14+cuda12.cudnn89", optional = true, source = "jax", extras=["cuda12_pip"]}
+jax = {version = "0.4.14", optional = true, extras=["cuda12_pip"]}
 
 [tool.poetry.extras]
-flax = ["flax", "jaxlib"]
+flax = ["flax", "jax"]
 
 [tool.poetry.scripts]
 dgenerate = 'dgenerate.__init__:main'
@@ -47,4 +47,4 @@ priority = "explicit"
 [[tool.poetry.source]]
 name = "jax"
 url = "https://storage.googleapis.com/jax-releases/jax_cuda_releases.html"
-priority = "explicit"
+priority = "supplemental"
