@@ -742,14 +742,14 @@ tpu = ["jaxlib (==0.4.14)", "libtpu-nightly (==0.1.dev20230727)"]
 
 [[package]]
 name = "jaxlib"
-version = "0.4.14+cuda11.cudnn86"
+version = "0.4.14+cuda12.cudnn89"
 description = "XLA library for JAX"
 optional = true
 python-versions = ">=3.9"
 files = [
-    {file = "jaxlib-0.4.14+cuda11.cudnn86-cp310-cp310-manylinux2014_x86_64.whl", hash = "sha256:09c439923a785df517e3f470158dd3e46de454a01eca80935eed4ba383b5e90a"},
-    {file = "jaxlib-0.4.14+cuda11.cudnn86-cp311-cp311-manylinux2014_x86_64.whl", hash = "sha256:05b01bce5e5b182a771665bc7864f6fae3f2ce1251db7575c67d0986a644bcc5"},
-    {file = "jaxlib-0.4.14+cuda11.cudnn86-cp39-cp39-manylinux2014_x86_64.whl", hash = "sha256:8504ee0ea099d763a4fce14f1c295eb87d4b00d309a4af5b3fec096a84622485"},
+    {file = "jaxlib-0.4.14+cuda12.cudnn89-cp310-cp310-manylinux2014_x86_64.whl", hash = "sha256:c663b0ec48e7bc15afba82dbc62f0eb1212d67f91a1aaad6779b7f7165d07130"},
+    {file = "jaxlib-0.4.14+cuda12.cudnn89-cp311-cp311-manylinux2014_x86_64.whl", hash = "sha256:4a5a9195d3345669db04bd699d13cada4142bfbab8677b36463445c66d00c752"},
+    {file = "jaxlib-0.4.14+cuda12.cudnn89-cp39-cp39-manylinux2014_x86_64.whl", hash = "sha256:d032b812505a99b823724798df05009bc4f471377d4ff8417c358408df684eb6"},
 ]
 
 [package.dependencies]
@@ -2307,4 +2307,4 @@ flax = ["flax", "jaxlib", "nvidia-cuda-cupti-cu12", "nvidia-cuda-nvcc-cu12", "nv
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "554f943b4909737115e28163f6398823f321dce4a63d76e72fae26a3f02c6790"
+content-hash = "07945e27fd6f6599a019df1c5f5ce5a8f0402aadcfeb89a34d24b67c389f45e0"
