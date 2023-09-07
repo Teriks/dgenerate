@@ -27,7 +27,7 @@ pillow = "^10.0.0"
 torch = { version = "2.0.1+cu118", source = "pytorch" }
 fake-useragent = "^1.1.3"
 flax = { version = "0.7.2", optional = true}
-jaxlib = {version = "0.4.14", optional = true, extras=["cuda12_pip"], source="jaxlib"}
+jaxlib = {version = "0.4.14+cuda11.cudnn86", optional = true, extras=["cuda12_pip"], source="jaxlib"}
 nvidia-cudnn-cu12 = {version = ">=8.9", optional = true}
 nvidia-cuda-cupti-cu12 = {version = "*", optional = true}
 nvidia-cuda-nvcc-cu12 = {version = "*", optional = true}
