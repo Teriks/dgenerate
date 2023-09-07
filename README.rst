@@ -369,7 +369,7 @@ Install dgenerate into the environment:
 
     # With flax/jax support
 
-    pip3 install "dgenerate[flax] @ git+https://github.com/Teriks/dgenerate.git@poetry" \
+    pip3 install "dgenerate[flax] @ git+https://github.com/Teriks/dgenerate.git" \
     --extra-index-url https://download.pytorch.org/whl/cu118/ \
     -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 

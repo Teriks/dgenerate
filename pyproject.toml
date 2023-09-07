@@ -28,9 +28,25 @@ torch = { version = "2.0.1+cu118", source = "pytorch" }
 fake-useragent = "^1.1.3"
 flax = { version = "0.7.2", optional = true}
 jax = {version = "0.4.14", optional = true, extras=["cuda11_pip"]}
+nvidia-cublas-cu11 = {version = ">=11.11", optional = true}
+nvidia-cuda-cupti-cu11 = {version = ">=11.8", optional = true}
+nvidia-cuda-nvcc-cu11 = {version = ">=11.8", optional = true}
+nvidia-cuda-runtime-cu11 = {version = ">=11.8", optional = true}
+nvidia-cudnn-cu11 = {version = ">=8.8", optional = true}
+nvidia-cufft-cu11 = {version = ">=10.9", optional = true}
+nvidia-cusolver-cu11 = {version = ">=11.4", optional = true}
+nvidia-cusparse-cu11 = {version = ">=11.7", optional = true}
 
 [tool.poetry.extras]
-flax = ["flax", "jax"]
+flax = ["flax", "jax",
+        "nvidia-cublas-cu11",
+        "nvidia-cuda-cupti-cu11",
+        "nvidia-cuda-nvcc-cu11",
+        "nvidia-cuda-runtime-cu11",
+        "nvidia-cudnn-cu11",
+        "nvidia-cufft-cu11",
+        "nvidia-cusolver-cu11",
+        "nvidia-cusparse-cu11"]
 
 [tool.poetry.scripts]
 dgenerate = 'dgenerate.__init__:main'
