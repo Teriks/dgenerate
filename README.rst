@@ -282,11 +282,11 @@ Install into environment:
 
 .. code-block:: bash
 
-    pip install git+https://github.com/Teriks/dgenerate.git
+    pip install git+https://github.com/Teriks/dgenerate.git --extra-index-url https://download.pytorch.org/whl/cu118/
 
-    # if you want a specific version
+    # If you want a specific version
 
-    pip install git+https://github.com/Teriks/dgenerate.git@v0.18.1
+    pip install git+https://github.com/Teriks/dgenerate.git@v0.18.1 --extra-index-url https://download.pytorch.org/whl/cu118/
 
 Run **dgenerate** to generate images, you must have the environment active for the command to be found:
 
@@ -365,17 +365,23 @@ Install dgenerate into the environment:
 
 .. code-block:: bash
 
-    pip3 install git+https://github.com/Teriks/dgenerate.git
+    pip3 install git+https://github.com/Teriks/dgenerate.git --extra-index-url https://download.pytorch.org/whl/cu118/
 
     # With flax/jax support
-    pip3 install dgenerate[flax] @ git+https://github.com/Teriks/dgenerate.git
+
+    pip3 install "dgenerate[flax] @ git+https://github.com/Teriks/dgenerate.git@poetry" \
+    --extra-index-url https://download.pytorch.org/whl/cu118/ \
+    -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
     # If you want a specific version
 
-    pip3 install git+https://github.com/Teriks/dgenerate.git@v0.18.1
+    pip3 install git+https://github.com/Teriks/dgenerate.git@v0.18.1 --extra-index-url https://download.pytorch.org/whl/cu118/
 
-    # With flax/jax support
-    pip3 install dgenerate[flax] @ git+https://github.com/Teriks/dgenerate.git@v0.18.1
+    # Specific version with flax/jax support
+
+    pip3 install "dgenerate[flax] @ git+https://github.com/Teriks/dgenerate.git@v0.18.1" \
+    --extra-index-url https://download.pytorch.org/whl/cu118/ \
+    -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 
 Run **dgenerate** to generate images, you must have the environment active for the command to be found:
