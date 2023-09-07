@@ -742,33 +742,37 @@ tpu = ["jaxlib (==0.4.14)", "libtpu-nightly (==0.1.dev20230727)"]
 
 [[package]]
 name = "jaxlib"
-version = "0.4.14"
+version = "0.4.14+cuda11.cudnn86"
 description = "XLA library for JAX"
 optional = true
 python-versions = ">=3.9"
 files = [
-    {file = "jaxlib-0.4.14-cp310-cp310-macosx_10_14_x86_64.whl", hash = "sha256:843839faa8ac82d80eaddbdb8f1b14808ef7716e806a1f0d2e384f7b890c02c3"},
-    {file = "jaxlib-0.4.14-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:2dadf061b1828d64e5ee4ac10fa05a051ab2043f11e77d0b7246f3d005afd053"},
-    {file = "jaxlib-0.4.14-cp310-cp310-manylinux2014_x86_64.whl", hash = "sha256:9f2ca54997ea1de7ed96f56025914237595d8e5b99549218bb8652b15c6f5dff"},
-    {file = "jaxlib-0.4.14-cp310-cp310-win_amd64.whl", hash = "sha256:504e478acde687fd3ba8ee0b250fb675e26d92b4063d97435d4ea8c5fec360b3"},
-    {file = "jaxlib-0.4.14-cp311-cp311-macosx_10_14_x86_64.whl", hash = "sha256:fb06229143c586bbd05bc932d76aa78c83895c03a1670e267da39f7bc61223e9"},
-    {file = "jaxlib-0.4.14-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:6b38dae702bb8c1b4b54241bf04acefbada9813e606233e59fbc2a51395f650a"},
-    {file = "jaxlib-0.4.14-cp311-cp311-manylinux2014_x86_64.whl", hash = "sha256:5739b7af01d8765c982fd3e5c462ff3ac63d37d583114df639bdc318deb790cb"},
-    {file = "jaxlib-0.4.14-cp311-cp311-win_amd64.whl", hash = "sha256:b03714c869fb78f1166a8a0371a160dd27fc047bee9cfea39c93ad64a0496e35"},
-    {file = "jaxlib-0.4.14-cp39-cp39-macosx_10_14_x86_64.whl", hash = "sha256:137763b4321a86a84cde4f2ee6f51d74416ca8f7dd79059ebf88403f779829ba"},
-    {file = "jaxlib-0.4.14-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:b934e1dbbe1adf49bdf080197db6681c59c80ad07af5e36968dd69825e79a40e"},
-    {file = "jaxlib-0.4.14-cp39-cp39-manylinux2014_x86_64.whl", hash = "sha256:aacea888b9de76ea3b001f0952ba7ae88a4e40a7ede302344b305bbc8d2f5cde"},
-    {file = "jaxlib-0.4.14-cp39-cp39-win_amd64.whl", hash = "sha256:fbd3fb60b3a11585e2db58c340f70a1b51a4a37fadc0c77fbe819677ed75ee78"},
+    {file = "jaxlib-0.4.14+cuda11.cudnn86-cp310-cp310-manylinux2014_x86_64.whl", hash = "sha256:09c439923a785df517e3f470158dd3e46de454a01eca80935eed4ba383b5e90a"},
+    {file = "jaxlib-0.4.14+cuda11.cudnn86-cp311-cp311-manylinux2014_x86_64.whl", hash = "sha256:05b01bce5e5b182a771665bc7864f6fae3f2ce1251db7575c67d0986a644bcc5"},
+    {file = "jaxlib-0.4.14+cuda11.cudnn86-cp39-cp39-manylinux2014_x86_64.whl", hash = "sha256:8504ee0ea099d763a4fce14f1c295eb87d4b00d309a4af5b3fec096a84622485"},
 ]
 
 [package.dependencies]
 ml-dtypes = ">=0.2.0"
 numpy = ">=1.22"
+nvidia-cublas-cu12 = {version = "*", optional = true, markers = "extra == \"cuda12_pip\""}
+nvidia-cuda-cupti-cu12 = {version = "*", optional = true, markers = "extra == \"cuda12_pip\""}
+nvidia-cuda-nvcc-cu12 = {version = "*", optional = true, markers = "extra == \"cuda12_pip\""}
+nvidia-cuda-runtime-cu12 = {version = "*", optional = true, markers = "extra == \"cuda12_pip\""}
+nvidia-cudnn-cu12 = {version = ">=8.9", optional = true, markers = "extra == \"cuda12_pip\""}
+nvidia-cufft-cu12 = {version = "*", optional = true, markers = "extra == \"cuda12_pip\""}
+nvidia-cusolver-cu12 = {version = "*", optional = true, markers = "extra == \"cuda12_pip\""}
+nvidia-cusparse-cu12 = {version = "*", optional = true, markers = "extra == \"cuda12_pip\""}
 scipy = ">=1.7"
 
 [package.extras]
 cuda11-pip = ["nvidia-cublas-cu11 (>=11.11)", "nvidia-cuda-cupti-cu11 (>=11.8)", "nvidia-cuda-nvcc-cu11 (>=11.8)", "nvidia-cuda-runtime-cu11 (>=11.8)", "nvidia-cudnn-cu11 (>=8.8)", "nvidia-cufft-cu11 (>=10.9)", "nvidia-cusolver-cu11 (>=11.4)", "nvidia-cusparse-cu11 (>=11.7)"]
 cuda12-pip = ["nvidia-cublas-cu12", "nvidia-cuda-cupti-cu12", "nvidia-cuda-nvcc-cu12", "nvidia-cuda-runtime-cu12", "nvidia-cudnn-cu12 (>=8.9)", "nvidia-cufft-cu12", "nvidia-cusolver-cu12", "nvidia-cusparse-cu12"]
+
+[package.source]
+type = "legacy"
+url = "https://storage.googleapis.com/jax-releases/jax_cuda_releases.html"
+reference = "jaxlib"
 
 [[package]]
 name = "jinja2"
@@ -2303,4 +2307,4 @@ flax = ["flax", "jaxlib", "nvidia-cuda-cupti-cu12", "nvidia-cuda-nvcc-cu12", "nv
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "3167f8842738963d5fc887b907cf43f99a1cd7655e6d6963e4e5dc2b8e0c104e"
+content-hash = "554f943b4909737115e28163f6398823f321dce4a63d76e72fae26a3f02c6790"
