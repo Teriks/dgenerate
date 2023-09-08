@@ -20,7 +20,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
+import os
 import sys
 import re
 import io
@@ -56,8 +56,9 @@ def lockfile_deps():
             yield d
 
 
-def get_requires(optional=False):
-    return list(f'{dep["name"]}=={dep["version"]}' for dep in lockfile_deps() if dep['optional'] == optional)
+def get_requires(optional=False, exclude={}):
+    return list(f'{dep["name"]}=={dep["version"]}' for dep in lockfile_deps()
+                if dep['optional'] == optional and dep['name'] not in exclude)
 
 
 with open('README.rst', 'r', encoding='utf-8') as f:
@@ -75,7 +76,7 @@ setup(name='dgenerate',
                   'video / gif / webp animation transcoding.',
       long_description=readme,
       include_package_data=True,
-      install_requires=get_requires(),
+      install_requires=get_requires(exclude={'triton'} if os.name == 'nt' else {}),
       extras_require={
           'flax': get_requires(optional=True)
       },
