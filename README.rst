@@ -264,29 +264,24 @@ https://gitforwindows.org/
 Install dgenerate
 -----------------
 
-Create a virtual environment using virtualenv from the command prompt in a directory of your choosing:
+Install pipx
 
 .. code-block:: bash
 
-    pip install virtualenv wheel
-    python -m venv dgenerate_environment
+    pip install pipx
 
-
-Activate the environment:
+Install dgenerate:
 
 .. code-block:: bash
 
-    dgenerate_environment\Scripts\activate
-
-Install into environment:
-
-.. code-block:: bash
-
-    pip install git+https://github.com/Teriks/dgenerate.git --extra-index-url https://download.pytorch.org/whl/cu118/
+    pipx install git+https://github.com/Teriks/dgenerate.git \
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/"
 
     # If you want a specific version
 
-    pip install git+https://github.com/Teriks/dgenerate.git@v0.18.1 --extra-index-url https://download.pytorch.org/whl/cu118/
+    pipx install git+https://github.com/Teriks/dgenerate.git@v0.18.1 \
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/"
+
 
 Run **dgenerate** to generate images, you must have the environment active for the command to be found:
 
@@ -348,40 +343,36 @@ Install Python 3.10+ (Debian / Ubuntu)
 Install dgenerate
 -----------------
 
-Create a virtual environment using virtualenv from the command prompt in a directory of your choosing:
+Install pipx
 
 .. code-block:: bash
 
-    python3 -m venv dgenerate_environment
-
-Activate the environment:
-
-.. code-block:: bash
-
-    source dgenerate_environment/bin/activate
+    python3 pipx
 
 
-Install dgenerate into the environment:
+Install dgenerate:
 
 .. code-block:: bash
 
-    pip3 install git+https://github.com/Teriks/dgenerate.git --extra-index-url https://download.pytorch.org/whl/cu118/
+    pipx install git+https://github.com/Teriks/dgenerate.git \
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/"
 
     # With flax/jax support
 
-    pip3 install "dgenerate[flax] @ git+https://github.com/Teriks/dgenerate.git" \
-    --extra-index-url https://download.pytorch.org/whl/cu118/ \
-    -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    pipx install "dgenerate[flax] @ git+https://github.com/Teriks/dgenerate.git" \
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/ \
+    -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html"
 
     # If you want a specific version
 
-    pip3 install git+https://github.com/Teriks/dgenerate.git@v0.18.1 --extra-index-url https://download.pytorch.org/whl/cu118/
+    pipx install git+https://github.com/Teriks/dgenerate.git@v0.18.1 \
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/"
 
     # Specific version with flax/jax support
 
-    pip3 install "dgenerate[flax] @ git+https://github.com/Teriks/dgenerate.git@v0.18.1" \
-    --extra-index-url https://download.pytorch.org/whl/cu118/ \
-    -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    pipx install "dgenerate[flax] @ git+https://github.com/Teriks/dgenerate.git@v0.18.1" \
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/ \
+    -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html"
 
 
 Run **dgenerate** to generate images, you must have the environment active for the command to be found:
