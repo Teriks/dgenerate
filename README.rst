@@ -264,7 +264,7 @@ https://gitforwindows.org/
 Install dgenerate
 -----------------
 
-Install pipx
+Install pipx:
 
 .. code-block:: bash
 
