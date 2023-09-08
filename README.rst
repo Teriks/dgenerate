@@ -271,6 +271,9 @@ Install pipx:
 .. code-block:: bash
 
     pip install pipx
+    pipx ensurepath
+
+    # Log out and log back in so PATH takes effect
 
 Install dgenerate:
 
