@@ -1,0 +1,9 @@
+stabilityai/stable-diffusion-2 --model-type flax \
+--revision bf16 \
+--dtype float16 \
+--inference-steps 40 \
+--guidance-scales 10 \
+--image-seeds earth.jpg \
+--image-seed-strengths 0.9 \
+--prompts "Earth being struck by an asteroid, real; fake, cgi" \
+--output-size 768
