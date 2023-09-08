@@ -285,16 +285,16 @@ Install dgenerate:
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/"
 
 
-Run **dgenerate** to generate images, you must have the environment active for the command to be found:
+Run **dgenerate** to generate images:
 
 .. code-block:: bash
 
     dgenerate --help
 
-    dgenerate CompVis/stable-diffusion-v1-4 \
-    --prompts "an astronaut riding a horse" \
-    --output-path output \
-    --inference-steps 40 \
+    dgenerate CompVis/stable-diffusion-v1-4 ^
+    --prompts "an astronaut riding a horse" ^
+    --output-path output ^
+    --inference-steps 40 ^
     --guidance-scales 10
 
 Linux or WSL Install
@@ -381,7 +381,7 @@ Install dgenerate
     -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html"
 
 
-Run **dgenerate** to generate images, you must have the environment active for the command to be found:
+Run **dgenerate** to generate images:
 
 .. code-block:: bash
 
