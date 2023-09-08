@@ -264,6 +264,8 @@ https://gitforwindows.org/
 Install dgenerate
 -----------------
 
+Using Windows CMD
+
 Install pipx:
 
 .. code-block:: bash
@@ -274,12 +276,12 @@ Install dgenerate:
 
 .. code-block:: bash
 
-    pipx install git+https://github.com/Teriks/dgenerate.git \
+    pipx install git+https://github.com/Teriks/dgenerate.git ^
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/"
 
     # If you want a specific version
 
-    pipx install git+https://github.com/Teriks/dgenerate.git@v0.18.1 \
+    pipx install git+https://github.com/Teriks/dgenerate.git@v0.18.1 ^
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/"
 
 
