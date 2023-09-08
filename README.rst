@@ -305,6 +305,7 @@ First update your system and install build-essential
     sudo apt update && sudo apt upgrade
     sudo apt install build-essential
 
+
 Install CUDA Toolkit 12.*: https://developer.nvidia.com/cuda-downloads
 
 I recommend using the runfile option:
@@ -313,44 +314,47 @@ I recommend using the runfile option:
 
     # CUDA Toolkit 12.2.1 For Ubuntu / Debian / WSL
 
-    wget wget https://developer.download.nvidia.com/compute/cuda/12.2.1/local_installers/cuda_12.2.1_535.86.10_linux.run
+    wget https://developer.download.nvidia.com/compute/cuda/12.2.1/local_installers/cuda_12.2.1_535.86.10_linux.run
     sudo sh cuda_12.2.1_535.86.10_linux.run
 
 Do not attempt to install a driver from the prompts if using WSL.
-
-Install cuDNN 8.9.1 for CUDA 12.X from archived releases: https://developer.nvidia.com/rdp/cudnn-download
-
-You need a developer account, see documentation for installation on Nvidias website.
 
 Add libraries to linker path:
 
 .. code-block:: bash
 
-    # Add to .bashrc or environment in general
+    # Add to ~/.bashrc
 
+    # For Linux add the following
+    export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+
+    # For WSL add the following
     export LD_LIBRARY_PATH=/usr/lib/wsl/lib:/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+
+    # Add this in both cases as well
     export PATH=/usr/local/cuda/bin:$PATH
 
 
-Install Python 3.10+ (Debian / Ubuntu)
---------------------------------------
+When done editing ``~/.bashrc`` do:
 
 .. code-block:: bash
 
-    sudo apt install python3.10 python3.10-venv python3-wheel
+    source ~/.bashrc
+
+
+Install Python 3.10+ (Debian / Ubuntu) and pipx
+-----------------------------------------------
+
+.. code-block:: bash
+
+    sudo apt install python3.10 python3-pip pipx python3.10-venv python3-wheel
+    pipx ensurepath
+
+    source ~/.bashrc
 
 
 Install dgenerate
 -----------------
-
-Install pipx
-
-.. code-block:: bash
-
-    python3 pipx
-
-
-Install dgenerate:
 
 .. code-block:: bash
 
