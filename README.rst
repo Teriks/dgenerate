@@ -13,8 +13,6 @@ Video of infinite runtime can be processed without memory constraints.
 
 GIF's and WebP can also be processed, with memory constraints.
 
-Generation utilizes https://huggingface.co pytorch and optionally flax models.
-
 This software requires an Nvidia GPU supporting CUDA 11.8+, CPU rendering is possible but extraordinarily slow.
 
 ----
