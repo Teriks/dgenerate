@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "dgenerate"
-version = "0.18.1"
+version = "0.0.0"
 description = "Stable diffusion batch image generation tool with support for video / gif / webp animation transcoding."
 authors = ["Teriks <Teriks@users.noreply.github.com>"]
 readme = "README.rst"

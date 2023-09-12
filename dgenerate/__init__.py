@@ -19,20 +19,18 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-__version__ = "0.18.1"
+__version__ = "0.18.2"
 
 import textwrap
-
-import torch
+import sys
 
 from dgenerate.pipelinewrappers import InvalidVaePathError, InvalidSchedulerName, InvalidLoRAPathError
 
 
 def run_diffusion():
     import os
-    import sys
     import shlex
-
+    import torch
     import warnings
 
     import diffusers
@@ -107,7 +105,7 @@ def run_diffusion():
                 NotImplementedError,
                 EnvironmentError) as e:
             print("Error:", e, file=sys.stderr)
-            exit(1)
+            sys.exit(1)
 
     continuation = ''
     if not sys.stdin.isatty():
@@ -141,4 +139,4 @@ def main():
         run_diffusion()
     except KeyboardInterrupt:
         print("Aborting due to keyboard interrupt!")
-        exit(1)
+        sys.exit(1)
