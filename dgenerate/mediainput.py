@@ -203,6 +203,11 @@ class GifWebpReader(AnimationReader):
 
         total_frames = self._img.n_frames
         anim_frame_duration = self._img.info['duration']
+
+        if anim_frame_duration == 0:
+            # 10 frames per second for bugged gifs
+            anim_frame_duration = 100
+
         anim_fps = 1000 / anim_frame_duration
 
         if self.resize_resolution is None:

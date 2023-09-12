@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="5C4252D7-1D5E-4349-AE21-9A9F9B8E15FB"
+           UpgradeCode="CAA6E951-8C80-44A9-81CF-1F545DAA534C"
+           Language="1033"
+           Manufacturer="Teriks@github.com"
+           Name="dgenerate" Version="0.18.2">
+
+    <Package InstallerVersion="301" InstallPrivileges="elevated" InstallScope="perMachine" Compressed="yes" />
+
+    <MediaTemplate MaximumUncompressedMediaSize="2048" EmbedCab="no" />
+
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    <UIRef Id="WixUI_InstallDir" />
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="INSTALLFOLDER" Name="dgenerate">
+          <Component Id="Path" Guid="{D5C426B0-F916-4BD9-BD7C-2A5FBF81F4E3}" KeyPath="yes">
+              <Environment
+                Id="PATH"
+                Name="PATH"
+                Value="[INSTALLFOLDER]"
+                Permanent="yes"
+                Part="last"
+                Action="set"
+                System="yes" />
+          </Component>
+        </Directory>
+      </Directory>
+    </Directory>
+
+    <Feature Id="Complete">
+          <ComponentGroupRef Id="DgenerateComponents" />
+          <ComponentRef Id="Path" />
+    </Feature>
+
+  </Product>
+</Wix>
