@@ -242,6 +242,7 @@ You can install using the Windows installer provided with each release on the
 `Releases Page <https://github.com/Teriks/dgenerate/releases>`_, or you can manually
 install with pipx, (or pip if you want) as described below.
 
+
 Manual Install
 --------------
 
