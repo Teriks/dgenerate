@@ -238,6 +238,14 @@ Help
 Windows Install
 ===============
 
+You can install using the Windows installer provided with each release on the
+`Releases Page <https://github.com/Teriks/dgenerate/releases>`_, or you can manually
+install with pipx, (or pip if you want) as described below.
+
+Manual Install
+--------------
+
+
 Install Visual Studios (Community or other), make sure "Desktop development with C++" is selected, unselect anything you do not need.
 
 https://visualstudio.microsoft.com/downloads/
@@ -282,7 +290,7 @@ Install dgenerate:
 
     # If you want a specific version
 
-    pipx install git+https://github.com/Teriks/dgenerate.git@v0.18.1 ^
+    pipx install git+https://github.com/Teriks/dgenerate.git@v0.18.2 ^
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/"
 
 
@@ -372,12 +380,12 @@ Install dgenerate
 
     # If you want a specific version
 
-    pipx install git+https://github.com/Teriks/dgenerate.git@v0.18.1 \
+    pipx install git+https://github.com/Teriks/dgenerate.git@v0.18.2 \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/"
 
     # Specific version with flax/jax support
 
-    pipx install "dgenerate[flax] @ git+https://github.com/Teriks/dgenerate.git@v0.18.1" \
+    pipx install "dgenerate[flax] @ git+https://github.com/Teriks/dgenerate.git@v0.18.2" \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/ \
     -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html"
 
