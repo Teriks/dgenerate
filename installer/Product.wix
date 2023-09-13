@@ -10,6 +10,9 @@
 
     <MediaTemplate MaximumUncompressedMediaSize="2048" EmbedCab="no" />
 
+    <MajorUpgrade AllowDowngrades="yes"/>
+    <WixVariable Id="WixUILicenseRtf" Value="license.rtf" />
+
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
     <UIRef Id="WixUI_InstallDir" />
 
