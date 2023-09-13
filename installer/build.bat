@@ -1,4 +1,4 @@
-set PATH=%PATH%;C:\Program Files (x86)\WiX Toolset v3.11\bin
+set PATH="%PATH%;C:\Program Files (x86)\WiX Toolset v3.11\bin"
 
 rmdir build /s /q
 rmdir dist /s /q
