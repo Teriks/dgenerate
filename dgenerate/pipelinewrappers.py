@@ -20,8 +20,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import os
 
-
-
 try:
     import jax
     import jax.numpy as jnp
@@ -59,7 +57,8 @@ class InvalidSchedulerName(Exception):
 
 
 lora_path_parser = ConceptModelPathParser('LoRA', ['scale', 'revision', 'subfolder', 'weight-name'])
-textual_inversion_path_parser = ConceptModelPathParser('Textual Inversion', ['scale', 'revision', 'subfolder', 'weight-name'])
+textual_inversion_path_parser = ConceptModelPathParser('Textual Inversion',
+                                                       ['scale', 'revision', 'subfolder', 'weight-name'])
 
 
 def _is_single_file_model_load(path):
@@ -117,7 +116,7 @@ def _load_pytorch_vae(path,
 
         if encoder is AutoencoderKL:
             # There is a bug in their cast
-            return encoder.from_single_file(path, revision=revision).\
+            return encoder.from_single_file(path, revision=revision). \
                 to(device=None, dtype=torch_dtype, non_blocking=False)
         else:
             return encoder.from_single_file(path,
@@ -237,6 +236,7 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                                      lora_weight_name=None,
                                      lora_revision=None,
                                      lora_subfolder=None,
+                                     textual_inversions=None,
                                      scheduler=None,
                                      safety_checker=False,
                                      sdxl=False,
@@ -288,6 +288,20 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                                                       **kwargs)
 
         _load_scheduler(pipeline, scheduler)
+
+        if textual_inversions is not None and hasattr(pipeline, 'load_textual_inversion'):
+            if isinstance(textual_inversions, str):
+                textual_inversions = [textual_inversions]
+
+            for inversion in textual_inversions:
+                r = textual_inversion_path_parser.parse_concept_args(inversion)
+                print (r)
+                pipeline.load_textual_inversion(r.model,
+                                                weight_name=r.args.get('weight-name',
+                                                                       r.args.get('weight_name', None)),
+                                                revision=r.args.get('revision', None),
+                                                subfolder=r.args.get('subfolder', None),
+                                                use_auth_token=auth_token)
 
         if lora is not None:
             pipeline.load_lora_weights(lora,
@@ -432,6 +446,7 @@ class DiffusionPipelineWrapperBase:
                  vae_dtype=None,
                  vae_subfolder=None,
                  lora=None,
+                 textual_inversions=None,
                  scheduler=None,
                  safety_checker=False,
                  sdxl_refiner_path=None,
@@ -459,6 +474,11 @@ class DiffusionPipelineWrapperBase:
         self._safety_checker = safety_checker
         self._scheduler = scheduler
         self._lora = lora
+        self._lora_scale = None
+        self._lora_revision = None
+        self._lora_subfolder = None
+        self._lora_weight_name = None
+        self._textual_inversions = textual_inversions
         self._sdxl_refiner_path = sdxl_refiner_path
         self._sdxl_refiner_pipeline = None
         self._sdxl_refiner_revision = sdxl_refiner_revision
@@ -518,6 +538,10 @@ class DiffusionPipelineWrapperBase:
     @property
     def sdxl_refiner_path(self):
         return self._sdxl_refiner_path
+
+    @property
+    def textual_inversions(self):
+        return self._textual_inversions
 
     @property
     def revision(self):
@@ -594,6 +618,7 @@ class DiffusionPipelineWrapperBase:
     @property
     def auth_token(self):
         return self._auth_token
+
 
     def _pipeline_defaults(self, kwargs):
         args = dict()
@@ -715,9 +740,15 @@ class DiffusionPipelineWrapperBase:
         if self._pipeline is not None:
             return
 
+        if self._model_type == 'torch-sdxl' and self._textual_inversions is not None:
+            raise NotImplementedError('Textual inversion not supported for SDXL')
+
         if self._model_type == 'flax':
             if not have_jax_flax():
                 raise NotImplementedError('flax and jax are not installed')
+
+            if self._textual_inversions is not None:
+                raise NotImplementedError('Runtime textual inversion not supported for flax')
 
             self._pipeline, self._flax_params = \
                 _create_flax_diffusion_pipeline(pipeline_type,
@@ -801,6 +832,7 @@ class DiffusionPipelineWrapperBase:
                                                  vae_torch_dtype=_get_torch_dtype(self._vae_dtype),
                                                  vae_subfolder=self._vae_subfolder,
                                                  lora=self._lora,
+                                                 textual_inversions=self._textual_inversions,
                                                  lora_weight_name=self._lora_weight_name,
                                                  lora_revision=self._lora_revision,
                                                  lora_subfolder=self._lora_subfolder,
@@ -831,6 +863,7 @@ class DiffusionPipelineWrapper(DiffusionPipelineWrapperBase):
                  vae_dtype=None,
                  vae_subfolder=None,
                  lora=None,
+                 textual_inversions=None,
                  scheduler=None,
                  safety_checker=False,
                  sdxl_refiner_path=None,
@@ -853,6 +886,7 @@ class DiffusionPipelineWrapper(DiffusionPipelineWrapperBase):
             vae_dtype,
             vae_subfolder,
             lora,
+            textual_inversions,
             scheduler,
             safety_checker,
             sdxl_refiner_path,
@@ -883,6 +917,7 @@ class DiffusionPipelineImg2ImgWrapper(DiffusionPipelineWrapperBase):
                  vae_dtype=None,
                  vae_subfolder=None,
                  lora=None,
+                 textual_inversions=None,
                  scheduler=None,
                  safety_checker=False,
                  sdxl_refiner_path=None,
@@ -906,6 +941,7 @@ class DiffusionPipelineImg2ImgWrapper(DiffusionPipelineWrapperBase):
             vae_dtype,
             vae_subfolder,
             lora,
+            textual_inversions,
             scheduler,
             safety_checker,
             sdxl_refiner_path,

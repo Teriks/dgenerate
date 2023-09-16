@@ -78,6 +78,7 @@ def run_diffusion():
         render_loop.vae_dtype = arguments.vae_dtype
         render_loop.vae_subfolder = arguments.vae_subfolder
         render_loop.lora = arguments.lora
+        render_loop.textual_inversions = arguments.textual_inversions
         render_loop.scheduler = arguments.scheduler
         render_loop.safety_checker = arguments.safety_checker
         render_loop.sdxl_refiner_path = arguments.sdxl_refiner
