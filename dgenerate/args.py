@@ -113,7 +113,7 @@ parser.add_argument('--vae-subfolder', action='store', default=None,
                          'If specified when loading from a huggingface repository or folder, '
                          'load weights from the specified subfolder.')
 
-parser.add_argument('--lora', action='store', default=None,
+parser.add_argument('--lora', '--loras', action='store', default=None,
                     help=f'Specify a LoRA model (flax not supported). This should be a '
                          f'huggingface repository slug or path to model file on disk (for example, a .pt, .pth, .bin, '
                          f'.ckpt, or .safetensors file). Optional arguments can be provided after the LorA '
@@ -126,6 +126,20 @@ parser.add_argument('--lora', action='store', default=None,
                          f'weights file to be loaded when loading from a repository or folder on disk. If you wish to load a weights file directly '
                          f'from disk, the simplest way is: "my_lora.safetensors", or with a scale "my_lora.safetensors;scale=1.0", all '
                          f'other options are unused in this case and may proc an error if used.')
+
+
+parser.add_argument('--textual-inversions', nargs='+', action='store', default=None,
+                    help=f'Specify a Textual Inversion models (SDXL and flax not supported). This should be a '
+                         f'huggingface repository slug or path to model file on disk (for example, a .pt, .pth, .bin, '
+                         f'.ckpt, or .safetensors file), multiple models can be specified. Optional arguments can be provided '
+                         f'after each Textual Inversion model specification, these include: revision, subfolder, and weight-name. '
+                         f'They can be specified as so in any order, they are not positional: '
+                         f'"huggingface/ti_model;revision=main;subfolder=repo_subfolder;weight-name=ti_model.safetensors". '
+                         f'The revision indicates the git revision when loading from a huggingface repository or repository in '
+                         f'a folder on disk, subfolder indicates the subfolder that the weights file is in when specifying a repository '
+                         f'or folder on disk, and weight-name indicates the name of the weights file to be loaded when loading from a '
+                         f'repository or folder on disk. If you wish to load a weights file directly from disk, the simplest '
+                         f'way is just: "my_ti_model.safetensors", all other options are unused in this case and may proc an error if used.')
 
 parser.add_argument('--scheduler', action='store', default=None,
                     help=f'Specify a Scheduler by name. '
