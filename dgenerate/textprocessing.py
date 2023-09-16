@@ -21,6 +21,49 @@
 import shutil
 
 
+class ConceptModelPathParseError(Exception):
+    pass
+
+
+class ConceptModelPath:
+    def __init__(self, model, args):
+        self.model = model
+        self.args = args
+
+    def __str__(self):
+        return f"{self.model}: {self.args}"
+
+
+class ConceptModelPathParser:
+
+    def __init__(self, concept_name, known_args):
+        self.known_args = known_args
+        self.concept_name = concept_name
+
+    def parse_concept_args(self, strin):
+        args = dict()
+        parts = strin.split(';')
+        parts = iter(parts)
+        model = parts.__next__()
+        for i in parts:
+            vals = i.split('=', 1)
+            if len(vals) == 0:
+                raise ConceptModelPathParseError(f'Error parsing model load arguments for '
+                                                 f'{self.concept_name} model "{model}", Empty argument space, '
+                                                 f'stray semicolon?')
+            if len(vals) == 1:
+                raise ConceptModelPathParseError(f'Error parsing model load arguments for '
+                                                 f'{self.concept_name} model "{model}", missing value '
+                                                 f'assignment for argument {vals[0]}.')
+            name = vals[0].strip().lower()
+            if self.known_args is not None and name not in self.known_args:
+                raise ConceptModelPathParseError(
+                    f'Unknown model load argument "{name}" for {self.concept_name} model "{model}", '
+                    f'valid arguments: {", ".join(list(self.known_args))}')
+            args[name] = vals[1].strip().strip('"\'')
+        return ConceptModelPath(model, args)
+
+
 def oxford_comma(elements, conjunction):
     cnt = len(elements)
     elements = (str(i) for i in elements)

@@ -136,9 +136,6 @@ class DiffusionRenderLoop:
         self.vae_dtype = None
         self.vae_subfolder = None
         self.lora = None
-        self.lora_weight_name = None,
-        self.lora_revision = None
-        self.lora_subfolder = None
         self.scheduler = None
         self.safety_checker = False
         self.model_type = 'torch'
@@ -194,12 +191,6 @@ class DiffusionRenderLoop:
             raise ValueError('DiffusionRenderLoop.vae_subfolder must be None or str')
         if self.lora is not None and not isinstance(self.lora, str):
             raise ValueError('DiffusionRenderLoop.lora must be None or str')
-        if self.lora_weight_name is not None and not isinstance(self.lora_weight_name, str):
-            raise ValueError('DiffusionRenderLoop.lora_weight_name must be None or str')
-        if self.lora_revision is not None and not isinstance(self.lora_revision, str):
-            raise ValueError('DiffusionRenderLoop.lora_revision must be None or str')
-        if self.lora_subfolder is not None and not isinstance(self.lora_subfolder, str):
-            raise ValueError('DiffusionRenderLoop.lora_subfolder must be None or str')
         if self.sdxl_refiner_subfolder is not None and not isinstance(self.sdxl_refiner_subfolder, str):
             raise ValueError('DiffusionRenderLoop.sdxl_refiner_subfolder must be None or str')
         if self.sdxl_refiner_path is not None and not isinstance(self.sdxl_refiner_path, str):
@@ -423,9 +414,6 @@ class DiffusionRenderLoop:
                                                        vae_dtype=self.vae_dtype,
                                                        vae_subfolder=self.vae_subfolder,
                                                        lora=self.lora,
-                                                       lora_weight_name=self.lora_weight_name,
-                                                       lora_revision=self.lora_revision,
-                                                       lora_subfolder=self.lora_subfolder,
                                                        scheduler=self.scheduler,
                                                        safety_checker=self.safety_checker,
                                                        sdxl_refiner_path=self.sdxl_refiner_path,
@@ -466,9 +454,6 @@ class DiffusionRenderLoop:
                                                           vae_dtype=self.vae_dtype,
                                                           vae_subfolder=self.vae_subfolder,
                                                           lora=self.lora,
-                                                          lora_weight_name=self.lora_weight_name,
-                                                          lora_revision=self.lora_revision,
-                                                          lora_subfolder=self.lora_subfolder,
                                                           scheduler=self.scheduler,
                                                           safety_checker=self.safety_checker,
                                                           sdxl_refiner_path=self.sdxl_refiner_path,

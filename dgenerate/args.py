@@ -40,7 +40,7 @@ parser = argparse.ArgumentParser(
                 'support for video / gif / webp animation transcoding.')
 
 parser.add_argument('model_path', action='store',
-                    help='huggingface model repository, repository slug/URI, path to folder on disk, '
+                    help='huggingface model repository slug, path to folder on disk, '
                          'or path to a .cpkt or .safetensors file.')
 
 
@@ -77,7 +77,7 @@ parser.add_argument('--variant', action='store', default=None,
 parser.add_argument('--subfolder', action='store', default=None,
                     help='Main model subfolder. '
                          'If specified when loading from a huggingface repository or folder, '
-                         'load weights from the specified subfolder')
+                         'load weights from the specified subfolder.')
 
 parser.add_argument('--auth-token', action='store', default=None,
                     help='Huggingface auth token. '
@@ -86,12 +86,12 @@ parser.add_argument('--auth-token', action='store', default=None,
 
 parser.add_argument('--vae', action='store', default=None,
                     help=f'Specify a VAE. When using torch models the syntax '
-                         f'is: "AutoEncoderClass;(URL or file path)". Examples: "AutoencoderKL;vae.pt", '
-                         f'"AsymmetricAutoencoderKL;huggingface/vae", "AutoencoderTiny;huggingface/vae". '
-                         f'When using a Flax model, there is currently only one available encoder '
-                         f'class: "FlaxAutoencoderKL;huggingface/vae". AutoencoderKL accepts huggingface '
-                         f'URI/slugs, .pt, .pth, .bin, .ckpt, and .safetensors files. '
-                         f'Other encoders can only accept huggingface URI/slugs or a path to '
+                         f'is: "AutoEncoderClass;(huggingface repository slug or file path)". '
+                         f'Examples: "AutoencoderKL;vae.pt", "AsymmetricAutoencoderKL;huggingface/vae", '
+                         f'"AutoencoderTiny;huggingface/vae". When using a Flax model, there is '
+                         f'currently only one available encoder class: "FlaxAutoencoderKL;huggingface/vae". '
+                         f'AutoencoderKL accepts huggingface repository slugs, .pt, .pth, .bin, .ckpt, and .safetensors files. '
+                         f'Other encoders can only accept huggingface repository slugs or a path to '
                          f'a folder on disk with the model configuration and model file(s).')
 
 parser.add_argument('--vae-revision', action='store', default="main",
@@ -111,28 +111,21 @@ parser.add_argument('--vae-dtype', action='store', default=None, type=_type_dtyp
 parser.add_argument('--vae-subfolder', action='store', default=None,
                     help='VAE model subfolder. '
                          'If specified when loading from a huggingface repository or folder, '
-                         'load weights from the specified subfolder')
+                         'load weights from the specified subfolder.')
 
 parser.add_argument('--lora', action='store', default=None,
-                    help=f'Specify a LoRA and scale factor (flax not supported). This should be a '
-                         f'huggingface url or path to model file on disk (for example, a .pt, .pth, .bin, '
-                         f'.ckpt, or .safetensors file), and a floating point number between 0.0 and 1.0 '
-                         f'seperated by a semicolon. If no scale factor is provided, 1.0 is assumed. '
-                         f'Example: --lora "my_lora.safetensors;1.0"')
-
-parser.add_argument('--lora-weight-name', action='store', default=None,
-                    help=f'Specify the name of the LoRA model file when loading '
-                         f'from a huggingface repository or folder on disk.')
-
-parser.add_argument('--lora-revision', action='store', default=None,
-                    help='LoRA model variant. '
-                         'The model revision to use for the LoRA model when '
-                         'loading from huggingface repository, (The git branch / tag, default is "main")')
-
-parser.add_argument('--lora-subfolder', action='store', default=None,
-                    help='LoRA model subfolder. '
-                         'If specified when loading from a huggingface repository or folder on disk, '
-                         'load weights from the specified subfolder')
+                    help=f'Specify a LoRA model (flax not supported). This should be a '
+                         f'huggingface repository slug or path to model file on disk (for example, a .pt, .pth, .bin, '
+                         f'.ckpt, or .safetensors file). Optional arguments can be provided after the LorA '
+                         f'model specification, these include: scale, revision, subfolder, and weight-name. '
+                         f'They can be specified as so in any order, they are not positional: '
+                         f'"huggingface/lora;scale=1.0;revision=main;subfolder=repo_subfolder;weight-name=lora.safetensors". '
+                         f'The scale argument indicates the scale factor of the LoRA, revision indicates the git revision when loading '
+                         f'from a huggingface repository or repository in a folder on disk, subfolder indicates the subfolder that '
+                         f'the weights file is in when specifying a repository or folder on disk, and weight-name indicates the name of the '
+                         f'weights file to be loaded when loading from a repository or folder on disk. If you wish to load a weights file directly '
+                         f'from disk, the simplest way is: "my_lora.safetensors", or with a scale "my_lora.safetensors;scale=1.0", all '
+                         f'other options are unused in this case and may proc an error if used.')
 
 parser.add_argument('--scheduler', action='store', default=None,
                     help=f'Specify a Scheduler by name. '
@@ -142,7 +135,7 @@ parser.add_argument('--scheduler', action='store', default=None,
 
 parser.add_argument('--sdxl-refiner', action='store', default=None,
                     help='Stable Diffusion XL (torch-sdxl) refiner model path. '
-                         'huggingface model repository slug/URI, path to folder on disk, '
+                         'huggingface model repository slug, path to folder on disk, '
                          'or path to a .pt, .pth, .bin, .cpkt, or .safetensors file.')
 
 parser.add_argument('--sdxl-refiner-revision', action='store', default="main",
@@ -157,7 +150,7 @@ parser.add_argument('--sdxl-refiner-variant', action='store', default=None,
 parser.add_argument('--sdxl-refiner-subfolder', action='store', default=None,
                     help='Stable Diffusion XL (torch-sdxl) refiner model subfolder. '
                          'If specified when loading from a huggingface repository or folder, '
-                         'load weights from the specified subfolder')
+                         'load weights from the specified subfolder.')
 
 parser.add_argument('--sdxl-refiner-dtype', action='store', default=None, type=_type_dtype,
                     help='Stable Diffusion XL (torch-sdxl) refiner model precision, '

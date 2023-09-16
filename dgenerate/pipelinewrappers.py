@@ -20,6 +20,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import os
 
+
+
 try:
     import jax
     import jax.numpy as jnp
@@ -38,6 +40,7 @@ except ImportError:
 import torch
 import numbers
 from PIL import Image
+from dgenerate.textprocessing import ConceptModelPathParser, ConceptModelPathParseError
 from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline, StableDiffusionInpaintPipeline, \
     StableDiffusionInpaintPipelineLegacy, StableDiffusionXLPipeline, StableDiffusionXLImg2ImgPipeline, \
     StableDiffusionXLInpaintPipeline, \
@@ -53,6 +56,10 @@ class InvalidVaePathError(Exception):
 
 class InvalidSchedulerName(Exception):
     pass
+
+
+lora_path_parser = ConceptModelPathParser('LoRA', ['scale', 'revision', 'subfolder', 'weight-name'])
+textual_inversion_path_parser = ConceptModelPathParser('Textual Inversion', ['scale', 'revision', 'subfolder', 'weight-name'])
 
 
 def _is_single_file_model_load(path):
@@ -128,18 +135,6 @@ def _load_pytorch_vae(path,
 
 class InvalidLoRAPathError(Exception):
     pass
-
-
-def _parse_lora(path):
-    parts = path.split(';', 1)
-
-    try:
-        if len(parts) == 2:
-            return parts[0].strip(), float(parts[1].strip())
-        else:
-            return parts[0].strip(), 1.0
-    except Exception as e:
-        raise InvalidLoRAPathError(e)
 
 
 def _load_flax_vae(path,
@@ -437,9 +432,6 @@ class DiffusionPipelineWrapperBase:
                  vae_dtype=None,
                  vae_subfolder=None,
                  lora=None,
-                 lora_weight_name=None,
-                 lora_revision=None,
-                 lora_subfolder=None,
                  scheduler=None,
                  safety_checker=False,
                  sdxl_refiner_path=None,
@@ -467,10 +459,6 @@ class DiffusionPipelineWrapperBase:
         self._safety_checker = safety_checker
         self._scheduler = scheduler
         self._lora = lora
-        self._lora_weight_name = lora_weight_name
-        self._lora_scale = None
-        self._lora_revision = lora_revision
-        self._lora_subfolder = lora_subfolder
         self._sdxl_refiner_path = sdxl_refiner_path
         self._sdxl_refiner_pipeline = None
         self._sdxl_refiner_revision = sdxl_refiner_revision
@@ -482,7 +470,18 @@ class DiffusionPipelineWrapperBase:
         if lora is not None:
             if model_type == "flax":
                 raise NotImplementedError("LoRA loading is not implemented for flax.")
-            self._lora, self._lora_scale = _parse_lora(lora)
+
+            try:
+                result = lora_path_parser.parse_concept_args(lora)
+            except ConceptModelPathParseError as e:
+                raise InvalidLoRAPathError(e)
+
+            self._lora = result.model
+            self._lora_scale = float(result.args.get('scale', 1.0))
+            self._lora_revision = result.args.get('revision', None)
+            self._lora_subfolder = result.args.get('subfolder', None)
+            self._lora_weight_name = result.args.get('weight_name',
+                                                     result.args.get('weight-name', None))
 
     @property
     def vae_revision(self):
@@ -832,9 +831,6 @@ class DiffusionPipelineWrapper(DiffusionPipelineWrapperBase):
                  vae_dtype=None,
                  vae_subfolder=None,
                  lora=None,
-                 lora_weight_name=None,
-                 lora_revision=None,
-                 lora_subfolder=None,
                  scheduler=None,
                  safety_checker=False,
                  sdxl_refiner_path=None,
@@ -857,9 +853,6 @@ class DiffusionPipelineWrapper(DiffusionPipelineWrapperBase):
             vae_dtype,
             vae_subfolder,
             lora,
-            lora_weight_name,
-            lora_revision,
-            lora_subfolder,
             scheduler,
             safety_checker,
             sdxl_refiner_path,
@@ -890,9 +883,6 @@ class DiffusionPipelineImg2ImgWrapper(DiffusionPipelineWrapperBase):
                  vae_dtype=None,
                  vae_subfolder=None,
                  lora=None,
-                 lora_weight_name=None,
-                 lora_revision=None,
-                 lora_subfolder=None,
                  scheduler=None,
                  safety_checker=False,
                  sdxl_refiner_path=None,
@@ -916,9 +906,6 @@ class DiffusionPipelineImg2ImgWrapper(DiffusionPipelineWrapperBase):
             vae_dtype,
             vae_subfolder,
             lora,
-            lora_weight_name,
-            lora_revision,
-            lora_subfolder,
             scheduler,
             safety_checker,
             sdxl_refiner_path,
