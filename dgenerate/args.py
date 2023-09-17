@@ -318,6 +318,12 @@ parser.add_argument('-op', '--output-prefix', action='store', default=None, type
                          This prefix will be added to the beginning of every generated file,
                          followed by an underscore.""")
 
+parser.add_argument('-ox', '--output-overwrite', action='store_true', default=False,
+                    help="""Enable overwrites of files in the output directory that already exists.
+                            The default behavior is not to do this, and instead append a filename suffix: "_duplicate_(number)"
+                            when it is detected that the generated file name already exists.
+                            """)
+
 
 def _type_prompts(prompt):
     pn = prompt.strip().split(';')
