@@ -965,7 +965,7 @@ This example shows loading a LoRA using a huggingface repository slug and specif
 
 Specifying the file in a repository directly can be done with the named argument ``weight-name``
 
-Shown below is an SDXL compatible LoRA being used with the SDXL base model and a refiner
+Shown below is an SDXL compatible LoRA being used with the SDXL base model and a refiner.
 
 .. code-block:: bash
 
