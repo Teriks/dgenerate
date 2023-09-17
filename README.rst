@@ -1192,7 +1192,7 @@ The Following is an example input file **my-config.txt**:
     CompVis/stable-diffusion-v1-4 --prompts "a cowboy riding a horse" --seeds 78553317097366 --output-path output --inference-steps 30 --guidance-scales 10
     CompVis/stable-diffusion-v1-4 --prompts "a martian riding a horse" --seeds 22797399276707 --output-path output --inference-steps 30 --guidance-scales 10
 
-    # Guarantee that no overwrites happen by specifying different output paths for each invocation
+    # Guarantee that no file name collisions happen by specifying different output paths for each invocation
 
     stabilityai/stable-diffusion-2-1 --prompts "an astronaut riding a horse" --output-path unique_output_1  --inference-steps 30 --guidance-scales 10
     stabilityai/stable-diffusion-2-1 --prompts "a cowboy riding a horse" --output-path unique_output_2 --inference-steps 30 --guidance-scales 10

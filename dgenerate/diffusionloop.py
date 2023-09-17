@@ -20,11 +20,11 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import datetime
-import textwrap
 import itertools
 import math
 import os
 import re
+import textwrap
 import time
 from pathlib import Path
 from typing import Iterator
@@ -139,6 +139,7 @@ class DiffusionRenderLoop:
         self.output_size = (512, 512)
         self.output_path = os.path.join(os.getcwd(), 'output')
         self.output_prefix = None
+        self.output_overwrite = False
         self.prompts = []
         self.seeds = [0]
         self.image_seeds = []
@@ -183,6 +184,8 @@ class DiffusionRenderLoop:
             raise ValueError('DiffusionRenderLoop.output_path must not be None')
         if self.output_prefix is not None and not isinstance(self.output_prefix, str):
             raise ValueError('DiffusionRenderLoop.output_prefix must be None or a str')
+        if not isinstance(self.output_overwrite, bool):
+            raise ValueError('DiffusionRenderLoop.output_overwrite must be bool')
         if not isinstance(self.device, str) or not is_valid_device_string(self.device):
             raise ValueError('DiffusionRenderLoop.device must be "cuda" or "cpu"')
         if not (isinstance(self.animation_format, str) or
@@ -234,8 +237,26 @@ class DiffusionRenderLoop:
         return self._generation_step
 
     def _gen_filename(self, *args, ext):
-        return os.path.join(self.output_path, f'{self.output_prefix+"_" if self.output_prefix is not None else ""}'+'_'.
-                            join(str(s).replace('.', '-') for s in args) + '.' + ext)
+        def _make_path(args, ext, dup_number=None):
+            return os.path.join(self.output_path,
+                                f'{self.output_prefix + "_" if self.output_prefix is not None else ""}' + '_'.
+                                join(str(s).replace('.', '-') for s in args) + (
+                                    '' if dup_number is None else f'_duplicate_{dup_number}') + '.' + ext)
+
+        path = _make_path(args, ext)
+
+        if self.output_overwrite:
+            return path
+
+        if not os.path.exists(path):
+            return path
+
+        duplicate_number = 1
+        while os.path.exists(path):
+            path = _make_path(args, ext, duplicate_number)
+            duplicate_number += 1
+
+        return path
 
     def _gen_animation_filename(self, args_ctx: DiffusionArgContext, generation_step, animation_format):
 
@@ -306,8 +327,8 @@ class DiffusionRenderLoop:
         val = args_ctx.prompt["prompt"]
         if val is not None and len(val) > 0:
             header = 'Prompt: '
-            val = textwrap.fill(val, width=prompt_wrap_width-len(header),
-                                     subsequent_indent=' '*len(header))
+            val = textwrap.fill(val, width=prompt_wrap_width - len(header),
+                                subsequent_indent=' ' * len(header))
             prompt_format.append(f'{header}"{val}"')
 
         if 'negative_prompt' in args_ctx.prompt:
@@ -315,8 +336,8 @@ class DiffusionRenderLoop:
             if val is not None and len(val) > 0:
                 header = 'Negative Prompt: '
                 val = textwrap.fill(val,
-                                    width=prompt_wrap_width-len(header),
-                                    subsequent_indent=' '*len(header))
+                                    width=prompt_wrap_width - len(header),
+                                    subsequent_indent=' ' * len(header))
                 prompt_format.append(f'{header}"{val}"')
 
         prompt_format = '\n'.join(prompt_format)
