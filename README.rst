@@ -912,6 +912,7 @@ accepted values are the same as ``--dtype``, IE: 'float32', 'float16', 'auto'
 If you are loading a .safetensors or other file from a path on disk, only the ``model`` and ``dtype`` arguments are available.
 
 .. code-block:: bash
+
     # These are only syntax examples
 
     dgenerate huggingface/diffusion_model \
@@ -1005,6 +1006,7 @@ If your weights file exists in a subfolder of the repository, use the named argu
 If you are loading a .safetensors or other file from a path on disk, only the ``scale`` argument is available
 
 .. code-block:: bash
+
     # This is only a syntax example
 
     dgenerate runwayml/stable-diffusion-v1-5 \
@@ -1030,7 +1032,8 @@ that may or may not be a local git repository on disk, when loading directly fro
 or other file from a path on disk they should not be used.
 
 
-.. code-block::
+.. code-block:: bash
+
     # Load a textual inversion from a huggingface repository specifying it's name in the repository
     # as an argument
 
@@ -1069,6 +1072,7 @@ If your weights file exists in a subfolder of the repository, use the named argu
 If you are loading a .safetensors or other file from a path on disk, simply do
 
 .. code-block:: bash
+
     # This is only a syntax example
 
     dgenerate runwayml/stable-diffusion-v1-5 \
@@ -1096,6 +1100,7 @@ The other named arguments are available when loading from a huggingface reposito
 that may or may not be a local git repository on disk.
 
 .. code-block:: bash
+
     # Basic usage of SDXL with a refiner
 
     stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
