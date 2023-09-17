@@ -862,7 +862,7 @@ If you want to select the repository revision, such as ``main`` etc, use the nam
     --output-size 512x512
 
 
-If you wish to specify a weights variant IE: load "pytorch_model.<variant>.safetensors", from a huggingface
+If you wish to specify a weights variant IE: load ``pytorch_model.<variant>.safetensors``, from a huggingface
 repository that has variants of the same model, use the named argument ``variant``.  This usage is only
 valid when loading VAE's if ``--model-type`` is either ``torch`` or ``torch-sdxl``.  Attempting
 to use it with FlaxAutoencoderKL with produce an error message. By default this value is the same as
@@ -1123,7 +1123,7 @@ If you want to select the repository revision, such as ``main`` etc, use the nam
     --prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork"
 
 
-If you wish to specify a weights variant IE: load "pytorch_model.<variant>.safetensors", from a huggingface
+If you wish to specify a weights variant IE: load ``pytorch_model.<variant>.safetensors``, from a huggingface
 repository that has variants of the same model, use the named argument ``variant``. By default this
 value is the same as ``--variant`` when that option is specified for the main model.
 
