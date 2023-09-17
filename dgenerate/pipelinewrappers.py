@@ -789,8 +789,8 @@ class DiffusionPipelineWrapperBase:
         elif width is not None:
             opts.append(('--output-size', f'{width}'))
 
-        if image is not None:
-            if mask_image is not None:
+        if image is not None and hasattr(image, 'filename'):
+            if mask_image is not None and hasattr(mask_image, 'filename'):
                 opts.append(('--image-seeds', f'"{image.filename};{mask_image.filename}"'))
             else:
                 opts.append(('--image-seeds', quote(image.filename)))
