@@ -226,10 +226,11 @@ class GifWebpReader(AnimationReader):
         self.resize_resolution = resize_resolution
 
         total_frames = self._img.n_frames
-        anim_frame_duration = self._img.info['duration']
+
+        anim_frame_duration = self._img.info.get('duration', 0)
 
         if anim_frame_duration == 0:
-            # 10 frames per second for bugged gifs
+            # 10 frames per second for bugged gifs / webp
             anim_frame_duration = 100
 
         anim_fps = 1000 / anim_frame_duration
@@ -476,6 +477,11 @@ def _fetch_image_seed_data(uri, uri_desc, local=False, mime_type_filter=None, mi
                            mime_acceptable_desc=''):
     if local:
         mime_type = mimetypes.guess_type(uri)[0]
+
+        if mime_type is None and uri.endswith('.webp'):
+            # webp missing from mimetypes library
+            mime_type = "image/webp"
+
         if mime_type_filter is not None and not mime_type_filter(mime_type):
             raise ImageSeedParseError(
                 f'Unknown {mime_type_reject_noun} mimetype "{mime_type}" for situation in '
