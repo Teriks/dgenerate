@@ -88,3 +88,7 @@ def long_text_wrap_width():
 
 def underline(msg):
     return msg + '\n' + ('=' * min(len(max(msg.split('\n'), key=len)), long_text_wrap_width()))
+
+
+def quote(strin):
+    return f'"{strin}"'

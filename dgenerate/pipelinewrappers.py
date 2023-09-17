@@ -38,7 +38,7 @@ except ImportError:
 import torch
 import numbers
 from PIL import Image
-from dgenerate.textprocessing import ConceptModelPathParser, ConceptModelPathParseError
+from dgenerate.textprocessing import ConceptModelPathParser, ConceptModelPathParseError, quote
 from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline, StableDiffusionInpaintPipeline, \
     StableDiffusionInpaintPipelineLegacy, StableDiffusionXLPipeline, StableDiffusionXLImg2ImgPipeline, \
     StableDiffusionXLInpaintPipeline, \
@@ -565,8 +565,43 @@ def _image_grid(imgs, rows, cols):
 
 
 class PipelineResultWrapper:
-    def __init__(self, images):
-        self.images = images
+    def __init__(self, image):
+        self.image = image
+        self._dgenerate_opts = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        if self.image is not None:
+            self.image.close()
+            self.image = None
+
+    @property
+    def dgenerate_config(self):
+        model_path = self._dgenerate_opts[0]
+
+        opts = self._dgenerate_opts[1:]
+
+        config = quote(model_path) + ' \\\n'
+
+        for opt in opts[:-1]:
+            config += f'{opt[0]} {opt[1]} \\\n'
+
+        last = opts[-1]
+        config += f'{last[0]} {last[1]}'
+
+        return config
+
+    @property
+    def dgenerate_command(self):
+        model_path = self._dgenerate_opts[0]
+        opts = self._dgenerate_opts[1:]
+        return f'dgenerate {model_path} {" ".join(f"{opt[0]} {opt[1]}" for opt in opts)}'
+
+    @property
+    def dgenerate_opts(self):
+        return self._dgenerate_opts.copy()
 
 
 def _gpu_id_from_cuda_device(device):
@@ -626,6 +661,144 @@ class DiffusionPipelineWrapperBase:
                 raise NotImplementedError('Using multiple LoRA models is currently not supported.')
 
             self._lora_scale = parse_lora_path(lora_paths).scale
+
+    @property
+    def revision(self):
+        return self._revision
+
+    @property
+    def safety_checker(self):
+        return self._safety_checker
+
+    @property
+    def variant(self):
+        return self._variant
+
+    @property
+    def dtype(self):
+        return self._dtype
+
+    @property
+    def textual_inversion_paths(self):
+        return [self._textual_inversion_paths] if \
+            isinstance(self._textual_inversion_paths, str) else self.textual_inversion_paths
+
+    @property
+    def device(self):
+        return self._device
+
+    @property
+    def model_path(self):
+        return self._model_path
+
+    @property
+    def scheduler(self):
+        return self._scheduler
+
+    @property
+    def sdxl_refiner_path(self):
+        return self._sdxl_refiner_path
+
+    @property
+    def model_type(self):
+        return self._model_type
+
+    @property
+    def model_subfolder(self):
+        return self._model_subfolder
+
+    @property
+    def vae_path(self):
+        return self._vae_path
+
+    @property
+    def lora_paths(self):
+        return [self._lora_paths] if \
+            isinstance(self._lora_paths, str) else self._lora_paths
+
+    @property
+    def auth_token(self):
+        return self._auth_token
+
+    def _reconstruct_dgenerate_opts(self, **kwargs):
+        prompt = kwargs.get('prompt', None)
+        negative_prompt = kwargs.get('negative_prompt', None)
+        image = kwargs.get('image', None)
+        strength = kwargs.get('strength', None)
+        mask_image = kwargs.get('mask_image', None)
+        seed = kwargs.get('seed')
+        width = kwargs.get('width', None)
+        height = kwargs.get('height', None)
+        num_inference_steps = kwargs.get('num_inference_steps')
+        guidance_scale = kwargs.get('guidance_scale')
+        sdxl_high_noise_fraction = kwargs.get('sdxl_high_noise_fraction', None)
+        sdxl_original_size = kwargs.get('sdxl_original_size', None)
+        sdxl_target_size = kwargs.get('sdxl_target_size', None)
+
+        opts = [self.model_path, ('--model-type', self._model_type), ('--dtype', self._dtype),
+                ('--device', self._device), ('--inference-steps', num_inference_steps),
+                ('--guidance-scales', guidance_scale), ('--seeds', seed)]
+
+        if prompt is not None:
+            if negative_prompt is not None:
+                opts.append(('--prompts', f'"{prompt}; {negative_prompt}"'))
+            else:
+                opts.append(('--prompts', quote(prompt)))
+
+        if self._revision is not None:
+            opts.append(('--revision', self._revision))
+
+        if self._variant is not None:
+            opts.append(('--variant', self._variant))
+
+        if self._model_subfolder is not None:
+            opts.append(('--subfolder', quote(self._model_subfolder)))
+
+        if self._vae_path is not None:
+            opts.append(('--vae', quote(self._vae_path)))
+
+        if self._sdxl_refiner_path is not None:
+            opts.append(('--sdxl-refiner', quote(self._sdxl_refiner_path)))
+
+        if self._lora_paths is not None:
+            if isinstance(self._lora_paths, str):
+                opts.append(('--lora', quote(self._lora_paths)))
+            else:
+                opts.append(('--lora', ' '.join(quote(p) for p in self._lora_paths)))
+
+        if self._textual_inversion_paths is not None:
+            if isinstance(self._textual_inversion_paths, str):
+                opts.append(('--textual-inversions', quote(self._textual_inversion_paths)))
+            else:
+                opts.append(('--textual-inversions', ' '.join(quote(p) for p in self._textual_inversion_paths)))
+
+        if self._scheduler is not None:
+            opts.append(('--scheduler', self._scheduler))
+
+        if sdxl_high_noise_fraction is not None:
+            opts.append(('--sdxl-high-noise-fractions', sdxl_high_noise_fraction))
+
+        if sdxl_original_size is not None:
+            opts.append(('--sdxl-original-size', sdxl_original_size))
+
+        if sdxl_target_size is not None:
+            opts.append(('--sdxl-target-size', sdxl_target_size))
+
+        if width is not None and height is not None:
+            opts.append(('--output-size', f'{width}x{height}'))
+        elif width is not None:
+            opts.append(('--output-size', f'{width}'))
+
+        if image is not None:
+            if mask_image is not None:
+                opts.append(('--image-seeds', f'"{image.filename};{mask_image.filename}"'))
+            else:
+                opts.append(('--image-seeds', quote(image.filename)))
+
+            if strength is not None:
+                opts.append(('--image-seed-strengths', strength))
+
+        return opts
 
     def _pipeline_defaults(self, kwargs):
         args = dict()
@@ -690,8 +863,8 @@ class DiffusionPipelineWrapperBase:
                                 **args, jit=True)[0]
 
         return PipelineResultWrapper(
-            [_image_grid(self._pipeline.numpy_to_pil(images.reshape((images.shape[0],) + images.shape[-3:])),
-                         device_count, 1)])
+            _image_grid(self._pipeline.numpy_to_pil(images.reshape((images.shape[0],) + images.shape[-3:])),
+                        device_count, 1))
 
     def _call_torch(self, args, kwargs):
         sdxl_original_size = kwargs.get('sdxl_original_size', None)
@@ -738,10 +911,10 @@ class DiffusionPipelineWrapperBase:
             args.pop('cross_attention_kwargs', None)
 
             return PipelineResultWrapper(
-                self._sdxl_refiner_pipeline(**args, denoising_start=high_noise_fraction).images)
+                self._sdxl_refiner_pipeline(**args, denoising_start=high_noise_fraction).images[0])
 
         else:
-            return PipelineResultWrapper(self._pipeline(**args).images)
+            return PipelineResultWrapper(self._pipeline(**args).images[0])
 
     def _lazy_init_pipeline(self, pipeline_type):
         if self._pipeline is not None:
@@ -832,9 +1005,12 @@ class DiffusionPipelineWrapperBase:
     def __call__(self, **kwargs):
         args = self._pipeline_defaults(kwargs)
         if self._model_type == 'flax':
-            return self._call_flax(args, kwargs)
+            result = self._call_flax(args, kwargs)
         else:
-            return self._call_torch(args, kwargs)
+            result = self._call_torch(args, kwargs)
+
+        result._dgenerate_opts = self._reconstruct_dgenerate_opts(**kwargs)
+        return result
 
 
 class DiffusionPipelineWrapper(DiffusionPipelineWrapperBase):
