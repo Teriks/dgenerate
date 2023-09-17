@@ -425,7 +425,7 @@ Run **dgenerate** to generate images:
 
     dgenerate --help
 
-    dgenerate CompVis/stable-diffusion-v1-4 \
+    dgenerate stabilityai/stable-diffusion-2-1 \
     --prompts "an astronaut riding a horse" \
     --output-path output \
     --inference-steps 40 \
@@ -442,7 +442,7 @@ Adjust output size to 512x512 and output generated images to 'astronaut' folder.
 
 .. code-block:: bash
 
-    dgenerate CompVis/stable-diffusion-v1-4 \
+    dgenerate stabilityai/stable-diffusion-2-1 \
     --prompts "an astronaut riding a horse" \
     --gen-seeds 5 \
     --output-path astronaut \
@@ -455,7 +455,7 @@ Loading models from huggingface blob links is also supported
 
 .. code-block:: bash
 
-    dgenerate https://huggingface.co/CompVis/stable-diffusion-v1-4/blob/main/unet/diffusion_pytorch_model.safetensors \
+    dgenerate https://huggingface.co/stabilityai/stable-diffusion-2-1/blob/main/v2-1_768-ema-pruned.safetensors \
     --prompts "an astronaut riding a horse" \
     --gen-seeds 5 \
     --output-path astronaut \
@@ -499,7 +499,7 @@ or "horse wearing a saddle" etc.
 
 .. code-block:: bash
 
-    dgenerate CompVis/stable-diffusion-v1-4 \
+    dgenerate stabilityai/stable-diffusion-2-1 \
     --prompts "an astronaut riding a horse; horse wearing a saddle" \
     --gen-seeds 5 \
     --output-path astronaut \
@@ -524,7 +524,7 @@ All using 50 inference steps, and 10 for guidance scale value.
  
 .. code-block:: bash
 
-    dgenerate CompVis/stable-diffusion-v1-4 \
+    dgenerate stabilityai/stable-diffusion-2-1 \
     --prompts "an astronaut riding a horse" "an astronaut riding a donkey" \
     --gen-seeds 5 \
     --output-path astronaut \
@@ -554,7 +554,7 @@ If you do not adjust the output size of the generated image, the size of the inp
 
 .. code-block:: bash
 
-    dgenerate CompVis/stable-diffusion-v1-4 \
+    dgenerate stabilityai/stable-diffusion-2-1 \
     --prompts "an astronaut walking on mars" \
     --image-seeds https://upload.wikimedia.org/wikipedia/commons/9/98/Aldrin_Apollo_11_original.jpg \
     --image-seed-strengths 0.2 0.5 0.8 \
@@ -591,7 +591,7 @@ areas over the dog in the original image, causing the dog to be replaced with an
 
 .. code-block:: bash
 
-    dgenerate CompVis/stable-diffusion-v1-4 \
+    dgenerate stabilityai/stable-diffusion-2-inpainting \
     --image-seeds "my-image-seed.png;my-mask-image.png" \
     --prompts "Face of a yellow cat, high resolution, sitting on a park bench" \
     --image-seed-strengths 0.8 \
@@ -614,7 +614,7 @@ When one dimension is specified, that dimension is the width, and the height is 
 
 .. code-block:: bash
 
-    dgenerate CompVis/stable-diffusion-v1-4 \
+    dgenerate stabilityai/stable-diffusion-2-1 \
     --image-seeds "my-image-seed.png;1024" "my-image-seed.png;my-mask-image.png;512x512" \
     --prompts "Face of a yellow cat, high resolution, sitting on a park bench" \
     --image-seed-strengths 0.8 \
@@ -642,7 +642,7 @@ If you do not set an output size, the size of the input animation will be used.
 
 .. code-block:: bash
 
-    dgenerate CompVis/stable-diffusion-v1-4 \
+    dgenerate stabilityai/stable-diffusion-2-1 \
     --prompts "an astronaut riding a horse" \
     --image-seeds https://upload.wikimedia.org/wikipedia/commons/7/7b/Muybridge_race_horse_~_big_transp.gif \
     --image-seed-strengths 0.5 \
@@ -679,7 +679,7 @@ image output will be produced instead of an animation.
     
     # Generate using only the first frame
     
-    dgenerate CompVis/stable-diffusion-v1-4 \
+    dgenerate stabilityai/stable-diffusion-2-1 \
     --prompts "an astronaut riding a horse" \
     --image-seeds https://upload.wikimedia.org/wikipedia/commons/7/7b/Muybridge_race_horse_~_big_transp.gif \
     --image-seed-strengths 0.5 \
@@ -714,7 +714,7 @@ them together.
 
     # A video with a static inpaint mask over the entire video
 
-    dgenerate CompVis/stable-diffusion-v1-4 \
+    dgenerate stabilityai/stable-diffusion-2-inpainting \
     --prompts "an astronaut riding a horse" \
     --image-seeds "my-animation.mp4;my-static-mask.png" \
     --output-path inpaint \
@@ -724,64 +724,64 @@ them together.
     # from the right video. The two animated inputs do not have to be the same file format
     # you can mask videos with gif/webp and vice versa
 
-    dgenerate CompVis/stable-diffusion-v1-4 \
+    dgenerate stabilityai/stable-diffusion-2-inpainting \
     --prompts "an astronaut riding a horse" \
     --image-seeds "my-animation.mp4;my-animation-mask.mp4" \
     --output-path inpaint \
-    --animation-format mp4 \
+    --animation-format mp4
 
-    dgenerate CompVis/stable-diffusion-v1-4 \
+    dgenerate stabilityai/stable-diffusion-2-inpainting \
     --prompts "an astronaut riding a horse" \
     --image-seeds "my-animation.mp4;my-animation-mask.gif" \
     --output-path inpaint \
-    --animation-format mp4 \
+    --animation-format mp4
 
-    dgenerate CompVis/stable-diffusion-v1-4 \
+    dgenerate stabilityai/stable-diffusion-2-inpainting \
     --prompts "an astronaut riding a horse" \
     --image-seeds "my-animation.gif;my-animation-mask.gif" \
     --output-path inpaint \
-    --animation-format mp4 \
+    --animation-format mp4
 
-    dgenerate CompVis/stable-diffusion-v1-4 \
+    dgenerate stabilityai/stable-diffusion-2-inpainting \
     --prompts "an astronaut riding a horse" \
     --image-seeds "my-animation.gif;my-animation-mask.webp" \
     --output-path inpaint \
-    --animation-format mp4 \
+    --animation-format mp4
 
-    dgenerate CompVis/stable-diffusion-v1-4 \
+    dgenerate stabilityai/stable-diffusion-2-inpainting \
     --prompts "an astronaut riding a horse" \
     --image-seeds "my-animation.webp;my-animation-mask.gif" \
     --output-path inpaint \
-    --animation-format mp4 \
+    --animation-format mp4
 
-    dgenerate CompVis/stable-diffusion-v1-4 \
+    dgenerate stabilityai/stable-diffusion-2-inpainting \
     --prompts "an astronaut riding a horse" \
     --image-seeds "my-animation.gif;my-animation-mask.mp4" \
     --output-path inpaint \
-    --animation-format mp4 \
+    --animation-format mp4
 
     # etc...
 
     # Use a static image seed and mask it with every frame from an
     # Animated mask file
 
-    dgenerate CompVis/stable-diffusion-v1-4 \
+    dgenerate stabilityai/stable-diffusion-2-inpainting \
     --prompts "an astronaut riding a horse" \
     --image-seeds "my-static-image-seed.png;my-animation-mask.mp4" \
     --output-path inpaint \
-    --animation-format mp4 \
+    --animation-format mp4
 
-    dgenerate CompVis/stable-diffusion-v1-4 \
+    dgenerate stabilityai/stable-diffusion-2-inpainting \
     --prompts "an astronaut riding a horse" \
     --image-seeds "my-static-image-seed.png;my-animation-mask.gif" \
     --output-path inpaint \
-    --animation-format mp4 \
+    --animation-format mp4
 
-    dgenerate CompVis/stable-diffusion-v1-4 \
+    dgenerate stabilityai/stable-diffusion-2-inpainting \
     --prompts "an astronaut riding a horse" \
     --image-seeds "my-static-image-seed.png;my-animation-mask.webp" \
     --output-path inpaint \
-    --animation-format mp4 \
+    --animation-format mp4
 
     # etc...
 
@@ -814,7 +814,7 @@ The following command demonstrates manually specifying two different seeds to tr
 
 .. code-block:: bash
 
-    dgenerate CompVis/stable-diffusion-v1-4 \
+    dgenerate stabilityai/stable-diffusion-2-1 \
     --prompts "an astronaut riding a horse" \
     --seeds 1234567890 9876543210 \
     --output-path astronaut \
@@ -1207,9 +1207,9 @@ The Following is an example input file **my-config.txt**:
 
     # Guarantee unique file names are generated under the output directory by specifying unique seeds
 
-    CompVis/stable-diffusion-v1-4 --prompts "an astronaut riding a horse" --seeds 41509644783027 --output-path output --inference-steps 30 --guidance-scales 10
-    CompVis/stable-diffusion-v1-4 --prompts "a cowboy riding a horse" --seeds 78553317097366 --output-path output --inference-steps 30 --guidance-scales 10
-    CompVis/stable-diffusion-v1-4 --prompts "a martian riding a horse" --seeds 22797399276707 --output-path output --inference-steps 30 --guidance-scales 10
+    stabilityai/stable-diffusion-2-1 --prompts "an astronaut riding a horse" --seeds 41509644783027 --output-path output --inference-steps 30 --guidance-scales 10
+    stabilityai/stable-diffusion-2-1 --prompts "a cowboy riding a horse" --seeds 78553317097366 --output-path output --inference-steps 30 --guidance-scales 10
+    stabilityai/stable-diffusion-2-1 --prompts "a martian riding a horse" --seeds 22797399276707 --output-path output --inference-steps 30 --guidance-scales 10
 
     # Guarantee that no file name collisions happen by specifying different output paths for each invocation
 
@@ -1274,7 +1274,7 @@ the device number of the GPU as reported by ``nvidia-smi``.
 
     # Console 1, run on GPU 0
 
-    dgenerate CompVis/stable-diffusion-v1-4 \
+    dgenerate stabilityai/stable-diffusion-2-1 \
     --prompts "an astronaut riding a horse" \
     --output-path astronaut_1 \
     --inference-steps 50 \
@@ -1284,7 +1284,7 @@ the device number of the GPU as reported by ``nvidia-smi``.
 
     # Console 2, run on GPU 1 in parallel
 
-    dgenerate CompVis/stable-diffusion-v1-4 \
+    dgenerate stabilityai/stable-diffusion-2-1 \
     --prompts "an astronaut riding a cow" \
     --output-path astronaut_2 \
     --inference-steps 50 \
