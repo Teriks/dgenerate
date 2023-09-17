@@ -1,4 +1,4 @@
-stabilityai/stable-diffusion-2-inpainting --model-type torch-sdxl \
+stabilityai/stable-diffusion-2-inpainting  \
 --inference-steps 30 \
 --guidance-scales 7 \
 --image-seeds horse.jpg;mask.jpg \

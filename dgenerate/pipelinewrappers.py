@@ -48,6 +48,10 @@ _TORCH_MODEL_CACHE = dict()
 _FLAX_MODEL_CACHE = dict()
 
 
+class InvalidSDXLRefinerPathError(Exception):
+    pass
+
+
 class InvalidVaePathError(Exception):
     pass
 
@@ -56,9 +60,168 @@ class InvalidSchedulerName(Exception):
     pass
 
 
-lora_path_parser = ConceptModelPathParser('LoRA', ['scale', 'revision', 'subfolder', 'weight-name'])
-textual_inversion_path_parser = ConceptModelPathParser('Textual Inversion',
-                                                       ['scale', 'revision', 'subfolder', 'weight-name'])
+class InvalidLoRAPathError(Exception):
+    pass
+
+
+class InvalidTextualInversionPathError(Exception):
+    pass
+
+
+_sdxl_refiner_path_parser = ConceptModelPathParser('SDXL Refiner', ['revision', 'variant', 'subfolder' 'dtype'])
+_torch_vae_path_parser = ConceptModelPathParser('VAE', ['model', 'revision', 'variant', 'subfolder', 'dtype'])
+_flax_vae_path_parser = ConceptModelPathParser('VAE', ['model', 'revision', 'subfolder', 'dtype'])
+_lora_path_parser = ConceptModelPathParser('LoRA', ['scale', 'revision', 'subfolder', 'weight-name'])
+_textual_inversion_path_parser = ConceptModelPathParser('Textual Inversion',
+                                                        ['revision', 'subfolder', 'weight-name'])
+
+
+class SDXLRefinerPath:
+    def __init__(self, model, revision, variant, dtype, subfolder):
+        self.model = model
+        self.revision = revision
+        self.variant = variant
+        self.dtype = dtype
+        self.subfolder = subfolder
+
+
+def parse_sdxl_refiner_path(path):
+    try:
+        r = _sdxl_refiner_path_parser.parse_concept_path(path)
+
+        dtype = r.args.get('dtype', None)
+        if dtype not in {'float32', 'float16', 'auto', None}:
+            raise InvalidSDXLRefinerPathError(
+                'Torch SDXL refiner dtype must be float32, float16, auto, or left undefined.')
+
+        return SDXLRefinerPath(
+            model=r.concept,
+            revision=r.args.get('revision', None),
+            variant=r.args.get('variant', None),
+            dtype=_get_torch_dtype(dtype),
+            subfolder=r.args.get('subfolder', None))
+    except ConceptModelPathParseError as e:
+        raise InvalidSDXLRefinerPathError(e)
+
+
+class TorchVAEPath:
+    def __init__(self, encoder, model, revision, variant, subfolder, dtype):
+        self.encoder = encoder
+        self.model = model
+        self.revision = revision
+        self.variant = variant
+        self.dtype = dtype
+        self.subfolder = subfolder
+
+
+def parse_torch_vae_path(path):
+    try:
+        r = _torch_vae_path_parser.parse_concept_path(path)
+
+        model = r.args.get('model')
+        if model is None:
+            raise InvalidVaePathError('model argument for torch VAE specification must be defined.')
+
+        dtype = r.args.get('dtype', None)
+        if dtype not in {'float32', 'float16', 'auto', None}:
+            raise InvalidVaePathError('Torch VAE dtype must be float32, float16, auto, or left undefined.')
+
+        return TorchVAEPath(encoder=r.concept,
+                            model=model,
+                            revision=r.args.get('revision', None),
+                            variant=r.args.get('variant', None),
+                            dtype=_get_torch_dtype(dtype),
+                            subfolder=r.args.get('subfolder', None))
+    except ConceptModelPathParseError as e:
+        raise InvalidVaePathError(e)
+
+
+class FlaxVAEPath:
+    def __init__(self, encoder, model, revision, dtype, subfolder):
+        self.encoder = encoder
+        self.model = model
+        self.revision = revision
+        self.dtype = dtype
+        self.subfolder = subfolder
+
+
+def parse_flax_vae_path(path):
+    try:
+        r = _flax_vae_path_parser.parse_concept_path(path)
+
+        model = r.args.get('model')
+        if model is None:
+            raise InvalidVaePathError('model argument for flax VAE specification must be defined.')
+
+        dtype = r.args.get('dtype', None)
+        if dtype not in {'float32', 'float16', 'auto', None}:
+            raise InvalidVaePathError('Flax VAE dtype must be float32, float16, auto, or left undefined.')
+
+        return FlaxVAEPath(encoder=r.concept,
+                           model=model,
+                           revision=r.args.get('revision', None),
+                           dtype=_get_flax_dtype(dtype),
+                           subfolder=r.args.get('subfolder', None))
+    except ConceptModelPathParseError as e:
+        raise InvalidVaePathError(e)
+
+
+class LoRAPath:
+    def __init__(self, model, scale, revision, subfolder, weight_name):
+        self.model = model
+        self.scale = scale
+        self.revision = revision
+        self.subfolder = subfolder
+        self.weight_name = weight_name
+
+    def load_on_pipeline(self, pipeline, **kwargs):
+        if hasattr(pipeline, 'load_lora_weights'):
+            pipeline.load_lora_weights(self.model,
+                                       revision=self.revision,
+                                       subfolder=self.subfolder,
+                                       weight_name=self.weight_name,
+                                       **kwargs)
+
+
+def parse_lora_path(path):
+    try:
+        r = _lora_path_parser.parse_concept_path(path)
+
+        return LoRAPath(model=r.concept,
+                        scale=float(r.args.get('scale', 1.0)),
+                        weight_name=r.args.get('weight-name', None),
+                        revision=r.args.get('revision', None),
+                        subfolder=r.args.get('subfolder', None))
+    except ConceptModelPathParseError as e:
+        raise InvalidLoRAPathError(e)
+
+
+class TextualInversionPath:
+    def __init__(self, model, revision, subfolder, weight_name):
+        self.model = model
+        self.revision = revision
+        self.subfolder = subfolder
+        self.weight_name = weight_name
+
+    def load_on_pipeline(self, pipeline, **kwargs):
+        if hasattr(pipeline, 'load_textual_inversion'):
+            pipeline.load_textual_inversion(self.model,
+                                            revision=self.revision,
+                                            subfolder=self.subfolder,
+                                            weight_name=self.weight_name,
+                                            **kwargs)
+
+
+def parse_textual_inversion_path(path):
+    try:
+        r = _textual_inversion_path_parser.parse_concept_path(path)
+
+        return TextualInversionPath(model=r.concept,
+                                    weight_name=r.args.get('weight-name', None),
+                                    revision=r.args.get('revision', None),
+                                    subfolder=r.args.get('subfolder', None))
+    except ConceptModelPathParseError as e:
+        raise InvalidTextualInversionPathError(e)
 
 
 def _is_single_file_model_load(path):
@@ -80,17 +243,14 @@ def _is_single_file_model_load(path):
 
 
 def _load_pytorch_vae(path,
-                      revision,
-                      variant,
-                      torch_dtype,
-                      subfolder,
+                      torch_dtype_fallback,
                       use_auth_token):
-    parts = path.split(';', 1)
+    parsed_concept = parse_torch_vae_path(path)
 
-    if len(parts) != 2:
-        raise InvalidVaePathError(f'VAE path must contain auto encoder class name and path to the encoder URL or file.')
+    if parsed_concept.dtype is None:
+        parsed_concept.dtype = torch_dtype_fallback
 
-    encoder_name = parts[0].strip()
+    encoder_name = parsed_concept.encoder
 
     if encoder_name == "AutoencoderKL":
         encoder = AutoencoderKL
@@ -101,7 +261,7 @@ def _load_pytorch_vae(path,
     else:
         raise InvalidVaePathError(f'Unknown VAE encoder class {encoder_name}')
 
-    path = parts[1].strip()
+    path = parsed_concept.model
 
     can_single_file_load = hasattr(encoder, 'from_single_file')
     single_file_load_path = _is_single_file_model_load(path)
@@ -111,49 +271,43 @@ def _load_pytorch_vae(path,
                                   f'must be loaded from a huggingface repository slug or folder on disk.')
 
     if single_file_load_path:
-        if subfolder is not None:
+        if parsed_concept.subfolder is not None:
             raise NotImplementedError('Single file VAE loads do not support the subfolder option.')
 
         if encoder is AutoencoderKL:
             # There is a bug in their cast
-            return encoder.from_single_file(path, revision=revision). \
-                to(device=None, dtype=torch_dtype, non_blocking=False)
+            return encoder.from_single_file(path, revision=parsed_concept.revision). \
+                to(device=None, dtype=parsed_concept.dtype, non_blocking=False)
         else:
             return encoder.from_single_file(path,
-                                            revision=revision,
-                                            torch_dtype=torch_dtype)
+                                            revision=parsed_concept.revision,
+                                            torch_dtype=parsed_concept.dtype)
 
     else:
         return encoder.from_pretrained(path,
-                                       revision=revision,
-                                       variant=variant,
-                                       torch_dtype=torch_dtype,
-                                       subfolder=subfolder,
+                                       revision=parsed_concept.revision,
+                                       variant=parsed_concept.variant,
+                                       torch_dtype=parsed_concept.dtype,
+                                       subfolder=parsed_concept.subfolder,
                                        use_auth_token=use_auth_token)
 
 
-class InvalidLoRAPathError(Exception):
-    pass
-
-
 def _load_flax_vae(path,
-                   revision,
-                   flax_dtype,
-                   subfolder,
+                   flax_dtype_fallback,
                    use_auth_token):
-    parts = path.split(';', 1)
+    parsed_concept = parse_torch_vae_path(path)
 
-    if len(parts) != 2:
-        raise InvalidVaePathError(f'VAE path must contain auto encoder class name and path to the encoder URL or file.')
+    if parsed_concept.dtype is None:
+        parsed_concept.dtype = flax_dtype_fallback
 
-    encoder_name = parts[0].strip()
+    encoder_name = parsed_concept.encoder
 
     if encoder_name == "FlaxAutoencoderKL":
         encoder = FlaxAutoencoderKL
     else:
         raise InvalidVaePathError(f'Unknown VAE flax encoder class {encoder_name}')
 
-    path = parts[1].strip()
+    path = parsed_concept.model
 
     can_single_file_load = hasattr(encoder, 'from_single_file')
     single_file_load_path = _is_single_file_model_load(path)
@@ -164,16 +318,16 @@ def _load_flax_vae(path,
 
     if single_file_load_path:
         # in the future this will be supported?
-        if subfolder is not None:
+        if parsed_concept.subfolder is not None:
             raise NotImplementedError('Single file VAE loads do not support the subfolder option.')
         return encoder.from_single_file(path,
-                                        revision=revision,
-                                        dtype=flax_dtype)
+                                        revision=parsed_concept.revision,
+                                        dtype=parsed_concept.dtype)
     else:
         return encoder.from_pretrained(path,
-                                       revision=revision,
-                                       dtype=flax_dtype,
-                                       subfolder=subfolder,
+                                       revision=parsed_concept.revision,
+                                       dtype=parsed_concept.dtype,
+                                       subfolder=parsed_concept.subfolder,
                                        use_auth_token=use_auth_token)
 
 
@@ -225,18 +379,11 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                                      model_path,
                                      revision,
                                      variant,
-                                     torch_dtype,
+                                     dtype,
                                      model_subfolder=None,
-                                     vae=None,
-                                     vae_revision=None,
-                                     vae_variant=None,
-                                     vae_torch_dtype=None,
-                                     vae_subfolder=None,
-                                     lora=None,
-                                     lora_weight_name=None,
-                                     lora_revision=None,
-                                     lora_subfolder=None,
-                                     textual_inversions=None,
+                                     vae_path=None,
+                                     lora_paths=None,
+                                     textual_inversion_paths=None,
                                      scheduler=None,
                                      safety_checker=False,
                                      sdxl=False,
@@ -258,12 +405,11 @@ def _create_torch_diffusion_pipeline(pipeline_type,
     if catch_hit is None:
         kwargs = {}
 
-        if vae is not None:
-            kwargs['vae'] = _load_pytorch_vae(vae,
-                                              revision=vae_revision,
-                                              variant=vae_variant,
-                                              torch_dtype=vae_torch_dtype if vae_torch_dtype is not None else torch_dtype,
-                                              subfolder=vae_subfolder,
+        torch_dtype = _get_torch_dtype(dtype)
+
+        if vae_path is not None:
+            kwargs['vae'] = _load_pytorch_vae(vae_path,
+                                              torch_dtype_fallback=torch_dtype,
                                               use_auth_token=auth_token)
 
         if extra_args is not None:
@@ -289,29 +435,27 @@ def _create_torch_diffusion_pipeline(pipeline_type,
 
         _load_scheduler(pipeline, scheduler)
 
-        if textual_inversions is not None and hasattr(pipeline, 'load_textual_inversion'):
-            if isinstance(textual_inversions, str):
-                textual_inversions = [textual_inversions]
+        if textual_inversion_paths:
+            if isinstance(textual_inversion_paths, str):
+                textual_inversion_paths = [textual_inversion_paths]
 
-            for inversion in textual_inversions:
-                r = textual_inversion_path_parser.parse_concept_args(inversion)
-                print (r)
-                pipeline.load_textual_inversion(r.model,
-                                                weight_name=r.args.get('weight-name',
-                                                                       r.args.get('weight_name', None)),
-                                                revision=r.args.get('revision', None),
-                                                subfolder=r.args.get('subfolder', None),
-                                                use_auth_token=auth_token)
+            for inversion_path in textual_inversion_paths:
+                parse_textual_inversion_path(inversion_path). \
+                    load_on_pipeline(pipeline, use_auth_token=auth_token)
 
-        if lora is not None:
-            pipeline.load_lora_weights(lora,
-                                       weight_name=lora_weight_name,
-                                       revision=lora_revision,
-                                       subfolder=lora_subfolder,
-                                       use_auth_token=auth_token)
+        if lora_paths is not None:
+            if isinstance(lora_paths, str):
+                parse_lora_path(lora_paths). \
+                    load_on_pipeline(pipeline, use_auth_token=auth_token)
+            else:
+                raise NotImplementedError('Using multiple LoRA models is currently not supported.')
 
         if not safety_checker:
-            pipeline.safety_checker = _disabled_safety_checker
+            if pipeline.safety_checker is not None:
+                # If it's already None for some reason you'll get a call
+                # to an unassigned feature_extractor by assigning it a value
+
+                pipeline.safety_checker = _disabled_safety_checker
 
         _TORCH_MODEL_CACHE[cache_key] = pipeline
         return pipeline
@@ -322,12 +466,9 @@ def _create_torch_diffusion_pipeline(pipeline_type,
 def _create_flax_diffusion_pipeline(pipeline_type,
                                     model_path,
                                     revision,
-                                    flax_dtype,
+                                    dtype,
                                     model_subfolder=None,
-                                    vae=None,
-                                    vae_revision=None,
-                                    vae_flax_dtype=None,
-                                    vae_subfolder=None,
+                                    vae_path=None,
                                     scheduler=None,
                                     safety_checker=False,
                                     auth_token=None,
@@ -349,13 +490,13 @@ def _create_flax_diffusion_pipeline(pipeline_type,
         kwargs = {}
         vae_params = None
 
-        if vae is not None:
-            vae, vae_params = _load_flax_vae(vae,
-                                             subfolder=vae_subfolder,
-                                             revision=vae_revision,
-                                             flax_dtype=vae_flax_dtype if vae_flax_dtype is not None else flax_dtype,
-                                             use_auth_token=auth_token)
-            kwargs['vae'] = vae
+        flax_dtype = _get_flax_dtype(dtype)
+
+        if vae_path is not None:
+            vae_path, vae_params = _load_flax_vae(vae_path,
+                                                  flax_dtype_fallback=flax_dtype,
+                                                  use_auth_token=auth_token)
+            kwargs['vae'] = vae_path
 
         if extra_args is not None:
             kwargs.update(extra_args)
@@ -440,23 +581,14 @@ class DiffusionPipelineWrapperBase:
                  revision=None,
                  variant=None,
                  model_subfolder=None,
-                 vae=None,
-                 vae_revision=None,
-                 vae_variant=None,
-                 vae_dtype=None,
-                 vae_subfolder=None,
-                 lora=None,
-                 textual_inversions=None,
+                 vae_path=None,
+                 lora_paths=None,
+                 textual_inversion_paths=None,
+                 sdxl_refiner_path=None,
                  scheduler=None,
                  safety_checker=False,
-                 sdxl_refiner_path=None,
-                 sdxl_refiner_revision=None,
-                 sdxl_refiner_variant=None,
-                 sdxl_refiner_dtype=None,
-                 sdxl_refiner_subfolder=None,
                  auth_token=None):
 
-        self._vae_subfolder = vae_subfolder
         self._model_subfolder = model_subfolder
         self._device = device
         self._model_type = model_type.strip().lower()
@@ -467,158 +599,31 @@ class DiffusionPipelineWrapperBase:
         self._variant = variant
         self._dtype = dtype
         self._device = device
-        self._vae = vae
-        self._vae_revision = vae_revision
-        self._vae_variant = vae_variant
-        self._vae_dtype = vae_dtype
+        self._vae_path = vae_path
         self._safety_checker = safety_checker
         self._scheduler = scheduler
-        self._lora = lora
+        self._lora_paths = lora_paths
         self._lora_scale = None
-        self._lora_revision = None
-        self._lora_subfolder = None
-        self._lora_weight_name = None
-        self._textual_inversions = textual_inversions
+        self._textual_inversion_paths = textual_inversion_paths
         self._sdxl_refiner_path = sdxl_refiner_path
         self._sdxl_refiner_pipeline = None
-        self._sdxl_refiner_revision = sdxl_refiner_revision
-        self._sdxl_refiner_variant = sdxl_refiner_variant
-        self._sdxl_refiner_dtype = sdxl_refiner_dtype
-        self._sdxl_refiner_subfolder = sdxl_refiner_subfolder
         self._auth_token = auth_token
 
-        if lora is not None:
+        if sdxl_refiner_path is not None:
+            parsed_path = parse_sdxl_refiner_path(sdxl_refiner_path)
+            self._sdxl_refiner_revision = parsed_path.revision
+            self._sdxl_refiner_variant = parsed_path.variant
+            self._sdxl_refiner_dtype = parsed_path.dtype
+            self._sdxl_refiner_subfolder = parsed_path.subfolder
+
+        if lora_paths is not None:
             if model_type == "flax":
                 raise NotImplementedError("LoRA loading is not implemented for flax.")
 
-            try:
-                result = lora_path_parser.parse_concept_args(lora)
-            except ConceptModelPathParseError as e:
-                raise InvalidLoRAPathError(e)
+            if not isinstance(lora_paths, str):
+                raise NotImplementedError('Using multiple LoRA models is currently not supported.')
 
-            self._lora = result.model
-            self._lora_scale = float(result.args.get('scale', 1.0))
-            self._lora_revision = result.args.get('revision', None)
-            self._lora_subfolder = result.args.get('subfolder', None)
-            self._lora_weight_name = result.args.get('weight_name',
-                                                     result.args.get('weight-name', None))
-
-    @property
-    def vae_revision(self):
-        return self._vae_revision
-
-    @property
-    def safety_checker(self):
-        return self._safety_checker
-
-    @property
-    def dtype(self):
-        return self._dtype
-
-    @property
-    def sdxl_refiner_dtype(self):
-        return self._sdxl_refiner_dtype
-
-    @property
-    def sdxl_refiner_variant(self):
-        return self._sdxl_refiner_variant
-
-    @property
-    def model_path(self):
-        return self._model_path
-
-    @property
-    def scheduler(self):
-        return self._scheduler
-
-    @property
-    def flax_params(self):
-        return self._flax_params
-
-    @property
-    def sdxl_refiner_path(self):
-        return self._sdxl_refiner_path
-
-    @property
-    def textual_inversions(self):
-        return self._textual_inversions
-
-    @property
-    def revision(self):
-        return self._revision
-
-    @property
-    def lora_weight_name(self):
-        return self._lora_weight_name
-
-    @property
-    def lora_revision(self):
-        return self._lora_revision
-
-    @property
-    def sdxl_refiner_pipeline(self):
-        return self._sdxl_refiner_pipeline
-
-    @property
-    def variant(self):
-        return self._variant
-
-    @property
-    def sdxl_refiner_subfolder(self):
-        return self._sdxl_refiner_subfolder
-
-    @property
-    def device(self):
-        return self._device
-
-    @property
-    def vae_subfolder(self):
-        return self._vae_subfolder
-
-    @property
-    def sdxl_refiner_revision(self):
-        return self._sdxl_refiner_revision
-
-    @property
-    def lora_scale(self):
-        return self._lora_scale
-
-    @property
-    def pipeline(self):
-        return self._pipeline
-
-    @property
-    def vae_variant(self):
-        return self._vae_variant
-
-    @property
-    def vae(self):
-        return self._vae
-
-    @property
-    def model_type(self):
-        return self._model_type
-
-    @property
-    def lora_subfolder(self):
-        return self._lora_subfolder
-
-    @property
-    def model_subfolder(self):
-        return self._model_subfolder
-
-    @property
-    def lora(self):
-        return self._lora
-
-    @property
-    def vae_dtype(self):
-        return self._vae_dtype
-
-    @property
-    def auth_token(self):
-        return self._auth_token
-
+            self._lora_scale = parse_lora_path(lora_paths).scale
 
     def _pipeline_defaults(self, kwargs):
         args = dict()
@@ -740,25 +745,22 @@ class DiffusionPipelineWrapperBase:
         if self._pipeline is not None:
             return
 
-        if self._model_type == 'torch-sdxl' and self._textual_inversions is not None:
+        if self._model_type == 'torch-sdxl' and self._textual_inversion_paths is not None:
             raise NotImplementedError('Textual inversion not supported for SDXL')
 
         if self._model_type == 'flax':
             if not have_jax_flax():
                 raise NotImplementedError('flax and jax are not installed')
 
-            if self._textual_inversions is not None:
-                raise NotImplementedError('Runtime textual inversion not supported for flax')
+            if self._textual_inversion_paths is not None:
+                raise NotImplementedError('Textual inversion not supported for flax')
 
             self._pipeline, self._flax_params = \
                 _create_flax_diffusion_pipeline(pipeline_type,
                                                 self._model_path,
                                                 revision=self._revision,
-                                                flax_dtype=_get_flax_dtype(self._dtype),
-                                                vae=self._vae,
-                                                vae_revision=self._vae_revision,
-                                                vae_subfolder=self._vae_subfolder,
-                                                vae_flax_dtype=_get_flax_dtype(self._vae_dtype),
+                                                dtype=self._dtype,
+                                                vae_path=self._vae_path,
                                                 scheduler=self._scheduler,
                                                 safety_checker=self._safety_checker,
                                                 auth_token=self._auth_token)
@@ -775,16 +777,9 @@ class DiffusionPipelineWrapperBase:
                                                  sdxl=True,
                                                  revision=self._revision,
                                                  variant=self._variant,
-                                                 torch_dtype=_get_torch_dtype(self._dtype),
-                                                 vae=self._vae,
-                                                 vae_revision=self._vae_revision,
-                                                 vae_variant=self._vae_variant,
-                                                 vae_torch_dtype=_get_torch_dtype(self._vae_dtype),
-                                                 vae_subfolder=self._vae_subfolder,
-                                                 lora=self._lora,
-                                                 lora_weight_name=self._lora_weight_name,
-                                                 lora_revision=self._lora_revision,
-                                                 lora_subfolder=self._lora_subfolder,
+                                                 dtype=self._dtype,
+                                                 vae_path=self._vae_path,
+                                                 lora_paths=self._lora_paths,
                                                  scheduler=self._scheduler,
                                                  safety_checker=self._safety_checker,
                                                  auth_token=self._auth_token)
@@ -802,9 +797,8 @@ class DiffusionPipelineWrapperBase:
                                                  variant=self._sdxl_refiner_variant if
                                                  self._sdxl_refiner_variant is not None else self._variant,
 
-                                                 torch_dtype=_get_torch_dtype(self._sdxl_refiner_dtype) if
-                                                 self._sdxl_refiner_dtype is not None else _get_torch_dtype(
-                                                     self._dtype),
+                                                 dtype=self._sdxl_refiner_dtype if
+                                                 self._sdxl_refiner_dtype is not None else self._dtype,
 
                                                  scheduler=self._scheduler,
                                                  safety_checker=self._safety_checker,
@@ -825,17 +819,10 @@ class DiffusionPipelineWrapperBase:
                                                  sdxl=self._model_type == 'torch-sdxl',
                                                  revision=self._revision,
                                                  variant=self._variant,
-                                                 torch_dtype=_get_torch_dtype(self._dtype),
-                                                 vae=self._vae,
-                                                 vae_revision=self._vae_revision,
-                                                 vae_variant=self._vae_variant,
-                                                 vae_torch_dtype=_get_torch_dtype(self._vae_dtype),
-                                                 vae_subfolder=self._vae_subfolder,
-                                                 lora=self._lora,
-                                                 textual_inversions=self._textual_inversions,
-                                                 lora_weight_name=self._lora_weight_name,
-                                                 lora_revision=self._lora_revision,
-                                                 lora_subfolder=self._lora_subfolder,
+                                                 dtype=self._dtype,
+                                                 vae_path=self._vae_path,
+                                                 lora_paths=self._lora_paths,
+                                                 textual_inversion_paths=self._textual_inversion_paths,
                                                  scheduler=self._scheduler,
                                                  safety_checker=self._safety_checker,
                                                  auth_token=self._auth_token).to(self._device)
@@ -857,20 +844,12 @@ class DiffusionPipelineWrapper(DiffusionPipelineWrapperBase):
                  revision=None,
                  variant=None,
                  model_subfolder=None,
-                 vae=None,
-                 vae_revision=None,
-                 vae_variant=None,
-                 vae_dtype=None,
-                 vae_subfolder=None,
-                 lora=None,
-                 textual_inversions=None,
+                 vae_path=None,
+                 lora_paths=None,
+                 textual_inversion_paths=None,
+                 sdxl_refiner_path=None,
                  scheduler=None,
                  safety_checker=False,
-                 sdxl_refiner_path=None,
-                 sdxl_refiner_revision=None,
-                 sdxl_refiner_variant=None,
-                 sdxl_refiner_dtype=None,
-                 sdxl_refiner_subfolder=None,
                  auth_token=None):
         super().__init__(
             model_path,
@@ -880,20 +859,12 @@ class DiffusionPipelineWrapper(DiffusionPipelineWrapperBase):
             revision,
             variant,
             model_subfolder,
-            vae,
-            vae_revision,
-            vae_variant,
-            vae_dtype,
-            vae_subfolder,
-            lora,
-            textual_inversions,
+            vae_path,
+            lora_paths,
+            textual_inversion_paths,
+            sdxl_refiner_path,
             scheduler,
             safety_checker,
-            sdxl_refiner_path,
-            sdxl_refiner_revision,
-            sdxl_refiner_variant,
-            sdxl_refiner_dtype,
-            sdxl_refiner_subfolder,
             auth_token)
 
     def __call__(self, **kwargs):
@@ -911,20 +882,12 @@ class DiffusionPipelineImg2ImgWrapper(DiffusionPipelineWrapperBase):
                  revision=None,
                  variant=None,
                  model_subfolder=None,
-                 vae=None,
-                 vae_revision=None,
-                 vae_variant=None,
-                 vae_dtype=None,
-                 vae_subfolder=None,
-                 lora=None,
-                 textual_inversions=None,
+                 vae_path=None,
+                 lora_paths=None,
+                 textual_inversion_paths=None,
+                 sdxl_refiner_path=None,
                  scheduler=None,
                  safety_checker=False,
-                 sdxl_refiner_path=None,
-                 sdxl_refiner_revision=None,
-                 sdxl_refiner_variant=None,
-                 sdxl_refiner_dtype=None,
-                 sdxl_refiner_subfolder=None,
                  auth_token=None):
 
         super().__init__(
@@ -935,20 +898,12 @@ class DiffusionPipelineImg2ImgWrapper(DiffusionPipelineWrapperBase):
             revision,
             variant,
             model_subfolder,
-            vae,
-            vae_revision,
-            vae_variant,
-            vae_dtype,
-            vae_subfolder,
-            lora,
-            textual_inversions,
+            vae_path,
+            lora_paths,
+            textual_inversion_paths,
+            sdxl_refiner_path,
             scheduler,
             safety_checker,
-            sdxl_refiner_path,
-            sdxl_refiner_revision,
-            sdxl_refiner_variant,
-            sdxl_refiner_dtype,
-            sdxl_refiner_subfolder,
             auth_token)
 
     def __call__(self, **kwargs):
