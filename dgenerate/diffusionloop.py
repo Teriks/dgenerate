@@ -123,20 +123,12 @@ class DiffusionRenderLoop:
         self.model_path = None
         self.model_subfolder = None
         self.sdxl_refiner_path = None
-        self.sdxl_refiner_revision = None
-        self.sdxl_refiner_variant = None
-        self.sdxl_refiner_dtype = None
-        self.sdxl_refiner_subfolder = None
         self.sdxl_high_noise_fractions = []
         self.sdxl_original_size = None
         self.sdxl_target_size = None
-        self.vae = None
-        self.vae_revision = None
-        self.vae_variant = None
-        self.vae_dtype = None
-        self.vae_subfolder = None
-        self.lora = None
-        self.textual_inversions = None
+        self.vae_path = None
+        self.lora_paths = None
+        self.textual_inversion_paths = None
         self.scheduler = None
         self.safety_checker = False
         self.model_type = 'torch'
@@ -161,24 +153,12 @@ class DiffusionRenderLoop:
     def _enforce_state(self):
         if self.dtype not in {'float32', 'float16', 'auto'}:
             raise ValueError('DiffusionRenderLoop.torch_dtype must be float32, float16 or auto')
-        if self.sdxl_refiner_dtype not in {'float32', 'float16', 'auto', None}:
-            raise ValueError('DiffusionRenderLoop.sdxl_refiner_dtype must be float32, float16, auto, or None')
-        if self.vae_dtype not in {'float32', 'float16', 'auto', None}:
-            raise ValueError('DiffusionRenderLoop.vae_dtype must be float32, float16, auto, or None')
         if not isinstance(self.safety_checker, bool):
             raise ValueError('DiffusionRenderLoop.safety_checker must be True or False (bool)')
         if self.revision is not None and not isinstance(self.revision, str):
             raise ValueError('DiffusionRenderLoop.revision must be None or a string')
-        if self.sdxl_refiner_revision is not None and not isinstance(self.sdxl_refiner_revision, str):
-            raise ValueError('DiffusionRenderLoop.sdxl_refiner_revision must be None or a string')
-        if self.vae_revision is not None and not isinstance(self.vae_revision, str):
-            raise ValueError('DiffusionRenderLoop.vae_revision must be None or a string')
         if self.variant is not None and not isinstance(self.variant, str):
             raise ValueError('DiffusionRenderLoop.variant must be None or a string')
-        if self.sdxl_refiner_variant is not None and not isinstance(self.sdxl_refiner_variant, str):
-            raise ValueError('DiffusionRenderLoop.sdxl_refiner_variant must be None or a string')
-        if self.vae_variant is not None and not isinstance(self.vae_variant, str):
-            raise ValueError('DiffusionRenderLoop.vae_variant must be None or a string')
         if self.model_type not in supported_model_types():
             raise ValueError(
                 f'DiffusionRenderLoop.model_type must be one of: {oxford_comma(supported_model_types(), "or")}')
@@ -188,18 +168,15 @@ class DiffusionRenderLoop:
             raise ValueError('DiffusionRenderLoop.model_subfolder must be None or str')
         if self.auth_token is not None and not isinstance(self.auth_token, str):
             raise ValueError('DiffusionRenderLoop.auth_token must be None or str')
-        if self.vae_subfolder is not None and not isinstance(self.vae_subfolder, str):
-            raise ValueError('DiffusionRenderLoop.vae_subfolder must be None or str')
-        if self.lora is not None and not isinstance(self.lora, str):
-            raise ValueError('DiffusionRenderLoop.lora must be None or str')
-        if self.textual_inversions is not None and not isinstance(self.textual_inversions, str) and not _has_len(self.textual_inversions):
-            raise ValueError('DiffusionRenderLoop.textual_inversions must be None or str or have len')
-        if self.sdxl_refiner_subfolder is not None and not isinstance(self.sdxl_refiner_subfolder, str):
-            raise ValueError('DiffusionRenderLoop.sdxl_refiner_subfolder must be None or str')
+        if self.lora_paths is not None and not isinstance(self.lora_paths, str):
+            raise ValueError('DiffusionRenderLoop.lora_paths must be None or str')
+        if self.textual_inversion_paths is not None and not \
+                isinstance(self.textual_inversion_paths, str) and not _has_len(self.textual_inversion_paths):
+            raise ValueError('DiffusionRenderLoop.textual_inversion_paths must be None or str or have len')
         if self.sdxl_refiner_path is not None and not isinstance(self.sdxl_refiner_path, str):
             raise ValueError('DiffusionRenderLoop.sdxl_refiner_path must be None or a string')
-        if self.vae is not None and not isinstance(self.vae, str):
-            raise ValueError('DiffusionRenderLoop.vae must be a string: AutoencoderClass;PATH')
+        if self.vae_path is not None and not isinstance(self.vae_path, str):
+            raise ValueError('DiffusionRenderLoop.vae_path must be a string: AutoencoderClass;PATH')
         if self.scheduler is not None and not isinstance(self.scheduler, str):
             raise ValueError('DiffusionRenderLoop.scheduler must be a string that names a compatible scheduler class')
         if self.output_path is None:
@@ -411,20 +388,12 @@ class DiffusionRenderLoop:
                                                        model_type=self.model_type,
                                                        revision=self.revision,
                                                        variant=self.variant,
-                                                       vae=self.vae,
-                                                       vae_revision=self.vae_revision,
-                                                       vae_variant=self.vae_variant,
-                                                       vae_dtype=self.vae_dtype,
-                                                       vae_subfolder=self.vae_subfolder,
-                                                       lora=self.lora,
-                                                       textual_inversions=self.textual_inversions,
+                                                       vae_path=self.vae_path,
+                                                       lora_paths=self.lora_paths,
+                                                       textual_inversion_paths=self.textual_inversion_paths,
                                                        scheduler=self.scheduler,
                                                        safety_checker=self.safety_checker,
                                                        sdxl_refiner_path=self.sdxl_refiner_path,
-                                                       sdxl_refiner_revision=self.sdxl_refiner_revision,
-                                                       sdxl_refiner_variant=self.sdxl_refiner_variant,
-                                                       sdxl_refiner_dtype=self.sdxl_refiner_dtype,
-                                                       sdxl_refiner_subfolder=self.sdxl_refiner_subfolder,
                                                        auth_token=self.auth_token)
 
             sdxl_high_noise_fractions = self.sdxl_high_noise_fractions if self.sdxl_refiner_path is not None else None
@@ -452,20 +421,12 @@ class DiffusionRenderLoop:
                                                           model_type=self.model_type,
                                                           revision=self.revision,
                                                           variant=self.variant,
-                                                          vae=self.vae,
-                                                          vae_revision=self.vae_revision,
-                                                          vae_variant=self.vae_variant,
-                                                          vae_dtype=self.vae_dtype,
-                                                          vae_subfolder=self.vae_subfolder,
-                                                          lora=self.lora,
-                                                          textual_inversions=self.textual_inversions,
+                                                          vae_path=self.vae_path,
+                                                          lora_paths=self.lora_paths,
+                                                          textual_inversion_paths=self.textual_inversion_paths,
                                                           scheduler=self.scheduler,
                                                           safety_checker=self.safety_checker,
                                                           sdxl_refiner_path=self.sdxl_refiner_path,
-                                                          sdxl_refiner_revision=self.sdxl_refiner_revision,
-                                                          sdxl_refiner_variant=self.sdxl_refiner_variant,
-                                                          sdxl_refiner_dtype=self.sdxl_refiner_dtype,
-                                                          sdxl_refiner_subfolder=self.sdxl_refiner_subfolder,
                                                           auth_token=self.auth_token)
 
         for image_seed in self.image_seeds:

@@ -21,10 +21,7 @@
 
 __version__ = "1.0.0"
 
-import textwrap
 import sys
-
-from dgenerate.pipelinewrappers import InvalidVaePathError, InvalidSchedulerName, InvalidLoRAPathError
 
 
 def run_diffusion():
@@ -32,14 +29,18 @@ def run_diffusion():
     import shlex
     import torch
     import warnings
-
+    import textwrap
     import diffusers
     import transformers
 
     from .args import parse_args
     from .textprocessing import underline, long_text_wrap_width
     from .diffusionloop import DiffusionRenderLoop
-    from .pipelinewrappers import clear_model_cache
+
+    from .pipelinewrappers import clear_model_cache, InvalidVaePathError, \
+        InvalidSchedulerName, InvalidLoRAPathError, \
+        InvalidTextualInversionPathError, InvalidSDXLRefinerPathError
+
     from .mediainput import ImageSeedParseError, MaskImageSizeMismatchError
 
     # The above modules take long enough to import that they must be in here in
@@ -72,32 +73,27 @@ def run_diffusion():
         render_loop.image_seed_strengths = arguments.image_seed_strengths
         render_loop.guidance_scales = arguments.guidance_scales
         render_loop.inference_steps = arguments.inference_steps
-        render_loop.vae = arguments.vae
-        render_loop.vae_revision = arguments.vae_revision
-        render_loop.vae_variant = arguments.vae_variant
-        render_loop.vae_dtype = arguments.vae_dtype
-        render_loop.vae_subfolder = arguments.vae_subfolder
-        render_loop.lora = arguments.lora
-        render_loop.textual_inversions = arguments.textual_inversions
+        render_loop.vae_path = arguments.vae
+        render_loop.lora_paths = arguments.lora
+        render_loop.textual_inversion_paths = arguments.textual_inversions
         render_loop.scheduler = arguments.scheduler
         render_loop.safety_checker = arguments.safety_checker
         render_loop.sdxl_refiner_path = arguments.sdxl_refiner
-        render_loop.sdxl_refiner_revision = arguments.sdxl_refiner_revision
-        render_loop.sdxl_refiner_variant = arguments.sdxl_refiner_variant
-        render_loop.sdxl_refiner_dtype = arguments.sdxl_refiner_dtype
-        render_loop.sdxl_refiner_subfolder = arguments.sdxl_refiner_subfolder
         render_loop.sdxl_high_noise_fractions = arguments.sdxl_high_noise_fractions
         render_loop.sdxl_original_size = arguments.sdxl_original_size
         render_loop.sdxl_target_size = arguments.sdxl_target_size
         render_loop.auth_token = arguments.auth_token
 
         # run the render loop
+        render_loop.run()
         try:
-            render_loop.run()
+            pass
         except (ImageSeedParseError,
                 MaskImageSizeMismatchError,
+                InvalidSDXLRefinerPathError,
                 InvalidVaePathError,
                 InvalidLoRAPathError,
+                InvalidTextualInversionPathError,
                 InvalidSchedulerName,
                 torch.cuda.OutOfMemoryError,
                 NotImplementedError,
@@ -116,14 +112,14 @@ def run_diffusion():
                 continue
 
             if line.endswith('\\'):
-                continuation += ' '+line.rstrip(' \\')
+                continuation += ' ' + line.rstrip(' \\')
             else:
-                args = (continuation+' '+line).lstrip()
+                args = (continuation + ' ' + line).lstrip()
 
                 header = "Processing Arguments: "
                 args_wrapped = textwrap.fill(args,
-                                     width=long_text_wrap_width()-len(header),
-                                     subsequent_indent=' '*len(header))
+                                             width=long_text_wrap_width() - len(header),
+                                             subsequent_indent=' ' * len(header))
 
                 print(underline(header + args_wrapped))
                 parse_and_run(shlex.split(os.path.expandvars(args)))
