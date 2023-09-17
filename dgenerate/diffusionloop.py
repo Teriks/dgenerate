@@ -141,6 +141,7 @@ class DiffusionRenderLoop:
         self.output_path = os.path.join(os.getcwd(), 'output')
         self.output_prefix = None
         self.output_overwrite = False
+        self.output_configs = False
         self.prompts = []
         self.seeds = [0]
         self.image_seeds = []
@@ -187,6 +188,8 @@ class DiffusionRenderLoop:
             raise ValueError('DiffusionRenderLoop.output_prefix must be None or a str')
         if not isinstance(self.output_overwrite, bool):
             raise ValueError('DiffusionRenderLoop.output_overwrite must be bool')
+        if not isinstance(self.output_configs, bool):
+            raise ValueError('DiffusionRenderLoop.output_configs must be bool')
         if not isinstance(self.device, str) or not is_valid_device_string(self.device):
             raise ValueError('DiffusionRenderLoop.device must be "cuda" or "cpu"')
         if not (isinstance(self.animation_format, str) or
@@ -272,8 +275,8 @@ class DiffusionRenderLoop:
 
         return self._gen_filename(*args, 'step', generation_step + 1, ext=animation_format)
 
-    def _write_animation_frame(self, args_ctx: DiffusionArgContext, image_seed_obj, generation_result: PipelineResultWrapper):
-        #print(generation_result.dgenerate_config)
+    def _write_animation_frame(self, args_ctx: DiffusionArgContext, image_seed_obj,
+                               generation_result: PipelineResultWrapper):
 
         args = ['s', args_ctx.seed,
                 'st', args_ctx.image_seed_strength,
@@ -291,11 +294,19 @@ class DiffusionRenderLoop:
                                       ext='png')
 
         generation_result.image.save(filename)
-        print(underline(f'Wrote File: {filename}'))
+
+        if self.output_configs:
+            config_txt = generation_result.dgenerate_config
+            config_txt += f' \\\n--frame-start {image_seed_obj.frame_index} --frame-end {image_seed_obj.frame_index}'
+            config_file_name = os.path.splitext(filename)[0] + '.txt'
+            with open(config_file_name, "w") as config_file:
+                config_file.write(config_txt)
+            print(underline(
+                f'Wrote Image File: {filename}\nWrote Config File: {config_file_name}'))
+        else:
+            print(underline(f'Wrote Image File: {filename}'))
 
     def _write_image_seed_gen_image(self, args_ctx: DiffusionArgContext, generation_result: PipelineResultWrapper):
-        #print(generation_result.dgenerate_config)
-
         args = ['s', args_ctx.seed,
                 'st', args_ctx.image_seed_strength,
                 'g', args_ctx.guidance_scale,
@@ -306,11 +317,17 @@ class DiffusionRenderLoop:
 
         filename = self._gen_filename(*args, 'step', self._generation_step + 1, ext='png')
         generation_result.image.save(filename)
-        print(underline(f'Wrote File: {filename}'))
+
+        if self.output_configs:
+            config_file_name = os.path.splitext(filename)[0] + '.txt'
+            with open(config_file_name, "w") as config_file:
+                config_file.write(generation_result.dgenerate_config)
+            print(underline(
+                f'Wrote Image File: {filename}\nWrote Config File: {config_file_name}'))
+        else:
+            print(underline(f'Wrote Image File: {filename}'))
 
     def _write_prompt_only_image(self, args_ctx: DiffusionArgContext, generation_result: PipelineResultWrapper):
-        #print(generation_result.dgenerate_config)
-
         args = ['s', args_ctx.seed,
                 'g', args_ctx.guidance_scale,
                 'i', args_ctx.inference_steps]
@@ -320,7 +337,15 @@ class DiffusionRenderLoop:
 
         filename = self._gen_filename(*args, 'step', self._generation_step + 1, ext='png')
         generation_result.image.save(filename)
-        print(underline(f'Wrote File: {filename}'))
+
+        if self.output_configs:
+            config_file_name = os.path.splitext(filename)[0] + '.txt'
+            with open(config_file_name, "w") as config_file:
+                config_file.write(generation_result.dgenerate_config)
+            print(underline(
+                f'Wrote Image File: {filename}\nWrote Config File: {config_file_name}'))
+        else:
+            print(underline(f'Wrote Image File: {filename}'))
 
     def _pre_generation_step(self, args_ctx: DiffusionArgContext):
         self._last_frame_time = 0
@@ -440,7 +465,6 @@ class DiffusionRenderLoop:
                                      height=self.output_size[1],
                                      sdxl_original_size=self.sdxl_original_size,
                                      sdxl_target_size=self.sdxl_target_size) as generation_result:
-
                     self._write_prompt_only_image(args_ctx, generation_result)
 
     def _render_with_image_seeds(self):
@@ -520,30 +544,46 @@ class DiffusionRenderLoop:
                         new_file=self._gen_animation_filename(args_ctx, self._generation_step,
                                                               animation_format_lower))
 
-                print(underline(f'Writing Animation: {video_writer.filename}'))
+                if self.output_configs:
+                    anim_config_file_name = os.path.splitext(video_writer.filename)[0] + '.txt'
+                    print(underline(
+                        f'Writing Animation: {video_writer.filename}\nWriting Config File: {anim_config_file_name}'))
+                else:
+                    print(underline(f'Writing Animation: {video_writer.filename}'))
 
                 for image_obj in iterate_image_seed(image_seed, self.frame_start, self.frame_end,
                                                     self.output_size):
                     with image_obj as image_seed_obj:
                         self._animation_frame_pre_generation(args_ctx, image_seed_obj)
 
+                        extra_args = {}
                         if image_seed_obj.mask_image is not None:
-                            with diffusion_model(**args_ctx.args,
-                                                 seed=args_ctx.seed,
-                                                 image=image_seed_obj.image,
-                                                 mask_image=image_seed_obj.mask_image,
-                                                 sdxl_original_size=self.sdxl_original_size,
-                                                 sdxl_target_size=self.sdxl_target_size) as generation_result:
-                                video_writer.write(generation_result.image)
-                                self._write_animation_frame(args_ctx, image_seed_obj, generation_result)
-                        else:
-                            with diffusion_model(**args_ctx.args,
-                                                 seed=args_ctx.seed,
-                                                 image=image_seed_obj.image,
-                                                 sdxl_original_size=self.sdxl_original_size,
-                                                 sdxl_target_size=self.sdxl_target_size) as generation_result:
-                                video_writer.write(generation_result.image)
-                                self._write_animation_frame(args_ctx, image_seed_obj, generation_result)
+                            extra_args = {'mask_image': image_seed_obj.mask_image}
+
+                        with diffusion_model(**args_ctx.args, **extra_args,
+                                             seed=args_ctx.seed,
+                                             image=image_seed_obj.image,
+                                             sdxl_original_size=self.sdxl_original_size,
+                                             sdxl_target_size=self.sdxl_target_size) as generation_result:
+                            video_writer.write(generation_result.image)
+
+                            if self.output_configs:
+                                if not os.path.exists(anim_config_file_name):
+                                    config_text = generation_result.dgenerate_config
+
+                                    if self.frame_start is not None:
+                                        config_text += f' \\\n--frame-start {self.frame_start}'
+
+                                    if self.frame_end is not None:
+                                        config_text += f' \\\n--frame-end {self.frame_end}'
+
+                                    if self.animation_format is not None:
+                                        config_text += f' \\\n--animation-format {self.animation_format}'
+
+                                    with open(anim_config_file_name, "w") as config_file:
+                                        config_file.write(config_text)
+
+                            self._write_animation_frame(args_ctx, image_seed_obj, generation_result)
 
                         next_frame_terminates_anim = image_seed_obj.frame_index == (image_seed_obj.total_frames - 1)
 

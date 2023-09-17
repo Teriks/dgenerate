@@ -324,6 +324,13 @@ parser.add_argument('-ox', '--output-overwrite', action='store_true', default=Fa
                             when it is detected that the generated file name already exists.
                             """)
 
+parser.add_argument('-oc', '--output-configs', action='store_true', default=False,
+                    help="""Write a configuration text file for every output file that can be read
+                            in from STDIN by dgenerate to reproduce that particular output file exactly.
+                            These files will be written to --output-directory and are affected by --output-prefix 
+                            as well. The files will be named after their corresponding image or media file.
+                            """)
+
 
 def _type_prompts(prompt):
     pn = prompt.strip().split(';')
