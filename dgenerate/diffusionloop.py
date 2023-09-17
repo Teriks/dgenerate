@@ -33,7 +33,8 @@ import torch
 
 from .mediainput import iterate_image_seed, get_image_seed_info
 from .mediaoutput import create_animation_writer, supported_animation_writer_formats
-from .pipelinewrappers import DiffusionPipelineWrapper, DiffusionPipelineImg2ImgWrapper, supported_model_types
+from .pipelinewrappers import DiffusionPipelineWrapper, DiffusionPipelineImg2ImgWrapper, supported_model_types, \
+    PipelineResultWrapper
 from .textprocessing import oxford_comma, underline, long_text_wrap_width
 
 
@@ -271,7 +272,9 @@ class DiffusionRenderLoop:
 
         return self._gen_filename(*args, 'step', generation_step + 1, ext=animation_format)
 
-    def _write_animation_frame(self, args_ctx: DiffusionArgContext, image_seed_obj, img):
+    def _write_animation_frame(self, args_ctx: DiffusionArgContext, image_seed_obj, generation_result: PipelineResultWrapper):
+        #print(generation_result.dgenerate_config)
+
         args = ['s', args_ctx.seed,
                 'st', args_ctx.image_seed_strength,
                 'g', args_ctx.guidance_scale,
@@ -287,10 +290,12 @@ class DiffusionRenderLoop:
                                       self._generation_step + 1,
                                       ext='png')
 
-        img.save(filename)
+        generation_result.image.save(filename)
         print(underline(f'Wrote File: {filename}'))
 
-    def _write_image_seed_gen_image(self, args_ctx: DiffusionArgContext, img):
+    def _write_image_seed_gen_image(self, args_ctx: DiffusionArgContext, generation_result: PipelineResultWrapper):
+        #print(generation_result.dgenerate_config)
+
         args = ['s', args_ctx.seed,
                 'st', args_ctx.image_seed_strength,
                 'g', args_ctx.guidance_scale,
@@ -300,10 +305,12 @@ class DiffusionRenderLoop:
             args += ['hnf', args_ctx.sdxl_high_noise_fraction]
 
         filename = self._gen_filename(*args, 'step', self._generation_step + 1, ext='png')
-        img.save(filename)
+        generation_result.image.save(filename)
         print(underline(f'Wrote File: {filename}'))
 
-    def _write_prompt_only_image(self, args_ctx: DiffusionArgContext, img):
+    def _write_prompt_only_image(self, args_ctx: DiffusionArgContext, generation_result: PipelineResultWrapper):
+        #print(generation_result.dgenerate_config)
+
         args = ['s', args_ctx.seed,
                 'g', args_ctx.guidance_scale,
                 'i', args_ctx.inference_steps]
@@ -312,7 +319,7 @@ class DiffusionRenderLoop:
             args += ['hnf', args_ctx.sdxl_high_noise_fraction]
 
         filename = self._gen_filename(*args, 'step', self._generation_step + 1, ext='png')
-        img.save(filename)
+        generation_result.image.save(filename)
         print(underline(f'Wrote File: {filename}'))
 
     def _pre_generation_step(self, args_ctx: DiffusionArgContext):
@@ -426,13 +433,15 @@ class DiffusionRenderLoop:
                                                    sdxl_high_noise_fractions=sdxl_high_noise_fractions):
                 self._pre_generation_step(args_ctx)
                 self._pre_generation(args_ctx)
+
                 with diffusion_model(**args_ctx.args,
                                      seed=args_ctx.seed,
                                      width=self.output_size[0],
                                      height=self.output_size[1],
                                      sdxl_original_size=self.sdxl_original_size,
-                                     sdxl_target_size=self.sdxl_target_size).images[0] as gen_img:
-                    self._write_prompt_only_image(args_ctx, gen_img)
+                                     sdxl_target_size=self.sdxl_target_size) as generation_result:
+
+                    self._write_prompt_only_image(args_ctx, generation_result)
 
     def _render_with_image_seeds(self):
         diffusion_model = DiffusionPipelineImg2ImgWrapper(self.model_path,
@@ -482,15 +491,15 @@ class DiffusionRenderLoop:
                                                     mask_image=mask_image,
                                                     seed=args_ctx.seed,
                                                     sdxl_original_size=self.sdxl_original_size,
-                                                    sdxl_target_size=self.sdxl_target_size).images[0] as gen_img:
-                                self._write_image_seed_gen_image(args_ctx, gen_img)
+                                                    sdxl_target_size=self.sdxl_target_size) as generation_result:
+                                self._write_image_seed_gen_image(args_ctx, generation_result)
                         else:
                             with diffusion_model(**args_ctx.args,
                                                  image=image_seed_obj.image,
                                                  seed=args_ctx.seed,
                                                  sdxl_original_size=self.sdxl_original_size,
-                                                 sdxl_target_size=self.sdxl_target_size).images[0] as gen_img:
-                                self._write_image_seed_gen_image(args_ctx, gen_img)
+                                                 sdxl_target_size=self.sdxl_target_size) as generation_result:
+                                self._write_image_seed_gen_image(args_ctx, generation_result)
 
     def _render_animation(self, image_seed, diffusion_model, arg_iterator, fps):
         animation_format_lower = self.animation_format.lower()
@@ -524,17 +533,17 @@ class DiffusionRenderLoop:
                                                  image=image_seed_obj.image,
                                                  mask_image=image_seed_obj.mask_image,
                                                  sdxl_original_size=self.sdxl_original_size,
-                                                 sdxl_target_size=self.sdxl_target_size).images[0] as gen_img:
-                                video_writer.write(gen_img)
-                                self._write_animation_frame(args_ctx, image_seed_obj, gen_img)
+                                                 sdxl_target_size=self.sdxl_target_size) as generation_result:
+                                video_writer.write(generation_result.image)
+                                self._write_animation_frame(args_ctx, image_seed_obj, generation_result)
                         else:
                             with diffusion_model(**args_ctx.args,
                                                  seed=args_ctx.seed,
                                                  image=image_seed_obj.image,
                                                  sdxl_original_size=self.sdxl_original_size,
-                                                 sdxl_target_size=self.sdxl_target_size).images[0] as gen_img:
-                                video_writer.write(gen_img)
-                                self._write_animation_frame(args_ctx, image_seed_obj, gen_img)
+                                                 sdxl_target_size=self.sdxl_target_size) as generation_result:
+                                video_writer.write(generation_result.image)
+                                self._write_animation_frame(args_ctx, image_seed_obj, generation_result)
 
                         next_frame_terminates_anim = image_seed_obj.frame_index == (image_seed_obj.total_frames - 1)
 

@@ -57,8 +57,8 @@ def _resize_image_calc(new_size, old_size):
     width = new_size[0]
     w_percent = (width / float(old_size[0]))
     hsize = int((float(old_size[1]) * float(w_percent)))
-    size = (width - width % 8, hsize - hsize % 8)
-    return size
+
+    return width - width % 8, hsize - hsize % 8
 
 
 def _is_aligned_by_8(x, y):
@@ -69,14 +69,28 @@ def _align_by_8(x, y):
     return x - x % 8, y - y % 8
 
 
+def _copy_img(img):
+    c = img.copy()
+
+    if hasattr(img, 'filename'):
+        c.filename = img.filename
+
+    return c
+
+
 def _resize_image(size, img):
     new_size = _resize_image_calc(size, img.size)
 
     if img.size == new_size:
         # probably less costly
-        return img.copy()
+        return _copy_img(img)
 
-    return img.resize(new_size, PIL.Image.LANCZOS)
+    r = img.resize(new_size, PIL.Image.LANCZOS)
+
+    if hasattr(img, 'filename'):
+        r.filename = img.filename
+
+    return r
 
 
 def _is_frame_in_slice(idx, frame_start, frame_end):
@@ -88,7 +102,10 @@ def _total_frames_slice(total_frames, frame_start, frame_end):
 
 
 def _RGB(img):
-    return img.convert('RGB')
+    c = img.convert('RGB')
+    if hasattr(img, 'filename'):
+        c.filename = img.filename
+    return c
 
 
 class MaskImageSizeMismatchError(Exception):
@@ -148,8 +165,9 @@ class AnimationReader:
 
 
 class VideoReader(AnimationReader):
-    def __init__(self, filename, resize_resolution=None):
+    def __init__(self, filename, file_source, resize_resolution=None):
         self._filename = filename
+        self._file_source = file_source
         self._container = av.open(filename, 'r')
         self.resize_resolution = resize_resolution
 
@@ -157,7 +175,7 @@ class VideoReader(AnimationReader):
             width = int(self._container.streams.video[0].width)
             height = int(self._container.streams.video[0].height)
             if not _is_aligned_by_8(width, height):
-                width, height = _align_by_8(width, height)
+                width, height = _resize_image_calc(_align_by_8(width, height), (width, height))
                 self.resize_resolution = (width, height)
         else:
             width, height = _resize_image_calc(self.resize_resolution,
@@ -188,16 +206,22 @@ class VideoReader(AnimationReader):
 
     def __next__(self):
         if self.resize_resolution is None:
-            return next(self._iter).to_image()
+            rgb_image = next(self._iter).to_image()
+            rgb_image.filename = self._file_source
+            return rgb_image
         else:
             with next(self._iter).to_image() as img:
                 with _resize_image(self.resize_resolution, img) as r_img:
-                    return _RGB(r_img)
+                    rgb_image = _RGB(r_img)
+                    rgb_image.filename = self._file_source
+                    return rgb_image
 
 
 class GifWebpReader(AnimationReader):
-    def __init__(self, file, resize_resolution=None):
+    def __init__(self, file, file_source, resize_resolution=None):
         self._img = PIL.Image.open(file)
+        self._file_source = file_source
+
         self._iter = PIL.ImageSequence.Iterator(self._img)
         self.resize_resolution = resize_resolution
 
@@ -214,7 +238,7 @@ class GifWebpReader(AnimationReader):
             width = self._img.size[0]
             height = self._img.size[1]
             if not _is_aligned_by_8(width, height):
-                width, height = _align_by_8(width, height)
+                width, height = _resize_image_calc(_align_by_8(width, height), (width, height))
                 self.resize_resolution = (width, height)
         else:
             width, height = _resize_image_calc(self.resize_resolution, self._img.size)
@@ -234,10 +258,14 @@ class GifWebpReader(AnimationReader):
     def __next__(self):
         with next(self._iter) as img:
             if self.resize_resolution is None:
-                return _RGB(img)
+                rgb_image = _RGB(img)
+                rgb_image.filename = self._file_source
+                return rgb_image
             else:
                 with _resize_image(self.resize_resolution, img) as r_img:
-                    return _RGB(r_img)
+                    rgb_image = _RGB(r_img)
+                    rgb_image.filename = self._file_source
+                    return rgb_image
 
 
 class MockImageAnimationReader(AnimationReader):
@@ -254,7 +282,7 @@ class MockImageAnimationReader(AnimationReader):
             width = self._img.size[0]
             height = self._img.size[1]
             if not _is_aligned_by_8(width, height):
-                width, height = _align_by_8(width, height)
+                width, height = _resize_image_calc(_align_by_8(width, height), (width, height))
                 self.resize_resolution = (width, height)
         else:
             width, height = _resize_image_calc(self.resize_resolution, self._img.size)
@@ -275,18 +303,18 @@ class MockImageAnimationReader(AnimationReader):
         if self._idx < self.total_frames:
             self._idx += 1
             if self.resize_resolution is None:
-                return self._img.copy()
+                return _copy_img(self._img)
             else:
                 return _resize_image(self.resize_resolution, self._img)
         else:
             raise StopIteration
 
 
-def create_animation_reader(file, resize_resolution=None, image_repetitions=1):
+def create_animation_reader(file, file_source, resize_resolution=None, image_repetitions=1):
     if isinstance(file, io.IOBase):
-        return GifWebpReader(file, resize_resolution)
+        return GifWebpReader(file, file_source, resize_resolution)
     elif isinstance(file, str):
-        return VideoReader(file, resize_resolution)
+        return VideoReader(file, file_source, resize_resolution)
     elif isinstance(file, PIL.Image.Image):
         return MockImageAnimationReader(file, resize_resolution, image_repetitions)
     else:
@@ -308,12 +336,13 @@ def iterate_animation_frames(animation_reader, frame_start=0, frame_end=None, in
             if _is_frame_in_slice(in_frame_idx, frame_start, frame_end):
                 if in_slice is None:
                     in_slice = True
+
                 yield AnimationFrame(frame_index=out_frame_idx,
                                      total_frames=total_frames,
                                      anim_fps=animation_reader.anim_fps,
                                      anim_frame_duration=animation_reader.anim_frame_duration,
                                      image=frame,
-                                     mask_image=inpaint_mask.copy() if mask_is_image else None)
+                                     mask_image=_copy_img(inpaint_mask) if mask_is_image else None)
                 out_frame_idx += 1
             elif in_slice:
                 break
@@ -343,6 +372,7 @@ def iterate_animation_frames(animation_reader, frame_start=0, frame_end=None, in
 
 class ImageSeed:
     def __init__(self, image, mask_image=None):
+
         self.is_animation_frame = isinstance(image, AnimationFrame)
         self.frame_index = None
         self.total_frames = None
@@ -497,18 +527,23 @@ def _write_to_file(data, filepath):
     return filepath
 
 
-def _create_and_exif_orient_pil_img(data, resize_resolution=None):
+def _create_and_exif_orient_pil_img(data, file_source, resize_resolution=None):
     if resize_resolution is None:
         with PIL.Image.open(io.BytesIO(data)) as img, _RGB(img) as rgb_img:
             e_img = _exif_orient(rgb_img)
             if not _is_aligned_by_8(e_img.width, e_img.height):
                 with e_img:
-                    return _resize_image(_align_by_8(e_img.width, e_img.height), e_img)
+                    resized = _resize_image(_align_by_8(e_img.width, e_img.height), e_img)
+                    resized.filename = file_source
+                    return resized
             else:
+                e_img.filename = file_source
                 return e_img
     else:
         with PIL.Image.open(io.BytesIO(data)) as img, _RGB(img) as rgb_img, _exif_orient(rgb_img) as o_img:
-            return _resize_image(resize_resolution, o_img)
+            resized = _resize_image(resize_resolution, o_img)
+            resized.filename = file_source
+            return resized
 
 
 def iterate_image_seed(uri, frame_start=0, frame_end=None, resize_resolution=None):
@@ -546,15 +581,15 @@ def iterate_image_seed(uri, frame_start=0, frame_end=None, resize_resolution=Non
     if _mime_type_is_animable_image(seed_mime_type):
 
         if mask_data is None:
-            with create_animation_reader(io.BytesIO(seed_data), resize_resolution) as animation_reader:
+            with create_animation_reader(io.BytesIO(seed_data), parse_result.uri, resize_resolution) as animation_reader:
                 yield from (ImageSeed(animation_frame) for animation_frame in
                             iterate_animation_frames(animation_reader=animation_reader,
                                                      frame_start=frame_start,
                                                      frame_end=frame_end))
 
         elif _mime_type_is_static_image(mask_mime_type):
-            with create_animation_reader(io.BytesIO(seed_data), resize_resolution) as animation_reader, \
-                    _create_and_exif_orient_pil_img(mask_data, resize_resolution) as mask_image:
+            with create_animation_reader(io.BytesIO(seed_data), parse_result.uri, resize_resolution) as animation_reader, \
+                    _create_and_exif_orient_pil_img(mask_data, parse_result.mask_uri, resize_resolution) as mask_image:
                 if animation_reader.size != mask_image.size:
                     raise MaskImageSizeMismatchError(animation_reader.size, mask_image.size)
                 yield from (ImageSeed(animation_frame) for animation_frame in
@@ -567,8 +602,8 @@ def iterate_image_seed(uri, frame_start=0, frame_end=None, resize_resolution=Non
             with tempfile.TemporaryDirectory() as temp_dir:
                 mask_video_file_path = _write_to_file(mask_data, os.path.join(temp_dir, 'tmp_mask'))
 
-                with create_animation_reader(io.BytesIO(seed_data), resize_resolution) as animation_reader, \
-                        create_animation_reader(mask_video_file_path, resize_resolution) as mask_animation_reader:
+                with create_animation_reader(io.BytesIO(seed_data), parse_result.uri, resize_resolution) as animation_reader, \
+                        create_animation_reader(mask_video_file_path, parse_result.mask_uri, resize_resolution) as mask_animation_reader:
                     if animation_reader.size != mask_animation_reader.size:
                         raise MaskImageSizeMismatchError(animation_reader.size, mask_animation_reader.size)
                     yield from (ImageSeed(animation_frame) for animation_frame in
@@ -578,8 +613,8 @@ def iterate_image_seed(uri, frame_start=0, frame_end=None, resize_resolution=Non
                                                          inpaint_mask=mask_animation_reader))
 
         elif _mime_type_is_animable_image(mask_mime_type):
-            with create_animation_reader(io.BytesIO(seed_data), resize_resolution) as animation_reader, \
-                    create_animation_reader(io.BytesIO(mask_data), resize_resolution) as mask_animation_reader:
+            with create_animation_reader(io.BytesIO(seed_data), parse_result.uri, resize_resolution) as animation_reader, \
+                    create_animation_reader(io.BytesIO(mask_data),  parse_result.mask_uri, resize_resolution) as mask_animation_reader:
                 if animation_reader.size != mask_animation_reader.size:
                     raise MaskImageSizeMismatchError(animation_reader.size, mask_animation_reader.size)
                 yield from (ImageSeed(animation_frame) for animation_frame in
@@ -596,14 +631,14 @@ def iterate_image_seed(uri, frame_start=0, frame_end=None, resize_resolution=Non
             video_file_path = _write_to_file(seed_data, os.path.join(temp_dir, 'tmp'))
 
             if mask_data is None:
-                with create_animation_reader(video_file_path, resize_resolution) as animation_reader:
+                with create_animation_reader(video_file_path, parse_result.uri, resize_resolution) as animation_reader:
                     yield from (ImageSeed(animation_frame) for animation_frame in
                                 iterate_animation_frames(animation_reader=animation_reader,
                                                          frame_start=frame_start,
                                                          frame_end=frame_end))
             elif _mime_type_is_static_image(mask_mime_type):
-                with create_animation_reader(video_file_path, resize_resolution) as animation_reader, \
-                        _create_and_exif_orient_pil_img(mask_data, resize_resolution) as mask_image:
+                with create_animation_reader(video_file_path, parse_result.uri, resize_resolution) as animation_reader, \
+                        _create_and_exif_orient_pil_img(mask_data, parse_result.mask_uri, resize_resolution) as mask_image:
                     if animation_reader.size != mask_image.size:
                         raise MaskImageSizeMismatchError(animation_reader.size, mask_image.size)
                     yield from (ImageSeed(animation_frame) for animation_frame in
@@ -615,8 +650,8 @@ def iterate_image_seed(uri, frame_start=0, frame_end=None, resize_resolution=Non
             elif _mime_type_is_video(mask_mime_type):
                 mask_video_file_path = _write_to_file(mask_data, os.path.join(temp_dir, 'tmp_mask'))
 
-                with create_animation_reader(video_file_path, resize_resolution) as animation_reader, \
-                        create_animation_reader(mask_video_file_path, resize_resolution) as mask_animation_reader:
+                with create_animation_reader(video_file_path, parse_result.uri, resize_resolution) as animation_reader, \
+                        create_animation_reader(mask_video_file_path, parse_result.mask_uri, resize_resolution) as mask_animation_reader:
                     if animation_reader.size != mask_animation_reader.size:
                         raise MaskImageSizeMismatchError(animation_reader.size, mask_animation_reader.size)
                     yield from (ImageSeed(animation_frame) for animation_frame in
@@ -626,8 +661,8 @@ def iterate_image_seed(uri, frame_start=0, frame_end=None, resize_resolution=Non
                                                          inpaint_mask=mask_animation_reader))
 
             elif _mime_type_is_animable_image(mask_mime_type):
-                with create_animation_reader(video_file_path, resize_resolution) as animation_reader, \
-                        create_animation_reader(io.BytesIO(mask_data), resize_resolution) as mask_animation_reader:
+                with create_animation_reader(video_file_path, parse_result.uri, resize_resolution) as animation_reader, \
+                        create_animation_reader(io.BytesIO(mask_data), parse_result.mask_uri, resize_resolution) as mask_animation_reader:
                     if animation_reader.size != mask_animation_reader.size:
                         raise MaskImageSizeMismatchError(animation_reader.size, mask_animation_reader.size)
                     yield from (ImageSeed(animation_frame) for animation_frame in
@@ -640,13 +675,13 @@ def iterate_image_seed(uri, frame_start=0, frame_end=None, resize_resolution=Non
                     'Unknown mimetype combination for video seed with mask.')
 
     elif _mime_type_is_static_image(seed_mime_type):
-        with _create_and_exif_orient_pil_img(seed_data, resize_resolution) as seed_image:
+        with _create_and_exif_orient_pil_img(seed_data, parse_result.uri, resize_resolution) as seed_image:
 
             if mask_data is None:
                 yield ImageSeed(image=seed_image)
 
             elif _mime_type_is_static_image(mask_mime_type):
-                with _create_and_exif_orient_pil_img(mask_data, resize_resolution) as mask_image:
+                with _create_and_exif_orient_pil_img(mask_data, parse_result.mask_uri, resize_resolution) as mask_image:
                     if seed_image.size != mask_image.size:
                         raise MaskImageSizeMismatchError(seed_image.size, mask_image.size)
                     yield ImageSeed(image=seed_image, mask_image=mask_image)
@@ -655,8 +690,8 @@ def iterate_image_seed(uri, frame_start=0, frame_end=None, resize_resolution=Non
                 with tempfile.TemporaryDirectory() as temp_dir:
                     mask_video_file_path = _write_to_file(mask_data, os.path.join(temp_dir, 'tmp_mask'))
 
-                    with create_animation_reader(mask_video_file_path, resize_resolution) as mask_animation_reader, \
-                            create_animation_reader(seed_image, resize_resolution,
+                    with create_animation_reader(mask_video_file_path, parse_result.mask_uri, resize_resolution) as mask_animation_reader, \
+                            create_animation_reader(seed_image, parse_result.uri, resize_resolution,
                                                     image_repetitions=mask_animation_reader.total_frames) as animation_reader:
                         if animation_reader.size != mask_animation_reader.size:
                             raise MaskImageSizeMismatchError(animation_reader.size, mask_animation_reader.size)
@@ -667,8 +702,8 @@ def iterate_image_seed(uri, frame_start=0, frame_end=None, resize_resolution=Non
                                                              inpaint_mask=mask_animation_reader))
 
             elif _mime_type_is_animable_image(mask_mime_type):
-                with create_animation_reader(io.BytesIO(mask_data), resize_resolution) as mask_animation_reader, \
-                        create_animation_reader(seed_image, resize_resolution,
+                with create_animation_reader(io.BytesIO(mask_data), parse_result.mask_uri, resize_resolution) as mask_animation_reader, \
+                        create_animation_reader(seed_image, parse_result.uri, resize_resolution,
                                                 image_repetitions=mask_animation_reader.total_frames) as animation_reader:
                     if animation_reader.size != mask_animation_reader.size:
                         raise MaskImageSizeMismatchError(animation_reader.size, mask_animation_reader.size)
