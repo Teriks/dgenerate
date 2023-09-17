@@ -735,6 +735,10 @@ class DiffusionPipelineWrapperBase:
         sdxl_original_size = kwargs.get('sdxl_original_size', None)
         sdxl_target_size = kwargs.get('sdxl_target_size', None)
 
+        if strength is not None:
+            num_inference_steps = int(num_inference_steps * strength)
+            guidance_scale = guidance_scale * strength
+
         opts = [self.model_path, ('--model-type', self._model_type), ('--dtype', self._dtype),
                 ('--device', self._device), ('--inference-steps', num_inference_steps),
                 ('--guidance-scales', guidance_scale), ('--seeds', seed)]
