@@ -101,7 +101,7 @@ def iterate_diffusion_args(prompts, seeds, image_seed_strengths, guidance_scales
             if has_image_seed else inference_steps)
 
         diffusion_args['guidance_scale'] = (
-            math.ceil(guidance_scale / image_seed_strength if image_seed_strength > 0 else guidance_scale)
+            (guidance_scale / image_seed_strength if image_seed_strength > 0 else guidance_scale)
             if has_image_seed else guidance_scale)
 
         diffusion_args.update(prompt)
