@@ -451,9 +451,11 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                 raise NotImplementedError('Using multiple LoRA models is currently not supported.')
 
         if not safety_checker:
-            if pipeline.safety_checker is not None:
+            if hasattr(pipeline, 'safety_checker') and pipeline.safety_checker is not None:
                 # If it's already None for some reason you'll get a call
                 # to an unassigned feature_extractor by assigning it a value
+
+                # The attribute will not exist for SDXL pipelines currently
 
                 pipeline.safety_checker = _disabled_safety_checker
 
