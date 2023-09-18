@@ -105,9 +105,9 @@ def run_diffusion():
             print("Error:", e, file=sys.stderr)
             sys.exit(1)
 
-        return {'last_image': render_loop.written_images[-1] if len(render_loop.written_images) else [],
+        return {'last_image': quote(render_loop.written_images[-1]) if len(render_loop.written_images) else [],
                 'last_images': ' '.join(quote(s) for s in render_loop.written_images),
-                'last_animation': render_loop.written_animations[-1] if len(render_loop.written_animations) else [],
+                'last_animation': quote(render_loop.written_animations[-1]) if len(render_loop.written_animations) else [],
                 'last_animations': ' '.join(quote(s) for s in render_loop.written_animations) }
 
     if not sys.stdin.isatty():

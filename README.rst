@@ -1247,9 +1247,9 @@ you may use Unix style notation for environmental variables even on Windows.
 There is also information about the previous execution of dgenerate that is available to use
 via Jinja2 templating which can be passed to ``--image-seeds``, these include:
 
-* ``{{ last_image }}``
+* ``{{ last_image }}`` (A quoted filename)
 * ``{{ last_images }}`` (A string of quoted filenames seperated by spaces)
-* ``{{ last_animation }}``
+* ``{{ last_animation }}`` (A quoted filename)
 * ``{{ last_animations }}`` (A string of quoted filenames seperated by spaces)
 
 Empty lines and comments starting with ``#`` will be ignored.
