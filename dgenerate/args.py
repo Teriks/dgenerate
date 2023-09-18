@@ -325,10 +325,20 @@ parser.add_argument('-ox', '--output-overwrite', action='store_true', default=Fa
                             """)
 
 parser.add_argument('-oc', '--output-configs', action='store_true', default=False,
-                    help="""Write a configuration text file for every output file that can be read
-                            in from STDIN by dgenerate to reproduce that particular output file exactly.
-                            These files will be written to --output-directory and are affected by --output-prefix 
-                            as well. The files will be named after their corresponding image or media file.
+                    help="""Write a configuration text file for every output image or animation.
+                            The text file can be used reproduce that particular output image or animation by piping
+                            it to dgenerate STDIN, for example "dgenerate < config.txt". These files will be written
+                            to --output-directory and are affected by --output-prefix and --output-overwrite as well. 
+                            The files will be named after their corresponding image or animation file. Configuration 
+                            files produced for animation frame images will utilize --frame-start and --frame-end to 
+                            specify the frame number.
+                            """)
+
+parser.add_argument('-om', '--output-metadata', action='store_true', default=False,
+                    help="""Write the information produced by --output-configs to the PNG metadata of each image.
+                            Metadata will not be written to animated files (yet). The data is written to a 
+                            PNG metadata property named DgenerateConfig and can be read using ImageMagick like so: 
+                            "magick identify -format "%%[Property:DgenerateConfig]".
                             """)
 
 

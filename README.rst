@@ -37,9 +37,9 @@ Help
                      [--textual-inversions TEXTUAL_INVERSIONS [TEXTUAL_INVERSIONS ...]] [--scheduler SCHEDULER]
                      [--sdxl-refiner SDXL_REFINER] [--sdxl-original-size SDXL_ORIGINAL_SIZE]
                      [--sdxl-target-size SDXL_TARGET_SIZE] [--safety-checker] [--version] [-d DEVICE] [-t DTYPE]
-                     [-s OUTPUT_SIZE] [-o OUTPUT_PATH] [-op OUTPUT_PREFIX] [-ox] [-oc] [-p PROMPTS [PROMPTS ...]]
-                     [-se SEEDS [SEEDS ...] | -gse GEN_SEEDS] [-af ANIMATION_FORMAT] [-fs FRAME_START]
-                     [-fe FRAME_END] [-is [IMAGE_SEEDS ...]] [-iss [IMAGE_SEED_STRENGTHS ...]]
+                     [-s OUTPUT_SIZE] [-o OUTPUT_PATH] [-op OUTPUT_PREFIX] [-ox] [-oc] [-om]
+                     [-p PROMPTS [PROMPTS ...]] [-se SEEDS [SEEDS ...] | -gse GEN_SEEDS] [-af ANIMATION_FORMAT]
+                     [-fs FRAME_START] [-fe FRAME_END] [-is [IMAGE_SEEDS ...]] [-iss [IMAGE_SEED_STRENGTHS ...]]
                      [-gs [GUIDANCE_SCALES ...]] [-ifs [INFERENCE_STEPS ...]]
                      [-hnf [SDXL_HIGH_NOISE_FRACTIONS ...]]
                      model_path
@@ -204,10 +204,18 @@ Help
                             "_duplicate_(number)" when it is detected that the generated file name already
                             exists.
       -oc, --output-configs
-                            Write a configuration text file for every output file that can be read in from STDIN
-                            by dgenerate to reproduce that particular output file exactly. These files will be
-                            written to --output-directory and are affected by --output-prefix as well. The files
-                            will be named after their corresponding image or media file.
+                            Write a configuration text file for every output image or animation. The text file
+                            can be used reproduce that particular output image or animation by piping it to
+                            dgenerate STDIN, for example "dgenerate < config.txt". These files will be written to
+                            --output-directory and are affected by --output-prefix and --output-overwrite as
+                            well. The files will be named after their corresponding image or animation file.
+                            Configuration files produced for animation frame images will utilize --frame-start
+                            and --frame-end to specify the frame number.
+      -om, --output-metadata
+                            Write the information produced by --output-configs to the PNG metadata of each image.
+                            Metadata will not be written to animated files (yet). The data is written to a PNG
+                            metadata property named DgenerateConfig and can be read using ImageMagick like so:
+                            "magick identify -format "%[Property:DgenerateConfig]".
       -p PROMPTS [PROMPTS ...], --prompts PROMPTS [PROMPTS ...]
                             List of prompts to try, an image group is generated for each prompt, prompt data is
                             split by ; (semi-colon). The first value is the positive text influence, things you
@@ -223,7 +231,7 @@ Help
                             is used.
       -af ANIMATION_FORMAT, --animation-format ANIMATION_FORMAT
                             Output format when generating an animation from an input video / gif / webp etc.
-                            Value must be one of: gif, webp, or mp4. (default: mp4)
+                            Value must be one of: webp, mp4, or gif. (default: mp4)
       -fs FRAME_START, --frame-start FRAME_START
                             Starting frame slice point for animated files, the specified frame will be included.
       -fe FRAME_END, --frame-end FRAME_END
@@ -260,6 +268,7 @@ Help
                             steps will be processed by the base model, while the rest will be processed by the
                             refiner model. Multiple values to this argument will result in additional generation
                             steps for each value.
+
 
 
 
