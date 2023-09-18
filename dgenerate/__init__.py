@@ -25,6 +25,7 @@ import sys
 
 
 def run_diffusion():
+    import re
     import os
     import shlex
     import torch
@@ -104,13 +105,32 @@ def run_diffusion():
             sys.exit(1)
 
     continuation = ''
+    first_line = True
     if not sys.stdin.isatty():
         for line in sys.stdin:
             line = line.strip()
-            if line == '' or line.startswith('#'):
+            if line == '':
+                first_line = False
+                continue
+            if line.startswith('#'):
+                if first_line:
+                    versioning = re.match(r'#!\s+dgenerate\s+([0-9]+\.[0-9]+\.[0-9]+)', line)
+                    if versioning:
+                        config_file_version = versioning.group(1)
+                        cur_major_version = int(__version__.split('.')[0])
+                        config_major_version = int(config_file_version.split('.')[0])
+                        if cur_major_version != config_major_version:
+                            print(underline(
+                                'WARNING: Ingested configuration file is written for an '
+                                f'incompatible version of dgenerate! You are using version {__version__} '
+                                f'and the config file was written for version {config_file_version}',
+                                ), file=sys. stderr)
+
+                first_line = False
                 continue
             if line.startswith('\\clear_model_cache'):
                 clear_model_cache()
+                first_line = False
                 continue
 
             if line.endswith('\\'):
@@ -126,6 +146,8 @@ def run_diffusion():
                 print(underline(header + args_wrapped))
                 parse_and_run(shlex.split(os.path.expandvars(args)))
                 continuation = ''
+
+            first_line = False
     else:
         parse_and_run()
 
