@@ -1244,6 +1244,14 @@ Memory consumption may become and issue if you are not careful.
 Environmental variables will be expanded in the provided input to **STDIN** when using this feature,
 you may use Unix style notation for environmental variables even on Windows.
 
+There is also information about the previous execution of dgenerate that is available to use
+via Jinja2 templating which can be passed to ``--image-seeds``, these include:
+
+* ``{{ last_image }}``
+* ``{{ last_images }}`` (A string of quoted filenames seperated by spaces)
+* ``{{ last_animation }}``
+* ``{{ last_animations }}`` (A string of quoted filenames seperated by spaces)
+
 Empty lines and comments starting with ``#`` will be ignored.
 
 You can create a multiline continuation using ``\`` to indicate that a line continues.
