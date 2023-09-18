@@ -1301,10 +1301,14 @@ The Following is an example input file **my-config.txt**:
     # Print a quoted filename of the last image produced by the last invocation
     # This could potentially be passed to --image-seeds of the next invocation
     # If you wanted to run another pass over the image
+
     \print {{ last_image }}
 
+
     # You can use "unquote" as a function or a jinja2 filter
+
     \print "{{ unquote(last_image) }};my-mask.png"
+
 
     # Print a list of quoted filenames produced by the last invocation
     # seperated by spaces if there is multiple, this could also be
