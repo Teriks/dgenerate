@@ -1292,6 +1292,8 @@ The Following is an example input file **my-config.txt**:
     --output-path unique_output_3  \
 
     # There can be comments or newlines within the continuation
+    # The continuation ends when a line does not end in \
+
     --inference-steps 30 \
     --guidance-scales 10
 
