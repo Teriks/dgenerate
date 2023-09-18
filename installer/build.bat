@@ -10,6 +10,6 @@ heat dir dist\dgenerate -o DgenerateComponents.wxs -scom -frag -srd -sreg -gg -c
 candle Product.wix DgenerateComponents.wxs -arch x64 -out wixobj\ -ext WixUIExtension
 light -b dist\dgenerate wixobj\Product.wixobj wixobj\DgenerateComponents.wixobj -out wixobj\dgenerate.msi -ext WixUIExtension
 
-: pushd wixobj
-: "C:\Program Files\7-Zip\7z.exe" -v1500m a dgenerate_installer.zip dgenerate.msi cab1.cab cab2.cab cab3.cab
-: popd
+pushd wixobj
+"C:\Program Files\7-Zip\7z.exe" -v1500m a dgenerate_installer.zip dgenerate.msi cab1.cab cab2.cab cab3.cab
+popd
