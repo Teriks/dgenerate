@@ -19,7 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import shutil
-
+import ast
 
 class ConceptModelPathParseError(Exception):
     pass
@@ -60,7 +60,11 @@ class ConceptModelPathParser:
                 raise ConceptModelPathParseError(
                     f'Unknown path argument "{name}" for {self.concept_name} concept "{concept}", '
                     f'valid arguments: {", ".join(list(self.known_args))}')
-            args[name] = vals[1].strip().strip('"\'')
+            try:
+                args[name] = unquote(vals[1])
+            except SyntaxError as e:
+                raise ConceptModelPathParseError(f'Syntax Error parsing argument {name} for '
+                                                 f'{self.concept_name} concept "{concept}": {e}')
         return ConceptModelPath(concept, args)
 
 
@@ -92,3 +96,11 @@ def underline(msg):
 
 def quote(strin):
     return f'"{strin}"'
+
+def unquote(strin):
+    strin = strin.strip(' ')
+    if strin.startswith('"') or strin.startswith('\''):
+        return str(ast.literal_eval('r'+strin))
+    else:
+        # Is an unquoted string
+        return str(strin.strip(' '))
