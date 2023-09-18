@@ -1252,6 +1252,13 @@ via Jinja2 templating which can be passed to ``--image-seeds``, these include:
 * ``{{ last_animation }}`` (A quoted filename)
 * ``{{ last_animations }}`` (A list of quoted filenames)
 
+Available custom jinja2 functions/filters are:
+
+* ``{{ unquote('"quotes_will_be_removed"') }}``
+* ``{{ quote('quotes_will_be_added') }}``
+
+The above can be used as either a function or filter IE: ``{{ "quote_me" | quote }}``
+
 Empty lines and comments starting with ``#`` will be ignored.
 
 You can create a multiline continuation using ``\`` to indicate that a line continues.
