@@ -1,3 +1,5 @@
+#! dgenerate 1.0.0
+
 stabilityai/stable-diffusion-2 --model-type flax \
 --revision bf16 \
 --dtype float16 \

@@ -1,3 +1,5 @@
+#! dgenerate 1.0.0
+
 stabilityai/stable-diffusion-2 \
 --inference-steps 40 \
 --guidance-scales 8 \

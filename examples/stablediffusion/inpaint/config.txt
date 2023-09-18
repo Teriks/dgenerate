@@ -1,3 +1,5 @@
+#! dgenerate 1.0.0
+
 stabilityai/stable-diffusion-2-inpainting  \
 --inference-steps 30 \
 --guidance-scales 7 \

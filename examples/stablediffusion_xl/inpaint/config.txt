@@ -1,3 +1,5 @@
+#! dgenerate 1.0.0
+
 diffusers/stable-diffusion-xl-1.0-inpainting-0.1 --model-type torch-sdxl \
 --variant fp16 --dtype float16 \
 --inference-steps 20 \

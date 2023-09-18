@@ -1,3 +1,5 @@
+#! dgenerate 1.0.0
+
 xvjiarui/stable-diffusion-2-inpainting --model-type flax \
 --dtype float16 \
 --inference-steps 50 \
