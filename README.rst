@@ -1248,9 +1248,9 @@ There is also information about the previous execution of dgenerate that is avai
 via Jinja2 templating which can be passed to ``--image-seeds``, these include:
 
 * ``{{ last_image }}`` (A quoted filename)
-* ``{{ last_images }}`` (A string of quoted filenames seperated by spaces)
+* ``{{ last_images }}`` (A list of quoted filenames)
 * ``{{ last_animation }}`` (A quoted filename)
-* ``{{ last_animations }}`` (A string of quoted filenames seperated by spaces)
+* ``{{ last_animations }}`` (A list of quoted filenames)
 
 Empty lines and comments starting with ``#`` will be ignored.
 
@@ -1287,6 +1287,35 @@ The Following is an example input file **my-config.txt**:
     # There can be comments or newlines within the continuation
     --inference-steps 30 \
     --guidance-scales 10
+
+
+    # Print a quoted filename of the last image produced by the last invocation
+    # This could potentially be passed to --image-seeds of the next invocation
+    # If you wanted to run another pass over the image
+    \print {{ last_image }}
+
+    # You can use "unquote" as a function or a jinja2 filter
+    \print "{{ unquote(last_image) }};my-mask.png"
+
+    # Print a list of quoted filenames produced by the last invocation
+    # seperated by spaces if there is multiple, this could also be
+    # passed to --image-seeds
+
+    \print {{ last_images | join(' ') }}
+
+
+    # For loops are possible
+
+    \print {% for image in last_images %}{{ image }} {% endfor %}
+
+
+    # For loops are possible with continuation
+    # However continuations will add whitespace
+    # IE this template will be: "{% for image in last_images %} {{ image }} {% endfor %}"
+
+    \print {% for image in last_images %} \
+            {{ image }} \
+           {% endfor %}
 
 
     # A clear model cache directive can be used inbetween invocations if cached models that

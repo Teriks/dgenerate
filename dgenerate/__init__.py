@@ -22,6 +22,9 @@
 __version__ = "1.0.0"
 
 import sys
+import jinja2
+
+
 
 
 def run_diffusion():
@@ -36,7 +39,7 @@ def run_diffusion():
     import transformers
 
     from .args import parse_args
-    from .textprocessing import underline, long_text_wrap_width, quote
+    from .textprocessing import underline, long_text_wrap_width, quote, unquote
     from .diffusionloop import DiffusionRenderLoop
 
     from .pipelinewrappers import clear_model_cache, InvalidVaePathError, \
@@ -105,18 +108,34 @@ def run_diffusion():
             print("Error:", e, file=sys.stderr)
             sys.exit(1)
 
-        return {'last_image': quote(render_loop.written_images[-1]) if len(render_loop.written_images) else [],
-                'last_images': ' '.join(quote(s) for s in render_loop.written_images),
-                'last_animation': quote(render_loop.written_animations[-1]) if len(render_loop.written_animations) else [],
-                'last_animations': ' '.join(quote(s) for s in render_loop.written_animations) }
+        return {'last_image':
+                    quote(render_loop.written_images[-1])
+                          if len(render_loop.written_images) else [],
+                'last_images':
+                    [quote(s) for s in render_loop.written_images],
+                'last_animation':
+                    quote(render_loop.written_animations[-1])
+                          if len(render_loop.written_animations) else [],
+                'last_animations':
+                    [quote(s) for s in render_loop.written_animations] }
+
+
+
 
     if not sys.stdin.isatty():
         template_args = {
-            'last_image': "",
+            'last_image': '',
             'last_images': [],
-            'last_animation': "",
+            'last_animation': '',
             'last_animations': []
         }
+
+        jinja_env = jinja2.Environment()
+        jinja_env.globals['unquote'] = unquote
+        jinja_env.filters['unquote'] = unquote
+        jinja_env.globals['quote'] = quote
+        jinja_env.filters['quote'] = quote
+
 
         continuation = ''
         first_line = True
@@ -142,17 +161,26 @@ def run_diffusion():
 
                 first_line = False
                 continue
-            if line.startswith('\\clear_model_cache'):
-                clear_model_cache()
-                first_line = False
-                continue
 
             if line.endswith('\\'):
                 continuation += ' ' + line.rstrip(' \\')
             else:
                 args = (continuation + ' ' + line).lstrip()
 
-                templated_cmd = jinja2.Environment().\
+                if args.startswith('\\print'):
+                    args = args.split(' ', 1)
+                    if len(args) == 2:
+                        print(jinja_env.from_string(args[1]).render(**template_args))
+                    first_line = False
+                    continuation = ''
+                    continue
+                if args.startswith('\\clear_model_cache'):
+                    clear_model_cache()
+                    first_line = False
+                    continuation = ''
+                    continue
+
+                templated_cmd = jinja_env.\
                     from_string(os.path.expandvars(args)).render(**template_args)
 
                 header = "Processing Arguments: "
