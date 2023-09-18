@@ -170,7 +170,8 @@ def run_diffusion():
                 if args.startswith('\\print'):
                     args = args.split(' ', 1)
                     if len(args) == 2:
-                        print(jinja_env.from_string(args[1]).render(**template_args))
+                        print(jinja_env.from_string(os.path.expandvars(args[1]))
+                              .render(**template_args))
                     first_line = False
                     continuation = ''
                     continue
