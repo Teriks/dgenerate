@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Iterator
 
 import torch
+from PIL.PngImagePlugin import PngInfo
 
 from .mediainput import iterate_image_seed, get_image_seed_info
 from .mediaoutput import create_animation_writer, supported_animation_writer_formats
@@ -142,6 +143,7 @@ class DiffusionRenderLoop:
         self.output_prefix = None
         self.output_overwrite = False
         self.output_configs = False
+        self.output_metadata = False
         self.prompts = []
         self.seeds = [0]
         self.image_seeds = []
@@ -190,6 +192,8 @@ class DiffusionRenderLoop:
             raise ValueError('DiffusionRenderLoop.output_overwrite must be bool')
         if not isinstance(self.output_configs, bool):
             raise ValueError('DiffusionRenderLoop.output_configs must be bool')
+        if not isinstance(self.output_metadata, bool):
+            raise ValueError('DiffusionRenderLoop.output_metadata must be bool')
         if not isinstance(self.device, str) or not is_valid_device_string(self.device):
             raise ValueError('DiffusionRenderLoop.device must be "cuda" or "cpu"')
         if not (isinstance(self.animation_format, str) or
@@ -263,7 +267,6 @@ class DiffusionRenderLoop:
         return path
 
     def _gen_animation_filename(self, args_ctx: DiffusionArgContext, generation_step, animation_format):
-
         args = ['ANIM',
                 's', args_ctx.seed,
                 'st', args_ctx.image_seed_strength,
@@ -274,6 +277,22 @@ class DiffusionRenderLoop:
             args += ['hnf', args_ctx.sdxl_high_noise_fraction]
 
         return self._gen_filename(*args, 'step', generation_step + 1, ext=animation_format)
+
+    def _write_generation_result(self, filename, generation_result: PipelineResultWrapper, config_txt):
+        if self.output_metadata:
+            metadata = PngInfo()
+            metadata.add_text("DgenerateConfig", config_txt)
+            generation_result.image.save(filename, pnginfo=metadata)
+        else:
+            generation_result.image.save(filename)
+        if self.output_configs:
+            config_file_name = os.path.splitext(filename)[0] + '.txt'
+            with open(config_file_name, "w") as config_file:
+                config_file.write(config_txt)
+            print(underline(
+                f'Wrote Image File: {filename}\nWrote Config File: {config_file_name}'))
+        else:
+            print(underline(f'Wrote Image File: {filename}'))
 
     def _write_animation_frame(self, args_ctx: DiffusionArgContext, image_seed_obj,
                                generation_result: PipelineResultWrapper):
@@ -292,19 +311,11 @@ class DiffusionRenderLoop:
                                       'step',
                                       self._generation_step + 1,
                                       ext='png')
+        config_txt = \
+            generation_result.dgenerate_config + \
+            f' \\\n--frame-start {image_seed_obj.frame_index} --frame-end {image_seed_obj.frame_index}'
 
-        generation_result.image.save(filename)
-
-        if self.output_configs:
-            config_txt = generation_result.dgenerate_config
-            config_txt += f' \\\n--frame-start {image_seed_obj.frame_index} --frame-end {image_seed_obj.frame_index}'
-            config_file_name = os.path.splitext(filename)[0] + '.txt'
-            with open(config_file_name, "w") as config_file:
-                config_file.write(config_txt)
-            print(underline(
-                f'Wrote Image File: {filename}\nWrote Config File: {config_file_name}'))
-        else:
-            print(underline(f'Wrote Image File: {filename}'))
+        self._write_generation_result(filename, generation_result, config_txt)
 
     def _write_image_seed_gen_image(self, args_ctx: DiffusionArgContext, generation_result: PipelineResultWrapper):
         args = ['s', args_ctx.seed,
@@ -316,16 +327,7 @@ class DiffusionRenderLoop:
             args += ['hnf', args_ctx.sdxl_high_noise_fraction]
 
         filename = self._gen_filename(*args, 'step', self._generation_step + 1, ext='png')
-        generation_result.image.save(filename)
-
-        if self.output_configs:
-            config_file_name = os.path.splitext(filename)[0] + '.txt'
-            with open(config_file_name, "w") as config_file:
-                config_file.write(generation_result.dgenerate_config)
-            print(underline(
-                f'Wrote Image File: {filename}\nWrote Config File: {config_file_name}'))
-        else:
-            print(underline(f'Wrote Image File: {filename}'))
+        self._write_generation_result(filename, generation_result, generation_result.dgenerate_config)
 
     def _write_prompt_only_image(self, args_ctx: DiffusionArgContext, generation_result: PipelineResultWrapper):
         args = ['s', args_ctx.seed,
@@ -336,16 +338,7 @@ class DiffusionRenderLoop:
             args += ['hnf', args_ctx.sdxl_high_noise_fraction]
 
         filename = self._gen_filename(*args, 'step', self._generation_step + 1, ext='png')
-        generation_result.image.save(filename)
-
-        if self.output_configs:
-            config_file_name = os.path.splitext(filename)[0] + '.txt'
-            with open(config_file_name, "w") as config_file:
-                config_file.write(generation_result.dgenerate_config)
-            print(underline(
-                f'Wrote Image File: {filename}\nWrote Config File: {config_file_name}'))
-        else:
-            print(underline(f'Wrote Image File: {filename}'))
+        self._write_generation_result(filename, generation_result, generation_result.dgenerate_config)
 
     def _pre_generation_step(self, args_ctx: DiffusionArgContext):
         self._last_frame_time = 0

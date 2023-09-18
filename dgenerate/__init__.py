@@ -66,6 +66,7 @@ def run_diffusion():
         render_loop.output_prefix = arguments.output_prefix
         render_loop.output_overwrite = arguments.output_overwrite
         render_loop.output_configs = arguments.output_configs
+        render_loop.output_metadata = arguments.output_metadata
         render_loop.prompts = arguments.prompts
         render_loop.seeds = arguments.seeds
         render_loop.image_seeds = arguments.image_seeds

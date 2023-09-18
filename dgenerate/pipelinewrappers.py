@@ -38,7 +38,7 @@ except ImportError:
 import torch
 import numbers
 from PIL import Image
-from dgenerate.textprocessing import ConceptModelPathParser, ConceptModelPathParseError, quote
+from .textprocessing import ConceptModelPathParser, ConceptModelPathParseError, quote
 from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline, StableDiffusionInpaintPipeline, \
     StableDiffusionInpaintPipelineLegacy, StableDiffusionXLPipeline, StableDiffusionXLImg2ImgPipeline, \
     StableDiffusionXLInpaintPipeline, \
@@ -579,11 +579,15 @@ class PipelineResultWrapper:
 
     @property
     def dgenerate_config(self):
+        from .__init__ import __version__
+
         model_path = self._dgenerate_opts[0]
 
         opts = self._dgenerate_opts[1:]
 
-        config = quote(model_path) + ' \\\n'
+        config = f'#! dgenerate {__version__}\n\n'
+
+        config += quote(model_path) + ' \\\n'
 
         for opt in opts[:-1]:
             config += f'{opt[0]} {opt[1]} \\\n'
