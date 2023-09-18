@@ -29,13 +29,14 @@ def run_diffusion():
     import os
     import shlex
     import torch
+    import jinja2
     import warnings
     import textwrap
     import diffusers
     import transformers
 
     from .args import parse_args
-    from .textprocessing import underline, long_text_wrap_width
+    from .textprocessing import underline, long_text_wrap_width, quote
     from .diffusionloop import DiffusionRenderLoop
 
     from .pipelinewrappers import clear_model_cache, InvalidVaePathError, \
@@ -104,9 +105,22 @@ def run_diffusion():
             print("Error:", e, file=sys.stderr)
             sys.exit(1)
 
-    continuation = ''
-    first_line = True
+        return {'last_image': render_loop.written_images[-1] if len(render_loop.written_images) else [],
+                'last_images': ' '.join(quote(s) for s in render_loop.written_images),
+                'last_animation': render_loop.written_animations[-1] if len(render_loop.written_animations) else [],
+                'last_animations': ' '.join(quote(s) for s in render_loop.written_animations) }
+
     if not sys.stdin.isatty():
+        template_args = {
+            'last_image': "",
+            'last_images': [],
+            'last_animation': "",
+            'last_animations': []
+        }
+
+        continuation = ''
+        first_line = True
+
         for line in sys.stdin:
             line = line.strip()
             if line == '':
@@ -124,7 +138,7 @@ def run_diffusion():
                                 'WARNING: Ingested configuration file is written for an '
                                 f'incompatible version of dgenerate! You are using version {__version__} '
                                 f'and the config file was written for version {config_file_version}',
-                                ), file=sys. stderr)
+                            ), file=sys.stderr)
 
                 first_line = False
                 continue
@@ -138,13 +152,18 @@ def run_diffusion():
             else:
                 args = (continuation + ' ' + line).lstrip()
 
+                templated_cmd = jinja2.Environment().\
+                    from_string(os.path.expandvars(args)).render(**template_args)
+
                 header = "Processing Arguments: "
-                args_wrapped = textwrap.fill(args,
+                args_wrapped = textwrap.fill(templated_cmd,
                                              width=long_text_wrap_width() - len(header),
                                              subsequent_indent=' ' * len(header))
 
                 print(underline(header + args_wrapped))
-                parse_and_run(shlex.split(os.path.expandvars(args)))
+
+                template_args = parse_and_run(shlex.split(templated_cmd))
+
                 continuation = ''
 
             first_line = False

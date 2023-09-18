@@ -121,6 +121,8 @@ class DiffusionRenderLoop:
         self._generation_step = -1
         self._frame_time_sum = 0
         self._last_frame_time = 0
+        self._written_images = []
+        self._written_animations = []
 
         self.model_path = None
         self.model_subfolder = None
@@ -154,6 +156,14 @@ class DiffusionRenderLoop:
         self.guidance_scales = []
         self.inference_steps = []
         self.auth_token = None
+
+    @property
+    def written_images(self):
+        return self._written_images
+
+    @property
+    def written_animations(self):
+        return self._written_animations
 
     def _enforce_state(self):
         if self.dtype not in {'float32', 'float16', 'auto'}:
@@ -315,6 +325,7 @@ class DiffusionRenderLoop:
             generation_result.dgenerate_config + \
             f' \\\n--frame-start {image_seed_obj.frame_index} --frame-end {image_seed_obj.frame_index}'
 
+        self._written_images.append(os.path.abspath(filename))
         self._write_generation_result(filename, generation_result, config_txt)
 
     def _write_image_seed_gen_image(self, args_ctx: DiffusionArgContext, generation_result: PipelineResultWrapper):
@@ -327,6 +338,7 @@ class DiffusionRenderLoop:
             args += ['hnf', args_ctx.sdxl_high_noise_fraction]
 
         filename = self._gen_filename(*args, 'step', self._generation_step + 1, ext='png')
+        self._written_images.append(os.path.abspath(filename))
         self._write_generation_result(filename, generation_result, generation_result.dgenerate_config)
 
     def _write_prompt_only_image(self, args_ctx: DiffusionArgContext, generation_result: PipelineResultWrapper):
@@ -338,6 +350,7 @@ class DiffusionRenderLoop:
             args += ['hnf', args_ctx.sdxl_high_noise_fraction]
 
         filename = self._gen_filename(*args, 'step', self._generation_step + 1, ext='png')
+        self._written_images.append(os.path.abspath(filename))
         self._write_generation_result(filename, generation_result, generation_result.dgenerate_config)
 
     def _pre_generation_step(self, args_ctx: DiffusionArgContext):
@@ -411,6 +424,8 @@ class DiffusionRenderLoop:
 
         Path(self.output_path).mkdir(parents=True, exist_ok=True)
 
+        self._written_images = []
+        self._written_animations = []
         self._generation_step = -1
         self._frame_time_sum = 0
         self._last_frame_time = 0
@@ -543,6 +558,8 @@ class DiffusionRenderLoop:
                         f'Writing Animation: {video_writer.filename}\nWriting Config File: {anim_config_file_name}'))
                 else:
                     print(underline(f'Writing Animation: {video_writer.filename}'))
+
+                self._written_animations.append(os.path.abspath(video_writer.filename))
 
                 for image_obj in iterate_image_seed(image_seed, self.frame_start, self.frame_end,
                                                     self.output_size):

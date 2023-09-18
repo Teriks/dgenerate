@@ -41,7 +41,7 @@ from PIL import Image
 from .textprocessing import ConceptModelPathParser, ConceptModelPathParseError, quote
 from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline, StableDiffusionInpaintPipeline, \
     StableDiffusionInpaintPipelineLegacy, StableDiffusionXLPipeline, StableDiffusionXLImg2ImgPipeline, \
-    StableDiffusionXLInpaintPipeline, \
+    StableDiffusionXLInpaintPipeline, StableDiffusionUpscalePipeline ,\
     AutoencoderKL, AsymmetricAutoencoderKL, AutoencoderTiny
 
 _TORCH_MODEL_CACHE = dict()
