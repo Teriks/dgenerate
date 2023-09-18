@@ -121,7 +121,7 @@ parser.add_argument('--vae', action='store', default=None,
                     and should be one of: float16 / float32 / auto.
                     
                     If you wish to load a weights file directly from disk, the simplest
-                    way is: --vae "AutoencoderKL;my_vae.safetensors",  or with a 
+                    way is: --vae "AutoencoderKL;my_vae.safetensors", or with a 
                     dtype "AutoencoderKL;my_vae.safetensors;dtype=float16", all other loading arguments are unused 
                     in this case and may produce an error message if used.
                     
@@ -206,8 +206,8 @@ parser.add_argument('--sdxl-refiner', action='store', default=None,
                     The "revision" argument specifies the model revision to use for the Textual Inversion model
                     when loading from huggingface repository, (The git branch / tag, default is "main").
                     
-                    The "variant" argument specifies the SDXL refiner model variant and defaults to the value of --variant,
-                    when "variant" is specified when loading from a huggingface repository or folder,
+                    The "variant" argument specifies the SDXL refiner model variant and defaults to the value of 
+                    --variant, when "variant" is specified when loading from a huggingface repository or folder,
                     weights will be loaded from "variant" filename, e.g. "pytorch_model.<variant>.safetensors.
                     "variant" defaults to automatic selection.
                     
@@ -215,8 +215,9 @@ parser.add_argument('--sdxl-refiner', action='store', default=None,
                     when loading from a huggingface repository or folder, weights from the specified subfolder.
                 
                     If you wish to load a weights file directly from disk, the simplest way is: 
-                    --sdxl-refiner "my_sdxl_refiner.safetensors", all other loading arguments 
-                    are unused in this case and may produce an error message if used.
+                    --sdxl-refiner "my_sdxl_refiner.safetensors" or --sdxl-refiner "my_sdxl_refiner.safetensors;dtype=float16", 
+                    all other loading arguments aside from "dtype" are unused in this case and may produce
+                    an error message if used.
                     
                     If you wish to load a specific weight file from a huggingface repository, use the blob link
                     loading syntax: --sdxl-refiner 
