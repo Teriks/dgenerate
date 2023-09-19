@@ -37,8 +37,8 @@ This software requires an Nvidia GPU supporting CUDA 11.8+, CPU rendering is pos
     * `Batch Processing From STDIN </#batch-processing-from-stdin>`_
     * `Choosing a specific GPU for CUDA </#choosing-a-specific-gpu-for-cuda>`_
 
-Help
-----
+dgenerate help output
+---------------------
 
 .. code-block::
 
@@ -60,19 +60,20 @@ Help
 
     positional arguments:
       model_path            huggingface model repository slug, huggingface blob link to a model file,
-                            path to folder on disk, or path to a .pt, .pth, .bin, .ckpt, or .safetensors
-                            file.
+                            path to folder on disk, or path to a .pt, .pth, .bin, .ckpt, or
+                            .safetensors file.
 
     options:
       -h, --help            show this help message and exit
       --model-type MODEL_TYPE
-                            Use when loading different model types. Currently supported: torch,
-                            torch-sdxl, torch-upscaler-x2, or torch-upscaler-x4. (default: torch)
+                            Use when loading different model types. Currently supported: torch, torch-
+                            sdxl, torch-upscaler-x2, or torch-upscaler-x4. (default: torch)
       --revision REVISION   The model revision to use when loading from a huggingface repository, (The
                             git branch / tag, default is "main")
       --variant VARIANT     If specified when loading from a huggingface repository or folder, load
-                            weights from "variant" filename, e.g. "pytorch_model.<variant>.safetensors".
-                            Defaults to automatic selection. This option is ignored if using flax.
+                            weights from "variant" filename, e.g.
+                            "pytorch_model.<variant>.safetensors". Defaults to automatic selection.
+                            This option is ignored if using flax.
       --subfolder SUBFOLDER
                             Main model subfolder. If specified when loading from a huggingface
                             repository or folder, load weights from the specified subfolder.
@@ -86,27 +87,27 @@ Help
                             "AutoencoderTiny;model=huggingface/vae". When using a Flax model, there is
                             currently only one available encoder class:
                             "FlaxAutoencoderKL;model=huggingface/vae". The AutoencoderKL encoder class
-                            accepts huggingface repository slugs/blob links, .pt, .pth, .bin, .ckpt, and
-                            .safetensors files. Other encoders can only accept huggingface repository
-                            slugs/blob links, or a path to a folder on disk with the model configuration
-                            and model file(s). Aside from the "model" argument, there are four other
-                            optional arguments that can be specified, these include "revision",
-                            "variant", "subfolder", "dtype". They can be specified as so in any order,
-                            they are not positional: "AutoencoderKL;model=huggingface/vae;revision=main;
-                            variant=fp16;subfolder=sub_folder;dtype=float16". The "revision" argument
-                            specifies the model revision to use for the VAE when loading from
-                            huggingface repository or blob link, (The git branch / tag, default is
-                            "main"). The "variant" argument specifies the VAE model variant and defaults
-                            to the value of --variant, when "variant" is specified when loading from a
-                            huggingface repository or folder, weights will be loaded from "variant"
-                            filename, e.g. "pytorch_model.<variant>.safetensors. "variant" defaults to
-                            automatic selection and is ignored if using flax. The "subfolder" argument
-                            specifies the VAE model subfolder, if specified when loading from a
-                            huggingface repository or folder, weights from the specified subfolder. The
-                            "dtype" argument specifies the VAE model precision, it defaults to the value
-                            of -t/--dtype and should be one of: float16 / float32 / auto. If you wish to
-                            load a weights file directly from disk, the simplest way is: --vae
-                            "AutoencoderKL;my_vae.safetensors", or with a dtype
+                            accepts huggingface repository slugs/blob links, .pt, .pth, .bin, .ckpt,
+                            and .safetensors files. Other encoders can only accept huggingface
+                            repository slugs/blob links, or a path to a folder on disk with the model
+                            configuration and model file(s). Aside from the "model" argument, there are
+                            four other optional arguments that can be specified, these include
+                            "revision", "variant", "subfolder", "dtype". They can be specified as so in
+                            any order, they are not positional: "AutoencoderKL;model=huggingface/vae;re
+                            vision=main;variant=fp16;subfolder=sub_folder;dtype=float16". The
+                            "revision" argument specifies the model revision to use for the VAE when
+                            loading from huggingface repository or blob link, (The git branch / tag,
+                            default is "main"). The "variant" argument specifies the VAE model variant
+                            and defaults to the value of --variant, when "variant" is specified when
+                            loading from a huggingface repository or folder, weights will be loaded
+                            from "variant" filename, e.g. "pytorch_model.<variant>.safetensors.
+                            "variant" defaults to automatic selection and is ignored if using flax. The
+                            "subfolder" argument specifies the VAE model subfolder, if specified when
+                            loading from a huggingface repository or folder, weights from the specified
+                            subfolder. The "dtype" argument specifies the VAE model precision, it
+                            defaults to the value of -t/--dtype and should be one of: float16 / float32
+                            / auto. If you wish to load a weights file directly from disk, the simplest
+                            way is: --vae "AutoencoderKL;my_vae.safetensors", or with a dtype
                             "AutoencoderKL;my_vae.safetensors;dtype=float16", all other loading
                             arguments are unused in this case and may produce an error message if used.
                             If you wish to load a specific weight file from a huggingface repository,
@@ -116,12 +117,13 @@ Help
                             with this syntax.
       --lora LORA, --loras LORA
                             Specify a LoRA model (flax not supported). This should be a huggingface
-                            repository slug, path to model file on disk (for example, a .pt, .pth, .bin,
-                            .ckpt, or .safetensors file), or model folder containing model files.
+                            repository slug, path to model file on disk (for example, a .pt, .pth,
+                            .bin, .ckpt, or .safetensors file), or model folder containing model files.
                             huggingface blob links are not supported, see "subfolder" and "weight-name"
                             below instead. Optional arguments can be provided after the LoRA model
-                            specification, these include: "scale", "revision", "subfolder", and "weight-
-                            name". They can be specified as so in any order, they are not positional:
+                            specification, these include: "scale", "revision", "subfolder", and
+                            "weight-name". They can be specified as so in any order, they are not
+                            positional:
                             "huggingface/lora;scale=1.0;revision=main;subfolder=repo_subfolder;weight-
                             name=lora.safetensors". The "scale" argument indicates the scale factor of
                             the LoRA. The "revision" argument specifies the model revision to use for
@@ -130,30 +132,31 @@ Help
                             subfolder, if specified when loading from a huggingface repository or
                             folder, weights from the specified subfolder. The "weight-name" argument
                             indicates the name of the weights file to be loaded when loading from a
-                            huggingface repository or folder on disk. If you wish to load a weights file
-                            directly from disk, the simplest way is: --lora "my_lora.safetensors", or
-                            with a scale "my_lora.safetensors;scale=1.0", all other loading arguments
-                            are unused in this case and may produce an error message if used.
+                            huggingface repository or folder on disk. If you wish to load a weights
+                            file directly from disk, the simplest way is: --lora "my_lora.safetensors",
+                            or with a scale "my_lora.safetensors;scale=1.0", all other loading
+                            arguments are unused in this case and may produce an error message if used.
       --textual-inversions TEXTUAL_INVERSIONS [TEXTUAL_INVERSIONS ...]
                             Specify one or more Textual Inversion models (flax and SDXL not supported).
                             This should be a huggingface repository slug, path to model file on disk
                             (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model
-                            folder containing model files. huggingface blob links are not supported, see
-                            "subfolder" and "weight-name" below instead. Optional arguments can be
+                            folder containing model files. huggingface blob links are not supported,
+                            see "subfolder" and "weight-name" below instead. Optional arguments can be
                             provided after the Textual Inversion model specification, these include:
                             "revision", "subfolder", and "weight-name". They can be specified as so in
                             any order, they are not positional:
                             "huggingface/ti_model;revision=main;subfolder=repo_subfolder;weight-
-                            name=lora.safetensors". The "revision" argument specifies the model revision
-                            to use for the Textual Inversion model when loading from huggingface
-                            repository, (The git branch / tag, default is "main"). The "subfolder"
-                            argument specifies the Textual Inversion model subfolder, if specified when
-                            loading from a huggingface repository or folder, weights from the specified
-                            subfolder. The "weight-name" argument indicates the name of the weights file
-                            to be loaded when loading from a huggingface repository or folder on disk.
-                            If you wish to load a weights file directly from disk, the simplest way is:
-                            --textual-inversions "my_ti_model.safetensors", all other loading arguments
-                            are unused in this case and may produce an error message if used.
+                            name=lora.safetensors". The "revision" argument specifies the model
+                            revision to use for the Textual Inversion model when loading from
+                            huggingface repository, (The git branch / tag, default is "main"). The
+                            "subfolder" argument specifies the Textual Inversion model subfolder, if
+                            specified when loading from a huggingface repository or folder, weights
+                            from the specified subfolder. The "weight-name" argument indicates the name
+                            of the weights file to be loaded when loading from a huggingface repository
+                            or folder on disk. If you wish to load a weights file directly from disk,
+                            the simplest way is: --textual-inversions "my_ti_model.safetensors", all
+                            other loading arguments are unused in this case and may produce an error
+                            message if used.
       --scheduler SCHEDULER
                             Specify a scheduler (sampler) by name. Passing "help" to this argument will
                             print the compatible schedulers for a model without generating any images.
@@ -169,43 +172,43 @@ Help
                             example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model folder
                             containing model files. Optional arguments can be provided after the SDXL
                             refiner model specification, these include: "revision", "variant",
-                            "subfolder", and "dtype". They can be specified as so in any order, they are
-                            not positional: "huggingface/refiner_model_xl;revision=main;variant=fp16;sub
-                            folder=repo_subfolder;dtype=float16". The "revision" argument specifies the
-                            model revision to use for the Textual Inversion model when loading from
-                            huggingface repository, (The git branch / tag, default is "main"). The
-                            "variant" argument specifies the SDXL refiner model variant and defaults to
-                            the value of --variant, when "variant" is specified when loading from a
-                            huggingface repository or folder, weights will be loaded from "variant"
-                            filename, e.g. "pytorch_model.<variant>.safetensors. "variant" defaults to
-                            automatic selection. The "subfolder" argument specifies the SDXL refiner
-                            model subfolder, if specified when loading from a huggingface repository or
-                            folder, weights from the specified subfolder. If you wish to load a weights
-                            file directly from disk, the simplest way is: --sdxl-refiner
-                            "my_sdxl_refiner.safetensors" or --sdxl-refiner
+                            "subfolder", and "dtype". They can be specified as so in any order, they
+                            are not positional: "huggingface/refiner_model_xl;revision=main;variant=fp1
+                            6;subfolder=repo_subfolder;dtype=float16". The "revision" argument
+                            specifies the model revision to use for the Textual Inversion model when
+                            loading from huggingface repository, (The git branch / tag, default is
+                            "main"). The "variant" argument specifies the SDXL refiner model variant
+                            and defaults to the value of --variant, when "variant" is specified when
+                            loading from a huggingface repository or folder, weights will be loaded
+                            from "variant" filename, e.g. "pytorch_model.<variant>.safetensors.
+                            "variant" defaults to automatic selection. The "subfolder" argument
+                            specifies the SDXL refiner model subfolder, if specified when loading from
+                            a huggingface repository or folder, weights from the specified subfolder.
+                            If you wish to load a weights file directly from disk, the simplest way is:
+                            --sdxl-refiner "my_sdxl_refiner.safetensors" or --sdxl-refiner
                             "my_sdxl_refiner.safetensors;dtype=float16", all other loading arguments
                             aside from "dtype" are unused in this case and may produce an error message
                             if used. If you wish to load a specific weight file from a huggingface
                             repository, use the blob link loading syntax: --sdxl-refiner
                             "https://huggingface.co/UserName/repository-
-                            name/blob/main/refiner_model.safetensors", the revision argument may be used
-                            with this syntax.
+                            name/blob/main/refiner_model.safetensors", the revision argument may be
+                            used with this syntax.
       --sdxl-original-size SDXL_ORIGINAL_SIZE
                             Stable Diffusion XL (torch-sdxl) micro-conditioning parameter in the format
                             (WIDTHxHEIGHT). If not the same as --sdxl-target-size the image will appear
                             to be down or upsampled. --sdxl-original-size defaults to --output-size if
-                            not specified. Part of SDXL's micro-conditioning as explained in section 2.2
-                            of [https://huggingface.co/papers/2307.01952]
+                            not specified. Part of SDXL's micro-conditioning as explained in section
+                            2.2 of [https://huggingface.co/papers/2307.01952]
       --sdxl-target-size SDXL_TARGET_SIZE
                             Stable Diffusion XL (torch-sdxl) micro-conditioning parameter in the format
                             (WIDTHxHEIGHT). For most cases, --sdxl-target-size should be set to the
                             desired height and width of the generated image. If not specified it will
                             default to --output-size. Part of SDXL's micro-conditioning as explained in
                             section 2.2 of [https://huggingface.co/papers/2307.01952]
-      --safety-checker      Enable safety checker loading, this is off by default. When turned on images
-                            with NSFW content detected may result in solid black output. Some pretrained
-                            models have settings indicating a safety checker is not to be loaded, in
-                            that case this option has no effect.
+      --safety-checker      Enable safety checker loading, this is off by default. When turned on
+                            images with NSFW content detected may result in solid black output. Some
+                            pretrained models have settings indicating a safety checker is not to be
+                            loaded, in that case this option has no effect.
       --version             show program's version number and exit
       -d DEVICE, --device DEVICE
                             cuda / cpu. (default: cuda). Use: cuda:0, cuda:1, cuda:2, etc. to specify a
@@ -214,16 +217,16 @@ Help
                             Model precision: float16 / float32 / auto. (default: auto)
       -s OUTPUT_SIZE, --output-size OUTPUT_SIZE
                             Image output size. If an image seed is used it will be resized to this
-                            dimension with aspect ratio maintained, width will be fixed and a new height
-                            will be calculated. If only one integer value is provided, that is the value
-                            for both dimensions. X/Y dimension values should be separated by "x".
-                            (default: 512x512 when no image seeds are specified)
+                            dimension with aspect ratio maintained, width will be fixed and a new
+                            height will be calculated. If only one integer value is provided, that is
+                            the value for both dimensions. X/Y dimension values should be separated by
+                            "x". (default: 512x512 when no image seeds are specified)
       -o OUTPUT_PATH, --output-path OUTPUT_PATH
                             Output path for generated images and files. This directory will be created
                             if it does not exist. (default: ./output)
       -op OUTPUT_PREFIX, --output-prefix OUTPUT_PREFIX
-                            Name prefix for generated images and files. This prefix will be added to the
-                            beginning of every generated file, followed by an underscore.
+                            Name prefix for generated images and files. This prefix will be added to
+                            the beginning of every generated file, followed by an underscore.
       -ox, --output-overwrite
                             Enable overwrites of files in the output directory that already exists. The
                             default behavior is not to do this, and instead append a filename suffix:
@@ -231,19 +234,19 @@ Help
                             already exists.
       -oc, --output-configs
                             Write a configuration text file for every output image or animation. The
-                            text file can be used reproduce that particular output image or animation by
-                            piping it to dgenerate STDIN, for example "dgenerate < config.txt". These
-                            files will be written to --output-directory and are affected by --output-
-                            prefix and --output-overwrite as well. The files will be named after their
-                            corresponding image or animation file. Configuration files produced for
-                            animation frame images will utilize --frame-start and --frame-end to specify
-                            the frame number.
+                            text file can be used reproduce that particular output image or animation
+                            by piping it to dgenerate STDIN, for example "dgenerate < config.txt".
+                            These files will be written to --output-directory and are affected by
+                            --output-prefix and --output-overwrite as well. The files will be named
+                            after their corresponding image or animation file. Configuration files
+                            produced for animation frame images will utilize --frame-start and --frame-
+                            end to specify the frame number.
       -om, --output-metadata
                             Write the information produced by --output-configs to the PNG metadata of
                             each image. Metadata will not be written to animated files (yet). The data
-                            is written to a PNG metadata property named DgenerateConfig and can be read
+                            is written to a PNG metadata property named DgenerateConfig and can be read  
                             using ImageMagick like so: "magick identify -format
-                            "%[Property:DgenerateConfig]".
+                            "%[Property:DgenerateConfig] generated_file.png".
       -p PROMPTS [PROMPTS ...], --prompts PROMPTS [PROMPTS ...]
                             List of prompts to try, an image group is generated for each prompt, prompt
                             data is split by ; (semi-colon). The first value is the positive text
@@ -267,18 +270,19 @@ Help
                             Ending frame slice point for animated files, the specified frame will be
                             included.
       -is [IMAGE_SEEDS ...], --image-seeds [IMAGE_SEEDS ...]
-                            List of image seeds to try when processing image seeds, these may be URLs or
-                            file paths. Videos / GIFs / WEBP files will result in frames being rendered
-                            as well as an animated output file being generated if more than one frame is
-                            available in the input file. Inpainting for static images can be achieved by
-                            specifying a black and white mask image in each image seed string using a
-                            semicolon as the separating character, like so: "my-seed-image.png;my-image-
-                            mask.png", white areas of the mask indicate where generated content is to be
-                            placed in your seed image. Output dimensions specific to the image seed can
-                            be specified by placing the dimension at the end of the string following a
-                            semicolon like so: "my-seed-image.png;512x512" or "my-seed-image.png;my-
-                            image-mask.png;512x512". Inpainting masks can be downloaded for you from a
-                            URL or be a path to a file on disk.
+                            List of image seeds to try when processing image seeds, these may be URLs
+                            or file paths. Videos / GIFs / WEBP files will result in frames being
+                            rendered as well as an animated output file being generated if more than
+                            one frame is available in the input file. Inpainting for static images can
+                            be achieved by specifying a black and white mask image in each image seed
+                            string using a semicolon as the separating character, like so: "my-seed-
+                            image.png;my-image-mask.png", white areas of the mask indicate where
+                            generated content is to be placed in your seed image. Output dimensions
+                            specific to the image seed can be specified by placing the dimension at the
+                            end of the string following a semicolon like so: "my-seed-
+                            image.png;512x512" or "my-seed-image.png;my-image-mask.png;512x512".
+                            Inpainting masks can be downloaded for you from a URL or be a path to a
+                            file on disk.
       -iss [IMAGE_SEED_STRENGTHS ...], --image-seed-strengths [IMAGE_SEED_STRENGTHS ...]
                             List of image seed strengths to try. Closer to 0 means high usage of the
                             seed image (less noise convolution), 1 effectively means no usage (high
@@ -295,16 +299,16 @@ Help
                             prompt is considered. Low values draw more data from images unrelated to
                             text prompt. (default: [5])
       -ifs [INFERENCE_STEPS ...], --inference-steps [INFERENCE_STEPS ...]
-                            Lists of inference steps values to try. The amount of inference (de-noising)
-                            steps effects image clarity to a degree, higher values bring the image
-                            closer to what the AI is targeting for the content of the image. Values
-                            between 30-40 produce good results, higher values may improve image quality
-                            and or change image content. (default: [30])
+                            Lists of inference steps values to try. The amount of inference (de-
+                            noising) steps effects image clarity to a degree, higher values bring the
+                            image closer to what the AI is targeting for the content of the image.
+                            Values between 30-40 produce good results, higher values may improve image
+                            quality and or change image content. (default: [30])
       -hnf [SDXL_HIGH_NOISE_FRACTIONS ...], --sdxl-high-noise-fractions [SDXL_HIGH_NOISE_FRACTIONS ...]
                             High noise fraction for Stable Diffusion XL (torch-sdxl), this fraction of
                             inference steps will be processed by the base model, while the rest will be
-                            processed by the refiner model. Multiple values to this argument will result
-                            in additional generation steps for each value. (default: [0.8])
+                            processed by the refiner model. Multiple values to this argument will
+                            result in additional generation steps for each value. (default: [0.8])
 
 
 
@@ -837,7 +841,12 @@ Manual Seed Specification / Deterministic Output
 
 If you generate an image you like using a random seed, you can later reuse that seed in another generation.
 
-Output images have the name format: ``s_(seed)_st_(image-seed-strength)_g_(guidance-scale)_i_(inference-steps)_step_(generation-step).png``,
+Output images have the name format:
+
+.. code-block:: bash
+
+    ``s_(seed)_(st|unl)_(image-seed-strength or upscaler-noise-level)_g_(guidance-scale)_i_(inference-steps)_step_(generation-step).png``,
+
 the first number being the random seed used for generation of that particular image.
 
 When using SDXL there will be an extra component to the file name after inference steps, that being ``hnf``, or high noise fraction.
@@ -845,11 +854,21 @@ When using SDXL there will be an extra component to the file name after inferenc
 Reusing a seed has the effect of perfectly reproducing the image in the case that all other parameters are left alone, 
 including prompt, output size, and model version.
 
+You can output a configuration file for each image / animation produced that will reproduce it
+exactly using ``--output-configs``, that same information can be written to the metadata of generated
+PNG files using ``--output-metadata`` and can be read back with ImageMagick for example as so:
+
+.. code-block:: bash
+
+    magick identify -format "%[Property:DgenerateConfig] generated_file.png
+
+Generated configuration files can be read back into dgenerate using `Batch Processing From STDIN </#batch-processing-from-stdin>`_.
+
 Updates to the backing model may affect determinism in the generation.
 
-Specifying a seed directly and changing the prompt slightly, or parameters such as image seed strength if using a seed image,
-guidance scale, or inference steps, will allow for generating variations close to the original
-image which may possess all of the original qualities about the image that you liked as well as
+Specifying a seed directly and changing the prompt slightly, or parameters such as image seed strength
+if using a seed image, guidance scale, or inference steps, will allow for generating variations close
+to the original image which may possess all of the original qualities about the image that you liked as well as
 additional qualities.  You can further manipulate the AI into producing results that you want with this method.
 
 Changing output resolution will drastically affect image content when reusing a seed to the point where trying to
