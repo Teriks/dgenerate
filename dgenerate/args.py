@@ -340,7 +340,7 @@ parser.add_argument('-om', '--output-metadata', action='store_true', default=Fal
                     help="""Write the information produced by --output-configs to the PNG metadata of each image.
                             Metadata will not be written to animated files (yet). The data is written to a 
                             PNG metadata property named DgenerateConfig and can be read using ImageMagick like so: 
-                            "magick identify -format "%%[Property:DgenerateConfig]".
+                            "magick identify -format "%%[Property:DgenerateConfig] generated_file.png".
                             """)
 
 
