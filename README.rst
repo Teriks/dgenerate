@@ -31,7 +31,7 @@ This software requires an Nvidia GPU supporting CUDA 11.8+, CPU rendering is pos
     * `Animated Output </#animated-output>`_
     * `Animation Slicing </#animation-slicing>`_
     * `Inpainting Animations </#inpainting-animations>`_
-    * `Manual Seed Specification / Deterministic Output </#manual-seed-specification--deterministic-output>`_
+    * `Deterministic Output </#deterministic-output>`_
     * `Specifying a VAE </#specifying-a-vae>`_
     * `Specifying a LoRA Finetune </#specifying-a-lora-finetune>`_
     * `Batch Processing From STDIN </#batch-processing-from-stdin>`_
@@ -244,7 +244,7 @@ dgenerate help output
       -om, --output-metadata
                             Write the information produced by --output-configs to the PNG metadata of
                             each image. Metadata will not be written to animated files (yet). The data
-                            is written to a PNG metadata property named DgenerateConfig and can be read  
+                            is written to a PNG metadata property named DgenerateConfig and can be read
                             using ImageMagick like so: "magick identify -format
                             "%[Property:DgenerateConfig] generated_file.png".
       -p PROMPTS [PROMPTS ...], --prompts PROMPTS [PROMPTS ...]
@@ -836,20 +836,44 @@ them together.
 
     
 
-Manual Seed Specification / Deterministic Output
-------------------------------------------------
+Deterministic Output
+--------------------
 
 If you generate an image you like using a random seed, you can later reuse that seed in another generation.
 
-Output images have the name format:
+Updates to the backing model may affect determinism in the generation.
+
+Output images have the possible name formats:
 
 .. code-block:: bash
 
-    ``s_(seed)_(st|unl)_(image-seed-strength or upscaler-noise-level)_g_(guidance-scale)_i_(inference-steps)_step_(generation-step).png``,
+    # Prompt only generation or x2 image upscaling
+    "s_(seed)_g_(guidance-scale)_i_(inference-steps)_step_(generation-step).png"
 
-the first number being the random seed used for generation of that particular image.
+    # Prompt only generation with SDXL and Refiner
+    "s_(seed)_g_(guidance-scale)_i_(inference-steps)_hnf_(high-noise-fractions)_step_(generation-step).png"
 
-When using SDXL there will be an extra component to the file name after inference steps, that being ``hnf``, or high noise fraction.
+    # Image seed (img2img) generation
+    "s_(seed)_st_(image-seed-strength)_g_(guidance-scale)_i_(inference-steps)_step_(generation-step).png"
+
+    # Image seed (img2img) generation with SDXL and Refiner
+    "s_(seed)_st_(image-seed-strength)_g_(guidance-scale)_i_(inference-steps)_hnf_(high-noise-fractions)_step_(generation-step).png"
+
+    # Animation frame output
+    "s_(seed)_st_(image-seed-strength)_g_(guidance-scale)_i_(inference-steps)_frame_(frame-number)_step_(generation-step).png"
+
+    # Animation frame output with SDXL and Refiner
+    "s_(seed)_st_(image-seed-strength)_g_(guidance-scale)_i_(inference-steps)_hnf_(high-noise-fractions)_frame_(frame-number)_step_(generation-step).png"
+
+    # x4 Image upscaling
+    "s_(seed)_(unl)_(upscaler-noise-level)_g_(guidance-scale)_i_(inference-steps)_step_(generation-step).png"
+
+    # Animation frame output with x4 image upscaling
+    "s_(seed)_(unl)_(upscaler-noise-level)_g_(guidance-scale)_i_(inference-steps)_frame_(frame-number)_step_(generation-step).png"
+
+    # Animation frame output with x2 image upscaling
+    "s_(seed)_g_(guidance-scale)_i_(inference-steps)_frame_(frame-number)_step_(generation-step).png"
+
 
 Reusing a seed has the effect of perfectly reproducing the image in the case that all other parameters are left alone, 
 including prompt, output size, and model version.
@@ -863,8 +887,6 @@ PNG files using ``--output-metadata`` and can be read back with ImageMagick for 
     magick identify -format "%[Property:DgenerateConfig] generated_file.png
 
 Generated configuration files can be read back into dgenerate using `Batch Processing From STDIN </#batch-processing-from-stdin>`_.
-
-Updates to the backing model may affect determinism in the generation.
 
 Specifying a seed directly and changing the prompt slightly, or parameters such as image seed strength
 if using a seed image, guidance scale, or inference steps, will allow for generating variations close
