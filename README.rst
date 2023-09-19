@@ -880,7 +880,7 @@ including prompt, output size, and model version.
 
 You can output a configuration file for each image / animation produced that will reproduce it
 exactly using the option ``--output-configs``, that same information can be written to the
-metadata of generated PNG files using ``--output-metadata`` and can be read back
+metadata of generated PNG files using the option ``--output-metadata`` and can be read back
 with ImageMagick for example as so:
 
 .. code-block:: bash
