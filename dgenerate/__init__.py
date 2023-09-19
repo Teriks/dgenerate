@@ -44,7 +44,8 @@ def run_diffusion():
 
     from .pipelinewrappers import clear_model_cache, InvalidVaePathError, \
         InvalidSchedulerName, InvalidLoRAPathError, \
-        InvalidTextualInversionPathError, InvalidSDXLRefinerPathError
+        InvalidTextualInversionPathError, InvalidSDXLRefinerPathError, \
+        SchedulerHelpException
 
     from .mediainput import ImageSeedParseError, MaskImageSizeMismatchError
 
@@ -95,7 +96,10 @@ def run_diffusion():
 
         # run the render loop
         try:
-            render_loop.run()
+            try:
+                render_loop.run()
+            except SchedulerHelpException:
+                pass
         except (ImageSeedParseError,
                 MaskImageSizeMismatchError,
                 InvalidSDXLRefinerPathError,

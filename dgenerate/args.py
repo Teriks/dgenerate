@@ -187,10 +187,11 @@ parser.add_argument('--textual-inversions', nargs='+', action='store', default=N
                     are unused in this case and may produce an error message if used.""")
 
 parser.add_argument('--scheduler', action='store', default=None,
-                    help=f'Specify a Scheduler by name. '
-                         f'Torch compatible schedulers: ({", ".join(e.name for e in KarrasDiffusionSchedulers)}). ' +
+                    help=f'Specify a scheduler (sampler) by name. Passing "help" to this argument '
+                         f'will print the compatible schedulers for a model without generating any images. '
+                         f'Torch schedulers: ({", ".join(e.name for e in KarrasDiffusionSchedulers)}). ' +
                          (
-                             f'Flax compatible schedulers: ({", ".join(e.name for e in FlaxKarrasDiffusionSchedulers)})' if have_jax_flax() else ''))
+                             f'Flax schedulers: ({", ".join(e.name for e in FlaxKarrasDiffusionSchedulers)})' if have_jax_flax() else ''))
 
 parser.add_argument('--sdxl-refiner', action='store', default=None,
                     help="""Stable Diffusion XL (torch-sdxl) refiner model path. This should be a
@@ -470,8 +471,11 @@ def _type_upscaler_noise_levels(val):
 
 parser.add_argument('-uns', '--upscaler-noise-levels', action='store', nargs='*', default=[20],
                     type=_type_upscaler_noise_levels,
-                    help=f"""List of upscaler noise levels to try. The higher this value the more noise
-                    is added to the image before upscaling (similar to image seed strength). (default: [20])""")
+                    help=f"""
+                    List of upscaler noise levels to try when using the super resolution upscaler 
+                    (torch-upscaler-x4). These values will be ignored when using (torch-upscaler-x2).
+                    The higher this value the more noise is added to the image before upscaling 
+                    (similar to image seed strength). (default: [20])""")
 
 
 def _type_guidance_scale(val):

@@ -35,7 +35,7 @@ from PIL.PngImagePlugin import PngInfo
 from .mediainput import iterate_image_seed, get_image_seed_info
 from .mediaoutput import create_animation_writer, supported_animation_writer_formats
 from .pipelinewrappers import DiffusionPipelineWrapper, DiffusionPipelineImg2ImgWrapper, supported_model_types, \
-    PipelineResultWrapper
+    PipelineResultWrapper, model_type_is_upscaler, get_model_type_enum, ModelTypes
 from .textprocessing import oxford_comma, underline, long_text_wrap_width
 
 
@@ -289,8 +289,10 @@ class DiffusionRenderLoop:
     def _gen_filename_base(self, args_ctx):
         if args_ctx.upscaler_noise_level is not None:
             noise_entry = ('unl', args_ctx.upscaler_noise_level)
-        else:
+        elif args_ctx.image_seed_strength is not None:
             noise_entry = ('st', args_ctx.image_seed_strength)
+        else:
+            noise_entry = []
 
         args = ['s', args_ctx.seed,
                 *noise_entry,
@@ -512,8 +514,11 @@ class DiffusionRenderLoop:
             print(underline(f'Processing Image Seed: {image_seed}'))
 
             sdxl_high_noise_fractions = self.sdxl_high_noise_fractions if self.sdxl_refiner_path is not None else None
-            upscaler_noise_levels = self.upscaler_noise_levels if self.model_type == 'torch-upscaler' else None
-            image_seed_strengths = self.image_seed_strengths if self.model_type != 'torch-upscaler' else None
+
+            upscaler_noise_levels = self.upscaler_noise_levels if \
+                get_model_type_enum(self.model_type) == ModelTypes.TORCH_UPSCALER_X4 else None
+
+            image_seed_strengths = self.image_seed_strengths if not model_type_is_upscaler(self.model_type) else None
 
             arg_iterator = iterate_diffusion_args(prompts=self.prompts,
                                                   seeds=self.seeds,
