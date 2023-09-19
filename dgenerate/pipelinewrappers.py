@@ -191,7 +191,6 @@ class LoRAPath:
 
     def load_on_pipeline(self, pipeline, **kwargs):
         if hasattr(pipeline, 'load_lora_weights'):
-            print("LOADED LORA_WEIGHTS")
             pipeline.load_lora_weights(self.model,
                                        revision=self.revision,
                                        subfolder=self.subfolder,
