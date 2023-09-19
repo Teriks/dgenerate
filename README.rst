@@ -17,15 +17,25 @@ This software requires an Nvidia GPU supporting CUDA 11.8+, CPU rendering is pos
 
 ----
 
-.. _Windows Install: /#windows-install
-.. _Linux or WSL Install: /#linux-or-wsl-install
-.. _Usage Examples: /#usage-examples
 
-For Windows install instructions jump to: `Windows Install`_
+#. How to install
+    * `Windows Install </#windows-install>`_
+    * `Linux or WSL Install </#linux-or-wsl-install>`_
 
-For Linux or WSL (Windows subsystem for Linux) install instructions jump to: `Linux or WSL Install`_
-
-For usage examples jump to: `Usage Examples`_
+#. `Usage Examples </#usage-examples>`_
+    * `Negative Prompt </#negative-prompt>`_
+    * `Multiple Prompts </#multiple-prompts>`_
+    * `Image Seed </#image-seed>`_
+    * `Inpainting </#inpainting>`_
+    * `Per Image Seed Resizing </#per-image-seed-resizing>`_
+    * `Animated Output </#animated-output>`_
+    * `Animation Slicing </#animation-slicing>`_
+    * `Inpainting Animations </#inpainting-animations>`_
+    * `Manual Seed Specification / Deterministic Output </#manual-seed-specification--deterministic-output>`_
+    * `Specifying a VAE </#specifying-a-vae>`_
+    * `Specifying a LoRA Finetune </#specifying-a-lora-finetune>`_
+    * `Batch Processing From STDIN </#batch-processing-from-stdin>`_
+    * `Choosing a specific GPU for CUDA </#choosing-a-specific-gpu-for-cuda>`_
 
 Help
 ----
@@ -981,7 +991,7 @@ If you are loading a .safetensors or other file from a path on disk, only the ``
     --prompts "Syntax example"
 
 
-Specifying a LoRA finetune
+Specifying a LoRA Finetune
 --------------------------
 
 To specify a LoRA finetune model use ``--lora``
@@ -1273,8 +1283,8 @@ If you are loading a .safetensors or other file from a path on disk, simply do:
 
 
 
-Batch Processing Configuration From STDIN
------------------------------------------
+Batch Processing From STDIN
+---------------------------
 
 Program configuration can be read from STDIN and processed in batch with model caching,
 in order to increase speed when many invocations with different arguments are desired.
