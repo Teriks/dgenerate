@@ -1096,14 +1096,7 @@ class DiffusionPipelineWrapperBase:
                                                  textual_inversion_paths=self._textual_inversion_paths,
                                                  scheduler=self._scheduler,
                                                  safety_checker=self._safety_checker,
-                                                 auth_token=self._auth_token)
-
-            if self._device.startswith('cuda') and model_type == ModelTypes.TORCH_UPSCALER_X4:
-                # Memory hog, help average user run larger outputs
-                self._pipeline.enable_model_cpu_offload(
-                    _gpu_id_from_cuda_device(self._device))
-            else:
-                self._pipeline = self._pipeline.to(self.device)
+                                                 auth_token=self._auth_token).to(self.device)
 
     def __call__(self, **kwargs):
         args = self._pipeline_defaults(kwargs)
