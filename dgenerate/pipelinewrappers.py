@@ -62,6 +62,7 @@ DEFAULT_OUTPUT_HEIGHT = 512
 class SchedulerHelpException(Exception):
     pass
 
+
 class InvalidSDXLRefinerPathError(Exception):
     pass
 
