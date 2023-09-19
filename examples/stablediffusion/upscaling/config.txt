@@ -8,7 +8,8 @@ stabilityai/sd-x2-latent-upscaler --variant fp16 --dtype float16 \
 --model-type torch-upscaler-x2 \
 --prompts "a picture of a white cat" \
 --image-seeds low_res_cat.png \
---output-size 256
+--output-size 256 \
+--output-configs
 
 
 # The image produced with this model will be
@@ -20,5 +21,6 @@ stabilityai/stable-diffusion-x4-upscaler --variant fp16 --dtype float16 \
 --prompts "a picture of a white cat" \
 --image-seeds low_res_cat.png \
 --output-size 256 \
---upscaler-noise-levels 20
+--upscaler-noise-levels 20 \
+--output-configs
 
