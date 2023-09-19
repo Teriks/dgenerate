@@ -50,8 +50,8 @@ dgenerate help output
                      [--safety-checker] [--version] [-d DEVICE] [-t DTYPE] [-s OUTPUT_SIZE]
                      [-o OUTPUT_PATH] [-op OUTPUT_PREFIX] [-ox] [-oc] [-om] [-p PROMPTS [PROMPTS ...]]
                      [-se SEEDS [SEEDS ...] | -gse GEN_SEEDS] [-af ANIMATION_FORMAT] [-fs FRAME_START]
-                     [-fe FRAME_END] [-is [IMAGE_SEEDS ...]] [-iss [IMAGE_SEED_STRENGTHS ...]]
-                     [-uns [UPSCALER_NOISE_LEVELS ...]] [-gs [GUIDANCE_SCALES ...]]
+                     [-fe FRAME_END] [-is [IMAGE_SEEDS ...]] [-iss [IMAGE_SEED_STRENGTHS ...] | -uns
+                     [UPSCALER_NOISE_LEVELS ...]] [-gs [GUIDANCE_SCALES ...]]
                      [-ifs [INFERENCE_STEPS ...]] [-hnf [SDXL_HIGH_NOISE_FRACTIONS ...]]
                      model_path
 
@@ -293,7 +293,7 @@ dgenerate help output
                             List of upscaler noise levels to try when using the super resolution
                             upscaler (torch-upscaler-x4). These values will be ignored when using
                             (torch-upscaler-x2). The higher this value the more noise is added to the
-                            image before upscaling (similar to image seed strength). (default: [20])
+                            image before upscaling (similar to --image-seed-strength). (default: [20])
       -gs [GUIDANCE_SCALES ...], --guidance-scales [GUIDANCE_SCALES ...]
                             List of guidance scales to try. Guidance scale effects how much your text
                             prompt is considered. Low values draw more data from images unrelated to
