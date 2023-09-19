@@ -438,6 +438,9 @@ parser.add_argument('-is', '--image-seeds', action='store', nargs='*', default=[
                          Inpainting masks can be downloaded for you from a URL or be a path to a file on disk.""")
 
 
+
+image_seed_noise_opts = parser.add_mutually_exclusive_group()
+
 def _type_image_seed_strengths(val):
     try:
         val = float(val)
@@ -449,7 +452,7 @@ def _type_image_seed_strengths(val):
     return val
 
 
-parser.add_argument('-iss', '--image-seed-strengths', action='store', nargs='*', default=[0.8],
+image_seed_noise_opts.add_argument('-iss', '--image-seed-strengths', action='store', nargs='*', default=[0.8],
                     type=_type_image_seed_strengths,
                     help=f"""List of image seed strengths to try. Closer to 0 means high usage of the seed image
                          (less noise convolution), 1 effectively means no usage (high noise convolution).
@@ -469,13 +472,13 @@ def _type_upscaler_noise_levels(val):
     return val
 
 
-parser.add_argument('-uns', '--upscaler-noise-levels', action='store', nargs='*', default=[20],
+image_seed_noise_opts.add_argument('-uns', '--upscaler-noise-levels', action='store', nargs='*', default=[20],
                     type=_type_upscaler_noise_levels,
                     help=f"""
                     List of upscaler noise levels to try when using the super resolution upscaler 
                     (torch-upscaler-x4). These values will be ignored when using (torch-upscaler-x2).
                     The higher this value the more noise is added to the image before upscaling 
-                    (similar to image seed strength). (default: [20])""")
+                    (similar to --image-seed-strength). (default: [20])""")
 
 
 def _type_guidance_scale(val):

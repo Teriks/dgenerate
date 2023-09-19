@@ -800,6 +800,7 @@ class DiffusionPipelineWrapperBase:
         negative_prompt = kwargs.get('negative_prompt', None)
         image = kwargs.get('image', None)
         strength = kwargs.get('strength', None)
+        noise_level = kwargs.get('noise_level', None)
         mask_image = kwargs.get('mask_image', None)
         seed = kwargs.get('seed')
         width = kwargs.get('width', None)
@@ -876,6 +877,9 @@ class DiffusionPipelineWrapperBase:
 
             if strength is not None:
                 opts.append(('--image-seed-strengths', strength))
+
+            if noise_level is not None:
+                opts.append(('--upscaler-noise-levels', noise_level))
 
         return opts
 
