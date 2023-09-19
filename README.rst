@@ -378,7 +378,7 @@ Run **dgenerate** to generate images:
 
     dgenerate --help
 
-    dgenerate CompVis/stable-diffusion-v1-4 ^
+    dgenerate stabilityai/stable-diffusion-2-1 ^
     --prompts "an astronaut riding a horse" ^
     --output-path output ^
     --inference-steps 40 ^
