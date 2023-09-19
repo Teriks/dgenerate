@@ -66,7 +66,7 @@ def _has_len(obj):
 
 class DiffusionArgContext:
     def __init__(self, diffusion_args, prompt, seed, image_seed_strength, guidance_scale, inference_steps,
-                 sdxl_high_noise_fraction):
+                 sdxl_high_noise_fraction, upscaler_noise_level):
         self.args = diffusion_args
         self.prompt = prompt
         self.seed = seed
@@ -74,28 +74,36 @@ class DiffusionArgContext:
         self.guidance_scale = guidance_scale
         self.inference_steps = inference_steps
         self.sdxl_high_noise_fraction = sdxl_high_noise_fraction
+        self.upscaler_noise_level = upscaler_noise_level
 
 
 def iterate_diffusion_args(prompts, seeds, image_seed_strengths, guidance_scales, inference_steps_list,
-                           sdxl_high_noise_fractions) -> Iterator[DiffusionArgContext]:
+                           sdxl_high_noise_fractions, upscaler_noise_levels) -> Iterator[DiffusionArgContext]:
     diffusion_args = dict()
 
     has_image_seed = image_seed_strengths is not None and len(image_seed_strengths) > 0
     has_high_noise_fractions = sdxl_high_noise_fractions is not None and len(sdxl_high_noise_fractions) > 0
+    has_upscaler_noise_levels = upscaler_noise_levels is not None and len(upscaler_noise_levels) > 0
 
-    for prompt, seed, image_seed_strength, guidance_scale, inference_steps, sdxl_high_noise_fraction in itertools.product(
+    for prompt, seed, image_seed_strength, upscaler_noise_level, sdxl_high_noise_fraction, \
+        guidance_scale, inference_steps in itertools.product(
             prompts,
             seeds,
             image_seed_strengths if has_image_seed else [None],
+            upscaler_noise_levels if has_upscaler_noise_levels else [None],
+            sdxl_high_noise_fractions if has_high_noise_fractions else [None],
             guidance_scales,
-            inference_steps_list,
-            sdxl_high_noise_fractions if has_high_noise_fractions else [None]):
+            inference_steps_list
+    ):
 
         if has_image_seed:
             diffusion_args['strength'] = image_seed_strength
 
         if has_high_noise_fractions:
             diffusion_args['sdxl_high_noise_fraction'] = sdxl_high_noise_fraction
+
+        if has_upscaler_noise_levels:
+            diffusion_args['noise_level'] = upscaler_noise_level
 
         diffusion_args['num_inference_steps'] = (
             math.ceil(inference_steps / image_seed_strength if image_seed_strength > 0 else inference_steps)
@@ -113,7 +121,8 @@ def iterate_diffusion_args(prompts, seeds, image_seed_strengths, guidance_scales
                                   image_seed_strength,
                                   guidance_scale,
                                   inference_steps,
-                                  sdxl_high_noise_fraction)
+                                  sdxl_high_noise_fraction,
+                                  upscaler_noise_level)
 
 
 class DiffusionRenderLoop:
@@ -153,6 +162,7 @@ class DiffusionRenderLoop:
         self.frame_start = 0
         self.frame_end = None
         self.image_seed_strengths = []
+        self.upscaler_noise_levels = []
         self.guidance_scales = []
         self.inference_steps = []
         self.auth_token = None
@@ -276,12 +286,20 @@ class DiffusionRenderLoop:
 
         return path
 
-    def _gen_animation_filename(self, args_ctx: DiffusionArgContext, generation_step, animation_format):
-        args = ['ANIM',
-                's', args_ctx.seed,
-                'st', args_ctx.image_seed_strength,
+    def _gen_filename_base(self, args_ctx):
+        if args_ctx.upscaler_noise_level is not None:
+            noise_entry = ('unl', args_ctx.upscaler_noise_level)
+        else:
+            noise_entry = ('st', args_ctx.image_seed_strength)
+
+        args = ['s', args_ctx.seed,
+                *noise_entry,
                 'g', args_ctx.guidance_scale,
                 'i', args_ctx.inference_steps]
+        return args
+
+    def _gen_animation_filename(self, args_ctx: DiffusionArgContext, generation_step, animation_format):
+        args = ['ANIM', *self._gen_filename_base(args_ctx)]
 
         if args_ctx.sdxl_high_noise_fraction is not None:
             args += ['hnf', args_ctx.sdxl_high_noise_fraction]
@@ -306,11 +324,7 @@ class DiffusionRenderLoop:
 
     def _write_animation_frame(self, args_ctx: DiffusionArgContext, image_seed_obj,
                                generation_result: PipelineResultWrapper):
-
-        args = ['s', args_ctx.seed,
-                'st', args_ctx.image_seed_strength,
-                'g', args_ctx.guidance_scale,
-                'i', args_ctx.inference_steps]
+        args = self._gen_filename_base(args_ctx)
 
         if args_ctx.sdxl_high_noise_fraction is not None:
             args += ['hnf', args_ctx.sdxl_high_noise_fraction]
@@ -328,11 +342,9 @@ class DiffusionRenderLoop:
         self._written_images.append(os.path.abspath(filename))
         self._write_generation_result(filename, generation_result, config_txt)
 
-    def _write_image_seed_gen_image(self, args_ctx: DiffusionArgContext, generation_result: PipelineResultWrapper):
-        args = ['s', args_ctx.seed,
-                'st', args_ctx.image_seed_strength,
-                'g', args_ctx.guidance_scale,
-                'i', args_ctx.inference_steps]
+    def _write_image_seed_gen_image(self, args_ctx: DiffusionArgContext,
+                                    generation_result: PipelineResultWrapper):
+        args = self._gen_filename_base(args_ctx)
 
         if args_ctx.sdxl_high_noise_fraction is not None:
             args += ['hnf', args_ctx.sdxl_high_noise_fraction]
@@ -386,6 +398,9 @@ class DiffusionRenderLoop:
 
         if args_ctx.image_seed_strength is not None:
             inputs.append(f'Image Seed Strength: {args_ctx.image_seed_strength}')
+
+        if args_ctx.upscaler_noise_level is not None:
+            inputs.append(f'Upscaler Noise Level: {args_ctx.upscaler_noise_level}')
 
         inputs.append(f'Guidance Scale: {args_ctx.guidance_scale}')
         inputs.append(f'Inference Steps: {args_ctx.inference_steps}')
@@ -463,7 +478,8 @@ class DiffusionRenderLoop:
                                                    image_seed_strengths=None,
                                                    guidance_scales=self.guidance_scales,
                                                    inference_steps_list=self.inference_steps,
-                                                   sdxl_high_noise_fractions=sdxl_high_noise_fractions):
+                                                   sdxl_high_noise_fractions=sdxl_high_noise_fractions,
+                                                   upscaler_noise_levels=None):
                 self._pre_generation_step(args_ctx)
                 self._pre_generation(args_ctx)
 
@@ -496,12 +512,16 @@ class DiffusionRenderLoop:
             print(underline(f'Processing Image Seed: {image_seed}'))
 
             sdxl_high_noise_fractions = self.sdxl_high_noise_fractions if self.sdxl_refiner_path is not None else None
+            upscaler_noise_levels = self.upscaler_noise_levels if self.model_type == 'torch-upscaler' else None
+            image_seed_strengths = self.image_seed_strengths if self.model_type != 'torch-upscaler' else None
+
             arg_iterator = iterate_diffusion_args(prompts=self.prompts,
                                                   seeds=self.seeds,
-                                                  image_seed_strengths=self.image_seed_strengths,
+                                                  image_seed_strengths=image_seed_strengths,
                                                   guidance_scales=self.guidance_scales,
                                                   inference_steps_list=self.inference_steps,
-                                                  sdxl_high_noise_fractions=sdxl_high_noise_fractions)
+                                                  sdxl_high_noise_fractions=sdxl_high_noise_fractions,
+                                                  upscaler_noise_levels=upscaler_noise_levels)
 
             seed_info = get_image_seed_info(image_seed, self.frame_start, self.frame_end)
 
