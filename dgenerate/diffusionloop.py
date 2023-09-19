@@ -257,6 +257,7 @@ class DiffusionRenderLoop:
                 len(self.seeds) *
                 len(self.guidance_scales) *
                 max(len(self.image_seed_strengths), 1) *
+                max(len(self.upscaler_noise_levels), 1) *
                 len(self.inference_steps) *
                 max(len(self.sdxl_high_noise_fractions), 1))
 
