@@ -79,6 +79,7 @@ def run_diffusion():
         render_loop.frame_start = arguments.frame_start
         render_loop.frame_end = arguments.frame_end
         render_loop.image_seed_strengths = arguments.image_seed_strengths
+        render_loop.upscaler_noise_levels = arguments.upscaler_noise_levels
         render_loop.guidance_scales = arguments.guidance_scales
         render_loop.inference_steps = arguments.inference_steps
         render_loop.vae_path = arguments.vae

@@ -450,10 +450,28 @@ def _type_image_seed_strengths(val):
 
 parser.add_argument('-iss', '--image-seed-strengths', action='store', nargs='*', default=[0.8],
                     type=_type_image_seed_strengths,
-                    help="""List of image seed strengths to try. Closer to 0 means high usage of the seed image
+                    help=f"""List of image seed strengths to try. Closer to 0 means high usage of the seed image
                          (less noise convolution), 1 effectively means no usage (high noise convolution).
                          Low values will produce something closer or more relevant to the input image, high
                          values will give the AI more creative freedom. (default: [0.8])""")
+
+
+def _type_upscaler_noise_levels(val):
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+
+    if val < 0:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 0')
+
+    return val
+
+
+parser.add_argument('-uns', '--upscaler-noise-levels', action='store', nargs='*', default=[20],
+                    type=_type_upscaler_noise_levels,
+                    help=f"""List of upscaler noise levels to try. The higher this value the more noise
+                    is added to the image before upscaling (similar to image seed strength). (default: [20])""")
 
 
 def _type_guidance_scale(val):
@@ -496,7 +514,8 @@ parser.add_argument('-hnf', '--sdxl-high-noise-fractions', action='store', nargs
                     type=_type_sdxl_high_noise_fractions,
                     help="""High noise fraction for Stable Diffusion XL (torch-sdxl), this fraction of inference steps
                          will be processed by the base model, while the rest will be processed by the refiner model.
-                         Multiple values to this argument will result in additional generation steps for each value.""")
+                         Multiple values to this argument will result in additional generation steps for each value. 
+                         (default: [0.8])""")
 
 
 def parse_args(args=None, namespace=None):

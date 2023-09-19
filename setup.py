@@ -76,7 +76,8 @@ setup(name='dgenerate',
       include_package_data=True,
       install_requires=get_requires(exclude={'triton'} if os.name == 'nt' else {}),
       extras_require={
-          'flax': get_requires(optional=True)
+          'flax': get_requires(optional=True),
+          'dev': ['pyinstaller==5.13.2']
       },
       entry_points={
           'console_scripts': [
