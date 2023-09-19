@@ -25,8 +25,6 @@ import sys
 import jinja2
 
 
-
-
 def run_diffusion():
     import re
     import os
@@ -115,17 +113,14 @@ def run_diffusion():
 
         return {'last_image':
                     quote(render_loop.written_images[-1])
-                          if len(render_loop.written_images) else [],
+                    if len(render_loop.written_images) else [],
                 'last_images':
                     [quote(s) for s in render_loop.written_images],
                 'last_animation':
                     quote(render_loop.written_animations[-1])
-                          if len(render_loop.written_animations) else [],
+                    if len(render_loop.written_animations) else [],
                 'last_animations':
-                    [quote(s) for s in render_loop.written_animations] }
-
-
-
+                    [quote(s) for s in render_loop.written_animations]}
 
     if not sys.stdin.isatty():
         template_args = {
@@ -140,7 +135,6 @@ def run_diffusion():
         jinja_env.filters['unquote'] = unquote
         jinja_env.globals['quote'] = quote
         jinja_env.filters['quote'] = quote
-
 
         continuation = ''
         first_line = True
@@ -186,7 +180,7 @@ def run_diffusion():
                     continuation = ''
                     continue
 
-                templated_cmd = jinja_env.\
+                templated_cmd = jinja_env. \
                     from_string(os.path.expandvars(args)).render(**template_args)
 
                 header = "Processing Arguments: "
