@@ -574,14 +574,15 @@ class DiffusionRenderLoop:
                         if image_seed_obj.mask_image is not None:
                             args_ctx.args['mask_image'] = image_seed_obj.mask_image
 
-                        if image_seed_obj.control_image is not None:
-                            args_ctx.args['control_image'] = image_seed_obj.control_image
-                        else:
-                            if self.control_net_paths is None or len(self.control_net_paths) == 0:
+                        if image_seed_obj.control_image is None:
+                            if self.control_net_paths is not None and len(self.control_net_paths) > 0:
                                 raise NotImplementedError(
                                     'Cannot use Control Nets without a control image, '
                                     'see --image-seeds and --control-images for information '
                                     'on specifying a control image.')
+
+                        else:
+                            args_ctx.args['control_image'] = image_seed_obj.control_image
 
                         with MultiContextManager([image_seed_obj.mask_image, image_seed_obj.control_image]), \
                                 diffusion_model(**args_ctx.args,
