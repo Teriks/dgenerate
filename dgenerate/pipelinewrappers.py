@@ -90,7 +90,7 @@ class InvalidTextualInversionPathError(Exception):
     pass
 
 
-_sdxl_refiner_path_parser = ConceptModelPathParser('SDXL Refiner', ['revision', 'variant', 'subfolder' 'dtype'])
+_sdxl_refiner_path_parser = ConceptModelPathParser('SDXL Refiner', ['revision', 'variant', 'subfolder', 'dtype'])
 
 _torch_vae_path_parser = ConceptModelPathParser('VAE', ['model', 'revision', 'variant', 'subfolder', 'dtype'])
 _flax_vae_path_parser = ConceptModelPathParser('VAE', ['model', 'revision', 'subfolder', 'dtype'])
@@ -1130,8 +1130,13 @@ class DiffusionPipelineWrapperBase:
             high_noise_fraction = kwargs.get('sdxl_high_noise_fraction',
                                              DEFAULT_SDXL_HIGH_NOISE_FRACTION)
 
+            if isinstance(self._pipeline, StableDiffusionXLControlNetPipeline):
+                i_start = {'control_guidance_end': high_noise_fraction}
+            else:
+                i_start = {'denoising_end': high_noise_fraction}
+
             image = self._pipeline(**args,
-                                   denoising_end=high_noise_fraction,
+                                   **i_start,
                                    output_type="latent").images
 
             args['image'] = image
