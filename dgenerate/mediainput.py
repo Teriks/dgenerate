@@ -578,6 +578,8 @@ def parse_image_seed_uri(url):
             result.mask_uri_is_local = False
         elif os.path.exists(mask_uri):
             result.mask_uri_is_local = True
+        else:
+            raise ImageSeedParseError(f'Image mask file "{mask_uri}" does not exist.')
 
     control_uri = parse_result.args.get('control', None)
     if control_uri is not None:
@@ -586,6 +588,8 @@ def parse_image_seed_uri(url):
             result.control_uri_is_local = False
         elif os.path.exists(control_uri):
             result.control_uri_is_local = True
+        else:
+            raise ImageSeedParseError(f'Control image file "{control_uri}" does not exist.')
 
     resize = parse_result.args.get('resize', None)
     if resize is not None:
@@ -603,9 +607,28 @@ def parse_image_seed_uri(url):
     return result
 
 
-def _fetch_image_seed_data(uri, uri_desc, local=False, mime_type_filter=None, mime_type_reject_noun='input image',
-                           mime_acceptable_desc=''):
-    if local:
+def image_seed_mime_type_filter(mime_type):
+    return (mime_type_is_static_image(mime_type) or
+            mime_type_is_video(mime_type) or
+            mime_type_is_animable_image(mime_type))
+
+
+def fetch_image_seed_data(uri,
+                          uri_desc,
+                          mime_type_filter=image_seed_mime_type_filter,
+                          mime_type_reject_noun='input image',
+                          mime_acceptable_desc=''):
+
+    if uri.startswith('http://') or uri.startswith('https://'):
+        headers = {'User-Agent': UserAgent().chrome}
+        req = requests.get(uri, headers=headers)
+        mime_type = req.headers['content-type']
+        if mime_type_filter is not None and not mime_type_filter(mime_type):
+            raise ImageSeedParseError(
+                f'Unknown {mime_type_reject_noun} mimetype "{mime_type}" for situation in '
+                f'parsed image seed "{uri_desc}". Expected: {mime_acceptable_desc}')
+        data = req.content
+    else:
         mime_type = mimetypes.guess_type(uri)[0]
 
         if mime_type is None and uri.endswith('.webp'):
@@ -619,28 +642,19 @@ def _fetch_image_seed_data(uri, uri_desc, local=False, mime_type_filter=None, mi
         else:
             with open(uri, 'rb') as file:
                 data = file.read()
-    else:
-        headers = {'User-Agent': UserAgent().chrome}
-        req = requests.get(uri, headers=headers)
-        mime_type = req.headers['content-type']
-        if mime_type_filter is not None and not mime_type_filter(mime_type):
-            raise ImageSeedParseError(
-                f'Unknown {mime_type_reject_noun} mimetype "{mime_type}" for situation in '
-                f'parsed image seed "{uri_desc}". Expected: {mime_acceptable_desc}')
-        data = req.content
 
     return mime_type, data
 
 
-def _mime_type_is_animable_image(mime_type):
+def mime_type_is_animable_image(mime_type):
     return mime_type in {'image/gif', 'image/webp'}
 
 
-def _mime_type_is_static_image(mime_type):
+def mime_type_is_static_image(mime_type):
     return mime_type in {'image/png', 'image/jpeg'}
 
 
-def _mime_type_is_video(mime_type):
+def mime_type_is_video(mime_type):
     if mime_type is None:
         return False
 
@@ -711,39 +725,28 @@ def iterate_image_seed(uri, frame_start=0, frame_end=None, resize_resolution=Non
 
     mime_acceptable_desc = 'image/png, image/jpeg, image/gif, image/webp, video/*'
 
-    def mime_type_filter(mime_type):
-        return (_mime_type_is_static_image(mime_type) or
-                _mime_type_is_video(mime_type) or
-                _mime_type_is_animable_image(mime_type))
-
-    seed_mime_type, seed_data = _fetch_image_seed_data(
+    seed_mime_type, seed_data = fetch_image_seed_data(
         uri=parse_result.uri,
         uri_desc=uri,
-        local=parse_result.uri_is_local,
         mime_type_reject_noun='image seed',
-        mime_acceptable_desc=mime_acceptable_desc,
-        mime_type_filter=mime_type_filter)
+        mime_acceptable_desc=mime_acceptable_desc)
 
     mask_mime_type, mask_data = None, None
 
     if parse_result.mask_uri is not None:
-        mask_mime_type, mask_data = _fetch_image_seed_data(
+        mask_mime_type, mask_data = fetch_image_seed_data(
             uri=parse_result.mask_uri,
             uri_desc=uri,
-            local=parse_result.mask_uri_is_local,
             mime_type_reject_noun='mask image',
-            mime_acceptable_desc=mime_acceptable_desc,
-            mime_type_filter=mime_type_filter)
+            mime_acceptable_desc=mime_acceptable_desc)
 
     control_mime_type, control_data = None, None
     if parse_result.control_uri is not None:
-        control_mime_type, control_data = _fetch_image_seed_data(
+        control_mime_type, control_data = fetch_image_seed_data(
             uri=parse_result.control_uri,
             uri_desc=uri,
-            local=parse_result.control_uri_is_local,
             mime_type_reject_noun='control image',
-            mime_acceptable_desc=mime_acceptable_desc,
-            mime_type_filter=mime_type_filter)
+            mime_acceptable_desc=mime_acceptable_desc)
 
     if parse_result.resize_resolution is not None:
         resize_resolution = parse_result.resize_resolution
@@ -751,15 +754,15 @@ def iterate_image_seed(uri, frame_start=0, frame_end=None, resize_resolution=Non
     manage_context = []
 
     seed_reader = None
-    if _mime_type_is_animable_image(seed_mime_type):
+    if mime_type_is_animable_image(seed_mime_type):
         seed_reader = create_animation_reader(io.BytesIO(seed_data), parse_result.uri, resize_resolution)
         manage_context.append(seed_reader)
-    elif _mime_type_is_video(seed_mime_type):
+    elif mime_type_is_video(seed_mime_type):
         temp_dir = tempfile.TemporaryDirectory()
         video_file_path = _write_to_file(seed_data, os.path.join(temp_dir.name, 'tmp_vid'))
         seed_reader = create_animation_reader(video_file_path, parse_result.uri, resize_resolution)
         manage_context += [seed_reader, temp_dir]
-    elif _mime_type_is_static_image(seed_mime_type):
+    elif mime_type_is_static_image(seed_mime_type):
         seed_image = create_and_exif_orient_pil_img(seed_data, parse_result.uri, resize_resolution)
         seed_reader = create_animation_reader(seed_image, parse_result.uri, resize_resolution)
         manage_context.append(seed_reader)
@@ -767,15 +770,15 @@ def iterate_image_seed(uri, frame_start=0, frame_end=None, resize_resolution=Non
         raise ImageSeedParseError(f'Unknown seed image mimetype {seed_mime_type}')
 
     mask_reader = None
-    if _mime_type_is_animable_image(mask_mime_type):
+    if mime_type_is_animable_image(mask_mime_type):
         mask_reader = create_animation_reader(io.BytesIO(mask_data), parse_result.mask_uri, resize_resolution)
         manage_context.append(mask_reader)
-    elif _mime_type_is_video(mask_mime_type):
+    elif mime_type_is_video(mask_mime_type):
         temp_dir = tempfile.TemporaryDirectory()
         video_file_path = _write_to_file(mask_data, os.path.join(temp_dir.name, 'tmp_mask'))
         mask_reader = create_animation_reader(video_file_path, parse_result.mask_uri, resize_resolution)
         manage_context += [mask_reader, temp_dir]
-    elif _mime_type_is_static_image(mask_mime_type):
+    elif mime_type_is_static_image(mask_mime_type):
         mask_image = create_and_exif_orient_pil_img(mask_data, parse_result.mask_uri, resize_resolution)
         mask_reader = create_animation_reader(mask_image, parse_result.mask_uri, resize_resolution)
         manage_context.append(mask_reader)
@@ -783,17 +786,17 @@ def iterate_image_seed(uri, frame_start=0, frame_end=None, resize_resolution=Non
         raise ImageSeedParseError(f'Unknown mask image mimetype {mask_mime_type}')
 
     control_reader = None
-    if _mime_type_is_animable_image(control_mime_type):
+    if mime_type_is_animable_image(control_mime_type):
         control_reader = create_animation_reader(io.BytesIO(control_data),
                                                  parse_result.control_uri,
                                                  resize_resolution)
         manage_context.append(control_reader)
-    elif _mime_type_is_video(control_mime_type):
+    elif mime_type_is_video(control_mime_type):
         temp_dir = tempfile.TemporaryDirectory()
         video_file_path = _write_to_file(control_data, os.path.join(temp_dir.name, 'tmp_controlnet'))
         control_reader = create_animation_reader(video_file_path, parse_result.control_uri, resize_resolution)
         manage_context += [control_reader, temp_dir]
-    elif _mime_type_is_static_image(control_mime_type):
+    elif mime_type_is_static_image(control_mime_type):
         control_image = create_and_exif_orient_pil_img(control_data, parse_result.control_uri,
                                                        resize_resolution)
         control_reader = create_animation_reader(control_image, parse_result.control_uri, resize_resolution)
@@ -891,11 +894,11 @@ def iterate_image_seed_old(uri, frame_start=0, frame_end=None, resize_resolution
     mime_acceptable_desc = 'image/png, image/jpeg, image/gif, image/webp, video/*'
 
     def mime_type_filter(mime_type):
-        return (_mime_type_is_static_image(mime_type) or
-                _mime_type_is_video(mime_type) or
-                _mime_type_is_animable_image(mime_type))
+        return (mime_type_is_static_image(mime_type) or
+                mime_type_is_video(mime_type) or
+                mime_type_is_animable_image(mime_type))
 
-    seed_mime_type, seed_data = _fetch_image_seed_data(
+    seed_mime_type, seed_data = fetch_image_seed_data(
         uri=parse_result.uri,
         uri_desc=uri,
         local=parse_result.uri_is_local,
@@ -906,7 +909,7 @@ def iterate_image_seed_old(uri, frame_start=0, frame_end=None, resize_resolution
     mask_mime_type, mask_data = None, None
 
     if parse_result.mask_uri is not None:
-        mask_mime_type, mask_data = _fetch_image_seed_data(
+        mask_mime_type, mask_data = fetch_image_seed_data(
             uri=parse_result.mask_uri,
             uri_desc=uri,
             local=parse_result.mask_uri_is_local,
@@ -917,7 +920,7 @@ def iterate_image_seed_old(uri, frame_start=0, frame_end=None, resize_resolution
     if parse_result.resize_resolution is not None:
         resize_resolution = parse_result.resize_resolution
 
-    if _mime_type_is_animable_image(seed_mime_type):
+    if mime_type_is_animable_image(seed_mime_type):
         if mask_data is None:
             with create_animation_reader(io.BytesIO(seed_data), parse_result.uri,
                                          resize_resolution) as animation_reader:
@@ -926,7 +929,7 @@ def iterate_image_seed_old(uri, frame_start=0, frame_end=None, resize_resolution
                                                      frame_start=frame_start,
                                                      frame_end=frame_end))
 
-        elif _mime_type_is_static_image(mask_mime_type):
+        elif mime_type_is_static_image(mask_mime_type):
             with create_animation_reader(io.BytesIO(seed_data), parse_result.uri,
                                          resize_resolution) as animation_reader, \
                     create_and_exif_orient_pil_img(mask_data, parse_result.mask_uri, resize_resolution) as mask_image:
@@ -938,7 +941,7 @@ def iterate_image_seed_old(uri, frame_start=0, frame_end=None, resize_resolution
                                                      frame_end=frame_end,
                                                      mask_reader=mask_image))
 
-        elif _mime_type_is_video(mask_mime_type):
+        elif mime_type_is_video(mask_mime_type):
             with tempfile.TemporaryDirectory() as temp_dir:
                 mask_video_file_path = _write_to_file(mask_data, os.path.join(temp_dir, 'tmp_mask'))
 
@@ -954,7 +957,7 @@ def iterate_image_seed_old(uri, frame_start=0, frame_end=None, resize_resolution
                                                          frame_end=frame_end,
                                                          mask_reader=mask_animation_reader))
 
-        elif _mime_type_is_animable_image(mask_mime_type):
+        elif mime_type_is_animable_image(mask_mime_type):
             with create_animation_reader(io.BytesIO(seed_data), parse_result.uri,
                                          resize_resolution) as animation_reader, \
                     create_animation_reader(io.BytesIO(mask_data), parse_result.mask_uri,
@@ -970,7 +973,7 @@ def iterate_image_seed_old(uri, frame_start=0, frame_end=None, resize_resolution
             raise ImageSeedParseError(
                 'Unknown mimetype combination for gif/webp seed with mask.')
 
-    elif _mime_type_is_video(seed_mime_type):
+    elif mime_type_is_video(seed_mime_type):
         with tempfile.TemporaryDirectory() as temp_dir:
             video_file_path = _write_to_file(seed_data, os.path.join(temp_dir, 'tmp'))
 
@@ -980,7 +983,7 @@ def iterate_image_seed_old(uri, frame_start=0, frame_end=None, resize_resolution
                                 iterate_animation_frames(animation_reader=animation_reader,
                                                          frame_start=frame_start,
                                                          frame_end=frame_end))
-            elif _mime_type_is_static_image(mask_mime_type):
+            elif mime_type_is_static_image(mask_mime_type):
                 with create_animation_reader(video_file_path, parse_result.uri, resize_resolution) as animation_reader, \
                         create_and_exif_orient_pil_img(mask_data, parse_result.mask_uri,
                                                        resize_resolution) as mask_image:
@@ -992,7 +995,7 @@ def iterate_image_seed_old(uri, frame_start=0, frame_end=None, resize_resolution
                                                          frame_end=frame_end,
                                                          mask_reader=mask_image))
 
-            elif _mime_type_is_video(mask_mime_type):
+            elif mime_type_is_video(mask_mime_type):
                 mask_video_file_path = _write_to_file(mask_data, os.path.join(temp_dir, 'tmp_mask'))
 
                 with create_animation_reader(video_file_path, parse_result.uri, resize_resolution) as animation_reader, \
@@ -1006,7 +1009,7 @@ def iterate_image_seed_old(uri, frame_start=0, frame_end=None, resize_resolution
                                                          frame_end=frame_end,
                                                          mask_reader=mask_animation_reader))
 
-            elif _mime_type_is_animable_image(mask_mime_type):
+            elif mime_type_is_animable_image(mask_mime_type):
                 with create_animation_reader(video_file_path, parse_result.uri, resize_resolution) as animation_reader, \
                         create_animation_reader(io.BytesIO(mask_data), parse_result.mask_uri,
                                                 resize_resolution) as mask_animation_reader:
@@ -1021,19 +1024,19 @@ def iterate_image_seed_old(uri, frame_start=0, frame_end=None, resize_resolution
                 raise ImageSeedParseError(
                     'Unknown mimetype combination for video seed with mask.')
 
-    elif _mime_type_is_static_image(seed_mime_type):
+    elif mime_type_is_static_image(seed_mime_type):
         with create_and_exif_orient_pil_img(seed_data, parse_result.uri, resize_resolution) as seed_image:
 
             if mask_data is None:
                 yield ImageSeed(image=seed_image)
 
-            elif _mime_type_is_static_image(mask_mime_type):
+            elif mime_type_is_static_image(mask_mime_type):
                 with create_and_exif_orient_pil_img(mask_data, parse_result.mask_uri, resize_resolution) as mask_image:
                     if seed_image.size != mask_image.size:
                         raise ImageSeedSizeMismatchError(seed_image.size, mask_image.size)
                     yield ImageSeed(image=seed_image, mask_image=mask_image)
 
-            elif _mime_type_is_video(mask_mime_type):
+            elif mime_type_is_video(mask_mime_type):
                 with tempfile.TemporaryDirectory() as temp_dir:
                     mask_video_file_path = _write_to_file(mask_data, os.path.join(temp_dir, 'tmp_mask'))
 
@@ -1049,7 +1052,7 @@ def iterate_image_seed_old(uri, frame_start=0, frame_end=None, resize_resolution
                                                              frame_end=frame_end,
                                                              mask_reader=mask_animation_reader))
 
-            elif _mime_type_is_animable_image(mask_mime_type):
+            elif mime_type_is_animable_image(mask_mime_type):
                 with create_animation_reader(io.BytesIO(mask_data), parse_result.mask_uri,
                                              resize_resolution) as mask_animation_reader, \
                         create_animation_reader(seed_image, parse_result.uri, resize_resolution,
