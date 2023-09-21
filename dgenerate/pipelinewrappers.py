@@ -28,7 +28,8 @@ try:
     from flax.jax_utils import replicate
     from flax.training.common_utils import shard
     from diffusers import FlaxStableDiffusionPipeline, FlaxStableDiffusionImg2ImgPipeline, \
-        FlaxStableDiffusionInpaintPipeline, FlaxAutoencoderKL
+        FlaxStableDiffusionInpaintPipeline, FlaxStableDiffusionControlNetPipeline, FlaxControlNetModel, \
+        FlaxAutoencoderKL
 
     _have_jax_flax = True
 
@@ -45,7 +46,9 @@ from .textprocessing import ConceptModelPathParser, ConceptModelPathParseError, 
 from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline, StableDiffusionInpaintPipeline, \
     StableDiffusionInpaintPipelineLegacy, StableDiffusionXLPipeline, StableDiffusionXLImg2ImgPipeline, \
     StableDiffusionXLInpaintPipeline, StableDiffusionUpscalePipeline, StableDiffusionLatentUpscalePipeline, \
-    AutoencoderKL, AsymmetricAutoencoderKL, AutoencoderTiny
+    ControlNetModel, AutoencoderKL, AsymmetricAutoencoderKL, AutoencoderTiny, StableDiffusionControlNetPipeline, \
+    StableDiffusionControlNetInpaintPipeline, StableDiffusionControlNetImg2ImgPipeline, \
+    StableDiffusionXLControlNetPipeline
 
 _TORCH_MODEL_CACHE = dict()
 _FLAX_MODEL_CACHE = dict()
@@ -71,6 +74,10 @@ class InvalidVaePathError(Exception):
     pass
 
 
+class InvalidControlNetPathError(Exception):
+    pass
+
+
 class InvalidSchedulerName(Exception):
     pass
 
@@ -84,11 +91,75 @@ class InvalidTextualInversionPathError(Exception):
 
 
 _sdxl_refiner_path_parser = ConceptModelPathParser('SDXL Refiner', ['revision', 'variant', 'subfolder' 'dtype'])
+
 _torch_vae_path_parser = ConceptModelPathParser('VAE', ['model', 'revision', 'variant', 'subfolder', 'dtype'])
 _flax_vae_path_parser = ConceptModelPathParser('VAE', ['model', 'revision', 'subfolder', 'dtype'])
+
+_torch_control_net_path_parser = ConceptModelPathParser('Control Net',
+                                                        ['revision', 'variant', 'subfolder', 'upcast_attention',
+                                                         'dtype'])
+
 _lora_path_parser = ConceptModelPathParser('LoRA', ['scale', 'revision', 'subfolder', 'weight-name'])
 _textual_inversion_path_parser = ConceptModelPathParser('Textual Inversion',
                                                         ['revision', 'subfolder', 'weight-name'])
+
+
+class TorchControlNetPath:
+    def __init__(self, model, revision, variant, subfolder, upcast_attention, dtype):
+        self.model = model
+        self.revision = revision
+        self.variant = variant
+        self.subfolder = subfolder
+        self.upcast_attention = upcast_attention
+        self.dtype = dtype
+
+    def load(self, **kwargs):
+        single_file_load_path = _is_single_file_model_load(self.model)
+
+        if single_file_load_path:
+            new_net = ControlNetModel.from_single_file(self.model,
+                                                       revision=self.revision,
+                                                       upcast_attention=self.upcast_attention,
+                                                       torch_dtype=self.dtype,
+                                                       **kwargs)
+        else:
+            new_net = ControlNetModel.from_pretrained(self.model,
+                                                      revision=self.revision,
+                                                      variant=self.variant,
+                                                      subfolder=self.subfolder,
+                                                      upcast_attention=self.upcast_attention,
+                                                      torch_dtype=self.dtype,
+                                                      **kwargs)
+        return new_net
+
+
+def parse_torch_control_net_path(path):
+    try:
+        r = _torch_control_net_path_parser.parse_concept_path(path)
+
+        dtype = r.args.get('dtype', None)
+        upcast_attention = r.args.get('upcast_attention', None)
+
+        if upcast_attention is not None:
+            try:
+                upcast_attention = bool(upcast_attention)
+            except ValueError:
+                raise InvalidControlNetPathError(
+                    'Torch Control Net upcast_attention must be undefined or boolean (true or false)')
+
+        if dtype not in {'float32', 'float16', 'auto', None}:
+            raise InvalidVaePathError('Torch Control Net dtype must be float32, float16, auto, or left undefined.')
+
+        return TorchControlNetPath(
+            model=r.concept,
+            revision=r.args.get('revision', None),
+            variant=r.args.get('variant', None),
+            subfolder=r.args.get('subfolder', None),
+            upcast_attention=upcast_attention,
+            dtype=_get_torch_dtype(dtype), )
+
+    except ConceptModelPathParseError as e:
+        raise InvalidControlNetPathError(e)
 
 
 class SDXLRefinerPath:
@@ -412,6 +483,7 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                                      vae_path=None,
                                      lora_paths=None,
                                      textual_inversion_paths=None,
+                                     control_net_paths=None,
                                      scheduler=None,
                                      safety_checker=False,
                                      auth_token=None,
@@ -427,12 +499,30 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                           else StableDiffusionLatentUpscalePipeline)
     else:
         sdxl = model_type == ModelTypes.TORCH_SDXL
+        has_control_nets = control_net_paths is not None and len(control_net_paths) > 0
+
         if pipeline_type == _PipelineTypes.BASIC:
-            pipeline_class = StableDiffusionXLPipeline if sdxl else StableDiffusionPipeline
+            if has_control_nets:
+                pipeline_class = StableDiffusionXLControlNetPipeline if sdxl else StableDiffusionControlNetPipeline
+                print("SD WITH CONTROL NET INIT")
+            else:
+                pipeline_class = StableDiffusionXLPipeline if sdxl else StableDiffusionPipeline
         elif pipeline_type == _PipelineTypes.IMG2IMG:
-            pipeline_class = StableDiffusionXLImg2ImgPipeline if sdxl else StableDiffusionImg2ImgPipeline
+            if has_control_nets:
+                if sdxl:
+                    raise NotImplementedError('SDXL does not support Control Nets with image seeds.')
+                else:
+                    pipeline_class = StableDiffusionControlNetImg2ImgPipeline
+            else:
+                pipeline_class = StableDiffusionXLImg2ImgPipeline if sdxl else StableDiffusionImg2ImgPipeline
         elif pipeline_type == _PipelineTypes.INPAINT:
-            pipeline_class = StableDiffusionXLInpaintPipeline if sdxl else StableDiffusionInpaintPipeline
+            if has_control_nets:
+                if sdxl:
+                    raise NotImplementedError('SDXL does not support Control Nets with image seeds.')
+                else:
+                    pipeline_class = StableDiffusionControlNetInpaintPipeline
+            else:
+                pipeline_class = StableDiffusionXLInpaintPipeline if sdxl else StableDiffusionInpaintPipeline
         else:
             # Should be impossible
             raise NotImplementedError('Pipeline type not implemented.')
@@ -441,10 +531,19 @@ def _create_torch_diffusion_pipeline(pipeline_type,
         if model_type == ModelTypes.TORCH_UPSCALER_X2:
             raise NotImplementedError(
                 'Model type torch-upscaler-x2 cannot be used with textual inversion models.')
+
+        if isinstance(textual_inversion_paths, str):
+            textual_inversion_paths = [textual_inversion_paths]
+
     if lora_paths is not None:
+        if not isinstance(lora_paths, str):
+            raise NotImplementedError('Using multiple LoRA models is currently not supported.')
+
         if model_type_is_upscaler(model_type):
             raise NotImplementedError(
                 'LoRA models cannot be used with upscaler models.')
+
+        lora_paths = [lora_paths]
 
     catch_hit = _TORCH_MODEL_CACHE.get(cache_key)
 
@@ -453,10 +552,28 @@ def _create_torch_diffusion_pipeline(pipeline_type,
 
         torch_dtype = _get_torch_dtype(dtype)
 
-        if vae_path is not None and scheduler.lower() != 'help':
-            kwargs['vae'] = _load_pytorch_vae(vae_path,
-                                              torch_dtype_fallback=torch_dtype,
-                                              use_auth_token=auth_token)
+        if scheduler is not None and scheduler.lower() != 'help':
+            if vae_path is not None:
+                kwargs['vae'] = _load_pytorch_vae(vae_path,
+                                                  torch_dtype_fallback=torch_dtype,
+                                                  use_auth_token=auth_token)
+
+            if control_net_paths is not None:
+                controlnets = None
+
+                for control_net_path in control_net_paths:
+                    new_net = parse_torch_control_net_path(control_net_path) \
+                        .load(use_auth_token=auth_token)
+
+                    if controlnets is not None:
+                        if not isinstance(controlnets, list):
+                            controlnets = [controlnets, new_net]
+                        else:
+                            controlnets.append(new_net)
+                    else:
+                        controlnets = new_net
+
+                kwargs['controlnet'] = controlnets
 
         if extra_args is not None:
             kwargs.update(extra_args)
@@ -481,20 +598,15 @@ def _create_torch_diffusion_pipeline(pipeline_type,
 
         _load_scheduler(pipeline, scheduler)
 
-        if textual_inversion_paths:
-            if isinstance(textual_inversion_paths, str):
-                textual_inversion_paths = [textual_inversion_paths]
-
+        if textual_inversion_paths is not None:
             for inversion_path in textual_inversion_paths:
                 parse_textual_inversion_path(inversion_path). \
                     load_on_pipeline(pipeline, use_auth_token=auth_token)
 
         if lora_paths is not None:
-            if isinstance(lora_paths, str):
-                parse_lora_path(lora_paths). \
+            for lora_path in lora_paths:
+                parse_lora_path(lora_path). \
                     load_on_pipeline(pipeline, use_auth_token=auth_token)
-            else:
-                raise NotImplementedError('Using multiple LoRA models is currently not supported.')
 
         if not safety_checker:
             if hasattr(pipeline, 'safety_checker') and pipeline.safety_checker is not None:
@@ -695,6 +807,7 @@ class DiffusionPipelineWrapperBase:
                  vae_path=None,
                  lora_paths=None,
                  textual_inversion_paths=None,
+                 control_net_paths=None,
                  sdxl_refiner_path=None,
                  scheduler=None,
                  safety_checker=False,
@@ -716,9 +829,11 @@ class DiffusionPipelineWrapperBase:
         self._lora_paths = lora_paths
         self._lora_scale = None
         self._textual_inversion_paths = textual_inversion_paths
+        self._control_net_paths = control_net_paths
         self._sdxl_refiner_path = sdxl_refiner_path
         self._sdxl_refiner_pipeline = None
         self._auth_token = auth_token
+        self._pipeline_type = None
 
         if sdxl_refiner_path is not None:
             parsed_path = parse_sdxl_refiner_path(sdxl_refiner_path)
@@ -851,6 +966,12 @@ class DiffusionPipelineWrapperBase:
             else:
                 opts.append(('--textual-inversions', ' '.join(quote(p) for p in self._textual_inversion_paths)))
 
+        if self._control_net_paths is not None:
+            if isinstance(self._control_net_paths, str):
+                opts.append(('--control-nets', quote(self._control_net_paths)))
+            else:
+                opts.append(('--control-nets', ' '.join(quote(p) for p in self._control_net_paths)))
+
         if self._scheduler is not None:
             opts.append(('--scheduler', self._scheduler))
 
@@ -886,7 +1007,24 @@ class DiffusionPipelineWrapperBase:
         args = dict()
         args['guidance_scale'] = float(kwargs.get('guidance_scale', DEFAULT_GUIDANCE_SCALE))
         args['num_inference_steps'] = kwargs.get('num_inference_steps', DEFAULT_INFERENCE_STEPS)
-        if 'image' in kwargs:
+
+        if self._control_net_paths is not None:
+            if self._pipeline_type == _PipelineTypes.BASIC:
+                args['image'] = kwargs['control_image']
+            elif self._pipeline_type == _PipelineTypes.IMG2IMG or \
+                    self._pipeline_type == _PipelineTypes.INPAINT:
+                args['image'] = kwargs['image']
+                args['control_image'] = kwargs['control_image']
+                args['strength'] = float(kwargs.get('strength', DEFAULT_IMAGE_SEED_STRENGTH))
+
+            mask_image = kwargs.get('mask_image')
+            if mask_image is not None:
+                args['mask_image'] = mask_image
+
+            args['height'] = kwargs.get('height', DEFAULT_OUTPUT_HEIGHT)
+            args['width'] = kwargs.get('width', DEFAULT_OUTPUT_WIDTH)
+
+        elif 'image' in kwargs:
             image = kwargs['image']
             args['image'] = image
 
@@ -1015,6 +1153,8 @@ class DiffusionPipelineWrapperBase:
         if self._pipeline is not None:
             return
 
+        self._pipeline_type = pipeline_type
+
         model_type = get_model_type_enum(self._model_type)
 
         if model_type == ModelTypes.TORCH_SDXL and self._textual_inversion_paths is not None:
@@ -1052,6 +1192,7 @@ class DiffusionPipelineWrapperBase:
                                                  dtype=self._dtype,
                                                  vae_path=self._vae_path,
                                                  lora_paths=self._lora_paths,
+                                                 control_net_paths=self._control_net_paths,
                                                  scheduler=self._scheduler,
                                                  safety_checker=self._safety_checker,
                                                  auth_token=self._auth_token)
@@ -1094,6 +1235,7 @@ class DiffusionPipelineWrapperBase:
                                                  vae_path=self._vae_path,
                                                  lora_paths=self._lora_paths,
                                                  textual_inversion_paths=self._textual_inversion_paths,
+                                                 control_net_paths=self._control_net_paths,
                                                  scheduler=self._scheduler,
                                                  safety_checker=self._safety_checker,
                                                  auth_token=self._auth_token).to(self.device)
@@ -1124,6 +1266,7 @@ class DiffusionPipelineWrapper(DiffusionPipelineWrapperBase):
                  vae_path=None,
                  lora_paths=None,
                  textual_inversion_paths=None,
+                 control_net_paths=None,
                  sdxl_refiner_path=None,
                  scheduler=None,
                  safety_checker=False,
@@ -1139,6 +1282,7 @@ class DiffusionPipelineWrapper(DiffusionPipelineWrapperBase):
             vae_path,
             lora_paths,
             textual_inversion_paths,
+            control_net_paths,
             sdxl_refiner_path,
             scheduler,
             safety_checker,
@@ -1162,6 +1306,7 @@ class DiffusionPipelineImg2ImgWrapper(DiffusionPipelineWrapperBase):
                  vae_path=None,
                  lora_paths=None,
                  textual_inversion_paths=None,
+                 control_net_paths=None,
                  sdxl_refiner_path=None,
                  scheduler=None,
                  safety_checker=False,
@@ -1178,6 +1323,7 @@ class DiffusionPipelineImg2ImgWrapper(DiffusionPipelineWrapperBase):
             vae_path,
             lora_paths,
             textual_inversion_paths,
+            control_net_paths,
             sdxl_refiner_path,
             scheduler,
             safety_checker,
