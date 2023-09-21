@@ -553,6 +553,8 @@ def parse_args(args=None, namespace=None):
         sys.exit(1)
 
     if len(args.image_seeds) > 0:
-        args.image_seed_strength = [0.8]
+        args.image_seed_strengths = [0.8]
+    else:
+        args.image_seed_strengths = []
 
     return args
