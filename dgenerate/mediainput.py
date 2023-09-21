@@ -763,6 +763,8 @@ def iterate_image_seed(uri, frame_start=0, frame_end=None, resize_resolution=Non
         seed_image = create_and_exif_orient_pil_img(seed_data, parse_result.uri, resize_resolution)
         seed_reader = create_animation_reader(seed_image, parse_result.uri, resize_resolution)
         manage_context.append(seed_reader)
+    else:
+        raise ImageSeedParseError(f'Unknown seed image mimetype {seed_mime_type}')
 
     mask_reader = None
     if _mime_type_is_animable_image(mask_mime_type):
@@ -777,6 +779,8 @@ def iterate_image_seed(uri, frame_start=0, frame_end=None, resize_resolution=Non
         mask_image = create_and_exif_orient_pil_img(mask_data, parse_result.mask_uri, resize_resolution)
         mask_reader = create_animation_reader(mask_image, parse_result.mask_uri, resize_resolution)
         manage_context.append(mask_reader)
+    else:
+        raise ImageSeedParseError(f'Unknown mask image mimetype {mask_mime_type}')
 
     control_reader = None
     if _mime_type_is_animable_image(control_mime_type):
@@ -794,6 +798,8 @@ def iterate_image_seed(uri, frame_start=0, frame_end=None, resize_resolution=Non
                                                        resize_resolution)
         control_reader = create_animation_reader(control_image, parse_result.control_uri, resize_resolution)
         manage_context.append(control_reader)
+    else:
+        raise ImageSeedParseError(f'Unknown control image mimetype {mask_mime_type}')
 
     size_mismatch_check = [(parse_result.uri, 'Image seed', seed_reader),
                            (parse_result.mask_uri, 'Mask image', mask_reader),
