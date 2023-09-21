@@ -817,7 +817,7 @@ def iterate_image_seed(uri, frame_start=0, frame_end=None, resize_resolution=Non
         raise ImageSeedParseError(f'Image seed not specified or irretrievable')
 
     mask_reader = None
-    if mask_reader is not None:
+    if mask_data is not None:
         if mime_type_is_animable_image(mask_mime_type):
             mask_reader = create_animation_reader(io.BytesIO(mask_data), parse_result.mask_uri, resize_resolution)
             manage_context.append(mask_reader)
