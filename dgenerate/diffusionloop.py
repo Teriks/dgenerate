@@ -32,7 +32,8 @@ from typing import Iterator
 import torch
 from PIL.PngImagePlugin import PngInfo
 
-from .mediainput import iterate_image_seed, get_image_seed_info, create_and_exif_orient_pil_img, MultiContextManager
+from .mediainput import iterate_image_seed, get_image_seed_info, create_and_exif_orient_pil_img, MultiContextManager, \
+    fetch_image_seed_data, mime_type_is_static_image
 from .mediaoutput import create_animation_writer, supported_animation_writer_formats
 from .pipelinewrappers import DiffusionPipelineWrapper, DiffusionPipelineImg2ImgWrapper, supported_model_types, \
     PipelineResultWrapper, model_type_is_upscaler, get_model_type_enum, ModelTypes
@@ -454,7 +455,16 @@ class DiffusionRenderLoop:
         if self.control_images is not None:
             images = []
             for i in self.control_images:
-                images.append(create_and_exif_orient_pil_img(i, file_source=i))
+
+                seed_mime_type, seed_data = fetch_image_seed_data(
+                    uri=i,
+                    uri_desc=i,
+                    mime_type_reject_noun='control image',
+                    mime_acceptable_desc='image/png, image/jpeg',
+                    mime_type_filter=mime_type_is_static_image)
+
+                images.append(create_and_exif_orient_pil_img(seed_data, file_source=i))
+
             if len(images) == 0:
                 return None
             else:
