@@ -724,6 +724,10 @@ def have_jax_flax():
 def _get_flax_dtype(dtype):
     if dtype is None:
         return None
+
+    if isinstance(dtype, jnp.dtype):
+        return dtype
+
     return {'float16': jnp.bfloat16,
             'float32': jnp.float32,
             'float64': jnp.float64,
@@ -733,6 +737,10 @@ def _get_flax_dtype(dtype):
 def _get_torch_dtype(dtype):
     if dtype is None:
         return None
+
+    if isinstance(dtype, torch.dtype):
+        return dtype
+
     return {'float16': torch.float16,
             'float32': torch.float32,
             'float64': torch.float64,
@@ -841,6 +849,7 @@ class DiffusionPipelineWrapperBase:
 
         if sdxl_refiner_path is not None:
             parsed_path = parse_sdxl_refiner_path(sdxl_refiner_path)
+            self._sdxl_refiner_path = parsed_path.model
             self._sdxl_refiner_revision = parsed_path.revision
             self._sdxl_refiner_variant = parsed_path.variant
             self._sdxl_refiner_dtype = parsed_path.dtype
