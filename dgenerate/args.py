@@ -22,6 +22,7 @@
 import argparse
 import os
 import random
+import sys
 
 from diffusers.schedulers import KarrasDiffusionSchedulers
 
@@ -463,7 +464,7 @@ def _type_image_seed_strengths(val):
     return val
 
 
-image_seed_noise_opts.add_argument('-iss', '--image-seed-strengths', action='store', nargs='*', default=[0.8],
+image_seed_noise_opts.add_argument('-iss', '--image-seed-strengths', action='store', nargs='*', default=None,
                                    type=_type_image_seed_strengths,
                                    help=f"""List of image seed strengths to try. Closer to 0 means high usage of the seed image
                          (less noise convolution), 1 effectively means no usage (high noise convolution).
@@ -546,5 +547,12 @@ def parse_args(args=None, namespace=None):
 
     if args.output_size is None and len(args.image_seeds) == 0:
         args.output_size = (512, 512)
+
+    if len(args.image_seeds) == 0 and args.image_seed_strengths is not None:
+        print('You cannot specify --image-seed-strengths without --image-seeds.')
+        sys.exit(1)
+
+    if len(args.image_seeds) > 0:
+        args.image_seed_strength = [0.8]
 
     return args
