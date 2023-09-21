@@ -545,8 +545,8 @@ def parse_args(args=None, namespace=None):
     elif args.seeds is None:
         args.seeds = [random.randint(0, 99999999999999)]
 
-    if args.output_size is None and len(args.image_seeds) == 0:
-        args.output_size = (512, 512)
+    if args.output_size is None and len(args.image_seeds) == 0 and len(args.control_images) == 0:
+        args.output_size = (512, 512) if 'sdxl' not in args.model_type else (1024, 1024)
 
     if len(args.image_seeds) == 0 and args.image_seed_strengths is not None:
         print('You cannot specify --image-seed-strengths without --image-seeds.')
