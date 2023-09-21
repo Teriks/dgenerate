@@ -96,12 +96,10 @@ def run_diffusion():
 
         # run the render loop
         try:
-            render_loop.run()
-        except SchedulerHelpException:
-            pass
-
-        try:
-            pass
+            try:
+                render_loop.run()
+            except SchedulerHelpException:
+                pass
         except (ImageSeedParseError,
                 ImageSeedSizeMismatchError,
                 InvalidSDXLRefinerPathError,
