@@ -504,7 +504,6 @@ def _create_torch_diffusion_pipeline(pipeline_type,
         if pipeline_type == _PipelineTypes.BASIC:
             if has_control_nets:
                 pipeline_class = StableDiffusionXLControlNetPipeline if sdxl else StableDiffusionControlNetPipeline
-                print("SD WITH CONTROL NET INIT")
             else:
                 pipeline_class = StableDiffusionXLPipeline if sdxl else StableDiffusionPipeline
         elif pipeline_type == _PipelineTypes.IMG2IMG:
