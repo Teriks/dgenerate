@@ -265,6 +265,7 @@ class DiffusionRenderLoop:
     @property
     def num_generation_steps(self):
         return (max(len(self.image_seeds), 1) *
+                max(len(self.control_images), 1) *
                 len(self.prompts) *
                 len(self.seeds) *
                 len(self.guidance_scales) *

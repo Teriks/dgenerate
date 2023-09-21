@@ -113,7 +113,7 @@ class TorchControlNetPath:
         self.upcast_attention = upcast_attention
         self.dtype = dtype
 
-    def load(self, **kwargs):
+    def load(self, device, **kwargs):
         single_file_load_path = _is_single_file_model_load(self.model)
 
         if single_file_load_path:
@@ -121,7 +121,7 @@ class TorchControlNetPath:
                                                        revision=self.revision,
                                                        upcast_attention=self.upcast_attention,
                                                        torch_dtype=self.dtype,
-                                                       **kwargs)
+                                                       **kwargs).to(device)
         else:
             new_net = ControlNetModel.from_pretrained(self.model,
                                                       revision=self.revision,
@@ -129,7 +129,7 @@ class TorchControlNetPath:
                                                       subfolder=self.subfolder,
                                                       upcast_attention=self.upcast_attention,
                                                       torch_dtype=self.dtype,
-                                                      **kwargs)
+                                                      **kwargs).to(device)
         return new_net
 
 
@@ -330,7 +330,8 @@ def _is_single_file_model_load(path):
 
 def _load_pytorch_vae(path,
                       torch_dtype_fallback,
-                      use_auth_token):
+                      use_auth_token,
+                      device):
     parsed_concept = parse_torch_vae_path(path)
 
     if parsed_concept.dtype is None:
@@ -363,11 +364,11 @@ def _load_pytorch_vae(path,
         if encoder is AutoencoderKL:
             # There is a bug in their cast
             return encoder.from_single_file(path, revision=parsed_concept.revision). \
-                to(device=None, dtype=parsed_concept.dtype, non_blocking=False)
+                to(device=device, dtype=parsed_concept.dtype, non_blocking=False)
         else:
             return encoder.from_single_file(path,
                                             revision=parsed_concept.revision,
-                                            torch_dtype=parsed_concept.dtype)
+                                            torch_dtype=parsed_concept.dtype).to(device=device)
 
     else:
         return encoder.from_pretrained(path,
@@ -375,7 +376,7 @@ def _load_pytorch_vae(path,
                                        variant=parsed_concept.variant,
                                        torch_dtype=parsed_concept.dtype,
                                        subfolder=parsed_concept.subfolder,
-                                       use_auth_token=use_auth_token)
+                                       use_auth_token=use_auth_token).to(device=device)
 
 
 def _load_flax_vae(path,
@@ -487,66 +488,69 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                                      scheduler=None,
                                      safety_checker=False,
                                      auth_token=None,
+                                     device='cuda',
                                      extra_args=None):
     cache_key = _pipeline_cache_key(locals())
-
-    if model_type_is_upscaler(model_type):
-        if pipeline_type != _PipelineTypes.IMG2IMG and scheduler.lower() != 'help':
-            raise NotImplementedError(
-                'Upscaler models only work with img2img generation, IE: --image-seeds (with no image masks).')
-
-        pipeline_class = (StableDiffusionUpscalePipeline if model_type is ModelTypes.TORCH_UPSCALER_X4
-                          else StableDiffusionLatentUpscalePipeline)
-    else:
-        sdxl = model_type == ModelTypes.TORCH_SDXL
-        has_control_nets = control_net_paths is not None and len(control_net_paths) > 0
-
-        if pipeline_type == _PipelineTypes.BASIC:
-            if has_control_nets:
-                pipeline_class = StableDiffusionXLControlNetPipeline if sdxl else StableDiffusionControlNetPipeline
-            else:
-                pipeline_class = StableDiffusionXLPipeline if sdxl else StableDiffusionPipeline
-        elif pipeline_type == _PipelineTypes.IMG2IMG:
-            if has_control_nets:
-                if sdxl:
-                    raise NotImplementedError('SDXL does not support Control Nets with image seeds.')
-                else:
-                    pipeline_class = StableDiffusionControlNetImg2ImgPipeline
-            else:
-                pipeline_class = StableDiffusionXLImg2ImgPipeline if sdxl else StableDiffusionImg2ImgPipeline
-        elif pipeline_type == _PipelineTypes.INPAINT:
-            if has_control_nets:
-                if sdxl:
-                    raise NotImplementedError('SDXL does not support Control Nets with image seeds.')
-                else:
-                    pipeline_class = StableDiffusionControlNetInpaintPipeline
-            else:
-                pipeline_class = StableDiffusionXLInpaintPipeline if sdxl else StableDiffusionInpaintPipeline
-        else:
-            # Should be impossible
-            raise NotImplementedError('Pipeline type not implemented.')
-
-    if textual_inversion_paths:
-        if model_type == ModelTypes.TORCH_UPSCALER_X2:
-            raise NotImplementedError(
-                'Model type torch-upscaler-x2 cannot be used with textual inversion models.')
-
-        if isinstance(textual_inversion_paths, str):
-            textual_inversion_paths = [textual_inversion_paths]
-
-    if lora_paths is not None:
-        if not isinstance(lora_paths, str):
-            raise NotImplementedError('Using multiple LoRA models is currently not supported.')
-
-        if model_type_is_upscaler(model_type):
-            raise NotImplementedError(
-                'LoRA models cannot be used with upscaler models.')
-
-        lora_paths = [lora_paths]
 
     catch_hit = _TORCH_MODEL_CACHE.get(cache_key)
 
     if catch_hit is None:
+
+        if model_type_is_upscaler(model_type):
+            if pipeline_type != _PipelineTypes.IMG2IMG and scheduler.lower() != 'help':
+                raise NotImplementedError(
+                    'Upscaler models only work with img2img generation, IE: --image-seeds (with no image masks).')
+
+            pipeline_class = (StableDiffusionUpscalePipeline if model_type is ModelTypes.TORCH_UPSCALER_X4
+                              else StableDiffusionLatentUpscalePipeline)
+        else:
+            sdxl = model_type == ModelTypes.TORCH_SDXL
+            has_control_nets = control_net_paths is not None and len(control_net_paths) > 0
+
+            if pipeline_type == _PipelineTypes.BASIC:
+                if has_control_nets:
+                    pipeline_class = StableDiffusionXLControlNetPipeline if sdxl else StableDiffusionControlNetPipeline
+                else:
+                    pipeline_class = StableDiffusionXLPipeline if sdxl else StableDiffusionPipeline
+            elif pipeline_type == _PipelineTypes.IMG2IMG:
+                if has_control_nets:
+                    if sdxl:
+                        raise NotImplementedError('SDXL does not support Control Nets with image seeds.')
+                    else:
+                        pipeline_class = StableDiffusionControlNetImg2ImgPipeline
+                else:
+                    pipeline_class = StableDiffusionXLImg2ImgPipeline if sdxl else StableDiffusionImg2ImgPipeline
+            elif pipeline_type == _PipelineTypes.INPAINT:
+                if has_control_nets:
+                    if sdxl:
+                        raise NotImplementedError('SDXL does not support Control Nets with image seeds.')
+                    else:
+                        pipeline_class = StableDiffusionControlNetInpaintPipeline
+                else:
+                    pipeline_class = StableDiffusionXLInpaintPipeline if sdxl else StableDiffusionInpaintPipeline
+            else:
+                # Should be impossible
+                raise NotImplementedError('Pipeline type not implemented.')
+
+        if textual_inversion_paths:
+            if model_type == ModelTypes.TORCH_UPSCALER_X2:
+                raise NotImplementedError(
+                    'Model type torch-upscaler-x2 cannot be used with textual inversion models.')
+
+            if isinstance(textual_inversion_paths, str):
+                textual_inversion_paths = [textual_inversion_paths]
+
+        if lora_paths is not None:
+            if not isinstance(lora_paths, str):
+                raise NotImplementedError('Using multiple LoRA models is currently not supported.')
+
+            if model_type_is_upscaler(model_type):
+                raise NotImplementedError(
+                    'LoRA models cannot be used with upscaler models.')
+
+            lora_paths = [lora_paths]
+
+
         kwargs = {}
 
         torch_dtype = _get_torch_dtype(dtype)
@@ -555,14 +559,15 @@ def _create_torch_diffusion_pipeline(pipeline_type,
             if vae_path is not None:
                 kwargs['vae'] = _load_pytorch_vae(vae_path,
                                                   torch_dtype_fallback=torch_dtype,
-                                                  use_auth_token=auth_token)
+                                                  use_auth_token=auth_token,
+                                                  device=device)
 
             if control_net_paths is not None:
                 controlnets = None
 
                 for control_net_path in control_net_paths:
                     new_net = parse_torch_control_net_path(control_net_path) \
-                        .load(use_auth_token=auth_token)
+                        .load(use_auth_token=auth_token, device=device)
 
                     if controlnets is not None:
                         if not isinstance(controlnets, list):
@@ -1194,7 +1199,8 @@ class DiffusionPipelineWrapperBase:
                                                  control_net_paths=self._control_net_paths,
                                                  scheduler=self._scheduler,
                                                  safety_checker=self._safety_checker,
-                                                 auth_token=self._auth_token)
+                                                 auth_token=self._auth_token,
+                                                 device=self._device)
 
             refiner_pipeline_type = _PipelineTypes.IMG2IMG if pipeline_type is _PipelineTypes.BASIC else pipeline_type
 
@@ -1215,7 +1221,8 @@ class DiffusionPipelineWrapperBase:
                                                  safety_checker=self._safety_checker,
                                                  auth_token=self._auth_token,
                                                  extra_args={'vae': self._pipeline.vae,
-                                                             'text_encoder_2': self._pipeline.text_encoder_2})
+                                                             'text_encoder_2': self._pipeline.text_encoder_2},
+                                                 device=self._device)
 
             if self._device.startswith('cuda'):
                 gpu_id = _gpu_id_from_cuda_device(self._device)
@@ -1237,7 +1244,8 @@ class DiffusionPipelineWrapperBase:
                                                  control_net_paths=self._control_net_paths,
                                                  scheduler=self._scheduler,
                                                  safety_checker=self._safety_checker,
-                                                 auth_token=self._auth_token).to(self.device)
+                                                 auth_token=self._auth_token,
+                                                 device=self._device).to(self.device)
 
     def __call__(self, **kwargs):
         args = self._pipeline_defaults(kwargs)
