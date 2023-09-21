@@ -550,7 +550,6 @@ def _create_torch_diffusion_pipeline(pipeline_type,
 
             lora_paths = [lora_paths]
 
-
         kwargs = {}
 
         torch_dtype = _get_torch_dtype(dtype)
@@ -1022,20 +1021,21 @@ class DiffusionPipelineWrapperBase:
         args['num_inference_steps'] = kwargs.get('num_inference_steps', DEFAULT_INFERENCE_STEPS)
 
         if self._control_net_paths is not None:
+            control_image = kwargs['control_image']
             if self._pipeline_type == _PipelineTypes.BASIC:
-                args['image'] = kwargs['control_image']
+                args['image'] = control_image
             elif self._pipeline_type == _PipelineTypes.IMG2IMG or \
                     self._pipeline_type == _PipelineTypes.INPAINT:
                 args['image'] = kwargs['image']
-                args['control_image'] = kwargs['control_image']
+                args['control_image'] = control_image
                 args['strength'] = float(kwargs.get('strength', DEFAULT_IMAGE_SEED_STRENGTH))
 
             mask_image = kwargs.get('mask_image')
             if mask_image is not None:
                 args['mask_image'] = mask_image
 
-            args['height'] = kwargs.get('height', DEFAULT_OUTPUT_HEIGHT)
-            args['width'] = kwargs.get('width', DEFAULT_OUTPUT_WIDTH)
+            args['width'] = kwargs.get('width', control_image.width)
+            args['height'] = kwargs.get('height', control_image.height)
 
         elif 'image' in kwargs:
             image = kwargs['image']
