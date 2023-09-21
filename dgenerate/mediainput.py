@@ -798,55 +798,60 @@ def iterate_image_seed(uri, frame_start=0, frame_end=None, resize_resolution=Non
     manage_context = []
 
     seed_reader = None
-    if mime_type_is_animable_image(seed_mime_type):
-        seed_reader = create_animation_reader(io.BytesIO(seed_data), parse_result.uri, resize_resolution)
-        manage_context.append(seed_reader)
-    elif mime_type_is_video(seed_mime_type):
-        temp_dir = tempfile.TemporaryDirectory()
-        video_file_path = _write_to_file(seed_data, os.path.join(temp_dir.name, 'tmp_vid'))
-        seed_reader = create_animation_reader(video_file_path, parse_result.uri, resize_resolution)
-        manage_context += [seed_reader, temp_dir]
-    elif mime_type_is_static_image(seed_mime_type):
-        seed_image = create_and_exif_orient_pil_img(seed_data, parse_result.uri, resize_resolution)
-        seed_reader = create_animation_reader(seed_image, parse_result.uri, resize_resolution)
-        manage_context.append(seed_reader)
+    if seed_data is not None:
+        if mime_type_is_animable_image(seed_mime_type):
+            seed_reader = create_animation_reader(io.BytesIO(seed_data), parse_result.uri, resize_resolution)
+            manage_context.append(seed_reader)
+        elif mime_type_is_video(seed_mime_type):
+            temp_dir = tempfile.TemporaryDirectory()
+            video_file_path = _write_to_file(seed_data, os.path.join(temp_dir.name, 'tmp_vid'))
+            seed_reader = create_animation_reader(video_file_path, parse_result.uri, resize_resolution)
+            manage_context += [seed_reader, temp_dir]
+        elif mime_type_is_static_image(seed_mime_type):
+            seed_image = create_and_exif_orient_pil_img(seed_data, parse_result.uri, resize_resolution)
+            seed_reader = create_animation_reader(seed_image, parse_result.uri, resize_resolution)
+            manage_context.append(seed_reader)
+        else:
+            raise ImageSeedParseError(f'Unknown seed image mimetype {seed_mime_type}')
     else:
-        raise ImageSeedParseError(f'Unknown seed image mimetype {seed_mime_type}')
+        raise ImageSeedParseError(f'Image seed not specified or irretrievable')
 
     mask_reader = None
-    if mime_type_is_animable_image(mask_mime_type):
-        mask_reader = create_animation_reader(io.BytesIO(mask_data), parse_result.mask_uri, resize_resolution)
-        manage_context.append(mask_reader)
-    elif mime_type_is_video(mask_mime_type):
-        temp_dir = tempfile.TemporaryDirectory()
-        video_file_path = _write_to_file(mask_data, os.path.join(temp_dir.name, 'tmp_mask'))
-        mask_reader = create_animation_reader(video_file_path, parse_result.mask_uri, resize_resolution)
-        manage_context += [mask_reader, temp_dir]
-    elif mime_type_is_static_image(mask_mime_type):
-        mask_image = create_and_exif_orient_pil_img(mask_data, parse_result.mask_uri, resize_resolution)
-        mask_reader = create_animation_reader(mask_image, parse_result.mask_uri, resize_resolution)
-        manage_context.append(mask_reader)
-    else:
-        raise ImageSeedParseError(f'Unknown mask image mimetype {mask_mime_type}')
+    if mask_reader is not None:
+        if mime_type_is_animable_image(mask_mime_type):
+            mask_reader = create_animation_reader(io.BytesIO(mask_data), parse_result.mask_uri, resize_resolution)
+            manage_context.append(mask_reader)
+        elif mime_type_is_video(mask_mime_type):
+            temp_dir = tempfile.TemporaryDirectory()
+            video_file_path = _write_to_file(mask_data, os.path.join(temp_dir.name, 'tmp_mask'))
+            mask_reader = create_animation_reader(video_file_path, parse_result.mask_uri, resize_resolution)
+            manage_context += [mask_reader, temp_dir]
+        elif mime_type_is_static_image(mask_mime_type):
+            mask_image = create_and_exif_orient_pil_img(mask_data, parse_result.mask_uri, resize_resolution)
+            mask_reader = create_animation_reader(mask_image, parse_result.mask_uri, resize_resolution)
+            manage_context.append(mask_reader)
+        else:
+            raise ImageSeedParseError(f'Unknown mask image mimetype {mask_mime_type}')
 
     control_reader = None
-    if mime_type_is_animable_image(control_mime_type):
-        control_reader = create_animation_reader(io.BytesIO(control_data),
-                                                 parse_result.control_uri,
-                                                 resize_resolution)
-        manage_context.append(control_reader)
-    elif mime_type_is_video(control_mime_type):
-        temp_dir = tempfile.TemporaryDirectory()
-        video_file_path = _write_to_file(control_data, os.path.join(temp_dir.name, 'tmp_controlnet'))
-        control_reader = create_animation_reader(video_file_path, parse_result.control_uri, resize_resolution)
-        manage_context += [control_reader, temp_dir]
-    elif mime_type_is_static_image(control_mime_type):
-        control_image = create_and_exif_orient_pil_img(control_data, parse_result.control_uri,
-                                                       resize_resolution)
-        control_reader = create_animation_reader(control_image, parse_result.control_uri, resize_resolution)
-        manage_context.append(control_reader)
-    else:
-        raise ImageSeedParseError(f'Unknown control image mimetype {control_mime_type}')
+    if control_data is not None:
+        if mime_type_is_animable_image(control_mime_type):
+            control_reader = create_animation_reader(io.BytesIO(control_data),
+                                                     parse_result.control_uri,
+                                                     resize_resolution)
+            manage_context.append(control_reader)
+        elif mime_type_is_video(control_mime_type):
+            temp_dir = tempfile.TemporaryDirectory()
+            video_file_path = _write_to_file(control_data, os.path.join(temp_dir.name, 'tmp_controlnet'))
+            control_reader = create_animation_reader(video_file_path, parse_result.control_uri, resize_resolution)
+            manage_context += [control_reader, temp_dir]
+        elif mime_type_is_static_image(control_mime_type):
+            control_image = create_and_exif_orient_pil_img(control_data, parse_result.control_uri,
+                                                           resize_resolution)
+            control_reader = create_animation_reader(control_image, parse_result.control_uri, resize_resolution)
+            manage_context.append(control_reader)
+        else:
+            raise ImageSeedParseError(f'Unknown control image mimetype {control_mime_type}')
 
     size_mismatch_check = [(parse_result.uri, 'Image seed', seed_reader),
                            (parse_result.mask_uri, 'Mask image', mask_reader),
