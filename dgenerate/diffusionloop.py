@@ -576,7 +576,7 @@ class DiffusionRenderLoop:
                                                           auth_token=self.auth_token)
 
         sdxl_high_noise_fractions = self.sdxl_high_noise_fractions if self.sdxl_refiner_path is not None else None
-        
+
         image_seed_strengths = self.image_seed_strengths if not model_type_is_upscaler(self.model_type) else None
 
         upscaler_noise_levels = self.upscaler_noise_levels if \
