@@ -529,13 +529,9 @@ class DiffusionRenderLoop:
 
             print(underline(f'Processing Control Image: {control_image}'))
 
-            sdxl_high_noise_fractions = self.sdxl_high_noise_fractions if self.sdxl_refiner_path is not None else None
-
-            image_seed_strengths = self.image_seed_strengths if not model_type_is_upscaler(self.model_type) else None
-
             arg_iterator = iterate_diffusion_args(prompts=self.prompts,
                                                   seeds=self.seeds,
-                                                  image_seed_strengths=image_seed_strengths,
+                                                  image_seed_strengths=None,
                                                   guidance_scales=self.guidance_scales,
                                                   inference_steps_list=self.inference_steps,
                                                   sdxl_high_noise_fractions=sdxl_high_noise_fractions,
@@ -579,16 +575,16 @@ class DiffusionRenderLoop:
                                                           sdxl_refiner_path=self.sdxl_refiner_path,
                                                           auth_token=self.auth_token)
 
+        sdxl_high_noise_fractions = self.sdxl_high_noise_fractions if self.sdxl_refiner_path is not None else None
+        
+        image_seed_strengths = self.image_seed_strengths if not model_type_is_upscaler(self.model_type) else None
+
+        upscaler_noise_levels = self.upscaler_noise_levels if \
+            get_model_type_enum(self.model_type) == ModelTypes.TORCH_UPSCALER_X4 else None
+
         for image_seed in self.image_seeds:
 
             print(underline(f'Processing Image Seed: {image_seed}'))
-
-            sdxl_high_noise_fractions = self.sdxl_high_noise_fractions if self.sdxl_refiner_path is not None else None
-
-            upscaler_noise_levels = self.upscaler_noise_levels if \
-                get_model_type_enum(self.model_type) == ModelTypes.TORCH_UPSCALER_X4 else None
-
-            image_seed_strengths = self.image_seed_strengths if not model_type_is_upscaler(self.model_type) else None
 
             arg_iterator = iterate_diffusion_args(prompts=self.prompts,
                                                   seeds=self.seeds,
