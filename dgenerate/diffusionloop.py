@@ -247,7 +247,7 @@ class DiffusionRenderLoop:
         if self.sdxl_target_size is not None and not isinstance(self.sdxl_target_size, tuple):
             raise ValueError('DiffusionRenderLoop.sdxl_target_size must be None or a tuple')
         if not _has_len(self.image_seed_strengths):
-            raise ValueError('DiffusionRenderLoop.seeds must have len')
+            raise ValueError('DiffusionRenderLoop.image_seed_strengths must have len')
         if not _has_len(self.guidance_scales):
             raise ValueError('DiffusionRenderLoop.guidance_scales must have len')
         if not _has_len(self.inference_steps):
