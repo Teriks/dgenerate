@@ -703,7 +703,6 @@ class MultiContextManager:
     def __exit__(self, type, value, traceback):
         for obj in self.objects:
             if obj is not None:
-                print("EXIT OBJECT", obj)
                 obj.__exit__(type, value, traceback)
 
 
