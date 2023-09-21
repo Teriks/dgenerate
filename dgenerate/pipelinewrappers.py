@@ -554,13 +554,15 @@ def _create_torch_diffusion_pipeline(pipeline_type,
 
         torch_dtype = _get_torch_dtype(dtype)
 
-        if scheduler is not None and scheduler.lower() != 'help':
+        if scheduler is None or scheduler.lower() != 'help':
+            # prevent waiting on this stuff just get the scheduler
+            # help message for the main model
+
             if vae_path is not None:
                 kwargs['vae'] = _load_pytorch_vae(vae_path,
                                                   torch_dtype_fallback=torch_dtype,
                                                   use_auth_token=auth_token,
                                                   device=device)
-
             if control_net_paths is not None:
                 controlnets = None
 
@@ -607,6 +609,10 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                     load_on_pipeline(pipeline, use_auth_token=auth_token)
 
         if lora_paths is not None:
+            if control_net_paths is not None and model_type == ModelTypes.TORCH_SDXL:
+                raise NotImplementedError(
+                    'LoRA currently cannot be used with Control Nets when using SDXL')
+
             for lora_path in lora_paths:
                 parse_lora_path(lora_path). \
                     load_on_pipeline(pipeline, use_auth_token=auth_token)
