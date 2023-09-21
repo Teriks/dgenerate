@@ -45,7 +45,7 @@ def run_diffusion():
         InvalidTextualInversionPathError, InvalidSDXLRefinerPathError, \
         SchedulerHelpException
 
-    from .mediainput import ImageSeedParseError, MaskImageSizeMismatchError
+    from .mediainput import ImageSeedParseError, ImageSeedSizeMismatchError
 
     # The above modules take long enough to import that they must be in here in
     # order to handle keyboard interrupts without issues
@@ -84,6 +84,8 @@ def run_diffusion():
         render_loop.vae_path = arguments.vae
         render_loop.lora_paths = arguments.lora
         render_loop.textual_inversion_paths = arguments.textual_inversions
+        render_loop.control_net_paths = arguments.control_nets
+        render_loop.control_images = arguments.control_images
         render_loop.scheduler = arguments.scheduler
         render_loop.safety_checker = arguments.safety_checker
         render_loop.sdxl_refiner_path = arguments.sdxl_refiner
@@ -94,12 +96,14 @@ def run_diffusion():
 
         # run the render loop
         try:
-            try:
-                render_loop.run()
-            except SchedulerHelpException:
-                pass
+            render_loop.run()
+        except SchedulerHelpException:
+            pass
+
+        try:
+            pass
         except (ImageSeedParseError,
-                MaskImageSizeMismatchError,
+                ImageSeedSizeMismatchError,
                 InvalidSDXLRefinerPathError,
                 InvalidVaePathError,
                 InvalidLoRAPathError,

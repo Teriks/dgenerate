@@ -32,7 +32,7 @@ from typing import Iterator
 import torch
 from PIL.PngImagePlugin import PngInfo
 
-from .mediainput import iterate_image_seed, get_image_seed_info
+from .mediainput import iterate_image_seed, get_image_seed_info, create_and_exif_orient_pil_img, MultiContextManager
 from .mediaoutput import create_animation_writer, supported_animation_writer_formats
 from .pipelinewrappers import DiffusionPipelineWrapper, DiffusionPipelineImg2ImgWrapper, supported_model_types, \
     PipelineResultWrapper, model_type_is_upscaler, get_model_type_enum, ModelTypes
@@ -77,24 +77,29 @@ class DiffusionArgContext:
         self.upscaler_noise_level = upscaler_noise_level
 
 
-def iterate_diffusion_args(prompts, seeds, image_seed_strengths, guidance_scales, inference_steps_list,
+def iterate_diffusion_args(prompts, control_images, seeds, image_seed_strengths, guidance_scales, inference_steps_list,
                            sdxl_high_noise_fractions, upscaler_noise_levels) -> Iterator[DiffusionArgContext]:
     diffusion_args = dict()
 
+    has_control_images = control_images is not None and len(control_images) > 0
     has_image_seed = image_seed_strengths is not None and len(image_seed_strengths) > 0
     has_high_noise_fractions = sdxl_high_noise_fractions is not None and len(sdxl_high_noise_fractions) > 0
     has_upscaler_noise_levels = upscaler_noise_levels is not None and len(upscaler_noise_levels) > 0
 
-    for prompt, seed, image_seed_strength, upscaler_noise_level, sdxl_high_noise_fraction, \
+    for prompt, control_image, seed, image_seed_strength, upscaler_noise_level, sdxl_high_noise_fraction, \
         guidance_scale, inference_steps in itertools.product(
-            prompts,
-            seeds,
-            image_seed_strengths if has_image_seed else [None],
-            upscaler_noise_levels if has_upscaler_noise_levels else [None],
-            sdxl_high_noise_fractions if has_high_noise_fractions else [None],
-            guidance_scales,
-            inference_steps_list
+        prompts,
+        control_images if has_control_images else [None],
+        seeds,
+        image_seed_strengths if has_image_seed else [None],
+        upscaler_noise_levels if has_upscaler_noise_levels else [None],
+        sdxl_high_noise_fractions if has_high_noise_fractions else [None],
+        guidance_scales,
+        inference_steps_list
     ):
+
+        if has_control_images:
+            diffusion_args['control_image'] = control_image
 
         if has_image_seed:
             diffusion_args['strength'] = image_seed_strength
@@ -142,6 +147,7 @@ class DiffusionRenderLoop:
         self.vae_path = None
         self.lora_paths = None
         self.textual_inversion_paths = None
+        self.control_net_paths = None
         self.scheduler = None
         self.safety_checker = False
         self.model_type = 'torch'
@@ -158,6 +164,7 @@ class DiffusionRenderLoop:
         self.prompts = []
         self.seeds = [0]
         self.image_seeds = []
+        self.control_images = []
         self.animation_format = 'mp4'
         self.frame_start = 0
         self.frame_end = None
@@ -198,6 +205,9 @@ class DiffusionRenderLoop:
         if self.textual_inversion_paths is not None and not \
                 isinstance(self.textual_inversion_paths, str) and not _has_len(self.textual_inversion_paths):
             raise ValueError('DiffusionRenderLoop.textual_inversion_paths must be None or str or have len')
+        if self.control_net_paths is not None and not \
+                isinstance(self.control_net_paths, str) and not _has_len(self.control_net_paths):
+            raise ValueError('DiffusionRenderLoop.control_net_paths must be None or str or have len')
         if self.sdxl_refiner_path is not None and not isinstance(self.sdxl_refiner_path, str):
             raise ValueError('DiffusionRenderLoop.sdxl_refiner_path must be None or a string')
         if self.vae_path is not None and not isinstance(self.vae_path, str):
@@ -226,6 +236,8 @@ class DiffusionRenderLoop:
             raise ValueError('DiffusionRenderLoop.seeds must have len')
         if not _has_len(self.image_seeds):
             raise ValueError('DiffusionRenderLoop.image_seeds must have len')
+        if not _has_len(self.control_images):
+            raise ValueError('DiffusionRenderLoop.control_images must have len')
         if self.output_size is None and len(self.image_seeds) == 0:
             raise ValueError('DiffusionRenderLoop.output_size must not be None when no image seeds specified')
         if self.output_size is not None and not isinstance(self.output_size, tuple):
@@ -437,8 +449,22 @@ class DiffusionRenderLoop:
     def _with_image_seed_pre_generation(self, args_ctx: DiffusionArgContext, image_seed_obj):
         pass
 
+    def _load_control_images(self):
+        if self.control_images is not None:
+            images = []
+            for i in self.control_images:
+                images.append(create_and_exif_orient_pil_img(i, file_source=i))
+            if len(images) == 0:
+                return None
+            else:
+                return images
+        else:
+            return None
+
     def run(self):
         self._enforce_state()
+
+        control_images = self._load_control_images()
 
         Path(self.output_path).mkdir(parents=True, exist_ok=True)
 
@@ -457,9 +483,8 @@ class DiffusionRenderLoop:
         print(underline(f'Beginning {generation_steps} generation steps...'))
 
         if len(self.image_seeds) > 0:
-            self._render_with_image_seeds()
+            self._render_with_image_seeds(control_images)
         else:
-
             diffusion_model = DiffusionPipelineWrapper(self.model_path,
                                                        model_subfolder=self.model_subfolder,
                                                        dtype=self.dtype,
@@ -470,6 +495,7 @@ class DiffusionRenderLoop:
                                                        vae_path=self.vae_path,
                                                        lora_paths=self.lora_paths,
                                                        textual_inversion_paths=self.textual_inversion_paths,
+                                                       control_net_paths=self.control_net_paths,
                                                        scheduler=self.scheduler,
                                                        safety_checker=self.safety_checker,
                                                        sdxl_refiner_path=self.sdxl_refiner_path,
@@ -477,6 +503,7 @@ class DiffusionRenderLoop:
 
             sdxl_high_noise_fractions = self.sdxl_high_noise_fractions if self.sdxl_refiner_path is not None else None
             for args_ctx in iterate_diffusion_args(prompts=self.prompts,
+                                                   control_images=control_images,
                                                    seeds=self.seeds,
                                                    image_seed_strengths=None,
                                                    guidance_scales=self.guidance_scales,
@@ -494,7 +521,7 @@ class DiffusionRenderLoop:
                                      sdxl_target_size=self.sdxl_target_size) as generation_result:
                     self._write_prompt_only_image(args_ctx, generation_result)
 
-    def _render_with_image_seeds(self):
+    def _render_with_image_seeds(self, control_images):
         diffusion_model = DiffusionPipelineImg2ImgWrapper(self.model_path,
                                                           model_subfolder=self.model_subfolder,
                                                           dtype=self.dtype,
@@ -505,6 +532,7 @@ class DiffusionRenderLoop:
                                                           vae_path=self.vae_path,
                                                           lora_paths=self.lora_paths,
                                                           textual_inversion_paths=self.textual_inversion_paths,
+                                                          control_net_paths=self.control_net_paths,
                                                           scheduler=self.scheduler,
                                                           safety_checker=self.safety_checker,
                                                           sdxl_refiner_path=self.sdxl_refiner_path,
@@ -522,6 +550,7 @@ class DiffusionRenderLoop:
             image_seed_strengths = self.image_seed_strengths if not model_type_is_upscaler(self.model_type) else None
 
             arg_iterator = iterate_diffusion_args(prompts=self.prompts,
+                                                  control_images=control_images,
                                                   seeds=self.seeds,
                                                   image_seed_strengths=image_seed_strengths,
                                                   guidance_scales=self.guidance_scales,
@@ -543,21 +572,24 @@ class DiffusionRenderLoop:
                         self._with_image_seed_pre_generation(args_ctx, image_seed_obj)
 
                         if image_seed_obj.mask_image is not None:
-                            with image_seed_obj.mask_image as mask_image, \
-                                    diffusion_model(**args_ctx.args,
-                                                    image=image_seed_obj.image,
-                                                    mask_image=mask_image,
-                                                    seed=args_ctx.seed,
-                                                    sdxl_original_size=self.sdxl_original_size,
-                                                    sdxl_target_size=self.sdxl_target_size) as generation_result:
-                                self._write_image_seed_gen_image(args_ctx, generation_result)
+                            args_ctx.args['mask_image'] = image_seed_obj.mask_image
+
+                        if image_seed_obj.control_image is not None:
+                            args_ctx.args['control_image'] = image_seed_obj.control_image
                         else:
-                            with diffusion_model(**args_ctx.args,
-                                                 image=image_seed_obj.image,
-                                                 seed=args_ctx.seed,
-                                                 sdxl_original_size=self.sdxl_original_size,
-                                                 sdxl_target_size=self.sdxl_target_size) as generation_result:
-                                self._write_image_seed_gen_image(args_ctx, generation_result)
+                            if self.control_net_paths is None or len(self.control_net_paths) == 0:
+                                raise NotImplementedError(
+                                    'Cannot use Control Nets without a control image, '
+                                    'see --image-seeds and --control-images for information '
+                                    'on specifying a control image.')
+
+                        with MultiContextManager([image_seed_obj.mask_image, image_seed_obj.control_image]), \
+                                diffusion_model(**args_ctx.args,
+                                                image=image_seed_obj.image,
+                                                seed=args_ctx.seed,
+                                                sdxl_original_size=self.sdxl_original_size,
+                                                sdxl_target_size=self.sdxl_target_size) as generation_result:
+                            self._write_image_seed_gen_image(args_ctx, generation_result)
 
     def _render_animation(self, image_seed, diffusion_model, arg_iterator, fps):
         animation_format_lower = self.animation_format.lower()

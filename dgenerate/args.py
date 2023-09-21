@@ -186,6 +186,12 @@ parser.add_argument('--textual-inversions', nargs='+', action='store', default=N
                     --textual-inversions "my_ti_model.safetensors", all other loading arguments 
                     are unused in this case and may produce an error message if used.""")
 
+parser.add_argument('--control-nets', nargs='+', action='store', default=None,
+                    help=
+                    """Specify one or more Control Net models. This should be a
+                    huggingface repository slug / blob link, path to model file on disk (for example, a .pt, .pth, .bin,
+                    .ckpt, or .safetensors file), or model folder containing model files.""")
+
 parser.add_argument('--scheduler', action='store', default=None,
                     help=f'Specify a scheduler (sampler) by name. Passing "help" to this argument '
                          f'will print the compatible schedulers for a model without generating any images. '
@@ -424,8 +430,10 @@ def _type_frame_end(val):
 parser.add_argument('-fe', '--frame-end', action='store', default=None, type=_type_frame_end,
                     help='Ending frame slice point for animated files, the specified frame will be included.')
 
-parser.add_argument('-is', '--image-seeds', action='store', nargs='*', default=[],
-                    help="""List of image seeds to try when processing image seeds, these may
+image_seed_args = parser.add_mutually_exclusive_group()
+
+image_seed_args.add_argument('-is', '--image-seeds', action='store', nargs='*', default=[],
+                             help="""List of image seeds to try when processing image seeds, these may
                          be URLs or file paths. Videos / GIFs / WEBP files will result in frames
                          being rendered as well as an animated output file being generated if more
                          than one frame is available in the input file. Inpainting for static images can be
@@ -437,9 +445,12 @@ parser.add_argument('-is', '--image-seeds', action='store', nargs='*', default=[
                          "my-seed-image.png;512x512" or "my-seed-image.png;my-image-mask.png;512x512".
                          Inpainting masks can be downloaded for you from a URL or be a path to a file on disk.""")
 
-
+image_seed_args.add_argument('-ci', '--control-images', nargs='+', action='store', default=[],
+                             help="""Specify images to try as control images for --control-nets when not specifying via --image-seed.
+                            This argument is mutually exclusive with --image-seed.""")
 
 image_seed_noise_opts = parser.add_mutually_exclusive_group()
+
 
 def _type_image_seed_strengths(val):
     try:
@@ -453,8 +464,8 @@ def _type_image_seed_strengths(val):
 
 
 image_seed_noise_opts.add_argument('-iss', '--image-seed-strengths', action='store', nargs='*', default=[0.8],
-                    type=_type_image_seed_strengths,
-                    help=f"""List of image seed strengths to try. Closer to 0 means high usage of the seed image
+                                   type=_type_image_seed_strengths,
+                                   help=f"""List of image seed strengths to try. Closer to 0 means high usage of the seed image
                          (less noise convolution), 1 effectively means no usage (high noise convolution).
                          Low values will produce something closer or more relevant to the input image, high
                          values will give the AI more creative freedom. (default: [0.8])""")
@@ -473,8 +484,8 @@ def _type_upscaler_noise_levels(val):
 
 
 image_seed_noise_opts.add_argument('-uns', '--upscaler-noise-levels', action='store', nargs='*', default=[20],
-                    type=_type_upscaler_noise_levels,
-                    help=f"""
+                                   type=_type_upscaler_noise_levels,
+                                   help=f"""
                     List of upscaler noise levels to try when using the super resolution upscaler 
                     (torch-upscaler-x4). These values will be ignored when using (torch-upscaler-x2).
                     The higher this value the more noise is added to the image before upscaling 
