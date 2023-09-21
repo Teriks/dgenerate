@@ -552,7 +552,7 @@ def parse_args(args=None, namespace=None):
         print('You cannot specify --image-seed-strengths without --image-seeds.')
         sys.exit(1)
 
-    if args.control_nets is None and len(args.control_images) == 0:
+    if args.control_nets is None and len(args.control_images) > 0:
         print('You cannot specify --control-images without --control-nets.')
         sys.exit(1)
 
