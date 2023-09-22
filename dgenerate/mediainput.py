@@ -877,7 +877,7 @@ def iterate_image_seed(uri, frame_start=0, frame_end=None, resize_resolution=Non
             readers = [seed_reader, mask_reader, control_reader]
             for i in readers:
                 if isinstance(i, MockImageAnimationReader):
-                    others = [reader for reader in readers if not isinstance(i, MockImageAnimationReader)]
+                    others = [reader for reader in readers if not isinstance(reader, MockImageAnimationReader)]
                     if len(others) > 1:
                         i.total_frames = min(others, key=lambda rd: rd.total_frames)
                     else:
