@@ -1026,7 +1026,7 @@ class DiffusionPipelineWrapperBase:
                     opts.append(('--image-seeds', quote(image.filename)))
                 else:
                     opts.append(('--image-seeds',
-                                 quote(image.filename)+';'+';'.join(seed_args)))
+                                 quote(image.filename+';'+';'.join(seed_args))))
 
                 if strength is not None:
                     opts.append(('--image-seed-strengths', strength))
