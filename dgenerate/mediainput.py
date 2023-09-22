@@ -335,8 +335,13 @@ def create_animation_reader(file, file_source, resize_resolution=None, image_rep
             'or a file stream containing raw GIF / WebP data')
 
 
-def _iterate_animation_frames_x2(left_reader, right_reader, right_parameter, frame_start, frame_end):
-    total_frames = left_reader.frame_slice_count(frame_start, frame_end)
+def _iterate_animation_frames_x2(animation_reader,
+                                 right_reader,
+                                 right_animation_frame_param_name,
+                                 frame_start,
+                                 frame_end):
+
+    total_frames = animation_reader.frame_slice_count(frame_start, frame_end)
     right_total_frames = right_reader.frame_slice_count(frame_start, frame_end)
     out_frame_idx = 0
     in_slice = None
@@ -344,7 +349,7 @@ def _iterate_animation_frames_x2(left_reader, right_reader, right_parameter, fra
     # Account for videos possibly having a differing number of frames
     total_frames = min(total_frames, right_total_frames)
 
-    for in_frame_idx, frame in enumerate(zip(left_reader, right_reader)):
+    for in_frame_idx, frame in enumerate(zip(animation_reader, right_reader)):
         left_image = frame[0]
         right_image = frame[1]
 
@@ -353,10 +358,10 @@ def _iterate_animation_frames_x2(left_reader, right_reader, right_parameter, fra
                 in_slice = True
             yield AnimationFrame(frame_index=out_frame_idx,
                                  total_frames=total_frames,
-                                 anim_fps=left_reader.anim_fps,
-                                 anim_frame_duration=left_reader.anim_frame_duration,
+                                 anim_fps=animation_reader.anim_fps,
+                                 anim_frame_duration=animation_reader.anim_frame_duration,
                                  image=left_image,
-                                 **{right_parameter: right_image})
+                                 **{right_animation_frame_param_name: right_image})
             out_frame_idx += 1
         elif in_slice:
             break
@@ -401,15 +406,15 @@ def iterate_animation_frames(animation_reader, frame_start=0, frame_end=None, ma
                                                 frame_start=frame_start,
                                                 frame_end=frame_end)
     elif mask_reader is not None:
-        yield from _iterate_animation_frames_x2(left_reader=animation_reader,
+        yield from _iterate_animation_frames_x2(animation_reader=animation_reader,
                                                 right_reader=mask_reader,
-                                                right_parameter='mask_image',
+                                                right_animation_frame_param_name='mask_image',
                                                 frame_start=frame_start,
                                                 frame_end=frame_end)
     elif control_reader is not None:
-        yield from _iterate_animation_frames_x2(left_reader=animation_reader,
+        yield from _iterate_animation_frames_x2(animation_reader=animation_reader,
                                                 right_reader=control_reader,
-                                                right_parameter='control_image',
+                                                right_animation_frame_param_name='control_image',
                                                 frame_start=frame_start,
                                                 frame_end=frame_end)
     else:
@@ -794,11 +799,15 @@ def _iterate_image_seed_x3(seed_reader, mask_reader, control_reader, frame_start
                                          control_reader=control_reader))
 
 
-def _iterate_image_seed_x2(seed_reader, right_reader, right_image_param_name, right_reader_param_name, frame_start,
+def _iterate_image_seed_x2(seed_reader,
+                           right_reader,
+                           right_image_seed_param_name,
+                           right_reader_iterate_param_name,
+                           frame_start,
                            frame_end):
     if isinstance(seed_reader, MockImageAnimationReader) \
             and isinstance(right_reader, MockImageAnimationReader):
-        yield ImageSeed(image=seed_reader.__next__(), **{right_image_param_name: right_reader.__next__()})
+        yield ImageSeed(image=seed_reader.__next__(), **{right_image_seed_param_name: right_reader.__next__()})
 
     if isinstance(seed_reader, MockImageAnimationReader) and \
             not isinstance(right_reader, MockImageAnimationReader):
@@ -812,7 +821,7 @@ def _iterate_image_seed_x2(seed_reader, right_reader, right_image_param_name, ri
                 iterate_animation_frames(animation_reader=seed_reader,
                                          frame_start=frame_start,
                                          frame_end=frame_end,
-                                         **{right_reader_param_name: right_reader_param_name}))
+                                         **{right_reader_iterate_param_name: right_reader}))
 
 
 def iterate_image_seed(uri, frame_start=0, frame_end=None, resize_resolution=None):
@@ -930,8 +939,8 @@ def iterate_image_seed(uri, frame_start=0, frame_end=None, resize_resolution=Non
             yield from _iterate_image_seed_x2(
                 seed_reader=seed_reader,
                 right_reader=mask_reader,
-                right_image_param_name='mask_image',
-                right_reader_param_name='mask_reader',
+                right_image_seed_param_name='mask_image',
+                right_reader_iterate_param_name='mask_reader',
                 frame_start=frame_start,
                 frame_end=frame_end
             )
@@ -940,8 +949,8 @@ def iterate_image_seed(uri, frame_start=0, frame_end=None, resize_resolution=Non
             yield from _iterate_image_seed_x2(
                 seed_reader=seed_reader,
                 right_reader=control_reader,
-                right_image_param_name='control_image',
-                right_reader_param_name='control_reader',
+                right_image_seed_param_name='control_image',
+                right_reader_iterate_param_name='control_reader',
                 frame_start=frame_start,
                 frame_end=frame_end
             )
