@@ -671,6 +671,8 @@ class DiffusionRenderLoop:
                             extra_args['image'] = image_seed_obj.image
                             if image_seed_obj.mask_image is not None:
                                 extra_args['mask_image'] = image_seed_obj.mask_image
+                            if image_seed_obj.control_image is not None:
+                                extra_args['control_image'] = image_seed_obj.control_image
                         elif seed_iterator_func is iterate_control_image:
                             extra_args['control_image'] = image_seed_obj.image
                         else:
