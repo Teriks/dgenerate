@@ -879,7 +879,8 @@ def iterate_image_seed(uri, frame_start=0, frame_end=None, resize_resolution=Non
                 if isinstance(i, MockImageAnimationReader):
                     others = [reader for reader in readers if not isinstance(reader, MockImageAnimationReader)]
                     if len(others) > 1:
-                        i.total_frames = min(others, key=lambda rd: rd.total_frames)
+                        i.total_frames = min(others,
+                                             key=lambda rd: rd.total_frames).total_frames
                     else:
                         i.total_frames = others[0].total_frames
 
