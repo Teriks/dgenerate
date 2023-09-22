@@ -32,8 +32,8 @@ from typing import Iterator
 import torch
 from PIL.PngImagePlugin import PngInfo
 
-from .mediainput import iterate_image_seed, get_image_seed_info, create_and_exif_orient_pil_img, MultiContextManager, \
-    fetch_image_seed_data, mime_type_is_static_image, get_control_image_info, iterate_control_image
+from .mediainput import iterate_image_seed, get_image_seed_info, MultiContextManager, \
+    get_control_image_info, iterate_control_image, ImageSeed
 from .mediaoutput import create_animation_writer, supported_animation_writer_formats
 from .pipelinewrappers import DiffusionPipelineWrapper, DiffusionPipelineImg2ImgWrapper, supported_model_types, \
     PipelineResultWrapper, model_type_is_upscaler, get_model_type_enum, ModelTypes
@@ -169,6 +169,10 @@ class DiffusionRenderLoop:
         self.guidance_scales = []
         self.inference_steps = []
         self.auth_token = None
+
+        self.seed_image_preprocessor = None
+        self.mask_image_preprocessor = None
+        self.control_image_preprocessor = None
 
     @property
     def written_images(self):
@@ -543,8 +547,22 @@ class DiffusionRenderLoop:
             control_image_info = get_control_image_info(control_image, self.frame_start, self.frame_end)
 
             if control_image_info.is_animation:
-                self._render_image_seed_animation(control_image, diffusion_model, arg_iterator, control_image_info.fps,
-                                                  seed_iterator_func=iterate_control_image)
+                def seed_iterator_func():
+                    yield from iterate_control_image(
+                        control_image,
+                        self.frame_start,
+                        self.frame_end,
+                        self.output_size,
+                        control_image_preprocessor=self.control_image_preprocessor)
+
+                def get_extra_args(ci_obj: ImageSeed):
+                    return {'control_image': ci_obj.image}
+
+                self._render_animation(diffusion_model,
+                                       arg_iterator,
+                                       control_image_info.fps,
+                                       seed_iterator_func=seed_iterator_func,
+                                       get_extra_args=get_extra_args)
                 break
 
             for args_ctx in arg_iterator:
@@ -600,8 +618,29 @@ class DiffusionRenderLoop:
             seed_info = get_image_seed_info(image_seed, self.frame_start, self.frame_end)
 
             if seed_info.is_animation:
-                self._render_image_seed_animation(image_seed, diffusion_model, arg_iterator, seed_info.fps,
-                                                  seed_iterator_func=iterate_image_seed)
+                def seed_iterator_func():
+                    yield from iterate_image_seed(
+                        image_seed,
+                        self.frame_start,
+                        self.frame_end,
+                        self.output_size,
+                        seed_image_preprocessor=self.seed_image_preprocessor,
+                        mask_image_preprocessor=self.mask_image_preprocessor,
+                        control_image_preprocessor=self.control_image_preprocessor)
+
+                def get_extra_args(ims_obj: ImageSeed):
+                    extra_args = {'image': ims_obj.image}
+                    if ims_obj.mask_image is not None:
+                        extra_args['mask_image'] = ims_obj.mask_image
+                    if ims_obj.control_image is not None:
+                        extra_args['control_image'] = ims_obj.control_image
+                    return extra_args
+
+                self._render_animation(diffusion_model,
+                                       arg_iterator,
+                                       seed_info.fps,
+                                       seed_iterator_func=seed_iterator_func,
+                                       get_extra_args=get_extra_args)
                 break
 
             for args_ctx in arg_iterator:
@@ -632,7 +671,8 @@ class DiffusionRenderLoop:
                                                 sdxl_target_size=self.sdxl_target_size) as generation_result:
                             self._write_image_seed_gen_image(args_ctx, generation_result)
 
-    def _render_image_seed_animation(self, image_seed, diffusion_model, arg_iterator, fps, seed_iterator_func):
+    def _render_animation(self, diffusion_model, arg_iterator, fps, seed_iterator_func, get_extra_args):
+
         animation_format_lower = self.animation_format.lower()
         first_args_ctx = next(arg_iterator)
 
@@ -660,23 +700,12 @@ class DiffusionRenderLoop:
 
                 self._written_animations.append(os.path.abspath(video_writer.filename))
 
-                for image_obj in seed_iterator_func(image_seed, self.frame_start, self.frame_end,
-                                                    self.output_size):
+                for image_obj in seed_iterator_func():
+
                     with image_obj as image_seed_obj:
                         self._animation_frame_pre_generation(args_ctx, image_seed_obj)
 
-                        extra_args = {}
-
-                        if seed_iterator_func is iterate_image_seed:
-                            extra_args['image'] = image_seed_obj.image
-                            if image_seed_obj.mask_image is not None:
-                                extra_args['mask_image'] = image_seed_obj.mask_image
-                            if image_seed_obj.control_image is not None:
-                                extra_args['control_image'] = image_seed_obj.control_image
-                        elif seed_iterator_func is iterate_control_image:
-                            extra_args['control_image'] = image_seed_obj.image
-                        else:
-                            raise NotImplementedError('Unknown seed_iterator_func!')
+                        extra_args = get_extra_args(image_seed_obj)
 
                         with diffusion_model(**args_ctx.args,
                                              **extra_args,
