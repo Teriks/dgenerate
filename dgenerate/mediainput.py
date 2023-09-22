@@ -335,82 +335,87 @@ def create_animation_reader(file, file_source, resize_resolution=None, image_rep
             'or a file stream containing raw GIF / WebP data')
 
 
-def iterate_animation_frames(animation_reader, frame_start=0, frame_end=None, mask_reader=None, control_reader=None):
-    total_frames = animation_reader.frame_slice_count(frame_start, frame_end)
+def _iterate_animation_frames_x2(left_reader, right_reader, right_parameter, frame_start, frame_end):
+    total_frames = left_reader.frame_slice_count(frame_start, frame_end)
+    right_total_frames = right_reader.frame_slice_count(frame_start, frame_end)
     out_frame_idx = 0
     in_slice = None
 
-    if control_reader is None and mask_reader is not None:
-        mask_total_frames = mask_reader.frame_slice_count(frame_start, frame_end)
+    # Account for videos possibly having a differing number of frames
+    total_frames = min(total_frames, right_total_frames)
 
-        # Account for videos possibly having a differing number of frames
-        total_frames = min(total_frames, mask_total_frames)
+    for in_frame_idx, frame in enumerate(zip(left_reader, right_reader)):
+        left_image = frame[0]
+        right_image = frame[1]
 
-        for in_frame_idx, frame in enumerate(zip(animation_reader, mask_reader)):
-            image = frame[0]
-            mask = frame[1]
+        if _is_frame_in_slice(in_frame_idx, frame_start, frame_end):
+            if in_slice is None:
+                in_slice = True
+            yield AnimationFrame(frame_index=out_frame_idx,
+                                 total_frames=total_frames,
+                                 anim_fps=left_reader.anim_fps,
+                                 anim_frame_duration=left_reader.anim_frame_duration,
+                                 image=left_image,
+                                 **{right_parameter: right_image})
+            out_frame_idx += 1
+        elif in_slice:
+            break
 
-            if _is_frame_in_slice(in_frame_idx, frame_start, frame_end):
-                if in_slice is None:
-                    in_slice = True
-                yield AnimationFrame(frame_index=out_frame_idx,
-                                     total_frames=total_frames,
-                                     anim_fps=animation_reader.anim_fps,
-                                     anim_frame_duration=animation_reader.anim_frame_duration,
-                                     image=image,
-                                     mask_image=mask)
-                out_frame_idx += 1
-            elif in_slice:
-                break
-    elif mask_reader is None and control_reader is not None:
-        control_total_frames = control_reader.frame_slice_count(frame_start, frame_end)
 
-        # Account for videos possibly having a differing number of frames
-        total_frames = min(total_frames, control_total_frames)
+def _iterate_animation_frames_x3(animation_reader, mask_reader, control_reader, frame_start, frame_end):
+    total_frames = animation_reader.frame_slice_count(frame_start, frame_end)
+    mask_total_frames = mask_reader.frame_slice_count(frame_start, frame_end)
+    control_total_frames = control_reader.frame_slice_count(frame_start, frame_end)
+    out_frame_idx = 0
+    in_slice = None
 
-        for in_frame_idx, frame in enumerate(zip(animation_reader, control_reader)):
-            image = frame[0]
-            control = frame[1]
+    # Account for videos possibly having a differing number of frames
+    total_frames = min(total_frames, mask_total_frames, control_total_frames)
 
-            if _is_frame_in_slice(in_frame_idx, frame_start, frame_end):
-                if in_slice is None:
-                    in_slice = True
-                yield AnimationFrame(frame_index=out_frame_idx,
-                                     total_frames=total_frames,
-                                     anim_fps=animation_reader.anim_fps,
-                                     anim_frame_duration=animation_reader.anim_frame_duration,
-                                     image=image,
-                                     control_image=control)
-                out_frame_idx += 1
-            elif in_slice:
-                break
-    elif mask_reader is not None and control_reader is not None:
-        mask_total_frames = mask_reader.frame_slice_count(frame_start, frame_end)
-        control_total_frames = control_reader.frame_slice_count(frame_start, frame_end)
+    for in_frame_idx, frame in enumerate(zip(animation_reader, mask_reader, control_reader)):
 
-        # Account for videos possibly having a differing number of frames
-        total_frames = min(total_frames, mask_total_frames, control_total_frames)
+        image = frame[0]
+        mask = frame[1]
+        control = frame[2]
 
-        for in_frame_idx, frame in enumerate(zip(animation_reader, mask_reader, control_reader)):
+        if _is_frame_in_slice(in_frame_idx, frame_start, frame_end):
+            if in_slice is None:
+                in_slice = True
+            yield AnimationFrame(frame_index=out_frame_idx,
+                                 total_frames=total_frames,
+                                 anim_fps=animation_reader.anim_fps,
+                                 anim_frame_duration=animation_reader.anim_frame_duration,
+                                 image=image,
+                                 mask_image=mask,
+                                 control_image=control)
+            out_frame_idx += 1
+        elif in_slice:
+            break
 
-            image = frame[0]
-            mask = frame[1]
-            control = frame[2]
 
-            if _is_frame_in_slice(in_frame_idx, frame_start, frame_end):
-                if in_slice is None:
-                    in_slice = True
-                yield AnimationFrame(frame_index=out_frame_idx,
-                                     total_frames=total_frames,
-                                     anim_fps=animation_reader.anim_fps,
-                                     anim_frame_duration=animation_reader.anim_frame_duration,
-                                     image=image,
-                                     mask_image=mask,
-                                     control_image=control)
-                out_frame_idx += 1
-            elif in_slice:
-                break
+def iterate_animation_frames(animation_reader, frame_start=0, frame_end=None, mask_reader=None, control_reader=None):
+    if mask_reader is not None and control_reader is not None:
+        yield from _iterate_animation_frames_x3(animation_reader=animation_reader,
+                                                mask_reader=mask_reader,
+                                                control_reader=control_reader,
+                                                frame_start=frame_start,
+                                                frame_end=frame_end)
+    elif mask_reader is not None:
+        yield from _iterate_animation_frames_x2(left_reader=animation_reader,
+                                                right_reader=mask_reader,
+                                                right_parameter='mask_image',
+                                                frame_start=frame_start,
+                                                frame_end=frame_end)
+    elif control_reader is not None:
+        yield from _iterate_animation_frames_x2(left_reader=animation_reader,
+                                                right_reader=control_reader,
+                                                right_parameter='control_image',
+                                                frame_start=frame_start,
+                                                frame_end=frame_end)
     else:
+        total_frames = animation_reader.frame_slice_count(frame_start, frame_end)
+        out_frame_idx = 0
+        in_slice = None
         for in_frame_idx, frame in enumerate(animation_reader):
             if _is_frame_in_slice(in_frame_idx, frame_start, frame_end):
                 if in_slice is None:
@@ -618,7 +623,6 @@ def fetch_image_seed_data(uri,
                           mime_type_filter=image_seed_mime_type_filter,
                           mime_type_reject_noun='input image',
                           mime_acceptable_desc=''):
-
     if uri.startswith('http://') or uri.startswith('https://'):
         headers = {'User-Agent': UserAgent().chrome}
         req = requests.get(uri, headers=headers)
@@ -764,6 +768,53 @@ def iterate_control_image(uri, frame_start=0, frame_end=None, resize_resolution=
                                              frame_end=frame_end))
 
 
+def _iterate_image_seed_x3(seed_reader, mask_reader, control_reader, frame_start, frame_end):
+    if isinstance(seed_reader, MockImageAnimationReader) and \
+            isinstance(mask_reader, MockImageAnimationReader) and \
+            isinstance(control_reader, MockImageAnimationReader):
+        yield ImageSeed(image=seed_reader.__next__(),
+                        mask_image=mask_reader.__next__(),
+                        control_image=control_reader.__next__())
+
+    readers = [seed_reader, mask_reader, control_reader]
+    for i in readers:
+        if isinstance(i, MockImageAnimationReader):
+            others = [reader for reader in readers if not isinstance(reader, MockImageAnimationReader)]
+            if len(others) > 1:
+                i.total_frames = min(others,
+                                     key=lambda rd: rd.total_frames).total_frames
+            else:
+                i.total_frames = others[0].total_frames
+
+    yield from (ImageSeed(animation_frame) for animation_frame in
+                iterate_animation_frames(animation_reader=seed_reader,
+                                         frame_start=frame_start,
+                                         frame_end=frame_end,
+                                         mask_reader=mask_reader,
+                                         control_reader=control_reader))
+
+
+def _iterate_image_seed_x2(seed_reader, right_reader, right_image_param_name, right_reader_param_name, frame_start,
+                           frame_end):
+    if isinstance(seed_reader, MockImageAnimationReader) \
+            and isinstance(right_reader, MockImageAnimationReader):
+        yield ImageSeed(image=seed_reader.__next__(), **{right_image_param_name: right_reader.__next__()})
+
+    if isinstance(seed_reader, MockImageAnimationReader) and \
+            not isinstance(right_reader, MockImageAnimationReader):
+        seed_reader.total_frames = right_reader.total_frames
+
+    if not isinstance(seed_reader, MockImageAnimationReader) and \
+            isinstance(right_reader, MockImageAnimationReader):
+        right_reader.total_frames = seed_reader.total_frames
+
+    yield from (ImageSeed(animation_frame) for animation_frame in
+                iterate_animation_frames(animation_reader=seed_reader,
+                                         frame_start=frame_start,
+                                         frame_end=frame_end,
+                                         **{right_reader_param_name: right_reader_param_name}))
+
+
 def iterate_image_seed(uri, frame_start=0, frame_end=None, resize_resolution=None):
     parse_result = parse_image_seed_uri(uri)
 
@@ -857,77 +908,43 @@ def iterate_image_seed(uri, frame_start=0, frame_end=None, resize_resolution=Non
                            (parse_result.mask_uri, 'Mask image', mask_reader),
                            (parse_result.control_uri, 'Control image', control_reader)]
 
-    for l in size_mismatch_check:
-        for r in size_mismatch_check:
-            if l[2] is not None and r[2] is not None:
-                if l[2].size != r[2].size:
+    for left in size_mismatch_check:
+        for right in size_mismatch_check:
+            if left[2] is not None and right[2] is not None:
+                if left[2].size != right[2].size:
                     raise ImageSeedSizeMismatchError(
-                        f'{l[1]} "{l[0]}" is mismatched in dimension with {r[1].lower()} "{r[0]}"')
+                        f'{left[1]} "{left[0]}" is mismatched in dimension with {right[1].lower()} "{right[0]}"')
 
     with MultiContextManager(manage_context):
 
         if mask_reader is not None and control_reader is not None:
-            if isinstance(seed_reader, MockImageAnimationReader) and \
-                    isinstance(mask_reader, MockImageAnimationReader) and \
-                    isinstance(control_reader, MockImageAnimationReader):
-                yield ImageSeed(image=seed_reader.__next__(),
-                                mask_image=mask_reader.__next__(),
-                                control_image=control_reader.__next__())
-
-            readers = [seed_reader, mask_reader, control_reader]
-            for i in readers:
-                if isinstance(i, MockImageAnimationReader):
-                    others = [reader for reader in readers if not isinstance(reader, MockImageAnimationReader)]
-                    if len(others) > 1:
-                        i.total_frames = min(others,
-                                             key=lambda rd: rd.total_frames).total_frames
-                    else:
-                        i.total_frames = others[0].total_frames
-
-            yield from (ImageSeed(animation_frame) for animation_frame in
-                        iterate_animation_frames(animation_reader=seed_reader,
-                                                 frame_start=frame_start,
-                                                 frame_end=frame_end,
-                                                 mask_reader=mask_reader,
-                                                 control_reader=control_reader))
+            yield from _iterate_image_seed_x3(
+                seed_reader=seed_reader,
+                mask_reader=mask_reader,
+                control_reader=control_reader,
+                frame_start=frame_start,
+                frame_end=frame_end)
 
         elif mask_reader is not None:
-            if isinstance(seed_reader, MockImageAnimationReader) \
-                    and isinstance(mask_reader, MockImageAnimationReader):
-                yield ImageSeed(image=seed_reader.__next__(), mask_image=mask_reader.__next__())
 
-            if isinstance(seed_reader, MockImageAnimationReader) and \
-                    not isinstance(mask_reader, MockImageAnimationReader):
-                seed_reader.total_frames = mask_reader.total_frames
-
-            if not isinstance(seed_reader, MockImageAnimationReader) and \
-                    isinstance(mask_reader, MockImageAnimationReader):
-                mask_reader.total_frames = seed_reader.total_frames
-
-            yield from (ImageSeed(animation_frame) for animation_frame in
-                        iterate_animation_frames(animation_reader=seed_reader,
-                                                 frame_start=frame_start,
-                                                 frame_end=frame_end,
-                                                 mask_reader=mask_reader))
+            yield from _iterate_image_seed_x2(
+                seed_reader=seed_reader,
+                right_reader=mask_reader,
+                right_image_param_name='mask_image',
+                right_reader_param_name='mask_reader',
+                frame_start=frame_start,
+                frame_end=frame_end
+            )
 
         elif control_reader is not None:
-            if isinstance(seed_reader, MockImageAnimationReader) \
-                    and isinstance(control_reader, MockImageAnimationReader):
-                yield ImageSeed(image=seed_reader.__next__(), control_image=control_reader.__next__())
-
-            if isinstance(seed_reader, MockImageAnimationReader) and \
-                    not isinstance(control_reader, MockImageAnimationReader):
-                seed_reader.total_frames = control_reader.total_frames
-
-            if not isinstance(seed_reader, MockImageAnimationReader) and \
-                    isinstance(control_reader, MockImageAnimationReader):
-                control_reader.total_frames = seed_reader.total_frames
-
-            yield from (ImageSeed(animation_frame) for animation_frame in
-                        iterate_animation_frames(animation_reader=seed_reader,
-                                                 frame_start=frame_start,
-                                                 frame_end=frame_end,
-                                                 control_reader=mask_reader))
+            yield from _iterate_image_seed_x2(
+                seed_reader=seed_reader,
+                right_reader=control_reader,
+                right_image_param_name='control_image',
+                right_reader_param_name='control_reader',
+                frame_start=frame_start,
+                frame_end=frame_end
+            )
         else:
             if isinstance(seed_reader, MockImageAnimationReader):
                 yield ImageSeed(image=seed_reader.__next__())
