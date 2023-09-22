@@ -498,6 +498,9 @@ class DiffusionRenderLoop:
                                                    inference_steps_list=self.inference_steps,
                                                    sdxl_high_noise_fractions=sdxl_high_noise_fractions,
                                                    upscaler_noise_levels=None):
+                self._pre_generation_step(args_ctx)
+                self._pre_generation(args_ctx)
+
                 with diffusion_model(**args_ctx.args,
                                      seed=args_ctx.seed,
                                      width=self.output_size[0],

@@ -891,6 +891,11 @@ class DiffusionPipelineWrapperBase:
             isinstance(self._textual_inversion_paths, str) else self.textual_inversion_paths
 
     @property
+    def control_net_paths(self):
+        return [self._control_net_paths] if \
+            isinstance(self._control_net_paths, str) else self._control_net_paths
+
+    @property
     def device(self):
         return self._device
 
@@ -931,6 +936,7 @@ class DiffusionPipelineWrapperBase:
         prompt = kwargs.get('prompt', None)
         negative_prompt = kwargs.get('negative_prompt', None)
         image = kwargs.get('image', None)
+        control_image = kwargs.get('control_image', None)
         strength = kwargs.get('strength', None)
         noise_level = kwargs.get('noise_level', None)
         mask_image = kwargs.get('mask_image', None)
@@ -1007,17 +1013,29 @@ class DiffusionPipelineWrapperBase:
         elif width is not None:
             opts.append(('--output-size', f'{width}'))
 
-        if image is not None and hasattr(image, 'filename'):
-            if mask_image is not None and hasattr(mask_image, 'filename'):
-                opts.append(('--image-seeds', f'"{image.filename};{mask_image.filename}"'))
-            else:
-                opts.append(('--image-seeds', quote(image.filename)))
+        if image is not None:
+            if hasattr(image, 'filename'):
+                seed_args = []
 
-            if strength is not None:
-                opts.append(('--image-seed-strengths', strength))
+                if mask_image is not None and hasattr(mask_image, 'filename'):
+                    seed_args.append(f'mask={mask_image.filename}')
+                if control_image is not None and hasattr(control_image, 'filename'):
+                    seed_args.append(f'control={control_image.filename}')
 
-            if noise_level is not None:
-                opts.append(('--upscaler-noise-levels', noise_level))
+                if len(seed_args) == 0:
+                    opts.append(('--image-seeds', quote(image.filename)))
+                else:
+                    opts.append(('--image-seeds',
+                                 quote(image.filename)+';'+';'.join(seed_args)))
+
+                if strength is not None:
+                    opts.append(('--image-seed-strengths', strength))
+
+                if noise_level is not None:
+                    opts.append(('--upscaler-noise-levels', noise_level))
+        elif control_image is not None:
+            if hasattr(control_image, 'filename'):
+                opts.append(('--control-images', quote(control_image.filename)))
 
         return opts
 
