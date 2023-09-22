@@ -22,8 +22,6 @@
 __version__ = "1.0.0"
 
 import sys
-import jinja2
-
 
 def run_diffusion():
     import re
