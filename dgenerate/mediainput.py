@@ -335,22 +335,33 @@ def create_animation_reader(file, file_source, resize_resolution=None, image_rep
             'or a file stream containing raw GIF / WebP data')
 
 
-def _iterate_animation_frames_x2(animation_reader,
+def _iterate_animation_frames_x2(seed_reader,
                                  right_reader,
                                  right_animation_frame_param_name,
                                  frame_start,
-                                 frame_end):
-
-    total_frames = animation_reader.frame_slice_count(frame_start, frame_end)
+                                 frame_end,
+                                 seed_image_preprocessor=None,
+                                 right_image_preprocessor=None):
+    total_frames = seed_reader.frame_slice_count(frame_start, frame_end)
     right_total_frames = right_reader.frame_slice_count(frame_start, frame_end)
     out_frame_idx = 0
     in_slice = None
 
+    def seed_image_preprocess(image):
+        if seed_image_preprocessor is not None:
+            return seed_image_preprocessor(image)
+        return image
+
+    def right_image_preprocess(image):
+        if right_image_preprocessor is not None:
+            return right_image_preprocessor(image)
+        return image
+
     # Account for videos possibly having a differing number of frames
     total_frames = min(total_frames, right_total_frames)
 
-    for in_frame_idx, frame in enumerate(zip(animation_reader, right_reader)):
-        left_image = frame[0]
+    for in_frame_idx, frame in enumerate(zip(seed_reader, right_reader)):
+        seed_image = frame[0]
         right_image = frame[1]
 
         if _is_frame_in_slice(in_frame_idx, frame_start, frame_end):
@@ -358,26 +369,48 @@ def _iterate_animation_frames_x2(animation_reader,
                 in_slice = True
             yield AnimationFrame(frame_index=out_frame_idx,
                                  total_frames=total_frames,
-                                 anim_fps=animation_reader.anim_fps,
-                                 anim_frame_duration=animation_reader.anim_frame_duration,
-                                 image=left_image,
-                                 **{right_animation_frame_param_name: right_image})
+                                 anim_fps=seed_reader.anim_fps,
+                                 anim_frame_duration=seed_reader.anim_frame_duration,
+                                 image=seed_image_preprocess(seed_image),
+                                 **{right_animation_frame_param_name: right_image_preprocess(right_image)})
             out_frame_idx += 1
         elif in_slice:
             break
 
 
-def _iterate_animation_frames_x3(animation_reader, mask_reader, control_reader, frame_start, frame_end):
-    total_frames = animation_reader.frame_slice_count(frame_start, frame_end)
+def _iterate_animation_frames_x3(seed_reader,
+                                 mask_reader,
+                                 control_reader,
+                                 frame_start,
+                                 frame_end,
+                                 seed_image_preprocessor=None,
+                                 mask_image_preprocessor=None,
+                                 control_image_preprocessor=None):
+    total_frames = seed_reader.frame_slice_count(frame_start, frame_end)
     mask_total_frames = mask_reader.frame_slice_count(frame_start, frame_end)
     control_total_frames = control_reader.frame_slice_count(frame_start, frame_end)
     out_frame_idx = 0
     in_slice = None
 
+    def preprocess_seed_image(image):
+        if seed_image_preprocessor is not None:
+            return seed_image_preprocessor(image)
+        return image
+
+    def preprocess_mask_image(image):
+        if mask_image_preprocessor is not None:
+            return mask_image_preprocessor(image)
+        return image
+
+    def preprocess_control_image(image):
+        if control_image_preprocessor is not None:
+            return control_image_preprocessor(image)
+        return image
+
     # Account for videos possibly having a differing number of frames
     total_frames = min(total_frames, mask_total_frames, control_total_frames)
 
-    for in_frame_idx, frame in enumerate(zip(animation_reader, mask_reader, control_reader)):
+    for in_frame_idx, frame in enumerate(zip(seed_reader, mask_reader, control_reader)):
 
         image = frame[0]
         mask = frame[1]
@@ -388,48 +421,68 @@ def _iterate_animation_frames_x3(animation_reader, mask_reader, control_reader, 
                 in_slice = True
             yield AnimationFrame(frame_index=out_frame_idx,
                                  total_frames=total_frames,
-                                 anim_fps=animation_reader.anim_fps,
-                                 anim_frame_duration=animation_reader.anim_frame_duration,
-                                 image=image,
-                                 mask_image=mask,
-                                 control_image=control)
+                                 anim_fps=seed_reader.anim_fps,
+                                 anim_frame_duration=seed_reader.anim_frame_duration,
+                                 image=preprocess_seed_image(image),
+                                 mask_image=preprocess_mask_image(mask),
+                                 control_image=preprocess_control_image(control))
             out_frame_idx += 1
         elif in_slice:
             break
 
 
-def iterate_animation_frames(animation_reader, frame_start=0, frame_end=None, mask_reader=None, control_reader=None):
+def iterate_animation_frames(seed_reader,
+                             frame_start=0,
+                             frame_end=None,
+                             mask_reader=None,
+                             control_reader=None,
+                             seed_image_preprocessor=None,
+                             mask_image_preprocessor=None,
+                             control_image_preprocessor=None):
     if mask_reader is not None and control_reader is not None:
-        yield from _iterate_animation_frames_x3(animation_reader=animation_reader,
+        yield from _iterate_animation_frames_x3(seed_reader=seed_reader,
                                                 mask_reader=mask_reader,
                                                 control_reader=control_reader,
                                                 frame_start=frame_start,
-                                                frame_end=frame_end)
+                                                frame_end=frame_end,
+                                                seed_image_preprocessor=seed_image_preprocessor,
+                                                mask_image_preprocessor=mask_image_preprocessor,
+                                                control_image_preprocessor=control_image_preprocessor)
     elif mask_reader is not None:
-        yield from _iterate_animation_frames_x2(animation_reader=animation_reader,
+        yield from _iterate_animation_frames_x2(seed_reader=seed_reader,
                                                 right_reader=mask_reader,
                                                 right_animation_frame_param_name='mask_image',
                                                 frame_start=frame_start,
-                                                frame_end=frame_end)
+                                                frame_end=frame_end,
+                                                seed_image_preprocessor=seed_image_preprocessor,
+                                                right_image_preprocessor=mask_image_preprocessor)
     elif control_reader is not None:
-        yield from _iterate_animation_frames_x2(animation_reader=animation_reader,
+        yield from _iterate_animation_frames_x2(seed_reader=seed_reader,
                                                 right_reader=control_reader,
                                                 right_animation_frame_param_name='control_image',
                                                 frame_start=frame_start,
-                                                frame_end=frame_end)
+                                                frame_end=frame_end,
+                                                seed_image_preprocessor=seed_image_preprocessor,
+                                                right_image_preprocessor=control_image_preprocessor)
     else:
-        total_frames = animation_reader.frame_slice_count(frame_start, frame_end)
+
+        def preprocess_seed_image(image):
+            if seed_image_preprocessor is not None:
+                return seed_image_preprocessor(image)
+            return image
+
+        total_frames = seed_reader.frame_slice_count(frame_start, frame_end)
         out_frame_idx = 0
         in_slice = None
-        for in_frame_idx, frame in enumerate(animation_reader):
+        for in_frame_idx, frame in enumerate(seed_reader):
             if _is_frame_in_slice(in_frame_idx, frame_start, frame_end):
                 if in_slice is None:
                     in_slice = True
                 yield AnimationFrame(frame_index=out_frame_idx,
                                      total_frames=total_frames,
-                                     anim_fps=animation_reader.anim_fps,
-                                     anim_frame_duration=animation_reader.anim_frame_duration,
-                                     image=frame)
+                                     anim_fps=seed_reader.anim_fps,
+                                     anim_frame_duration=seed_reader.anim_frame_duration,
+                                     image=preprocess_seed_image(frame))
                 out_frame_idx += 1
             elif in_slice:
                 break
@@ -733,7 +786,16 @@ class MultiContextManager:
                 obj.__exit__(type, value, traceback)
 
 
-def iterate_control_image(uri, frame_start=0, frame_end=None, resize_resolution=None):
+def iterate_control_image(uri,
+                          frame_start=0,
+                          frame_end=None,
+                          resize_resolution=None,
+                          control_image_preprocessor=None):
+    def preprocess_control_image(image):
+        if control_image_preprocessor is not None:
+            return control_image_preprocessor(image)
+        return image
+
     mime_acceptable_desc = 'image/png, image/jpeg, image/gif, image/webp, video/*'
 
     control_mime_type, control_data = fetch_image_seed_data(
@@ -743,7 +805,6 @@ def iterate_control_image(uri, frame_start=0, frame_end=None, resize_resolution=
         mime_acceptable_desc=mime_acceptable_desc)
 
     manage_context = []
-    control_reader = None
 
     if mime_type_is_animable_image(control_mime_type):
         control_reader = create_animation_reader(io.BytesIO(control_data),
@@ -764,67 +825,128 @@ def iterate_control_image(uri, frame_start=0, frame_end=None, resize_resolution=
         raise ImageSeedParseError(f'Unknown control image mimetype {control_mime_type}')
 
     if isinstance(control_reader, MockImageAnimationReader):
-        yield ImageSeed(image=control_reader.__next__())
-
+        yield ImageSeed(image=preprocess_control_image(control_reader.__next__()))
     else:
         yield from (ImageSeed(animation_frame) for animation_frame in
-                    iterate_animation_frames(animation_reader=control_reader,
+                    iterate_animation_frames(seed_reader=control_reader,
                                              frame_start=frame_start,
-                                             frame_end=frame_end))
+                                             frame_end=frame_end,
+                                             seed_image_preprocessor=control_image_preprocessor))
 
 
-def _iterate_image_seed_x3(seed_reader, mask_reader, control_reader, frame_start, frame_end):
+def _iterate_image_seed_x3(seed_reader,
+                           mask_reader,
+                           control_reader,
+                           frame_start=0,
+                           frame_end=None,
+                           seed_image_preprocessor=None,
+                           mask_image_preprocessor=None,
+                           control_image_preprocessor=None):
+    def preprocess_seed_image(image):
+        if seed_image_preprocessor is not None:
+            return seed_image_preprocessor(image)
+        return image
+
+    def preprocess_mask_image(image):
+        if mask_image_preprocessor is not None:
+            return mask_image_preprocessor(image)
+        return image
+
+    def preprocess_control_image(image):
+        if control_image_preprocessor is not None:
+            return control_image_preprocessor(image)
+        return image
+
     if isinstance(seed_reader, MockImageAnimationReader) and \
             isinstance(mask_reader, MockImageAnimationReader) and \
             isinstance(control_reader, MockImageAnimationReader):
-        yield ImageSeed(image=seed_reader.__next__(),
-                        mask_image=mask_reader.__next__(),
-                        control_image=control_reader.__next__())
+        yield ImageSeed(image=preprocess_seed_image(seed_reader.__next__()),
+                        mask_image=preprocess_mask_image(mask_reader.__next__()),
+                        control_image=preprocess_control_image(control_reader.__next__()))
 
-    readers = [seed_reader, mask_reader, control_reader]
-    for i in readers:
-        if isinstance(i, MockImageAnimationReader):
-            others = [reader for reader in readers if not isinstance(reader, MockImageAnimationReader)]
-            if len(others) > 1:
-                i.total_frames = min(others,
-                                     key=lambda rd: rd.total_frames).total_frames
-            else:
-                i.total_frames = others[0].total_frames
+    else:
+        readers = [seed_reader, mask_reader, control_reader]
+        for i in readers:
+            if isinstance(i, MockImageAnimationReader):
+                others = [reader for reader in readers if not isinstance(reader, MockImageAnimationReader)]
+                if len(others) > 1:
+                    i.total_frames = min(others,
+                                         key=lambda rd: rd.total_frames).total_frames
+                else:
+                    i.total_frames = others[0].total_frames
 
-    yield from (ImageSeed(animation_frame) for animation_frame in
-                iterate_animation_frames(animation_reader=seed_reader,
-                                         frame_start=frame_start,
-                                         frame_end=frame_end,
-                                         mask_reader=mask_reader,
-                                         control_reader=control_reader))
+        yield from (ImageSeed(animation_frame) for animation_frame in
+                    iterate_animation_frames(seed_reader=seed_reader,
+                                             frame_start=frame_start,
+                                             frame_end=frame_end,
+                                             mask_reader=mask_reader,
+                                             control_reader=control_reader,
+                                             seed_image_preprocessor=seed_image_preprocessor,
+                                             mask_image_preprocessor=mask_image_preprocessor,
+                                             control_image_preprocessor=control_image_preprocessor))
 
 
 def _iterate_image_seed_x2(seed_reader,
                            right_reader,
                            right_image_seed_param_name,
                            right_reader_iterate_param_name,
-                           frame_start,
-                           frame_end):
+                           frame_start=0,
+                           frame_end=None,
+                           seed_image_preprocessor=None,
+                           mask_image_preprocessor=None,
+                           control_image_preprocessor=None):
+    def preprocess_seed_image(image):
+        if seed_image_preprocessor is not None:
+            return seed_image_preprocessor(image)
+        return image
+
+    def preprocess_mask_image(image):
+        if mask_image_preprocessor is not None:
+            return mask_image_preprocessor(image)
+        return image
+
+    def preprocess_control_image(image):
+        if control_image_preprocessor is not None:
+            return control_image_preprocessor(image)
+        return image
+
+    if right_image_seed_param_name == 'mask_image':
+        preprocess_right_image = preprocess_mask_image
+    elif right_image_seed_param_name == 'control_image':
+        preprocess_right_image = preprocess_control_image
+    else:
+        raise NotImplementedError(f'right_image_seed_param_name {right_image_seed_param_name} invalid.')
+
     if isinstance(seed_reader, MockImageAnimationReader) \
             and isinstance(right_reader, MockImageAnimationReader):
-        yield ImageSeed(image=seed_reader.__next__(), **{right_image_seed_param_name: right_reader.__next__()})
+        yield ImageSeed(image=preprocess_seed_image(seed_reader.__next__()),
+                        **{right_image_seed_param_name: preprocess_right_image(right_reader.__next__())})
+    else:
+        if isinstance(seed_reader, MockImageAnimationReader) and \
+                not isinstance(right_reader, MockImageAnimationReader):
+            seed_reader.total_frames = right_reader.total_frames
 
-    if isinstance(seed_reader, MockImageAnimationReader) and \
-            not isinstance(right_reader, MockImageAnimationReader):
-        seed_reader.total_frames = right_reader.total_frames
+        if not isinstance(seed_reader, MockImageAnimationReader) and \
+                isinstance(right_reader, MockImageAnimationReader):
+            right_reader.total_frames = seed_reader.total_frames
 
-    if not isinstance(seed_reader, MockImageAnimationReader) and \
-            isinstance(right_reader, MockImageAnimationReader):
-        right_reader.total_frames = seed_reader.total_frames
+        yield from (ImageSeed(animation_frame) for animation_frame in
+                    iterate_animation_frames(seed_reader=seed_reader,
+                                             frame_start=frame_start,
+                                             frame_end=frame_end,
+                                             **{right_reader_iterate_param_name: right_reader},
+                                             seed_image_preprocessor=seed_image_preprocessor,
+                                             mask_image_preprocessor=mask_image_preprocessor,
+                                             control_image_preprocessor=control_image_preprocessor))
 
-    yield from (ImageSeed(animation_frame) for animation_frame in
-                iterate_animation_frames(animation_reader=seed_reader,
-                                         frame_start=frame_start,
-                                         frame_end=frame_end,
-                                         **{right_reader_iterate_param_name: right_reader}))
 
-
-def iterate_image_seed(uri, frame_start=0, frame_end=None, resize_resolution=None):
+def iterate_image_seed(uri,
+                       frame_start=0,
+                       frame_end=None,
+                       resize_resolution=None,
+                       seed_image_preprocessor=None,
+                       mask_image_preprocessor=None,
+                       control_image_preprocessor=None):
     parse_result = parse_image_seed_uri(uri)
 
     mime_acceptable_desc = 'image/png, image/jpeg, image/gif, image/webp, video/*'
@@ -932,7 +1054,10 @@ def iterate_image_seed(uri, frame_start=0, frame_end=None, resize_resolution=Non
                 mask_reader=mask_reader,
                 control_reader=control_reader,
                 frame_start=frame_start,
-                frame_end=frame_end)
+                frame_end=frame_end,
+                seed_image_preprocessor=seed_image_preprocessor,
+                mask_image_preprocessor=mask_image_preprocessor,
+                control_image_preprocessor=control_image_preprocessor)
 
         elif mask_reader is not None:
 
@@ -942,7 +1067,9 @@ def iterate_image_seed(uri, frame_start=0, frame_end=None, resize_resolution=Non
                 right_image_seed_param_name='mask_image',
                 right_reader_iterate_param_name='mask_reader',
                 frame_start=frame_start,
-                frame_end=frame_end
+                frame_end=frame_end,
+                seed_image_preprocessor=seed_image_preprocessor,
+                mask_image_preprocessor=mask_image_preprocessor
             )
 
         elif control_reader is not None:
@@ -952,13 +1079,21 @@ def iterate_image_seed(uri, frame_start=0, frame_end=None, resize_resolution=Non
                 right_image_seed_param_name='control_image',
                 right_reader_iterate_param_name='control_reader',
                 frame_start=frame_start,
-                frame_end=frame_end
+                frame_end=frame_end,
+                seed_image_preprocessor=seed_image_preprocessor,
+                control_image_preprocessor=control_image_preprocessor
             )
         else:
-            if isinstance(seed_reader, MockImageAnimationReader):
-                yield ImageSeed(image=seed_reader.__next__())
+            def preprocess_seed_image(image):
+                if seed_image_preprocessor is not None:
+                    return seed_image_preprocessor(image)
+                return image
 
-            yield from (ImageSeed(animation_frame) for animation_frame in
-                        iterate_animation_frames(animation_reader=seed_reader,
-                                                 frame_start=frame_start,
-                                                 frame_end=frame_end))
+            if isinstance(seed_reader, MockImageAnimationReader):
+                yield ImageSeed(image=preprocess_seed_image(seed_reader.__next__()))
+            else:
+                yield from (ImageSeed(animation_frame) for animation_frame in
+                            iterate_animation_frames(seed_reader=seed_reader,
+                                                     frame_start=frame_start,
+                                                     frame_end=frame_end,
+                                                     seed_image_preprocessor=seed_image_preprocessor))
