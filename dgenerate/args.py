@@ -484,7 +484,7 @@ def _type_upscaler_noise_levels(val):
     return val
 
 
-image_seed_noise_opts.add_argument('-uns', '--upscaler-noise-levels', action='store', nargs='*', default=[20],
+image_seed_noise_opts.add_argument('-uns', '--upscaler-noise-levels', action='store', nargs='*', default=None,
                                    type=_type_upscaler_noise_levels,
                                    help=f"""
                     List of upscaler noise levels to try when using the super resolution upscaler 
@@ -529,7 +529,7 @@ parser.add_argument('-ifs', '--inference-steps', action='store', nargs='*', defa
                          produce good results, higher values may improve image quality and or
                          change image content. (default: [30])""")
 
-parser.add_argument('-hnf', '--sdxl-high-noise-fractions', action='store', nargs='*', default=[0.8],
+parser.add_argument('-hnf', '--sdxl-high-noise-fractions', action='store', nargs='*', default=None,
                     type=_type_sdxl_high_noise_fractions,
                     help="""High noise fraction for Stable Diffusion XL (torch-sdxl), this fraction of inference steps
                          will be processed by the base model, while the rest will be processed by the refiner model.
@@ -556,8 +556,34 @@ def parse_args(args=None, namespace=None):
         print('You cannot specify --control-images without --control-nets.')
         sys.exit(1)
 
+    if 'upscaler' not in args.model_type and args.upscaler_noise_levels is not None:
+        print('You cannot specify --upscaler-noise-levels for a non upscaler model type, see --model-types.')
+    elif args.upscaler_noise_levels is None:
+        args.upscaler_noise_levels = [20]
+
+    if 'sdxl' not in args.model_type:
+        if args.sdxl_refiner is not None:
+            print('You cannot specify --sdxl-refiner for a non SDXL model type, see --model-types.')
+            sys.exit(1)
+        if args.sdxl_high_noise_fractions is not None:
+            print('You cannot specify --sdxl-high-noise-fractions for a non SDXL model type, see --model-types.')
+            sys.exit(1)
+        if args.sdxl_target_size is not None:
+            print('You cannot specify --sdxl-target-size for a non SDXL model type, see --model-types.')
+            sys.exit(1)
+        if args.sdxl_original_size is not None:
+            print('You cannot specify --sdxl-original-size for a non SDXL model type, see --model-types.')
+            sys.exit(1)
+
+        args.sdxl_high_noise_fractions = []
+    else:
+        if args.sdxl_high_noise_fractions is None:
+            # Default value
+            args.sdxl_high_noise_fractions = [0.8]
+
     if len(args.image_seeds) > 0:
         if args.image_seed_strengths is None:
+            # Default value
             args.image_seed_strengths = [0.8]
     else:
         args.image_seed_strengths = []

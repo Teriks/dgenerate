@@ -48,10 +48,15 @@ from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline, S
     StableDiffusionXLInpaintPipeline, StableDiffusionUpscalePipeline, StableDiffusionLatentUpscalePipeline, \
     ControlNetModel, AutoencoderKL, AsymmetricAutoencoderKL, AutoencoderTiny, StableDiffusionControlNetPipeline, \
     StableDiffusionControlNetInpaintPipeline, StableDiffusionControlNetImg2ImgPipeline, \
-    StableDiffusionXLControlNetPipeline
+    StableDiffusionXLControlNetPipeline, StableDiffusionXLControlNetImg2ImgPipeline,\
+    StableDiffusionXLControlNetInpaintPipeline
 
 _TORCH_MODEL_CACHE = dict()
 _FLAX_MODEL_CACHE = dict()
+_TORCH_CONTROL_NET_CACHE = dict()
+_FLAX_CONTROL_NET_CACHE = dict()
+_TORCH_VAE_CACHE = dict()
+_FLAX_VAE_CACHE = dict()
 
 DEFAULT_INFERENCE_STEPS = 30
 DEFAULT_GUIDANCE_SCALE = 5
@@ -99,9 +104,75 @@ _torch_control_net_path_parser = ConceptModelPathParser('Control Net',
                                                         ['revision', 'variant', 'subfolder', 'upcast_attention',
                                                          'dtype'])
 
+_flax_control_net_path_parser = ConceptModelPathParser('Control Net',
+                                                       ['revision', 'subfolder', 'dtype', 'from_torch'])
+
 _lora_path_parser = ConceptModelPathParser('LoRA', ['scale', 'revision', 'subfolder', 'weight-name'])
 _textual_inversion_path_parser = ConceptModelPathParser('Textual Inversion',
                                                         ['revision', 'subfolder', 'weight-name'])
+
+
+class FlaxControlNetPath:
+    def __init__(self, model, revision, subfolder, dtype, from_torch):
+        self.model = model
+        self.revision = revision
+        self.subfolder = subfolder
+        self.dtype = dtype
+        self.from_torch = from_torch
+
+    def load(self, device, **kwargs):
+        cache_by = kwargs
+        cache_by['device'] = device
+        cache_key = _function_cache_key(cache_by)
+
+        cache_hit = _FLAX_CONTROL_NET_CACHE.get(cache_key)
+
+        if cache_hit is not None:
+            return cache_hit
+
+        single_file_load_path = _is_single_file_model_load(self.model)
+
+        if single_file_load_path:
+            raise NotImplementedError('Flax --control-nets do not support single file loads from disk.')
+        else:
+            new_net: FlaxControlNetModel = FlaxControlNetModel.from_pretrained(self.model,
+                                                                               revision=self.revision,
+                                                                               subfolder=self.subfolder,
+                                                                               dtype=self.dtype,
+                                                                               from_pt=self.from_torch,
+                                                                               **kwargs)
+
+        _FLAX_CONTROL_NET_CACHE[cache_key] = new_net
+        return new_net
+
+
+def parse_flax_control_net_path(path):
+    try:
+        r = _flax_control_net_path_parser.parse_concept_path(path)
+
+        dtype = r.args.get('dtype', None)
+
+        from_torch = r.args.get('from_torch', None)
+
+        if from_torch is not None:
+            try:
+                from_torch = bool(from_torch)
+            except ValueError:
+                raise InvalidControlNetPathError(
+                    'Flax Control Net from_torch must be undefined or boolean (true or false)')
+
+        if dtype not in {'float32', 'float16', 'auto', None}:
+            raise InvalidVaePathError('Flax Control Net dtype must be float32, float16, auto, or left undefined.')
+
+        return FlaxControlNetPath(
+            model=r.concept,
+            revision=r.args.get('revision', None),
+            subfolder=r.args.get('subfolder', None),
+            dtype=_get_flax_dtype(dtype),
+            from_torch=from_torch)
+
+    except ConceptModelPathParseError as e:
+        raise InvalidControlNetPathError(e)
 
 
 class TorchControlNetPath:
@@ -113,27 +184,38 @@ class TorchControlNetPath:
         self.upcast_attention = upcast_attention
         self.dtype = dtype
 
-    def load(self, device, **kwargs):
+    def load(self, device, **kwargs) -> ControlNetModel:
+        cache_by = kwargs
+        cache_by['device'] = device
+        cache_key = _function_cache_key(cache_by)
+
+        cache_hit = _TORCH_CONTROL_NET_CACHE.get(cache_key)
+
+        if cache_hit is not None:
+            return cache_hit
+
         single_file_load_path = _is_single_file_model_load(self.model)
 
         if single_file_load_path:
-            new_net = ControlNetModel.from_single_file(self.model,
-                                                       revision=self.revision,
-                                                       upcast_attention=self.upcast_attention,
-                                                       torch_dtype=self.dtype,
-                                                       **kwargs).to(device)
+            new_net: ControlNetModel = ControlNetModel.from_single_file(self.model,
+                                                                        revision=self.revision,
+                                                                        upcast_attention=self.upcast_attention,
+                                                                        torch_dtype=self.dtype,
+                                                                        **kwargs)
         else:
-            new_net = ControlNetModel.from_pretrained(self.model,
-                                                      revision=self.revision,
-                                                      variant=self.variant,
-                                                      subfolder=self.subfolder,
-                                                      upcast_attention=self.upcast_attention,
-                                                      torch_dtype=self.dtype,
-                                                      **kwargs).to(device)
+            new_net: ControlNetModel = ControlNetModel.from_pretrained(self.model,
+                                                                       revision=self.revision,
+                                                                       variant=self.variant,
+                                                                       subfolder=self.subfolder,
+                                                                       upcast_attention=self.upcast_attention,
+                                                                       torch_dtype=self.dtype,
+                                                                       **kwargs)
+
+        _TORCH_CONTROL_NET_CACHE[cache_key] = new_net
         return new_net
 
 
-def parse_torch_control_net_path(path):
+def parse_torch_control_net_path(path) -> TorchControlNetPath:
     try:
         r = _torch_control_net_path_parser.parse_concept_path(path)
 
@@ -171,7 +253,7 @@ class SDXLRefinerPath:
         self.subfolder = subfolder
 
 
-def parse_sdxl_refiner_path(path):
+def parse_sdxl_refiner_path(path) -> SDXLRefinerPath:
     try:
         r = _sdxl_refiner_path_parser.parse_concept_path(path)
 
@@ -200,7 +282,7 @@ class TorchVAEPath:
         self.subfolder = subfolder
 
 
-def parse_torch_vae_path(path):
+def parse_torch_vae_path(path) -> TorchVAEPath:
     try:
         r = _torch_vae_path_parser.parse_concept_path(path)
 
@@ -231,7 +313,7 @@ class FlaxVAEPath:
         self.subfolder = subfolder
 
 
-def parse_flax_vae_path(path):
+def parse_flax_vae_path(path) -> FlaxVAEPath:
     try:
         r = _flax_vae_path_parser.parse_concept_path(path)
 
@@ -269,7 +351,7 @@ class LoRAPath:
                                        **kwargs)
 
 
-def parse_lora_path(path):
+def parse_lora_path(path) -> LoRAPath:
     try:
         r = _lora_path_parser.parse_concept_path(path)
 
@@ -298,7 +380,7 @@ class TextualInversionPath:
                                             **kwargs)
 
 
-def parse_textual_inversion_path(path):
+def parse_textual_inversion_path(path) -> TextualInversionPath:
     try:
         r = _textual_inversion_path_parser.parse_concept_path(path)
 
@@ -331,11 +413,20 @@ def _is_single_file_model_load(path):
 def _load_pytorch_vae(path,
                       torch_dtype_fallback,
                       use_auth_token,
-                      device):
+                      device) -> typing.Union[AutoencoderKL, AsymmetricAutoencoderKL, AutoencoderTiny]:
     parsed_concept = parse_torch_vae_path(path)
 
     if parsed_concept.dtype is None:
         parsed_concept.dtype = torch_dtype_fallback
+
+    cache_key = _function_cache_key({'path': path,
+                                     'use_auth_token': use_auth_token,
+                                     'device': device,
+                                     'dtype': parsed_concept.dtype})
+
+    cache_hit = _TORCH_VAE_CACHE.get(cache_key)
+    if cache_hit is not None:
+        return cache_hit
 
     encoder_name = parsed_concept.encoder
 
@@ -363,29 +454,42 @@ def _load_pytorch_vae(path,
 
         if encoder is AutoencoderKL:
             # There is a bug in their cast
-            return encoder.from_single_file(path, revision=parsed_concept.revision). \
+            vae = encoder.from_single_file(path, revision=parsed_concept.revision). \
                 to(device=device, dtype=parsed_concept.dtype, non_blocking=False)
         else:
-            return encoder.from_single_file(path,
-                                            revision=parsed_concept.revision,
-                                            torch_dtype=parsed_concept.dtype).to(device=device)
+            vae = encoder.from_single_file(path,
+                                           revision=parsed_concept.revision,
+                                           torch_dtype=parsed_concept.dtype).to(device=device)
 
     else:
-        return encoder.from_pretrained(path,
-                                       revision=parsed_concept.revision,
-                                       variant=parsed_concept.variant,
-                                       torch_dtype=parsed_concept.dtype,
-                                       subfolder=parsed_concept.subfolder,
-                                       use_auth_token=use_auth_token).to(device=device)
+        vae = encoder.from_pretrained(path,
+                                      revision=parsed_concept.revision,
+                                      variant=parsed_concept.variant,
+                                      torch_dtype=parsed_concept.dtype,
+                                      subfolder=parsed_concept.subfolder,
+                                      use_auth_token=use_auth_token).to(device=device)
+
+    _TORCH_VAE_CACHE[cache_key] = vae
+    return vae
 
 
 def _load_flax_vae(path,
                    flax_dtype_fallback,
-                   use_auth_token):
+                   use_auth_token,
+                   device):
     parsed_concept = parse_torch_vae_path(path)
 
     if parsed_concept.dtype is None:
         parsed_concept.dtype = flax_dtype_fallback
+
+    cache_key = _function_cache_key({'path': path,
+                                     'use_auth_token': use_auth_token,
+                                     'device': device,
+                                     'dtype': parsed_concept.dtype})
+
+    cache_hit = _FLAX_VAE_CACHE.get(cache_key)
+    if cache_hit is not None:
+        return cache_hit
 
     encoder_name = parsed_concept.encoder
 
@@ -407,15 +511,18 @@ def _load_flax_vae(path,
         # in the future this will be supported?
         if parsed_concept.subfolder is not None:
             raise NotImplementedError('Single file VAE loads do not support the subfolder option.')
-        return encoder.from_single_file(path,
-                                        revision=parsed_concept.revision,
-                                        dtype=parsed_concept.dtype)
-    else:
-        return encoder.from_pretrained(path,
+        vae = encoder.from_single_file(path,
                                        revision=parsed_concept.revision,
-                                       dtype=parsed_concept.dtype,
-                                       subfolder=parsed_concept.subfolder,
-                                       use_auth_token=use_auth_token)
+                                       dtype=parsed_concept.dtype).to(device=device)
+    else:
+        vae = encoder.from_pretrained(path,
+                                      revision=parsed_concept.revision,
+                                      dtype=parsed_concept.dtype,
+                                      subfolder=parsed_concept.subfolder,
+                                      use_auth_token=use_auth_token).to(device=device)
+
+    _FLAX_VAE_CACHE[cache_key] = vae
+    return vae
 
 
 def _load_scheduler(pipeline, scheduler_name=None):
@@ -445,6 +552,10 @@ def _load_scheduler(pipeline, scheduler_name=None):
 
 def clear_model_cache():
     _TORCH_MODEL_CACHE.clear()
+    _TORCH_CONTROL_NET_CACHE.clear()
+    _FLAX_CONTROL_NET_CACHE.clear()
+    _TORCH_VAE_CACHE.clear()
+    _FLAX_VAE_CACHE.clear()
     _FLAX_MODEL_CACHE.clear()
 
 
@@ -456,10 +567,10 @@ def _disabled_safety_checker(images, clip_input):
         return images, False
 
 
-def _pipeline_cache_key(args_dict):
+def _function_cache_key(args_dict):
     def value_hash(obj):
         if isinstance(obj, dict):
-            return '{' + _pipeline_cache_key(obj) + '}'
+            return '{' + _function_cache_key(obj) + '}'
         elif obj is None or isinstance(obj, (str, numbers.Number)):
             return str(obj)
         else:
@@ -490,146 +601,144 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                                      auth_token=None,
                                      device='cuda',
                                      extra_args=None):
-    cache_key = _pipeline_cache_key(locals())
-
+    cache_key = _function_cache_key(locals())
     catch_hit = _TORCH_MODEL_CACHE.get(cache_key)
 
-    if catch_hit is None:
+    if catch_hit is not None:
+        return catch_hit
+
+    if model_type_is_upscaler(model_type):
+        if pipeline_type != _PipelineTypes.IMG2IMG and scheduler.lower() != 'help':
+            raise NotImplementedError(
+                'Upscaler models only work with img2img generation, IE: --image-seeds (with no image masks).')
+
+        pipeline_class = (StableDiffusionUpscalePipeline if model_type is ModelTypes.TORCH_UPSCALER_X4
+                          else StableDiffusionLatentUpscalePipeline)
+    else:
+        sdxl = model_type == ModelTypes.TORCH_SDXL
+        has_control_nets = control_net_paths is not None and len(control_net_paths) > 0
+
+        if pipeline_type == _PipelineTypes.BASIC:
+            if has_control_nets:
+                pipeline_class = StableDiffusionXLControlNetPipeline if sdxl else StableDiffusionControlNetPipeline
+            else:
+                pipeline_class = StableDiffusionXLPipeline if sdxl else StableDiffusionPipeline
+        elif pipeline_type == _PipelineTypes.IMG2IMG:
+            if has_control_nets:
+                if sdxl:
+                    pipeline_class = StableDiffusionXLControlNetImg2ImgPipeline
+                else:
+                    pipeline_class = StableDiffusionControlNetImg2ImgPipeline
+            else:
+                pipeline_class = StableDiffusionXLImg2ImgPipeline if sdxl else StableDiffusionImg2ImgPipeline
+        elif pipeline_type == _PipelineTypes.INPAINT:
+            if has_control_nets:
+                if sdxl:
+                    pipeline_class = StableDiffusionXLControlNetInpaintPipeline
+                else:
+                    pipeline_class = StableDiffusionControlNetInpaintPipeline
+            else:
+                pipeline_class = StableDiffusionXLInpaintPipeline if sdxl else StableDiffusionInpaintPipeline
+        else:
+            # Should be impossible
+            raise NotImplementedError('Pipeline type not implemented.')
+
+    if textual_inversion_paths:
+        if model_type == ModelTypes.TORCH_UPSCALER_X2:
+            raise NotImplementedError(
+                'Model type torch-upscaler-x2 cannot be used with textual inversion models.')
+
+        if isinstance(textual_inversion_paths, str):
+            textual_inversion_paths = [textual_inversion_paths]
+
+    if lora_paths is not None:
+        if not isinstance(lora_paths, str):
+            raise NotImplementedError('Using multiple LoRA models is currently not supported.')
 
         if model_type_is_upscaler(model_type):
-            if pipeline_type != _PipelineTypes.IMG2IMG and scheduler.lower() != 'help':
-                raise NotImplementedError(
-                    'Upscaler models only work with img2img generation, IE: --image-seeds (with no image masks).')
+            raise NotImplementedError(
+                'LoRA models cannot be used with upscaler models.')
 
-            pipeline_class = (StableDiffusionUpscalePipeline if model_type is ModelTypes.TORCH_UPSCALER_X4
-                              else StableDiffusionLatentUpscalePipeline)
-        else:
-            sdxl = model_type == ModelTypes.TORCH_SDXL
-            has_control_nets = control_net_paths is not None and len(control_net_paths) > 0
+        lora_paths = [lora_paths]
 
-            if pipeline_type == _PipelineTypes.BASIC:
-                if has_control_nets:
-                    pipeline_class = StableDiffusionXLControlNetPipeline if sdxl else StableDiffusionControlNetPipeline
-                else:
-                    pipeline_class = StableDiffusionXLPipeline if sdxl else StableDiffusionPipeline
-            elif pipeline_type == _PipelineTypes.IMG2IMG:
-                if has_control_nets:
-                    if sdxl:
-                        raise NotImplementedError('SDXL does not support Control Nets with image seeds.')
+    kwargs = {}
+
+    torch_dtype = _get_torch_dtype(dtype)
+
+    if scheduler is None or scheduler.lower() != 'help':
+        # prevent waiting on this stuff just get the scheduler
+        # help message for the main model
+
+        if vae_path is not None:
+            kwargs['vae'] = _load_pytorch_vae(vae_path,
+                                              torch_dtype_fallback=torch_dtype,
+                                              use_auth_token=auth_token,
+                                              device=device)
+        if control_net_paths is not None:
+            controlnets = None
+
+            for control_net_path in control_net_paths:
+                new_net = parse_torch_control_net_path(control_net_path) \
+                    .load(use_auth_token=auth_token, device=device)
+
+                if controlnets is not None:
+                    if not isinstance(controlnets, list):
+                        controlnets = [controlnets, new_net]
                     else:
-                        pipeline_class = StableDiffusionControlNetImg2ImgPipeline
+                        controlnets.append(new_net)
                 else:
-                    pipeline_class = StableDiffusionXLImg2ImgPipeline if sdxl else StableDiffusionImg2ImgPipeline
-            elif pipeline_type == _PipelineTypes.INPAINT:
-                if has_control_nets:
-                    if sdxl:
-                        raise NotImplementedError('SDXL does not support Control Nets with image seeds.')
-                    else:
-                        pipeline_class = StableDiffusionControlNetInpaintPipeline
-                else:
-                    pipeline_class = StableDiffusionXLInpaintPipeline if sdxl else StableDiffusionInpaintPipeline
-            else:
-                # Should be impossible
-                raise NotImplementedError('Pipeline type not implemented.')
+                    controlnets = new_net
 
-        if textual_inversion_paths:
-            if model_type == ModelTypes.TORCH_UPSCALER_X2:
-                raise NotImplementedError(
-                    'Model type torch-upscaler-x2 cannot be used with textual inversion models.')
+            kwargs['controlnet'] = controlnets
 
-            if isinstance(textual_inversion_paths, str):
-                textual_inversion_paths = [textual_inversion_paths]
+    if extra_args is not None:
+        kwargs.update(extra_args)
 
-        if lora_paths is not None:
-            if not isinstance(lora_paths, str):
-                raise NotImplementedError('Using multiple LoRA models is currently not supported.')
-
-            if model_type_is_upscaler(model_type):
-                raise NotImplementedError(
-                    'LoRA models cannot be used with upscaler models.')
-
-            lora_paths = [lora_paths]
-
-        kwargs = {}
-
-        torch_dtype = _get_torch_dtype(dtype)
-
-        if scheduler is None or scheduler.lower() != 'help':
-            # prevent waiting on this stuff just get the scheduler
-            # help message for the main model
-
-            if vae_path is not None:
-                kwargs['vae'] = _load_pytorch_vae(vae_path,
-                                                  torch_dtype_fallback=torch_dtype,
-                                                  use_auth_token=auth_token,
-                                                  device=device)
-            if control_net_paths is not None:
-                controlnets = None
-
-                for control_net_path in control_net_paths:
-                    new_net = parse_torch_control_net_path(control_net_path) \
-                        .load(use_auth_token=auth_token, device=device)
-
-                    if controlnets is not None:
-                        if not isinstance(controlnets, list):
-                            controlnets = [controlnets, new_net]
-                        else:
-                            controlnets.append(new_net)
-                    else:
-                        controlnets = new_net
-
-                kwargs['controlnet'] = controlnets
-
-        if extra_args is not None:
-            kwargs.update(extra_args)
-
-        if _is_single_file_model_load(model_path):
-            if model_subfolder is not None:
-                raise NotImplementedError('Single file model loads do not support the subfolder option.')
-            pipeline = pipeline_class.from_single_file(model_path,
-                                                       revision=revision,
-                                                       variant=variant,
-                                                       torch_dtype=torch_dtype,
-                                                       use_safe_tensors=model_path.endswith('.safetensors'),
-                                                       **kwargs)
-        else:
-            pipeline = pipeline_class.from_pretrained(model_path,
-                                                      revision=revision,
-                                                      variant=variant,
-                                                      torch_dtype=torch_dtype,
-                                                      subfolder=model_subfolder,
-                                                      use_auth_token=auth_token,
-                                                      **kwargs)
-
-        _load_scheduler(pipeline, scheduler)
-
-        if textual_inversion_paths is not None:
-            for inversion_path in textual_inversion_paths:
-                parse_textual_inversion_path(inversion_path). \
-                    load_on_pipeline(pipeline, use_auth_token=auth_token)
-
-        if lora_paths is not None:
-            if control_net_paths is not None and model_type == ModelTypes.TORCH_SDXL:
-                raise NotImplementedError(
-                    'LoRA currently cannot be used with Control Nets when using SDXL')
-
-            for lora_path in lora_paths:
-                parse_lora_path(lora_path). \
-                    load_on_pipeline(pipeline, use_auth_token=auth_token)
-
-        if not safety_checker:
-            if hasattr(pipeline, 'safety_checker') and pipeline.safety_checker is not None:
-                # If it's already None for some reason you'll get a call
-                # to an unassigned feature_extractor by assigning it a value
-
-                # The attribute will not exist for SDXL pipelines currently
-
-                pipeline.safety_checker = _disabled_safety_checker
-
-        _TORCH_MODEL_CACHE[cache_key] = pipeline
-        return pipeline
+    if _is_single_file_model_load(model_path):
+        if model_subfolder is not None:
+            raise NotImplementedError('Single file model loads do not support the subfolder option.')
+        pipeline = pipeline_class.from_single_file(model_path,
+                                                   revision=revision,
+                                                   variant=variant,
+                                                   torch_dtype=torch_dtype,
+                                                   use_safe_tensors=model_path.endswith('.safetensors'),
+                                                   **kwargs)
     else:
-        return catch_hit
+        pipeline = pipeline_class.from_pretrained(model_path,
+                                                  revision=revision,
+                                                  variant=variant,
+                                                  torch_dtype=torch_dtype,
+                                                  subfolder=model_subfolder,
+                                                  use_auth_token=auth_token,
+                                                  **kwargs)
+
+    _load_scheduler(pipeline, scheduler)
+
+    if textual_inversion_paths is not None:
+        for inversion_path in textual_inversion_paths:
+            parse_textual_inversion_path(inversion_path). \
+                load_on_pipeline(pipeline, use_auth_token=auth_token)
+
+    if lora_paths is not None:
+        if control_net_paths is not None and model_type == ModelTypes.TORCH_SDXL:
+            raise NotImplementedError(
+                'LoRA currently cannot be used with Control Nets when using SDXL')
+
+        for lora_path in lora_paths:
+            parse_lora_path(lora_path). \
+                load_on_pipeline(pipeline, use_auth_token=auth_token)
+
+    if not safety_checker:
+        if hasattr(pipeline, 'safety_checker') and pipeline.safety_checker is not None:
+            # If it's already None for some reason you'll get a call
+            # to an unassigned feature_extractor by assigning it a value
+
+            # The attribute will not exist for SDXL pipelines currently
+
+            pipeline.safety_checker = _disabled_safety_checker
+
+    _TORCH_MODEL_CACHE[cache_key] = pipeline
+    return pipeline
 
 
 def _create_flax_diffusion_pipeline(pipeline_type,
@@ -638,57 +747,87 @@ def _create_flax_diffusion_pipeline(pipeline_type,
                                     dtype,
                                     model_subfolder=None,
                                     vae_path=None,
+                                    control_net_paths=None,
                                     scheduler=None,
                                     safety_checker=False,
                                     auth_token=None,
-                                    extra_args=None):
-    cache_key = _pipeline_cache_key(locals())
+                                    extra_args=None,
+                                    device='cuda'):
+    cache_key = _function_cache_key(locals())
+    catch_hit = _FLAX_MODEL_CACHE.get(cache_key)
+
+    if catch_hit is not None:
+        return catch_hit
+
+    has_control_nets = False
+    if control_net_paths is not None:
+        if len(control_net_paths) > 1:
+            raise NotImplementedError('Flax does not support multiple --control-nets.')
+        if len(control_net_paths) == 1:
+            has_control_nets = True
 
     if pipeline_type == _PipelineTypes.BASIC:
-        pipeline_class = FlaxStableDiffusionPipeline
+        if has_control_nets:
+            pipeline_class = FlaxStableDiffusionControlNetPipeline
+        else:
+            pipeline_class = FlaxStableDiffusionPipeline
     elif pipeline_type == _PipelineTypes.IMG2IMG:
+        if has_control_nets:
+            raise NotImplementedError('Flax does not support --image-seeds with --control-nets, use --control-images.')
         pipeline_class = FlaxStableDiffusionImg2ImgPipeline
     elif pipeline_type == _PipelineTypes.INPAINT:
+        if has_control_nets:
+            raise NotImplementedError('Flax does not support --image-seeds with --control-nets, use --control-images.')
         pipeline_class = FlaxStableDiffusionInpaintPipeline
     else:
         raise NotImplementedError('Pipeline type not implemented.')
 
-    catch_hit = _FLAX_MODEL_CACHE.get(cache_key)
+    kwargs = {}
+    vae_params = None
+    controlnet_params = None
 
-    if catch_hit is None:
-        kwargs = {}
-        vae_params = None
+    flax_dtype = _get_flax_dtype(dtype)
 
-        flax_dtype = _get_flax_dtype(dtype)
+    if scheduler is None or scheduler.lower() != 'help':
+        # prevent waiting on this stuff just get the scheduler
+        # help message for the main model
 
-        if vae_path is not None and scheduler.lower() != 'help':
+        if vae_path is not None:
             vae_path, vae_params = _load_flax_vae(vae_path,
                                                   flax_dtype_fallback=flax_dtype,
-                                                  use_auth_token=auth_token)
+                                                  use_auth_token=auth_token,
+                                                  device=device)
             kwargs['vae'] = vae_path
 
-        if extra_args is not None:
-            kwargs.update(extra_args)
+        if control_net_paths is not None:
+            controlnet, controlnet_params = parse_flax_control_net_path(control_net_paths[0]) \
+                .load(use_auth_token=auth_token, device=device)
 
-        pipeline, params = pipeline_class.from_pretrained(model_path,
-                                                          revision=revision,
-                                                          dtype=flax_dtype,
-                                                          subfolder=model_subfolder,
-                                                          use_auth_token=auth_token,
-                                                          **kwargs)
+            kwargs['controlnet'] = controlnet
 
-        if vae_params is not None:
-            params['vae'] = vae_params
+    if extra_args is not None:
+        kwargs.update(extra_args)
 
-        _load_scheduler(pipeline, scheduler)
+    pipeline, params = pipeline_class.from_pretrained(model_path,
+                                                      revision=revision,
+                                                      dtype=flax_dtype,
+                                                      subfolder=model_subfolder,
+                                                      use_auth_token=auth_token,
+                                                      **kwargs)
 
-        if not safety_checker:
-            pipeline.safety_checker = None
+    if vae_params is not None:
+        params['vae'] = vae_params
 
-        _FLAX_MODEL_CACHE[cache_key] = (pipeline, params)
-        return pipeline, params
-    else:
-        return catch_hit
+    if controlnet_params is not None:
+        params['controlnet'] = controlnet_params
+
+    _load_scheduler(pipeline, scheduler)
+
+    if not safety_checker:
+        pipeline.safety_checker = None
+
+    _FLAX_MODEL_CACHE[cache_key] = (pipeline, params)
+    return pipeline, params
 
 
 def supported_model_types():
@@ -739,7 +878,7 @@ def _get_flax_dtype(dtype):
             'auto': None}[dtype.lower()]
 
 
-def _get_torch_dtype(dtype):
+def _get_torch_dtype(dtype) -> typing.Union[torch.dtype, None]:
     if dtype is None:
         return None
 
@@ -868,6 +1007,25 @@ class DiffusionPipelineWrapperBase:
                 raise NotImplementedError('Using multiple LoRA models is currently not supported.')
 
             self._lora_scale = parse_lora_path(lora_paths).scale
+
+    @staticmethod
+    def _pipeline_to(pipeline, device):
+        if hasattr(pipeline, 'to'):
+            return pipeline.to(device)
+        return pipeline
+
+    def _call_pipeline(self, **kwargs):
+        DiffusionPipelineWrapperBase._pipeline_to(self._pipeline, self._device)
+        r = self._pipeline(**kwargs)
+        DiffusionPipelineWrapperBase._pipeline_to(self._pipeline, 'cpu')
+        return r
+
+    def _call_sdxl_refiner(self, **kwargs):
+        DiffusionPipelineWrapperBase._pipeline_to(self._pipeline, 'cpu')
+        DiffusionPipelineWrapperBase._pipeline_to(self._sdxl_refiner_pipeline, self._device)
+        r = self._sdxl_refiner_pipeline(**kwargs)
+        DiffusionPipelineWrapperBase._pipeline_to(self._sdxl_refiner_pipeline, 'cpu')
+        return r
 
     @property
     def revision(self):
@@ -1026,7 +1184,7 @@ class DiffusionPipelineWrapperBase:
                     opts.append(('--image-seeds', quote(image.filename)))
                 else:
                     opts.append(('--image-seeds',
-                                 quote(image.filename+';'+';'.join(seed_args))))
+                                 quote(image.filename + ';' + ';'.join(seed_args))))
 
                 if strength is not None:
                     opts.append(('--image-seed-strengths', strength))
@@ -1039,157 +1197,211 @@ class DiffusionPipelineWrapperBase:
 
         return opts
 
-    def _pipeline_defaults(self, kwargs):
+    def _pipeline_defaults(self, user_args):
         args = dict()
-        args['guidance_scale'] = float(kwargs.get('guidance_scale', DEFAULT_GUIDANCE_SCALE))
-        args['num_inference_steps'] = kwargs.get('num_inference_steps', DEFAULT_INFERENCE_STEPS)
+        args['guidance_scale'] = float(user_args.get('guidance_scale', DEFAULT_GUIDANCE_SCALE))
+        args['num_inference_steps'] = user_args.get('num_inference_steps', DEFAULT_INFERENCE_STEPS)
 
         if self._control_net_paths is not None:
-            control_image = kwargs['control_image']
+            control_image = user_args['control_image']
             if self._pipeline_type == _PipelineTypes.BASIC:
                 args['image'] = control_image
             elif self._pipeline_type == _PipelineTypes.IMG2IMG or \
                     self._pipeline_type == _PipelineTypes.INPAINT:
-                args['image'] = kwargs['image']
+                args['image'] = user_args['image']
                 args['control_image'] = control_image
-                args['strength'] = float(kwargs.get('strength', DEFAULT_IMAGE_SEED_STRENGTH))
+                args['strength'] = float(user_args.get('strength', DEFAULT_IMAGE_SEED_STRENGTH))
 
-            mask_image = kwargs.get('mask_image')
+            mask_image = user_args.get('mask_image')
             if mask_image is not None:
                 args['mask_image'] = mask_image
 
-            args['width'] = kwargs.get('width', control_image.width)
-            args['height'] = kwargs.get('height', control_image.height)
+            args['width'] = user_args.get('width', control_image.width)
+            args['height'] = user_args.get('height', control_image.height)
 
-        elif 'image' in kwargs:
-            image = kwargs['image']
+        elif 'image' in user_args:
+            image = user_args['image']
             args['image'] = image
 
             if model_type_is_upscaler(self._model_type):
                 if get_model_type_enum(self._model_type) == ModelTypes.TORCH_UPSCALER_X4:
-                    args['noise_level'] = int(kwargs.get('noise_level', DEFAULT_X4_UPSCALER_NOISE_LEVEL))
+                    args['noise_level'] = int(user_args.get('noise_level', DEFAULT_X4_UPSCALER_NOISE_LEVEL))
             else:
-                args['strength'] = float(kwargs.get('strength', DEFAULT_IMAGE_SEED_STRENGTH))
+                args['strength'] = float(user_args.get('strength', DEFAULT_IMAGE_SEED_STRENGTH))
 
-            mask_image = kwargs.get('mask_image')
+            mask_image = user_args.get('mask_image')
             if mask_image is not None:
                 args['mask_image'] = mask_image
                 args['width'] = image.size[0]
                 args['height'] = image.size[1]
         else:
-            args['height'] = kwargs.get('height', DEFAULT_OUTPUT_HEIGHT)
-            args['width'] = kwargs.get('width', DEFAULT_OUTPUT_WIDTH)
+            args['height'] = user_args.get('height', DEFAULT_OUTPUT_HEIGHT)
+            args['width'] = user_args.get('width', DEFAULT_OUTPUT_WIDTH)
 
         if self._lora_scale is not None:
             args['cross_attention_kwargs'] = {'scale': self._lora_scale}
 
         return args
 
-    def _call_flax(self, args, kwargs):
-        if kwargs.get('sdxl_original_size', None) is not None:
-            raise NotImplementedError('original-size micro-conditioning may only be used with SDXL models.')
-        if kwargs.get('sdxl_target_size', None) is not None:
-            raise NotImplementedError('target-size micro-conditioning may only be used with SDXL models.')
+    def _call_flax_control_net(self, default_args, user_args):
 
         device_count = jax.device_count()
 
-        args['prng_seed'] = jax.random.split(jax.random.PRNGKey(kwargs.get('seed', 0)), device_count)
+        pipe: FlaxStableDiffusionPipeline = self._pipeline
 
-        processed_masks = None
+        default_args['prng_seed'] = jax.random.split(jax.random.PRNGKey(user_args.get('seed', 0)), device_count)
+        prompt_ids = pipe.prepare_text_inputs([user_args.get('prompt', '')] * device_count)
 
-        if 'image' in args:
-            if 'mask_image' in args:
-
-                prompt_ids, processed_images, processed_masks = \
-                    self._pipeline.prepare_inputs(prompt=[kwargs.get('prompt', '')] * device_count,
-                                                  image=[args['image']] * device_count,
-                                                  mask=[args['mask_image']] * device_count)
-
-                args['masked_image'] = shard(processed_images)
-                args['mask'] = shard(processed_masks)
-
-                args.pop('strength')
-                args.pop('image')
-                args.pop('mask_image')
-            else:
-                prompt_ids, processed_images = self._pipeline.prepare_inputs(
-                    prompt=[kwargs.get('prompt', '')] * device_count,
-                    image=[args['image']] * device_count)
-                args['image'] = shard(processed_images)
-
-            args['width'] = processed_images[0].shape[2]
-            args['height'] = processed_images[0].shape[1]
+        negative_prompt = user_args.get('negative_prompt', None)
+        if negative_prompt is not None:
+            negative_prompt_ids = pipe.prepare_text_inputs([negative_prompt] * device_count)
         else:
-            prompt_ids = self._pipeline.prepare_inputs([kwargs.get('prompt', '')] * device_count)
+            negative_prompt_ids = None
 
-        images = self._pipeline(prompt_ids=shard(prompt_ids), params=replicate(self._flax_params),
-                                **args, jit=True)[0]
+        processed_image = pipe.prepare_image_inputs([default_args.get('image')] * device_count)
+        default_args.pop('image')
+
+        p_params = replicate(self._flax_params)
+        prompt_ids = shard(prompt_ids)
+        negative_prompt_ids = shard(negative_prompt_ids)
+        processed_image = shard(processed_image)
+
+        default_args.pop('width', None)
+        default_args.pop('height', None)
+
+        images = self._call_pipeline(prompt_ids=prompt_ids,
+                                     image=processed_image,
+                                     params=p_params,
+                                     neg_prompt_ids=negative_prompt_ids,
+                                     jit=True, **default_args)[0]
 
         return PipelineResultWrapper(
             _image_grid(self._pipeline.numpy_to_pil(images.reshape((images.shape[0],) + images.shape[-3:])),
                         device_count, 1))
 
-    def _call_torch(self, args, kwargs):
-        sdxl_original_size = kwargs.get('sdxl_original_size', None)
-        sdxl_target_size = kwargs.get('sdxl_target_size', None)
+    def _call_flax(self, default_args, user_args):
+        if user_args.get('sdxl_original_size', None) is not None:
+            raise NotImplementedError('--sdxl-original-size micro-conditioning may only be used with SDXL models.')
+        if user_args.get('sdxl_target_size', None) is not None:
+            raise NotImplementedError('--sdxl-target-size micro-conditioning may only be used with SDXL models.')
+
+        if hasattr(self._pipeline, 'controlnet'):
+            return self._call_flax_control_net(default_args, user_args)
+
+        device_count = jax.device_count()
+
+        default_args['prng_seed'] = jax.random.split(jax.random.PRNGKey(user_args.get('seed', 0)), device_count)
+
+        processed_masks = None
+
+        negative_prompt = user_args.get('negative_prompt', None)
+
+        if negative_prompt is not None:
+            negative_prompt_ids = shard(
+                self._pipeline.prepare_text_inputs([negative_prompt] * device_count))
+        else:
+            negative_prompt_ids = None
+
+        if 'image' in default_args:
+            if 'mask_image' in default_args:
+
+                prompt_ids, processed_images, processed_masks = \
+                    self._pipeline.prepare_inputs(prompt=[user_args.get('prompt', '')] * device_count,
+                                                  image=[default_args['image']] * device_count,
+                                                  mask=[default_args['mask_image']] * device_count)
+
+                default_args['masked_image'] = shard(processed_images)
+                default_args['mask'] = shard(processed_masks)
+
+                default_args.pop('strength')
+                default_args.pop('image')
+                default_args.pop('mask_image')
+            else:
+                prompt_ids, processed_images = self._pipeline.prepare_inputs(
+                    prompt=[user_args.get('prompt', '')] * device_count,
+                    image=[default_args['image']] * device_count)
+                default_args['image'] = shard(processed_images)
+
+            default_args['width'] = processed_images[0].shape[2]
+            default_args['height'] = processed_images[0].shape[1]
+        else:
+            prompt_ids = self._pipeline.prepare_inputs([user_args.get('prompt', '')] * device_count)
+
+        images = self._call_pipeline(prompt_ids=shard(prompt_ids),
+                                     negative_prompt_ids=negative_prompt_ids,
+                                     params=replicate(self._flax_params),
+                                     **default_args, jit=True)[0]
+
+        return PipelineResultWrapper(
+            _image_grid(self._pipeline.numpy_to_pil(images.reshape((images.shape[0],) + images.shape[-3:])),
+                        device_count, 1))
+
+    def _call_torch(self, default_args, user_args):
+        sdxl_original_size = user_args.get('sdxl_original_size', None)
+        sdxl_target_size = user_args.get('sdxl_target_size', None)
 
         model_type = get_model_type_enum(self._model_type)
 
         if model_type != ModelTypes.TORCH_SDXL:
             if sdxl_original_size is not None:
-                raise NotImplementedError('original-size micro-conditioning may only be used with SDXL models.')
+                raise NotImplementedError('--sdxl-original-size micro-conditioning may only be used with SDXL models.')
             if sdxl_target_size is not None:
-                raise NotImplementedError('target-size micro-conditioning may only be used with SDXL models.')
+                raise NotImplementedError('--sdxl-target-size micro-conditioning may only be used with SDXL models.')
         else:
             if sdxl_original_size is not None:
-                args['target_size'] = sdxl_target_size
+                default_args['target_size'] = sdxl_target_size
             if sdxl_target_size is not None:
-                args['original_size'] = sdxl_original_size
+                default_args['original_size'] = sdxl_original_size
 
         if model_type != ModelTypes.TORCH_UPSCALER_X2:
             # Does not take this argument, can only produce one image
-            args['num_images_per_prompt'] = kwargs.get('num_images_per_prompt', 1)
+            default_args['num_images_per_prompt'] = user_args.get('num_images_per_prompt', 1)
 
-        args['generator'] = torch.Generator(device=self._device).manual_seed(kwargs.get('seed', 0))
-        args['prompt'] = kwargs.get('prompt', '')
-        args['negative_prompt'] = kwargs.get('negative_prompt', None)
+        default_args['generator'] = torch.Generator(device=self._device).manual_seed(user_args.get('seed', 0))
+        default_args['prompt'] = user_args.get('prompt', '')
+        default_args['negative_prompt'] = user_args.get('negative_prompt', None)
 
         if isinstance(self._pipeline, StableDiffusionInpaintPipelineLegacy):
             # Not necessary, will cause an error
-            args.pop('width')
-            args.pop('height')
+            default_args.pop('width')
+            default_args.pop('height')
 
         if self._sdxl_refiner_pipeline is not None:
-            high_noise_fraction = kwargs.get('sdxl_high_noise_fraction',
-                                             DEFAULT_SDXL_HIGH_NOISE_FRACTION)
+            high_noise_fraction = user_args.get('sdxl_high_noise_fraction',
+                                                DEFAULT_SDXL_HIGH_NOISE_FRACTION)
 
-            if isinstance(self._pipeline, StableDiffusionXLControlNetPipeline):
+            has_control_net = hasattr(self._pipeline, 'controlnet')
+            if has_control_net:
                 i_start = {'control_guidance_end': high_noise_fraction}
             else:
                 i_start = {'denoising_end': high_noise_fraction}
 
-            image = self._pipeline(**args,
-                                   **i_start,
-                                   output_type="latent").images
+            image = self._call_pipeline(**default_args,
+                                        **i_start,
+                                        output_type="latent").images
 
-            args['image'] = image
+            default_args['image'] = image
 
             if not isinstance(self._sdxl_refiner_pipeline, StableDiffusionXLInpaintPipeline):
                 # Width / Height not necessary for any other refiner
                 if not (isinstance(self._pipeline, StableDiffusionXLImg2ImgPipeline) and
                         isinstance(self._sdxl_refiner_pipeline, StableDiffusionXLImg2ImgPipeline)):
                     # Width / Height does not get passed to img2img
-                    args.pop('width')
-                    args.pop('height')
+                    default_args.pop('width')
+                    default_args.pop('height')
 
             # refiner does not use LoRA
-            args.pop('cross_attention_kwargs', None)
+            default_args.pop('cross_attention_kwargs', None)
 
-            return PipelineResultWrapper(
-                self._sdxl_refiner_pipeline(**args, denoising_start=high_noise_fraction).images[0])
+            if has_control_net:
+                default_args.pop('control_image', None)
 
+            pipe_result = PipelineResultWrapper(
+                self._call_sdxl_refiner(**default_args, denoising_start=high_noise_fraction).images[0])
+
+            return pipe_result
         else:
-            return PipelineResultWrapper(self._pipeline(**args).images[0])
+            return PipelineResultWrapper(self._call_pipeline(**default_args).images[0])
 
     def _lazy_init_pipeline(self, pipeline_type):
         if self._pipeline is not None:
@@ -1215,9 +1427,11 @@ class DiffusionPipelineWrapperBase:
                                                 revision=self._revision,
                                                 dtype=self._dtype,
                                                 vae_path=self._vae_path,
+                                                control_net_paths=self._control_net_paths,
                                                 scheduler=self._scheduler,
                                                 safety_checker=self._safety_checker,
-                                                auth_token=self._auth_token)
+                                                auth_token=self._auth_token,
+                                                device=self._device)
 
         elif self._sdxl_refiner_path is not None:
             if model_type != ModelTypes.TORCH_SDXL:
@@ -1262,11 +1476,6 @@ class DiffusionPipelineWrapperBase:
                                                              'text_encoder_2': self._pipeline.text_encoder_2},
                                                  device=self._device)
 
-            if self._device.startswith('cuda'):
-                gpu_id = _gpu_id_from_cuda_device(self._device)
-                self._pipeline.enable_model_cpu_offload(gpu_id)
-                self._sdxl_refiner_pipeline.enable_model_cpu_offload(gpu_id)
-
         else:
             self._pipeline = \
                 _create_torch_diffusion_pipeline(pipeline_type,
@@ -1283,17 +1492,17 @@ class DiffusionPipelineWrapperBase:
                                                  scheduler=self._scheduler,
                                                  safety_checker=self._safety_checker,
                                                  auth_token=self._auth_token,
-                                                 device=self._device).to(self.device)
+                                                 device=self._device)
 
-    def __call__(self, **kwargs):
-        args = self._pipeline_defaults(kwargs)
+    def __call__(self, **kwargs) -> PipelineResultWrapper:
+        default_args = self._pipeline_defaults(kwargs)
 
         model_type = get_model_type_enum(self._model_type)
 
         if model_type == ModelTypes.FLAX:
-            result = self._call_flax(args, kwargs)
+            result = self._call_flax(default_args, kwargs)
         else:
-            result = self._call_torch(args, kwargs)
+            result = self._call_torch(default_args, kwargs)
 
         result._dgenerate_opts = self._reconstruct_dgenerate_opts(**kwargs)
         return result
@@ -1333,7 +1542,7 @@ class DiffusionPipelineWrapper(DiffusionPipelineWrapperBase):
             safety_checker,
             auth_token)
 
-    def __call__(self, **kwargs):
+    def __call__(self, **kwargs) -> PipelineResultWrapper:
         self._lazy_init_pipeline(_PipelineTypes.BASIC)
 
         return super().__call__(**kwargs)
@@ -1374,7 +1583,7 @@ class DiffusionPipelineImg2ImgWrapper(DiffusionPipelineWrapperBase):
             safety_checker,
             auth_token)
 
-    def __call__(self, **kwargs):
+    def __call__(self, **kwargs) -> PipelineResultWrapper:
         if 'mask_image' in kwargs:
             self._lazy_init_pipeline(_PipelineTypes.INPAINT)
         else:
