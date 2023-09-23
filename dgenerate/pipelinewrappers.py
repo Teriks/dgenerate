@@ -48,7 +48,7 @@ from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline, S
     StableDiffusionXLInpaintPipeline, StableDiffusionUpscalePipeline, StableDiffusionLatentUpscalePipeline, \
     ControlNetModel, AutoencoderKL, AsymmetricAutoencoderKL, AutoencoderTiny, StableDiffusionControlNetPipeline, \
     StableDiffusionControlNetInpaintPipeline, StableDiffusionControlNetImg2ImgPipeline, \
-    StableDiffusionXLControlNetPipeline, StableDiffusionXLControlNetImg2ImgPipeline,\
+    StableDiffusionXLControlNetPipeline, StableDiffusionXLControlNetImg2ImgPipeline, \
     StableDiffusionXLControlNetInpaintPipeline
 
 _TORCH_MODEL_CACHE = dict()
@@ -100,12 +100,11 @@ _sdxl_refiner_path_parser = ConceptModelPathParser('SDXL Refiner', ['revision', 
 _torch_vae_path_parser = ConceptModelPathParser('VAE', ['model', 'revision', 'variant', 'subfolder', 'dtype'])
 _flax_vae_path_parser = ConceptModelPathParser('VAE', ['model', 'revision', 'subfolder', 'dtype'])
 
-_torch_control_net_path_parser = ConceptModelPathParser('Control Net',
-                                                        ['revision', 'variant', 'subfolder', 'upcast_attention',
-                                                         'dtype'])
+_torch_controlnet_path_parser = ConceptModelPathParser('ControlNet',
+                                                       ['scale', 'revision', 'variant', 'subfolder', 'dtype'])
 
-_flax_control_net_path_parser = ConceptModelPathParser('Control Net',
-                                                       ['revision', 'subfolder', 'dtype', 'from_torch'])
+_flax_controlnet_path_parser = ConceptModelPathParser('ControlNet',
+                                                      ['scale', 'revision', 'subfolder', 'dtype', 'from_torch'])
 
 _lora_path_parser = ConceptModelPathParser('LoRA', ['scale', 'revision', 'subfolder', 'weight-name'])
 _textual_inversion_path_parser = ConceptModelPathParser('Textual Inversion',
@@ -113,14 +112,15 @@ _textual_inversion_path_parser = ConceptModelPathParser('Textual Inversion',
 
 
 class FlaxControlNetPath:
-    def __init__(self, model, revision, subfolder, dtype, from_torch):
+    def __init__(self, model, scale, revision, subfolder, dtype, from_torch):
         self.model = model
         self.revision = revision
         self.subfolder = subfolder
         self.dtype = dtype
         self.from_torch = from_torch
+        self.scale = scale
 
-    def load(self, device, **kwargs):
+    def load(self, device, flax_dtype_fallback, **kwargs):
         cache_by = kwargs
         cache_by['device'] = device
         cache_key = _function_cache_key(cache_by)
@@ -133,25 +133,26 @@ class FlaxControlNetPath:
         single_file_load_path = _is_single_file_model_load(self.model)
 
         if single_file_load_path:
-            raise NotImplementedError('Flax --control-nets do not support single file loads from disk.')
+            raise NotImplementedError('Flax --controlnets do not support single file loads from disk.')
         else:
-            new_net: FlaxControlNetModel = FlaxControlNetModel.from_pretrained(self.model,
-                                                                               revision=self.revision,
-                                                                               subfolder=self.subfolder,
-                                                                               dtype=self.dtype,
-                                                                               from_pt=self.from_torch,
-                                                                               **kwargs)
+            new_net: FlaxControlNetModel = \
+                FlaxControlNetModel.from_pretrained(self.model,
+                                                    revision=self.revision,
+                                                    subfolder=self.subfolder,
+                                                    dtype=flax_dtype_fallback if self.dtype is None else self.dtype,
+                                                    from_pt=self.from_torch,
+                                                    **kwargs)
 
         _FLAX_CONTROL_NET_CACHE[cache_key] = new_net
         return new_net
 
 
-def parse_flax_control_net_path(path):
+def parse_flax_controlnet_path(path):
     try:
-        r = _flax_control_net_path_parser.parse_concept_path(path)
+        r = _flax_controlnet_path_parser.parse_concept_path(path)
 
         dtype = r.args.get('dtype', None)
-
+        scale = r.args.get('scale', 1.0)
         from_torch = r.args.get('from_torch', None)
 
         if from_torch is not None:
@@ -164,10 +165,16 @@ def parse_flax_control_net_path(path):
         if dtype not in {'float32', 'float16', 'auto', None}:
             raise InvalidVaePathError('Flax Control Net dtype must be float32, float16, auto, or left undefined.')
 
+        try:
+            scale = float(scale)
+        except ValueError:
+            raise InvalidControlNetPathError('Flax Control Net scale must be a floating point number.')
+
         return FlaxControlNetPath(
             model=r.concept,
             revision=r.args.get('revision', None),
             subfolder=r.args.get('subfolder', None),
+            scale=scale,
             dtype=_get_flax_dtype(dtype),
             from_torch=from_torch)
 
@@ -176,15 +183,15 @@ def parse_flax_control_net_path(path):
 
 
 class TorchControlNetPath:
-    def __init__(self, model, revision, variant, subfolder, upcast_attention, dtype):
+    def __init__(self, model, scale, revision, variant, subfolder, dtype):
         self.model = model
         self.revision = revision
         self.variant = variant
         self.subfolder = subfolder
-        self.upcast_attention = upcast_attention
         self.dtype = dtype
+        self.scale = scale
 
-    def load(self, device, **kwargs) -> ControlNetModel:
+    def load(self, device, torch_dtype_fallback, **kwargs) -> ControlNetModel:
         cache_by = kwargs
         cache_by['device'] = device
         cache_key = _function_cache_key(cache_by)
@@ -197,48 +204,46 @@ class TorchControlNetPath:
         single_file_load_path = _is_single_file_model_load(self.model)
 
         if single_file_load_path:
-            new_net: ControlNetModel = ControlNetModel.from_single_file(self.model,
-                                                                        revision=self.revision,
-                                                                        upcast_attention=self.upcast_attention,
-                                                                        torch_dtype=self.dtype,
-                                                                        **kwargs)
+            new_net: ControlNetModel = \
+                ControlNetModel.from_single_file(self.model,
+                                                 revision=self.revision,
+                                                 torch_dtype=torch_dtype_fallback if self.dtype is None else self.dtype,
+                                                 **kwargs)
         else:
-            new_net: ControlNetModel = ControlNetModel.from_pretrained(self.model,
-                                                                       revision=self.revision,
-                                                                       variant=self.variant,
-                                                                       subfolder=self.subfolder,
-                                                                       upcast_attention=self.upcast_attention,
-                                                                       torch_dtype=self.dtype,
-                                                                       **kwargs)
+            new_net: ControlNetModel = \
+                ControlNetModel.from_pretrained(self.model,
+                                                revision=self.revision,
+                                                variant=self.variant,
+                                                subfolder=self.subfolder,
+                                                torch_dtype=torch_dtype_fallback if self.dtype is None else self.dtype,
+                                                **kwargs)
 
         _TORCH_CONTROL_NET_CACHE[cache_key] = new_net
         return new_net
 
 
-def parse_torch_control_net_path(path) -> TorchControlNetPath:
+def parse_torch_controlnet_path(path) -> TorchControlNetPath:
     try:
-        r = _torch_control_net_path_parser.parse_concept_path(path)
+        r = _torch_controlnet_path_parser.parse_concept_path(path)
 
         dtype = r.args.get('dtype', None)
-        upcast_attention = r.args.get('upcast_attention', None)
-
-        if upcast_attention is not None:
-            try:
-                upcast_attention = bool(upcast_attention)
-            except ValueError:
-                raise InvalidControlNetPathError(
-                    'Torch Control Net upcast_attention must be undefined or boolean (true or false)')
+        scale = r.args.get('scale', 1.0)
 
         if dtype not in {'float32', 'float16', 'auto', None}:
             raise InvalidVaePathError('Torch Control Net dtype must be float32, float16, auto, or left undefined.')
+
+        try:
+            scale = float(scale)
+        except ValueError:
+            raise InvalidControlNetPathError('Torch Control Net scale must be a floating point number.')
 
         return TorchControlNetPath(
             model=r.concept,
             revision=r.args.get('revision', None),
             variant=r.args.get('variant', None),
             subfolder=r.args.get('subfolder', None),
-            upcast_attention=upcast_attention,
-            dtype=_get_torch_dtype(dtype), )
+            dtype=_get_torch_dtype(dtype),
+            scale=scale)
 
     except ConceptModelPathParseError as e:
         raise InvalidControlNetPathError(e)
@@ -595,7 +600,7 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                                      vae_path=None,
                                      lora_paths=None,
                                      textual_inversion_paths=None,
-                                     control_net_paths=None,
+                                     controlnet_paths=None,
                                      scheduler=None,
                                      safety_checker=False,
                                      auth_token=None,
@@ -616,15 +621,15 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                           else StableDiffusionLatentUpscalePipeline)
     else:
         sdxl = model_type == ModelTypes.TORCH_SDXL
-        has_control_nets = control_net_paths is not None and len(control_net_paths) > 0
+        has_controlnets = controlnet_paths is not None and len(controlnet_paths) > 0
 
         if pipeline_type == _PipelineTypes.BASIC:
-            if has_control_nets:
+            if has_controlnets:
                 pipeline_class = StableDiffusionXLControlNetPipeline if sdxl else StableDiffusionControlNetPipeline
             else:
                 pipeline_class = StableDiffusionXLPipeline if sdxl else StableDiffusionPipeline
         elif pipeline_type == _PipelineTypes.IMG2IMG:
-            if has_control_nets:
+            if has_controlnets:
                 if sdxl:
                     pipeline_class = StableDiffusionXLControlNetImg2ImgPipeline
                 else:
@@ -632,7 +637,7 @@ def _create_torch_diffusion_pipeline(pipeline_type,
             else:
                 pipeline_class = StableDiffusionXLImg2ImgPipeline if sdxl else StableDiffusionImg2ImgPipeline
         elif pipeline_type == _PipelineTypes.INPAINT:
-            if has_control_nets:
+            if has_controlnets:
                 if sdxl:
                     pipeline_class = StableDiffusionXLControlNetInpaintPipeline
                 else:
@@ -665,6 +670,8 @@ def _create_torch_diffusion_pipeline(pipeline_type,
 
     torch_dtype = _get_torch_dtype(dtype)
 
+    controlnet_conditioning_scales = []
+
     if scheduler is None or scheduler.lower() != 'help':
         # prevent waiting on this stuff just get the scheduler
         # help message for the main model
@@ -674,12 +681,17 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                                               torch_dtype_fallback=torch_dtype,
                                               use_auth_token=auth_token,
                                               device=device)
-        if control_net_paths is not None:
+        if controlnet_paths is not None:
             controlnets = None
 
-            for control_net_path in control_net_paths:
-                new_net = parse_torch_control_net_path(control_net_path) \
-                    .load(use_auth_token=auth_token, device=device)
+            for controlnet_path in controlnet_paths:
+                parsed_controlnet_path = parse_torch_controlnet_path(controlnet_path)
+
+                controlnet_conditioning_scales.append(parsed_controlnet_path.scale)
+
+                new_net = parsed_controlnet_path.load(use_auth_token=auth_token,
+                                                      device=device,
+                                                      torch_dtype_fallback=torch_dtype)
 
                 if controlnets is not None:
                     if not isinstance(controlnets, list):
@@ -720,7 +732,7 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                 load_on_pipeline(pipeline, use_auth_token=auth_token)
 
     if lora_paths is not None:
-        if control_net_paths is not None and model_type == ModelTypes.TORCH_SDXL:
+        if controlnet_paths is not None and model_type == ModelTypes.TORCH_SDXL:
             raise NotImplementedError(
                 'LoRA currently cannot be used with Control Nets when using SDXL')
 
@@ -737,8 +749,9 @@ def _create_torch_diffusion_pipeline(pipeline_type,
 
             pipeline.safety_checker = _disabled_safety_checker
 
-    _TORCH_MODEL_CACHE[cache_key] = pipeline
-    return pipeline
+    _TORCH_MODEL_CACHE[cache_key] = (pipeline, controlnet_conditioning_scales)
+
+    return pipeline, controlnet_conditioning_scales
 
 
 def _create_flax_diffusion_pipeline(pipeline_type,
@@ -747,7 +760,7 @@ def _create_flax_diffusion_pipeline(pipeline_type,
                                     dtype,
                                     model_subfolder=None,
                                     vae_path=None,
-                                    control_net_paths=None,
+                                    controlnet_paths=None,
                                     scheduler=None,
                                     safety_checker=False,
                                     auth_token=None,
@@ -759,25 +772,25 @@ def _create_flax_diffusion_pipeline(pipeline_type,
     if catch_hit is not None:
         return catch_hit
 
-    has_control_nets = False
-    if control_net_paths is not None:
-        if len(control_net_paths) > 1:
-            raise NotImplementedError('Flax does not support multiple --control-nets.')
-        if len(control_net_paths) == 1:
-            has_control_nets = True
+    has_controlnets = False
+    if controlnet_paths is not None:
+        if len(controlnet_paths) > 1:
+            raise NotImplementedError('Flax does not support multiple --controlnets.')
+        if len(controlnet_paths) == 1:
+            has_controlnets = True
 
     if pipeline_type == _PipelineTypes.BASIC:
-        if has_control_nets:
+        if has_controlnets:
             pipeline_class = FlaxStableDiffusionControlNetPipeline
         else:
             pipeline_class = FlaxStableDiffusionPipeline
     elif pipeline_type == _PipelineTypes.IMG2IMG:
-        if has_control_nets:
-            raise NotImplementedError('Flax does not support --image-seeds with --control-nets, use --control-images.')
+        if has_controlnets:
+            raise NotImplementedError('Flax does not support --image-seeds with --controlnets, use --control-images.')
         pipeline_class = FlaxStableDiffusionImg2ImgPipeline
     elif pipeline_type == _PipelineTypes.INPAINT:
-        if has_control_nets:
-            raise NotImplementedError('Flax does not support --image-seeds with --control-nets, use --control-images.')
+        if has_controlnets:
+            raise NotImplementedError('Flax does not support --image-seeds with --controlnets, use --control-images.')
         pipeline_class = FlaxStableDiffusionInpaintPipeline
     else:
         raise NotImplementedError('Pipeline type not implemented.')
@@ -787,6 +800,8 @@ def _create_flax_diffusion_pipeline(pipeline_type,
     controlnet_params = None
 
     flax_dtype = _get_flax_dtype(dtype)
+
+    controlnet_conditioning_scales = []
 
     if scheduler is None or scheduler.lower() != 'help':
         # prevent waiting on this stuff just get the scheduler
@@ -799,9 +814,13 @@ def _create_flax_diffusion_pipeline(pipeline_type,
                                                   device=device)
             kwargs['vae'] = vae_path
 
-        if control_net_paths is not None:
-            controlnet, controlnet_params = parse_flax_control_net_path(control_net_paths[0]) \
-                .load(use_auth_token=auth_token, device=device)
+        if controlnet_paths is not None:
+            parsed_flax_controlnet_path = parse_flax_controlnet_path(controlnet_paths[0])
+
+            controlnet_conditioning_scales.append(parsed_flax_controlnet_path.scale)
+
+            controlnet, controlnet_params = parse_flax_controlnet_path(controlnet_paths[0]) \
+                .load(use_auth_token=auth_token, device=device, flax_dtype_fallback=flax_dtype)
 
             kwargs['controlnet'] = controlnet
 
@@ -826,8 +845,9 @@ def _create_flax_diffusion_pipeline(pipeline_type,
     if not safety_checker:
         pipeline.safety_checker = None
 
-    _FLAX_MODEL_CACHE[cache_key] = (pipeline, params)
-    return pipeline, params
+    _FLAX_MODEL_CACHE[cache_key] = (pipeline, params, controlnet_conditioning_scales)
+
+    return pipeline, params, controlnet_conditioning_scales
 
 
 def supported_model_types():
@@ -963,7 +983,7 @@ class DiffusionPipelineWrapperBase:
                  vae_path=None,
                  lora_paths=None,
                  textual_inversion_paths=None,
-                 control_net_paths=None,
+                 controlnet_paths=None,
                  sdxl_refiner_path=None,
                  scheduler=None,
                  safety_checker=False,
@@ -985,7 +1005,8 @@ class DiffusionPipelineWrapperBase:
         self._lora_paths = lora_paths
         self._lora_scale = None
         self._textual_inversion_paths = textual_inversion_paths
-        self._control_net_paths = control_net_paths
+        self._controlnet_paths = controlnet_paths
+        self._controlnet_conditioning_scales = []
         self._sdxl_refiner_path = sdxl_refiner_path
         self._sdxl_refiner_pipeline = None
         self._auth_token = auth_token
@@ -1049,9 +1070,9 @@ class DiffusionPipelineWrapperBase:
             isinstance(self._textual_inversion_paths, str) else self.textual_inversion_paths
 
     @property
-    def control_net_paths(self):
-        return [self._control_net_paths] if \
-            isinstance(self._control_net_paths, str) else self._control_net_paths
+    def controlnet_paths(self):
+        return [self._controlnet_paths] if \
+            isinstance(self._controlnet_paths, str) else self._controlnet_paths
 
     @property
     def device(self):
@@ -1148,11 +1169,11 @@ class DiffusionPipelineWrapperBase:
             else:
                 opts.append(('--textual-inversions', ' '.join(quote(p) for p in self._textual_inversion_paths)))
 
-        if self._control_net_paths is not None:
-            if isinstance(self._control_net_paths, str):
-                opts.append(('--control-nets', quote(self._control_net_paths)))
+        if self._controlnet_paths is not None:
+            if isinstance(self._controlnet_paths, str):
+                opts.append(('--controlnets', quote(self._controlnet_paths)))
             else:
-                opts.append(('--control-nets', ' '.join(quote(p) for p in self._control_net_paths)))
+                opts.append(('--controlnets', ' '.join(quote(p) for p in self._controlnet_paths)))
 
         if self._scheduler is not None:
             opts.append(('--scheduler', self._scheduler))
@@ -1202,7 +1223,7 @@ class DiffusionPipelineWrapperBase:
         args['guidance_scale'] = float(user_args.get('guidance_scale', DEFAULT_GUIDANCE_SCALE))
         args['num_inference_steps'] = user_args.get('num_inference_steps', DEFAULT_INFERENCE_STEPS)
 
-        if self._control_net_paths is not None:
+        if self._controlnet_paths is not None:
             control_image = user_args['control_image']
             if self._pipeline_type == _PipelineTypes.BASIC:
                 args['image'] = control_image
@@ -1243,7 +1264,7 @@ class DiffusionPipelineWrapperBase:
 
         return args
 
-    def _call_flax_control_net(self, default_args, user_args):
+    def _call_flax_controlnet(self, default_args, user_args):
 
         device_count = jax.device_count()
 
@@ -1286,7 +1307,7 @@ class DiffusionPipelineWrapperBase:
             raise NotImplementedError('--sdxl-target-size micro-conditioning may only be used with SDXL models.')
 
         if hasattr(self._pipeline, 'controlnet'):
-            return self._call_flax_control_net(default_args, user_args)
+            return self._call_flax_controlnet(default_args, user_args)
 
         device_count = jax.device_count()
 
@@ -1370,9 +1391,12 @@ class DiffusionPipelineWrapperBase:
             high_noise_fraction = user_args.get('sdxl_high_noise_fraction',
                                                 DEFAULT_SDXL_HIGH_NOISE_FRACTION)
 
-            has_control_net = hasattr(self._pipeline, 'controlnet')
-            if has_control_net:
-                i_start = {'control_guidance_end': high_noise_fraction}
+            has_controlnet = hasattr(self._pipeline, 'controlnet')
+            if has_controlnet:
+                i_start = {
+                    'control_guidance_end': high_noise_fraction,
+                    'controlnet_conditioning_scale': self._controlnet_conditioning_scales
+                }
             else:
                 i_start = {'denoising_end': high_noise_fraction}
 
@@ -1393,7 +1417,7 @@ class DiffusionPipelineWrapperBase:
             # refiner does not use LoRA
             default_args.pop('cross_attention_kwargs', None)
 
-            if has_control_net:
+            if has_controlnet:
                 default_args.pop('control_image', None)
 
             pipe_result = PipelineResultWrapper(
@@ -1421,13 +1445,13 @@ class DiffusionPipelineWrapperBase:
             if self._textual_inversion_paths is not None:
                 raise NotImplementedError('Textual inversion not supported for flax.')
 
-            self._pipeline, self._flax_params = \
+            self._pipeline, self._flax_params, self._controlnet_conditioning_scales = \
                 _create_flax_diffusion_pipeline(pipeline_type,
                                                 self._model_path,
                                                 revision=self._revision,
                                                 dtype=self._dtype,
                                                 vae_path=self._vae_path,
-                                                control_net_paths=self._control_net_paths,
+                                                controlnet_paths=self._controlnet_paths,
                                                 scheduler=self._scheduler,
                                                 safety_checker=self._safety_checker,
                                                 auth_token=self._auth_token,
@@ -1438,7 +1462,7 @@ class DiffusionPipelineWrapperBase:
                 raise NotImplementedError('Only Stable Diffusion XL models support refiners, '
                                           'please use --model-type torch-sdxl if you are trying to load an sdxl model.')
 
-            self._pipeline = \
+            self._pipeline, self._controlnet_conditioning_scales = \
                 _create_torch_diffusion_pipeline(pipeline_type,
                                                  ModelTypes.TORCH_SDXL,
                                                  self._model_path,
@@ -1448,7 +1472,7 @@ class DiffusionPipelineWrapperBase:
                                                  dtype=self._dtype,
                                                  vae_path=self._vae_path,
                                                  lora_paths=self._lora_paths,
-                                                 control_net_paths=self._control_net_paths,
+                                                 controlnet_paths=self._controlnet_paths,
                                                  scheduler=self._scheduler,
                                                  safety_checker=self._safety_checker,
                                                  auth_token=self._auth_token,
@@ -1474,10 +1498,10 @@ class DiffusionPipelineWrapperBase:
                                                  auth_token=self._auth_token,
                                                  extra_args={'vae': self._pipeline.vae,
                                                              'text_encoder_2': self._pipeline.text_encoder_2},
-                                                 device=self._device)
+                                                 device=self._device)[0]
 
         else:
-            self._pipeline = \
+            self._pipeline, self._controlnet_conditioning_scales = \
                 _create_torch_diffusion_pipeline(pipeline_type,
                                                  model_type,
                                                  self._model_path,
@@ -1488,7 +1512,7 @@ class DiffusionPipelineWrapperBase:
                                                  vae_path=self._vae_path,
                                                  lora_paths=self._lora_paths,
                                                  textual_inversion_paths=self._textual_inversion_paths,
-                                                 control_net_paths=self._control_net_paths,
+                                                 controlnet_paths=self._controlnet_paths,
                                                  scheduler=self._scheduler,
                                                  safety_checker=self._safety_checker,
                                                  auth_token=self._auth_token,
@@ -1520,7 +1544,7 @@ class DiffusionPipelineWrapper(DiffusionPipelineWrapperBase):
                  vae_path=None,
                  lora_paths=None,
                  textual_inversion_paths=None,
-                 control_net_paths=None,
+                 controlnet_paths=None,
                  sdxl_refiner_path=None,
                  scheduler=None,
                  safety_checker=False,
@@ -1536,7 +1560,7 @@ class DiffusionPipelineWrapper(DiffusionPipelineWrapperBase):
             vae_path,
             lora_paths,
             textual_inversion_paths,
-            control_net_paths,
+            controlnet_paths,
             sdxl_refiner_path,
             scheduler,
             safety_checker,
@@ -1560,7 +1584,7 @@ class DiffusionPipelineImg2ImgWrapper(DiffusionPipelineWrapperBase):
                  vae_path=None,
                  lora_paths=None,
                  textual_inversion_paths=None,
-                 control_net_paths=None,
+                 controlnet_paths=None,
                  sdxl_refiner_path=None,
                  scheduler=None,
                  safety_checker=False,
@@ -1577,7 +1601,7 @@ class DiffusionPipelineImg2ImgWrapper(DiffusionPipelineWrapperBase):
             vae_path,
             lora_paths,
             textual_inversion_paths,
-            control_net_paths,
+            controlnet_paths,
             sdxl_refiner_path,
             scheduler,
             safety_checker,

@@ -110,10 +110,11 @@ parser.add_argument('--vae', action='store', default=None,
                     The "revision" argument specifies the model revision to use for the VAE when loading from 
                     huggingface repository or blob link, (The git branch / tag, default is "main").
                     
-                    The "variant" argument specifies the VAE model variant and defaults to the value of --variant,
-                    when "variant" is specified when loading from a huggingface repository or folder,
-                    weights will be loaded from "variant" filename, e.g. "pytorch_model.<variant>.safetensors.
-                    "variant" defaults to automatic selection and is ignored if using flax.
+                    The "variant" argument specifies the VAE model variant, if "variant" is specified when loading 
+                    from a huggingface repository or folder, weights will be loaded from "variant" filename, e.g. 
+                    "pytorch_model.<variant>.safetensors. "variant" defaults to automatic selection and is ignored if 
+                    using flax. "variant" in the case of --vae does not default to the value of --variant to prevent
+                    failures during common use cases.
                     
                     The "subfolder" argument specifies the VAE model subfolder, if specified when loading from a 
                     huggingface repository or folder, weights from the specified subfolder.
@@ -187,11 +188,48 @@ parser.add_argument('--textual-inversions', nargs='+', action='store', default=N
                     --textual-inversions "my_ti_model.safetensors", all other loading arguments 
                     are unused in this case and may produce an error message if used.""")
 
-parser.add_argument('--control-nets', nargs='+', action='store', default=None,
+parser.add_argument('--controlnets', nargs='+', action='store', default=None,
                     help=
-                    """Specify one or more Control Net models. This should be a
+                    """Specify one or more ControlNet models. This should be a
                     huggingface repository slug / blob link, path to model file on disk (for example, a .pt, .pth, .bin,
-                    .ckpt, or .safetensors file), or model folder containing model files.""")
+                    .ckpt, or .safetensors file), or model folder containing model files.
+                    
+                    Optional arguments can be provided after the ControlNet model specification, for torch
+                    these include: "scale", "revision", "variant", "subfolder", and "dtype".
+                    
+                    For flax: "scale", "revision", "subfolder", "dtype", "from_torch" (bool)
+                    
+                    They can be specified as so in any order, they are not positional:
+                    "huggingface/controlnet;scale=1.0;revision=main;variant=fp16;subfolder=repo_subfolder;dtype=float16".
+                    
+                    The "scale" argument specifies the scaling factor applied to the ControlNet model, 
+                    the default value is 1.0.
+                    
+                    The "revision" argument specifies the model revision to use for the ControlNet model
+                    when loading from huggingface repository, (The git branch / tag, default is "main").
+                    
+                    The "variant" argument specifies the ControlNet model variant, if "variant" is specified when loading 
+                    from a huggingface repository or folder, weights will be loaded from "variant" filename, e.g. 
+                    "pytorch_model.<variant>.safetensors. "variant" defaults to automatic selection and is ignored if 
+                    using flax. "variant" in the case of --controlnets does not default to the value of --variant to 
+                    prevent failures during common use cases.
+                    
+                    The "subfolder" argument specifies the ControlNet model subfolder, if specified 
+                    when loading from a huggingface repository or folder, weights from the specified subfolder.
+                    
+                    The "dtype" argument specifies the ControlNet model precision, it defaults to the value of -t/--dtype
+                    and should be one of: float16 / float32 / auto.
+                
+                    If you wish to load a weights file directly from disk, the simplest way is: 
+                    --controlnets "my_controlnet.safetensors" or --controlnets "my_controlnet.safetensors;scale=1.0;dtype=float16", 
+                    all other loading arguments aside from "scale" and "dtype" are unused in this case and may produce
+                    an error message if used ("from_torch" is available when using flax).
+                    
+                    If you wish to load a specific weight file from a huggingface repository, use the blob link
+                    loading syntax: --controlnets 
+                    "https://huggingface.co/UserName/repository-name/blob/main/controlnet.safetensors",
+                    the revision argument may be used with this syntax.
+                    """)
 
 parser.add_argument('--scheduler', action='store', default=None,
                     help=f'Specify a scheduler (sampler) by name. Passing "help" to this argument '
@@ -221,6 +259,9 @@ parser.add_argument('--sdxl-refiner', action='store', default=None,
                     
                     The "subfolder" argument specifies the SDXL refiner model subfolder, if specified 
                     when loading from a huggingface repository or folder, weights from the specified subfolder.
+                    
+                    The "dtype" argument specifies the SDXL refiner model precision, it defaults to the value of -t/--dtype
+                    and should be one of: float16 / float32 / auto.
                 
                     If you wish to load a weights file directly from disk, the simplest way is: 
                     --sdxl-refiner "my_sdxl_refiner.safetensors" or --sdxl-refiner "my_sdxl_refiner.safetensors;dtype=float16", 
@@ -447,7 +488,7 @@ image_seed_args.add_argument('-is', '--image-seeds', action='store', nargs='*', 
                          Inpainting masks can be downloaded for you from a URL or be a path to a file on disk.""")
 
 image_seed_args.add_argument('-ci', '--control-images', nargs='+', action='store', default=[],
-                             help="""Specify images to try as control images for --control-nets when not specifying via --image-seed.
+                             help="""Specify images to try as control images for --controlnets when not specifying via --image-seed.
                             This argument is mutually exclusive with --image-seed.""")
 
 image_seed_noise_opts = parser.add_mutually_exclusive_group()
@@ -552,8 +593,8 @@ def parse_args(args=None, namespace=None):
         print('You cannot specify --image-seed-strengths without --image-seeds.')
         sys.exit(1)
 
-    if args.control_nets is None and len(args.control_images) > 0:
-        print('You cannot specify --control-images without --control-nets.')
+    if args.controlnets is None and len(args.control_images) > 0:
+        print('You cannot specify --control-images without --controlnets.')
         sys.exit(1)
 
     if 'upscaler' not in args.model_type and args.upscaler_noise_levels is not None:
