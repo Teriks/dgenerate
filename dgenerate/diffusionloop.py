@@ -143,7 +143,7 @@ class DiffusionRenderLoop:
         self.vae_path = None
         self.lora_paths = None
         self.textual_inversion_paths = None
-        self.controlnet_paths = None
+        self.control_net_paths = None
         self.scheduler = None
         self.safety_checker = False
         self.model_type = 'torch'
@@ -205,9 +205,9 @@ class DiffusionRenderLoop:
         if self.textual_inversion_paths is not None and not \
                 isinstance(self.textual_inversion_paths, str) and not _has_len(self.textual_inversion_paths):
             raise ValueError('DiffusionRenderLoop.textual_inversion_paths must be None or str or have len')
-        if self.controlnet_paths is not None and not \
-                isinstance(self.controlnet_paths, str) and not _has_len(self.controlnet_paths):
-            raise ValueError('DiffusionRenderLoop.controlnet_paths must be None or str or have len')
+        if self.control_net_paths is not None and not \
+                isinstance(self.control_net_paths, str) and not _has_len(self.control_net_paths):
+            raise ValueError('DiffusionRenderLoop.control_net_paths must be None or str or have len')
         if self.sdxl_refiner_path is not None and not isinstance(self.sdxl_refiner_path, str):
             raise ValueError('DiffusionRenderLoop.sdxl_refiner_path must be None or a string')
         if self.vae_path is not None and not isinstance(self.vae_path, str):
@@ -524,7 +524,7 @@ class DiffusionRenderLoop:
                                                    vae_path=self.vae_path,
                                                    lora_paths=self.lora_paths,
                                                    textual_inversion_paths=self.textual_inversion_paths,
-                                                   controlnet_paths=self.controlnet_paths,
+                                                   control_net_paths=self.control_net_paths,
                                                    scheduler=self.scheduler,
                                                    safety_checker=self.safety_checker,
                                                    sdxl_refiner_path=self.sdxl_refiner_path,
@@ -590,7 +590,7 @@ class DiffusionRenderLoop:
                                                           vae_path=self.vae_path,
                                                           lora_paths=self.lora_paths,
                                                           textual_inversion_paths=self.textual_inversion_paths,
-                                                          controlnet_paths=self.controlnet_paths,
+                                                          control_net_paths=self.control_net_paths,
                                                           scheduler=self.scheduler,
                                                           safety_checker=self.safety_checker,
                                                           sdxl_refiner_path=self.sdxl_refiner_path,
@@ -654,9 +654,9 @@ class DiffusionRenderLoop:
                             args_ctx.args['mask_image'] = image_seed_obj.mask_image
 
                         if image_seed_obj.control_image is None:
-                            if self.controlnet_paths is not None and len(self.controlnet_paths) > 0:
+                            if self.control_net_paths is not None and len(self.control_net_paths) > 0:
                                 raise NotImplementedError(
-                                    'Cannot use --controlnets without a control image, '
+                                    'Cannot use --control-nets without a control image, '
                                     'see --image-seeds and --control-images for information '
                                     'on specifying a control image.')
 

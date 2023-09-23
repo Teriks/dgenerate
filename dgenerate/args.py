@@ -188,7 +188,7 @@ parser.add_argument('--textual-inversions', nargs='+', action='store', default=N
                     --textual-inversions "my_ti_model.safetensors", all other loading arguments 
                     are unused in this case and may produce an error message if used.""")
 
-parser.add_argument('--controlnets', nargs='+', action='store', default=None,
+parser.add_argument('--control-nets', nargs='+', action='store', default=None,
                     help=
                     """Specify one or more ControlNet models. This should be a
                     huggingface repository slug / blob link, path to model file on disk (for example, a .pt, .pth, .bin,
@@ -211,7 +211,7 @@ parser.add_argument('--controlnets', nargs='+', action='store', default=None,
                     The "variant" argument specifies the ControlNet model variant, if "variant" is specified when loading 
                     from a huggingface repository or folder, weights will be loaded from "variant" filename, e.g. 
                     "pytorch_model.<variant>.safetensors. "variant" defaults to automatic selection and is ignored if 
-                    using flax. "variant" in the case of --controlnets does not default to the value of --variant to 
+                    using flax. "variant" in the case of --control-nets does not default to the value of --variant to 
                     prevent failures during common use cases.
                     
                     The "subfolder" argument specifies the ControlNet model subfolder, if specified 
@@ -221,12 +221,12 @@ parser.add_argument('--controlnets', nargs='+', action='store', default=None,
                     and should be one of: float16 / float32 / auto.
                 
                     If you wish to load a weights file directly from disk, the simplest way is: 
-                    --controlnets "my_controlnet.safetensors" or --controlnets "my_controlnet.safetensors;scale=1.0;dtype=float16", 
+                    --control-nets "my_controlnet.safetensors" or --control-nets "my_controlnet.safetensors;scale=1.0;dtype=float16", 
                     all other loading arguments aside from "scale" and "dtype" are unused in this case and may produce
                     an error message if used ("from_torch" is available when using flax).
                     
                     If you wish to load a specific weight file from a huggingface repository, use the blob link
-                    loading syntax: --controlnets 
+                    loading syntax: --control-nets 
                     "https://huggingface.co/UserName/repository-name/blob/main/controlnet.safetensors",
                     the revision argument may be used with this syntax.
                     """)
@@ -488,7 +488,7 @@ image_seed_args.add_argument('-is', '--image-seeds', action='store', nargs='*', 
                          Inpainting masks can be downloaded for you from a URL or be a path to a file on disk.""")
 
 image_seed_args.add_argument('-ci', '--control-images', nargs='+', action='store', default=[],
-                             help="""Specify images to try as control images for --controlnets when not specifying via --image-seed.
+                             help="""Specify images to try as control images for --control-nets when not specifying via --image-seed.
                             This argument is mutually exclusive with --image-seed.""")
 
 image_seed_noise_opts = parser.add_mutually_exclusive_group()
@@ -593,8 +593,8 @@ def parse_args(args=None, namespace=None):
         print('You cannot specify --image-seed-strengths without --image-seeds.')
         sys.exit(1)
 
-    if args.controlnets is None and len(args.control_images) > 0:
-        print('You cannot specify --control-images without --controlnets.')
+    if args.control_nets is None and len(args.control_images) > 0:
+        print('You cannot specify --control-images without --control-nets.')
         sys.exit(1)
 
     if 'upscaler' not in args.model_type and args.upscaler_noise_levels is not None:
