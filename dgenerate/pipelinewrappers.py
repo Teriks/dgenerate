@@ -101,10 +101,10 @@ _torch_vae_path_parser = ConceptModelPathParser('VAE', ['model', 'revision', 'va
 _flax_vae_path_parser = ConceptModelPathParser('VAE', ['model', 'revision', 'subfolder', 'dtype'])
 
 _torch_control_net_path_parser = ConceptModelPathParser('ControlNet',
-                                                       ['scale', 'revision', 'variant', 'subfolder', 'dtype'])
+                                                        ['scale', 'revision', 'variant', 'subfolder', 'dtype'])
 
 _flax_control_net_path_parser = ConceptModelPathParser('ControlNet',
-                                                      ['scale', 'revision', 'subfolder', 'dtype', 'from_torch'])
+                                                       ['scale', 'revision', 'subfolder', 'dtype', 'from_torch'])
 
 _lora_path_parser = ConceptModelPathParser('LoRA', ['scale', 'revision', 'subfolder', 'weight-name'])
 _textual_inversion_path_parser = ConceptModelPathParser('Textual Inversion',
@@ -690,8 +690,8 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                 control_net_conditioning_scales.append(parsed_control_net_path.scale)
 
                 new_net = parsed_control_net_path.load(use_auth_token=auth_token,
-                                                      device=device,
-                                                      torch_dtype_fallback=torch_dtype)
+                                                       device=device,
+                                                       torch_dtype_fallback=torch_dtype)
 
                 if control_nets is not None:
                     if not isinstance(control_nets, list):
@@ -1300,6 +1300,12 @@ class DiffusionPipelineWrapperBase:
             _image_grid(self._pipeline.numpy_to_pil(images.reshape((images.shape[0],) + images.shape[-3:])),
                         device_count, 1))
 
+    def _get_control_net_conditioning_scale(self):
+        if len(self._control_net_conditioning_scales) == 0:
+            return 1.0
+        return self._control_net_conditioning_scales if \
+            len(self._control_net_conditioning_scales) > 1 else self._control_net_conditioning_scales[0]
+
     def _call_flax(self, default_args, user_args):
         if user_args.get('sdxl_original_size', None) is not None:
             raise NotImplementedError('--sdxl-original-size micro-conditioning may only be used with SDXL models.')
@@ -1395,7 +1401,7 @@ class DiffusionPipelineWrapperBase:
             if has_control_net:
                 i_start = {
                     'control_guidance_end': high_noise_fraction,
-                    'controlnet_conditioning_scale': self._control_net_conditioning_scales
+                    'controlnet_conditioning_scale': self._get_control_net_conditioning_scale()
                 }
             else:
                 i_start = {'denoising_end': high_noise_fraction}
