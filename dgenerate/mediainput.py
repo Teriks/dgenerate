@@ -813,7 +813,7 @@ def iterate_control_image(uri,
         manage_context.append(control_reader)
     elif mime_type_is_video(control_mime_type):
         temp_dir = tempfile.TemporaryDirectory()
-        video_file_path = _write_to_file(control_data, os.path.join(temp_dir.name, 'tmp_controlnet'))
+        video_file_path = _write_to_file(control_data, os.path.join(temp_dir.name, 'tmp_control_net'))
         control_reader = create_animation_reader(video_file_path, uri, resize_resolution)
         manage_context += [control_reader, temp_dir]
     elif mime_type_is_static_image(control_mime_type):
@@ -1024,7 +1024,7 @@ def iterate_image_seed(uri,
             manage_context.append(control_reader)
         elif mime_type_is_video(control_mime_type):
             temp_dir = tempfile.TemporaryDirectory()
-            video_file_path = _write_to_file(control_data, os.path.join(temp_dir.name, 'tmp_controlnet'))
+            video_file_path = _write_to_file(control_data, os.path.join(temp_dir.name, 'tmp_control_net'))
             control_reader = create_animation_reader(video_file_path, parse_result.control_uri, resize_resolution)
             manage_context += [control_reader, temp_dir]
         elif mime_type_is_static_image(control_mime_type):
