@@ -93,9 +93,10 @@ def run_diffusion():
         render_loop.auth_token = arguments.auth_token
 
         # run the render loop
+        render_loop.run()
         try:
             try:
-                render_loop.run()
+                pass
             except SchedulerHelpException:
                 pass
         except (ImageSeedParseError,
