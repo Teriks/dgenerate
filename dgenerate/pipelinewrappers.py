@@ -1568,7 +1568,9 @@ class DiffusionPipelineWrapperBase:
                                                              'text_encoder_2': self._pipeline.text_encoder_2})[0]
 
         else:
-            offload = False if self._control_net_paths is None else len(self._control_net_paths) > 0
+            offload = ((False if self._control_net_paths is None
+                        else len(self._control_net_paths) > 0) and
+                       model_type == ModelTypes.TORCH_SDXL)
 
             self._pipeline, self._parsed_control_net_paths = \
                 _create_torch_diffusion_pipeline(pipeline_type,
