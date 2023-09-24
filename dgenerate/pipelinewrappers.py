@@ -1568,6 +1568,8 @@ class DiffusionPipelineWrapperBase:
                                                              'text_encoder_2': self._pipeline.text_encoder_2})[0]
 
         else:
+            offload = False if self._control_net_paths is None else len(self._control_net_paths) > 0
+
             self._pipeline, self._parsed_control_net_paths = \
                 _create_torch_diffusion_pipeline(pipeline_type,
                                                  model_type,
@@ -1584,8 +1586,7 @@ class DiffusionPipelineWrapperBase:
                                                  safety_checker=self._safety_checker,
                                                  auth_token=self._auth_token,
                                                  device=self._device,
-                                                 sequential_cpu_offload=len(
-                                                     self._control_net_paths) > 0)
+                                                 sequential_cpu_offload=offload)
 
     def __call__(self, **kwargs) -> PipelineResultWrapper:
         default_args = self._pipeline_defaults(kwargs)
