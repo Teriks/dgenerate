@@ -9,5 +9,5 @@ stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
 --prompts "Taylor Swift, high quality, masterpiece, high resolution; low quality, bad quality, sketches" \
 --control-nets diffusers/controlnet-canny-sdxl-1.0;scale=0.5 \
 --control-images "vermeer_canny_edged.png" \
---gen-seeds 5 \
+--gen-seeds 2 \
 --output-size 1024
