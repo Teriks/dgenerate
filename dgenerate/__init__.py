@@ -19,9 +19,10 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-__version__ = "1.0.0"
+__version__ = '1.0.0'
 
 import sys
+
 
 def run_diffusion():
     import re
@@ -45,10 +46,14 @@ def run_diffusion():
 
     from .mediainput import ImageSeedParseError, ImageSeedSizeMismatchError
 
+    from . import messages
+
+    messages.LEVEL = messages.INFO
+
     # The above modules take long enough to import that they must be in here in
     # order to handle keyboard interrupts without issues
 
-    warnings.filterwarnings("ignore")
+    warnings.filterwarnings('ignore')
     transformers.logging.set_verbosity(transformers.logging.CRITICAL)
     diffusers.logging.set_verbosity(diffusers.logging.CRITICAL)
 
@@ -93,10 +98,9 @@ def run_diffusion():
         render_loop.auth_token = arguments.auth_token
 
         # run the render loop
-        render_loop.run()
         try:
             try:
-                pass
+                render_loop.run()
             except SchedulerHelpException:
                 pass
         except (ImageSeedParseError,
@@ -109,7 +113,7 @@ def run_diffusion():
                 torch.cuda.OutOfMemoryError,
                 NotImplementedError,
                 EnvironmentError) as e:
-            print("Error:", e, file=sys.stderr)
+            messages.log(f'Error: {e}', level=messages.ERROR)
             sys.exit(1)
 
         return {'last_image':
@@ -153,11 +157,11 @@ def run_diffusion():
                         cur_major_version = int(__version__.split('.')[0])
                         config_major_version = int(config_file_version.split('.')[0])
                         if cur_major_version != config_major_version:
-                            print(underline(
+                            messages.log(
                                 'WARNING: Ingested configuration file is written for an '
                                 f'incompatible version of dgenerate! You are using version {__version__} '
-                                f'and the config file was written for version {config_file_version}',
-                            ), file=sys.stderr)
+                                f'and the config file was written for version {config_file_version}'
+                                , underline=True, level=messages.WARNING)
 
                 first_line = False
                 continue
@@ -170,8 +174,8 @@ def run_diffusion():
                 if args.startswith('\\print'):
                     args = args.split(' ', 1)
                     if len(args) == 2:
-                        print(jinja_env.from_string(os.path.expandvars(args[1]))
-                              .render(**template_args))
+                        messages.log(jinja_env.from_string(os.path.expandvars(args[1]))
+                                       .render(**template_args))
                     first_line = False
                     continuation = ''
                     continue
@@ -184,12 +188,12 @@ def run_diffusion():
                 templated_cmd = jinja_env. \
                     from_string(os.path.expandvars(args)).render(**template_args)
 
-                header = "Processing Arguments: "
+                header = 'Processing Arguments: '
                 args_wrapped = textwrap.fill(templated_cmd,
                                              width=long_text_wrap_width() - len(header),
                                              subsequent_indent=' ' * len(header))
 
-                print(underline(header + args_wrapped))
+                messages.log(header + args_wrapped, underline=True)
 
                 template_args = parse_and_run(shlex.split(templated_cmd))
 
@@ -204,5 +208,5 @@ def main():
     try:
         run_diffusion()
     except KeyboardInterrupt:
-        print("Aborting due to keyboard interrupt!")
+        print('Aborting due to keyboard interrupt!')
         sys.exit(1)
