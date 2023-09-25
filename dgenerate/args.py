@@ -27,6 +27,7 @@ import sys
 from diffusers.schedulers import KarrasDiffusionSchedulers
 
 from . import __version__
+from . import messages
 from .diffusionloop import is_valid_device_string, InvalidDeviceOrdinalException
 from .mediaoutput import supported_animation_writer_formats
 from .pipelinewrappers import supported_model_types, have_jax_flax
@@ -590,30 +591,38 @@ def parse_args(args=None, namespace=None):
         args.output_size = (512, 512) if 'sdxl' not in args.model_type else (1024, 1024)
 
     if len(args.image_seeds) == 0 and args.image_seed_strengths is not None:
-        print('You cannot specify --image-seed-strengths without --image-seeds.')
+        messages.log('You cannot specify --image-seed-strengths without --image-seeds.',
+                       level=messages.ERROR)
         sys.exit(1)
 
     if args.control_nets is None and len(args.control_images) > 0:
-        print('You cannot specify --control-images without --control-nets.')
+        messages.log('You cannot specify --control-images without --control-nets.',
+                       level=messages.ERROR)
         sys.exit(1)
 
     if 'upscaler' not in args.model_type and args.upscaler_noise_levels is not None:
-        print('You cannot specify --upscaler-noise-levels for a non upscaler model type, see --model-types.')
+        messages.log('You cannot specify --upscaler-noise-levels for a non upscaler model type, see --model-types.',
+                       level=messages.ERROR)
     elif args.upscaler_noise_levels is None:
         args.upscaler_noise_levels = [20]
 
     if 'sdxl' not in args.model_type:
         if args.sdxl_refiner is not None:
-            print('You cannot specify --sdxl-refiner for a non SDXL model type, see --model-types.')
+            messages.log('You cannot specify --sdxl-refiner for a non SDXL model type, see --model-types.',
+                           level=messages.ERROR)
             sys.exit(1)
         if args.sdxl_high_noise_fractions is not None:
-            print('You cannot specify --sdxl-high-noise-fractions for a non SDXL model type, see --model-types.')
+            messages.log(
+                'You cannot specify --sdxl-high-noise-fractions for a non SDXL model type, see --model-types.',
+                level=messages.ERROR)
             sys.exit(1)
         if args.sdxl_target_size is not None:
-            print('You cannot specify --sdxl-target-size for a non SDXL model type, see --model-types.')
+            messages.log('You cannot specify --sdxl-target-size for a non SDXL model type, see --model-types.',
+                           level=messages.ERROR)
             sys.exit(1)
         if args.sdxl_original_size is not None:
-            print('You cannot specify --sdxl-original-size for a non SDXL model type, see --model-types.')
+            messages.log('You cannot specify --sdxl-original-size for a non SDXL model type, see --model-types.',
+                           level=messages.ERROR)
             sys.exit(1)
 
         args.sdxl_high_noise_fractions = []

@@ -41,7 +41,8 @@ import enum
 import torch
 import numbers
 from PIL import Image
-from .textprocessing import ConceptModelPathParser, ConceptModelPathParseError, quote, underline
+from .textprocessing import ConceptModelPathParser, ConceptModelPathParseError, quote
+from . import messages
 from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline, StableDiffusionInpaintPipeline, \
     StableDiffusionInpaintPipelineLegacy, StableDiffusionXLPipeline, StableDiffusionXLImg2ImgPipeline, \
     StableDiffusionXLInpaintPipeline, StableDiffusionUpscalePipeline, StableDiffusionLatentUpscalePipeline, \
@@ -546,9 +547,9 @@ def _load_scheduler(pipeline, scheduler_name=None):
         compatibles = [c for c in compatibles if c.__name__ == 'EulerDiscreteScheduler']
 
     if scheduler_name.lower() == 'help':
-        print(underline('Compatible schedulers for this model are:'))
+        messages.log('Compatible schedulers for this model are:', underline=True)
         for i in compatibles:
-            print(i.__name__)
+            messages.log(i.__name__)
         raise SchedulerHelpException()
 
     for i in compatibles:
@@ -1057,6 +1058,12 @@ class DiffusionPipelineWrapperBase:
 
     @staticmethod
     def _call_pipeline(pipeline, device, **kwargs):
+        messages.log("Calling Pipeline:", pipeline.__class__,
+                     'Device:', device,
+                     'Args:',
+                     kwargs,
+                     level=messages.DEBUG)
+
         if pipeline is DiffusionPipelineWrapperBase._LAST_CALLED_PIPE:
             return pipeline(**kwargs)
 

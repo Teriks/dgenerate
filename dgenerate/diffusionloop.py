@@ -32,12 +32,13 @@ from typing import Iterator
 import torch
 from PIL.PngImagePlugin import PngInfo
 
+from . import messages
 from .mediainput import iterate_image_seed, get_image_seed_info, MultiContextManager, \
     get_control_image_info, iterate_control_image, ImageSeed
 from .mediaoutput import create_animation_writer, supported_animation_writer_formats
 from .pipelinewrappers import DiffusionPipelineWrapper, DiffusionPipelineImg2ImgWrapper, supported_model_types, \
     PipelineResultWrapper, model_type_is_upscaler, get_model_type_enum, ModelTypes
-from .textprocessing import oxford_comma, underline, long_text_wrap_width
+from .textprocessing import oxford_comma, long_text_wrap_width
 
 
 class InvalidDeviceOrdinalException(Exception):
@@ -334,10 +335,10 @@ class DiffusionRenderLoop:
             config_file_name = os.path.splitext(filename)[0] + '.txt'
             with open(config_file_name, "w") as config_file:
                 config_file.write(config_txt)
-            print(underline(
-                f'Wrote Image File: {filename}\nWrote Config File: {config_file_name}'))
+            messages.log(
+                f'Wrote Image File: {filename}\nWrote Config File: {config_file_name}', underline=True)
         else:
-            print(underline(f'Wrote Image File: {filename}'))
+            messages.log(f'Wrote Image File: {filename}', underline=True)
 
     def _write_animation_frame(self, args_ctx: DiffusionArgContext, image_seed_obj,
                                generation_result: PipelineResultWrapper):
@@ -427,10 +428,10 @@ class DiffusionRenderLoop:
 
         inputs = '\n'.join(inputs)
 
-        print(underline(
+        messages.log(
             f'Generation step {self._generation_step + 1} / {self.num_generation_steps}\n'
             + inputs + prompt_format
-        ))
+            , underline=True)
 
     def _pre_generation(self, args_ctx):
         pass
@@ -445,8 +446,9 @@ class DiffusionRenderLoop:
             eta = str(datetime.timedelta(seconds=eta_seconds))
 
         self._last_frame_time = time.time()
-        print(underline(
-            f'Generating frame {image_seed_obj.frame_index + 1} / {image_seed_obj.total_frames}, Completion ETA: {eta}'))
+        messages.log(
+            f'Generating frame {image_seed_obj.frame_index + 1} / {image_seed_obj.total_frames}, Completion ETA: {eta}',
+            underline=True)
 
     def _with_image_seed_pre_generation(self, args_ctx: DiffusionArgContext, image_seed_obj):
         pass
@@ -468,10 +470,10 @@ class DiffusionRenderLoop:
         generation_steps = self.num_generation_steps
 
         if generation_steps == 0:
-            print(underline(f'Options resulted in no generation steps, nothing to do.'))
+            messages.log(f'Options resulted in no generation steps, nothing to do.', underline=True)
             return
 
-        print(underline(f'Beginning {generation_steps} generation steps...'))
+        messages.log(f'Beginning {generation_steps} generation steps...', underline=True)
 
         if len(self.image_seeds) > 0:
             self._render_with_image_seeds()
@@ -534,7 +536,7 @@ class DiffusionRenderLoop:
 
         for control_image in self.control_images:
 
-            print(underline(f'Processing Control Image: {control_image}'))
+            messages.log(f'Processing Control Image: {control_image}', underline=True)
 
             arg_iterator = iterate_diffusion_args(prompts=self.prompts,
                                                   seeds=self.seeds,
@@ -605,7 +607,7 @@ class DiffusionRenderLoop:
 
         for image_seed in self.image_seeds:
 
-            print(underline(f'Processing Image Seed: {image_seed}'))
+            messages.log(f'Processing Image Seed: {image_seed}', underline=True)
 
             arg_iterator = iterate_diffusion_args(prompts=self.prompts,
                                                   seeds=self.seeds,
@@ -693,10 +695,11 @@ class DiffusionRenderLoop:
 
                 if self.output_configs:
                     anim_config_file_name = os.path.splitext(video_writer.filename)[0] + '.txt'
-                    print(underline(
-                        f'Writing Animation: {video_writer.filename}\nWriting Config File: {anim_config_file_name}'))
+                    messages.log(
+                        f'Writing Animation: {video_writer.filename}\nWriting Config File: {anim_config_file_name}',
+                        underline=True)
                 else:
-                    print(underline(f'Writing Animation: {video_writer.filename}'))
+                    messages.log(f'Writing Animation: {video_writer.filename}', underline=True)
 
                 self._written_animations.append(os.path.abspath(video_writer.filename))
 

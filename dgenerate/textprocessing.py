@@ -18,8 +18,9 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import shutil
 import ast
+import shutil
+
 
 class ConceptModelPathParseError(Exception):
     pass
@@ -97,10 +98,11 @@ def underline(msg):
 def quote(strin):
     return f'"{strin}"'
 
+
 def unquote(strin):
     strin = strin.strip(' ')
     if strin.startswith('"') or strin.startswith('\''):
-        return str(ast.literal_eval('r'+strin))
+        return str(ast.literal_eval('r' + strin))
     else:
         # Is an unquoted string
         return str(strin.strip(' '))
