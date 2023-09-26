@@ -20,7 +20,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import datetime
-import functools
 import itertools
 import math
 import os

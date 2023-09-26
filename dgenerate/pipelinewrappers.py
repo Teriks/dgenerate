@@ -102,7 +102,8 @@ _torch_vae_path_parser = ConceptModelPathParser('VAE', ['model', 'revision', 'va
 _flax_vae_path_parser = ConceptModelPathParser('VAE', ['model', 'revision', 'subfolder', 'dtype'])
 
 _torch_control_net_path_parser = ConceptModelPathParser('ControlNet',
-                                                        ['scale', 'start', 'end', 'revision', 'variant', 'subfolder', 'dtype'])
+                                                        ['scale', 'start', 'end', 'revision', 'variant', 'subfolder',
+                                                         'dtype'])
 
 _flax_control_net_path_parser = ConceptModelPathParser('ControlNet',
                                                        ['scale', 'revision', 'subfolder', 'dtype', 'from_torch'])
@@ -1174,9 +1175,25 @@ class DiffusionPipelineWrapperBase:
         height = kwargs.get('height', None)
         num_inference_steps = kwargs.get('num_inference_steps')
         guidance_scale = kwargs.get('guidance_scale')
+        guidance_rescale = kwargs.get('guidance_rescale')
+
         sdxl_high_noise_fraction = kwargs.get('sdxl_high_noise_fraction', None)
+        sdxl_aesthetic_score = kwargs.get('sdxl_aesthetic_score', None)
         sdxl_original_size = kwargs.get('sdxl_original_size', None)
         sdxl_target_size = kwargs.get('sdxl_target_size', None)
+        sdxl_crops_coords_top_left = kwargs.get('sdxl_crops_coords_top_left', None)
+        sdxl_negative_aesthetic_score = kwargs.get('sdxl_negative_aesthetic_score', None)
+        sdxl_negative_original_size = kwargs.get('sdxl_negative_original_size', None)
+        sdxl_negative_target_size = kwargs.get('sdxl_negative_target_size', None)
+        sdxl_negative_crops_coords_top_left = kwargs.get('sdxl_negative_crops_coords_top_left', None)
+        sdxl_refiner_aesthetic_score = kwargs.get('sdxl_refiner_aesthetic_score', None)
+        sdxl_refiner_original_size = kwargs.get('sdxl_refiner_original_size', None)
+        sdxl_refiner_target_size = kwargs.get('sdxl_refiner_target_size', None)
+        sdxl_refiner_crops_coords_top_left = kwargs.get('sdxl_refiner_crops_coords_top_left', None)
+        sdxl_refiner_negative_aesthetic_score = kwargs.get('sdxl_refiner_negative_aesthetic_score', None)
+        sdxl_refiner_negative_original_size = kwargs.get('sdxl_refiner_negative_original_size', None)
+        sdxl_refiner_negative_target_size = kwargs.get('sdxl_refiner_negative_target_size', None)
+        sdxl_refiner_negative_crops_coords_top_left = kwargs.get('sdxl_refiner_negative_crops_coords_top_left', None)
 
         if strength is not None:
             num_inference_steps = int(num_inference_steps * strength)
@@ -1185,6 +1202,9 @@ class DiffusionPipelineWrapperBase:
         opts = [self.model_path, ('--model-type', self._model_type), ('--dtype', self._dtype),
                 ('--device', self._device), ('--inference-steps', num_inference_steps),
                 ('--guidance-scales', guidance_scale), ('--seeds', seed)]
+
+        if guidance_rescale is not None:
+            opts.append(('--guidance-rescales', guidance_rescale))
 
         if prompt is not None:
             if negative_prompt is not None:
@@ -1231,11 +1251,53 @@ class DiffusionPipelineWrapperBase:
         if sdxl_high_noise_fraction is not None:
             opts.append(('--sdxl-high-noise-fractions', sdxl_high_noise_fraction))
 
+        if sdxl_aesthetic_score is not None:
+            opts.append(('--sdxl-aesthetic-scores', sdxl_aesthetic_score))
+
         if sdxl_original_size is not None:
             opts.append(('--sdxl-original-size', sdxl_original_size))
 
         if sdxl_target_size is not None:
             opts.append(('--sdxl-target-size', sdxl_target_size))
+
+        if sdxl_crops_coords_top_left is not None:
+            opts.append(('--sdxl-crops-coords-top-left', sdxl_crops_coords_top_left))
+
+        if sdxl_negative_aesthetic_score is not None:
+            opts.append(('--sdxl-negative-aesthetic-scores', sdxl_negative_aesthetic_score))
+
+        if sdxl_negative_original_size is not None:
+            opts.append(('--sdxl-negative-original-sizes', sdxl_negative_original_size))
+
+        if sdxl_negative_target_size is not None:
+            opts.append(('--sdxl-negative-target-sizes', sdxl_negative_target_size))
+
+        if sdxl_negative_crops_coords_top_left is not None:
+            opts.append(('--sdxl-negative-crops-coords-top-left', sdxl_negative_crops_coords_top_left))
+
+        if sdxl_refiner_aesthetic_score is not None:
+            opts.append(('--sdxl-refiner-aesthetic-scores', sdxl_refiner_aesthetic_score))
+
+        if sdxl_refiner_original_size is not None:
+            opts.append(('--sdxl-refiner-original-sizes', sdxl_refiner_original_size))
+
+        if sdxl_refiner_target_size is not None:
+            opts.append(('--sdxl-refiner-target-sizes', sdxl_refiner_target_size))
+
+        if sdxl_refiner_crops_coords_top_left is not None:
+            opts.append(('--sdxl-refiner-crops-coords-top-left', sdxl_refiner_crops_coords_top_left))
+
+        if sdxl_refiner_negative_aesthetic_score is not None:
+            opts.append(('--sdxl-refiner-negative-aesthetic-scores', sdxl_refiner_negative_aesthetic_score))
+
+        if sdxl_refiner_negative_original_size is not None:
+            opts.append(('--sdxl-refiner-negative-original-sizes', sdxl_refiner_negative_original_size))
+
+        if sdxl_refiner_negative_target_size is not None:
+            opts.append(('--sdxl-refiner-negative-target-sizes', sdxl_refiner_negative_target_size))
+
+        if sdxl_refiner_negative_crops_coords_top_left is not None:
+            opts.append(('--sdxl-refiner-negative-crops-coords-top-left', sdxl_refiner_negative_crops_coords_top_left))
 
         if width is not None and height is not None:
             opts.append(('--output-size', f'{width}x{height}'))
@@ -1315,7 +1377,6 @@ class DiffusionPipelineWrapperBase:
         return args
 
     def _get_control_net_conditioning_scale(self):
-        print(self._parsed_control_net_paths)
         if not self._parsed_control_net_paths:
             return 1.0
         return [p.scale for p in self._parsed_control_net_paths] if \
@@ -1618,6 +1679,16 @@ class DiffusionPipelineWrapperBase:
         return pipe_result
 
     def _lazy_init_pipeline(self, pipeline_type):
+
+        if isinstance(self._pipeline, (StableDiffusionUpscalePipeline,
+                                       StableDiffusionLatentUpscalePipeline)):
+            # Multiple calls to these pipelines break them for whatever reason
+            # Force them to be constructed again
+            for k, v in list(_TORCH_MODEL_CACHE.items()):
+                if v[0] is self._pipeline:
+                    _TORCH_MODEL_CACHE.pop(k)
+            self._pipeline = None
+
         if self._pipeline is not None:
             return
 

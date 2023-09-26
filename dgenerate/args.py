@@ -672,13 +672,13 @@ parser.add_argument('-gs', '--guidance-scales', action='store', nargs='*', defau
                          text prompt is considered. Low values draw more data from images unrelated
                          to text prompt. (default: [5])""")
 
-
 parser.add_argument('-grs', '--guidance-rescales', action='store', nargs='*', default=[], type=_type_guidance_scale,
                     help="""List of guidance rescale factors to try. Proposed by [Common Diffusion Noise Schedules and 
                             Sample Steps are Flawed](https://arxiv.org/pdf/2305.08891.pdf) "guidance_scale" is defined 
                             as "φ" in equation 16. of [Common Diffusion Noise Schedules and Sample Steps are Flawed]
                             (https://arxiv.org/pdf/2305.08891.pdf). Guidance rescale factor should fix overexposure 
                             when using zero terminal SNR.""")
+
 
 def _type_inference_steps(val):
     try:
@@ -732,7 +732,7 @@ def parse_args(args=None, namespace=None):
                      level=messages.ERROR)
     elif 'upscaler' in args.model_type and args.upscaler_noise_levels is None:
         args.upscaler_noise_levels = [20]
-    else:
+    elif not args.upscaler_noise_levels:
         args.upscaler_noise_levels = []
 
     if 'sdxl' not in args.model_type:
