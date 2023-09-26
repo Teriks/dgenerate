@@ -37,7 +37,7 @@ from .mediainput import iterate_image_seed, get_image_seed_info, MultiContextMan
     get_control_image_info, iterate_control_image, ImageSeed
 from .mediaoutput import create_animation_writer, supported_animation_writer_formats
 from .pipelinewrappers import DiffusionPipelineWrapper, DiffusionPipelineImg2ImgWrapper, supported_model_types, \
-    PipelineResultWrapper, model_type_is_upscaler, get_model_type_enum, ModelTypes
+    PipelineResultWrapper, model_type_is_upscaler, get_model_type_enum, ModelTypes, model_type_is_pix2pix
 from .textprocessing import oxford_comma, long_text_wrap_width
 
 
@@ -91,6 +91,7 @@ class DiffusionArgContext:
                  sdxl_refiner_negative_target_size,
                  sdxl_refiner_negative_crops_coords_top_left,
                  guidance_scale,
+                 image_guidance_scale,
                  guidance_rescale,
                  inference_steps):
         self.args = diffusion_args
@@ -116,6 +117,7 @@ class DiffusionArgContext:
         self.sdxl_refiner_negative_target_size = sdxl_refiner_negative_target_size
         self.sdxl_refiner_negative_crops_coords_top_left = sdxl_refiner_negative_crops_coords_top_left
         self.guidance_scale = guidance_scale
+        self.image_guidance_scale = image_guidance_scale
         self.guidance_rescale = guidance_rescale
         self.inference_steps = inference_steps
 
@@ -167,6 +169,7 @@ class DiffusionArgContext:
             (self.sdxl_refiner_negative_target_size, "SDXL Refiner Negative Target Size:"),
             (self.sdxl_refiner_negative_crops_coords_top_left, "SDXL Refiner Negative Top Left Crop Coords:"),
             (self.guidance_scale, "Guidance Scale:"),
+            (self.image_guidance_scale, "Image Guidance Scale:"),
             (self.guidance_rescale, "Guidance Rescale:"),
             (self.inference_steps, "Inference Steps:")
         ]
@@ -206,6 +209,7 @@ def iterate_diffusion_args(prompts,
                            sdxl_refiner_negative_target_sizes,
                            sdxl_refiner_negative_crops_coords_top_left,
                            guidance_scales,
+                           image_guidance_scales,
                            guidance_rescales,
                            inference_steps_list) -> Iterator[DiffusionArgContext]:
     diffusion_args = dict()
@@ -233,6 +237,7 @@ def iterate_diffusion_args(prompts,
             _list_or_list_of_none(sdxl_refiner_negative_target_sizes),
             _list_or_list_of_none(sdxl_refiner_negative_crops_coords_top_left),
             guidance_scales,
+            _list_or_list_of_none(image_guidance_scales),
             _list_or_list_of_none(guidance_rescales),
             inference_steps_list
     ):
@@ -259,8 +264,9 @@ def iterate_diffusion_args(prompts,
         sdxl_refiner_negative_target_size = arg_set[19]
         sdxl_refiner_negative_crops_coords_top_left_v = arg_set[20]
         guidance_scale = arg_set[21]
-        guidance_rescale = arg_set[22]
-        inference_steps = arg_set[23]
+        image_guidance_scale = arg_set[22]
+        guidance_rescale = arg_set[23]
+        inference_steps = arg_set[24]
 
         # Mode dependant
 
@@ -272,6 +278,9 @@ def iterate_diffusion_args(prompts,
 
         if guidance_rescales:
             diffusion_args['guidance_rescale'] = guidance_rescale
+
+        if image_guidance_scales:
+            diffusion_args['image_guidance_scale'] = image_guidance_scale
 
         # SDXL
 
@@ -370,6 +379,7 @@ def iterate_diffusion_args(prompts,
                                   sdxl_refiner_negative_target_size,
                                   sdxl_refiner_negative_crops_coords_top_left_v,
                                   guidance_scale,
+                                  image_guidance_scale,
                                   guidance_rescale,
                                   inference_steps)
 
@@ -402,6 +412,7 @@ class DiffusionRenderLoop:
         self.image_seed_strengths = None
         self.upscaler_noise_levels = None
         self.guidance_rescales = None
+        self.image_guidance_scales = None
 
         self.sdxl_high_noise_fractions = None
         self.sdxl_aesthetic_scores = None
@@ -526,6 +537,7 @@ class DiffusionRenderLoop:
     @property
     def num_generation_steps(self):
         optional_factors = [
+            self.image_guidance_scales,
             self.textual_inversion_paths,
             self.control_net_paths,
             self.image_seeds,
@@ -596,9 +608,17 @@ class DiffusionRenderLoop:
         else:
             noise_entry = []
 
+        guidance_entry = ['g', args_ctx.guidance_scale]
+
+        if args_ctx.guidance_rescale is not None:
+            guidance_entry += ['grs', args_ctx.guidance_rescale]
+
+        if args_ctx.image_guidance_scale is not None:
+            guidance_entry += ['igs', args_ctx.image_guidance_scale]
+
         args = ['s', args_ctx.seed,
                 *noise_entry,
-                'g', args_ctx.guidance_scale,
+                *guidance_entry,
                 'i', args_ctx.inference_steps]
         return args
 
@@ -716,19 +736,15 @@ class DiffusionRenderLoop:
                 return overrides[n]
             return v
 
-        if get_model_type_enum(self.model_type) == ModelTypes.TORCH_SDXL:
-            sdxl_high_noise_fractions = self.sdxl_high_noise_fractions if self.sdxl_refiner_path is not None else None
-        else:
-            sdxl_high_noise_fractions = None
-
         yield from iterate_diffusion_args(
             prompts=ov('prompts', self.prompts),
             seeds=ov('seeds', self.seeds),
             image_seed_strengths=ov('image_seed_strengths', self.image_seed_strengths),
             guidance_scales=ov('guidance_scales', self.guidance_scales),
+            image_guidance_scales=ov('image_guidance_scales', self.image_guidance_scales),
             guidance_rescales=ov('guidance_rescales', self.guidance_rescales),
             inference_steps_list=ov('inference_steps_list', self.inference_steps),
-            sdxl_high_noise_fractions=ov('sdxl_high_noise_fractions', sdxl_high_noise_fractions),
+            sdxl_high_noise_fractions=ov('sdxl_high_noise_fractions', self.sdxl_high_noise_fractions),
             upscaler_noise_levels=ov('upscaler_noise_levels', self.upscaler_noise_levels),
             sdxl_aesthetic_scores=ov('sdxl_aesthetic_scores', self.sdxl_aesthetic_scores),
             sdxl_original_sizes=ov('sdxl_original_sizes', self.sdxl_original_sizes),
@@ -792,7 +808,10 @@ class DiffusionRenderLoop:
                                                        sdxl_refiner_path=self.sdxl_refiner_path,
                                                        auth_token=self.auth_token)
 
-            for args_ctx in self._iterate_diffusion_args(image_seed_strengths=None,
+            sdxl_high_noise_fractions = self.sdxl_high_noise_fractions if self.sdxl_refiner_path is not None else None
+
+            for args_ctx in self._iterate_diffusion_args(sdxl_high_noise_fractions=sdxl_high_noise_fractions,
+                                                         image_seed_strengths=None,
                                                          upscaler_noise_levels=None):
                 self._pre_generation_step(args_ctx)
                 self._pre_generation(args_ctx)
@@ -820,11 +839,14 @@ class DiffusionRenderLoop:
                                                    sdxl_refiner_path=self.sdxl_refiner_path,
                                                    auth_token=self.auth_token)
 
+        sdxl_high_noise_fractions = self.sdxl_high_noise_fractions if self.sdxl_refiner_path is not None else None
+
         for control_image in self.control_images:
 
             messages.log(f'Processing Control Image: {control_image}', underline=True)
 
-            arg_iterator = self._iterate_diffusion_args(image_seed_strengths=None,
+            arg_iterator = self._iterate_diffusion_args(sdxl_high_noise_fractions=sdxl_high_noise_fractions,
+                                                        image_seed_strengths=None,
                                                         upscaler_noise_levels=None)
 
             control_image_info = get_control_image_info(control_image, self.frame_start, self.frame_end)
@@ -879,7 +901,8 @@ class DiffusionRenderLoop:
 
         sdxl_high_noise_fractions = self.sdxl_high_noise_fractions if self.sdxl_refiner_path is not None else None
 
-        image_seed_strengths = self.image_seed_strengths if not model_type_is_upscaler(self.model_type) else None
+        image_seed_strengths = self.image_seed_strengths if \
+            not (model_type_is_upscaler(self.model_type) or model_type_is_pix2pix(self.model_type)) else None
 
         upscaler_noise_levels = self.upscaler_noise_levels if \
             get_model_type_enum(self.model_type) == ModelTypes.TORCH_UPSCALER_X4 else None
@@ -888,7 +911,11 @@ class DiffusionRenderLoop:
 
             messages.log(f'Processing Image Seed: {image_seed}', underline=True)
 
-            arg_iterator = self._iterate_diffusion_args()
+            arg_iterator = self._iterate_diffusion_args(
+                sdxl_high_noise_fractions=sdxl_high_noise_fractions,
+                image_seed_strengths=image_seed_strengths,
+                upscaler_noise_levels=upscaler_noise_levels
+            )
 
             seed_info = get_image_seed_info(image_seed, self.frame_start, self.frame_end)
 
