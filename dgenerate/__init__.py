@@ -94,31 +94,27 @@ def run_diffusion():
         render_loop.auth_token = arguments.auth_token
 
         render_loop.sdxl_refiner_path = arguments.sdxl_refiner
-        render_loop.sdxl_high_noise_fractions =           arguments.sdxl_high_noise_fractions
+        render_loop.sdxl_high_noise_fractions = arguments.sdxl_high_noise_fractions
 
-        render_loop.sdxl_aesthetic_scores =               arguments.sdxl_aesthetic_scores
-        render_loop.sdxl_original_sizes =                 arguments.sdxl_original_sizes
-        render_loop.sdxl_target_sizes =                   arguments.sdxl_target_sizes
-        render_loop.sdxl_crops_coords_top_left =          arguments.sdxl_crops_coords_top_left
+        render_loop.sdxl_aesthetic_scores = arguments.sdxl_aesthetic_scores
+        render_loop.sdxl_original_sizes = arguments.sdxl_original_sizes
+        render_loop.sdxl_target_sizes = arguments.sdxl_target_sizes
+        render_loop.sdxl_crops_coords_top_left = arguments.sdxl_crops_coords_top_left
 
-
-        render_loop.sdxl_negative_aesthetic_scores =      arguments.sdxl_negative_aesthetic_scores
-        render_loop.sdxl_negative_original_sizes =        arguments.sdxl_negative_original_sizes
-        render_loop.sdxl_negative_target_sizes =          arguments.sdxl_negative_target_sizes
+        render_loop.sdxl_negative_aesthetic_scores = arguments.sdxl_negative_aesthetic_scores
+        render_loop.sdxl_negative_original_sizes = arguments.sdxl_negative_original_sizes
+        render_loop.sdxl_negative_target_sizes = arguments.sdxl_negative_target_sizes
         render_loop.sdxl_negative_crops_coords_top_left = arguments.sdxl_negative_crops_coords_top_left
 
+        render_loop.sdxl_refiner_aesthetic_scores = arguments.sdxl_refiner_aesthetic_scores
+        render_loop.sdxl_refiner_original_sizes = arguments.sdxl_refiner_original_sizes
+        render_loop.sdxl_refiner_target_sizes = arguments.sdxl_refiner_target_sizes
+        render_loop.sdxl_refiner_crops_coords_top_left = arguments.sdxl_refiner_crops_coords_top_left
 
-        render_loop.sdxl_refiner_aesthetic_scores =               arguments.sdxl_refiner_aesthetic_scores
-        render_loop.sdxl_refiner_original_sizes =                 arguments.sdxl_refiner_original_sizes
-        render_loop.sdxl_refiner_target_sizes =                   arguments.sdxl_refiner_target_sizes
-        render_loop.sdxl_refiner_crops_coords_top_left =          arguments.sdxl_refiner_crops_coords_top_left
-
-
-        render_loop.sdxl_refiner_negative_aesthetic_scores =      arguments.sdxl_refiner_negative_aesthetic_scores
-        render_loop.sdxl_refiner_negative_original_sizes =        arguments.sdxl_refiner_negative_original_sizes
-        render_loop.sdxl_refiner_negative_target_sizes =          arguments.sdxl_refiner_negative_target_sizes
+        render_loop.sdxl_refiner_negative_aesthetic_scores = arguments.sdxl_refiner_negative_aesthetic_scores
+        render_loop.sdxl_refiner_negative_original_sizes = arguments.sdxl_refiner_negative_original_sizes
+        render_loop.sdxl_refiner_negative_target_sizes = arguments.sdxl_refiner_negative_target_sizes
         render_loop.sdxl_refiner_negative_crops_coords_top_left = arguments.sdxl_refiner_negative_crops_coords_top_left
-
 
         # run the render loop
         try:
@@ -198,7 +194,7 @@ def run_diffusion():
                     args = args.split(' ', 1)
                     if len(args) == 2:
                         messages.log(jinja_env.from_string(os.path.expandvars(args[1]))
-                                       .render(**template_args))
+                                     .render(**template_args))
                     first_line = False
                     continuation = ''
                     continue

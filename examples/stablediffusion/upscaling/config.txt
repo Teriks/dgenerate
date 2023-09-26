@@ -10,7 +10,6 @@ stabilityai/sd-x2-latent-upscaler --variant fp16 --dtype float16 \
 --image-seeds low_res_cat.png \
 --output-size 256
 
-
 # The image produced with this model will be
 # four times the --output-size dimension IE: 1024x1024 in this case
 # The image is being resized to 256x256, and then upscaled by 4x
