@@ -2,7 +2,7 @@
 
 stabilityai/stable-diffusion-2 \
 --inference-steps 30 \
---guidance-scales 8 \
+--guidance-scales 8 9 \
 --image-seeds beach.jpg \
 --image-seed-strengths 0.9 \
 --seeds 70466855166895 \

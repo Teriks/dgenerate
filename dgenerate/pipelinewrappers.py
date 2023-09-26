@@ -1087,14 +1087,12 @@ class DiffusionPipelineWrapperBase:
 
         if pipeline is DiffusionPipelineWrapperBase._LAST_CALLED_PIPE:
             return pipeline(**kwargs)
-
-        if DiffusionPipelineWrapperBase._LAST_CALLED_PIPE is not None:
+        else:
             DiffusionPipelineWrapperBase._pipeline_to(
                 DiffusionPipelineWrapperBase._LAST_CALLED_PIPE, 'cpu')
 
         DiffusionPipelineWrapperBase._pipeline_to(pipeline, device)
         r = pipeline(**kwargs)
-        DiffusionPipelineWrapperBase._pipeline_to(pipeline, 'cpu')
 
         DiffusionPipelineWrapperBase._LAST_CALLED_PIPE = pipeline
         return r
@@ -1679,16 +1677,6 @@ class DiffusionPipelineWrapperBase:
         return pipe_result
 
     def _lazy_init_pipeline(self, pipeline_type):
-
-        if isinstance(self._pipeline, (StableDiffusionUpscalePipeline,
-                                       StableDiffusionLatentUpscalePipeline)):
-            # Multiple calls to these pipelines break them for whatever reason
-            # Force them to be constructed again
-            for k, v in list(_TORCH_MODEL_CACHE.items()):
-                if v[0] is self._pipeline:
-                    _TORCH_MODEL_CACHE.pop(k)
-            self._pipeline = None
-
         if self._pipeline is not None:
             return
 
