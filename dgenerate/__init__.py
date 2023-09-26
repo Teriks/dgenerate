@@ -91,11 +91,34 @@ def run_diffusion():
         render_loop.control_images = arguments.control_images
         render_loop.scheduler = arguments.scheduler
         render_loop.safety_checker = arguments.safety_checker
-        render_loop.sdxl_refiner_path = arguments.sdxl_refiner
-        render_loop.sdxl_high_noise_fractions = arguments.sdxl_high_noise_fractions
-        render_loop.sdxl_original_size = arguments.sdxl_original_size
-        render_loop.sdxl_target_size = arguments.sdxl_target_size
         render_loop.auth_token = arguments.auth_token
+
+        render_loop.sdxl_refiner_path = arguments.sdxl_refiner
+        render_loop.sdxl_high_noise_fractions =           arguments.sdxl_high_noise_fractions
+
+        render_loop.sdxl_aesthetic_scores =               arguments.sdxl_aesthetic_scores
+        render_loop.sdxl_original_sizes =                 arguments.sdxl_original_sizes
+        render_loop.sdxl_target_sizes =                   arguments.sdxl_target_sizes
+        render_loop.sdxl_crops_coords_top_left =          arguments.sdxl_crops_coords_top_left
+
+
+        render_loop.sdxl_negative_aesthetic_scores =      arguments.sdxl_negative_aesthetic_scores
+        render_loop.sdxl_negative_original_sizes =        arguments.sdxl_negative_original_sizes
+        render_loop.sdxl_negative_target_sizes =          arguments.sdxl_negative_target_sizes
+        render_loop.sdxl_negative_crops_coords_top_left = arguments.sdxl_negative_crops_coords_top_left
+
+
+        render_loop.sdxl_refiner_aesthetic_scores =               arguments.sdxl_refiner_aesthetic_scores
+        render_loop.sdxl_refiner_original_sizes =                 arguments.sdxl_refiner_original_sizes
+        render_loop.sdxl_refiner_target_sizes =                   arguments.sdxl_refiner_target_sizes
+        render_loop.sdxl_refiner_crops_coords_top_left =          arguments.sdxl_refiner_crops_coords_top_left
+
+
+        render_loop.sdxl_refiner_negative_aesthetic_scores =      arguments.sdxl_refiner_negative_aesthetic_scores
+        render_loop.sdxl_refiner_negative_original_sizes =        arguments.sdxl_refiner_negative_original_sizes
+        render_loop.sdxl_refiner_negative_target_sizes =          arguments.sdxl_refiner_negative_target_sizes
+        render_loop.sdxl_refiner_negative_crops_coords_top_left = arguments.sdxl_refiner_negative_crops_coords_top_left
+
 
         # run the render loop
         try:
@@ -118,12 +141,12 @@ def run_diffusion():
 
         return {'last_image':
                     quote(render_loop.written_images[-1])
-                    if len(render_loop.written_images) else [],
+                    if render_loop.written_images else [],
                 'last_images':
                     [quote(s) for s in render_loop.written_images],
                 'last_animation':
                     quote(render_loop.written_animations[-1])
-                    if len(render_loop.written_animations) else [],
+                    if render_loop.written_animations else [],
                 'last_animations':
                     [quote(s) for s in render_loop.written_animations]}
 

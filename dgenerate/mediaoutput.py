@@ -91,7 +91,7 @@ class GifWebpWriter(AnimationWriter):
 
     def end(self, new_file=None):
 
-        if len(self.collected_frames) > 0:
+        if self.collected_frames:
             self.collected_frames[0].save(self.filename, save_all=True, append_images=self.collected_frames[1:],
                                           optimize=False, duration=self.duration, loop=0)
             self._cleanup()
