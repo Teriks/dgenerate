@@ -1542,6 +1542,7 @@ class DiffusionPipelineWrapperBase:
             user_prefix += '_'
             option_prefix = user_prefix.replace('_', '-')
         else:
+            user_prefix = ''
             option_prefix = ''
 
         self._get_non_universal_pipeline_arg(pipeline, default_args, user_args,
@@ -1591,6 +1592,8 @@ class DiffusionPipelineWrapperBase:
 
     def _call_torch(self, default_args, user_args):
         model_type = get_model_type_enum(self._model_type)
+
+        print(user_args)
 
         self._get_sdxl_conditioning_args(self._pipeline, default_args, user_args)
 
