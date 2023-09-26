@@ -686,9 +686,10 @@ def _type_image_guidance_scale(val):
 
 parser.add_argument('-igs', '--image-guidance-scales', action='store', nargs='*', default=None,
                     type=_type_image_guidance_scale,
-                    help="""Push the generated image towards the inital image when using --model-type *-pix2pix models. 
-                            Image guidance scale is enabled by setting image-guidance-scale > 1. Higher image guidance scale 
-                            encourages generated images that are closely linked to the source `image`, usually at the expense 
+                    help="""Push the generated image towards the inital image when using --model-type *-pix2pix models.
+                            Use in conjunction with --image-seeds, inpainting (masks) and --control-nets are not supported.
+                            Image guidance scale is enabled by setting image-guidance-scale > 1. Higher image guidance scale
+                            encourages generated images that are closely linked to the source image, usually at the expense
                             of lower image quality. Requires a value of at least 1. (default: [1.5])""")
 
 parser.add_argument('-grs', '--guidance-rescales', action='store', nargs='*', default=[], type=_type_guidance_scale,
