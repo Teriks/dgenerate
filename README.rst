@@ -445,7 +445,7 @@ Install dgenerate:
 
     # If you want a specific version
 
-    pipx install git+https://github.com/Teriks/dgenerate.git@v1.0.0 ^
+    pipx install git+https://github.com/Teriks/dgenerate.git@v1.1.0 ^
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/"
 
 
@@ -535,12 +535,12 @@ Install dgenerate
 
     # If you want a specific version
 
-    pipx install git+https://github.com/Teriks/dgenerate.git@v1.0.0 \
+    pipx install git+https://github.com/Teriks/dgenerate.git@v1.1.0 \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/"
 
     # Specific version with flax/jax support
 
-    pipx install "dgenerate[flax] @ git+https://github.com/Teriks/dgenerate.git@v1.0.0" \
+    pipx install "dgenerate[flax] @ git+https://github.com/Teriks/dgenerate.git@v1.1.0" \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/ \
     -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html"
 
@@ -1589,7 +1589,7 @@ The Following is an example input file **my-config.txt**:
 
 .. code-block::
 
-    #! dgenerate 1.0.0
+    #! dgenerate 1.1.0
 
     # If a hash-bang version is provided in the format above
     # a warning will be produced if the version you are running
