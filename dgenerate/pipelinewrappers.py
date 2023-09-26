@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import inspect
 import os
 import typing
 
@@ -101,7 +102,7 @@ _torch_vae_path_parser = ConceptModelPathParser('VAE', ['model', 'revision', 'va
 _flax_vae_path_parser = ConceptModelPathParser('VAE', ['model', 'revision', 'subfolder', 'dtype'])
 
 _torch_control_net_path_parser = ConceptModelPathParser('ControlNet',
-                                                        ['scale', 'revision', 'variant', 'subfolder', 'dtype'])
+                                                        ['scale', 'start', 'end', 'revision', 'variant', 'subfolder', 'dtype'])
 
 _flax_control_net_path_parser = ConceptModelPathParser('ControlNet',
                                                        ['scale', 'revision', 'subfolder', 'dtype', 'from_torch'])
@@ -160,15 +161,17 @@ def parse_flax_control_net_path(path):
                 from_torch = bool(from_torch)
             except ValueError:
                 raise InvalidControlNetPathError(
-                    'Flax Control Net from_torch must be undefined or boolean (true or false)')
+                    f'Flax Control Net from_torch must be undefined or boolean (true or false), received: {from_torch}')
 
         if dtype not in {'float32', 'float16', 'auto', None}:
-            raise InvalidVaePathError('Flax Control Net dtype must be float32, float16, auto, or left undefined.')
+            raise InvalidVaePathError(
+                f'Flax Control Net dtype must be float32, float16, auto, or left undefined, received: {dtype}')
 
         try:
             scale = float(scale)
         except ValueError:
-            raise InvalidControlNetPathError('Flax Control Net scale must be a floating point number.')
+            raise InvalidControlNetPathError(
+                f'Flax Control Net scale must be a floating point number, received {scale}')
 
         return FlaxControlNetPath(
             model=r.concept,
@@ -234,12 +237,30 @@ def parse_torch_control_net_path(path) -> TorchControlNetPath:
         end = r.args.get('end', 1.0)
 
         if dtype not in {'float32', 'float16', 'auto', None}:
-            raise InvalidVaePathError('Torch Control Net dtype must be float32, float16, auto, or left undefined.')
+            raise InvalidVaePathError(
+                f'Torch ControlNet "dtype" must be float32, float16, auto, or left undefined, received: {dtype}')
 
         try:
             scale = float(scale)
         except ValueError:
-            raise InvalidControlNetPathError('Torch Control Net scale must be a floating point number.')
+            raise InvalidControlNetPathError(
+                f'Torch ControlNet "scale" must be a floating point number, received: {scale}')
+
+        try:
+            start = float(start)
+        except ValueError:
+            raise InvalidControlNetPathError(
+                f'Torch ControlNet "start" must be a floating point number, received: {start}')
+
+        try:
+            end = float(end)
+        except ValueError:
+            raise InvalidControlNetPathError(
+                f'Torch ControlNet "end" must be a floating point number, received: {end}')
+
+        if start > end:
+            raise InvalidControlNetPathError(
+                f'Torch ControlNet "start" must be less than or equal to "end".')
 
         return TorchControlNetPath(
             model=r.concept,
@@ -271,7 +292,7 @@ def parse_sdxl_refiner_path(path) -> SDXLRefinerPath:
         dtype = r.args.get('dtype', None)
         if dtype not in {'float32', 'float16', 'auto', None}:
             raise InvalidSDXLRefinerPathError(
-                'Torch SDXL refiner dtype must be float32, float16, auto, or left undefined.')
+                f'Torch SDXL refiner dtype must be float32, float16, auto, or left undefined, received: {dtype}')
 
         return SDXLRefinerPath(
             model=r.concept,
@@ -303,7 +324,8 @@ def parse_torch_vae_path(path) -> TorchVAEPath:
 
         dtype = r.args.get('dtype', None)
         if dtype not in {'float32', 'float16', 'auto', None}:
-            raise InvalidVaePathError('Torch VAE dtype must be float32, float16, auto, or left undefined.')
+            raise InvalidVaePathError(
+                f'Torch VAE dtype must be float32, float16, auto, or left undefined, received: {dtype}')
 
         return TorchVAEPath(encoder=r.concept,
                             model=model,
@@ -334,7 +356,8 @@ def parse_flax_vae_path(path) -> FlaxVAEPath:
 
         dtype = r.args.get('dtype', None)
         if dtype not in {'float32', 'float16', 'auto', None}:
-            raise InvalidVaePathError('Flax VAE dtype must be float32, float16, auto, or left undefined.')
+            raise InvalidVaePathError(
+                f'Flax VAE dtype must be float32, float16, auto, or left undefined {dtype}')
 
         return FlaxVAEPath(encoder=r.concept,
                            model=model,
@@ -412,7 +435,7 @@ def _is_single_file_model_load(path):
     if os.path.isdir(path):
         return True
 
-    if len(ext) == 0:
+    if not ext:
         return False
 
     if ext in {'.pt', '.pth', '.bin', '.msgpack', '.ckpt', '.safetensors'}:
@@ -423,8 +446,7 @@ def _is_single_file_model_load(path):
 
 def _load_pytorch_vae(path,
                       torch_dtype_fallback,
-                      use_auth_token,
-                      device) -> typing.Union[AutoencoderKL, AsymmetricAutoencoderKL, AutoencoderTiny]:
+                      use_auth_token) -> typing.Union[AutoencoderKL, AsymmetricAutoencoderKL, AutoencoderTiny]:
     parsed_concept = parse_torch_vae_path(path)
 
     if parsed_concept.dtype is None:
@@ -432,7 +454,6 @@ def _load_pytorch_vae(path,
 
     cache_key = _function_cache_key({'path': path,
                                      'use_auth_token': use_auth_token,
-                                     'device': device,
                                      'dtype': parsed_concept.dtype})
 
     cache_hit = _TORCH_VAE_CACHE.get(cache_key)
@@ -466,11 +487,11 @@ def _load_pytorch_vae(path,
         if encoder is AutoencoderKL:
             # There is a bug in their cast
             vae = encoder.from_single_file(path, revision=parsed_concept.revision). \
-                to(device=device, dtype=parsed_concept.dtype, non_blocking=False)
+                to(dtype=parsed_concept.dtype, non_blocking=False)
         else:
             vae = encoder.from_single_file(path,
                                            revision=parsed_concept.revision,
-                                           torch_dtype=parsed_concept.dtype).to(device=device)
+                                           torch_dtype=parsed_concept.dtype)
 
     else:
         vae = encoder.from_pretrained(path,
@@ -478,7 +499,7 @@ def _load_pytorch_vae(path,
                                       variant=parsed_concept.variant,
                                       torch_dtype=parsed_concept.dtype,
                                       subfolder=parsed_concept.subfolder,
-                                      use_auth_token=use_auth_token).to(device=device)
+                                      use_auth_token=use_auth_token)
 
     _TORCH_VAE_CACHE[cache_key] = vae
     return vae
@@ -486,16 +507,14 @@ def _load_pytorch_vae(path,
 
 def _load_flax_vae(path,
                    flax_dtype_fallback,
-                   use_auth_token,
-                   device):
-    parsed_concept = parse_torch_vae_path(path)
+                   use_auth_token):
+    parsed_concept = parse_flax_vae_path(path)
 
     if parsed_concept.dtype is None:
         parsed_concept.dtype = flax_dtype_fallback
 
     cache_key = _function_cache_key({'path': path,
                                      'use_auth_token': use_auth_token,
-                                     'device': device,
                                      'dtype': parsed_concept.dtype})
 
     cache_hit = _FLAX_VAE_CACHE.get(cache_key)
@@ -524,13 +543,13 @@ def _load_flax_vae(path,
             raise NotImplementedError('Single file VAE loads do not support the subfolder option.')
         vae = encoder.from_single_file(path,
                                        revision=parsed_concept.revision,
-                                       dtype=parsed_concept.dtype).to(device=device)
+                                       dtype=parsed_concept.dtype)
     else:
         vae = encoder.from_pretrained(path,
                                       revision=parsed_concept.revision,
                                       dtype=parsed_concept.dtype,
                                       subfolder=parsed_concept.subfolder,
-                                      use_auth_token=use_auth_token).to(device=device)
+                                      use_auth_token=use_auth_token)
 
     _FLAX_VAE_CACHE[cache_key] = vae
     return vae
@@ -596,6 +615,10 @@ class _PipelineTypes:
     INPAINT = 3
 
 
+def _describe_pipeline_type(enum):
+    return {_PipelineTypes.BASIC: 'txt2img', _PipelineTypes.IMG2IMG: 'img2img', _PipelineTypes.INPAINT: 'inpaint'}[enum]
+
+
 def _create_torch_diffusion_pipeline(pipeline_type,
                                      model_type,
                                      model_path,
@@ -629,15 +652,14 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                           else StableDiffusionLatentUpscalePipeline)
     else:
         sdxl = model_type == ModelTypes.TORCH_SDXL
-        has_control_nets = control_net_paths is not None and len(control_net_paths) > 0
 
         if pipeline_type == _PipelineTypes.BASIC:
-            if has_control_nets:
+            if control_net_paths:
                 pipeline_class = StableDiffusionXLControlNetPipeline if sdxl else StableDiffusionControlNetPipeline
             else:
                 pipeline_class = StableDiffusionXLPipeline if sdxl else StableDiffusionPipeline
         elif pipeline_type == _PipelineTypes.IMG2IMG:
-            if has_control_nets:
+            if control_net_paths:
                 if sdxl:
                     pipeline_class = StableDiffusionXLControlNetImg2ImgPipeline
                 else:
@@ -645,7 +667,7 @@ def _create_torch_diffusion_pipeline(pipeline_type,
             else:
                 pipeline_class = StableDiffusionXLImg2ImgPipeline if sdxl else StableDiffusionImg2ImgPipeline
         elif pipeline_type == _PipelineTypes.INPAINT:
-            if has_control_nets:
+            if control_net_paths:
                 if sdxl:
                     pipeline_class = StableDiffusionXLControlNetInpaintPipeline
                 else:
@@ -687,10 +709,9 @@ def _create_torch_diffusion_pipeline(pipeline_type,
         if vae_path is not None:
             kwargs['vae'] = _load_pytorch_vae(vae_path,
                                               torch_dtype_fallback=torch_dtype,
-                                              use_auth_token=auth_token,
-                                              device=device)
+                                              use_auth_token=auth_token)
 
-        if control_net_paths is not None:
+        if control_net_paths:
             control_nets = None
 
             for control_net_path in control_net_paths:
@@ -826,14 +847,13 @@ def _create_flax_diffusion_pipeline(pipeline_type,
         if vae_path is not None:
             vae_path, vae_params = _load_flax_vae(vae_path,
                                                   flax_dtype_fallback=flax_dtype,
-                                                  use_auth_token=auth_token,
-                                                  device=device)
+                                                  use_auth_token=auth_token)
             kwargs['vae'] = vae_path
 
         if control_net_paths is not None:
             parsed_flax_control_net_path = parse_flax_control_net_path(control_net_paths[0])
 
-            parsed_control_net_paths.append(parsed_flax_control_net_path.scale)
+            parsed_control_net_paths.append(parsed_flax_control_net_path)
 
             control_net, control_net_params = parse_flax_control_net_path(control_net_paths[0]) \
                 .load(use_auth_token=auth_token, device=device, flax_dtype_fallback=flax_dtype)
@@ -1059,9 +1079,9 @@ class DiffusionPipelineWrapperBase:
     @staticmethod
     def _call_pipeline(pipeline, device, **kwargs):
         messages.log("Calling Pipeline:", pipeline.__class__,
-                     'Device:', device,
+                     f'Device: "{device}"',
                      'Args:',
-                     kwargs,
+                     {k: str(v) if len(str(v)) < 256 else v.__class__ for k, v in kwargs.items()},
                      level=messages.DEBUG)
 
         if pipeline is DiffusionPipelineWrapperBase._LAST_CALLED_PIPE:
@@ -1147,7 +1167,7 @@ class DiffusionPipelineWrapperBase:
         image = kwargs.get('image', None)
         control_image = kwargs.get('control_image', None)
         strength = kwargs.get('strength', None)
-        noise_level = kwargs.get('noise_level', None)
+        upscaler_noise_level = kwargs.get('upscaler_noise_level', None)
         mask_image = kwargs.get('mask_image', None)
         seed = kwargs.get('seed')
         width = kwargs.get('width', None)
@@ -1231,7 +1251,7 @@ class DiffusionPipelineWrapperBase:
                 if control_image is not None and hasattr(control_image, 'filename'):
                     seed_args.append(f'control={control_image.filename}')
 
-                if len(seed_args) == 0:
+                if not seed_args:
                     opts.append(('--image-seeds', quote(image.filename)))
                 else:
                     opts.append(('--image-seeds',
@@ -1240,8 +1260,8 @@ class DiffusionPipelineWrapperBase:
                 if strength is not None:
                     opts.append(('--image-seed-strengths', strength))
 
-                if noise_level is not None:
-                    opts.append(('--upscaler-noise-levels', noise_level))
+                if upscaler_noise_level is not None:
+                    opts.append(('--upscaler-noise-levels', upscaler_noise_level))
         elif control_image is not None:
             if hasattr(control_image, 'filename'):
                 opts.append(('--control-images', quote(control_image.filename)))
@@ -1276,7 +1296,7 @@ class DiffusionPipelineWrapperBase:
 
             if model_type_is_upscaler(self._model_type):
                 if get_model_type_enum(self._model_type) == ModelTypes.TORCH_UPSCALER_X4:
-                    args['noise_level'] = int(user_args.get('noise_level', DEFAULT_X4_UPSCALER_NOISE_LEVEL))
+                    args['noise_level'] = int(user_args.get('upscaler_noise_level', DEFAULT_X4_UPSCALER_NOISE_LEVEL))
             else:
                 args['strength'] = float(user_args.get('strength', DEFAULT_IMAGE_SEED_STRENGTH))
 
@@ -1294,11 +1314,29 @@ class DiffusionPipelineWrapperBase:
 
         return args
 
-    def _call_flax_control_net(self, default_args, user_args):
+    def _get_control_net_conditioning_scale(self):
+        print(self._parsed_control_net_paths)
+        if not self._parsed_control_net_paths:
+            return 1.0
+        return [p.scale for p in self._parsed_control_net_paths] if \
+            len(self._parsed_control_net_paths) > 1 else self._parsed_control_net_paths[0].scale
 
+    def _get_control_net_guidance_start(self):
+        if not self._parsed_control_net_paths:
+            return 0.0
+        return [p.start for p in self._parsed_control_net_paths] if \
+            len(self._parsed_control_net_paths) > 1 else self._parsed_control_net_paths[0].start
+
+    def _get_control_net_guidance_end(self):
+        if not self._parsed_control_net_paths:
+            return 1.0
+        return [p.end for p in self._parsed_control_net_paths] if \
+            len(self._parsed_control_net_paths) > 1 else self._parsed_control_net_paths[0].end
+
+    def _call_flax_control_net(self, default_args, user_args):
         device_count = jax.device_count()
 
-        pipe: FlaxStableDiffusionPipeline = self._pipeline
+        pipe: FlaxStableDiffusionControlNetPipeline = self._pipeline
 
         default_args['prng_seed'] = jax.random.split(jax.random.PRNGKey(user_args.get('seed', 0)), device_count)
         prompt_ids = pipe.prepare_text_inputs([user_args.get('prompt', '')] * device_count)
@@ -1327,35 +1365,32 @@ class DiffusionPipelineWrapperBase:
             image=processed_image,
             params=p_params,
             neg_prompt_ids=negative_prompt_ids,
+            controlnet_conditioning_scale=self._get_control_net_conditioning_scale(),
             jit=True, **default_args)[0]
 
         return PipelineResultWrapper(
             _image_grid(self._pipeline.numpy_to_pil(images.reshape((images.shape[0],) + images.shape[-3:])),
                         device_count, 1))
 
-    def _get_control_net_conditioning_scale(self):
-        if len(self._parsed_control_net_paths) == 0:
-            return 1.0
-        return [p.scale for p in self._parsed_control_net_paths] if \
-            len(self._parsed_control_net_paths) > 1 else self._parsed_control_net_paths[0].scale
-
-    def _get_control_net_guidance_start(self):
-        if len(self._parsed_control_net_paths) == 0:
-            return 0.0
-        return [p.start for p in self._parsed_control_net_paths] if \
-            len(self._parsed_control_net_paths) > 1 else self._parsed_control_net_paths[0].start
-
-    def _get_control_net_guidance_end(self):
-        if len(self._parsed_control_net_paths) == 0:
-            return 1.0
-        return [p.end for p in self._parsed_control_net_paths] if \
-            len(self._parsed_control_net_paths) > 1 else self._parsed_control_net_paths[0].end
+    def _flax_prepare_text_input(self, text):
+        tokenizer = self._pipeline.tokenizer
+        text_input = tokenizer(
+            text,
+            padding="max_length",
+            max_length=tokenizer.model_max_length,
+            truncation=True,
+            return_tensors="np",
+        )
+        return text_input.input_ids
 
     def _call_flax(self, default_args, user_args):
-        if user_args.get('sdxl_original_size', None) is not None:
-            raise NotImplementedError('--sdxl-original-size micro-conditioning may only be used with SDXL models.')
-        if user_args.get('sdxl_target_size', None) is not None:
-            raise NotImplementedError('--sdxl-target-size micro-conditioning may only be used with SDXL models.')
+        for arg, val in user_args.items():
+            if arg.startswith('sdxl') and val is not None:
+                raise NotImplementedError(
+                    f'{arg.replace("_", "-")}s may only be used with SDXL models.')
+
+        if user_args.get('guidance_rescale') is not None:
+            raise NotImplementedError('--guidance-rescales is not supported when using --model-type flax.')
 
         if hasattr(self._pipeline, 'controlnet'):
             return self._call_flax_control_net(default_args, user_args)
@@ -1370,7 +1405,7 @@ class DiffusionPipelineWrapperBase:
 
         if negative_prompt is not None:
             negative_prompt_ids = shard(
-                self._pipeline.prepare_text_inputs([negative_prompt] * device_count))
+                self._flax_prepare_text_input([negative_prompt] * device_count))
         else:
             negative_prompt_ids = None
 
@@ -1385,7 +1420,9 @@ class DiffusionPipelineWrapperBase:
                 default_args['masked_image'] = shard(processed_images)
                 default_args['mask'] = shard(processed_masks)
 
+                # inpainting pipeline does not have a strength argument, simply ignore it
                 default_args.pop('strength')
+
                 default_args.pop('image')
                 default_args.pop('mask_image')
             else:
@@ -1403,7 +1440,7 @@ class DiffusionPipelineWrapperBase:
             pipeline=self._pipeline,
             device=self._device,
             prompt_ids=shard(prompt_ids),
-            negative_prompt_ids=negative_prompt_ids,
+            neg_prompt_ids=negative_prompt_ids,
             params=replicate(self._flax_params),
             **default_args, jit=True)[0]
 
@@ -1411,22 +1448,85 @@ class DiffusionPipelineWrapperBase:
             _image_grid(self._pipeline.numpy_to_pil(images.reshape((images.shape[0],) + images.shape[-3:])),
                         device_count, 1))
 
-    def _call_torch(self, default_args, user_args):
-        sdxl_original_size = user_args.get('sdxl_original_size', None)
-        sdxl_target_size = user_args.get('sdxl_target_size', None)
+    def _get_non_universal_pipeline_arg(self,
+                                        pipeline,
+                                        default_args,
+                                        user_args,
+                                        pipeline_arg_name,
+                                        user_arg_name,
+                                        option_name, default):
 
+        if pipeline_arg_name in inspect.getfullargspec(pipeline.__call__).args:
+            val = user_args.get(user_arg_name, default)
+            default_args[pipeline_arg_name] = val
+            return val
+
+        else:
+            val = user_args.get(user_arg_name, None)
+            if val is not None:
+                raise NotImplementedError(
+                    f'{option_name} cannot be used with --model-type "{self._model_type}" in '
+                    f'{_describe_pipeline_type(self._pipeline_type)} mode.')
+            return None
+
+    def _get_sdxl_conditioning_args(self, pipeline, default_args, user_args, user_prefix=None):
+        if user_prefix:
+            user_prefix += '_'
+            option_prefix = user_prefix.replace('_', '-')
+
+        self._get_non_universal_pipeline_arg(pipeline, default_args, user_args,
+                                             'aesthetic_score', f'sdxl_{user_prefix}aesthetic_score',
+                                             f'--sdxl-{option_prefix}aesthetic-scores', None)
+        self._get_non_universal_pipeline_arg(pipeline, default_args, user_args,
+                                             'original_size', f'sdxl_{user_prefix}original_size',
+                                             f'--sdxl-{option_prefix}original-sizes', None)
+        self._get_non_universal_pipeline_arg(pipeline, default_args, user_args,
+                                             'target_size', f'sdxl_{user_prefix}target_size',
+                                             f'--sdxl-{option_prefix}target-sizes', None)
+
+        self._get_non_universal_pipeline_arg(pipeline, default_args, user_args,
+                                             'crops_coords_top_left',
+                                             f'sdxl_{user_prefix}crops_coords_top_left',
+                                             f'--sdxl-{option_prefix}crops-coords-top-left', (0, 0))
+
+        self._get_non_universal_pipeline_arg(pipeline, default_args, user_args,
+                                             'negative_aesthetic_score',
+                                             f'sdxl_{user_prefix}negative_aesthetic_score',
+                                             f'--sdxl-{option_prefix}negative-aesthetic-scores', None)
+
+        self._get_non_universal_pipeline_arg(pipeline, default_args, user_args,
+                                             'negative_original_size',
+                                             f'sdxl_{user_prefix}negative_original_size',
+                                             f'--sdxl-{option_prefix}negative-original-sizes', None)
+
+        self._get_non_universal_pipeline_arg(pipeline, default_args, user_args,
+                                             'negative_target_size',
+                                             f'sdxl_{user_prefix}negative_target_size',
+                                             f'--sdxl-{option_prefix}negative-target-sizes', None)
+
+        self._get_non_universal_pipeline_arg(pipeline, default_args, user_args,
+                                             'negative_crops_coords_top_left',
+                                             f'sdxl_{user_prefix}negative_crops_coords_top_left',
+                                             f'--sdxl-{option_prefix}negative-crops-coords-top-left', (0, 0))
+
+    def _pop_sdxl_conditioning_args(self, default_args):
+        default_args.pop('aesthetic_score', None)
+        default_args.pop('target_size', None)
+        default_args.pop('original_size', None)
+        default_args.pop('crops_coords_top_left', None)
+        default_args.pop('negative_aesthetic_score', None)
+        default_args.pop('negative_target_size', None)
+        default_args.pop('negative_original_size', None)
+        default_args.pop('negative_crops_coords_top_left', None)
+
+    def _call_torch(self, default_args, user_args):
         model_type = get_model_type_enum(self._model_type)
 
-        if model_type != ModelTypes.TORCH_SDXL:
-            if sdxl_original_size is not None:
-                raise NotImplementedError('--sdxl-original-size micro-conditioning may only be used with SDXL models.')
-            if sdxl_target_size is not None:
-                raise NotImplementedError('--sdxl-target-size micro-conditioning may only be used with SDXL models.')
-        else:
-            if sdxl_original_size is not None:
-                default_args['target_size'] = sdxl_target_size
-            if sdxl_target_size is not None:
-                default_args['original_size'] = sdxl_original_size
+        self._get_sdxl_conditioning_args(self._pipeline, default_args, user_args)
+
+        self._get_non_universal_pipeline_arg(self._pipeline, default_args, user_args,
+                                             'guidance_rescale', 'guidance_rescale',
+                                             '--guidance-rescales', None)
 
         if model_type != ModelTypes.TORCH_UPSCALER_X2:
             # Does not take this argument, can only produce one image
@@ -1489,9 +1589,21 @@ class DiffusionPipelineWrapperBase:
 
         # refiner does not use LoRA
         default_args.pop('cross_attention_kwargs', None)
+
+        # Or any of these
+        self._pop_sdxl_conditioning_args(default_args)
+        default_args.pop('guidance_rescale', None)
         default_args.pop('controlnet_conditioning_scale', None)
         default_args.pop('control_guidance_start', None)
         default_args.pop('control_guidance_end', None)
+
+        self._get_sdxl_conditioning_args(self._sdxl_refiner_pipeline,
+                                         default_args, user_args,
+                                         user_prefix='refiner')
+
+        self._get_non_universal_pipeline_arg(self._pipeline, default_args, user_args,
+                                             'guidance_rescale', 'sdxl_refiner_guidance_rescale',
+                                             '--sdxl-refiner-guidance-rescales', None)
 
         if sd_edit:
             strength = 1.0 - high_noise_fraction
@@ -1520,6 +1632,9 @@ class DiffusionPipelineWrapperBase:
 
             if self._textual_inversion_paths is not None:
                 raise NotImplementedError('Textual inversion not supported for flax.')
+
+            if self._pipeline_type != _PipelineTypes.BASIC and self._control_net_paths:
+                raise NotImplementedError('Inpaint and Img2Img not supported for flax with ControlNet.')
 
             self._pipeline, self._flax_params, self._parsed_control_net_paths = \
                 _create_flax_diffusion_pipeline(pipeline_type,
@@ -1575,9 +1690,7 @@ class DiffusionPipelineWrapperBase:
                                                              'text_encoder_2': self._pipeline.text_encoder_2})[0]
 
         else:
-            offload = ((False if self._control_net_paths is None
-                        else len(self._control_net_paths) > 0) and
-                       model_type == ModelTypes.TORCH_SDXL)
+            offload = self._control_net_paths and model_type == ModelTypes.TORCH_SDXL
 
             self._pipeline, self._parsed_control_net_paths = \
                 _create_torch_diffusion_pipeline(pipeline_type,

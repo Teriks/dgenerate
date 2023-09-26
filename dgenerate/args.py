@@ -196,30 +196,39 @@ parser.add_argument('--control-nets', nargs='+', action='store', default=None,
                     .ckpt, or .safetensors file), or model folder containing model files.
                     
                     Optional arguments can be provided after the ControlNet model specification, for torch
-                    these include: "scale", "revision", "variant", "subfolder", and "dtype".
+                    these include: "scale", "start", "end", "revision", "variant", "subfolder", and "dtype".
                     
                     For flax: "scale", "revision", "subfolder", "dtype", "from_torch" (bool)
                     
-                    They can be specified as so in any order, they are not positional:
-                    "huggingface/controlnet;scale=1.0;revision=main;variant=fp16;subfolder=repo_subfolder;dtype=float16".
+                    They can be specified as so in any order, they are not positional:cd 
+                    "huggingface/controlnet;scale=1.0;start=0.0;end=1.0;revision=main;variant=fp16;subfolder=repo_subfolder;dtype=float16".
                     
                     The "scale" argument specifies the scaling factor applied to the ControlNet model, 
                     the default value is 1.0.
                     
+                    The "start" (only for --model-type "torch*") argument specifies at what fraction of 
+                    the total inference steps to begin applying the ControlNet, defaults to 0.0, IE: the very beginning.
+                    
+                    The "end" (only for --model-type "torch*") argument specifies at what fraction of 
+                    the total inference steps to stop applying the ControlNet, defaults to 1.0, IE: the very end.
+                    
                     The "revision" argument specifies the model revision to use for the ControlNet model
                     when loading from huggingface repository, (The git branch / tag, default is "main").
                     
-                    The "variant" argument specifies the ControlNet model variant, if "variant" is specified when loading 
-                    from a huggingface repository or folder, weights will be loaded from "variant" filename, e.g. 
-                    "pytorch_model.<variant>.safetensors. "variant" defaults to automatic selection and is ignored if 
-                    using flax. "variant" in the case of --control-nets does not default to the value of --variant to 
-                    prevent failures during common use cases.
+                    The "variant" (only for --model-type "torch*") argument specifies the ControlNet 
+                    model variant, if "variant" is specified when loading from a huggingface repository or folder, 
+                    weights will be loaded from "variant" filename, e.g. "pytorch_model.<variant>.safetensors. "variant" 
+                    defaults to automatic selection and is ignored if  using flax. "variant" in the case of 
+                    --control-nets does not default to the value of --variant to prevent failures during common use cases.
                     
                     The "subfolder" argument specifies the ControlNet model subfolder, if specified 
                     when loading from a huggingface repository or folder, weights from the specified subfolder.
                     
                     The "dtype" argument specifies the ControlNet model precision, it defaults to the value of -t/--dtype
                     and should be one of: float16 / float32 / auto.
+                    
+                    The "from_torch" (only for --model-type flax) this argument specifies that the ControlNet is to be 
+                    loaded and converted from a huggingface repository or file that is designed for pytorch. (Defaults to false)
                 
                     If you wish to load a weights file directly from disk, the simplest way is: 
                     --control-nets "my_controlnet.safetensors" or --control-nets "my_controlnet.safetensors;scale=1.0;dtype=float16", 
@@ -280,24 +289,124 @@ def _type_micro_conditioning_size(size):
     if size is None:
         return None
 
-    r = size.lower().split('x')
-    if len(r) < 2:
-        return int(r[0]), int(r[0])
-    else:
+    try:
+        r = size.lower().split('x')
+        if len(r) < 2:
+            return int(r[0]), int(r[0])
+        else:
+            return int(r[0]), int(r[1])
+    except ValueError:
+        raise argparse.ArgumentTypeError('Dimensions must be integer values.')
+
+
+def _type_image_coordinate(coord):
+    if coord is None:
+        return (0, 0)
+
+    r = coord.split(',')
+
+    try:
         return int(r[0]), int(r[1])
+    except ValueError:
+        raise argparse.ArgumentTypeError('Coordinates must be integer values.')
 
 
-parser.add_argument('--sdxl-original-size', action='store', default=None, type=_type_micro_conditioning_size,
-                    help="""Stable Diffusion XL (torch-sdxl) micro-conditioning parameter in the format (WIDTHxHEIGHT).
-                         If not the same as --sdxl-target-size the image will appear to be down or upsampled.
-                         --sdxl-original-size defaults to --output-size if not specified. Part of SDXL\'s micro-conditioning as
-                         explained in section 2.2 of [https://huggingface.co/papers/2307.01952]""")
+# SDXL Main pipeline
 
-parser.add_argument('--sdxl-target-size', action='store', default=None, type=_type_micro_conditioning_size,
-                    help="""Stable Diffusion XL (torch-sdxl) micro-conditioning parameter in the format (WIDTHxHEIGHT).
-                         For most cases, --sdxl-target-size should be set to the desired height and width of the generated image. 
-                         If not specified it will default to --output-size. Part of SDXL\'s micro-conditioning as explained in
-                         section 2.2 of [https://huggingface.co/papers/2307.01952]""")
+parser.add_argument('--sdxl-aesthetic-scores',
+                    action='store', nargs='*', default=[], type=float,
+                    help="""One or more Stable Diffusion XL (torch-sdxl) "aesthetic-score" micro-conditioning parameters.
+                            Used to simulate an aesthetic score of the generated image by influencing the positive text
+                            condition. Part of SDXL's micro-conditioning as explained in section 2.2 of
+                            [https://huggingface.co/papers/2307.01952].""")
+
+parser.add_argument('--sdxl-crops-coords-top-left',
+                    action='store', nargs='*', default=[], type=_type_image_coordinate,
+                    help="""One or more Stable Diffusion XL (torch-sdxl) "negative-crops-coords-top-left" micro-conditioning
+                            parameters in the format "0,0". --sdxl-crops-coords-top-left can be used to generate an image that
+                            appears to be "cropped" from the position --sdxl-crops-coords-top-left downwards. Favorable,
+                            well-centered images are usually achieved by setting --sdxl-crops-coords-top-left to "0,0".
+                            Part of SDXL's micro-conditioning as explained in section 2.2 of 
+                            [https://huggingface.co/papers/2307.01952].""")
+
+parser.add_argument('--sdxl-original-size', '--sdxl-original-sizes', dest='sdxl_original_sizes',
+                    action='store', nargs='*', default=[], type=_type_micro_conditioning_size,
+                    help="""One or more Stable Diffusion XL (torch-sdxl) "original-size" micro-conditioning parameters in
+                            the format (WIDTHxHEIGHT). If not the same as --sdxl-target-size the image will appear to be
+                            down or upsampled. --sdxl-original-size defaults to --output-size if not specified. Part of
+                            SDXL\'s micro-conditioning as explained in section 2.2 of 
+                            [https://huggingface.co/papers/2307.01952]""")
+
+parser.add_argument('--sdxl-target-size', '--sdxl-target-sizes', dest='sdxl_target_sizes',
+                    action='store', nargs='*', default=[], type=_type_micro_conditioning_size,
+                    help="""One or more Stable Diffusion XL (torch-sdxl) "target-size" micro-conditioning parameters in
+                            the format (WIDTHxHEIGHT). For most cases, --sdxl-target-size should be set to the desired
+                            height and width of the generated image. If not specified it will default to --output-size.
+                            Part of SDXL\'s micro-conditioning as explained in section 2.2 of 
+                            [https://huggingface.co/papers/2307.01952]""")
+
+parser.add_argument('--sdxl-negative-aesthetic-scores',
+                    action='store', nargs='*', default=[], type=float,
+                    help="""One or more Stable Diffusion XL (torch-sdxl) "negative-aesthetic-score" micro-conditioning parameters.
+                            Part of SDXL's micro-conditioning as explained in section 2.2 of [https://huggingface.co/papers/2307.01952].
+                            Can be used to simulate an aesthetic score of the generated image by influencing the negative text condition.""")
+
+parser.add_argument('--sdxl-negative-original-sizes',
+                    action='store', nargs='*', default=[], type=_type_micro_conditioning_size,
+                    help="""One or more Stable Diffusion XL (torch-sdxl) "negative-original-sizes" micro-conditioning parameters.
+                            Negatively condition the generation process based on a specific image resolution. Part of SDXL's
+                            micro-conditioning as explained in section 2.2 of [https://huggingface.co/papers/2307.01952].
+                            For more information, refer to this issue thread: https://github.com/huggingface/diffusers/issues/4208""")
+
+parser.add_argument('--sdxl-negative-target-sizes',
+                    action='store', nargs='*', default=[], type=_type_micro_conditioning_size,
+                    help="""One or more Stable Diffusion XL (torch-sdxl) "negative-original-sizes" micro-conditioning parameters.
+                            To negatively condition the generation process based on a target image resolution. It should be as same
+                            as the "target_size" for most cases. Part of SDXL's micro-conditioning as explained in section 2.2 of
+                            [https://huggingface.co/papers/2307.01952]. For more information, refer to this issue thread:
+                            https://github.com/huggingface/diffusers/issues/4208.""")
+
+parser.add_argument('--sdxl-negative-crops-coords-top-left',
+                    action='store', nargs='*', default=[], type=_type_image_coordinate,
+                    help="""One or more Stable Diffusion XL (torch-sdxl) "negative-crops-coords-top-left" micro-conditioning
+                            parameters in the format "0,0". Negatively condition the generation process based on a specific
+                            crop coordinates. Part of SDXL's micro-conditioning as explained in section 2.2 of
+                            [https://huggingface.co/papers/2307.01952]. For more information, refer
+                            to this issue thread: https://github.com/huggingface/diffusers/issues/4208.""")
+
+# SDXL Refiner pipeline
+
+parser.add_argument('--sdxl-refiner-aesthetic-scores',
+                    action='store', nargs='*', default=[], type=float,
+                    help="See: --sdxl-aesthetic-scores, applied to SDXL refiner pass.")
+
+parser.add_argument('--sdxl-refiner-crops-coords-top-left',
+                    action='store', nargs='*', default=[], type=_type_image_coordinate,
+                    help="See: --sdxl-crops-coords-top-left, applied to SDXL refiner pass.")
+
+parser.add_argument('--sdxl-refiner-original-sizes',
+                    action='store', nargs='*', default=[], type=_type_micro_conditioning_size,
+                    help="See: --sdxl-refiner-original-sizes, applied to SDXL refiner pass.")
+
+parser.add_argument('--sdxl-refiner-target-sizes',
+                    action='store', nargs='*', default=[], type=_type_micro_conditioning_size,
+                    help="See: --sdxl-refiner-target-sizes, applied to SDXL refiner pass.")
+
+parser.add_argument('--sdxl-refiner-negative-aesthetic-scores',
+                    action='store', nargs='*', default=[], type=float,
+                    help="See: --sdxl-negative-aesthetic-scores, applied to SDXL refiner pass.")
+
+parser.add_argument('--sdxl-refiner-negative-original-sizes',
+                    action='store', nargs='*', default=[], type=_type_micro_conditioning_size,
+                    help="See: --sdxl-negative-original-sizes, applied to SDXL refiner pass.")
+
+parser.add_argument('--sdxl-refiner-negative-target-sizes',
+                    action='store', nargs='*', default=[], type=_type_micro_conditioning_size,
+                    help="See: --sdxl-negative-target-sizes, applied to SDXL refiner pass.")
+
+parser.add_argument('--sdxl-refiner-negative-crops-coords-top-left',
+                    action='store', nargs='*', default=[], type=_type_image_coordinate,
+                    help="See: --sdxl-negative-crops-coords-top-left, applied to SDXL refiner pass.")
 
 
 def _type_sdxl_high_noise_fractions(val):
@@ -310,6 +419,13 @@ def _type_sdxl_high_noise_fractions(val):
         raise argparse.ArgumentTypeError('Must be greater than 0')
     return val
 
+
+parser.add_argument('-hnf', '--sdxl-high-noise-fractions', action='store', nargs='*', default=None,
+                    type=_type_sdxl_high_noise_fractions,
+                    help="""High noise fraction for Stable Diffusion XL (torch-sdxl), this fraction of inference steps
+                         will be processed by the base model, while the rest will be processed by the refiner model.
+                         Multiple values to this argument will result in additional generation steps for each value. 
+                         (default: [0.8])""")
 
 parser.add_argument('--safety-checker', action='store_true', default=False,
                     help="""Enable safety checker loading, this is off by default.
@@ -339,10 +455,14 @@ parser.add_argument('-t', '--dtype', action='store', default='auto', type=_type_
 
 def _type_output_size(size):
     r = size.lower().split('x')
-    if len(r) < 2:
-        x, y = int(r[0]), int(r[0])
-    else:
-        x, y = int(r[0]), int(r[1])
+
+    try:
+        if len(r) < 2:
+            x, y = int(r[0]), int(r[0])
+        else:
+            x, y = int(r[0]), int(r[1])
+    except ValueError:
+        raise argparse.ArgumentTypeError('Output dimensions must be integer values.')
 
     if x % 8 != 0:
         raise argparse.ArgumentTypeError('Output X dimension must be divisible by 8.')
@@ -371,9 +491,12 @@ parser.add_argument('-op', '--output-prefix', action='store', default=None, type
 
 parser.add_argument('-ox', '--output-overwrite', action='store_true', default=False,
                     help="""Enable overwrites of files in the output directory that already exists.
-                            The default behavior is not to do this, and instead append a filename suffix: "_duplicate_(number)"
-                            when it is detected that the generated file name already exists.
-                            """)
+                            The default behavior is not to do this, and instead append a filename suffix: "_version_(number)"
+                            when it is detected that the generated file name already exists. Advanced usage of SDXL using
+                            --sdxl-* arguments other than --sdxl-high-noise-fractions will cause overwrites if multiple values
+                            are supplied, and therefore the creation of files with the "_version_(number)" prefix, it is 
+                            recommended to use --output-configs/--output-metadata when using those options in order 
+                            to determine the input parameters which produced the image.""")
 
 parser.add_argument('-oc', '--output-configs', action='store_true', default=False,
                     help="""Write a configuration text file for every output image or animation.
@@ -382,15 +505,13 @@ parser.add_argument('-oc', '--output-configs', action='store_true', default=Fals
                             to --output-directory and are affected by --output-prefix and --output-overwrite as well. 
                             The files will be named after their corresponding image or animation file. Configuration 
                             files produced for animation frame images will utilize --frame-start and --frame-end to 
-                            specify the frame number.
-                            """)
+                            specify the frame number.""")
 
 parser.add_argument('-om', '--output-metadata', action='store_true', default=False,
                     help="""Write the information produced by --output-configs to the PNG metadata of each image.
                             Metadata will not be written to animated files (yet). The data is written to a 
                             PNG metadata property named DgenerateConfig and can be read using ImageMagick like so: 
-                            "magick identify -format "%%[Property:DgenerateConfig] generated_file.png".
-                            """)
+                            "magick identify -format "%%[Property:DgenerateConfig] generated_file.png".""")
 
 
 def _type_prompts(prompt):
@@ -549,9 +670,15 @@ def _type_guidance_scale(val):
 parser.add_argument('-gs', '--guidance-scales', action='store', nargs='*', default=[5], type=_type_guidance_scale,
                     help="""List of guidance scales to try. Guidance scale effects how much your
                          text prompt is considered. Low values draw more data from images unrelated
-                         to text prompt. (default: [5])"""
-                    )
+                         to text prompt. (default: [5])""")
 
+
+parser.add_argument('-grs', '--guidance-rescales', action='store', nargs='*', default=[], type=_type_guidance_scale,
+                    help="""List of guidance rescale factors to try. Proposed by [Common Diffusion Noise Schedules and 
+                            Sample Steps are Flawed](https://arxiv.org/pdf/2305.08891.pdf) "guidance_scale" is defined 
+                            as "φ" in equation 16. of [Common Diffusion Noise Schedules and Sample Steps are Flawed]
+                            (https://arxiv.org/pdf/2305.08891.pdf). Guidance rescale factor should fix overexposure 
+                            when using zero terminal SNR.""")
 
 def _type_inference_steps(val):
     try:
@@ -571,13 +698,6 @@ parser.add_argument('-ifs', '--inference-steps', action='store', nargs='*', defa
                          produce good results, higher values may improve image quality and or
                          change image content. (default: [30])""")
 
-parser.add_argument('-hnf', '--sdxl-high-noise-fractions', action='store', nargs='*', default=None,
-                    type=_type_sdxl_high_noise_fractions,
-                    help="""High noise fraction for Stable Diffusion XL (torch-sdxl), this fraction of inference steps
-                         will be processed by the base model, while the rest will be processed by the refiner model.
-                         Multiple values to this argument will result in additional generation steps for each value. 
-                         (default: [0.8])""")
-
 
 def parse_args(args=None, namespace=None):
     args = parser.parse_args(args, namespace)
@@ -587,42 +707,43 @@ def parse_args(args=None, namespace=None):
     elif args.seeds is None:
         args.seeds = [random.randint(0, 99999999999999)]
 
-    if args.output_size is None and len(args.image_seeds) == 0 and len(args.control_images) == 0:
+    if args.output_size is None and not args.image_seeds and not args.control_images:
         args.output_size = (512, 512) if 'sdxl' not in args.model_type else (1024, 1024)
 
-    if len(args.image_seeds) == 0 and args.image_seed_strengths is not None:
+    if args.control_nets is not None and 'flax' in args.model_type and \
+            (args.image_seeds or args.image_seed_strengths):
+        messages.log('--image-seeds/--image-seed-strengths are incompatible with '
+                     '--model-type "flax" + --control-nets, use --control-images instead.',
+                     level=messages.ERROR)
+        sys.exit(1)
+
+    if not args.image_seeds and args.image_seed_strengths:
         messages.log('You cannot specify --image-seed-strengths without --image-seeds.',
-                       level=messages.ERROR)
+                     level=messages.ERROR)
         sys.exit(1)
 
-    if args.control_nets is None and len(args.control_images) > 0:
+    if args.control_nets is None and args.control_images:
         messages.log('You cannot specify --control-images without --control-nets.',
-                       level=messages.ERROR)
+                     level=messages.ERROR)
         sys.exit(1)
 
-    if 'upscaler' not in args.model_type and args.upscaler_noise_levels is not None:
+    if 'upscaler' not in args.model_type and args.upscaler_noise_levels:
         messages.log('You cannot specify --upscaler-noise-levels for a non upscaler model type, see --model-types.',
-                       level=messages.ERROR)
-    elif args.upscaler_noise_levels is None:
+                     level=messages.ERROR)
+    elif 'upscaler' in args.model_type and args.upscaler_noise_levels is None:
         args.upscaler_noise_levels = [20]
+    else:
+        args.upscaler_noise_levels = []
 
     if 'sdxl' not in args.model_type:
-        if args.sdxl_refiner is not None:
-            messages.log('You cannot specify --sdxl-refiner for a non SDXL model type, see --model-types.',
-                           level=messages.ERROR)
-            sys.exit(1)
-        if args.sdxl_high_noise_fractions is not None:
-            messages.log(
-                'You cannot specify --sdxl-high-noise-fractions for a non SDXL model type, see --model-types.',
-                level=messages.ERROR)
-            sys.exit(1)
-        if args.sdxl_target_size is not None:
-            messages.log('You cannot specify --sdxl-target-size for a non SDXL model type, see --model-types.',
-                           level=messages.ERROR)
-            sys.exit(1)
-        if args.sdxl_original_size is not None:
-            messages.log('You cannot specify --sdxl-original-size for a non SDXL model type, see --model-types.',
-                           level=messages.ERROR)
+        invalid_arg = False
+        for sdxl_args in (a for a in dir(args) if a.startswith('sdxl') and getattr(args, a)):
+            messages.log(f'You cannot specify --{sdxl_args.replace("_", "-")} '
+                         f'for a non SDXL model type, see --model-types.',
+                         level=messages.ERROR)
+            invalid_arg = True
+
+        if invalid_arg:
             sys.exit(1)
 
         args.sdxl_high_noise_fractions = []
@@ -631,7 +752,7 @@ def parse_args(args=None, namespace=None):
             # Default value
             args.sdxl_high_noise_fractions = [0.8]
 
-    if len(args.image_seeds) > 0:
+    if args.image_seeds:
         if args.image_seed_strengths is None:
             # Default value
             args.image_seed_strengths = [0.8]

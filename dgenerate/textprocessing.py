@@ -48,7 +48,7 @@ class ConceptModelPathParser:
         concept = parts.__next__()
         for i in parts:
             vals = i.split('=', 1)
-            if len(vals) == 0:
+            if not vals:
                 raise ConceptModelPathParseError(f'Error parsing path arguments for '
                                                  f'{self.concept_name} concept "{concept}", Empty argument space, '
                                                  f'stray semicolon?')
