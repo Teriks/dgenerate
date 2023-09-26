@@ -1507,6 +1507,7 @@ class DiffusionPipelineWrapperBase:
             _image_grid(self._pipeline.numpy_to_pil(images.reshape((images.shape[0],) + images.shape[-3:])),
                         device_count, 1))
 
+
     def _get_non_universal_pipeline_arg(self,
                                         pipeline,
                                         default_args,
@@ -1514,12 +1515,20 @@ class DiffusionPipelineWrapperBase:
                                         pipeline_arg_name,
                                         user_arg_name,
                                         option_name, default):
+        if pipeline.__call__.__wrapped__ is not None:
+            # torch.no_grad()
+            func = pipeline.__call__.__wrapped__
+        else:
+            func = pipeline.__call__
 
-        if pipeline_arg_name in inspect.getfullargspec(pipeline.__call__).args:
-            val = user_args.get(user_arg_name, default)
-            default_args[pipeline_arg_name] = val
-            return val
-
+        if pipeline_arg_name in inspect.getfullargspec(func).args:
+            if user_arg_name in user_args:
+                # Only provide a default if the user
+                # provided the option and it's value was None
+                val = user_args.get(user_arg_name, default)
+                default_args[pipeline_arg_name] = val
+                return val
+            return None
         else:
             val = user_args.get(user_arg_name, None)
             if val is not None:
