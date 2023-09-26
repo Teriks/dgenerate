@@ -1473,6 +1473,8 @@ class DiffusionPipelineWrapperBase:
         if user_prefix:
             user_prefix += '_'
             option_prefix = user_prefix.replace('_', '-')
+        else:
+            option_prefix = ''
 
         self._get_non_universal_pipeline_arg(pipeline, default_args, user_args,
                                              'aesthetic_score', f'sdxl_{user_prefix}aesthetic_score',
