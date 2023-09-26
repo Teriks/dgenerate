@@ -50,7 +50,8 @@ from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline, S
     ControlNetModel, AutoencoderKL, AsymmetricAutoencoderKL, AutoencoderTiny, StableDiffusionControlNetPipeline, \
     StableDiffusionControlNetInpaintPipeline, StableDiffusionControlNetImg2ImgPipeline, \
     StableDiffusionXLControlNetPipeline, StableDiffusionXLControlNetImg2ImgPipeline, \
-    StableDiffusionXLControlNetInpaintPipeline
+    StableDiffusionXLControlNetInpaintPipeline, StableDiffusionXLInstructPix2PixPipeline, \
+    StableDiffusionInstructPix2PixPipeline
 
 _TORCH_MODEL_CACHE = dict()
 _FLAX_MODEL_CACHE = dict()
@@ -652,22 +653,39 @@ def _create_torch_diffusion_pipeline(pipeline_type,
         pipeline_class = (StableDiffusionUpscalePipeline if model_type is ModelTypes.TORCH_UPSCALER_X4
                           else StableDiffusionLatentUpscalePipeline)
     else:
-        sdxl = model_type == ModelTypes.TORCH_SDXL
+        sdxl = model_type_is_sdxl(model_type)
+        pix2pix = model_type_is_pix2pix(model_type)
 
         if pipeline_type == _PipelineTypes.BASIC:
+            if pix2pix:
+                raise NotImplementedError(
+                    'pix2pix models only work in img2img mode and cannot work without --image-seeds.')
+
             if control_net_paths:
                 pipeline_class = StableDiffusionXLControlNetPipeline if sdxl else StableDiffusionControlNetPipeline
             else:
                 pipeline_class = StableDiffusionXLPipeline if sdxl else StableDiffusionPipeline
         elif pipeline_type == _PipelineTypes.IMG2IMG:
-            if control_net_paths:
-                if sdxl:
-                    pipeline_class = StableDiffusionXLControlNetImg2ImgPipeline
-                else:
-                    pipeline_class = StableDiffusionControlNetImg2ImgPipeline
+
+            if pix2pix:
+                if control_net_paths:
+                    raise NotImplementedError('pix2pix models are not compatible with --control-nets.')
+
+                pipeline_class = StableDiffusionXLInstructPix2PixPipeline if sdxl else StableDiffusionInstructPix2PixPipeline
             else:
-                pipeline_class = StableDiffusionXLImg2ImgPipeline if sdxl else StableDiffusionImg2ImgPipeline
+                if control_net_paths:
+                    if sdxl:
+                        pipeline_class = StableDiffusionXLControlNetImg2ImgPipeline
+                    else:
+                        pipeline_class = StableDiffusionControlNetImg2ImgPipeline
+                else:
+                    pipeline_class = StableDiffusionXLImg2ImgPipeline if sdxl else StableDiffusionImg2ImgPipeline
+
         elif pipeline_type == _PipelineTypes.INPAINT:
+            if pix2pix:
+                raise NotImplementedError(
+                    'pix2pix models only work in img2img mode and cannot work in inpaint mode (with a mask).')
+
             if control_net_paths:
                 if sdxl:
                     pipeline_class = StableDiffusionXLControlNetInpaintPipeline
@@ -713,6 +731,15 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                                               use_auth_token=auth_token)
 
         if control_net_paths:
+            if lora_paths and model_type_is_sdxl(model_type):
+                raise NotImplementedError(
+                    'LoRA currently cannot be used with Control Nets when using SDXL')
+
+            if model_type_is_pix2pix(model_type):
+                raise NotImplementedError(
+                    'Using ControlNets with pix2pix models is not supported.'
+                )
+
             control_nets = None
 
             for control_net_path in control_net_paths:
@@ -763,10 +790,6 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                 load_on_pipeline(pipeline, use_auth_token=auth_token)
 
     if lora_paths is not None:
-        if control_net_paths is not None and model_type == ModelTypes.TORCH_SDXL:
-            raise NotImplementedError(
-                'LoRA currently cannot be used with Control Nets when using SDXL')
-
         for lora_path in lora_paths:
             parse_lora_path(lora_path). \
                 load_on_pipeline(pipeline, use_auth_token=auth_token)
@@ -887,18 +910,21 @@ def _create_flax_diffusion_pipeline(pipeline_type,
 
 
 def supported_model_types():
+    base_set = ['torch', 'torch-pix2pix', 'torch-sdxl', 'torch-sdxl-pix2pix', 'torch-upscaler-x2', 'torch-upscaler-x4']
     if have_jax_flax():
-        return ['torch', 'torch-sdxl', 'torch-upscaler-x2', 'torch-upscaler-x4', 'flax']
+        return base_set + ['flax']
     else:
-        return ['torch', 'torch-sdxl', 'torch-upscaler-x2', 'torch-upscaler-x4']
+        return base_set
 
 
 class ModelTypes(enum.Enum):
     TORCH = 1
-    TORCH_SDXL = 2
-    TORCH_UPSCALER_X2 = 3
-    TORCH_UPSCALER_X4 = 4
-    FLAX = 5
+    TORCH_PIX2PIX = 2
+    TORCH_SDXL = 3
+    TORCH_SDXL_PIX2PIX = 4
+    TORCH_UPSCALER_X2 = 5
+    TORCH_UPSCALER_X4 = 6
+    FLAX = 7
 
 
 def model_type_is_upscaler(model_type: typing.Union[ModelTypes, str]):
@@ -909,12 +935,28 @@ def model_type_is_upscaler(model_type: typing.Union[ModelTypes, str]):
                           ModelTypes.TORCH_UPSCALER_X4}
 
 
+def model_type_is_sdxl(model_type: typing.Union[ModelTypes, str]):
+    if isinstance(model_type, str):
+        model_type = get_model_type_enum(model_type)
+
+    return model_type in {ModelTypes.TORCH_SDXL,
+                          ModelTypes.TORCH_SDXL_PIX2PIX}
+
+def model_type_is_pix2pix(model_type: typing.Union[ModelTypes, str]):
+    if isinstance(model_type, str):
+        model_type = get_model_type_enum(model_type)
+
+    return model_type in {ModelTypes.TORCH_PIX2PIX,
+                          ModelTypes.TORCH_SDXL_PIX2PIX}
+
 def get_model_type_enum(id_str) -> ModelTypes:
     return {'torch': ModelTypes.TORCH,
+            'torch-pix2pix': ModelTypes.TORCH_PIX2PIX,
             'torch-sdxl': ModelTypes.TORCH_SDXL,
+            'torch-sdxl-pix2pix': ModelTypes.TORCH_SDXL_PIX2PIX,
             'torch-upscaler-x2': ModelTypes.TORCH_UPSCALER_X2,
             'torch-upscaler-x4': ModelTypes.TORCH_UPSCALER_X4,
-            'flax': ModelTypes.FLAX}[id_str]
+            'flax': ModelTypes.FLAX}[id_str.lower()]
 
 
 def have_jax_flax():
@@ -1174,6 +1216,7 @@ class DiffusionPipelineWrapperBase:
         num_inference_steps = kwargs.get('num_inference_steps')
         guidance_scale = kwargs.get('guidance_scale')
         guidance_rescale = kwargs.get('guidance_rescale')
+        image_guidance_scale = kwargs.get('image_guidance_scale')
 
         sdxl_high_noise_fraction = kwargs.get('sdxl_high_noise_fraction', None)
         sdxl_aesthetic_score = kwargs.get('sdxl_aesthetic_score', None)
@@ -1203,6 +1246,9 @@ class DiffusionPipelineWrapperBase:
 
         if guidance_rescale is not None:
             opts.append(('--guidance-rescales', guidance_rescale))
+
+        if image_guidance_scale is not None:
+            opts.append(('--image-guidance-scales', image_guidance_scale))
 
         if prompt is not None:
             if negative_prompt is not None:
@@ -1357,7 +1403,7 @@ class DiffusionPipelineWrapperBase:
             if model_type_is_upscaler(self._model_type):
                 if get_model_type_enum(self._model_type) == ModelTypes.TORCH_UPSCALER_X4:
                     args['noise_level'] = int(user_args.get('upscaler_noise_level', DEFAULT_X4_UPSCALER_NOISE_LEVEL))
-            else:
+            elif not model_type_is_pix2pix(self._model_type):
                 args['strength'] = float(user_args.get('strength', DEFAULT_IMAGE_SEED_STRENGTH))
 
             mask_image = user_args.get('mask_image')
@@ -1507,7 +1553,6 @@ class DiffusionPipelineWrapperBase:
             _image_grid(self._pipeline.numpy_to_pil(images.reshape((images.shape[0],) + images.shape[-3:])),
                         device_count, 1))
 
-
     def _get_non_universal_pipeline_arg(self,
                                         pipeline,
                                         default_args,
@@ -1534,7 +1579,8 @@ class DiffusionPipelineWrapperBase:
             if val is not None:
                 raise NotImplementedError(
                     f'{option_name} cannot be used with --model-type "{self._model_type}" in '
-                    f'{_describe_pipeline_type(self._pipeline_type)} mode.')
+                    f'{_describe_pipeline_type(self._pipeline_type)} mode with the current '
+                    f'combination of arguments and model.')
             return None
 
     def _get_sdxl_conditioning_args(self, pipeline, default_args, user_args, user_prefix=None):
@@ -1598,6 +1644,10 @@ class DiffusionPipelineWrapperBase:
         self._get_non_universal_pipeline_arg(self._pipeline, default_args, user_args,
                                              'guidance_rescale', 'guidance_rescale',
                                              '--guidance-rescales', 0.0)
+
+        self._get_non_universal_pipeline_arg(self._pipeline, default_args, user_args,
+                                             'image_guidance_scale', 'image_guidance_scale',
+                                             '--image-guidance-scales', 1.5)
 
         if model_type != ModelTypes.TORCH_UPSCALER_X2:
             # Does not take this argument, can only produce one image
@@ -1667,6 +1717,7 @@ class DiffusionPipelineWrapperBase:
         default_args.pop('controlnet_conditioning_scale', None)
         default_args.pop('control_guidance_start', None)
         default_args.pop('control_guidance_end', None)
+        default_args.pop('image_guidance_scale', None)
 
         self._get_sdxl_conditioning_args(self._sdxl_refiner_pipeline,
                                          default_args, user_args,
@@ -1674,7 +1725,7 @@ class DiffusionPipelineWrapperBase:
 
         self._get_non_universal_pipeline_arg(self._pipeline, default_args, user_args,
                                              'guidance_rescale', 'sdxl_refiner_guidance_rescale',
-                                             '--sdxl-refiner-guidance-rescales', None)
+                                             '--sdxl-refiner-guidance-rescales', 0.0)
 
         if sd_edit:
             strength = 1.0 - high_noise_fraction
@@ -1694,7 +1745,7 @@ class DiffusionPipelineWrapperBase:
 
         model_type = get_model_type_enum(self._model_type)
 
-        if model_type == ModelTypes.TORCH_SDXL and self._textual_inversion_paths is not None:
+        if model_type_is_sdxl(model_type) and self._textual_inversion_paths is not None:
             raise NotImplementedError('Textual inversion not supported for SDXL.')
 
         if model_type == ModelTypes.FLAX:
@@ -1720,12 +1771,12 @@ class DiffusionPipelineWrapperBase:
                                                 device=self._device)
 
         elif self._sdxl_refiner_path is not None:
-            if model_type != ModelTypes.TORCH_SDXL:
+            if not model_type_is_sdxl(model_type):
                 raise NotImplementedError('Only Stable Diffusion XL models support refiners, '
                                           'please use --model-type torch-sdxl if you are trying to load an sdxl model.')
             self._pipeline, self._parsed_control_net_paths = \
                 _create_torch_diffusion_pipeline(pipeline_type,
-                                                 ModelTypes.TORCH_SDXL,
+                                                 model_type,
                                                  self._model_path,
                                                  model_subfolder=self._model_subfolder,
                                                  revision=self._revision,

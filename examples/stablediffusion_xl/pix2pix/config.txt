@@ -1,0 +1,11 @@
+#! dgenerate 1.0.0
+
+diffusers/sdxl-instructpix2pix-768 --model-type torch-sdxl-pix2pix \
+--variant fp16 --dtype float16 \
+--sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
+--sdxl-high-noise-fractions 0.8 \
+--inference-steps 30 \
+--guidance-scales 8 9 \
+--image-guidance-scales 1.5 2.0 \
+--image-seeds beach.jpg \
+--prompts "Make the water pink"

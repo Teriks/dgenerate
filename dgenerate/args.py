@@ -672,6 +672,25 @@ parser.add_argument('-gs', '--guidance-scales', action='store', nargs='*', defau
                          text prompt is considered. Low values draw more data from images unrelated
                          to text prompt. (default: [5])""")
 
+
+def _type_image_guidance_scale(val):
+    try:
+        val = float(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be a floating point number')
+
+    if val < 1:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 1')
+    return val
+
+
+parser.add_argument('-igs', '--image-guidance-scales', action='store', nargs='*', default=None,
+                    type=_type_image_guidance_scale,
+                    help="""Push the generated image towards the inital image when using --model-type *-pix2pix models. 
+                            Image guidance scale is enabled by setting image-guidance-scale > 1. Higher image guidance scale 
+                            encourages generated images that are closely linked to the source `image`, usually at the expense 
+                            of lower image quality. Requires a value of at least 1. (default: [1.5])""")
+
 parser.add_argument('-grs', '--guidance-rescales', action='store', nargs='*', default=[], type=_type_guidance_scale,
                     help="""List of guidance rescale factors to try. Proposed by [Common Diffusion Noise Schedules and 
                             Sample Steps are Flawed](https://arxiv.org/pdf/2305.08891.pdf) "guidance_scale" is defined 
@@ -727,13 +746,27 @@ def parse_args(args=None, namespace=None):
                      level=messages.ERROR)
         sys.exit(1)
 
-    if 'upscaler' not in args.model_type and args.upscaler_noise_levels:
-        messages.log('You cannot specify --upscaler-noise-levels for a non upscaler model type, see --model-types.',
-                     level=messages.ERROR)
-    elif 'upscaler' in args.model_type and args.upscaler_noise_levels is None:
+    if 'upscaler' not in args.model_type:
+        if args.upscaler_noise_levels:
+            messages.log('You cannot specify --upscaler-noise-levels for a non upscaler model type, see --model-types.',
+                         level=messages.ERROR)
+            sys.exit(1)
+    elif args.upscaler_noise_levels is None:
         args.upscaler_noise_levels = [20]
-    elif not args.upscaler_noise_levels:
-        args.upscaler_noise_levels = []
+
+    if 'pix2pix' not in args.model_type:
+        if args.image_guidance_scales:
+            messages.log(
+                '--image-guidance-scales only valid with pix2pix models, see --model-type.',
+                level=messages.ERROR)
+            sys.exit(1)
+    elif args.control_images or args.control_nets:
+        messages.log(
+            '--control-nets/--control-images are not compatible with pix2pix models, see --model-type.',
+            level=messages.ERROR)
+        sys.exit(1)
+    elif not args.image_guidance_scales:
+        args.image_guidance_scales = [1.5]
 
     if 'sdxl' not in args.model_type:
         invalid_arg = False
