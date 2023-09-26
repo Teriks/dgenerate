@@ -48,7 +48,7 @@ def run_diffusion():
 
     from . import messages
 
-    messages.LEVEL = messages.INFO
+    messages.LEVEL = messages.DEBUG
 
     # The above modules take long enough to import that they must be in here in
     # order to handle keyboard interrupts without issues
