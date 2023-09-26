@@ -1597,7 +1597,7 @@ class DiffusionPipelineWrapperBase:
 
         self._get_non_universal_pipeline_arg(self._pipeline, default_args, user_args,
                                              'guidance_rescale', 'guidance_rescale',
-                                             '--guidance-rescales', None)
+                                             '--guidance-rescales', 0.0)
 
         if model_type != ModelTypes.TORCH_UPSCALER_X2:
             # Does not take this argument, can only produce one image
