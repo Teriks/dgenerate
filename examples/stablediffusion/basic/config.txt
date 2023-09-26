@@ -2,6 +2,6 @@
 
 stabilityai/stable-diffusion-2 \
 --inference-steps 40 \
---guidance-scales 8 \
+--guidance-scales 8 9 \
 --output-size 1024 \
 --prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork"
