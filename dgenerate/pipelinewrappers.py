@@ -339,7 +339,7 @@ def parse_torch_vae_path(path) -> TorchVAEPath:
         except ValueError:
             raise InvalidVaePathError('Torch VAE tiling parameter must be a boolean value, "true" or "false".')
 
-        slicing = r.args.get('tiling', False)
+        slicing = r.args.get('slicing', False)
         try:
             slicing = bool(slicing)
         except ValueError:
