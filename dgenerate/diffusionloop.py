@@ -397,15 +397,15 @@ def iterate_diffusion_args(prompts,
 
         if sdxl_second_prompts:
             diffusion_args['sdxl_prompt_2'] = sdxl_second_prompt.get('prompt', None)
-            diffusion_args['sdxl_negative_prompt_2'] = sdxl_second_prompt.get('negative', None)
+            diffusion_args['sdxl_negative_prompt_2'] = sdxl_second_prompt.get('negative_prompt', None)
 
         if sdxl_refiner_prompts:
             diffusion_args['sdxl_refiner_prompt'] = sdxl_refiner_prompt.get('prompt', None)
-            diffusion_args['sdxl_refiner_negative_prompt'] = sdxl_refiner_prompt.get('negative', None)
+            diffusion_args['sdxl_refiner_negative_prompt'] = sdxl_refiner_prompt.get('negative_prompt', None)
 
         if sdxl_refiner_second_prompts:
             diffusion_args['sdxl_refiner_prompt_2'] = sdxl_refiner_second_prompt.get('prompt', None)
-            diffusion_args['sdxl_refiner_negative_prompt_2'] = sdxl_refiner_second_prompt.get('negative', None)
+            diffusion_args['sdxl_refiner_negative_prompt_2'] = sdxl_refiner_second_prompt.get('negative_prompt', None)
 
         yield DiffusionArgContext(diffusion_args,
                                   prompt,
