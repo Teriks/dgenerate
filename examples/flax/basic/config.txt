@@ -5,5 +5,6 @@ stabilityai/stable-diffusion-2 --model-type flax \
 --dtype float16 \
 --inference-steps 80 \
 --guidance-scales 10 \
+--gen-seeds 2 \
 --prompts "Horse standing in the open door of a red barn, real, photo, high resolution; artwork, fake, imaginary" \
 --output-size 768

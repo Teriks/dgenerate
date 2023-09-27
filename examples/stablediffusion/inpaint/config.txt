@@ -2,7 +2,7 @@
 
 stabilityai/stable-diffusion-2-inpainting  \
 --inference-steps 30 \
---guidance-scales 7 8 \
+--guidance-scales 7 \
 --image-seeds horse.jpg;mask.jpg \
 --image-seed-strengths 0.9 \
 --seeds 39877139643371 \
