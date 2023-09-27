@@ -1115,11 +1115,11 @@ accepted values are the same as ``--dtype``, IE: 'float32', 'float16', 'auto'
 You can use ``--vae-slicing`` and ``--vae-tiling`` to enable to generation of huge images
 without running your GPU out of memory.
 
-When ``--vae-tiling``, the VAE will split the input tensor into tiles to
+When ``--vae-tiling`` is used, the VAE will split the input tensor into tiles to
 compute decoding and encoding in several steps. This is useful for saving a large amount of
 memory and to allow processing larger images.
 
-When ``--vae-slicing``, the VAE will split the input tensor in slices to
+When ``--vae-slicing`` is used, the VAE will split the input tensor in slices to
 compute decoding in several steps. This is useful to save some memory.
 
 .. code-block:: bash
