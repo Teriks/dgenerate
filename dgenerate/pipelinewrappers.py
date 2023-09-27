@@ -651,7 +651,7 @@ def _describe_pipeline_type(enum):
 
 
 def _args_except(args, *exceptions):
-    return {k: v for k, v in args.items() if v not in exceptions}
+    return {k: v for k, v in args.items() if k not in exceptions}
 
 
 def _set_vae_slicing_tiling(pipeline, vae_slicing, vae_tiling):
