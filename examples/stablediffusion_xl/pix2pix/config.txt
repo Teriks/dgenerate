@@ -5,10 +5,11 @@ diffusers/sdxl-instructpix2pix-768 --model-type torch-sdxl-pix2pix \
 --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
 --inference-steps 30 \
 --guidance-scales 5 \
---image-guidance-scales 3.5 \
+--image-guidance-scales 3 \
 --sdxl-high-noise-fractions 0.8 \
 --image-seeds lena512.png \
 --prompts "Put sunglasses on her" \
 --sdxl-refiner-prompts "Girl wearing sunglasses" \
 --sdxl-original-size 512 \
+--sdxl-refiner-original-size 512 \
 --output-size 768
