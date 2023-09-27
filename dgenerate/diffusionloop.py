@@ -247,7 +247,6 @@ def iterate_diffusion_args(prompts,
                            inference_steps_list) -> Iterator[DiffusionArgContext]:
     diffusion_args = dict()
 
-
     for arg_set in itertools.product(
             prompts,
             _list_or_list_of_none(sdxl_second_prompts),
@@ -797,7 +796,6 @@ class DiffusionRenderLoop:
             if n in overrides:
                 return overrides[n]
             return v
-
 
         yield from iterate_diffusion_args(
             prompts=ov('prompts', self.prompts),

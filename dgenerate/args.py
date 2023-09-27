@@ -420,7 +420,6 @@ parser.add_argument('--sdxl-refiner-prompts', nargs='+', action='store',
                     overrides that with a prompt of your choosing. The negative prompt 
                     component can be specified with the same syntax as --prompts""")
 
-
 parser.add_argument('--sdxl-refiner-second-prompts', nargs='+', action='store',
                     default=None,
                     type=_type_prompts,
@@ -562,8 +561,6 @@ parser.add_argument('-om', '--output-metadata', action='store_true', default=Fal
                             Metadata will not be written to animated files (yet). The data is written to a 
                             PNG metadata property named DgenerateConfig and can be read using ImageMagick like so: 
                             "magick identify -format "%%[Property:DgenerateConfig] generated_file.png".""")
-
-
 
 parser.add_argument('-p', '--prompts', nargs='+', action='store',
                     default=[{'prompt': ''}],
@@ -786,8 +783,9 @@ def parse_args(args=None, namespace=None):
 
     if 'upscaler' not in args.model_type:
         if args.upscaler_noise_levels:
-            messages.log('Error: You cannot specify --upscaler-noise-levels for a non upscaler model type, see --model-types.',
-                         level=messages.ERROR)
+            messages.log(
+                'Error: You cannot specify --upscaler-noise-levels for a non upscaler model type, see --model-types.',
+                level=messages.ERROR)
             sys.exit(1)
     elif args.upscaler_noise_levels is None:
         args.upscaler_noise_levels = [20]
