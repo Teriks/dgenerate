@@ -123,9 +123,6 @@ parser.add_argument('--vae', action='store', default=None,
                     Aside from the "model" argument, there are four other optional arguments that can be specified,
                     these include "revision", "variant", "subfolder", "dtype".
                     
-                    For torch AutoencoderKL and AutoencoderTiny, the additional boolean arguments "tiling" 
-                    and "slicing" are available to enable VAE tiling and slicing, these arguments default to False.
-                    
                     They can be specified as so in any order, they are not positional:
                     "AutoencoderKL;model=huggingface/vae;revision=main;variant=fp16;subfolder=sub_folder;dtype=float16".
                     
@@ -144,16 +141,6 @@ parser.add_argument('--vae', action='store', default=None,
                     The "dtype" argument specifies the VAE model precision, it defaults to the value of -t/--dtype
                     and should be one of: float16 / float32 / auto.
                     
-                    The "tiling" and "slicing" argument can be used to enable VAE tiling/slicing when using 
-                    AutoencoderKL or AutoencoderTiny.
-                    
-                    When "tiling" is enabled via "tiling=true", the VAE will split the input tensor into tiles to
-                    compute decoding and encoding in several steps. This is useful for saving a large amount of 
-                    memory and to allow processing larger images.
-                    
-                    When "slicing" is enabled via "slicing=true", the VAE will split the input tensor in slices to
-                    compute decoding in several steps. This is useful to save some memory.
-                    
                     If you wish to load a weights file directly from disk, the simplest
                     way is: --vae "AutoencoderKL;my_vae.safetensors", or with a 
                     dtype "AutoencoderKL;my_vae.safetensors;dtype=float16", all other loading arguments are unused 
@@ -163,6 +150,13 @@ parser.add_argument('--vae', action='store', default=None,
                     loading syntax: --vae "AutoencoderKL;https://huggingface.co/UserName/repository-name/blob/main/vae_model.safetensors",
                     the revision argument may be used with this syntax.
                     """)
+
+
+parser.add_argument('--vae-tiling', action='store_true', default=False,
+                    help="""Enable VAE tiling (torch* models only)""")
+
+parser.add_argument('--vae-slicing', action='store_true', default=False,
+                    help="""Enable VAE slicing (torch* models only)""")
 
 parser.add_argument('--lora', '--loras', action='store', default=None,
                     help=
