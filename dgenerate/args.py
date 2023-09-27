@@ -819,10 +819,10 @@ def parse_args(args=None, namespace=None):
                 invalid_arg = True
             if invalid_arg:
                 sys.exit(1)
-
-        if args.sdxl_high_noise_fractions is None:
-            # Default value
-            args.sdxl_high_noise_fractions = [0.8]
+        else:
+            if args.sdxl_high_noise_fractions is None:
+                # Default value
+                args.sdxl_high_noise_fractions = [0.8]
 
     if args.image_seeds:
         if args.image_seed_strengths is None:
