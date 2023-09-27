@@ -6,7 +6,7 @@ diffusers/sdxl-instructpix2pix-768 --model-type torch-sdxl-pix2pix \
 --vae AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix \
 --vae-tiling \
 --vae-slicing \
---inference-steps 30 \
+--inference-steps 15 \
 --guidance-scales 5 \
 --image-guidance-scales 1.5 \
 --image-seeds mountain.png \
@@ -14,8 +14,8 @@ diffusers/sdxl-instructpix2pix-768 --model-type torch-sdxl-pix2pix \
 --sdxl-high-noise-fractions 0.9 \
 --sdxl-refiner-prompts "Cloudy sky over a forested mountain range, high resolution, high quality, 4k; low quality, low resolution" \
 --sdxl-original-size 512 \
---sdxl-target-size 2048 \
---output-size 2048
+--sdxl-target-size 512 \
+--output-size 512
 
 
 diffusers/sdxl-instructpix2pix-768 --model-type torch-sdxl-pix2pix \
@@ -24,7 +24,7 @@ diffusers/sdxl-instructpix2pix-768 --model-type torch-sdxl-pix2pix \
 --vae AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix \
 --vae-tiling \
 --vae-slicing \
---inference-steps 30 \
+--inference-steps 15 \
 --guidance-scales 5 \
 --image-guidance-scales 1.5 \
 --image-seeds mountain.png \
@@ -32,5 +32,5 @@ diffusers/sdxl-instructpix2pix-768 --model-type torch-sdxl-pix2pix \
 --sdxl-high-noise-fractions 0.9 \
 --sdxl-refiner-prompts "Cloudy sky over a forested mountain range, high resolution, high quality, 4k; low quality, low resolution" \
 --sdxl-original-size 512 \
---sdxl-target-size 2048 \
---output-size 2048
+--sdxl-target-size 512 \
+--output-size 512

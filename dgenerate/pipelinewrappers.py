@@ -132,7 +132,7 @@ class FlaxControlNetPath:
         cache_hit = _FLAX_CONTROL_NET_CACHE.get(cache_key)
 
         if cache_hit is not None:
-            messages.log(f'Loaded Cached Flax ControlNet "{cache_hit.__class.__.__name__}", '
+            messages.log(f'Loaded Cached Flax ControlNet "{cache_hit.__class__.__name__}", '
                          f'Cache Key: "{cache_key}"', level=messages.DEBUG)
             return cache_hit
 
@@ -209,7 +209,7 @@ class TorchControlNetPath:
         cache_hit = _TORCH_CONTROL_NET_CACHE.get(cache_key)
 
         if cache_hit is not None:
-            messages.log(f'Loaded Cached Torch ControlNet "{cache_hit.__class.__.__name__}", '
+            messages.log(f'Loaded Cached Torch ControlNet "{cache_hit.__class__.__name__}", '
                          f'Cache Key: "{cache_key}"', level=messages.DEBUG)
             return cache_hit
 
@@ -484,7 +484,7 @@ def _load_pytorch_vae(path,
 
     cache_hit = _TORCH_VAE_CACHE.get(cache_key)
     if cache_hit is not None:
-        messages.log(f'Loaded Cached Torch VAE "{cache_hit.__class.__.__name__}", '
+        messages.log(f'Loaded Cached Torch VAE "{cache_hit.__class__.__name__}", '
                      f'Cache Key: "{cache_key}"', level=messages.DEBUG)
 
         return cache_hit
@@ -548,7 +548,7 @@ def _load_flax_vae(path,
 
     cache_hit = _FLAX_VAE_CACHE.get(cache_key)
     if cache_hit is not None:
-        messages.log(f'Loaded Cached Flax VAE "{cache_hit.__class.__.__name__}", '
+        messages.log(f'Loaded Cached Flax VAE "{cache_hit.__class__.__name__}", '
                      f'Cache Key: "{cache_key}"', level=messages.DEBUG)
         return cache_hit
 
@@ -736,7 +736,7 @@ def _create_torch_diffusion_pipeline(pipeline_type,
     cache_hit = _TORCH_MODEL_CACHE.get(cache_key)
 
     if cache_hit is not None:
-        messages.log(f'Loaded Cached Torch Pipeline "{cache_hit[0].__class.__.__name__}", '
+        messages.log(f'Loaded Cached Torch Pipeline "{cache_hit[0].__class__.__name__}", '
                      f'Cache Key: "{cache_key}"', level=messages.DEBUG)
 
         _set_vae_slicing_tiling(cache_hit[0], vae_slicing, vae_tiling)
@@ -941,7 +941,7 @@ def _create_flax_diffusion_pipeline(pipeline_type,
     cache_hit = _FLAX_MODEL_CACHE.get(cache_key)
 
     if cache_hit is not None:
-        messages.log(f'Loaded Cached Flax Pipeline "{cache_hit[0].__class.__.__name__}", '
+        messages.log(f'Loaded Cached Flax Pipeline "{cache_hit[0].__class__.__name__}", '
                      f'Cache Key: "{cache_key}"', level=messages.DEBUG)
         return cache_hit
 
