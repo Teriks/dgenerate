@@ -155,10 +155,6 @@ def run_diffusion():
                     [quote(s) for s in render_loop.written_animations]}
 
     if not sys.stdin.isatty():
-
-        if '-v' in sys.argv or '--verbose' in sys.argv:
-            messages.LEVEL = messages.DEBUG
-
         template_args = {
             'last_image': '',
             'last_images': [],
@@ -219,14 +215,17 @@ def run_diffusion():
                 templated_cmd = jinja_env. \
                     from_string(os.path.expandvars(args)).render(**template_args)
 
+                cmd_args = sys.argv[1:]
+                shlexed = shlex.split(templated_cmd)
+                shlexed[1:1] = cmd_args
+
                 header = 'Processing Arguments: '
-                args_wrapped = textwrap.fill(templated_cmd,
+                args_wrapped = textwrap.fill(' '.join(shlexed),
                                              width=long_text_wrap_width() - len(header),
                                              subsequent_indent=' ' * len(header))
 
                 messages.log(header + args_wrapped, underline=True)
-
-                template_args = parse_and_run(shlex.split(templated_cmd))
+                template_args = parse_and_run(shlexed)
 
                 continuation = ''
 

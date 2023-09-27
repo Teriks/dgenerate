@@ -8,6 +8,7 @@ diffusers/sdxl-instructpix2pix-768 --model-type torch-sdxl-pix2pix \
 --guidance-scales 5 \
 --image-guidance-scales 1.5 \
 --image-seeds mountain.png \
+--gen-seeds 2 \
 --prompts "Turn sky into a cloudy one" \
 --sdxl-high-noise-fractions 0.9 \
 --sdxl-refiner-prompts "Cloudy sky over a forested mountain range, high resolution, high quality, 4k; low quality, low resolution" \

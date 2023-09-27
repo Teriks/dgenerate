@@ -5,7 +5,7 @@ stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
 --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
 --sdxl-high-noise-fractions 0.8 \
 --inference-steps 30 \
---guidance-scales 8 9 \
+--guidance-scales 8 \
 --image-seeds beach.jpg \
 --image-seed-strengths 0.85 \
 --seeds 24344090316981 \

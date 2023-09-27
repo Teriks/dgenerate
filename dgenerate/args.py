@@ -47,9 +47,7 @@ parser.add_argument('model_path', action='store',
 
 
 parser.add_argument('-v', '--verbose', action='store_true', default=False,
-                    help="""Output information useful for debugging, such as pipeline call and model load parameters.
-                         Unlike all other arguments, this argument is also available when reading a configuration
-                         file from STDIN, for example: dgenerate -v < config.txt""")
+                    help="""Output information useful for debugging, such as pipeline call and model load parameters.""")
 
 
 def _from_model_type(val):
