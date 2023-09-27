@@ -46,6 +46,10 @@ parser.add_argument('model_path', action='store',
                             path to folder on disk, or path to a .pt, .pth, .bin, .ckpt, or .safetensors file.""")
 
 
+parser.add_argument('-v', '--verbose', action='store_true', default=False,
+                    help="Output information useful for debugging, such as pipeline call parameters.")
+
+
 def _from_model_type(val):
     val = val.lower()
     if val not in supported_model_types():
