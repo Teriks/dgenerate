@@ -1125,7 +1125,7 @@ compute decoding in several steps. This is useful to save some memory.
 
     # Here is an SDXL example of high resolution image generation utilizing VAE tiling/slicing
 
-    stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
     --variant fp16 --dtype float16 \
     --vae AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix;tiling=true;slicing=true \
     --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
