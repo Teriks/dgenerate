@@ -155,6 +155,10 @@ def run_diffusion():
                     [quote(s) for s in render_loop.written_animations]}
 
     if not sys.stdin.isatty():
+
+        if '-v' in sys.argv or '--verbose' in sys.argv:
+            messages.LEVEL = messages.DEBUG
+
         template_args = {
             'last_image': '',
             'last_images': [],
