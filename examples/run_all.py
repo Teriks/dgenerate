@@ -1,6 +1,7 @@
 import glob
 import os.path
 import subprocess
+import sys
 
 pwd = os.path.dirname(__file__)
 search = os.path.join(pwd, '**', 'config.txt')
@@ -16,4 +17,4 @@ for config in configs:
 
     print(f'RUNNING: {config}')
     with open(config) as f:
-        subprocess.run(["dgenerate"], shell=True, stdin=f, cwd=os.path.dirname(config), check=True)
+        subprocess.run(["dgenerate"] + sys.argv, shell=True, stdin=f, cwd=os.path.dirname(config), check=True)
