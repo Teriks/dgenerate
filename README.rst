@@ -1112,13 +1112,14 @@ accepted values are the same as ``--dtype``, IE: 'float32', 'float16', 'auto'
     --output-size 512x512
 
 
-You can use ``slicing`` and ``tiling`` to enable to generation of huge images without running your GPU out of memory.
+You can use ``--vae-slicing`` and ``--vae-tiling`` to enable to generation of huge images
+without running your GPU out of memory.
 
-When ``tiling`` is enabled via ``tiling=true``, the VAE will split the input tensor into tiles to
+When ``--vae-tiling``, the VAE will split the input tensor into tiles to
 compute decoding and encoding in several steps. This is useful for saving a large amount of
 memory and to allow processing larger images.
 
-When ``slicing`` is enabled via ``slicing=true``, the VAE will split the input tensor in slices to
+When ``--vae-slicing``, the VAE will split the input tensor in slices to
 compute decoding in several steps. This is useful to save some memory.
 
 .. code-block:: bash
@@ -1127,7 +1128,9 @@ compute decoding in several steps. This is useful to save some memory.
 
     dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
     --variant fp16 --dtype float16 \
-    --vae AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix;tiling=true;slicing=true \
+    --vae AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix \
+    --vae-tiling \
+    --vae-slicing \
     --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
     --sdxl-high-noise-fractions 0.8 \
     --inference-steps 30 \

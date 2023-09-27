@@ -496,6 +496,9 @@ class DiffusionRenderLoop:
         self.sdxl_refiner_negative_crops_coords_top_left = None
 
         self.vae_path = None
+        self.vae_tiling = False
+        self.vae_slicing = False
+
         self.lora_paths = None
         self.textual_inversion_paths = None
         self.control_net_paths = None
@@ -564,7 +567,11 @@ class DiffusionRenderLoop:
         if self.sdxl_refiner_path is not None and not isinstance(self.sdxl_refiner_path, str):
             raise ValueError('DiffusionRenderLoop.sdxl_refiner_path must be None or a string')
         if self.vae_path is not None and not isinstance(self.vae_path, str):
-            raise ValueError('DiffusionRenderLoop.vae_path must be a string: AutoencoderClass;PATH')
+            raise ValueError('DiffusionRenderLoop.vae_path must be a string: AutoencoderClass;model=PATH')
+        if not isinstance(self.vae_tiling, bool):
+            raise ValueError('DiffusionRenderLoop.vae_tiling must be True or False (bool)')
+        if not isinstance(self.vae_slicing, bool):
+            raise ValueError('DiffusionRenderLoop.vae_slicing must be True or False (bool)')
         if self.scheduler is not None and not isinstance(self.scheduler, str):
             raise ValueError('DiffusionRenderLoop.scheduler must be a string that names a compatible scheduler class')
         if self.output_path is None:
@@ -902,6 +909,8 @@ class DiffusionRenderLoop:
                                                    revision=self.revision,
                                                    variant=self.variant,
                                                    vae_path=self.vae_path,
+                                                   vae_slicing=self.vae_slicing,
+                                                   vae_tiling=self.vae_tiling,
                                                    lora_paths=self.lora_paths,
                                                    textual_inversion_paths=self.textual_inversion_paths,
                                                    control_net_paths=self.control_net_paths,
@@ -962,6 +971,8 @@ class DiffusionRenderLoop:
                                                           revision=self.revision,
                                                           variant=self.variant,
                                                           vae_path=self.vae_path,
+                                                          vae_slicing=self.vae_slicing,
+                                                          vae_tiling=self.vae_tiling,
                                                           lora_paths=self.lora_paths,
                                                           textual_inversion_paths=self.textual_inversion_paths,
                                                           control_net_paths=self.control_net_paths,

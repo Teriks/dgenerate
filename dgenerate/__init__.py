@@ -89,7 +89,11 @@ def run_diffusion():
         render_loop.image_guidance_scales = arguments.image_guidance_scales
         render_loop.guidance_rescales = arguments.guidance_rescales
         render_loop.inference_steps = arguments.inference_steps
+
         render_loop.vae_path = arguments.vae
+        render_loop.vae_tiling = arguments.vae_tiling
+        render_loop.vae_slicing = arguments.vae_slicing
+
         render_loop.lora_paths = arguments.lora
         render_loop.textual_inversion_paths = arguments.textual_inversions
         render_loop.control_net_paths = arguments.control_nets

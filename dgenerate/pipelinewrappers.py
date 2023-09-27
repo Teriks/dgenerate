@@ -99,8 +99,7 @@ class InvalidTextualInversionPathError(Exception):
 
 _sdxl_refiner_path_parser = ConceptModelPathParser('SDXL Refiner', ['revision', 'variant', 'subfolder', 'dtype'])
 
-_torch_vae_path_parser = ConceptModelPathParser('VAE', ['model', 'revision', 'variant', 'subfolder', 'dtype',
-                                                        'tiling', 'slicing'])
+_torch_vae_path_parser = ConceptModelPathParser('VAE', ['model', 'revision', 'variant', 'subfolder', 'dtype'])
 
 _flax_vae_path_parser = ConceptModelPathParser('VAE', ['model', 'revision', 'subfolder', 'dtype'])
 
@@ -133,6 +132,8 @@ class FlaxControlNetPath:
         cache_hit = _FLAX_CONTROL_NET_CACHE.get(cache_key)
 
         if cache_hit is not None:
+            messages.log(f'Loaded Cached Flax ControlNet "{cache_hit.__class.__.__name__}", '
+                         f'Cache Key: "{cache_key}"', level=messages.DEBUG)
             return cache_hit
 
         single_file_load_path = _is_single_file_model_load(self.model)
@@ -208,6 +209,8 @@ class TorchControlNetPath:
         cache_hit = _TORCH_CONTROL_NET_CACHE.get(cache_key)
 
         if cache_hit is not None:
+            messages.log(f'Loaded Cached Torch ControlNet "{cache_hit.__class.__.__name__}", '
+                         f'Cache Key: "{cache_key}"', level=messages.DEBUG)
             return cache_hit
 
         single_file_load_path = _is_single_file_model_load(self.model)
@@ -309,15 +312,13 @@ def parse_sdxl_refiner_path(path) -> SDXLRefinerPath:
 
 
 class TorchVAEPath:
-    def __init__(self, encoder, model, revision, variant, subfolder, dtype, tiling, slicing):
+    def __init__(self, encoder, model, revision, variant, subfolder, dtype):
         self.encoder = encoder
         self.model = model
         self.revision = revision
         self.variant = variant
         self.dtype = dtype
         self.subfolder = subfolder
-        self.tiling = tiling
-        self.slicing = slicing
 
 
 def parse_torch_vae_path(path) -> TorchVAEPath:
@@ -333,26 +334,12 @@ def parse_torch_vae_path(path) -> TorchVAEPath:
             raise InvalidVaePathError(
                 f'Torch VAE dtype must be float32, float16, auto, or left undefined, received: {dtype}')
 
-        tiling = r.args.get('tiling', False)
-        try:
-            tiling = bool(tiling)
-        except ValueError:
-            raise InvalidVaePathError('Torch VAE tiling parameter must be a boolean value, "true" or "false".')
-
-        slicing = r.args.get('slicing', False)
-        try:
-            slicing = bool(slicing)
-        except ValueError:
-            raise InvalidVaePathError('Torch VAE slicing parameter must be a boolean value, "true" or "false".')
-
         return TorchVAEPath(encoder=r.concept,
                             model=model,
                             revision=r.args.get('revision', None),
                             variant=r.args.get('variant', None),
                             dtype=_get_torch_dtype(dtype),
-                            subfolder=r.args.get('subfolder', None),
-                            tiling=tiling,
-                            slicing=slicing)
+                            subfolder=r.args.get('subfolder', None))
     except ConceptModelPathParseError as e:
         raise InvalidVaePathError(e)
 
@@ -493,12 +480,13 @@ def _load_pytorch_vae(path,
 
     cache_key = _function_cache_key({'path': path,
                                      'use_auth_token': use_auth_token,
-                                     'dtype': parsed_concept.dtype,
-                                     'tiling': parsed_concept.tiling,
-                                     'slicing': parsed_concept.slicing})
+                                     'dtype': parsed_concept.dtype})
 
     cache_hit = _TORCH_VAE_CACHE.get(cache_key)
     if cache_hit is not None:
+        messages.log(f'Loaded Cached Torch VAE "{cache_hit.__class.__.__name__}", '
+                     f'Cache Key: "{cache_key}"', level=messages.DEBUG)
+
         return cache_hit
 
     encoder_name = parsed_concept.encoder
@@ -542,18 +530,6 @@ def _load_pytorch_vae(path,
                                       subfolder=parsed_concept.subfolder,
                                       use_auth_token=use_auth_token)
 
-    if parsed_concept.tiling:
-        if hasattr(vae, 'enable_tiling'):
-            vae.enable_tiling()
-        else:
-            raise NotImplementedError(f'{encoder_name} does not support VAE tiling.')
-
-    if parsed_concept.slicing:
-        if hasattr(vae, 'enable_slicing'):
-            vae.enable_slicing()
-        else:
-            raise NotImplementedError(f'{encoder_name} does not support VAE slicing.')
-
     _TORCH_VAE_CACHE[cache_key] = vae
     return vae
 
@@ -572,6 +548,8 @@ def _load_flax_vae(path,
 
     cache_hit = _FLAX_VAE_CACHE.get(cache_key)
     if cache_hit is not None:
+        messages.log(f'Loaded Cached Flax VAE "{cache_hit.__class.__.__name__}", '
+                     f'Cache Key: "{cache_key}"', level=messages.DEBUG)
         return cache_hit
 
     encoder_name = parsed_concept.encoder
@@ -672,6 +650,64 @@ def _describe_pipeline_type(enum):
     return {_PipelineTypes.BASIC: 'txt2img', _PipelineTypes.IMG2IMG: 'img2img', _PipelineTypes.INPAINT: 'inpaint'}[enum]
 
 
+def _args_except(args, *exceptions):
+    return {k: v for k, v in args.items() if v not in exceptions}
+
+
+def _set_vae_slicing_tiling(pipeline, vae_slicing, vae_tiling):
+    has_vae = hasattr(pipeline, 'vae') and pipeline.vae is not None
+    pipeline_class = pipeline.__class__
+
+    if vae_slicing:
+        if has_vae:
+            if hasattr(pipeline.vae, 'enable_slicing'):
+                messages.log(f'Enabling VAE slicing on Pipeline: "{pipeline_class.__name__}", '
+                             f'VAE: "{pipeline.vae.__class__.__name__}"', level=messages.DEBUG)
+                pipeline.vae.enable_slicing()
+            else:
+                raise NotImplementedError(
+                    '--vae-slicing not supported as loaded VAE does not support it.'
+                )
+        else:
+            raise NotImplementedError(
+                '--vae-slicing not supported as no VAE is present for the specified model.')
+    elif has_vae:
+        if hasattr(pipeline.vae, 'disable_slicing'):
+            messages.log(f'Disabling VAE slicing on Pipeline: "{pipeline_class.__name__}", '
+                         f'VAE: "{pipeline.vae.__class__.__name__}"', level=messages.DEBUG)
+            pipeline.vae.disable_slicing()
+
+    if vae_tiling:
+        if has_vae:
+            if hasattr(pipeline.vae, 'enable_tiling'):
+                messages.log(f'Enabling VAE tiling on Pipeline: "{pipeline_class.__name__}", '
+                             f'VAE: "{pipeline.vae.__class__.__name__}"', level=messages.DEBUG)
+                pipeline.vae.enable_tiling()
+            else:
+                raise NotImplementedError(
+                    '--vae-tiling not supported as loaded VAE does not support it.'
+                )
+        else:
+            raise NotImplementedError(
+                '--vae-tiling not supported as no VAE is present for the specified model.')
+    elif has_vae:
+        if hasattr(pipeline.vae, 'disable_tiling'):
+            messages.log(f'Disabling VAE tiling on Pipeline: "{pipeline_class.__name__}", '
+                         f'VAE: "{pipeline.vae.__class__.__name__}"', level=messages.DEBUG)
+            pipeline.vae.disable_tiling()
+
+
+def _set_torch_safety_checker(pipeline, safety_checker_bool):
+    if not safety_checker_bool:
+        if hasattr(pipeline, 'safety_checker') and pipeline.safety_checker is not None:
+            # If it's already None for some reason you'll get a call
+            # to an unassigned feature_extractor by assigning it a value
+
+            # The attribute will not exist for SDXL pipelines currently
+
+            pipeline.safety_checker = _disabled_safety_checker
+
+
 def _create_torch_diffusion_pipeline(pipeline_type,
                                      model_type,
                                      model_path,
@@ -680,6 +716,8 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                                      dtype,
                                      model_subfolder=None,
                                      vae_path=None,
+                                     vae_slicing=False,
+                                     vae_tiling=False,
                                      lora_paths=None,
                                      textual_inversion_paths=None,
                                      control_net_paths=None,
@@ -690,11 +728,21 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                                      extra_args=None,
                                      model_cpu_offload=False,
                                      sequential_cpu_offload=False):
-    cache_key = _function_cache_key(locals())
-    catch_hit = _TORCH_MODEL_CACHE.get(cache_key)
 
-    if catch_hit is not None:
-        return catch_hit
+    cache_key = _function_cache_key(_args_except(locals(),
+                                                 'vae_slicing',
+                                                 'vae_tiling'))
+
+    cache_hit = _TORCH_MODEL_CACHE.get(cache_key)
+
+    if cache_hit is not None:
+        messages.log(f'Loaded Cached Torch Pipeline "{cache_hit[0].__class.__.__name__}", '
+                     f'Cache Key: "{cache_key}"', level=messages.DEBUG)
+
+        _set_vae_slicing_tiling(cache_hit[0], vae_slicing, vae_tiling)
+        return cache_hit
+
+    # Pipeline class selection
 
     if model_type_is_upscaler(model_type):
         if pipeline_type != _PipelineTypes.IMG2IMG and scheduler.lower() != 'help':
@@ -748,6 +796,8 @@ def _create_torch_diffusion_pipeline(pipeline_type,
             # Should be impossible
             raise NotImplementedError('Pipeline type not implemented.')
 
+    # Block invalid Textual Inversion and LoRA usage
+
     if textual_inversion_paths:
         if model_type == ModelTypes.TORCH_UPSCALER_X2:
             raise NotImplementedError(
@@ -766,7 +816,10 @@ def _create_torch_diffusion_pipeline(pipeline_type,
 
         lora_paths = [lora_paths]
 
-    kwargs = {}
+    # ControlNet and VAE loading
+
+    # Used during pipeline load
+    creation_kwargs = {}
 
     torch_dtype = _get_torch_dtype(dtype)
 
@@ -777,9 +830,9 @@ def _create_torch_diffusion_pipeline(pipeline_type,
         # help message for the main model
 
         if vae_path is not None:
-            kwargs['vae'] = _load_pytorch_vae(vae_path,
-                                              torch_dtype_fallback=torch_dtype,
-                                              use_auth_token=auth_token)
+            creation_kwargs['vae'] = _load_pytorch_vae(vae_path,
+                                                       torch_dtype_fallback=torch_dtype,
+                                                       use_auth_token=auth_token)
             messages.log(
                 f'Loaded Torch VAE: "{vae_path}" on pipeline: "{pipeline_class.__name__}"',
                 level=messages.DEBUG)
@@ -809,10 +862,12 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                 else:
                     control_nets = new_net
 
-            kwargs['controlnet'] = control_nets
+            creation_kwargs['controlnet'] = control_nets
 
     if extra_args is not None:
-        kwargs.update(extra_args)
+        creation_kwargs.update(extra_args)
+
+    # Create Pipeline
 
     if _is_single_file_model_load(model_path):
         if model_subfolder is not None:
@@ -822,7 +877,7 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                                                    variant=variant,
                                                    torch_dtype=torch_dtype,
                                                    use_safe_tensors=model_path.endswith('.safetensors'),
-                                                   **kwargs)
+                                                   **creation_kwargs)
     else:
         pipeline = pipeline_class.from_pretrained(model_path,
                                                   revision=revision,
@@ -830,9 +885,17 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                                                   torch_dtype=torch_dtype,
                                                   subfolder=model_subfolder,
                                                   use_auth_token=auth_token,
-                                                  **kwargs)
+                                                  **creation_kwargs)
+
+    # Select Scheduler
 
     _load_scheduler(pipeline, scheduler)
+
+    # VAE Tiling / Slicing
+
+    _set_vae_slicing_tiling(pipeline, vae_slicing, vae_tiling)
+
+    # Textual Inversions and LoRAs
 
     if textual_inversion_paths is not None:
         for inversion_path in textual_inversion_paths:
@@ -844,14 +907,11 @@ def _create_torch_diffusion_pipeline(pipeline_type,
             parse_lora_path(lora_path). \
                 load_on_pipeline(pipeline, use_auth_token=auth_token)
 
-    if not safety_checker:
-        if hasattr(pipeline, 'safety_checker') and pipeline.safety_checker is not None:
-            # If it's already None for some reason you'll get a call
-            # to an unassigned feature_extractor by assigning it a value
+    # Safety Checker
 
-            # The attribute will not exist for SDXL pipelines currently
+    _set_torch_safety_checker(pipeline, safety_checker)
 
-            pipeline.safety_checker = _disabled_safety_checker
+    # Model Offloading
 
     pipeline._dgenerate_sequential_offload = sequential_cpu_offload
     pipeline._dgenerate_cpu_offload = model_cpu_offload
@@ -878,10 +938,12 @@ def _create_flax_diffusion_pipeline(pipeline_type,
                                     extra_args=None,
                                     device='cuda'):
     cache_key = _function_cache_key(locals())
-    catch_hit = _FLAX_MODEL_CACHE.get(cache_key)
+    cache_hit = _FLAX_MODEL_CACHE.get(cache_key)
 
-    if catch_hit is not None:
-        return catch_hit
+    if cache_hit is not None:
+        messages.log(f'Loaded Cached Flax Pipeline "{cache_hit[0].__class.__.__name__}", '
+                     f'Cache Key: "{cache_key}"', level=messages.DEBUG)
+        return cache_hit
 
     has_control_nets = False
     if control_net_paths is not None:
@@ -1081,10 +1143,17 @@ class PipelineResultWrapper:
         config += quote(model_path) + ' \\\n'
 
         for opt in opts[:-1]:
-            config += f'{opt[0]} {opt[1]} \\\n'
+            if len(opt) == 2:
+                config += f'{opt[0]} {opt[1]} \\\n'
+            else:
+                config += opt[0]
 
         last = opts[-1]
-        config += f'{last[0]} {last[1]}'
+
+        if len(last) == 2:
+            config += f'{last[0]} {last[1]}'
+        else:
+            config += last[0]
 
         return config
 
@@ -1114,6 +1183,8 @@ class DiffusionPipelineWrapperBase:
                  variant=None,
                  model_subfolder=None,
                  vae_path=None,
+                 vae_slicing=False,
+                 vae_tiling=False,
                  lora_paths=None,
                  textual_inversion_paths=None,
                  control_net_paths=None,
@@ -1133,6 +1204,8 @@ class DiffusionPipelineWrapperBase:
         self._dtype = dtype
         self._device = device
         self._vae_path = vae_path
+        self._vae_slicing = vae_slicing
+        self._vae_tiling = vae_tiling
         self._safety_checker = safety_checker
         self._scheduler = scheduler
         self._lora_paths = lora_paths
@@ -1350,6 +1423,12 @@ class DiffusionPipelineWrapperBase:
 
         if self._vae_path is not None:
             opts.append(('--vae', quote(self._vae_path)))
+
+        if self._vae_tiling:
+            opts.append(['--vae-tiling'])
+
+        if self._vae_slicing:
+            opts.append(['--vae-slicing'])
 
         if self._sdxl_refiner_path is not None:
             opts.append(('--sdxl-refiner', quote(self._sdxl_refiner_path)))
@@ -1876,6 +1955,9 @@ class DiffusionPipelineWrapperBase:
             if self._pipeline_type != _PipelineTypes.BASIC and self._control_net_paths:
                 raise NotImplementedError('Inpaint and Img2Img not supported for flax with ControlNet.')
 
+            if self._vae_slicing or self._vae_tiling:
+                raise NotImplementedError('--vae-slicing/--vae-tiling not supported for flax.')
+
             self._pipeline, self._flax_params, self._parsed_control_net_paths = \
                 _create_flax_diffusion_pipeline(pipeline_type,
                                                 self._model_path,
@@ -1901,6 +1983,8 @@ class DiffusionPipelineWrapperBase:
                                                  variant=self._variant,
                                                  dtype=self._dtype,
                                                  vae_path=self._vae_path,
+                                                 vae_slicing=self._vae_slicing,
+                                                 vae_tiling=self._vae_tiling,
                                                  lora_paths=self._lora_paths,
                                                  control_net_paths=self._control_net_paths,
                                                  scheduler=self._scheduler,
@@ -1923,6 +2007,8 @@ class DiffusionPipelineWrapperBase:
                                                  dtype=self._sdxl_refiner_dtype if
                                                  self._sdxl_refiner_dtype is not None else self._dtype,
 
+                                                 vae_slicing=self._vae_slicing,
+                                                 vae_tiling=self._vae_tiling,
                                                  scheduler=self._scheduler,
                                                  safety_checker=self._safety_checker,
                                                  auth_token=self._auth_token,
@@ -1941,6 +2027,8 @@ class DiffusionPipelineWrapperBase:
                                                  variant=self._variant,
                                                  dtype=self._dtype,
                                                  vae_path=self._vae_path,
+                                                 vae_slicing=self._vae_slicing,
+                                                 vae_tiling=self._vae_tiling,
                                                  lora_paths=self._lora_paths,
                                                  textual_inversion_paths=self._textual_inversion_paths,
                                                  control_net_paths=self._control_net_paths,
@@ -1979,6 +2067,8 @@ class DiffusionPipelineWrapper(DiffusionPipelineWrapperBase):
                  variant=None,
                  model_subfolder=None,
                  vae_path=None,
+                 vae_slicing=False,
+                 vae_tiling=False,
                  lora_paths=None,
                  textual_inversion_paths=None,
                  control_net_paths=None,
@@ -1995,6 +2085,8 @@ class DiffusionPipelineWrapper(DiffusionPipelineWrapperBase):
             variant,
             model_subfolder,
             vae_path,
+            vae_slicing,
+            vae_tiling,
             lora_paths,
             textual_inversion_paths,
             control_net_paths,
@@ -2019,6 +2111,8 @@ class DiffusionPipelineImg2ImgWrapper(DiffusionPipelineWrapperBase):
                  variant=None,
                  model_subfolder=None,
                  vae_path=None,
+                 vae_slicing=False,
+                 vae_tiling=False,
                  lora_paths=None,
                  textual_inversion_paths=None,
                  control_net_paths=None,
@@ -2036,6 +2130,8 @@ class DiffusionPipelineImg2ImgWrapper(DiffusionPipelineWrapperBase):
             variant,
             model_subfolder,
             vae_path,
+            vae_slicing,
+            vae_tiling,
             lora_paths,
             textual_inversion_paths,
             control_net_paths,
