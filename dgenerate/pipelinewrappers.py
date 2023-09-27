@@ -1239,6 +1239,16 @@ class DiffusionPipelineWrapperBase:
     def _reconstruct_dgenerate_opts(self, **kwargs):
         prompt = kwargs.get('prompt', None)
         negative_prompt = kwargs.get('negative_prompt', None)
+
+        sdxl_prompt_2 = kwargs.get('sdxl_prompt_2', None)
+        sdxl_negative_prompt_2 = kwargs.get('sdxl_negative_prompt_2', None)
+
+        sdxl_refiner_prompt = kwargs.get('sdxl_refiner_prompt', None)
+        sdxl_refiner_negative_prompt = kwargs.get('sdxl_refiner_negative_prompt', None)
+
+        sdxl_refiner_prompt_2 = kwargs.get('sdxl_refiner_prompt_2', None)
+        sdxl_refiner_negative_prompt_2 = kwargs.get('sdxl_refiner_negative_prompt_2', None)
+
         image = kwargs.get('image', None)
         control_image = kwargs.get('control_image', None)
         strength = kwargs.get('strength', None)
@@ -1289,6 +1299,25 @@ class DiffusionPipelineWrapperBase:
                 opts.append(('--prompts', f'"{prompt}; {negative_prompt}"'))
             else:
                 opts.append(('--prompts', quote(prompt)))
+
+        if sdxl_prompt_2 is not None:
+            if sdxl_negative_prompt_2 is not None:
+                opts.append(('--sdxl-second-prompt', f'"{sdxl_prompt_2}; {sdxl_negative_prompt_2}"'))
+            else:
+                opts.append(('--sdxl-second-prompt', quote(sdxl_prompt_2)))
+
+        if sdxl_refiner_prompt is not None:
+            if sdxl_refiner_negative_prompt is not None:
+                opts.append(('--sdxl-refiner-prompt', f'"{sdxl_refiner_prompt}; {sdxl_refiner_negative_prompt}"'))
+            else:
+                opts.append(('--sdxl-refiner-prompt', quote(sdxl_refiner_prompt)))
+
+        if sdxl_refiner_prompt_2 is not None:
+            if sdxl_refiner_negative_prompt_2 is not None:
+                opts.append(
+                    ('--sdxl-refiner-second-prompt', f'"{sdxl_refiner_prompt_2}; {sdxl_refiner_negative_prompt_2}"'))
+            else:
+                opts.append(('--sdxl-refiner-second-prompt', quote(sdxl_refiner_prompt_2)))
 
         if self._revision is not None:
             opts.append(('--revision', self._revision))
