@@ -74,7 +74,12 @@ def run_diffusion():
         render_loop.output_overwrite = arguments.output_overwrite
         render_loop.output_configs = arguments.output_configs
         render_loop.output_metadata = arguments.output_metadata
+
         render_loop.prompts = arguments.prompts
+        render_loop.sdxl_second_prompts = arguments.sdxl_second_prompts
+        render_loop.sdxl_refiner_prompts = arguments.sdxl_refiner_prompts
+        render_loop.sdxl_refiner_second_prompts = arguments.sdxl_refiner_second_prompts
+
         render_loop.seeds = arguments.seeds
         render_loop.image_seeds = arguments.image_seeds
         render_loop.animation_format = arguments.animation_format

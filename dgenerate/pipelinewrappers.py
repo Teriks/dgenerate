@@ -942,12 +942,14 @@ def model_type_is_sdxl(model_type: typing.Union[ModelTypes, str]):
     return model_type in {ModelTypes.TORCH_SDXL,
                           ModelTypes.TORCH_SDXL_PIX2PIX}
 
+
 def model_type_is_pix2pix(model_type: typing.Union[ModelTypes, str]):
     if isinstance(model_type, str):
         model_type = get_model_type_enum(model_type)
 
     return model_type in {ModelTypes.TORCH_PIX2PIX,
                           ModelTypes.TORCH_SDXL_PIX2PIX}
+
 
 def get_model_type_enum(id_str) -> ModelTypes:
     return {'torch': ModelTypes.TORCH,
@@ -1411,6 +1413,11 @@ class DiffusionPipelineWrapperBase:
                 args['mask_image'] = mask_image
                 args['width'] = image.size[0]
                 args['height'] = image.size[1]
+
+            if get_model_type_enum(self._model_type) == ModelTypes.TORCH_SDXL_PIX2PIX:
+                # Required
+                args['width'] = image.size[0]
+                args['height'] = image.size[1]
         else:
             args['height'] = user_args.get('height', DEFAULT_OUTPUT_HEIGHT)
             args['width'] = user_args.get('width', DEFAULT_OUTPUT_WIDTH)
@@ -1637,9 +1644,18 @@ class DiffusionPipelineWrapperBase:
         default_args.pop('negative_crops_coords_top_left', None)
 
     def _call_torch(self, default_args, user_args):
+
         model_type = get_model_type_enum(self._model_type)
 
         self._get_sdxl_conditioning_args(self._pipeline, default_args, user_args)
+
+        self._get_non_universal_pipeline_arg(self._pipeline, default_args, user_args,
+                                             'prompt_2', 'sdxl_prompt_2',
+                                             '--sdxl-second-prompts', None)
+
+        self._get_non_universal_pipeline_arg(self._pipeline, default_args, user_args,
+                                             'negative_prompt_2', 'sdxl_negative_prompt_2',
+                                             '--sdxl-second-prompts', None)
 
         self._get_non_universal_pipeline_arg(self._pipeline, default_args, user_args,
                                              'guidance_rescale', 'guidance_rescale',
@@ -1719,9 +1735,30 @@ class DiffusionPipelineWrapperBase:
         default_args.pop('control_guidance_end', None)
         default_args.pop('image_guidance_scale', None)
 
+        # We do not want to override the refiner secondary prompt
+        # with that of --sdxl-second-prompts by default
+        default_args.pop('prompt_2', None)
+        default_args.pop('negative_prompt_2', None)
+
         self._get_sdxl_conditioning_args(self._sdxl_refiner_pipeline,
                                          default_args, user_args,
                                          user_prefix='refiner')
+
+        self._get_non_universal_pipeline_arg(self._pipeline, default_args, user_args,
+                                             'prompt', 'sdxl_refiner_prompt',
+                                             '--sdxl-refiner-prompts', None)
+
+        self._get_non_universal_pipeline_arg(self._pipeline, default_args, user_args,
+                                             'negative_prompt', 'sdxl_refiner_negative_prompt',
+                                             '--sdxl-refiner-prompts', None)
+
+        self._get_non_universal_pipeline_arg(self._pipeline, default_args, user_args,
+                                             'prompt_2', 'sdxl_refiner_prompt_2',
+                                             '--sdxl-refiner-second-prompts', None)
+
+        self._get_non_universal_pipeline_arg(self._pipeline, default_args, user_args,
+                                             'negative_prompt_2', 'sdxl_refiner_negative_prompt_2',
+                                             '--sdxl-refiner-second-prompts', None)
 
         self._get_non_universal_pipeline_arg(self._pipeline, default_args, user_args,
                                              'guidance_rescale', 'sdxl_refiner_guidance_rescale',

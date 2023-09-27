@@ -37,7 +37,8 @@ from .mediainput import iterate_image_seed, get_image_seed_info, MultiContextMan
     get_control_image_info, iterate_control_image, ImageSeed
 from .mediaoutput import create_animation_writer, supported_animation_writer_formats
 from .pipelinewrappers import DiffusionPipelineWrapper, DiffusionPipelineImg2ImgWrapper, supported_model_types, \
-    PipelineResultWrapper, model_type_is_upscaler, get_model_type_enum, ModelTypes, model_type_is_pix2pix
+    PipelineResultWrapper, model_type_is_upscaler, get_model_type_enum, ModelTypes, model_type_is_pix2pix, \
+    model_type_is_sdxl
 from .textprocessing import oxford_comma, long_text_wrap_width
 
 
@@ -70,6 +71,9 @@ class DiffusionArgContext:
     def __init__(self,
                  diffusion_args,
                  prompt,
+                 sdxl_second_prompt,
+                 sdxl_refiner_prompt,
+                 sdxl_refiner_second_prompt,
                  seed,
                  image_seed_strength,
                  upscaler_noise_level,
@@ -96,6 +100,9 @@ class DiffusionArgContext:
                  inference_steps):
         self.args = diffusion_args
         self.prompt = prompt
+        self.sdxl_second_prompt = sdxl_second_prompt
+        self.sdxl_refiner_prompt = sdxl_refiner_prompt
+        self.sdxl_refiner_second_prompt = sdxl_refiner_second_prompt
         self.seed = seed
         self.image_seed_strength = image_seed_strength
         self.upscaler_noise_level = upscaler_noise_level
@@ -121,26 +128,49 @@ class DiffusionArgContext:
         self.guidance_rescale = guidance_rescale
         self.inference_steps = inference_steps
 
+    @staticmethod
+    def _describe_prompt(prompt_format, prompt_dict, pos_title, neg_title):
+        if prompt_dict is None:
+            return
+
+        prompt_wrap_width = long_text_wrap_width()
+        prompt_val = prompt_dict.get('prompt', None)
+        if prompt_val:
+            header = f'{pos_title}: '
+            prompt_val = textwrap.fill(prompt_val, width=prompt_wrap_width - len(header),
+                                       subsequent_indent=' ' * len(header))
+            prompt_format.append(f'{header}"{prompt_val}"')
+
+        prompt_val = prompt_dict.get('negative_prompt', None)
+        if prompt_val:
+            header = f'{neg_title}: '
+            prompt_val = textwrap.fill(prompt_val,
+                                       width=prompt_wrap_width - len(header),
+                                       subsequent_indent=' ' * len(header))
+            prompt_format.append(f'{header}"{prompt_val}"')
+
     def describe_parameters(self):
         prompt_format = []
 
-        prompt_wrap_width = long_text_wrap_width()
+        DiffusionArgContext._describe_prompt(
+            prompt_format, self.prompt,
+            "Prompt",
+            "Negative Prompt")
 
-        val = self.prompt["prompt"]
-        if val:
-            header = 'Prompt: '
-            val = textwrap.fill(val, width=prompt_wrap_width - len(header),
-                                subsequent_indent=' ' * len(header))
-            prompt_format.append(f'{header}"{val}"')
+        DiffusionArgContext._describe_prompt(
+            prompt_format, self.sdxl_second_prompt,
+            "SDXL Second Prompt",
+            "SDXL Second Negative Prompt")
 
-        if 'negative_prompt' in self.prompt:
-            val = self.prompt["negative_prompt"]
-            if val:
-                header = 'Negative Prompt: '
-                val = textwrap.fill(val,
-                                    width=prompt_wrap_width - len(header),
-                                    subsequent_indent=' ' * len(header))
-                prompt_format.append(f'{header}"{val}"')
+        DiffusionArgContext._describe_prompt(
+            prompt_format, self.sdxl_refiner_prompt,
+            "SDXL Refiner Prompt",
+            "SDXL Refiner Negative Prompt")
+
+        DiffusionArgContext._describe_prompt(
+            prompt_format, self.sdxl_refiner_second_prompt,
+            "SDXL Refiner Second Prompt",
+            "SDXL Refiner Second Negative Prompt")
 
         prompt_format = '\n'.join(prompt_format)
         if prompt_format:
@@ -174,9 +204,9 @@ class DiffusionArgContext:
             (self.inference_steps, "Inference Steps:")
         ]
 
-        for val, desc in descripts:
-            if val is not None:
-                inputs.append(desc + ' ' + str(val))
+        for prompt_val, desc in descripts:
+            if prompt_val is not None:
+                inputs.append(desc + ' ' + str(prompt_val))
 
         inputs = '\n'.join(inputs)
 
@@ -188,6 +218,9 @@ def _list_or_list_of_none(val):
 
 
 def iterate_diffusion_args(prompts,
+                           sdxl_second_prompts,
+                           sdxl_refiner_prompts,
+                           sdxl_refiner_second_prompts,
                            seeds,
                            image_seed_strengths,
                            upscaler_noise_levels,
@@ -214,8 +247,12 @@ def iterate_diffusion_args(prompts,
                            inference_steps_list) -> Iterator[DiffusionArgContext]:
     diffusion_args = dict()
 
+
     for arg_set in itertools.product(
             prompts,
+            _list_or_list_of_none(sdxl_second_prompts),
+            _list_or_list_of_none(sdxl_refiner_prompts),
+            _list_or_list_of_none(sdxl_refiner_second_prompts),
             seeds,
             _list_or_list_of_none(image_seed_strengths),
             _list_or_list_of_none(upscaler_noise_levels),
@@ -243,30 +280,33 @@ def iterate_diffusion_args(prompts,
     ):
 
         prompt = arg_set[0]
-        seed = arg_set[1]
-        image_seed_strength = arg_set[2]
-        upscaler_noise_level = arg_set[3]
-        sdxl_high_noise_fraction = arg_set[4]
-        sdxl_aesthetic_score = arg_set[5]
-        sdxl_original_size = arg_set[6]
-        sdxl_target_size = arg_set[7]
-        sdxl_crops_coords_top_left_v = arg_set[8]
-        sdxl_negative_aesthetic_score = arg_set[9]
-        sdxl_negative_original_size = arg_set[10]
-        sdxl_negative_target_size = arg_set[11]
-        sdxl_negative_crops_coords_top_left_v = arg_set[12]
-        sdxl_refiner_aesthetic_score = arg_set[13]
-        sdxl_refiner_original_size = arg_set[14]
-        sdxl_refiner_target_size = arg_set[15]
-        sdxl_refiner_crops_coords_top_left_v = arg_set[16]
-        sdxl_refiner_negative_aesthetic_score = arg_set[17]
-        sdxl_refiner_negative_original_size = arg_set[18]
-        sdxl_refiner_negative_target_size = arg_set[19]
-        sdxl_refiner_negative_crops_coords_top_left_v = arg_set[20]
-        guidance_scale = arg_set[21]
-        image_guidance_scale = arg_set[22]
-        guidance_rescale = arg_set[23]
-        inference_steps = arg_set[24]
+        sdxl_second_prompt = arg_set[1]
+        sdxl_refiner_prompt = arg_set[2]
+        sdxl_refiner_second_prompt = arg_set[3]
+        seed = arg_set[4]
+        image_seed_strength = arg_set[5]
+        upscaler_noise_level = arg_set[6]
+        sdxl_high_noise_fraction = arg_set[7]
+        sdxl_aesthetic_score = arg_set[8]
+        sdxl_original_size = arg_set[9]
+        sdxl_target_size = arg_set[10]
+        sdxl_crops_coords_top_left_v = arg_set[11]
+        sdxl_negative_aesthetic_score = arg_set[12]
+        sdxl_negative_original_size = arg_set[13]
+        sdxl_negative_target_size = arg_set[14]
+        sdxl_negative_crops_coords_top_left_v = arg_set[15]
+        sdxl_refiner_aesthetic_score = arg_set[16]
+        sdxl_refiner_original_size = arg_set[17]
+        sdxl_refiner_target_size = arg_set[18]
+        sdxl_refiner_crops_coords_top_left_v = arg_set[19]
+        sdxl_refiner_negative_aesthetic_score = arg_set[20]
+        sdxl_refiner_negative_original_size = arg_set[21]
+        sdxl_refiner_negative_target_size = arg_set[22]
+        sdxl_refiner_negative_crops_coords_top_left_v = arg_set[23]
+        guidance_scale = arg_set[24]
+        image_guidance_scale = arg_set[25]
+        guidance_rescale = arg_set[26]
+        inference_steps = arg_set[27]
 
         # Mode dependant
 
@@ -356,8 +396,23 @@ def iterate_diffusion_args(prompts,
 
         diffusion_args.update(prompt)
 
+        if sdxl_second_prompts:
+            diffusion_args['sdxl_prompt_2'] = sdxl_second_prompt.get('prompt', None)
+            diffusion_args['sdxl_negative_prompt_2'] = sdxl_second_prompt.get('negative', None)
+
+        if sdxl_refiner_prompts:
+            diffusion_args['sdxl_refiner_prompt'] = sdxl_refiner_prompt.get('prompt', None)
+            diffusion_args['sdxl_refiner_negative_prompt'] = sdxl_refiner_prompt.get('negative', None)
+
+        if sdxl_refiner_second_prompts:
+            diffusion_args['sdxl_refiner_prompt_2'] = sdxl_refiner_second_prompt.get('prompt', None)
+            diffusion_args['sdxl_refiner_negative_prompt_2'] = sdxl_refiner_second_prompt.get('negative', None)
+
         yield DiffusionArgContext(diffusion_args,
                                   prompt,
+                                  sdxl_second_prompt,
+                                  sdxl_refiner_prompt,
+                                  sdxl_refiner_second_prompt,
                                   seed,
                                   image_seed_strength,
                                   upscaler_noise_level,
@@ -403,6 +458,10 @@ class DiffusionRenderLoop:
         self.sdxl_refiner_path = None
 
         self.prompts = ['']
+        self.sdxl_second_prompts = None
+        self.sdxl_refiner_prompts = None
+        self.sdxl_refiner_second_prompts = None
+
         self.seeds = [0]
         self.guidance_scales = [5]
         self.inference_steps = [30]
@@ -537,6 +596,9 @@ class DiffusionRenderLoop:
     @property
     def num_generation_steps(self):
         optional_factors = [
+            self.sdxl_second_prompts,
+            self.sdxl_refiner_prompts,
+            self.sdxl_refiner_second_prompts,
             self.image_guidance_scales,
             self.textual_inversion_paths,
             self.control_net_paths,
@@ -725,7 +787,7 @@ class DiffusionRenderLoop:
 
     def _iterate_diffusion_args(self, **overrides):
         def ov(n, v):
-            if get_model_type_enum(self.model_type) != ModelTypes.TORCH_SDXL:
+            if not model_type_is_sdxl(self.model_type):
                 if n.startswith('sdxl'):
                     return None
             else:
@@ -736,8 +798,15 @@ class DiffusionRenderLoop:
                 return overrides[n]
             return v
 
+
         yield from iterate_diffusion_args(
             prompts=ov('prompts', self.prompts),
+            sdxl_second_prompts=ov('sdxl_second_prompts',
+                                   self.sdxl_second_prompts),
+            sdxl_refiner_prompts=ov('sdxl_refiner_prompts',
+                                    self.sdxl_refiner_prompts),
+            sdxl_refiner_second_prompts=ov('sdxl_refiner_second_prompts',
+                                           self.sdxl_refiner_second_prompts),
             seeds=ov('seeds', self.seeds),
             image_seed_strengths=ov('image_seed_strengths', self.image_seed_strengths),
             guidance_scales=ov('guidance_scales', self.guidance_scales),

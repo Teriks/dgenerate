@@ -63,6 +63,20 @@ def _type_dtype(dtype):
         return dtype
 
 
+def _type_prompts(prompt):
+    pn = prompt.strip().split(';')
+    pl = len(pn)
+    if pl == 0:
+        return {'prompt': ''}
+    elif pl == 1:
+        return {'prompt': pn[0].rstrip()}
+    elif pl == 2:
+        return {'prompt': pn[0].rstrip(), 'negative_prompt': pn[1].lstrip()}
+    else:
+        raise argparse.ArgumentTypeError(
+            f'Parse error, too many values, only a prompt and optional negative prompt are accepted')
+
+
 parser.add_argument('--model-type', action='store', default='torch', type=_from_model_type,
                     help=f"""Use when loading different model types. 
                          Currently supported: {oxford_comma(supported_model_types(), "or")}. (default: torch)""")
@@ -313,6 +327,15 @@ def _type_image_coordinate(coord):
 
 # SDXL Main pipeline
 
+
+parser.add_argument('--sdxl-second-prompts', nargs='+', action='store',
+                    default=None,
+                    type=_type_prompts,
+                    help="""List of secondary prompts to try using SDXL's secondary text encoder. 
+                    By default the model is passed the primary prompt for this value, this option
+                    allows you to choose a different prompt. The negative prompt component can be
+                    specified with the same syntax as --prompts""")
+
 parser.add_argument('--sdxl-aesthetic-scores',
                     action='store', nargs='*', default=[], type=float,
                     help="""One or more Stable Diffusion XL (torch-sdxl) "aesthetic-score" micro-conditioning parameters.
@@ -375,6 +398,24 @@ parser.add_argument('--sdxl-negative-crops-coords-top-left',
                             to this issue thread: https://github.com/huggingface/diffusers/issues/4208.""")
 
 # SDXL Refiner pipeline
+
+parser.add_argument('--sdxl-refiner-prompts', nargs='+', action='store',
+                    default=None,
+                    type=_type_prompts,
+                    help="""List of prompts to try with the SDXL refiner model, 
+                    by default the refiner model gets the primary prompt, this argument 
+                    overrides that with a prompt of your choosing. The negative prompt 
+                    component can be specified with the same syntax as --prompts""")
+
+
+parser.add_argument('--sdxl-refiner-second-prompts', nargs='+', action='store',
+                    default=None,
+                    type=_type_prompts,
+                    help="""List of prompts to try with the SDXL refiner models secondary 
+                    text encoder, by default the refiner model gets the primary prompt passed
+                    to its second text encoder, this argument overrides that with a prompt 
+                    of your choosing. The negative prompt component can be specified with the 
+                    same syntax as --prompts""")
 
 parser.add_argument('--sdxl-refiner-aesthetic-scores',
                     action='store', nargs='*', default=[], type=float,
@@ -513,19 +554,6 @@ parser.add_argument('-om', '--output-metadata', action='store_true', default=Fal
                             PNG metadata property named DgenerateConfig and can be read using ImageMagick like so: 
                             "magick identify -format "%%[Property:DgenerateConfig] generated_file.png".""")
 
-
-def _type_prompts(prompt):
-    pn = prompt.strip().split(';')
-    pl = len(pn)
-    if pl == 0:
-        return {'prompt': ''}
-    elif pl == 1:
-        return {'prompt': pn[0].rstrip()}
-    elif pl == 2:
-        return {'prompt': pn[0].rstrip(), 'negative_prompt': pn[1].lstrip()}
-    else:
-        raise argparse.ArgumentTypeError(
-            f'Parse error, too many values, only a prompt and optional negative prompt are accepted')
 
 
 parser.add_argument('-p', '--prompts', nargs='+', action='store',
@@ -732,24 +760,24 @@ def parse_args(args=None, namespace=None):
 
     if args.control_nets is not None and 'flax' in args.model_type and \
             (args.image_seeds or args.image_seed_strengths):
-        messages.log('--image-seeds/--image-seed-strengths are incompatible with '
+        messages.log('Error: --image-seeds/--image-seed-strengths are incompatible with '
                      '--model-type "flax" + --control-nets, use --control-images instead.',
                      level=messages.ERROR)
         sys.exit(1)
 
     if not args.image_seeds and args.image_seed_strengths:
-        messages.log('You cannot specify --image-seed-strengths without --image-seeds.',
+        messages.log('Error: You cannot specify --image-seed-strengths without --image-seeds.',
                      level=messages.ERROR)
         sys.exit(1)
 
     if args.control_nets is None and args.control_images:
-        messages.log('You cannot specify --control-images without --control-nets.',
+        messages.log('Error: You cannot specify --control-images without --control-nets.',
                      level=messages.ERROR)
         sys.exit(1)
 
     if 'upscaler' not in args.model_type:
         if args.upscaler_noise_levels:
-            messages.log('You cannot specify --upscaler-noise-levels for a non upscaler model type, see --model-types.',
+            messages.log('Error: You cannot specify --upscaler-noise-levels for a non upscaler model type, see --model-types.',
                          level=messages.ERROR)
             sys.exit(1)
     elif args.upscaler_noise_levels is None:
@@ -758,12 +786,12 @@ def parse_args(args=None, namespace=None):
     if 'pix2pix' not in args.model_type:
         if args.image_guidance_scales:
             messages.log(
-                '--image-guidance-scales only valid with pix2pix models, see --model-type.',
+                'Error: --image-guidance-scales only valid with pix2pix models, see --model-type.',
                 level=messages.ERROR)
             sys.exit(1)
     elif args.control_images or args.control_nets:
         messages.log(
-            '--control-nets/--control-images are not compatible with pix2pix models, see --model-type.',
+            'Error: --control-nets/--control-images are not compatible with pix2pix models, see --model-type.',
             level=messages.ERROR)
         sys.exit(1)
     elif not args.image_guidance_scales:
@@ -772,7 +800,7 @@ def parse_args(args=None, namespace=None):
     if 'sdxl' not in args.model_type:
         invalid_arg = False
         for sdxl_args in (a for a in dir(args) if a.startswith('sdxl') and getattr(args, a)):
-            messages.log(f'You cannot specify --{sdxl_args.replace("_", "-")} '
+            messages.log(f'Error: You cannot specify --{sdxl_args.replace("_", "-")} '
                          f'for a non SDXL model type, see --model-types.',
                          level=messages.ERROR)
             invalid_arg = True
@@ -782,6 +810,11 @@ def parse_args(args=None, namespace=None):
 
         args.sdxl_high_noise_fractions = []
     else:
+        if not args.sdxl_refiner and args.sdxl_high_noise_fractions:
+            messages.log('Error: --sdxl-high-noise-fractions may not be specified without --sdxl-refiner.',
+                         level=messages.ERROR)
+            sys.exit(1)
+
         if args.sdxl_high_noise_fractions is None:
             # Default value
             args.sdxl_high_noise_fractions = [0.8]
