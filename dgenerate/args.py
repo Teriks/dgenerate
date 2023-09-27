@@ -810,10 +810,15 @@ def parse_args(args=None, namespace=None):
 
         args.sdxl_high_noise_fractions = []
     else:
-        if not args.sdxl_refiner and args.sdxl_high_noise_fractions:
-            messages.log('Error: --sdxl-high-noise-fractions may not be specified without --sdxl-refiner.',
-                         level=messages.ERROR)
-            sys.exit(1)
+        if not args.sdxl_refiner:
+            invalid_arg = False
+            for sdxl_args in (a for a in dir(args) if a.startswith('sdxl_refiner') and getattr(args, a)):
+                messages.log(f'Error: You cannot specify --{sdxl_args.replace("_", "-")} '
+                             f'without --sdxl-refiner.',
+                             level=messages.ERROR)
+                invalid_arg = True
+            if invalid_arg:
+                sys.exit(1)
 
         if args.sdxl_high_noise_fractions is None:
             # Default value
