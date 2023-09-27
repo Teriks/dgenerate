@@ -782,7 +782,7 @@ def parse_args(args=None, namespace=None):
     if 'upscaler' not in args.model_type:
         if args.upscaler_noise_levels:
             messages.log(
-                'Error: You cannot specify --upscaler-noise-levels for a non upscaler model type, see --model-types.',
+                'Error: You cannot specify --upscaler-noise-levels for a non upscaler model type, see --model-type.',
                 level=messages.ERROR)
             sys.exit(1)
     elif args.upscaler_noise_levels is None:
@@ -806,7 +806,7 @@ def parse_args(args=None, namespace=None):
         invalid_arg = False
         for sdxl_args in (a for a in dir(args) if a.startswith('sdxl') and getattr(args, a)):
             messages.log(f'Error: You cannot specify --{sdxl_args.replace("_", "-")} '
-                         f'for a non SDXL model type, see --model-types.',
+                         f'for a non SDXL model type, see --model-type.',
                          level=messages.ERROR)
             invalid_arg = True
 
@@ -828,6 +828,13 @@ def parse_args(args=None, namespace=None):
             if args.sdxl_high_noise_fractions is None:
                 # Default value
                 args.sdxl_high_noise_fractions = [0.8]
+
+    if 'torch' not in args.model_type:
+        if args.vae_slicing or args.vae_tiling:
+            messages.log(
+                'Error: --vae-slicing/--vae-tiling not supported for '
+                'non torch model type, see --model-type.', level=messages.ERROR)
+            sys.exit(1)
 
     if args.image_seeds:
         if args.image_seed_strengths is None:
