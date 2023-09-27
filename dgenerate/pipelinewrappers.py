@@ -42,7 +42,7 @@ import enum
 import torch
 import numbers
 from PIL import Image
-from .textprocessing import ConceptModelPathParser, ConceptModelPathParseError, quote
+from .textprocessing import ConceptModelPathParser, ConceptModelPathParseError, quote, debug_format_args
 from . import messages
 from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline, StableDiffusionInpaintPipeline, \
     StableDiffusionInpaintPipelineLegacy, StableDiffusionXLPipeline, StableDiffusionXLImg2ImgPipeline, \
@@ -396,8 +396,17 @@ class LoRAPath:
         self.subfolder = subfolder
         self.weight_name = weight_name
 
+    def __str__(self):
+        return f'{self.__class__.__name__}({str(self.__dict__)})'
+
+    def __repr__(self):
+        return str(self)
+
     def load_on_pipeline(self, pipeline, **kwargs):
         if hasattr(pipeline, 'load_lora_weights'):
+            messages.log(
+                f'Loaded LoRA: "{self}" on pipeline: "{pipeline.__class__.__name__}"',
+                level=messages.DEBUG)
             pipeline.load_lora_weights(self.model,
                                        revision=self.revision,
                                        subfolder=self.subfolder,
@@ -425,8 +434,18 @@ class TextualInversionPath:
         self.subfolder = subfolder
         self.weight_name = weight_name
 
+    def __str__(self):
+        return f'{self.__class__.__name__}({str(self.__dict__)})'
+
+    def __repr__(self):
+        return str(self)
+
     def load_on_pipeline(self, pipeline, **kwargs):
         if hasattr(pipeline, 'load_textual_inversion'):
+            messages.log(
+                f'Loaded Textual Inversion: "{self}" on pipeline: "{pipeline.__class__.__name__}"',
+                level=messages.DEBUG)
+
             pipeline.load_textual_inversion(self.model,
                                             revision=self.revision,
                                             subfolder=self.subfolder,
@@ -761,12 +780,11 @@ def _create_torch_diffusion_pipeline(pipeline_type,
             kwargs['vae'] = _load_pytorch_vae(vae_path,
                                               torch_dtype_fallback=torch_dtype,
                                               use_auth_token=auth_token)
+            messages.log(
+                f'Loaded Torch VAE: "{vae_path}" on pipeline: "{pipeline_class.__name__}"',
+                level=messages.DEBUG)
 
         if control_net_paths:
-            if lora_paths and model_type_is_sdxl(model_type):
-                raise NotImplementedError(
-                    'LoRA currently cannot be used with Control Nets when using SDXL')
-
             if model_type_is_pix2pix(model_type):
                 raise NotImplementedError(
                     'Using ControlNets with pix2pix models is not supported.'
@@ -905,6 +923,9 @@ def _create_flax_diffusion_pipeline(pipeline_type,
                                                   flax_dtype_fallback=flax_dtype,
                                                   use_auth_token=auth_token)
             kwargs['vae'] = vae_path
+            messages.log(
+                f'Loaded Flax VAE: "{vae_path}" on pipeline: "{pipeline_class.__name__}"',
+                level=messages.DEBUG)
 
         if control_net_paths is not None:
             parsed_flax_control_net_path = parse_flax_control_net_path(control_net_paths[0])
@@ -1155,10 +1176,9 @@ class DiffusionPipelineWrapperBase:
 
     @staticmethod
     def _call_pipeline(pipeline, device, **kwargs):
-        messages.log("Calling Pipeline:", pipeline.__class__,
-                     f'Device: "{device}"',
-                     'Args:',
-                     {k: str(v) if len(str(v)) < 256 else v.__class__ for k, v in kwargs.items()},
+        messages.log(f'Calling Pipeline: "{pipeline.__class__.__name__}",',
+                     f'Device: "{device}",',
+                     'Args:', debug_format_args(**kwargs),
                      level=messages.DEBUG)
 
         if pipeline is DiffusionPipelineWrapperBase._LAST_CALLED_PIPE:
@@ -1932,6 +1952,11 @@ class DiffusionPipelineWrapperBase:
 
     def __call__(self, **kwargs) -> PipelineResultWrapper:
         default_args = self._pipeline_defaults(kwargs)
+
+        messages.log(f'Calling Pipeline Wrapper: "{self.__class__.__name__}",',
+                     f'Device: "{self._device}",',
+                     'User Args:', debug_format_args(**kwargs),
+                     level=messages.DEBUG)
 
         model_type = get_model_type_enum(self._model_type)
 

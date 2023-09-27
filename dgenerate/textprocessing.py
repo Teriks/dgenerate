@@ -106,3 +106,7 @@ def unquote(strin):
     else:
         # Is an unquoted string
         return str(strin.strip(' '))
+
+
+def debug_format_args(**kwargs):
+    return str({k: str(v) if len(str(v)) < 256 else v.__class__.__name__ for k, v in kwargs.items()})
