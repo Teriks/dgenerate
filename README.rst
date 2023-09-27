@@ -997,8 +997,15 @@ The syntax for ``--vae`` is ``AutoEncoderClass;model=(huggingface repository slu
 Named arguments when loading a VAE are seperated by the ``;`` character and are not positional,
 meaning they can be defined in any order.
 
+Loading arguments available when specifying
+a Torch VAE are: ``model``, ``revision``, ``variant``, ``subfolder``,
+``dtype``, ``tiling`` (bool), and ``slicing`` (bool)
+
+Loading arguments available when specifying
+a Flax VAE are ``model``, ``revision``, ``subfolder``, ``dtype``
+
 The only named argument compatible with loading a .safetensors or other model file
-directly off disk is ``model`` and ``dtype``
+directly off disk is ``model``, ``dtype``, ``tiling`` (bool), and ``slicing`` (bool)
 
 The other named arguments are available when loading from a huggingface repository or folder
 that may or may not be a local git repository on disk.
@@ -1006,12 +1013,12 @@ that may or may not be a local git repository on disk.
 Available encoder classes for torch models are:
 
 * AutoencoderKL
-* AsymmetricAutoencoderKL
+* AsymmetricAutoencoderKL (Does not support tiling or slicing)
 * AutoencoderTiny
 
 Available encoder classes for flax models are:
 
-* FlaxAutoencoderKL
+* FlaxAutoencoderKL (Does not support tiling or slicing)
 
 
 The AutoencoderKL encoder class accepts huggingface repository slugs/blob links,
@@ -1095,7 +1102,34 @@ accepted values are the same as ``--dtype``, IE: 'float32', 'float16', 'auto'
     --guidance-scales 10 \
     --output-size 512x512
 
-If you are loading a .safetensors or other file from a path on disk, only the ``model`` and ``dtype`` arguments are available.
+
+You can use ``slicing`` and ``tiling`` to enable to generation of huge images without running your GPU out of memory.
+
+When ``tiling`` is enabled via ``tiling=true``, the VAE will split the input tensor into tiles to
+compute decoding and encoding in several steps. This is useful for saving a large amount of
+memory and to allow processing larger images.
+
+When ``slicing`` is enabled via ``slicing=true``, the VAE will split the input tensor in slices to
+compute decoding in several steps. This is useful to save some memory.
+
+.. code-block:: bash
+
+    # Here is an SDXL example of high resolution image generation utilizing VAE tiling/slicing
+
+    stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    --variant fp16 --dtype float16 \
+    --vae AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix;tiling=true;slicing=true \
+    --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
+    --sdxl-high-noise-fractions 0.8 \
+    --inference-steps 30 \
+    --guidance-scales 8 \
+    --output-size 2048 \
+    --sdxl-target-size 2048 \
+    --prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork"
+
+
+If you are loading a .safetensors or other file from a path on disk, only the ``model``, ``dtype``,
+``slicing``, and ``tiling`` arguments are available.
 
 .. code-block:: bash
 

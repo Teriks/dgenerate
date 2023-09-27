@@ -645,7 +645,7 @@ class DiffusionRenderLoop:
             return os.path.join(self.output_path,
                                 f'{self.output_prefix + "_" if self.output_prefix is not None else ""}' + '_'.
                                 join(str(s).replace('.', '-') for s in args) + (
-                                    '' if dup_number is None else f'_version_{dup_number}') + '.' + ext)
+                                    '' if dup_number is None else f'_duplicate_{dup_number}') + '.' + ext)
 
         path = _make_path(args, ext)
 
@@ -655,10 +655,10 @@ class DiffusionRenderLoop:
         if not os.path.exists(path):
             return path
 
-        version_number = 1
+        duplicate_number = 1
         while os.path.exists(path):
-            path = _make_path(args, ext, version_number)
-            version_number += 1
+            path = _make_path(args, ext, duplicate_number)
+            duplicate_number += 1
 
         return path
 

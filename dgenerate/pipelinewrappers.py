@@ -99,7 +99,9 @@ class InvalidTextualInversionPathError(Exception):
 
 _sdxl_refiner_path_parser = ConceptModelPathParser('SDXL Refiner', ['revision', 'variant', 'subfolder', 'dtype'])
 
-_torch_vae_path_parser = ConceptModelPathParser('VAE', ['model', 'revision', 'variant', 'subfolder', 'dtype'])
+_torch_vae_path_parser = ConceptModelPathParser('VAE', ['model', 'revision', 'variant', 'subfolder', 'dtype',
+                                                        'tiling', 'slicing'])
+
 _flax_vae_path_parser = ConceptModelPathParser('VAE', ['model', 'revision', 'subfolder', 'dtype'])
 
 _torch_control_net_path_parser = ConceptModelPathParser('ControlNet',
@@ -307,13 +309,15 @@ def parse_sdxl_refiner_path(path) -> SDXLRefinerPath:
 
 
 class TorchVAEPath:
-    def __init__(self, encoder, model, revision, variant, subfolder, dtype):
+    def __init__(self, encoder, model, revision, variant, subfolder, dtype, tiling, slicing):
         self.encoder = encoder
         self.model = model
         self.revision = revision
         self.variant = variant
         self.dtype = dtype
         self.subfolder = subfolder
+        self.tiling = tiling
+        self.slicing = slicing
 
 
 def parse_torch_vae_path(path) -> TorchVAEPath:
@@ -329,12 +333,26 @@ def parse_torch_vae_path(path) -> TorchVAEPath:
             raise InvalidVaePathError(
                 f'Torch VAE dtype must be float32, float16, auto, or left undefined, received: {dtype}')
 
+        tiling = r.args.get('tiling', False)
+        try:
+            tiling = bool(tiling)
+        except ValueError:
+            raise InvalidVaePathError('Torch VAE tiling parameter must be a boolean value, "true" or "false".')
+
+        slicing = r.args.get('tiling', False)
+        try:
+            slicing = bool(slicing)
+        except ValueError:
+            raise InvalidVaePathError('Torch VAE slicing parameter must be a boolean value, "true" or "false".')
+
         return TorchVAEPath(encoder=r.concept,
                             model=model,
                             revision=r.args.get('revision', None),
                             variant=r.args.get('variant', None),
                             dtype=_get_torch_dtype(dtype),
-                            subfolder=r.args.get('subfolder', None))
+                            subfolder=r.args.get('subfolder', None),
+                            tiling=tiling,
+                            slicing=slicing)
     except ConceptModelPathParseError as e:
         raise InvalidVaePathError(e)
 
@@ -456,7 +474,9 @@ def _load_pytorch_vae(path,
 
     cache_key = _function_cache_key({'path': path,
                                      'use_auth_token': use_auth_token,
-                                     'dtype': parsed_concept.dtype})
+                                     'dtype': parsed_concept.dtype,
+                                     'tiling': parsed_concept.tiling,
+                                     'slicing': parsed_concept.slicing})
 
     cache_hit = _TORCH_VAE_CACHE.get(cache_key)
     if cache_hit is not None:
@@ -502,6 +522,18 @@ def _load_pytorch_vae(path,
                                       torch_dtype=parsed_concept.dtype,
                                       subfolder=parsed_concept.subfolder,
                                       use_auth_token=use_auth_token)
+
+    if parsed_concept.tiling:
+        if hasattr(vae, 'enable_tiling'):
+            vae.enable_tiling()
+        else:
+            raise NotImplementedError(f'{encoder_name} does not support VAE tiling.')
+
+    if parsed_concept.slicing:
+        if hasattr(vae, 'enable_slicing'):
+            vae.enable_slicing()
+        else:
+            raise NotImplementedError(f'{encoder_name} does not support VAE slicing.')
 
     _TORCH_VAE_CACHE[cache_key] = vae
     return vae
