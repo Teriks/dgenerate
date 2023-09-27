@@ -662,11 +662,14 @@ All using 50 inference steps, and 10 for guidance scale value.
 Image Seed
 ----------
 
-Use a photo of Buzz Aldrin on the moon to generate a photo of an astronaut standing on mars, this uses an image seed downloaded from wikipedia.
+Use a photo of Buzz Aldrin on the moon to generate a photo of an astronaut standing on mars using Img2Img,
+this uses an image seed downloaded from wikipedia.
 
-Disk file paths may also be used for image seeds, multiple image seeds may be provided, images will be generated from each image seed individually.
+Disk file paths may also be used for image seeds, multiple image seeds may be provided, images will be
+generated from each image seed individually.
 
-Generate this image using 5 different seeds, 3 different inference-step values, 3 different guidance-scale values as above.
+Generate this image using 5 different seeds, 3 different inference-step values, 3 different
+guidance-scale values as above.
 
 In addition this image will be generated using 3 different image seed strengths.
 
@@ -702,9 +705,11 @@ in with generated content.
 
 For using inpainting on animated image seeds, jump to: `Inpainting Animations`_
 
-In order to use inpainting, specify your image seed like so: ``--image-seeds "my-image-seed.png;my-mask-image.png"``
+In order to use inpainting, specify your image seed like so:
+``--image-seeds "my-image-seed.png;my-mask-image.png"`` or ``--image-seeds "my-image-seed.png;mask=my-mask-image.png"``
 
-The format is your image seed and mask image seperated by ``;``
+The format is your image seed and mask image seperated by ``;``, optionally mask can be named argument.
+The alternate syntax is for disambiguation when using `Control Nets </#specifying-control-nets>`_.
 
 Mask images can be downloaded from URL's just like image seeds, however for this example the syntax specifies a file on disk for brevity.
 
@@ -735,8 +740,12 @@ You can specify their output size individually at the end of each provided image
 This will work when using a mask image for inpainting as well, including when using animated inputs.
 
 The syntax is: ``--image-seeds "my-image-seed.png;512x512"`` or ``--image-seeds "my-image-seed.png;my-mask-image.png;512x512"``
+or ``--image-seeds "my-image-seed.png;mask=my-mask-image.png;resize=512x512"``
 
-When one dimension is specified, that dimension is the width, and the height is calculated from the aspect ratio of the input image.
+The alternate syntax with named arguments is for disambiguation when using `Control Nets </#specifying-control-nets>`_.
+
+When one dimension is specified, that dimension is the width, and the height is
+calculated from the aspect ratio of the input image.
 
 .. code-block:: bash
 
