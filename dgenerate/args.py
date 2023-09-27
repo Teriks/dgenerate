@@ -119,6 +119,9 @@ parser.add_argument('--vae', action='store', default=None,
                     Aside from the "model" argument, there are four other optional arguments that can be specified,
                     these include "revision", "variant", "subfolder", "dtype".
                     
+                    For torch AutoencoderKL and AutoencoderTiny, the additional boolean arguments "tiling" 
+                    and "slicing" are available to enable VAE tiling and slicing, these arguments default to False.
+                    
                     They can be specified as so in any order, they are not positional:
                     "AutoencoderKL;model=huggingface/vae;revision=main;variant=fp16;subfolder=sub_folder;dtype=float16".
                     
@@ -136,6 +139,16 @@ parser.add_argument('--vae', action='store', default=None,
                     
                     The "dtype" argument specifies the VAE model precision, it defaults to the value of -t/--dtype
                     and should be one of: float16 / float32 / auto.
+                    
+                    The "tiling" and "slicing" argument can be used to enable VAE tiling/slicing when using 
+                    AutoencoderKL or AutoencoderTiny.
+                    
+                    When "tiling" is enabled via "tiling=true", the VAE will split the input tensor into tiles to
+                    compute decoding and encoding in several steps. This is useful for saving a large amount of 
+                    memory and to allow processing larger images.
+                    
+                    When "slicing" is enabled via "slicing=true", the VAE will split the input tensor in slices to
+                    compute decoding in several steps. This is useful to save some memory.
                     
                     If you wish to load a weights file directly from disk, the simplest
                     way is: --vae "AutoencoderKL;my_vae.safetensors", or with a 
@@ -532,12 +545,8 @@ parser.add_argument('-op', '--output-prefix', action='store', default=None, type
 
 parser.add_argument('-ox', '--output-overwrite', action='store_true', default=False,
                     help="""Enable overwrites of files in the output directory that already exists.
-                            The default behavior is not to do this, and instead append a filename suffix: "_version_(number)"
-                            when it is detected that the generated file name already exists. Advanced usage of SDXL using
-                            --sdxl-* arguments other than --sdxl-high-noise-fractions will cause overwrites if multiple values
-                            are supplied, and therefore the creation of files with the "_version_(number)" prefix, it is 
-                            recommended to use --output-configs/--output-metadata when using those options in order 
-                            to determine the input parameters which produced the image.""")
+                            The default behavior is not to do this, and instead append a filename suffix:
+                             "_duplicate_(number)" when it is detected that the generated file name already exists.""")
 
 parser.add_argument('-oc', '--output-configs', action='store_true', default=False,
                     help="""Write a configuration text file for every output image or animation.
