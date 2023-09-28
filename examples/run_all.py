@@ -16,5 +16,6 @@ for config in configs:
             continue
 
     print(f'RUNNING: {config}')
+    proc = ["dgenerate"] + sys.argv[1:]
     with open(config) as f:
-        subprocess.run(["dgenerate"] + sys.argv[1:], shell=True, stdin=f, cwd=os.path.dirname(config), check=True)
+        subprocess.run(proc, stdin=f, cwd=os.path.dirname(config), check=True)
