@@ -108,5 +108,12 @@ def unquote(strin):
         return str(strin.strip(' '))
 
 
-def debug_format_args(**kwargs):
-    return str({k: str(v) if len(str(v)) < 256 else v.__class__.__name__ for k, v in kwargs.items()})
+def debug_format_args(args_dict, value_transformer=None):
+    def _value_transformer(key, value):
+        if value_transformer is not None:
+            return value_transformer(key, value)
+        return value
+
+    return str(
+        {k: str(_value_transformer(k, v)) if len(str(_value_transformer(k, v))) < 256
+         else v.__class__.__name__ for k, v in args_dict.items()})

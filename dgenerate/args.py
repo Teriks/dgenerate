@@ -30,7 +30,8 @@ from . import __version__
 from . import messages
 from .diffusionloop import is_valid_device_string, InvalidDeviceOrdinalException
 from .mediaoutput import supported_animation_writer_formats
-from .pipelinewrappers import supported_model_types, have_jax_flax
+from .pipelinewrappers import supported_model_type_strings, have_jax_flax, get_model_type_enum, model_type_is_upscaler, \
+    model_type_is_pix2pix, model_type_is_sdxl, model_type_is_torch, model_type_is_flax
 from .textprocessing import oxford_comma
 
 if have_jax_flax():
@@ -52,10 +53,10 @@ parser.add_argument('-v', '--verbose', action='store_true', default=False,
 
 def _from_model_type(val):
     val = val.lower()
-    if val not in supported_model_types():
+    if val not in supported_model_type_strings():
         raise argparse.ArgumentTypeError(
-            f'Must be one of: {oxford_comma(supported_model_types(), "or")}. Unknown value: {val}')
-    return val
+            f'Must be one of: {oxford_comma(supported_model_type_strings(), "or")}. Unknown value: {val}')
+    return get_model_type_enum(val)
 
 
 def _type_dtype(dtype):
@@ -83,7 +84,7 @@ def _type_prompts(prompt):
 
 parser.add_argument('--model-type', action='store', default='torch', type=_from_model_type,
                     help=f"""Use when loading different model types. 
-                         Currently supported: {oxford_comma(supported_model_types(), "or")}. (default: torch)""")
+                         Currently supported: {oxford_comma(supported_model_type_strings(), "or")}. (default: torch)""")
 
 parser.add_argument('--revision', action='store', default="main",
                     help="""The model revision to use when loading from a huggingface repository,
@@ -760,9 +761,9 @@ def parse_args(args=None, namespace=None):
         args.seeds = [random.randint(0, 99999999999999)]
 
     if args.output_size is None and not args.image_seeds and not args.control_images:
-        args.output_size = (512, 512) if 'sdxl' not in args.model_type else (1024, 1024)
+        args.output_size = (512, 512) if not model_type_is_sdxl(args.model_type) else (1024, 1024)
 
-    if args.control_nets is not None and 'flax' in args.model_type and \
+    if args.control_nets is not None and model_type_is_flax(args.model_type) and \
             (args.image_seeds or args.image_seed_strengths):
         messages.log('Error: --image-seeds/--image-seed-strengths are incompatible with '
                      '--model-type "flax" + --control-nets, use --control-images instead.',
@@ -779,7 +780,7 @@ def parse_args(args=None, namespace=None):
                      level=messages.ERROR)
         sys.exit(1)
 
-    if 'upscaler' not in args.model_type:
+    if not model_type_is_upscaler(args.model_type):
         if args.upscaler_noise_levels:
             messages.log(
                 'Error: You cannot specify --upscaler-noise-levels for a non upscaler model type, see --model-type.',
@@ -788,7 +789,7 @@ def parse_args(args=None, namespace=None):
     elif args.upscaler_noise_levels is None:
         args.upscaler_noise_levels = [20]
 
-    if 'pix2pix' not in args.model_type:
+    if not model_type_is_pix2pix(args.model_type):
         if args.image_guidance_scales:
             messages.log(
                 'Error: --image-guidance-scales only valid with pix2pix models, see --model-type.',
@@ -802,7 +803,7 @@ def parse_args(args=None, namespace=None):
     elif not args.image_guidance_scales:
         args.image_guidance_scales = [1.5]
 
-    if 'sdxl' not in args.model_type:
+    if not model_type_is_sdxl(args.model_type):
         invalid_arg = False
         for sdxl_args in (a for a in dir(args) if a.startswith('sdxl') and getattr(args, a)):
             messages.log(f'Error: You cannot specify --{sdxl_args.replace("_", "-")} '
@@ -829,7 +830,7 @@ def parse_args(args=None, namespace=None):
                 # Default value
                 args.sdxl_high_noise_fractions = [0.8]
 
-    if 'torch' not in args.model_type:
+    if not model_type_is_torch(args.model_type):
         if args.vae_slicing or args.vae_tiling:
             messages.log(
                 'Error: --vae-slicing/--vae-tiling not supported for '

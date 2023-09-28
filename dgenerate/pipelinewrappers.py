@@ -40,10 +40,10 @@ except ImportError:
 
 import enum
 import torch
-import numbers
 from PIL import Image
 from .textprocessing import ConceptModelPathParser, ConceptModelPathParseError, quote, debug_format_args
 from . import messages
+from .memoize import memoize
 from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline, StableDiffusionInpaintPipeline, \
     StableDiffusionInpaintPipelineLegacy, StableDiffusionXLPipeline, StableDiffusionXLImg2ImgPipeline, \
     StableDiffusionXLInpaintPipeline, StableDiffusionUpscalePipeline, StableDiffusionLatentUpscalePipeline, \
@@ -115,6 +115,11 @@ _textual_inversion_path_parser = ConceptModelPathParser('Textual Inversion',
                                                         ['revision', 'subfolder', 'weight-name'])
 
 
+def _simple_cache_debug(title, cache_key, cache_hit):
+    messages.debug_log(f'Loaded Cached {title}: "{cache_hit.__class__.__name__}",',
+                       f'Cache Key: "{cache_key}"')
+
+
 class FlaxControlNetPath:
     def __init__(self, model, scale, revision, subfolder, dtype, from_torch):
         self.model = model
@@ -124,18 +129,10 @@ class FlaxControlNetPath:
         self.from_torch = from_torch
         self.scale = scale
 
-    def load(self, device, flax_dtype_fallback, **kwargs):
-        cache_by = kwargs
-        cache_by['device'] = device
-        cache_key = _function_cache_key(cache_by)
-
-        cache_hit = _FLAX_CONTROL_NET_CACHE.get(cache_key)
-
-        if cache_hit is not None:
-            messages.log(f'Loaded Cached Flax ControlNet "{cache_hit.__class__.__name__}", '
-                         f'Cache Key: "{cache_key}"', level=messages.DEBUG)
-            return cache_hit
-
+    @memoize(_FLAX_CONTROL_NET_CACHE,
+             exceptions={'self'},
+             on_hit=lambda key, hit: _simple_cache_debug("Flax ControlNet", key, hit))
+    def load(self, flax_dtype_fallback, **kwargs):
         single_file_load_path = _is_single_file_model_load(self.model)
 
         if single_file_load_path:
@@ -148,8 +145,6 @@ class FlaxControlNetPath:
                                                     dtype=flax_dtype_fallback if self.dtype is None else self.dtype,
                                                     from_pt=self.from_torch,
                                                     **kwargs)
-
-        _FLAX_CONTROL_NET_CACHE[cache_key] = new_net
         return new_net
 
 
@@ -201,17 +196,10 @@ class TorchControlNetPath:
         self.start = start
         self.end = end
 
-    def load(self, device, torch_dtype_fallback, **kwargs) -> ControlNetModel:
-        cache_by = kwargs
-        cache_by['device'] = device
-        cache_key = _function_cache_key(cache_by)
-
-        cache_hit = _TORCH_CONTROL_NET_CACHE.get(cache_key)
-
-        if cache_hit is not None:
-            messages.log(f'Loaded Cached Torch ControlNet "{cache_hit.__class__.__name__}", '
-                         f'Cache Key: "{cache_key}"', level=messages.DEBUG)
-            return cache_hit
+    @memoize(_TORCH_CONTROL_NET_CACHE,
+             exceptions={'self'},
+             on_hit=lambda key, hit: _simple_cache_debug("Torch ControlNet", key, hit))
+    def load(self, torch_dtype_fallback, **kwargs) -> ControlNetModel:
 
         single_file_load_path = _is_single_file_model_load(self.model)
 
@@ -229,8 +217,6 @@ class TorchControlNetPath:
                                                 subfolder=self.subfolder,
                                                 torch_dtype=torch_dtype_fallback if self.dtype is None else self.dtype,
                                                 **kwargs)
-
-        _TORCH_CONTROL_NET_CACHE[cache_key] = new_net
         return new_net
 
 
@@ -391,9 +377,7 @@ class LoRAPath:
 
     def load_on_pipeline(self, pipeline, **kwargs):
         if hasattr(pipeline, 'load_lora_weights'):
-            messages.log(
-                f'Loaded LoRA: "{self}" on pipeline: "{pipeline.__class__.__name__}"',
-                level=messages.DEBUG)
+            messages.debug_log(f'Added LoRA: "{self}" to pipeline: "{pipeline.__class__.__name__}"')
             pipeline.load_lora_weights(self.model,
                                        revision=self.revision,
                                        subfolder=self.subfolder,
@@ -429,9 +413,7 @@ class TextualInversionPath:
 
     def load_on_pipeline(self, pipeline, **kwargs):
         if hasattr(pipeline, 'load_textual_inversion'):
-            messages.log(
-                f'Loaded Textual Inversion: "{self}" on pipeline: "{pipeline.__class__.__name__}"',
-                level=messages.DEBUG)
+            messages.debug_log(f'Added Textual Inversion: "{self}" to pipeline: "{pipeline.__class__.__name__}"')
 
             pipeline.load_textual_inversion(self.model,
                                             revision=self.revision,
@@ -470,6 +452,8 @@ def _is_single_file_model_load(path):
     return False
 
 
+@memoize(_TORCH_VAE_CACHE,
+         on_hit=lambda key, hit: _simple_cache_debug("Torch VAE", key, hit))
 def _load_pytorch_vae(path,
                       torch_dtype_fallback,
                       use_auth_token) -> typing.Union[AutoencoderKL, AsymmetricAutoencoderKL, AutoencoderTiny]:
@@ -477,17 +461,6 @@ def _load_pytorch_vae(path,
 
     if parsed_concept.dtype is None:
         parsed_concept.dtype = torch_dtype_fallback
-
-    cache_key = _function_cache_key({'path': path,
-                                     'use_auth_token': use_auth_token,
-                                     'dtype': parsed_concept.dtype})
-
-    cache_hit = _TORCH_VAE_CACHE.get(cache_key)
-    if cache_hit is not None:
-        messages.log(f'Loaded Cached Torch VAE "{cache_hit.__class__.__name__}", '
-                     f'Cache Key: "{cache_key}"', level=messages.DEBUG)
-
-        return cache_hit
 
     encoder_name = parsed_concept.encoder
 
@@ -529,11 +502,11 @@ def _load_pytorch_vae(path,
                                       torch_dtype=parsed_concept.dtype,
                                       subfolder=parsed_concept.subfolder,
                                       use_auth_token=use_auth_token)
-
-    _TORCH_VAE_CACHE[cache_key] = vae
     return vae
 
 
+@memoize(_FLAX_VAE_CACHE,
+         on_hit=lambda key, hit: _simple_cache_debug("Flax VAE", key, hit))
 def _load_flax_vae(path,
                    flax_dtype_fallback,
                    use_auth_token):
@@ -541,16 +514,6 @@ def _load_flax_vae(path,
 
     if parsed_concept.dtype is None:
         parsed_concept.dtype = flax_dtype_fallback
-
-    cache_key = _function_cache_key({'path': path,
-                                     'use_auth_token': use_auth_token,
-                                     'dtype': parsed_concept.dtype})
-
-    cache_hit = _FLAX_VAE_CACHE.get(cache_key)
-    if cache_hit is not None:
-        messages.log(f'Loaded Cached Flax VAE "{cache_hit.__class__.__name__}", '
-                     f'Cache Key: "{cache_key}"', level=messages.DEBUG)
-        return cache_hit
 
     encoder_name = parsed_concept.encoder
 
@@ -581,8 +544,6 @@ def _load_flax_vae(path,
                                       dtype=parsed_concept.dtype,
                                       subfolder=parsed_concept.subfolder,
                                       use_auth_token=use_auth_token)
-
-    _FLAX_VAE_CACHE[cache_key] = vae
     return vae
 
 
@@ -628,18 +589,6 @@ def _disabled_safety_checker(images, clip_input):
         return images, False
 
 
-def _function_cache_key(args_dict):
-    def value_hash(obj):
-        if isinstance(obj, dict):
-            return '{' + _function_cache_key(obj) + '}'
-        elif obj is None or isinstance(obj, (str, numbers.Number)):
-            return str(obj)
-        else:
-            return f'<{obj.__class__.__name__}:{str(id(obj))}>'
-
-    return ','.join(f'{k}={value_hash(v)}' for k, v in sorted(args_dict.items()))
-
-
 class _PipelineTypes:
     BASIC = 1
     IMG2IMG = 2
@@ -661,8 +610,8 @@ def _set_vae_slicing_tiling(pipeline, vae_slicing, vae_tiling):
     if vae_slicing:
         if has_vae:
             if hasattr(pipeline.vae, 'enable_slicing'):
-                messages.log(f'Enabling VAE slicing on Pipeline: "{pipeline_class.__name__}", '
-                             f'VAE: "{pipeline.vae.__class__.__name__}"', level=messages.DEBUG)
+                messages.debug_log(f'Enabling VAE slicing on Pipeline: "{pipeline_class.__name__}",',
+                                   f'VAE: "{pipeline.vae.__class__.__name__}"')
                 pipeline.vae.enable_slicing()
             else:
                 raise NotImplementedError(
@@ -673,15 +622,15 @@ def _set_vae_slicing_tiling(pipeline, vae_slicing, vae_tiling):
                 '--vae-slicing not supported as no VAE is present for the specified model.')
     elif has_vae:
         if hasattr(pipeline.vae, 'disable_slicing'):
-            messages.log(f'Disabling VAE slicing on Pipeline: "{pipeline_class.__name__}", '
-                         f'VAE: "{pipeline.vae.__class__.__name__}"', level=messages.DEBUG)
+            messages.debug_log(f'Disabling VAE slicing on Pipeline: "{pipeline_class.__name__}",',
+                               f'VAE: "{pipeline.vae.__class__.__name__}"')
             pipeline.vae.disable_slicing()
 
     if vae_tiling:
         if has_vae:
             if hasattr(pipeline.vae, 'enable_tiling'):
-                messages.log(f'Enabling VAE tiling on Pipeline: "{pipeline_class.__name__}", '
-                             f'VAE: "{pipeline.vae.__class__.__name__}"', level=messages.DEBUG)
+                messages.debug_log(f'Enabling VAE tiling on Pipeline: "{pipeline_class.__name__}",',
+                                   f'VAE: "{pipeline.vae.__class__.__name__}"')
                 pipeline.vae.enable_tiling()
             else:
                 raise NotImplementedError(
@@ -692,8 +641,8 @@ def _set_vae_slicing_tiling(pipeline, vae_slicing, vae_tiling):
                 '--vae-tiling not supported as no VAE is present for the specified model.')
     elif has_vae:
         if hasattr(pipeline.vae, 'disable_tiling'):
-            messages.log(f'Disabling VAE tiling on Pipeline: "{pipeline_class.__name__}", '
-                         f'VAE: "{pipeline.vae.__class__.__name__}"', level=messages.DEBUG)
+            messages.debug_log(f'Disabling VAE tiling on Pipeline: "{pipeline_class.__name__}",',
+                               f'VAE: "{pipeline.vae.__class__.__name__}"')
             pipeline.vae.disable_tiling()
 
 
@@ -708,6 +657,8 @@ def _set_torch_safety_checker(pipeline, safety_checker_bool):
             pipeline.safety_checker = _disabled_safety_checker
 
 
+@memoize(_TORCH_MODEL_CACHE,
+         on_hit=lambda key, hit: _simple_cache_debug("Torch Pipeline", key, hit[0]))
 def _create_torch_diffusion_pipeline(pipeline_type,
                                      model_type,
                                      model_path,
@@ -716,8 +667,6 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                                      dtype,
                                      model_subfolder=None,
                                      vae_path=None,
-                                     vae_slicing=False,
-                                     vae_tiling=False,
                                      lora_paths=None,
                                      textual_inversion_paths=None,
                                      control_net_paths=None,
@@ -728,20 +677,6 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                                      extra_args=None,
                                      model_cpu_offload=False,
                                      sequential_cpu_offload=False):
-
-    cache_key = _function_cache_key(_args_except(locals(),
-                                                 'vae_slicing',
-                                                 'vae_tiling'))
-
-    cache_hit = _TORCH_MODEL_CACHE.get(cache_key)
-
-    if cache_hit is not None:
-        messages.log(f'Loaded Cached Torch Pipeline "{cache_hit[0].__class__.__name__}", '
-                     f'Cache Key: "{cache_key}"', level=messages.DEBUG)
-
-        _set_vae_slicing_tiling(cache_hit[0], vae_slicing, vae_tiling)
-        return cache_hit
-
     # Pipeline class selection
 
     if model_type_is_upscaler(model_type):
@@ -796,6 +731,8 @@ def _create_torch_diffusion_pipeline(pipeline_type,
             # Should be impossible
             raise NotImplementedError('Pipeline type not implemented.')
 
+    messages.debug_log(f'Creating Torch Pipeline: "{pipeline_class.__name__}"')
+
     # Block invalid Textual Inversion and LoRA usage
 
     if textual_inversion_paths:
@@ -833,9 +770,8 @@ def _create_torch_diffusion_pipeline(pipeline_type,
             creation_kwargs['vae'] = _load_pytorch_vae(vae_path,
                                                        torch_dtype_fallback=torch_dtype,
                                                        use_auth_token=auth_token)
-            messages.log(
-                f'Loaded Torch VAE: "{vae_path}" on pipeline: "{pipeline_class.__name__}"',
-                level=messages.DEBUG)
+            messages.debug_log(lambda:
+                               f'Added Torch VAE: "{vae_path}" to pipeline: "{pipeline_class.__name__}"')
 
         if control_net_paths:
             if model_type_is_pix2pix(model_type):
@@ -851,8 +787,11 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                 parsed_control_net_paths.append(parsed_control_net_path)
 
                 new_net = parsed_control_net_path.load(use_auth_token=auth_token,
-                                                       device=device,
                                                        torch_dtype_fallback=torch_dtype)
+
+                messages.debug_log(lambda:
+                                   f'Added Torch ControlNet: "{control_net_path}" '
+                                   f'to pipeline: "{pipeline_class.__name__}"')
 
                 if control_nets is not None:
                     if not isinstance(control_nets, list):
@@ -891,10 +830,6 @@ def _create_torch_diffusion_pipeline(pipeline_type,
 
     _load_scheduler(pipeline, scheduler)
 
-    # VAE Tiling / Slicing
-
-    _set_vae_slicing_tiling(pipeline, vae_slicing, vae_tiling)
-
     # Textual Inversions and LoRAs
 
     if textual_inversion_paths is not None:
@@ -921,10 +856,12 @@ def _create_torch_diffusion_pipeline(pipeline_type,
     elif model_cpu_offload and 'cuda' in device:
         pipeline.enable_model_cpu_offload(device=device)
 
-    _TORCH_MODEL_CACHE[cache_key] = (pipeline, parsed_control_net_paths)
+    messages.debug_log(f'Finished Creating Torch Pipeline: "{pipeline_class.__name__}"')
     return pipeline, parsed_control_net_paths
 
 
+@memoize(_FLAX_MODEL_CACHE,
+         on_hit=lambda key, hit: _simple_cache_debug("Flax Pipeline", key, hit[0]))
 def _create_flax_diffusion_pipeline(pipeline_type,
                                     model_path,
                                     revision,
@@ -935,16 +872,7 @@ def _create_flax_diffusion_pipeline(pipeline_type,
                                     scheduler=None,
                                     safety_checker=False,
                                     auth_token=None,
-                                    extra_args=None,
-                                    device='cuda'):
-    cache_key = _function_cache_key(locals())
-    cache_hit = _FLAX_MODEL_CACHE.get(cache_key)
-
-    if cache_hit is not None:
-        messages.log(f'Loaded Cached Flax Pipeline "{cache_hit[0].__class__.__name__}", '
-                     f'Cache Key: "{cache_key}"', level=messages.DEBUG)
-        return cache_hit
-
+                                    extra_args=None):
     has_control_nets = False
     if control_net_paths is not None:
         if len(control_net_paths) > 1:
@@ -968,6 +896,8 @@ def _create_flax_diffusion_pipeline(pipeline_type,
     else:
         raise NotImplementedError('Pipeline type not implemented.')
 
+    messages.debug_log(f'Creating Flax Pipeline: "{pipeline_class.__name__}"')
+
     kwargs = {}
     vae_params = None
     control_net_params = None
@@ -985,17 +915,22 @@ def _create_flax_diffusion_pipeline(pipeline_type,
                                                   flax_dtype_fallback=flax_dtype,
                                                   use_auth_token=auth_token)
             kwargs['vae'] = vae_path
-            messages.log(
-                f'Loaded Flax VAE: "{vae_path}" on pipeline: "{pipeline_class.__name__}"',
-                level=messages.DEBUG)
+            messages.debug_log(lambda:
+                               f'Added Flax VAE: "{vae_path}" to pipeline: "{pipeline_class.__name__}"')
 
         if control_net_paths is not None:
-            parsed_flax_control_net_path = parse_flax_control_net_path(control_net_paths[0])
+            control_net_path = control_net_paths[0]
+
+            parsed_flax_control_net_path = parse_flax_control_net_path(control_net_path)
 
             parsed_control_net_paths.append(parsed_flax_control_net_path)
 
-            control_net, control_net_params = parse_flax_control_net_path(control_net_paths[0]) \
-                .load(use_auth_token=auth_token, device=device, flax_dtype_fallback=flax_dtype)
+            control_net, control_net_params = parse_flax_control_net_path(control_net_path) \
+                .load(use_auth_token=auth_token, flax_dtype_fallback=flax_dtype)
+
+            messages.debug_log(lambda:
+                               f'Added Flax ControlNet: "{control_net_path}" '
+                               f'to pipeline: "{pipeline_class.__name__}"')
 
             kwargs['controlnet'] = control_net
 
@@ -1020,16 +955,20 @@ def _create_flax_diffusion_pipeline(pipeline_type,
     if not safety_checker:
         pipeline.safety_checker = None
 
-    _FLAX_MODEL_CACHE[cache_key] = (pipeline, params, parsed_control_net_paths)
+    messages.debug_log(f'Finished Creating Flax Pipeline: "{pipeline_class.__name__}"')
     return pipeline, params, parsed_control_net_paths
 
 
-def supported_model_types():
+def supported_model_type_strings():
     base_set = ['torch', 'torch-pix2pix', 'torch-sdxl', 'torch-sdxl-pix2pix', 'torch-upscaler-x2', 'torch-upscaler-x4']
     if have_jax_flax():
         return base_set + ['flax']
     else:
         return base_set
+
+
+def supported_model_type_enums():
+    return [get_model_type_enum(i) for i in supported_model_type_strings()]
 
 
 class ModelTypes(enum.Enum):
@@ -1042,38 +981,59 @@ class ModelTypes(enum.Enum):
     FLAX = 7
 
 
-def model_type_is_upscaler(model_type: typing.Union[ModelTypes, str]):
-    if isinstance(model_type, str):
-        model_type = get_model_type_enum(model_type)
+def get_model_type_enum(id_str: typing.Union[ModelTypes, str]) -> ModelTypes:
+    if isinstance(id_str, ModelTypes):
+        return id_str
 
-    return model_type in {ModelTypes.TORCH_UPSCALER_X2,
-                          ModelTypes.TORCH_UPSCALER_X4}
-
-
-def model_type_is_sdxl(model_type: typing.Union[ModelTypes, str]):
-    if isinstance(model_type, str):
-        model_type = get_model_type_enum(model_type)
-
-    return model_type in {ModelTypes.TORCH_SDXL,
-                          ModelTypes.TORCH_SDXL_PIX2PIX}
-
-
-def model_type_is_pix2pix(model_type: typing.Union[ModelTypes, str]):
-    if isinstance(model_type, str):
-        model_type = get_model_type_enum(model_type)
-
-    return model_type in {ModelTypes.TORCH_PIX2PIX,
-                          ModelTypes.TORCH_SDXL_PIX2PIX}
-
-
-def get_model_type_enum(id_str) -> ModelTypes:
     return {'torch': ModelTypes.TORCH,
             'torch-pix2pix': ModelTypes.TORCH_PIX2PIX,
             'torch-sdxl': ModelTypes.TORCH_SDXL,
             'torch-sdxl-pix2pix': ModelTypes.TORCH_SDXL_PIX2PIX,
             'torch-upscaler-x2': ModelTypes.TORCH_UPSCALER_X2,
             'torch-upscaler-x4': ModelTypes.TORCH_UPSCALER_X4,
-            'flax': ModelTypes.FLAX}[id_str.lower()]
+            'flax': ModelTypes.FLAX}[id_str.strip().lower()]
+
+
+def get_model_type_string(model_type_enum: ModelTypes) -> str:
+    model_type = get_model_type_enum(model_type_enum)
+
+    return {ModelTypes.TORCH: 'torch',
+            ModelTypes.TORCH_PIX2PIX: 'torch-pix2pix',
+            ModelTypes.TORCH_SDXL: 'torch-sdxl',
+            ModelTypes.TORCH_SDXL_PIX2PIX: 'torch-sdxl-pix2pix',
+            ModelTypes.TORCH_UPSCALER_X2: 'torch-upscaler-x2',
+            ModelTypes.TORCH_UPSCALER_X4: 'torch-upscaler-x4',
+            ModelTypes.FLAX: 'flax'}[model_type]
+
+
+def model_type_is_upscaler(model_type: typing.Union[ModelTypes, str]):
+    model_type = get_model_type_string(model_type)
+
+    return 'upscaler' in model_type
+
+
+def model_type_is_sdxl(model_type: typing.Union[ModelTypes, str]):
+    model_type = get_model_type_string(model_type)
+
+    return 'sdxl' in model_type
+
+
+def model_type_is_torch(model_type: typing.Union[ModelTypes, str]):
+    model_type = get_model_type_string(model_type)
+
+    return 'torch' in model_type
+
+
+def model_type_is_flax(model_type: typing.Union[ModelTypes, str]):
+    model_type = get_model_type_string(model_type)
+
+    return 'flax' in model_type
+
+
+def model_type_is_pix2pix(model_type: typing.Union[ModelTypes, str]):
+    model_type = get_model_type_string(model_type)
+
+    return 'pix2pix' in model_type
 
 
 def have_jax_flax():
@@ -1174,6 +1134,15 @@ def _gpu_id_from_cuda_device(device):
 
 
 class DiffusionPipelineWrapperBase:
+    def __str__(self):
+        pub_props = {k: getattr(self, k) for k in dir(self)
+                     if not k.startswith("_") and not callable(getattr(self, k))}
+
+        return f'{self.__class__.__name__}({pub_props})'
+
+    def __repr__(self):
+        return str(self)
+
     def __init__(self,
                  model_path,
                  dtype,
@@ -1195,7 +1164,7 @@ class DiffusionPipelineWrapperBase:
 
         self._model_subfolder = model_subfolder
         self._device = device
-        self._model_type = model_type.strip().lower()
+        self._model_type = get_model_type_enum(model_type)
         self._model_path = model_path
         self._pipeline = None
         self._flax_params = None
@@ -1249,10 +1218,13 @@ class DiffusionPipelineWrapperBase:
 
     @staticmethod
     def _call_pipeline(pipeline, device, **kwargs):
-        messages.log(f'Calling Pipeline: "{pipeline.__class__.__name__}",',
-                     f'Device: "{device}",',
-                     'Args:', debug_format_args(**kwargs),
-                     level=messages.DEBUG)
+        messages.debug_log(f'Calling Pipeline: "{pipeline.__class__.__name__}",',
+                           f'Device: "{device}",',
+                           'Args:',
+                           lambda: debug_format_args(kwargs,
+                                                     value_transformer=lambda key, value:
+                                                     f'torch.Generator(seed={value.initial_seed()})'
+                                                     if isinstance(value, torch.Generator) else value))
 
         if pipeline is DiffusionPipelineWrapperBase._LAST_CALLED_PIPE:
             return pipeline(**kwargs)
@@ -1285,7 +1257,7 @@ class DiffusionPipelineWrapperBase:
     @property
     def textual_inversion_paths(self):
         return [self._textual_inversion_paths] if \
-            isinstance(self._textual_inversion_paths, str) else self.textual_inversion_paths
+            isinstance(self._textual_inversion_paths, str) else self._textual_inversion_paths
 
     @property
     def control_net_paths(self):
@@ -1309,8 +1281,12 @@ class DiffusionPipelineWrapperBase:
         return self._sdxl_refiner_path
 
     @property
-    def model_type(self):
+    def model_type_enum(self):
         return self._model_type
+
+    @property
+    def model_type_string(self):
+        return get_model_type_string(self._model_type)
 
     @property
     def model_subfolder(self):
@@ -1319,6 +1295,14 @@ class DiffusionPipelineWrapperBase:
     @property
     def vae_path(self):
         return self._vae_path
+
+    @property
+    def vae_slicing(self):
+        return self._vae_slicing
+
+    @property
+    def vae_tiling(self):
+        return self._vae_tiling
 
     @property
     def lora_paths(self):
@@ -1377,7 +1361,7 @@ class DiffusionPipelineWrapperBase:
             num_inference_steps = int(num_inference_steps * strength)
             guidance_scale = guidance_scale * strength
 
-        opts = [self.model_path, ('--model-type', self._model_type), ('--dtype', self._dtype),
+        opts = [self.model_path, ('--model-type', self.model_type_string), ('--dtype', self._dtype),
                 ('--device', self._device), ('--inference-steps', num_inference_steps),
                 ('--guidance-scales', guidance_scale), ('--seeds', seed)]
 
@@ -1563,7 +1547,7 @@ class DiffusionPipelineWrapperBase:
             args['image'] = image
 
             if model_type_is_upscaler(self._model_type):
-                if get_model_type_enum(self._model_type) == ModelTypes.TORCH_UPSCALER_X4:
+                if self._model_type == ModelTypes.TORCH_UPSCALER_X4:
                     args['noise_level'] = int(user_args.get('upscaler_noise_level', DEFAULT_X4_UPSCALER_NOISE_LEVEL))
             elif not model_type_is_pix2pix(self._model_type):
                 args['strength'] = float(user_args.get('strength', DEFAULT_IMAGE_SEED_STRENGTH))
@@ -1574,7 +1558,7 @@ class DiffusionPipelineWrapperBase:
                 args['width'] = image.size[0]
                 args['height'] = image.size[1]
 
-            if get_model_type_enum(self._model_type) == ModelTypes.TORCH_SDXL_PIX2PIX:
+            if self._model_type == ModelTypes.TORCH_SDXL_PIX2PIX:
                 # Required
                 args['width'] = image.size[0]
                 args['height'] = image.size[1]
@@ -1745,7 +1729,7 @@ class DiffusionPipelineWrapperBase:
             val = user_args.get(user_arg_name, None)
             if val is not None:
                 raise NotImplementedError(
-                    f'{option_name} cannot be used with --model-type "{self._model_type}" in '
+                    f'{option_name} cannot be used with --model-type "{self.model_type_string}" in '
                     f'{_describe_pipeline_type(self._pipeline_type)} mode with the current '
                     f'combination of arguments and model.')
             return None
@@ -1805,8 +1789,6 @@ class DiffusionPipelineWrapperBase:
 
     def _call_torch(self, default_args, user_args):
 
-        model_type = get_model_type_enum(self._model_type)
-
         self._get_sdxl_conditioning_args(self._pipeline, default_args, user_args)
 
         self._get_non_universal_pipeline_arg(self._pipeline, default_args, user_args,
@@ -1825,7 +1807,7 @@ class DiffusionPipelineWrapperBase:
                                              'image_guidance_scale', 'image_guidance_scale',
                                              '--image-guidance-scales', 1.5)
 
-        if model_type != ModelTypes.TORCH_UPSCALER_X2:
+        if self._model_type != ModelTypes.TORCH_UPSCALER_X2:
             # Does not take this argument, can only produce one image
             default_args['num_images_per_prompt'] = user_args.get('num_images_per_prompt', 1)
 
@@ -1940,12 +1922,10 @@ class DiffusionPipelineWrapperBase:
 
         self._pipeline_type = pipeline_type
 
-        model_type = get_model_type_enum(self._model_type)
-
-        if model_type_is_sdxl(model_type) and self._textual_inversion_paths is not None:
+        if model_type_is_sdxl(self._model_type) and self._textual_inversion_paths is not None:
             raise NotImplementedError('Textual inversion not supported for SDXL.')
 
-        if model_type == ModelTypes.FLAX:
+        if self._model_type == ModelTypes.FLAX:
             if not have_jax_flax():
                 raise NotImplementedError('flax and jax are not installed.')
 
@@ -1967,24 +1947,21 @@ class DiffusionPipelineWrapperBase:
                                                 control_net_paths=self._control_net_paths,
                                                 scheduler=self._scheduler,
                                                 safety_checker=self._safety_checker,
-                                                auth_token=self._auth_token,
-                                                device=self._device)
+                                                auth_token=self._auth_token)
 
         elif self._sdxl_refiner_path is not None:
-            if not model_type_is_sdxl(model_type):
+            if not model_type_is_sdxl(self._model_type):
                 raise NotImplementedError('Only Stable Diffusion XL models support refiners, '
                                           'please use --model-type torch-sdxl if you are trying to load an sdxl model.')
             self._pipeline, self._parsed_control_net_paths = \
                 _create_torch_diffusion_pipeline(pipeline_type,
-                                                 model_type,
+                                                 self._model_type,
                                                  self._model_path,
                                                  model_subfolder=self._model_subfolder,
                                                  revision=self._revision,
                                                  variant=self._variant,
                                                  dtype=self._dtype,
                                                  vae_path=self._vae_path,
-                                                 vae_slicing=self._vae_slicing,
-                                                 vae_tiling=self._vae_tiling,
                                                  lora_paths=self._lora_paths,
                                                  control_net_paths=self._control_net_paths,
                                                  scheduler=self._scheduler,
@@ -1994,7 +1971,7 @@ class DiffusionPipelineWrapperBase:
 
             refiner_pipeline_type = _PipelineTypes.IMG2IMG if pipeline_type is _PipelineTypes.BASIC else pipeline_type
 
-            self._sdxl_refiner_pipeline = \
+            self._sdxl_refiner_pipeline, discarded = \
                 _create_torch_diffusion_pipeline(refiner_pipeline_type,
                                                  ModelTypes.TORCH_SDXL,
                                                  self._sdxl_refiner_path,
@@ -2007,28 +1984,24 @@ class DiffusionPipelineWrapperBase:
                                                  dtype=self._sdxl_refiner_dtype if
                                                  self._sdxl_refiner_dtype is not None else self._dtype,
 
-                                                 vae_slicing=self._vae_slicing,
-                                                 vae_tiling=self._vae_tiling,
                                                  scheduler=self._scheduler,
                                                  safety_checker=self._safety_checker,
                                                  auth_token=self._auth_token,
                                                  extra_args={'vae': self._pipeline.vae,
-                                                             'text_encoder_2': self._pipeline.text_encoder_2})[0]
+                                                             'text_encoder_2': self._pipeline.text_encoder_2})
 
         else:
-            offload = self._control_net_paths and model_type == ModelTypes.TORCH_SDXL
+            offload = self._control_net_paths and self._model_type == ModelTypes.TORCH_SDXL
 
             self._pipeline, self._parsed_control_net_paths = \
                 _create_torch_diffusion_pipeline(pipeline_type,
-                                                 model_type,
+                                                 self._model_type,
                                                  self._model_path,
                                                  model_subfolder=self._model_subfolder,
                                                  revision=self._revision,
                                                  variant=self._variant,
                                                  dtype=self._dtype,
                                                  vae_path=self._vae_path,
-                                                 vae_slicing=self._vae_slicing,
-                                                 vae_tiling=self._vae_tiling,
                                                  lora_paths=self._lora_paths,
                                                  textual_inversion_paths=self._textual_inversion_paths,
                                                  control_net_paths=self._control_net_paths,
@@ -2038,17 +2011,22 @@ class DiffusionPipelineWrapperBase:
                                                  device=self._device,
                                                  sequential_cpu_offload=offload)
 
+        _set_vae_slicing_tiling(pipeline=self._pipeline,
+                                vae_slicing=self._vae_slicing,
+                                vae_tiling=self._vae_tiling)
+
+        if self._sdxl_refiner_pipeline is not None:
+            _set_vae_slicing_tiling(pipeline=self._sdxl_refiner_pipeline,
+                                    vae_slicing=self._vae_slicing,
+                                    vae_tiling=self._vae_tiling)
+
     def __call__(self, **kwargs) -> PipelineResultWrapper:
         default_args = self._pipeline_defaults(kwargs)
 
-        messages.log(f'Calling Pipeline Wrapper: "{self.__class__.__name__}",',
-                     f'Device: "{self._device}",',
-                     'User Args:', debug_format_args(**kwargs),
-                     level=messages.DEBUG)
+        messages.debug_log(f'Calling Pipeline Wrapper: "{self}",'
+                           '\nCalled with User Args: ', lambda: debug_format_args(kwargs))
 
-        model_type = get_model_type_enum(self._model_type)
-
-        if model_type == ModelTypes.FLAX:
+        if self._model_type == ModelTypes.FLAX:
             result = self._call_flax(default_args, kwargs)
         else:
             result = self._call_torch(default_args, kwargs)

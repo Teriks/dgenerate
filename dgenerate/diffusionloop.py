@@ -36,9 +36,9 @@ from . import messages
 from .mediainput import iterate_image_seed, get_image_seed_info, MultiContextManager, \
     get_control_image_info, iterate_control_image, ImageSeed
 from .mediaoutput import create_animation_writer, supported_animation_writer_formats
-from .pipelinewrappers import DiffusionPipelineWrapper, DiffusionPipelineImg2ImgWrapper, supported_model_types, \
+from .pipelinewrappers import DiffusionPipelineWrapper, DiffusionPipelineImg2ImgWrapper, supported_model_type_strings, \
     PipelineResultWrapper, model_type_is_upscaler, get_model_type_enum, ModelTypes, model_type_is_pix2pix, \
-    model_type_is_sdxl
+    model_type_is_sdxl, supported_model_type_enums
 from .textprocessing import oxford_comma, long_text_wrap_width
 
 
@@ -505,7 +505,7 @@ class DiffusionRenderLoop:
 
         self.scheduler = None
         self.safety_checker = False
-        self.model_type = 'torch'
+        self.model_type = ModelTypes.TORCH
         self.device = 'cuda'
         self.dtype = 'auto'
         self.revision = 'main'
@@ -553,9 +553,9 @@ class DiffusionRenderLoop:
             raise ValueError('DiffusionRenderLoop.revision must be None or a string')
         if self.variant is not None and not isinstance(self.variant, str):
             raise ValueError('DiffusionRenderLoop.variant must be None or a string')
-        if self.model_type not in supported_model_types():
+        if self.model_type not in supported_model_type_enums():
             raise ValueError(
-                f'DiffusionRenderLoop.model_type must be one of: {oxford_comma(supported_model_types(), "or")}')
+                f'DiffusionRenderLoop.model_type must be one of: {oxford_comma(supported_model_type_strings(), "or")}')
         if self.model_path is None:
             raise ValueError('DiffusionRenderLoop.model_path must not be None')
         if self.model_subfolder is not None and not isinstance(self.model_subfolder, str):
@@ -987,7 +987,7 @@ class DiffusionRenderLoop:
             not (model_type_is_upscaler(self.model_type) or model_type_is_pix2pix(self.model_type)) else None
 
         upscaler_noise_levels = self.upscaler_noise_levels if \
-            get_model_type_enum(self.model_type) == ModelTypes.TORCH_UPSCALER_X4 else None
+            self.model_type == ModelTypes.TORCH_UPSCALER_X4 else None
 
         for image_seed in self.image_seeds:
 
