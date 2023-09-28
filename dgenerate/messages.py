@@ -24,3 +24,14 @@ def log(*args, **kwargs):
         print(underline(' '.join(str(a) for a in args)), file=file)
     else:
         print(' '.join(str(a) for a in args), file=file)
+
+
+def debug_log(*func_or_str, **kwargs):
+    if LEVEL == DEBUG:
+        vals = []
+        for val in func_or_str:
+            if callable(val):
+                vals.append(val())
+            else:
+                vals.append(val)
+        log(*vals, level=DEBUG, **kwargs)
