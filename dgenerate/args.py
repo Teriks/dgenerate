@@ -46,7 +46,6 @@ parser.add_argument('model_path', action='store',
                     help="""huggingface model repository slug, huggingface blob link to a model file, 
                             path to folder on disk, or path to a .pt, .pth, .bin, .ckpt, or .safetensors file.""")
 
-
 parser.add_argument('-v', '--verbose', action='store_true', default=False,
                     help="""Output information useful for debugging, such as pipeline call and model load parameters.""")
 
@@ -151,7 +150,6 @@ parser.add_argument('--vae', action='store', default=None,
                     loading syntax: --vae "AutoencoderKL;https://huggingface.co/UserName/repository-name/blob/main/vae_model.safetensors",
                     the revision argument may be used with this syntax.
                     """)
-
 
 parser.add_argument('--vae-tiling', action='store_true', default=False,
                     help="""Enable VAE tiling (torch* models only)""")
@@ -648,6 +646,10 @@ image_seed_args.add_argument('-ci', '--control-images', nargs='+', action='store
 
 image_seed_noise_opts = parser.add_mutually_exclusive_group()
 
+image_seed_args.add_argument('--seed-image-preprocessors', action='store', nargs='+', default=None)
+image_seed_args.add_argument('--mask-image-preprocessors', action='store', nargs='+', default=None)
+image_seed_args.add_argument('--control-image-preprocessors', action='store', nargs='+', default=None)
+
 
 def _type_image_seed_strengths(val):
     try:
@@ -755,6 +757,12 @@ parser.add_argument('-ifs', '--inference-steps', action='store', nargs='*', defa
 def parse_args(args=None, namespace=None):
     args = parser.parse_args(args, namespace)
 
+    def args_that_start_with(s):
+        return (a for a in dir(args) if a.startswith(s) and getattr(args, a))
+
+    def args_that_end_with(s):
+        return (a for a in dir(args) if a.endswith(s) and getattr(args, a))
+
     if args.gen_seeds is not None:
         args.seeds = [random.randint(0, 99999999999999) for i in range(0, int(args.gen_seeds))]
     elif args.seeds is None:
@@ -783,7 +791,8 @@ def parse_args(args=None, namespace=None):
     if not model_type_is_upscaler(args.model_type):
         if args.upscaler_noise_levels:
             messages.log(
-                'Error: You cannot specify --upscaler-noise-levels for a non upscaler model type, see --model-type.',
+                'Error: You cannot specify --upscaler-noise-levels for a '
+                'non upscaler model type, see --model-type.',
                 level=messages.ERROR)
             sys.exit(1)
     elif args.upscaler_noise_levels is None:
@@ -803,9 +812,26 @@ def parse_args(args=None, namespace=None):
     elif not args.image_guidance_scales:
         args.image_guidance_scales = [1.5]
 
+    if args.control_image_preprocessors:
+        if not args.image_seeds and not args.control_images:
+            messages.log(f'Error: You cannot specify --control-image-preprocessors '
+                         f'without --image-seeds, or alternatively --control-images.')
+            sys.exit(1)
+
+    if not args.image_seeds:
+        invalid_arg = False
+        for preprocessor_args in args_that_end_with('preprocessors'):
+            messages.log(f'Error: You cannot specify --{preprocessor_args.replace("_", "-")} '
+                         f'without --image-seeds.',
+                         level=messages.ERROR)
+            invalid_arg = True
+
+        if invalid_arg:
+            sys.exit(1)
+
     if not model_type_is_sdxl(args.model_type):
         invalid_arg = False
-        for sdxl_args in (a for a in dir(args) if a.startswith('sdxl') and getattr(args, a)):
+        for sdxl_args in args_that_start_with('sdxl'):
             messages.log(f'Error: You cannot specify --{sdxl_args.replace("_", "-")} '
                          f'for a non SDXL model type, see --model-type.',
                          level=messages.ERROR)
@@ -818,7 +844,7 @@ def parse_args(args=None, namespace=None):
     else:
         if not args.sdxl_refiner:
             invalid_arg = False
-            for sdxl_args in (a for a in dir(args) if a.startswith('sdxl_refiner') and getattr(args, a)):
+            for sdxl_args in args_that_start_with('sdxl_refiner'):
                 messages.log(f'Error: You cannot specify --{sdxl_args.replace("_", "-")} '
                              f'without --sdxl-refiner.',
                              level=messages.ERROR)
