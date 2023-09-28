@@ -32,7 +32,7 @@ from typing import Iterator
 import torch
 from PIL.PngImagePlugin import PngInfo
 
-from . import messages
+from . import messages, preprocessors
 from .mediainput import iterate_image_seed, get_image_seed_info, MultiContextManager, \
     get_control_image_info, iterate_control_image, ImageSeed
 from .mediaoutput import create_animation_writer, supported_animation_writer_formats
@@ -523,9 +523,9 @@ class DiffusionRenderLoop:
 
         self.auth_token = None
 
-        self.seed_image_preprocessor = None
-        self.mask_image_preprocessor = None
-        self.control_image_preprocessor = None
+        self.seed_image_preprocessors = None
+        self.mask_image_preprocessors = None
+        self.control_image_preprocessors = None
 
     @property
     def written_images(self):
@@ -931,29 +931,28 @@ class DiffusionRenderLoop:
 
             control_image_info = get_control_image_info(control_image, self.frame_start, self.frame_end)
 
-            if control_image_info.is_animation:
-                def seed_iterator_func():
-                    yield from iterate_control_image(
-                        control_image,
-                        self.frame_start,
-                        self.frame_end,
-                        self.output_size,
-                        control_image_preprocessor=self.control_image_preprocessor)
+            def control_iterator_func():
+                yield from iterate_control_image(
+                    control_image,
+                    self.frame_start,
+                    self.frame_end,
+                    self.output_size,
+                    preprocessor=preprocessors.load(self.control_image_preprocessors))
 
+            if control_image_info.is_animation:
                 def get_extra_args(ci_obj: ImageSeed):
                     return {'control_image': ci_obj.image}
 
                 self._render_animation(diffusion_model,
                                        arg_iterator,
                                        control_image_info.fps,
-                                       seed_iterator_func=seed_iterator_func,
+                                       seed_iterator_func=control_iterator_func,
                                        get_extra_args=get_extra_args)
                 break
 
             for args_ctx in arg_iterator:
                 self._pre_generation_step(args_ctx)
-                with next(iterate_control_image(control_image, self.frame_start, self.frame_end,
-                                                self.output_size)) as control_image_obj:
+                with next(control_iterator_func()) as control_image_obj:
                     with control_image_obj as cimg_obj:
                         self._with_control_image_pre_generation(args_ctx, cimg_obj)
 
@@ -1001,17 +1000,17 @@ class DiffusionRenderLoop:
 
             seed_info = get_image_seed_info(image_seed, self.frame_start, self.frame_end)
 
-            if seed_info.is_animation:
-                def seed_iterator_func():
-                    yield from iterate_image_seed(
-                        image_seed,
-                        self.frame_start,
-                        self.frame_end,
-                        self.output_size,
-                        seed_image_preprocessor=self.seed_image_preprocessor,
-                        mask_image_preprocessor=self.mask_image_preprocessor,
-                        control_image_preprocessor=self.control_image_preprocessor)
+            def seed_iterator_func():
+                yield from iterate_image_seed(
+                    image_seed,
+                    self.frame_start,
+                    self.frame_end,
+                    self.output_size,
+                    seed_image_preprocessor=preprocessors.load(self.seed_image_preprocessors),
+                    mask_image_preprocessor=preprocessors.load(self.mask_image_preprocessors),
+                    control_image_preprocessor=preprocessors.load(self.control_image_preprocessors))
 
+            if seed_info.is_animation:
                 def get_extra_args(ims_obj: ImageSeed):
                     extra_args = {'image': ims_obj.image}
                     if ims_obj.mask_image is not None:
@@ -1029,8 +1028,7 @@ class DiffusionRenderLoop:
 
             for args_ctx in arg_iterator:
                 self._pre_generation_step(args_ctx)
-                with next(iterate_image_seed(image_seed, self.frame_start, self.frame_end,
-                                             self.output_size)) as image_obj:
+                with next(seed_iterator_func()) as image_obj:
                     with image_obj as image_seed_obj:
                         self._with_image_seed_pre_generation(args_ctx, image_seed_obj)
 

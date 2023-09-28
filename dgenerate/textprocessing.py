@@ -26,7 +26,7 @@ class ConceptModelPathParseError(Exception):
     pass
 
 
-class ConceptModelPath:
+class ConceptPath:
     def __init__(self, model, args):
         self.concept = model
         self.args = args
@@ -35,9 +35,9 @@ class ConceptModelPath:
         return f"{self.concept}: {self.args}"
 
 
-class ConceptModelPathParser:
+class ConceptPathParser:
 
-    def __init__(self, concept_name, known_args):
+    def __init__(self, concept_name, known_args=None):
         self.known_args = known_args
         self.concept_name = concept_name
 
@@ -66,7 +66,7 @@ class ConceptModelPathParser:
             except SyntaxError as e:
                 raise ConceptModelPathParseError(f'Syntax Error parsing argument {name} for '
                                                  f'{self.concept_name} concept "{concept}": {e}')
-        return ConceptModelPath(concept, args)
+        return ConceptPath(concept, args)
 
 
 def oxford_comma(elements, conjunction):

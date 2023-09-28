@@ -41,7 +41,7 @@ except ImportError:
 import enum
 import torch
 from PIL import Image
-from .textprocessing import ConceptModelPathParser, ConceptModelPathParseError, quote, debug_format_args
+from .textprocessing import ConceptPathParser, ConceptModelPathParseError, quote, debug_format_args
 from . import messages
 from .memoize import memoize
 from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline, StableDiffusionInpaintPipeline, \
@@ -97,22 +97,22 @@ class InvalidTextualInversionPathError(Exception):
     pass
 
 
-_sdxl_refiner_path_parser = ConceptModelPathParser('SDXL Refiner', ['revision', 'variant', 'subfolder', 'dtype'])
+_sdxl_refiner_path_parser = ConceptPathParser('SDXL Refiner', ['revision', 'variant', 'subfolder', 'dtype'])
 
-_torch_vae_path_parser = ConceptModelPathParser('VAE', ['model', 'revision', 'variant', 'subfolder', 'dtype'])
+_torch_vae_path_parser = ConceptPathParser('VAE', ['model', 'revision', 'variant', 'subfolder', 'dtype'])
 
-_flax_vae_path_parser = ConceptModelPathParser('VAE', ['model', 'revision', 'subfolder', 'dtype'])
+_flax_vae_path_parser = ConceptPathParser('VAE', ['model', 'revision', 'subfolder', 'dtype'])
 
-_torch_control_net_path_parser = ConceptModelPathParser('ControlNet',
-                                                        ['scale', 'start', 'end', 'revision', 'variant', 'subfolder',
+_torch_control_net_path_parser = ConceptPathParser('ControlNet',
+                                                   ['scale', 'start', 'end', 'revision', 'variant', 'subfolder',
                                                          'dtype'])
 
-_flax_control_net_path_parser = ConceptModelPathParser('ControlNet',
-                                                       ['scale', 'revision', 'subfolder', 'dtype', 'from_torch'])
+_flax_control_net_path_parser = ConceptPathParser('ControlNet',
+                                                  ['scale', 'revision', 'subfolder', 'dtype', 'from_torch'])
 
-_lora_path_parser = ConceptModelPathParser('LoRA', ['scale', 'revision', 'subfolder', 'weight-name'])
-_textual_inversion_path_parser = ConceptModelPathParser('Textual Inversion',
-                                                        ['revision', 'subfolder', 'weight-name'])
+_lora_path_parser = ConceptPathParser('LoRA', ['scale', 'revision', 'subfolder', 'weight-name'])
+_textual_inversion_path_parser = ConceptPathParser('Textual Inversion',
+                                                   ['revision', 'subfolder', 'weight-name'])
 
 
 def _simple_cache_debug(title, cache_key, cache_hit):

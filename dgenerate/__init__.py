@@ -125,6 +125,10 @@ def run_diffusion():
         render_loop.sdxl_refiner_negative_target_sizes = arguments.sdxl_refiner_negative_target_sizes
         render_loop.sdxl_refiner_negative_crops_coords_top_left = arguments.sdxl_refiner_negative_crops_coords_top_left
 
+        render_loop.seed_image_preprocessors = arguments.seed_image_preprocessors
+        render_loop.mask_image_preprocessors = arguments.mask_image_preprocessors
+        render_loop.control_image_preprocessors = arguments.control_image_preprocessors
+
         if arguments.verbose:
             messages.LEVEL = messages.DEBUG
 

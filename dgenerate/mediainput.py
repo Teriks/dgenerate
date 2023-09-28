@@ -31,7 +31,8 @@ import av
 import requests
 from fake_useragent import UserAgent
 
-from .textprocessing import ConceptModelPathParser, ConceptModelPathParseError
+from .textprocessing import ConceptPathParser, ConceptModelPathParseError
+from . import messages
 
 
 class AnimationFrame:
@@ -118,9 +119,51 @@ class ImageSeedSizeMismatchError(Exception):
     pass
 
 
+class ImagePreprocessorMixin:
+    def __init__(self, preprocessor, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._preprocessor = preprocessor
+
+    def preprocess_pre_resize(self, resize_resolution, image):
+        if self._preprocessor is not None:
+            if hasattr(self._preprocessor, 'name'):
+                preprocessor_name = self._preprocessor.name
+            else:
+                preprocessor_name = self._preprocessor.__class__.__name__
+
+            messages.debug_log('Starting Image Preprocess - '
+                               f'{preprocessor_name}.pre_resize('
+                               f'resize_resolution={resize_resolution}, image="{image.filename}")')
+
+            processed = self._preprocessor.pre_resize(resize_resolution, image)
+            processed.filename = image.filename
+
+            messages.debug_log(f'Finished Image Preprocess - {preprocessor_name}.pre_resize')
+            return processed
+        return image
+
+    def preprocess_post_resize(self, resize_resolution, image):
+        if self._preprocessor is not None:
+            if hasattr(self._preprocessor, 'name'):
+                preprocessor_name = self._preprocessor.name
+            else:
+                preprocessor_name = self._preprocessor.__class__.__name__
+
+            messages.debug_log('Starting Image Preprocess - '
+                               f'{preprocessor_name}.post_resize('
+                               f'resize_resolution={resize_resolution}, image="{image.filename}")')
+
+            processed = self._preprocessor.post_resize(resize_resolution, image)
+            processed.filename = image.filename
+
+            messages.debug_log(f'Finished Image Preprocess - {preprocessor_name}.post_resize')
+            return processed
+        return image
+
+
 class AnimationReader:
     # interface
-    def __init__(self, width, height, anim_fps, anim_frame_duration, total_frames):
+    def __init__(self, width, height, anim_fps, anim_frame_duration, total_frames, **kwargs):
         self._width = width
         self._height = height
         self._anim_fps = anim_fps
@@ -167,8 +210,8 @@ class AnimationReader:
         return _total_frames_slice(self.total_frames, frame_start, frame_end)
 
 
-class VideoReader(AnimationReader):
-    def __init__(self, filename, file_source, resize_resolution=None):
+class VideoReader(ImagePreprocessorMixin, AnimationReader):
+    def __init__(self, filename, file_source, resize_resolution=None, preprocessor=None):
         self._filename = filename
         self._file_source = file_source
         self._container = av.open(filename, 'r')
@@ -199,7 +242,8 @@ class VideoReader(AnimationReader):
                          height=height,
                          anim_fps=anim_fps,
                          anim_frame_duration=anim_frame_duration,
-                         total_frames=total_frames)
+                         total_frames=total_frames,
+                         preprocessor=preprocessor)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._container.close()
@@ -208,20 +252,32 @@ class VideoReader(AnimationReader):
         return _total_frames_slice(self.total_frames, frame_start, frame_end)
 
     def __next__(self):
+
+        rgb_image = next(self._iter).to_image()
+        rgb_image.filename = self._file_source
+
+        pre_processed = self.preprocess_pre_resize(self.resize_resolution, rgb_image)
+
+        if pre_processed is not rgb_image:
+            rgb_image.close()
+
         if self.resize_resolution is None:
-            rgb_image = next(self._iter).to_image()
-            rgb_image.filename = self._file_source
-            return rgb_image
+            rgb_image = pre_processed
         else:
-            with next(self._iter).to_image() as img:
-                with _resize_image(self.resize_resolution, img) as r_img:
-                    rgb_image = _RGB(r_img)
-                    rgb_image.filename = self._file_source
-                    return rgb_image
+            rgb_image = _resize_image(self.resize_resolution, pre_processed)
+
+        if rgb_image is not pre_processed:
+            pre_processed.close()
+
+        pre_processed = self.preprocess_post_resize(self.resize_resolution, rgb_image)
+        if pre_processed is not rgb_image:
+            rgb_image.close()
+
+        return pre_processed
 
 
-class GifWebpReader(AnimationReader):
-    def __init__(self, file, file_source, resize_resolution=None):
+class GifWebpReader(ImagePreprocessorMixin, AnimationReader):
+    def __init__(self, file, file_source, resize_resolution=None, preprocessor=None):
         self._img = PIL.Image.open(file)
         self._file_source = file_source
 
@@ -251,7 +307,8 @@ class GifWebpReader(AnimationReader):
                          height=height,
                          anim_fps=anim_fps,
                          anim_frame_duration=anim_frame_duration,
-                         total_frames=total_frames)
+                         total_frames=total_frames,
+                         preprocessor=preprocessor)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._img.close()
@@ -261,19 +318,31 @@ class GifWebpReader(AnimationReader):
 
     def __next__(self):
         with next(self._iter) as img:
+            rgb_image = _RGB(img)
+            rgb_image.filename = self._file_source
+
+            pre_processed = self.preprocess_pre_resize(self.resize_resolution, rgb_image)
+
+            if pre_processed is not rgb_image:
+                rgb_image.close()
+
             if self.resize_resolution is None:
-                rgb_image = _RGB(img)
-                rgb_image.filename = self._file_source
-                return rgb_image
+                rgb_image = pre_processed
             else:
-                with _resize_image(self.resize_resolution, img) as r_img:
-                    rgb_image = _RGB(r_img)
-                    rgb_image.filename = self._file_source
-                    return rgb_image
+                rgb_image = _resize_image(self.resize_resolution, pre_processed)
+
+            if rgb_image is not pre_processed:
+                pre_processed.close()
+
+            pre_processed = self.preprocess_post_resize(self.resize_resolution, rgb_image)
+            if pre_processed is not rgb_image:
+                rgb_image.close()
+
+            return pre_processed
 
 
-class MockImageAnimationReader(AnimationReader):
-    def __init__(self, img, resize_resolution=None, image_repetitions=1):
+class MockImageAnimationReader(ImagePreprocessorMixin, AnimationReader):
+    def __init__(self, img, resize_resolution=None, image_repetitions=1, preprocessor=None):
         self._img = img
         self._idx = 0
         self.resize_resolution = resize_resolution
@@ -295,7 +364,8 @@ class MockImageAnimationReader(AnimationReader):
                          height=height,
                          anim_fps=anim_fps,
                          anim_frame_duration=anim_frame_duration,
-                         total_frames=total_frames)
+                         total_frames=total_frames,
+                         preprocessor=preprocessor)
 
     @property
     def total_frames(self):
@@ -314,21 +384,42 @@ class MockImageAnimationReader(AnimationReader):
     def __next__(self):
         if self._idx < self.total_frames:
             self._idx += 1
+
+            pre_processed = self.preprocess_pre_resize(self.resize_resolution, self._img)
+
             if self.resize_resolution is None:
-                return _copy_img(self._img)
+                copy_image = _copy_img(pre_processed)
             else:
-                return _resize_image(self.resize_resolution, self._img)
+                copy_image = _resize_image(self.resize_resolution, pre_processed)
+
+            if pre_processed is not self._img:
+                pre_processed.close()
+
+            pre_processed = self.preprocess_post_resize(self.resize_resolution, copy_image)
+            if pre_processed is not copy_image:
+                copy_image.close()
+
+            return pre_processed
         else:
             raise StopIteration
 
 
-def create_animation_reader(file, file_source, resize_resolution=None, image_repetitions=1):
+def create_animation_reader(file, file_source, resize_resolution=None, image_repetitions=1, preprocessor=None):
     if isinstance(file, io.IOBase):
-        return GifWebpReader(file, file_source, resize_resolution)
+        return GifWebpReader(file=file,
+                             file_source=file_source,
+                             resize_resolution=resize_resolution,
+                             preprocessor=preprocessor)
     elif isinstance(file, str):
-        return VideoReader(file, file_source, resize_resolution)
+        return VideoReader(filename=file,
+                           file_source=file_source,
+                           resize_resolution=resize_resolution,
+                           preprocessor=preprocessor)
     elif isinstance(file, PIL.Image.Image):
-        return MockImageAnimationReader(file, resize_resolution, image_repetitions)
+        return MockImageAnimationReader(img=file,
+                                        resize_resolution=resize_resolution,
+                                        image_repetitions=image_repetitions,
+                                        preprocessor=preprocessor)
     else:
         raise ValueError(
             'File must be a filename indicating an encoded video on disk, '
@@ -339,23 +430,11 @@ def _iterate_animation_frames_x2(seed_reader,
                                  right_reader,
                                  right_animation_frame_param_name,
                                  frame_start,
-                                 frame_end,
-                                 seed_image_preprocessor=None,
-                                 right_image_preprocessor=None):
+                                 frame_end):
     total_frames = seed_reader.frame_slice_count(frame_start, frame_end)
     right_total_frames = right_reader.frame_slice_count(frame_start, frame_end)
     out_frame_idx = 0
     in_slice = None
-
-    def seed_image_preprocess(image):
-        if seed_image_preprocessor is not None:
-            return seed_image_preprocessor(image)
-        return image
-
-    def right_image_preprocess(image):
-        if right_image_preprocessor is not None:
-            return right_image_preprocessor(image)
-        return image
 
     # Account for videos possibly having a differing number of frames
     total_frames = min(total_frames, right_total_frames)
@@ -371,8 +450,8 @@ def _iterate_animation_frames_x2(seed_reader,
                                  total_frames=total_frames,
                                  anim_fps=seed_reader.anim_fps,
                                  anim_frame_duration=seed_reader.anim_frame_duration,
-                                 image=seed_image_preprocess(seed_image),
-                                 **{right_animation_frame_param_name: right_image_preprocess(right_image)})
+                                 image=seed_image,
+                                 **{right_animation_frame_param_name: right_image})
             out_frame_idx += 1
         elif in_slice:
             break
@@ -382,30 +461,12 @@ def _iterate_animation_frames_x3(seed_reader,
                                  mask_reader,
                                  control_reader,
                                  frame_start,
-                                 frame_end,
-                                 seed_image_preprocessor=None,
-                                 mask_image_preprocessor=None,
-                                 control_image_preprocessor=None):
+                                 frame_end):
     total_frames = seed_reader.frame_slice_count(frame_start, frame_end)
     mask_total_frames = mask_reader.frame_slice_count(frame_start, frame_end)
     control_total_frames = control_reader.frame_slice_count(frame_start, frame_end)
     out_frame_idx = 0
     in_slice = None
-
-    def preprocess_seed_image(image):
-        if seed_image_preprocessor is not None:
-            return seed_image_preprocessor(image)
-        return image
-
-    def preprocess_mask_image(image):
-        if mask_image_preprocessor is not None:
-            return mask_image_preprocessor(image)
-        return image
-
-    def preprocess_control_image(image):
-        if control_image_preprocessor is not None:
-            return control_image_preprocessor(image)
-        return image
 
     # Account for videos possibly having a differing number of frames
     total_frames = min(total_frames, mask_total_frames, control_total_frames)
@@ -423,9 +484,9 @@ def _iterate_animation_frames_x3(seed_reader,
                                  total_frames=total_frames,
                                  anim_fps=seed_reader.anim_fps,
                                  anim_frame_duration=seed_reader.anim_frame_duration,
-                                 image=preprocess_seed_image(image),
-                                 mask_image=preprocess_mask_image(mask),
-                                 control_image=preprocess_control_image(control))
+                                 image=image,
+                                 mask_image=mask,
+                                 control_image=control)
             out_frame_idx += 1
         elif in_slice:
             break
@@ -435,41 +496,26 @@ def iterate_animation_frames(seed_reader,
                              frame_start=0,
                              frame_end=None,
                              mask_reader=None,
-                             control_reader=None,
-                             seed_image_preprocessor=None,
-                             mask_image_preprocessor=None,
-                             control_image_preprocessor=None):
+                             control_reader=None):
     if mask_reader is not None and control_reader is not None:
         yield from _iterate_animation_frames_x3(seed_reader=seed_reader,
                                                 mask_reader=mask_reader,
                                                 control_reader=control_reader,
                                                 frame_start=frame_start,
-                                                frame_end=frame_end,
-                                                seed_image_preprocessor=seed_image_preprocessor,
-                                                mask_image_preprocessor=mask_image_preprocessor,
-                                                control_image_preprocessor=control_image_preprocessor)
+                                                frame_end=frame_end)
     elif mask_reader is not None:
         yield from _iterate_animation_frames_x2(seed_reader=seed_reader,
                                                 right_reader=mask_reader,
                                                 right_animation_frame_param_name='mask_image',
                                                 frame_start=frame_start,
-                                                frame_end=frame_end,
-                                                seed_image_preprocessor=seed_image_preprocessor,
-                                                right_image_preprocessor=mask_image_preprocessor)
+                                                frame_end=frame_end)
     elif control_reader is not None:
         yield from _iterate_animation_frames_x2(seed_reader=seed_reader,
                                                 right_reader=control_reader,
                                                 right_animation_frame_param_name='control_image',
                                                 frame_start=frame_start,
-                                                frame_end=frame_end,
-                                                seed_image_preprocessor=seed_image_preprocessor,
-                                                right_image_preprocessor=control_image_preprocessor)
+                                                frame_end=frame_end)
     else:
-
-        def preprocess_seed_image(image):
-            if seed_image_preprocessor is not None:
-                return seed_image_preprocessor(image)
-            return image
 
         total_frames = seed_reader.frame_slice_count(frame_start, frame_end)
         out_frame_idx = 0
@@ -482,7 +528,7 @@ def iterate_animation_frames(seed_reader,
                                      total_frames=total_frames,
                                      anim_fps=seed_reader.anim_fps,
                                      anim_frame_duration=seed_reader.anim_frame_duration,
-                                     image=preprocess_seed_image(frame))
+                                     image=frame)
                 out_frame_idx += 1
             elif in_slice:
                 break
@@ -618,7 +664,7 @@ def parse_image_seed_uri(url):
 
     result = ImageSeedParseResult()
 
-    seed_parser = ConceptModelPathParser('Image Seed', ['mask', 'control', 'resize'])
+    seed_parser = ConceptPathParser('Image Seed', ['mask', 'control', 'resize'])
 
     try:
         parse_result = seed_parser.parse_concept_path(url)
@@ -790,12 +836,7 @@ def iterate_control_image(uri,
                           frame_start=0,
                           frame_end=None,
                           resize_resolution=None,
-                          control_image_preprocessor=None):
-    def preprocess_control_image(image):
-        if control_image_preprocessor is not None:
-            return control_image_preprocessor(image)
-        return image
-
+                          preprocessor=None):
     mime_acceptable_desc = 'image/png, image/jpeg, image/gif, image/webp, video/*'
 
     control_mime_type, control_data = fetch_image_seed_data(
@@ -807,62 +848,50 @@ def iterate_control_image(uri,
     manage_context = []
 
     if mime_type_is_animable_image(control_mime_type):
-        control_reader = create_animation_reader(io.BytesIO(control_data),
-                                                 uri,
-                                                 resize_resolution)
+        control_reader = create_animation_reader(file=io.BytesIO(control_data),
+                                                 file_source=uri,
+                                                 resize_resolution=resize_resolution,
+                                                 preprocessor=preprocessor)
         manage_context.append(control_reader)
     elif mime_type_is_video(control_mime_type):
         temp_dir = tempfile.TemporaryDirectory()
         video_file_path = _write_to_file(control_data, os.path.join(temp_dir.name, 'tmp_control_net'))
-        control_reader = create_animation_reader(video_file_path, uri, resize_resolution)
+        control_reader = create_animation_reader(file=video_file_path,
+                                                 file_source=uri,
+                                                 resize_resolution=resize_resolution,
+                                                 preprocessor=preprocessor)
         manage_context += [control_reader, temp_dir]
     elif mime_type_is_static_image(control_mime_type):
         control_image = create_and_exif_orient_pil_img(control_data, uri,
                                                        resize_resolution)
-        control_reader = create_animation_reader(control_image, uri, resize_resolution)
+        control_reader = create_animation_reader(file=control_image,
+                                                 file_source=uri,
+                                                 resize_resolution=resize_resolution,
+                                                 preprocessor=preprocessor)
         manage_context.append(control_reader)
     else:
         raise ImageSeedParseError(f'Unknown control image mimetype {control_mime_type}')
 
     if isinstance(control_reader, MockImageAnimationReader):
-        yield ImageSeed(image=preprocess_control_image(control_reader.__next__()))
+        yield ImageSeed(image=control_reader.__next__())
     else:
         yield from (ImageSeed(animation_frame) for animation_frame in
                     iterate_animation_frames(seed_reader=control_reader,
                                              frame_start=frame_start,
-                                             frame_end=frame_end,
-                                             seed_image_preprocessor=control_image_preprocessor))
+                                             frame_end=frame_end))
 
 
 def _iterate_image_seed_x3(seed_reader,
                            mask_reader,
                            control_reader,
                            frame_start=0,
-                           frame_end=None,
-                           seed_image_preprocessor=None,
-                           mask_image_preprocessor=None,
-                           control_image_preprocessor=None):
-    def preprocess_seed_image(image):
-        if seed_image_preprocessor is not None:
-            return seed_image_preprocessor(image)
-        return image
-
-    def preprocess_mask_image(image):
-        if mask_image_preprocessor is not None:
-            return mask_image_preprocessor(image)
-        return image
-
-    def preprocess_control_image(image):
-        if control_image_preprocessor is not None:
-            return control_image_preprocessor(image)
-        return image
-
+                           frame_end=None):
     if isinstance(seed_reader, MockImageAnimationReader) and \
             isinstance(mask_reader, MockImageAnimationReader) and \
             isinstance(control_reader, MockImageAnimationReader):
-        yield ImageSeed(image=preprocess_seed_image(seed_reader.__next__()),
-                        mask_image=preprocess_mask_image(mask_reader.__next__()),
-                        control_image=preprocess_control_image(control_reader.__next__()))
+        yield ImageSeed(image=seed_reader.__next__(),
+                        mask_image=mask_reader.__next__(),
+                        control_image=control_reader.__next__())
 
     else:
         readers = [seed_reader, mask_reader, control_reader]
@@ -880,10 +909,7 @@ def _iterate_image_seed_x3(seed_reader,
                                              frame_start=frame_start,
                                              frame_end=frame_end,
                                              mask_reader=mask_reader,
-                                             control_reader=control_reader,
-                                             seed_image_preprocessor=seed_image_preprocessor,
-                                             mask_image_preprocessor=mask_image_preprocessor,
-                                             control_image_preprocessor=control_image_preprocessor))
+                                             control_reader=control_reader))
 
 
 def _iterate_image_seed_x2(seed_reader,
@@ -891,36 +917,11 @@ def _iterate_image_seed_x2(seed_reader,
                            right_image_seed_param_name,
                            right_reader_iterate_param_name,
                            frame_start=0,
-                           frame_end=None,
-                           seed_image_preprocessor=None,
-                           mask_image_preprocessor=None,
-                           control_image_preprocessor=None):
-    def preprocess_seed_image(image):
-        if seed_image_preprocessor is not None:
-            return seed_image_preprocessor(image)
-        return image
-
-    def preprocess_mask_image(image):
-        if mask_image_preprocessor is not None:
-            return mask_image_preprocessor(image)
-        return image
-
-    def preprocess_control_image(image):
-        if control_image_preprocessor is not None:
-            return control_image_preprocessor(image)
-        return image
-
-    if right_image_seed_param_name == 'mask_image':
-        preprocess_right_image = preprocess_mask_image
-    elif right_image_seed_param_name == 'control_image':
-        preprocess_right_image = preprocess_control_image
-    else:
-        raise NotImplementedError(f'right_image_seed_param_name {right_image_seed_param_name} invalid.')
-
+                           frame_end=None):
     if isinstance(seed_reader, MockImageAnimationReader) \
             and isinstance(right_reader, MockImageAnimationReader):
-        yield ImageSeed(image=preprocess_seed_image(seed_reader.__next__()),
-                        **{right_image_seed_param_name: preprocess_right_image(right_reader.__next__())})
+        yield ImageSeed(image=seed_reader.__next__(),
+                        **{right_image_seed_param_name: right_reader.__next__()})
     else:
         if isinstance(seed_reader, MockImageAnimationReader) and \
                 not isinstance(right_reader, MockImageAnimationReader):
@@ -934,10 +935,7 @@ def _iterate_image_seed_x2(seed_reader,
                     iterate_animation_frames(seed_reader=seed_reader,
                                              frame_start=frame_start,
                                              frame_end=frame_end,
-                                             **{right_reader_iterate_param_name: right_reader},
-                                             seed_image_preprocessor=seed_image_preprocessor,
-                                             mask_image_preprocessor=mask_image_preprocessor,
-                                             control_image_preprocessor=control_image_preprocessor))
+                                             **{right_reader_iterate_param_name: right_reader}))
 
 
 def iterate_image_seed(uri,
@@ -982,16 +980,25 @@ def iterate_image_seed(uri,
     seed_reader = None
     if seed_data is not None:
         if mime_type_is_animable_image(seed_mime_type):
-            seed_reader = create_animation_reader(io.BytesIO(seed_data), parse_result.uri, resize_resolution)
+            seed_reader = create_animation_reader(file=io.BytesIO(seed_data),
+                                                  file_source=parse_result.uri,
+                                                  resize_resolution=resize_resolution,
+                                                  preprocessor=seed_image_preprocessor)
             manage_context.append(seed_reader)
         elif mime_type_is_video(seed_mime_type):
             temp_dir = tempfile.TemporaryDirectory()
             video_file_path = _write_to_file(seed_data, os.path.join(temp_dir.name, 'tmp_vid'))
-            seed_reader = create_animation_reader(video_file_path, parse_result.uri, resize_resolution)
+            seed_reader = create_animation_reader(file=video_file_path,
+                                                  file_source=parse_result.uri,
+                                                  resize_resolution=resize_resolution,
+                                                  preprocessor=seed_image_preprocessor)
             manage_context += [seed_reader, temp_dir]
         elif mime_type_is_static_image(seed_mime_type):
             seed_image = create_and_exif_orient_pil_img(seed_data, parse_result.uri, resize_resolution)
-            seed_reader = create_animation_reader(seed_image, parse_result.uri, resize_resolution)
+            seed_reader = create_animation_reader(file=seed_image,
+                                                  file_source=parse_result.uri,
+                                                  resize_resolution=resize_resolution,
+                                                  preprocessor=seed_image_preprocessor)
             manage_context.append(seed_reader)
         else:
             raise ImageSeedParseError(f'Unknown seed image mimetype {seed_mime_type}')
@@ -1001,16 +1008,25 @@ def iterate_image_seed(uri,
     mask_reader = None
     if mask_data is not None:
         if mime_type_is_animable_image(mask_mime_type):
-            mask_reader = create_animation_reader(io.BytesIO(mask_data), parse_result.mask_uri, resize_resolution)
+            mask_reader = create_animation_reader(file=io.BytesIO(mask_data),
+                                                  file_source=parse_result.mask_uri,
+                                                  resize_resolution=resize_resolution,
+                                                  preprocessor=mask_image_preprocessor)
             manage_context.append(mask_reader)
         elif mime_type_is_video(mask_mime_type):
             temp_dir = tempfile.TemporaryDirectory()
             video_file_path = _write_to_file(mask_data, os.path.join(temp_dir.name, 'tmp_mask'))
-            mask_reader = create_animation_reader(video_file_path, parse_result.mask_uri, resize_resolution)
+            mask_reader = create_animation_reader(file=video_file_path,
+                                                  file_source=parse_result.mask_uri,
+                                                  resize_resolution=resize_resolution,
+                                                  preprocessor=mask_image_preprocessor)
             manage_context += [mask_reader, temp_dir]
         elif mime_type_is_static_image(mask_mime_type):
             mask_image = create_and_exif_orient_pil_img(mask_data, parse_result.mask_uri, resize_resolution)
-            mask_reader = create_animation_reader(mask_image, parse_result.mask_uri, resize_resolution)
+            mask_reader = create_animation_reader(file=mask_image,
+                                                  file_source=parse_result.mask_uri,
+                                                  resize_resolution=resize_resolution,
+                                                  preprocessor=mask_image_preprocessor)
             manage_context.append(mask_reader)
         else:
             raise ImageSeedParseError(f'Unknown mask image mimetype {mask_mime_type}')
@@ -1018,19 +1034,26 @@ def iterate_image_seed(uri,
     control_reader = None
     if control_data is not None:
         if mime_type_is_animable_image(control_mime_type):
-            control_reader = create_animation_reader(io.BytesIO(control_data),
-                                                     parse_result.control_uri,
-                                                     resize_resolution)
+            control_reader = create_animation_reader(file=io.BytesIO(control_data),
+                                                     file_source=parse_result.control_uri,
+                                                     resize_resolution=resize_resolution,
+                                                     preprocessor=control_image_preprocessor)
             manage_context.append(control_reader)
         elif mime_type_is_video(control_mime_type):
             temp_dir = tempfile.TemporaryDirectory()
             video_file_path = _write_to_file(control_data, os.path.join(temp_dir.name, 'tmp_control_net'))
-            control_reader = create_animation_reader(video_file_path, parse_result.control_uri, resize_resolution)
+            control_reader = create_animation_reader(file=video_file_path,
+                                                     file_source=parse_result.control_uri,
+                                                     resize_resolution=resize_resolution,
+                                                     preprocessor=control_image_preprocessor)
             manage_context += [control_reader, temp_dir]
         elif mime_type_is_static_image(control_mime_type):
             control_image = create_and_exif_orient_pil_img(control_data, parse_result.control_uri,
                                                            resize_resolution)
-            control_reader = create_animation_reader(control_image, parse_result.control_uri, resize_resolution)
+            control_reader = create_animation_reader(file=control_image,
+                                                     file_source=parse_result.control_uri,
+                                                     resize_resolution=resize_resolution,
+                                                     preprocessor=control_image_preprocessor)
             manage_context.append(control_reader)
         else:
             raise ImageSeedParseError(f'Unknown control image mimetype {control_mime_type}')
@@ -1054,10 +1077,7 @@ def iterate_image_seed(uri,
                 mask_reader=mask_reader,
                 control_reader=control_reader,
                 frame_start=frame_start,
-                frame_end=frame_end,
-                seed_image_preprocessor=seed_image_preprocessor,
-                mask_image_preprocessor=mask_image_preprocessor,
-                control_image_preprocessor=control_image_preprocessor)
+                frame_end=frame_end)
 
         elif mask_reader is not None:
 
@@ -1067,10 +1087,7 @@ def iterate_image_seed(uri,
                 right_image_seed_param_name='mask_image',
                 right_reader_iterate_param_name='mask_reader',
                 frame_start=frame_start,
-                frame_end=frame_end,
-                seed_image_preprocessor=seed_image_preprocessor,
-                mask_image_preprocessor=mask_image_preprocessor
-            )
+                frame_end=frame_end)
 
         elif control_reader is not None:
             yield from _iterate_image_seed_x2(
@@ -1079,21 +1096,13 @@ def iterate_image_seed(uri,
                 right_image_seed_param_name='control_image',
                 right_reader_iterate_param_name='control_reader',
                 frame_start=frame_start,
-                frame_end=frame_end,
-                seed_image_preprocessor=seed_image_preprocessor,
-                control_image_preprocessor=control_image_preprocessor
+                frame_end=frame_end
             )
         else:
-            def preprocess_seed_image(image):
-                if seed_image_preprocessor is not None:
-                    return seed_image_preprocessor(image)
-                return image
-
             if isinstance(seed_reader, MockImageAnimationReader):
-                yield ImageSeed(image=preprocess_seed_image(seed_reader.__next__()))
+                yield ImageSeed(image=seed_reader.__next__())
             else:
                 yield from (ImageSeed(animation_frame) for animation_frame in
                             iterate_animation_frames(seed_reader=seed_reader,
                                                      frame_start=frame_start,
-                                                     frame_end=frame_end,
-                                                     seed_image_preprocessor=seed_image_preprocessor))
+                                                     frame_end=frame_end))
