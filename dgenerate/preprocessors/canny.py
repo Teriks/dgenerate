@@ -29,15 +29,14 @@ from .preprocessor import ImagePreprocessor
 
 
 class CannyEdgeDetectPreprocess(ImagePreprocessor):
-    NAMES = {'canny'}
+    NAMES = ['canny']
 
     def __init__(self,
                  lower=50,
                  upper=100,
                  aperture_size=3,
                  l2_gradient=False,
-                 pre_resize=False,
-                 output=None, **kwargs):
+                 pre_resize=False, **kwargs):
         super().__init__(**kwargs)
 
         # The module loader will pass the values from the command line as strings
@@ -49,13 +48,11 @@ class CannyEdgeDetectPreprocess(ImagePreprocessor):
         if (self._aperture_size % 2 == 0 or
                 self._aperture_size < 3 or self._aperture_size > 7):
             ImagePreprocessor.argument_error(
-                f'Argument "aperture_size" should be an odd number between 3 and 7, received {self._aperature_size}.')
+                f'Argument "aperture_size" should be an odd number between 3 and 7, received {self._aperture_size}.')
 
         self._l2_gradient = ImagePreprocessor.get_bool_arg('l2_gradient', l2_gradient)
 
         self._pre_resize = ImagePreprocessor.get_bool_arg('pre_resize', pre_resize)
-
-        self._output = output
 
     def __str__(self):
         args = [
@@ -63,8 +60,7 @@ class CannyEdgeDetectPreprocess(ImagePreprocessor):
             ('upper', self._upper),
             ('aperture_size', self._aperture_size),
             ('l2_gradient', self._l2_gradient),
-            ('pre_resize', self._pre_resize),
-            ('output', f"'{self._output}'" if self._output is not None else None)
+            ('pre_resize', self._pre_resize)
         ]
         return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
 
@@ -77,17 +73,14 @@ class CannyEdgeDetectPreprocess(ImagePreprocessor):
                           apertureSize=self._aperture_size,
                           L2gradient=self._l2_gradient)
 
-        img = PIL.Image.fromarray(cv2.cvtColor(edges, cv2.COLOR_BGR2RGB))
-        if self._output is not None:
-            img.save(self._output)
-        return img
+        return PIL.Image.fromarray(cv2.cvtColor(edges, cv2.COLOR_BGR2RGB))
 
-    def pre_resize(self, resize_resolution: typing.Union[None, tuple], image: PIL.Image):
+    def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
         if self._pre_resize:
             return self._process(image)
         return image
 
-    def post_resize(self, resize_resolution: typing.Union[None, tuple], image: PIL.Image):
+    def post_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
         if not self._pre_resize:
             return self._process(image)
         return image

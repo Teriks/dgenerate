@@ -33,7 +33,7 @@ from fake_useragent import UserAgent
 
 from .preprocessors import ImagePreprocessorMixin
 from .textprocessing import ConceptPathParser, ConceptPathParseError
-from . import messages
+from .image import resize_image, resize_image_calc, copy_img, is_aligned_by_8, align_by_8, to_rgb
 
 
 class AnimationFrame:
@@ -61,59 +61,12 @@ class AnimationFrame:
             self.control_image.close()
 
 
-def _resize_image_calc(new_size, old_size):
-    width = new_size[0]
-    w_percent = (width / float(old_size[0]))
-    hsize = int((float(old_size[1]) * float(w_percent)))
-
-    return width - width % 8, hsize - hsize % 8
-
-
-def _is_aligned_by_8(x, y):
-    return x % 8 == 0 and y % 8 == 0
-
-
-def _align_by_8(x, y):
-    return x - x % 8, y - y % 8
-
-
-def _copy_img(img):
-    c = img.copy()
-
-    if hasattr(img, 'filename'):
-        c.filename = img.filename
-
-    return c
-
-
-def _resize_image(size, img):
-    new_size = _resize_image_calc(size, img.size)
-
-    if img.size == new_size:
-        # probably less costly
-        return _copy_img(img)
-
-    r = img.resize(new_size, PIL.Image.LANCZOS)
-
-    if hasattr(img, 'filename'):
-        r.filename = img.filename
-
-    return r
-
-
 def _is_frame_in_slice(idx, frame_start, frame_end):
     return idx >= frame_start and (frame_end is None or idx <= frame_end)
 
 
 def _total_frames_slice(total_frames, frame_start, frame_end):
     return min(total_frames, (frame_end + 1 if frame_end is not None else total_frames)) - frame_start
-
-
-def _RGB(img):
-    c = img.convert('RGB')
-    if hasattr(img, 'filename'):
-        c.filename = img.filename
-    return c
 
 
 class ImageSeedSizeMismatchError(Exception):
@@ -179,12 +132,12 @@ class VideoReader(ImagePreprocessorMixin, AnimationReader):
         if self.resize_resolution is None:
             width = int(self._container.streams.video[0].width)
             height = int(self._container.streams.video[0].height)
-            if not _is_aligned_by_8(width, height):
-                width, height = _resize_image_calc(_align_by_8(width, height), (width, height))
+            if not is_aligned_by_8(width, height):
+                width, height = resize_image_calc(align_by_8(width, height), (width, height))
                 self.resize_resolution = (width, height)
         else:
-            width, height = _resize_image_calc(self.resize_resolution,
-                                               (int(self._container.streams.video[0].width),
+            width, height = resize_image_calc(self.resize_resolution,
+                                              (int(self._container.streams.video[0].width),
                                                 int(self._container.streams.video[0].height)))
 
         anim_fps = int(self._container.streams.video[0].average_rate)
@@ -211,28 +164,9 @@ class VideoReader(ImagePreprocessorMixin, AnimationReader):
         return _total_frames_slice(self.total_frames, frame_start, frame_end)
 
     def __next__(self):
-
         rgb_image = next(self._iter).to_image()
         rgb_image.filename = self._file_source
-
-        pre_processed = self.preprocess_pre_resize(self.resize_resolution, rgb_image)
-
-        if pre_processed is not rgb_image:
-            rgb_image.close()
-
-        if self.resize_resolution is None:
-            rgb_image = pre_processed
-        else:
-            rgb_image = _resize_image(self.resize_resolution, pre_processed)
-
-        if rgb_image is not pre_processed:
-            pre_processed.close()
-
-        pre_processed = self.preprocess_post_resize(self.resize_resolution, rgb_image)
-        if pre_processed is not rgb_image:
-            rgb_image.close()
-
-        return pre_processed
+        return self.preprocess_image(rgb_image, self.resize_resolution)
 
 
 class GifWebpReader(ImagePreprocessorMixin, AnimationReader):
@@ -256,11 +190,11 @@ class GifWebpReader(ImagePreprocessorMixin, AnimationReader):
         if self.resize_resolution is None:
             width = self._img.size[0]
             height = self._img.size[1]
-            if not _is_aligned_by_8(width, height):
-                width, height = _resize_image_calc(_align_by_8(width, height), (width, height))
+            if not is_aligned_by_8(width, height):
+                width, height = resize_image_calc(align_by_8(width, height), (width, height))
                 self.resize_resolution = (width, height)
         else:
-            width, height = _resize_image_calc(self.resize_resolution, self._img.size)
+            width, height = resize_image_calc(self.resize_resolution, self._img.size)
 
         super().__init__(width=width,
                          height=height,
@@ -277,27 +211,9 @@ class GifWebpReader(ImagePreprocessorMixin, AnimationReader):
 
     def __next__(self):
         with next(self._iter) as img:
-            rgb_image = _RGB(img)
+            rgb_image = to_rgb(img)
             rgb_image.filename = self._file_source
-
-            pre_processed = self.preprocess_pre_resize(self.resize_resolution, rgb_image)
-
-            if pre_processed is not rgb_image:
-                rgb_image.close()
-
-            if self.resize_resolution is None:
-                rgb_image = pre_processed
-            else:
-                rgb_image = _resize_image(self.resize_resolution, pre_processed)
-
-            if rgb_image is not pre_processed:
-                pre_processed.close()
-
-            pre_processed = self.preprocess_post_resize(self.resize_resolution, rgb_image)
-            if pre_processed is not rgb_image:
-                rgb_image.close()
-
-            return pre_processed
+            return self.preprocess_image(rgb_image, self.resize_resolution)
 
 
 class MockImageAnimationReader(ImagePreprocessorMixin, AnimationReader):
@@ -313,11 +229,11 @@ class MockImageAnimationReader(ImagePreprocessorMixin, AnimationReader):
         if self.resize_resolution is None:
             width = self._img.size[0]
             height = self._img.size[1]
-            if not _is_aligned_by_8(width, height):
-                width, height = _resize_image_calc(_align_by_8(width, height), (width, height))
+            if not is_aligned_by_8(width, height):
+                width, height = resize_image_calc(align_by_8(width, height), (width, height))
                 self.resize_resolution = (width, height)
         else:
-            width, height = _resize_image_calc(self.resize_resolution, self._img.size)
+            width, height = resize_image_calc(self.resize_resolution, self._img.size)
 
         super().__init__(width=width,
                          height=height,
@@ -343,22 +259,7 @@ class MockImageAnimationReader(ImagePreprocessorMixin, AnimationReader):
     def __next__(self):
         if self._idx < self.total_frames:
             self._idx += 1
-
-            pre_processed = self.preprocess_pre_resize(self.resize_resolution, self._img)
-
-            if self.resize_resolution is None:
-                copy_image = _copy_img(pre_processed)
-            else:
-                copy_image = _resize_image(self.resize_resolution, pre_processed)
-
-            if pre_processed is not self._img:
-                pre_processed.close()
-
-            pre_processed = self.preprocess_post_resize(self.resize_resolution, copy_image)
-            if pre_processed is not copy_image:
-                copy_image.close()
-
-            return pre_processed
+            return self.preprocess_image(copy_img(self._img), self.resize_resolution)
         else:
             raise StopIteration
 
@@ -759,19 +660,19 @@ def create_and_exif_orient_pil_img(path_or_data, file_source, resize_resolution=
         file = io.BytesIO(path_or_data)
 
     if resize_resolution is None:
-        with PIL.Image.open(file) as img, _RGB(img) as rgb_img:
+        with PIL.Image.open(file) as img, to_rgb(img) as rgb_img:
             e_img = _exif_orient(rgb_img)
             e_img.filename = file_source
-            if not _is_aligned_by_8(e_img.width, e_img.height):
+            if not is_aligned_by_8(e_img.width, e_img.height):
                 with e_img:
-                    resized = _resize_image(_align_by_8(e_img.width, e_img.height), e_img)
+                    resized = resize_image(e_img, align_by_8(e_img.width, e_img.height))
                     return resized
             else:
                 return e_img
     else:
-        with PIL.Image.open(file) as img, _RGB(img) as rgb_img, _exif_orient(rgb_img) as o_img:
+        with PIL.Image.open(file) as img, to_rgb(img) as rgb_img, _exif_orient(rgb_img) as o_img:
             o_img.filename = file_source
-            resized = _resize_image(resize_resolution, o_img)
+            resized = resize_image(o_img, resize_resolution)
             return resized
 
 

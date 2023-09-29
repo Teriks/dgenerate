@@ -7,7 +7,7 @@ from .preprocessor import ImagePreprocessor
 
 
 class FlipPreprocess(ImagePreprocessor):
-    NAMES = {'flip'}
+    NAMES = ['flip']
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -18,15 +18,15 @@ class FlipPreprocess(ImagePreprocessor):
     def __repr__(self):
         return str(self)
 
-    def pre_resize(self, resize_resolution: typing.Union[None, tuple], image: PIL.Image):
+    def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
         return PIL.ImageOps.flip(image)
 
-    def post_resize(self, resize_resolution: typing.Union[None, tuple], image: PIL.Image):
+    def post_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
         return image
 
 
 class MirrorPreprocess(ImagePreprocessor):
-    NAMES = {'mirror'}
+    NAMES = ['mirror']
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -37,15 +37,15 @@ class MirrorPreprocess(ImagePreprocessor):
     def __repr__(self):
         return str(self)
 
-    def pre_resize(self, resize_resolution: typing.Union[None, tuple], image: PIL.Image):
+    def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
         return PIL.ImageOps.mirror(image)
 
-    def post_resize(self, resize_resolution: typing.Union[None, tuple], image: PIL.Image):
-        return
+    def post_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
+        return image
 
 
 class GrayscalePreprocess(ImagePreprocessor):
-    NAMES = {'grayscale'}
+    NAMES = ['grayscale']
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -56,15 +56,15 @@ class GrayscalePreprocess(ImagePreprocessor):
     def __repr__(self):
         return str(self)
 
-    def pre_resize(self, resize_resolution: typing.Union[None, tuple], image: PIL.Image):
+    def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
         return image
 
-    def post_resize(self, resize_resolution: typing.Union[None, tuple], image: PIL.Image):
+    def post_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
         return PIL.ImageOps.grayscale(image)
 
 
 class InvertPreprocess(ImagePreprocessor):
-    NAMES = {'invert'}
+    NAMES = ['invert']
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -75,15 +75,15 @@ class InvertPreprocess(ImagePreprocessor):
     def __repr__(self):
         return str(self)
 
-    def pre_resize(self, resize_resolution: typing.Union[None, tuple], image: PIL.Image):
+    def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
         return image
 
-    def post_resize(self, resize_resolution: typing.Union[None, tuple], image: PIL.Image):
+    def post_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
         return PIL.ImageOps.invert(image)
 
 
 class PosterizePreprocess(ImagePreprocessor):
-    NAMES = {'posterize'}
+    NAMES = ['posterize']
 
     def __init__(self, bits, **kwargs):
         super().__init__(**kwargs)
@@ -100,15 +100,15 @@ class PosterizePreprocess(ImagePreprocessor):
     def __repr__(self):
         return str(self)
 
-    def pre_resize(self, resize_resolution: typing.Union[None, tuple], image: PIL.Image):
+    def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
         return PIL.ImageOps.posterize(image, self._bits)
 
-    def post_resize(self, resize_resolution: typing.Union[None, tuple], image: PIL.Image):
+    def post_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
         return image
 
 
 class SolarizePreprocess(ImagePreprocessor):
-    NAMES = {'solarize'}
+    NAMES = ['solarize']
 
     def __init__(self, threshold=128, **kwargs):
         super().__init__(**kwargs)
@@ -125,8 +125,8 @@ class SolarizePreprocess(ImagePreprocessor):
     def __repr__(self):
         return str(self)
 
-    def pre_resize(self, resize_resolution: typing.Union[None, tuple], image: PIL.Image):
+    def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
         return PIL.ImageOps.solarize(image, self._threshold)
 
-    def post_resize(self, resize_resolution: typing.Union[None, tuple], image: PIL.Image):
+    def post_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
         return image
