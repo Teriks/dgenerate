@@ -19,7 +19,10 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from .pil_imageops import *
 from .canny import CannyEdgeDetectPreprocess
 from .loader import *
 from .preprocessor import *
 from .preprocessorchain import *
+from .preprocessormixin import *
+

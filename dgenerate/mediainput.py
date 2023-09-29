@@ -31,7 +31,8 @@ import av
 import requests
 from fake_useragent import UserAgent
 
-from .textprocessing import ConceptPathParser, ConceptModelPathParseError
+from .preprocessors import ImagePreprocessorMixin
+from .textprocessing import ConceptPathParser, ConceptPathParseError
 from . import messages
 
 
@@ -117,48 +118,6 @@ def _RGB(img):
 
 class ImageSeedSizeMismatchError(Exception):
     pass
-
-
-class ImagePreprocessorMixin:
-    def __init__(self, preprocessor, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._preprocessor = preprocessor
-
-    def preprocess_pre_resize(self, resize_resolution, image):
-        if self._preprocessor is not None:
-            if hasattr(self._preprocessor, 'name'):
-                preprocessor_name = self._preprocessor.name
-            else:
-                preprocessor_name = self._preprocessor.__class__.__name__
-
-            messages.debug_log('Starting Image Preprocess - '
-                               f'{preprocessor_name}.pre_resize('
-                               f'resize_resolution={resize_resolution}, image="{image.filename}")')
-
-            processed = self._preprocessor.pre_resize(resize_resolution, image)
-            processed.filename = image.filename
-
-            messages.debug_log(f'Finished Image Preprocess - {preprocessor_name}.pre_resize')
-            return processed
-        return image
-
-    def preprocess_post_resize(self, resize_resolution, image):
-        if self._preprocessor is not None:
-            if hasattr(self._preprocessor, 'name'):
-                preprocessor_name = self._preprocessor.name
-            else:
-                preprocessor_name = self._preprocessor.__class__.__name__
-
-            messages.debug_log('Starting Image Preprocess - '
-                               f'{preprocessor_name}.post_resize('
-                               f'resize_resolution={resize_resolution}, image="{image.filename}")')
-
-            processed = self._preprocessor.post_resize(resize_resolution, image)
-            processed.filename = image.filename
-
-            messages.debug_log(f'Finished Image Preprocess - {preprocessor_name}.post_resize')
-            return processed
-        return image
 
 
 class AnimationReader:
@@ -668,7 +627,7 @@ def parse_image_seed_uri(url):
 
     try:
         parse_result = seed_parser.parse_concept_path(url)
-    except ConceptModelPathParseError as e:
+    except ConceptPathParseError as e:
         raise ImageSeedParseError(e)
 
     uri = parse_result.concept

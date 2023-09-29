@@ -19,45 +19,6 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import typing
 
-import PIL.Image
-
-from .exceptions import ImagePreprocessorArgumentError
-
-
-class ImagePreprocessor:
-
-    @staticmethod
-    def get_int_arg(name, value):
-        try:
-            return int(value)
-        except ValueError:
-            raise ImagePreprocessorArgumentError(f'Argument "{name}" must be an integer value.')
-
-    @staticmethod
-    def get_float_arg(name, value):
-        try:
-            return float(value)
-        except ValueError:
-            raise ImagePreprocessorArgumentError(f'Argument "{name}" must be a floating point value.')
-
-    @staticmethod
-    def get_bool_arg(name, value):
-        try:
-            return bool(value)
-        except ValueError:
-            raise ImagePreprocessorArgumentError(f'Argument "{name}" must be a boolean value.')
-
-    @staticmethod
-    def argument_error(msg):
-        raise ImagePreprocessorArgumentError(msg)
-
-    def __init__(self, **kwargs):
-        pass
-
-    def pre_resize(self, resize_resolution: typing.Union[None, tuple], image: PIL.Image):
-        return image
-
-    def post_resize(self, resize_resolution: typing.Union[None, tuple], image: PIL.Image):
-        return image
+class ImagePreprocessorArgumentError(Exception):
+    pass

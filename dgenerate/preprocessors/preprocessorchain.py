@@ -38,19 +38,16 @@ class ImagePreprocessorChain(ImagePreprocessor):
 
     def _preprocessor_names(self):
         for preprocessor in self._preprocessors:
-            if hasattr(preprocessor, 'name'):
-                preprocessor_name = preprocessor.name
-            else:
-                preprocessor_name = preprocessor.__class__.__name__
+            yield str(preprocessor)
 
-            yield preprocessor_name
-
-    @property
-    def name(self):
+    def __str__(self):
         if not self._preprocessors:
             return f'{self.__class__.__name__}([])'
         else:
             return f'{self.__class__.__name__}([{", ".join(self._preprocessor_names())}])'
+
+    def __repr__(self):
+        return str(self)
 
     def add_processor(self, preprocessor):
         self._preprocessors.append(preprocessor)

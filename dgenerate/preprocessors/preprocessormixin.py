@@ -18,46 +18,36 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-import typing
-
-import PIL.Image
-
-from .exceptions import ImagePreprocessorArgumentError
+from .. import messages
 
 
-class ImagePreprocessor:
+class ImagePreprocessorMixin:
+    def __init__(self, preprocessor, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._preprocessor = preprocessor
 
-    @staticmethod
-    def get_int_arg(name, value):
-        try:
-            return int(value)
-        except ValueError:
-            raise ImagePreprocessorArgumentError(f'Argument "{name}" must be an integer value.')
+    def preprocess_pre_resize(self, resize_resolution, image):
+        if self._preprocessor is not None:
+            messages.debug_log('Starting Image Preprocess - '
+                               f'{self._preprocessor}.pre_resize('
+                               f'resize_resolution={resize_resolution}, image="{image.filename}")')
 
-    @staticmethod
-    def get_float_arg(name, value):
-        try:
-            return float(value)
-        except ValueError:
-            raise ImagePreprocessorArgumentError(f'Argument "{name}" must be a floating point value.')
+            processed = self._preprocessor.pre_resize(resize_resolution, image)
+            processed.filename = image.filename
 
-    @staticmethod
-    def get_bool_arg(name, value):
-        try:
-            return bool(value)
-        except ValueError:
-            raise ImagePreprocessorArgumentError(f'Argument "{name}" must be a boolean value.')
-
-    @staticmethod
-    def argument_error(msg):
-        raise ImagePreprocessorArgumentError(msg)
-
-    def __init__(self, **kwargs):
-        pass
-
-    def pre_resize(self, resize_resolution: typing.Union[None, tuple], image: PIL.Image):
+            messages.debug_log(f'Finished Image Preprocess - {self._preprocessor}.pre_resize')
+            return processed
         return image
 
-    def post_resize(self, resize_resolution: typing.Union[None, tuple], image: PIL.Image):
+    def preprocess_post_resize(self, resize_resolution, image):
+        if self._preprocessor is not None:
+            messages.debug_log('Starting Image Preprocess - '
+                               f'{self._preprocessor}.post_resize('
+                               f'resize_resolution={resize_resolution}, image="{image.filename}")')
+
+            processed = self._preprocessor.post_resize(resize_resolution, image)
+            processed.filename = image.filename
+
+            messages.debug_log(f'Finished Image Preprocess - {self._preprocessor}.post_resize')
+            return processed
         return image

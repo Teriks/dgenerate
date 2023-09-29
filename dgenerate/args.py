@@ -646,9 +646,9 @@ image_seed_args.add_argument('-ci', '--control-images', nargs='+', action='store
 
 image_seed_noise_opts = parser.add_mutually_exclusive_group()
 
-image_seed_args.add_argument('--seed-image-preprocessors', action='store', nargs='+', default=None)
-image_seed_args.add_argument('--mask-image-preprocessors', action='store', nargs='+', default=None)
-image_seed_args.add_argument('--control-image-preprocessors', action='store', nargs='+', default=None)
+parser.add_argument('--seed-image-preprocessors', action='store', nargs='+', default=None)
+parser.add_argument('--mask-image-preprocessors', action='store', nargs='+', default=None)
+parser.add_argument('--control-image-preprocessors', action='store', nargs='+', default=None)
 
 
 def _type_image_seed_strengths(val):
@@ -818,7 +818,7 @@ def parse_args(args=None, namespace=None):
                          f'without --image-seeds, or alternatively --control-images.')
             sys.exit(1)
 
-    if not args.image_seeds:
+    if not args.image_seeds and not args.control_images:
         invalid_arg = False
         for preprocessor_args in args_that_end_with('preprocessors'):
             messages.log(f'Error: You cannot specify --{preprocessor_args.replace("_", "-")} '

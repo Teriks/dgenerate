@@ -24,18 +24,58 @@ import typing
 
 from .preprocessor import ImagePreprocessor
 from .preprocessorchain import ImagePreprocessorChain
-from ..textprocessing import ConceptPathParser
-
+from ..textprocessing import ConceptPathParser, ConceptPathParseError
+from .exceptions import ImagePreprocessorArgumentError
 
 def _load(path):
     name = path.split(';', 1)[0].strip()
 
+    classes = [cls for cls in list_available() if name in names_from_class(cls)]
+
+    if len(classes) > 1:
+        raise RuntimeError(f'Found more than one ImagePreprocessor with the name: {name}')
+
+    if classes:
+        class_to_create = classes[0]
+
+        parser_accepted_args = [arg for arg in
+                                inspect.getfullargspec(class_to_create.__init__).args if arg != 'self']
+
+        for arg in parser_accepted_args.copy():
+            parser_accepted_args.append(arg.replace('_', '-'))
+
+        arg_parser = ConceptPathParser("Image Preprocessor", parser_accepted_args)
+
+        try:
+            parsed_args = arg_parser.parse_concept_path(path).args
+        except ConceptPathParseError as e:
+            raise ImagePreprocessorArgumentError(e)
+
+        args_dict = {}
+
+        for k, v in parsed_args.items():
+            fixed_key = k.replace('-', '_')
+
+            if fixed_key in args_dict:
+                raise ImagePreprocessorArgumentError(
+                    f'Duplicate argument "{fixed_key}" given to image preprocessor "{name}".')
+            else:
+                args_dict[fixed_key] = v
+
+        try:
+            return classes[0](**args_dict)
+        except ImagePreprocessorArgumentError as e:
+            raise ImagePreprocessorArgumentError(f'Invalid argument given to image preprocessor "{name}": {e}')
+
+    raise RuntimeError(f'Found no ImagePreprocessor derived classes with the name: {name}')
+
+
+def list_available():
     mod = sys.modules['dgenerate.preprocessors']
 
     def _excluded(cls):
         if not inspect.isclass(cls):
             return True
-
         if not issubclass(cls, ImagePreprocessor):
             return True
 
@@ -44,30 +84,23 @@ def _load(path):
         else:
             return False
 
-    def _name_match(cls, name):
-        if hasattr(cls, 'NAMES'):
-            if isinstance(cls.NAMES, str):
-                return cls.NAMES == name
-            else:
-                return name in cls.NAMES
+    classes = [cls for cls in mod.__dict__.values() if not _excluded(cls)]
+
+    return classes
+
+
+def names_from_class(cls):
+    if not issubclass(cls, ImagePreprocessor):
+        raise ValueError(
+            'provided class is not a subclass of dgenerate.preprocessors.ImagePreprocessor')
+
+    if hasattr(cls, 'NAMES'):
+        if isinstance(cls.NAMES, str):
+            return {cls.NAMES}
         else:
-            return cls.__name__ == name
-
-    classes = [cls for cls in mod.__dict__.values() if not _excluded(cls) and name.strip() and _name_match(cls, name)]
-
-    if len(classes) > 1:
-        raise RuntimeError(f'Found more than one ImagePreprocessor with the name: {name}')
-
-    if classes:
-        class_to_create = classes[0]
-
-        arg_parser = ConceptPathParser("Image Preprocessor",
-                                       [arg for arg in
-                                        inspect.getfullargspec(class_to_create.__init__).args if arg != 'self'])
-
-        return classes[0](**arg_parser.parse_concept_path(path).args)
-
-    raise RuntimeError(f'Found no ImagePreprocessor derived classes with the name: {name}')
+            return cls.NAMES
+    else:
+        return {cls.__name__}
 
 
 def load(path: typing.Union[str, list, tuple, None]):
@@ -76,6 +109,9 @@ def load(path: typing.Union[str, list, tuple, None]):
 
     if isinstance(path, str):
         return _load(path)
+
+    if len(path) == 1:
+        return _load(path[0])
 
     chain = ImagePreprocessorChain()
     for i in path:

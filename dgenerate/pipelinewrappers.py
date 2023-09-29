@@ -41,7 +41,7 @@ except ImportError:
 import enum
 import torch
 from PIL import Image
-from .textprocessing import ConceptPathParser, ConceptModelPathParseError, quote, debug_format_args
+from .textprocessing import ConceptPathParser, ConceptPathParseError, quote, debug_format_args
 from . import messages
 from .memoize import memoize
 from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline, StableDiffusionInpaintPipeline, \
@@ -181,7 +181,7 @@ def parse_flax_control_net_path(path):
             dtype=_get_flax_dtype(dtype),
             from_torch=from_torch)
 
-    except ConceptModelPathParseError as e:
+    except ConceptPathParseError as e:
         raise InvalidControlNetPathError(e)
 
 
@@ -265,7 +265,7 @@ def parse_torch_control_net_path(path) -> TorchControlNetPath:
             start=start,
             end=end)
 
-    except ConceptModelPathParseError as e:
+    except ConceptPathParseError as e:
         raise InvalidControlNetPathError(e)
 
 
@@ -293,7 +293,7 @@ def parse_sdxl_refiner_path(path) -> SDXLRefinerPath:
             variant=r.args.get('variant', None),
             dtype=_get_torch_dtype(dtype),
             subfolder=r.args.get('subfolder', None))
-    except ConceptModelPathParseError as e:
+    except ConceptPathParseError as e:
         raise InvalidSDXLRefinerPathError(e)
 
 
@@ -326,7 +326,7 @@ def parse_torch_vae_path(path) -> TorchVAEPath:
                             variant=r.args.get('variant', None),
                             dtype=_get_torch_dtype(dtype),
                             subfolder=r.args.get('subfolder', None))
-    except ConceptModelPathParseError as e:
+    except ConceptPathParseError as e:
         raise InvalidVaePathError(e)
 
 
@@ -357,7 +357,7 @@ def parse_flax_vae_path(path) -> FlaxVAEPath:
                            revision=r.args.get('revision', None),
                            dtype=_get_flax_dtype(dtype),
                            subfolder=r.args.get('subfolder', None))
-    except ConceptModelPathParseError as e:
+    except ConceptPathParseError as e:
         raise InvalidVaePathError(e)
 
 
@@ -394,7 +394,7 @@ def parse_lora_path(path) -> LoRAPath:
                         weight_name=r.args.get('weight-name', None),
                         revision=r.args.get('revision', None),
                         subfolder=r.args.get('subfolder', None))
-    except ConceptModelPathParseError as e:
+    except ConceptPathParseError as e:
         raise InvalidLoRAPathError(e)
 
 
@@ -430,7 +430,7 @@ def parse_textual_inversion_path(path) -> TextualInversionPath:
                                     weight_name=r.args.get('weight-name', None),
                                     revision=r.args.get('revision', None),
                                     subfolder=r.args.get('subfolder', None))
-    except ConceptModelPathParseError as e:
+    except ConceptPathParseError as e:
         raise InvalidTextualInversionPathError(e)
 
 
