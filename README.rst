@@ -1257,7 +1257,7 @@ One or more Textual Inversion models may be specified with ``--textual-inversion
 You can provide a huggingface repository slug, .pt, .pth, .bin, .ckpt, or .safetensors files.
 Blob links are not accepted, for that use ``subfolder`` and ``weight-name`` described below.
 
-Arguments pertaining to the loading of each textual inversion model my be specified in the same
+Arguments pertaining to the loading of each textual inversion model may be specified in the same
 way as when using ``--lora`` minus the scale argument.
 
 Available arguments are: ``revision``, ``subfolder``, and ``weight-name``
@@ -1324,22 +1324,23 @@ One or more Control Net models may be specified with ``--control-nets``
 You can provide a huggingface repository slug / blob link, .pt, .pth, .bin, .ckpt, or .safetensors files.
 
 Control images for the Control Nets can be provided using either ``--image-seeds`` when using
-an image seed or mask, or with ``--control-images`` when only using a control image to
+an image seed or inpainting mask, or with ``--control-images`` when only using a control image to
 guide the Control Net.
 
 When using ``--control-nets`` the syntax for specifying control images via ``--image-seeds`` is:
 
 ``--image-seeds "my-seed.png;mask=my-mask.png;control=my-control-image.png"``
 
-Where the "mask" argument is optional, "resize=WIDTHxHEIGHT" can be used to select
-a per ``--image-size`` resize dimension for all image sources involved.
+Where the "mask" argument is optional, ``resize=WIDTHxHEIGHT`` can be used to select
+a per ``--image-size`` resize dimension for all image sources involved in that particular
+specification.
 
 Control Net guidance images may actually be animations such as MP4's, GIF's etc. In the same
-way as image seeds and masks. In fact, frames can be taken from 3 videos simultaneously
-in order to generate a frame while using Control Nets with inpainting.
+way as image seeds and masks. In fact when using ``--image-seeds``, frames can be taken from
+3 videos simultaneously (or any possible combination of image/video parameters) in order to generate
+a frame when using an image seed and/or inpaint mask with a Control Net guidance image.
 
-
-Arguments pertaining to the loading of each textual inversion model my be specified in the same
+Arguments pertaining to the loading of each Control Net model may be specified in the same
 way as when using ``--vae`` with the addition of a ``scale`` argument and ``from_torch`` argument
 when using flax.
 

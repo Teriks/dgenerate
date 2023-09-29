@@ -14,9 +14,9 @@ runwayml/stable-diffusion-v1-5 \
 --inference-steps 40 \
 --guidance-scales 8 \
 --gen-seeds 2 \
---prompts "The Mona Lisa painted with watercolors" \
+--prompts "Watercolor painting of a woman" \
 --control-nets lllyasviel/sd-controlnet-canny;scale=0.5 \
 --control-images "monalisa.png" \
---control-image-preprocessors "canny;lower=50;upper=100;aperture-size=3;l2-gradient=False;pre-resize=True;output=monalisa/monalisa-canny.png" \
+--control-image-preprocessors "canny;lower=50;upper=100;output=monalisa/monalisa-canny.png" \
 --output-path monalisa \
 --output-size 800
