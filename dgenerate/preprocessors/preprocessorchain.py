@@ -52,28 +52,26 @@ class ImagePreprocessorChain(ImagePreprocessor):
     def add_processor(self, preprocessor):
         self._preprocessors.append(preprocessor)
 
-    def pre_resize(self, resize_resolution: typing.Union[None, tuple], image: PIL.Image):
+    def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
         if self._preprocessors:
             p_image = image
             for preprocessor in self._preprocessors:
-                p_image = preprocessor.pre_resize(resize_resolution, image)
-                if p_image is not image:
-                    image.close()
-
-            p_image.filename = image.filename
+                new_img = preprocessor.call_pre_resize(p_image, resize_resolution)
+                if new_img is not p_image:
+                    p_image.close()
+                p_image = new_img
             return p_image
         else:
             return image
 
-    def post_resize(self, resize_resolution: typing.Union[None, tuple], image: PIL.Image):
+    def post_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
         if self._preprocessors:
             p_image = image
             for preprocessor in self._preprocessors:
-                p_image = preprocessor.post_resize(resize_resolution, image)
-                if p_image is not image:
-                    image.close()
-
-            p_image.filename = image.filename
+                new_img = preprocessor.call_post_resize(p_image, resize_resolution)
+                if new_img is not p_image:
+                    p_image.close()
+                p_image = new_img
             return p_image
         else:
             return image

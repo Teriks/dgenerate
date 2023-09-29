@@ -22,10 +22,11 @@ import inspect
 import sys
 import typing
 
-from .preprocessor import ImagePreprocessor
-from .preprocessorchain import ImagePreprocessorChain
 from ..textprocessing import ConceptPathParser, ConceptPathParseError
 from .exceptions import ImagePreprocessorArgumentError
+from .preprocessor import ImagePreprocessor, names_from_class
+from .preprocessorchain import ImagePreprocessorChain
+
 
 def _load(path):
     name = path.split(';', 1)[0].strip()
@@ -38,11 +39,11 @@ def _load(path):
     if classes:
         class_to_create = classes[0]
 
-        parser_accepted_args = [arg for arg in
+        parser_accepted_args = [arg.replace('_', '-') for arg in
                                 inspect.getfullargspec(class_to_create.__init__).args if arg != 'self']
 
-        for arg in parser_accepted_args.copy():
-            parser_accepted_args.append(arg.replace('_', '-'))
+        parser_accepted_args.append('output-dir')
+        parser_accepted_args.append('output-file')
 
         arg_parser = ConceptPathParser("Image Preprocessor", parser_accepted_args)
 
@@ -63,7 +64,13 @@ def _load(path):
                 args_dict[fixed_key] = v
 
         try:
-            return classes[0](**args_dict)
+            instance: ImagePreprocessor = classes[0](**args_dict)
+
+            instance.set_output_dir_or_file(output_dir=parsed_args.get('output-dir'),
+                                            output_file=parsed_args.get('output-file'))
+
+            return instance
+
         except ImagePreprocessorArgumentError as e:
             raise ImagePreprocessorArgumentError(f'Invalid argument given to image preprocessor "{name}": {e}')
 
@@ -87,20 +94,6 @@ def list_available():
     classes = [cls for cls in mod.__dict__.values() if not _excluded(cls)]
 
     return classes
-
-
-def names_from_class(cls):
-    if not issubclass(cls, ImagePreprocessor):
-        raise ValueError(
-            'provided class is not a subclass of dgenerate.preprocessors.ImagePreprocessor')
-
-    if hasattr(cls, 'NAMES'):
-        if isinstance(cls.NAMES, str):
-            return {cls.NAMES}
-        else:
-            return cls.NAMES
-    else:
-        return {cls.__name__}
 
 
 def load(path: typing.Union[str, list, tuple, None]):

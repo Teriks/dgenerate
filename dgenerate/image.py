@@ -19,10 +19,51 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from .canny import CannyEdgeDetectPreprocess
-from .loader import *
-from .pil_imageops import *
-from .preprocessor import ImagePreprocessor
-from .preprocessorchain import ImagePreprocessorChain
-from .preprocessormixin import ImagePreprocessorMixin
+import PIL.Image
 
+
+def resize_image_calc(new_size, old_size):
+    width = new_size[0]
+    w_percent = (width / float(old_size[0]))
+    hsize = int((float(old_size[1]) * float(w_percent)))
+
+    return width - width % 8, hsize - hsize % 8
+
+
+def is_aligned_by_8(x, y):
+    return x % 8 == 0 and y % 8 == 0
+
+
+def align_by_8(x, y):
+    return x - x % 8, y - y % 8
+
+
+def copy_img(img):
+    c = img.copy()
+
+    if hasattr(img, 'filename'):
+        c.filename = img.filename
+
+    return c
+
+
+def resize_image(img, size):
+    new_size = resize_image_calc(size, img.size)
+
+    if img.size == new_size:
+        # probably less costly
+        return copy_img(img)
+
+    r = img.resize(new_size, PIL.Image.LANCZOS)
+
+    if hasattr(img, 'filename'):
+        r.filename = img.filename
+
+    return r
+
+
+def to_rgb(img):
+    c = img.convert('RGB')
+    if hasattr(img, 'filename'):
+        c.filename = img.filename
+    return c

@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 from .. import messages
+from ..image import resize_image
 
 
 class ImagePreprocessorMixin:
@@ -26,28 +27,47 @@ class ImagePreprocessorMixin:
         super().__init__(*args, **kwargs)
         self._preprocessor = preprocessor
 
-    def preprocess_pre_resize(self, resize_resolution, image):
+    def _preprocess_pre_resize(self, image, resize_resolution):
         if self._preprocessor is not None:
             messages.debug_log('Starting Image Preprocess - '
                                f'{self._preprocessor}.pre_resize('
-                               f'resize_resolution={resize_resolution}, image="{image.filename}")')
+                               f'image="{image.filename}", resize_resolution={resize_resolution})')
 
-            processed = self._preprocessor.pre_resize(resize_resolution, image)
-            processed.filename = image.filename
+            processed = self._preprocessor.call_pre_resize(image, resize_resolution)
 
             messages.debug_log(f'Finished Image Preprocess - {self._preprocessor}.pre_resize')
             return processed
         return image
 
-    def preprocess_post_resize(self, resize_resolution, image):
+    def _preprocess_post_resize(self, image, resize_resolution):
         if self._preprocessor is not None:
             messages.debug_log('Starting Image Preprocess - '
                                f'{self._preprocessor}.post_resize('
-                               f'resize_resolution={resize_resolution}, image="{image.filename}")')
+                               f'image="{image.filename}", resize_resolution={resize_resolution})')
 
-            processed = self._preprocessor.post_resize(resize_resolution, image)
-            processed.filename = image.filename
+            processed = self._preprocessor.call_post_resize(image, resize_resolution)
 
             messages.debug_log(f'Finished Image Preprocess - {self._preprocessor}.post_resize')
             return processed
         return image
+
+    def preprocess_image(self, image, resize_to):
+
+        pre_processed = self._preprocess_pre_resize(image, resize_to)
+
+        if pre_processed is not image:
+            image.close()
+
+        if resize_to is None:
+            image = pre_processed
+        else:
+            image = resize_image(pre_processed, resize_to)
+
+        if image is not pre_processed:
+            pre_processed.close()
+
+        pre_processed = self._preprocess_post_resize(image, resize_to)
+        if pre_processed is not image:
+            image.close()
+
+        return pre_processed
