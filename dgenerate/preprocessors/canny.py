@@ -31,16 +31,56 @@ from .preprocessor import ImagePreprocessor
 class CannyEdgeDetectPreprocess(ImagePreprocessor):
     NAMES = {'canny'}
 
-    def __init__(self, lower=50, upper=100, pre_resize=False, **kwargs):
+    def __init__(self,
+                 lower=50,
+                 upper=100,
+                 aperture_size=3,
+                 l2_gradient=False,
+                 pre_resize=False,
+                 output=None, **kwargs):
         super().__init__(**kwargs)
-        self._lower = lower
-        self._upper = upper
-        self._pre_resize = pre_resize
+
+        # The module loader will pass the values from the command line as strings
+
+        self._lower = ImagePreprocessor.get_int_arg('lower', lower)
+        self._upper = ImagePreprocessor.get_int_arg('upper', upper)
+        self._aperture_size = ImagePreprocessor.get_int_arg('aperture_size', aperture_size)
+
+        if (self._aperture_size % 2 == 0 or
+                self._aperture_size < 3 or self._aperture_size > 7):
+            ImagePreprocessor.argument_error(
+                f'Argument "aperture_size" should be an odd number between 3 and 7, received {self._aperature_size}.')
+
+        self._l2_gradient = ImagePreprocessor.get_bool_arg('l2_gradient', l2_gradient)
+
+        self._pre_resize = ImagePreprocessor.get_bool_arg('pre_resize', pre_resize)
+
+        self._output = output
+
+    def __str__(self):
+        args = [
+            ('lower', self._lower),
+            ('upper', self._upper),
+            ('aperture_size', self._aperture_size),
+            ('l2_gradient', self._l2_gradient),
+            ('pre_resize', self._pre_resize),
+            ('output', f"'{self._output}'" if self._output is not None else None)
+        ]
+        return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
+
+    def __repr__(self):
+        return str(self)
 
     def _process(self, image):
         cv_img = cv2.cvtColor(numpy.array(image), cv2.COLOR_RGB2BGR)
-        edges = cv2.Canny(cv_img, self._lower, self._upper)
-        return PIL.Image.fromarray(cv2.cvtColor(edges, cv2.COLOR_BGR2RGB))
+        edges = cv2.Canny(cv_img, self._lower, self._upper,
+                          apertureSize=self._aperture_size,
+                          L2gradient=self._l2_gradient)
+
+        img = PIL.Image.fromarray(cv2.cvtColor(edges, cv2.COLOR_BGR2RGB))
+        if self._output is not None:
+            img.save(self._output)
+        return img
 
     def pre_resize(self, resize_resolution: typing.Union[None, tuple], image: PIL.Image):
         if self._pre_resize:

@@ -44,6 +44,8 @@ def run_diffusion():
         InvalidTextualInversionPathError, InvalidSDXLRefinerPathError, \
         SchedulerHelpException
 
+    from .preprocessors import ImagePreprocessorArgumentError
+
     from .mediainput import ImageSeedParseError, ImageSeedSizeMismatchError
 
     from . import messages
@@ -145,6 +147,7 @@ def run_diffusion():
                 InvalidLoRAPathError,
                 InvalidTextualInversionPathError,
                 InvalidSchedulerName,
+                ImagePreprocessorArgumentError,
                 torch.cuda.OutOfMemoryError,
                 NotImplementedError,
                 EnvironmentError) as e:

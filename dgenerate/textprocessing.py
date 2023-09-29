@@ -22,7 +22,7 @@ import ast
 import shutil
 
 
-class ConceptModelPathParseError(Exception):
+class ConceptPathParseError(Exception):
     pass
 
 
@@ -49,22 +49,22 @@ class ConceptPathParser:
         for i in parts:
             vals = i.split('=', 1)
             if not vals:
-                raise ConceptModelPathParseError(f'Error parsing path arguments for '
+                raise ConceptPathParseError(f'Error parsing path arguments for '
                                                  f'{self.concept_name} concept "{concept}", Empty argument space, '
                                                  f'stray semicolon?')
             if len(vals) == 1:
-                raise ConceptModelPathParseError(f'Error parsing path arguments for '
+                raise ConceptPathParseError(f'Error parsing path arguments for '
                                                  f'{self.concept_name} concept "{concept}", missing value '
                                                  f'assignment for argument {vals[0]}.')
             name = vals[0].strip().lower()
             if self.known_args is not None and name not in self.known_args:
-                raise ConceptModelPathParseError(
+                raise ConceptPathParseError(
                     f'Unknown path argument "{name}" for {self.concept_name} concept "{concept}", '
                     f'valid arguments: {", ".join(list(self.known_args))}')
             try:
                 args[name] = unquote(vals[1])
             except SyntaxError as e:
-                raise ConceptModelPathParseError(f'Syntax Error parsing argument {name} for '
+                raise ConceptPathParseError(f'Syntax Error parsing argument {name} for '
                                                  f'{self.concept_name} concept "{concept}": {e}')
         return ConceptPath(concept, args)
 
