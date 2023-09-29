@@ -603,28 +603,9 @@ def _args_except(args, *exceptions):
     return {k: v for k, v in args.items() if k not in exceptions}
 
 
-def _set_vae_slicing_tiling(pipeline, vae_slicing, vae_tiling):
+def _set_vae_slicing_tiling(pipeline, vae_tiling, vae_slicing):
     has_vae = hasattr(pipeline, 'vae') and pipeline.vae is not None
     pipeline_class = pipeline.__class__
-
-    if vae_slicing:
-        if has_vae:
-            if hasattr(pipeline.vae, 'enable_slicing'):
-                messages.debug_log(f'Enabling VAE slicing on Pipeline: "{pipeline_class.__name__}",',
-                                   f'VAE: "{pipeline.vae.__class__.__name__}"')
-                pipeline.vae.enable_slicing()
-            else:
-                raise NotImplementedError(
-                    '--vae-slicing not supported as loaded VAE does not support it.'
-                )
-        else:
-            raise NotImplementedError(
-                '--vae-slicing not supported as no VAE is present for the specified model.')
-    elif has_vae:
-        if hasattr(pipeline.vae, 'disable_slicing'):
-            messages.debug_log(f'Disabling VAE slicing on Pipeline: "{pipeline_class.__name__}",',
-                               f'VAE: "{pipeline.vae.__class__.__name__}"')
-            pipeline.vae.disable_slicing()
 
     if vae_tiling:
         if has_vae:
@@ -644,6 +625,25 @@ def _set_vae_slicing_tiling(pipeline, vae_slicing, vae_tiling):
             messages.debug_log(f'Disabling VAE tiling on Pipeline: "{pipeline_class.__name__}",',
                                f'VAE: "{pipeline.vae.__class__.__name__}"')
             pipeline.vae.disable_tiling()
+
+    if vae_slicing:
+        if has_vae:
+            if hasattr(pipeline.vae, 'enable_slicing'):
+                messages.debug_log(f'Enabling VAE slicing on Pipeline: "{pipeline_class.__name__}",',
+                                   f'VAE: "{pipeline.vae.__class__.__name__}"')
+                pipeline.vae.enable_slicing()
+            else:
+                raise NotImplementedError(
+                    '--vae-slicing not supported as loaded VAE does not support it.'
+                )
+        else:
+            raise NotImplementedError(
+                '--vae-slicing not supported as no VAE is present for the specified model.')
+    elif has_vae:
+        if hasattr(pipeline.vae, 'disable_slicing'):
+            messages.debug_log(f'Disabling VAE slicing on Pipeline: "{pipeline_class.__name__}",',
+                               f'VAE: "{pipeline.vae.__class__.__name__}"')
+            pipeline.vae.disable_slicing()
 
 
 def _set_torch_safety_checker(pipeline, safety_checker_bool):
@@ -1152,8 +1152,8 @@ class DiffusionPipelineWrapperBase:
                  variant=None,
                  model_subfolder=None,
                  vae_path=None,
-                 vae_slicing=False,
                  vae_tiling=False,
+                 vae_slicing=False,
                  lora_paths=None,
                  textual_inversion_paths=None,
                  control_net_paths=None,
@@ -1173,8 +1173,8 @@ class DiffusionPipelineWrapperBase:
         self._dtype = dtype
         self._device = device
         self._vae_path = vae_path
-        self._vae_slicing = vae_slicing
         self._vae_tiling = vae_tiling
+        self._vae_slicing = vae_slicing
         self._safety_checker = safety_checker
         self._scheduler = scheduler
         self._lora_paths = lora_paths
@@ -1296,13 +1296,14 @@ class DiffusionPipelineWrapperBase:
     def vae_path(self):
         return self._vae_path
 
-    @property
-    def vae_slicing(self):
-        return self._vae_slicing
 
     @property
     def vae_tiling(self):
         return self._vae_tiling
+
+    @property
+    def vae_slicing(self):
+        return self._vae_slicing
 
     @property
     def lora_paths(self):
@@ -1935,8 +1936,8 @@ class DiffusionPipelineWrapperBase:
             if self._pipeline_type != _PipelineTypes.BASIC and self._control_net_paths:
                 raise NotImplementedError('Inpaint and Img2Img not supported for flax with ControlNet.')
 
-            if self._vae_slicing or self._vae_tiling:
-                raise NotImplementedError('--vae-slicing/--vae-tiling not supported for flax.')
+            if self._vae_tiling or self._vae_slicing:
+                raise NotImplementedError('--vae-tiling/--vae-slicing not supported for flax.')
 
             self._pipeline, self._flax_params, self._parsed_control_net_paths = \
                 _create_flax_diffusion_pipeline(pipeline_type,
@@ -2012,13 +2013,13 @@ class DiffusionPipelineWrapperBase:
                                                  sequential_cpu_offload=offload)
 
         _set_vae_slicing_tiling(pipeline=self._pipeline,
-                                vae_slicing=self._vae_slicing,
-                                vae_tiling=self._vae_tiling)
+                                vae_tiling=self._vae_tiling,
+                                vae_slicing=self._vae_slicing)
 
         if self._sdxl_refiner_pipeline is not None:
             _set_vae_slicing_tiling(pipeline=self._sdxl_refiner_pipeline,
-                                    vae_slicing=self._vae_slicing,
-                                    vae_tiling=self._vae_tiling)
+                                    vae_tiling=self._vae_tiling,
+                                    vae_slicing=self._vae_slicing)
 
     def __call__(self, **kwargs) -> PipelineResultWrapper:
         default_args = self._pipeline_defaults(kwargs)
@@ -2045,8 +2046,8 @@ class DiffusionPipelineWrapper(DiffusionPipelineWrapperBase):
                  variant=None,
                  model_subfolder=None,
                  vae_path=None,
-                 vae_slicing=False,
                  vae_tiling=False,
+                 vae_slicing=False,
                  lora_paths=None,
                  textual_inversion_paths=None,
                  control_net_paths=None,
@@ -2063,8 +2064,8 @@ class DiffusionPipelineWrapper(DiffusionPipelineWrapperBase):
             variant,
             model_subfolder,
             vae_path,
-            vae_slicing,
             vae_tiling,
+            vae_slicing,
             lora_paths,
             textual_inversion_paths,
             control_net_paths,
@@ -2089,8 +2090,8 @@ class DiffusionPipelineImg2ImgWrapper(DiffusionPipelineWrapperBase):
                  variant=None,
                  model_subfolder=None,
                  vae_path=None,
-                 vae_slicing=False,
                  vae_tiling=False,
+                 vae_slicing=False,
                  lora_paths=None,
                  textual_inversion_paths=None,
                  control_net_paths=None,
@@ -2108,8 +2109,8 @@ class DiffusionPipelineImg2ImgWrapper(DiffusionPipelineWrapperBase):
             variant,
             model_subfolder,
             vae_path,
-            vae_slicing,
             vae_tiling,
+            vae_slicing,
             lora_paths,
             textual_inversion_paths,
             control_net_paths,

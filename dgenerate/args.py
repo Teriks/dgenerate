@@ -857,9 +857,9 @@ def parse_args(args=None, namespace=None):
                 args.sdxl_high_noise_fractions = [0.8]
 
     if not model_type_is_torch(args.model_type):
-        if args.vae_slicing or args.vae_tiling:
+        if args.vae_tiling or args.vae_slicing:
             messages.log(
-                'Error: --vae-slicing/--vae-tiling not supported for '
+                'Error: --vae-tiling/--vae-slicing not supported for '
                 'non torch model type, see --model-type.', level=messages.ERROR)
             sys.exit(1)
 

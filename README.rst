@@ -18,11 +18,12 @@ This software requires an Nvidia GPU supporting CUDA 11.8+, CPU rendering is pos
 ----
 
 
-#. How to install
+* How to install
     * `Windows Install </#windows-install>`_
     * `Linux or WSL Install </#linux-or-wsl-install>`_
 
-#. `Usage Examples </#usage-examples>`_
+* Usage Examples
+    * `Basic Usage </#basic-usage>`_
     * `Negative Prompt </#negative-prompt>`_
     * `Multiple Prompts </#multiple-prompts>`_
     * `Image Seed </#image-seed>`_
@@ -33,6 +34,7 @@ This software requires an Nvidia GPU supporting CUDA 11.8+, CPU rendering is pos
     * `Inpainting Animations </#inpainting-animations>`_
     * `Deterministic Output </#deterministic-output>`_
     * `Specifying a VAE </#specifying-a-vae>`_
+    * `VAE Tiling and Slicing </#vae-tiling-and-slicing>`_
     * `Specifying a LoRA Finetune </#specifying-a-lora-finetune>`_
     * `Specifying Textual Inversions </#specifying-textual-inversions>`_
     * `Specifying Control Nets </#specifying-control-nets>`_
@@ -557,8 +559,8 @@ Run **dgenerate** to generate images:
     --inference-steps 40 \
     --guidance-scales 10
 
-Usage Examples
-==============
+Basic Usage
+===========
 
 Generate an astronaut riding a horse using 5 different random seeds, 3 different inference-steps values, 3 different guidance-scale values.
 
@@ -1007,14 +1009,13 @@ Named arguments when loading a VAE are seperated by the ``;`` character and are 
 meaning they can be defined in any order.
 
 Loading arguments available when specifying
-a Torch VAE are: ``model``, ``revision``, ``variant``, ``subfolder``,
-``dtype``, ``tiling`` (bool), and ``slicing`` (bool)
+a Torch VAE are: ``model``, ``revision``, ``variant``, ``subfolder``, and ``dtype``
 
 Loading arguments available when specifying
 a Flax VAE are ``model``, ``revision``, ``subfolder``, ``dtype``
 
 The only named argument compatible with loading a .safetensors or other model file
-directly off disk is ``model``, ``dtype``, ``tiling`` (bool), and ``slicing`` (bool)
+directly off disk is ``model``, and ``dtype``
 
 The other named arguments are available when loading from a huggingface repository or folder
 that may or may not be a local git repository on disk.
@@ -1022,12 +1023,12 @@ that may or may not be a local git repository on disk.
 Available encoder classes for torch models are:
 
 * AutoencoderKL
-* AsymmetricAutoencoderKL (Does not support tiling or slicing)
+* AsymmetricAutoencoderKL (Does not support --vae-slicing or --vae-tiling)
 * AutoencoderTiny
 
 Available encoder classes for flax models are:
 
-* FlaxAutoencoderKL (Does not support tiling or slicing)
+* FlaxAutoencoderKL (Does not support --vae-slicing or --vae-tiling)
 
 
 The AutoencoderKL encoder class accepts huggingface repository slugs/blob links,
@@ -1112,7 +1113,25 @@ accepted values are the same as ``--dtype``, IE: 'float32', 'float16', 'auto'
     --output-size 512x512
 
 
-You can use ``--vae-slicing`` and ``--vae-tiling`` to enable to generation of huge images
+If you are loading a .safetensors or other file from a path on disk, only the ``model``, and ``dtype``
+arguments are available.
+
+.. code-block:: bash
+
+    # These are only syntax examples
+
+    dgenerate huggingface/diffusion_model \
+    --vae "AutoencoderKL;model=my_vae.safetensors" \
+    --prompts "Syntax example"
+
+    dgenerate huggingface/diffusion_model \
+    --vae "AutoencoderKL;model=my_vae.safetensors;dtype=float16" \
+    --prompts "Syntax example"
+
+VAE Tiling and Slicing
+----------------------
+
+You can use ``--vae-tiling`` and ``--vae-slicing`` to enable to generation of huge images
 without running your GPU out of memory.
 
 When ``--vae-tiling`` is used, the VAE will split the input tensor into tiles to
@@ -1138,22 +1157,6 @@ compute decoding in several steps. This is useful to save some memory.
     --output-size 2048 \
     --sdxl-target-size 2048 \
     --prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork"
-
-
-If you are loading a .safetensors or other file from a path on disk, only the ``model``, ``dtype``,
-``slicing``, and ``tiling`` arguments are available.
-
-.. code-block:: bash
-
-    # These are only syntax examples
-
-    dgenerate huggingface/diffusion_model \
-    --vae "AutoencoderKL;model=my_vae.safetensors" \
-    --prompts "Syntax example"
-
-    dgenerate huggingface/diffusion_model \
-    --vae "AutoencoderKL;model=my_vae.safetensors;dtype=float16" \
-    --prompts "Syntax example"
 
 
 Specifying a LoRA Finetune
