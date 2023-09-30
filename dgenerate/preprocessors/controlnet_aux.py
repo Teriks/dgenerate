@@ -18,10 +18,10 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import typing
 
 import PIL.Image
 from controlnet_aux import OpenposeDetector
+
 from .preprocessor import ImagePreprocessor
 
 
@@ -52,6 +52,15 @@ class OpenPosePreprocess(ImagePreprocessor):
         self._include_face = self.get_bool_arg("include-face", include_face)
         self._pre_resize = self.get_bool_arg("pre-resize", pre_resize)
 
+    def __str__(self):
+        args = [
+            ('include_body', self._include_body),
+            ('include_hand', self._include_hand),
+            ('include_face', self._include_face),
+            ('pre_resize', self._pre_resize)
+        ]
+        return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
+
     def _process(self, image: PIL.Image):
         return self._openpose(image,
                               include_body=self._include_body,
@@ -67,4 +76,3 @@ class OpenPosePreprocess(ImagePreprocessor):
         if not self._pre_resize:
             return self._process(image)
         return image
-
