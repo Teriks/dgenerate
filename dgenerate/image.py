@@ -23,6 +23,9 @@ import PIL.Image
 
 
 def resize_image_calc(old_size, new_size):
+    if new_size is None or old_size == new_size:
+        return old_size
+
     width = new_size[0]
     w_percent = (width / float(old_size[0]))
     hsize = int((float(old_size[1]) * float(w_percent)))
