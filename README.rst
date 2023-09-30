@@ -1109,7 +1109,7 @@ the device number of the GPU as reported by ``nvidia-smi``.
 Specifying a Scheduler (sampler)
 --------------------------------
 
-A scheduler (sampler) for the main model can be selected via the use of ``--scheduler``.
+A scheduler (otherwise known as a sampler) for the main model can be selected via the use of ``--scheduler``.
 
 And in the case of SDXL the refiner scheduler can also be selected independently with ``--sdxl-refiner-scheduler``.
 
@@ -1126,7 +1126,7 @@ will result in different underlying pipeline implementations being created, each
 may have different compatible scheduler names listed. The model needs to be loaded in order to
 gather this information.
 
-For example there is only one compatible scheduler for this upscaler:
+For example there is only one compatible scheduler for this upscaler configuration:
 
 .. code-block:: bash
 
@@ -1142,6 +1142,37 @@ For example there is only one compatible scheduler for this upscaler:
     # Compatible schedulers for "stabilityai/sd-x2-latent-upscaler" are:
     #
     #    "EulerDiscreteScheduler"
+
+Typically however, there will be many compatible schedulers:
+
+.. code-block:: bash
+
+    dgenerate stabilityai/stable-diffusion-2 \
+    --inference-steps 40 \
+    --guidance-scales 8 \
+    --output-size 1024 \
+    --gen-seeds 2 \
+    --prompts "none" \
+    --scheduler help
+
+    # Outputs:
+    #
+    # Compatible schedulers for "stabilityai/stable-diffusion-2" are:
+    #
+    #    "EulerDiscreteScheduler"
+    #    "DPMSolverSinglestepScheduler"
+    #    "DDIMScheduler"
+    #    "KDPM2DiscreteScheduler"
+    #    "KDPM2AncestralDiscreteScheduler"
+    #    "HeunDiscreteScheduler"
+    #    "DEISMultistepScheduler"
+    #    "DPMSolverSDEScheduler"
+    #    "DDPMScheduler"
+    #    "PNDMScheduler"
+    #    "UniPCMultistepScheduler"
+    #    "EulerAncestralDiscreteScheduler"
+    #    "DPMSolverMultistepScheduler"
+    #    "LMSDiscreteScheduler"
 
 
 Specifying a VAE
