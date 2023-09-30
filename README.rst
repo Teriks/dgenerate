@@ -678,7 +678,7 @@ Basic Usage
 ===========
 
 The example below attempts to generate an astronaut riding a horse using 5 different
-random seeds, 3 different inference steps values, an 3 different guidance scale values.
+random seeds, 3 different inference steps values, and 3 different guidance scale values.
 
 It utilizes the "stabilityai/stable-diffusion-2-1" model repo on `Hugging Face <https://huggingface.co/stabilityai/stable-diffusion-2-1>`_.
 
