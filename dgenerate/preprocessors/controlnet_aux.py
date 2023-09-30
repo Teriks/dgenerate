@@ -31,6 +31,8 @@ class OpenPosePreprocess(ImagePreprocessor):
     "include-body" is a boolean value indicating if a body rigging should be generated.
     "include-hand" is a boolean value indicating if a detailed hand/finger rigging should be generated.
     "include-face" is a boolean value indicating if a detailed face rigging should be generated.
+    "pre-resize" is a boolean value determining if the processing should take place before or after the image
+    is resized by dgenerate.
     """
 
     NAMES = ['openpose']
@@ -38,22 +40,31 @@ class OpenPosePreprocess(ImagePreprocessor):
     def __init__(self,
                  include_body=True,
                  include_hand=False,
-                 include_face=False, **kwargs):
+                 include_face=False,
+                 pre_resize=False, **kwargs):
 
         super().__init__(**kwargs)
 
         self._openpose = OpenposeDetector.from_pretrained('lllyasviel/Annotators')
         self._openpose.to(self.device)
-        self._include_body = include_body
-        self._include_hand = include_hand
-        self._include_face = include_face
+        self._include_body = self.get_bool_arg("include-body", include_body)
+        self._include_hand = self.get_bool_arg("include-hand", include_hand)
+        self._include_face = self.get_bool_arg("include-face", include_face)
+        self._pre_resize = self.get_bool_arg("pre-resize", pre_resize)
 
-    def pre_resize(self, image: PIL.Image, resize_resolution: tuple):
-        return image
-
-    def post_resize(self, image: PIL.Image):
+    def _process(self, image: PIL.Image):
         return self._openpose(image,
                               include_body=self._include_body,
                               include_hand=self._include_hand,
                               include_face=self._include_face)
+
+    def pre_resize(self, image: PIL.Image, resize_resolution: tuple):
+        if self._pre_resize:
+            return self._process(image)
+        return image
+
+    def post_resize(self, image: PIL.Image):
+        if not self._pre_resize:
+            return self._process(image)
+        return image
 
