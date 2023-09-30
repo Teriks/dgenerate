@@ -19,7 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from .controlnet_aux import *
+from .openpose import *
 from .canny import *
 from .loader import *
 from .pil_imageops import *
@@ -47,7 +47,7 @@ def image_preprocessor_help(args):
             return 1
 
     for name, help_str in help_strs:
-        args_with_defaults = ImagePreprocessor.get_accepted_args_with_defaults(get_class_by_name(name), name)
+        args_with_defaults = get_class_by_name(name).get_accepted_args_with_defaults(name)
 
         arg_descriptors = []
         for arg in args_with_defaults:

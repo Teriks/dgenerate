@@ -138,7 +138,7 @@ class VideoReader(ImagePreprocessorMixin, AnimationReader):
         else:
             width, height = resize_image_calc(self.resize_resolution,
                                               (int(self._container.streams.video[0].width),
-                                                int(self._container.streams.video[0].height)))
+                                               int(self._container.streams.video[0].height)))
 
         anim_fps = int(self._container.streams.video[0].average_rate)
         anim_frame_duration = 1000 / anim_fps
@@ -692,6 +692,28 @@ class MultiContextManager:
                 obj.__exit__(type, value, traceback)
 
 
+class SafeTemporaryDirectory:
+    def __init__(self, *args, **kwargs):
+        self._temp_dir = tempfile.TemporaryDirectory(*args, **kwargs)
+
+    def __enter__(self):
+        return self._temp_dir.__enter__()
+
+    def __getattr__(self, attr):
+        if attr == '_temp_dir':
+            return self._temp_dir
+
+        return getattr(self._temp_dir, attr)
+
+    def __exit__(self, type, value, traceback):
+        if self._temp_dir is not None:
+            # If garbage collection gets to it first a second call
+            # will cause an exception and in this code that might
+            # happen during an exception
+            self._temp_dir.__exit__(type, value, traceback)
+            self._temp_dir = None
+
+
 def iterate_control_image(uri,
                           frame_start=0,
                           frame_end=None,
@@ -714,7 +736,7 @@ def iterate_control_image(uri,
                                                  preprocessor=preprocessor)
         manage_context.append(control_reader)
     elif mime_type_is_video(control_mime_type):
-        temp_dir = tempfile.TemporaryDirectory()
+        temp_dir = SafeTemporaryDirectory()
         video_file_path = _write_to_file(control_data, os.path.join(temp_dir.name, 'tmp_control_net'))
         control_reader = create_animation_reader(file=video_file_path,
                                                  file_source=uri,
@@ -732,13 +754,14 @@ def iterate_control_image(uri,
     else:
         raise ImageSeedParseError(f'Unknown control image mimetype {control_mime_type}')
 
-    if isinstance(control_reader, MockImageAnimationReader):
-        yield ImageSeed(image=control_reader.__next__())
-    else:
-        yield from (ImageSeed(animation_frame) for animation_frame in
-                    iterate_animation_frames(seed_reader=control_reader,
-                                             frame_start=frame_start,
-                                             frame_end=frame_end))
+    with MultiContextManager(manage_context):
+        if isinstance(control_reader, MockImageAnimationReader):
+            yield ImageSeed(image=control_reader.__next__())
+        else:
+            yield from (ImageSeed(animation_frame) for animation_frame in
+                        iterate_animation_frames(seed_reader=control_reader,
+                                                 frame_start=frame_start,
+                                                 frame_end=frame_end))
 
 
 def _iterate_image_seed_x3(seed_reader,
@@ -846,7 +869,7 @@ def iterate_image_seed(uri,
                                                   preprocessor=seed_image_preprocessor)
             manage_context.append(seed_reader)
         elif mime_type_is_video(seed_mime_type):
-            temp_dir = tempfile.TemporaryDirectory()
+            temp_dir = SafeTemporaryDirectory()
             video_file_path = _write_to_file(seed_data, os.path.join(temp_dir.name, 'tmp_vid'))
             seed_reader = create_animation_reader(file=video_file_path,
                                                   file_source=parse_result.uri,
@@ -874,7 +897,7 @@ def iterate_image_seed(uri,
                                                   preprocessor=mask_image_preprocessor)
             manage_context.append(mask_reader)
         elif mime_type_is_video(mask_mime_type):
-            temp_dir = tempfile.TemporaryDirectory()
+            temp_dir = SafeTemporaryDirectory()
             video_file_path = _write_to_file(mask_data, os.path.join(temp_dir.name, 'tmp_mask'))
             mask_reader = create_animation_reader(file=video_file_path,
                                                   file_source=parse_result.mask_uri,
@@ -900,7 +923,7 @@ def iterate_image_seed(uri,
                                                      preprocessor=control_image_preprocessor)
             manage_context.append(control_reader)
         elif mime_type_is_video(control_mime_type):
-            temp_dir = tempfile.TemporaryDirectory()
+            temp_dir = SafeTemporaryDirectory()
             video_file_path = _write_to_file(control_data, os.path.join(temp_dir.name, 'tmp_control_net'))
             control_reader = create_animation_reader(file=video_file_path,
                                                      file_source=parse_result.control_uri,
