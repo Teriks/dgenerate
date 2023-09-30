@@ -133,12 +133,13 @@ class VideoReader(ImagePreprocessorMixin, AnimationReader):
             width = int(self._container.streams.video[0].width)
             height = int(self._container.streams.video[0].height)
             if not is_aligned_by_8(width, height):
-                width, height = resize_image_calc(align_by_8(width, height), (width, height))
+                width, height = resize_image_calc(old_size=(width, height),
+                                                  new_size=align_by_8(width, height))
                 self.resize_resolution = (width, height)
         else:
-            width, height = resize_image_calc(self.resize_resolution,
-                                              (int(self._container.streams.video[0].width),
-                                               int(self._container.streams.video[0].height)))
+            width, height = resize_image_calc(old_size=(int(self._container.streams.video[0].width),
+                                                        int(self._container.streams.video[0].height)),
+                                              new_size=self.resize_resolution)
 
         anim_fps = int(self._container.streams.video[0].average_rate)
         anim_frame_duration = 1000 / anim_fps
@@ -191,10 +192,12 @@ class GifWebpReader(ImagePreprocessorMixin, AnimationReader):
             width = self._img.size[0]
             height = self._img.size[1]
             if not is_aligned_by_8(width, height):
-                width, height = resize_image_calc(align_by_8(width, height), (width, height))
+                width, height = resize_image_calc(old_size=(width, height),
+                                                  new_size=align_by_8(width, height))
                 self.resize_resolution = (width, height)
         else:
-            width, height = resize_image_calc(self.resize_resolution, self._img.size)
+            width, height = resize_image_calc(old_size=self._img.size,
+                                              new_size=self.resize_resolution)
 
         super().__init__(width=width,
                          height=height,
@@ -230,10 +233,12 @@ class MockImageAnimationReader(ImagePreprocessorMixin, AnimationReader):
             width = self._img.size[0]
             height = self._img.size[1]
             if not is_aligned_by_8(width, height):
-                width, height = resize_image_calc(align_by_8(width, height), (width, height))
+                width, height = resize_image_calc(old_size=(width, height),
+                                                  new_size=align_by_8(width, height))
                 self.resize_resolution = (width, height)
         else:
-            width, height = resize_image_calc(self.resize_resolution, self._img.size)
+            width, height = resize_image_calc(old_size=self._img.size,
+                                              new_size=self.resize_resolution)
 
         super().__init__(width=width,
                          height=height,

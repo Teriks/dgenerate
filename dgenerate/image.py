@@ -22,7 +22,7 @@
 import PIL.Image
 
 
-def resize_image_calc(new_size, old_size):
+def resize_image_calc(old_size, new_size):
     width = new_size[0]
     w_percent = (width / float(old_size[0]))
     hsize = int((float(old_size[1]) * float(w_percent)))
@@ -48,7 +48,8 @@ def copy_img(img):
 
 
 def resize_image(img, size):
-    new_size = resize_image_calc(size, img.size)
+    new_size = resize_image_calc(old_size=img.size,
+                                 new_size=size)
 
     if img.size == new_size:
         # probably less costly
