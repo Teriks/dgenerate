@@ -40,11 +40,11 @@ class ImagePreprocessorMixin:
             return processed
         return image
 
-    def _preprocess_post_resize(self, image, resize_resolution):
+    def _preprocess_post_resize(self, image):
         if self._preprocessor is not None:
             messages.debug_log('Starting Image Preprocess - '
                                f'{self._preprocessor}.post_resize('
-                               f'image="{image.filename}", resize_resolution={resize_resolution})')
+                               f'image="{image.filename}")')
 
             processed = ImagePreprocessor.call_post_resize(self._preprocessor, image)
 
@@ -54,9 +54,13 @@ class ImagePreprocessorMixin:
 
     def preprocess_image(self, image, resize_to):
 
+        # This is the actual size it will end
+        # up being resized to by resize_image
+        calculate_new_size = resize_image_calc(old_size=image.size,
+                                               new_size=resize_to)
+
         pre_processed = self._preprocess_pre_resize(image,
-                                                    resize_image_calc(old_size=image.size,
-                                                                      new_size=resize_to))
+                                                    calculate_new_size)
 
         if pre_processed is not image:
             image.close()
@@ -69,7 +73,7 @@ class ImagePreprocessorMixin:
         if image is not pre_processed:
             pre_processed.close()
 
-        pre_processed = self._preprocess_post_resize(image, resize_to)
+        pre_processed = self._preprocess_post_resize(image)
         if pre_processed is not image:
             image.close()
 
