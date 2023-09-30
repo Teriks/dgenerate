@@ -1200,12 +1200,12 @@ that may or may not be a local git repository on disk.
 Available encoder classes for torch models are:
 
 * AutoencoderKL
-* AsymmetricAutoencoderKL (Does not support --vae-slicing or --vae-tiling)
+* AsymmetricAutoencoderKL (Does not support ``--vae-slicing`` or ``--vae-tiling``)
 * AutoencoderTiny
 
 Available encoder classes for flax models are:
 
-* FlaxAutoencoderKL (Does not support --vae-slicing or --vae-tiling)
+* FlaxAutoencoderKL (Does not support ``--vae-slicing`` or ``--vae-tiling``)
 
 
 The AutoencoderKL encoder class accepts huggingface repository slugs/blob links,
