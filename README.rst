@@ -677,7 +677,10 @@ Run **dgenerate** to generate images:
 Basic Usage
 ===========
 
-Generate an astronaut riding a horse using 5 different random seeds, 3 different inference steps values, an 3 different guidance scale values.
+The example below attempts to generate an astronaut riding a horse using 5 different
+random seeds, 3 different inference steps values, an 3 different guidance scale values.
+
+It utilizes the "stabilityai/stable-diffusion-2-1" model repo on `Hugging Face <https://huggingface.co/stabilityai/stable-diffusion-2-1>`_.
 
 45 uniquely named images will be generated (5 x 3 x 3)
 
@@ -697,7 +700,7 @@ if the path that is specified does not exist then it will be created.
     --output-size 512x512
 
 
-Loading models from huggingface blob links is also supported
+Loading models from huggingface blob links is also supported:
 
 .. code-block:: bash
 
