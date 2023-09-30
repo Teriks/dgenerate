@@ -564,6 +564,9 @@ Run **dgenerate** to generate images:
 
 .. code-block:: bash
 
+    # Images are output to the "output" folder
+    # in the current working directory by default
+
     dgenerate --help
 
     dgenerate stabilityai/stable-diffusion-2-1 ^
@@ -660,6 +663,9 @@ Run **dgenerate** to generate images:
 
 .. code-block:: bash
 
+    # Images are output to the "output" folder
+    # in the current working directory by default
+
     dgenerate --help
 
     dgenerate stabilityai/stable-diffusion-2-1 \
@@ -671,11 +677,14 @@ Run **dgenerate** to generate images:
 Basic Usage
 ===========
 
-Generate an astronaut riding a horse using 5 different random seeds, 3 different inference-steps values, 3 different guidance-scale values.
+Generate an astronaut riding a horse using 5 different random seeds, 3 different inference steps values, an 3 different guidance scale values.
 
-Adjust output size to 512x512 and output generated images to 'astronaut' folder.
+45 uniquely named images will be generated (5 x 3 x 3)
 
-45 uniquely named images will be generated (5x3x3)
+Also Adjust output size to 512x512 and output generated images to 'astronaut' folder.
+
+When ``--output-path`` is not specified, the default output location is the "output" folder in the current working directory,
+if the path that is specified does not exist then it will be created.
 
 .. code-block:: bash
 
