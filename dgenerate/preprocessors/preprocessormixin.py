@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+from . import ImagePreprocessor
 from .. import messages
 from ..image import resize_image
 
@@ -33,7 +34,7 @@ class ImagePreprocessorMixin:
                                f'{self._preprocessor}.pre_resize('
                                f'image="{image.filename}", resize_resolution={resize_resolution})')
 
-            processed = self._preprocessor.call_pre_resize(image, resize_resolution)
+            processed = ImagePreprocessor.call_pre_resize(self._preprocessor, image, resize_resolution)
 
             messages.debug_log(f'Finished Image Preprocess - {self._preprocessor}.pre_resize')
             return processed
@@ -45,7 +46,7 @@ class ImagePreprocessorMixin:
                                f'{self._preprocessor}.post_resize('
                                f'image="{image.filename}", resize_resolution={resize_resolution})')
 
-            processed = self._preprocessor.call_post_resize(image, resize_resolution)
+            processed = ImagePreprocessor.call_post_resize(self._preprocessor, image)
 
             messages.debug_log(f'Finished Image Preprocess - {self._preprocessor}.post_resize')
             return processed

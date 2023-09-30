@@ -22,67 +22,68 @@ import inspect
 import sys
 import typing
 
-from ..textprocessing import ConceptPathParser, ConceptPathParseError
-from .exceptions import ImagePreprocessorArgumentError
-from .preprocessor import ImagePreprocessor, names_from_class
+from .exceptions import ImagePreprocessorArgumentError, ImagePreprocessorNotFoundError
+from .preprocessor import ImagePreprocessor
 from .preprocessorchain import ImagePreprocessorChain
+from ..textprocessing import ConceptPathParser, ConceptPathParseError
 
 
-def _load(path):
-    name = path.split(';', 1)[0].strip()
+def _load(path, device):
+    call_by_name = path.split(';', 1)[0].strip()
 
-    classes = [cls for cls in list_available() if name in names_from_class(cls)]
+    preprocessor_class = get_class_by_name(call_by_name)
 
-    if len(classes) > 1:
-        raise RuntimeError(f'Found more than one ImagePreprocessor with the name: {name}')
+    reserved_args = ['output-file', 'output-dir', 'device', 'called-by-name']
 
-    if classes:
-        class_to_create = classes[0]
+    parser_accepted_args = ImagePreprocessor.get_accepted_args(preprocessor_class,
+                                                               called_by_name=call_by_name)
 
-        parser_accepted_args = [arg.replace('_', '-') for arg in
-                                inspect.getfullargspec(class_to_create.__init__).args if arg != 'self']
+    for reserved in reserved_args:
+        if reserved in parser_accepted_args:
+            raise RuntimeError(f'{reserved} is a reserved ImagePreprocessor module argument, '
+                               'chose another argument name for your module.')
 
-        parser_accepted_args.append('output-dir')
-        parser_accepted_args.append('output-file')
+        parser_accepted_args.append(reserved)
 
-        arg_parser = ConceptPathParser("Image Preprocessor", parser_accepted_args)
+    arg_parser = ConceptPathParser("Image Preprocessor", parser_accepted_args)
 
-        try:
-            parsed_args = arg_parser.parse_concept_path(path).args
-        except ConceptPathParseError as e:
-            raise ImagePreprocessorArgumentError(e)
+    try:
+        parsed_args = arg_parser.parse_concept_path(path).args
+    except ConceptPathParseError as e:
+        raise ImagePreprocessorArgumentError(e)
 
-        args_dict = {}
+    args_dict = {}
 
-        for k, v in parsed_args.items():
-            fixed_key = k.replace('-', '_')
+    for k, v in parsed_args.items():
+        fixed_key = k.replace('-', '_')
 
-            if fixed_key in args_dict:
-                raise ImagePreprocessorArgumentError(
-                    f'Duplicate argument "{fixed_key}" given to image preprocessor "{name}".')
-            else:
-                args_dict[fixed_key] = v
+        if fixed_key in args_dict:
+            raise ImagePreprocessorArgumentError(
+                f'Duplicate argument "{fixed_key}" given to image preprocessor "{call_by_name}".')
+        else:
+            args_dict[fixed_key] = v
 
-        try:
-            instance: ImagePreprocessor = classes[0](**args_dict)
+    try:
+        args_dict['output_dir'] = parsed_args.get('output-dir')
+        args_dict['output_file'] = parsed_args.get('output-file')
+        args_dict['device'] = parsed_args.get('device', device)
+        args_dict['called_by_name'] = call_by_name
+        return preprocessor_class(**args_dict)
 
-            instance.set_output_dir_or_file(output_dir=parsed_args.get('output-dir'),
-                                            output_file=parsed_args.get('output-file'))
-
-            return instance
-
-        except ImagePreprocessorArgumentError as e:
-            raise ImagePreprocessorArgumentError(f'Invalid argument given to image preprocessor "{name}": {e}')
-
-    raise RuntimeError(f'Found no ImagePreprocessor derived classes with the name: {name}')
+    except ImagePreprocessorArgumentError as e:
+        raise ImagePreprocessorArgumentError(f'Invalid argument given to image preprocessor "{call_by_name}": {e}')
 
 
-def list_available():
+def get_available_classes():
     mod = sys.modules['dgenerate.preprocessors']
 
     def _excluded(cls):
         if not inspect.isclass(cls):
             return True
+
+        if cls is ImagePreprocessor:
+            return True
+
         if not issubclass(cls, ImagePreprocessor):
             return True
 
@@ -96,18 +97,44 @@ def list_available():
     return classes
 
 
-def load(path: typing.Union[str, list, tuple, None]):
+def get_class_by_name(preprocessor_name):
+    classes = [cls for cls in get_available_classes() if
+               preprocessor_name in ImagePreprocessor.get_names(cls)]
+
+    if len(classes) > 1:
+        raise RuntimeError(
+            f'Found more than one ImagePreprocessor with the name: {preprocessor_name}')
+
+    if not classes:
+        raise ImagePreprocessorNotFoundError(
+            f'Found no image preprocessor with the name: {preprocessor_name}')
+
+    return classes[0]
+
+
+def get_all_names():
+    names = []
+    for cls in get_available_classes():
+        names += ImagePreprocessor.get_names(cls)
+    return names
+
+
+def get_help(preprocessor_name: str):
+    return ImagePreprocessor.get_help(get_class_by_name(preprocessor_name), preprocessor_name)
+
+
+def load(path: typing.Union[str, list, tuple, None], device='cpu'):
     if path is None:
         return None
 
     if isinstance(path, str):
-        return _load(path)
+        return _load(path, device)
 
     if len(path) == 1:
-        return _load(path[0])
+        return _load(path[0], device)
 
     chain = ImagePreprocessorChain()
     for i in path:
-        chain.add_processor(_load(i))
+        chain.add_processor(_load(i, device))
 
     return chain

@@ -85,7 +85,7 @@ parser.add_argument('--model-type', action='store', default='torch', type=_from_
                     help=f"""Use when loading different model types. 
                          Currently supported: {oxford_comma(supported_model_type_strings(), "or")}. (default: torch)""")
 
-parser.add_argument('--revision', action='store', default="main",
+parser.add_argument('--revision', action='store', default="main", metavar="BRANCH",
                     help="""The model revision to use when loading from a huggingface repository,
                          (The git branch / tag, default is "main")""")
 
@@ -99,12 +99,12 @@ parser.add_argument('--subfolder', action='store', default=None,
                          If specified when loading from a huggingface repository or folder,
                          load weights from the specified subfolder.""")
 
-parser.add_argument('--auth-token', action='store', default=None,
+parser.add_argument('--auth-token', action='store', default=None, metavar="TOKEN",
                     help="""Huggingface auth token.
                          Required to download restricted repositories that have access permissions
                          granted to your huggingface account.""")
 
-parser.add_argument('--vae', action='store', default=None,
+parser.add_argument('--vae', action='store', default=None, metavar="MODEL_PATH",
                     help=
                     """Specify a VAE. When using torch models the syntax is: 
                     "AutoEncoderClass;model=(huggingface repository slug/blob link or file/folder path)".
@@ -157,7 +157,7 @@ parser.add_argument('--vae-tiling', action='store_true', default=False,
 parser.add_argument('--vae-slicing', action='store_true', default=False,
                     help="""Enable VAE slicing (torch* models only)""")
 
-parser.add_argument('--lora', '--loras', action='store', default=None,
+parser.add_argument('--lora', '--loras', action='store', default=None, metavar="MODEL_PATH",
                     help=
                     """Specify a LoRA model (flax not supported). This should be a
                     huggingface repository slug, path to model file on disk (for example, a .pt, .pth, .bin,
@@ -186,7 +186,7 @@ parser.add_argument('--lora', '--loras', action='store', default=None,
                     way is: --lora "my_lora.safetensors",  or with a scale "my_lora.safetensors;scale=1.0", 
                     all other loading arguments are unused in this case and may produce an error message if used.""")
 
-parser.add_argument('--textual-inversions', nargs='+', action='store', default=None,
+parser.add_argument('--textual-inversions', nargs='+', action='store', default=None, metavar="MODEL_PATH",
                     help=
                     """Specify one or more Textual Inversion models (flax and SDXL not supported). This should be a
                     huggingface repository slug, path to model file on disk (for example, a .pt, .pth, .bin,
@@ -213,7 +213,7 @@ parser.add_argument('--textual-inversions', nargs='+', action='store', default=N
                     --textual-inversions "my_ti_model.safetensors", all other loading arguments 
                     are unused in this case and may produce an error message if used.""")
 
-parser.add_argument('--control-nets', nargs='+', action='store', default=None,
+parser.add_argument('--control-nets', nargs='+', action='store', default=None, metavar="MODEL_PATH",
                     help=
                     """Specify one or more ControlNet models. This should be a
                     huggingface repository slug / blob link, path to model file on disk (for example, a .pt, .pth, .bin,
@@ -265,14 +265,14 @@ parser.add_argument('--control-nets', nargs='+', action='store', default=None,
                     the revision argument may be used with this syntax.
                     """)
 
-parser.add_argument('--scheduler', action='store', default=None,
+parser.add_argument('--scheduler', action='store', default=None, metavar="SCHEDULER_NAME",
                     help=f'Specify a scheduler (sampler) by name. Passing "help" to this argument '
                          f'will print the compatible schedulers for a model without generating any images. '
                          f'Torch schedulers: ({", ".join(e.name for e in KarrasDiffusionSchedulers)}). ' +
                          (
                              f'Flax schedulers: ({", ".join(e.name for e in FlaxKarrasDiffusionSchedulers)})' if have_jax_flax() else ''))
 
-parser.add_argument('--sdxl-refiner', action='store', default=None,
+parser.add_argument('--sdxl-refiner', action='store', default=None, metavar="MODEL_PATH",
                     help="""Stable Diffusion XL (torch-sdxl) refiner model path. This should be a
                     huggingface repository slug / blob link, path to model file on disk (for example, a .pt, .pth, .bin,
                     .ckpt, or .safetensors file), or model folder containing model files. 
@@ -308,6 +308,10 @@ parser.add_argument('--sdxl-refiner', action='store', default=None,
                     the revision argument may be used with this syntax.
                     """)
 
+parser.add_argument('--sdxl-refiner-scheduler', action='store', default=None, metavar="SCHEDULER_NAME",
+                    help='Specify a scheduler (sampler) by name for the SDXL refiner pass. Operates the exact'
+                         'same way as --scheduler including the "help" option. Defaults to the value of --scheduler.')
+
 
 def _type_micro_conditioning_size(size):
     if size is None:
@@ -338,7 +342,7 @@ def _type_image_coordinate(coord):
 # SDXL Main pipeline
 
 
-parser.add_argument('--sdxl-second-prompts', nargs='+', action='store',
+parser.add_argument('--sdxl-second-prompts', nargs='+', action='store', metavar="PROMPT",
                     default=None,
                     type=_type_prompts,
                     help="""List of secondary prompts to try using SDXL's secondary text encoder. 
@@ -346,15 +350,15 @@ parser.add_argument('--sdxl-second-prompts', nargs='+', action='store',
                     allows you to choose a different prompt. The negative prompt component can be
                     specified with the same syntax as --prompts""")
 
-parser.add_argument('--sdxl-aesthetic-scores',
-                    action='store', nargs='*', default=[], type=float,
+parser.add_argument('--sdxl-aesthetic-scores', metavar="FLOAT",
+                    action='store', nargs='+', default=[], type=float,
                     help="""One or more Stable Diffusion XL (torch-sdxl) "aesthetic-score" micro-conditioning parameters.
                             Used to simulate an aesthetic score of the generated image by influencing the positive text
                             condition. Part of SDXL's micro-conditioning as explained in section 2.2 of
                             [https://huggingface.co/papers/2307.01952].""")
 
-parser.add_argument('--sdxl-crops-coords-top-left',
-                    action='store', nargs='*', default=[], type=_type_image_coordinate,
+parser.add_argument('--sdxl-crops-coords-top-left', metavar="COORD",
+                    action='store', nargs='+', default=[], type=_type_image_coordinate,
                     help="""One or more Stable Diffusion XL (torch-sdxl) "negative-crops-coords-top-left" micro-conditioning
                             parameters in the format "0,0". --sdxl-crops-coords-top-left can be used to generate an image that
                             appears to be "cropped" from the position --sdxl-crops-coords-top-left downwards. Favorable,
@@ -362,45 +366,45 @@ parser.add_argument('--sdxl-crops-coords-top-left',
                             Part of SDXL's micro-conditioning as explained in section 2.2 of 
                             [https://huggingface.co/papers/2307.01952].""")
 
-parser.add_argument('--sdxl-original-size', '--sdxl-original-sizes', dest='sdxl_original_sizes',
-                    action='store', nargs='*', default=[], type=_type_micro_conditioning_size,
+parser.add_argument('--sdxl-original-size', '--sdxl-original-sizes', dest='sdxl_original_sizes', metavar="SIZE",
+                    action='store', nargs='+', default=[], type=_type_micro_conditioning_size,
                     help="""One or more Stable Diffusion XL (torch-sdxl) "original-size" micro-conditioning parameters in
                             the format (WIDTHxHEIGHT). If not the same as --sdxl-target-size the image will appear to be
                             down or upsampled. --sdxl-original-size defaults to --output-size if not specified. Part of
                             SDXL\'s micro-conditioning as explained in section 2.2 of 
                             [https://huggingface.co/papers/2307.01952]""")
 
-parser.add_argument('--sdxl-target-size', '--sdxl-target-sizes', dest='sdxl_target_sizes',
-                    action='store', nargs='*', default=[], type=_type_micro_conditioning_size,
+parser.add_argument('--sdxl-target-size', '--sdxl-target-sizes', dest='sdxl_target_sizes', metavar="SIZE",
+                    action='store', nargs='+', default=[], type=_type_micro_conditioning_size,
                     help="""One or more Stable Diffusion XL (torch-sdxl) "target-size" micro-conditioning parameters in
                             the format (WIDTHxHEIGHT). For most cases, --sdxl-target-size should be set to the desired
                             height and width of the generated image. If not specified it will default to --output-size.
                             Part of SDXL\'s micro-conditioning as explained in section 2.2 of 
                             [https://huggingface.co/papers/2307.01952]""")
 
-parser.add_argument('--sdxl-negative-aesthetic-scores',
-                    action='store', nargs='*', default=[], type=float,
+parser.add_argument('--sdxl-negative-aesthetic-scores', metavar="FLOAT",
+                    action='store', nargs='+', default=[], type=float,
                     help="""One or more Stable Diffusion XL (torch-sdxl) "negative-aesthetic-score" micro-conditioning parameters.
                             Part of SDXL's micro-conditioning as explained in section 2.2 of [https://huggingface.co/papers/2307.01952].
                             Can be used to simulate an aesthetic score of the generated image by influencing the negative text condition.""")
 
-parser.add_argument('--sdxl-negative-original-sizes',
-                    action='store', nargs='*', default=[], type=_type_micro_conditioning_size,
+parser.add_argument('--sdxl-negative-original-sizes', metavar="SIZE",
+                    action='store', nargs='+', default=[], type=_type_micro_conditioning_size,
                     help="""One or more Stable Diffusion XL (torch-sdxl) "negative-original-sizes" micro-conditioning parameters.
                             Negatively condition the generation process based on a specific image resolution. Part of SDXL's
                             micro-conditioning as explained in section 2.2 of [https://huggingface.co/papers/2307.01952].
                             For more information, refer to this issue thread: https://github.com/huggingface/diffusers/issues/4208""")
 
-parser.add_argument('--sdxl-negative-target-sizes',
-                    action='store', nargs='*', default=[], type=_type_micro_conditioning_size,
+parser.add_argument('--sdxl-negative-target-sizes', metavar="SIZE",
+                    action='store', nargs='+', default=[], type=_type_micro_conditioning_size,
                     help="""One or more Stable Diffusion XL (torch-sdxl) "negative-original-sizes" micro-conditioning parameters.
                             To negatively condition the generation process based on a target image resolution. It should be as same
                             as the "target_size" for most cases. Part of SDXL's micro-conditioning as explained in section 2.2 of
                             [https://huggingface.co/papers/2307.01952]. For more information, refer to this issue thread:
                             https://github.com/huggingface/diffusers/issues/4208.""")
 
-parser.add_argument('--sdxl-negative-crops-coords-top-left',
-                    action='store', nargs='*', default=[], type=_type_image_coordinate,
+parser.add_argument('--sdxl-negative-crops-coords-top-left', metavar="COORD",
+                    action='store', nargs='+', default=[], type=_type_image_coordinate,
                     help="""One or more Stable Diffusion XL (torch-sdxl) "negative-crops-coords-top-left" micro-conditioning
                             parameters in the format "0,0". Negatively condition the generation process based on a specific
                             crop coordinates. Part of SDXL's micro-conditioning as explained in section 2.2 of
@@ -410,6 +414,7 @@ parser.add_argument('--sdxl-negative-crops-coords-top-left',
 # SDXL Refiner pipeline
 
 parser.add_argument('--sdxl-refiner-prompts', nargs='+', action='store',
+                    metavar="PROMPT",
                     default=None,
                     type=_type_prompts,
                     help="""List of prompts to try with the SDXL refiner model, 
@@ -418,6 +423,7 @@ parser.add_argument('--sdxl-refiner-prompts', nargs='+', action='store',
                     component can be specified with the same syntax as --prompts""")
 
 parser.add_argument('--sdxl-refiner-second-prompts', nargs='+', action='store',
+                    metavar="PROMPT",
                     default=None,
                     type=_type_prompts,
                     help="""List of prompts to try with the SDXL refiner models secondary 
@@ -426,36 +432,36 @@ parser.add_argument('--sdxl-refiner-second-prompts', nargs='+', action='store',
                     of your choosing. The negative prompt component can be specified with the 
                     same syntax as --prompts""")
 
-parser.add_argument('--sdxl-refiner-aesthetic-scores',
-                    action='store', nargs='*', default=[], type=float,
+parser.add_argument('--sdxl-refiner-aesthetic-scores', metavar="FLOAT",
+                    action='store', nargs='+', default=[], type=float,
                     help="See: --sdxl-aesthetic-scores, applied to SDXL refiner pass.")
 
-parser.add_argument('--sdxl-refiner-crops-coords-top-left',
-                    action='store', nargs='*', default=[], type=_type_image_coordinate,
+parser.add_argument('--sdxl-refiner-crops-coords-top-left', metavar="COORD",
+                    action='store', nargs='+', default=[], type=_type_image_coordinate,
                     help="See: --sdxl-crops-coords-top-left, applied to SDXL refiner pass.")
 
-parser.add_argument('--sdxl-refiner-original-sizes',
-                    action='store', nargs='*', default=[], type=_type_micro_conditioning_size,
+parser.add_argument('--sdxl-refiner-original-sizes', metavar="SIZE",
+                    action='store', nargs='+', default=[], type=_type_micro_conditioning_size,
                     help="See: --sdxl-refiner-original-sizes, applied to SDXL refiner pass.")
 
-parser.add_argument('--sdxl-refiner-target-sizes',
-                    action='store', nargs='*', default=[], type=_type_micro_conditioning_size,
+parser.add_argument('--sdxl-refiner-target-sizes', metavar="SIZE",
+                    action='store', nargs='+', default=[], type=_type_micro_conditioning_size,
                     help="See: --sdxl-refiner-target-sizes, applied to SDXL refiner pass.")
 
-parser.add_argument('--sdxl-refiner-negative-aesthetic-scores',
-                    action='store', nargs='*', default=[], type=float,
+parser.add_argument('--sdxl-refiner-negative-aesthetic-scores', metavar="FLOAT",
+                    action='store', nargs='+', default=[], type=float,
                     help="See: --sdxl-negative-aesthetic-scores, applied to SDXL refiner pass.")
 
-parser.add_argument('--sdxl-refiner-negative-original-sizes',
-                    action='store', nargs='*', default=[], type=_type_micro_conditioning_size,
+parser.add_argument('--sdxl-refiner-negative-original-sizes', metavar="SIZE",
+                    action='store', nargs='+', default=[], type=_type_micro_conditioning_size,
                     help="See: --sdxl-negative-original-sizes, applied to SDXL refiner pass.")
 
-parser.add_argument('--sdxl-refiner-negative-target-sizes',
-                    action='store', nargs='*', default=[], type=_type_micro_conditioning_size,
+parser.add_argument('--sdxl-refiner-negative-target-sizes', metavar="SIZE",
+                    action='store', nargs='+', default=[], type=_type_micro_conditioning_size,
                     help="See: --sdxl-negative-target-sizes, applied to SDXL refiner pass.")
 
-parser.add_argument('--sdxl-refiner-negative-crops-coords-top-left',
-                    action='store', nargs='*', default=[], type=_type_image_coordinate,
+parser.add_argument('--sdxl-refiner-negative-crops-coords-top-left', metavar="COORD",
+                    action='store', nargs='+', default=[], type=_type_image_coordinate,
                     help="See: --sdxl-negative-crops-coords-top-left, applied to SDXL refiner pass.")
 
 
@@ -470,7 +476,8 @@ def _type_sdxl_high_noise_fractions(val):
     return val
 
 
-parser.add_argument('-hnf', '--sdxl-high-noise-fractions', action='store', nargs='*', default=None,
+parser.add_argument('-hnf', '--sdxl-high-noise-fractions', action='store', nargs='+', default=None,
+                    metavar="FLOAT",
                     type=_type_sdxl_high_noise_fractions,
                     help="""High noise fraction for Stable Diffusion XL (torch-sdxl), this fraction of inference steps
                          will be processed by the base model, while the rest will be processed by the refiner model.
@@ -524,6 +531,7 @@ def _type_output_size(size):
 
 
 parser.add_argument('-s', '--output-size', action='store', default=None, type=_type_output_size,
+                    metavar="SIZE",
                     help="""Image output size.
                          If an image seed is used it will be resized to this dimension with aspect ratio
                          maintained, width will be fixed and a new height will be calculated. If only one integer
@@ -531,10 +539,11 @@ parser.add_argument('-s', '--output-size', action='store', default=None, type=_t
                          be separated by "x".  (default: 512x512 when no image seeds are specified)""")
 
 parser.add_argument('-o', '--output-path', action='store', default=os.path.join(os.getcwd(), 'output'),
+                    metavar="PATH",
                     help="""Output path for generated images and files.
                          This directory will be created if it does not exist. (default: ./output)""")
 
-parser.add_argument('-op', '--output-prefix', action='store', default=None, type=str,
+parser.add_argument('-op', '--output-prefix', action='store', default=None, type=str, metavar="PREFIX",
                     help="""Name prefix for generated images and files.
                          This prefix will be added to the beginning of every generated file,
                          followed by an underscore.""")
@@ -559,7 +568,7 @@ parser.add_argument('-om', '--output-metadata', action='store_true', default=Fal
                             PNG metadata property named DgenerateConfig and can be read using ImageMagick like so: 
                             "magick identify -format "%%[Property:DgenerateConfig] generated_file.png".""")
 
-parser.add_argument('-p', '--prompts', nargs='+', action='store',
+parser.add_argument('-p', '--prompts', nargs='+', action='store', metavar="PROMPT",
                     default=[{'prompt': ''}],
                     type=_type_prompts,
                     help="""List of prompts to try, an image group is generated for each prompt,
@@ -571,13 +580,13 @@ parser.add_argument('-p', '--prompts', nargs='+', action='store',
 
 seed_options = parser.add_mutually_exclusive_group()
 
-seed_options.add_argument('-se', '--seeds', nargs='+', action='store', default=None,
+seed_options.add_argument('-se', '--seeds', nargs='+', action='store', default=None, metavar="SEED",
                           type=int,
                           help="""List of seeds to try, define fixed seeds to achieve deterministic output.
                                This argument may not be used when --gse/--gen-seeds is used.
                                (default: [randint(0, 99999999999999)])""")
 
-seed_options.add_argument('-gse', '--gen-seeds', action='store', default=None, type=int,
+seed_options.add_argument('-gse', '--gen-seeds', action='store', default=None, type=int, metavar="COUNT",
                           help="""Auto generate N random seeds to try. This argument may not
                                be used when -se/--seeds is used.""")
 
@@ -591,6 +600,7 @@ def _type_animation_format(val):
 
 
 parser.add_argument('-af', '--animation-format', action='store', default='mp4', type=_type_animation_format,
+                    metavar="FORMAT",
                     help=f"""Output format when generating an animation from an input video / gif / webp etc.
                          Value must be one of: {oxford_comma(supported_animation_writer_formats(), "or")}.
                          (default: mp4)""")
@@ -607,7 +617,7 @@ def _type_frame_start(val):
     return val
 
 
-parser.add_argument('-fs', '--frame-start', action='store', default=0, type=_type_frame_start,
+parser.add_argument('-fs', '--frame-start', action='store', default=0, type=_type_frame_start, metavar="FRAME_NUMBER",
                     help='Starting frame slice point for animated files, the specified frame will be included.')
 
 
@@ -622,12 +632,12 @@ def _type_frame_end(val):
     return val
 
 
-parser.add_argument('-fe', '--frame-end', action='store', default=None, type=_type_frame_end,
+parser.add_argument('-fe', '--frame-end', action='store', default=None, type=_type_frame_end, metavar="FRAME_NUMBER",
                     help='Ending frame slice point for animated files, the specified frame will be included.')
 
 image_seed_args = parser.add_mutually_exclusive_group()
 
-image_seed_args.add_argument('-is', '--image-seeds', action='store', nargs='*', default=[],
+image_seed_args.add_argument('-is', '--image-seeds', action='store', nargs='+', default=[], metavar="SEED",
                              help="""List of image seeds to try when processing image seeds, these may
                          be URLs or file paths. Videos / GIFs / WEBP files will result in frames
                          being rendered as well as an animated output file being generated if more
@@ -646,9 +656,32 @@ image_seed_args.add_argument('-ci', '--control-images', nargs='+', action='store
 
 image_seed_noise_opts = parser.add_mutually_exclusive_group()
 
-parser.add_argument('--seed-image-preprocessors', action='store', nargs='+', default=None)
-parser.add_argument('--mask-image-preprocessors', action='store', nargs='+', default=None)
-parser.add_argument('--control-image-preprocessors', action='store', nargs='+', default=None)
+parser.add_argument('--seed-image-preprocessors', action='store', nargs='+', default=None, metavar="PREPROCESSOR",
+                    help="""Specify one or more image preprocessor actions to preform on the primary
+                    image specified by --image-seeds. For example: --seed-image-preprocessors "flip" "mirror" "grayscale".
+                    To obtain more information about what image preprocessors are available and how to use them, 
+                    see: --image-preprocessor-help.
+                    """)
+
+parser.add_argument('--mask-image-preprocessors', action='store', nargs='+', default=None, metavar="PREPROCESSOR",
+                    help="""Specify one or more image preprocessor actions to preform on the inpaint mask
+                    image specified by --image-seeds. For example: --mask-image-preprocessors "invert".
+                    To obtain more information about what image preprocessors are available and how to use them, 
+                    see: --image-preprocessor-help.
+                    """)
+
+parser.add_argument('--control-image-preprocessors', action='store', nargs='+', default=None, metavar="PREPROCESSOR",
+                    help="""Specify one or more image preprocessor actions to preform on the control
+                    image specified by --image-seeds or --control-images. For example: 
+                    --control-image-preprocessors "canny;lower=50;upper=100". This option is ment to be used 
+                    in combination with --control-nets. To obtain more information about what image 
+                    preprocessors are available and how to use them, see: --image-preprocessor-help.
+                    """)
+
+parser.add_argument('--image-preprocessor-help', action='store', nargs='*', default=None, metavar="PREPROCESSOR",
+                    help="""Use this option alone with no model specification in order to 
+                    list available image preprocessor module names. Specifying one or more module names
+                    after this option will cause usage documentation for the specified modules to be printed.""")
 
 
 def _type_image_seed_strengths(val):
@@ -662,7 +695,8 @@ def _type_image_seed_strengths(val):
     return val
 
 
-image_seed_noise_opts.add_argument('-iss', '--image-seed-strengths', action='store', nargs='*', default=None,
+image_seed_noise_opts.add_argument('-iss', '--image-seed-strengths', action='store', nargs='+', default=None,
+                                   metavar="FLOAT",
                                    type=_type_image_seed_strengths,
                                    help=f"""List of image seed strengths to try. Closer to 0 means high usage of the seed image
                          (less noise convolution), 1 effectively means no usage (high noise convolution).
@@ -682,7 +716,8 @@ def _type_upscaler_noise_levels(val):
     return val
 
 
-image_seed_noise_opts.add_argument('-uns', '--upscaler-noise-levels', action='store', nargs='*', default=None,
+image_seed_noise_opts.add_argument('-uns', '--upscaler-noise-levels', action='store', nargs='+', default=None,
+                                   metavar="INTEGER",
                                    type=_type_upscaler_noise_levels,
                                    help=f"""
                     List of upscaler noise levels to try when using the super resolution upscaler 
@@ -702,7 +737,9 @@ def _type_guidance_scale(val):
     return val
 
 
-parser.add_argument('-gs', '--guidance-scales', action='store', nargs='*', default=[5], type=_type_guidance_scale,
+parser.add_argument('-gs', '--guidance-scales', action='store', nargs='+', default=[5],
+                    metavar="FLOAT",
+                    type=_type_guidance_scale,
                     help="""List of guidance scales to try. Guidance scale effects how much your
                          text prompt is considered. Low values draw more data from images unrelated
                          to text prompt. (default: [5])""")
@@ -719,7 +756,8 @@ def _type_image_guidance_scale(val):
     return val
 
 
-parser.add_argument('-igs', '--image-guidance-scales', action='store', nargs='*', default=None,
+parser.add_argument('-igs', '--image-guidance-scales', action='store', nargs='+', default=None,
+                    metavar="FLOAT",
                     type=_type_image_guidance_scale,
                     help="""Push the generated image towards the inital image when using --model-type *-pix2pix models.
                             Use in conjunction with --image-seeds, inpainting (masks) and --control-nets are not supported.
@@ -727,7 +765,9 @@ parser.add_argument('-igs', '--image-guidance-scales', action='store', nargs='*'
                             encourages generated images that are closely linked to the source image, usually at the expense
                             of lower image quality. Requires a value of at least 1. (default: [1.5])""")
 
-parser.add_argument('-grs', '--guidance-rescales', action='store', nargs='*', default=[], type=_type_guidance_scale,
+parser.add_argument('-grs', '--guidance-rescales', action='store', nargs='+', default=[],
+                    metavar="FLOAT",
+                    type=_type_guidance_scale,
                     help="""List of guidance rescale factors to try. Proposed by [Common Diffusion Noise Schedules and 
                             Sample Steps are Flawed](https://arxiv.org/pdf/2305.08891.pdf) "guidance_scale" is defined 
                             as "φ" in equation 16. of [Common Diffusion Noise Schedules and Sample Steps are Flawed]
@@ -746,7 +786,8 @@ def _type_inference_steps(val):
     return val
 
 
-parser.add_argument('-ifs', '--inference-steps', action='store', nargs='*', default=[30], type=_type_inference_steps,
+parser.add_argument('-ifs', '--inference-steps', action='store', nargs='+', default=[30], type=_type_inference_steps,
+                    metavar="INTEGER",
                     help="""Lists of inference steps values to try. The amount of inference (de-noising) steps
                          effects image clarity to a degree, higher values bring the image closer to what
                          the AI is targeting for the content of the image. Values between 30-40
@@ -773,25 +814,25 @@ def parse_args(args=None, namespace=None):
 
     if args.control_nets is not None and model_type_is_flax(args.model_type) and \
             (args.image_seeds or args.image_seed_strengths):
-        messages.log('Error: --image-seeds/--image-seed-strengths are incompatible with '
+        messages.log('dgenerate: error: arguments --image-seeds/--image-seed-strengths are incompatible with '
                      '--model-type "flax" + --control-nets, use --control-images instead.',
                      level=messages.ERROR)
         sys.exit(1)
 
     if not args.image_seeds and args.image_seed_strengths:
-        messages.log('Error: You cannot specify --image-seed-strengths without --image-seeds.',
+        messages.log('dgenerate: error: You cannot specify --image-seed-strengths without --image-seeds.',
                      level=messages.ERROR)
         sys.exit(1)
 
     if args.control_nets is None and args.control_images:
-        messages.log('Error: You cannot specify --control-images without --control-nets.',
+        messages.log('dgenerate: error: You cannot specify --control-images without --control-nets.',
                      level=messages.ERROR)
         sys.exit(1)
 
     if not model_type_is_upscaler(args.model_type):
         if args.upscaler_noise_levels:
             messages.log(
-                'Error: You cannot specify --upscaler-noise-levels for a '
+                'dgenerate: error: You cannot specify --upscaler-noise-levels for a '
                 'non upscaler model type, see --model-type.',
                 level=messages.ERROR)
             sys.exit(1)
@@ -801,12 +842,14 @@ def parse_args(args=None, namespace=None):
     if not model_type_is_pix2pix(args.model_type):
         if args.image_guidance_scales:
             messages.log(
-                'Error: --image-guidance-scales only valid with pix2pix models, see --model-type.',
+                'dgenerate: error: argument --image-guidance-scales only valid with '
+                'pix2pix models, see --model-type.',
                 level=messages.ERROR)
             sys.exit(1)
     elif args.control_images or args.control_nets:
         messages.log(
-            'Error: --control-nets/--control-images are not compatible with pix2pix models, see --model-type.',
+            'dgenerate: error: arguments --control-nets/--control-images '
+            'are not compatible with pix2pix models, see --model-type.',
             level=messages.ERROR)
         sys.exit(1)
     elif not args.image_guidance_scales:
@@ -814,14 +857,14 @@ def parse_args(args=None, namespace=None):
 
     if args.control_image_preprocessors:
         if not args.image_seeds and not args.control_images:
-            messages.log(f'Error: You cannot specify --control-image-preprocessors '
+            messages.log(f'dgenerate: error: You cannot specify --control-image-preprocessors '
                          f'without --image-seeds, or alternatively --control-images.')
             sys.exit(1)
 
     if not args.image_seeds and not args.control_images:
         invalid_arg = False
         for preprocessor_args in args_that_end_with('preprocessors'):
-            messages.log(f'Error: You cannot specify --{preprocessor_args.replace("_", "-")} '
+            messages.log(f'dgenerate: error: You cannot specify --{preprocessor_args.replace("_", "-")} '
                          f'without --image-seeds.',
                          level=messages.ERROR)
             invalid_arg = True
@@ -832,7 +875,7 @@ def parse_args(args=None, namespace=None):
     if not model_type_is_sdxl(args.model_type):
         invalid_arg = False
         for sdxl_args in args_that_start_with('sdxl'):
-            messages.log(f'Error: You cannot specify --{sdxl_args.replace("_", "-")} '
+            messages.log(f'dgenerate: error: You cannot specify --{sdxl_args.replace("_", "-")} '
                          f'for a non SDXL model type, see --model-type.',
                          level=messages.ERROR)
             invalid_arg = True
@@ -845,7 +888,7 @@ def parse_args(args=None, namespace=None):
         if not args.sdxl_refiner:
             invalid_arg = False
             for sdxl_args in args_that_start_with('sdxl_refiner'):
-                messages.log(f'Error: You cannot specify --{sdxl_args.replace("_", "-")} '
+                messages.log(f'dgenerate: error: You cannot specify --{sdxl_args.replace("_", "-")} '
                              f'without --sdxl-refiner.',
                              level=messages.ERROR)
                 invalid_arg = True
@@ -859,9 +902,22 @@ def parse_args(args=None, namespace=None):
     if not model_type_is_torch(args.model_type):
         if args.vae_tiling or args.vae_slicing:
             messages.log(
-                'Error: --vae-tiling/--vae-slicing not supported for '
+                'dgenerate: error: argument --vae-tiling/--vae-slicing not supported for '
                 'non torch model type, see --model-type.', level=messages.ERROR)
             sys.exit(1)
+
+    if args.scheduler == 'help' and args.sdxl_refiner_scheduler == 'help':
+        messages.log(
+            'dgenerate: error: Cannot list compatible schedulers for the main model and the SDXL refiner at '
+            'the same time. Do not use the scheduler "help" option for --scheduler '
+            'and --sdxl-refiner-scheduler simultaneously.', level=messages.ERROR)
+        sys.exit(1)
+
+    if args.image_preprocessor_help is not None:
+        # This argument is actually handled elsewhere before the main args get parsed
+        messages.log(
+            'dgenerate: error: argument --image-preprocessor-help may only be used by itself.', level=messages.ERROR)
+        sys.exit(1)
 
     if args.image_seeds:
         if args.image_seed_strengths is None:

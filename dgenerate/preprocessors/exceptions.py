@@ -21,3 +21,7 @@
 
 class ImagePreprocessorArgumentError(Exception):
     pass
+
+
+class ImagePreprocessorNotFoundError(Exception):
+    pass

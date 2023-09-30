@@ -547,7 +547,7 @@ def _load_flax_vae(path,
     return vae
 
 
-def _load_scheduler(pipeline, scheduler_name=None):
+def _load_scheduler(pipeline, model_path, scheduler_name=None):
     if scheduler_name is None:
         return
 
@@ -557,10 +557,10 @@ def _load_scheduler(pipeline, scheduler_name=None):
         # Seems to only work with this scheduler
         compatibles = [c for c in compatibles if c.__name__ == 'EulerDiscreteScheduler']
 
-    if scheduler_name.lower() == 'help':
-        messages.log('Compatible schedulers for this model are:', underline=True)
+    if _scheduler_is_help(scheduler_name):
+        messages.log(f'Compatible schedulers for "{model_path}" are:\n')
         for i in compatibles:
-            messages.log(i.__name__)
+            messages.log((" "*4)+quote(i.__name__))
         raise SchedulerHelpException()
 
     for i in compatibles:
@@ -568,8 +568,9 @@ def _load_scheduler(pipeline, scheduler_name=None):
             pipeline.scheduler = i.from_config(pipeline.scheduler.config)
             return
 
-    raise InvalidSchedulerName(f'Scheduler named "{scheduler_name}" is not a valid compatible scheduler, '
-                               f'options are:\n\n{chr(10).join(sorted(i.__name__.split(".")[-1] for i in compatibles))}')
+    raise InvalidSchedulerName(
+        f'Scheduler named "{scheduler_name}" is not a valid compatible scheduler, '
+        f'options are:\n\n{chr(10).join(sorted(" "*4+quote(i.__name__.split(".")[-1]) for i in compatibles))}')
 
 
 def clear_model_cache():
@@ -601,6 +602,12 @@ def _describe_pipeline_type(enum):
 
 def _args_except(args, *exceptions):
     return {k: v for k, v in args.items() if k not in exceptions}
+
+
+def _scheduler_is_help(name):
+    if name is None:
+        return False
+    return name.strip().lower() == 'help'
 
 
 def _set_vae_slicing_tiling(pipeline, vae_tiling, vae_slicing):
@@ -680,7 +687,7 @@ def _create_torch_diffusion_pipeline(pipeline_type,
     # Pipeline class selection
 
     if model_type_is_upscaler(model_type):
-        if pipeline_type != _PipelineTypes.IMG2IMG and scheduler.lower() != 'help':
+        if pipeline_type != _PipelineTypes.IMG2IMG and not _scheduler_is_help(scheduler):
             raise NotImplementedError(
                 'Upscaler models only work with img2img generation, IE: --image-seeds (with no image masks).')
 
@@ -762,7 +769,7 @@ def _create_torch_diffusion_pipeline(pipeline_type,
 
     parsed_control_net_paths = []
 
-    if scheduler is None or scheduler.lower() != 'help':
+    if scheduler is None or not _scheduler_is_help(scheduler):
         # prevent waiting on this stuff just get the scheduler
         # help message for the main model
 
@@ -828,7 +835,9 @@ def _create_torch_diffusion_pipeline(pipeline_type,
 
     # Select Scheduler
 
-    _load_scheduler(pipeline, scheduler)
+    _load_scheduler(pipeline=pipeline,
+                    model_path=model_path,
+                    scheduler_name=scheduler)
 
     # Textual Inversions and LoRAs
 
@@ -906,7 +915,7 @@ def _create_flax_diffusion_pipeline(pipeline_type,
 
     parsed_control_net_paths = []
 
-    if scheduler is None or scheduler.lower() != 'help':
+    if scheduler is None or not _scheduler_is_help(scheduler):
         # prevent waiting on this stuff just get the scheduler
         # help message for the main model
 
@@ -950,7 +959,9 @@ def _create_flax_diffusion_pipeline(pipeline_type,
     if control_net_params is not None:
         params['controlnet'] = control_net_params
 
-    _load_scheduler(pipeline, scheduler)
+    _load_scheduler(pipeline=pipeline,
+                    model_path=model_path,
+                    scheduler_name=scheduler)
 
     if not safety_checker:
         pipeline.safety_checker = None
@@ -1159,6 +1170,7 @@ class DiffusionPipelineWrapperBase:
                  control_net_paths=None,
                  sdxl_refiner_path=None,
                  scheduler=None,
+                 sdxl_refiner_scheduler=None,
                  safety_checker=False,
                  auth_token=None):
 
@@ -1177,6 +1189,7 @@ class DiffusionPipelineWrapperBase:
         self._vae_slicing = vae_slicing
         self._safety_checker = safety_checker
         self._scheduler = scheduler
+        self._sdxl_refiner_scheduler = sdxl_refiner_scheduler
         self._lora_paths = lora_paths
         self._lora_scale = None
         self._textual_inversion_paths = textual_inversion_paths
@@ -1275,6 +1288,10 @@ class DiffusionPipelineWrapperBase:
     @property
     def scheduler(self):
         return self._scheduler
+
+    @property
+    def sdxl_refiner_scheduler(self):
+        return self._sdxl_refiner_scheduler
 
     @property
     def sdxl_refiner_path(self):
@@ -1438,6 +1455,10 @@ class DiffusionPipelineWrapperBase:
 
         if self._scheduler is not None:
             opts.append(('--scheduler', self._scheduler))
+
+        if self._sdxl_refiner_scheduler is not None:
+            if self._sdxl_refiner_scheduler != self._scheduler:
+                opts.append(('--sdxl-refiner-scheduler', self._sdxl_refiner_scheduler))
 
         if sdxl_high_noise_fraction is not None:
             opts.append(('--sdxl-high-noise-fractions', sdxl_high_noise_fraction))
@@ -1954,23 +1975,33 @@ class DiffusionPipelineWrapperBase:
             if not model_type_is_sdxl(self._model_type):
                 raise NotImplementedError('Only Stable Diffusion XL models support refiners, '
                                           'please use --model-type torch-sdxl if you are trying to load an sdxl model.')
-            self._pipeline, self._parsed_control_net_paths = \
-                _create_torch_diffusion_pipeline(pipeline_type,
-                                                 self._model_type,
-                                                 self._model_path,
-                                                 model_subfolder=self._model_subfolder,
-                                                 revision=self._revision,
-                                                 variant=self._variant,
-                                                 dtype=self._dtype,
-                                                 vae_path=self._vae_path,
-                                                 lora_paths=self._lora_paths,
-                                                 control_net_paths=self._control_net_paths,
-                                                 scheduler=self._scheduler,
-                                                 safety_checker=self._safety_checker,
-                                                 auth_token=self._auth_token,
-                                                 device=self._device)
+
+            if not _scheduler_is_help(self._sdxl_refiner_scheduler):
+                # Don't load this up if were just going to be getting
+                # information about compatible schedulers for the refiner
+                self._pipeline, self._parsed_control_net_paths = \
+                    _create_torch_diffusion_pipeline(pipeline_type,
+                                                     self._model_type,
+                                                     self._model_path,
+                                                     model_subfolder=self._model_subfolder,
+                                                     revision=self._revision,
+                                                     variant=self._variant,
+                                                     dtype=self._dtype,
+                                                     vae_path=self._vae_path,
+                                                     lora_paths=self._lora_paths,
+                                                     control_net_paths=self._control_net_paths,
+                                                     scheduler=self._scheduler,
+                                                     safety_checker=self._safety_checker,
+                                                     auth_token=self._auth_token,
+                                                     device=self._device)
 
             refiner_pipeline_type = _PipelineTypes.IMG2IMG if pipeline_type is _PipelineTypes.BASIC else pipeline_type
+
+            if self._pipeline is not None:
+                refiner_extra_args = {'vae': self._pipeline.vae,
+                                      'text_encoder_2': self._pipeline.text_encoder_2}
+            else:
+                refiner_extra_args = None
 
             self._sdxl_refiner_pipeline, discarded = \
                 _create_torch_diffusion_pipeline(refiner_pipeline_type,
@@ -1985,12 +2016,12 @@ class DiffusionPipelineWrapperBase:
                                                  dtype=self._sdxl_refiner_dtype if
                                                  self._sdxl_refiner_dtype is not None else self._dtype,
 
-                                                 scheduler=self._scheduler,
+                                                 scheduler=self._scheduler if
+                                                 self._sdxl_refiner_scheduler is None else self._sdxl_refiner_scheduler,
+
                                                  safety_checker=self._safety_checker,
                                                  auth_token=self._auth_token,
-                                                 extra_args={'vae': self._pipeline.vae,
-                                                             'text_encoder_2': self._pipeline.text_encoder_2})
-
+                                                 extra_args=refiner_extra_args)
         else:
             offload = self._control_net_paths and self._model_type == ModelTypes.TORCH_SDXL
 
@@ -2053,6 +2084,7 @@ class DiffusionPipelineWrapper(DiffusionPipelineWrapperBase):
                  control_net_paths=None,
                  sdxl_refiner_path=None,
                  scheduler=None,
+                 sdxl_refiner_scheduler=None,
                  safety_checker=False,
                  auth_token=None):
         super().__init__(
@@ -2071,6 +2103,7 @@ class DiffusionPipelineWrapper(DiffusionPipelineWrapperBase):
             control_net_paths,
             sdxl_refiner_path,
             scheduler,
+            sdxl_refiner_scheduler,
             safety_checker,
             auth_token)
 
@@ -2097,6 +2130,7 @@ class DiffusionPipelineImg2ImgWrapper(DiffusionPipelineWrapperBase):
                  control_net_paths=None,
                  sdxl_refiner_path=None,
                  scheduler=None,
+                 sdxl_refiner_scheduler=None,
                  safety_checker=False,
                  auth_token=None):
 
@@ -2116,6 +2150,7 @@ class DiffusionPipelineImg2ImgWrapper(DiffusionPipelineWrapperBase):
             control_net_paths,
             sdxl_refiner_path,
             scheduler,
+            sdxl_refiner_scheduler,
             safety_checker,
             auth_token)
 

@@ -56,7 +56,7 @@ class ImagePreprocessorChain(ImagePreprocessor):
         if self._preprocessors:
             p_image = image
             for preprocessor in self._preprocessors:
-                new_img = preprocessor.call_pre_resize(p_image, resize_resolution)
+                new_img = ImagePreprocessor.call_pre_resize(preprocessor, p_image, resize_resolution)
                 if new_img is not p_image:
                     p_image.close()
                 p_image = new_img
@@ -64,11 +64,11 @@ class ImagePreprocessorChain(ImagePreprocessor):
         else:
             return image
 
-    def post_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
+    def post_resize(self, image: PIL.Image):
         if self._preprocessors:
             p_image = image
             for preprocessor in self._preprocessors:
-                new_img = preprocessor.call_post_resize(p_image, resize_resolution)
+                new_img = ImagePreprocessor.call_post_resize(preprocessor, p_image)
                 if new_img is not p_image:
                     p_image.close()
                 p_image = new_img
