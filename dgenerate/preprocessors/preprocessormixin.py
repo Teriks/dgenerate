@@ -20,7 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 from . import ImagePreprocessor
 from .. import messages
-from ..image import resize_image
+from ..image import resize_image, resize_image_calc
 
 
 class ImagePreprocessorMixin:
@@ -54,7 +54,9 @@ class ImagePreprocessorMixin:
 
     def preprocess_image(self, image, resize_to):
 
-        pre_processed = self._preprocess_pre_resize(image, resize_to)
+        pre_processed = self._preprocess_pre_resize(image,
+                                                    resize_image_calc(old_size=image.size,
+                                                                      new_size=resize_to))
 
         if pre_processed is not image:
             image.close()
