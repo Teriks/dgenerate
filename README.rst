@@ -42,6 +42,7 @@ This software requires an Nvidia GPU supporting CUDA 11.8+, CPU rendering is pos
     * `Specifying Control Nets </#specifying-control-nets>`_
     * `Image Preprocessors </#image-preprocessors>`_
     * `Batch Processing From STDIN </#batch-processing-from-stdin>`_
+    * `Batch Processing Argument Injection </#batch-processing-argument-injection>`_
 
 dgenerate help output
 ---------------------
@@ -1992,6 +1993,39 @@ On Windows Powershell:
 .. code-block:: powershell
 
     Get-Content my-arguments.txt | dgenerate
+
+
+
+Batch Processing Argument Injection
+-----------------------------------
+
+
+You can inject arguments into every generation call of a batch processing
+configuration by simply specifying them. The arguments will be inserted
+after the main model specification of every call.
+
+.. code-block:: bash
+
+    # Pipe
+    cat my-animations-config.txt | dgenerate --frame-start 0 --frame-end 10
+
+    # Redirection
+    dgenerate --frame-start 0 --frame-end 10 < my-animations-config.txt
+
+
+On Windows CMD:
+
+.. code-block:: bash
+
+    dgenerate  --frame-start 0 --frame-end 10 < my-animations-config.txt
+
+
+On Windows Powershell:
+
+.. code-block:: powershell
+
+    Get-Content my-animations-config.txt | dgenerate --frame-start 0 --frame-end 10
+
 
 
 
