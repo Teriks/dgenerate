@@ -1111,7 +1111,7 @@ Specifying a Scheduler (sampler)
 
 A scheduler (otherwise known as a sampler) for the main model can be selected via the use of ``--scheduler``.
 
-And in the case of SDXL the refiner scheduler can also be selected independently with ``--sdxl-refiner-scheduler``.
+And in the case of SDXL the refiner's scheduler can be selected independently with ``--sdxl-refiner-scheduler``.
 
 The refiner scheduler defaults to the value of ``--scheduler``, which in turn defaults to automatic selection.
 
