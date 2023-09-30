@@ -1117,7 +1117,7 @@ The refiner scheduler defaults to the value of ``--scheduler``, which in turn de
 
 
 Available schedulers for a specific combination of dgenerate arguments can be
-queryied using ``--scheduler help``, or ``--sdxl-refiner-scheduler help``, though both cannot
+queried using ``--scheduler help``, or ``--sdxl-refiner-scheduler help``, though both cannot
 be queried simultaneously.
 
 In order to use the query feature it is ideal that you provide all the other arguments
