@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import inspect
 import os
 import typing
 from pathlib import Path
@@ -27,64 +28,112 @@ import PIL.Image
 from .exceptions import ImagePreprocessorArgumentError
 
 
-def names_from_class(cls):
-    if not issubclass(cls, ImagePreprocessor):
-        raise ValueError(
-            'provided class is not a subclass of dgenerate.preprocessors.ImagePreprocessor')
-
-    if hasattr(cls, 'NAMES'):
-        if isinstance(cls.NAMES, str):
-            return [cls.NAMES]
-        else:
-            return cls.NAMES
-    else:
-        return [cls.__name__]
-
-
 class ImagePreprocessor:
     @staticmethod
-    def get_int_arg(name, value):
+    def get_names(cls):
+        if not issubclass(cls, ImagePreprocessor):
+            raise ValueError(
+                'provided class is not a subclass of dgenerate.preprocessors.ImagePreprocessor')
+
+        if hasattr(cls, 'NAMES'):
+            if isinstance(cls.NAMES, str):
+                return [cls.NAMES]
+            else:
+                return cls.NAMES
+        else:
+            return [cls.__name__]
+
+    @staticmethod
+    def get_help(cls, called_by_name):
+        if hasattr(cls, 'help'):
+            return cls.help(called_by_name)
+
+        if cls.__doc__:
+            return ' '.join(line.strip() for line in cls.__doc__.split())
+        return None
+
+    @staticmethod
+    def get_accepted_args(cls, called_by_name):
+        return [a[0] for a in
+                ImagePreprocessor.get_accepted_args_with_defaults(cls, called_by_name)]
+
+    @staticmethod
+    def get_accepted_args_with_defaults(cls, called_by_name):
+        if hasattr(cls, 'ARGS'):
+            if isinstance(cls.ARGS, dict):
+                if called_by_name not in cls.ARGS:
+                    raise RuntimeError(
+                        'ImagePreprocessor module implementation bug, args for '
+                        f'"{called_by_name}" not specified in ARGS dictionary.')
+                args_with_defaults = cls.ARGS.get(called_by_name)
+                return [] if args_with_defaults is None else args_with_defaults
+            return [] if cls.ARGS is None else cls.ARGS
+
+        args_with_defaults = []
+
+        spec = inspect.getfullargspec(cls.__init__)
+        sig_args = spec.args[1:]
+        defaults_cnt = len(spec.defaults) if spec.defaults else 0
+        no_defaults_before = len(sig_args) - defaults_cnt
+        for idx, arg in enumerate(sig_args):
+            if idx < no_defaults_before:
+                args_with_defaults.append(arg.replace('_', '-'), )
+            else:
+                args_with_defaults.append((arg.replace('_', '-'),
+                             spec.defaults[idx - defaults_cnt]))
+
+        return args_with_defaults
+    
+    def get_int_arg(self, name, value):
         try:
             return int(value)
         except ValueError:
             raise ImagePreprocessorArgumentError(f'Argument "{name}" must be an integer value.')
 
-    @staticmethod
-    def get_float_arg(name, value):
+    def get_float_arg(self, name, value):
         try:
             return float(value)
         except ValueError:
             raise ImagePreprocessorArgumentError(f'Argument "{name}" must be a floating point value.')
 
-    @staticmethod
-    def get_bool_arg(name, value):
+    def get_bool_arg(self, name, value):
         try:
             return bool(value)
         except ValueError:
             raise ImagePreprocessorArgumentError(f'Argument "{name}" must be a boolean value.')
 
-    @staticmethod
-    def argument_error(msg):
+    def argument_error(self, msg):
         raise ImagePreprocessorArgumentError(msg)
 
     def __init__(self, **kwargs):
-        self._output_dir = None
-        self._output_file = None
+        output_dir = kwargs.get('output_dir')
+        output_file = kwargs.get('output_file')
+        device = kwargs.get('device', 'cpu')
+        called_by_name = kwargs.get('called_by_name')
 
-    def set_output_dir_or_file(self, output_dir=None, output_file=None):
         if output_dir is not None and output_file is not None:
             raise ImagePreprocessorArgumentError(
-                'output_dir and output_file may not be specified simultaniously')
+                'output_dir and output_file may not be specified simultaneously')
 
-        self._output_dir = output_dir
-        self._output_file = output_file
+        self.__device = device
+        self.__output_dir = output_dir
+        self.__output_file = output_file
+        self.__called_by_name = called_by_name
 
-    def _gen_filename(self):
+    @property
+    def device(self):
+        return self.__device
+
+    @property
+    def called_by_name(self):
+        return self.__called_by_name
+
+    def __gen_filename(self):
         def _make_path(dup_number=None):
-            name = next(iter(names_from_class(self.__class__)))
+            name = next(iter(ImagePreprocessor.get_names(self.__class__)))
             if dup_number is not None:
-                name = next(iter(names_from_class(self.__class__))) + f'_{dup_number}'
-            return os.path.join(self._output_dir, name) + '.png'
+                name = next(iter(ImagePreprocessor.get_names(self.__class__))) + f'_{dup_number}'
+            return os.path.join(self.__output_dir, name) + '.png'
 
         path = _make_path()
 
@@ -96,28 +145,29 @@ class ImagePreprocessor:
             path = _make_path(duplicate_number)
             duplicate_number += 1
 
-
         return path
 
-    def _save_image(self, image):
-        if self._output_dir is not None:
-            Path(self._output_dir).mkdir(parents=True, exist_ok=True)
-            image.save(self._gen_filename())
-        elif self._output_file is not None:
-            image.save(self._output_file)
-
+    def __save_image(self, image):
+        if self.__output_dir is not None:
+            Path(self.__output_dir).mkdir(parents=True, exist_ok=True)
+            image.save(self.__gen_filename())
+        elif self.__output_file is not None:
+            image.save(self.__output_file)
+            
+    @staticmethod
     def call_pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
         img = self.pre_resize(image, resize_resolution)
         if img is not image:
-            self._save_image(img)
+            self.__save_image(img)
             img.filename = image.filename
             return img
         return image
 
-    def call_post_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
-        img = self.post_resize(image, resize_resolution)
+    @staticmethod
+    def call_post_resize(self, image: PIL.Image):
+        img = self.post_resize(image)
         if img is not image:
-            self._save_image(img)
+            self.__save_image(img)
             img.filename = image.filename
             return img
         return image
@@ -125,5 +175,11 @@ class ImagePreprocessor:
     def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
         return image
 
-    def post_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
+    def post_resize(self, image: PIL.Image):
         return image
+
+    def __str__(self):
+        return self.__class__.__name__
+
+    def __repr__(self):
+        return str(self)

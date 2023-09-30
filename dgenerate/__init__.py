@@ -24,7 +24,7 @@ __version__ = '1.1.0'
 import sys
 
 
-def run_diffusion():
+def _run_loop():
     import re
     import os
     import shlex
@@ -44,7 +44,7 @@ def run_diffusion():
         InvalidTextualInversionPathError, InvalidSDXLRefinerPathError, \
         SchedulerHelpException
 
-    from .preprocessors import ImagePreprocessorArgumentError
+    from .preprocessors import ImagePreprocessorArgumentError, ImagePreprocessorNotFoundError, image_preprocessor_help
 
     from .mediainput import ImageSeedParseError, ImageSeedSizeMismatchError
 
@@ -57,7 +57,11 @@ def run_diffusion():
     transformers.logging.set_verbosity(transformers.logging.CRITICAL)
     diffusers.logging.set_verbosity(diffusers.logging.CRITICAL)
 
-    def parse_and_run(with_args=None):
+    def parse_and_run(with_args):
+        if with_args:
+            if with_args[0] == '--image-preprocessor-help':
+                sys.exit(image_preprocessor_help(with_args[1:]))
+
         arguments = parse_args(with_args)
 
         render_loop = DiffusionRenderLoop()
@@ -105,6 +109,7 @@ def run_diffusion():
         render_loop.auth_token = arguments.auth_token
 
         render_loop.sdxl_refiner_path = arguments.sdxl_refiner
+        render_loop.sdxl_refiner_scheduler = arguments.sdxl_refiner_scheduler
         render_loop.sdxl_high_noise_fractions = arguments.sdxl_high_noise_fractions
 
         render_loop.sdxl_aesthetic_scores = arguments.sdxl_aesthetic_scores
@@ -148,6 +153,7 @@ def run_diffusion():
                 InvalidTextualInversionPathError,
                 InvalidSchedulerName,
                 ImagePreprocessorArgumentError,
+                ImagePreprocessorNotFoundError,
                 torch.cuda.OutOfMemoryError,
                 NotImplementedError,
                 EnvironmentError) as e:
@@ -241,12 +247,12 @@ def run_diffusion():
 
             first_line = False
     else:
-        parse_and_run()
+        parse_and_run(sys.argv[1:])
 
 
 def main():
     try:
-        run_diffusion()
+        _run_loop()
     except KeyboardInterrupt:
         print('Aborting due to keyboard interrupt!')
         sys.exit(1)

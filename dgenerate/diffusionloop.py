@@ -504,6 +504,7 @@ class DiffusionRenderLoop:
         self.control_net_paths = None
 
         self.scheduler = None
+        self.sdxl_refiner_scheduler = None
         self.safety_checker = False
         self.model_type = ModelTypes.TORCH
         self.device = 'cuda'
@@ -573,7 +574,12 @@ class DiffusionRenderLoop:
         if not isinstance(self.vae_slicing, bool):
             raise ValueError('DiffusionRenderLoop.vae_slicing must be True or False (bool)')
         if self.scheduler is not None and not isinstance(self.scheduler, str):
-            raise ValueError('DiffusionRenderLoop.scheduler must be a string that names a compatible scheduler class')
+            raise ValueError(
+                'DiffusionRenderLoop.scheduler must be None (auto) or a string that names a compatible scheduler class')
+        if self.sdxl_refiner_scheduler is not None and not isinstance(self.sdxl_refiner_scheduler, str):
+            raise ValueError(
+                'DiffusionRenderLoop.sdxl_refiner_scheduler must be None (auto) '
+                'or a string that names a compatible scheduler class')
         if self.output_path is None:
             raise ValueError('DiffusionRenderLoop.output_path must not be None')
         if self.output_prefix is not None and not isinstance(self.output_prefix, str):
@@ -882,6 +888,7 @@ class DiffusionRenderLoop:
                                                        lora_paths=self.lora_paths,
                                                        textual_inversion_paths=self.textual_inversion_paths,
                                                        scheduler=self.scheduler,
+                                                       sdxl_refiner_scheduler=self.sdxl_refiner_scheduler,
                                                        safety_checker=self.safety_checker,
                                                        sdxl_refiner_path=self.sdxl_refiner_path,
                                                        auth_token=self.auth_token)
@@ -915,6 +922,7 @@ class DiffusionRenderLoop:
                                                    textual_inversion_paths=self.textual_inversion_paths,
                                                    control_net_paths=self.control_net_paths,
                                                    scheduler=self.scheduler,
+                                                   sdxl_refiner_scheduler=self.sdxl_refiner_scheduler,
                                                    safety_checker=self.safety_checker,
                                                    sdxl_refiner_path=self.sdxl_refiner_path,
                                                    auth_token=self.auth_token)
@@ -937,7 +945,7 @@ class DiffusionRenderLoop:
                     self.frame_start,
                     self.frame_end,
                     self.output_size,
-                    preprocessor=preprocessors.load(self.control_image_preprocessors))
+                    preprocessor=preprocessors.load(self.control_image_preprocessors, self.device))
 
             if control_image_info.is_animation:
                 def get_extra_args(ci_obj: ImageSeed):
@@ -1006,9 +1014,9 @@ class DiffusionRenderLoop:
                     self.frame_start,
                     self.frame_end,
                     self.output_size,
-                    seed_image_preprocessor=preprocessors.load(self.seed_image_preprocessors),
-                    mask_image_preprocessor=preprocessors.load(self.mask_image_preprocessors),
-                    control_image_preprocessor=preprocessors.load(self.control_image_preprocessors))
+                    seed_image_preprocessor=preprocessors.load(self.seed_image_preprocessors, self.device),
+                    mask_image_preprocessor=preprocessors.load(self.mask_image_preprocessors, self.device),
+                    control_image_preprocessor=preprocessors.load(self.control_image_preprocessors, self.device))
 
             if seed_info.is_animation:
                 def get_extra_args(ims_obj: ImageSeed):

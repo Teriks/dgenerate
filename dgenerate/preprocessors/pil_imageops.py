@@ -26,127 +26,102 @@ import PIL.ImageOps
 from .preprocessor import ImagePreprocessor
 
 
-class FlipPreprocess(ImagePreprocessor):
-    NAMES = ['flip']
+class MirrorFlipPreprocess(ImagePreprocessor):
+    NAMES = ['mirror', 'flip']
+
+    @staticmethod
+    def help(called_by_name):
+        if called_by_name == 'mirror':
+            return 'Mirror the input image horizontally.'
+        if called_by_name == 'flip':
+            return 'Flip the input image vertically.'
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def __str__(self):
-        return self.__class__.__name__
+        if self.called_by_name == 'flip':
+            self._func = PIL.ImageOps.flip
+        elif self.called_by_name == 'mirror':
+            self._func = PIL.ImageOps.mirror
 
-    def __repr__(self):
-        return str(self)
+    def __str__(self):
+        return f'{self.__class__.__name__}(function="{self.called_by_name}")'
 
     def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
-        return PIL.ImageOps.flip(image)
+        return self._func(image)
 
-    def post_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
+    def post_resize(self, image: PIL.Image):
         return image
 
 
-class MirrorPreprocess(ImagePreprocessor):
-    NAMES = ['mirror']
+class SimpleColorPreprocess(ImagePreprocessor):
+    NAMES = ['grayscale', 'invert']
+
+    @staticmethod
+    def help(called_by_name):
+        if called_by_name == 'grayscale':
+            return 'Convert the input image to grayscale.'
+        if called_by_name == 'invert':
+            return 'Invert the colors of the input image.'
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        if self.called_by_name == 'grayscale':
+            self._func = PIL.ImageOps.grayscale
+        elif self.called_by_name == 'invert':
+            self._func = PIL.ImageOps.invert
 
     def __str__(self):
-        return self.__class__.__name__
-
-    def __repr__(self):
-        return str(self)
-
-    def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
-        return PIL.ImageOps.mirror(image)
-
-    def post_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
-        return image
-
-
-class GrayscalePreprocess(ImagePreprocessor):
-    NAMES = ['grayscale']
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-    def __str__(self):
-        return self.__class__.__name__
-
-    def __repr__(self):
-        return str(self)
+        return f'{self.__class__.__name__}(function="{self.called_by_name}")'
 
     def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
         return image
 
-    def post_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
-        return PIL.ImageOps.grayscale(image)
-
-
-class InvertPreprocess(ImagePreprocessor):
-    NAMES = ['invert']
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-    def __str__(self):
-        return self.__class__.__name__
-
-    def __repr__(self):
-        return str(self)
-
-    def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
-        return image
-
-    def post_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
-        return PIL.ImageOps.invert(image)
+    def post_resize(self, image: PIL.Image):
+        return self._func(image)
 
 
 class PosterizePreprocess(ImagePreprocessor):
+    """
+    Posterize the input image with PIL.ImageOps.posterize
+    """
+
     NAMES = ['posterize']
 
     def __init__(self, bits, **kwargs):
         super().__init__(**kwargs)
 
-        self._bits = ImagePreprocessor.get_int_arg('bits', bits)
+        self._bits = self.get_int_arg('bits', bits)
 
         if self._bits < 1 or self._bits > 8:
-            ImagePreprocessor.argument_error(
+            self.argument_error(
                 f'Argument "bits" must be an integer value between 1 and 8, received {self._bits}.')
-
-    def __str__(self):
-        return self.__class__.__name__
-
-    def __repr__(self):
-        return str(self)
 
     def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
         return PIL.ImageOps.posterize(image, self._bits)
 
-    def post_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
+    def post_resize(self, image: PIL.Image):
         return image
 
 
 class SolarizePreprocess(ImagePreprocessor):
+    """
+    Solarize the input image with PIL.ImageOps.solarize
+    """
+
     NAMES = ['solarize']
 
     def __init__(self, threshold=128, **kwargs):
         super().__init__(**kwargs)
 
-        self._threshold = ImagePreprocessor.get_int_arg('threshold', threshold)
+        self._threshold = self.get_int_arg('threshold', threshold)
 
         if self._threshold < 0 or self._threshold > 255:
-            ImagePreprocessor.argument_error(
+            self.argument_error(
                 f'Argument "threshold" must be an integer value between 0 and 255, received {self._threshold}.')
-
-    def __str__(self):
-        return self.__class__.__name__
-
-    def __repr__(self):
-        return str(self)
 
     def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
         return PIL.ImageOps.solarize(image, self._threshold)
 
-    def post_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
+    def post_resize(self, image: PIL.Image):
         return image

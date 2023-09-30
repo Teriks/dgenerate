@@ -33,360 +33,469 @@ This software requires an Nvidia GPU supporting CUDA 11.8+, CPU rendering is pos
     * `Animation Slicing </#animation-slicing>`_
     * `Inpainting Animations </#inpainting-animations>`_
     * `Deterministic Output </#deterministic-output>`_
+    * `Specifying a specific GPU for CUDA </#specifying-a-specific-gpu-for-cuda>`_
+    * `Specifying a Scheduler (sampler) </#specifying-a-scheduler-sampler>`_
     * `Specifying a VAE </#specifying-a-vae>`_
     * `VAE Tiling and Slicing </#vae-tiling-and-slicing>`_
     * `Specifying a LoRA Finetune </#specifying-a-lora-finetune>`_
     * `Specifying Textual Inversions </#specifying-textual-inversions>`_
     * `Specifying Control Nets </#specifying-control-nets>`_
+    * `Image Preprocessors </#image-preprocessors>`_
     * `Batch Processing From STDIN </#batch-processing-from-stdin>`_
-    * `Choosing a specific GPU for CUDA </#choosing-a-specific-gpu-for-cuda>`_
 
 dgenerate help output
 ---------------------
 
 .. code-block::
 
-    usage: dgenerate [-h] [--model-type MODEL_TYPE] [--revision REVISION] [--variant VARIANT] [--subfolder SUBFOLDER]
-                     [--auth-token AUTH_TOKEN] [--vae VAE] [--lora LORA]
-                     [--textual-inversions TEXTUAL_INVERSIONS [TEXTUAL_INVERSIONS ...]]
-                     [--control-nets CONTROL_NETS [CONTROL_NETS ...]] [--scheduler SCHEDULER]
-                     [--sdxl-refiner SDXL_REFINER] [--sdxl-aesthetic-scores [SDXL_AESTHETIC_SCORES ...]]
-                     [--sdxl-crops-coords-top-left [SDXL_CROPS_COORDS_TOP_LEFT ...]]
-                     [--sdxl-original-size [SDXL_ORIGINAL_SIZES ...]] [--sdxl-target-size [SDXL_TARGET_SIZES ...]]
-                     [--sdxl-negative-aesthetic-scores [SDXL_NEGATIVE_AESTHETIC_SCORES ...]]
-                     [--sdxl-negative-original-sizes [SDXL_NEGATIVE_ORIGINAL_SIZES ...]]
-                     [--sdxl-negative-target-sizes [SDXL_NEGATIVE_TARGET_SIZES ...]]
-                     [--sdxl-negative-crops-coords-top-left [SDXL_NEGATIVE_CROPS_COORDS_TOP_LEFT ...]]
-                     [--sdxl-refiner-aesthetic-scores [SDXL_REFINER_AESTHETIC_SCORES ...]]
-                     [--sdxl-refiner-crops-coords-top-left [SDXL_REFINER_CROPS_COORDS_TOP_LEFT ...]]
-                     [--sdxl-refiner-original-sizes [SDXL_REFINER_ORIGINAL_SIZES ...]]
-                     [--sdxl-refiner-target-sizes [SDXL_REFINER_TARGET_SIZES ...]]
-                     [--sdxl-refiner-negative-aesthetic-scores [SDXL_REFINER_NEGATIVE_AESTHETIC_SCORES ...]]
-                     [--sdxl-refiner-negative-original-sizes [SDXL_REFINER_NEGATIVE_ORIGINAL_SIZES ...]]
-                     [--sdxl-refiner-negative-target-sizes [SDXL_REFINER_NEGATIVE_TARGET_SIZES ...]]
-                     [--sdxl-refiner-negative-crops-coords-top-left [SDXL_REFINER_NEGATIVE_CROPS_COORDS_TOP_LEFT ...]]
-                     [-hnf [SDXL_HIGH_NOISE_FRACTIONS ...]] [--safety-checker] [--version] [-d DEVICE] [-t DTYPE]
-                     [-s OUTPUT_SIZE] [-o OUTPUT_PATH] [-op OUTPUT_PREFIX] [-ox] [-oc] [-om] [-p PROMPTS [PROMPTS ...]]
-                     [-se SEEDS [SEEDS ...] | -gse GEN_SEEDS] [-af ANIMATION_FORMAT] [-fs FRAME_START] [-fe FRAME_END]
-                     [-is [IMAGE_SEEDS ...] | -ci CONTROL_IMAGES [CONTROL_IMAGES ...]] [-iss [IMAGE_SEED_STRENGTHS ...]
-                     | -uns [UPSCALER_NOISE_LEVELS ...]] [-gs [GUIDANCE_SCALES ...]] [-grs [GUIDANCE_RESCALES ...]]
-                     [-ifs [INFERENCE_STEPS ...]]
+    usage: dgenerate [-h] [-v] [--model-type MODEL_TYPE] [--revision BRANCH] [--variant VARIANT]
+                     [--subfolder SUBFOLDER] [--auth-token TOKEN] [--vae MODEL_PATH] [--vae-tiling], higher
+                     [--vae-slicing] [--lora MODEL_PATH]
+                     [--textual-inversions MODEL_PATH [MODEL_PATH ...]]ontent. (default: [30])
+                     [--control-nets MODEL_PATH [MODEL_PATH ...]] [--scheduler SCHEDULER_NAME]
+                     [--sdxl-refiner MODEL_PATH] [--sdxl-refiner-scheduler SCHEDULER_NAME]
+                     [--sdxl-second-prompts PROMPT [PROMPT ...]]
+                     [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
+                     [--sdxl-crops-coords-top-left COORD [COORD ...]]
+                     [--sdxl-original-size SIZE [SIZE ...]] [--sdxl-target-size SIZE [SIZE ...]]
+                     [--sdxl-negative-aesthetic-scores FLOAT [FLOAT ...]]
+                     [--sdxl-negative-original-sizes SIZE [SIZE ...]]
+                     [--sdxl-negative-target-sizes SIZE [SIZE ...]]
+                     [--sdxl-negative-crops-coords-top-left COORD [COORD ...]]
+                     [--sdxl-refiner-prompts PROMPT [PROMPT ...]]
+                     [--sdxl-refiner-second-prompts PROMPT [PROMPT ...]]
+                     [--sdxl-refiner-aesthetic-scores FLOAT [FLOAT ...]]
+                     [--sdxl-refiner-crops-coords-top-left COORD [COORD ...]]
+                     [--sdxl-refiner-original-sizes SIZE [SIZE ...]]
+                     [--sdxl-refiner-target-sizes SIZE [SIZE ...]]
+                     [--sdxl-refiner-negative-aesthetic-scores FLOAT [FLOAT ...]]
+                     [--sdxl-refiner-negative-original-sizes SIZE [SIZE ...]]
+                     [--sdxl-refiner-negative-target-sizes SIZE [SIZE ...]]
+                     [--sdxl-refiner-negative-crops-coords-top-left COORD [COORD ...]]
+                     [-hnf FLOAT [FLOAT ...]] [--safety-checker] [--version] [-d DEVICE] [-t DTYPE]
+                     [-s SIZE] [-o PATH] [-op PREFIX] [-ox] [-oc] [-om] [-p PROMPT [PROMPT ...]]
+                     [-se SEED [SEED ...] | -gse COUNT] [-af FORMAT] [-fs FRAME_NUMBER] [-fe FRAME_NUMBER]
+                     [-is SEED [SEED ...] | -ci CONTROL_IMAGES [CONTROL_IMAGES ...]]
+                     [--seed-image-preprocessors PREPROCESSOR [PREPROCESSOR ...]]
+                     [--mask-image-preprocessors PREPROCESSOR [PREPROCESSOR ...]]
+                     [--control-image-preprocessors PREPROCESSOR [PREPROCESSOR ...]]
+                     [--image-preprocessor-help [PREPROCESSOR ...]] [-iss FLOAT [FLOAT ...] | -uns INTEGER
+                     [INTEGER ...]] [-gs FLOAT [FLOAT ...]] [-igs FLOAT [FLOAT ...]]
+                     [-grs FLOAT [FLOAT ...]] [-ifs INTEGER [INTEGER ...]]
                      model_path
 
-    Stable diffusion batch image generation tool with support for video / gif / webp animation transcoding.
+    Stable diffusion batch image generation tool with support for video / gif / webp animation
+    transcoding.
 
     positional arguments:
-      model_path            huggingface model repository slug, huggingface blob link to a model file, path to folder on
-                            disk, or path to a .pt, .pth, .bin, .ckpt, or .safetensors file.
+      model_path            huggingface model repository slug, huggingface blob link to a model file, path
+                            to folder on disk, or path to a .pt, .pth, .bin, .ckpt, or .safetensors file.
 
     options:
       -h, --help            show this help message and exit
+      -v, --verbose         Output information useful for debugging, such as pipeline call and model load
+                            parameters.
       --model-type MODEL_TYPE
-                            Use when loading different model types. Currently supported: torch, torch-sdxl, torch-
-                            upscaler-x2, or torch-upscaler-x4. (default: torch)
-      --revision REVISION   The model revision to use when loading from a huggingface repository, (The git branch / tag,
-                            default is "main")
-      --variant VARIANT     If specified when loading from a huggingface repository or folder, load weights from
-                            "variant" filename, e.g. "pytorch_model.<variant>.safetensors". Defaults to automatic
-                            selection. This option is ignored if using flax.
+                            Use when loading different model types. Currently supported: torch, torch-
+                            pix2pix, torch-sdxl, torch-sdxl-pix2pix, torch-upscaler-x2, or torch-
+                            upscaler-x4. (default: torch)
+      --revision BRANCH     The model revision to use when loading from a huggingface repository, (The git
+                            branch / tag, default is "main")
+      --variant VARIANT     If specified when loading from a huggingface repository or folder, load
+                            weights from "variant" filename, e.g. "pytorch_model.<variant>.safetensors".
+                            Defaults to automatic selection. This option is ignored if using flax.
       --subfolder SUBFOLDER
-                            Main model subfolder. If specified when loading from a huggingface repository or folder,
-                            load weights from the specified subfolder.
-      --auth-token AUTH_TOKEN
-                            Huggingface auth token. Required to download restricted repositories that have access
-                            permissions granted to your huggingface account.
-      --vae VAE             Specify a VAE. When using torch models the syntax is: "AutoEncoderClass;model=(huggingface
-                            repository slug/blob link or file/folder path)". Examples: "AutoencoderKL;model=vae.pt",
-                            "AsymmetricAutoencoderKL;model=huggingface/vae", "AutoencoderTiny;model=huggingface/vae".
-                            When using a Flax model, there is currently only one available encoder class:
-                            "FlaxAutoencoderKL;model=huggingface/vae". The AutoencoderKL encoder class accepts
-                            huggingface repository slugs/blob links, .pt, .pth, .bin, .ckpt, and .safetensors files.
-                            Other encoders can only accept huggingface repository slugs/blob links, or a path to a
-                            folder on disk with the model configuration and model file(s). Aside from the "model"
-                            argument, there are four other optional arguments that can be specified, these include
-                            "revision", "variant", "subfolder", "dtype". They can be specified as so in any order, they
-                            are not positional: "AutoencoderKL;model=huggingface/vae;revision=main;variant=fp16;subfolde
-                            r=sub_folder;dtype=float16". The "revision" argument specifies the model revision to use for
-                            the VAE when loading from huggingface repository or blob link, (The git branch / tag,
-                            default is "main"). The "variant" argument specifies the VAE model variant, if "variant" is
-                            specified when loading from a huggingface repository or folder, weights will be loaded from
-                            "variant" filename, e.g. "pytorch_model.<variant>.safetensors. "variant" defaults to
-                            automatic selection and is ignored if using flax. "variant" in the case of --vae does not
-                            default to the value of --variant to prevent failures during common use cases. The
-                            "subfolder" argument specifies the VAE model subfolder, if specified when loading from a
-                            huggingface repository or folder, weights from the specified subfolder. The "dtype" argument
-                            specifies the VAE model precision, it defaults to the value of -t/--dtype and should be one
-                            of: float16 / float32 / auto. If you wish to load a weights file directly from disk, the
-                            simplest way is: --vae "AutoencoderKL;my_vae.safetensors", or with a dtype
-                            "AutoencoderKL;my_vae.safetensors;dtype=float16", all other loading arguments are unused in
-                            this case and may produce an error message if used. If you wish to load a specific weight
-                            file from a huggingface repository, use the blob link loading syntax: --vae
+                            Main model subfolder. If specified when loading from a huggingface repository
+                            or folder, load weights from the specified subfolder.
+      --auth-token TOKEN    Huggingface auth token. Required to download restricted repositories that have
+                            access permissions granted to your huggingface account.
+      --vae MODEL_PATH      Specify a VAE. When using torch models the syntax is:
+                            "AutoEncoderClass;model=(huggingface repository slug/blob link or file/folder
+                            path)". Examples: "AutoencoderKL;model=vae.pt",
+                            "AsymmetricAutoencoderKL;model=huggingface/vae",
+                            "AutoencoderTiny;model=huggingface/vae". When using a Flax model, there is
+                            currently only one available encoder class:
+                            "FlaxAutoencoderKL;model=huggingface/vae". The AutoencoderKL encoder class
+                            accepts huggingface repository slugs/blob links, .pt, .pth, .bin, .ckpt, and
+                            .safetensors files. Other encoders can only accept huggingface repository
+                            slugs/blob links, or a path to a folder on disk with the model configuration
+                            and model file(s). Aside from the "model" argument, there are four other
+                            optional arguments that can be specified, these include "revision", "variant",
+                            "subfolder", "dtype". They can be specified as so in any order, they are not
+                            positional: "AutoencoderKL;model=huggingface/vae;revision=main;variant=fp16;su
+                            bfolder=sub_folder;dtype=float16". The "revision" argument specifies the model
+                            revision to use for the VAE when loading from huggingface repository or blob
+                            link, (The git branch / tag, default is "main"). The "variant" argument
+                            specifies the VAE model variant, if "variant" is specified when loading from a
+                            huggingface repository or folder, weights will be loaded from "variant"
+                            filename, e.g. "pytorch_model.<variant>.safetensors. "variant" defaults to
+                            automatic selection and is ignored if using flax. "variant" in the case of
+                            --vae does not default to the value of --variant to prevent failures during
+                            common use cases. The "subfolder" argument specifies the VAE model subfolder,
+                            if specified when loading from a huggingface repository or folder, weights
+                            from the specified subfolder. The "dtype" argument specifies the VAE model
+                            precision, it defaults to the value of -t/--dtype and should be one of:
+                            float16 / float32 / auto. If you wish to load a weights file directly from
+                            disk, the simplest way is: --vae "AutoencoderKL;my_vae.safetensors", or with a
+                            dtype "AutoencoderKL;my_vae.safetensors;dtype=float16", all other loading
+                            arguments are unused in this case and may produce an error message if used. If
+                            you wish to load a specific weight file from a huggingface repository, use the
+                            blob link loading syntax: --vae
                             "AutoencoderKL;https://huggingface.co/UserName/repository-
-                            name/blob/main/vae_model.safetensors", the revision argument may be used with this syntax.
-      --lora LORA, --loras LORA
-                            Specify a LoRA model (flax not supported). This should be a huggingface repository slug,
-                            path to model file on disk (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or
-                            model folder containing model files. huggingface blob links are not supported, see
-                            "subfolder" and "weight-name" below instead. Optional arguments can be provided after the
-                            LoRA model specification, these include: "scale", "revision", "subfolder", and "weight-
+                            name/blob/main/vae_model.safetensors", the revision argument may be used with
+                            this syntax.
+      --vae-tiling          Enable VAE tiling (torch* models only)
+      --vae-slicing         Enable VAE slicing (torch* models only)
+      --lora MODEL_PATH, --loras MODEL_PATH
+                            Specify a LoRA model (flax not supported). This should be a huggingface
+                            repository slug, path to model file on disk (for example, a .pt, .pth, .bin,
+                            .ckpt, or .safetensors file), or model folder containing model files.
+                            huggingface blob links are not supported, see "subfolder" and "weight-name"
+                            below instead. Optional arguments can be provided after the LoRA model
+                            specification, these include: "scale", "revision", "subfolder", and "weight-
                             name". They can be specified as so in any order, they are not positional:
                             "huggingface/lora;scale=1.0;revision=main;subfolder=repo_subfolder;weight-
-                            name=lora.safetensors". The "scale" argument indicates the scale factor of the LoRA. The
-                            "revision" argument specifies the model revision to use for the VAE when loading from
-                            huggingface repository, (The git branch / tag, default is "main"). The "subfolder" argument
-                            specifies the VAE model subfolder, if specified when loading from a huggingface repository
-                            or folder, weights from the specified subfolder. The "weight-name" argument indicates the
-                            name of the weights file to be loaded when loading from a huggingface repository or folder
-                            on disk. If you wish to load a weights file directly from disk, the simplest way is: --lora
-                            "my_lora.safetensors", or with a scale "my_lora.safetensors;scale=1.0", all other loading
-                            arguments are unused in this case and may produce an error message if used.
-      --textual-inversions TEXTUAL_INVERSIONS [TEXTUAL_INVERSIONS ...]
-                            Specify one or more Textual Inversion models (flax and SDXL not supported). This should be a
-                            huggingface repository slug, path to model file on disk (for example, a .pt, .pth, .bin,
-                            .ckpt, or .safetensors file), or model folder containing model files. huggingface blob links
-                            are not supported, see "subfolder" and "weight-name" below instead. Optional arguments can
-                            be provided after the Textual Inversion model specification, these include: "revision",
-                            "subfolder", and "weight-name". They can be specified as so in any order, they are not
-                            positional: "huggingface/ti_model;revision=main;subfolder=repo_subfolder;weight-
-                            name=lora.safetensors". The "revision" argument specifies the model revision to use for the
-                            Textual Inversion model when loading from huggingface repository, (The git branch / tag,
-                            default is "main"). The "subfolder" argument specifies the Textual Inversion model
-                            subfolder, if specified when loading from a huggingface repository or folder, weights from
-                            the specified subfolder. The "weight-name" argument indicates the name of the weights file
-                            to be loaded when loading from a huggingface repository or folder on disk. If you wish to
-                            load a weights file directly from disk, the simplest way is: --textual-inversions
-                            "my_ti_model.safetensors", all other loading arguments are unused in this case and may
-                            produce an error message if used.
-      --control-nets CONTROL_NETS [CONTROL_NETS ...]
-                            Specify one or more ControlNet models. This should be a huggingface repository slug / blob
-                            link, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt, or .safetensors
-                            file), or model folder containing model files. Optional arguments can be provided after the
-                            ControlNet model specification, for torch these include: "scale", "start", "end",
-                            "revision", "variant", "subfolder", and "dtype". For flax: "scale", "revision", "subfolder",
-                            "dtype", "from_torch" (bool) They can be specified as so in any order, they are not
-                            positional:cd "huggingface/controlnet;scale=1.0;start=0.0;end=1.0;revision=main;variant=fp16
-                            ;subfolder=repo_subfolder;dtype=float16". The "scale" argument specifies the scaling factor
-                            applied to the ControlNet model, the default value is 1.0. The "start" (only for --model-
-                            type "torch*") argument specifies at what fraction of the total inference steps to begin
-                            applying the ControlNet, defaults to 0.0, IE: the very beginning. The "end" (only for
-                            --model-type "torch*") argument specifies at what fraction of the total inference steps to
-                            stop applying the ControlNet, defaults to 1.0, IE: the very end. The "revision" argument
-                            specifies the model revision to use for the ControlNet model when loading from huggingface
-                            repository, (The git branch / tag, default is "main"). The "variant" (only for --model-type
-                            "torch*") argument specifies the ControlNet model variant, if "variant" is specified when
-                            loading from a huggingface repository or folder, weights will be loaded from "variant"
-                            filename, e.g. "pytorch_model.<variant>.safetensors. "variant" defaults to automatic
-                            selection and is ignored if using flax. "variant" in the case of --control-nets does not
-                            default to the value of --variant to prevent failures during common use cases. The
-                            "subfolder" argument specifies the ControlNet model subfolder, if specified when loading
-                            from a huggingface repository or folder, weights from the specified subfolder. The "dtype"
-                            argument specifies the ControlNet model precision, it defaults to the value of -t/--dtype
-                            and should be one of: float16 / float32 / auto. The "from_torch" (only for --model-type
-                            flax) this argument specifies that the ControlNet is to be loaded and converted from a
-                            huggingface repository or file that is designed for pytorch. (Defaults to false) If you wish
-                            to load a weights file directly from disk, the simplest way is: --control-nets
-                            "my_controlnet.safetensors" or --control-nets
-                            "my_controlnet.safetensors;scale=1.0;dtype=float16", all other loading arguments aside from
-                            "scale" and "dtype" are unused in this case and may produce an error message if used
-                            ("from_torch" is available when using flax). If you wish to load a specific weight file from
-                            a huggingface repository, use the blob link loading syntax: --control-nets
-                            "https://huggingface.co/UserName/repository-name/blob/main/controlnet.safetensors", the
-                            revision argument may be used with this syntax.
-      --scheduler SCHEDULER
-                            Specify a scheduler (sampler) by name. Passing "help" to this argument will print the
-                            compatible schedulers for a model without generating any images. Torch schedulers:
-                            (DDIMScheduler, DDPMScheduler, PNDMScheduler, LMSDiscreteScheduler, EulerDiscreteScheduler,
-                            HeunDiscreteScheduler, EulerAncestralDiscreteScheduler, DPMSolverMultistepScheduler,
-                            DPMSolverSinglestepScheduler, KDPM2DiscreteScheduler, KDPM2AncestralDiscreteScheduler,
-                            DEISMultistepScheduler, UniPCMultistepScheduler, DPMSolverSDEScheduler).
-      --sdxl-refiner SDXL_REFINER
-                            Stable Diffusion XL (torch-sdxl) refiner model path. This should be a huggingface repository
-                            slug / blob link, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt, or
-                            .safetensors file), or model folder containing model files. Optional arguments can be
-                            provided after the SDXL refiner model specification, these include: "revision", "variant",
-                            "subfolder", and "dtype". They can be specified as so in any order, they are not positional:
-                            "huggingface/refiner_model_xl;revision=main;variant=fp16;subfolder=repo_subfolder;dtype=floa
-                            t16". The "revision" argument specifies the model revision to use for the Textual Inversion
-                            model when loading from huggingface repository, (The git branch / tag, default is "main").
-                            The "variant" argument specifies the SDXL refiner model variant and defaults to the value of
-                            --variant, when "variant" is specified when loading from a huggingface repository or folder,
-                            weights will be loaded from "variant" filename, e.g. "pytorch_model.<variant>.safetensors.
-                            "variant" defaults to automatic selection. The "subfolder" argument specifies the SDXL
-                            refiner model subfolder, if specified when loading from a huggingface repository or folder,
-                            weights from the specified subfolder. The "dtype" argument specifies the SDXL refiner model
-                            precision, it defaults to the value of -t/--dtype and should be one of: float16 / float32 /
-                            auto. If you wish to load a weights file directly from disk, the simplest way is: --sdxl-
-                            refiner "my_sdxl_refiner.safetensors" or --sdxl-refiner
-                            "my_sdxl_refiner.safetensors;dtype=float16", all other loading arguments aside from "dtype"
-                            are unused in this case and may produce an error message if used. If you wish to load a
-                            specific weight file from a huggingface repository, use the blob link loading syntax:
-                            --sdxl-refiner "https://huggingface.co/UserName/repository-
-                            name/blob/main/refiner_model.safetensors", the revision argument may be used with this
-                            syntax.
-      --sdxl-aesthetic-scores [SDXL_AESTHETIC_SCORES ...]
-                            One or more Stable Diffusion XL (torch-sdxl) "aesthetic-score" micro-conditioning
-                            parameters. Used to simulate an aesthetic score of the generated image by influencing the
-                            positive text condition. Part of SDXL's micro-conditioning as explained in section 2.2 of
+                            name=lora.safetensors". The "scale" argument indicates the scale factor of the
+                            LoRA. The "revision" argument specifies the model revision to use for the VAE
+                            when loading from huggingface repository, (The git branch / tag, default is
+                            "main"). The "subfolder" argument specifies the VAE model subfolder, if
+                            specified when loading from a huggingface repository or folder, weights from
+                            the specified subfolder. The "weight-name" argument indicates the name of the
+                            weights file to be loaded when loading from a huggingface repository or folder
+                            on disk. If you wish to load a weights file directly from disk, the simplest
+                            way is: --lora "my_lora.safetensors", or with a scale
+                            "my_lora.safetensors;scale=1.0", all other loading arguments are unused in
+                            this case and may produce an error message if used.
+      --textual-inversions MODEL_PATH [MODEL_PATH ...]
+                            Specify one or more Textual Inversion models (flax and SDXL not supported).
+                            This should be a huggingface repository slug, path to model file on disk (for
+                            example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model folder
+                            containing model files. huggingface blob links are not supported, see
+                            "subfolder" and "weight-name" below instead. Optional arguments can be
+                            provided after the Textual Inversion model specification, these include:
+                            "revision", "subfolder", and "weight-name". They can be specified as so in any
+                            order, they are not positional:
+                            "huggingface/ti_model;revision=main;subfolder=repo_subfolder;weight-
+                            name=lora.safetensors". The "revision" argument specifies the model revision
+                            to use for the Textual Inversion model when loading from huggingface
+                            repository, (The git branch / tag, default is "main"). The "subfolder"
+                            argument specifies the Textual Inversion model subfolder, if specified when
+                            loading from a huggingface repository or folder, weights from the specified
+                            subfolder. The "weight-name" argument indicates the name of the weights file
+                            to be loaded when loading from a huggingface repository or folder on disk. If
+                            you wish to load a weights file directly from disk, the simplest way is:
+                            --textual-inversions "my_ti_model.safetensors", all other loading arguments
+                            are unused in this case and may produce an error message if used.
+      --control-nets MODEL_PATH [MODEL_PATH ...]
+                            Specify one or more ControlNet models. This should be a huggingface repository
+                            slug / blob link, path to model file on disk (for example, a .pt, .pth, .bin,
+                            .ckpt, or .safetensors file), or model folder containing model files. Optional
+                            arguments can be provided after the ControlNet model specification, for torch
+                            these include: "scale", "start", "end", "revision", "variant", "subfolder",
+                            and "dtype". For flax: "scale", "revision", "subfolder", "dtype", "from_torch"
+                            (bool) They can be specified as so in any order, they are not positional:cd "h
+                            uggingface/controlnet;scale=1.0;start=0.0;end=1.0;revision=main;variant=fp16;s
+                            ubfolder=repo_subfolder;dtype=float16". The "scale" argument specifies the
+                            scaling factor applied to the ControlNet model, the default value is 1.0. The
+                            "start" (only for --model-type "torch*") argument specifies at what fraction
+                            of the total inference steps to begin applying the ControlNet, defaults to
+                            0.0, IE: the very beginning. The "end" (only for --model-type "torch*")
+                            argument specifies at what fraction of the total inference steps to stop
+                            applying the ControlNet, defaults to 1.0, IE: the very end. The "revision"
+                            argument specifies the model revision to use for the ControlNet model when
+                            loading from huggingface repository, (The git branch / tag, default is
+                            "main"). The "variant" (only for --model-type "torch*") argument specifies the
+                            ControlNet model variant, if "variant" is specified when loading from a
+                            huggingface repository or folder, weights will be loaded from "variant"
+                            filename, e.g. "pytorch_model.<variant>.safetensors. "variant" defaults to
+                            automatic selection and is ignored if using flax. "variant" in the case of
+                            --control-nets does not default to the value of --variant to prevent failures
+                            during common use cases. The "subfolder" argument specifies the ControlNet
+                            model subfolder, if specified when loading from a huggingface repository or
+                            folder, weights from the specified subfolder. The "dtype" argument specifies
+                            the ControlNet model precision, it defaults to the value of -t/--dtype and
+                            should be one of: float16 / float32 / auto. The "from_torch" (only for
+                            --model-type flax) this argument specifies that the ControlNet is to be loaded
+                            and converted from a huggingface repository or file that is designed for
+                            pytorch. (Defaults to false) If you wish to load a weights file directly from
+                            disk, the simplest way is: --control-nets "my_controlnet.safetensors" or
+                            --control-nets "my_controlnet.safetensors;scale=1.0;dtype=float16", all other
+                            loading arguments aside from "scale" and "dtype" are unused in this case and
+                            may produce an error message if used ("from_torch" is available when using
+                            flax). If you wish to load a specific weight file from a huggingface
+                            repository, use the blob link loading syntax: --control-nets
+                            "https://huggingface.co/UserName/repository-
+                            name/blob/main/controlnet.safetensors", the revision argument may be used with
+                            this syntax.
+      --scheduler SCHEDULER_NAME
+                            Specify a scheduler (sampler) by name. Passing "help" to this argument will
+                            print the compatible schedulers for a model without generating any images.
+                            Torch schedulers: (DDIMScheduler, DDPMScheduler, PNDMScheduler,
+                            LMSDiscreteScheduler, EulerDiscreteScheduler, HeunDiscreteScheduler,
+                            EulerAncestralDiscreteScheduler, DPMSolverMultistepScheduler,
+                            DPMSolverSinglestepScheduler, KDPM2DiscreteScheduler,
+                            KDPM2AncestralDiscreteScheduler, DEISMultistepScheduler,
+                            UniPCMultistepScheduler, DPMSolverSDEScheduler).
+      --sdxl-refiner MODEL_PATH
+                            Stable Diffusion XL (torch-sdxl) refiner model path. This should be a
+                            huggingface repository slug / blob link, path to model file on disk (for
+                            example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model folder
+                            containing model files. Optional arguments can be provided after the SDXL
+                            refiner model specification, these include: "revision", "variant",
+                            "subfolder", and "dtype". They can be specified as so in any order, they are
+                            not positional: "huggingface/refiner_model_xl;revision=main;variant=fp16;subfo
+                            lder=repo_subfolder;dtype=float16". The "revision" argument specifies the
+                            model revision to use for the Textual Inversion model when loading from
+                            huggingface repository, (The git branch / tag, default is "main"). The
+                            "variant" argument specifies the SDXL refiner model variant and defaults to
+                            the value of --variant, when "variant" is specified when loading from a
+                            huggingface repository or folder, weights will be loaded from "variant"
+                            filename, e.g. "pytorch_model.<variant>.safetensors. "variant" defaults to
+                            automatic selection. The "subfolder" argument specifies the SDXL refiner model
+                            subfolder, if specified when loading from a huggingface repository or folder,
+                            weights from the specified subfolder. The "dtype" argument specifies the SDXL
+                            refiner model precision, it defaults to the value of -t/--dtype and should be
+                            one of: float16 / float32 / auto. If you wish to load a weights file directly
+                            from disk, the simplest way is: --sdxl-refiner "my_sdxl_refiner.safetensors"
+                            or --sdxl-refiner "my_sdxl_refiner.safetensors;dtype=float16", all other
+                            loading arguments aside from "dtype" are unused in this case and may produce
+                            an error message if used. If you wish to load a specific weight file from a
+                            huggingface repository, use the blob link loading syntax: --sdxl-refiner
+                            "https://huggingface.co/UserName/repository-
+                            name/blob/main/refiner_model.safetensors", the revision argument may be used
+                            with this syntax.
+      --sdxl-refiner-scheduler SCHEDULER_NAME
+                            Specify a scheduler (sampler) by name for the SDXL refiner pass. Operates the
+                            exactsame way as --scheduler including the "help" option. Defaults to the
+                            value of --scheduler.
+      --sdxl-second-prompts PROMPT [PROMPT ...]
+                            List of secondary prompts to try using SDXL's secondary text encoder. By
+                            default the model is passed the primary prompt for this value, this option
+                            allows you to choose a different prompt. The negative prompt component can be
+                            specified with the same syntax as --prompts
+      --sdxl-aesthetic-scores FLOAT [FLOAT ...]
+                            One or more Stable Diffusion XL (torch-sdxl) "aesthetic-score" micro-
+                            conditioning parameters. Used to simulate an aesthetic score of the generated
+                            image by influencing the positive text condition. Part of SDXL's micro-
+                            conditioning as explained in section 2.2 of
                             [https://huggingface.co/papers/2307.01952].
-      --sdxl-crops-coords-top-left [SDXL_CROPS_COORDS_TOP_LEFT ...]
-                            One or more Stable Diffusion XL (torch-sdxl) "negative-crops-coords-top-left" micro-
-                            conditioning parameters in the format "0,0". --sdxl-crops-coords-top-left can be used to
-                            generate an image that appears to be "cropped" from the position --sdxl-crops-coords-top-
-                            left downwards. Favorable, well-centered images are usually achieved by setting --sdxl-
-                            crops-coords-top-left to "0,0". Part of SDXL's micro-conditioning as explained in section
-                            2.2 of [https://huggingface.co/papers/2307.01952].
-      --sdxl-original-size [SDXL_ORIGINAL_SIZES ...], --sdxl-original-sizes [SDXL_ORIGINAL_SIZES ...]
-                            One or more Stable Diffusion XL (torch-sdxl) "original-size" micro-conditioning parameters
-                            in the format (WIDTHxHEIGHT). If not the same as --sdxl-target-size the image will appear to
-                            be down or upsampled. --sdxl-original-size defaults to --output-size if not specified. Part
-                            of SDXL's micro-conditioning as explained in section 2.2 of
-                            [https://huggingface.co/papers/2307.01952]
-      --sdxl-target-size [SDXL_TARGET_SIZES ...], --sdxl-target-sizes [SDXL_TARGET_SIZES ...]
-                            One or more Stable Diffusion XL (torch-sdxl) "target-size" micro-conditioning parameters in
-                            the format (WIDTHxHEIGHT). For most cases, --sdxl-target-size should be set to the desired
-                            height and width of the generated image. If not specified it will default to --output-size.
+      --sdxl-crops-coords-top-left COORD [COORD ...]
+                            One or more Stable Diffusion XL (torch-sdxl) "negative-crops-coords-top-left"
+                            micro-conditioning parameters in the format "0,0". --sdxl-crops-coords-top-
+                            left can be used to generate an image that appears to be "cropped" from the
+                            position --sdxl-crops-coords-top-left downwards. Favorable, well-centered
+                            images are usually achieved by setting --sdxl-crops-coords-top-left to "0,0".
                             Part of SDXL's micro-conditioning as explained in section 2.2 of
+                            [https://huggingface.co/papers/2307.01952].
+      --sdxl-original-size SIZE [SIZE ...], --sdxl-original-sizes SIZE [SIZE ...]
+                            One or more Stable Diffusion XL (torch-sdxl) "original-size" micro-
+                            conditioning parameters in the format (WIDTHxHEIGHT). If not the same as
+                            --sdxl-target-size the image will appear to be down or upsampled. --sdxl-
+                            original-size defaults to --output-size if not specified. Part of SDXL's
+                            micro-conditioning as explained in section 2.2 of
                             [https://huggingface.co/papers/2307.01952]
-      --sdxl-negative-aesthetic-scores [SDXL_NEGATIVE_AESTHETIC_SCORES ...]
-                            One or more Stable Diffusion XL (torch-sdxl) "negative-aesthetic-score" micro-conditioning
-                            parameters. Part of SDXL's micro-conditioning as explained in section 2.2 of
-                            [https://huggingface.co/papers/2307.01952]. Can be used to simulate an aesthetic score of
-                            the generated image by influencing the negative text condition.
-      --sdxl-negative-original-sizes [SDXL_NEGATIVE_ORIGINAL_SIZES ...]
-                            One or more Stable Diffusion XL (torch-sdxl) "negative-original-sizes" micro-conditioning
-                            parameters. Negatively condition the generation process based on a specific image
-                            resolution. Part of SDXL's micro-conditioning as explained in section 2.2 of
-                            [https://huggingface.co/papers/2307.01952]. For more information, refer to this issue
-                            thread: https://github.com/huggingface/diffusers/issues/4208
-      --sdxl-negative-target-sizes [SDXL_NEGATIVE_TARGET_SIZES ...]
-                            One or more Stable Diffusion XL (torch-sdxl) "negative-original-sizes" micro-conditioning
-                            parameters. To negatively condition the generation process based on a target image
-                            resolution. It should be as same as the "target_size" for most cases. Part of SDXL's micro-
-                            conditioning as explained in section 2.2 of [https://huggingface.co/papers/2307.01952]. For
-                            more information, refer to this issue thread:
-                            https://github.com/huggingface/diffusers/issues/4208.
-      --sdxl-negative-crops-coords-top-left [SDXL_NEGATIVE_CROPS_COORDS_TOP_LEFT ...]
-                            One or more Stable Diffusion XL (torch-sdxl) "negative-crops-coords-top-left" micro-
-                            conditioning parameters in the format "0,0". Negatively condition the generation process
-                            based on a specific crop coordinates. Part of SDXL's micro-conditioning as explained in
-                            section 2.2 of [https://huggingface.co/papers/2307.01952]. For more information, refer to
+      --sdxl-target-size SIZE [SIZE ...], --sdxl-target-sizes SIZE [SIZE ...]
+                            One or more Stable Diffusion XL (torch-sdxl) "target-size" micro-conditioning
+                            parameters in the format (WIDTHxHEIGHT). For most cases, --sdxl-target-size
+                            should be set to the desired height and width of the generated image. If not
+                            specified it will default to --output-size. Part of SDXL's micro-conditioning
+                            as explained in section 2.2 of [https://huggingface.co/papers/2307.01952]
+      --sdxl-negative-aesthetic-scores FLOAT [FLOAT ...]
+                            One or more Stable Diffusion XL (torch-sdxl) "negative-aesthetic-score" micro-
+                            conditioning parameters. Part of SDXL's micro-conditioning as explained in
+                            section 2.2 of [https://huggingface.co/papers/2307.01952]. Can be used to
+                            simulate an aesthetic score of the generated image by influencing the negative
+                            text condition.
+      --sdxl-negative-original-sizes SIZE [SIZE ...]
+                            One or more Stable Diffusion XL (torch-sdxl) "negative-original-sizes" micro-
+                            conditioning parameters. Negatively condition the generation process based on
+                            a specific image resolution. Part of SDXL's micro-conditioning as explained in
+                            section 2.2 of [https://huggingface.co/papers/2307.01952]. For more
+                            information, refer to this issue thread:
+                            https://github.com/huggingface/diffusers/issues/4208
+      --sdxl-negative-target-sizes SIZE [SIZE ...]
+                            One or more Stable Diffusion XL (torch-sdxl) "negative-original-sizes" micro-
+                            conditioning parameters. To negatively condition the generation process based
+                            on a target image resolution. It should be as same as the "target_size" for
+                            most cases. Part of SDXL's micro-conditioning as explained in section 2.2 of
+                            [https://huggingface.co/papers/2307.01952]. For more information, refer to
                             this issue thread: https://github.com/huggingface/diffusers/issues/4208.
-      --sdxl-refiner-aesthetic-scores [SDXL_REFINER_AESTHETIC_SCORES ...]
+      --sdxl-negative-crops-coords-top-left COORD [COORD ...]
+                            One or more Stable Diffusion XL (torch-sdxl) "negative-crops-coords-top-left"
+                            micro-conditioning parameters in the format "0,0". Negatively condition the
+                            generation process based on a specific crop coordinates. Part of SDXL's micro-
+                            conditioning as explained in section 2.2 of
+                            [https://huggingface.co/papers/2307.01952]. For more information, refer to
+                            this issue thread: https://github.com/huggingface/diffusers/issues/4208.
+      --sdxl-refiner-prompts PROMPT [PROMPT ...]
+                            List of prompts to try with the SDXL refiner model, by default the refiner
+                            model gets the primary prompt, this argument overrides that with a prompt of
+                            your choosing. The negative prompt component can be specified with the same
+                            syntax as --prompts
+      --sdxl-refiner-second-prompts PROMPT [PROMPT ...]
+                            List of prompts to try with the SDXL refiner models secondary text encoder, by
+                            default the refiner model gets the primary prompt passed to its second text
+                            encoder, this argument overrides that with a prompt of your choosing. The
+                            negative prompt component can be specified with the same syntax as --prompts
+      --sdxl-refiner-aesthetic-scores FLOAT [FLOAT ...]
                             See: --sdxl-aesthetic-scores, applied to SDXL refiner pass.
-      --sdxl-refiner-crops-coords-top-left [SDXL_REFINER_CROPS_COORDS_TOP_LEFT ...]
+      --sdxl-refiner-crops-coords-top-left COORD [COORD ...]
                             See: --sdxl-crops-coords-top-left, applied to SDXL refiner pass.
-      --sdxl-refiner-original-sizes [SDXL_REFINER_ORIGINAL_SIZES ...]
+      --sdxl-refiner-original-sizes SIZE [SIZE ...]
                             See: --sdxl-refiner-original-sizes, applied to SDXL refiner pass.
-      --sdxl-refiner-target-sizes [SDXL_REFINER_TARGET_SIZES ...]
+      --sdxl-refiner-target-sizes SIZE [SIZE ...]
                             See: --sdxl-refiner-target-sizes, applied to SDXL refiner pass.
-      --sdxl-refiner-negative-aesthetic-scores [SDXL_REFINER_NEGATIVE_AESTHETIC_SCORES ...]
+      --sdxl-refiner-negative-aesthetic-scores FLOAT [FLOAT ...]
                             See: --sdxl-negative-aesthetic-scores, applied to SDXL refiner pass.
-      --sdxl-refiner-negative-original-sizes [SDXL_REFINER_NEGATIVE_ORIGINAL_SIZES ...]
+      --sdxl-refiner-negative-original-sizes SIZE [SIZE ...]
                             See: --sdxl-negative-original-sizes, applied to SDXL refiner pass.
-      --sdxl-refiner-negative-target-sizes [SDXL_REFINER_NEGATIVE_TARGET_SIZES ...]
+      --sdxl-refiner-negative-target-sizes SIZE [SIZE ...]
                             See: --sdxl-negative-target-sizes, applied to SDXL refiner pass.
-      --sdxl-refiner-negative-crops-coords-top-left [SDXL_REFINER_NEGATIVE_CROPS_COORDS_TOP_LEFT ...]
+      --sdxl-refiner-negative-crops-coords-top-left COORD [COORD ...]
                             See: --sdxl-negative-crops-coords-top-left, applied to SDXL refiner pass.
-      -hnf [SDXL_HIGH_NOISE_FRACTIONS ...], --sdxl-high-noise-fractions [SDXL_HIGH_NOISE_FRACTIONS ...]
-                            High noise fraction for Stable Diffusion XL (torch-sdxl), this fraction of inference steps
-                            will be processed by the base model, while the rest will be processed by the refiner model.
-                            Multiple values to this argument will result in additional generation steps for each value.
-                            (default: [0.8])
-      --safety-checker      Enable safety checker loading, this is off by default. When turned on images with NSFW
-                            content detected may result in solid black output. Some pretrained models have settings
-                            indicating a safety checker is not to be loaded, in that case this option has no effect.
+      -hnf FLOAT [FLOAT ...], --sdxl-high-noise-fractions FLOAT [FLOAT ...]
+                            High noise fraction for Stable Diffusion XL (torch-sdxl), this fraction of
+                            inference steps will be processed by the base model, while the rest will be
+                            processed by the refiner model. Multiple values to this argument will result
+                            in additional generation steps for each value. (default: [0.8])
+      --safety-checker      Enable safety checker loading, this is off by default. When turned on images
+                            with NSFW content detected may result in solid black output. Some pretrained
+                            models have settings indicating a safety checker is not to be loaded, in that
+                            case this option has no effect.
       --version             show program's version number and exit
       -d DEVICE, --device DEVICE
-                            cuda / cpu. (default: cuda). Use: cuda:0, cuda:1, cuda:2, etc. to specify a specific GPU.
+                            cuda / cpu. (default: cuda). Use: cuda:0, cuda:1, cuda:2, etc. to specify a
+                            specific GPU.
       -t DTYPE, --dtype DTYPE
                             Model precision: float16 / float32 / auto. (default: auto)
-      -s OUTPUT_SIZE, --output-size OUTPUT_SIZE
-                            Image output size. If an image seed is used it will be resized to this dimension with aspect
-                            ratio maintained, width will be fixed and a new height will be calculated. If only one
-                            integer value is provided, that is the value for both dimensions. X/Y dimension values
-                            should be separated by "x". (default: 512x512 when no image seeds are specified)
-      -o OUTPUT_PATH, --output-path OUTPUT_PATH
-                            Output path for generated images and files. This directory will be created if it does not
-                            exist. (default: ./output)
-      -op OUTPUT_PREFIX, --output-prefix OUTPUT_PREFIX
-                            Name prefix for generated images and files. This prefix will be added to the beginning of
-                            every generated file, followed by an underscore.
+      -s SIZE, --output-size SIZE
+                            Image output size. If an image seed is used it will be resized to this
+                            dimension with aspect ratio maintained, width will be fixed and a new height
+                            will be calculated. If only one integer value is provided, that is the value
+                            for both dimensions. X/Y dimension values should be separated by "x".
+                            (default: 512x512 when no image seeds are specified)
+      -o PATH, --output-path PATH
+                            Output path for generated images and files. This directory will be created if
+                            it does not exist. (default: ./output)
+      -op PREFIX, --output-prefix PREFIX
+                            Name prefix for generated images and files. This prefix will be added to the
+                            beginning of every generated file, followed by an underscore.
       -ox, --output-overwrite
-                            Enable overwrites of files in the output directory that already exists. The default behavior
-                            is not to do this, and instead append a filename suffix: "_version_(number)" when it is
-                            detected that the generated file name already exists. Advanced usage of SDXL using --sdxl-*
-                            arguments other than --sdxl-high-noise-fractions will cause overwrites if multiple values
-                            are supplied, and therefore the creation of files with the "_version_(number)" prefix, it is
-                            recommended to use --output-configs/--output-metadata when using those options in order to
-                            determine the input parameters which produced the image.
+                            Enable overwrites of files in the output directory that already exists. The
+                            default behavior is not to do this, and instead append a filename suffix:
+                            "_duplicate_(number)" when it is detected that the generated file name already
+                            exists.
       -oc, --output-configs
-                            Write a configuration text file for every output image or animation. The text file can be
-                            used reproduce that particular output image or animation by piping it to dgenerate STDIN,
-                            for example "dgenerate < config.txt". These files will be written to --output-directory and
-                            are affected by --output-prefix and --output-overwrite as well. The files will be named
-                            after their corresponding image or animation file. Configuration files produced for
-                            animation frame images will utilize --frame-start and --frame-end to specify the frame
-                            number.
+                            Write a configuration text file for every output image or animation. The text
+                            file can be used reproduce that particular output image or animation by piping
+                            it to dgenerate STDIN, for example "dgenerate < config.txt". These files will
+                            be written to --output-directory and are affected by --output-prefix and
+                            --output-overwrite as well. The files will be named after their corresponding
+                            image or animation file. Configuration files produced for animation frame
+                            images will utilize --frame-start and --frame-end to specify the frame number.
       -om, --output-metadata
-                            Write the information produced by --output-configs to the PNG metadata of each image.
-                            Metadata will not be written to animated files (yet). The data is written to a PNG metadata
-                            property named DgenerateConfig and can be read using ImageMagick like so: "magick identify
-                            -format "%[Property:DgenerateConfig] generated_file.png".
-      -p PROMPTS [PROMPTS ...], --prompts PROMPTS [PROMPTS ...]
-                            List of prompts to try, an image group is generated for each prompt, prompt data is split by
-                            ; (semi-colon). The first value is the positive text influence, things you want to see. The
-                            Second value is negative influence IE. things you don't want to see. Example: --prompts
-                            "shrek flying a tesla over detroit; clouds, rain, missiles". (default: [(empty string)])
-      -se SEEDS [SEEDS ...], --seeds SEEDS [SEEDS ...]
-                            List of seeds to try, define fixed seeds to achieve deterministic output. This argument may
-                            not be used when --gse/--gen-seeds is used. (default: [randint(0, 99999999999999)])
-      -gse GEN_SEEDS, --gen-seeds GEN_SEEDS
-                            Auto generate N random seeds to try. This argument may not be used when -se/--seeds is used.
-      -af ANIMATION_FORMAT, --animation-format ANIMATION_FORMAT
-                            Output format when generating an animation from an input video / gif / webp etc. Value must
-                            be one of: gif, webp, or mp4. (default: mp4)
-      -fs FRAME_START, --frame-start FRAME_START
-                            Starting frame slice point for animated files, the specified frame will be included.
-      -fe FRAME_END, --frame-end FRAME_END
-                            Ending frame slice point for animated files, the specified frame will be included.
-      -is [IMAGE_SEEDS ...], --image-seeds [IMAGE_SEEDS ...]
-                            List of image seeds to try when processing image seeds, these may be URLs or file paths.
-                            Videos / GIFs / WEBP files will result in frames being rendered as well as an animated
-                            output file being generated if more than one frame is available in the input file.
-                            Inpainting for static images can be achieved by specifying a black and white mask image in
-                            each image seed string using a semicolon as the separating character, like so: "my-seed-
-                            image.png;my-image-mask.png", white areas of the mask indicate where generated content is to
-                            be placed in your seed image. Output dimensions specific to the image seed can be specified
-                            by placing the dimension at the end of the string following a semicolon like so: "my-seed-
-                            image.png;512x512" or "my-seed-image.png;my-image-mask.png;512x512". Inpainting masks can be
-                            downloaded for you from a URL or be a path to a file on disk.
+                            Write the information produced by --output-configs to the PNG metadata of each
+                            image. Metadata will not be written to animated files (yet). The data is
+                            written to a PNG metadata property named DgenerateConfig and can be read using
+                            ImageMagick like so: "magick identify -format "%[Property:DgenerateConfig]
+                            generated_file.png".
+      -p PROMPT [PROMPT ...], --prompts PROMPT [PROMPT ...]
+                            List of prompts to try, an image group is generated for each prompt, prompt
+                            data is split by ; (semi-colon). The first value is the positive text
+                            influence, things you want to see. The Second value is negative influence IE.
+                            things you don't want to see. Example: --prompts "shrek flying a tesla over
+                            detroit; clouds, rain, missiles". (default: [(empty string)])
+      -se SEED [SEED ...], --seeds SEED [SEED ...]
+                            List of seeds to try, define fixed seeds to achieve deterministic output. This
+                            argument may not be used when --gse/--gen-seeds is used. (default: [randint(0,
+                            99999999999999)])
+      -gse COUNT, --gen-seeds COUNT
+                            Auto generate N random seeds to try. This argument may not be used when
+                            -se/--seeds is used.
+      -af FORMAT, --animation-format FORMAT
+                            Output format when generating an animation from an input video / gif / webp
+                            etc. Value must be one of: webp, gif, or mp4. (default: mp4)
+      -fs FRAME_NUMBER, --frame-start FRAME_NUMBER
+                            Starting frame slice point for animated files, the specified frame will be
+                            included.
+      -fe FRAME_NUMBER, --frame-end FRAME_NUMBER
+                            Ending frame slice point for animated files, the specified frame will be
+                            included.
+      -is SEED [SEED ...], --image-seeds SEED [SEED ...]
+                            List of image seeds to try when processing image seeds, these may be URLs or
+                            file paths. Videos / GIFs / WEBP files will result in frames being rendered as
+                            well as an animated output file being generated if more than one frame is
+                            available in the input file. Inpainting for static images can be achieved by
+                            specifying a black and white mask image in each image seed string using a
+                            semicolon as the separating character, like so: "my-seed-image.png;my-image-
+                            mask.png", white areas of the mask indicate where generated content is to be
+                            placed in your seed image. Output dimensions specific to the image seed can be
+                            specified by placing the dimension at the end of the string following a
+                            semicolon like so: "my-seed-image.png;512x512" or "my-seed-image.png;my-image-
+                            mask.png;512x512". Inpainting masks can be downloaded for you from a URL or be
+                            a path to a file on disk.
       -ci CONTROL_IMAGES [CONTROL_IMAGES ...], --control-images CONTROL_IMAGES [CONTROL_IMAGES ...]
-                            Specify images to try as control images for --control-nets when not specifying via --image-
-                            seed. This argument is mutually exclusive with --image-seed.
-      -iss [IMAGE_SEED_STRENGTHS ...], --image-seed-strengths [IMAGE_SEED_STRENGTHS ...]
-                            List of image seed strengths to try. Closer to 0 means high usage of the seed image (less
-                            noise convolution), 1 effectively means no usage (high noise convolution). Low values will
-                            produce something closer or more relevant to the input image, high values will give the AI
-                            more creative freedom. (default: [0.8])
-      -uns [UPSCALER_NOISE_LEVELS ...], --upscaler-noise-levels [UPSCALER_NOISE_LEVELS ...]
-                            List of upscaler noise levels to try when using the super resolution upscaler (torch-
-                            upscaler-x4). These values will be ignored when using (torch-upscaler-x2). The higher this
-                            value the more noise is added to the image before upscaling (similar to --image-seed-
-                            strength). (default: [20])
-      -gs [GUIDANCE_SCALES ...], --guidance-scales [GUIDANCE_SCALES ...]
-                            List of guidance scales to try. Guidance scale effects how much your text prompt is
-                            considered. Low values draw more data from images unrelated to text prompt. (default: [5])
-      -grs [GUIDANCE_RESCALES ...], --guidance-rescales [GUIDANCE_RESCALES ...]
-                            List of guidance rescale factors to try. Proposed by [Common Diffusion Noise Schedules and
-                            Sample Steps are Flawed](https://arxiv.org/pdf/2305.08891.pdf) "guidance_scale" is defined
-                            as "φ" in equation 16. of [Common Diffusion Noise Schedules and Sample Steps are Flawed]
-                            (https://arxiv.org/pdf/2305.08891.pdf). Guidance rescale factor should fix overexposure when
-                            using zero terminal SNR.
-      -ifs [INFERENCE_STEPS ...], --inference-steps [INFERENCE_STEPS ...]
-                            Lists of inference steps values to try. The amount of inference (de-noising) steps effects
-                            image clarity to a degree, higher values bring the image closer to what the AI is targeting
-                            for the content of the image. Values between 30-40 produce good results, higher values may
-                            improve image quality and or change image content. (default: [30])
+                            Specify images to try as control images for --control-nets when not specifying
+                            via --image-seed. This argument is mutually exclusive with --image-seed.
+      --seed-image-preprocessors PREPROCESSOR [PREPROCESSOR ...]
+                            Specify one or more image preprocessor actions to preform on the primary image
+                            specified by --image-seeds. For example: --seed-image-preprocessors "flip"
+                            "mirror" "grayscale". To obtain more information about what image
+                            preprocessors are available and how to use them, see: --image-preprocessor-
+                            help.
+      --mask-image-preprocessors PREPROCESSOR [PREPROCESSOR ...]
+                            Specify one or more image preprocessor actions to preform on the inpaint mask
+                            image specified by --image-seeds. For example: --mask-image-preprocessors
+                            "invert". To obtain more information about what image preprocessors are
+                            available and how to use them, see: --image-preprocessor-help.
+      --control-image-preprocessors PREPROCESSOR [PREPROCESSOR ...]
+                            Specify one or more image preprocessor actions to preform on the control image
+                            specified by --image-seeds or --control-images. For example: --control-image-
+                            preprocessors "canny;lower=50;upper=100". This option is ment to be used in
+                            combination with --control-nets. To obtain more information about what image
+                            preprocessors are available and how to use them, see: --image-preprocessor-
+                            help.
+      --image-preprocessor-help [PREPROCESSOR ...]
+                            Use this option alone with no model specification in order to list available
+                            image preprocessor module names. Specifying one or more module names after
+                            this option will cause usage documentation for the specified modules to be
+                            printed.
+      -iss FLOAT [FLOAT ...], --image-seed-strengths FLOAT [FLOAT ...]
+                            List of image seed strengths to try. Closer to 0 means high usage of the seed
+                            image (less noise convolution), 1 effectively means no usage (high noise
+                            convolution). Low values will produce something closer or more relevant to the
+                            input image, high values will give the AI more creative freedom. (default:
+                            [0.8])
+      -uns INTEGER [INTEGER ...], --upscaler-noise-levels INTEGER [INTEGER ...]
+                            List of upscaler noise levels to try when using the super resolution upscaler
+                            (torch-upscaler-x4). These values will be ignored when using (torch-
+                            upscaler-x2). The higher this value the more noise is added to the image
+                            before upscaling (similar to --image-seed-strength). (default: [20])
+      -gs FLOAT [FLOAT ...], --guidance-scales FLOAT [FLOAT ...]
+                            List of guidance scales to try. Guidance scale effects how much your text
+                            prompt is considered. Low values draw more data from images unrelated to text
+                            prompt. (default: [5])
+      -igs FLOAT [FLOAT ...], --image-guidance-scales FLOAT [FLOAT ...]
+                            Push the generated image towards the inital image when using --model-type
+                            *-pix2pix models. Use in conjunction with --image-seeds, inpainting (masks)
+                            and --control-nets are not supported. Image guidance scale is enabled by
+                            setting image-guidance-scale > 1. Higher image guidance scale encourages
+                            generated images that are closely linked to the source image, usually at the
+                            expense of lower image quality. Requires a value of at least 1. (default:
+                            [1.5])
+      -grs FLOAT [FLOAT ...], --guidance-rescales FLOAT [FLOAT ...]
+                            List of guidance rescale factors to try. Proposed by [Common Diffusion Noise
+                            Schedules and Sample Steps are Flawed](https://arxiv.org/pdf/2305.08891.pdf)
+                            "guidance_scale" is defined as "φ" in equation 16. of [Common Diffusion Noise
+                            Schedules and Sample Steps are Flawed] (https://arxiv.org/pdf/2305.08891.pdf).
+                            Guidance rescale factor should fix overexposure when using zero terminal SNR.
+      -ifs INTEGER [INTEGER ...], --inference-steps INTEGER [INTEGER ...]
+                            Lists of inference steps values to try. The amount of inference (de-noising)
+                            steps effects image clarity to a degree, higher values bring the image closer
+                            to what the AI is targeting for the content of the image. Values between 30-40
+                            produce good results, higher values may improve image quality and or change
+                            image content. (default: [30])
+
 
 
 
@@ -931,40 +1040,10 @@ If you generate an image you like using a random seed, you can later reuse that 
 
 Updates to the backing model may affect determinism in the generation.
 
-Output images have the possible name formats:
+Output images have a name format that starts with the seed, IE: `s_(seed here)_ ...png`
 
-.. code-block:: bash
-
-    # Prompt only generation or x2 image upscaling
-    "s_(seed)_g_(guidance-scale)_i_(inference-steps)_step_(generation-step).png"
-
-    # Prompt only generation with SDXL and Refiner
-    "s_(seed)_g_(guidance-scale)_i_(inference-steps)_hnf_(high-noise-fractions)_step_(generation-step).png"
-
-    # Image seed (img2img) generation
-    "s_(seed)_st_(image-seed-strength)_g_(guidance-scale)_i_(inference-steps)_step_(generation-step).png"
-
-    # Image seed (img2img) generation with SDXL and Refiner
-    "s_(seed)_st_(image-seed-strength)_g_(guidance-scale)_i_(inference-steps)_hnf_(high-noise-fractions)_step_(generation-step).png"
-
-    # Animation frame output
-    "s_(seed)_st_(image-seed-strength)_g_(guidance-scale)_i_(inference-steps)_frame_(frame-number)_step_(generation-step).png"
-
-    # Animation frame output with SDXL and Refiner
-    "s_(seed)_st_(image-seed-strength)_g_(guidance-scale)_i_(inference-steps)_hnf_(high-noise-fractions)_frame_(frame-number)_step_(generation-step).png"
-
-    # x4 Image upscaling
-    "s_(seed)_(unl)_(upscaler-noise-level)_g_(guidance-scale)_i_(inference-steps)_step_(generation-step).png"
-
-    # Animation frame output with x4 image upscaling
-    "s_(seed)_(unl)_(upscaler-noise-level)_g_(guidance-scale)_i_(inference-steps)_frame_(frame-number)_step_(generation-step).png"
-
-    # Animation frame output with x2 image upscaling
-    "s_(seed)_g_(guidance-scale)_i_(inference-steps)_frame_(frame-number)_step_(generation-step).png"
-
-
-Reusing a seed has the effect of perfectly reproducing the image in the case that all other parameters are left alone, 
-including prompt, output size, and model version.
+Reusing a seed has the effect of perfectly reproducing the image in the case that all
+other parameters are left alone, including the model version.
 
 You can output a configuration file for each image / animation produced that will reproduce it
 exactly using the option ``--output-configs``, that same information can be written to the
@@ -985,7 +1064,7 @@ additional qualities.  You can further manipulate the AI into producing results 
 Changing output resolution will drastically affect image content when reusing a seed to the point where trying to
 reuse a seed with a different output size is pointless.
 
-The following command demonstrates manually specifying two different seeds to try: **1234567890**, and **9876543210**
+The following command demonstrates manually specifying two different seeds to try: ``1234567890``, and ``9876543210``
 
 .. code-block:: bash
 
@@ -996,6 +1075,73 @@ The following command demonstrates manually specifying two different seeds to tr
     --inference-steps 50 \
     --guidance-scales 10 \
     --output-size 512x512
+
+
+Specifying a specific GPU for CUDA
+--------------------------------
+
+The desired GPU to use for CUDA acceleration can be selected using ``--device cuda:N`` where ``N`` is
+the device number of the GPU as reported by ``nvidia-smi``.
+
+.. code-block:: bash
+
+    # Console 1, run on GPU 0
+
+    dgenerate stabilityai/stable-diffusion-2-1 \
+    --prompts "an astronaut riding a horse" \
+    --output-path astronaut_1 \
+    --inference-steps 50 \
+    --guidance-scales 10 \
+    --output-size 512x512 \
+    --device cuda:0
+
+    # Console 2, run on GPU 1 in parallel
+
+    dgenerate stabilityai/stable-diffusion-2-1 \
+    --prompts "an astronaut riding a cow" \
+    --output-path astronaut_2 \
+    --inference-steps 50 \
+    --guidance-scales 10 \
+    --output-size 512x512 \
+    --device cuda:1
+
+
+Specifying a Scheduler (sampler)
+--------------------------------
+
+A scheduler (sampler) for the main model can be selected via the use of ``--scheduler``.
+
+And in the case of SDXL the refiner scheduler can also be selected independently with ``--sdxl-refiner-scheduler``.
+
+The refiner scheduler defaults to the value of ``--scheduler``, which in turn defaults to automatic selection.
+
+
+Available schedulers for a specific combination of dgenerate arguments can be
+queryied using ``--scheduler help``, or ``--sdxl-refiner-scheduler help``, though both cannot
+be queried simultaneously.
+
+In order to use the query feature it is ideal that you provide all the other arguments
+that you plan on using while making the query, as different combinations of arguments
+will result in different underlying pipeline implementations being created, each of which
+may have different compatible scheduler names listed. The model needs to be loaded in order to
+gather this information.
+
+For example there is only one compatible scheduler for this upscaler:
+
+.. code-block:: bash
+
+    dgenerate stabilityai/sd-x2-latent-upscaler --variant fp16 --dtype float16 \
+    --model-type torch-upscaler-x2 \
+    --prompts "none" \
+    --image-seeds my-image.png \
+    --output-size 256 \
+    --scheduler help
+
+    # Outputs:
+    #
+    # Compatible schedulers for "stabilityai/sd-x2-latent-upscaler" are:
+    #
+    #    "EulerDiscreteScheduler"
 
 
 Specifying a VAE
@@ -1459,6 +1605,59 @@ If you are loading a .safetensors or other file from a path on disk, simply do:
     --control-nets "my_cn_model.safetensors"
 
 
+
+Image Preprocessors
+-------------------
+
+Images provided through ``--image-seeds`` and ``--control-images`` can be preprocessed before
+being used for image generation through the use of the arguments ``--seed-image-preprocessors``,
+``--mask-image-preprocessors``, and  ``--control-image-preprocessors``.
+
+Each of these options can receive one or more specifications for image preprocessing actions.
+
+For example images can be preprocessed with the canny edge detection algorithm or OpenPose (rigging generation)
+before being used for generation with a model + a Control Net.
+
+This image of a `horse <https://raw.githubusercontent.com/Teriks/dgenerate/textual_inversion/examples/stablediffusion_xl/controlnet/horse.jpeg>`_
+is used in the example below with a Control Net that is trained to generate images from canny edge detected input.
+
+.. code-block:: bash
+
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    --variant fp16 --dtype float16 \
+    --vae AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix \
+    --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
+    --inference-steps 30 \
+    --guidance-scales 8 \
+    --prompts "Majestic unicorn, high quality, masterpiece, high resolution; low quality, bad quality, sketches" \
+    --control-nets diffusers/controlnet-canny-sdxl-1.0;scale=0.5 \
+    --control-images "horse.jpeg" \
+    --control-image-preprocessors "canny;lower=50;upper=100" \
+    --gen-seeds 2 \
+    --output-size 1024 \
+    --output-path unicorn
+
+
+Using the option ``--image-preprocessor-help`` with no arguments will yield a list of available image preprocessor names.
+
+Specifying one or more specific preprocessors for example: ``--image-preprocessor-help canny openpose`` will yield
+documentation pertaining to those preprocessor modules. This includes accepted arguments for the preprocessor module
+and a description of the module.
+
+All preprocessors posses the arguments: ``output-dir``, ``output-file``, and ``device``
+
+The ``output-dir`` argument can be used to write the preprocessed images to a directory for debugging purposes,
+this will write an image with a unique name for every image preprocessed into a the folder specified.
+
+The ``output-file`` argument can be used to write the preprocessed image to a specific file, this file will be
+overwritten if more than once preprocessing step occurs.
+
+The ``device`` argument can be used to override what device any hardware accelerated image processing
+occurs on if any. It defaults to the value of ``--device`` and has the same syntax for specifying device
+ordinals, for instance if you have multiple GPUs you may specify ``device=cuda:1`` to run image processing
+on your second GPU, etc.
+
+
 Upscaling with Upscaler Models
 ------------------------------
 
@@ -1635,7 +1834,7 @@ Empty lines and comments starting with ``#`` will be ignored.
 
 You can create a multiline continuation using ``\`` to indicate that a line continues.
 
-The Following is an example input file **my-config.txt**:
+The Following is an example input file ``my-config.txt``:
 
 .. code-block::
 
@@ -1741,33 +1940,7 @@ On Windows Powershell:
     Get-Content my-arguments.txt | dgenerate
 
 
-Choosing a specific GPU for CUDA
---------------------------------
 
-The desired GPU to use for CUDA acceleration can be selected using ``--device cuda:N`` where ``N`` is
-the device number of the GPU as reported by ``nvidia-smi``.
-
-.. code-block:: bash
-
-    # Console 1, run on GPU 0
-
-    dgenerate stabilityai/stable-diffusion-2-1 \
-    --prompts "an astronaut riding a horse" \
-    --output-path astronaut_1 \
-    --inference-steps 50 \
-    --guidance-scales 10 \
-    --output-size 512x512 \
-    --device cuda:0
-
-    # Console 2, run on GPU 1 in parallel
-
-    dgenerate stabilityai/stable-diffusion-2-1 \
-    --prompts "an astronaut riding a cow" \
-    --output-path astronaut_2 \
-    --inference-steps 50 \
-    --guidance-scales 10 \
-    --output-size 512x512 \
-    --device cuda:1
 
 
 
