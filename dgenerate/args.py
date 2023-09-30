@@ -152,10 +152,19 @@ parser.add_argument('--vae', action='store', default=None, metavar="MODEL_PATH",
                     """)
 
 parser.add_argument('--vae-tiling', action='store_true', default=False,
-                    help="""Enable VAE tiling (torch* models only)""")
+                    help="""Enable VAE tiling (torch models only). Assists in the generation of
+                    large images with lower memory overhead. The VAE will split the input tensor 
+                    into tiles to compute decoding and encoding in several steps. This is 
+                    useful for saving a large amount of memory and to allow processing larger images. 
+                    Note that if you are using --control-nets you may still run into memory 
+                    issues generating large images.""")
 
 parser.add_argument('--vae-slicing', action='store_true', default=False,
-                    help="""Enable VAE slicing (torch* models only)""")
+                    help="""Enable VAE slicing (torch* models only). Assists in the generation 
+                    of large images with lower memory overhead. The VAE will split the input tensor
+                    in slices to compute decoding in several steps. This is useful to save some memory. 
+                    Note that if you are using --control-nets you may still run into memory 
+                    issues generating large images.""")
 
 parser.add_argument('--lora', '--loras', action='store', default=None, metavar="MODEL_PATH",
                     help=

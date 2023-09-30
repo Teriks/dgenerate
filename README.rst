@@ -49,9 +49,9 @@ dgenerate help output
 .. code-block::
 
     usage: dgenerate [-h] [-v] [--model-type MODEL_TYPE] [--revision BRANCH] [--variant VARIANT]
-                     [--subfolder SUBFOLDER] [--auth-token TOKEN] [--vae MODEL_PATH] [--vae-tiling], higher
+                     [--subfolder SUBFOLDER] [--auth-token TOKEN] [--vae MODEL_PATH] [--vae-tiling]
                      [--vae-slicing] [--lora MODEL_PATH]
-                     [--textual-inversions MODEL_PATH [MODEL_PATH ...]]ontent. (default: [30])
+                     [--textual-inversions MODEL_PATH [MODEL_PATH ...]]
                      [--control-nets MODEL_PATH [MODEL_PATH ...]] [--scheduler SCHEDULER_NAME]
                      [--sdxl-refiner MODEL_PATH] [--sdxl-refiner-scheduler SCHEDULER_NAME]
                      [--sdxl-second-prompts PROMPT [PROMPT ...]]
@@ -144,8 +144,17 @@ dgenerate help output
                             "AutoencoderKL;https://huggingface.co/UserName/repository-
                             name/blob/main/vae_model.safetensors", the revision argument may be used with
                             this syntax.
-      --vae-tiling          Enable VAE tiling (torch* models only)
-      --vae-slicing         Enable VAE slicing (torch* models only)
+      --vae-tiling          Enable VAE tiling (torch models only). Assists in the generation of large
+                            images with lower memory overhead. The VAE will split the input tensor into
+                            tiles to compute decoding and encoding in several steps. This is useful for
+                            saving a large amount of memory and to allow processing larger images. Note
+                            that if you are using --control-nets you may still run into memory issues
+                            generating large images.
+      --vae-slicing         Enable VAE slicing (torch* models only). Assists in the generation of large
+                            images with lower memory overhead. The VAE will split the input tensor in
+                            slices to compute decoding in several steps. This is useful to save some
+                            memory. Note that if you are using --control-nets you may still run into
+                            memory issues generating large images.
       --lora MODEL_PATH, --loras MODEL_PATH
                             Specify a LoRA model (flax not supported). This should be a huggingface
                             repository slug, path to model file on disk (for example, a .pt, .pth, .bin,
@@ -414,7 +423,7 @@ dgenerate help output
                             -se/--seeds is used.
       -af FORMAT, --animation-format FORMAT
                             Output format when generating an animation from an input video / gif / webp
-                            etc. Value must be one of: webp, gif, or mp4. (default: mp4)
+                            etc. Value must be one of: mp4, gif, or webp. (default: mp4)
       -fs FRAME_NUMBER, --frame-start FRAME_NUMBER
                             Starting frame slice point for animated files, the specified frame will be
                             included.
@@ -1321,7 +1330,9 @@ VAE Tiling and Slicing
 ----------------------
 
 You can use ``--vae-tiling`` and ``--vae-slicing`` to enable to generation of huge images
-without running your GPU out of memory.
+without running your GPU out of memory. Note that if you are using ``--control-nets`` you may
+still be memory limited by the size of the image being processed by the Control Net, and still
+may run in to memory issues with large image inputs.
 
 When ``--vae-tiling`` is used, the VAE will split the input tensor into tiles to
 compute decoding and encoding in several steps. This is useful for saving a large amount of
