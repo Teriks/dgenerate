@@ -29,7 +29,7 @@ from .exceptions import ImagePreprocessorArgumentError
 
 
 class ImagePreprocessor:
-    @staticmethod
+    @classmethod
     def get_names(cls):
         if not issubclass(cls, ImagePreprocessor):
             raise ValueError(
@@ -43,7 +43,7 @@ class ImagePreprocessor:
         else:
             return [cls.__name__]
 
-    @staticmethod
+    @classmethod
     def get_help(cls, called_by_name):
         if hasattr(cls, 'help'):
             return cls.help(called_by_name)
@@ -52,12 +52,12 @@ class ImagePreprocessor:
             return ' '.join(line.strip() for line in cls.__doc__.split())
         return None
 
-    @staticmethod
+    @classmethod
     def get_accepted_args(cls, called_by_name):
         return [a[0] for a in
-                ImagePreprocessor.get_accepted_args_with_defaults(cls, called_by_name)]
+                cls.get_accepted_args_with_defaults(called_by_name)]
 
-    @staticmethod
+    @classmethod
     def get_accepted_args_with_defaults(cls, called_by_name):
         if hasattr(cls, 'ARGS'):
             if isinstance(cls.ARGS, dict):
@@ -130,9 +130,9 @@ class ImagePreprocessor:
 
     def __gen_filename(self):
         def _make_path(dup_number=None):
-            name = next(iter(ImagePreprocessor.get_names(self.__class__)))
+            name = next(iter(self.get_names()))
             if dup_number is not None:
-                name = next(iter(ImagePreprocessor.get_names(self.__class__))) + f'_{dup_number}'
+                name = next(iter(self.get_names())) + f'_{dup_number}'
             return os.path.join(self.__output_dir, name) + '.png'
 
         path = _make_path()
@@ -153,21 +153,21 @@ class ImagePreprocessor:
             image.save(self.__gen_filename())
         elif self.__output_file is not None:
             image.save(self.__output_file)
-            
+
     @staticmethod
-    def call_pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
-        img = self.pre_resize(image, resize_resolution)
+    def call_pre_resize(preprocessor, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
+        img = preprocessor.pre_resize(image, resize_resolution)
         if img is not image:
-            self.__save_image(img)
+            preprocessor.__save_image(img)
             img.filename = image.filename
             return img
         return image
 
     @staticmethod
-    def call_post_resize(self, image: PIL.Image):
-        img = self.post_resize(image)
+    def call_post_resize(preprocessor, image: PIL.Image):
+        img = preprocessor.post_resize(image)
         if img is not image:
-            self.__save_image(img)
+            preprocessor.__save_image(img)
             img.filename = image.filename
             return img
         return image

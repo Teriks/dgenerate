@@ -35,8 +35,7 @@ def _load(path, device):
 
     reserved_args = ['output-file', 'output-dir', 'device', 'called-by-name']
 
-    parser_accepted_args = ImagePreprocessor.get_accepted_args(preprocessor_class,
-                                                               called_by_name=call_by_name)
+    parser_accepted_args = preprocessor_class.get_accepted_args(call_by_name)
 
     for reserved in reserved_args:
         if reserved in parser_accepted_args:
@@ -99,7 +98,7 @@ def get_available_classes():
 
 def get_class_by_name(preprocessor_name):
     classes = [cls for cls in get_available_classes() if
-               preprocessor_name in ImagePreprocessor.get_names(cls)]
+               preprocessor_name in cls.get_names()]
 
     if len(classes) > 1:
         raise RuntimeError(
@@ -115,12 +114,12 @@ def get_class_by_name(preprocessor_name):
 def get_all_names():
     names = []
     for cls in get_available_classes():
-        names += ImagePreprocessor.get_names(cls)
+        names += cls.get_names()
     return names
 
 
 def get_help(preprocessor_name: str):
-    return ImagePreprocessor.get_help(get_class_by_name(preprocessor_name), preprocessor_name)
+    return get_class_by_name(preprocessor_name).get_help(preprocessor_name)
 
 
 def load(path: typing.Union[str, list, tuple, None], device='cpu'):

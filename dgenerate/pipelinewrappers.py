@@ -1979,6 +1979,7 @@ class DiffusionPipelineWrapperBase:
             if not _scheduler_is_help(self._sdxl_refiner_scheduler):
                 # Don't load this up if were just going to be getting
                 # information about compatible schedulers for the refiner
+                # information about compatible schedulers for the refiner
                 self._pipeline, self._parsed_control_net_paths = \
                     _create_torch_diffusion_pipeline(pipeline_type,
                                                      self._model_type,

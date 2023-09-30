@@ -20,7 +20,11 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import PIL.Image
+import cv2
+import numpy as np
 from controlnet_aux import OpenposeDetector
+from controlnet_aux.open_pose import draw_poses
+from controlnet_aux.util import HWC3
 
 from .preprocessor import ImagePreprocessor
 
@@ -62,10 +66,26 @@ class OpenPosePreprocess(ImagePreprocessor):
         return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
 
     def _process(self, image: PIL.Image):
-        return self._openpose(image,
-                              include_body=self._include_body,
-                              include_hand=self._include_hand,
-                              include_face=self._include_face)
+
+        input_image = HWC3(np.array(image, dtype=np.uint8))
+
+        height, width = input_image.shape[:2]
+
+        poses = self._openpose.detect_poses(input_image,
+                                            self._include_hand,
+                                            self._include_face)
+
+        canvas = draw_poses(poses, height, width,
+                            draw_body=self._include_body,
+                            draw_hand=self._include_hand,
+                            draw_face=self._include_face)
+
+        detected_map = canvas
+        detected_map = HWC3(detected_map)
+
+        detected_map = cv2.resize(detected_map, (width, height), interpolation=cv2.INTER_LINEAR)
+
+        return PIL.Image.fromarray(detected_map)
 
     def pre_resize(self, image: PIL.Image, resize_resolution: tuple):
         if self._pre_resize:
