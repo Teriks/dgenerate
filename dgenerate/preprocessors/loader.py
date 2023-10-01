@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import inspect
+import itertools
 import sys
 import typing
 
@@ -27,7 +28,7 @@ from .preprocessor import ImagePreprocessor
 from .preprocessorchain import ImagePreprocessorChain
 from ..textprocessing import ConceptPathParser, ConceptPathParseError
 
-SEARCH_MODULES = [sys.modules['dgenerate.preprocessors']]
+SEARCH_MODULES = []
 
 
 def _load(path, device):
@@ -35,23 +36,27 @@ def _load(path, device):
 
     preprocessor_class = get_class_by_name(call_by_name)
 
-    reserved_args = ['output-file', 'output-dir', 'device', 'called-by-name']
+    inherited_args = ['output-file', 'output-dir', 'device']
 
     parser_accepted_args = preprocessor_class.get_accepted_args(call_by_name)
 
-    for reserved in reserved_args:
-        if reserved in parser_accepted_args:
-            raise RuntimeError(f'{reserved} is a reserved ImagePreprocessor module argument, '
+    if 'called-by-name' in parser_accepted_args:
+        raise RuntimeError(f'called-by-name is a reserved ImagePreprocessor module argument, '
+                           'chose another argument name for your module.')
+
+    for inherited_arg in inherited_args:
+        if inherited_arg in parser_accepted_args:
+            raise RuntimeError(f'{inherited_arg} is a reserved ImagePreprocessor module argument, '
                                'chose another argument name for your module.')
 
-        parser_accepted_args.append(reserved)
+        parser_accepted_args.append(inherited_arg)
 
     arg_parser = ConceptPathParser("Image Preprocessor", parser_accepted_args)
 
     try:
         parsed_args = arg_parser.parse_concept_path(path).args
     except ConceptPathParseError as e:
-        raise ImagePreprocessorArgumentError(e)
+        raise ImagePreprocessorArgumentError(str(e))
 
     args_dict = {}
 
@@ -75,9 +80,7 @@ def _load(path, device):
                 f'Missing required argument "{arg}" for image preprocessor "{call_by_name}".')
 
     for arg in preprocessor_class.get_default_args(call_by_name):
-        arg_name = arg[0]
-        default = arg[1]
-        args_dict[arg_name] = default
+        args_dict[arg[0].replace('-', '_')] = arg[1]
 
     try:
         return preprocessor_class(**args_dict)
@@ -88,7 +91,7 @@ def _load(path, device):
 
 def get_available_classes():
     found_classes = []
-    for mod in SEARCH_MODULES:
+    for mod in itertools.chain([sys.modules['dgenerate.preprocessors']], SEARCH_MODULES):
         def _excluded(cls):
             if not inspect.isclass(cls):
                 return True

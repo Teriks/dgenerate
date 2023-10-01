@@ -140,7 +140,7 @@ def _run_loop():
         render_loop.mask_image_preprocessors = arguments.mask_image_preprocessors
         render_loop.control_image_preprocessors = arguments.control_image_preprocessors
 
-        dgenerate.preprocessors.loader.SEARCH_MODULES += arguments.plugin_modules
+        dgenerate.preprocessors.loader.SEARCH_MODULES = arguments.plugin_modules
 
         if arguments.verbose:
             messages.LEVEL = messages.DEBUG

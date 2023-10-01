@@ -76,11 +76,25 @@ class ImagePreprocessor:
                         'ImagePreprocessor module implementation bug, args for '
                         f'"{called_by_name}" not specified in ARGS dictionary.')
                 args_with_defaults = cls.ARGS.get(called_by_name)
-                return [] if args_with_defaults is None else args_with_defaults
-            return [] if cls.ARGS is None else cls.ARGS
+            else:
+                args_with_defaults = cls.ARGS
+
+            fixed_args = []
+            for arg in args_with_defaults:
+                if not isinstance(arg, tuple):
+                    if not isinstance(arg, str):
+                        raise RuntimeError(
+                            f'{cls.__name__}.ARGS["{called_by_name}"] '
+                            f'contained a non tuple or str value: {arg}')
+                    fixed_args.append((arg.replace('_', '-'),))
+                elif len(arg) == 1:
+                    fixed_args.append((arg[0].replace('_', '-'),))
+                else:
+                    fixed_args.append((arg[0].replace('_', '-'), arg[1]))
+
+            return [] if fixed_args is None else fixed_args
 
         args_with_defaults = []
-
         spec = inspect.getfullargspec(cls.__init__)
         sig_args = spec.args[1:]
         defaults_cnt = len(spec.defaults) if spec.defaults else 0
