@@ -238,10 +238,16 @@ def _run_loop():
                 templated_cmd = jinja_env. \
                     from_string(os.path.expandvars(args)).render(**template_args)
 
-                shlexed = shlex.split(templated_cmd) + sys.argv[1:]
+                extra_args = sys.argv[1:]
+
+                shlexed = shlex.split(templated_cmd) + extra_args
+
+                for idx, extra_arg in enumerate(extra_args):
+                    if any(c.isspace() for c in extra_arg):
+                        extra_args[idx] = quote(extra_arg)
 
                 header = 'Processing Arguments: '
-                args_wrapped = textwrap.fill(' '.join(shlexed),
+                args_wrapped = textwrap.fill(templated_cmd+' '+' '.join(extra_args),
                                              width=long_text_wrap_width() - len(header),
                                              subsequent_indent=' ' * len(header))
 
