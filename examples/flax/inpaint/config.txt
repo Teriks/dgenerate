@@ -4,7 +4,7 @@ xvjiarui/stable-diffusion-2-inpainting --model-type flax \
 --dtype float16 \
 --inference-steps 50 \
 --guidance-scales 8 \
---image-seeds image.png;mask.png \
+--image-seeds "../../media/dog-on-bench.png;../../media/dog-on-bench-mask.png" \
 --image-seed-strengths 0.8 \
 --seeds 39877139643371 \
 --prompts "Cat siting on a park bench, real, photo, high resolution; artwork, fake, imaginary"
