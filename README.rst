@@ -2001,8 +2001,8 @@ Batch Processing Argument Injection
 
 
 You can inject arguments into every generation call of a batch processing
-configuration by simply specifying them. The arguments will be inserted
-after the main model specification of every call.
+configuration by simply specifying them. The arguments will added to the end
+of the argument specification of every call.
 
 .. code-block:: bash
 
