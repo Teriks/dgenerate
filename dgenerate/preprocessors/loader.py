@@ -27,6 +27,8 @@ from .preprocessor import ImagePreprocessor
 from .preprocessorchain import ImagePreprocessorChain
 from ..textprocessing import ConceptPathParser, ConceptPathParseError
 
+SEARCH_MODULES = [sys.modules['dgenerate.preprocessors']]
+
 
 def _load(path, device):
     call_by_name = path.split(';', 1)[0].strip()
@@ -62,38 +64,44 @@ def _load(path, device):
         else:
             args_dict[fixed_key] = v
 
-    try:
-        args_dict['output_dir'] = parsed_args.get('output-dir')
-        args_dict['output_file'] = parsed_args.get('output-file')
-        args_dict['device'] = parsed_args.get('device', device)
-        args_dict['called_by_name'] = call_by_name
-        return preprocessor_class(**args_dict)
+    args_dict['output_dir'] = parsed_args.get('output-dir')
+    args_dict['output_file'] = parsed_args.get('output-file')
+    args_dict['device'] = parsed_args.get('device', device)
+    args_dict['called_by_name'] = call_by_name
 
+    for arg in preprocessor_class.get_required_args(call_by_name):
+        if arg.replace('-', '_') not in args_dict:
+            raise ImagePreprocessorArgumentError(
+                f'Missing required argument "{arg}" for image preprocessor "{call_by_name}".')
+
+    try:
+        return preprocessor_class(**args_dict)
     except ImagePreprocessorArgumentError as e:
-        raise ImagePreprocessorArgumentError(f'Invalid argument given to image preprocessor "{call_by_name}": {e}')
+        raise ImagePreprocessorArgumentError(
+            f'Invalid argument given to image preprocessor "{call_by_name}": {e}')
 
 
 def get_available_classes():
-    mod = sys.modules['dgenerate.preprocessors']
+    found_classes = []
+    for mod in SEARCH_MODULES:
+        def _excluded(cls):
+            if not inspect.isclass(cls):
+                return True
 
-    def _excluded(cls):
-        if not inspect.isclass(cls):
-            return True
+            if cls is ImagePreprocessor:
+                return True
 
-        if cls is ImagePreprocessor:
-            return True
+            if not issubclass(cls, ImagePreprocessor):
+                return True
 
-        if not issubclass(cls, ImagePreprocessor):
-            return True
+            if hasattr(cls, 'HIDDEN'):
+                return cls.HIDDEN
+            else:
+                return False
 
-        if hasattr(cls, 'HIDDEN'):
-            return cls.HIDDEN
-        else:
-            return False
+        found_classes += [cls for cls in mod.__dict__.values() if not _excluded(cls)]
 
-    classes = [cls for cls in mod.__dict__.values() if not _excluded(cls)]
-
-    return classes
+    return found_classes
 
 
 def get_class_by_name(preprocessor_name):

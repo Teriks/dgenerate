@@ -24,6 +24,8 @@ __version__ = '1.1.0'
 import sys
 
 
+
+
 def _run_loop():
     import re
     import os
@@ -49,6 +51,8 @@ def _run_loop():
     from .mediainput import ImageSeedParseError, ImageSeedSizeMismatchError
 
     from . import messages
+
+    import dgenerate.preprocessors.loader
 
     # The above modules take long enough to import that they must be in here in
     # order to handle keyboard interrupts without issues
@@ -135,6 +139,8 @@ def _run_loop():
         render_loop.seed_image_preprocessors = arguments.seed_image_preprocessors
         render_loop.mask_image_preprocessors = arguments.mask_image_preprocessors
         render_loop.control_image_preprocessors = arguments.control_image_preprocessors
+
+        dgenerate.preprocessors.loader.SEARCH_MODULES += arguments.plugin_modules
 
         if arguments.verbose:
             messages.LEVEL = messages.DEBUG

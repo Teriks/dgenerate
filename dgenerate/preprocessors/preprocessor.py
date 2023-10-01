@@ -58,6 +58,11 @@ class ImagePreprocessor:
                 cls.get_accepted_args_with_defaults(called_by_name)]
 
     @classmethod
+    def get_required_args(cls, called_by_name):
+        return [a[0] for a in
+                cls.get_accepted_args_with_defaults(called_by_name) if len(a) == 1]
+
+    @classmethod
     def get_accepted_args_with_defaults(cls, called_by_name):
         if hasattr(cls, 'ARGS'):
             if isinstance(cls.ARGS, dict):
@@ -77,13 +82,13 @@ class ImagePreprocessor:
         no_defaults_before = len(sig_args) - defaults_cnt
         for idx, arg in enumerate(sig_args):
             if idx < no_defaults_before:
-                args_with_defaults.append(arg.replace('_', '-'), )
+                args_with_defaults.append((arg.replace('_', '-'),))
             else:
                 args_with_defaults.append((arg.replace('_', '-'),
-                             spec.defaults[idx - defaults_cnt]))
+                                           spec.defaults[idx - defaults_cnt]))
 
         return args_with_defaults
-    
+
     def get_int_arg(self, name, value):
         try:
             return int(value)

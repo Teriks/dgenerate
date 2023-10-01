@@ -23,6 +23,7 @@ import argparse
 import os
 import random
 import sys
+from importlib.machinery import SourceFileLoader
 
 from diffusers.schedulers import KarrasDiffusionSchedulers
 
@@ -48,6 +49,32 @@ parser.add_argument('model_path', action='store',
 
 parser.add_argument('-v', '--verbose', action='store_true', default=False,
                     help="""Output information useful for debugging, such as pipeline call and model load parameters.""")
+
+__PLUGIN_COUNTER = -1
+
+
+def _type_plugin_modules(value):
+    global __PLUGIN_COUNTER
+    try:
+        __PLUGIN_COUNTER += 1
+        name, ext = os.path.splitext(value)
+        module_name = f'dgenerate_plugin_{__PLUGIN_COUNTER}'
+
+        if ext:
+            return SourceFileLoader(module_name, value).load_module()
+        else:
+            return SourceFileLoader(module_name,
+                                    os.path.join(value, '__init__.py')).load_module()
+    except Exception as e:
+        raise argparse.ArgumentTypeError(
+            f'Could not load plugin module "{value}". Reason: {e.__class__.__name__}: "{e}"')
+
+
+parser.add_argument('--plugin-modules', action='store', default=[], nargs="+", type=_type_plugin_modules,
+                    metavar="PATH",
+                    help="""Specify one or more plugin module folder paths (folder containing __init__.py) or 
+                    python .py file paths to load as plugins. Plugin modules can currently only implement 
+                    image preprocessors.""")
 
 
 def _from_model_type(val):
