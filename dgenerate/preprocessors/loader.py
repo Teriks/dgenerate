@@ -74,6 +74,11 @@ def _load(path, device):
             raise ImagePreprocessorArgumentError(
                 f'Missing required argument "{arg}" for image preprocessor "{call_by_name}".')
 
+    for arg in preprocessor_class.get_default_args(call_by_name):
+        arg_name = arg[0]
+        default = arg[1]
+        args_dict[arg_name] = default
+
     try:
         return preprocessor_class(**args_dict)
     except ImagePreprocessorArgumentError as e:

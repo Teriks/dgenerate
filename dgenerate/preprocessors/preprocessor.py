@@ -53,17 +53,22 @@ class ImagePreprocessor:
         return None
 
     @classmethod
-    def get_accepted_args(cls, called_by_name):
+    def get_accepted_args(cls, called_by_name) -> typing.List[str]:
         return [a[0] for a in
                 cls.get_accepted_args_with_defaults(called_by_name)]
 
     @classmethod
-    def get_required_args(cls, called_by_name):
+    def get_required_args(cls, called_by_name) -> typing.List[str]:
         return [a[0] for a in
                 cls.get_accepted_args_with_defaults(called_by_name) if len(a) == 1]
 
     @classmethod
-    def get_accepted_args_with_defaults(cls, called_by_name):
+    def get_default_args(cls, called_by_name) -> typing.List[tuple]:
+        return [a for a in
+                cls.get_accepted_args_with_defaults(called_by_name) if len(a) == 2]
+
+    @classmethod
+    def get_accepted_args_with_defaults(cls, called_by_name) -> typing.List[tuple]:
         if hasattr(cls, 'ARGS'):
             if isinstance(cls.ARGS, dict):
                 if called_by_name not in cls.ARGS:
@@ -90,18 +95,24 @@ class ImagePreprocessor:
         return args_with_defaults
 
     def get_int_arg(self, name, value):
+        if isinstance(value, dict):
+            value = value.get(name)
         try:
             return int(value)
         except ValueError:
             raise ImagePreprocessorArgumentError(f'Argument "{name}" must be an integer value.')
 
     def get_float_arg(self, name, value):
+        if isinstance(value, dict):
+            value = value.get(name)
         try:
             return float(value)
         except ValueError:
             raise ImagePreprocessorArgumentError(f'Argument "{name}" must be a floating point value.')
 
     def get_bool_arg(self, name, value):
+        if isinstance(value, dict):
+            value = value.get(name)
         try:
             return bool(value)
         except ValueError:
