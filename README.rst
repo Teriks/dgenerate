@@ -846,9 +846,9 @@ The alternate syntax is for disambiguation when using `Control Nets </#specifyin
 
 Mask images can be downloaded from URL's just like image seeds, however for this example the syntax specifies a file on disk for brevity.
 
-`my-image-seed.png <https://raw.githubusercontent.com/CompVis/latent-diffusion/main/data/inpainting_examples/overture-creations-5sI6fQgYIuo.png>`_
+`my-image-seed.png <https://raw.githubusercontent.com/Teriks/dgenerate/control_nets/examples/media/dog-on-bench.png>`_
 
-`my-mask-image.png <https://raw.githubusercontent.com/CompVis/latent-diffusion/main/data/inpainting_examples/overture-creations-5sI6fQgYIuo_mask.png>`_
+`my-mask-image.png <https://raw.githubusercontent.com/Teriks/dgenerate/control_nets/examples/media/dog-on-bench-mask.png>`_
 
 The command below generates a cat sitting on a bench with the images from the links above, the mask image masks out
 areas over the dog in the original image, causing the dog to be replaced with an AI generated cat.
@@ -1570,7 +1570,7 @@ at which the control net model stops applying guidance. It defaults to 1.0, mean
 stop at the last inference step.
 
 
-These examples use: `vermeer_canny_edged.png <https://raw.githubusercontent.com/Teriks/dgenerate/control_nets/examples/stablediffusion/controlnet/vermeer_canny_edged.png>`_
+These examples use: `vermeer_canny_edged.png <https://raw.githubusercontent.com/Teriks/dgenerate/control_nets/examples/media/vermeer_canny_edged.png>`_
 
 
 .. code-block:: bash
@@ -1673,7 +1673,7 @@ Each of these options can receive one or more specifications for image preproces
 For example images can be preprocessed with the canny edge detection algorithm or OpenPose (rigging generation)
 before being used for generation with a model + a Control Net.
 
-This image of a `horse <https://raw.githubusercontent.com/Teriks/dgenerate/textual_inversion/examples/stablediffusion_xl/controlnet/horse.jpeg>`_
+This image of a `horse <https://raw.githubusercontent.com/Teriks/dgenerate/control_nets/examples/media/horse2.jpeg>`_
 is used in the example below with a Control Net that is trained to generate images from canny edge detected input.
 
 .. code-block:: bash
@@ -1718,7 +1718,7 @@ Upscaling with Upscaler Models
 
 Stable diffusion image upscaling models can be used via the model types ``torch-upscaler-x2`` and ``torch-upscaler-x4``.
 
-The image used in the example below is this `low resolution cat <https://raw.githubusercontent.com/Teriks/dgenerate/textual_inversion/examples/stablediffusion/upscaling/low_res_cat.png>`_
+The image used in the example below is this `low resolution cat <https://raw.githubusercontent.com/Teriks/dgenerate/control_nets/examples/media/low_res_cat.png>`_
 
 .. code-block:: bash
 
