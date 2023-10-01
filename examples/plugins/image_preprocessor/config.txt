@@ -1,0 +1,17 @@
+
+# Run the FooBarPreprocessor plugin
+
+"runwayml/stable-diffusion-v1-5" \
+--plugin-modules demo_plugin \
+--prompts "hello world" \
+--image-seeds "../../media/earth.jpg" \
+--seed-image-preprocessors foobar;my-argument=1
+
+
+# Run the BooFabPreprocessor plugin
+
+"runwayml/stable-diffusion-v1-5" \
+--plugin-modules demo_plugin \
+--prompts "hello world" \
+--image-seeds "../../media/earth.jpg" \
+--seed-image-preprocessors boo;my-argument=1 fab;my-argument=2
