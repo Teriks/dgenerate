@@ -26,6 +26,7 @@ from pathlib import Path
 import PIL.Image
 
 from .exceptions import ImagePreprocessorArgumentError
+from ..textprocessing import dashup
 
 
 class ImagePreprocessor:
@@ -86,11 +87,11 @@ class ImagePreprocessor:
                         raise RuntimeError(
                             f'{cls.__name__}.ARGS["{called_by_name}"] '
                             f'contained a non tuple or str value: {arg}')
-                    fixed_args.append((arg.replace('_', '-'),))
+                    fixed_args.append((dashup(arg),))
                 elif len(arg) == 1:
-                    fixed_args.append((arg[0].replace('_', '-'),))
+                    fixed_args.append((dashup(arg[0]),))
                 else:
-                    fixed_args.append((arg[0].replace('_', '-'), arg[1]))
+                    fixed_args.append((dashup(arg[0]), arg[1]))
 
             return [] if fixed_args is None else fixed_args
 
@@ -101,9 +102,9 @@ class ImagePreprocessor:
         no_defaults_before = len(sig_args) - defaults_cnt
         for idx, arg in enumerate(sig_args):
             if idx < no_defaults_before:
-                args_with_defaults.append((arg.replace('_', '-'),))
+                args_with_defaults.append((dashup(arg),))
             else:
-                args_with_defaults.append((arg.replace('_', '-'),
+                args_with_defaults.append((dashup(arg),
                                            spec.defaults[idx - defaults_cnt]))
 
         return args_with_defaults

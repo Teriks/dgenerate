@@ -19,22 +19,23 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from .openpose import *
+import textwrap
+
 from .canny import *
 from .loader import *
+from .openpose import *
 from .pil_imageops import *
 from .preprocessor import ImagePreprocessor
 from .preprocessorchain import ImagePreprocessorChain
 from .preprocessormixin import ImagePreprocessorMixin
 from .. import messages
 from ..textprocessing import quote, long_text_wrap_width
-import textwrap
 
 
 def image_preprocessor_help(args):
     if len(args) == 0:
         messages.log(
-            f'Available image preprocessors:\n\n{" "*4}{(chr(10)+" "*4).join(quote(name) for name in  get_all_names())}')
+            f'Available image preprocessors:\n\n{" " * 4}{(chr(10) + " " * 4).join(quote(name) for name in get_all_names())}')
         return 0
 
     help_strs = []
@@ -60,17 +61,15 @@ def image_preprocessor_help(args):
                 arg_descriptors.append(f'{arg[0]}={default_value}')
 
         if arg_descriptors:
-            args_part = f'\n{" "*4}arguments:\n{" "*8}{(chr(10)+" "*8).join(arg_descriptors)}\n'
+            args_part = f'\n{" " * 4}arguments:\n{" " * 8}{(chr(10) + " " * 8).join(arg_descriptors)}\n'
         else:
             args_part = ''
 
         if help_str:
-            messages.log(name + f':{args_part}\n'+textwrap.fill(help_str,
-                                       initial_indent='    ',
-                                       subsequent_indent='    ',
-                                       width=long_text_wrap_width()), underline=True)
+            messages.log(name + f':{args_part}\n' + textwrap.fill(help_str,
+                                                                  initial_indent='    ',
+                                                                  subsequent_indent='    ',
+                                                                  width=long_text_wrap_width()), underline=True)
         else:
             messages.log(name + f':{args_part}', underline=True)
     return 0
-
-

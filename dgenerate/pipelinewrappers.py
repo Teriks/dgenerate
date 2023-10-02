@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import inspect
+import math
 import os
 import typing
 
@@ -41,9 +42,9 @@ except ImportError:
 import enum
 import torch
 from PIL import Image
-from .textprocessing import ConceptPathParser, ConceptPathParseError, quote, debug_format_args
+from .textprocessing import ConceptPathParser, ConceptPathParseError, quote, debug_format_args, dashup
 from . import messages
-from .memoize import memoize
+from .memoize import memoize, args_cache_key
 from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline, StableDiffusionInpaintPipeline, \
     StableDiffusionInpaintPipelineLegacy, StableDiffusionXLPipeline, StableDiffusionXLImg2ImgPipeline, \
     StableDiffusionXLInpaintPipeline, StableDiffusionUpscalePipeline, StableDiffusionLatentUpscalePipeline, \
@@ -105,7 +106,7 @@ _flax_vae_path_parser = ConceptPathParser('VAE', ['model', 'revision', 'subfolde
 
 _torch_control_net_path_parser = ConceptPathParser('ControlNet',
                                                    ['scale', 'start', 'end', 'revision', 'variant', 'subfolder',
-                                                         'dtype'])
+                                                    'dtype'])
 
 _flax_control_net_path_parser = ConceptPathParser('ControlNet',
                                                   ['scale', 'revision', 'subfolder', 'dtype', 'from_torch'])
@@ -115,9 +116,19 @@ _textual_inversion_path_parser = ConceptPathParser('Textual Inversion',
                                                    ['revision', 'subfolder', 'weight-name'])
 
 
-def _simple_cache_debug(title, cache_key, cache_hit):
-    messages.debug_log(f'Loaded Cached {title}: "{cache_hit.__class__.__name__}",',
+def _simple_cache_hit_debug(title, cache_key, cache_hit):
+    messages.debug_log(f'Cache Hit, Loaded {title}: "{cache_hit.__class__.__name__}",',
                        f'Cache Key: "{cache_key}"')
+
+
+def _simple_cache_miss_debug(title, cache_key, new):
+    messages.debug_log(f'Cache Miss, Created {title}: "{new.__class__.__name__}",',
+                       f'Cache Key: "{cache_key}"')
+
+
+def _struct_hasher(obj):
+    return quote(
+        args_cache_key({k: v for k, v in sorted(obj.__dict__.items()) if not (k.startswith('_') or callable(v))}))
 
 
 class FlaxControlNetPath:
@@ -130,8 +141,9 @@ class FlaxControlNetPath:
         self.scale = scale
 
     @memoize(_FLAX_CONTROL_NET_CACHE,
-             exceptions={'self'},
-             on_hit=lambda key, hit: _simple_cache_debug("Flax ControlNet", key, hit))
+             hasher=lambda args: args_cache_key(args, {'self': _struct_hasher}),
+             on_hit=lambda key, hit: _simple_cache_hit_debug("Flax ControlNet", key, hit),
+             on_create=lambda key, new: _simple_cache_miss_debug("Flax ControlNet", key, new))
     def load(self, flax_dtype_fallback, **kwargs):
         single_file_load_path = _is_single_file_model_load(self.model)
 
@@ -197,8 +209,9 @@ class TorchControlNetPath:
         self.end = end
 
     @memoize(_TORCH_CONTROL_NET_CACHE,
-             exceptions={'self'},
-             on_hit=lambda key, hit: _simple_cache_debug("Torch ControlNet", key, hit))
+             hasher=lambda args: args_cache_key(args, {'self': _struct_hasher}),
+             on_hit=lambda key, hit: _simple_cache_hit_debug("Torch ControlNet", key, hit),
+             on_create=lambda key, new: _simple_cache_miss_debug("Torch ControlNet", key, new))
     def load(self, torch_dtype_fallback, **kwargs) -> ControlNetModel:
 
         single_file_load_path = _is_single_file_model_load(self.model)
@@ -452,8 +465,20 @@ def _is_single_file_model_load(path):
     return False
 
 
+def _path_hash_with_parser(parser):
+    def hasher(path):
+        if not path:
+            return path
+
+        return _struct_hasher(parser(path))
+
+    return hasher
+
+
 @memoize(_TORCH_VAE_CACHE,
-         on_hit=lambda key, hit: _simple_cache_debug("Torch VAE", key, hit))
+         hasher=lambda args: args_cache_key(args, {'path': _path_hash_with_parser(parse_torch_vae_path)}),
+         on_hit=lambda key, hit: _simple_cache_hit_debug("Torch VAE", key, hit),
+         on_create=lambda key, new: _simple_cache_miss_debug("Torch VAE", key, new))
 def _load_pytorch_vae(path,
                       torch_dtype_fallback,
                       use_auth_token) -> typing.Union[AutoencoderKL, AsymmetricAutoencoderKL, AutoencoderTiny]:
@@ -506,7 +531,9 @@ def _load_pytorch_vae(path,
 
 
 @memoize(_FLAX_VAE_CACHE,
-         on_hit=lambda key, hit: _simple_cache_debug("Flax VAE", key, hit))
+         hasher=lambda args: args_cache_key(args, {'path': _path_hash_with_parser(parse_flax_vae_path)}),
+         on_hit=lambda key, hit: _simple_cache_hit_debug("Flax VAE", key, hit),
+         on_create=lambda key, new: _simple_cache_miss_debug("Flax VAE", key, new))
 def _load_flax_vae(path,
                    flax_dtype_fallback,
                    use_auth_token):
@@ -560,7 +587,7 @@ def _load_scheduler(pipeline, model_path, scheduler_name=None):
     if _scheduler_is_help(scheduler_name):
         messages.log(f'Compatible schedulers for "{model_path}" are:\n')
         for i in compatibles:
-            messages.log((" "*4)+quote(i.__name__))
+            messages.log((" " * 4) + quote(i.__name__))
         raise SchedulerHelpException()
 
     for i in compatibles:
@@ -570,7 +597,7 @@ def _load_scheduler(pipeline, model_path, scheduler_name=None):
 
     raise InvalidSchedulerName(
         f'Scheduler named "{scheduler_name}" is not a valid compatible scheduler, '
-        f'options are:\n\n{chr(10).join(sorted(" "*4+quote(i.__name__.split(".")[-1]) for i in compatibles))}')
+        f'options are:\n\n{chr(10).join(sorted(" " * 4 + quote(i.__name__.split(".")[-1]) for i in compatibles))}')
 
 
 def clear_model_cache():
@@ -664,8 +691,24 @@ def _set_torch_safety_checker(pipeline, safety_checker_bool):
             pipeline.safety_checker = _disabled_safety_checker
 
 
+def _path_list_hash_with_parser(parser):
+    def hasher(paths):
+        if not paths:
+            return paths
+        return '[' + ','.join(_path_hash_with_parser(parser)(path) for path in paths) + ']'
+    return hasher
+
+
 @memoize(_TORCH_MODEL_CACHE,
-         on_hit=lambda key, hit: _simple_cache_debug("Torch Pipeline", key, hit[0]))
+         hasher=lambda args: args_cache_key(args, {'vae_path': _path_hash_with_parser(parse_torch_vae_path),
+                                                   'lora_paths':
+                                                       _path_list_hash_with_parser(parse_lora_path),
+                                                   'textual_inversion_paths':
+                                                       _path_list_hash_with_parser(parse_textual_inversion_path),
+                                                   'control_net_paths':
+                                                       _path_list_hash_with_parser(parse_torch_control_net_path)}),
+         on_hit=lambda key, hit: _simple_cache_hit_debug("Torch Pipeline", key, hit[0]),
+         on_create=lambda key, new: _simple_cache_miss_debug('Torch Pipeline', key, new[0]))
 def _create_torch_diffusion_pipeline(pipeline_type,
                                      model_type,
                                      model_path,
@@ -870,7 +913,11 @@ def _create_torch_diffusion_pipeline(pipeline_type,
 
 
 @memoize(_FLAX_MODEL_CACHE,
-         on_hit=lambda key, hit: _simple_cache_debug("Flax Pipeline", key, hit[0]))
+         hasher=lambda args: args_cache_key(args, {'vae_path': _path_hash_with_parser(parse_flax_vae_path),
+                                                   'control_net_paths':
+                                                       _path_list_hash_with_parser(parse_flax_control_net_path)}),
+         on_hit=lambda key, hit: _simple_cache_hit_debug("Flax Pipeline", key, hit[0]),
+         on_create=lambda key, new: _simple_cache_miss_debug('Flax Pipeline', key, new[0]))
 def _create_flax_diffusion_pipeline(pipeline_type,
                                     model_path,
                                     revision,
@@ -1313,7 +1360,6 @@ class DiffusionPipelineWrapperBase:
     def vae_path(self):
         return self._vae_path
 
-
     @property
     def vae_tiling(self):
         return self._vae_tiling
@@ -1352,7 +1398,7 @@ class DiffusionPipelineWrapperBase:
         seed = kwargs.get('seed')
         width = kwargs.get('width', None)
         height = kwargs.get('height', None)
-        num_inference_steps = kwargs.get('num_inference_steps')
+        inference_steps = kwargs.get('inference_steps')
         guidance_scale = kwargs.get('guidance_scale')
         guidance_rescale = kwargs.get('guidance_rescale')
         image_guidance_scale = kwargs.get('image_guidance_scale')
@@ -1375,12 +1421,8 @@ class DiffusionPipelineWrapperBase:
         sdxl_refiner_negative_target_size = kwargs.get('sdxl_refiner_negative_target_size', None)
         sdxl_refiner_negative_crops_coords_top_left = kwargs.get('sdxl_refiner_negative_crops_coords_top_left', None)
 
-        if strength is not None:
-            num_inference_steps = int(num_inference_steps * strength)
-            guidance_scale = guidance_scale * strength
-
         opts = [self.model_path, ('--model-type', self.model_type_string), ('--dtype', self._dtype),
-                ('--device', self._device), ('--inference-steps', num_inference_steps),
+                ('--device', self._device), ('--inference-steps', inference_steps),
                 ('--guidance-scales', guidance_scale), ('--seeds', seed)]
 
         if guidance_rescale is not None:
@@ -1545,7 +1587,23 @@ class DiffusionPipelineWrapperBase:
     def _pipeline_defaults(self, user_args):
         args = dict()
         args['guidance_scale'] = float(user_args.get('guidance_scale', DEFAULT_GUIDANCE_SCALE))
-        args['num_inference_steps'] = user_args.get('num_inference_steps', DEFAULT_INFERENCE_STEPS)
+        args['num_inference_steps'] = int(user_args.get('inference_steps', DEFAULT_INFERENCE_STEPS))
+
+        def scale_ifs_to_strength():
+            guidance_scale = float(user_args.get('guidance_scale', DEFAULT_GUIDANCE_SCALE))
+            inference_steps = int(user_args.get('inference_steps', DEFAULT_INFERENCE_STEPS))
+            strength = float(user_args.get('strength', DEFAULT_IMAGE_SEED_STRENGTH))
+
+            # We want to actually preform the user requested number of
+            # inference steps when an image seed strength is required instead
+            # of what the underlying pipeline calculates for the number of steps
+
+            args['strength'] = strength
+            args['guidance_scale'] = ((guidance_scale / strength if strength > 0 else guidance_scale)
+                                      if strength is not None else guidance_scale)
+
+            args['num_inference_steps'] = (math.ceil(inference_steps / strength if strength > 0 else inference_steps)
+                                           if strength is not None else inference_steps)
 
         if self._control_net_paths is not None:
             control_image = user_args['control_image']
@@ -1555,7 +1613,7 @@ class DiffusionPipelineWrapperBase:
                     self._pipeline_type == _PipelineTypes.INPAINT:
                 args['image'] = user_args['image']
                 args['control_image'] = control_image
-                args['strength'] = float(user_args.get('strength', DEFAULT_IMAGE_SEED_STRENGTH))
+                scale_ifs_to_strength()
 
             mask_image = user_args.get('mask_image')
             if mask_image is not None:
@@ -1572,7 +1630,7 @@ class DiffusionPipelineWrapperBase:
                 if self._model_type == ModelTypes.TORCH_UPSCALER_X4:
                     args['noise_level'] = int(user_args.get('upscaler_noise_level', DEFAULT_X4_UPSCALER_NOISE_LEVEL))
             elif not model_type_is_pix2pix(self._model_type):
-                args['strength'] = float(user_args.get('strength', DEFAULT_IMAGE_SEED_STRENGTH))
+                scale_ifs_to_strength()
 
             mask_image = user_args.get('mask_image')
             if mask_image is not None:
@@ -1759,7 +1817,7 @@ class DiffusionPipelineWrapperBase:
     def _get_sdxl_conditioning_args(self, pipeline, default_args, user_args, user_prefix=None):
         if user_prefix:
             user_prefix += '_'
-            option_prefix = user_prefix.replace('_', '-')
+            option_prefix = dashup(user_prefix)
         else:
             user_prefix = ''
             option_prefix = ''

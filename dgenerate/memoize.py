@@ -22,25 +22,35 @@ import inspect
 import numbers
 
 
-def args_cache_key(args_dict):
+def args_cache_key(args_dict, custom_hashes=None):
     def value_hash(obj):
         if isinstance(obj, dict):
             return '{' + args_cache_key(obj) + '}'
+        elif isinstance(obj, list):
+            return f'[{",".join(args_cache_key(o) if o is isinstance(o, (dict, list)) else value_hash(o) for o in obj)}]'
         elif obj is None or isinstance(obj, (str, numbers.Number)):
             return str(obj)
         else:
             return f'<{obj.__class__.__name__}:{str(id(obj))}>'
 
-    return ','.join(f'{k}={value_hash(v)}' for k, v in sorted(args_dict.items()))
+    if custom_hashes:
+        # Only for the top level, let user control recursion
+        return ','.join(f'{k}={value_hash(v) if k not in custom_hashes else custom_hashes[k](v)}' for k, v in sorted(args_dict.items()))
+    else:
+        return ','.join(f'{k}={value_hash(v)}' for k, v in sorted(args_dict.items()))
 
 
-def memoize(cache, exceptions=None, hasher=args_cache_key, on_hit=None):
+def memoize(cache, exceptions=None, hasher=args_cache_key, on_hit=None, on_create=None):
     if exceptions is None:
         exceptions = {}
 
     def _on_hit(key, hit):
         if on_hit is not None:
             on_hit(key, hit)
+
+    def _on_create(key, new):
+        if on_create is not None:
+            on_create(key, new)
 
     def decorate(func):
         def wrapper(*args, **kwargs):
@@ -73,7 +83,8 @@ def memoize(cache, exceptions=None, hasher=args_cache_key, on_hit=None):
             named_provided_arguments.update(kwargs)
 
             # Cache key for all arguments except those excluded
-            cache_key = hasher({k: v for k, v in named_provided_arguments.items() if k not in exceptions})
+            cache_args = {k: v for k, v in named_provided_arguments.items() if k not in exceptions}
+            cache_key = hasher(cache_args)
 
             cache_hit = cache.get(cache_key, None)
             if cache_hit is not None:
@@ -82,6 +93,8 @@ def memoize(cache, exceptions=None, hasher=args_cache_key, on_hit=None):
 
             val = func(**named_provided_arguments)
             cache[cache_key] = val
+
+            on_create(cache_key, val)
             return val
 
         return wrapper
