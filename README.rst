@@ -444,7 +444,7 @@ dgenerate help output
                             -se/--seeds is used.
       -af FORMAT, --animation-format FORMAT
                             Output format when generating an animation from an input video / gif / webp
-                            etc. Value must be one of: gif, mp4, or webp. (default: mp4)
+                            etc. Value must be one of: mp4, gif, or webp. (default: mp4)
       -fs FRAME_NUMBER, --frame-start FRAME_NUMBER
                             Starting frame slice point for animated files, the specified frame will be
                             included.
@@ -538,7 +538,6 @@ dgenerate help output
                             to what the AI is targeting for the content of the image. Values between 30-40
                             produce good results, higher values may improve image quality and or change
                             image content. (default: [30])
-
 
 
 Windows Install
