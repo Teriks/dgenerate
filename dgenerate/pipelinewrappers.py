@@ -20,7 +20,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import decimal
 import inspect
-import math
 import os
 import typing
 
@@ -702,6 +701,7 @@ def _path_list_hash_with_parser(parser):
             return _path_hash_with_parser(parser)(paths)
 
         return '[' + ','.join(_path_hash_with_parser(parser)(path) for path in paths) + ']'
+
     return hasher
 
 
@@ -1409,7 +1409,6 @@ class DiffusionPipelineWrapperBase:
         guidance_rescale = kwargs.get('guidance_rescale')
         image_guidance_scale = kwargs.get('image_guidance_scale')
 
-
         sdxl_refiner_inference_steps = kwargs.get('sdxl_refiner_inference_steps')
         sdxl_refiner_guidance_scale = kwargs.get('sdxl_refiner_guidance_scale')
         sdxl_refiner_guidance_rescale = kwargs.get('sdxl_refiner_guidance_rescale')
@@ -1611,6 +1610,15 @@ class DiffusionPipelineWrapperBase:
 
         def set_strength():
             strength = float(user_args.get('image_seed_strength', DEFAULT_IMAGE_SEED_STRENGTH))
+            inference_steps = args.get('num_inference_steps')
+
+            if (strength * inference_steps) < 1.0:
+                strength = 1.0 / inference_steps
+                messages.log(
+                    f'WARNING: image-seed-strength * inference-steps '
+                    f'was calculated at < 1, image-seed-strength defaulting to (1.0 / inference-steps): {strength}',
+                    level=messages.WARNING)
+
             args['strength'] = strength
 
         if self._control_net_paths is not None:
@@ -1928,7 +1936,6 @@ class DiffusionPipelineWrapperBase:
                     pipeline=self._pipeline,
                     device=self._device, **default_args).images[0])
 
-
         high_noise_fraction = user_args.get('sdxl_high_noise_fraction',
                                             DEFAULT_SDXL_HIGH_NOISE_FRACTION)
 
@@ -2009,11 +2016,27 @@ class DiffusionPipelineWrapperBase:
             default_args['guidance_rescale'] = sdxl_refiner_guidance_rescale
 
         if sd_edit:
-            strength = decimal.Decimal('1.0') - decimal.Decimal(str(high_noise_fraction))
-            default_args['strength'] = float(strength)
+            strength = float(decimal.Decimal('1.0') - decimal.Decimal(str(high_noise_fraction)))
 
-            messages.log(f'Running refiner in edit mode with '
-                         f'refiner image seed strength = {strength}, IE: (1.0 - high-noise-fraction)')
+            if strength <= 0.0:
+                strength = 0.2
+                messages.log(f'WARNING: Refiner edit mode image seed strength (1.0 - high-noise-fraction) '
+                             f'was calculated at <= 0.0, defaulting to {strength}',
+                             level=messages.WARNING)
+            else:
+                messages.log(f'Running refiner in edit mode with '
+                             f'refiner image seed strength = {strength}, IE: (1.0 - high-noise-fraction)')
+
+            inference_steps = default_args.get('num_inference_steps')
+
+            if (strength * inference_steps) < 1.0:
+                strength = 1.0 / inference_steps
+                messages.log(
+                    f'WARNING: Refiner edit mode image seed strength (1.0 - high-noise-fraction) * inference-steps '
+                    f'was calculated at < 1, defaulting to (1.0 / inference-steps): {strength}',
+                    level=messages.WARNING)
+
+            default_args['strength'] = strength
 
         pipe_result = PipelineResultWrapper(
             DiffusionPipelineWrapperBase._call_pipeline(pipeline=self._sdxl_refiner_pipeline, device=self._device,
