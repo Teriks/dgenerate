@@ -144,10 +144,9 @@ def _run_loop():
             messages.LEVEL = messages.DEBUG
 
         # run the render loop
-        render_loop.run()
         try:
             try:
-                pass
+                render_loop.run()
             except SchedulerHelpException:
                 pass
         except (ImageSeedParseError,
