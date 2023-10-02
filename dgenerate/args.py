@@ -684,11 +684,22 @@ image_seed_args.add_argument('-is', '--image-seeds', action='store', nargs='+', 
                          image. Output dimensions specific to the image seed can be specified by placing the
                          dimension at the end of the string following a semicolon like so:
                          "my-seed-image.png;512x512" or "my-seed-image.png;my-image-mask.png;512x512".
-                         Inpainting masks can be downloaded for you from a URL or be a path to a file on disk.""")
+                         Inpainting masks can be downloaded for you from a URL or be a path to a file on disk.
+                         Using --control-nets with img2img or inpainting can be accomplished with the syntax:
+                         "my-seed-image.png;mask=my-image-mask.png;control=my-control-image.png;resize=512x512".
+                         The "mask" and "resize" arguments are optional when using --control-nets, Videos, GIFs,
+                         and WEBP are also supported as inputs when using --control-nets, even for the "control"
+                         argument. --image-seeds is capable of reading from 3 animated files at once or any combination
+                         of animated files and images, the animated file with the least amount of frames dictates how
+                         many frames are generated.
+                         """)
 
 image_seed_args.add_argument('-ci', '--control-images', nargs='+', action='store', default=[],
-                             help="""Specify images to try as control images for --control-nets when not specifying via --image-seed.
-                            This argument is mutually exclusive with --image-seed.""")
+                             help="""Specify images to try as control images for --control-nets when not
+                              specifying via --image-seeds. This argument is mutually exclusive with --image-seeds. 
+                              These may be URLs or file paths. Videos / GIFs / WEBP files will result in frames
+                              being rendered as well as an animated output file being generated if more
+                              than one frame is available in the input file.""")
 
 image_seed_noise_opts = parser.add_mutually_exclusive_group()
 
