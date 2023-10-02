@@ -695,6 +695,10 @@ def _path_list_hash_with_parser(parser):
     def hasher(paths):
         if not paths:
             return paths
+
+        if isinstance(paths, str):
+            return _path_hash_with_parser(parser)(paths)
+
         return '[' + ','.join(_path_hash_with_parser(parser)(path) for path in paths) + ']'
     return hasher
 

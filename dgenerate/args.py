@@ -808,7 +808,12 @@ parser.add_argument('-grs', '--guidance-rescales', action='store', nargs='+', de
                             Sample Steps are Flawed](https://arxiv.org/pdf/2305.08891.pdf) "guidance_scale" is defined 
                             as "φ" in equation 16. of [Common Diffusion Noise Schedules and Sample Steps are Flawed]
                             (https://arxiv.org/pdf/2305.08891.pdf). Guidance rescale factor should fix overexposure 
-                            when using zero terminal SNR.""")
+                            when using zero terminal SNR. This is supported for basic text to image generation 
+                            when using --model-type "torch" but not inpainting, img2img, or --control-nets. 
+                            When using --model-type "torch-sdxl" it is supported for basic generation, inpainting, 
+                            and img2img, unless --control-nets is specified in which case only inpainting is supported.
+                            It is supported for --model-type "torch-sdxl-pix2pix" but not --model-type "torch-pix2pix"
+                            """)
 
 
 def _type_inference_steps(val):
