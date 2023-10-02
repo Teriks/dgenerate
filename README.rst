@@ -823,6 +823,10 @@ If you do not adjust the output size of the generated image, the size of the inp
     --output-size 512x512
 
 
+The syntax "my-image-seed.png;control=my-control-image.png" can be used with ``--control-nets``,
+see: `Specifying Control Nets </#specifying-control-nets>`_ for more information.
+
+
 Inpainting
 ----------
 
