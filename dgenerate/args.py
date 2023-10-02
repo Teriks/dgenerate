@@ -553,13 +553,13 @@ parser.add_argument('-ri', '--sdxl-refiner-inference-steps', action='store',  na
                     Override the number of inference steps used by the SDXL refiner, 
                     which defaults to the value taken from --inference-steps.""")
 
-parser.add_argument('-rg', '--sdxl-refiner-guidance-scales', action='store', nargs='+', default=None, metavar="INT",
+parser.add_argument('-rg', '--sdxl-refiner-guidance-scales', action='store', nargs='+', default=None, metavar="FLOAT",
                     type=_type_guidance_scale,
                     help="""One or more guidance scale values for the SDXL refiner when in use. 
                     Override the guidance scale value used by the SDXL refiner, 
                     which defaults to the value taken from --guidance-scales.""")
 
-parser.add_argument('-rgr', '--sdxl-refiner-guidance-rescales', action='store', nargs='+', default=None, metavar="INT",
+parser.add_argument('-rgr', '--sdxl-refiner-guidance-rescales', action='store', nargs='+', default=None, metavar="FLOAT",
                     type=_type_guidance_scale,
                     help="""One or more guidance rescale values for the SDXL refiner when in use. 
                     Override the guidance rescale value used by the SDXL refiner,
