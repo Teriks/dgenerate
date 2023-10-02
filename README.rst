@@ -50,7 +50,7 @@ dgenerate help output
 
 .. code-block::
 
-    usage: dgenerate [-h] [-v] [--plugin-modules PATH [PATH ...]] [--model-type MODEL_TYPE]
+    usage: dgenerate [-h] [-v] [--version] [--plugin-modules PATH [PATH ...]] [--model-type MODEL_TYPE]
                      [--revision BRANCH] [--variant VARIANT] [--subfolder SUBFOLDER] [--auth-token TOKEN]
                      [--vae MODEL_PATH] [--vae-tiling] [--vae-slicing] [--lora MODEL_PATH]
                      [--textual-inversions MODEL_PATH [MODEL_PATH ...]]
@@ -75,10 +75,10 @@ dgenerate help output
                      [--sdxl-refiner-negative-target-sizes SIZE [SIZE ...]]
                      [--sdxl-refiner-negative-crops-coords-top-left COORD [COORD ...]]
                      [-hnf FLOAT [FLOAT ...]] [-ri INT [INT ...]] [-rg FLOAT [FLOAT ...]]
-                     [-rgr FLOAT [FLOAT ...]] [--safety-checker] [--version] [-d DEVICE] [-t DTYPE]
-                     [-s SIZE] [-o PATH] [-op PREFIX] [-ox] [-oc] [-om] [-p PROMPT [PROMPT ...]]
-                     [-se SEED [SEED ...] | -gse COUNT] [-af FORMAT] [-fs FRAME_NUMBER] [-fe FRAME_NUMBER]
-                     [-is SEED [SEED ...] | -ci CONTROL_IMAGES [CONTROL_IMAGES ...]]
+                     [-rgr FLOAT [FLOAT ...]] [--safety-checker] [-d DEVICE] [-t DTYPE] [-s SIZE] [-o PATH]
+                     [-op PREFIX] [-ox] [-oc] [-om] [-p PROMPT [PROMPT ...]] [-se SEED [SEED ...] | -gse
+                     COUNT] [-af FORMAT] [-fs FRAME_NUMBER] [-fe FRAME_NUMBER] [-is SEED [SEED ...] | -ci
+                     CONTROL_IMAGES [CONTROL_IMAGES ...]]
                      [--seed-image-preprocessors PREPROCESSOR [PREPROCESSOR ...]]
                      [--mask-image-preprocessors PREPROCESSOR [PREPROCESSOR ...]]
                      [--control-image-preprocessors PREPROCESSOR [PREPROCESSOR ...]]
@@ -97,6 +97,7 @@ dgenerate help output
       -h, --help            show this help message and exit
       -v, --verbose         Output information useful for debugging, such as pipeline call and model load
                             parameters.
+      --version             Show dgenerate's version and exit
       --plugin-modules PATH [PATH ...]
                             Specify one or more plugin module folder paths (folder containing __init__.py)
                             or python .py file paths to load as plugins. Plugin modules can currently only
@@ -392,7 +393,6 @@ dgenerate help output
                             with NSFW content detected may result in solid black output. Some pretrained
                             models have settings indicating a safety checker is not to be loaded, in that
                             case this option has no effect.
-      --version             show program's version number and exit
       -d DEVICE, --device DEVICE
                             cuda / cpu. (default: cuda). Use: cuda:0, cuda:1, cuda:2, etc. to specify a
                             specific GPU.
