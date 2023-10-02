@@ -52,8 +52,11 @@ parser.add_argument('model_path', action='store',
 parser.add_argument('-v', '--verbose', action='store_true', default=False,
                     help="""Output information useful for debugging, such as pipeline call and model load parameters.""")
 
-__PLUGIN_COUNTER = -1
+parser.add_argument('--version', action='version', version=f"dgenerate v{__version__}",
+                    help="Show dgenerate's version and exit")
 
+
+__PLUGIN_COUNTER = -1
 
 def _type_plugin_modules(value):
     global __PLUGIN_COUNTER
@@ -570,8 +573,6 @@ parser.add_argument('--safety-checker', action='store_true', default=False,
                          When turned on images with NSFW content detected may result in solid black output.
                          Some pretrained models have settings indicating a safety checker is not to be loaded,
                          in that case this option has no effect.""")
-
-parser.add_argument('--version', action='version', version=f"dgenerate v{__version__}")
 
 
 def _type_device(device):
