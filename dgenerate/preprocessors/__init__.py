@@ -30,6 +30,7 @@ from .preprocessorchain import ImagePreprocessorChain
 from .preprocessormixin import ImagePreprocessorMixin
 from .. import messages
 from ..textprocessing import quote, long_text_wrap_width
+from .exceptions import *
 
 
 def image_preprocessor_help(args):
