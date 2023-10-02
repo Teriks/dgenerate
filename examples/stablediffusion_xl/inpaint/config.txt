@@ -4,6 +4,9 @@ diffusers/stable-diffusion-xl-1.0-inpainting-0.1 --model-type torch-sdxl \
 --variant fp16 --dtype float16 \
 --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
 --inference-steps 20 \
+--sdxl-refiner-inference-steps 50 \
+--sdxl-refiner-guidance-scales 10 \
+--sdxl-refiner-guidance-rescales 1.0 \
 --guidance-scales 7 \
 --image-seeds "../../media/horse1.jpg;../../media/horse1-mask.jpg" \
 --image-seed-strengths 0.9 \

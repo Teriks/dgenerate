@@ -32,7 +32,9 @@ from . import messages
 from .diffusionloop import is_valid_device_string, InvalidDeviceOrdinalException
 from .mediaoutput import supported_animation_writer_formats
 from .pipelinewrappers import supported_model_type_strings, have_jax_flax, get_model_type_enum, model_type_is_upscaler, \
-    model_type_is_pix2pix, model_type_is_sdxl, model_type_is_torch, model_type_is_flax
+    model_type_is_pix2pix, model_type_is_sdxl, model_type_is_torch, model_type_is_flax, \
+    DEFAULT_IMAGE_SEED_STRENGTH, DEFAULT_SDXL_HIGH_NOISE_FRACTION, DEFAULT_IMAGE_GUIDANCE_SCALE, \
+    DEFAULT_X4_UPSCALER_NOISE_LEVEL, DEFAULT_GUIDANCE_SCALE, DEFAULT_INFERENCE_STEPS
 from .textprocessing import oxford_comma
 
 if have_jax_flax():
@@ -106,6 +108,28 @@ def _type_prompts(prompt):
     else:
         raise argparse.ArgumentTypeError(
             f'Parse error, too many values, only a prompt and optional negative prompt are accepted')
+
+
+def _type_inference_steps(val):
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+
+    if val <= 0:
+        raise argparse.ArgumentTypeError('Must be greater than 0')
+    return val
+
+
+def _type_guidance_scale(val):
+    try:
+        val = float(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be a floating point number')
+
+    if val < 0:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 0')
+    return val
 
 
 parser.add_argument('--model-type', action='store', default='torch', type=_from_model_type,
@@ -517,8 +541,29 @@ parser.add_argument('-hnf', '--sdxl-high-noise-fractions', action='store', nargs
                     type=_type_sdxl_high_noise_fractions,
                     help="""High noise fraction for Stable Diffusion XL (torch-sdxl), this fraction of inference steps
                          will be processed by the base model, while the rest will be processed by the refiner model.
-                         Multiple values to this argument will result in additional generation steps for each value. 
-                         (default: [0.8])""")
+                         Multiple values to this argument will result in additional generation steps for each value.
+                         In certain situations when the mixture of denoisers algorithm is not supported,
+                         such as when using --control-nets and inpainting with SDXL, the inverse proportion
+                         of this value IE: (1.0 - high-noise-fraction) becomes the --image-seed-strength 
+                         input to the SDXL refiner. (default: [0.8])""")
+
+parser.add_argument('-ri', '--sdxl-refiner-inference-steps', action='store',  nargs='+', default=None, metavar="INT",
+                    type=_type_inference_steps,
+                    help="""One or more inference steps values for the SDXL refiner when in use. 
+                    Override the number of inference steps used by the SDXL refiner, 
+                    which defaults to the value taken from --inference-steps.""")
+
+parser.add_argument('-rg', '--sdxl-refiner-guidance-scales', action='store', nargs='+', default=None, metavar="INT",
+                    type=_type_guidance_scale,
+                    help="""One or more guidance scale values for the SDXL refiner when in use. 
+                    Override the guidance scale value used by the SDXL refiner, 
+                    which defaults to the value taken from --guidance-scales.""")
+
+parser.add_argument('-rgr', '--sdxl-refiner-guidance-rescales', action='store', nargs='+', default=None, metavar="INT",
+                    type=_type_guidance_scale,
+                    help="""One or more guidance rescale values for the SDXL refiner when in use. 
+                    Override the guidance rescale value used by the SDXL refiner,
+                    which defaults to the value taken from --guidance-rescales.""")
 
 parser.add_argument('--safety-checker', action='store_true', default=False,
                     help="""Enable safety checker loading, this is off by default.
@@ -772,19 +817,8 @@ image_seed_noise_opts.add_argument('-uns', '--upscaler-noise-levels', action='st
                     The higher this value the more noise is added to the image before upscaling 
                     (similar to --image-seed-strength). (default: [20])""")
 
-
-def _type_guidance_scale(val):
-    try:
-        val = float(val)
-    except ValueError:
-        raise argparse.ArgumentTypeError('Must be a floating point number')
-
-    if val < 0:
-        raise argparse.ArgumentTypeError('Must be greater than or equal to 0')
-    return val
-
-
-parser.add_argument('-gs', '--guidance-scales', action='store', nargs='+', default=[5],
+parser.add_argument('-gs', '--guidance-scales', action='store', nargs='+',
+                    default=[DEFAULT_GUIDANCE_SCALE],
                     metavar="FLOAT",
                     type=_type_guidance_scale,
                     help="""List of guidance scales to try. Guidance scale effects how much your
@@ -812,7 +846,7 @@ parser.add_argument('-igs', '--image-guidance-scales', action='store', nargs='+'
                             encourages generated images that are closely linked to the source image, usually at the expense
                             of lower image quality. Requires a value of at least 1. (default: [1.5])""")
 
-parser.add_argument('-grs', '--guidance-rescales', action='store', nargs='+', default=[],
+parser.add_argument('-gr', '--guidance-rescales', action='store', nargs='+', default=[],
                     metavar="FLOAT",
                     type=_type_guidance_scale,
                     help="""List of guidance rescale factors to try. Proposed by [Common Diffusion Noise Schedules and 
@@ -826,19 +860,8 @@ parser.add_argument('-grs', '--guidance-rescales', action='store', nargs='+', de
                             It is supported for --model-type "torch-sdxl-pix2pix" but not --model-type "torch-pix2pix"
                             """)
 
-
-def _type_inference_steps(val):
-    try:
-        val = int(val)
-    except ValueError:
-        raise argparse.ArgumentTypeError('Must be an integer')
-
-    if val <= 0:
-        raise argparse.ArgumentTypeError('Must be greater than 0')
-    return val
-
-
-parser.add_argument('-ifs', '--inference-steps', action='store', nargs='+', default=[30], type=_type_inference_steps,
+parser.add_argument('-ifs', '--inference-steps', action='store', nargs='+', default=[DEFAULT_INFERENCE_STEPS],
+                    type=_type_inference_steps,
                     metavar="INTEGER",
                     help="""Lists of inference steps values to try. The amount of inference (de-noising) steps
                          effects image clarity to a degree, higher values bring the image closer to what
@@ -889,7 +912,7 @@ def parse_args(args=None, namespace=None):
                 level=messages.ERROR)
             sys.exit(1)
     elif args.upscaler_noise_levels is None:
-        args.upscaler_noise_levels = [20]
+        args.upscaler_noise_levels = [DEFAULT_X4_UPSCALER_NOISE_LEVEL]
 
     if not model_type_is_pix2pix(args.model_type):
         if args.image_guidance_scales:
@@ -905,7 +928,7 @@ def parse_args(args=None, namespace=None):
             level=messages.ERROR)
         sys.exit(1)
     elif not args.image_guidance_scales:
-        args.image_guidance_scales = [1.5]
+        args.image_guidance_scales = [DEFAULT_IMAGE_GUIDANCE_SCALE]
 
     if args.control_image_preprocessors:
         if not args.image_seeds and not args.control_images:
@@ -949,7 +972,7 @@ def parse_args(args=None, namespace=None):
         else:
             if args.sdxl_high_noise_fractions is None:
                 # Default value
-                args.sdxl_high_noise_fractions = [0.8]
+                args.sdxl_high_noise_fractions = [DEFAULT_SDXL_HIGH_NOISE_FRACTION]
 
     if not model_type_is_torch(args.model_type):
         if args.vae_tiling or args.vae_slicing:
@@ -974,7 +997,7 @@ def parse_args(args=None, namespace=None):
     if args.image_seeds:
         if args.image_seed_strengths is None:
             # Default value
-            args.image_seed_strengths = [0.8]
+            args.image_seed_strengths = [DEFAULT_IMAGE_SEED_STRENGTH]
     else:
         args.image_seed_strengths = []
 

@@ -113,6 +113,9 @@ def _run_loop():
         render_loop.sdxl_refiner_path = arguments.sdxl_refiner
         render_loop.sdxl_refiner_scheduler = arguments.sdxl_refiner_scheduler
         render_loop.sdxl_high_noise_fractions = arguments.sdxl_high_noise_fractions
+        render_loop.sdxl_refiner_inference_steps = arguments.sdxl_refiner_inference_steps
+        render_loop.sdxl_refiner_guidance_scales = arguments.sdxl_refiner_guidance_scales
+        render_loop.sdxl_refiner_guidance_rescales = arguments.sdxl_refiner_guidance_rescales
 
         render_loop.sdxl_aesthetic_scores = arguments.sdxl_aesthetic_scores
         render_loop.sdxl_original_sizes = arguments.sdxl_original_sizes
