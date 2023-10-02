@@ -26,7 +26,7 @@ import typing
 from .exceptions import ImagePreprocessorArgumentError, ImagePreprocessorNotFoundError
 from .preprocessor import ImagePreprocessor
 from .preprocessorchain import ImagePreprocessorChain
-from ..textprocessing import ConceptPathParser, ConceptPathParseError
+from ..textprocessing import ConceptPathParser, ConceptPathParseError, dashdown
 
 SEARCH_MODULES = []
 
@@ -61,7 +61,7 @@ def _load(path, device):
     args_dict = {}
 
     for k, v in parsed_args.items():
-        fixed_key = k.replace('-', '_')
+        fixed_key = dashdown(k)
 
         if fixed_key in args_dict:
             raise ImagePreprocessorArgumentError(
@@ -75,12 +75,12 @@ def _load(path, device):
     args_dict['called_by_name'] = call_by_name
 
     for arg in preprocessor_class.get_required_args(call_by_name):
-        if arg.replace('-', '_') not in args_dict:
+        if dashdown(arg) not in args_dict:
             raise ImagePreprocessorArgumentError(
                 f'Missing required argument "{arg}" for image preprocessor "{call_by_name}".')
 
     for arg in preprocessor_class.get_default_args(call_by_name):
-        args_dict[arg[0].replace('-', '_')] = arg[1]
+        args_dict[dashdown(arg[0])] = arg[1]
 
     try:
         return preprocessor_class(**args_dict)

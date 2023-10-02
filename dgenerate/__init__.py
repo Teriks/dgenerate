@@ -24,8 +24,6 @@ __version__ = '1.1.0'
 import sys
 
 
-
-
 def _run_loop():
     import re
     import os
@@ -247,7 +245,7 @@ def _run_loop():
                         extra_args[idx] = quote(extra_arg)
 
                 header = 'Processing Arguments: '
-                args_wrapped = textwrap.fill(templated_cmd+' '+' '.join(extra_args),
+                args_wrapped = textwrap.fill(templated_cmd + ' ' + ' '.join(extra_args),
                                              width=long_text_wrap_width() - len(header),
                                              subsequent_indent=' ' * len(header))
 

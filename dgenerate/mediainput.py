@@ -31,9 +31,9 @@ import av
 import requests
 from fake_useragent import UserAgent
 
+from .image import resize_image, resize_image_calc, copy_img, is_aligned_by_8, align_by_8, to_rgb
 from .preprocessors import ImagePreprocessorMixin
 from .textprocessing import ConceptPathParser, ConceptPathParseError
-from .image import resize_image, resize_image_calc, copy_img, is_aligned_by_8, align_by_8, to_rgb
 
 
 class AnimationFrame:

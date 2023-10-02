@@ -50,12 +50,12 @@ class ConceptPathParser:
             vals = i.split('=', 1)
             if not vals:
                 raise ConceptPathParseError(f'Error parsing path arguments for '
-                                                 f'{self.concept_name} concept "{concept}", Empty argument space, '
-                                                 f'stray semicolon?')
+                                            f'{self.concept_name} concept "{concept}", Empty argument space, '
+                                            f'stray semicolon?')
             if len(vals) == 1:
                 raise ConceptPathParseError(f'Error parsing path arguments for '
-                                                 f'{self.concept_name} concept "{concept}", missing value '
-                                                 f'assignment for argument {vals[0]}.')
+                                            f'{self.concept_name} concept "{concept}", missing value '
+                                            f'assignment for argument {vals[0]}.')
             name = vals[0].strip().lower()
             if self.known_args is not None and name not in self.known_args:
                 raise ConceptPathParseError(
@@ -65,7 +65,7 @@ class ConceptPathParser:
                 args[name] = unquote(vals[1])
             except SyntaxError as e:
                 raise ConceptPathParseError(f'Syntax Error parsing argument {name} for '
-                                                 f'{self.concept_name} concept "{concept}": {e}')
+                                            f'{self.concept_name} concept "{concept}": {e}')
         return ConceptPath(concept, args)
 
 
@@ -108,6 +108,14 @@ def unquote(strin):
         return str(strin.strip(' '))
 
 
+def dashdown(strin):
+    return strin.replace('-', '_')
+
+
+def dashup(strin):
+    return strin.replace('_', '-')
+
+
 def debug_format_args(args_dict, value_transformer=None):
     def _value_transformer(key, value):
         if value_transformer is not None:
@@ -116,4 +124,4 @@ def debug_format_args(args_dict, value_transformer=None):
 
     return str(
         {k: str(_value_transformer(k, v)) if len(str(_value_transformer(k, v))) < 256
-         else v.__class__.__name__ for k, v in args_dict.items()})
+        else v.__class__.__name__ for k, v in args_dict.items()})

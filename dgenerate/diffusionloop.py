@@ -20,8 +20,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import datetime
+import inspect
 import itertools
-import math
 import os
 import re
 import textwrap
@@ -37,7 +37,7 @@ from .mediainput import iterate_image_seed, get_image_seed_info, MultiContextMan
     get_control_image_info, iterate_control_image, ImageSeed
 from .mediaoutput import create_animation_writer, supported_animation_writer_formats
 from .pipelinewrappers import DiffusionPipelineWrapper, DiffusionPipelineImg2ImgWrapper, supported_model_type_strings, \
-    PipelineResultWrapper, model_type_is_upscaler, get_model_type_enum, ModelTypes, model_type_is_pix2pix, \
+    PipelineResultWrapper, model_type_is_upscaler, ModelTypes, model_type_is_pix2pix, \
     model_type_is_sdxl, supported_model_type_enums
 from .textprocessing import oxford_comma, long_text_wrap_width
 
@@ -68,65 +68,63 @@ def _has_len(obj):
 
 
 class DiffusionArgContext:
-    def __init__(self,
-                 diffusion_args,
-                 prompt,
-                 sdxl_second_prompt,
-                 sdxl_refiner_prompt,
-                 sdxl_refiner_second_prompt,
-                 seed,
-                 image_seed_strength,
-                 upscaler_noise_level,
-                 sdxl_high_noise_fraction,
-                 sdxl_aesthetic_score,
-                 sdxl_original_size,
-                 sdxl_target_size,
-                 sdxl_crops_coords_top_left,
-                 sdxl_negative_aesthetic_score,
-                 sdxl_negative_original_size,
-                 sdxl_negative_target_size,
-                 sdxl_negative_crops_coords_top_left,
-                 sdxl_refiner_aesthetic_score,
-                 sdxl_refiner_original_size,
-                 sdxl_refiner_target_size,
-                 sdxl_refiner_crops_coords_top_left,
-                 sdxl_refiner_negative_aesthetic_score,
-                 sdxl_refiner_negative_original_size,
-                 sdxl_refiner_negative_target_size,
-                 sdxl_refiner_negative_crops_coords_top_left,
-                 guidance_scale,
-                 image_guidance_scale,
-                 guidance_rescale,
-                 inference_steps):
-        self.args = diffusion_args
-        self.prompt = prompt
-        self.sdxl_second_prompt = sdxl_second_prompt
-        self.sdxl_refiner_prompt = sdxl_refiner_prompt
-        self.sdxl_refiner_second_prompt = sdxl_refiner_second_prompt
-        self.seed = seed
-        self.image_seed_strength = image_seed_strength
-        self.upscaler_noise_level = upscaler_noise_level
-        self.sdxl_high_noise_fraction = sdxl_high_noise_fraction
-        self.sdxl_aesthetic_score = sdxl_aesthetic_score
-        self.sdxl_original_size = sdxl_original_size
-        self.sdxl_target_size = sdxl_target_size
-        self.sdxl_crops_coords_top_left = sdxl_crops_coords_top_left
-        self.sdxl_negative_aesthetic_score = sdxl_negative_aesthetic_score
-        self.sdxl_negative_original_size = sdxl_negative_original_size
-        self.sdxl_negative_target_size = sdxl_negative_target_size
-        self.sdxl_negative_crops_coords_top_left = sdxl_negative_crops_coords_top_left
-        self.sdxl_refiner_aesthetic_score = sdxl_refiner_aesthetic_score
-        self.sdxl_refiner_original_size = sdxl_refiner_original_size
-        self.sdxl_refiner_target_size = sdxl_refiner_target_size
-        self.sdxl_refiner_crops_coords_top_left = sdxl_refiner_crops_coords_top_left
-        self.sdxl_refiner_negative_aesthetic_score = sdxl_refiner_negative_aesthetic_score
-        self.sdxl_refiner_negative_original_size = sdxl_refiner_negative_original_size
-        self.sdxl_refiner_negative_target_size = sdxl_refiner_negative_target_size
-        self.sdxl_refiner_negative_crops_coords_top_left = sdxl_refiner_negative_crops_coords_top_left
-        self.guidance_scale = guidance_scale
-        self.image_guidance_scale = image_guidance_scale
-        self.guidance_rescale = guidance_rescale
-        self.inference_steps = inference_steps
+    def __init__(self):
+        self.prompt = None
+        self.sdxl_second_prompt = None
+        self.sdxl_refiner_prompt = None
+        self.sdxl_refiner_second_prompt = None
+        self.seed = None
+        self.image_seed_strength = None
+        self.upscaler_noise_level = None
+        self.sdxl_high_noise_fraction = None
+        self.sdxl_aesthetic_score = None
+        self.sdxl_original_size = None
+        self.sdxl_target_size = None
+        self.sdxl_crops_coords_top_left = None
+        self.sdxl_negative_aesthetic_score = None
+        self.sdxl_negative_original_size = None
+        self.sdxl_negative_target_size = None
+        self.sdxl_negative_crops_coords_top_left = None
+        self.sdxl_refiner_aesthetic_score = None
+        self.sdxl_refiner_original_size = None
+        self.sdxl_refiner_target_size = None
+        self.sdxl_refiner_crops_coords_top_left = None
+        self.sdxl_refiner_negative_aesthetic_score = None
+        self.sdxl_refiner_negative_original_size = None
+        self.sdxl_refiner_negative_target_size = None
+        self.sdxl_refiner_negative_crops_coords_top_left = None
+        self.guidance_scale = None
+        self.image_guidance_scale = None
+        self.guidance_rescale = None
+        self.inference_steps = None
+
+    def get_pipeline_args(self):
+        def get_prompt(d, component):
+            if d is None:
+                return None
+            return d.get(component)
+
+        pipeline_args = {
+            "prompt": get_prompt(self.prompt, 'prompt'),
+            "negative_prompt": get_prompt(self.prompt, 'negative_prompt'),
+            "sdxl_prompt_2": get_prompt(self.sdxl_second_prompt, 'prompt'),
+            "sdxl_negative_prompt_2": get_prompt(self.sdxl_second_prompt, 'negative_prompt'),
+            "sdxl_refiner_prompt": get_prompt(self.sdxl_refiner_prompt, 'prompt'),
+            "sdxl_refiner_negative_prompt": get_prompt(self.sdxl_refiner_prompt, 'negative_prompt'),
+            "sdxl_refiner_prompt_2": get_prompt(self.sdxl_refiner_second_prompt, 'prompt'),
+            "sdxl_refiner_negative_prompt_2": get_prompt(self.sdxl_refiner_second_prompt, 'negative_prompt')
+        }
+
+        for k, v in pipeline_args.copy().items():
+            if v is None:
+                pipeline_args.pop(k)
+
+        for attr, val in self.__dict__.items():
+            if not (attr.startswith('_') or 'prompt' in attr) and \
+                    not (callable(val) or val is None):
+                pipeline_args[attr] = val
+
+        return pipeline_args
 
     @staticmethod
     def _describe_prompt(prompt_format, prompt_dict, pos_title, neg_title):
@@ -149,7 +147,7 @@ class DiffusionArgContext:
                                        subsequent_indent=' ' * len(header))
             prompt_format.append(f'{header}"{prompt_val}"')
 
-    def describe_parameters(self):
+    def describe_pipeline_args(self):
         prompt_format = []
 
         DiffusionArgContext._describe_prompt(
@@ -178,7 +176,7 @@ class DiffusionArgContext:
 
         inputs = [f'Seed: {self.seed}']
 
-        descripts = [
+        descriptions = [
             (self.image_seed_strength, "Image Seed Strength:"),
             (self.upscaler_noise_level, "Upscaler Noise Level:"),
             (self.sdxl_high_noise_fraction, "SDXL High Noise Fraction:"),
@@ -204,7 +202,7 @@ class DiffusionArgContext:
             (self.inference_steps, "Inference Steps:")
         ]
 
-        for prompt_val, desc in descripts:
+        for prompt_val, desc in descriptions:
             if prompt_val is not None:
                 inputs.append(desc + ' ' + str(prompt_val))
 
@@ -217,229 +215,60 @@ def _list_or_list_of_none(val):
     return val if val else [None]
 
 
-def iterate_diffusion_args(prompts,
-                           sdxl_second_prompts,
-                           sdxl_refiner_prompts,
-                           sdxl_refiner_second_prompts,
-                           seeds,
-                           image_seed_strengths,
-                           upscaler_noise_levels,
-                           sdxl_high_noise_fractions,
-                           sdxl_aesthetic_scores,
-                           sdxl_original_sizes,
-                           sdxl_target_sizes,
+def iter_attribute_combinations(attribute_defs, my_class):
+    def assign(ctx, name, val):
+        if val is not None:
+            if name in ctx.__dict__:
+                ctx.__dict__[name] = val
+            else:
+                raise RuntimeError(f'{ctx.__class__.__name__} missing attribute "{name}"')
+
+    for combination in itertools.product(*[d[1] for d in attribute_defs]):
+        ctx_out = my_class()
+        for idx, d in enumerate(attribute_defs):
+            attr = d[0]
+            if len(d) == 2:
+                assign(ctx_out, attr, combination[idx])
+            else:
+                assign(ctx_out, attr, d[2](ctx_out, attr, combination[idx]))
+        yield ctx_out
+
+
+def iterate_diffusion_args(prompt,
+                           sdxl_second_prompt,
+                           sdxl_refiner_prompt,
+                           sdxl_refiner_second_prompt,
+                           seed,
+                           image_seed_strength,
+                           upscaler_noise_level,
+                           sdxl_high_noise_fraction,
+                           sdxl_aesthetic_score,
+                           sdxl_original_size,
+                           sdxl_target_size,
                            sdxl_crops_coords_top_left,
-                           sdxl_negative_aesthetic_scores,
-                           sdxl_negative_original_sizes,
-                           sdxl_negative_target_sizes,
+                           sdxl_negative_aesthetic_score,
+                           sdxl_negative_original_size,
+                           sdxl_negative_target_size,
                            sdxl_negative_crops_coords_top_left,
-                           sdxl_refiner_aesthetic_scores,
-                           sdxl_refiner_original_sizes,
-                           sdxl_refiner_target_sizes,
+                           sdxl_refiner_aesthetic_score,
+                           sdxl_refiner_original_size,
+                           sdxl_refiner_target_size,
                            sdxl_refiner_crops_coords_top_left,
-                           sdxl_refiner_negative_aesthetic_scores,
-                           sdxl_refiner_negative_original_sizes,
-                           sdxl_refiner_negative_target_sizes,
+                           sdxl_refiner_negative_aesthetic_score,
+                           sdxl_refiner_negative_original_size,
+                           sdxl_refiner_negative_target_size,
                            sdxl_refiner_negative_crops_coords_top_left,
-                           guidance_scales,
-                           image_guidance_scales,
-                           guidance_rescales,
-                           inference_steps_list) -> Iterator[DiffusionArgContext]:
-    diffusion_args = dict()
+                           guidance_scale,
+                           image_guidance_scale,
+                           guidance_rescale,
+                           inference_steps) -> Iterator[DiffusionArgContext]:
 
-    for arg_set in itertools.product(
-            prompts,
-            _list_or_list_of_none(sdxl_second_prompts),
-            _list_or_list_of_none(sdxl_refiner_prompts),
-            _list_or_list_of_none(sdxl_refiner_second_prompts),
-            seeds,
-            _list_or_list_of_none(image_seed_strengths),
-            _list_or_list_of_none(upscaler_noise_levels),
-            _list_or_list_of_none(sdxl_high_noise_fractions),
-            _list_or_list_of_none(sdxl_aesthetic_scores),
-            _list_or_list_of_none(sdxl_original_sizes),
-            _list_or_list_of_none(sdxl_target_sizes),
-            _list_or_list_of_none(sdxl_crops_coords_top_left),
-            _list_or_list_of_none(sdxl_negative_aesthetic_scores),
-            _list_or_list_of_none(sdxl_negative_original_sizes),
-            _list_or_list_of_none(sdxl_negative_target_sizes),
-            _list_or_list_of_none(sdxl_negative_crops_coords_top_left),
-            _list_or_list_of_none(sdxl_refiner_aesthetic_scores),
-            _list_or_list_of_none(sdxl_refiner_original_sizes),
-            _list_or_list_of_none(sdxl_refiner_target_sizes),
-            _list_or_list_of_none(sdxl_refiner_crops_coords_top_left),
-            _list_or_list_of_none(sdxl_refiner_negative_aesthetic_scores),
-            _list_or_list_of_none(sdxl_refiner_negative_original_sizes),
-            _list_or_list_of_none(sdxl_refiner_negative_target_sizes),
-            _list_or_list_of_none(sdxl_refiner_negative_crops_coords_top_left),
-            guidance_scales,
-            _list_or_list_of_none(image_guidance_scales),
-            _list_or_list_of_none(guidance_rescales),
-            inference_steps_list
-    ):
-        idx = iter(range(0, len(arg_set)))
+    args = locals()
+    defs = []
+    for arg_name in inspect.getfullargspec(iterate_diffusion_args).args:
+        defs.append((arg_name, _list_or_list_of_none(args[arg_name])))
 
-        # It is very important that the order here matches what
-        # is above :)
-
-        prompt = arg_set[next(idx)]
-        sdxl_second_prompt = arg_set[next(idx)]
-        sdxl_refiner_prompt = arg_set[next(idx)]
-        sdxl_refiner_second_prompt = arg_set[next(idx)]
-        seed = arg_set[next(idx)]
-        image_seed_strength = arg_set[next(idx)]
-        upscaler_noise_level = arg_set[next(idx)]
-        sdxl_high_noise_fraction = arg_set[next(idx)]
-        sdxl_aesthetic_score = arg_set[next(idx)]
-        sdxl_original_size = arg_set[next(idx)]
-        sdxl_target_size = arg_set[next(idx)]
-        sdxl_crops_coords_top_left_v = arg_set[next(idx)]
-        sdxl_negative_aesthetic_score = arg_set[next(idx)]
-        sdxl_negative_original_size = arg_set[next(idx)]
-        sdxl_negative_target_size = arg_set[next(idx)]
-        sdxl_negative_crops_coords_top_left_v = arg_set[next(idx)]
-        sdxl_refiner_aesthetic_score = arg_set[next(idx)]
-        sdxl_refiner_original_size = arg_set[next(idx)]
-        sdxl_refiner_target_size = arg_set[next(idx)]
-        sdxl_refiner_crops_coords_top_left_v = arg_set[next(idx)]
-        sdxl_refiner_negative_aesthetic_score = arg_set[next(idx)]
-        sdxl_refiner_negative_original_size = arg_set[next(idx)]
-        sdxl_refiner_negative_target_size = arg_set[next(idx)]
-        sdxl_refiner_negative_crops_coords_top_left_v = arg_set[next(idx)]
-        guidance_scale = arg_set[next(idx)]
-        image_guidance_scale = arg_set[next(idx)]
-        guidance_rescale = arg_set[next(idx)]
-        inference_steps = arg_set[next(idx)]
-
-        # Mode dependant
-
-        if image_seed_strengths:
-            diffusion_args['strength'] = image_seed_strength
-
-        if upscaler_noise_levels:
-            diffusion_args['upscaler_noise_level'] = upscaler_noise_level
-
-        if guidance_rescales:
-            diffusion_args['guidance_rescale'] = guidance_rescale
-
-        if image_guidance_scales:
-            diffusion_args['image_guidance_scale'] = image_guidance_scale
-
-        # SDXL
-
-        if sdxl_high_noise_fractions:
-            diffusion_args['sdxl_high_noise_fraction'] = sdxl_high_noise_fraction
-
-        # SDXL Main Model
-
-        if sdxl_aesthetic_scores:
-            diffusion_args['sdxl_aesthetic_score'] = sdxl_aesthetic_score
-
-        if sdxl_original_sizes:
-            diffusion_args['sdxl_original_size'] = sdxl_original_size
-
-        if sdxl_target_sizes:
-            diffusion_args['sdxl_target_size'] = sdxl_target_size
-
-        if sdxl_crops_coords_top_left:
-            diffusion_args['sdxl_crops_coords_top_left'] = sdxl_crops_coords_top_left_v
-
-        # SDXL Main Model negatives
-
-        if sdxl_negative_aesthetic_scores:
-            diffusion_args['sdxl_negative_aesthetic_score'] = sdxl_negative_aesthetic_score
-
-        if sdxl_negative_original_sizes:
-            diffusion_args['sdxl_negative_original_size'] = sdxl_negative_original_size
-
-        if sdxl_negative_target_sizes:
-            diffusion_args['sdxl_negative_target_size'] = sdxl_negative_target_size
-
-        if sdxl_negative_crops_coords_top_left:
-            diffusion_args['sdxl_negative_crops_coords_top_left'] = sdxl_negative_crops_coords_top_left_v
-
-        # SDXL Refiner Model
-
-        if sdxl_refiner_aesthetic_scores:
-            diffusion_args['sdxl_refiner_aesthetic_score'] = sdxl_refiner_aesthetic_score
-
-        if sdxl_refiner_original_sizes:
-            diffusion_args['sdxl_refiner_original_size'] = sdxl_refiner_original_size
-
-        if sdxl_refiner_target_sizes:
-            diffusion_args['sdxl_refiner_target_size'] = sdxl_refiner_target_size
-
-        if sdxl_refiner_crops_coords_top_left:
-            diffusion_args['sdxl_refiner_crops_coords_top_left'] = sdxl_refiner_crops_coords_top_left_v
-
-        # SDXL Refiner Model negatives
-
-        if sdxl_refiner_negative_aesthetic_scores:
-            diffusion_args['sdxl_refiner_negative_aesthetic_score'] = sdxl_refiner_negative_aesthetic_score
-
-        if sdxl_refiner_negative_original_sizes:
-            diffusion_args['sdxl_refiner_negative_original_size'] = sdxl_refiner_negative_original_size
-
-        if sdxl_refiner_negative_target_sizes:
-            diffusion_args['sdxl_refiner_negative_target_size'] = sdxl_refiner_negative_target_size
-
-        if sdxl_refiner_negative_crops_coords_top_left:
-            diffusion_args[
-                'sdxl_refiner_negative_crops_coords_top_left'] = sdxl_refiner_negative_crops_coords_top_left_v
-
-        # Universals
-
-        diffusion_args['num_inference_steps'] = (
-            math.ceil(inference_steps / image_seed_strength if image_seed_strength > 0 else inference_steps)
-            if image_seed_strengths else inference_steps)
-
-        diffusion_args['guidance_scale'] = (
-            (guidance_scale / image_seed_strength if image_seed_strength > 0 else guidance_scale)
-            if image_seed_strengths else guidance_scale)
-
-        diffusion_args.update(prompt)
-
-        if sdxl_second_prompts:
-            diffusion_args['sdxl_prompt_2'] = sdxl_second_prompt.get('prompt', None)
-            diffusion_args['sdxl_negative_prompt_2'] = sdxl_second_prompt.get('negative_prompt', None)
-
-        if sdxl_refiner_prompts:
-            diffusion_args['sdxl_refiner_prompt'] = sdxl_refiner_prompt.get('prompt', None)
-            diffusion_args['sdxl_refiner_negative_prompt'] = sdxl_refiner_prompt.get('negative_prompt', None)
-
-        if sdxl_refiner_second_prompts:
-            diffusion_args['sdxl_refiner_prompt_2'] = sdxl_refiner_second_prompt.get('prompt', None)
-            diffusion_args['sdxl_refiner_negative_prompt_2'] = sdxl_refiner_second_prompt.get('negative_prompt', None)
-
-        yield DiffusionArgContext(diffusion_args,
-                                  prompt,
-                                  sdxl_second_prompt,
-                                  sdxl_refiner_prompt,
-                                  sdxl_refiner_second_prompt,
-                                  seed,
-                                  image_seed_strength,
-                                  upscaler_noise_level,
-                                  sdxl_high_noise_fraction,
-                                  sdxl_aesthetic_score,
-                                  sdxl_original_size,
-                                  sdxl_target_size,
-                                  sdxl_crops_coords_top_left_v,
-                                  sdxl_negative_aesthetic_score,
-                                  sdxl_negative_original_size,
-                                  sdxl_negative_target_size,
-                                  sdxl_negative_crops_coords_top_left_v,
-                                  sdxl_refiner_aesthetic_score,
-                                  sdxl_refiner_original_size,
-                                  sdxl_refiner_target_size,
-                                  sdxl_refiner_crops_coords_top_left_v,
-                                  sdxl_refiner_negative_aesthetic_score,
-                                  sdxl_refiner_negative_original_size,
-                                  sdxl_refiner_negative_target_size,
-                                  sdxl_refiner_negative_crops_coords_top_left_v,
-                                  guidance_scale,
-                                  image_guidance_scale,
-                                  guidance_rescale,
-                                  inference_steps)
+    yield from iter_attribute_combinations(defs, DiffusionArgContext)
 
 
 def _safe_len(lst):
@@ -772,7 +601,7 @@ class DiffusionRenderLoop:
         self._frame_time_sum = 0
         self._generation_step += 1
 
-        desc = args_ctx.describe_parameters()
+        desc = args_ctx.describe_pipeline_args()
 
         messages.log(
             f'Generation step {self._generation_step + 1} / {self.num_generation_steps}\n'
@@ -815,41 +644,41 @@ class DiffusionRenderLoop:
             return v
 
         yield from iterate_diffusion_args(
-            prompts=ov('prompts', self.prompts),
-            sdxl_second_prompts=ov('sdxl_second_prompts',
-                                   self.sdxl_second_prompts),
-            sdxl_refiner_prompts=ov('sdxl_refiner_prompts',
-                                    self.sdxl_refiner_prompts),
-            sdxl_refiner_second_prompts=ov('sdxl_refiner_second_prompts',
-                                           self.sdxl_refiner_second_prompts),
-            seeds=ov('seeds', self.seeds),
-            image_seed_strengths=ov('image_seed_strengths', self.image_seed_strengths),
-            guidance_scales=ov('guidance_scales', self.guidance_scales),
-            image_guidance_scales=ov('image_guidance_scales', self.image_guidance_scales),
-            guidance_rescales=ov('guidance_rescales', self.guidance_rescales),
-            inference_steps_list=ov('inference_steps_list', self.inference_steps),
-            sdxl_high_noise_fractions=ov('sdxl_high_noise_fractions', self.sdxl_high_noise_fractions),
-            upscaler_noise_levels=ov('upscaler_noise_levels', self.upscaler_noise_levels),
-            sdxl_aesthetic_scores=ov('sdxl_aesthetic_scores', self.sdxl_aesthetic_scores),
-            sdxl_original_sizes=ov('sdxl_original_sizes', self.sdxl_original_sizes),
-            sdxl_target_sizes=ov('sdxl_target_sizes', self.sdxl_target_sizes),
+            prompt=ov('prompt', self.prompts),
+            sdxl_second_prompt=ov('sdxl_second_prompt',
+                                  self.sdxl_second_prompts),
+            sdxl_refiner_prompt=ov('sdxl_refiner_prompt',
+                                   self.sdxl_refiner_prompts),
+            sdxl_refiner_second_prompt=ov('sdxl_refiner_second_prompt',
+                                          self.sdxl_refiner_second_prompts),
+            seed=ov('seed', self.seeds),
+            image_seed_strength=ov('image_seed_strength', self.image_seed_strengths),
+            guidance_scale=ov('guidance_scale', self.guidance_scales),
+            image_guidance_scale=ov('image_guidance_scale', self.image_guidance_scales),
+            guidance_rescale=ov('guidance_rescale', self.guidance_rescales),
+            inference_steps=ov('inference_steps', self.inference_steps),
+            sdxl_high_noise_fraction=ov('sdxl_high_noise_fraction', self.sdxl_high_noise_fractions),
+            upscaler_noise_level=ov('upscaler_noise_level', self.upscaler_noise_levels),
+            sdxl_aesthetic_score=ov('sdxl_aesthetic_score', self.sdxl_aesthetic_scores),
+            sdxl_original_size=ov('sdxl_original_size', self.sdxl_original_sizes),
+            sdxl_target_size=ov('sdxl_target_size', self.sdxl_target_sizes),
             sdxl_crops_coords_top_left=ov('sdxl_crops_coords_top_left', self.sdxl_crops_coords_top_left),
-            sdxl_negative_aesthetic_scores=ov('sdxl_negative_aesthetic_scores', self.sdxl_negative_aesthetic_scores),
-            sdxl_negative_original_sizes=ov('sdxl_negative_original_sizes', self.sdxl_negative_original_sizes),
-            sdxl_negative_target_sizes=ov('sdxl_negative_target_sizes', self.sdxl_negative_target_sizes),
+            sdxl_negative_aesthetic_score=ov('sdxl_negative_aesthetic_score', self.sdxl_negative_aesthetic_scores),
+            sdxl_negative_original_size=ov('sdxl_negative_original_size', self.sdxl_negative_original_sizes),
+            sdxl_negative_target_size=ov('sdxl_negative_target_size', self.sdxl_negative_target_sizes),
             sdxl_negative_crops_coords_top_left=ov('sdxl_negative_crops_coords_top_left',
                                                    self.sdxl_negative_crops_coords_top_left),
-            sdxl_refiner_aesthetic_scores=ov('sdxl_refiner_aesthetic_scores', self.sdxl_refiner_aesthetic_scores),
-            sdxl_refiner_original_sizes=ov('sdxl_refiner_original_sizes', self.sdxl_refiner_original_sizes),
-            sdxl_refiner_target_sizes=ov('sdxl_refiner_target_sizes', self.sdxl_refiner_target_sizes),
+            sdxl_refiner_aesthetic_score=ov('sdxl_refiner_aesthetic_score', self.sdxl_refiner_aesthetic_scores),
+            sdxl_refiner_original_size=ov('sdxl_refiner_original_size', self.sdxl_refiner_original_sizes),
+            sdxl_refiner_target_size=ov('sdxl_refiner_target_size', self.sdxl_refiner_target_sizes),
             sdxl_refiner_crops_coords_top_left=ov('sdxl_refiner_crops_coords_top_left',
                                                   self.sdxl_refiner_crops_coords_top_left),
-            sdxl_refiner_negative_aesthetic_scores=ov('sdxl_refiner_negative_aesthetic_scores',
-                                                      self.sdxl_refiner_negative_aesthetic_scores),
-            sdxl_refiner_negative_original_sizes=ov('sdxl_refiner_negative_original_sizes',
-                                                    self.sdxl_refiner_negative_original_sizes),
-            sdxl_refiner_negative_target_sizes=ov('sdxl_refiner_negative_target_sizes',
-                                                  self.sdxl_refiner_negative_target_sizes),
+            sdxl_refiner_negative_aesthetic_score=ov('sdxl_refiner_negative_aesthetic_score',
+                                                     self.sdxl_refiner_negative_aesthetic_scores),
+            sdxl_refiner_negative_original_size=ov('sdxl_refiner_negative_original_size',
+                                                   self.sdxl_refiner_negative_original_sizes),
+            sdxl_refiner_negative_target_size=ov('sdxl_refiner_negative_target_size',
+                                                 self.sdxl_refiner_negative_target_sizes),
             sdxl_refiner_negative_crops_coords_top_left=ov('sdxl_refiner_negative_crops_coords_top_left',
                                                            self.sdxl_refiner_negative_crops_coords_top_left))
 
@@ -895,14 +724,13 @@ class DiffusionRenderLoop:
 
             sdxl_high_noise_fractions = self.sdxl_high_noise_fractions if self.sdxl_refiner_path is not None else None
 
-            for args_ctx in self._iterate_diffusion_args(sdxl_high_noise_fractions=sdxl_high_noise_fractions,
-                                                         image_seed_strengths=None,
-                                                         upscaler_noise_levels=None):
+            for args_ctx in self._iterate_diffusion_args(sdxl_high_noise_fraction=sdxl_high_noise_fractions,
+                                                         image_seed_strength=None,
+                                                         upscaler_noise_level=None):
                 self._pre_generation_step(args_ctx)
                 self._pre_generation(args_ctx)
 
-                with diffusion_model(**args_ctx.args,
-                                     seed=args_ctx.seed,
+                with diffusion_model(**args_ctx.get_pipeline_args(),
                                      width=self.output_size[0],
                                      height=self.output_size[1]) as generation_result:
                     self._write_prompt_only_image(args_ctx, generation_result)
@@ -933,9 +761,9 @@ class DiffusionRenderLoop:
 
             messages.log(f'Processing Control Image: {control_image}', underline=True)
 
-            arg_iterator = self._iterate_diffusion_args(sdxl_high_noise_fractions=sdxl_high_noise_fractions,
-                                                        image_seed_strengths=None,
-                                                        upscaler_noise_levels=None)
+            arg_iterator = self._iterate_diffusion_args(sdxl_high_noise_fraction=sdxl_high_noise_fractions,
+                                                        image_seed_strength=None,
+                                                        upscaler_noise_level=None)
 
             control_image_info = get_control_image_info(control_image, self.frame_start, self.frame_end)
 
@@ -964,9 +792,8 @@ class DiffusionRenderLoop:
                     with control_image_obj as cimg_obj:
                         self._with_control_image_pre_generation(args_ctx, cimg_obj)
 
-                        with control_image_obj.image, diffusion_model(**args_ctx.args,
-                                                                      control_image=control_image_obj.image,
-                                                                      seed=args_ctx.seed) as generation_result:
+                        with control_image_obj.image, diffusion_model(**args_ctx.get_pipeline_args(),
+                                                                      control_image=control_image_obj.image) as generation_result:
                             self._write_image_seed_gen_image(args_ctx, generation_result)
 
     def _render_with_image_seeds(self):
@@ -1001,9 +828,9 @@ class DiffusionRenderLoop:
             messages.log(f'Processing Image Seed: {image_seed}', underline=True)
 
             arg_iterator = self._iterate_diffusion_args(
-                sdxl_high_noise_fractions=sdxl_high_noise_fractions,
-                image_seed_strengths=image_seed_strengths,
-                upscaler_noise_levels=upscaler_noise_levels
+                sdxl_high_noise_fraction=sdxl_high_noise_fractions,
+                image_seed_strength=image_seed_strengths,
+                upscaler_noise_level=upscaler_noise_levels
             )
 
             seed_info = get_image_seed_info(image_seed, self.frame_start, self.frame_end)
@@ -1040,8 +867,10 @@ class DiffusionRenderLoop:
                     with image_obj as image_seed_obj:
                         self._with_image_seed_pre_generation(args_ctx, image_seed_obj)
 
+                        pipeline_args = args_ctx.get_pipeline_args()
+
                         if image_seed_obj.mask_image is not None:
-                            args_ctx.args['mask_image'] = image_seed_obj.mask_image
+                            pipeline_args['mask_image'] = image_seed_obj.mask_image
 
                         if image_seed_obj.control_image is None:
                             if self.control_net_paths:
@@ -1051,12 +880,11 @@ class DiffusionRenderLoop:
                                     'on specifying a control image.')
 
                         else:
-                            args_ctx.args['control_image'] = image_seed_obj.control_image
+                            pipeline_args['control_image'] = image_seed_obj.control_image
 
                         with MultiContextManager([image_seed_obj.mask_image, image_seed_obj.control_image]), \
-                                diffusion_model(**args_ctx.args,
-                                                image=image_seed_obj.image,
-                                                seed=args_ctx.seed) as generation_result:
+                                diffusion_model(**pipeline_args,
+                                                image=image_seed_obj.image) as generation_result:
                             self._write_image_seed_gen_image(args_ctx, generation_result)
 
     def _render_animation(self, diffusion_model, arg_iterator, fps, seed_iterator_func, get_extra_args):
@@ -1096,9 +924,8 @@ class DiffusionRenderLoop:
 
                         extra_args = get_extra_args(image_seed_obj)
 
-                        with diffusion_model(**args_ctx.args,
-                                             **extra_args,
-                                             seed=args_ctx.seed) as generation_result:
+                        with diffusion_model(**args_ctx.get_pipeline_args(),
+                                             **extra_args) as generation_result:
                             video_writer.write(generation_result.image)
 
                             if self.output_configs:
