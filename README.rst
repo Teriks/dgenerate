@@ -1713,8 +1713,9 @@ You simply specify one or more module directories on disk, or paths to python fi
 
 Currently the only supported functionality of plugin modules is to add image preprocessors.
 
-A code example as well as a command line usage example for image
-preprocessor plugins can be found `here <https://github.com/Teriks/dgenerate/tree/control_nets/examples/plugins/image_preprocessor>`_
+A code example as well as a command line usage example for image preprocessor plugins can be found
+in the `"plugins/image_preprocessor" <https://github.com/Teriks/dgenerate/tree/control_nets/examples/plugins/image_preprocessor>`_
+folder of the examples folder.
 
 The source code for the built in `canny <https://github.com/Teriks/dgenerate/blob/control_nets/dgenerate/preprocessors/canny.py>`_ preprocessor,
 the `openpose <https://github.com/Teriks/dgenerate/blob/control_nets/dgenerate/preprocessors/openpose.py>`_ preprocessor, and the simple
