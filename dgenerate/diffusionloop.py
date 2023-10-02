@@ -77,6 +77,9 @@ class DiffusionArgContext:
         self.image_seed_strength = None
         self.upscaler_noise_level = None
         self.sdxl_high_noise_fraction = None
+        self.sdxl_refiner_inference_steps = None
+        self.sdxl_refiner_guidance_scale = None
+        self.sdxl_refiner_guidance_rescale = None
         self.sdxl_aesthetic_score = None
         self.sdxl_original_size = None
         self.sdxl_target_size = None
@@ -180,6 +183,9 @@ class DiffusionArgContext:
             (self.image_seed_strength, "Image Seed Strength:"),
             (self.upscaler_noise_level, "Upscaler Noise Level:"),
             (self.sdxl_high_noise_fraction, "SDXL High Noise Fraction:"),
+            (self.sdxl_refiner_inference_steps, "SDXL Refiner Inference Steps:"),
+            (self.sdxl_refiner_guidance_scale, "SDXL Refiner Guidance Scale:"),
+            (self.sdxl_refiner_guidance_rescale, "SDXL Refiner Guidance Rescale:"),
             (self.sdxl_aesthetic_score, "SDXL Aesthetic Score:"),
             (self.sdxl_original_size, "SDXL Original Size:"),
             (self.sdxl_target_size, "SDXL Target Size:"),
@@ -242,6 +248,9 @@ def iterate_diffusion_args(prompt,
                            image_seed_strength,
                            upscaler_noise_level,
                            sdxl_high_noise_fraction,
+                           sdxl_refiner_inference_steps,
+                           sdxl_refiner_guidance_scale,
+                           sdxl_refiner_guidance_rescale,
                            sdxl_aesthetic_score,
                            sdxl_original_size,
                            sdxl_target_size,
@@ -306,6 +315,10 @@ class DiffusionRenderLoop:
         self.image_guidance_scales = None
 
         self.sdxl_high_noise_fractions = None
+        self.sdxl_refiner_inference_steps = None
+        self.sdxl_refiner_guidance_scales = None
+        self.sdxl_refiner_guidance_rescales = None
+
         self.sdxl_aesthetic_scores = None
         self.sdxl_original_sizes = None
         self.sdxl_target_sizes = None
@@ -508,32 +521,39 @@ class DiffusionRenderLoop:
         return path
 
     def _gen_filename_base(self, args_ctx):
-        if args_ctx.upscaler_noise_level is not None:
-            noise_entry = ('unl', args_ctx.upscaler_noise_level)
-        elif args_ctx.image_seed_strength is not None:
-            noise_entry = ('st', args_ctx.image_seed_strength)
-        else:
-            noise_entry = []
+        args = ['s', args_ctx.seed]
 
-        guidance_entry = ['g', args_ctx.guidance_scale]
+        if args_ctx.upscaler_noise_level is not None:
+            args += ['unl', args_ctx.upscaler_noise_level]
+        elif args_ctx.image_seed_strength is not None:
+            args += ['st', args_ctx.image_seed_strength]
+
+        args += ['g', args_ctx.guidance_scale]
 
         if args_ctx.guidance_rescale is not None:
-            guidance_entry += ['grs', args_ctx.guidance_rescale]
+            args += ['gr', args_ctx.guidance_rescale]
 
         if args_ctx.image_guidance_scale is not None:
-            guidance_entry += ['igs', args_ctx.image_guidance_scale]
+            args += ['igs', args_ctx.image_guidance_scale]
 
-        args = ['s', args_ctx.seed,
-                *noise_entry,
-                *guidance_entry,
-                'i', args_ctx.inference_steps]
+        args += ['i', args_ctx.inference_steps]
+
+        if args_ctx.sdxl_high_noise_fraction is not None:
+            args += ['hnf', args_ctx.sdxl_high_noise_fraction]
+
+        if args_ctx.sdxl_refiner_guidance_scale is not None:
+            args += ['rg', args_ctx.sdxl_refiner_guidance_scale]
+
+        if args_ctx.sdxl_refiner_guidance_rescale is not None:
+            args += ['rgr', args_ctx.sdxl_refiner_guidance_rescale]
+
+        if args_ctx.sdxl_refiner_inference_steps is not None:
+            args += ['ri', args_ctx.sdxl_refiner_inference_steps]
+
         return args
 
     def _gen_animation_filename(self, args_ctx: DiffusionArgContext, generation_step, animation_format):
         args = ['ANIM', *self._gen_filename_base(args_ctx)]
-
-        if args_ctx.sdxl_high_noise_fraction is not None:
-            args += ['hnf', args_ctx.sdxl_high_noise_fraction]
 
         return self._gen_filename(*args, 'step', generation_step + 1, ext=animation_format)
 
@@ -557,9 +577,6 @@ class DiffusionRenderLoop:
                                generation_result: PipelineResultWrapper):
         args = self._gen_filename_base(args_ctx)
 
-        if args_ctx.sdxl_high_noise_fraction is not None:
-            args += ['hnf', args_ctx.sdxl_high_noise_fraction]
-
         filename = self._gen_filename(*args,
                                       'frame',
                                       image_seed_obj.frame_index + 1,
@@ -577,20 +594,12 @@ class DiffusionRenderLoop:
                                     generation_result: PipelineResultWrapper):
         args = self._gen_filename_base(args_ctx)
 
-        if args_ctx.sdxl_high_noise_fraction is not None:
-            args += ['hnf', args_ctx.sdxl_high_noise_fraction]
-
         filename = self._gen_filename(*args, 'step', self._generation_step + 1, ext='png')
         self._written_images.append(os.path.abspath(filename))
         self._write_generation_result(filename, generation_result, generation_result.dgenerate_config)
 
     def _write_prompt_only_image(self, args_ctx: DiffusionArgContext, generation_result: PipelineResultWrapper):
-        args = ['s', args_ctx.seed,
-                'g', args_ctx.guidance_scale,
-                'i', args_ctx.inference_steps]
-
-        if args_ctx.sdxl_high_noise_fraction is not None:
-            args += ['hnf', args_ctx.sdxl_high_noise_fraction]
+        args = self._gen_filename_base(args_ctx)
 
         filename = self._gen_filename(*args, 'step', self._generation_step + 1, ext='png')
         self._written_images.append(os.path.abspath(filename))
@@ -658,6 +667,9 @@ class DiffusionRenderLoop:
             guidance_rescale=ov('guidance_rescale', self.guidance_rescales),
             inference_steps=ov('inference_steps', self.inference_steps),
             sdxl_high_noise_fraction=ov('sdxl_high_noise_fraction', self.sdxl_high_noise_fractions),
+            sdxl_refiner_inference_steps=ov('sdxl_refiner_inference_steps', self.sdxl_refiner_inference_steps),
+            sdxl_refiner_guidance_scale=ov('sdxl_refiner_guidance_scale', self.sdxl_refiner_guidance_scales),
+            sdxl_refiner_guidance_rescale=ov('sdxl_refiner_guidance_rescale', self.sdxl_refiner_guidance_rescales),
             upscaler_noise_level=ov('upscaler_noise_level', self.upscaler_noise_levels),
             sdxl_aesthetic_score=ov('sdxl_aesthetic_score', self.sdxl_aesthetic_scores),
             sdxl_original_size=ov('sdxl_original_size', self.sdxl_original_sizes),

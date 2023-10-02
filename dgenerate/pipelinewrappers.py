@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import decimal
 import inspect
 import math
 import os
@@ -64,6 +65,7 @@ _FLAX_VAE_CACHE = dict()
 DEFAULT_INFERENCE_STEPS = 30
 DEFAULT_GUIDANCE_SCALE = 5
 DEFAULT_IMAGE_SEED_STRENGTH = 0.8
+DEFAULT_IMAGE_GUIDANCE_SCALE = 1.5
 DEFAULT_SDXL_HIGH_NOISE_FRACTION = 0.8
 DEFAULT_X4_UPSCALER_NOISE_LEVEL = 20
 DEFAULT_OUTPUT_WIDTH = 512
@@ -1407,6 +1409,11 @@ class DiffusionPipelineWrapperBase:
         guidance_rescale = kwargs.get('guidance_rescale')
         image_guidance_scale = kwargs.get('image_guidance_scale')
 
+
+        sdxl_refiner_inference_steps = kwargs.get('sdxl_refiner_inference_steps')
+        sdxl_refiner_guidance_scale = kwargs.get('sdxl_refiner_guidance_scale')
+        sdxl_refiner_guidance_rescale = kwargs.get('sdxl_refiner_guidance_rescale')
+
         sdxl_high_noise_fraction = kwargs.get('sdxl_high_noise_fraction', None)
         sdxl_aesthetic_score = kwargs.get('sdxl_aesthetic_score', None)
         sdxl_original_size = kwargs.get('sdxl_original_size', None)
@@ -1509,6 +1516,15 @@ class DiffusionPipelineWrapperBase:
         if sdxl_high_noise_fraction is not None:
             opts.append(('--sdxl-high-noise-fractions', sdxl_high_noise_fraction))
 
+        if sdxl_refiner_inference_steps is not None:
+            opts.append(('--sdxl-refiner-inference-steps', sdxl_refiner_inference_steps))
+
+        if sdxl_refiner_guidance_scale is not None:
+            opts.append(('--sdxl-refiner-guidance-scales', sdxl_refiner_guidance_scale))
+
+        if sdxl_refiner_guidance_rescale is not None:
+            opts.append(('--sdxl-refiner-guidance-rescales', sdxl_refiner_guidance_rescale))
+
         if sdxl_aesthetic_score is not None:
             opts.append(('--sdxl-aesthetic-scores', sdxl_aesthetic_score))
 
@@ -1593,21 +1609,9 @@ class DiffusionPipelineWrapperBase:
         args['guidance_scale'] = float(user_args.get('guidance_scale', DEFAULT_GUIDANCE_SCALE))
         args['num_inference_steps'] = int(user_args.get('inference_steps', DEFAULT_INFERENCE_STEPS))
 
-        def scale_ifs_to_strength():
-            guidance_scale = float(user_args.get('guidance_scale', DEFAULT_GUIDANCE_SCALE))
-            inference_steps = int(user_args.get('inference_steps', DEFAULT_INFERENCE_STEPS))
-            strength = float(user_args.get('strength', DEFAULT_IMAGE_SEED_STRENGTH))
-
-            # We want to actually preform the user requested number of
-            # inference steps when an image seed strength is required instead
-            # of what the underlying pipeline calculates for the number of steps
-
+        def set_strength():
+            strength = float(user_args.get('image_seed_strength', DEFAULT_IMAGE_SEED_STRENGTH))
             args['strength'] = strength
-            args['guidance_scale'] = ((guidance_scale / strength if strength > 0 else guidance_scale)
-                                      if strength is not None else guidance_scale)
-
-            args['num_inference_steps'] = (math.ceil(inference_steps / strength if strength > 0 else inference_steps)
-                                           if strength is not None else inference_steps)
 
         if self._control_net_paths is not None:
             control_image = user_args['control_image']
@@ -1617,7 +1621,7 @@ class DiffusionPipelineWrapperBase:
                     self._pipeline_type == _PipelineTypes.INPAINT:
                 args['image'] = user_args['image']
                 args['control_image'] = control_image
-                scale_ifs_to_strength()
+                set_strength()
 
             mask_image = user_args.get('mask_image')
             if mask_image is not None:
@@ -1634,7 +1638,7 @@ class DiffusionPipelineWrapperBase:
                 if self._model_type == ModelTypes.TORCH_UPSCALER_X4:
                     args['noise_level'] = int(user_args.get('upscaler_noise_level', DEFAULT_X4_UPSCALER_NOISE_LEVEL))
             elif not model_type_is_pix2pix(self._model_type):
-                scale_ifs_to_strength()
+                set_strength()
 
             mask_image = user_args.get('mask_image')
             if mask_image is not None:
@@ -1924,6 +1928,7 @@ class DiffusionPipelineWrapperBase:
                     pipeline=self._pipeline,
                     device=self._device, **default_args).images[0])
 
+
         high_noise_fraction = user_args.get('sdxl_high_noise_fraction',
                                             DEFAULT_SDXL_HIGH_NOISE_FRACTION)
 
@@ -1960,6 +1965,7 @@ class DiffusionPipelineWrapperBase:
         default_args.pop('control_guidance_start', None)
         default_args.pop('control_guidance_end', None)
         default_args.pop('image_guidance_scale', None)
+        default_args.pop('control_image', None)
 
         # We do not want to override the refiner secondary prompt
         # with that of --sdxl-second-prompts by default
@@ -1990,9 +1996,24 @@ class DiffusionPipelineWrapperBase:
                                              'guidance_rescale', 'sdxl_refiner_guidance_rescale',
                                              '--sdxl-refiner-guidance-rescales', 0.0)
 
+        sdxl_refiner_inference_steps = user_args.get('sdxl_refiner_inference_steps')
+        if sdxl_refiner_inference_steps is not None:
+            default_args['num_inference_steps'] = sdxl_refiner_inference_steps
+
+        sdxl_refiner_guidance_scale = user_args.get('sdxl_refiner_guidance_scale')
+        if sdxl_refiner_guidance_scale is not None:
+            default_args['guidance_scale'] = sdxl_refiner_guidance_scale
+
+        sdxl_refiner_guidance_rescale = user_args.get('sdxl_refiner_guidance_rescale')
+        if sdxl_refiner_guidance_rescale is not None:
+            default_args['guidance_rescale'] = sdxl_refiner_guidance_rescale
+
         if sd_edit:
-            strength = 1.0 - high_noise_fraction
-            default_args['strength'] = strength
+            strength = decimal.Decimal('1.0') - decimal.Decimal(str(high_noise_fraction))
+            default_args['strength'] = float(strength)
+
+            messages.log(f'Running refiner in edit mode with '
+                         f'refiner image seed strength = {strength}, IE: (1.0 - high-noise-fraction)')
 
         pipe_result = PipelineResultWrapper(
             DiffusionPipelineWrapperBase._call_pipeline(pipeline=self._sdxl_refiner_pipeline, device=self._device,
