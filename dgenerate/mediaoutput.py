@@ -107,7 +107,7 @@ class GifWebpWriter(AnimationWriter):
 
 
 def supported_animation_writer_formats():
-    return {'mp4', 'gif', 'webp'}
+    return ['mp4', 'gif', 'webp']
 
 
 def create_animation_writer(animation_format, out_filename, fps):
