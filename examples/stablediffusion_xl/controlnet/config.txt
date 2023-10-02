@@ -6,7 +6,7 @@
  --variant fp16 --dtype float16 \
  --vae AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix \
  --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
- --inference-steps 10 \
+ --inference-steps 30 \
  --guidance-scales 8 \
  --prompts "Taylor Swift, high quality, masterpiece, high resolution; low quality, bad quality, sketches" \
  --control-nets diffusers/controlnet-canny-sdxl-1.0;scale=1.0 \
@@ -23,7 +23,7 @@
  --variant fp16 --dtype float16 \
  --vae AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix \
  --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
- --inference-steps 10 \
+ --inference-steps 30 \
  --guidance-scales 8 \
  --prompts "Majestic unicorn, high quality, masterpiece, high resolution; low quality, bad quality, sketches" \
  --control-nets diffusers/controlnet-canny-sdxl-1.0 \
@@ -41,7 +41,7 @@ stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
 --variant fp16 --dtype float16 \
 --vae AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix \
 --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
---inference-steps 10 \
+--inference-steps 30 \
 --guidance-scales 8 \
 --output-path boxer \
 --gen-seeds 2 \
