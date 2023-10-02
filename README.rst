@@ -444,7 +444,7 @@ dgenerate help output
                             -se/--seeds is used.
       -af FORMAT, --animation-format FORMAT
                             Output format when generating an animation from an input video / gif / webp
-                            etc. Value must be one of: mp4, gif, or webp. (default: mp4)
+                            etc. Value must be one of: gif, mp4, or webp. (default: mp4)
       -fs FRAME_NUMBER, --frame-start FRAME_NUMBER
                             Starting frame slice point for animated files, the specified frame will be
                             included.
@@ -531,7 +531,7 @@ dgenerate help output
                             "torch-sdxl" it is supported for basic generation, inpainting, and img2img,
                             unless --control-nets is specified in which case only inpainting is supported.
                             It is supported for --model-type "torch-sdxl-pix2pix" but not --model-type
-                            "torch-pix2pix"
+                            "torch-pix2pix". (default: [0.0])
       -ifs INTEGER [INTEGER ...], --inference-steps INTEGER [INTEGER ...]
                             Lists of inference steps values to try. The amount of inference (de-noising)
                             steps effects image clarity to a degree, higher values bring the image closer

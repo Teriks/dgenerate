@@ -857,8 +857,8 @@ parser.add_argument('-gr', '--guidance-rescales', action='store', nargs='+', def
                             when using --model-type "torch" but not inpainting, img2img, or --control-nets. 
                             When using --model-type "torch-sdxl" it is supported for basic generation, inpainting, 
                             and img2img, unless --control-nets is specified in which case only inpainting is supported.
-                            It is supported for --model-type "torch-sdxl-pix2pix" but not --model-type "torch-pix2pix"
-                            """)
+                            It is supported for --model-type "torch-sdxl-pix2pix" but not --model-type "torch-pix2pix".
+                            (default: [0.0])""")
 
 parser.add_argument('-ifs', '--inference-steps', action='store', nargs='+', default=[DEFAULT_INFERENCE_STEPS],
                     type=_type_inference_steps,
