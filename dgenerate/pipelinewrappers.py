@@ -1383,53 +1383,53 @@ class DiffusionPipelineWrapperBase:
     def auth_token(self):
         return self._auth_token
 
-    def _reconstruct_dgenerate_opts(self, **kwargs):
-        prompt = kwargs.get('prompt', None)
-        negative_prompt = kwargs.get('negative_prompt', None)
+    def _reconstruct_dgenerate_opts(self, **user_args):
+        prompt = user_args.get('prompt', None)
+        negative_prompt = user_args.get('negative_prompt', None)
 
-        sdxl_prompt_2 = kwargs.get('sdxl_prompt_2', None)
-        sdxl_negative_prompt_2 = kwargs.get('sdxl_negative_prompt_2', None)
+        sdxl_prompt_2 = user_args.get('sdxl_prompt_2', None)
+        sdxl_negative_prompt_2 = user_args.get('sdxl_negative_prompt_2', None)
 
-        sdxl_refiner_prompt = kwargs.get('sdxl_refiner_prompt', None)
-        sdxl_refiner_negative_prompt = kwargs.get('sdxl_refiner_negative_prompt', None)
+        sdxl_refiner_prompt = user_args.get('sdxl_refiner_prompt', None)
+        sdxl_refiner_negative_prompt = user_args.get('sdxl_refiner_negative_prompt', None)
 
-        sdxl_refiner_prompt_2 = kwargs.get('sdxl_refiner_prompt_2', None)
-        sdxl_refiner_negative_prompt_2 = kwargs.get('sdxl_refiner_negative_prompt_2', None)
+        sdxl_refiner_prompt_2 = user_args.get('sdxl_refiner_prompt_2', None)
+        sdxl_refiner_negative_prompt_2 = user_args.get('sdxl_refiner_negative_prompt_2', None)
 
-        image = kwargs.get('image', None)
-        control_image = kwargs.get('control_image', None)
-        strength = kwargs.get('strength', None)
-        upscaler_noise_level = kwargs.get('upscaler_noise_level', None)
-        mask_image = kwargs.get('mask_image', None)
-        seed = kwargs.get('seed')
-        width = kwargs.get('width', None)
-        height = kwargs.get('height', None)
-        inference_steps = kwargs.get('inference_steps')
-        guidance_scale = kwargs.get('guidance_scale')
-        guidance_rescale = kwargs.get('guidance_rescale')
-        image_guidance_scale = kwargs.get('image_guidance_scale')
+        image = user_args.get('image', None)
+        control_image = user_args.get('control_image', None)
+        image_seed_strength = user_args.get('image_seed_strength', None)
+        upscaler_noise_level = user_args.get('upscaler_noise_level', None)
+        mask_image = user_args.get('mask_image', None)
+        seed = user_args.get('seed')
+        width = user_args.get('width', None)
+        height = user_args.get('height', None)
+        inference_steps = user_args.get('inference_steps')
+        guidance_scale = user_args.get('guidance_scale')
+        guidance_rescale = user_args.get('guidance_rescale')
+        image_guidance_scale = user_args.get('image_guidance_scale')
 
-        sdxl_refiner_inference_steps = kwargs.get('sdxl_refiner_inference_steps')
-        sdxl_refiner_guidance_scale = kwargs.get('sdxl_refiner_guidance_scale')
-        sdxl_refiner_guidance_rescale = kwargs.get('sdxl_refiner_guidance_rescale')
+        sdxl_refiner_inference_steps = user_args.get('sdxl_refiner_inference_steps')
+        sdxl_refiner_guidance_scale = user_args.get('sdxl_refiner_guidance_scale')
+        sdxl_refiner_guidance_rescale = user_args.get('sdxl_refiner_guidance_rescale')
 
-        sdxl_high_noise_fraction = kwargs.get('sdxl_high_noise_fraction', None)
-        sdxl_aesthetic_score = kwargs.get('sdxl_aesthetic_score', None)
-        sdxl_original_size = kwargs.get('sdxl_original_size', None)
-        sdxl_target_size = kwargs.get('sdxl_target_size', None)
-        sdxl_crops_coords_top_left = kwargs.get('sdxl_crops_coords_top_left', None)
-        sdxl_negative_aesthetic_score = kwargs.get('sdxl_negative_aesthetic_score', None)
-        sdxl_negative_original_size = kwargs.get('sdxl_negative_original_size', None)
-        sdxl_negative_target_size = kwargs.get('sdxl_negative_target_size', None)
-        sdxl_negative_crops_coords_top_left = kwargs.get('sdxl_negative_crops_coords_top_left', None)
-        sdxl_refiner_aesthetic_score = kwargs.get('sdxl_refiner_aesthetic_score', None)
-        sdxl_refiner_original_size = kwargs.get('sdxl_refiner_original_size', None)
-        sdxl_refiner_target_size = kwargs.get('sdxl_refiner_target_size', None)
-        sdxl_refiner_crops_coords_top_left = kwargs.get('sdxl_refiner_crops_coords_top_left', None)
-        sdxl_refiner_negative_aesthetic_score = kwargs.get('sdxl_refiner_negative_aesthetic_score', None)
-        sdxl_refiner_negative_original_size = kwargs.get('sdxl_refiner_negative_original_size', None)
-        sdxl_refiner_negative_target_size = kwargs.get('sdxl_refiner_negative_target_size', None)
-        sdxl_refiner_negative_crops_coords_top_left = kwargs.get('sdxl_refiner_negative_crops_coords_top_left', None)
+        sdxl_high_noise_fraction = user_args.get('sdxl_high_noise_fraction', None)
+        sdxl_aesthetic_score = user_args.get('sdxl_aesthetic_score', None)
+        sdxl_original_size = user_args.get('sdxl_original_size', None)
+        sdxl_target_size = user_args.get('sdxl_target_size', None)
+        sdxl_crops_coords_top_left = user_args.get('sdxl_crops_coords_top_left', None)
+        sdxl_negative_aesthetic_score = user_args.get('sdxl_negative_aesthetic_score', None)
+        sdxl_negative_original_size = user_args.get('sdxl_negative_original_size', None)
+        sdxl_negative_target_size = user_args.get('sdxl_negative_target_size', None)
+        sdxl_negative_crops_coords_top_left = user_args.get('sdxl_negative_crops_coords_top_left', None)
+        sdxl_refiner_aesthetic_score = user_args.get('sdxl_refiner_aesthetic_score', None)
+        sdxl_refiner_original_size = user_args.get('sdxl_refiner_original_size', None)
+        sdxl_refiner_target_size = user_args.get('sdxl_refiner_target_size', None)
+        sdxl_refiner_crops_coords_top_left = user_args.get('sdxl_refiner_crops_coords_top_left', None)
+        sdxl_refiner_negative_aesthetic_score = user_args.get('sdxl_refiner_negative_aesthetic_score', None)
+        sdxl_refiner_negative_original_size = user_args.get('sdxl_refiner_negative_original_size', None)
+        sdxl_refiner_negative_target_size = user_args.get('sdxl_refiner_negative_target_size', None)
+        sdxl_refiner_negative_crops_coords_top_left = user_args.get('sdxl_refiner_negative_crops_coords_top_left', None)
 
         opts = [self.model_path, ('--model-type', self.model_type_string), ('--dtype', self._dtype),
                 ('--device', self._device), ('--inference-steps', inference_steps),
@@ -1592,8 +1592,8 @@ class DiffusionPipelineWrapperBase:
                     opts.append(('--image-seeds',
                                  quote(image.filename + ';' + ';'.join(seed_args))))
 
-                if strength is not None:
-                    opts.append(('--image-seed-strengths', strength))
+                if image_seed_strength is not None:
+                    opts.append(('--image-seed-strengths', image_seed_strength))
 
                 if upscaler_noise_level is not None:
                     opts.append(('--upscaler-noise-levels', upscaler_noise_level))
