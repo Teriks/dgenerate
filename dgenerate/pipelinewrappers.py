@@ -1974,6 +1974,9 @@ class DiffusionPipelineWrapperBase:
         default_args.pop('image_guidance_scale', None)
         default_args.pop('control_image', None)
 
+        # we will handle the strength parameter if it is necessary below
+        default_args.pop('strength', None)
+
         # We do not want to override the refiner secondary prompt
         # with that of --sdxl-second-prompts by default
         default_args.pop('prompt_2', None)

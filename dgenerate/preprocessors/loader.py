@@ -60,14 +60,11 @@ def _load(path, device):
 
     args_dict = {}
 
-    for k, v in parsed_args.items():
-        fixed_key = dashdown(k)
+    for arg in preprocessor_class.get_default_args(call_by_name):
+        args_dict[dashdown(arg[0])] = arg[1]
 
-        if fixed_key in args_dict:
-            raise ImagePreprocessorArgumentError(
-                f'Duplicate argument "{fixed_key}" given to image preprocessor "{call_by_name}".')
-        else:
-            args_dict[fixed_key] = v
+    for k, v in parsed_args.items():
+        args_dict[dashdown(k)] = v
 
     args_dict['output_dir'] = parsed_args.get('output-dir')
     args_dict['output_file'] = parsed_args.get('output-file')
@@ -78,9 +75,6 @@ def _load(path, device):
         if dashdown(arg) not in args_dict:
             raise ImagePreprocessorArgumentError(
                 f'Missing required argument "{arg}" for image preprocessor "{call_by_name}".')
-
-    for arg in preprocessor_class.get_default_args(call_by_name):
-        args_dict[dashdown(arg[0])] = arg[1]
 
     try:
         return preprocessor_class(**args_dict)
