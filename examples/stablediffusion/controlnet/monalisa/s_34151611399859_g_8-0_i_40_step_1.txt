@@ -1,0 +1,13 @@
+#! dgenerate 1.1.0
+
+"runwayml/stable-diffusion-v1-5" \
+--model-type torch \
+--dtype auto \
+--device cuda \
+--inference-steps 40 \
+--guidance-scales 8.0 \
+--seeds 34151611399859 \
+--prompts "Detailed watercolor painting of a woman sitting, facing the viewer, bright; dark" \
+--revision main \
+--control-nets "lllyasviel/sd-controlnet-canny;scale=0.8" \
+--control-images "../../media/monalisa.png"

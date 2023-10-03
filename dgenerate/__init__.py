@@ -193,28 +193,23 @@ def _run_loop():
         jinja_env.filters['quote'] = quote
 
         continuation = ''
-        first_line = True
 
-        for line in sys.stdin:
+        for line_idx, line in enumerate(sys.stdin):
             line = line.strip()
             if line == '':
-                first_line = False
                 continue
             if line.startswith('#'):
-                if first_line:
-                    versioning = re.match(r'#!\s+dgenerate\s+([0-9]+\.[0-9]+\.[0-9]+)', line)
-                    if versioning:
-                        config_file_version = versioning.group(1)
-                        cur_major_version = int(__version__.split('.')[0])
-                        config_major_version = int(config_file_version.split('.')[0])
-                        if cur_major_version != config_major_version:
-                            messages.log(
-                                'WARNING: Ingested configuration file is written for an '
-                                f'incompatible version of dgenerate! You are using version {__version__} '
-                                f'and the config file was written for version {config_file_version}'
-                                , underline=True, level=messages.WARNING)
-
-                first_line = False
+                versioning = re.match(r'#!\s+dgenerate\s+([0-9]+\.[0-9]+\.[0-9]+)', line)
+                if versioning:
+                    config_file_version = versioning.group(1)
+                    cur_major_version = int(__version__.split('.')[0])
+                    config_major_version = int(config_file_version.split('.')[0])
+                    if cur_major_version != config_major_version:
+                        messages.log(
+                            f'WARNING: Failed version check on line {line_idx}, running an '
+                            f'incompatible version of dgenerate! You are running version {__version__} '
+                            f'and the config file specifies the required version: {config_file_version}'
+                            , underline=True, level=messages.WARNING)
                 continue
 
             if line.endswith('\\'):
@@ -227,12 +222,10 @@ def _run_loop():
                     if len(args) == 2:
                         messages.log(jinja_env.from_string(os.path.expandvars(args[1]))
                                      .render(**template_args))
-                    first_line = False
                     continuation = ''
                     continue
                 if args.startswith('\\clear_model_cache'):
                     clear_model_cache()
-                    first_line = False
                     continuation = ''
                     continue
 
@@ -250,14 +243,20 @@ def _run_loop():
                 header = 'Processing Arguments: '
                 args_wrapped = textwrap.fill(templated_cmd + ' ' + ' '.join(extra_args),
                                              width=long_text_wrap_width() - len(header),
+                                             break_long_words=False,
+                                             break_on_hyphens=False,
                                              subsequent_indent=' ' * len(header))
 
                 messages.log(header + args_wrapped, underline=True)
-                template_args = parse_and_run(shlexed)
+
+                try:
+                    template_args = parse_and_run(shlexed)
+                except Exception as e:
+                    messages.log(f'Error in input config file line: {line_idx}',
+                                 level=messages.ERROR, underline=True)
+                    raise e
 
                 continuation = ''
-
-            first_line = False
     else:
         parse_and_run(sys.argv[1:])
 

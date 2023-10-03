@@ -1,0 +1,13 @@
+#! dgenerate 1.1.0
+
+"runwayml/stable-diffusion-v1-5" \
+--model-type torch \
+--dtype auto \
+--device cuda \
+--inference-steps 40 \
+--guidance-scales 8.0 \
+--seeds 67714564043433 \
+--prompts "Painting, Girl with a pearl earing by Leonardo Da Vinci, masterpiece; low quality, low resolution, blank eyeballs" \
+--revision main \
+--control-nets "lllyasviel/sd-controlnet-canny;scale=0.5" \
+--control-images "../../media/vermeer_canny_edged.png"
