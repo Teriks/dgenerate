@@ -34,7 +34,7 @@ from PIL.PngImagePlugin import PngInfo
 
 from . import messages, preprocessors
 from .mediainput import iterate_image_seed, get_image_seed_info, MultiContextManager, \
-    get_control_image_info, iterate_control_image, ImageSeed
+    get_control_image_info, iterate_control_image, ImageSeed, parse_image_seed_uri
 from .mediaoutput import create_animation_writer, supported_animation_writer_formats
 from .pipelinewrappers import DiffusionPipelineWrapper, DiffusionPipelineImg2ImgWrapper, supported_model_type_strings, \
     PipelineResultWrapper, model_type_is_upscaler, ModelTypes, model_type_is_pix2pix, \
@@ -271,7 +271,6 @@ def iterate_diffusion_args(prompt,
                            image_guidance_scale,
                            guidance_rescale,
                            inference_steps) -> Iterator[DiffusionArgContext]:
-
     args = locals()
     defs = []
     for arg_name in inspect.getfullargspec(iterate_diffusion_args).args:
@@ -835,7 +834,20 @@ class DiffusionRenderLoop:
         upscaler_noise_levels = self.upscaler_noise_levels if \
             self.model_type == ModelTypes.TORCH_UPSCALER_X4 else None
 
-        for image_seed in self.image_seeds:
+        def validate_image_seeds():
+            for img_seed in self.image_seeds:
+                parsed = parse_image_seed_uri(img_seed)
+
+                if parsed.control_uri is None and self.control_net_paths:
+                    raise NotImplementedError(
+                        f'You must specify a control image with "my-seed.png;control=my-control.png" '
+                        f'in your --image-seeds "{img_seed}" when using --control-nets. '
+                        f'If you want to use the control image alone, '
+                        f'use --control-images with --control-nets instead of --image-seeds.')
+
+                yield img_seed, parsed
+
+        for image_seed, parsed_image_seed in list(validate_image_seeds()):
 
             messages.log(f'Processing Image Seed: {image_seed}', underline=True)
 
@@ -845,11 +857,11 @@ class DiffusionRenderLoop:
                 upscaler_noise_level=upscaler_noise_levels
             )
 
-            seed_info = get_image_seed_info(image_seed, self.frame_start, self.frame_end)
+            seed_info = get_image_seed_info(parsed_image_seed, self.frame_start, self.frame_end)
 
             def seed_iterator_func():
                 yield from iterate_image_seed(
-                    image_seed,
+                    parsed_image_seed,
                     self.frame_start,
                     self.frame_end,
                     self.output_size,

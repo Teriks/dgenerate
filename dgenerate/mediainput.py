@@ -726,6 +726,9 @@ def iterate_control_image(uri,
                           preprocessor=None):
     mime_acceptable_desc = 'image/png, image/jpeg, image/gif, image/webp, video/*'
 
+    if isinstance(uri, ImageSeedParseResult):
+        uri = uri.uri
+
     control_mime_type, control_data = fetch_image_seed_data(
         uri=uri,
         uri_desc=uri,
@@ -833,7 +836,11 @@ def iterate_image_seed(uri,
                        seed_image_preprocessor=None,
                        mask_image_preprocessor=None,
                        control_image_preprocessor=None):
-    parse_result = parse_image_seed_uri(uri)
+
+    if isinstance(uri, ImageSeedParseResult):
+        parse_result = uri
+    else:
+        parse_result = parse_image_seed_uri(uri)
 
     mime_acceptable_desc = 'image/png, image/jpeg, image/gif, image/webp, video/*'
 
