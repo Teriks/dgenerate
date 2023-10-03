@@ -26,7 +26,7 @@ class FooBarPreprocessor(dgenerate.preprocessors.ImagePreprocessor):
         # These helper functions can help you validate arguments of int, float, and bool types
         # they will produce a "dgenerate.preprocessors.ImagePreprocessorArgumentError"
         # if the string is not in the correct format for the requested type.
-        # You can throw that exception yourself or call "self.argument_error" anywhere
+        # You can throw that exception yourself or call "self.argument_error('my message')" anywhere
         # in "__init__" if you are doing custom argument validation, it will be handle
         # correctly and printed for the user on the command line
 
