@@ -38,10 +38,10 @@ class CannyEdgeDetectPreprocess(ImagePreprocessor):
     it must be an odd integer from 3 to 7. "L2-gradient" specifies the equation for finding gradient magnitude,
     if True a more accurate equation is used. If "blur" is true, apply a 3x3 gaussian blur before processing.
     If "threshold_algo" is one of ("otsu", "triangle", "median") try to calculate the lower and upper threshold
-    automatically using cv2.threshold. "sigma" scales the range of the automatic threshold calculation done
-    when a value for "threshold_algo" is selected. "pre-resize" is a boolean value determining if the processing
-    should take place before or after the image is resized by dgenerate.
-    See: https://docs.opencv.org/3.4/da/d22/tutorial_py_canny.html
+    automatically using cv2.threshold or cv2.median in the case of "median". "sigma" scales the range of the
+    automatic threshold calculation done when a value for "threshold_algo" is selected. "pre-resize" is a
+    boolean value determining if the processing should take place before or after the image is
+    resized by dgenerate. See: https://docs.opencv.org/3.4/da/d22/tutorial_py_canny.html
     """
 
     NAMES = ['canny']

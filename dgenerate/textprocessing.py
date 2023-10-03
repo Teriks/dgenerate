@@ -61,6 +61,11 @@ class ConceptPathParser:
                 raise ConceptPathParseError(
                     f'Unknown path argument "{name}" for {self.concept_name} concept "{concept}", '
                     f'valid arguments: {", ".join(list(self.known_args))}')
+
+            if name in args:
+                raise ConceptPathParseError(
+                    f'Duplicate argument "{name}" provided for {self.concept_name} concept "{concept}".')
+
             try:
                 args[name] = unquote(vals[1])
             except SyntaxError as e:
