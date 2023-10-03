@@ -36,12 +36,17 @@ class CannyEdgeDetectPreprocess(ImagePreprocessor):
     The "lower" argument indicates the lower threshold value for the algorithm, and the "upper"
     argument indicates the upper threshold. "aperture-size" is the size of Sobel kernel used for find image gradients,
     it must be an odd integer from 3 to 7. "L2-gradient" specifies the equation for finding gradient magnitude,
-    if True a more accurate equation is used. If "blur" is true, apply a 3x3 gaussian blur before processing.
+    if True a more accurate equation is used. See: https://docs.opencv.org/3.4/da/d22/tutorial_py_canny.html.
+
+    If "blur" is true, apply a 3x3 gaussian blur before processing. If "gray" is true, convert the image to the cv2
+    "GRAY" format before processing, which does not happen automatically unless you are using a "threshold_algo" value,
+    OpenCV is capable of edge detection on colored images, however you  may find better results by converting to its
+    internal grayscale format before processing, or you may not, it depends.
+
     If "threshold_algo" is one of ("otsu", "triangle", "median") try to calculate the lower and upper threshold
-    automatically using cv2.threshold or cv2.median in the case of "median". "sigma" scales the range of the
-    automatic threshold calculation done when a value for "threshold_algo" is selected. "pre-resize" is a
-    boolean value determining if the processing should take place before or after the image is
-    resized by dgenerate. See: https://docs.opencv.org/3.4/da/d22/tutorial_py_canny.html
+    automatically using cv2.threshold or cv2.median in the case of "median". "sigma" scales the range of the automatic
+    threshold calculation done when a value for "threshold_algo" is selected. "pre-resize" is a boolean value determining
+    if the processing should take place before or after the image is resized by dgenerate.
     """
 
     NAMES = ['canny']
@@ -52,6 +57,7 @@ class CannyEdgeDetectPreprocess(ImagePreprocessor):
                  aperture_size=3,
                  L2_gradient=False,
                  blur=False,
+                 gray=False,
                  threshold_algo=None,
                  sigma=0.33,
                  pre_resize=False, **kwargs):
@@ -68,6 +74,7 @@ class CannyEdgeDetectPreprocess(ImagePreprocessor):
 
         self._sigma = self.get_float_arg('sigma', sigma)
         self._blur = self.get_bool_arg('blur', blur)
+        self._gray = self.get_bool_arg('gray', gray)
         self._lower = self.get_int_arg('lower', lower)
         self._upper = self.get_int_arg('upper', upper)
         self._aperture_size = self.get_int_arg('aperture_size', aperture_size)
@@ -97,35 +104,38 @@ class CannyEdgeDetectPreprocess(ImagePreprocessor):
         return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
 
     def _process(self, image):
-        convert_enum = cv2.COLOR_BGR2RGB
+
+        gray = self._threshold_algo is not None or self._gray
+
+        convert_back = cv2.COLOR_BGR2RGB if not gray else cv2.COLOR_GRAY2RGB
 
         lower = self._lower
         upper = self._upper
 
-        img = cv2.cvtColor(numpy.array(image), cv2.COLOR_RGB2BGR)
+        cv_img = cv2.cvtColor(numpy.array(image), cv2.COLOR_RGB2BGR)
 
         if self._blur:
-            img = cv2.GaussianBlur(img, (3, 3), 0)
+            cv_img = cv2.GaussianBlur(cv_img, (3, 3), 0)
+
+        if gray:
+            cv_img = cv2.cvtColor(cv_img, cv2.COLOR_BGR2GRAY)
 
         if self._threshold_algo:
-            img = cv2.cvtColor(numpy.array(img), cv2.COLOR_BGR2GRAY)
-            convert_enum = cv2.COLOR_GRAY2RGB
-
             if self._threshold_algo == 'otsu':
-                lower, upper = self._get_range(cv2.threshold(img, 0, 255, cv2.THRESH_OTSU)[0])
+                lower, upper = self._get_range(cv2.threshold(cv_img, 0, 255, cv2.THRESH_OTSU)[0])
             elif self._threshold_algo == 'triangle':
-                lower, upper = self._get_range(cv2.threshold(img, 0, 255, cv2.THRESH_TRIANGLE)[0])
+                lower, upper = self._get_range(cv2.threshold(cv_img, 0, 255, cv2.THRESH_TRIANGLE)[0])
             elif self._threshold_algo == 'median':
-                lower, upper = self._get_range(np.median(img))
+                lower, upper = self._get_range(np.median(cv_img))
 
         messages.debug_log(f'Canny Processing with: lower {lower}, upper {upper}, '
                            f'aperature-size {self._aperture_size}, L2gradient {self._L2_gradient}')
 
-        edges = cv2.Canny(img, lower, upper,
+        edges = cv2.Canny(cv_img, lower, upper,
                           apertureSize=self._aperture_size,
                           L2gradient=self._L2_gradient)
 
-        return PIL.Image.fromarray(cv2.cvtColor(edges, convert_enum))
+        return PIL.Image.fromarray(cv2.cvtColor(edges, convert_back))
 
     def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
         if self._pre_resize:

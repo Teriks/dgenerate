@@ -138,7 +138,10 @@ class DiffusionArgContext:
         prompt_val = prompt_dict.get('prompt', None)
         if prompt_val:
             header = f'{pos_title}: '
-            prompt_val = textwrap.fill(prompt_val, width=prompt_wrap_width - len(header),
+            prompt_val = textwrap.fill(prompt_val,
+                                       width=prompt_wrap_width - len(header),
+                                       break_long_words=False,
+                                       break_on_hyphens=False,
                                        subsequent_indent=' ' * len(header))
             prompt_format.append(f'{header}"{prompt_val}"')
 
@@ -147,6 +150,8 @@ class DiffusionArgContext:
             header = f'{neg_title}: '
             prompt_val = textwrap.fill(prompt_val,
                                        width=prompt_wrap_width - len(header),
+                                       break_long_words=False,
+                                       break_on_hyphens=False,
                                        subsequent_indent=' ' * len(header))
             prompt_format.append(f'{header}"{prompt_val}"')
 

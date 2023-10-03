@@ -121,6 +121,10 @@ def dashup(strin):
     return strin.replace('_', '-')
 
 
+def justify_left(strin):
+    return '\n'.join(line.strip() if not line.isspace() else line for line in strin.split('\n'))
+
+
 def debug_format_args(args_dict, value_transformer=None):
     def _value_transformer(key, value):
         if value_transformer is not None:

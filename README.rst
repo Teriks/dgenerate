@@ -1968,7 +1968,9 @@ The Following is an example input file ``my-config.txt``:
 
     # If a hash-bang version is provided in the format above
     # a warning will be produced if the version you are running
-    # is not compatible
+    # is not compatible, this can be used anywhere in the config
+    # file, a line number will be mentioned in the warning when the
+    # version check fails
 
     # Comments in the file will be ignored
 

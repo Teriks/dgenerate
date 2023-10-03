@@ -20,13 +20,14 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import inspect
 import os
+import textwrap
 import typing
 from pathlib import Path
 
 import PIL.Image
 
 from .exceptions import ImagePreprocessorArgumentError
-from ..textprocessing import dashup
+from ..textprocessing import dashup, justify_left, quote, long_text_wrap_width
 
 
 class ImagePreprocessor:
@@ -46,12 +47,44 @@ class ImagePreprocessor:
 
     @classmethod
     def get_help(cls, called_by_name):
+        help_str = None
         if hasattr(cls, 'help'):
-            return cls.help(called_by_name)
+            help_str = cls.help(called_by_name)
+            if help_str:
+                help_str = justify_left(help_str).strip()
 
         if cls.__doc__:
-            return ' '.join(line.strip() for line in cls.__doc__.split())
-        return None
+            help_str = justify_left(cls.__doc__).strip()
+
+        args_with_defaults = cls.get_accepted_args_with_defaults(called_by_name)
+        arg_descriptors = []
+
+        for arg in args_with_defaults:
+            if len(arg) == 1:
+                arg_descriptors.append(arg[0])
+            else:
+                default_value = arg[1]
+                if isinstance(default_value, str):
+                    default_value = quote(default_value)
+                arg_descriptors.append(f'{arg[0]}={default_value}')
+
+        if arg_descriptors:
+            args_part = f'\n{" " * 4}arguments:\n{" " * 8}{(chr(10) + " " * 8).join(arg_descriptors)}\n'
+        else:
+            args_part = ''
+
+        if help_str:
+            wrap = '\n'.join(
+                textwrap.fill(s,
+                              initial_indent=' ' * 4,
+                              subsequent_indent=' ' * 4,
+                              break_long_words=False,
+                              break_on_hyphens=False,
+                              width=long_text_wrap_width()) for s in help_str.split('\n'))
+
+            return called_by_name + f':{args_part}\n' + wrap
+        else:
+            return called_by_name + f':{args_part}'
 
     @classmethod
     def get_accepted_args(cls, called_by_name) -> typing.List[str]:

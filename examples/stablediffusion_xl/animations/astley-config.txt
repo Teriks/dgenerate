@@ -1,0 +1,19 @@
+#! dgenerate 1.1.0
+
+# Complete transformation with canny edge detection
+
+stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+--variant fp16 --dtype float16 \
+--sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
+--sdxl-high-noise-fractions 0.8 \
+--inference-steps 30 \
+--guidance-scale 8 \
+--prompts "Black and white ((charcoal)) art of (rick astley) dancing; color, colors" \
+--seeds 85214917063096 \
+--sdxl-high-noise-fractions 0.8 \
+--control-images "../../media/rickroll-roll.gif" \
+--control-nets diffusers/controlnet-canny-sdxl-1.0;scale=1.0 \
+--control-image-preprocessors "canny;blur=true;output-dir=astley" \
+--animation-format mp4 \
+--output-size 1024 \
+--output-path astley

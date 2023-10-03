@@ -1,1 +1,0 @@
-dgenerate < config.txt
