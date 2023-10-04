@@ -740,7 +740,12 @@ def _create_torch_diffusion_pipeline(pipeline_type,
             raise NotImplementedError(
                 'Upscaler models only work with img2img generation, IE: --image-seeds (with no image masks).')
 
-        pipeline_class = (StableDiffusionUpscalePipeline if model_type is ModelTypes.TORCH_UPSCALER_X4
+        if model_type == ModelTypes.TORCH_UPSCALER_X2:
+            if lora_paths or textual_inversion_paths:
+                raise NotImplementedError(
+                    '--model-type torch-upscaler-x2 is not compatible with --lora or --textual-inversions.')
+
+        pipeline_class = (StableDiffusionUpscalePipeline if model_type == ModelTypes.TORCH_UPSCALER_X4
                           else StableDiffusionLatentUpscalePipeline)
     else:
         sdxl = model_type_is_sdxl(model_type)
@@ -949,11 +954,11 @@ def _create_flax_diffusion_pipeline(pipeline_type,
             pipeline_class = FlaxStableDiffusionPipeline
     elif pipeline_type == _PipelineTypes.IMG2IMG:
         if has_control_nets:
-            raise NotImplementedError('Flax does not support img2img with Control Nets.')
+            raise NotImplementedError('Flax does not support img2img mode with --control-nets.')
         pipeline_class = FlaxStableDiffusionImg2ImgPipeline
     elif pipeline_type == _PipelineTypes.INPAINT:
         if has_control_nets:
-            raise NotImplementedError('Flax does not support inpainting with Control Nets.')
+            raise NotImplementedError('Flax does not support inpaint mode with --control-nets.')
         pipeline_class = FlaxStableDiffusionInpaintPipeline
     else:
         raise NotImplementedError('Pipeline type not implemented.')

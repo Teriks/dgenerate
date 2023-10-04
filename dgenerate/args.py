@@ -893,6 +893,12 @@ def parse_args(args=None, namespace=None):
                 'non upscaler model type, see --model-type.',
                 level=messages.ERROR)
             sys.exit(1)
+    elif args.control_nets:
+        messages.log(
+            'dgenerate: error: Argument --control-nets is not compatible '
+            'with upscaler models, see --model-type.',
+            level=messages.ERROR)
+        sys.exit(1)
     elif args.upscaler_noise_levels is None:
         args.upscaler_noise_levels = [DEFAULT_X4_UPSCALER_NOISE_LEVEL]
 
