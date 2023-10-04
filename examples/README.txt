@@ -1,6 +1,7 @@
 You can use run.py to run all of the examples at once, or a specific folder, or a specific config file.
 
 # Run every example (flax is ignored on windows)
+# Use python3 on linux
 
 python run.py
 
