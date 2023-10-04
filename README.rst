@@ -44,6 +44,7 @@ This software requires an Nvidia GPU supporting CUDA 11.8+, CPU rendering is pos
     * `Writing Plugins </#writing-plugins>`_
     * `Batch Processing From STDIN </#batch-processing-from-stdin>`_
     * `Batch Processing Argument Injection </#batch-processing-argument-injection>`_
+    * `File Cache Control </#file-cache-control>`_
 
 dgenerate help output
 ---------------------
@@ -818,7 +819,7 @@ recommended to prevent out of memory conditions on the average GPU :)
     
     
 Negative Prompt
----------------
+===============
 
 In order to specify a negative prompt, each prompt argument is split
 into two parts separated by ``;``
@@ -842,7 +843,7 @@ or "horse wearing a saddle" etc.
     
     
 Multiple Prompts
-----------------
+================
  
 Multiple prompts can be specified one after another in quotes in order
 to generate images using multiple prompt variations.
@@ -867,7 +868,7 @@ All using 50 inference steps, and 10 for guidance scale value.
 
 
 Image Seed
-----------
+==========
 
 Use a photo of Buzz Aldrin on the moon to generate a photo of an astronaut standing on mars using Img2Img,
 this uses an image seed downloaded from wikipedia.
@@ -906,7 +907,7 @@ img2img mode with a Control Net, see: `Specifying Control Nets </#specifying-con
 
 
 Inpainting
-----------
+==========
 
 Inpainting on an image can be preformed by providing a mask image with your image seed. This mask should be a black and white image
 of identical size to your image seed.  White areas of the mask image will be used to tell the AI what areas of the seed image should be filled
@@ -942,7 +943,7 @@ areas over the dog in the original image, causing the dog to be replaced with an
 
 
 Per Image Seed Resizing
------------------------
+=======================
 
 If you want to specify multiple image seeds that will have different output sizes irrespective
 of their input size or a globally defined output size defined with ``--output-size``,
@@ -969,7 +970,7 @@ calculated from the aspect ratio of the input image.
 
 
 Animated Output
----------------
+===============
 
 **dgenerate** supports many video formats through the use of PyAV, as well as GIF & WebP.
 
@@ -1013,7 +1014,7 @@ output.
 
 
 Animation Slicing
------------------
+=================
 
 Animated inputs can be sliced by a frame range, currently this only works globally so
 if you provide multiple animated inputs they will all be sliced in an identical manner 
@@ -1052,7 +1053,7 @@ image output will be produced instead of an animation.
 
 
 Inpainting Animations
----------------------
+=====================
 
 Image seeds can be supplied an animated or static image mask to define the areas for inpainting while generating an animated output.
 
@@ -1147,7 +1148,7 @@ them together.
     
 
 Deterministic Output
---------------------
+====================
 
 If you generate an image you like using a random seed, you can later reuse that seed in another generation.
 
@@ -1191,7 +1192,7 @@ The following command demonstrates manually specifying two different seeds to tr
 
 
 Specifying a specific GPU for CUDA
---------------------------------
+==================================
 
 The desired GPU to use for CUDA acceleration can be selected using ``--device cuda:N`` where ``N`` is
 the device number of the GPU as reported by ``nvidia-smi``.
@@ -1220,7 +1221,7 @@ the device number of the GPU as reported by ``nvidia-smi``.
 
 
 Specifying a Scheduler (sampler)
---------------------------------
+================================
 
 A scheduler (otherwise known as a sampler) for the main model can be selected via the use of ``--scheduler``.
 
@@ -1289,7 +1290,7 @@ Typically however, there will be many compatible schedulers:
 
 
 Specifying a VAE
-----------------
+================
 
 To specify a VAE directly use ``--vae``.
 
@@ -1419,7 +1420,7 @@ arguments are available.
     --prompts "Syntax example"
 
 VAE Tiling and Slicing
-----------------------
+======================
 
 You can use ``--vae-tiling`` and ``--vae-slicing`` to enable to generation of huge images
 without running your GPU out of memory. Note that if you are using ``--control-nets`` you may
@@ -1452,7 +1453,7 @@ compute decoding in several steps. This is useful to save some memory.
 
 
 Specifying a LoRA Finetune
---------------------------
+==========================
 
 To specify a LoRA finetune model use ``--lora``
 
@@ -1542,7 +1543,7 @@ If you are loading a .safetensors or other file from a path on disk, only the ``
 
 
 Specifying Textual Inversions
------------------------------
+=============================
 
 One or more Textual Inversion models may be specified with ``--textual-inversions``
 
@@ -1609,7 +1610,7 @@ If you are loading a .safetensors or other file from a path on disk, simply do:
 
 
 Specifying Control Nets
------------------------
+=======================
 
 One or more Control Net models may be specified with ``--control-nets``
 
@@ -1755,7 +1756,7 @@ If you are loading a .safetensors or other file from a path on disk, simply do:
 
 
 Image Preprocessors
--------------------
+===================
 
 Images provided through ``--image-seeds`` can be preprocessed before being used for image generation
 through the use of the arguments ``--seed-image-preprocessors``, ``--mask-image-preprocessors``, and
@@ -1812,7 +1813,7 @@ on your second GPU, etc.
 Custom image preprocessor modules can also be loaded through the ``--plugin-modules`` option as discussed in the next section.
 
 Writing Plugins
----------------
+===============
 
 dgenerate has the capability of loading in additional functionality through the use of the ``--plugin-modules`` option.
 
@@ -1832,7 +1833,7 @@ be of reference as they are written as internal image preprocessor plugins.
 
 
 Upscaling with Upscaler Models
-------------------------------
+==============================
 
 Stable diffusion image upscaling models can be used via the model types ``torch-upscaler-x2`` and ``torch-upscaler-x4``.
 
@@ -1864,7 +1865,7 @@ The image used in the example below is this `low resolution cat <https://raw.git
 
 
 Specifying an SDXL Refiner
---------------------------
+==========================
 
 When the main model is an SDXL model and ``--model-type torch-sdxl`` is specified,
 you may specify a refiner model with ``--sdxl-refiner-path``.
@@ -1967,7 +1968,7 @@ If you are loading a .safetensors or other file from a path on disk, simply do:
 
 
 Batch Processing From STDIN
----------------------------
+===========================
 
 Program configuration can be read from STDIN and processed in batch with model caching,
 in order to increase speed when many invocations with different arguments are desired.
@@ -2117,7 +2118,7 @@ On Windows Powershell:
 
 
 Batch Processing Argument Injection
------------------------------------
+===================================
 
 
 You can inject arguments into every generation call of a batch processing
@@ -2145,6 +2146,34 @@ On Windows Powershell:
 .. code-block:: powershell
 
     Get-Content my-animations-config.txt | dgenerate --frame-start 0 --frame-end 10
+
+
+
+File Cache Control
+==================
+
+dgenerate will cache ``--image-seed`` files downloaded from the web while it is running in the
+directory ``~/.cache/dgenerate/web``, on Windows this equates to ``%HOME%\.cache\dgenerate\web``
+
+You can control where image seed files are cached with the environmental variable ``DGENERATE_WEB_CACHE``.
+
+This directory is automatically cleared when dgenerate exits under any circumstance aside from a
+complete interpreter crash.
+
+Files downloaded from huggingface by the diffusers/huggingface_hub library will be cached under
+``~/.cache/huggingface/``, on Windows this equates to ``%HOME%\.cache\huggingface\``.
+
+This is controlled by the environmental variable ``HF_HOME``
+
+In order to specify that all large model files be stored in another location,
+for example on another disk, simply set ``HF_HOME`` to a new path in your environment.
+
+You can read more about environmental variables that affect huggingface libraries
+`at this link< https://huggingface.co/docs/huggingface_hub/package_reference/environment_variables>`_.
+
+
+
+
 
 
 

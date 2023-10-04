@@ -18,11 +18,10 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-import io
+import atexit
 import mimetypes
 import os
-import tempfile
+import pathlib
 
 import PIL.Image
 import PIL.ImageOps
@@ -31,6 +30,7 @@ import av
 import requests
 from fake_useragent import UserAgent
 
+from . import messages
 from .image import resize_image, resize_image_calc, copy_img, is_aligned_by_8, align_by_8, to_rgb
 from .preprocessors import ImagePreprocessorMixin
 from .textprocessing import ConceptPathParser, ConceptPathParseError
@@ -274,28 +274,6 @@ class MockImageAnimationReader(ImagePreprocessorMixin, AnimationReader):
             return self.preprocess_image(copy_img(self._img), self.resize_resolution)
         else:
             raise StopIteration
-
-
-def create_animation_reader(file, file_source, resize_resolution=None, image_repetitions=1, preprocessor=None):
-    if isinstance(file, io.IOBase):
-        return GifWebpReader(file=file,
-                             file_source=file_source,
-                             resize_resolution=resize_resolution,
-                             preprocessor=preprocessor)
-    elif isinstance(file, str):
-        return VideoReader(file=file,
-                           file_source=file_source,
-                           resize_resolution=resize_resolution,
-                           preprocessor=preprocessor)
-    elif isinstance(file, PIL.Image.Image):
-        return MockImageAnimationReader(img=file,
-                                        resize_resolution=resize_resolution,
-                                        image_repetitions=image_repetitions,
-                                        preprocessor=preprocessor)
-    else:
-        raise ValueError(
-            'File must be a filename indicating an encoded video on disk, '
-            'or a file stream containing raw GIF / WebP data')
 
 
 def _iterate_animation_frames_x2(seed_reader,
@@ -597,20 +575,80 @@ def image_mime_type_filter(mime_type):
             mime_type_is_animable_image(mime_type))
 
 
-def fetch_image_data(uri,
-                     uri_desc,
-                     mime_type_filter=image_mime_type_filter,
-                     mime_type_reject_noun='input image',
-                     mime_acceptable_desc=''):
+WEB_FILE_CACHE = dict()
+
+
+def get_web_cache_directory():
+    user_cache_path = os.environ.get('DGENERATE_WEB_CACHE')
+
+    if user_cache_path is not None:
+        path = user_cache_path
+    else:
+        path = os.path.expanduser(os.path.join('~', '.cache', 'dgenerate', 'web'))
+
+    pathlib.Path(path).mkdir(parents=True, exist_ok=True)
+
+    return path
+
+
+def _wipe_web_cache_directory():
+    folder = get_web_cache_directory()
+    messages.debug_log(f'Wiping Web Cache Directory: "{folder}"')
+    for filename in os.listdir(get_web_cache_directory()):
+        file_path = os.path.join(folder, filename)
+        messages.debug_log(f'Deleting File From Web Cache: "{file_path}"')
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+        except Exception as e:
+            messages.log(f'Failed to delete cached web file "{file_path}", reason: {e}', level=messages.ERROR)
+
+
+atexit.register(_wipe_web_cache_directory)
+
+
+def generate_web_cache_filename():
+    name = "cached_file"
+    cache_dir = get_web_cache_directory()
+    filename = os.path.join(cache_dir, name)
+
+    if not os.path.exists(filename):
+        return filename
+
+    idx = 1
+    while os.path.exists(filename):
+        filename = filename + f'_{idx}'
+        idx += 1
+
+    return filename
+
+
+def fetch_image_data_stream(uri,
+                            uri_desc,
+                            mime_type_filter=image_mime_type_filter,
+                            mime_type_reject_noun='input image',
+                            mime_acceptable_desc=''):
     if uri.startswith('http://') or uri.startswith('https://'):
+        cache_hit = WEB_FILE_CACHE.get(uri)
+        if cache_hit is not None:
+            mime_type = cache_hit[0]
+            file = cache_hit[1]
+            return mime_type, open(file, mode='rb')
+
         headers = {'User-Agent': UserAgent().chrome}
-        req = requests.get(uri, headers=headers)
+        req = requests.get(uri, headers=headers, stream=True)
         mime_type = req.headers['content-type']
         if mime_type_filter is not None and not mime_type_filter(mime_type):
             raise ImageSeedParseError(
                 f'Unknown {mime_type_reject_noun} mimetype "{mime_type}" for situation in '
                 f'parsed image seed "{uri_desc}". Expected: {mime_acceptable_desc}')
-        data = req.content
+
+        cache_filename = generate_web_cache_filename()
+        with open(cache_filename, mode='wb'):
+            _write_to_file(req.content, cache_filename)
+
+        WEB_FILE_CACHE[uri] = (mime_type, cache_filename)
+        return mime_type, open(cache_filename, mode='rb')
     else:
         mime_type = mimetypes.guess_type(uri)[0]
 
@@ -622,11 +660,8 @@ def fetch_image_data(uri,
             raise ImageSeedParseError(
                 f'Unknown {mime_type_reject_noun} mimetype "{mime_type}" for situation in '
                 f'parsed image seed "{uri_desc}". Expected: {mime_acceptable_desc}')
-        else:
-            with open(uri, 'rb') as file:
-                data = file.read()
 
-    return mime_type, data
+    return mime_type, open(uri, 'rb')
 
 
 def mime_type_is_animable_image(mime_type):
@@ -668,11 +703,11 @@ def _write_to_file(data, filepath):
     return filepath
 
 
-def create_and_exif_orient_pil_img(path_or_data, file_source, resize_resolution=None):
-    if isinstance(path_or_data, str):
-        file = path_or_data
+def create_and_exif_orient_pil_img(path_or_file, file_source, resize_resolution=None):
+    if isinstance(path_or_file, str):
+        file = path_or_file
     else:
-        file = io.BytesIO(path_or_data)
+        file = path_or_file
 
     if resize_resolution is None:
         with PIL.Image.open(file) as img, to_rgb(img) as rgb_img:
@@ -707,28 +742,6 @@ class MultiContextManager:
                 obj.__exit__(type, value, traceback)
 
 
-class SafeTemporaryDirectory:
-    def __init__(self, *args, **kwargs):
-        self._temp_dir = tempfile.TemporaryDirectory(*args, **kwargs)
-
-    def __enter__(self):
-        return self._temp_dir.__enter__()
-
-    def __getattr__(self, attr):
-        if attr == '_temp_dir':
-            return self._temp_dir
-
-        return getattr(self._temp_dir, attr)
-
-    def __exit__(self, type, value, traceback):
-        if self._temp_dir is not None:
-            # If garbage collection gets to it first a second call
-            # will cause an exception and in this code that might
-            # happen during an exception
-            self._temp_dir.__exit__(type, value, traceback)
-            self._temp_dir = None
-
-
 def iterate_control_image(uri,
                           frame_start=0,
                           frame_end=None,
@@ -739,38 +752,34 @@ def iterate_control_image(uri,
     if isinstance(uri, ImageSeedParseResult):
         uri = uri.uri
 
-    control_mime_type, control_data = fetch_image_data(
+    control_mime_type, control_data = fetch_image_data_stream(
         uri=uri,
         uri_desc=uri,
         mime_type_reject_noun='control image',
         mime_acceptable_desc=mime_acceptable_desc)
 
-    manage_context = []
+    manage_context = [control_data]
 
     if mime_type_is_animable_image(control_mime_type):
-        control_reader = create_animation_reader(file=io.BytesIO(control_data),
-                                                 file_source=uri,
-                                                 resize_resolution=resize_resolution,
-                                                 preprocessor=preprocessor)
-        manage_context.append(control_reader)
+        control_reader = GifWebpReader(file=control_data,
+                                       file_source=uri,
+                                       resize_resolution=resize_resolution,
+                                       preprocessor=preprocessor)
     elif mime_type_is_video(control_mime_type):
-        temp_dir = SafeTemporaryDirectory()
-        video_file_path = _write_to_file(control_data, os.path.join(temp_dir.name, 'tmp_control_net'))
-        control_reader = create_animation_reader(file=video_file_path,
-                                                 file_source=uri,
-                                                 resize_resolution=resize_resolution,
-                                                 preprocessor=preprocessor)
-        manage_context += [control_reader, temp_dir]
+        control_reader = VideoReader(file=control_data,
+                                     file_source=uri,
+                                     resize_resolution=resize_resolution,
+                                     preprocessor=preprocessor)
     elif mime_type_is_static_image(control_mime_type):
         control_image = create_and_exif_orient_pil_img(control_data, uri,
                                                        resize_resolution)
-        control_reader = create_animation_reader(file=control_image,
-                                                 file_source=uri,
-                                                 resize_resolution=resize_resolution,
-                                                 preprocessor=preprocessor)
-        manage_context.append(control_reader)
+        control_reader = MockImageAnimationReader(img=control_image,
+                                                  resize_resolution=resize_resolution,
+                                                  preprocessor=preprocessor)
+
     else:
         raise ImageSeedParseError(f'Unknown control image mimetype {control_mime_type}')
+    manage_context.insert(0, control_reader)
 
     with MultiContextManager(manage_context):
         if isinstance(control_reader, MockImageAnimationReader):
@@ -853,7 +862,7 @@ def iterate_image_seed(uri,
 
     mime_acceptable_desc = 'image/png, image/jpeg, image/gif, image/webp, video/*'
 
-    seed_mime_type, seed_data = fetch_image_data(
+    seed_mime_type, seed_data = fetch_image_data_stream(
         uri=parse_result.uri,
         uri_desc=uri,
         mime_type_reject_noun='image seed',
@@ -862,7 +871,7 @@ def iterate_image_seed(uri,
     mask_mime_type, mask_data = None, None
 
     if parse_result.mask_uri is not None:
-        mask_mime_type, mask_data = fetch_image_data(
+        mask_mime_type, mask_data = fetch_image_data_stream(
             uri=parse_result.mask_uri,
             uri_desc=uri,
             mime_type_reject_noun='mask image',
@@ -870,7 +879,7 @@ def iterate_image_seed(uri,
 
     control_mime_type, control_data = None, None
     if parse_result.control_uri is not None:
-        control_mime_type, control_data = fetch_image_data(
+        control_mime_type, control_data = fetch_image_data_stream(
             uri=parse_result.control_uri,
             uri_desc=uri,
             mime_type_reject_noun='control image',
@@ -879,88 +888,74 @@ def iterate_image_seed(uri,
     if parse_result.resize_resolution is not None:
         resize_resolution = parse_result.resize_resolution
 
-    manage_context = []
+    manage_context = [seed_data, mask_data, control_data]
 
     seed_reader = None
     if seed_data is not None:
         if mime_type_is_animable_image(seed_mime_type):
-            seed_reader = create_animation_reader(file=io.BytesIO(seed_data),
-                                                  file_source=parse_result.uri,
-                                                  resize_resolution=resize_resolution,
-                                                  preprocessor=seed_image_preprocessor)
-            manage_context.append(seed_reader)
+            seed_reader = GifWebpReader(file=seed_data,
+                                        file_source=parse_result.uri,
+                                        resize_resolution=resize_resolution,
+                                        preprocessor=seed_image_preprocessor)
         elif mime_type_is_video(seed_mime_type):
-            temp_dir = SafeTemporaryDirectory()
-            video_file_path = _write_to_file(seed_data, os.path.join(temp_dir.name, 'tmp_vid'))
-            seed_reader = create_animation_reader(file=video_file_path,
-                                                  file_source=parse_result.uri,
-                                                  resize_resolution=resize_resolution,
-                                                  preprocessor=seed_image_preprocessor)
-            manage_context += [seed_reader, temp_dir]
+            seed_reader = VideoReader(file=seed_data,
+                                      file_source=parse_result.uri,
+                                      resize_resolution=resize_resolution,
+                                      preprocessor=seed_image_preprocessor)
         elif mime_type_is_static_image(seed_mime_type):
             seed_image = create_and_exif_orient_pil_img(seed_data, parse_result.uri, resize_resolution)
-            seed_reader = create_animation_reader(file=seed_image,
-                                                  file_source=parse_result.uri,
-                                                  resize_resolution=resize_resolution,
-                                                  preprocessor=seed_image_preprocessor)
-            manage_context.append(seed_reader)
+            seed_reader = MockImageAnimationReader(img=seed_image,
+                                                   resize_resolution=resize_resolution,
+                                                   preprocessor=seed_image_preprocessor)
         else:
             raise ImageSeedParseError(f'Unknown seed image mimetype {seed_mime_type}')
+        manage_context.insert(0, seed_reader)
     else:
         raise ImageSeedParseError(f'Image seed not specified or irretrievable')
 
     mask_reader = None
     if mask_data is not None:
         if mime_type_is_animable_image(mask_mime_type):
-            mask_reader = create_animation_reader(file=io.BytesIO(mask_data),
-                                                  file_source=parse_result.mask_uri,
-                                                  resize_resolution=resize_resolution,
-                                                  preprocessor=mask_image_preprocessor)
-            manage_context.append(mask_reader)
+            mask_reader = GifWebpReader(file=mask_data,
+                                        file_source=parse_result.mask_uri,
+                                        resize_resolution=resize_resolution,
+                                        preprocessor=mask_image_preprocessor)
         elif mime_type_is_video(mask_mime_type):
-            temp_dir = SafeTemporaryDirectory()
-            video_file_path = _write_to_file(mask_data, os.path.join(temp_dir.name, 'tmp_mask'))
-            mask_reader = create_animation_reader(file=video_file_path,
-                                                  file_source=parse_result.mask_uri,
-                                                  resize_resolution=resize_resolution,
-                                                  preprocessor=mask_image_preprocessor)
-            manage_context += [mask_reader, temp_dir]
+            mask_reader = VideoReader(file=mask_data,
+                                      file_source=parse_result.mask_uri,
+                                      resize_resolution=resize_resolution,
+                                      preprocessor=mask_image_preprocessor)
         elif mime_type_is_static_image(mask_mime_type):
             mask_image = create_and_exif_orient_pil_img(mask_data, parse_result.mask_uri, resize_resolution)
-            mask_reader = create_animation_reader(file=mask_image,
-                                                  file_source=parse_result.mask_uri,
-                                                  resize_resolution=resize_resolution,
-                                                  preprocessor=mask_image_preprocessor)
-            manage_context.append(mask_reader)
+            mask_reader = MockImageAnimationReader(img=mask_image,
+                                                   resize_resolution=resize_resolution,
+                                                   preprocessor=mask_image_preprocessor)
+
         else:
             raise ImageSeedParseError(f'Unknown mask image mimetype {mask_mime_type}')
+        manage_context.insert(0, mask_reader)
 
     control_reader = None
     if control_data is not None:
         if mime_type_is_animable_image(control_mime_type):
-            control_reader = create_animation_reader(file=io.BytesIO(control_data),
-                                                     file_source=parse_result.control_uri,
-                                                     resize_resolution=resize_resolution,
-                                                     preprocessor=control_image_preprocessor)
-            manage_context.append(control_reader)
+            control_reader = GifWebpReader(file=control_data,
+                                           file_source=parse_result.control_uri,
+                                           resize_resolution=resize_resolution,
+                                           preprocessor=control_image_preprocessor)
         elif mime_type_is_video(control_mime_type):
-            temp_dir = SafeTemporaryDirectory()
-            video_file_path = _write_to_file(control_data, os.path.join(temp_dir.name, 'tmp_control_net'))
-            control_reader = create_animation_reader(file=video_file_path,
-                                                     file_source=parse_result.control_uri,
-                                                     resize_resolution=resize_resolution,
-                                                     preprocessor=control_image_preprocessor)
-            manage_context += [control_reader, temp_dir]
+            control_reader = VideoReader(file=control_data,
+                                         file_source=parse_result.control_uri,
+                                         resize_resolution=resize_resolution,
+                                         preprocessor=control_image_preprocessor)
         elif mime_type_is_static_image(control_mime_type):
             control_image = create_and_exif_orient_pil_img(control_data, parse_result.control_uri,
                                                            resize_resolution)
-            control_reader = create_animation_reader(file=control_image,
-                                                     file_source=parse_result.control_uri,
-                                                     resize_resolution=resize_resolution,
-                                                     preprocessor=control_image_preprocessor)
-            manage_context.append(control_reader)
+            control_reader = MockImageAnimationReader(img=control_image,
+                                                      resize_resolution=resize_resolution,
+                                                      preprocessor=control_image_preprocessor)
         else:
             raise ImageSeedParseError(f'Unknown control image mimetype {control_mime_type}')
+        manage_context.insert(0, control_reader)
 
     size_mismatch_check = [(parse_result.uri, 'Image seed', seed_reader),
                            (parse_result.mask_uri, 'Mask image', mask_reader),
