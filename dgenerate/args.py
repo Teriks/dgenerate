@@ -32,8 +32,8 @@ from . import messages
 from .diffusionloop import is_valid_device_string, InvalidDeviceOrdinalException
 from .mediaoutput import supported_animation_writer_formats
 from .pipelinewrappers import supported_model_type_strings, have_jax_flax, get_model_type_enum, model_type_is_upscaler, \
-    model_type_is_pix2pix, model_type_is_sdxl, model_type_is_torch, model_type_is_flax, \
-    DEFAULT_IMAGE_SEED_STRENGTH, DEFAULT_SDXL_HIGH_NOISE_FRACTION, DEFAULT_IMAGE_GUIDANCE_SCALE, \
+    model_type_is_pix2pix, model_type_is_sdxl, model_type_is_torch, DEFAULT_IMAGE_SEED_STRENGTH, \
+    DEFAULT_SDXL_HIGH_NOISE_FRACTION, DEFAULT_IMAGE_GUIDANCE_SCALE, \
     DEFAULT_X4_UPSCALER_NOISE_LEVEL, DEFAULT_GUIDANCE_SCALE, DEFAULT_INFERENCE_STEPS
 from .textprocessing import oxford_comma
 
@@ -55,8 +55,8 @@ parser.add_argument('-v', '--verbose', action='store_true', default=False,
 parser.add_argument('--version', action='version', version=f"dgenerate v{__version__}",
                     help="Show dgenerate's version and exit")
 
-
 __PLUGIN_COUNTER = -1
+
 
 def _type_plugin_modules(value):
     global __PLUGIN_COUNTER
@@ -550,7 +550,7 @@ parser.add_argument('-hnf', '--sdxl-high-noise-fractions', action='store', nargs
                          of this value IE: (1.0 - high-noise-fraction) becomes the --image-seed-strength 
                          input to the SDXL refiner. (default: [0.8])""")
 
-parser.add_argument('-ri', '--sdxl-refiner-inference-steps', action='store',  nargs='+', default=None, metavar="INT",
+parser.add_argument('-ri', '--sdxl-refiner-inference-steps', action='store', nargs='+', default=None, metavar="INT",
                     type=_type_inference_steps,
                     help="""One or more inference steps values for the SDXL refiner when in use. 
                     Override the number of inference steps used by the SDXL refiner, 
@@ -562,7 +562,8 @@ parser.add_argument('-rg', '--sdxl-refiner-guidance-scales', action='store', nar
                     Override the guidance scale value used by the SDXL refiner, 
                     which defaults to the value taken from --guidance-scales.""")
 
-parser.add_argument('-rgr', '--sdxl-refiner-guidance-rescales', action='store', nargs='+', default=None, metavar="FLOAT",
+parser.add_argument('-rgr', '--sdxl-refiner-guidance-rescales', action='store', nargs='+', default=None,
+                    metavar="FLOAT",
                     type=_type_guidance_scale,
                     help="""One or more guidance rescale values for the SDXL refiner when in use. 
                     Override the guidance rescale value used by the SDXL refiner,
@@ -717,10 +718,8 @@ def _type_frame_end(val):
 parser.add_argument('-fe', '--frame-end', action='store', default=None, type=_type_frame_end, metavar="FRAME_NUMBER",
                     help='Ending frame slice point for animated files, the specified frame will be included.')
 
-image_seed_args = parser.add_mutually_exclusive_group()
-
-image_seed_args.add_argument('-is', '--image-seeds', action='store', nargs='+', default=[], metavar="SEED",
-                             help="""List of image seeds to try when processing image seeds, these may
+parser.add_argument('-is', '--image-seeds', action='store', nargs='+', default=[], metavar="SEED",
+                    help="""List of image seeds to try when processing image seeds, these may
                          be URLs or file paths. Videos / GIFs / WEBP files will result in frames
                          being rendered as well as an animated output file being generated if more
                          than one frame is available in the input file. Inpainting for static images can be
@@ -731,21 +730,15 @@ image_seed_args.add_argument('-is', '--image-seeds', action='store', nargs='+', 
                          dimension at the end of the string following a semicolon like so:
                          "my-seed-image.png;512x512" or "my-seed-image.png;my-image-mask.png;512x512".
                          Inpainting masks can be downloaded for you from a URL or be a path to a file on disk.
-                         Using --control-nets with img2img or inpainting can be accomplished with the syntax:
-                         "my-seed-image.png;mask=my-image-mask.png;control=my-control-image.png;resize=512x512".
+                         When using --control-nets, a singular image specification is interpreted as the control
+                         guidance image. Using --control-nets with img2img or inpainting can be accomplished with
+                         the syntax: "my-seed-image.png;mask=my-image-mask.png;control=my-control-image.png;resize=512x512".
                          The "mask" and "resize" arguments are optional when using --control-nets, Videos, GIFs,
                          and WEBP are also supported as inputs when using --control-nets, even for the "control"
                          argument. --image-seeds is capable of reading from 3 animated files at once or any combination
                          of animated files and images, the animated file with the least amount of frames dictates how
                          many frames are generated.
                          """)
-
-image_seed_args.add_argument('-ci', '--control-images', nargs='+', action='store', default=[],
-                             help="""Specify images to try as control images for --control-nets when not
-                              specifying via --image-seeds. This argument is mutually exclusive with --image-seeds. 
-                              These may be URLs or file paths. Videos / GIFs / WEBP files will result in frames
-                              being rendered as well as an animated output file being generated if more
-                              than one frame is available in the input file.""")
 
 image_seed_noise_opts = parser.add_mutually_exclusive_group()
 
@@ -765,7 +758,7 @@ parser.add_argument('--mask-image-preprocessors', action='store', nargs='+', def
 
 parser.add_argument('--control-image-preprocessors', action='store', nargs='+', default=None, metavar="PREPROCESSOR",
                     help="""Specify one or more image preprocessor actions to preform on the control
-                    image specified by --image-seeds or --control-images. For example: 
+                    image specified by --image-seeds. For example: 
                     --control-image-preprocessors "canny;lower=50;upper=100". This option is ment to be used 
                     in combination with --control-nets. To obtain more information about what image 
                     preprocessors are available and how to use them, see: --image-preprocessor-help.
@@ -885,23 +878,11 @@ def parse_args(args=None, namespace=None):
     elif args.seeds is None:
         args.seeds = [random.randint(0, 99999999999999)]
 
-    if args.output_size is None and not args.image_seeds and not args.control_images:
+    if args.output_size is None and not args.image_seeds:
         args.output_size = (512, 512) if not model_type_is_sdxl(args.model_type) else (1024, 1024)
-
-    if args.control_nets is not None and model_type_is_flax(args.model_type) and \
-            (args.image_seeds or args.image_seed_strengths):
-        messages.log('dgenerate: error: arguments --image-seeds/--image-seed-strengths are incompatible with '
-                     '--model-type "flax" + --control-nets, use --control-images instead.',
-                     level=messages.ERROR)
-        sys.exit(1)
 
     if not args.image_seeds and args.image_seed_strengths:
         messages.log('dgenerate: error: You cannot specify --image-seed-strengths without --image-seeds.',
-                     level=messages.ERROR)
-        sys.exit(1)
-
-    if args.control_nets is None and args.control_images:
-        messages.log('dgenerate: error: You cannot specify --control-images without --control-nets.',
                      level=messages.ERROR)
         sys.exit(1)
 
@@ -922,22 +903,22 @@ def parse_args(args=None, namespace=None):
                 'pix2pix models, see --model-type.',
                 level=messages.ERROR)
             sys.exit(1)
-    elif args.control_images or args.control_nets:
+    elif args.control_nets:
         messages.log(
-            'dgenerate: error: arguments --control-nets/--control-images '
-            'are not compatible with pix2pix models, see --model-type.',
+            'dgenerate: error: argument --control-nets '
+            'is not compatible with pix2pix models, see --model-type.',
             level=messages.ERROR)
         sys.exit(1)
     elif not args.image_guidance_scales:
         args.image_guidance_scales = [DEFAULT_IMAGE_GUIDANCE_SCALE]
 
     if args.control_image_preprocessors:
-        if not args.image_seeds and not args.control_images:
+        if not args.image_seeds:
             messages.log(f'dgenerate: error: You cannot specify --control-image-preprocessors '
-                         f'without --image-seeds, or alternatively --control-images.')
+                         f'without --image-seeds.')
             sys.exit(1)
 
-    if not args.image_seeds and not args.control_images:
+    if not args.image_seeds:
         invalid_arg = False
         for preprocessor_args in args_that_end_with('preprocessors'):
             messages.log(f'dgenerate: error: You cannot specify --{preprocessor_args.replace("_", "-")} '

@@ -77,8 +77,7 @@ dgenerate help output
                      [-hnf FLOAT [FLOAT ...]] [-ri INT [INT ...]] [-rg FLOAT [FLOAT ...]]
                      [-rgr FLOAT [FLOAT ...]] [--safety-checker] [-d DEVICE] [-t DTYPE] [-s SIZE] [-o PATH]
                      [-op PREFIX] [-ox] [-oc] [-om] [-p PROMPT [PROMPT ...]] [-se SEED [SEED ...] | -gse
-                     COUNT] [-af FORMAT] [-fs FRAME_NUMBER] [-fe FRAME_NUMBER] [-is SEED [SEED ...] | -ci
-                     CONTROL_IMAGES [CONTROL_IMAGES ...]]
+                     COUNT] [-af FORMAT] [-fs FRAME_NUMBER] [-fe FRAME_NUMBER] [-is SEED [SEED ...]]
                      [--seed-image-preprocessors PREPROCESSOR [PREPROCESSOR ...]]
                      [--mask-image-preprocessors PREPROCESSOR [PREPROCESSOR ...]]
                      [--control-image-preprocessors PREPROCESSOR [PREPROCESSOR ...]]
@@ -463,20 +462,16 @@ dgenerate help output
                             specified by placing the dimension at the end of the string following a
                             semicolon like so: "my-seed-image.png;512x512" or "my-seed-image.png;my-image-
                             mask.png;512x512". Inpainting masks can be downloaded for you from a URL or be
-                            a path to a file on disk. Using --control-nets with img2img or inpainting can
-                            be accomplished with the syntax: "my-seed-image.png;mask=my-image-
-                            mask.png;control=my-control-image.png;resize=512x512". The "mask" and "resize"
-                            arguments are optional when using --control-nets, Videos, GIFs, and WEBP are
-                            also supported as inputs when using --control-nets, even for the "control"
-                            argument. --image-seeds is capable of reading from 3 animated files at once or
-                            any combination of animated files and images, the animated file with the least
-                            amount of frames dictates how many frames are generated.
-      -ci CONTROL_IMAGES [CONTROL_IMAGES ...], --control-images CONTROL_IMAGES [CONTROL_IMAGES ...]
-                            Specify images to try as control images for --control-nets when not specifying
-                            via --image-seeds. This argument is mutually exclusive with --image-seeds.
-                            These may be URLs or file paths. Videos / GIFs / WEBP files will result in
-                            frames being rendered as well as an animated output file being generated if
-                            more than one frame is available in the input file.
+                            a path to a file on disk. When using --control-nets, a singular image
+                            specification is interpreted as the control guidance image. Using --control-
+                            nets with img2img or inpainting can be accomplished with the syntax: "my-seed-
+                            image.png;mask=my-image-mask.png;control=my-control-image.png;resize=512x512".
+                            The "mask" and "resize" arguments are optional when using --control-nets,
+                            Videos, GIFs, and WEBP are also supported as inputs when using --control-nets,
+                            even for the "control" argument. --image-seeds is capable of reading from 3
+                            animated files at once or any combination of animated files and images, the
+                            animated file with the least amount of frames dictates how many frames are
+                            generated.
       --seed-image-preprocessors PREPROCESSOR [PREPROCESSOR ...]
                             Specify one or more image preprocessor actions to preform on the primary image
                             specified by --image-seeds. For example: --seed-image-preprocessors "flip"
@@ -489,11 +484,10 @@ dgenerate help output
                             available and how to use them, see: --image-preprocessor-help.
       --control-image-preprocessors PREPROCESSOR [PREPROCESSOR ...]
                             Specify one or more image preprocessor actions to preform on the control image
-                            specified by --image-seeds or --control-images. For example: --control-image-
-                            preprocessors "canny;lower=50;upper=100". This option is ment to be used in
-                            combination with --control-nets. To obtain more information about what image
-                            preprocessors are available and how to use them, see: --image-preprocessor-
-                            help.
+                            specified by --image-seeds. For example: --control-image-preprocessors
+                            "canny;lower=50;upper=100". This option is ment to be used in combination with
+                            --control-nets. To obtain more information about what image preprocessors are
+                            available and how to use them, see: --image-preprocessor-help.
       --image-preprocessor-help [PREPROCESSOR ...]
                             Use this option alone with no model specification in order to list available
                             image preprocessor module names. Specifying one or more module names after this
@@ -538,6 +532,7 @@ dgenerate help output
                             to what the AI is targeting for the content of the image. Values between 30-40
                             produce good results, higher values may improve image quality and or change
                             image content. (default: [30])
+
 
 
 Windows Install
@@ -906,8 +901,8 @@ If you do not adjust the output size of the generated image, the size of the inp
     --output-size 512x512
 
 
-The syntax "my-image-seed.png;control=my-control-image.png" can be used with ``--control-nets``,
-see: `Specifying Control Nets </#specifying-control-nets>`_ for more information.
+The syntax "my-image-seed.png;control=my-control-image.png" can be used with ``--control-nets`` to specify
+img2img mode with a Control Net, see: `Specifying Control Nets </#specifying-control-nets>`_ for more information.
 
 
 Inpainting
@@ -1004,20 +999,17 @@ If you do not set an output size, the size of the input animation will be used.
     --animation-format mp4
 
 
-Animations can also be generated using ``--control-images``, or an alternate syntax for ``--image-seeds``
+The above syntax is the same syntax used for generating an animation with a control
+image when ``--control-nets`` is used.
+
+Animations can also be generated using an alternate syntax for ``--image-seeds``
 that allows the specification of a control image source when it is desired to use
-``--control-nets`` with img2img and inpainting.
+``--control-nets`` with img2img or inpainting.
 
 For more information about this see: `Specifying Control Nets </#specifying-control-nets>`_
 
-As well as the information about ``--image-seeds`` and ``--control-images`` from dgenerates ``--help``
+As well as the information about ``--image-seeds`` from dgenerates ``--help``
 output.
-
-Note that ``--image-seeds`` and ``--control-images`` are mutually exclusive arguments.
-
-
-``--control-images`` is used when using ``--control-nets`` without img2img generation
-(an image seed source), or inpainting.
 
 
 Animation Slicing
@@ -1623,22 +1615,20 @@ One or more Control Net models may be specified with ``--control-nets``
 
 You can provide a huggingface repository slug / blob link, .pt, .pth, .bin, .ckpt, or .safetensors files.
 
-Control images for the Control Nets can be provided using either ``--image-seeds`` when using
-an image seed or inpainting mask, or with ``--control-images`` when only using a control image to
-guide the Control Net.
+Control images for the Control Nets can be provided using ``--image-seeds``
 
 When using ``--control-nets`` the syntax for specifying control images via ``--image-seeds`` is:
 
-``--image-seeds "my-seed.png;mask=my-mask.png;control=my-control-image.png"``
+``--image-seeds "my-control-image.png"`` or ``--image-seeds "my-img2img-seed.png;mask=my-inpaint-mask.png;control=my-control-image.png"``
 
-Where the "mask" argument is optional, ``resize=WIDTHxHEIGHT`` can be used to select
-a per ``--image-size`` resize dimension for all image sources involved in that particular
+The "mask" argument is optional and used to request inpainting, ``resize=WIDTHxHEIGHT`` can be used to
+select a per ``--image-size`` resize dimension for all image sources involved in that particular
 specification.
 
-Control Net guidance images may actually be animations such as MP4's, GIF's etc. In the same
-way as image seeds and masks. In fact when using ``--image-seeds``, frames can be taken from
-3 videos simultaneously (or any possible combination of image/video parameters) in order to generate
-a frame when using an image seed and/or inpaint mask with a Control Net guidance image.
+Control Net guidance images may actually be animations such as MP4's, GIF's etc.
+In fact when using ``--image-seeds``, frames can be taken from 3 videos simultaneously
+(or any possible combination of image/video parameters) in order to generate a frame when
+using an img2img image seed and/or inpaint mask with a Control Net guidance image.
 
 Arguments pertaining to the loading of each Control Net model may be specified in the same
 way as when using ``--vae`` with the addition of a ``scale`` argument and ``from_torch`` argument
@@ -1674,27 +1664,34 @@ These examples use: `vermeer_canny_edged.png <https://raw.githubusercontent.com/
 
 .. code-block:: bash
 
-    # Torch example
+    # Torch example, use "vermeer_canny_edged.png" as a control guidance image
 
     runwayml/stable-diffusion-v1-5 \
     --inference-steps 40 \
     --guidance-scales 8 \
     --prompts "Painting, Girl with a pearl earing by Leonardo Da Vinci, masterpiece; low quality, low resolution, blank eyeballs" \
     --control-nets lllyasviel/sd-controlnet-canny;scale=0.5 \
-    --control-images "vermeer_canny_edged.png"
+    --image-seeds "vermeer_canny_edged.png"
 
 
-    # If you have an image seed or a mask, use --image-seeds instead of --control-images
+    # If you have an img2img image seed, use this syntax
 
     runwayml/stable-diffusion-v1-5 \
     --inference-steps 40 \
     --guidance-scales 8 \
     --prompts "Painting, Girl with a pearl earing by Leonardo Da Vinci, masterpiece; low quality, low resolution, blank eyeballs" \
     --control-nets lllyasviel/sd-controlnet-canny;scale=0.5 \
-    --image-seeds "my-image-seed.png;mask=my-image-mask.png;control=vermeer_canny_edged.png"
+    --image-seeds "my-image-seed.png;control=vermeer_canny_edged.png"
 
 
-.. code-block:: bash
+    # If you have an img2img image seed and an inpainting mask, use this syntax
+
+    runwayml/stable-diffusion-v1-5 \
+    --inference-steps 40 \
+    --guidance-scales 8 \
+    --prompts "Painting, Girl with a pearl earing by Leonardo Da Vinci, masterpiece; low quality, low resolution, blank eyeballs" \
+    --control-nets lllyasviel/sd-controlnet-canny;scale=0.5 \
+    --image-seeds "my-image-seed.png;mask=my-inpaint-mask.png;control=vermeer_canny_edged.png"
 
     # Flax example
 
@@ -1705,10 +1702,7 @@ These examples use: `vermeer_canny_edged.png <https://raw.githubusercontent.com/
     --guidance-scales 8 \
     --prompts "Painting, Girl with a pearl earing by Leonardo Da Vinci, masterpiece; low quality, low resolution, blank eyeballs" \
     --control-nets lllyasviel/sd-controlnet-canny;scale=0.5;from_torch=true \
-    --control-images "vermeer_canny_edged.png"
-
-
-.. code-block:: bash
+    --image-seeds "vermeer_canny_edged.png"
 
     # SDXL example
 
@@ -1720,7 +1714,7 @@ These examples use: `vermeer_canny_edged.png <https://raw.githubusercontent.com/
     --guidance-scales 8 \
     --prompts "Taylor Swift, high quality, masterpiece, high resolution; low quality, bad quality, sketches" \
     --control-nets diffusers/controlnet-canny-sdxl-1.0;scale=0.5 \
-    --control-images "vermeer_canny_edged.png" \
+    --image-seeds "vermeer_canny_edged.png" \
     --output-size 1024
 
 
@@ -1763,9 +1757,9 @@ If you are loading a .safetensors or other file from a path on disk, simply do:
 Image Preprocessors
 -------------------
 
-Images provided through ``--image-seeds`` and ``--control-images`` can be preprocessed before
-being used for image generation through the use of the arguments ``--seed-image-preprocessors``,
-``--mask-image-preprocessors``, and  ``--control-image-preprocessors``.
+Images provided through ``--image-seeds`` can be preprocessed before being used for image generation
+through the use of the arguments ``--seed-image-preprocessors``, ``--mask-image-preprocessors``, and
+``--control-image-preprocessors``.
 
 Each of these options can receive one or more specifications for image preprocessing actions.
 
@@ -1777,6 +1771,10 @@ is used in the example below with a Control Net that is trained to generate imag
 
 .. code-block:: bash
 
+    # --control-image-preprocessors is only used for control images
+    # in this case the single image seed is considered a control image
+    # because --control-nets is being used
+
     dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
     --variant fp16 --dtype float16 \
     --vae AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix \
@@ -1785,7 +1783,7 @@ is used in the example below with a Control Net that is trained to generate imag
     --guidance-scales 8 \
     --prompts "Majestic unicorn, high quality, masterpiece, high resolution; low quality, bad quality, sketches" \
     --control-nets diffusers/controlnet-canny-sdxl-1.0;scale=0.5 \
-    --control-images "horse.jpeg" \
+    --image-seeds "horse.jpeg" \
     --control-image-preprocessors "canny;lower=50;upper=100" \
     --gen-seeds 2 \
     --output-size 1024 \

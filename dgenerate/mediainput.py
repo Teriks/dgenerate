@@ -123,10 +123,17 @@ class AnimationReader:
 
 
 class VideoReader(ImagePreprocessorMixin, AnimationReader):
-    def __init__(self, filename, file_source, resize_resolution=None, preprocessor=None):
-        self._filename = filename
+    def __init__(self, file, file_source, resize_resolution=None, preprocessor=None):
+        self._filename = file
         self._file_source = file_source
-        self._container = av.open(filename, 'r')
+        if isinstance(file, str):
+            self._container = av.open(file, 'r')
+        else:
+            _, ext = os.path.splitext(file_source)
+            if not ext:
+                raise NotImplementedError(
+                    'Cannot determine the format of a video file lacking a file extension.')
+            self._container = av.open(file, format=ext.lstrip('.').lower())
         self.resize_resolution = resize_resolution
 
         if self.resize_resolution is None:
@@ -276,7 +283,7 @@ def create_animation_reader(file, file_source, resize_resolution=None, image_rep
                              resize_resolution=resize_resolution,
                              preprocessor=preprocessor)
     elif isinstance(file, str):
-        return VideoReader(filename=file,
+        return VideoReader(file=file,
                            file_source=file_source,
                            resize_resolution=resize_resolution,
                            preprocessor=preprocessor)
@@ -464,6 +471,9 @@ class ImageSeedParseResult:
         self.control_uri_is_local = False
         self.resize_resolution = None
 
+    def is_single_image(self):
+        return self.uri is not None and self.mask_uri is None and self.control_uri is None
+
 
 def parse_image_seed_uri_legacy(url):
     parts = (x.strip() for x in url.split(';'))
@@ -581,17 +591,17 @@ def parse_image_seed_uri(url):
     return result
 
 
-def image_seed_mime_type_filter(mime_type):
+def image_mime_type_filter(mime_type):
     return (mime_type_is_static_image(mime_type) or
             mime_type_is_video(mime_type) or
             mime_type_is_animable_image(mime_type))
 
 
-def fetch_image_seed_data(uri,
-                          uri_desc,
-                          mime_type_filter=image_seed_mime_type_filter,
-                          mime_type_reject_noun='input image',
-                          mime_acceptable_desc=''):
+def fetch_image_data(uri,
+                     uri_desc,
+                     mime_type_filter=image_mime_type_filter,
+                     mime_type_reject_noun='input image',
+                     mime_acceptable_desc=''):
     if uri.startswith('http://') or uri.startswith('https://'):
         headers = {'User-Agent': UserAgent().chrome}
         req = requests.get(uri, headers=headers)
@@ -729,7 +739,7 @@ def iterate_control_image(uri,
     if isinstance(uri, ImageSeedParseResult):
         uri = uri.uri
 
-    control_mime_type, control_data = fetch_image_seed_data(
+    control_mime_type, control_data = fetch_image_data(
         uri=uri,
         uri_desc=uri,
         mime_type_reject_noun='control image',
@@ -836,7 +846,6 @@ def iterate_image_seed(uri,
                        seed_image_preprocessor=None,
                        mask_image_preprocessor=None,
                        control_image_preprocessor=None):
-
     if isinstance(uri, ImageSeedParseResult):
         parse_result = uri
     else:
@@ -844,7 +853,7 @@ def iterate_image_seed(uri,
 
     mime_acceptable_desc = 'image/png, image/jpeg, image/gif, image/webp, video/*'
 
-    seed_mime_type, seed_data = fetch_image_seed_data(
+    seed_mime_type, seed_data = fetch_image_data(
         uri=parse_result.uri,
         uri_desc=uri,
         mime_type_reject_noun='image seed',
@@ -853,7 +862,7 @@ def iterate_image_seed(uri,
     mask_mime_type, mask_data = None, None
 
     if parse_result.mask_uri is not None:
-        mask_mime_type, mask_data = fetch_image_seed_data(
+        mask_mime_type, mask_data = fetch_image_data(
             uri=parse_result.mask_uri,
             uri_desc=uri,
             mime_type_reject_noun='mask image',
@@ -861,7 +870,7 @@ def iterate_image_seed(uri,
 
     control_mime_type, control_data = None, None
     if parse_result.control_uri is not None:
-        control_mime_type, control_data = fetch_image_seed_data(
+        control_mime_type, control_data = fetch_image_data(
             uri=parse_result.control_uri,
             uri_desc=uri,
             mime_type_reject_noun='control image',

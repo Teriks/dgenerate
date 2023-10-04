@@ -21,8 +21,8 @@ import io
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import os
 import re
+import sys
 from ast import literal_eval
 from setuptools import setup, find_packages
 
@@ -74,7 +74,7 @@ setup(name='dgenerate',
                   'video / gif / webp animation transcoding.',
       long_description=readme,
       include_package_data=True,
-      install_requires=get_requires(exclude={'triton'} if os.name == 'nt' else {}),
+      install_requires=get_requires(exclude={'triton'} if 'linux' not in sys.platform else {}),
       extras_require={
           'flax': get_requires(optional=True),
           'dev': ['pyinstaller==5.13.2']

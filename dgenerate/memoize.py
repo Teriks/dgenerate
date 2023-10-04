@@ -35,7 +35,8 @@ def args_cache_key(args_dict, custom_hashes=None):
 
     if custom_hashes:
         # Only for the top level, let user control recursion
-        return ','.join(f'{k}={value_hash(v) if k not in custom_hashes else custom_hashes[k](v)}' for k, v in sorted(args_dict.items()))
+        return ','.join(f'{k}={value_hash(v) if k not in custom_hashes else custom_hashes[k](v)}' for k, v in
+                        sorted(args_dict.items()))
     else:
         return ','.join(f'{k}={value_hash(v)}' for k, v in sorted(args_dict.items()))
 
