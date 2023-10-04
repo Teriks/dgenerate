@@ -9,6 +9,11 @@ python run.py
 
 python run.py stablediffusion
 
+# Run every stable diffusion example, do not
+# run examples that generate animations
+
+python run.py stablediffusion skip_animations
+
 
 # Run the stablediffusion/basic example
 

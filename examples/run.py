@@ -7,6 +7,11 @@ pwd = os.path.dirname(__file__)
 
 args = sys.argv[1:]
 
+_skip_animations = True
+if 'skip_animations' in args:
+    _skip_animations = True
+    args.remove('skip_animations')
+
 if len(args) > 0:
     first_arg = args[0]
 else:
@@ -26,6 +31,11 @@ else:
 
 for config in configs:
     c = os.path.relpath(config, pwd)
+
+    if _skip_animations and 'animation' in c:
+        print(f'SKIPPING ANIMATION CONFIG: {config}')
+        sys.stdout.flush()
+        continue
 
     if 'flax' in c:
         if os.name == 'nt':
