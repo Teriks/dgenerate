@@ -600,6 +600,23 @@ Install dgenerate:
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/"
 
 
+It is recommended to install dgenerate with pipx if you are just intending
+to use it, if you want to develop you can install it from a cloned repository
+like this:
+
+.. code-block:: bash
+
+    # in the top of the repo make
+    # an environment and activate it
+
+    python -m venv venv
+    venv/Scripts/activate
+
+    # Install with pip into the environment
+
+    pip install --editable . --extra-index-url https://download.pytorch.org/whl/cu118/
+
+
 Run **dgenerate** to generate images:
 
 .. code-block:: bash
@@ -618,12 +635,22 @@ Run **dgenerate** to generate images:
 Linux or WSL Install
 ====================
 
-First update your system and install build-essential
+First update your system and install build-essential and native dependencies
 
 .. code-block:: bash
 
     sudo apt update && sudo apt upgrade
     sudo apt install build-essential
+
+    # Install libgl1 dependency for OpenCV.
+    # Needed on WSL, not sure about normal Ubuntu/Debian?
+    # I don't have a linux machine with a GPU :)
+    # You'll probably need to install this
+    # if your install is headless, you will
+    # know because a relevant exception will
+    # be produced when running dgenerate if you need it
+
+    sudo apt install libgl1
 
 
 Install CUDA Toolkit 12.*: https://developer.nvidia.com/cuda-downloads
@@ -697,6 +724,28 @@ Install dgenerate
     pipx install "dgenerate[flax] @ git+https://github.com/Teriks/dgenerate.git@v1.1.0" \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/ \
     -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html"
+
+
+It is recommended to install dgenerate with pipx if you are just intending
+to use it, if you want to develop you can install it from a cloned repository
+like this:
+
+.. code-block:: bash
+
+    # in the top of the repo make
+    # an environment and activate it
+
+    python3 -m venv venv
+    source venv/bin/activate
+
+    # Install with pip into the environment
+
+    pip3 install --editable . --extra-index-url https://download.pytorch.org/whl/cu118/
+
+    # With flax if you want
+
+    pip3 install --editable .[flax] --extra-index-url https://download.pytorch.org/whl/cu118/ \
+    -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 
 Run **dgenerate** to generate images:
