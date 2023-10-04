@@ -466,7 +466,7 @@ dgenerate help output
                             specification is interpreted as the control guidance image. Using --control-
                             nets with img2img or inpainting can be accomplished with the syntax: "my-seed-
                             image.png;mask=my-image-mask.png;control=my-control-image.png;resize=512x512".
-                            The "mask" and "resize" arguments are optional when using --control-nets,
+                            The "mask" and "resize" arguments are optional when using --control-nets.
                             Videos, GIFs, and WEBP are also supported as inputs when using --control-nets,
                             even for the "control" argument. --image-seeds is capable of reading from 3
                             animated files at once or any combination of animated files and images, the
