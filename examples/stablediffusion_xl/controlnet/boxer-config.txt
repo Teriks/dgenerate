@@ -17,5 +17,5 @@ stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
 --vae-slicing \
 --prompts "A boxer throwing a punch in the ring" \
 --control-nets thibaud/controlnet-openpose-sdxl-1.0;scale=1.0 \
---control-images "../../media/man-fighting-pose.jpg" \
+--image-seeds "../../media/man-fighting-pose.jpg" \
 --control-image-preprocessors "openpose;include-hand=true;include-face=true;output-file=boxer/boxer-openpose.png"

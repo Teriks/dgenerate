@@ -949,11 +949,11 @@ def _create_flax_diffusion_pipeline(pipeline_type,
             pipeline_class = FlaxStableDiffusionPipeline
     elif pipeline_type == _PipelineTypes.IMG2IMG:
         if has_control_nets:
-            raise NotImplementedError('Flax does not support --image-seeds with --control-nets, use --control-images.')
+            raise NotImplementedError('Flax does not support img2img with Control Nets.')
         pipeline_class = FlaxStableDiffusionImg2ImgPipeline
     elif pipeline_type == _PipelineTypes.INPAINT:
         if has_control_nets:
-            raise NotImplementedError('Flax does not support --image-seeds with --control-nets, use --control-images.')
+            raise NotImplementedError('Flax does not support inpainting with Control Nets.')
         pipeline_class = FlaxStableDiffusionInpaintPipeline
     else:
         raise NotImplementedError('Pipeline type not implemented.')
@@ -1197,7 +1197,7 @@ def _gpu_id_from_cuda_device(device):
     return parts[1] if len(parts) == 2 else 0
 
 
-class DiffusionPipelineWrapperBase:
+class DiffusionPipelineWrapper:
     def __str__(self):
         pub_props = {k: getattr(self, k) for k in dir(self)
                      if not k.startswith("_") and not callable(getattr(self, k))}
@@ -1292,16 +1292,16 @@ class DiffusionPipelineWrapperBase:
                                                      f'torch.Generator(seed={value.initial_seed()})'
                                                      if isinstance(value, torch.Generator) else value))
 
-        if pipeline is DiffusionPipelineWrapperBase._LAST_CALLED_PIPE:
+        if pipeline is DiffusionPipelineWrapper._LAST_CALLED_PIPE:
             return pipeline(**kwargs)
         else:
-            DiffusionPipelineWrapperBase._pipeline_to(
-                DiffusionPipelineWrapperBase._LAST_CALLED_PIPE, 'cpu')
+            DiffusionPipelineWrapper._pipeline_to(
+                DiffusionPipelineWrapper._LAST_CALLED_PIPE, 'cpu')
 
-        DiffusionPipelineWrapperBase._pipeline_to(pipeline, device)
+        DiffusionPipelineWrapper._pipeline_to(pipeline, device)
         r = pipeline(**kwargs)
 
-        DiffusionPipelineWrapperBase._LAST_CALLED_PIPE = pipeline
+        DiffusionPipelineWrapper._LAST_CALLED_PIPE = pipeline
         return r
 
     @property
@@ -1599,7 +1599,7 @@ class DiffusionPipelineWrapperBase:
                     opts.append(('--upscaler-noise-levels', upscaler_noise_level))
         elif control_image is not None:
             if hasattr(control_image, 'filename'):
-                opts.append(('--control-images', quote(control_image.filename)))
+                opts.append(('--image-seeds', quote(control_image.filename)))
 
         return opts
 
@@ -1710,7 +1710,7 @@ class DiffusionPipelineWrapperBase:
         default_args.pop('width', None)
         default_args.pop('height', None)
 
-        images = DiffusionPipelineWrapperBase._call_pipeline(
+        images = DiffusionPipelineWrapper._call_pipeline(
             pipeline=self._pipeline,
             device=self.device,
             prompt_ids=prompt_ids,
@@ -1788,7 +1788,7 @@ class DiffusionPipelineWrapperBase:
         else:
             prompt_ids = self._pipeline.prepare_inputs([user_args.get('prompt', '')] * device_count)
 
-        images = DiffusionPipelineWrapperBase._call_pipeline(
+        images = DiffusionPipelineWrapper._call_pipeline(
             pipeline=self._pipeline,
             device=self._device,
             prompt_ids=shard(prompt_ids),
@@ -1932,7 +1932,7 @@ class DiffusionPipelineWrapperBase:
 
         if self._sdxl_refiner_pipeline is None:
             return PipelineResultWrapper(
-                DiffusionPipelineWrapperBase._call_pipeline(
+                DiffusionPipelineWrapper._call_pipeline(
                     pipeline=self._pipeline,
                     device=self._device, **default_args).images[0])
 
@@ -1946,11 +1946,11 @@ class DiffusionPipelineWrapperBase:
             i_start = {'denoising_start': high_noise_fraction}
             i_end = {'denoising_end': high_noise_fraction}
 
-        image = DiffusionPipelineWrapperBase._call_pipeline(pipeline=self._pipeline,
-                                                            device=self._device,
-                                                            **default_args,
-                                                            **i_end,
-                                                            output_type='latent').images
+        image = DiffusionPipelineWrapper._call_pipeline(pipeline=self._pipeline,
+                                                        device=self._device,
+                                                        **default_args,
+                                                        **i_end,
+                                                        output_type='latent').images
 
         default_args['image'] = image
 
@@ -2042,14 +2042,15 @@ class DiffusionPipelineWrapperBase:
             default_args['strength'] = strength
 
         pipe_result = PipelineResultWrapper(
-            DiffusionPipelineWrapperBase._call_pipeline(pipeline=self._sdxl_refiner_pipeline, device=self._device,
-                                                        **default_args, **i_start).images[0])
+            DiffusionPipelineWrapper._call_pipeline(pipeline=self._sdxl_refiner_pipeline, device=self._device,
+                                                    **default_args, **i_start).images[0])
 
         return pipe_result
 
     def _lazy_init_pipeline(self, pipeline_type):
         if self._pipeline is not None:
-            return
+            if self._pipeline_type == pipeline_type:
+                return
 
         self._pipeline_type = pipeline_type
 
@@ -2162,7 +2163,22 @@ class DiffusionPipelineWrapperBase:
                                     vae_tiling=self._vae_tiling,
                                     vae_slicing=self._vae_slicing)
 
+    @staticmethod
+    def _determine_pipeline_type(kwargs):
+        if 'image' in kwargs and 'mask_image' in kwargs:
+            # Inpainting is handled by INPAINT type
+            return _PipelineTypes.INPAINT
+
+        if 'image' in kwargs:
+            # Image only is handled by IMG2IMG type
+            return _PipelineTypes.IMG2IMG
+
+        # All other situations handled by BASIC type
+        return _PipelineTypes.BASIC
+
     def __call__(self, **kwargs) -> PipelineResultWrapper:
+        self._lazy_init_pipeline(DiffusionPipelineWrapper._determine_pipeline_type(kwargs))
+
         default_args = self._pipeline_defaults(kwargs)
 
         messages.debug_log(f'Calling Pipeline Wrapper: "{self}",'
@@ -2175,99 +2191,3 @@ class DiffusionPipelineWrapperBase:
 
         result._dgenerate_opts = self._reconstruct_dgenerate_opts(**kwargs)
         return result
-
-
-class DiffusionPipelineWrapper(DiffusionPipelineWrapperBase):
-    def __init__(self,
-                 model_path,
-                 dtype,
-                 device='cuda',
-                 model_type='torch',
-                 revision=None,
-                 variant=None,
-                 model_subfolder=None,
-                 vae_path=None,
-                 vae_tiling=False,
-                 vae_slicing=False,
-                 lora_paths=None,
-                 textual_inversion_paths=None,
-                 control_net_paths=None,
-                 sdxl_refiner_path=None,
-                 scheduler=None,
-                 sdxl_refiner_scheduler=None,
-                 safety_checker=False,
-                 auth_token=None):
-        super().__init__(
-            model_path,
-            dtype,
-            device,
-            model_type,
-            revision,
-            variant,
-            model_subfolder,
-            vae_path,
-            vae_tiling,
-            vae_slicing,
-            lora_paths,
-            textual_inversion_paths,
-            control_net_paths,
-            sdxl_refiner_path,
-            scheduler,
-            sdxl_refiner_scheduler,
-            safety_checker,
-            auth_token)
-
-    def __call__(self, **kwargs) -> PipelineResultWrapper:
-        self._lazy_init_pipeline(_PipelineTypes.BASIC)
-
-        return super().__call__(**kwargs)
-
-
-class DiffusionPipelineImg2ImgWrapper(DiffusionPipelineWrapperBase):
-    def __init__(self,
-                 model_path,
-                 dtype,
-                 device='cuda',
-                 model_type='torch',
-                 revision=None,
-                 variant=None,
-                 model_subfolder=None,
-                 vae_path=None,
-                 vae_tiling=False,
-                 vae_slicing=False,
-                 lora_paths=None,
-                 textual_inversion_paths=None,
-                 control_net_paths=None,
-                 sdxl_refiner_path=None,
-                 scheduler=None,
-                 sdxl_refiner_scheduler=None,
-                 safety_checker=False,
-                 auth_token=None):
-
-        super().__init__(
-            model_path,
-            dtype,
-            device,
-            model_type,
-            revision,
-            variant,
-            model_subfolder,
-            vae_path,
-            vae_tiling,
-            vae_slicing,
-            lora_paths,
-            textual_inversion_paths,
-            control_net_paths,
-            sdxl_refiner_path,
-            scheduler,
-            sdxl_refiner_scheduler,
-            safety_checker,
-            auth_token)
-
-    def __call__(self, **kwargs) -> PipelineResultWrapper:
-        if 'mask_image' in kwargs:
-            self._lazy_init_pipeline(_PipelineTypes.INPAINT)
-        else:
-            self._lazy_init_pipeline(_PipelineTypes.IMG2IMG)
-
-        return super().__call__(**kwargs)

@@ -105,7 +105,6 @@ def _run_loop():
         render_loop.lora_paths = arguments.lora
         render_loop.textual_inversion_paths = arguments.textual_inversions
         render_loop.control_net_paths = arguments.control_nets
-        render_loop.control_images = arguments.control_images
         render_loop.scheduler = arguments.scheduler
         render_loop.safety_checker = arguments.safety_checker
         render_loop.auth_token = arguments.auth_token

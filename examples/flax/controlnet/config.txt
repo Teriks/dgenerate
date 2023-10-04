@@ -8,4 +8,4 @@ runwayml/stable-diffusion-v1-5 --model-type flax \
 --gen-seeds 2 \
 --prompts "Painting, Girl with a pearl earing by Leonardo Da Vinci, masterpiece; low quality, low resolution, blank eyeballs" \
 --control-nets lllyasviel/sd-controlnet-canny;scale=0.5;from_torch=true \
---control-images "../../media/vermeer_canny_edged.png"
+--image-seeds "../../media/vermeer_canny_edged.png"
