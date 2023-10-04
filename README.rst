@@ -610,11 +610,11 @@ like this:
     # an environment and activate it
 
     python -m venv venv
-    venv/Scripts/activate
+    venv\Scripts\activate
 
     # Install with pip into the environment
 
-    pip install --editable . --extra-index-url https://download.pytorch.org/whl/cu118/
+    pip install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu118/
 
 
 Run **dgenerate** to generate images:
@@ -740,11 +740,11 @@ like this:
 
     # Install with pip into the environment
 
-    pip3 install --editable . --extra-index-url https://download.pytorch.org/whl/cu118/
+    pip3 install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu118/
 
     # With flax if you want
 
-    pip3 install --editable .[flax] --extra-index-url https://download.pytorch.org/whl/cu118/ \
+    pip3 install --editable .[dev, flax] --extra-index-url https://download.pytorch.org/whl/cu118/ \
     -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 
