@@ -145,6 +145,9 @@ def _run_loop():
 
         if arguments.verbose:
             messages.LEVEL = messages.DEBUG
+        else:
+            # enable setting and unsetting in batch processing
+            messages.LEVEL = messages.INFO
 
         # run the render loop
         try:
