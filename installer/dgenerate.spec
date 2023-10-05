@@ -8,8 +8,9 @@ from PyInstaller.building.api import PYZ, EXE, COLLECT
 from PyInstaller.building.build_main import Analysis
 from PyInstaller.utils.hooks import copy_metadata, collect_data_files, collect_dynamic_libs
 
-version = ''
-with io.open('../dgenerate/__init__.py') as f:
+dgenerate_init = os.path.join('..', 'dgenerate', '__init__.py')
+
+with io.open(dgenerate_init) as f:
     version = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', f.read(), re.MULTILINE).group(1)
 
 

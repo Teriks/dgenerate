@@ -1,3 +1,4 @@
+pushd "%~dp0"
 
 set PATH=%PATH%;C:\Program Files (x86)\WiX Toolset v3.11\bin
 rmdir build /s /q
@@ -12,4 +13,6 @@ light -b dist\dgenerate wixobj\Product.wixobj wixobj\DgenerateComponents.wixobj 
 
 pushd wixobj
 "C:\Program Files\7-Zip\7z.exe" -v1500m a dgenerate_installer.zip dgenerate.msi cab1.cab cab2.cab cab3.cab
+popd
+
 popd
