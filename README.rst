@@ -2152,7 +2152,7 @@ On Windows Powershell:
 File Cache Control
 ==================
 
-dgenerate will cache ``--image-seed`` files downloaded from the web while it is running in the
+dgenerate will cache ``--image-seeds`` files downloaded from the web while it is running in the
 directory ``~/.cache/dgenerate/web``, on Windows this equates to ``%HOME%\.cache\dgenerate\web``
 
 You can control where image seed files are cached with the environmental variable ``DGENERATE_WEB_CACHE``.
