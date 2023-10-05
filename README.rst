@@ -2168,8 +2168,8 @@ This is controlled by the environmental variable ``HF_HOME``
 In order to specify that all large model files be stored in another location,
 for example on another disk, simply set ``HF_HOME`` to a new path in your environment.
 
-You can read more about environmental variables that affect huggingface libraries
-`at this link< https://huggingface.co/docs/huggingface_hub/package_reference/environment_variables>`_.
+You can read more about environmental variables that affect huggingface libraries on this
+`huggingface documentation page <https://huggingface.co/docs/huggingface_hub/package_reference/environment_variables>`_.
 
 
 
