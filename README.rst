@@ -1977,10 +1977,17 @@ Loading the necessary libraries and bringing models into memory is quite slow, s
 way allows for multiple invocations using different arguments, without needing to load the libraries and
 models multiple times, only the first time, or in the case of models the first time the model is encountered.
 
-Changing ``--model-type``, ``--revision``, ``--variant``, ``--lora``, ``--vae``, ``--textual-inversions``,
-``--scheduler``, or ``--safety-checker`` when loading a model from a repository or file path that has
-already been used will cause a cache miss, and a new instance of the model will be created in memory for
-what is specified in those arguments.
+When a model is loaded dgenerate caches it in memory with it's creation parameters, which includes among other things
+the pipeline mode (basic, img2img, inpaint), attached control nets, vae's, lora's and textual inversions.
+If another invocation of the model occurs with creation parameters that are identical, it will be loaded out of cache.
+
+Main/Refiner Models, VAE's, and Control Net models are cached individually.
+
+VAE's and ControlNet models objects can be reused by main / refiner models in certain situations
+and this is taken advantage of.
+
+A number of things affect cache hit or miss upon model invocation, information regarding runtime
+caching behavior of a pipeline can be observed using ``-v/--verbose``
 
 When loading multiple different models be aware that they will all be retained in memory for
 the duration of program execution, unless all models are flushed using the ``\clear_model_cache`` directive.
@@ -2088,7 +2095,7 @@ The Following is an example input file ``my-config.txt``:
     # after a cache flush which may take some time
 
     stabilityai/stable-diffusion-2-1 --prompts "a martian riding a horse" \
-    --output-path unique_output_4  \
+    --output-path unique_output_4
 
 
 To utilize the file on Linux, pipe it into the command or use redirection:
