@@ -925,9 +925,9 @@ The alternate syntax is for disambiguation when using `Control Nets </#specifyin
 
 Mask images can be downloaded from URL's just like image seeds, however for this example the syntax specifies a file on disk for brevity.
 
-`my-image-seed.png <https://raw.githubusercontent.com/Teriks/dgenerate/control_nets/examples/media/dog-on-bench.png>`_
+`my-image-seed.png <https://raw.githubusercontent.com/Teriks/dgenerate/master/examples/media/dog-on-bench.png>`_
 
-`my-mask-image.png <https://raw.githubusercontent.com/Teriks/dgenerate/control_nets/examples/media/dog-on-bench-mask.png>`_
+`my-mask-image.png <https://raw.githubusercontent.com/Teriks/dgenerate/master/examples/media/dog-on-bench-mask.png>`_
 
 The command below generates a cat sitting on a bench with the images from the links above, the mask image masks out
 areas over the dog in the original image, causing the dog to be replaced with an AI generated cat.
@@ -1660,7 +1660,7 @@ at which the control net model stops applying guidance. It defaults to 1.0, mean
 stop at the last inference step.
 
 
-These examples use: `vermeer_canny_edged.png <https://raw.githubusercontent.com/Teriks/dgenerate/control_nets/examples/media/vermeer_canny_edged.png>`_
+These examples use: `vermeer_canny_edged.png <https://raw.githubusercontent.com/Teriks/dgenerate/master/examples/media/vermeer_canny_edged.png>`_
 
 
 .. code-block:: bash
@@ -1767,7 +1767,7 @@ Each of these options can receive one or more specifications for image preproces
 For example images can be preprocessed with the canny edge detection algorithm or OpenPose (rigging generation)
 before being used for generation with a model + a Control Net.
 
-This image of a `horse <https://raw.githubusercontent.com/Teriks/dgenerate/control_nets/examples/media/horse2.jpeg>`_
+This image of a `horse <https://raw.githubusercontent.com/Teriks/dgenerate/master/examples/media/horse2.jpeg>`_
 is used in the example below with a Control Net that is trained to generate images from canny edge detected input.
 
 .. code-block:: bash
@@ -1822,12 +1822,12 @@ You simply specify one or more module directories on disk, or paths to python fi
 Currently the only supported functionality of plugin modules is to add image preprocessors.
 
 A code example as well as a command line usage example for image preprocessor plugins can be found
-in the `"plugins/image_preprocessor" <https://github.com/Teriks/dgenerate/tree/control_nets/examples/plugins/image_preprocessor>`_
+in the `"plugins/image_preprocessor" <https://github.com/Teriks/dgenerate/tree/master/examples/plugins/image_preprocessor>`_
 folder of the examples folder.
 
-The source code for the built in `canny <https://github.com/Teriks/dgenerate/blob/control_nets/dgenerate/preprocessors/canny.py>`_ preprocessor,
-the `openpose <https://github.com/Teriks/dgenerate/blob/control_nets/dgenerate/preprocessors/openpose.py>`_ preprocessor, and the simple
-`pillow image operations <https://github.com/Teriks/dgenerate/blob/control_nets/dgenerate/preprocessors/pil_imageops.py>`_ preprocessors can also
+The source code for the built in `canny <https://github.com/Teriks/dgenerate/blob/master/dgenerate/preprocessors/canny.py>`_ preprocessor,
+the `openpose <https://github.com/Teriks/dgenerate/blob/master/dgenerate/preprocessors/openpose.py>`_ preprocessor, and the simple
+`pillow image operations <https://github.com/Teriks/dgenerate/blob/master/dgenerate/preprocessors/pil_imageops.py>`_ preprocessors can also
 be of reference as they are written as internal image preprocessor plugins.
 
 
@@ -1837,7 +1837,7 @@ Upscaling with Upscaler Models
 
 Stable diffusion image upscaling models can be used via the model types ``torch-upscaler-x2`` and ``torch-upscaler-x4``.
 
-The image used in the example below is this `low resolution cat <https://raw.githubusercontent.com/Teriks/dgenerate/control_nets/examples/media/low_res_cat.png>`_
+The image used in the example below is this `low resolution cat <https://raw.githubusercontent.com/Teriks/dgenerate/master/examples/media/low_res_cat.png>`_
 
 .. code-block:: bash
 
