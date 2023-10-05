@@ -25,12 +25,14 @@ import sys
 
 
 def _run_loop():
+    import warnings
+    warnings.filterwarnings('ignore')
+
     import re
     import os
     import shlex
     import torch
     import jinja2
-    import warnings
     import textwrap
     import diffusers
     import transformers
@@ -55,7 +57,6 @@ def _run_loop():
     # The above modules take long enough to import that they must be in here in
     # order to handle keyboard interrupts without issues
 
-    warnings.filterwarnings('ignore')
     transformers.logging.set_verbosity(transformers.logging.CRITICAL)
     diffusers.logging.set_verbosity(diffusers.logging.CRITICAL)
 

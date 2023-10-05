@@ -1,11 +1,12 @@
 # -*- mode: python ; coding: utf-8 -*-
 import io
+import os
 import re
 from ast import literal_eval
 
 from PyInstaller.building.api import PYZ, EXE, COLLECT
 from PyInstaller.building.build_main import Analysis
-from PyInstaller.utils.hooks import copy_metadata, collect_data_files
+from PyInstaller.utils.hooks import copy_metadata, collect_data_files, collect_dynamic_libs
 
 version = ''
 with io.open('../dgenerate/__init__.py') as f:
@@ -32,8 +33,11 @@ def lockfile_deps():
             yield d
 
 
-def get_requires(optional=False, exclude={}):
-    return list(f'{dep["name"]}=={dep["version"]}' for dep in lockfile_deps()
+def get_requires(optional=False, exclude: set = None):
+    if exclude is None:
+        exclude = set()
+    return list(f'{dep["name"]}=={dep["version"]}'
+                for dep in lockfile_deps()
                 if dep['optional'] == optional and dep['name'] not in exclude)
 
 
@@ -47,52 +51,38 @@ with open('Product.wix', 'r') as f:
 
 block_cipher = None
 
+exclude = {'triton', 'cmake', 'lit', 'opencv-python', 'opencv-contrib-python', 'controlnet-aux'}
+# cv2 hook automatic, controlnet-aux has a package name to folder mismatch
+
+requires_extra_data = ['skimage', 'controlnet_aux']
 datas = []
-
-for package in get_requires(exclude={'triton', 'cmake', 'lit'} if os.name == 'nt' else {}):
-    print(package)
-    datas += copy_metadata(package.split('=')[0])
-
-need_data = ['accelerate',
-             'transformers',
-             'pytorch_lightning',
-             'aiosignal',
-             'async_timeout',
-             'attrs',
-             'colorama',
-             'diffusers',
-             'fake_useragent',
-             'filelock',
-             'fsspec',
-             'huggingface_hub',
-             'idna',
-             'importlib_metadata',
-             'lightning_fabric',
-             'lightning_utilities',
-             'mpmath',
-             'networkx',
-             'omegaconf',
-             'packaging',
-             'requests',
-             'sympy',
-             'torchmetrics',
-             'tqdm',
-             'urllib3',
-             'wheel',
-             'zipp']
-
+binaries = []
 module_collection_mode = {}
 
-for i in need_data:
-    module_collection_mode[i] = 'pyz+py'
-    datas += collect_data_files(i, include_py_files=True,
-                                includes=['**/*.py', '**/*.info', '**/*.c', '**/*.cpp', '**/*.cu', '**/*.cuh',
+for package in get_requires(exclude=exclude) + requires_extra_data:
+    name = package.split('=')[0]
+
+    if name not in requires_extra_data:
+        datas += copy_metadata(name)
+
+    print(f'Data Collection For: {name}')
+    module_collection_mode[name] = 'pyz+py'
+    datas += collect_data_files(name, include_py_files=True,
+                                includes=['**/*.py',
+                                          '**/*.pyi',
+                                          '**/*.info',
+                                          '**/*.c',
+                                          '**/*.cpp',
+                                          '**/*.cu',
+                                          '**/*.cuh',
                                           '**/*.h'])
+    binaries += collect_dynamic_libs(name, search_patterns=['*.dll', '*.pyd'])
+
 
 a = Analysis(
     ['../dgenerate/dgenerate.py'],
     pathex=[],
-    binaries=[],
+    binaries=binaries,
     datas=datas,
     hiddenimports=[],
     hookspath=[],
