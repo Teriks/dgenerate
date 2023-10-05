@@ -30,9 +30,10 @@ torchsde = "0.2.6"
 fake-useragent = "1.1.3"
 flax = { version = "0.7.2", optional = true}
 jax = {version = "0.4.14", optional = true, extras=["cuda11_pip"]}
-numpy = "1.26.0"
 opencv-python = "4.8.1.78"
 controlnet-aux = "0.0.7"
+# transient dependency of controlnet-aux openpose
+matplotlib = "3.8.0"
 
 [tool.poetry.extras]
 flax = ["flax", "jax"]
