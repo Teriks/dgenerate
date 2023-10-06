@@ -24,24 +24,22 @@ __version__ = '1.1.0'
 import sys
 
 
+
+
+
 def _run_loop():
     import warnings
     warnings.filterwarnings('ignore')
 
-    import re
-    import os
-    import shlex
     import torch
-    import jinja2
-    import textwrap
     import diffusers
     import transformers
 
     from .args import parse_args
-    from .textprocessing import underline, long_text_wrap_width, quote, unquote
+    from .textprocessing import quote, unquote
     from .diffusionloop import DiffusionRenderLoop
 
-    from .pipelinewrappers import clear_model_cache, InvalidVaePathError, \
+    from .pipelinewrappers import InvalidVaePathError, \
         InvalidSchedulerName, InvalidLoRAPathError, \
         InvalidTextualInversionPathError, InvalidSDXLRefinerPathError, \
         SchedulerHelpException
@@ -60,7 +58,7 @@ def _run_loop():
     transformers.logging.set_verbosity(transformers.logging.CRITICAL)
     diffusers.logging.set_verbosity(diffusers.logging.CRITICAL)
 
-    def parse_and_run(with_args):
+    def parse_args_and_run(with_args):
         if with_args:
             if with_args[0] == '--image-preprocessor-help':
                 sys.exit(image_preprocessor_help(with_args[1:]))
@@ -170,7 +168,36 @@ def _run_loop():
             messages.log(f'Error: {e}', level=messages.ERROR)
             sys.exit(1)
 
-        return {'last_image':
+        if sys.stdin.isatty():
+            # No templating occurs, this is a terminal
+            return None
+
+        # Templating is going to occur
+
+        def jinja_prompt(prompts):
+            if not prompts:
+                # Completely undefined
+                return [{'positive': '', 'negative': ''}]
+            else:
+                # inside prompt values might be None, don't want that in
+                # the jinja2 template because it might be annoying
+                # to work with. Also abstract the internal representation
+                # of the prompt dictionary to something with friendlier
+                # names
+
+                return [{'positive': p.get('prompt', ''),
+                         'negative': p.get('negative_prompt', '')} for p in prompts]
+
+        # Return the template environment for pipelining
+        return {'last_prompt': jinja_prompt(render_loop.prompts)[-1],
+                'last_prompts': jinja_prompt(render_loop.prompts),
+                'last_sdxl_second_prompt': jinja_prompt(render_loop.sdxl_second_prompts)[-1],
+                'last_sdxl_second_prompts': jinja_prompt(render_loop.sdxl_second_prompts),
+                'last_sdxl_refiner_prompt': jinja_prompt(render_loop.sdxl_refiner_prompts)[-1],
+                'last_sdxl_refiner_prompts': jinja_prompt(render_loop.sdxl_refiner_prompts),
+                'last_sdxl_refiner_second_prompt': jinja_prompt(render_loop.sdxl_refiner_second_prompts)[-1],
+                'last_sdxl_refiner_second_prompts': jinja_prompt(render_loop.sdxl_refiner_second_prompts),
+                'last_image':
                     quote(render_loop.written_images[-1])
                     if render_loop.written_images else [],
                 'last_images':
@@ -181,87 +208,20 @@ def _run_loop():
                 'last_animations':
                     [quote(s) for s in render_loop.written_animations]}
 
+    arguments = sys.argv[1:]
     if not sys.stdin.isatty():
-        template_args = {
-            'last_image': '',
-            'last_images': [],
-            'last_animation': '',
-            'last_animations': []
-        }
-
-        jinja_env = jinja2.Environment()
-        jinja_env.globals['unquote'] = unquote
-        jinja_env.filters['unquote'] = unquote
-        jinja_env.globals['quote'] = quote
-        jinja_env.filters['quote'] = quote
-
-        continuation = ''
-
-        for line_idx, line in enumerate(sys.stdin):
-            line = line.strip()
-            if line == '':
-                continue
-            if line.startswith('#'):
-                versioning = re.match(r'#!\s+dgenerate\s+([0-9]+\.[0-9]+\.[0-9]+)', line)
-                if versioning:
-                    config_file_version = versioning.group(1)
-                    cur_major_version = int(__version__.split('.')[0])
-                    config_major_version = int(config_file_version.split('.')[0])
-                    if cur_major_version != config_major_version:
-                        messages.log(
-                            f'WARNING: Failed version check on line {line_idx}, running an '
-                            f'incompatible version of dgenerate! You are running version {__version__} '
-                            f'and the config file specifies the required version: {config_file_version}'
-                            , underline=True, level=messages.WARNING)
-                continue
-
-            if line.endswith('\\'):
-                continuation += ' ' + line.rstrip(' \\')
-            else:
-                args = (continuation + ' ' + line).lstrip()
-
-                if args.startswith('\\print'):
-                    args = args.split(' ', 1)
-                    if len(args) == 2:
-                        messages.log(jinja_env.from_string(os.path.expandvars(args[1]))
-                                     .render(**template_args))
-                    continuation = ''
-                    continue
-                if args.startswith('\\clear_model_cache'):
-                    clear_model_cache()
-                    continuation = ''
-                    continue
-
-                templated_cmd = jinja_env. \
-                    from_string(os.path.expandvars(args)).render(**template_args)
-
-                extra_args = sys.argv[1:]
-
-                shlexed = shlex.split(templated_cmd) + extra_args
-
-                for idx, extra_arg in enumerate(extra_args):
-                    if any(c.isspace() for c in extra_arg):
-                        extra_args[idx] = quote(extra_arg)
-
-                header = 'Processing Arguments: '
-                args_wrapped = textwrap.fill(templated_cmd + ' ' + ' '.join(extra_args),
-                                             width=long_text_wrap_width() - len(header),
-                                             break_long_words=False,
-                                             break_on_hyphens=False,
-                                             subsequent_indent=' ' * len(header))
-
-                messages.log(header + args_wrapped, underline=True)
-
-                try:
-                    template_args = parse_and_run(shlexed)
-                except Exception as e:
-                    messages.log(f'Error in input config file line: {line_idx}',
-                                 level=messages.ERROR, underline=True)
-                    raise e
-
-                continuation = ''
+        # Not a terminal, batch process STDIN
+        from . batchprocess import process_config, BatchProcessSyntaxException
+        try:
+            process_config(file_stream=sys.stdin,
+                           injected_args=arguments,
+                           version_string=__version__,
+                           invocation_runner=parse_args_and_run)
+        except BatchProcessSyntaxException as e:
+            messages.log(f'Config Syntax Error: {e}', level=messages.ERROR)
+            sys.exit(1)
     else:
-        parse_and_run(sys.argv[1:])
+        parse_args_and_run(arguments)
 
 
 def main():
