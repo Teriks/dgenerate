@@ -1639,10 +1639,10 @@ Available arguments when using torch are: ``scale``, ``start``, ``end``, ``revis
 
 Available arguments when using flax are: ``scale``, ``revision``, ``subfolder``, ``dtype``, ``from_torch``
 
-Named arguments are available when loading from a huggingface repository or folder
+Most named arguments apply to loading from a huggingface repository or folder
 that may or may not be a local git repository on disk, when loading directly from a .safetensors file
-or other file from a path on disk they should not be used, except for ``from_torch`` which can be
-used with flax for loading pytorch models from .pt or other files designed for torch.
+or other file from a path on disk the available arguments are ``scale``, ``start``, ``end``, and ``from_torch``.
+``from_torch`` can be used with flax for loading pytorch models from .pt or other files designed for torch from a repo or file/folder on disk.
 
 
 The ``scale`` argument indicates the effect scale of the control net model.
