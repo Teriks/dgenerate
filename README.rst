@@ -1305,8 +1305,8 @@ a Torch VAE are: ``model``, ``revision``, ``variant``, ``subfolder``, and ``dtyp
 Loading arguments available when specifying
 a Flax VAE are ``model``, ``revision``, ``subfolder``, ``dtype``
 
-The only named argument compatible with loading a .safetensors or other model file
-directly off disk is ``model``, and ``dtype``
+The only named arguments compatible with loading a .safetensors or other model file
+directly off disk is ``model``, ``dtype``, and ``revision``
 
 The other named arguments are available when loading from a huggingface repository or folder
 that may or may not be a local git repository on disk.
