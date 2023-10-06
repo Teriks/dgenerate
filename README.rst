@@ -1305,8 +1305,8 @@ a Torch VAE are: ``model``, ``revision``, ``variant``, ``subfolder``, and ``dtyp
 Loading arguments available when specifying
 a Flax VAE are ``model``, ``revision``, ``subfolder``, ``dtype``
 
-The only named argument compatible with loading a .safetensors or other model file
-directly off disk is ``model``, and ``dtype``
+The only named arguments compatible with loading a .safetensors or other model file
+directly off disk is ``model``, ``dtype``, and ``revision``
 
 The other named arguments are available when loading from a huggingface repository or folder
 that may or may not be a local git repository on disk.
@@ -1639,10 +1639,10 @@ Available arguments when using torch are: ``scale``, ``start``, ``end``, ``revis
 
 Available arguments when using flax are: ``scale``, ``revision``, ``subfolder``, ``dtype``, ``from_torch``
 
-Named arguments are available when loading from a huggingface repository or folder
+Most named arguments apply to loading from a huggingface repository or folder
 that may or may not be a local git repository on disk, when loading directly from a .safetensors file
-or other file from a path on disk they should not be used, except for ``from_torch`` which can be
-used with flax for loading pytorch models from .pt or other files designed for torch.
+or other file from a path on disk the available arguments are ``scale``, ``start``, ``end``, and ``from_torch``.
+``from_torch`` can be used with flax for loading pytorch models from .pt or other files designed for torch from a repo or file/folder on disk.
 
 
 The ``scale`` argument indicates the effect scale of the control net model.
@@ -1803,7 +1803,7 @@ The ``output-dir`` argument can be used to write the preprocessed images to a di
 this will write an image with a unique name for every image preprocessed into a the folder specified.
 
 The ``output-file`` argument can be used to write the preprocessed image to a specific file, this file will be
-overwritten if more than once preprocessing step occurs.
+overwritten if more than one preprocessing step occurs.
 
 The ``device`` argument can be used to override what device any hardware accelerated image processing
 occurs on if any. It defaults to the value of ``--device`` and has the same syntax for specifying device
