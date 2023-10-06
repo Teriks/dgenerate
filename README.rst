@@ -1803,7 +1803,7 @@ The ``output-dir`` argument can be used to write the preprocessed images to a di
 this will write an image with a unique name for every image preprocessed into a the folder specified.
 
 The ``output-file`` argument can be used to write the preprocessed image to a specific file, this file will be
-overwritten if more than once preprocessing step occurs.
+overwritten if more than one preprocessing step occurs.
 
 The ``device`` argument can be used to override what device any hardware accelerated image processing
 occurs on if any. It defaults to the value of ``--device`` and has the same syntax for specifying device
