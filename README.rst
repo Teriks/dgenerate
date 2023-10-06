@@ -592,7 +592,7 @@ Install dgenerate:
 
     # If you want a specific version
 
-    pipx install git+https://github.com/Teriks/dgenerate.git@v1.1.0 ^
+    pipx install git+https://github.com/Teriks/dgenerate.git@v1.2.0 ^
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/"
 
 
@@ -712,12 +712,12 @@ Install dgenerate
 
     # If you want a specific version
 
-    pipx install git+https://github.com/Teriks/dgenerate.git@v1.1.0 \
+    pipx install git+https://github.com/Teriks/dgenerate.git@v1.2.0 \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/"
 
     # Specific version with flax/jax support
 
-    pipx install "dgenerate[flax] @ git+https://github.com/Teriks/dgenerate.git@v1.1.0" \
+    pipx install "dgenerate[flax] @ git+https://github.com/Teriks/dgenerate.git@v1.2.0" \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/ \
     -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html"
 
@@ -2004,10 +2004,23 @@ via Jinja2 templating which can be passed to ``--image-seeds``, these include:
 * ``{{ last_animation }}`` (A quoted filename)
 * ``{{ last_animations }}`` (A list of quoted filenames)
 
+There are templates for prompts, containing the previous prompt values:
+
+* ``{{ last_prompt }}`` (Dictionary with keys 'positive' and 'negative')
+* ``{{ last_prompts }}`` (List of the above)
+* ``{{ last_sdxl_second_prompt }}``
+* ``{{ last_sdxl_second_prompts }}``
+* ``{{ last_sdxl_refiner_prompt }}``
+* ``{{ last_sdxl_refiner_prompts }}``
+* ``{{ last_sdxl_refiner_second_prompt }}``
+* ``{{ last_sdxl_refiner_second_prompts }}``
+
 Available custom jinja2 functions/filters are:
 
 * ``{{ unquote('"quotes_will_be_removed"') }}``
 * ``{{ quote('quotes_will_be_added') }}``
+* ``{{ format_prompt(last_prompt) }}`` (Format a prompt or list of prompts to "positive" or "positive; negative")
+* ``{{ format_prompt(last_prompts) }}`` (Formatted prompts quoted and seperated by spaces)
 
 The above can be used as either a function or filter IE: ``{{ "quote_me" | quote }}``
 
@@ -2015,11 +2028,11 @@ Empty lines and comments starting with ``#`` will be ignored.
 
 You can create a multiline continuation using ``\`` to indicate that a line continues.
 
-The Following is an example input file ``my-config.txt``:
+The following is a config file example that covers very basic syntax concepts:
 
 .. code-block::
 
-    #! dgenerate 1.1.0
+    #! dgenerate 1.2.0
 
     # If a hash-bang version is provided in the format above
     # a warning will be produced if the version you are running
@@ -2052,14 +2065,60 @@ The Following is an example input file ``my-config.txt``:
     --guidance-scales 10
 
 
+    # A clear model cache directive can be used inbetween invocations if cached models that
+    # are no longer needed in your generation pipeline start causing out of memory issues
+
+    \clear_model_cache
+
+
+    # This model was used before but will have to be fully instantiated from scratch again
+    # after a cache flush which may take some time
+
+    stabilityai/stable-diffusion-2-1 --prompts "a martian riding a horse" \
+    --output-path unique_output_4
+
+
+Here are examples of other available directives and templating:
+
+
+.. code-block:: bash
+
+    #! dgenerate 1.2.0
+
+    # You can define your own template variables with the \set directive
+
+    \set my_prompt "an astronaut riding a horse; bad quality"
+
+    # If your variable is long you can use continuation, note that
+    # continuation replaces newlines and surrounding whitespace
+    # with a single space
+
+    \set my_prompt "my very very very very very very very \
+                    very very very very very very very very \
+                    long long long long long prompt"
+
+
+    # You can print to the console with templating using the \print directive
+    # for debugging purposes
+
+    \print {{ my_prompt }}
+
+
+    # An invocation sets various template variables related to its
+    # execution once it is finished running
+
+    stabilityai/stable-diffusion-2-1 --prompts {{ my_prompt }} --gen-seeds 5
+
+
     # Print a quoted filename of the last image produced by the last invocation
     # This could potentially be passed to --image-seeds of the next invocation
-    # If you wanted to run another pass over the image
+    # If you wanted to run another pass over the last image that was produced
 
     \print {{ last_image }}
 
 
-    # You can use "unquote" as a function or a jinja2 filter
+    # You can use "unquote" as a function or a jinja2 filter, for example
+    # if you want to append a mask image file name
 
     \print "{{ unquote(last_image) }};my-mask.png"
 
@@ -2077,7 +2136,9 @@ The Following is an example input file ``my-config.txt``:
 
 
     # For loops are possible with continuation
-    # However continuations will add whitespace
+    # however continuations will replace newlines
+    # and whitespace with a single space.
+
     # IE this template will be: "{% for image in last_images %} {{ image }} {% endfor %}"
 
     \print {% for image in last_images %} \
@@ -2085,20 +2146,53 @@ The Following is an example input file ``my-config.txt``:
            {% endfor %}
 
 
-    # A clear model cache directive can be used inbetween invocations if cached models that
-    # are no longer needed in your generation pipeline start causing out of memory issues
+    # Access to the last prompt is available in a parsed representation
+    # via "last_prompt", which can be formatted properly for reuse
+    # by using the function "format_prompt"
 
-    \clear_model_cache
+    stabilityai/stable-diffusion-2-1 --prompts {{ format_prompt(last_prompt) }}
+
+    # You can get only the positive or negative part if you want via the "positive"
+    # and "negative" properties on a prompt object
+
+    stabilityai/stable-diffusion-2-1 --prompts "{{ last_prompt.positive }}"
+
+    # "last_prompts" returns all the prompts used in the last invocation as a list
+    # the "format_prompt" function can also work on a list
+
+    stabilityai/stable-diffusion-2-1 --prompts "prompt 1" "prompt 2" "prompt 3"
+
+    stabilityai/stable-diffusion-2-1 --prompts "{{ format_prompt(last_prompts) }}"
 
 
-    # This model was used before but will have to be fully instantiated from scratch again
-    # after a cache flush which may take some time
+    # Execute additional invocations with full templating.
+    # The sequence !END is interpreted as a newline within
+    # the config file generated by the template and is required
+    # when the template generates multiple lines of configuration.
+    # You really should not need to use this feature.
 
-    stabilityai/stable-diffusion-2-1 --prompts "a martian riding a horse" \
-    --output-path unique_output_4
+    \execute {% for image in last_images %} \
+                stabilityai/stable-diffusion-2-1 --image-seeds {{ image }} --prompt {{ my_prompt }} !END \
+             {% endfor %}
 
 
-To utilize the file on Linux, pipe it into the command or use redirection:
+    # Multiple lines with continuations inside the config template.
+    # Probably try to avoid this :)
+
+    \execute {% for image in last_images %} \
+                stabilityai/stable-diffusion-2-1 \ !END \
+                --image-seeds {{ image }} \ !END \
+                --prompt {{ my_prompt }} !END \
+             {% endfor %}
+
+
+    # The above are both basically equivalent to this
+
+    stabilityai/stable-diffusion-2-1 --image-seeds {{ last_images | join(' ') }} --prompt {{ my_prompt }}
+
+
+To utilize configuration files on Linux, pipe them into the command or use redirection:
+
 
 .. code-block:: bash
 
