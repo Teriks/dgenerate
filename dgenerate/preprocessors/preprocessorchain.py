@@ -22,10 +22,10 @@ import typing
 
 import PIL.Image
 
-from .preprocessor import ImagePreprocessor
+import dgenerate.preprocessors.preprocessor as _preprocessor
 
 
-class ImagePreprocessorChain(ImagePreprocessor):
+class ImagePreprocessorChain(_preprocessor.ImagePreprocessor):
     HIDDEN = True
 
     def __init__(self, preprocessors: typing.Union[None, list, tuple] = None, **kwargs):
@@ -56,7 +56,7 @@ class ImagePreprocessorChain(ImagePreprocessor):
         if self._preprocessors:
             p_image = image
             for preprocessor in self._preprocessors:
-                new_img = ImagePreprocessor.call_pre_resize(preprocessor, p_image, resize_resolution)
+                new_img = _preprocessor.ImagePreprocessor.call_pre_resize(preprocessor, p_image, resize_resolution)
                 if new_img is not p_image:
                     p_image.close()
                 p_image = new_img
@@ -68,7 +68,7 @@ class ImagePreprocessorChain(ImagePreprocessor):
         if self._preprocessors:
             p_image = image
             for preprocessor in self._preprocessors:
-                new_img = ImagePreprocessor.call_post_resize(preprocessor, p_image)
+                new_img = _preprocessor.ImagePreprocessor.call_post_resize(preprocessor, p_image)
                 if new_img is not p_image:
                     p_image.close()
                 p_image = new_img

@@ -26,8 +26,8 @@ from pathlib import Path
 
 import PIL.Image
 
-from .exceptions import ImagePreprocessorArgumentError
-from ..textprocessing import dashup, justify_left, quote, long_text_wrap_width
+import dgenerate.preprocessors.exceptions as _exceptions
+import dgenerate.textprocessing as _textprocessing
 
 
 class ImagePreprocessor:
@@ -51,10 +51,10 @@ class ImagePreprocessor:
         if hasattr(cls, 'help'):
             help_str = cls.help(called_by_name)
             if help_str:
-                help_str = justify_left(help_str).strip()
+                help_str = _textprocessing.justify_left(help_str).strip()
 
         if cls.__doc__:
-            help_str = justify_left(cls.__doc__).strip()
+            help_str = _textprocessing.justify_left(cls.__doc__).strip()
 
         args_with_defaults = cls.get_accepted_args_with_defaults(called_by_name)
         arg_descriptors = []
@@ -65,7 +65,7 @@ class ImagePreprocessor:
             else:
                 default_value = arg[1]
                 if isinstance(default_value, str):
-                    default_value = quote(default_value)
+                    default_value = _textprocessing.quote(default_value)
                 arg_descriptors.append(f'{arg[0]}={default_value}')
 
         if arg_descriptors:
@@ -80,7 +80,7 @@ class ImagePreprocessor:
                               subsequent_indent=' ' * 4,
                               break_long_words=False,
                               break_on_hyphens=False,
-                              width=long_text_wrap_width()) for s in help_str.split('\n'))
+                              width=_textprocessing.long_text_wrap_width()) for s in help_str.split('\n'))
 
             return called_by_name + f':{args_part}\n' + wrap
         else:
@@ -120,11 +120,11 @@ class ImagePreprocessor:
                         raise RuntimeError(
                             f'{cls.__name__}.ARGS["{called_by_name}"] '
                             f'contained a non tuple or str value: {arg}')
-                    fixed_args.append((dashup(arg),))
+                    fixed_args.append((_textprocessing.dashup(arg),))
                 elif len(arg) == 1:
-                    fixed_args.append((dashup(arg[0]),))
+                    fixed_args.append((_textprocessing.dashup(arg[0]),))
                 else:
-                    fixed_args.append((dashup(arg[0]), arg[1]))
+                    fixed_args.append((_textprocessing.dashup(arg[0]), arg[1]))
 
             return [] if fixed_args is None else fixed_args
 
@@ -135,9 +135,9 @@ class ImagePreprocessor:
         no_defaults_before = len(sig_args) - defaults_cnt
         for idx, arg in enumerate(sig_args):
             if idx < no_defaults_before:
-                args_with_defaults.append((dashup(arg),))
+                args_with_defaults.append((_textprocessing.dashup(arg),))
             else:
-                args_with_defaults.append((dashup(arg),
+                args_with_defaults.append((_textprocessing.dashup(arg),
                                            spec.defaults[idx - defaults_cnt]))
 
         return args_with_defaults
@@ -148,7 +148,7 @@ class ImagePreprocessor:
         try:
             return int(value)
         except ValueError:
-            raise ImagePreprocessorArgumentError(f'Argument "{name}" must be an integer value.')
+            raise _exceptions.ImagePreprocessorArgumentError(f'Argument "{name}" must be an integer value.')
 
     def get_float_arg(self, name, value):
         if isinstance(value, dict):
@@ -156,7 +156,7 @@ class ImagePreprocessor:
         try:
             return float(value)
         except ValueError:
-            raise ImagePreprocessorArgumentError(f'Argument "{name}" must be a floating point value.')
+            raise _exceptions.ImagePreprocessorArgumentError(f'Argument "{name}" must be a floating point value.')
 
     def get_bool_arg(self, name, value):
         if isinstance(value, dict):
@@ -164,10 +164,10 @@ class ImagePreprocessor:
         try:
             return bool(value)
         except ValueError:
-            raise ImagePreprocessorArgumentError(f'Argument "{name}" must be a boolean value.')
+            raise _exceptions.ImagePreprocessorArgumentError(f'Argument "{name}" must be a boolean value.')
 
     def argument_error(self, msg):
-        raise ImagePreprocessorArgumentError(msg)
+        raise _exceptions.ImagePreprocessorArgumentError(msg)
 
     def __init__(self, **kwargs):
         output_dir = kwargs.get('output_dir')
@@ -176,7 +176,7 @@ class ImagePreprocessor:
         called_by_name = kwargs.get('called_by_name')
 
         if output_dir is not None and output_file is not None:
-            raise ImagePreprocessorArgumentError(
+            raise _exceptions.ImagePreprocessorArgumentError(
                 'output_dir and output_file may not be specified simultaneously')
 
         self.__device = device

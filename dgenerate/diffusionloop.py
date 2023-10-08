@@ -23,40 +23,19 @@ import datetime
 import inspect
 import itertools
 import os
-import re
+import pathlib
 import textwrap
 import time
-from pathlib import Path
-from typing import Iterator
+import typing
 
-import torch
-from PIL.PngImagePlugin import PngInfo
+import PIL.PngImagePlugin
 
-from . import messages, preprocessors
-from .mediainput import iterate_image_seed, get_image_seed_info, MultiContextManager, \
-    iterate_control_image, ImageSeed, parse_image_seed_uri
-from .mediaoutput import create_animation_writer, supported_animation_writer_formats
-from .pipelinewrappers import DiffusionPipelineWrapper, supported_model_type_strings, \
-    PipelineResultWrapper, model_type_is_upscaler, ModelTypes, model_type_is_pix2pix, \
-    model_type_is_sdxl, supported_model_type_enums
-from .textprocessing import oxford_comma, long_text_wrap_width
-
-
-class InvalidDeviceOrdinalException(Exception):
-    pass
-
-
-def is_valid_device_string(device, raise_ordinal=True):
-    match = re.match(r'^(?:cpu|cuda(?::([0-9]+))?)$', device)
-    if match:
-        if match.lastindex:
-            ordinal = int(match[1])
-            valid_ordinal = ordinal < torch.cuda.device_count()
-            if raise_ordinal and not valid_ordinal:
-                raise InvalidDeviceOrdinalException(f'CUDA device ordinal {ordinal} is invalid, no such device exists.')
-            return valid_ordinal
-        return True
-    return False
+import dgenerate.mediainput as _mediainput
+import dgenerate.mediaoutput as _mediaoutput
+import dgenerate.messages as _messages
+import dgenerate.pipelinewrapper as _pipelinewrapper
+import dgenerate.preprocessors as _preprocessors
+import dgenerate.textprocessing as _textprocessing
 
 
 def _has_len(obj):
@@ -101,7 +80,7 @@ class DiffusionArgContext:
         self.guidance_rescale = None
         self.inference_steps = None
 
-    def get_pipeline_args(self):
+    def get_pipeline_wrapper_args(self):
         def get_prompt(d, component):
             if d is None:
                 return None
@@ -134,7 +113,7 @@ class DiffusionArgContext:
         if prompt_dict is None:
             return
 
-        prompt_wrap_width = long_text_wrap_width()
+        prompt_wrap_width = _textprocessing.long_text_wrap_width()
         prompt_val = prompt_dict.get('prompt', None)
         if prompt_val:
             header = f'{pos_title}: '
@@ -155,7 +134,7 @@ class DiffusionArgContext:
                                        subsequent_indent=' ' * len(header))
             prompt_format.append(f'{header}"{prompt_val}"')
 
-    def describe_pipeline_args(self):
+    def describe_pipeline_wrapper_args(self):
         prompt_format = []
 
         DiffusionArgContext._describe_prompt(
@@ -226,7 +205,7 @@ def _list_or_list_of_none(val):
     return val if val else [None]
 
 
-def iter_attribute_combinations(attribute_defs, my_class):
+def iterate_attribute_combinations(attribute_defs, my_class):
     def assign(ctx, name, val):
         if val is not None:
             if name in ctx.__dict__:
@@ -275,13 +254,13 @@ def iterate_diffusion_args(prompt,
                            guidance_scale,
                            image_guidance_scale,
                            guidance_rescale,
-                           inference_steps) -> Iterator[DiffusionArgContext]:
+                           inference_steps) -> typing.Generator[DiffusionArgContext, None, None]:
     args = locals()
     defs = []
     for arg_name in inspect.getfullargspec(iterate_diffusion_args).args:
         defs.append((arg_name, _list_or_list_of_none(args[arg_name])))
 
-    yield from iter_attribute_combinations(defs, DiffusionArgContext)
+    yield from iterate_attribute_combinations(defs, DiffusionArgContext)
 
 
 def _safe_len(lst):
@@ -290,14 +269,8 @@ def _safe_len(lst):
     return len(lst)
 
 
-class DiffusionRenderLoop:
+class DiffusionRenderLoopConfig:
     def __init__(self):
-        self._generation_step = -1
-        self._frame_time_sum = 0
-        self._last_frame_time = 0
-        self._written_images = []
-        self._written_animations = []
-
         self.model_path = None
         self.model_subfolder = None
         self.sdxl_refiner_path = None
@@ -312,7 +285,6 @@ class DiffusionRenderLoop:
         self.inference_steps = [30]
 
         self.image_seeds = None
-        self.control_images = None
         self.image_seed_strengths = None
         self.upscaler_noise_levels = None
         self.guidance_rescales = None
@@ -352,7 +324,7 @@ class DiffusionRenderLoop:
         self.scheduler = None
         self.sdxl_refiner_scheduler = None
         self.safety_checker = False
-        self.model_type = ModelTypes.TORCH
+        self.model_type = _pipelinewrapper.ModelTypes.TORCH
         self.device = 'cuda'
         self.dtype = 'auto'
         self.revision = 'main'
@@ -374,15 +346,19 @@ class DiffusionRenderLoop:
         self.mask_image_preprocessors = None
         self.control_image_preprocessors = None
 
-    @property
-    def written_images(self):
-        return self._written_images
+    def set(self, obj, missing_value_throws=True):
+        if isinstance(obj, dict):
+            source = obj
+        else:
+            source = obj.__dict__
 
-    @property
-    def written_animations(self):
-        return self._written_animations
+        for k, v in self.__dict__.items():
+            if not k.startswith('_') and not callable(v):
+                if missing_value_throws and k not in source:
+                    raise ValueError(f'Source object does not define: "{k}"')
+                setattr(self, k, source.get(k))
 
-    def _enforce_state(self):
+    def check(self):
         if not _has_len(self.prompts):
             raise ValueError('DiffusionRenderLoop.prompts must have len')
         if not _has_len(self.inference_steps):
@@ -391,7 +367,6 @@ class DiffusionRenderLoop:
             raise ValueError('DiffusionRenderLoop.seeds must have len')
         if not _has_len(self.guidance_scales):
             raise ValueError('DiffusionRenderLoop.guidance_scales must have len')
-
         if self.dtype not in {'float32', 'float16', 'auto'}:
             raise ValueError('DiffusionRenderLoop.torch_dtype must be float32, float16 or auto')
         if not isinstance(self.safety_checker, bool):
@@ -400,9 +375,12 @@ class DiffusionRenderLoop:
             raise ValueError('DiffusionRenderLoop.revision must be None or a string')
         if self.variant is not None and not isinstance(self.variant, str):
             raise ValueError('DiffusionRenderLoop.variant must be None or a string')
-        if self.model_type not in supported_model_type_enums():
+        if self.model_type not in _pipelinewrapper.supported_model_type_enums():
+            val = _textprocessing.oxford_comma(
+                _pipelinewrapper.supported_model_type_strings(), "or")
             raise ValueError(
-                f'DiffusionRenderLoop.model_type must be one of: {oxford_comma(supported_model_type_strings(), "or")}')
+                f'DiffusionRenderLoop.model_type must be one of: '
+                f'{val}')
         if self.model_path is None:
             raise ValueError('DiffusionRenderLoop.model_path must not be None')
         if self.model_subfolder is not None and not isinstance(self.model_subfolder, str):
@@ -436,15 +414,17 @@ class DiffusionRenderLoop:
             raise ValueError('DiffusionRenderLoop.output_configs must be bool')
         if not isinstance(self.output_metadata, bool):
             raise ValueError('DiffusionRenderLoop.output_metadata must be bool')
-        if not isinstance(self.device, str) or not is_valid_device_string(self.device):
+        if not isinstance(self.device, str) or not _pipelinewrapper.is_valid_device_string(self.device):
             raise ValueError('DiffusionRenderLoop.device must be "cuda" or "cpu"')
+
+        animation_formats = _mediaoutput.supported_animation_writer_formats()
         if not (isinstance(self.animation_format, str) or
-                self.animation_format.lower() not in supported_animation_writer_formats()):
+                self.animation_format.lower() not in animation_formats):
             raise ValueError(f'DiffusionRenderLoop.animation_format must be one of: '
-                             f'{oxford_comma(supported_animation_writer_formats(), "or")}')
-        if self.output_size is None and not self.image_seeds and not self.control_images:
+                             f'{_textprocessing.oxford_comma(animation_formats, "or")}')
+        if self.output_size is None and not self.image_seeds:
             raise ValueError(
-                'DiffusionRenderLoop.output_size must not be None when no image seeds or control images specified')
+                'DiffusionRenderLoop.output_size must not be None when no image seeds are specified.')
         if self.output_size is not None and not isinstance(self.output_size, tuple):
             raise ValueError('DiffusionRenderLoop.output_size must be None or a tuple')
         if not isinstance(self.frame_start, int) or not self.frame_start >= 0:
@@ -455,8 +435,7 @@ class DiffusionRenderLoop:
             raise ValueError(
                 'DiffusionRenderLoop.frame_start must be an integer value less than DiffusionRenderLoop.frame_end')
 
-    @property
-    def num_generation_steps(self):
+    def calculate_generation_steps(self):
         optional_factors = [
             self.sdxl_second_prompts,
             self.sdxl_refiner_prompts,
@@ -465,7 +444,6 @@ class DiffusionRenderLoop:
             self.textual_inversion_paths,
             self.control_net_paths,
             self.image_seeds,
-            self.control_images,
             self.image_seed_strengths,
             self.upscaler_noise_levels,
             self.guidance_rescales,
@@ -498,20 +476,97 @@ class DiffusionRenderLoop:
                 len(self.guidance_scales) *
                 len(self.inference_steps))
 
+    def iterate_diffusion_args(self, **overrides) -> typing.Generator[DiffusionArgContext, None, None]:
+        def ov(n, v):
+            if not _pipelinewrapper.model_type_is_sdxl(self.model_type):
+                if n.startswith('sdxl'):
+                    return None
+            else:
+                if n.startswith('sdxl_refiner') and not self.sdxl_refiner_path:
+                    return None
+
+            if n in overrides:
+                return overrides[n]
+            return v
+
+        yield from iterate_diffusion_args(
+            prompt=ov('prompt', self.prompts),
+            sdxl_second_prompt=ov('sdxl_second_prompt',
+                                  self.sdxl_second_prompts),
+            sdxl_refiner_prompt=ov('sdxl_refiner_prompt',
+                                   self.sdxl_refiner_prompts),
+            sdxl_refiner_second_prompt=ov('sdxl_refiner_second_prompt',
+                                          self.sdxl_refiner_second_prompts),
+            seed=ov('seed', self.seeds),
+            image_seed_strength=ov('image_seed_strength', self.image_seed_strengths),
+            guidance_scale=ov('guidance_scale', self.guidance_scales),
+            image_guidance_scale=ov('image_guidance_scale', self.image_guidance_scales),
+            guidance_rescale=ov('guidance_rescale', self.guidance_rescales),
+            inference_steps=ov('inference_steps', self.inference_steps),
+            sdxl_high_noise_fraction=ov('sdxl_high_noise_fraction', self.sdxl_high_noise_fractions),
+            sdxl_refiner_inference_steps=ov('sdxl_refiner_inference_steps', self.sdxl_refiner_inference_steps),
+            sdxl_refiner_guidance_scale=ov('sdxl_refiner_guidance_scale', self.sdxl_refiner_guidance_scales),
+            sdxl_refiner_guidance_rescale=ov('sdxl_refiner_guidance_rescale',
+                                             self.sdxl_refiner_guidance_rescales),
+            upscaler_noise_level=ov('upscaler_noise_level', self.upscaler_noise_levels),
+            sdxl_aesthetic_score=ov('sdxl_aesthetic_score', self.sdxl_aesthetic_scores),
+            sdxl_original_size=ov('sdxl_original_size', self.sdxl_original_sizes),
+            sdxl_target_size=ov('sdxl_target_size', self.sdxl_target_sizes),
+            sdxl_crops_coords_top_left=ov('sdxl_crops_coords_top_left', self.sdxl_crops_coords_top_left),
+            sdxl_negative_aesthetic_score=ov('sdxl_negative_aesthetic_score',
+                                             self.sdxl_negative_aesthetic_scores),
+            sdxl_negative_original_size=ov('sdxl_negative_original_size', self.sdxl_negative_original_sizes),
+            sdxl_negative_target_size=ov('sdxl_negative_target_size', self.sdxl_negative_target_sizes),
+            sdxl_negative_crops_coords_top_left=ov('sdxl_negative_crops_coords_top_left',
+                                                   self.sdxl_negative_crops_coords_top_left),
+            sdxl_refiner_aesthetic_score=ov('sdxl_refiner_aesthetic_score', self.sdxl_refiner_aesthetic_scores),
+            sdxl_refiner_original_size=ov('sdxl_refiner_original_size', self.sdxl_refiner_original_sizes),
+            sdxl_refiner_target_size=ov('sdxl_refiner_target_size', self.sdxl_refiner_target_sizes),
+            sdxl_refiner_crops_coords_top_left=ov('sdxl_refiner_crops_coords_top_left',
+                                                  self.sdxl_refiner_crops_coords_top_left),
+            sdxl_refiner_negative_aesthetic_score=ov('sdxl_refiner_negative_aesthetic_score',
+                                                     self.sdxl_refiner_negative_aesthetic_scores),
+            sdxl_refiner_negative_original_size=ov('sdxl_refiner_negative_original_size',
+                                                   self.sdxl_refiner_negative_original_sizes),
+            sdxl_refiner_negative_target_size=ov('sdxl_refiner_negative_target_size',
+                                                 self.sdxl_refiner_negative_target_sizes),
+            sdxl_refiner_negative_crops_coords_top_left=ov('sdxl_refiner_negative_crops_coords_top_left',
+                                                           self.sdxl_refiner_negative_crops_coords_top_left))
+
+
+class DiffusionRenderLoop:
+    def __init__(self, config=None):
+        self._generation_step = -1
+        self._frame_time_sum = 0
+        self._last_frame_time = 0
+        self._written_images = []
+        self._written_animations = []
+
+        self.config = DiffusionRenderLoopConfig() if config is None else config
+        self.image_preprocessor_loader = _preprocessors.Loader()
+
+    @property
+    def written_images(self):
+        return self._written_images
+
+    @property
+    def written_animations(self):
+        return self._written_animations
+
     @property
     def generation_step(self):
         return self._generation_step
 
     def _gen_filename(self, *args, ext):
         def _make_path(args, ext, dup_number=None):
-            return os.path.join(self.output_path,
-                                f'{self.output_prefix + "_" if self.output_prefix is not None else ""}' + '_'.
+            return os.path.join(self.config.output_path,
+                                f'{self.config.output_prefix + "_" if self.config.output_prefix is not None else ""}' + '_'.
                                 join(str(s).replace('.', '-') for s in args) + (
                                     '' if dup_number is None else f'_duplicate_{dup_number}') + '.' + ext)
 
         path = _make_path(args, ext)
 
-        if self.output_overwrite:
+        if self.config.output_overwrite:
             return path
 
         if not os.path.exists(path):
@@ -561,24 +616,25 @@ class DiffusionRenderLoop:
 
         return self._gen_filename(*args, 'step', generation_step + 1, ext=animation_format)
 
-    def _write_generation_result(self, filename, generation_result: PipelineResultWrapper, config_txt):
-        if self.output_metadata:
-            metadata = PngInfo()
+    def _write_generation_result(self, filename, generation_result: _pipelinewrapper.PipelineResultWrapper,
+                                 config_txt):
+        if self.config.output_metadata:
+            metadata = PIL.PngImagePlugin.PngInfo()
             metadata.add_text("DgenerateConfig", config_txt)
             generation_result.image.save(filename, pnginfo=metadata)
         else:
             generation_result.image.save(filename)
-        if self.output_configs:
+        if self.config.output_configs:
             config_file_name = os.path.splitext(filename)[0] + '.txt'
             with open(config_file_name, "w") as config_file:
                 config_file.write(config_txt)
-            messages.log(
+            _messages.log(
                 f'Wrote Image File: "{filename}"\nWrote Config File: "{config_file_name}"', underline=True)
         else:
-            messages.log(f'Wrote Image File: "{filename}"', underline=True)
+            _messages.log(f'Wrote Image File: "{filename}"', underline=True)
 
     def _write_animation_frame(self, args_ctx: DiffusionArgContext, image_seed_obj,
-                               generation_result: PipelineResultWrapper):
+                               generation_result: _pipelinewrapper.PipelineResultWrapper):
         args = self._gen_filename_base(args_ctx)
 
         filename = self._gen_filename(*args,
@@ -595,14 +651,15 @@ class DiffusionRenderLoop:
         self._write_generation_result(filename, generation_result, config_txt)
 
     def _write_image_seed_gen_image(self, args_ctx: DiffusionArgContext,
-                                    generation_result: PipelineResultWrapper):
+                                    generation_result: _pipelinewrapper.PipelineResultWrapper):
         args = self._gen_filename_base(args_ctx)
 
         filename = self._gen_filename(*args, 'step', self._generation_step + 1, ext='png')
         self._written_images.append(os.path.abspath(filename))
         self._write_generation_result(filename, generation_result, generation_result.dgenerate_config)
 
-    def _write_prompt_only_image(self, args_ctx: DiffusionArgContext, generation_result: PipelineResultWrapper):
+    def _write_prompt_only_image(self, args_ctx: DiffusionArgContext,
+                                 generation_result: _pipelinewrapper.PipelineResultWrapper):
         args = self._gen_filename_base(args_ctx)
 
         filename = self._gen_filename(*args, 'step', self._generation_step + 1, ext='png')
@@ -614,10 +671,10 @@ class DiffusionRenderLoop:
         self._frame_time_sum = 0
         self._generation_step += 1
 
-        desc = args_ctx.describe_pipeline_args()
+        desc = args_ctx.describe_pipeline_wrapper_args()
 
-        messages.log(
-            f'Generation step {self._generation_step + 1} / {self.num_generation_steps}\n'
+        _messages.log(
+            f'Generation step {self._generation_step + 1} / {self.config.calculate_generation_steps()}\n'
             + desc, underline=True)
 
     def _pre_generation(self, args_ctx):
@@ -633,72 +690,26 @@ class DiffusionRenderLoop:
             eta = str(datetime.timedelta(seconds=eta_seconds))
 
         self._last_frame_time = time.time()
-        messages.log(
+        _messages.log(
             f'Generating frame {image_seed_obj.frame_index + 1} / {image_seed_obj.total_frames}, Completion ETA: {eta}',
             underline=True)
 
     def _with_image_seed_pre_generation(self, args_ctx: DiffusionArgContext, image_seed_obj):
         pass
 
-    def _iterate_diffusion_args(self, **overrides):
-        def ov(n, v):
-            if not model_type_is_sdxl(self.model_type):
-                if n.startswith('sdxl'):
-                    return None
-            else:
-                if n.startswith('sdxl_refiner') and not self.sdxl_refiner_path:
-                    return None
-
-            if n in overrides:
-                return overrides[n]
-            return v
-
-        yield from iterate_diffusion_args(
-            prompt=ov('prompt', self.prompts),
-            sdxl_second_prompt=ov('sdxl_second_prompt',
-                                  self.sdxl_second_prompts),
-            sdxl_refiner_prompt=ov('sdxl_refiner_prompt',
-                                   self.sdxl_refiner_prompts),
-            sdxl_refiner_second_prompt=ov('sdxl_refiner_second_prompt',
-                                          self.sdxl_refiner_second_prompts),
-            seed=ov('seed', self.seeds),
-            image_seed_strength=ov('image_seed_strength', self.image_seed_strengths),
-            guidance_scale=ov('guidance_scale', self.guidance_scales),
-            image_guidance_scale=ov('image_guidance_scale', self.image_guidance_scales),
-            guidance_rescale=ov('guidance_rescale', self.guidance_rescales),
-            inference_steps=ov('inference_steps', self.inference_steps),
-            sdxl_high_noise_fraction=ov('sdxl_high_noise_fraction', self.sdxl_high_noise_fractions),
-            sdxl_refiner_inference_steps=ov('sdxl_refiner_inference_steps', self.sdxl_refiner_inference_steps),
-            sdxl_refiner_guidance_scale=ov('sdxl_refiner_guidance_scale', self.sdxl_refiner_guidance_scales),
-            sdxl_refiner_guidance_rescale=ov('sdxl_refiner_guidance_rescale', self.sdxl_refiner_guidance_rescales),
-            upscaler_noise_level=ov('upscaler_noise_level', self.upscaler_noise_levels),
-            sdxl_aesthetic_score=ov('sdxl_aesthetic_score', self.sdxl_aesthetic_scores),
-            sdxl_original_size=ov('sdxl_original_size', self.sdxl_original_sizes),
-            sdxl_target_size=ov('sdxl_target_size', self.sdxl_target_sizes),
-            sdxl_crops_coords_top_left=ov('sdxl_crops_coords_top_left', self.sdxl_crops_coords_top_left),
-            sdxl_negative_aesthetic_score=ov('sdxl_negative_aesthetic_score', self.sdxl_negative_aesthetic_scores),
-            sdxl_negative_original_size=ov('sdxl_negative_original_size', self.sdxl_negative_original_sizes),
-            sdxl_negative_target_size=ov('sdxl_negative_target_size', self.sdxl_negative_target_sizes),
-            sdxl_negative_crops_coords_top_left=ov('sdxl_negative_crops_coords_top_left',
-                                                   self.sdxl_negative_crops_coords_top_left),
-            sdxl_refiner_aesthetic_score=ov('sdxl_refiner_aesthetic_score', self.sdxl_refiner_aesthetic_scores),
-            sdxl_refiner_original_size=ov('sdxl_refiner_original_size', self.sdxl_refiner_original_sizes),
-            sdxl_refiner_target_size=ov('sdxl_refiner_target_size', self.sdxl_refiner_target_sizes),
-            sdxl_refiner_crops_coords_top_left=ov('sdxl_refiner_crops_coords_top_left',
-                                                  self.sdxl_refiner_crops_coords_top_left),
-            sdxl_refiner_negative_aesthetic_score=ov('sdxl_refiner_negative_aesthetic_score',
-                                                     self.sdxl_refiner_negative_aesthetic_scores),
-            sdxl_refiner_negative_original_size=ov('sdxl_refiner_negative_original_size',
-                                                   self.sdxl_refiner_negative_original_sizes),
-            sdxl_refiner_negative_target_size=ov('sdxl_refiner_negative_target_size',
-                                                 self.sdxl_refiner_negative_target_sizes),
-            sdxl_refiner_negative_crops_coords_top_left=ov('sdxl_refiner_negative_crops_coords_top_left',
-                                                           self.sdxl_refiner_negative_crops_coords_top_left))
+    def _load_preprocessors(self, preprocessors):
+        return self.image_preprocessor_loader.load(preprocessors, self.config.device)
 
     def run(self):
-        self._enforce_state()
+        try:
+            self._run()
+        except _pipelinewrapper.SchedulerHelpException:
+            pass
 
-        Path(self.output_path).mkdir(parents=True, exist_ok=True)
+    def _run(self):
+        self.config.check()
+
+        pathlib.Path(self.config.output_path).mkdir(parents=True, exist_ok=True)
 
         self._written_images = []
         self._written_animations = []
@@ -706,79 +717,79 @@ class DiffusionRenderLoop:
         self._frame_time_sum = 0
         self._last_frame_time = 0
 
-        generation_steps = self.num_generation_steps
+        generation_steps = self.config.calculate_generation_steps()
 
         if generation_steps == 0:
-            messages.log(f'Options resulted in no generation steps, nothing to do.', underline=True)
+            _messages.log(f'Options resulted in no generation steps, nothing to do.', underline=True)
             return
 
-        messages.log(f'Beginning {generation_steps} generation steps...', underline=True)
+        _messages.log(f'Beginning {generation_steps} generation steps...', underline=True)
 
-        if self.image_seeds:
+        if self.config.image_seeds:
             self._render_with_image_seeds()
         else:
-            diffusion_model = DiffusionPipelineWrapper(self.model_path,
-                                                       model_subfolder=self.model_subfolder,
-                                                       dtype=self.dtype,
-                                                       device=self.device,
-                                                       model_type=self.model_type,
-                                                       revision=self.revision,
-                                                       variant=self.variant,
-                                                       vae_path=self.vae_path,
-                                                       lora_paths=self.lora_paths,
-                                                       textual_inversion_paths=self.textual_inversion_paths,
-                                                       scheduler=self.scheduler,
-                                                       sdxl_refiner_scheduler=self.sdxl_refiner_scheduler,
-                                                       safety_checker=self.safety_checker,
-                                                       sdxl_refiner_path=self.sdxl_refiner_path,
-                                                       auth_token=self.auth_token)
+            diffusion_model = _pipelinewrapper.DiffusionPipelineWrapper(self.config.model_path,
+                                                                        model_subfolder=self.config.model_subfolder,
+                                                                        dtype=self.config.dtype,
+                                                                        device=self.config.device,
+                                                                        model_type=self.config.model_type,
+                                                                        revision=self.config.revision,
+                                                                        variant=self.config.variant,
+                                                                        vae_path=self.config.vae_path,
+                                                                        lora_paths=self.config.lora_paths,
+                                                                        textual_inversion_paths=self.config.textual_inversion_paths,
+                                                                        scheduler=self.config.scheduler,
+                                                                        sdxl_refiner_scheduler=self.config.sdxl_refiner_scheduler,
+                                                                        safety_checker=self.config.safety_checker,
+                                                                        sdxl_refiner_path=self.config.sdxl_refiner_path,
+                                                                        auth_token=self.config.auth_token)
 
-            sdxl_high_noise_fractions = self.sdxl_high_noise_fractions if self.sdxl_refiner_path is not None else None
+            sdxl_high_noise_fractions = self.config.sdxl_high_noise_fractions if self.config.sdxl_refiner_path is not None else None
 
-            for args_ctx in self._iterate_diffusion_args(sdxl_high_noise_fraction=sdxl_high_noise_fractions,
-                                                         image_seed_strength=None,
-                                                         upscaler_noise_level=None):
+            for args_ctx in self.config.iterate_diffusion_args(sdxl_high_noise_fraction=sdxl_high_noise_fractions,
+                                                               image_seed_strength=None,
+                                                               upscaler_noise_level=None):
                 self._pre_generation_step(args_ctx)
                 self._pre_generation(args_ctx)
 
-                with diffusion_model(**args_ctx.get_pipeline_args(),
-                                     width=self.output_size[0],
-                                     height=self.output_size[1]) as generation_result:
+                with diffusion_model(**args_ctx.get_pipeline_wrapper_args(),
+                                     width=self.config.output_size[0],
+                                     height=self.config.output_size[1]) as generation_result:
                     self._write_prompt_only_image(args_ctx, generation_result)
 
     def _render_with_image_seeds(self):
-        diffusion_model = DiffusionPipelineWrapper(self.model_path,
-                                                   model_subfolder=self.model_subfolder,
-                                                   dtype=self.dtype,
-                                                   device=self.device,
-                                                   model_type=self.model_type,
-                                                   revision=self.revision,
-                                                   variant=self.variant,
-                                                   vae_path=self.vae_path,
-                                                   vae_tiling=self.vae_tiling,
-                                                   vae_slicing=self.vae_slicing,
-                                                   lora_paths=self.lora_paths,
-                                                   textual_inversion_paths=self.textual_inversion_paths,
-                                                   control_net_paths=self.control_net_paths,
-                                                   scheduler=self.scheduler,
-                                                   safety_checker=self.safety_checker,
-                                                   sdxl_refiner_path=self.sdxl_refiner_path,
-                                                   auth_token=self.auth_token)
+        diffusion_model = _pipelinewrapper.DiffusionPipelineWrapper(self.config.model_path,
+                                                                    model_subfolder=self.config.model_subfolder,
+                                                                    dtype=self.config.dtype,
+                                                                    device=self.config.device,
+                                                                    model_type=self.config.model_type,
+                                                                    revision=self.config.revision,
+                                                                    variant=self.config.variant,
+                                                                    vae_path=self.config.vae_path,
+                                                                    vae_tiling=self.config.vae_tiling,
+                                                                    vae_slicing=self.config.vae_slicing,
+                                                                    lora_paths=self.config.lora_paths,
+                                                                    textual_inversion_paths=self.config.textual_inversion_paths,
+                                                                    control_net_paths=self.config.control_net_paths,
+                                                                    scheduler=self.config.scheduler,
+                                                                    safety_checker=self.config.safety_checker,
+                                                                    sdxl_refiner_path=self.config.sdxl_refiner_path,
+                                                                    auth_token=self.config.auth_token)
 
-        sdxl_high_noise_fractions = self.sdxl_high_noise_fractions if self.sdxl_refiner_path is not None else None
+        sdxl_high_noise_fractions = self.config.sdxl_high_noise_fractions if self.config.sdxl_refiner_path is not None else None
 
-        image_seed_strengths = self.image_seed_strengths if \
-            not (model_type_is_upscaler(self.model_type) or
-                 model_type_is_pix2pix(self.model_type)) else None
+        image_seed_strengths = self.config.image_seed_strengths if \
+            not (_pipelinewrapper.model_type_is_upscaler(self.config.model_type) or
+                 _pipelinewrapper.model_type_is_pix2pix(self.config.model_type)) else None
 
-        upscaler_noise_levels = self.upscaler_noise_levels if \
-            self.model_type == ModelTypes.TORCH_UPSCALER_X4 else None
+        upscaler_noise_levels = self.config.upscaler_noise_levels if \
+            self.config.model_type == _pipelinewrapper.ModelTypes.TORCH_UPSCALER_X4 else None
 
         def validate_image_seeds():
-            for img_seed in self.image_seeds:
-                parsed = parse_image_seed_uri(img_seed)
+            for img_seed in self.config.image_seeds:
+                parsed = _mediainput.parse_image_seed_uri(img_seed)
 
-                if self.control_net_paths and not parsed.is_single_image() and parsed.control_uri is None:
+                if self.config.control_net_paths and not parsed.is_single_image() and parsed.control_uri is None:
                     raise NotImplementedError(
                         f'You must specify a control image with the control argument '
                         f'IE: --image-seeds "my-seed.png;control=my-control.png" in your '
@@ -790,50 +801,51 @@ class DiffusionRenderLoop:
 
         for image_seed, parsed_image_seed in list(validate_image_seeds()):
 
-            is_single_control_image = self.control_net_paths and parsed_image_seed.is_single_image()
+            is_single_control_image = self.config.control_net_paths and parsed_image_seed.is_single_image()
             image_seed_strengths = image_seed_strengths if not is_single_control_image else None
             upscaler_noise_levels = upscaler_noise_levels if not is_single_control_image else None
 
             if is_single_control_image:
-                messages.log(f'Processing Control Image: "{image_seed}"', underline=True)
+                _messages.log(f'Processing Control Image: "{image_seed}"', underline=True)
             else:
-                messages.log(f'Processing Image Seed: "{image_seed}"', underline=True)
+                _messages.log(f'Processing Image Seed: "{image_seed}"', underline=True)
 
-            arg_iterator = self._iterate_diffusion_args(
+            arg_iterator = self.config.iterate_diffusion_args(
                 sdxl_high_noise_fraction=sdxl_high_noise_fractions,
                 image_seed_strength=image_seed_strengths,
                 upscaler_noise_level=upscaler_noise_levels
             )
 
-            seed_info = get_image_seed_info(parsed_image_seed, self.frame_start, self.frame_end)
+            seed_info = _mediainput.get_image_seed_info(
+                parsed_image_seed, self.config.frame_start, self.config.frame_end)
 
             if is_single_control_image:
                 def seed_iterator_func():
-                    yield from iterate_control_image(
+                    yield from _mediainput.iterate_control_image(
                         parsed_image_seed,
-                        self.frame_start,
-                        self.frame_end,
-                        self.output_size,
-                        preprocessor=preprocessors.load(self.control_image_preprocessors, self.device))
+                        self.config.frame_start,
+                        self.config.frame_end,
+                        self.config.output_size,
+                        preprocessor=self._load_preprocessors(self.config.control_image_preprocessors))
 
             else:
                 def seed_iterator_func():
-                    yield from iterate_image_seed(
+                    yield from _mediainput.iterate_image_seed(
                         parsed_image_seed,
-                        self.frame_start,
-                        self.frame_end,
-                        self.output_size,
-                        seed_image_preprocessor=preprocessors.load(self.seed_image_preprocessors, self.device),
-                        mask_image_preprocessor=preprocessors.load(self.mask_image_preprocessors, self.device),
-                        control_image_preprocessor=preprocessors.load(self.control_image_preprocessors, self.device))
+                        self.config.frame_start,
+                        self.config.frame_end,
+                        self.config.output_size,
+                        seed_image_preprocessor=self._load_preprocessors(self.config.seed_image_preprocessors),
+                        mask_image_preprocessor=self._load_preprocessors(self.config.mask_image_preprocessors),
+                        control_image_preprocessor=self._load_preprocessors(self.config.control_image_preprocessors))
 
             if seed_info.is_animation:
 
                 if is_single_control_image:
-                    def get_extra_args(ci_obj: ImageSeed):
+                    def get_extra_args(ci_obj: _mediainput.ImageSeed):
                         return {'control_image': ci_obj.image}
                 else:
-                    def get_extra_args(ims_obj: ImageSeed):
+                    def get_extra_args(ims_obj: _mediainput.ImageSeed):
                         extra_args = {'image': ims_obj.image}
                         if ims_obj.mask_image is not None:
                             extra_args['mask_image'] = ims_obj.mask_image
@@ -854,7 +866,7 @@ class DiffusionRenderLoop:
                     with image_obj as image_seed_obj:
                         self._with_image_seed_pre_generation(args_ctx, image_seed_obj)
 
-                        pipeline_args = args_ctx.get_pipeline_args()
+                        pipeline_args = args_ctx.get_pipeline_wrapper_args()
 
                         if not is_single_control_image:
                             pipeline_args['image'] = image_seed_obj.image
@@ -865,20 +877,21 @@ class DiffusionRenderLoop:
                             pipeline_args['control_image'] = (image_seed_obj.image if is_single_control_image
                                                               else image_seed_obj.control_image)
 
-                        with MultiContextManager([image_seed_obj.mask_image, image_seed_obj.control_image]), \
+                        with _mediainput.MultiContextManager(
+                                [image_seed_obj.mask_image, image_seed_obj.control_image]), \
                                 diffusion_model(**pipeline_args) as generation_result:
                             self._write_image_seed_gen_image(args_ctx, generation_result)
 
     def _render_animation(self, diffusion_model, arg_iterator, fps, seed_iterator_func, get_extra_args):
 
-        animation_format_lower = self.animation_format.lower()
+        animation_format_lower = self.config.animation_format.lower()
         first_args_ctx = next(arg_iterator)
 
         out_filename = self._gen_animation_filename(first_args_ctx, self._generation_step + 1,
                                                     animation_format_lower)
         next_frame_terminates_anim = False
 
-        with create_animation_writer(animation_format_lower, out_filename, fps) as video_writer:
+        with _mediaoutput.create_animation_writer(animation_format_lower, out_filename, fps) as video_writer:
 
             for args_ctx in itertools.chain([first_args_ctx], arg_iterator):
                 self._pre_generation_step(args_ctx)
@@ -889,13 +902,13 @@ class DiffusionRenderLoop:
                         new_file=self._gen_animation_filename(args_ctx, self._generation_step,
                                                               animation_format_lower))
 
-                if self.output_configs:
+                if self.config.output_configs:
                     anim_config_file_name = os.path.splitext(video_writer.filename)[0] + '.txt'
-                    messages.log(
+                    _messages.log(
                         f'Writing Animation: "{video_writer.filename}"\nWriting Config File: "{anim_config_file_name}"',
                         underline=True)
                 else:
-                    messages.log(f'Writing Animation: "{video_writer.filename}"', underline=True)
+                    _messages.log(f'Writing Animation: "{video_writer.filename}"', underline=True)
 
                 self._written_animations.append(os.path.abspath(video_writer.filename))
 
@@ -906,22 +919,22 @@ class DiffusionRenderLoop:
 
                         extra_args = get_extra_args(image_seed_obj)
 
-                        with diffusion_model(**args_ctx.get_pipeline_args(),
+                        with diffusion_model(**args_ctx.get_pipeline_wrapper_args(),
                                              **extra_args) as generation_result:
                             video_writer.write(generation_result.image)
 
-                            if self.output_configs:
+                            if self.config.output_configs:
                                 if not os.path.exists(anim_config_file_name):
                                     config_text = generation_result.dgenerate_config
 
-                                    if self.frame_start is not None:
-                                        config_text += f' \\\n--frame-start {self.frame_start}'
+                                    if self.config.frame_start is not None:
+                                        config_text += f' \\\n--frame-start {self.config.frame_start}'
 
-                                    if self.frame_end is not None:
-                                        config_text += f' \\\n--frame-end {self.frame_end}'
+                                    if self.config.frame_end is not None:
+                                        config_text += f' \\\n--frame-end {self.config.frame_end}'
 
-                                    if self.animation_format is not None:
-                                        config_text += f' \\\n--animation-format {self.animation_format}'
+                                    if self.config.animation_format is not None:
+                                        config_text += f' \\\n--animation-format {self.config.animation_format}'
 
                                     with open(anim_config_file_name, "w") as config_file:
                                         config_file.write(config_text)

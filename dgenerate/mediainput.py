@@ -27,13 +27,13 @@ import PIL.Image
 import PIL.ImageOps
 import PIL.ImageSequence
 import av
+import fake_useragent
 import requests
-from fake_useragent import UserAgent
 
-from . import messages
-from .image import resize_image, resize_image_calc, copy_img, is_aligned_by_8, align_by_8, to_rgb
-from .preprocessors import ImagePreprocessorMixin
-from .textprocessing import ConceptPathParser, ConceptPathParseError
+import dgenerate.image as _image
+import dgenerate.messages as _messages
+import dgenerate.preprocessors as _preprocessors
+import dgenerate.textprocessing as _textprocessing
 
 
 class AnimationFrame:
@@ -122,7 +122,7 @@ class AnimationReader:
         return _total_frames_slice(self.total_frames, frame_start, frame_end)
 
 
-class VideoReader(ImagePreprocessorMixin, AnimationReader):
+class VideoReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
     def __init__(self, file, file_source, resize_resolution=None, preprocessor=None):
         self._filename = file
         self._file_source = file_source
@@ -139,14 +139,14 @@ class VideoReader(ImagePreprocessorMixin, AnimationReader):
         if self.resize_resolution is None:
             width = int(self._container.streams.video[0].width)
             height = int(self._container.streams.video[0].height)
-            if not is_aligned_by_8(width, height):
-                width, height = resize_image_calc(old_size=(width, height),
-                                                  new_size=align_by_8(width, height))
+            if not _image.is_aligned_by_8(width, height):
+                width, height = _image.resize_image_calc(old_size=(width, height),
+                                                         new_size=_image.align_by_8(width, height))
                 self.resize_resolution = (width, height)
         else:
-            width, height = resize_image_calc(old_size=(int(self._container.streams.video[0].width),
-                                                        int(self._container.streams.video[0].height)),
-                                              new_size=self.resize_resolution)
+            width, height = _image.resize_image_calc(old_size=(int(self._container.streams.video[0].width),
+                                                               int(self._container.streams.video[0].height)),
+                                                     new_size=self.resize_resolution)
 
         anim_fps = int(self._container.streams.video[0].average_rate)
         anim_frame_duration = 1000 / anim_fps
@@ -177,7 +177,7 @@ class VideoReader(ImagePreprocessorMixin, AnimationReader):
         return self.preprocess_image(rgb_image, self.resize_resolution)
 
 
-class GifWebpReader(ImagePreprocessorMixin, AnimationReader):
+class GifWebpReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
     def __init__(self, file, file_source, resize_resolution=None, preprocessor=None):
         self._img = PIL.Image.open(file)
         self._file_source = file_source
@@ -198,13 +198,13 @@ class GifWebpReader(ImagePreprocessorMixin, AnimationReader):
         if self.resize_resolution is None:
             width = self._img.size[0]
             height = self._img.size[1]
-            if not is_aligned_by_8(width, height):
-                width, height = resize_image_calc(old_size=(width, height),
-                                                  new_size=align_by_8(width, height))
+            if not _image.is_aligned_by_8(width, height):
+                width, height = _image.resize_image_calc(old_size=(width, height),
+                                                         new_size=_image.align_by_8(width, height))
                 self.resize_resolution = (width, height)
         else:
-            width, height = resize_image_calc(old_size=self._img.size,
-                                              new_size=self.resize_resolution)
+            width, height = _image.resize_image_calc(old_size=self._img.size,
+                                                     new_size=self.resize_resolution)
 
         super().__init__(width=width,
                          height=height,
@@ -221,12 +221,12 @@ class GifWebpReader(ImagePreprocessorMixin, AnimationReader):
 
     def __next__(self):
         with next(self._iter) as img:
-            rgb_image = to_rgb(img)
+            rgb_image = _image.to_rgb(img)
             rgb_image.filename = self._file_source
             return self.preprocess_image(rgb_image, self.resize_resolution)
 
 
-class MockImageAnimationReader(ImagePreprocessorMixin, AnimationReader):
+class MockImageAnimationReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
     def __init__(self, img, resize_resolution=None, image_repetitions=1, preprocessor=None):
         self._img = img
         self._idx = 0
@@ -239,13 +239,13 @@ class MockImageAnimationReader(ImagePreprocessorMixin, AnimationReader):
         if self.resize_resolution is None:
             width = self._img.size[0]
             height = self._img.size[1]
-            if not is_aligned_by_8(width, height):
-                width, height = resize_image_calc(old_size=(width, height),
-                                                  new_size=align_by_8(width, height))
+            if not _image.is_aligned_by_8(width, height):
+                width, height = _image.resize_image_calc(old_size=(width, height),
+                                                         new_size=_image.align_by_8(width, height))
                 self.resize_resolution = (width, height)
         else:
-            width, height = resize_image_calc(old_size=self._img.size,
-                                              new_size=self.resize_resolution)
+            width, height = _image.resize_image_calc(old_size=self._img.size,
+                                                     new_size=self.resize_resolution)
 
         super().__init__(width=width,
                          height=height,
@@ -271,7 +271,7 @@ class MockImageAnimationReader(ImagePreprocessorMixin, AnimationReader):
     def __next__(self):
         if self._idx < self.total_frames:
             self._idx += 1
-            return self.preprocess_image(copy_img(self._img), self.resize_resolution)
+            return self.preprocess_image(_image.copy_img(self._img), self.resize_resolution)
         else:
             raise StopIteration
 
@@ -517,11 +517,11 @@ def parse_image_seed_uri(url):
 
     result = ImageSeedParseResult()
 
-    seed_parser = ConceptPathParser('Image Seed', ['mask', 'control', 'resize'])
+    seed_parser = _textprocessing.ConceptPathParser('Image Seed', ['mask', 'control', 'resize'])
 
     try:
         parse_result = seed_parser.parse_concept_path(url)
-    except ConceptPathParseError as e:
+    except _textprocessing.ConceptPathParseError as e:
         raise ImageSeedParseError(e)
 
     uri = parse_result.concept
@@ -593,15 +593,16 @@ def get_web_cache_directory():
 
 def _wipe_web_cache_directory():
     folder = get_web_cache_directory()
-    messages.debug_log(f'Wiping Web Cache Directory: "{folder}"')
+    _messages.debug_log(f'Wiping Web Cache Directory: "{folder}"')
     for filename in os.listdir(get_web_cache_directory()):
         file_path = os.path.join(folder, filename)
-        messages.debug_log(f'Deleting File From Web Cache: "{file_path}"')
+        _messages.debug_log(f'Deleting File From Web Cache: "{file_path}"')
         try:
             if os.path.isfile(file_path) or os.path.islink(file_path):
                 os.unlink(file_path)
         except Exception as e:
-            messages.log(f'Failed to delete cached web file "{file_path}", reason: {e}', level=messages.ERROR)
+            _messages.log(f'Failed to delete cached web file "{file_path}", reason: {e}',
+                          level=_messages.ERROR)
 
 
 atexit.register(_wipe_web_cache_directory)
@@ -635,7 +636,7 @@ def fetch_image_data_stream(uri,
             file = cache_hit[1]
             return mime_type, open(file, mode='rb')
 
-        headers = {'User-Agent': UserAgent().chrome}
+        headers = {'User-Agent': fake_useragent.UserAgent().chrome}
         req = requests.get(uri, headers=headers, stream=True)
         mime_type = req.headers['content-type']
         if mime_type_filter is not None and not mime_type_filter(mime_type):
@@ -710,19 +711,19 @@ def create_and_exif_orient_pil_img(path_or_file, file_source, resize_resolution=
         file = path_or_file
 
     if resize_resolution is None:
-        with PIL.Image.open(file) as img, to_rgb(img) as rgb_img:
+        with PIL.Image.open(file) as img, _image.to_rgb(img) as rgb_img:
             e_img = _exif_orient(rgb_img)
             e_img.filename = file_source
-            if not is_aligned_by_8(e_img.width, e_img.height):
+            if not _image.is_aligned_by_8(e_img.width, e_img.height):
                 with e_img:
-                    resized = resize_image(e_img, align_by_8(e_img.width, e_img.height))
+                    resized = _image.resize_image(e_img, _image.align_by_8(e_img.width, e_img.height))
                     return resized
             else:
                 return e_img
     else:
-        with PIL.Image.open(file) as img, to_rgb(img) as rgb_img, _exif_orient(rgb_img) as o_img:
+        with PIL.Image.open(file) as img, _image.to_rgb(img) as rgb_img, _exif_orient(rgb_img) as o_img:
             o_img.filename = file_source
-            resized = resize_image(o_img, resize_resolution)
+            resized = _image.resize_image(o_img, resize_resolution)
             return resized
 
 

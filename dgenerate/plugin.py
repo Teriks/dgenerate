@@ -18,7 +18,24 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import os
+from importlib.machinery import SourceFileLoader
 
-from .main import main
+LOADED_PLUGIN_MODULES = {}
 
-main()
+
+def load_modules(paths: list):
+    r = []
+    for plugin_path in paths:
+        name, ext = os.path.splitext(os.path.basename(plugin_path))
+        if name in LOADED_PLUGIN_MODULES:
+            mod = LOADED_PLUGIN_MODULES[name]
+        elif ext:
+            mod = SourceFileLoader(name, plugin_path).load_module()
+        else:
+            mod = SourceFileLoader(name,
+                                   os.path.join(plugin_path, '__init__.py')).load_module()
+
+        LOADED_PLUGIN_MODULES[name] = mod
+        r.append(mod)
+    return r

@@ -21,38 +21,28 @@
 import decimal
 import inspect
 import os
+import re
 import typing
 
 try:
     import jax
     import jax.numpy as jnp
-    from flax.jax_utils import replicate
-    from flax.training.common_utils import shard
-    from diffusers import FlaxStableDiffusionPipeline, FlaxStableDiffusionImg2ImgPipeline, \
-        FlaxStableDiffusionInpaintPipeline, FlaxStableDiffusionControlNetPipeline, FlaxControlNetModel, \
-        FlaxAutoencoderKL
-
-    _have_jax_flax = True
+    from flax.jax_utils import replicate as _flax_replicate
+    from flax.training.common_utils import shard as _flax_shard
 
     os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
     os.environ['XLA_PYTHON_CLIENT_ALLOCATOR'] = 'platform'
 except ImportError:
-    _have_jax_flax = False
+    jax = None
+    flax = None
 
 import enum
 import torch
-from PIL import Image
-from .textprocessing import ConceptPathParser, ConceptPathParseError, quote, debug_format_args, dashup
-from . import messages
-from .memoize import memoize, args_cache_key
-from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline, StableDiffusionInpaintPipeline, \
-    StableDiffusionInpaintPipelineLegacy, StableDiffusionXLPipeline, StableDiffusionXLImg2ImgPipeline, \
-    StableDiffusionXLInpaintPipeline, StableDiffusionUpscalePipeline, StableDiffusionLatentUpscalePipeline, \
-    ControlNetModel, AutoencoderKL, AsymmetricAutoencoderKL, AutoencoderTiny, StableDiffusionControlNetPipeline, \
-    StableDiffusionControlNetInpaintPipeline, StableDiffusionControlNetImg2ImgPipeline, \
-    StableDiffusionXLControlNetPipeline, StableDiffusionXLControlNetImg2ImgPipeline, \
-    StableDiffusionXLControlNetInpaintPipeline, StableDiffusionXLInstructPix2PixPipeline, \
-    StableDiffusionInstructPix2PixPipeline
+import PIL
+import dgenerate.messages as _messages
+import dgenerate.textprocessing as _textprocessing
+import dgenerate.memoize as _memoize
+import diffusers
 
 _TORCH_MODEL_CACHE = dict()
 _FLAX_MODEL_CACHE = dict()
@@ -99,37 +89,59 @@ class InvalidTextualInversionPathError(Exception):
     pass
 
 
-_sdxl_refiner_path_parser = ConceptPathParser('SDXL Refiner', ['revision', 'variant', 'subfolder', 'dtype'])
+_sdxl_refiner_path_parser = _textprocessing.ConceptPathParser('SDXL Refiner',
+                                                              ['revision', 'variant', 'subfolder', 'dtype'])
 
-_torch_vae_path_parser = ConceptPathParser('VAE', ['model', 'revision', 'variant', 'subfolder', 'dtype'])
+_torch_vae_path_parser = _textprocessing.ConceptPathParser('VAE',
+                                                           ['model', 'revision', 'variant', 'subfolder', 'dtype'])
 
-_flax_vae_path_parser = ConceptPathParser('VAE', ['model', 'revision', 'subfolder', 'dtype'])
+_flax_vae_path_parser = _textprocessing.ConceptPathParser('VAE', ['model', 'revision', 'subfolder', 'dtype'])
 
-_torch_control_net_path_parser = ConceptPathParser('ControlNet',
-                                                   ['scale', 'start', 'end', 'revision', 'variant', 'subfolder',
-                                                    'dtype'])
+_torch_control_net_path_parser = _textprocessing.ConceptPathParser('ControlNet',
+                                                                   ['scale', 'start', 'end', 'revision', 'variant',
+                                                                    'subfolder',
+                                                                    'dtype'])
 
-_flax_control_net_path_parser = ConceptPathParser('ControlNet',
-                                                  ['scale', 'revision', 'subfolder', 'dtype', 'from_torch'])
+_flax_control_net_path_parser = _textprocessing.ConceptPathParser('ControlNet',
+                                                                  ['scale', 'revision', 'subfolder', 'dtype',
+                                                                   'from_torch'])
 
-_lora_path_parser = ConceptPathParser('LoRA', ['scale', 'revision', 'subfolder', 'weight-name'])
-_textual_inversion_path_parser = ConceptPathParser('Textual Inversion',
-                                                   ['revision', 'subfolder', 'weight-name'])
+_lora_path_parser = _textprocessing.ConceptPathParser('LoRA', ['scale', 'revision', 'subfolder', 'weight-name'])
+_textual_inversion_path_parser = _textprocessing.ConceptPathParser('Textual Inversion',
+                                                                   ['revision', 'subfolder', 'weight-name'])
 
 
 def _simple_cache_hit_debug(title, cache_key, cache_hit):
-    messages.debug_log(f'Cache Hit, Loaded {title}: "{cache_hit.__class__.__name__}",',
-                       f'Cache Key: "{cache_key}"')
+    _messages.debug_log(f'Cache Hit, Loaded {title}: "{cache_hit.__class__.__name__}",',
+                        f'Cache Key: "{cache_key}"')
 
 
 def _simple_cache_miss_debug(title, cache_key, new):
-    messages.debug_log(f'Cache Miss, Created {title}: "{new.__class__.__name__}",',
-                       f'Cache Key: "{cache_key}"')
+    _messages.debug_log(f'Cache Miss, Created {title}: "{new.__class__.__name__}",',
+                        f'Cache Key: "{cache_key}"')
 
 
 def _struct_hasher(obj):
-    return quote(
-        args_cache_key({k: v for k, v in sorted(obj.__dict__.items()) if not (k.startswith('_') or callable(v))}))
+    return _textprocessing.quote(
+        _memoize.args_cache_key(
+            {k: v for k, v in sorted(obj.__dict__.items()) if not (k.startswith('_') or callable(v))}))
+
+
+class InvalidDeviceOrdinalException(Exception):
+    pass
+
+
+def is_valid_device_string(device, raise_ordinal=True):
+    match = re.match(r'^(?:cpu|cuda(?::([0-9]+))?)$', device)
+    if match:
+        if match.lastindex:
+            ordinal = int(match[1])
+            valid_ordinal = ordinal < torch.cuda.device_count()
+            if raise_ordinal and not valid_ordinal:
+                raise InvalidDeviceOrdinalException(f'CUDA device ordinal {ordinal} is invalid, no such device exists.')
+            return valid_ordinal
+        return True
+    return False
 
 
 class FlaxControlNetPath:
@@ -141,23 +153,23 @@ class FlaxControlNetPath:
         self.from_torch = from_torch
         self.scale = scale
 
-    @memoize(_FLAX_CONTROL_NET_CACHE,
-             hasher=lambda args: args_cache_key(args, {'self': _struct_hasher}),
-             on_hit=lambda key, hit: _simple_cache_hit_debug("Flax ControlNet", key, hit),
-             on_create=lambda key, new: _simple_cache_miss_debug("Flax ControlNet", key, new))
+    @_memoize.memoize(_FLAX_CONTROL_NET_CACHE,
+                      hasher=lambda args: _memoize.args_cache_key(args, {'self': _struct_hasher}),
+                      on_hit=lambda key, hit: _simple_cache_hit_debug("Flax ControlNet", key, hit),
+                      on_create=lambda key, new: _simple_cache_miss_debug("Flax ControlNet", key, new))
     def load(self, flax_dtype_fallback, **kwargs):
         single_file_load_path = _is_single_file_model_load(self.model)
 
         if single_file_load_path:
             raise NotImplementedError('Flax --control-nets do not support single file loads from disk.')
         else:
-            new_net: FlaxControlNetModel = \
-                FlaxControlNetModel.from_pretrained(self.model,
-                                                    revision=self.revision,
-                                                    subfolder=self.subfolder,
-                                                    dtype=flax_dtype_fallback if self.dtype is None else self.dtype,
-                                                    from_pt=self.from_torch,
-                                                    **kwargs)
+            new_net: diffusers.FlaxControlNetModel = \
+                diffusers.FlaxControlNetModel.from_pretrained(self.model,
+                                                              revision=self.revision,
+                                                              subfolder=self.subfolder,
+                                                              dtype=flax_dtype_fallback if self.dtype is None else self.dtype,
+                                                              from_pt=self.from_torch,
+                                                              **kwargs)
         return new_net
 
 
@@ -194,7 +206,7 @@ def parse_flax_control_net_path(path):
             dtype=_get_flax_dtype(dtype),
             from_torch=from_torch)
 
-    except ConceptPathParseError as e:
+    except _textprocessing.ConceptPathParseError as e:
         raise InvalidControlNetPathError(e)
 
 
@@ -209,28 +221,28 @@ class TorchControlNetPath:
         self.start = start
         self.end = end
 
-    @memoize(_TORCH_CONTROL_NET_CACHE,
-             hasher=lambda args: args_cache_key(args, {'self': _struct_hasher}),
-             on_hit=lambda key, hit: _simple_cache_hit_debug("Torch ControlNet", key, hit),
-             on_create=lambda key, new: _simple_cache_miss_debug("Torch ControlNet", key, new))
-    def load(self, torch_dtype_fallback, **kwargs) -> ControlNetModel:
+    @_memoize.memoize(_TORCH_CONTROL_NET_CACHE,
+                      hasher=lambda args: _memoize.args_cache_key(args, {'self': _struct_hasher}),
+                      on_hit=lambda key, hit: _simple_cache_hit_debug("Torch ControlNet", key, hit),
+                      on_create=lambda key, new: _simple_cache_miss_debug("Torch ControlNet", key, new))
+    def load(self, torch_dtype_fallback, **kwargs) -> diffusers.ControlNetModel:
 
         single_file_load_path = _is_single_file_model_load(self.model)
 
         if single_file_load_path:
-            new_net: ControlNetModel = \
-                ControlNetModel.from_single_file(self.model,
-                                                 revision=self.revision,
-                                                 torch_dtype=torch_dtype_fallback if self.dtype is None else self.dtype,
-                                                 **kwargs)
+            new_net: diffusers.ControlNetModel = \
+                diffusers.ControlNetModel.from_single_file(self.model,
+                                                           revision=self.revision,
+                                                           torch_dtype=torch_dtype_fallback if self.dtype is None else self.dtype,
+                                                           **kwargs)
         else:
-            new_net: ControlNetModel = \
-                ControlNetModel.from_pretrained(self.model,
-                                                revision=self.revision,
-                                                variant=self.variant,
-                                                subfolder=self.subfolder,
-                                                torch_dtype=torch_dtype_fallback if self.dtype is None else self.dtype,
-                                                **kwargs)
+            new_net: diffusers.ControlNetModel = \
+                diffusers.ControlNetModel.from_pretrained(self.model,
+                                                          revision=self.revision,
+                                                          variant=self.variant,
+                                                          subfolder=self.subfolder,
+                                                          torch_dtype=torch_dtype_fallback if self.dtype is None else self.dtype,
+                                                          **kwargs)
         return new_net
 
 
@@ -279,7 +291,7 @@ def parse_torch_control_net_path(path) -> TorchControlNetPath:
             start=start,
             end=end)
 
-    except ConceptPathParseError as e:
+    except _textprocessing.ConceptPathParseError as e:
         raise InvalidControlNetPathError(e)
 
 
@@ -307,7 +319,7 @@ def parse_sdxl_refiner_path(path) -> SDXLRefinerPath:
             variant=r.args.get('variant', None),
             dtype=_get_torch_dtype(dtype),
             subfolder=r.args.get('subfolder', None))
-    except ConceptPathParseError as e:
+    except _textprocessing.ConceptPathParseError as e:
         raise InvalidSDXLRefinerPathError(e)
 
 
@@ -340,7 +352,7 @@ def parse_torch_vae_path(path) -> TorchVAEPath:
                             variant=r.args.get('variant', None),
                             dtype=_get_torch_dtype(dtype),
                             subfolder=r.args.get('subfolder', None))
-    except ConceptPathParseError as e:
+    except _textprocessing.ConceptPathParseError as e:
         raise InvalidVaePathError(e)
 
 
@@ -371,7 +383,7 @@ def parse_flax_vae_path(path) -> FlaxVAEPath:
                            revision=r.args.get('revision', None),
                            dtype=_get_flax_dtype(dtype),
                            subfolder=r.args.get('subfolder', None))
-    except ConceptPathParseError as e:
+    except _textprocessing.ConceptPathParseError as e:
         raise InvalidVaePathError(e)
 
 
@@ -391,7 +403,7 @@ class LoRAPath:
 
     def load_on_pipeline(self, pipeline, **kwargs):
         if hasattr(pipeline, 'load_lora_weights'):
-            messages.debug_log(f'Added LoRA: "{self}" to pipeline: "{pipeline.__class__.__name__}"')
+            _messages.debug_log(f'Added LoRA: "{self}" to pipeline: "{pipeline.__class__.__name__}"')
             pipeline.load_lora_weights(self.model,
                                        revision=self.revision,
                                        subfolder=self.subfolder,
@@ -408,7 +420,7 @@ def parse_lora_path(path) -> LoRAPath:
                         weight_name=r.args.get('weight-name', None),
                         revision=r.args.get('revision', None),
                         subfolder=r.args.get('subfolder', None))
-    except ConceptPathParseError as e:
+    except _textprocessing.ConceptPathParseError as e:
         raise InvalidLoRAPathError(e)
 
 
@@ -427,7 +439,7 @@ class TextualInversionPath:
 
     def load_on_pipeline(self, pipeline, **kwargs):
         if hasattr(pipeline, 'load_textual_inversion'):
-            messages.debug_log(f'Added Textual Inversion: "{self}" to pipeline: "{pipeline.__class__.__name__}"')
+            _messages.debug_log(f'Added Textual Inversion: "{self}" to pipeline: "{pipeline.__class__.__name__}"')
 
             pipeline.load_textual_inversion(self.model,
                                             revision=self.revision,
@@ -444,7 +456,7 @@ def parse_textual_inversion_path(path) -> TextualInversionPath:
                                     weight_name=r.args.get('weight-name', None),
                                     revision=r.args.get('revision', None),
                                     subfolder=r.args.get('subfolder', None))
-    except ConceptPathParseError as e:
+    except _textprocessing.ConceptPathParseError as e:
         raise InvalidTextualInversionPathError(e)
 
 
@@ -476,13 +488,15 @@ def _path_hash_with_parser(parser):
     return hasher
 
 
-@memoize(_TORCH_VAE_CACHE,
-         hasher=lambda args: args_cache_key(args, {'path': _path_hash_with_parser(parse_torch_vae_path)}),
-         on_hit=lambda key, hit: _simple_cache_hit_debug("Torch VAE", key, hit),
-         on_create=lambda key, new: _simple_cache_miss_debug("Torch VAE", key, new))
+@_memoize.memoize(_TORCH_VAE_CACHE,
+                  hasher=lambda args: _memoize.args_cache_key(args,
+                                                              {'path': _path_hash_with_parser(parse_torch_vae_path)}),
+                  on_hit=lambda key, hit: _simple_cache_hit_debug("Torch VAE", key, hit),
+                  on_create=lambda key, new: _simple_cache_miss_debug("Torch VAE", key, new))
 def _load_pytorch_vae(path,
                       torch_dtype_fallback,
-                      use_auth_token) -> typing.Union[AutoencoderKL, AsymmetricAutoencoderKL, AutoencoderTiny]:
+                      use_auth_token) -> typing.Union[
+    diffusers.AutoencoderKL, diffusers.AsymmetricAutoencoderKL, diffusers.AutoencoderTiny]:
     parsed_concept = parse_torch_vae_path(path)
 
     if parsed_concept.dtype is None:
@@ -491,11 +505,11 @@ def _load_pytorch_vae(path,
     encoder_name = parsed_concept.encoder
 
     if encoder_name == 'AutoencoderKL':
-        encoder = AutoencoderKL
+        encoder = diffusers.AutoencoderKL
     elif encoder_name == 'AsymmetricAutoencoderKL':
-        encoder = AsymmetricAutoencoderKL
+        encoder = diffusers.AsymmetricAutoencoderKL
     elif encoder_name == 'AutoencoderTiny':
-        encoder = AutoencoderTiny
+        encoder = diffusers.AutoencoderTiny
     else:
         raise InvalidVaePathError(f'Unknown VAE encoder class {encoder_name}')
 
@@ -512,7 +526,7 @@ def _load_pytorch_vae(path,
         if parsed_concept.subfolder is not None:
             raise NotImplementedError('Single file VAE loads do not support the subfolder option.')
 
-        if encoder is AutoencoderKL:
+        if encoder is diffusers.AutoencoderKL:
             # There is a bug in their cast
             vae = encoder.from_single_file(path, revision=parsed_concept.revision). \
                 to(dtype=parsed_concept.dtype, non_blocking=False)
@@ -531,10 +545,11 @@ def _load_pytorch_vae(path,
     return vae
 
 
-@memoize(_FLAX_VAE_CACHE,
-         hasher=lambda args: args_cache_key(args, {'path': _path_hash_with_parser(parse_flax_vae_path)}),
-         on_hit=lambda key, hit: _simple_cache_hit_debug("Flax VAE", key, hit),
-         on_create=lambda key, new: _simple_cache_miss_debug("Flax VAE", key, new))
+@_memoize.memoize(_FLAX_VAE_CACHE,
+                  hasher=lambda args: _memoize.args_cache_key(args,
+                                                              {'path': _path_hash_with_parser(parse_flax_vae_path)}),
+                  on_hit=lambda key, hit: _simple_cache_hit_debug("Flax VAE", key, hit),
+                  on_create=lambda key, new: _simple_cache_miss_debug("Flax VAE", key, new))
 def _load_flax_vae(path,
                    flax_dtype_fallback,
                    use_auth_token):
@@ -546,7 +561,7 @@ def _load_flax_vae(path,
     encoder_name = parsed_concept.encoder
 
     if encoder_name == 'FlaxAutoencoderKL':
-        encoder = FlaxAutoencoderKL
+        encoder = diffusers.FlaxAutoencoderKL
     else:
         raise InvalidVaePathError(f'Unknown VAE flax encoder class {encoder_name}')
 
@@ -581,14 +596,14 @@ def _load_scheduler(pipeline, model_path, scheduler_name=None):
 
     compatibles = pipeline.scheduler.compatibles
 
-    if isinstance(pipeline, StableDiffusionLatentUpscalePipeline):
+    if isinstance(pipeline, diffusers.StableDiffusionLatentUpscalePipeline):
         # Seems to only work with this scheduler
         compatibles = [c for c in compatibles if c.__name__ == 'EulerDiscreteScheduler']
 
     if _scheduler_is_help(scheduler_name):
-        messages.log(f'Compatible schedulers for "{model_path}" are:\n')
+        _messages.log(f'Compatible schedulers for "{model_path}" are:\n')
         for i in compatibles:
-            messages.log((" " * 4) + quote(i.__name__))
+            _messages.log((" " * 4) + _textprocessing.quote(i.__name__))
         raise SchedulerHelpException()
 
     for i in compatibles:
@@ -598,7 +613,7 @@ def _load_scheduler(pipeline, model_path, scheduler_name=None):
 
     raise InvalidSchedulerName(
         f'Scheduler named "{scheduler_name}" is not a valid compatible scheduler, '
-        f'options are:\n\n{chr(10).join(sorted(" " * 4 + quote(i.__name__.split(".")[-1]) for i in compatibles))}')
+        f'options are:\n\n{chr(10).join(sorted(" " * 4 + _textprocessing.quote(i.__name__.split(".")[-1]) for i in compatibles))}')
 
 
 def clear_model_cache():
@@ -645,8 +660,8 @@ def _set_vae_slicing_tiling(pipeline, vae_tiling, vae_slicing):
     if vae_tiling:
         if has_vae:
             if hasattr(pipeline.vae, 'enable_tiling'):
-                messages.debug_log(f'Enabling VAE tiling on Pipeline: "{pipeline_class.__name__}",',
-                                   f'VAE: "{pipeline.vae.__class__.__name__}"')
+                _messages.debug_log(f'Enabling VAE tiling on Pipeline: "{pipeline_class.__name__}",',
+                                    f'VAE: "{pipeline.vae.__class__.__name__}"')
                 pipeline.vae.enable_tiling()
             else:
                 raise NotImplementedError(
@@ -657,15 +672,15 @@ def _set_vae_slicing_tiling(pipeline, vae_tiling, vae_slicing):
                 '--vae-tiling not supported as no VAE is present for the specified model.')
     elif has_vae:
         if hasattr(pipeline.vae, 'disable_tiling'):
-            messages.debug_log(f'Disabling VAE tiling on Pipeline: "{pipeline_class.__name__}",',
-                               f'VAE: "{pipeline.vae.__class__.__name__}"')
+            _messages.debug_log(f'Disabling VAE tiling on Pipeline: "{pipeline_class.__name__}",',
+                                f'VAE: "{pipeline.vae.__class__.__name__}"')
             pipeline.vae.disable_tiling()
 
     if vae_slicing:
         if has_vae:
             if hasattr(pipeline.vae, 'enable_slicing'):
-                messages.debug_log(f'Enabling VAE slicing on Pipeline: "{pipeline_class.__name__}",',
-                                   f'VAE: "{pipeline.vae.__class__.__name__}"')
+                _messages.debug_log(f'Enabling VAE slicing on Pipeline: "{pipeline_class.__name__}",',
+                                    f'VAE: "{pipeline.vae.__class__.__name__}"')
                 pipeline.vae.enable_slicing()
             else:
                 raise NotImplementedError(
@@ -676,8 +691,8 @@ def _set_vae_slicing_tiling(pipeline, vae_tiling, vae_slicing):
                 '--vae-slicing not supported as no VAE is present for the specified model.')
     elif has_vae:
         if hasattr(pipeline.vae, 'disable_slicing'):
-            messages.debug_log(f'Disabling VAE slicing on Pipeline: "{pipeline_class.__name__}",',
-                               f'VAE: "{pipeline.vae.__class__.__name__}"')
+            _messages.debug_log(f'Disabling VAE slicing on Pipeline: "{pipeline_class.__name__}",',
+                                f'VAE: "{pipeline.vae.__class__.__name__}"')
             pipeline.vae.disable_slicing()
 
 
@@ -705,16 +720,19 @@ def _path_list_hash_with_parser(parser):
     return hasher
 
 
-@memoize(_TORCH_MODEL_CACHE,
-         hasher=lambda args: args_cache_key(args, {'vae_path': _path_hash_with_parser(parse_torch_vae_path),
-                                                   'lora_paths':
-                                                       _path_list_hash_with_parser(parse_lora_path),
-                                                   'textual_inversion_paths':
-                                                       _path_list_hash_with_parser(parse_textual_inversion_path),
-                                                   'control_net_paths':
-                                                       _path_list_hash_with_parser(parse_torch_control_net_path)}),
-         on_hit=lambda key, hit: _simple_cache_hit_debug("Torch Pipeline", key, hit[0]),
-         on_create=lambda key, new: _simple_cache_miss_debug('Torch Pipeline', key, new[0]))
+@_memoize.memoize(_TORCH_MODEL_CACHE,
+                  hasher=lambda args: _memoize.args_cache_key(args,
+                                                              {'vae_path': _path_hash_with_parser(parse_torch_vae_path),
+                                                               'lora_paths':
+                                                                   _path_list_hash_with_parser(parse_lora_path),
+                                                               'textual_inversion_paths':
+                                                                   _path_list_hash_with_parser(
+                                                                       parse_textual_inversion_path),
+                                                               'control_net_paths':
+                                                                   _path_list_hash_with_parser(
+                                                                       parse_torch_control_net_path)}),
+                  on_hit=lambda key, hit: _simple_cache_hit_debug("Torch Pipeline", key, hit[0]),
+                  on_create=lambda key, new: _simple_cache_miss_debug('Torch Pipeline', key, new[0]))
 def _create_torch_diffusion_pipeline(pipeline_type,
                                      model_type,
                                      model_path,
@@ -745,8 +763,8 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                 raise NotImplementedError(
                     '--model-type torch-upscaler-x2 is not compatible with --lora or --textual-inversions.')
 
-        pipeline_class = (StableDiffusionUpscalePipeline if model_type == ModelTypes.TORCH_UPSCALER_X4
-                          else StableDiffusionLatentUpscalePipeline)
+        pipeline_class = (diffusers.StableDiffusionUpscalePipeline if model_type == ModelTypes.TORCH_UPSCALER_X4
+                          else diffusers.StableDiffusionLatentUpscalePipeline)
     else:
         sdxl = model_type_is_sdxl(model_type)
         pix2pix = model_type_is_pix2pix(model_type)
@@ -757,24 +775,24 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                     'pix2pix models only work in img2img mode and cannot work without --image-seeds.')
 
             if control_net_paths:
-                pipeline_class = StableDiffusionXLControlNetPipeline if sdxl else StableDiffusionControlNetPipeline
+                pipeline_class = diffusers.StableDiffusionXLControlNetPipeline if sdxl else diffusers.StableDiffusionControlNetPipeline
             else:
-                pipeline_class = StableDiffusionXLPipeline if sdxl else StableDiffusionPipeline
+                pipeline_class = diffusers.StableDiffusionXLPipeline if sdxl else diffusers.StableDiffusionPipeline
         elif pipeline_type == _PipelineTypes.IMG2IMG:
 
             if pix2pix:
                 if control_net_paths:
                     raise NotImplementedError('pix2pix models are not compatible with --control-nets.')
 
-                pipeline_class = StableDiffusionXLInstructPix2PixPipeline if sdxl else StableDiffusionInstructPix2PixPipeline
+                pipeline_class = diffusers.StableDiffusionXLInstructPix2PixPipeline if sdxl else diffusers.StableDiffusionInstructPix2PixPipeline
             else:
                 if control_net_paths:
                     if sdxl:
-                        pipeline_class = StableDiffusionXLControlNetImg2ImgPipeline
+                        pipeline_class = diffusers.StableDiffusionXLControlNetImg2ImgPipeline
                     else:
-                        pipeline_class = StableDiffusionControlNetImg2ImgPipeline
+                        pipeline_class = diffusers.StableDiffusionControlNetImg2ImgPipeline
                 else:
-                    pipeline_class = StableDiffusionXLImg2ImgPipeline if sdxl else StableDiffusionImg2ImgPipeline
+                    pipeline_class = diffusers.StableDiffusionXLImg2ImgPipeline if sdxl else diffusers.StableDiffusionImg2ImgPipeline
 
         elif pipeline_type == _PipelineTypes.INPAINT:
             if pix2pix:
@@ -783,16 +801,16 @@ def _create_torch_diffusion_pipeline(pipeline_type,
 
             if control_net_paths:
                 if sdxl:
-                    pipeline_class = StableDiffusionXLControlNetInpaintPipeline
+                    pipeline_class = diffusers.StableDiffusionXLControlNetInpaintPipeline
                 else:
-                    pipeline_class = StableDiffusionControlNetInpaintPipeline
+                    pipeline_class = diffusers.StableDiffusionControlNetInpaintPipeline
             else:
-                pipeline_class = StableDiffusionXLInpaintPipeline if sdxl else StableDiffusionInpaintPipeline
+                pipeline_class = diffusers.StableDiffusionXLInpaintPipeline if sdxl else diffusers.StableDiffusionInpaintPipeline
         else:
             # Should be impossible
             raise NotImplementedError('Pipeline type not implemented.')
 
-    messages.debug_log(f'Creating Torch Pipeline: "{pipeline_class.__name__}"')
+    _messages.debug_log(f'Creating Torch Pipeline: "{pipeline_class.__name__}"')
 
     # Block invalid Textual Inversion and LoRA usage
 
@@ -831,8 +849,8 @@ def _create_torch_diffusion_pipeline(pipeline_type,
             creation_kwargs['vae'] = _load_pytorch_vae(vae_path,
                                                        torch_dtype_fallback=torch_dtype,
                                                        use_auth_token=auth_token)
-            messages.debug_log(lambda:
-                               f'Added Torch VAE: "{vae_path}" to pipeline: "{pipeline_class.__name__}"')
+            _messages.debug_log(lambda:
+                                f'Added Torch VAE: "{vae_path}" to pipeline: "{pipeline_class.__name__}"')
 
         if control_net_paths:
             if model_type_is_pix2pix(model_type):
@@ -850,9 +868,9 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                 new_net = parsed_control_net_path.load(use_auth_token=auth_token,
                                                        torch_dtype_fallback=torch_dtype)
 
-                messages.debug_log(lambda:
-                                   f'Added Torch ControlNet: "{control_net_path}" '
-                                   f'to pipeline: "{pipeline_class.__name__}"')
+                _messages.debug_log(lambda:
+                                    f'Added Torch ControlNet: "{control_net_path}" '
+                                    f'to pipeline: "{pipeline_class.__name__}"')
 
                 if control_nets is not None:
                     if not isinstance(control_nets, list):
@@ -919,16 +937,18 @@ def _create_torch_diffusion_pipeline(pipeline_type,
     elif model_cpu_offload and 'cuda' in device:
         pipeline.enable_model_cpu_offload(device=device)
 
-    messages.debug_log(f'Finished Creating Torch Pipeline: "{pipeline_class.__name__}"')
+    _messages.debug_log(f'Finished Creating Torch Pipeline: "{pipeline_class.__name__}"')
     return pipeline, parsed_control_net_paths
 
 
-@memoize(_FLAX_MODEL_CACHE,
-         hasher=lambda args: args_cache_key(args, {'vae_path': _path_hash_with_parser(parse_flax_vae_path),
-                                                   'control_net_paths':
-                                                       _path_list_hash_with_parser(parse_flax_control_net_path)}),
-         on_hit=lambda key, hit: _simple_cache_hit_debug("Flax Pipeline", key, hit[0]),
-         on_create=lambda key, new: _simple_cache_miss_debug('Flax Pipeline', key, new[0]))
+@_memoize.memoize(_FLAX_MODEL_CACHE,
+                  hasher=lambda args: _memoize.args_cache_key(args,
+                                                              {'vae_path': _path_hash_with_parser(parse_flax_vae_path),
+                                                               'control_net_paths':
+                                                                   _path_list_hash_with_parser(
+                                                                       parse_flax_control_net_path)}),
+                  on_hit=lambda key, hit: _simple_cache_hit_debug("Flax Pipeline", key, hit[0]),
+                  on_create=lambda key, new: _simple_cache_miss_debug('Flax Pipeline', key, new[0]))
 def _create_flax_diffusion_pipeline(pipeline_type,
                                     model_path,
                                     revision,
@@ -949,21 +969,21 @@ def _create_flax_diffusion_pipeline(pipeline_type,
 
     if pipeline_type == _PipelineTypes.BASIC:
         if has_control_nets:
-            pipeline_class = FlaxStableDiffusionControlNetPipeline
+            pipeline_class = diffusers.FlaxStableDiffusionControlNetPipeline
         else:
-            pipeline_class = FlaxStableDiffusionPipeline
+            pipeline_class = diffusers.FlaxStableDiffusionPipeline
     elif pipeline_type == _PipelineTypes.IMG2IMG:
         if has_control_nets:
             raise NotImplementedError('Flax does not support img2img mode with --control-nets.')
-        pipeline_class = FlaxStableDiffusionImg2ImgPipeline
+        pipeline_class = diffusers.FlaxStableDiffusionImg2ImgPipeline
     elif pipeline_type == _PipelineTypes.INPAINT:
         if has_control_nets:
             raise NotImplementedError('Flax does not support inpaint mode with --control-nets.')
-        pipeline_class = FlaxStableDiffusionInpaintPipeline
+        pipeline_class = diffusers.FlaxStableDiffusionInpaintPipeline
     else:
         raise NotImplementedError('Pipeline type not implemented.')
 
-    messages.debug_log(f'Creating Flax Pipeline: "{pipeline_class.__name__}"')
+    _messages.debug_log(f'Creating Flax Pipeline: "{pipeline_class.__name__}"')
 
     kwargs = {}
     vae_params = None
@@ -982,8 +1002,8 @@ def _create_flax_diffusion_pipeline(pipeline_type,
                                                   flax_dtype_fallback=flax_dtype,
                                                   use_auth_token=auth_token)
             kwargs['vae'] = vae_path
-            messages.debug_log(lambda:
-                               f'Added Flax VAE: "{vae_path}" to pipeline: "{pipeline_class.__name__}"')
+            _messages.debug_log(lambda:
+                                f'Added Flax VAE: "{vae_path}" to pipeline: "{pipeline_class.__name__}"')
 
         if control_net_paths is not None:
             control_net_path = control_net_paths[0]
@@ -995,9 +1015,9 @@ def _create_flax_diffusion_pipeline(pipeline_type,
             control_net, control_net_params = parse_flax_control_net_path(control_net_path) \
                 .load(use_auth_token=auth_token, flax_dtype_fallback=flax_dtype)
 
-            messages.debug_log(lambda:
-                               f'Added Flax ControlNet: "{control_net_path}" '
-                               f'to pipeline: "{pipeline_class.__name__}"')
+            _messages.debug_log(lambda:
+                                f'Added Flax ControlNet: "{control_net_path}" '
+                                f'to pipeline: "{pipeline_class.__name__}"')
 
             kwargs['controlnet'] = control_net
 
@@ -1024,7 +1044,7 @@ def _create_flax_diffusion_pipeline(pipeline_type,
     if not safety_checker:
         pipeline.safety_checker = None
 
-    messages.debug_log(f'Finished Creating Flax Pipeline: "{pipeline_class.__name__}"')
+    _messages.debug_log(f'Finished Creating Flax Pipeline: "{pipeline_class.__name__}"')
     return pipeline, params, parsed_control_net_paths
 
 
@@ -1106,7 +1126,7 @@ def model_type_is_pix2pix(model_type: typing.Union[ModelTypes, str]):
 
 
 def have_jax_flax():
-    return _have_jax_flax
+    return jax is not None
 
 
 def _get_flax_dtype(dtype):
@@ -1138,7 +1158,7 @@ def _get_torch_dtype(dtype) -> typing.Union[torch.dtype, None]:
 def _image_grid(imgs, rows, cols):
     w, h = imgs[0].size
 
-    grid = Image.new('RGB', size=(cols * w, rows * h))
+    grid = PIL.Image.new('RGB', size=(cols * w, rows * h))
     for i, img in enumerate(imgs):
         grid.paste(img, box=(i % cols * w, i // cols * h))
         img.close()
@@ -1169,7 +1189,7 @@ class PipelineResultWrapper:
 
         config = f'#! dgenerate {__version__}\n\n'
 
-        config += quote(model_path) + ' \\\n'
+        config += _textprocessing.quote(model_path) + ' \\\n'
 
         for opt in opts[:-1]:
             if len(opt) == 2:
@@ -1289,13 +1309,13 @@ class DiffusionPipelineWrapper:
 
     @staticmethod
     def _call_pipeline(pipeline, device, **kwargs):
-        messages.debug_log(f'Calling Pipeline: "{pipeline.__class__.__name__}",',
-                           f'Device: "{device}",',
-                           'Args:',
-                           lambda: debug_format_args(kwargs,
-                                                     value_transformer=lambda key, value:
-                                                     f'torch.Generator(seed={value.initial_seed()})'
-                                                     if isinstance(value, torch.Generator) else value))
+        _messages.debug_log(f'Calling Pipeline: "{pipeline.__class__.__name__}",',
+                            f'Device: "{device}",',
+                            'Args:',
+                            lambda: _textprocessing.debug_format_args(kwargs,
+                                                                      value_transformer=lambda key, value:
+                                                                      f'torch.Generator(seed={value.initial_seed()})'
+                                                                      if isinstance(value, torch.Generator) else value))
 
         if pipeline is DiffusionPipelineWrapper._LAST_CALLED_PIPE:
             return pipeline(**kwargs)
@@ -1450,26 +1470,26 @@ class DiffusionPipelineWrapper:
             if negative_prompt is not None:
                 opts.append(('--prompts', f'"{prompt}; {negative_prompt}"'))
             else:
-                opts.append(('--prompts', quote(prompt)))
+                opts.append(('--prompts', _textprocessing.quote(prompt)))
 
         if sdxl_prompt_2 is not None:
             if sdxl_negative_prompt_2 is not None:
                 opts.append(('--sdxl-second-prompt', f'"{sdxl_prompt_2}; {sdxl_negative_prompt_2}"'))
             else:
-                opts.append(('--sdxl-second-prompt', quote(sdxl_prompt_2)))
+                opts.append(('--sdxl-second-prompt', _textprocessing.quote(sdxl_prompt_2)))
 
         if sdxl_refiner_prompt is not None:
             if sdxl_refiner_negative_prompt is not None:
                 opts.append(('--sdxl-refiner-prompt', f'"{sdxl_refiner_prompt}; {sdxl_refiner_negative_prompt}"'))
             else:
-                opts.append(('--sdxl-refiner-prompt', quote(sdxl_refiner_prompt)))
+                opts.append(('--sdxl-refiner-prompt', _textprocessing.quote(sdxl_refiner_prompt)))
 
         if sdxl_refiner_prompt_2 is not None:
             if sdxl_refiner_negative_prompt_2 is not None:
                 opts.append(
                     ('--sdxl-refiner-second-prompt', f'"{sdxl_refiner_prompt_2}; {sdxl_refiner_negative_prompt_2}"'))
             else:
-                opts.append(('--sdxl-refiner-second-prompt', quote(sdxl_refiner_prompt_2)))
+                opts.append(('--sdxl-refiner-second-prompt', _textprocessing.quote(sdxl_refiner_prompt_2)))
 
         if self._revision is not None:
             opts.append(('--revision', self._revision))
@@ -1478,10 +1498,10 @@ class DiffusionPipelineWrapper:
             opts.append(('--variant', self._variant))
 
         if self._model_subfolder is not None:
-            opts.append(('--subfolder', quote(self._model_subfolder)))
+            opts.append(('--subfolder', _textprocessing.quote(self._model_subfolder)))
 
         if self._vae_path is not None:
-            opts.append(('--vae', quote(self._vae_path)))
+            opts.append(('--vae', _textprocessing.quote(self._vae_path)))
 
         if self._vae_tiling:
             opts.append(['--vae-tiling'])
@@ -1490,25 +1510,26 @@ class DiffusionPipelineWrapper:
             opts.append(['--vae-slicing'])
 
         if self._sdxl_refiner_path is not None:
-            opts.append(('--sdxl-refiner', quote(self._sdxl_refiner_path)))
+            opts.append(('--sdxl-refiner', _textprocessing.quote(self._sdxl_refiner_path)))
 
         if self._lora_paths is not None:
             if isinstance(self._lora_paths, str):
-                opts.append(('--lora', quote(self._lora_paths)))
+                opts.append(('--lora', _textprocessing.quote(self._lora_paths)))
             else:
-                opts.append(('--lora', ' '.join(quote(p) for p in self._lora_paths)))
+                opts.append(('--lora', ' '.join(_textprocessing.quote(p) for p in self._lora_paths)))
 
         if self._textual_inversion_paths is not None:
             if isinstance(self._textual_inversion_paths, str):
-                opts.append(('--textual-inversions', quote(self._textual_inversion_paths)))
+                opts.append(('--textual-inversions', _textprocessing.quote(self._textual_inversion_paths)))
             else:
-                opts.append(('--textual-inversions', ' '.join(quote(p) for p in self._textual_inversion_paths)))
+                opts.append(
+                    ('--textual-inversions', ' '.join(_textprocessing.quote(p) for p in self._textual_inversion_paths)))
 
         if self._control_net_paths is not None:
             if isinstance(self._control_net_paths, str):
-                opts.append(('--control-nets', quote(self._control_net_paths)))
+                opts.append(('--control-nets', _textprocessing.quote(self._control_net_paths)))
             else:
-                opts.append(('--control-nets', ' '.join(quote(p) for p in self._control_net_paths)))
+                opts.append(('--control-nets', ' '.join(_textprocessing.quote(p) for p in self._control_net_paths)))
 
         if self._scheduler is not None:
             opts.append(('--scheduler', self._scheduler))
@@ -1592,10 +1613,10 @@ class DiffusionPipelineWrapper:
                     seed_args.append(f'control={control_image.filename}')
 
                 if not seed_args:
-                    opts.append(('--image-seeds', quote(image.filename)))
+                    opts.append(('--image-seeds', _textprocessing.quote(image.filename)))
                 else:
                     opts.append(('--image-seeds',
-                                 quote(image.filename + ';' + ';'.join(seed_args))))
+                                 _textprocessing.quote(image.filename + ';' + ';'.join(seed_args))))
 
                 if image_seed_strength is not None:
                     opts.append(('--image-seed-strengths', image_seed_strength))
@@ -1604,7 +1625,7 @@ class DiffusionPipelineWrapper:
                     opts.append(('--upscaler-noise-levels', upscaler_noise_level))
         elif control_image is not None:
             if hasattr(control_image, 'filename'):
-                opts.append(('--image-seeds', quote(control_image.filename)))
+                opts.append(('--image-seeds', _textprocessing.quote(control_image.filename)))
 
         return opts
 
@@ -1619,10 +1640,10 @@ class DiffusionPipelineWrapper:
 
             if (strength * inference_steps) < 1.0:
                 strength = 1.0 / inference_steps
-                messages.log(
+                _messages.log(
                     f'WARNING: image-seed-strength * inference-steps '
                     f'was calculated at < 1, image-seed-strength defaulting to (1.0 / inference-steps): {strength}',
-                    level=messages.WARNING)
+                    level=_messages.WARNING)
 
             args['strength'] = strength
 
@@ -1693,7 +1714,7 @@ class DiffusionPipelineWrapper:
     def _call_flax_control_net(self, default_args, user_args):
         device_count = jax.device_count()
 
-        pipe: FlaxStableDiffusionControlNetPipeline = self._pipeline
+        pipe: diffusers.FlaxStableDiffusionControlNetPipeline = self._pipeline
 
         default_args['prng_seed'] = jax.random.split(jax.random.PRNGKey(user_args.get('seed', 0)), device_count)
         prompt_ids = pipe.prepare_text_inputs([user_args.get('prompt', '')] * device_count)
@@ -1707,10 +1728,10 @@ class DiffusionPipelineWrapper:
         processed_image = pipe.prepare_image_inputs([default_args.get('image')] * device_count)
         default_args.pop('image')
 
-        p_params = replicate(self._flax_params)
-        prompt_ids = shard(prompt_ids)
-        negative_prompt_ids = shard(negative_prompt_ids)
-        processed_image = shard(processed_image)
+        p_params = _flax_replicate(self._flax_params)
+        prompt_ids = _flax_shard(prompt_ids)
+        negative_prompt_ids = _flax_shard(negative_prompt_ids)
+        processed_image = _flax_shard(processed_image)
 
         default_args.pop('width', None)
         default_args.pop('height', None)
@@ -1761,7 +1782,7 @@ class DiffusionPipelineWrapper:
         negative_prompt = user_args.get('negative_prompt', None)
 
         if negative_prompt is not None:
-            negative_prompt_ids = shard(
+            negative_prompt_ids = _flax_shard(
                 self._flax_prepare_text_input([negative_prompt] * device_count))
         else:
             negative_prompt_ids = None
@@ -1774,8 +1795,8 @@ class DiffusionPipelineWrapper:
                                                   image=[default_args['image']] * device_count,
                                                   mask=[default_args['mask_image']] * device_count)
 
-                default_args['masked_image'] = shard(processed_images)
-                default_args['mask'] = shard(processed_masks)
+                default_args['masked_image'] = _flax_shard(processed_images)
+                default_args['mask'] = _flax_shard(processed_masks)
 
                 # inpainting pipeline does not have a strength argument, simply ignore it
                 default_args.pop('strength')
@@ -1786,7 +1807,7 @@ class DiffusionPipelineWrapper:
                 prompt_ids, processed_images = self._pipeline.prepare_inputs(
                     prompt=[user_args.get('prompt', '')] * device_count,
                     image=[default_args['image']] * device_count)
-                default_args['image'] = shard(processed_images)
+                default_args['image'] = _flax_shard(processed_images)
 
             default_args['width'] = processed_images[0].shape[2]
             default_args['height'] = processed_images[0].shape[1]
@@ -1796,14 +1817,15 @@ class DiffusionPipelineWrapper:
         images = DiffusionPipelineWrapper._call_pipeline(
             pipeline=self._pipeline,
             device=self._device,
-            prompt_ids=shard(prompt_ids),
+            prompt_ids=_flax_shard(prompt_ids),
             neg_prompt_ids=negative_prompt_ids,
-            params=replicate(self._flax_params),
+            params=_flax_replicate(self._flax_params),
             **default_args, jit=True)[0]
 
         return PipelineResultWrapper(
-            _image_grid(self._pipeline.numpy_to_pil(images.reshape((images.shape[0],) + images.shape[-3:])),
-                        device_count, 1))
+            _image_grid(self._pipeline.numpy_to_pil(
+                images.reshape((images.shape[0],) + images.shape[-3:])),
+                device_count, 1))
 
     def _get_non_universal_pipeline_arg(self,
                                         pipeline,
@@ -1838,7 +1860,7 @@ class DiffusionPipelineWrapper:
     def _get_sdxl_conditioning_args(self, pipeline, default_args, user_args, user_prefix=None):
         if user_prefix:
             user_prefix += '_'
-            option_prefix = dashup(user_prefix)
+            option_prefix = _textprocessing.dashup(user_prefix)
         else:
             user_prefix = ''
             option_prefix = ''
@@ -1916,14 +1938,14 @@ class DiffusionPipelineWrapper:
         default_args['prompt'] = user_args.get('prompt', '')
         default_args['negative_prompt'] = user_args.get('negative_prompt', None)
 
-        if isinstance(self._pipeline, StableDiffusionInpaintPipelineLegacy):
+        if isinstance(self._pipeline, diffusers.StableDiffusionInpaintPipelineLegacy):
             # Not necessary, will cause an error
             default_args.pop('width')
             default_args.pop('height')
 
         has_control_net = hasattr(self._pipeline, 'controlnet')
         sd_edit = has_control_net or isinstance(self._pipeline,
-                                                StableDiffusionXLInpaintPipeline)
+                                                diffusers.StableDiffusionXLInpaintPipeline)
 
         if has_control_net:
             default_args['controlnet_conditioning_scale'] = \
@@ -1959,10 +1981,10 @@ class DiffusionPipelineWrapper:
 
         default_args['image'] = image
 
-        if not isinstance(self._sdxl_refiner_pipeline, StableDiffusionXLInpaintPipeline):
+        if not isinstance(self._sdxl_refiner_pipeline, diffusers.StableDiffusionXLInpaintPipeline):
             # Width / Height not necessary for any other refiner
-            if not (isinstance(self._pipeline, StableDiffusionXLImg2ImgPipeline) and
-                    isinstance(self._sdxl_refiner_pipeline, StableDiffusionXLImg2ImgPipeline)):
+            if not (isinstance(self._pipeline, diffusers.StableDiffusionXLImg2ImgPipeline) and
+                    isinstance(self._sdxl_refiner_pipeline, diffusers.StableDiffusionXLImg2ImgPipeline)):
                 # Width / Height does not get passed to img2img
                 default_args.pop('width')
                 default_args.pop('height')
@@ -2028,21 +2050,21 @@ class DiffusionPipelineWrapper:
 
             if strength <= 0.0:
                 strength = 0.2
-                messages.log(f'WARNING: Refiner edit mode image seed strength (1.0 - high-noise-fraction) '
-                             f'was calculated at <= 0.0, defaulting to {strength}',
-                             level=messages.WARNING)
+                _messages.log(f'WARNING: Refiner edit mode image seed strength (1.0 - high-noise-fraction) '
+                              f'was calculated at <= 0.0, defaulting to {strength}',
+                              level=_messages.WARNING)
             else:
-                messages.log(f'Running refiner in edit mode with '
-                             f'refiner image seed strength = {strength}, IE: (1.0 - high-noise-fraction)')
+                _messages.log(f'Running refiner in edit mode with '
+                              f'refiner image seed strength = {strength}, IE: (1.0 - high-noise-fraction)')
 
             inference_steps = default_args.get('num_inference_steps')
 
             if (strength * inference_steps) < 1.0:
                 strength = 1.0 / inference_steps
-                messages.log(
+                _messages.log(
                     f'WARNING: Refiner edit mode image seed strength (1.0 - high-noise-fraction) * inference-steps '
                     f'was calculated at < 1, defaulting to (1.0 / inference-steps): {strength}',
-                    level=messages.WARNING)
+                    level=_messages.WARNING)
 
             default_args['strength'] = strength
 
@@ -2186,8 +2208,8 @@ class DiffusionPipelineWrapper:
 
         default_args = self._pipeline_defaults(kwargs)
 
-        messages.debug_log(f'Calling Pipeline Wrapper: "{self}",'
-                           '\nCalled with User Args: ', lambda: debug_format_args(kwargs))
+        _messages.debug_log(f'Calling Pipeline Wrapper: "{self}",'
+                            '\nCalled with User Args: ', lambda: _textprocessing.debug_format_args(kwargs))
 
         if self._model_type == ModelTypes.FLAX:
             result = self._call_flax(default_args, kwargs)
