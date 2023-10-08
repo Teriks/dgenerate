@@ -20,11 +20,11 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import PIL.Image
+import controlnet_aux as _cna
+import controlnet_aux.open_pose as _cna_open_pose
+import controlnet_aux.util as _cna_util
 import cv2
-import numpy as np
-from controlnet_aux import OpenposeDetector
-from controlnet_aux.open_pose import draw_poses
-from controlnet_aux.util import HWC3
+import numpy
 
 from .preprocessor import ImagePreprocessor
 
@@ -49,7 +49,7 @@ class OpenPosePreprocess(ImagePreprocessor):
 
         super().__init__(**kwargs)
 
-        self._openpose = OpenposeDetector.from_pretrained('lllyasviel/Annotators')
+        self._openpose = _cna.OpenposeDetector.from_pretrained('lllyasviel/Annotators')
         self._openpose.to(self.device)
         self._include_body = self.get_bool_arg("include-body", include_body)
         self._include_hand = self.get_bool_arg("include-hand", include_hand)
@@ -67,7 +67,7 @@ class OpenPosePreprocess(ImagePreprocessor):
 
     def _process(self, image: PIL.Image):
 
-        input_image = HWC3(np.array(image, dtype=np.uint8))
+        input_image = _cna_util.HWC3(numpy.array(image, dtype=numpy.uint8))
 
         height, width = input_image.shape[:2]
 
@@ -75,13 +75,13 @@ class OpenPosePreprocess(ImagePreprocessor):
                                             self._include_hand,
                                             self._include_face)
 
-        canvas = draw_poses(poses, height, width,
-                            draw_body=self._include_body,
-                            draw_hand=self._include_hand,
-                            draw_face=self._include_face)
+        canvas = _cna_open_pose.draw_poses(poses, height, width,
+                                           draw_body=self._include_body,
+                                           draw_hand=self._include_hand,
+                                           draw_face=self._include_face)
 
         detected_map = canvas
-        detected_map = HWC3(detected_map)
+        detected_map = _cna_util.HWC3(detected_map)
 
         detected_map = cv2.resize(detected_map, (width, height), interpolation=cv2.INTER_LINEAR)
 

@@ -23,10 +23,10 @@ import typing
 import PIL.Image
 import PIL.ImageOps
 
-from .preprocessor import ImagePreprocessor
+import dgenerate.preprocessors.preprocessor as _preprocessor
 
 
-class MirrorFlipPreprocess(ImagePreprocessor):
+class MirrorFlipPreprocess(_preprocessor.ImagePreprocessor):
     NAMES = ['mirror', 'flip']
 
     @staticmethod
@@ -54,7 +54,7 @@ class MirrorFlipPreprocess(ImagePreprocessor):
         return image
 
 
-class SimpleColorPreprocess(ImagePreprocessor):
+class SimpleColorPreprocess(_preprocessor.ImagePreprocessor):
     NAMES = ['grayscale', 'invert']
 
     @staticmethod
@@ -81,7 +81,7 @@ class SimpleColorPreprocess(ImagePreprocessor):
         return self._func(image)
 
 
-class PosterizePreprocess(ImagePreprocessor):
+class PosterizePreprocess(_preprocessor.ImagePreprocessor):
     """
     Posterize the input image with PIL.ImageOps.posterize
     """
@@ -104,7 +104,7 @@ class PosterizePreprocess(ImagePreprocessor):
         return image
 
 
-class SolarizePreprocess(ImagePreprocessor):
+class SolarizePreprocess(_preprocessor.ImagePreprocessor):
     """
     Solarize the input image with PIL.ImageOps.solarize
     """

@@ -20,7 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import sys
 
-from .textprocessing import underline
+import dgenerate.textprocessing as _textprocessing
 
 LEVEL = 0
 
@@ -41,7 +41,7 @@ def log(*args, **kwargs):
             file = sys.stderr
 
     if underline_me:
-        print(underline(' '.join(str(a) for a in args)), file=file)
+        print(_textprocessing.underline(' '.join(str(a) for a in args)), file=file)
     else:
         print(' '.join(str(a) for a in args), file=file)
 

@@ -23,22 +23,14 @@ import argparse
 import os
 import random
 import sys
-from importlib.machinery import SourceFileLoader
 
-from diffusers.schedulers import KarrasDiffusionSchedulers
+import diffusers.schedulers
 
-from . import __version__
-from . import messages
-from .diffusionloop import is_valid_device_string, InvalidDeviceOrdinalException
-from .mediaoutput import supported_animation_writer_formats
-from .pipelinewrappers import supported_model_type_strings, have_jax_flax, get_model_type_enum, model_type_is_upscaler, \
-    model_type_is_pix2pix, model_type_is_sdxl, model_type_is_torch, DEFAULT_IMAGE_SEED_STRENGTH, \
-    DEFAULT_SDXL_HIGH_NOISE_FRACTION, DEFAULT_IMAGE_GUIDANCE_SCALE, \
-    DEFAULT_X4_UPSCALER_NOISE_LEVEL, DEFAULT_GUIDANCE_SCALE, DEFAULT_INFERENCE_STEPS
-from .textprocessing import oxford_comma
-
-if have_jax_flax():
-    from diffusers.schedulers import FlaxKarrasDiffusionSchedulers
+import dgenerate
+import dgenerate.mediaoutput as _mediaoutput
+import dgenerate.messages as _messages
+import dgenerate.pipelinewrapper as _pipelinewrapper
+import dgenerate.textprocessing as _textprocessing
 
 parser = argparse.ArgumentParser(
     prog='dgenerate',
@@ -52,30 +44,10 @@ parser.add_argument('model_path', action='store',
 parser.add_argument('-v', '--verbose', action='store_true', default=False,
                     help="""Output information useful for debugging, such as pipeline call and model load parameters.""")
 
-parser.add_argument('--version', action='version', version=f"dgenerate v{__version__}",
+parser.add_argument('--version', action='version', version=f"dgenerate v{dgenerate.__version__}",
                     help="Show dgenerate's version and exit")
 
-__PLUGIN_COUNTER = -1
-
-
-def _type_plugin_modules(value):
-    global __PLUGIN_COUNTER
-    try:
-        __PLUGIN_COUNTER += 1
-        name, ext = os.path.splitext(value)
-        module_name = f'dgenerate_plugin_{__PLUGIN_COUNTER}'
-
-        if ext:
-            return SourceFileLoader(module_name, value).load_module()
-        else:
-            return SourceFileLoader(module_name,
-                                    os.path.join(value, '__init__.py')).load_module()
-    except Exception as e:
-        raise argparse.ArgumentTypeError(
-            f'Could not load plugin module "{value}". Reason: {e.__class__.__name__}: "{e}"')
-
-
-parser.add_argument('--plugin-modules', action='store', default=[], nargs="+", type=_type_plugin_modules,
+parser.add_argument('--plugin-modules', action='store', default=[], nargs="+",
                     metavar="PATH",
                     help="""Specify one or more plugin module folder paths (folder containing __init__.py) or 
                     python .py file paths to load as plugins. Plugin modules can currently only implement 
@@ -84,10 +56,10 @@ parser.add_argument('--plugin-modules', action='store', default=[], nargs="+", t
 
 def _from_model_type(val):
     val = val.lower()
-    if val not in supported_model_type_strings():
+    if val not in _pipelinewrapper.supported_model_type_strings():
         raise argparse.ArgumentTypeError(
-            f'Must be one of: {oxford_comma(supported_model_type_strings(), "or")}. Unknown value: {val}')
-    return get_model_type_enum(val)
+            f'Must be one of: {_textprocessing.oxford_comma(_pipelinewrapper.supported_model_type_strings(), "or")}. Unknown value: {val}')
+    return _pipelinewrapper.get_model_type_enum(val)
 
 
 def _type_dtype(dtype):
@@ -137,7 +109,7 @@ def _type_guidance_scale(val):
 
 parser.add_argument('--model-type', action='store', default='torch', type=_from_model_type,
                     help=f"""Use when loading different model types. 
-                         Currently supported: {oxford_comma(supported_model_type_strings(), "or")}. (default: torch)""")
+                         Currently supported: {_textprocessing.oxford_comma(_pipelinewrapper.supported_model_type_strings(), "or")}. (default: torch)""")
 
 parser.add_argument('--revision', action='store', default="main", metavar="BRANCH",
                     help="""The model revision to use when loading from a huggingface repository,
@@ -148,7 +120,7 @@ parser.add_argument('--variant', action='store', default=None,
                          from "variant" filename, e.g. "pytorch_model.<variant>.safetensors".
                          Defaults to automatic selection. This option is ignored if using flax.""")
 
-parser.add_argument('--subfolder', action='store', default=None,
+parser.add_argument('--subfolder', action='store', default=None, dest='model_subfolder',
                     help="""Main model subfolder.
                          If specified when loading from a huggingface repository or folder,
                          load weights from the specified subfolder.""")
@@ -158,7 +130,7 @@ parser.add_argument('--auth-token', action='store', default=None, metavar="TOKEN
                          Required to download restricted repositories that have access permissions
                          granted to your huggingface account.""")
 
-parser.add_argument('--vae', action='store', default=None, metavar="MODEL_PATH",
+parser.add_argument('--vae', action='store', default=None, metavar="MODEL_PATH", dest='vae_path',
                     help=
                     """Specify a VAE. When using torch models the syntax is: 
                     "AutoEncoderClass;model=(huggingface repository slug/blob link or file/folder path)".
@@ -220,7 +192,7 @@ parser.add_argument('--vae-slicing', action='store_true', default=False,
                     Note that if you are using --control-nets you may still run into memory 
                     issues generating large images.""")
 
-parser.add_argument('--lora', '--loras', action='store', default=None, metavar="MODEL_PATH",
+parser.add_argument('--lora', '--loras', action='store', default=None, metavar="MODEL_PATH", dest='lora_paths',
                     help=
                     """Specify a LoRA model (flax not supported). This should be a
                     huggingface repository slug, path to model file on disk (for example, a .pt, .pth, .bin,
@@ -250,6 +222,7 @@ parser.add_argument('--lora', '--loras', action='store', default=None, metavar="
                     all other loading arguments are unused in this case and may produce an error message if used.""")
 
 parser.add_argument('--textual-inversions', nargs='+', action='store', default=None, metavar="MODEL_PATH",
+                    dest='textual_inversion_paths',
                     help=
                     """Specify one or more Textual Inversion models (flax and SDXL not supported). This should be a
                     huggingface repository slug, path to model file on disk (for example, a .pt, .pth, .bin,
@@ -277,6 +250,7 @@ parser.add_argument('--textual-inversions', nargs='+', action='store', default=N
                     are unused in this case and may produce an error message if used.""")
 
 parser.add_argument('--control-nets', nargs='+', action='store', default=None, metavar="MODEL_PATH",
+                    dest='control_net_paths',
                     help=
                     """Specify one or more ControlNet models. This should be a
                     huggingface repository slug / blob link, path to model file on disk (for example, a .pt, .pth, .bin,
@@ -328,14 +302,18 @@ parser.add_argument('--control-nets', nargs='+', action='store', default=None, m
                     the revision argument may be used with this syntax.
                     """)
 
-parser.add_argument('--scheduler', action='store', default=None, metavar="SCHEDULER_NAME",
-                    help=f'Specify a scheduler (sampler) by name. Passing "help" to this argument '
-                         f'will print the compatible schedulers for a model without generating any images. '
-                         f'Torch schedulers: ({", ".join(e.name for e in KarrasDiffusionSchedulers)}). ' +
-                         (
-                             f'Flax schedulers: ({", ".join(e.name for e in FlaxKarrasDiffusionSchedulers)})' if have_jax_flax() else ''))
+_flax_scheduler_help_part = \
+    f' Flax schedulers: ({", ".join(e.name for e in diffusers.schedulers.FlaxKarrasDiffusionSchedulers)})' \
+        if _pipelinewrapper.have_jax_flax() else ''
 
-parser.add_argument('--sdxl-refiner', action='store', default=None, metavar="MODEL_PATH",
+parser.add_argument('--scheduler', action='store', default=None, metavar="SCHEDULER_NAME",
+                    help=
+                    f'Specify a scheduler (sampler) by name. Passing "help" to this argument '
+                    f'will print the compatible schedulers for a model without generating any images. '
+                    f'Torch schedulers: ({", ".join(e.name for e in diffusers.schedulers.KarrasDiffusionSchedulers)}).'
+                    + _flax_scheduler_help_part)
+
+parser.add_argument('--sdxl-refiner', action='store', default=None, metavar="MODEL_PATH", dest='sdxl_refiner_path',
                     help="""Stable Diffusion XL (torch-sdxl) refiner model path. This should be a
                     huggingface repository slug / blob link, path to model file on disk (for example, a .pt, .pth, .bin,
                     .ckpt, or .safetensors file), or model folder containing model files. 
@@ -578,9 +556,9 @@ parser.add_argument('--safety-checker', action='store_true', default=False,
 
 def _type_device(device):
     try:
-        if not is_valid_device_string(device):
+        if not _pipelinewrapper.is_valid_device_string(device):
             raise argparse.ArgumentTypeError(f'Must be cuda or cpu. Unknown value: {device}')
-    except InvalidDeviceOrdinalException as e:
+    except _pipelinewrapper.InvalidDeviceOrdinalException as e:
         raise argparse.ArgumentTypeError(e)
 
     return device
@@ -676,16 +654,16 @@ seed_options.add_argument('-gse', '--gen-seeds', action='store', default=None, t
 
 def _type_animation_format(val):
     val = val.lower()
-    if val not in supported_animation_writer_formats():
+    if val not in _mediaoutput.supported_animation_writer_formats():
         raise argparse.ArgumentTypeError(
-            f'Must be {oxford_comma(supported_animation_writer_formats(), "or")}. Unknown value: {val}')
+            f'Must be {_textprocessing.oxford_comma(_mediaoutput.supported_animation_writer_formats(), "or")}. Unknown value: {val}')
     return val
 
 
 parser.add_argument('-af', '--animation-format', action='store', default='mp4', type=_type_animation_format,
                     metavar="FORMAT",
                     help=f"""Output format when generating an animation from an input video / gif / webp etc.
-                         Value must be one of: {oxford_comma(supported_animation_writer_formats(), "or")}.
+                         Value must be one of: {_textprocessing.oxford_comma(_mediaoutput.supported_animation_writer_formats(), "or")}.
                          (default: mp4)""")
 
 
@@ -812,7 +790,7 @@ image_seed_noise_opts.add_argument('-uns', '--upscaler-noise-levels', action='st
                     (similar to --image-seed-strength). (default: [20])""")
 
 parser.add_argument('-gs', '--guidance-scales', action='store', nargs='+',
-                    default=[DEFAULT_GUIDANCE_SCALE],
+                    default=[_pipelinewrapper.DEFAULT_GUIDANCE_SCALE],
                     metavar="FLOAT",
                     type=_type_guidance_scale,
                     help="""List of guidance scales to try. Guidance scale effects how much your
@@ -854,7 +832,8 @@ parser.add_argument('-gr', '--guidance-rescales', action='store', nargs='+', def
                             It is supported for --model-type "torch-sdxl-pix2pix" but not --model-type "torch-pix2pix".
                             (default: [0.0])""")
 
-parser.add_argument('-ifs', '--inference-steps', action='store', nargs='+', default=[DEFAULT_INFERENCE_STEPS],
+parser.add_argument('-ifs', '--inference-steps', action='store', nargs='+',
+                    default=[_pipelinewrapper.DEFAULT_INFERENCE_STEPS],
                     type=_type_inference_steps,
                     metavar="INTEGER",
                     help="""Lists of inference steps values to try. The amount of inference (de-noising) steps
@@ -879,68 +858,68 @@ def parse_args(args=None, namespace=None):
         args.seeds = [random.randint(0, 99999999999999)]
 
     if args.output_size is None and not args.image_seeds:
-        args.output_size = (512, 512) if not model_type_is_sdxl(args.model_type) else (1024, 1024)
+        args.output_size = (512, 512) if not _pipelinewrapper.model_type_is_sdxl(args.model_type) else (1024, 1024)
 
     if not args.image_seeds and args.image_seed_strengths:
-        messages.log('dgenerate: error: You cannot specify --image-seed-strengths without --image-seeds.',
-                     level=messages.ERROR)
+        _messages.log('dgenerate: error: You cannot specify --image-seed-strengths without --image-seeds.',
+                      level=_messages.ERROR)
         sys.exit(1)
 
-    if not model_type_is_upscaler(args.model_type):
+    if not _pipelinewrapper.model_type_is_upscaler(args.model_type):
         if args.upscaler_noise_levels:
-            messages.log(
+            _messages.log(
                 'dgenerate: error: You cannot specify --upscaler-noise-levels for a '
                 'non upscaler model type, see --model-type.',
-                level=messages.ERROR)
+                level=_messages.ERROR)
             sys.exit(1)
-    elif args.control_nets:
-        messages.log(
+    elif args.control_net_paths:
+        _messages.log(
             'dgenerate: error: Argument --control-nets is not compatible '
             'with upscaler models, see --model-type.',
-            level=messages.ERROR)
+            level=_messages.ERROR)
         sys.exit(1)
     elif args.upscaler_noise_levels is None:
-        args.upscaler_noise_levels = [DEFAULT_X4_UPSCALER_NOISE_LEVEL]
+        args.upscaler_noise_levels = [_pipelinewrapper.DEFAULT_X4_UPSCALER_NOISE_LEVEL]
 
-    if not model_type_is_pix2pix(args.model_type):
+    if not _pipelinewrapper.model_type_is_pix2pix(args.model_type):
         if args.image_guidance_scales:
-            messages.log(
+            _messages.log(
                 'dgenerate: error: argument --image-guidance-scales only valid with '
                 'pix2pix models, see --model-type.',
-                level=messages.ERROR)
+                level=_messages.ERROR)
             sys.exit(1)
-    elif args.control_nets:
-        messages.log(
+    elif args.control_net_paths:
+        _messages.log(
             'dgenerate: error: argument --control-nets '
             'is not compatible with pix2pix models, see --model-type.',
-            level=messages.ERROR)
+            level=_messages.ERROR)
         sys.exit(1)
     elif not args.image_guidance_scales:
-        args.image_guidance_scales = [DEFAULT_IMAGE_GUIDANCE_SCALE]
+        args.image_guidance_scales = [_pipelinewrapper.DEFAULT_IMAGE_GUIDANCE_SCALE]
 
     if args.control_image_preprocessors:
         if not args.image_seeds:
-            messages.log(f'dgenerate: error: You cannot specify --control-image-preprocessors '
-                         f'without --image-seeds.')
+            _messages.log(f'dgenerate: error: You cannot specify --control-image-preprocessors '
+                          f'without --image-seeds.')
             sys.exit(1)
 
     if not args.image_seeds:
         invalid_arg = False
         for preprocessor_args in args_that_end_with('preprocessors'):
-            messages.log(f'dgenerate: error: You cannot specify --{preprocessor_args.replace("_", "-")} '
-                         f'without --image-seeds.',
-                         level=messages.ERROR)
+            _messages.log(f'dgenerate: error: You cannot specify --{preprocessor_args.replace("_", "-")} '
+                          f'without --image-seeds.',
+                          level=_messages.ERROR)
             invalid_arg = True
 
         if invalid_arg:
             sys.exit(1)
 
-    if not model_type_is_sdxl(args.model_type):
+    if not _pipelinewrapper.model_type_is_sdxl(args.model_type):
         invalid_arg = False
         for sdxl_args in args_that_start_with('sdxl'):
-            messages.log(f'dgenerate: error: You cannot specify --{sdxl_args.replace("_", "-")} '
-                         f'for a non SDXL model type, see --model-type.',
-                         level=messages.ERROR)
+            _messages.log(f'dgenerate: error: You cannot specify --{sdxl_args.replace("_", "-")} '
+                          f'for a non SDXL model type, see --model-type.',
+                          level=_messages.ERROR)
             invalid_arg = True
 
         if invalid_arg:
@@ -951,41 +930,41 @@ def parse_args(args=None, namespace=None):
         if not args.sdxl_refiner:
             invalid_arg = False
             for sdxl_args in args_that_start_with('sdxl_refiner'):
-                messages.log(f'dgenerate: error: You cannot specify --{sdxl_args.replace("_", "-")} '
-                             f'without --sdxl-refiner.',
-                             level=messages.ERROR)
+                _messages.log(f'dgenerate: error: You cannot specify --{sdxl_args.replace("_", "-")} '
+                              f'without --sdxl-refiner.',
+                              level=_messages.ERROR)
                 invalid_arg = True
             if invalid_arg:
                 sys.exit(1)
         else:
             if args.sdxl_high_noise_fractions is None:
                 # Default value
-                args.sdxl_high_noise_fractions = [DEFAULT_SDXL_HIGH_NOISE_FRACTION]
+                args.sdxl_high_noise_fractions = [_pipelinewrapper.DEFAULT_SDXL_HIGH_NOISE_FRACTION]
 
-    if not model_type_is_torch(args.model_type):
+    if not _pipelinewrapper.model_type_is_torch(args.model_type):
         if args.vae_tiling or args.vae_slicing:
-            messages.log(
+            _messages.log(
                 'dgenerate: error: argument --vae-tiling/--vae-slicing not supported for '
-                'non torch model type, see --model-type.', level=messages.ERROR)
+                'non torch model type, see --model-type.', level=_messages.ERROR)
             sys.exit(1)
 
     if args.scheduler == 'help' and args.sdxl_refiner_scheduler == 'help':
-        messages.log(
+        _messages.log(
             'dgenerate: error: Cannot list compatible schedulers for the main model and the SDXL refiner at '
             'the same time. Do not use the scheduler "help" option for --scheduler '
-            'and --sdxl-refiner-scheduler simultaneously.', level=messages.ERROR)
+            'and --sdxl-refiner-scheduler simultaneously.', level=_messages.ERROR)
         sys.exit(1)
 
     if args.image_preprocessor_help is not None:
         # This argument is actually handled elsewhere before the main args get parsed
-        messages.log(
-            'dgenerate: error: argument --image-preprocessor-help may only be used by itself.', level=messages.ERROR)
+        _messages.log(
+            'dgenerate: error: argument --image-preprocessor-help may only be used by itself.', level=_messages.ERROR)
         sys.exit(1)
 
     if args.image_seeds:
         if args.image_seed_strengths is None:
             # Default value
-            args.image_seed_strengths = [DEFAULT_IMAGE_SEED_STRENGTH]
+            args.image_seed_strengths = [_pipelinewrapper.DEFAULT_IMAGE_SEED_STRENGTH]
     else:
         args.image_seed_strengths = []
 

@@ -26,11 +26,11 @@ import cv2
 import numpy
 import numpy as np
 
-from .preprocessor import ImagePreprocessor
-from .. import messages
+import dgenerate.messages as _messages
+import dgenerate.preprocessors.preprocessor as _preprocessor
 
 
-class CannyEdgeDetectPreprocess(ImagePreprocessor):
+class CannyEdgeDetectPreprocess(_preprocessor.ImagePreprocessor):
     """
     Process the input image with the Canny edge detection algorithm for use with a ControlNet.
     The "lower" argument indicates the lower threshold value for the algorithm, and the "upper"
@@ -128,8 +128,8 @@ class CannyEdgeDetectPreprocess(ImagePreprocessor):
             elif self._threshold_algo == 'median':
                 lower, upper = self._get_range(np.median(cv_img))
 
-        messages.debug_log(f'Canny Processing with: lower {lower}, upper {upper}, '
-                           f'aperature-size {self._aperture_size}, L2gradient {self._L2_gradient}')
+        _messages.debug_log(f'Canny Processing with: lower {lower}, upper {upper}, '
+                            f'aperature-size {self._aperture_size}, L2gradient {self._L2_gradient}')
 
         edges = cv2.Canny(cv_img, lower, upper,
                           apertureSize=self._aperture_size,

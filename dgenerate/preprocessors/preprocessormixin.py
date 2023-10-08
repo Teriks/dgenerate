@@ -18,9 +18,9 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-from . import ImagePreprocessor
-from .. import messages
-from ..image import resize_image, resize_image_calc
+import dgenerate.image as _d_image
+import dgenerate.messages as _messages
+import dgenerate.preprocessors.preprocessor as _preprocessor
 
 
 class ImagePreprocessorMixin:
@@ -30,25 +30,25 @@ class ImagePreprocessorMixin:
 
     def _preprocess_pre_resize(self, image, resize_resolution):
         if self._preprocessor is not None:
-            messages.debug_log('Starting Image Preprocess - '
-                               f'{self._preprocessor}.pre_resize('
-                               f'image="{image.filename}", resize_resolution={resize_resolution})')
+            _messages.debug_log('Starting Image Preprocess - '
+                                f'{self._preprocessor}.pre_resize('
+                                f'image="{image.filename}", resize_resolution={resize_resolution})')
 
-            processed = ImagePreprocessor.call_pre_resize(self._preprocessor, image, resize_resolution)
+            processed = _preprocessor.ImagePreprocessor.call_pre_resize(self._preprocessor, image, resize_resolution)
 
-            messages.debug_log(f'Finished Image Preprocess - {self._preprocessor}.pre_resize')
+            _messages.debug_log(f'Finished Image Preprocess - {self._preprocessor}.pre_resize')
             return processed
         return image
 
     def _preprocess_post_resize(self, image):
         if self._preprocessor is not None:
-            messages.debug_log('Starting Image Preprocess - '
-                               f'{self._preprocessor}.post_resize('
-                               f'image="{image.filename}")')
+            _messages.debug_log('Starting Image Preprocess - '
+                                f'{self._preprocessor}.post_resize('
+                                f'image="{image.filename}")')
 
-            processed = ImagePreprocessor.call_post_resize(self._preprocessor, image)
+            processed = _preprocessor.ImagePreprocessor.call_post_resize(self._preprocessor, image)
 
-            messages.debug_log(f'Finished Image Preprocess - {self._preprocessor}.post_resize')
+            _messages.debug_log(f'Finished Image Preprocess - {self._preprocessor}.post_resize')
             return processed
         return image
 
@@ -56,8 +56,8 @@ class ImagePreprocessorMixin:
 
         # This is the actual size it will end
         # up being resized to by resize_image
-        calculate_new_size = resize_image_calc(old_size=image.size,
-                                               new_size=resize_to)
+        calculate_new_size = _d_image.resize_image_calc(old_size=image.size,
+                                                        new_size=resize_to)
 
         pre_processed = self._preprocess_pre_resize(image,
                                                     calculate_new_size)
@@ -68,7 +68,7 @@ class ImagePreprocessorMixin:
         if resize_to is None:
             image = pre_processed
         else:
-            image = resize_image(pre_processed, resize_to)
+            image = _d_image.resize_image(pre_processed, resize_to)
 
         if image is not pre_processed:
             pre_processed.close()
