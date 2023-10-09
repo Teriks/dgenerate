@@ -7,10 +7,17 @@ pwd = os.path.dirname(__file__)
 
 args = sys.argv[1:]
 
-_skip_animations = True
+_skip_animations = False
+_short_animations = False
+
 if 'skip_animations' in args:
     _skip_animations = True
     args.remove('skip_animations')
+
+if 'short_animations' in args:
+    _skip_animations = False
+    _short_animations = True
+    args.remove('short_animations')
 
 if len(args) > 0:
     first_arg = args[0]
@@ -42,6 +49,11 @@ for config in configs:
             print(f'SKIPPING FLAX CONFIG ON WINDOWS: {config}')
             sys.stdout.flush()
             continue
+
+    if _short_animations and 'animation' in c:
+        print(f'SHORTENING ANIMATION TO 3 FRAMES MAX: {config}')
+        sys.stdout.flush()
+        args += ['--frame-end', '2']
 
     print(f'RUNNING CONFIG: {config}')
     sys.stdout.flush()

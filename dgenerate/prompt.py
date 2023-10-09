@@ -19,45 +19,32 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-__version__ = '1.2.0'
+class Prompt:
+    def __init__(self, positive=None, negative=None, delimiter=';'):
+        self.positive = positive
+        self.negative = negative
+        self.delimiter = delimiter
 
-import sys
-import warnings
-
-warnings.filterwarnings('ignore', module='controlnet_aux')
-warnings.filterwarnings('ignore', module='transformers')
-
-try:
-    import diffusers
-    import transformers
-    from dgenerate.diffusionloop import DiffusionRenderLoop, DiffusionRenderLoopConfig, gen_seeds
-    from dgenerate.batchprocess import BatchProcessError, process_config
-    from dgenerate.invoker import invoke_dgenerate
-    from dgenerate.arguments import parse_args
-    from dgenerate import messages
-
-    transformers.logging.set_verbosity(transformers.logging.CRITICAL)
-    diffusers.logging.set_verbosity(diffusers.logging.CRITICAL)
-except KeyboardInterrupt:
-    print('Aborting due to keyboard interrupt!')
-    sys.exit(1)
-
-
-def main():
-    try:
-        render_loop = DiffusionRenderLoop()
-        if not sys.stdin.isatty():
-            # Not a terminal, batch process STDIN
-            try:
-                process_config(render_loop=render_loop,
-                               version_string=__version__,
-                               injected_args=sys.argv[1:],
-                               file_stream=sys.stdin)
-            except BatchProcessError as e:
-                messages.log(f'Config Syntax Error: {e}', level=messages.ERROR)
-                sys.exit(1)
+    def __str__(self):
+        if self.positive and self.negative:
+            return f'{self.positive}{self.delimiter} {self.negative}'
+        elif self.positive:
+            return self.positive
         else:
-            sys.exit(invoke_dgenerate(render_loop, sys.argv[1:]).return_code)
-    except KeyboardInterrupt:
-        print('Aborting due to keyboard interrupt!')
-        sys.exit(1)
+            return ''
+
+    def parse(self, value):
+        if value is None:
+            raise ValueError('Input string may not be None.')
+
+        parse = value.split(self.delimiter, 1)
+        if len(parse) == 1:
+            self.positive = parse[0]
+            self.negative = None
+        elif len(parse) == 2:
+            self.positive = parse[0]
+            self.negative = parse[1]
+        else:
+            self.positive = None
+            self.negative = None
+        return self

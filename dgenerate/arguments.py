@@ -21,7 +21,6 @@
 
 import argparse
 import os
-import random
 import sys
 
 import diffusers.schedulers
@@ -30,10 +29,20 @@ import dgenerate
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
+import dgenerate.prompt as _prompt
 import dgenerate.textprocessing as _textprocessing
 
+
+class DgenerateArguments(dgenerate.DiffusionRenderLoopConfig):
+    def __init__(self):
+        super().__init__()
+
+        self.plugin_module_paths = []
+        self.verbose = False
+
+
 parser = argparse.ArgumentParser(
-    prog='dgenerate',
+    prog='dgenerate', exit_on_error=False,
     description="""Stable diffusion batch image generation tool with 
                 support for video / gif / webp animation transcoding.""")
 
@@ -47,7 +56,7 @@ parser.add_argument('-v', '--verbose', action='store_true', default=False,
 parser.add_argument('--version', action='version', version=f"dgenerate v{dgenerate.__version__}",
                     help="Show dgenerate's version and exit")
 
-parser.add_argument('--plugin-modules', action='store', default=[], nargs="+",
+parser.add_argument('--plugin-modules', action='store', default=[], nargs="+", dest='plugin_module_paths',
                     metavar="PATH",
                     help="""Specify one or more plugin module folder paths (folder containing __init__.py) or 
                     python .py file paths to load as plugins. Plugin modules can currently only implement 
@@ -72,17 +81,11 @@ def _type_dtype(dtype):
 
 
 def _type_prompts(prompt):
-    pn = prompt.strip().split(';')
-    pl = len(pn)
-    if pl == 0:
-        return {'prompt': ''}
-    elif pl == 1:
-        return {'prompt': pn[0].rstrip()}
-    elif pl == 2:
-        return {'prompt': pn[0].rstrip(), 'negative_prompt': pn[1].lstrip()}
-    else:
+    try:
+        return _prompt.Prompt().parse(prompt)
+    except ValueError as e:
         raise argparse.ArgumentTypeError(
-            f'Parse error, too many values, only a prompt and optional negative prompt are accepted')
+            f'Prompt parse error: {e}')
 
 
 def _type_inference_steps(val):
@@ -313,7 +316,8 @@ parser.add_argument('--scheduler', action='store', default=None, metavar="SCHEDU
                     f'Torch schedulers: ({", ".join(e.name for e in diffusers.schedulers.KarrasDiffusionSchedulers)}).'
                     + _flax_scheduler_help_part)
 
-parser.add_argument('--sdxl-refiner', action='store', default=None, metavar="MODEL_PATH", dest='sdxl_refiner_path',
+parser.add_argument('--sdxl-refiner', action='store', default=None, metavar="MODEL_PATH",
+                    dest='sdxl_refiner_path',
                     help="""Stable Diffusion XL (torch-sdxl) refiner model path. This should be a
                     huggingface repository slug / blob link, path to model file on disk (for example, a .pt, .pth, .bin,
                     .ckpt, or .safetensors file), or model folder containing model files. 
@@ -630,7 +634,7 @@ parser.add_argument('-om', '--output-metadata', action='store_true', default=Fal
                             "magick identify -format "%%[Property:DgenerateConfig] generated_file.png".""")
 
 parser.add_argument('-p', '--prompts', nargs='+', action='store', metavar="PROMPT",
-                    default=[{'prompt': ''}],
+                    default=[_prompt.Prompt()],
                     type=_type_prompts,
                     help="""List of prompts to try, an image group is generated for each prompt,
                          prompt data is split by ; (semi-colon). The first value is the positive
@@ -641,13 +645,33 @@ parser.add_argument('-p', '--prompts', nargs='+', action='store', metavar="PROMP
 
 seed_options = parser.add_mutually_exclusive_group()
 
-seed_options.add_argument('-se', '--seeds', nargs='+', action='store', default=None, metavar="SEED",
-                          type=int,
+
+def _type_seeds(val):
+    try:
+        val = int(val)
+    except ValueError as e:
+        raise argparse.ArgumentTypeError('Must be an integer')
+
+    return val
+
+
+seed_options.add_argument('-se', '--seeds', nargs='+', action='store', metavar="SEED", type=_type_seeds,
                           help="""List of seeds to try, define fixed seeds to achieve deterministic output.
                                This argument may not be used when --gse/--gen-seeds is used.
                                (default: [randint(0, 99999999999999)])""")
 
-seed_options.add_argument('-gse', '--gen-seeds', action='store', default=None, type=int, metavar="COUNT",
+
+def _type_gen_seeds(val):
+    try:
+        val = int(val)
+    except ValueError as e:
+        raise argparse.ArgumentTypeError('Must be an integer')
+
+    return dgenerate.gen_seeds(val)
+
+
+seed_options.add_argument('-gse', '--gen-seeds', action='store', type=_type_gen_seeds, metavar="COUNT",
+                          dest='seeds',
                           help="""Auto generate N random seeds to try. This argument may not
                                be used when -se/--seeds is used.""")
 
@@ -655,8 +679,9 @@ seed_options.add_argument('-gse', '--gen-seeds', action='store', default=None, t
 def _type_animation_format(val):
     val = val.lower()
     if val not in _mediaoutput.supported_animation_writer_formats():
+        supported = _textprocessing.oxford_comma(_mediaoutput.supported_animation_writer_formats(), "or")
         raise argparse.ArgumentTypeError(
-            f'Must be {_textprocessing.oxford_comma(_mediaoutput.supported_animation_writer_formats(), "or")}. Unknown value: {val}')
+            f'Must be {supported}. Unknown value: {val}')
     return val
 
 
@@ -743,6 +768,7 @@ parser.add_argument('--control-image-preprocessors', action='store', nargs='+', 
                     """)
 
 parser.add_argument('--image-preprocessor-help', action='store', nargs='*', default=None, metavar="PREPROCESSOR",
+                    dest=None,  # This is handled elsewhere
                     help="""Use this option alone with no model specification in order to 
                     list available image preprocessor module names. Specifying one or more module names
                     after this option will cause usage documentation for the specified modules to be printed.""")
@@ -843,8 +869,8 @@ parser.add_argument('-ifs', '--inference-steps', action='store', nargs='+',
                          change image content. (default: [30])""")
 
 
-def parse_args(args=None, namespace=None):
-    args = parser.parse_args(args, namespace)
+def _parse_args(args=None) -> DgenerateArguments:
+    args = parser.parse_args(args, namespace=DgenerateArguments())
 
     def args_that_start_with(s):
         return (a for a in dir(args) if a.startswith(s) and getattr(args, a))
@@ -852,90 +878,68 @@ def parse_args(args=None, namespace=None):
     def args_that_end_with(s):
         return (a for a in dir(args) if a.endswith(s) and getattr(args, a))
 
-    if args.gen_seeds is not None:
-        args.seeds = [random.randint(0, 99999999999999) for i in range(0, int(args.gen_seeds))]
-    elif args.seeds is None:
-        args.seeds = [random.randint(0, 99999999999999)]
-
     if args.output_size is None and not args.image_seeds:
         args.output_size = (512, 512) if not _pipelinewrapper.model_type_is_sdxl(args.model_type) else (1024, 1024)
 
     if not args.image_seeds and args.image_seed_strengths:
-        _messages.log('dgenerate: error: You cannot specify --image-seed-strengths without --image-seeds.',
-                      level=_messages.ERROR)
-        sys.exit(1)
+        raise argparse.ArgumentTypeError(
+            'you cannot specify --image-seed-strengths without --image-seeds.')
 
     if not _pipelinewrapper.model_type_is_upscaler(args.model_type):
         if args.upscaler_noise_levels:
-            _messages.log(
-                'dgenerate: error: You cannot specify --upscaler-noise-levels for a '
-                'non upscaler model type, see --model-type.',
-                level=_messages.ERROR)
-            sys.exit(1)
+            raise argparse.ArgumentTypeError(
+                'you cannot specify --upscaler-noise-levels for a '
+                'non upscaler model type, see --model-type.')
     elif args.control_net_paths:
-        _messages.log(
-            'dgenerate: error: Argument --control-nets is not compatible '
-            'with upscaler models, see --model-type.',
-            level=_messages.ERROR)
-        sys.exit(1)
+        raise argparse.ArgumentTypeError(
+            'argument --control-nets is not compatible '
+            'with upscaler models, see --model-type.')
     elif args.upscaler_noise_levels is None:
         args.upscaler_noise_levels = [_pipelinewrapper.DEFAULT_X4_UPSCALER_NOISE_LEVEL]
 
     if not _pipelinewrapper.model_type_is_pix2pix(args.model_type):
         if args.image_guidance_scales:
-            _messages.log(
-                'dgenerate: error: argument --image-guidance-scales only valid with '
-                'pix2pix models, see --model-type.',
-                level=_messages.ERROR)
-            sys.exit(1)
+            raise argparse.ArgumentTypeError(
+                'argument --image-guidance-scales only valid with '
+                'pix2pix models, see --model-type.')
     elif args.control_net_paths:
-        _messages.log(
-            'dgenerate: error: argument --control-nets '
-            'is not compatible with pix2pix models, see --model-type.',
-            level=_messages.ERROR)
-        sys.exit(1)
+        raise argparse.ArgumentTypeError(
+            'argument --control-nets '
+            'is not compatible with pix2pix models, see --model-type.')
     elif not args.image_guidance_scales:
         args.image_guidance_scales = [_pipelinewrapper.DEFAULT_IMAGE_GUIDANCE_SCALE]
 
     if args.control_image_preprocessors:
         if not args.image_seeds:
-            _messages.log(f'dgenerate: error: You cannot specify --control-image-preprocessors '
-                          f'without --image-seeds.')
-            sys.exit(1)
+            raise argparse.ArgumentTypeError(f'you cannot specify --control-image-preprocessors '
+                                             f'without --image-seeds.')
 
     if not args.image_seeds:
-        invalid_arg = False
+        invalid_args = []
         for preprocessor_args in args_that_end_with('preprocessors'):
-            _messages.log(f'dgenerate: error: You cannot specify --{preprocessor_args.replace("_", "-")} '
-                          f'without --image-seeds.',
-                          level=_messages.ERROR)
-            invalid_arg = True
-
-        if invalid_arg:
-            sys.exit(1)
+            invalid_args.append(
+                f'you cannot specify --{preprocessor_args.replace("_", "-")} '
+                f'without --image-seeds.')
+        if invalid_args:
+            raise argparse.ArgumentTypeError('\n'.join(invalid_args))
 
     if not _pipelinewrapper.model_type_is_sdxl(args.model_type):
-        invalid_arg = False
+        invalid_args = []
         for sdxl_args in args_that_start_with('sdxl'):
-            _messages.log(f'dgenerate: error: You cannot specify --{sdxl_args.replace("_", "-")} '
-                          f'for a non SDXL model type, see --model-type.',
-                          level=_messages.ERROR)
-            invalid_arg = True
-
-        if invalid_arg:
-            sys.exit(1)
+            invalid_args.append(f'you cannot specify --{sdxl_args.replace("_", "-")} '
+                                f'for a non SDXL model type, see --model-type.')
+        if invalid_args:
+            raise argparse.ArgumentTypeError('\n'.join(invalid_args))
 
         args.sdxl_high_noise_fractions = []
     else:
-        if not args.sdxl_refiner:
-            invalid_arg = False
+        if not args.sdxl_refiner_path:
+            invalid_args = []
             for sdxl_args in args_that_start_with('sdxl_refiner'):
-                _messages.log(f'dgenerate: error: You cannot specify --{sdxl_args.replace("_", "-")} '
-                              f'without --sdxl-refiner.',
-                              level=_messages.ERROR)
-                invalid_arg = True
-            if invalid_arg:
-                sys.exit(1)
+                invalid_args.append(f'you cannot specify --{sdxl_args.replace("_", "-")} '
+                                    f'without --sdxl-refiner.')
+            if invalid_args:
+                raise argparse.ArgumentTypeError('\n'.join(invalid_args))
         else:
             if args.sdxl_high_noise_fractions is None:
                 # Default value
@@ -943,23 +947,15 @@ def parse_args(args=None, namespace=None):
 
     if not _pipelinewrapper.model_type_is_torch(args.model_type):
         if args.vae_tiling or args.vae_slicing:
-            _messages.log(
-                'dgenerate: error: argument --vae-tiling/--vae-slicing not supported for '
-                'non torch model type, see --model-type.', level=_messages.ERROR)
-            sys.exit(1)
+            raise argparse.ArgumentTypeError(
+                'argument --vae-tiling/--vae-slicing not supported for '
+                'non torch model type, see --model-type.')
 
     if args.scheduler == 'help' and args.sdxl_refiner_scheduler == 'help':
-        _messages.log(
-            'dgenerate: error: Cannot list compatible schedulers for the main model and the SDXL refiner at '
+        raise argparse.ArgumentTypeError(
+            'cannot list compatible schedulers for the main model and the SDXL refiner at '
             'the same time. Do not use the scheduler "help" option for --scheduler '
-            'and --sdxl-refiner-scheduler simultaneously.', level=_messages.ERROR)
-        sys.exit(1)
-
-    if args.image_preprocessor_help is not None:
-        # This argument is actually handled elsewhere before the main args get parsed
-        _messages.log(
-            'dgenerate: error: argument --image-preprocessor-help may only be used by itself.', level=_messages.ERROR)
-        sys.exit(1)
+            'and --sdxl-refiner-scheduler simultaneously.')
 
     if args.image_seeds:
         if args.image_seed_strengths is None:
@@ -969,3 +965,14 @@ def parse_args(args=None, namespace=None):
         args.image_seed_strengths = []
 
     return args
+
+
+def parse_args(args, exit_on_error=True) -> DgenerateArguments:
+    if not exit_on_error:
+        return _parse_args(args)
+
+    try:
+        return _parse_args(args)
+    except argparse.ArgumentTypeError as e:
+        _messages.log(f'dgenerate: error: {e}', level=_messages.ERROR)
+        sys.exit(1)

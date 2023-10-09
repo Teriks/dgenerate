@@ -121,6 +121,24 @@ def dashup(strin):
     return strin.replace('_', '-')
 
 
+def contains_space(strin):
+    return any(c.isspace() for c in strin)
+
+
+def quote_spaces(list_of_strin):
+    vals = [] if isinstance(list_of_strin, list) else tuple()
+    for v in list_of_strin:
+        if isinstance(v, list):
+            vals.append(quote_spaces(v))
+        elif isinstance(v, tuple):
+            vals.append(tuple(quote_spaces(v)))
+        elif contains_space(v):
+            vals.append(quote(v))
+        else:
+            vals.append(v)
+    return vals
+
+
 def justify_left(strin):
     return '\n'.join(line.strip() if not line.isspace() else line for line in strin.split('\n'))
 

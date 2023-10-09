@@ -24,7 +24,7 @@ import inspect
 import itertools
 import os
 import pathlib
-import textwrap
+import random
 import time
 import typing
 
@@ -44,161 +44,6 @@ def _has_len(obj):
         return True
     except TypeError:
         return False
-
-
-class DiffusionArgContext:
-    def __init__(self):
-        self.prompt = None
-        self.sdxl_second_prompt = None
-        self.sdxl_refiner_prompt = None
-        self.sdxl_refiner_second_prompt = None
-        self.seed = None
-        self.image_seed_strength = None
-        self.upscaler_noise_level = None
-        self.sdxl_high_noise_fraction = None
-        self.sdxl_refiner_inference_steps = None
-        self.sdxl_refiner_guidance_scale = None
-        self.sdxl_refiner_guidance_rescale = None
-        self.sdxl_aesthetic_score = None
-        self.sdxl_original_size = None
-        self.sdxl_target_size = None
-        self.sdxl_crops_coords_top_left = None
-        self.sdxl_negative_aesthetic_score = None
-        self.sdxl_negative_original_size = None
-        self.sdxl_negative_target_size = None
-        self.sdxl_negative_crops_coords_top_left = None
-        self.sdxl_refiner_aesthetic_score = None
-        self.sdxl_refiner_original_size = None
-        self.sdxl_refiner_target_size = None
-        self.sdxl_refiner_crops_coords_top_left = None
-        self.sdxl_refiner_negative_aesthetic_score = None
-        self.sdxl_refiner_negative_original_size = None
-        self.sdxl_refiner_negative_target_size = None
-        self.sdxl_refiner_negative_crops_coords_top_left = None
-        self.guidance_scale = None
-        self.image_guidance_scale = None
-        self.guidance_rescale = None
-        self.inference_steps = None
-
-    def get_pipeline_wrapper_args(self):
-        def get_prompt(d, component):
-            if d is None:
-                return None
-            return d.get(component)
-
-        pipeline_args = {
-            "prompt": get_prompt(self.prompt, 'prompt'),
-            "negative_prompt": get_prompt(self.prompt, 'negative_prompt'),
-            "sdxl_prompt_2": get_prompt(self.sdxl_second_prompt, 'prompt'),
-            "sdxl_negative_prompt_2": get_prompt(self.sdxl_second_prompt, 'negative_prompt'),
-            "sdxl_refiner_prompt": get_prompt(self.sdxl_refiner_prompt, 'prompt'),
-            "sdxl_refiner_negative_prompt": get_prompt(self.sdxl_refiner_prompt, 'negative_prompt'),
-            "sdxl_refiner_prompt_2": get_prompt(self.sdxl_refiner_second_prompt, 'prompt'),
-            "sdxl_refiner_negative_prompt_2": get_prompt(self.sdxl_refiner_second_prompt, 'negative_prompt')
-        }
-
-        for k, v in pipeline_args.copy().items():
-            if v is None:
-                pipeline_args.pop(k)
-
-        for attr, val in self.__dict__.items():
-            if not (attr.startswith('_') or 'prompt' in attr) and \
-                    not (callable(val) or val is None):
-                pipeline_args[attr] = val
-
-        return pipeline_args
-
-    @staticmethod
-    def _describe_prompt(prompt_format, prompt_dict, pos_title, neg_title):
-        if prompt_dict is None:
-            return
-
-        prompt_wrap_width = _textprocessing.long_text_wrap_width()
-        prompt_val = prompt_dict.get('prompt', None)
-        if prompt_val:
-            header = f'{pos_title}: '
-            prompt_val = textwrap.fill(prompt_val,
-                                       width=prompt_wrap_width - len(header),
-                                       break_long_words=False,
-                                       break_on_hyphens=False,
-                                       subsequent_indent=' ' * len(header))
-            prompt_format.append(f'{header}"{prompt_val}"')
-
-        prompt_val = prompt_dict.get('negative_prompt', None)
-        if prompt_val:
-            header = f'{neg_title}: '
-            prompt_val = textwrap.fill(prompt_val,
-                                       width=prompt_wrap_width - len(header),
-                                       break_long_words=False,
-                                       break_on_hyphens=False,
-                                       subsequent_indent=' ' * len(header))
-            prompt_format.append(f'{header}"{prompt_val}"')
-
-    def describe_pipeline_wrapper_args(self):
-        prompt_format = []
-
-        DiffusionArgContext._describe_prompt(
-            prompt_format, self.prompt,
-            "Prompt",
-            "Negative Prompt")
-
-        DiffusionArgContext._describe_prompt(
-            prompt_format, self.sdxl_second_prompt,
-            "SDXL Second Prompt",
-            "SDXL Second Negative Prompt")
-
-        DiffusionArgContext._describe_prompt(
-            prompt_format, self.sdxl_refiner_prompt,
-            "SDXL Refiner Prompt",
-            "SDXL Refiner Negative Prompt")
-
-        DiffusionArgContext._describe_prompt(
-            prompt_format, self.sdxl_refiner_second_prompt,
-            "SDXL Refiner Second Prompt",
-            "SDXL Refiner Second Negative Prompt")
-
-        prompt_format = '\n'.join(prompt_format)
-        if prompt_format:
-            prompt_format = '\n' + prompt_format
-
-        inputs = [f'Seed: {self.seed}']
-
-        descriptions = [
-            (self.image_seed_strength, "Image Seed Strength:"),
-            (self.upscaler_noise_level, "Upscaler Noise Level:"),
-            (self.sdxl_high_noise_fraction, "SDXL High Noise Fraction:"),
-            (self.sdxl_refiner_inference_steps, "SDXL Refiner Inference Steps:"),
-            (self.sdxl_refiner_guidance_scale, "SDXL Refiner Guidance Scale:"),
-            (self.sdxl_refiner_guidance_rescale, "SDXL Refiner Guidance Rescale:"),
-            (self.sdxl_aesthetic_score, "SDXL Aesthetic Score:"),
-            (self.sdxl_original_size, "SDXL Original Size:"),
-            (self.sdxl_target_size, "SDXL Target Size:"),
-            (self.sdxl_crops_coords_top_left, "SDXL Top Left Crop Coords:"),
-            (self.sdxl_negative_aesthetic_score, "SDXL Negative Aesthetic Score:"),
-            (self.sdxl_negative_original_size, "SDXL Negative Original Size:"),
-            (self.sdxl_negative_target_size, "SDXL Negative Target Size:"),
-            (self.sdxl_negative_crops_coords_top_left, "SDXL Negative Top Left Crop Coords:"),
-            (self.sdxl_refiner_aesthetic_score, "SDXL Refiner Aesthetic Score:"),
-            (self.sdxl_refiner_original_size, "SDXL Refiner Original Size:"),
-            (self.sdxl_refiner_target_size, "SDXL Refiner Target Size:"),
-            (self.sdxl_refiner_crops_coords_top_left, "SDXL Refiner Top Left Crop Coords:"),
-            (self.sdxl_refiner_negative_aesthetic_score, "SDXL Refiner Negative Aesthetic Score:"),
-            (self.sdxl_refiner_negative_original_size, "SDXL Refiner Negative Original Size:"),
-            (self.sdxl_refiner_negative_target_size, "SDXL Refiner Negative Target Size:"),
-            (self.sdxl_refiner_negative_crops_coords_top_left, "SDXL Refiner Negative Top Left Crop Coords:"),
-            (self.guidance_scale, "Guidance Scale:"),
-            (self.image_guidance_scale, "Image Guidance Scale:"),
-            (self.guidance_rescale, "Guidance Rescale:"),
-            (self.inference_steps, "Inference Steps:")
-        ]
-
-        for prompt_val, desc in descriptions:
-            if prompt_val is not None:
-                inputs.append(desc + ' ' + str(prompt_val))
-
-        inputs = '\n'.join(inputs)
-
-        return inputs + prompt_format
 
 
 def _list_or_list_of_none(val):
@@ -254,19 +99,38 @@ def iterate_diffusion_args(prompt,
                            guidance_scale,
                            image_guidance_scale,
                            guidance_rescale,
-                           inference_steps) -> typing.Generator[DiffusionArgContext, None, None]:
+                           inference_steps) -> typing.Generator[_pipelinewrapper.DiffusionArguments, None, None]:
     args = locals()
     defs = []
     for arg_name in inspect.getfullargspec(iterate_diffusion_args).args:
         defs.append((arg_name, _list_or_list_of_none(args[arg_name])))
 
-    yield from iterate_attribute_combinations(defs, DiffusionArgContext)
+    yield from iterate_attribute_combinations(defs, _pipelinewrapper.DiffusionArguments)
 
 
 def _safe_len(lst):
     if lst is None:
         return 0
     return len(lst)
+
+
+def gen_seeds(n):
+    return [random.randint(0, 99999999999999) for i in range(0, n)]
+
+
+def _last_or_none(ls):
+    if ls:
+        val = ls[-1]
+        if isinstance(val, str):
+            val = _textprocessing.quote(val)
+        return val
+    return None
+
+
+def _quote_string_lists(ls):
+    if ls and isinstance(ls[0], str):
+        return [_textprocessing.quote(i) for i in ls]
+    return ls
 
 
 class DiffusionRenderLoopConfig:
@@ -280,9 +144,9 @@ class DiffusionRenderLoopConfig:
         self.sdxl_refiner_prompts = None
         self.sdxl_refiner_second_prompts = None
 
-        self.seeds = [0]
-        self.guidance_scales = [5]
-        self.inference_steps = [30]
+        self.seeds = gen_seeds(1)
+        self.guidance_scales = [_pipelinewrapper.DEFAULT_GUIDANCE_SCALE]
+        self.inference_steps = [_pipelinewrapper.DEFAULT_INFERENCE_STEPS]
 
         self.image_seeds = None
         self.image_seed_strengths = None
@@ -346,6 +210,27 @@ class DiffusionRenderLoopConfig:
         self.mask_image_preprocessors = None
         self.control_image_preprocessors = None
 
+    def generate_template_variables(self, variable_prefix=None):
+        template_variables = {}
+
+        if variable_prefix is None:
+            variable_prefix = ''
+
+        for k, v in self.__dict__.items():
+            if not (k.startswith('_') or callable(v)):
+                if variable_prefix:
+                    prefix = variable_prefix if not k.startswith(variable_prefix) else ''
+                else:
+                    prefix = ''
+                if k.endswith('s') or 'coords' in k and k != 'output_configs':
+                    t_val = v if v is not None else []
+                    template_variables[prefix + k] = _quote_string_lists(t_val)
+                    template_variables[prefix + k.replace('coords', 'coord').rstrip('s')] = _last_or_none(t_val)
+                else:
+                    template_variables[prefix + k] = v if v is not None else None
+
+        return template_variables
+
     def set(self, obj, missing_value_throws=True):
         if isinstance(obj, dict):
             source = obj
@@ -399,7 +284,8 @@ class DiffusionRenderLoopConfig:
             raise ValueError('DiffusionRenderLoop.vae_slicing must be True or False (bool)')
         if self.scheduler is not None and not isinstance(self.scheduler, str):
             raise ValueError(
-                'DiffusionRenderLoop.scheduler must be None (auto) or a string that names a compatible scheduler class')
+                'DiffusionRenderLoop.scheduler must be None (auto), "help", '
+                'or a string that names a compatible scheduler class')
         if self.sdxl_refiner_scheduler is not None and not isinstance(self.sdxl_refiner_scheduler, str):
             raise ValueError(
                 'DiffusionRenderLoop.sdxl_refiner_scheduler must be None (auto) '
@@ -415,8 +301,8 @@ class DiffusionRenderLoopConfig:
         if not isinstance(self.output_metadata, bool):
             raise ValueError('DiffusionRenderLoop.output_metadata must be bool')
         if not isinstance(self.device, str) or not _pipelinewrapper.is_valid_device_string(self.device):
-            raise ValueError('DiffusionRenderLoop.device must be "cuda" or "cpu"')
-
+            raise ValueError(
+                'DiffusionRenderLoop.device must be "cuda" (optionally with a device ordinal "cuda:N") or "cpu"')
         animation_formats = _mediaoutput.supported_animation_writer_formats()
         if not (isinstance(self.animation_format, str) or
                 self.animation_format.lower() not in animation_formats):
@@ -476,7 +362,7 @@ class DiffusionRenderLoopConfig:
                 len(self.guidance_scales) *
                 len(self.inference_steps))
 
-    def iterate_diffusion_args(self, **overrides) -> typing.Generator[DiffusionArgContext, None, None]:
+    def iterate_diffusion_args(self, **overrides) -> typing.Generator[_pipelinewrapper.DiffusionArguments, None, None]:
         def ov(n, v):
             if not _pipelinewrapper.model_type_is_sdxl(self.model_type):
                 if n.startswith('sdxl'):
@@ -534,6 +420,8 @@ class DiffusionRenderLoopConfig:
                                                            self.sdxl_refiner_negative_crops_coords_top_left))
 
 
+
+
 class DiffusionRenderLoop:
     def __init__(self, config=None):
         self._generation_step = -1
@@ -552,6 +440,19 @@ class DiffusionRenderLoop:
     @property
     def written_animations(self):
         return self._written_animations
+
+    def generate_template_variables(self):
+        template_variables = self.config.generate_template_variables(
+            variable_prefix='last_')
+
+        template_variables.update({
+            'last_images': _quote_string_lists(self.written_images),
+            'last_image': _last_or_none(self.written_images),
+            'last_animations': _quote_string_lists(self.written_animations),
+            'last_animation': _last_or_none(self.written_animations)
+        })
+
+        return template_variables
 
     @property
     def generation_step(self):
@@ -579,7 +480,7 @@ class DiffusionRenderLoop:
 
         return path
 
-    def _gen_filename_base(self, args_ctx):
+    def _gen_filename_base(self, args_ctx: _pipelinewrapper.DiffusionArguments):
         args = ['s', args_ctx.seed]
 
         if args_ctx.upscaler_noise_level is not None:
@@ -611,12 +512,17 @@ class DiffusionRenderLoop:
 
         return args
 
-    def _gen_animation_filename(self, args_ctx: DiffusionArgContext, generation_step, animation_format):
+    def _gen_animation_filename(self,
+                                args_ctx: _pipelinewrapper.DiffusionArguments,
+                                generation_step,
+                                animation_format):
         args = ['ANIM', *self._gen_filename_base(args_ctx)]
 
         return self._gen_filename(*args, 'step', generation_step + 1, ext=animation_format)
 
-    def _write_generation_result(self, filename, generation_result: _pipelinewrapper.PipelineResultWrapper,
+    def _write_generation_result(self,
+                                 filename,
+                                 generation_result: _pipelinewrapper.PipelineWrapperResult,
                                  config_txt):
         if self.config.output_metadata:
             metadata = PIL.PngImagePlugin.PngInfo()
@@ -633,8 +539,10 @@ class DiffusionRenderLoop:
         else:
             _messages.log(f'Wrote Image File: "{filename}"', underline=True)
 
-    def _write_animation_frame(self, args_ctx: DiffusionArgContext, image_seed_obj,
-                               generation_result: _pipelinewrapper.PipelineResultWrapper):
+    def _write_animation_frame(self,
+                               args_ctx: _pipelinewrapper.DiffusionArguments,
+                               image_seed_obj: _mediainput.ImageSeed,
+                               generation_result: _pipelinewrapper.PipelineWrapperResult):
         args = self._gen_filename_base(args_ctx)
 
         filename = self._gen_filename(*args,
@@ -644,29 +552,32 @@ class DiffusionRenderLoop:
                                       self._generation_step + 1,
                                       ext='png')
         config_txt = \
-            generation_result.dgenerate_config + \
-            f' \\\n--frame-start {image_seed_obj.frame_index} --frame-end {image_seed_obj.frame_index}'
+            generation_result.gen_dgenerate_config(
+                extra_args=[('--frame-start', image_seed_obj.frame_index),
+                            ('--frame-end', image_seed_obj.frame_index)])
 
         self._written_images.append(os.path.abspath(filename))
         self._write_generation_result(filename, generation_result, config_txt)
 
-    def _write_image_seed_gen_image(self, args_ctx: DiffusionArgContext,
-                                    generation_result: _pipelinewrapper.PipelineResultWrapper):
+    def _write_image_seed_gen_image(self, args_ctx: _pipelinewrapper.DiffusionArguments,
+                                    generation_result: _pipelinewrapper.PipelineWrapperResult):
         args = self._gen_filename_base(args_ctx)
 
         filename = self._gen_filename(*args, 'step', self._generation_step + 1, ext='png')
         self._written_images.append(os.path.abspath(filename))
-        self._write_generation_result(filename, generation_result, generation_result.dgenerate_config)
+        self._write_generation_result(filename, generation_result,
+                                      generation_result.gen_dgenerate_config())
 
-    def _write_prompt_only_image(self, args_ctx: DiffusionArgContext,
-                                 generation_result: _pipelinewrapper.PipelineResultWrapper):
+    def _write_prompt_only_image(self, args_ctx: _pipelinewrapper.DiffusionArguments,
+                                 generation_result: _pipelinewrapper.PipelineWrapperResult):
         args = self._gen_filename_base(args_ctx)
 
         filename = self._gen_filename(*args, 'step', self._generation_step + 1, ext='png')
         self._written_images.append(os.path.abspath(filename))
-        self._write_generation_result(filename, generation_result, generation_result.dgenerate_config)
+        self._write_generation_result(filename, generation_result,
+                                      generation_result.gen_dgenerate_config())
 
-    def _pre_generation_step(self, args_ctx: DiffusionArgContext):
+    def _pre_generation_step(self, args_ctx: _pipelinewrapper.DiffusionArguments):
         self._last_frame_time = 0
         self._frame_time_sum = 0
         self._generation_step += 1
@@ -680,7 +591,7 @@ class DiffusionRenderLoop:
     def _pre_generation(self, args_ctx):
         pass
 
-    def _animation_frame_pre_generation(self, args_ctx: DiffusionArgContext, image_seed_obj):
+    def _animation_frame_pre_generation(self, args_ctx: _pipelinewrapper.DiffusionArguments, image_seed_obj):
         if self._last_frame_time == 0:
             eta = 'tbd...'
         else:
@@ -694,7 +605,7 @@ class DiffusionRenderLoop:
             f'Generating frame {image_seed_obj.frame_index + 1} / {image_seed_obj.total_frames}, Completion ETA: {eta}',
             underline=True)
 
-    def _with_image_seed_pre_generation(self, args_ctx: DiffusionArgContext, image_seed_obj):
+    def _with_image_seed_pre_generation(self, args_ctx: _pipelinewrapper.DiffusionArguments, image_seed_obj):
         pass
 
     def _load_preprocessors(self, preprocessors):
@@ -925,16 +836,20 @@ class DiffusionRenderLoop:
 
                             if self.config.output_configs:
                                 if not os.path.exists(anim_config_file_name):
-                                    config_text = generation_result.dgenerate_config
 
+                                    extra_config_args = []
                                     if self.config.frame_start is not None:
-                                        config_text += f' \\\n--frame-start {self.config.frame_start}'
+                                        extra_config_args += [('--frame-start', self.config.frame_start)]
 
                                     if self.config.frame_end is not None:
-                                        config_text += f' \\\n--frame-end {self.config.frame_end}'
+                                        extra_config_args += [('--frame-end', self.config.frame_end)]
 
                                     if self.config.animation_format is not None:
-                                        config_text += f' \\\n--animation-format {self.config.animation_format}'
+                                        extra_config_args += [('--animation-format', self.config.animation_format)]
+
+                                    config_text = \
+                                        generation_result.gen_dgenerate_config(
+                                            extra_args=extra_config_args)
 
                                     with open(anim_config_file_name, "w") as config_file:
                                         config_file.write(config_text)
