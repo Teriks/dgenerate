@@ -769,9 +769,10 @@ parser.add_argument('--control-image-preprocessors', action='store', nargs='+', 
 
 parser.add_argument('--image-preprocessor-help', action='store', nargs='*', default=None, metavar="PREPROCESSOR",
                     dest=None,  # This is handled elsewhere
-                    help="""Use this option alone with no model specification in order to 
-                    list available image preprocessor module names. Specifying one or more module names
-                    after this option will cause usage documentation for the specified modules to be printed.""")
+                    help="""Use this option alone (or with --plugin-modules) and no model 
+                    specification in order to list available image preprocessor module names. 
+                    Specifying one or more module names after this option will cause usage 
+                    documentation for the specified modules to be printed.""")
 
 
 def _type_image_seed_strengths(val):
