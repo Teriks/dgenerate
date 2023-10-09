@@ -19,12 +19,13 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import os
+import typing
 from importlib.machinery import SourceFileLoader
 
 LOADED_PLUGIN_MODULES = {}
 
 
-def load_modules(paths: list):
+def load_modules(paths: typing.List[str]):
     r = []
     for plugin_path in paths:
         name, ext = os.path.splitext(os.path.basename(plugin_path))

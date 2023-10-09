@@ -32,7 +32,7 @@ import dgenerate.textprocessing as _textprocessing
 
 class ImagePreprocessor:
     @classmethod
-    def get_names(cls):
+    def get_names(cls) -> typing.List[str]:
         if not issubclass(cls, ImagePreprocessor):
             raise ValueError(
                 'provided class is not a subclass of dgenerate.preprocessors.ImagePreprocessor')
@@ -46,7 +46,7 @@ class ImagePreprocessor:
             return [cls.__name__]
 
     @classmethod
-    def get_help(cls, called_by_name):
+    def get_help(cls, called_by_name) -> str:
         help_str = None
         if hasattr(cls, 'help'):
             help_str = cls.help(called_by_name)
@@ -142,7 +142,7 @@ class ImagePreprocessor:
 
         return args_with_defaults
 
-    def get_int_arg(self, name, value):
+    def get_int_arg(self, name, value) -> int:
         if isinstance(value, dict):
             value = value.get(name)
         try:
@@ -150,7 +150,7 @@ class ImagePreprocessor:
         except ValueError:
             raise _exceptions.ImagePreprocessorArgumentError(f'Argument "{name}" must be an integer value.')
 
-    def get_float_arg(self, name, value):
+    def get_float_arg(self, name, value) -> float:
         if isinstance(value, dict):
             value = value.get(name)
         try:
@@ -158,7 +158,7 @@ class ImagePreprocessor:
         except ValueError:
             raise _exceptions.ImagePreprocessorArgumentError(f'Argument "{name}" must be a floating point value.')
 
-    def get_bool_arg(self, name, value):
+    def get_bool_arg(self, name, value) -> bool:
         if isinstance(value, dict):
             value = value.get(name)
         try:
@@ -185,11 +185,11 @@ class ImagePreprocessor:
         self.__called_by_name = called_by_name
 
     @property
-    def device(self):
+    def device(self) -> str:
         return self.__device
 
     @property
-    def called_by_name(self):
+    def called_by_name(self) -> str:
         return self.__called_by_name
 
     def __gen_filename(self):
@@ -219,7 +219,8 @@ class ImagePreprocessor:
             image.save(self.__output_file)
 
     @staticmethod
-    def call_pre_resize(preprocessor, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
+    def call_pre_resize(preprocessor, image: PIL.Image,
+                        resize_resolution: typing.Union[typing.Tuple[int, int], None]) -> PIL.Image.Image:
         img = preprocessor.pre_resize(image, resize_resolution)
         if img is not image:
             preprocessor.__save_image(img)
@@ -228,7 +229,7 @@ class ImagePreprocessor:
         return image
 
     @staticmethod
-    def call_post_resize(preprocessor, image: PIL.Image):
+    def call_post_resize(preprocessor, image: PIL.Image) -> PIL.Image.Image:
         img = preprocessor.post_resize(image)
         if img is not image:
             preprocessor.__save_image(img)
@@ -236,7 +237,7 @@ class ImagePreprocessor:
             return img
         return image
 
-    def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
+    def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[typing.Tuple[int, int], None]):
         return image
 
     def post_resize(self, image: PIL.Image):

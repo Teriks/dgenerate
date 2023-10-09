@@ -21,7 +21,7 @@
 
 import argparse
 import os
-import sys
+import typing
 
 import diffusers.schedulers
 
@@ -967,12 +967,12 @@ def _parse_args(args=None) -> DgenerateArguments:
     return args
 
 
-def parse_args(args, exit_on_error=True) -> DgenerateArguments:
-    if not exit_on_error:
-        return _parse_args(args)
-
+def parse_args(args: typing.List[typing.Union[str, float, int]],
+               throw: bool = False) -> typing.Union[DgenerateArguments, None]:
     try:
         return _parse_args(args)
-    except argparse.ArgumentTypeError as e:
+    except argparse.ArgumentError as e:
         _messages.log(f'dgenerate: error: {e}', level=_messages.ERROR)
-        sys.exit(1)
+        if throw:
+            raise e
+        return None

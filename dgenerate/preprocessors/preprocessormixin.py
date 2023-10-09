@@ -24,7 +24,7 @@ import dgenerate.preprocessors.preprocessor as _preprocessor
 
 
 class ImagePreprocessorMixin:
-    def __init__(self, preprocessor, *args, **kwargs):
+    def __init__(self, preprocessor: _preprocessor.ImagePreprocessor, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._preprocessor = preprocessor
 

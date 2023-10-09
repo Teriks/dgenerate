@@ -31,7 +31,7 @@ import dgenerate.textprocessing as _textprocessing
 
 class Loader:
     def __init__(self):
-        self.search_modules = set()
+        self.search_modules: set = set()
 
     def _load(self, path, device):
         call_by_name = path.split(';', 1)[0].strip()
@@ -84,7 +84,7 @@ class Loader:
             raise _exceptions.ImagePreprocessorArgumentError(
                 f'Invalid argument given to image preprocessor "{call_by_name}": {e}')
 
-    def get_available_classes(self):
+    def get_available_classes(self) -> typing.List[typing.Type[_preprocessor.ImagePreprocessor]]:
         found_classes = []
         for mod in itertools.chain([sys.modules['dgenerate.preprocessors']], self.search_modules):
             def _excluded(cls):
@@ -106,7 +106,7 @@ class Loader:
 
         return found_classes
 
-    def get_class_by_name(self, preprocessor_name):
+    def get_class_by_name(self, preprocessor_name) -> typing.Type[_preprocessor.ImagePreprocessor]:
         classes = [cls for cls in self.get_available_classes() if
                    preprocessor_name in cls.get_names()]
 
@@ -120,16 +120,18 @@ class Loader:
 
         return classes[0]
 
-    def get_all_names(self):
+    def get_all_names(self) -> typing.List[str]:
         names = []
         for cls in self.get_available_classes():
             names += cls.get_names()
         return names
 
-    def get_help(self, preprocessor_name: str):
+    def get_help(self, preprocessor_name: str) -> str:
         return self.get_class_by_name(preprocessor_name).get_help(preprocessor_name)
 
-    def load(self, path: typing.Union[str, list, tuple, None], device='cpu'):
+    def load(self, path: typing.Union[str, list, tuple, None], device='cpu') -> \
+            typing.Union[_preprocessor.ImagePreprocessor, _preprocessorchain.ImagePreprocessorChain, None]:
+
         if path is None:
             return None
 

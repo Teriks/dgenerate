@@ -18,11 +18,13 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import typing
 
 import PIL.Image
 
 
-def resize_image_calc(old_size, new_size):
+def resize_image_calc(old_size: typing.Tuple[int, int],
+                      new_size: typing.Union[typing.Tuple[int, int], None]):
     if new_size is None or old_size == new_size:
         return old_size
 
@@ -41,7 +43,7 @@ def align_by_8(x, y):
     return x - x % 8, y - y % 8
 
 
-def copy_img(img):
+def copy_img(img: PIL.Image.Image):
     c = img.copy()
 
     if hasattr(img, 'filename'):
@@ -50,7 +52,8 @@ def copy_img(img):
     return c
 
 
-def resize_image(img, size):
+def resize_image(img: PIL.Image.Image,
+                 size: typing.Union[typing.Tuple[int, int], None]):
     new_size = resize_image_calc(old_size=img.size,
                                  new_size=size)
 
@@ -66,7 +69,7 @@ def resize_image(img, size):
     return r
 
 
-def to_rgb(img):
+def to_rgb(img: PIL.Image.Image):
     c = img.convert('RGB')
     if hasattr(img, 'filename'):
         c.filename = img.filename
