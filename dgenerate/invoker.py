@@ -35,11 +35,11 @@ def invoke_dgenerate(render_loop: _diffusionloop.DiffusionRenderLoop, with_args:
         if with_args[0] == '--image-preprocessor-help':
             return _preprocessors.image_preprocessor_help(with_args[1:])
 
-    arguments = _arguments.parse_args(with_args)
+    arguments = _arguments.parse_args(with_args, exit_on_error=not throw)
     render_loop.config.set(arguments)
 
     render_loop.image_preprocessor_loader. \
-        search_modules.update(_plugin.load_modules(arguments.plugin_modules))
+        search_modules.update(_plugin.load_modules(arguments.plugin_module_paths))
 
     if arguments.verbose:
         _messages.LEVEL = _messages.DEBUG

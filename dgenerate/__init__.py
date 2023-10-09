@@ -21,33 +21,33 @@
 
 __version__ = '1.2.0'
 
+import sys
 import warnings
 
 warnings.filterwarnings('ignore', module='controlnet_aux')
+warnings.filterwarnings('ignore', module='transformers')
+
+try:
+    import diffusers
+    import transformers
+    from dgenerate.diffusionloop import DiffusionRenderLoop, DiffusionRenderLoopConfig, gen_seeds
+    from dgenerate.batchprocess import BatchProcessError, process_config
+    from dgenerate.invoker import invoke_dgenerate
+    from dgenerate.arguments import parse_args
+    from dgenerate import messages
+
+    transformers.logging.set_verbosity(transformers.logging.CRITICAL)
+    diffusers.logging.set_verbosity(diffusers.logging.CRITICAL)
+except KeyboardInterrupt:
+    print('Aborting due to keyboard interrupt!')
+    sys.exit(1)
 
 
 def main():
-    import sys
-    def _main():
-        import diffusers
-        import transformers
-        from . import messages
-        from .diffusionloop import DiffusionRenderLoop
-        from .invoker import invoke_dgenerate
-
-        # The above modules take long enough to import that they must be in here in
-        # order to handle keyboard interrupts without issues
-
-        transformers.logging.set_verbosity(transformers.logging.CRITICAL)
-        diffusers.logging.set_verbosity(diffusers.logging.CRITICAL)
-
+    try:
         render_loop = DiffusionRenderLoop()
-
-        # run the render loop
         if not sys.stdin.isatty():
             # Not a terminal, batch process STDIN
-            from .batchprocess import BatchProcessError, process_config
-
             try:
                 process_config(render_loop=render_loop,
                                version_string=__version__,
@@ -58,18 +58,6 @@ def main():
                 sys.exit(1)
         else:
             sys.exit(invoke_dgenerate(render_loop, sys.argv[1:]).return_code)
-
-    try:
-        _main()
     except KeyboardInterrupt:
         print('Aborting due to keyboard interrupt!')
         sys.exit(1)
-
-
-if __name__ != "__main__":
-    from dgenerate.diffusionloop import DiffusionRenderLoop, DiffusionRenderLoopConfig
-    from dgenerate.batchprocess import BatchProcessError, process_config
-    from dgenerate.invoker import invoke_dgenerate
-    from dgenerate.arguments import parse_args
-else:
-    main()

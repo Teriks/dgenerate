@@ -113,56 +113,6 @@ class BatchProcessor:
             return True
         return False
 
-    def _update_template_variables(self):
-        def jinja_prompt(prompts):
-            if not prompts:
-                # Completely undefined
-                return [{'positive': None, 'negative': None}]
-            else:
-                # inside prompt values might be None, don't want that in
-                # the jinja2 template because it might be annoying
-                # to work with. Also abstract the internal representation
-                # of the prompt dictionary to something with friendlier
-                # names
-                return [{'positive': p.get('prompt', None),
-                         'negative': p.get('negative_prompt', None)} for p in prompts]
-
-        def last_or_none(ls):
-            if ls:
-                val = ls[-1]
-                if isinstance(val, str):
-                    val = _textprocessing.quote(val)
-                return val
-            return None
-
-        def quote_string_lists(ls):
-            if ls and isinstance(ls[0], str):
-                return [_textprocessing.quote(i) for i in ls]
-            return ls
-
-        self.template_variables.update({
-            'last_images': quote_string_lists(self.render_loop.written_images),
-            'last_image': last_or_none(self.render_loop.written_images),
-            'last_animations': quote_string_lists(self.render_loop.written_animations),
-            'last_animation': last_or_none(self.render_loop.written_animations)
-        })
-
-        for k, v in self.render_loop.config.__dict__.items():
-
-            if not (k.startswith('_') or callable(v)):
-                prefix = 'last_' if not k.startswith('last_') else ''
-                if k.endswith('s') or 'coords' in k:
-                    t_val = v if v is not None else []
-                    if 'prompt' in k:
-                        self.template_variables[prefix + k] = jinja_prompt(t_val)
-                        self.template_variables[prefix + k.rstrip('s')] = jinja_prompt(t_val)[-1]
-                    else:
-                        t_val = v if v is not None else []
-                        self.template_variables[prefix + k] = quote_string_lists(t_val)
-                        self.template_variables[prefix + k.replace('coords', 'coord').rstrip('s')] = last_or_none(t_val)
-                else:
-                    self.template_variables[prefix + k] = v if v is not None else None
-
     def _lex_and_run_invocation(self, line_idx, invocation_string):
         templated_cmd = self.render_template(invocation_string)
 
@@ -170,12 +120,13 @@ class BatchProcessor:
 
         shell_lexed = shlex.split(templated_cmd) + injected_args
 
-        for idx, extra_arg in enumerate(injected_args):
-            if any(c.isspace() for c in extra_arg):
-                injected_args[idx] = _textprocessing.quote(extra_arg)
+        injected_args = _textprocessing.quote_spaces(injected_args)
+
+        if injected_args:
+            templated_cmd += ' ' + ' '.join(injected_args)
 
         header = 'Processing Arguments: '
-        args_wrapped = textwrap.fill(templated_cmd + ' ' + ' '.join(injected_args),
+        args_wrapped = textwrap.fill(templated_cmd,
                                      width=_textprocessing.long_text_wrap_width() - len(header),
                                      break_long_words=False,
                                      break_on_hyphens=False,
@@ -189,7 +140,7 @@ class BatchProcessor:
             raise BatchProcessError(
                 f'Invocation error in input config file line: {line_idx}')
 
-        self._update_template_variables()
+        self.template_variables.update(self.render_loop.generate_template_variables())
 
     def process_file(self, stream):
         continuation = ''

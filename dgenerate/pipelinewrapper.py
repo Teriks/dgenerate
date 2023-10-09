@@ -22,6 +22,7 @@ import decimal
 import inspect
 import os
 import re
+import textwrap
 import typing
 
 try:
@@ -42,6 +43,7 @@ import PIL
 import dgenerate.messages as _messages
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.memoize as _memoize
+import dgenerate.prompt as _prompt
 import diffusers
 
 _TORCH_MODEL_CACHE = dict()
@@ -1166,10 +1168,10 @@ def _image_grid(imgs, rows, cols):
     return grid
 
 
-class PipelineResultWrapper:
+class PipelineWrapperResult:
     def __init__(self, image):
         self.image = image
-        self._dgenerate_opts = None
+        self._dgenerate_opts = []
 
     def __enter__(self):
         return self
@@ -1179,13 +1181,14 @@ class PipelineResultWrapper:
             self.image.close()
             self.image = None
 
-    @property
-    def dgenerate_config(self):
+    def gen_dgenerate_config(self, extra_args=None):
         from .__init__ import __version__
 
         model_path = self._dgenerate_opts[0]
 
         opts = self._dgenerate_opts[1:]
+        if extra_args:
+            opts += _textprocessing.quote_spaces(extra_args)
 
         config = f'#! dgenerate {__version__}\n\n'
 
@@ -1206,10 +1209,11 @@ class PipelineResultWrapper:
 
         return config
 
-    @property
-    def dgenerate_command(self):
+    def gen_dgenerate_command(self, extra_args=None):
         model_path = self._dgenerate_opts[0]
         opts = self._dgenerate_opts[1:]
+        if extra_args:
+            opts += _textprocessing.quote_spaces(extra_args)
         return f'dgenerate {model_path} {" ".join(f"{opt[0]} {opt[1]}" for opt in opts)}'
 
     @property
@@ -1217,9 +1221,137 @@ class PipelineResultWrapper:
         return self._dgenerate_opts.copy()
 
 
-def _gpu_id_from_cuda_device(device):
-    parts = device.split(':', 1)
-    return parts[1] if len(parts) == 2 else 0
+class DiffusionArguments:
+    def __init__(self):
+        self.prompt: typing.Union[_prompt.Prompt, None] = None
+        self.sdxl_second_prompt: typing.Union[_prompt.Prompt, None] = None
+        self.sdxl_refiner_prompt: typing.Union[_prompt.Prompt, None] = None
+        self.sdxl_refiner_second_prompt: typing.Union[_prompt.Prompt, None] = None
+        self.seed: typing.Union[int, None] = None
+        self.image_seed_strength: typing.Union[float, None] = None
+        self.upscaler_noise_level: typing.Union[int, None] = None
+        self.sdxl_high_noise_fraction: typing.Union[float, None] = None
+        self.sdxl_refiner_inference_steps: typing.Union[int, None] = None
+        self.sdxl_refiner_guidance_scale: typing.Union[float, None] = None
+        self.sdxl_refiner_guidance_rescale: typing.Union[float, None] = None
+        self.sdxl_aesthetic_score: typing.Union[float, None] = None
+        self.sdxl_original_size: typing.Union[tuple, None] = None
+        self.sdxl_target_size: typing.Union[tuple, None] = None
+        self.sdxl_crops_coords_top_left: typing.Union[tuple, None] = None
+        self.sdxl_negative_aesthetic_score: typing.Union[float, None] = None
+        self.sdxl_negative_original_size: typing.Union[tuple, None] = None
+        self.sdxl_negative_target_size: typing.Union[tuple, None] = None
+        self.sdxl_negative_crops_coords_top_left: typing.Union[tuple, None] = None
+        self.sdxl_refiner_aesthetic_score: typing.Union[float, None] = None
+        self.sdxl_refiner_original_size: typing.Union[tuple, None] = None
+        self.sdxl_refiner_target_size: typing.Union[tuple, None] = None
+        self.sdxl_refiner_crops_coords_top_left: typing.Union[tuple, None] = None
+        self.sdxl_refiner_negative_aesthetic_score: typing.Union[float, None] = None
+        self.sdxl_refiner_negative_original_size: typing.Union[tuple, None] = None
+        self.sdxl_refiner_negative_target_size: typing.Union[tuple, None] = None
+        self.sdxl_refiner_negative_crops_coords_top_left: typing.Union[tuple, None] = None
+        self.guidance_scale: typing.Union[float, None] = None
+        self.image_guidance_scale: typing.Union[float, None] = None
+        self.guidance_rescale: typing.Union[float, None] = None
+        self.inference_steps: typing.Union[int, None] = None
+
+    def get_pipeline_wrapper_args(self):
+        pipeline_args = {}
+        for attr, val in self.__dict__.items():
+            if not attr.startswith('_') and not (callable(val) or val is None):
+                pipeline_args[attr] = val
+        return pipeline_args
+
+    @staticmethod
+    def _describe_prompt(prompt_format, prompt: _prompt.Prompt, pos_title, neg_title):
+        if prompt is None:
+            return
+
+        prompt_wrap_width = _textprocessing.long_text_wrap_width()
+        prompt_val = prompt.positive
+        if prompt_val:
+            header = f'{pos_title}: '
+            prompt_val = textwrap.fill(prompt_val,
+                                       width=prompt_wrap_width - len(header),
+                                       break_long_words=False,
+                                       break_on_hyphens=False,
+                                       subsequent_indent=' ' * len(header))
+            prompt_format.append(f'{header}"{prompt_val}"')
+
+        prompt_val = prompt.negative
+        if prompt_val:
+            header = f'{neg_title}: '
+            prompt_val = textwrap.fill(prompt_val,
+                                       width=prompt_wrap_width - len(header),
+                                       break_long_words=False,
+                                       break_on_hyphens=False,
+                                       subsequent_indent=' ' * len(header))
+            prompt_format.append(f'{header}"{prompt_val}"')
+
+    def describe_pipeline_wrapper_args(self):
+        prompt_format = []
+        DiffusionArguments._describe_prompt(
+            prompt_format, self.prompt,
+            "Prompt",
+            "Negative Prompt")
+
+        DiffusionArguments._describe_prompt(
+            prompt_format, self.sdxl_second_prompt,
+            "SDXL Second Prompt",
+            "SDXL Second Negative Prompt")
+
+        DiffusionArguments._describe_prompt(
+            prompt_format, self.sdxl_refiner_prompt,
+            "SDXL Refiner Prompt",
+            "SDXL Refiner Negative Prompt")
+
+        DiffusionArguments._describe_prompt(
+            prompt_format, self.sdxl_refiner_second_prompt,
+            "SDXL Refiner Second Prompt",
+            "SDXL Refiner Second Negative Prompt")
+
+        prompt_format = '\n'.join(prompt_format)
+        if prompt_format:
+            prompt_format = '\n' + prompt_format
+
+        inputs = [f'Seed: {self.seed}']
+
+        descriptions = [
+            (self.image_seed_strength, "Image Seed Strength:"),
+            (self.upscaler_noise_level, "Upscaler Noise Level:"),
+            (self.sdxl_high_noise_fraction, "SDXL High Noise Fraction:"),
+            (self.sdxl_refiner_inference_steps, "SDXL Refiner Inference Steps:"),
+            (self.sdxl_refiner_guidance_scale, "SDXL Refiner Guidance Scale:"),
+            (self.sdxl_refiner_guidance_rescale, "SDXL Refiner Guidance Rescale:"),
+            (self.sdxl_aesthetic_score, "SDXL Aesthetic Score:"),
+            (self.sdxl_original_size, "SDXL Original Size:"),
+            (self.sdxl_target_size, "SDXL Target Size:"),
+            (self.sdxl_crops_coords_top_left, "SDXL Top Left Crop Coords:"),
+            (self.sdxl_negative_aesthetic_score, "SDXL Negative Aesthetic Score:"),
+            (self.sdxl_negative_original_size, "SDXL Negative Original Size:"),
+            (self.sdxl_negative_target_size, "SDXL Negative Target Size:"),
+            (self.sdxl_negative_crops_coords_top_left, "SDXL Negative Top Left Crop Coords:"),
+            (self.sdxl_refiner_aesthetic_score, "SDXL Refiner Aesthetic Score:"),
+            (self.sdxl_refiner_original_size, "SDXL Refiner Original Size:"),
+            (self.sdxl_refiner_target_size, "SDXL Refiner Target Size:"),
+            (self.sdxl_refiner_crops_coords_top_left, "SDXL Refiner Top Left Crop Coords:"),
+            (self.sdxl_refiner_negative_aesthetic_score, "SDXL Refiner Negative Aesthetic Score:"),
+            (self.sdxl_refiner_negative_original_size, "SDXL Refiner Negative Original Size:"),
+            (self.sdxl_refiner_negative_target_size, "SDXL Refiner Negative Target Size:"),
+            (self.sdxl_refiner_negative_crops_coords_top_left, "SDXL Refiner Negative Top Left Crop Coords:"),
+            (self.guidance_scale, "Guidance Scale:"),
+            (self.image_guidance_scale, "Image Guidance Scale:"),
+            (self.guidance_rescale, "Guidance Rescale:"),
+            (self.inference_steps, "Inference Steps:")
+        ]
+
+        for prompt_val, desc in descriptions:
+            if prompt_val is not None:
+                inputs.append(desc + ' ' + str(prompt_val))
+
+        inputs = '\n'.join(inputs)
+
+        return inputs + prompt_format
 
 
 class DiffusionPipelineWrapper:
@@ -1409,17 +1541,10 @@ class DiffusionPipelineWrapper:
         return self._auth_token
 
     def _reconstruct_dgenerate_opts(self, **user_args):
-        prompt = user_args.get('prompt', None)
-        negative_prompt = user_args.get('negative_prompt', None)
-
-        sdxl_prompt_2 = user_args.get('sdxl_prompt_2', None)
-        sdxl_negative_prompt_2 = user_args.get('sdxl_negative_prompt_2', None)
-
-        sdxl_refiner_prompt = user_args.get('sdxl_refiner_prompt', None)
-        sdxl_refiner_negative_prompt = user_args.get('sdxl_refiner_negative_prompt', None)
-
-        sdxl_refiner_prompt_2 = user_args.get('sdxl_refiner_prompt_2', None)
-        sdxl_refiner_negative_prompt_2 = user_args.get('sdxl_refiner_negative_prompt_2', None)
+        prompt: _prompt.Prompt = user_args.get('prompt', None)
+        sdxl_second_prompt: _prompt.Prompt = user_args.get('sdxl_second_prompt', None)
+        sdxl_refiner_prompt: _prompt.Prompt = user_args.get('sdxl_refiner_prompt', None)
+        sdxl_refiner_second_prompt: _prompt.Prompt = user_args.get('sdxl_refiner_second_prompt', None)
 
         image = user_args.get('image', None)
         control_image = user_args.get('control_image', None)
@@ -1467,29 +1592,16 @@ class DiffusionPipelineWrapper:
             opts.append(('--image-guidance-scales', image_guidance_scale))
 
         if prompt is not None:
-            if negative_prompt is not None:
-                opts.append(('--prompts', f'"{prompt}; {negative_prompt}"'))
-            else:
-                opts.append(('--prompts', _textprocessing.quote(prompt)))
+            opts.append(('--prompts', _textprocessing.quote(prompt)))
 
-        if sdxl_prompt_2 is not None:
-            if sdxl_negative_prompt_2 is not None:
-                opts.append(('--sdxl-second-prompt', f'"{sdxl_prompt_2}; {sdxl_negative_prompt_2}"'))
-            else:
-                opts.append(('--sdxl-second-prompt', _textprocessing.quote(sdxl_prompt_2)))
+        if sdxl_second_prompt is not None:
+            opts.append(('--sdxl-second-prompt', _textprocessing.quote(sdxl_second_prompt)))
 
         if sdxl_refiner_prompt is not None:
-            if sdxl_refiner_negative_prompt is not None:
-                opts.append(('--sdxl-refiner-prompt', f'"{sdxl_refiner_prompt}; {sdxl_refiner_negative_prompt}"'))
-            else:
-                opts.append(('--sdxl-refiner-prompt', _textprocessing.quote(sdxl_refiner_prompt)))
+            opts.append(('--sdxl-refiner-prompt', _textprocessing.quote(sdxl_refiner_prompt)))
 
-        if sdxl_refiner_prompt_2 is not None:
-            if sdxl_refiner_negative_prompt_2 is not None:
-                opts.append(
-                    ('--sdxl-refiner-second-prompt', f'"{sdxl_refiner_prompt_2}; {sdxl_refiner_negative_prompt_2}"'))
-            else:
-                opts.append(('--sdxl-refiner-second-prompt', _textprocessing.quote(sdxl_refiner_prompt_2)))
+        if sdxl_refiner_second_prompt is not None:
+            opts.append(('--sdxl-refiner-second-prompt', _textprocessing.quote(sdxl_refiner_second_prompt)))
 
         if self._revision is not None:
             opts.append(('--revision', self._revision))
@@ -1711,15 +1823,14 @@ class DiffusionPipelineWrapper:
         return [p.end for p in self._parsed_control_net_paths] if \
             len(self._parsed_control_net_paths) > 1 else self._parsed_control_net_paths[0].end
 
-    def _call_flax_control_net(self, default_args, user_args):
+    def _call_flax_control_net(self, positive_prompt, negative_prompt, default_args, user_args):
         device_count = jax.device_count()
 
         pipe: diffusers.FlaxStableDiffusionControlNetPipeline = self._pipeline
 
         default_args['prng_seed'] = jax.random.split(jax.random.PRNGKey(user_args.get('seed', 0)), device_count)
-        prompt_ids = pipe.prepare_text_inputs([user_args.get('prompt', '')] * device_count)
+        prompt_ids = pipe.prepare_text_inputs([positive_prompt] * device_count)
 
-        negative_prompt = user_args.get('negative_prompt', None)
         if negative_prompt is not None:
             negative_prompt_ids = pipe.prepare_text_inputs([negative_prompt] * device_count)
         else:
@@ -1746,7 +1857,7 @@ class DiffusionPipelineWrapper:
             controlnet_conditioning_scale=self._get_control_net_conditioning_scale(),
             jit=True, **default_args)[0]
 
-        return PipelineResultWrapper(
+        return PipelineWrapperResult(
             _image_grid(self._pipeline.numpy_to_pil(images.reshape((images.shape[0],) + images.shape[-3:])),
                         device_count, 1))
 
@@ -1770,16 +1881,19 @@ class DiffusionPipelineWrapper:
         if user_args.get('guidance_rescale') is not None:
             raise NotImplementedError('--guidance-rescales is not supported when using --model-type flax.')
 
+        prompt: _prompt.Prompt() = user_args.get('prompt', _prompt.Prompt())
+        positive_prompt = prompt.positive if prompt.positive else ''
+        negative_prompt = prompt.negative
+
         if hasattr(self._pipeline, 'controlnet'):
-            return self._call_flax_control_net(default_args, user_args)
+            return self._call_flax_control_net(positive_prompt, negative_prompt,
+                                               default_args, user_args)
 
         device_count = jax.device_count()
 
         default_args['prng_seed'] = jax.random.split(jax.random.PRNGKey(user_args.get('seed', 0)), device_count)
 
         processed_masks = None
-
-        negative_prompt = user_args.get('negative_prompt', None)
 
         if negative_prompt is not None:
             negative_prompt_ids = _flax_shard(
@@ -1791,7 +1905,7 @@ class DiffusionPipelineWrapper:
             if 'mask_image' in default_args:
 
                 prompt_ids, processed_images, processed_masks = \
-                    self._pipeline.prepare_inputs(prompt=[user_args.get('prompt', '')] * device_count,
+                    self._pipeline.prepare_inputs(prompt=[positive_prompt] * device_count,
                                                   image=[default_args['image']] * device_count,
                                                   mask=[default_args['mask_image']] * device_count)
 
@@ -1805,14 +1919,14 @@ class DiffusionPipelineWrapper:
                 default_args.pop('mask_image')
             else:
                 prompt_ids, processed_images = self._pipeline.prepare_inputs(
-                    prompt=[user_args.get('prompt', '')] * device_count,
+                    prompt=[positive_prompt] * device_count,
                     image=[default_args['image']] * device_count)
                 default_args['image'] = _flax_shard(processed_images)
 
             default_args['width'] = processed_images[0].shape[2]
             default_args['height'] = processed_images[0].shape[1]
         else:
-            prompt_ids = self._pipeline.prepare_inputs([user_args.get('prompt', '')] * device_count)
+            prompt_ids = self._pipeline.prepare_inputs([positive_prompt] * device_count)
 
         images = DiffusionPipelineWrapper._call_pipeline(
             pipeline=self._pipeline,
@@ -1822,7 +1936,7 @@ class DiffusionPipelineWrapper:
             params=_flax_replicate(self._flax_params),
             **default_args, jit=True)[0]
 
-        return PipelineResultWrapper(
+        return PipelineWrapperResult(
             _image_grid(self._pipeline.numpy_to_pil(
                 images.reshape((images.shape[0],) + images.shape[-3:])),
                 device_count, 1))
@@ -1833,7 +1947,9 @@ class DiffusionPipelineWrapper:
                                         user_args,
                                         pipeline_arg_name,
                                         user_arg_name,
-                                        option_name, default):
+                                        option_name,
+                                        default,
+                                        transform=None):
         if pipeline.__call__.__wrapped__ is not None:
             # torch.no_grad()
             func = pipeline.__call__.__wrapped__
@@ -1845,6 +1961,7 @@ class DiffusionPipelineWrapper:
                 # Only provide a default if the user
                 # provided the option and it's value was None
                 val = user_args.get(user_arg_name, default)
+                val = val if not transform else transform(val)
                 default_args[pipeline_arg_name] = val
                 return val
             return None
@@ -1911,22 +2028,31 @@ class DiffusionPipelineWrapper:
         default_args.pop('negative_crops_coords_top_left', None)
 
     def _call_torch(self, default_args, user_args):
+        prompt: _prompt.Prompt() = user_args.get('prompt', _prompt.Prompt())
+        default_args['prompt'] = prompt.positive if prompt.positive else ''
+        default_args['negative_prompt'] = prompt.negative
 
         self._get_sdxl_conditioning_args(self._pipeline, default_args, user_args)
 
-        self._get_non_universal_pipeline_arg(self._pipeline, default_args, user_args,
-                                             'prompt_2', 'sdxl_prompt_2',
-                                             '--sdxl-second-prompts', None)
+        self._get_non_universal_pipeline_arg(self._pipeline,
+                                             default_args, user_args,
+                                             'prompt_2', 'sdxl_second_prompt',
+                                             '--sdxl-second-prompts', _prompt.Prompt(),
+                                             transform=lambda prompt: prompt.positive)
 
-        self._get_non_universal_pipeline_arg(self._pipeline, default_args, user_args,
-                                             'negative_prompt_2', 'sdxl_negative_prompt_2',
-                                             '--sdxl-second-prompts', None)
+        self._get_non_universal_pipeline_arg(self._pipeline,
+                                             default_args, user_args,
+                                             'negative_prompt_2', 'sdxl_second_prompt',
+                                             '--sdxl-second-prompts', _prompt.Prompt(),
+                                             transform=lambda prompt: prompt.negative)
 
-        self._get_non_universal_pipeline_arg(self._pipeline, default_args, user_args,
+        self._get_non_universal_pipeline_arg(self._pipeline,
+                                             default_args, user_args,
                                              'guidance_rescale', 'guidance_rescale',
                                              '--guidance-rescales', 0.0)
 
-        self._get_non_universal_pipeline_arg(self._pipeline, default_args, user_args,
+        self._get_non_universal_pipeline_arg(self._pipeline,
+                                             default_args, user_args,
                                              'image_guidance_scale', 'image_guidance_scale',
                                              '--image-guidance-scales', 1.5)
 
@@ -1935,8 +2061,6 @@ class DiffusionPipelineWrapper:
             default_args['num_images_per_prompt'] = user_args.get('num_images_per_prompt', 1)
 
         default_args['generator'] = torch.Generator(device=self._device).manual_seed(user_args.get('seed', 0))
-        default_args['prompt'] = user_args.get('prompt', '')
-        default_args['negative_prompt'] = user_args.get('negative_prompt', None)
 
         if isinstance(self._pipeline, diffusers.StableDiffusionInpaintPipelineLegacy):
             # Not necessary, will cause an error
@@ -1958,7 +2082,7 @@ class DiffusionPipelineWrapper:
                 self._get_control_net_guidance_end()
 
         if self._sdxl_refiner_pipeline is None:
-            return PipelineResultWrapper(
+            return PipelineWrapperResult(
                 DiffusionPipelineWrapper._call_pipeline(
                     pipeline=self._pipeline,
                     device=self._device, **default_args).images[0])
@@ -2013,23 +2137,32 @@ class DiffusionPipelineWrapper:
                                          default_args, user_args,
                                          user_prefix='refiner')
 
-        self._get_non_universal_pipeline_arg(self._pipeline, default_args, user_args,
+        self._get_non_universal_pipeline_arg(self._pipeline,
+                                             default_args, user_args,
                                              'prompt', 'sdxl_refiner_prompt',
-                                             '--sdxl-refiner-prompts', None)
+                                             '--sdxl-refiner-prompts', _prompt.Prompt(),
+                                             transform=lambda prompt: prompt.positive)
 
-        self._get_non_universal_pipeline_arg(self._pipeline, default_args, user_args,
-                                             'negative_prompt', 'sdxl_refiner_negative_prompt',
-                                             '--sdxl-refiner-prompts', None)
+        self._get_non_universal_pipeline_arg(self._pipeline,
+                                             default_args, user_args,
+                                             'negative_prompt', 'sdxl_refiner_prompt',
+                                             '--sdxl-refiner-prompts', _prompt.Prompt(),
+                                             transform=lambda prompt: prompt.negative)
 
-        self._get_non_universal_pipeline_arg(self._pipeline, default_args, user_args,
-                                             'prompt_2', 'sdxl_refiner_prompt_2',
-                                             '--sdxl-refiner-second-prompts', None)
+        self._get_non_universal_pipeline_arg(self._pipeline,
+                                             default_args, user_args,
+                                             'prompt_2', 'sdxl_refiner_second_prompt',
+                                             '--sdxl-refiner-second-prompts', _prompt.Prompt(),
+                                             transform=lambda prompt: prompt.positive)
 
-        self._get_non_universal_pipeline_arg(self._pipeline, default_args, user_args,
-                                             'negative_prompt_2', 'sdxl_refiner_negative_prompt_2',
-                                             '--sdxl-refiner-second-prompts', None)
+        self._get_non_universal_pipeline_arg(self._pipeline,
+                                             default_args, user_args,
+                                             'negative_prompt_2', 'sdxl_refiner_second_prompt',
+                                             '--sdxl-refiner-second-prompts', _prompt.Prompt(),
+                                             transform=lambda prompt: prompt.negative)
 
-        self._get_non_universal_pipeline_arg(self._pipeline, default_args, user_args,
+        self._get_non_universal_pipeline_arg(self._pipeline,
+                                             default_args, user_args,
                                              'guidance_rescale', 'sdxl_refiner_guidance_rescale',
                                              '--sdxl-refiner-guidance-rescales', 0.0)
 
@@ -2068,7 +2201,7 @@ class DiffusionPipelineWrapper:
 
             default_args['strength'] = strength
 
-        pipe_result = PipelineResultWrapper(
+        pipe_result = PipelineWrapperResult(
             DiffusionPipelineWrapper._call_pipeline(pipeline=self._sdxl_refiner_pipeline, device=self._device,
                                                     **default_args, **i_start).images[0])
 
@@ -2203,13 +2336,14 @@ class DiffusionPipelineWrapper:
         # All other situations handled by BASIC type
         return _PipelineTypes.BASIC
 
-    def __call__(self, **kwargs) -> PipelineResultWrapper:
+    def __call__(self, **kwargs) -> PipelineWrapperResult:
         self._lazy_init_pipeline(DiffusionPipelineWrapper._determine_pipeline_type(kwargs))
 
         default_args = self._pipeline_defaults(kwargs)
 
         _messages.debug_log(f'Calling Pipeline Wrapper: "{self}",'
-                            '\nCalled with User Args: ', lambda: _textprocessing.debug_format_args(kwargs))
+                            '\nCalled with User Args: ',
+                            lambda: _textprocessing.debug_format_args(kwargs))
 
         if self._model_type == ModelTypes.FLAX:
             result = self._call_flax(default_args, kwargs)
