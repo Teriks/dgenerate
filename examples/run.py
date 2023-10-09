@@ -50,13 +50,14 @@ for config in configs:
             sys.stdout.flush()
             continue
 
+    extra_args = []
     if _short_animations and 'animation' in c:
         print(f'SHORTENING ANIMATION TO 3 FRAMES MAX: {config}')
         sys.stdout.flush()
-        args += ['--frame-end', '2']
+        extra_args = ['--frame-end', '2']
 
     print(f'RUNNING CONFIG: {config}')
     sys.stdout.flush()
-    proc = ["dgenerate"] + args
+    proc = ["dgenerate"] + args + extra_args
     with open(config) as f:
         subprocess.run(proc, stdin=f, cwd=os.path.dirname(config), check=True)
