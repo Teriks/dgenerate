@@ -1,4 +1,4 @@
-#! dgenerate 1.1.0
+#! dgenerate 1.2.0
 
 diffusers/sdxl-instructpix2pix-768 --model-type torch-sdxl-pix2pix \
 --variant fp16 --dtype float16 \
