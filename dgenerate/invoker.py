@@ -18,7 +18,6 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import argparse
 import typing
 
 import torch
@@ -37,11 +36,14 @@ def invoke_dgenerate(
         args: typing.List[typing.Union[str, float, int]],
         throw: bool = False):
     if '--image-preprocessor-help' in args:
-        return _preprocessors.image_preprocessor_help(args, throw=throw)
+        try:
+            return _preprocessors.image_preprocessor_help(args, throw=throw)
+        except _preprocessors.PreprocessorHelpUsageError as e:
+            raise _arguments.DgenerateUsageError(e)
 
     try:
         arguments = _arguments.parse_args(args, throw=True)
-    except argparse.ArgumentError as e:
+    except _arguments.DgenerateUsageError as e:
         if throw:
             raise e
         return 1

@@ -4,7 +4,7 @@
 # Complete transformation with canny edge detection
 
 runwayml/stable-diffusion-v1-5 \
---inference-steps 30 \
+--inference-steps 3 \
 --guidance-scale 8 \
 --prompts "Black and white ((charcoal)) art of (rick astley) dancing; color, colors" \
 --seeds 85214917063096 \

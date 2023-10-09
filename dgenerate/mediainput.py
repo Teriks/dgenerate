@@ -308,18 +308,36 @@ def _iterate_animation_frames_x2(seed_reader: AnimationReader,
     total_frames = seed_reader.frame_slice_count(frame_start, frame_end)
     right_total_frames = right_reader.frame_slice_count(frame_start, frame_end)
     out_frame_idx = 0
-    in_slice = None
 
     # Account for videos possibly having a differing number of frames
     total_frames = min(total_frames, right_total_frames)
 
+    have_preprocess_seed = isinstance(seed_reader, _preprocessors.ImagePreprocessorMixin)
+    have_preprocess_right = isinstance(right_reader, _preprocessors.ImagePreprocessorMixin)
+
+    preprocess_seed_old = True
+    preprocess_right_old = True
+
+    if have_preprocess_seed:
+        preprocess_seed_old = seed_reader.preprocess_enabled
+        seed_reader.preprocess_enabled = frame_start == 0
+
+    if have_preprocess_right:
+        preprocess_right_old = right_reader.preprocess_enabled
+        right_reader.preprocess_enabled = frame_start == 0
+
     for in_frame_idx, frame in enumerate(zip(seed_reader, right_reader)):
+        if in_frame_idx == frame_start - 1:
+            # The next frame is preprocessed
+            if have_preprocess_seed:
+                seed_reader.preprocess_enabled = True
+            if have_preprocess_right:
+                right_reader.preprocess_enabled = True
+
         seed_image = frame[0]
         right_image = frame[1]
 
-        if _is_frame_in_slice(in_frame_idx, frame_start, frame_end):
-            if in_slice is None:
-                in_slice = True
+        if in_frame_idx >= frame_start:
             yield AnimationFrame(frame_index=out_frame_idx,
                                  total_frames=total_frames,
                                  anim_fps=seed_reader.anim_fps,
@@ -327,8 +345,15 @@ def _iterate_animation_frames_x2(seed_reader: AnimationReader,
                                  image=seed_image,
                                  **{right_animation_frame_param_name: right_image})
             out_frame_idx += 1
-        elif in_slice:
+
+        if frame_end is not None and in_frame_idx == frame_end:
             break
+
+    if have_preprocess_seed:
+        seed_reader.preprocess_enabled = preprocess_seed_old
+
+    if have_preprocess_right:
+        right_reader.preprocess_enabled = preprocess_right_old
 
 
 def _iterate_animation_frames_x3(seed_reader: AnimationReader,
@@ -340,20 +365,46 @@ def _iterate_animation_frames_x3(seed_reader: AnimationReader,
     mask_total_frames = mask_reader.frame_slice_count(frame_start, frame_end)
     control_total_frames = control_reader.frame_slice_count(frame_start, frame_end)
     out_frame_idx = 0
-    in_slice = None
 
     # Account for videos possibly having a differing number of frames
     total_frames = min(total_frames, mask_total_frames, control_total_frames)
 
+    have_preprocess_seed = isinstance(seed_reader, _preprocessors.ImagePreprocessorMixin)
+    have_preprocess_mask = isinstance(mask_reader, _preprocessors.ImagePreprocessorMixin)
+    have_preprocess_control = isinstance(control_reader, _preprocessors.ImagePreprocessorMixin)
+
+    preprocess_seed_old = True
+    preprocess_mask_old = True
+    preprocess_control_old = True
+
+    if have_preprocess_seed:
+        preprocess_seed_old = seed_reader.preprocess_enabled
+        seed_reader.preprocess_enabled = frame_start == 0
+
+    if have_preprocess_mask:
+        preprocess_mask_old = mask_reader.preprocess_enabled
+        mask_reader.preprocess_enabled = frame_start == 0
+
+    if have_preprocess_control:
+        preprocess_control_old = control_reader.preprocess_enabled
+        control_reader.preprocess_enabled = frame_start == 0
+
     for in_frame_idx, frame in enumerate(zip(seed_reader, mask_reader, control_reader)):
+
+        if in_frame_idx == frame_start - 1:
+            # The next frame is preprocessed
+            if have_preprocess_seed:
+                seed_reader.preprocess_enabled = True
+            if have_preprocess_mask:
+                mask_reader.preprocess_enabled = True
+            if have_preprocess_control:
+                control_reader.preprocess_enabled = True
 
         image = frame[0]
         mask = frame[1]
         control = frame[2]
 
-        if _is_frame_in_slice(in_frame_idx, frame_start, frame_end):
-            if in_slice is None:
-                in_slice = True
+        if in_frame_idx >= frame_start:
             yield AnimationFrame(frame_index=out_frame_idx,
                                  total_frames=total_frames,
                                  anim_fps=seed_reader.anim_fps,
@@ -362,8 +413,18 @@ def _iterate_animation_frames_x3(seed_reader: AnimationReader,
                                  mask_image=mask,
                                  control_image=control)
             out_frame_idx += 1
-        elif in_slice:
+
+        if frame_end is not None and in_frame_idx == frame_end:
             break
+
+    if have_preprocess_seed:
+        seed_reader.preprocess_enabled = preprocess_seed_old
+
+    if have_preprocess_mask:
+        mask_reader.preprocess_enabled = preprocess_mask_old
+
+    if have_preprocess_control:
+        control_reader.preprocess_enabled = preprocess_control_old
 
 
 def iterate_animation_frames(seed_reader: AnimationReader,
@@ -390,22 +451,34 @@ def iterate_animation_frames(seed_reader: AnimationReader,
                                                 frame_start=frame_start,
                                                 frame_end=frame_end)
     else:
-
         total_frames = seed_reader.frame_slice_count(frame_start, frame_end)
         out_frame_idx = 0
-        in_slice = None
+
+        have_preprocess = isinstance(seed_reader, _preprocessors.ImagePreprocessorMixin)
+
+        preprocess_old = True
+        if have_preprocess:
+            preprocess_old = seed_reader.preprocess_enabled
+            seed_reader.preprocess_enabled = frame_start == 0
+
         for in_frame_idx, frame in enumerate(seed_reader):
-            if _is_frame_in_slice(in_frame_idx, frame_start, frame_end):
-                if in_slice is None:
-                    in_slice = True
+            if have_preprocess and in_frame_idx == frame_start - 1:
+                # The next frame is preprocessed
+                seed_reader.preprocess_enabled = True
+
+            if in_frame_idx >= frame_start:
                 yield AnimationFrame(frame_index=out_frame_idx,
                                      total_frames=total_frames,
                                      anim_fps=seed_reader.anim_fps,
                                      anim_frame_duration=seed_reader.anim_frame_duration,
                                      image=frame)
                 out_frame_idx += 1
-            elif in_slice:
+
+            if frame_end is not None and in_frame_idx == frame_end:
                 break
+
+        if have_preprocess:
+            seed_reader.preprocess_enabled = preprocess_old
 
 
 class ImageSeed:

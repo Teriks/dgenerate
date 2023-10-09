@@ -37,13 +37,17 @@ _help_parser.add_argument('--image-preprocessor-help', nargs='*', default=[], ty
 _help_parser.add_argument('--plugin-modules', nargs='+', default=[], type=str)
 
 
+class PreprocessorHelpUsageError(Exception):
+    pass
+
+
 def image_preprocessor_help(args: typing.List[str], throw: bool = False):
     try:
         parse_result = _help_parser.parse_args(args)
-    except argparse.ArgumentError as e:
+    except (argparse.ArgumentError, argparse.ArgumentTypeError) as e:
         _messages.log(f'dgenerate: error: {e}', level=_messages.ERROR)
         if throw:
-            raise e
+            raise PreprocessorHelpUsageError(e)
         return 1
 
     names = parse_result.image_preprocessor_help
