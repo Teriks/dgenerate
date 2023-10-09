@@ -59,5 +59,5 @@ def main():
         else:
             sys.exit(invoke_dgenerate(render_loop, sys.argv[1:]))
     except KeyboardInterrupt:
-        print('Aborting due to keyboard interrupt!')
+        print('Aborting due to keyboard interrupt!', file=sys.stderr)
         sys.exit(1)

@@ -19,7 +19,11 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import sys
 
-from . import main
-
-main()
+try:
+    from . import main
+    main()
+except KeyboardInterrupt:
+    print('Aborting due to keyboard interrupt!', file=sys.stderr)
+    sys.exit(1)
