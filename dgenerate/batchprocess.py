@@ -3,6 +3,7 @@ import os
 import re
 import shlex
 import textwrap
+import typing
 
 import jinja2
 
@@ -19,20 +20,36 @@ class BatchProcessError(Exception):
 
 class BatchProcessor:
     def __init__(self,
-                 render_loop: _diffusionloop.DiffusionRenderLoop,
+                 invoker: typing.Callable[[list], int],
+                 template_variable_generator: typing.Callable[[], dict],
                  name: str,
-                 version: str,
-                 template_variables: dict,
-                 template_functions: dict,
-                 directives: dict,
+                 version: typing.Union[typing.Tuple[int, int, int], str],
+                 template_variables: typing.Dict[str, typing.Any],
+                 template_functions: typing.Dict[str, typing.Callable[[typing.Any], typing.Any]],
+                 directives: typing.Dict[str, typing.Callable[[list], None]],
                  injected_args: list):
-        self.render_loop = render_loop
+
+        self.invoker = invoker
+        self.template_variable_generator = template_variable_generator
         self.template_variables = template_variables
         self.template_functions = template_functions
         self.directives = directives
         self.injected_args = injected_args
         self.name = name
-        self.version = version
+
+        if isinstance(version, str):
+            ver_parts = version.split('.')
+            if len(ver_parts) != 3:
+                raise ValueError(
+                    f'version expected to be a version string in the format major.minor.patch. recieved: "{version}"')
+            self.version: typing.Tuple[int, int, int] = \
+                (int(ver_parts[0]), int(ver_parts[1]), int(ver_parts[2]))
+        else:
+            self.version: typing.Tuple[int, int, int] = tuple(version)
+            if len(self.version) != 3:
+                raise ValueError(
+                    f'version tuple expected to contain three components: (major, minor, patch). recieved: {self.version}')
+
         self.expand_vars = os.path.expandvars
         self._jinja_env = jinja2.Environment()
 
@@ -40,7 +57,7 @@ class BatchProcessor:
             self._jinja_env.globals[name] = func
             self._jinja_env.filters[name] = func
 
-    def render_template(self, input_string):
+    def render_template(self, input_string: str):
         return self.expand_vars(
             self._jinja_env.from_string(input_string).
             render(**self.template_variables))
@@ -49,12 +66,11 @@ class BatchProcessor:
         versioning = re.match(r'#!\s+' + self.name + r'\s+([0-9]+\.[0-9]+\.[0-9]+)', line)
         if versioning:
             config_file_version = versioning.group(1)
-            cur_version = [int(p) for p in self.version.split('.')]
             config_file_version = [int(p) for p in config_file_version.split('.')]
 
-            cur_major_version = cur_version[0]
+            cur_major_version = self.version[0]
             config_major_version = config_file_version[0]
-            cur_minor_version = cur_version[1]
+            cur_minor_version = self.version[1]
             config_minor_version = config_file_version[1]
 
             if cur_major_version != config_major_version:
@@ -134,15 +150,15 @@ class BatchProcessor:
 
         _messages.log(header + args_wrapped, underline=True)
 
-        return_code = _invoker.invoke_dgenerate(self.render_loop, shell_lexed)
+        return_code = self.invoker(shell_lexed)
 
         if return_code != 0:
             raise BatchProcessError(
                 f'Invocation error in input config file line: {line_idx}')
 
-        self.template_variables.update(self.render_loop.generate_template_variables())
+        self.template_variables.update(self.template_variable_generator())
 
-    def process_file(self, stream):
+    def process_file(self, stream: typing.TextIO):
         continuation = ''
 
         for line_idx, line in enumerate(stream):
@@ -166,10 +182,11 @@ class BatchProcessor:
                 continuation = ''
 
 
-def process_config(render_loop: _diffusionloop.DiffusionRenderLoop,
-                   version_string,
-                   injected_args,
-                   file_stream):
+def run_config(render_loop: _diffusionloop.DiffusionRenderLoop,
+               version: typing.Union[typing.Tuple[int, int, int], str],
+               injected_args: typing.List[typing.Union[str, float, int]],
+               file_stream: typing.TextIO,
+               throw: bool = False):
     def _format_prompt(prompt):
         pos = prompt.get('positive')
         neg = prompt.get('negative')
@@ -198,12 +215,14 @@ def process_config(render_loop: _diffusionloop.DiffusionRenderLoop,
         'clear_model_cache': lambda args: _pipelinewrapper.clear_model_cache()
     }
 
-    runner = BatchProcessor(render_loop=render_loop,
-                            name='dgenerate',
-                            version=version_string,
-                            template_variables=template_variables,
-                            template_functions=funcs,
-                            injected_args=injected_args,
-                            directives=directives)
+    runner = BatchProcessor(
+        invoker=lambda args: _invoker.invoke_dgenerate(render_loop, args, throw=throw),
+        template_variable_generator=lambda: render_loop.generate_template_variables(),
+        name='dgenerate',
+        version=version,
+        template_variables=template_variables,
+        template_functions=funcs,
+        injected_args=injected_args,
+        directives=directives)
 
     runner.process_file(stream=file_stream)

@@ -42,7 +42,8 @@ import torch
 import PIL
 import dgenerate.messages as _messages
 import dgenerate.textprocessing as _textprocessing
-import dgenerate.memoize as _memoize
+import dgenerate.memoize as _d_memoize
+from dgenerate.memoize import memoize as _memoize
 import dgenerate.prompt as _prompt
 import diffusers
 
@@ -125,7 +126,7 @@ def _simple_cache_miss_debug(title, cache_key, new):
 
 def _struct_hasher(obj):
     return _textprocessing.quote(
-        _memoize.args_cache_key(
+        _d_memoize.args_cache_key(
             {k: v for k, v in sorted(obj.__dict__.items()) if not (k.startswith('_') or callable(v))}))
 
 
@@ -155,10 +156,10 @@ class FlaxControlNetPath:
         self.from_torch = from_torch
         self.scale = scale
 
-    @_memoize.memoize(_FLAX_CONTROL_NET_CACHE,
-                      hasher=lambda args: _memoize.args_cache_key(args, {'self': _struct_hasher}),
-                      on_hit=lambda key, hit: _simple_cache_hit_debug("Flax ControlNet", key, hit),
-                      on_create=lambda key, new: _simple_cache_miss_debug("Flax ControlNet", key, new))
+    @_memoize(_FLAX_CONTROL_NET_CACHE,
+              hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _struct_hasher}),
+              on_hit=lambda key, hit: _simple_cache_hit_debug("Flax ControlNet", key, hit),
+              on_create=lambda key, new: _simple_cache_miss_debug("Flax ControlNet", key, new))
     def load(self, flax_dtype_fallback, **kwargs):
         single_file_load_path = _is_single_file_model_load(self.model)
 
@@ -223,10 +224,10 @@ class TorchControlNetPath:
         self.start = start
         self.end = end
 
-    @_memoize.memoize(_TORCH_CONTROL_NET_CACHE,
-                      hasher=lambda args: _memoize.args_cache_key(args, {'self': _struct_hasher}),
-                      on_hit=lambda key, hit: _simple_cache_hit_debug("Torch ControlNet", key, hit),
-                      on_create=lambda key, new: _simple_cache_miss_debug("Torch ControlNet", key, new))
+    @_memoize(_TORCH_CONTROL_NET_CACHE,
+              hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _struct_hasher}),
+              on_hit=lambda key, hit: _simple_cache_hit_debug("Torch ControlNet", key, hit),
+              on_create=lambda key, new: _simple_cache_miss_debug("Torch ControlNet", key, new))
     def load(self, torch_dtype_fallback, **kwargs) -> diffusers.ControlNetModel:
 
         single_file_load_path = _is_single_file_model_load(self.model)
@@ -490,11 +491,11 @@ def _path_hash_with_parser(parser):
     return hasher
 
 
-@_memoize.memoize(_TORCH_VAE_CACHE,
-                  hasher=lambda args: _memoize.args_cache_key(args,
-                                                              {'path': _path_hash_with_parser(parse_torch_vae_path)}),
-                  on_hit=lambda key, hit: _simple_cache_hit_debug("Torch VAE", key, hit),
-                  on_create=lambda key, new: _simple_cache_miss_debug("Torch VAE", key, new))
+@_memoize(_TORCH_VAE_CACHE,
+          hasher=lambda args: _d_memoize.args_cache_key(args,
+                                                        {'path': _path_hash_with_parser(parse_torch_vae_path)}),
+          on_hit=lambda key, hit: _simple_cache_hit_debug("Torch VAE", key, hit),
+          on_create=lambda key, new: _simple_cache_miss_debug("Torch VAE", key, new))
 def _load_pytorch_vae(path,
                       torch_dtype_fallback,
                       use_auth_token) -> typing.Union[
@@ -547,11 +548,11 @@ def _load_pytorch_vae(path,
     return vae
 
 
-@_memoize.memoize(_FLAX_VAE_CACHE,
-                  hasher=lambda args: _memoize.args_cache_key(args,
-                                                              {'path': _path_hash_with_parser(parse_flax_vae_path)}),
-                  on_hit=lambda key, hit: _simple_cache_hit_debug("Flax VAE", key, hit),
-                  on_create=lambda key, new: _simple_cache_miss_debug("Flax VAE", key, new))
+@_memoize(_FLAX_VAE_CACHE,
+          hasher=lambda args: _d_memoize.args_cache_key(args,
+                                                        {'path': _path_hash_with_parser(parse_flax_vae_path)}),
+          on_hit=lambda key, hit: _simple_cache_hit_debug("Flax VAE", key, hit),
+          on_create=lambda key, new: _simple_cache_miss_debug("Flax VAE", key, new))
 def _load_flax_vae(path,
                    flax_dtype_fallback,
                    use_auth_token):
@@ -722,19 +723,19 @@ def _path_list_hash_with_parser(parser):
     return hasher
 
 
-@_memoize.memoize(_TORCH_MODEL_CACHE,
-                  hasher=lambda args: _memoize.args_cache_key(args,
-                                                              {'vae_path': _path_hash_with_parser(parse_torch_vae_path),
-                                                               'lora_paths':
-                                                                   _path_list_hash_with_parser(parse_lora_path),
-                                                               'textual_inversion_paths':
-                                                                   _path_list_hash_with_parser(
-                                                                       parse_textual_inversion_path),
-                                                               'control_net_paths':
-                                                                   _path_list_hash_with_parser(
-                                                                       parse_torch_control_net_path)}),
-                  on_hit=lambda key, hit: _simple_cache_hit_debug("Torch Pipeline", key, hit[0]),
-                  on_create=lambda key, new: _simple_cache_miss_debug('Torch Pipeline', key, new[0]))
+@_memoize(_TORCH_MODEL_CACHE,
+          hasher=lambda args: _d_memoize.args_cache_key(args,
+                                                        {'vae_path': _path_hash_with_parser(parse_torch_vae_path),
+                                                         'lora_paths':
+                                                             _path_list_hash_with_parser(parse_lora_path),
+                                                         'textual_inversion_paths':
+                                                             _path_list_hash_with_parser(
+                                                                 parse_textual_inversion_path),
+                                                         'control_net_paths':
+                                                             _path_list_hash_with_parser(
+                                                                 parse_torch_control_net_path)}),
+          on_hit=lambda key, hit: _simple_cache_hit_debug("Torch Pipeline", key, hit[0]),
+          on_create=lambda key, new: _simple_cache_miss_debug('Torch Pipeline', key, new[0]))
 def _create_torch_diffusion_pipeline(pipeline_type,
                                      model_type,
                                      model_path,
@@ -943,14 +944,14 @@ def _create_torch_diffusion_pipeline(pipeline_type,
     return pipeline, parsed_control_net_paths
 
 
-@_memoize.memoize(_FLAX_MODEL_CACHE,
-                  hasher=lambda args: _memoize.args_cache_key(args,
-                                                              {'vae_path': _path_hash_with_parser(parse_flax_vae_path),
-                                                               'control_net_paths':
-                                                                   _path_list_hash_with_parser(
-                                                                       parse_flax_control_net_path)}),
-                  on_hit=lambda key, hit: _simple_cache_hit_debug("Flax Pipeline", key, hit[0]),
-                  on_create=lambda key, new: _simple_cache_miss_debug('Flax Pipeline', key, new[0]))
+@_memoize(_FLAX_MODEL_CACHE,
+          hasher=lambda args: _d_memoize.args_cache_key(args,
+                                                        {'vae_path': _path_hash_with_parser(parse_flax_vae_path),
+                                                         'control_net_paths':
+                                                             _path_list_hash_with_parser(
+                                                                 parse_flax_control_net_path)}),
+          on_hit=lambda key, hit: _simple_cache_hit_debug("Flax Pipeline", key, hit[0]),
+          on_create=lambda key, new: _simple_cache_miss_debug('Flax Pipeline', key, new[0]))
 def _create_flax_diffusion_pipeline(pipeline_type,
                                     model_path,
                                     revision,

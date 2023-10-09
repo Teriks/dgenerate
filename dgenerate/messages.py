@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import sys
+import typing
 
 import dgenerate.textprocessing as _textprocessing
 
@@ -30,7 +31,7 @@ ERROR = 2
 DEBUG = 3
 
 
-def log(*args, **kwargs):
+def log(*args: typing.Any, **kwargs):
     level = kwargs.get('level', INFO)
     underline_me = kwargs.get('underline', False)
     file = sys.stdout
@@ -46,7 +47,7 @@ def log(*args, **kwargs):
         print(' '.join(str(a) for a in args), file=file)
 
 
-def debug_log(*func_or_str, **kwargs):
+def debug_log(*func_or_str: typing.Union[typing.Callable[[], typing.Any], typing.Any], **kwargs):
     if LEVEL == DEBUG:
         vals = []
         for val in func_or_str:

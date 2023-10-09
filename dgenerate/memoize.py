@@ -20,9 +20,11 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import inspect
 import numbers
+import typing
 
 
-def args_cache_key(args_dict, custom_hashes=None):
+def args_cache_key(args_dict: typing.Dict[str, typing.Any],
+                   custom_hashes: typing.Dict[str, typing.Callable[[typing.Any], str]] = None):
     def value_hash(obj):
         if isinstance(obj, dict):
             return '{' + args_cache_key(obj) + '}'
@@ -41,9 +43,13 @@ def args_cache_key(args_dict, custom_hashes=None):
         return ','.join(f'{k}={value_hash(v)}' for k, v in sorted(args_dict.items()))
 
 
-def memoize(cache, exceptions=None, hasher=args_cache_key, on_hit=None, on_create=None):
+def memoize(cache: typing.Dict[str, typing.Any],
+            exceptions: typing.Set[str] = None,
+            hasher: typing.Callable[[typing.Dict[str, typing.Any]], str] = args_cache_key,
+            on_hit: typing.Callable[[str, typing.Any], None] = None,
+            on_create: typing.Callable[[str, typing.Any], None] = None):
     if exceptions is None:
-        exceptions = {}
+        exceptions = set()
 
     def _on_hit(key, hit):
         if on_hit is not None:
@@ -95,7 +101,7 @@ def memoize(cache, exceptions=None, hasher=args_cache_key, on_hit=None, on_creat
             val = func(**named_provided_arguments)
             cache[cache_key] = val
 
-            on_create(cache_key, val)
+            _on_create(cache_key, val)
             return val
 
         return wrapper

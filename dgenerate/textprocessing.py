@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import ast
 import shutil
+import typing
 
 
 class ConceptPathParseError(Exception):
@@ -27,7 +28,7 @@ class ConceptPathParseError(Exception):
 
 
 class ConceptPath:
-    def __init__(self, model, args):
+    def __init__(self, model: str, args: typing.Dict[str, str]):
         self.concept = model
         self.args = args
 
@@ -37,11 +38,11 @@ class ConceptPath:
 
 class ConceptPathParser:
 
-    def __init__(self, concept_name, known_args=None):
+    def __init__(self, concept_name: str, known_args=None):
         self.known_args = known_args
         self.concept_name = concept_name
 
-    def parse_concept_path(self, strin):
+    def parse_concept_path(self, strin: str):
         args = dict()
         parts = strin.split(';')
         parts = iter(parts)
@@ -74,7 +75,7 @@ class ConceptPathParser:
         return ConceptPath(concept, args)
 
 
-def oxford_comma(elements, conjunction):
+def oxford_comma(elements: list, conjunction: str):
     cnt = len(elements)
     elements = (str(i) for i in elements)
     if cnt == 1:
@@ -96,15 +97,15 @@ def long_text_wrap_width():
     return min(shutil.get_terminal_size(fallback=(150, 0))[0], 150)
 
 
-def underline(msg):
-    return msg + '\n' + ('=' * min(len(max(msg.split('\n'), key=len)), long_text_wrap_width()))
+def underline(strin: str):
+    return strin + '\n' + ('=' * min(len(max(strin.split('\n'), key=len)), long_text_wrap_width()))
 
 
-def quote(strin):
+def quote(strin: str):
     return f'"{strin}"'
 
 
-def unquote(strin):
+def unquote(strin: str):
     strin = strin.strip(' ')
     if strin.startswith('"') or strin.startswith('\''):
         return str(ast.literal_eval('r' + strin))
@@ -113,37 +114,42 @@ def unquote(strin):
         return str(strin.strip(' '))
 
 
-def dashdown(strin):
+def dashdown(strin: str):
     return strin.replace('-', '_')
 
 
-def dashup(strin):
+def dashup(strin: str):
     return strin.replace('_', '-')
 
 
-def contains_space(strin):
+def contains_space(strin: str):
     return any(c.isspace() for c in strin)
 
 
-def quote_spaces(list_of_strin):
-    vals = [] if isinstance(list_of_strin, list) else tuple()
-    for v in list_of_strin:
+def quote_spaces(list_of_str: typing.Union[list, tuple]):
+    vals = []
+    for v in list_of_str:
         if isinstance(v, list):
             vals.append(quote_spaces(v))
-        elif isinstance(v, tuple):
+            continue
+        if isinstance(v, tuple):
             vals.append(tuple(quote_spaces(v)))
-        elif contains_space(v):
+            continue
+
+        val = str(v)
+
+        if contains_space(val):
             vals.append(quote(v))
         else:
-            vals.append(v)
-    return vals
+            vals.append(val)
+    return vals if isinstance(list_of_str, list) else tuple(vals)
 
 
-def justify_left(strin):
+def justify_left(strin: str):
     return '\n'.join(line.strip() if not line.isspace() else line for line in strin.split('\n'))
 
 
-def debug_format_args(args_dict, value_transformer=None):
+def debug_format_args(args_dict: dict, value_transformer=None):
     def _value_transformer(key, value):
         if value_transformer is not None:
             return value_transformer(key, value)

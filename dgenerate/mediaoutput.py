@@ -18,7 +18,9 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import typing
 
+import PIL.Image
 import av
 
 
@@ -26,10 +28,10 @@ class AnimationWriter:
     def __init__(self):
         pass
 
-    def end(self, new_file=None):
+    def end(self, new_file: str = None):
         pass
 
-    def write(self, pil_img_rgb):
+    def write(self, pil_img_rgb: PIL.Image.Image):
         pass
 
     def __enter__(self):
@@ -40,7 +42,7 @@ class AnimationWriter:
 
 
 class VideoWriter(AnimationWriter):
-    def __init__(self, filename, fps):
+    def __init__(self, filename, fps: typing.Union[float, int]):
         super().__init__()
         self.filename = filename
         self.fps = round(fps)
@@ -64,7 +66,7 @@ class VideoWriter(AnimationWriter):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._cleanup()
 
-    def write(self, img):
+    def write(self, img: PIL.Image.Image):
         if self._container is None:
             self._container = av.open(self.filename, 'w')
             self._stream = self._container.add_stream("h264", rate=self.fps)
@@ -78,7 +80,7 @@ class VideoWriter(AnimationWriter):
 
 
 class GifWebpWriter(AnimationWriter):
-    def __init__(self, filename, duration):
+    def __init__(self, filename: str, duration: float):
         super().__init__()
         self.collected_frames = []
         self.filename = filename
@@ -89,7 +91,7 @@ class GifWebpWriter(AnimationWriter):
             i.close()
         self.collected_frames.clear()
 
-    def end(self, new_file=None):
+    def end(self, new_file: str = None):
 
         if self.collected_frames:
             self.collected_frames[0].save(self.filename, save_all=True, append_images=self.collected_frames[1:],
@@ -102,7 +104,7 @@ class GifWebpWriter(AnimationWriter):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._cleanup()
 
-    def write(self, img):
+    def write(self, img: PIL.Image.Image):
         self.collected_frames.append(img.copy())
 
 
@@ -110,5 +112,5 @@ def supported_animation_writer_formats():
     return ['mp4', 'gif', 'webp']
 
 
-def create_animation_writer(animation_format, out_filename, fps):
+def create_animation_writer(animation_format: str, out_filename: str, fps: typing.Union[float, int]):
     return VideoWriter(out_filename, fps) if animation_format == 'mp4' else GifWebpWriter(out_filename, 1000 / fps)

@@ -31,7 +31,7 @@ try:
     import diffusers
     import transformers
     from dgenerate.diffusionloop import DiffusionRenderLoop, DiffusionRenderLoopConfig, gen_seeds
-    from dgenerate.batchprocess import BatchProcessError, process_config
+    from dgenerate.batchprocess import BatchProcessError, run_config
     from dgenerate.invoker import invoke_dgenerate
     from dgenerate.arguments import parse_args
     from dgenerate import messages
@@ -49,15 +49,15 @@ def main():
         if not sys.stdin.isatty():
             # Not a terminal, batch process STDIN
             try:
-                process_config(render_loop=render_loop,
-                               version_string=__version__,
-                               injected_args=sys.argv[1:],
-                               file_stream=sys.stdin)
+                run_config(render_loop=render_loop,
+                           version=__version__,
+                           injected_args=sys.argv[1:],
+                           file_stream=sys.stdin)
             except BatchProcessError as e:
                 messages.log(f'Config Syntax Error: {e}', level=messages.ERROR)
                 sys.exit(1)
         else:
-            sys.exit(invoke_dgenerate(render_loop, sys.argv[1:]).return_code)
+            sys.exit(invoke_dgenerate(render_loop, sys.argv[1:]))
     except KeyboardInterrupt:
         print('Aborting due to keyboard interrupt!')
         sys.exit(1)

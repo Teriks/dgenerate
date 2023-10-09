@@ -128,6 +128,8 @@ def _last_or_none(ls):
 
 
 def _quote_string_lists(ls):
+    if not ls:
+        return ls
     if ls and isinstance(ls[0], str):
         return [_textprocessing.quote(i) for i in ls]
     return ls
@@ -222,7 +224,7 @@ class DiffusionRenderLoopConfig:
                     prefix = variable_prefix if not k.startswith(variable_prefix) else ''
                 else:
                     prefix = ''
-                if k.endswith('s') or 'coords' in k and k != 'output_configs':
+                if not isinstance(v, bool) and (k.endswith('s') or 'coords' in k):
                     t_val = v if v is not None else []
                     template_variables[prefix + k] = _quote_string_lists(t_val)
                     template_variables[prefix + k.replace('coords', 'coord').rstrip('s')] = _last_or_none(t_val)
@@ -231,7 +233,7 @@ class DiffusionRenderLoopConfig:
 
         return template_variables
 
-    def set(self, obj, missing_value_throws=True):
+    def set_from(self, obj, missing_value_throws=True):
         if isinstance(obj, dict):
             source = obj
         else:
@@ -418,8 +420,6 @@ class DiffusionRenderLoopConfig:
                                                  self.sdxl_refiner_negative_target_sizes),
             sdxl_refiner_negative_crops_coords_top_left=ov('sdxl_refiner_negative_crops_coords_top_left',
                                                            self.sdxl_refiner_negative_crops_coords_top_left))
-
-
 
 
 class DiffusionRenderLoop:
@@ -727,8 +727,12 @@ class DiffusionRenderLoop:
                 upscaler_noise_level=upscaler_noise_levels
             )
 
-            seed_info = _mediainput.get_image_seed_info(
-                parsed_image_seed, self.config.frame_start, self.config.frame_end)
+            if is_single_control_image:
+                seed_info = _mediainput.get_image_seed_info(
+                    parsed_image_seed, self.config.frame_start, self.config.frame_end)
+            else:
+                seed_info = _mediainput.get_control_image_info(
+                    parsed_image_seed, self.config.frame_start, self.config.frame_end)
 
             if is_single_control_image:
                 def seed_iterator_func():

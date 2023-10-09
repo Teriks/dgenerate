@@ -52,7 +52,7 @@ class ImagePreprocessorChain(_preprocessor.ImagePreprocessor):
     def add_processor(self, preprocessor):
         self._preprocessors.append(preprocessor)
 
-    def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
+    def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[typing.Tuple[int, int], None]):
         if self._preprocessors:
             p_image = image
             for preprocessor in self._preprocessors:

@@ -22,6 +22,7 @@ import atexit
 import mimetypes
 import os
 import pathlib
+import typing
 
 import PIL.Image
 import PIL.ImageOps
@@ -37,8 +38,14 @@ import dgenerate.textprocessing as _textprocessing
 
 
 class AnimationFrame:
-    def __init__(self, frame_index, total_frames, anim_fps, anim_frame_duration, image, mask_image=None,
-                 control_image=None):
+    def __init__(self,
+                 frame_index: int,
+                 total_frames: int,
+                 anim_fps: typing.Union[float, int],
+                 anim_frame_duration: float,
+                 image: PIL.Image.Image,
+                 mask_image: PIL.Image.Image = None,
+                 control_image: PIL.Image.Image = None):
         self.frame_index = frame_index
         self.total_frames = total_frames
         self.fps = anim_fps
@@ -75,7 +82,12 @@ class ImageSeedSizeMismatchError(Exception):
 
 class AnimationReader:
     # interface
-    def __init__(self, width, height, anim_fps, anim_frame_duration, total_frames, **kwargs):
+    def __init__(self,
+                 width: int,
+                 height: int,
+                 anim_fps: typing.Union[float, int],
+                 anim_frame_duration: float,
+                 total_frames: int, **kwargs):
         self._width = width
         self._height = height
         self._anim_fps = anim_fps
@@ -83,27 +95,27 @@ class AnimationReader:
         self._total_frames = total_frames
 
     @property
-    def width(self):
+    def width(self) -> int:
         return self._width
 
     @property
-    def size(self):
+    def size(self) -> typing.Tuple[int, int]:
         return self._width, self._height
 
     @property
-    def height(self):
+    def height(self) -> int:
         return self._height
 
     @property
-    def anim_fps(self):
+    def anim_fps(self) -> typing.Union[float, int]:
         return self._anim_fps
 
     @property
-    def anim_frame_duration(self):
+    def anim_frame_duration(self) -> float:
         return self._anim_frame_duration
 
     @property
-    def total_frames(self):
+    def total_frames(self) -> int:
         return self._total_frames
 
     def __enter__(self):
@@ -115,15 +127,19 @@ class AnimationReader:
     def __iter__(self):
         return self
 
-    def __next__(self):
+    def __next__(self) -> PIL.Image.Image:
         raise StopIteration
 
-    def frame_slice_count(self, frame_start=0, frame_end=None):
+    def frame_slice_count(self, frame_start: int = 0, frame_end: typing.Union[int, None] = None) -> int:
         return _total_frames_slice(self.total_frames, frame_start, frame_end)
 
 
 class VideoReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
-    def __init__(self, file, file_source, resize_resolution=None, preprocessor=None):
+    def __init__(self,
+                 file: typing.Union[str, typing.BinaryIO],
+                 file_source: str,
+                 resize_resolution: typing.Union[typing.Tuple[int, int], None] = None,
+                 preprocessor: _preprocessors.ImagePreprocessor = None):
         self._filename = file
         self._file_source = file_source
         if isinstance(file, str):
@@ -178,7 +194,11 @@ class VideoReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
 
 
 class GifWebpReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
-    def __init__(self, file, file_source, resize_resolution=None, preprocessor=None):
+    def __init__(self,
+                 file: typing.Union[str, typing.BinaryIO],
+                 file_source: str,
+                 resize_resolution: typing.Union[typing.Tuple[int, int], None] = None,
+                 preprocessor: _preprocessors.ImagePreprocessor = None):
         self._img = PIL.Image.open(file)
         self._file_source = file_source
 
@@ -216,10 +236,10 @@ class GifWebpReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._img.close()
 
-    def frame_slice_count(self, frame_start=0, frame_end=None):
+    def frame_slice_count(self, frame_start: int = 0, frame_end: typing.Union[int, None] = None):
         return _total_frames_slice(self.total_frames, frame_start, frame_end)
 
-    def __next__(self):
+    def __next__(self) -> PIL.Image.Image:
         with next(self._iter) as img:
             rgb_image = _image.to_rgb(img)
             rgb_image.filename = self._file_source
@@ -227,7 +247,11 @@ class GifWebpReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
 
 
 class MockImageAnimationReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
-    def __init__(self, img, resize_resolution=None, image_repetitions=1, preprocessor=None):
+    def __init__(self,
+                 img: PIL.Image.Image,
+                 resize_resolution: typing.Union[typing.Tuple[int, int], None] = None,
+                 image_repetitions: int = 1,
+                 preprocessor: _preprocessors.ImagePreprocessor = None):
         self._img = img
         self._idx = 0
         self.resize_resolution = resize_resolution
@@ -255,7 +279,7 @@ class MockImageAnimationReader(_preprocessors.ImagePreprocessorMixin, AnimationR
                          preprocessor=preprocessor)
 
     @property
-    def total_frames(self):
+    def total_frames(self) -> int:
         return self._total_frames
 
     @total_frames.setter
@@ -265,10 +289,10 @@ class MockImageAnimationReader(_preprocessors.ImagePreprocessorMixin, AnimationR
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._img.close()
 
-    def frame_slice_count(self, frame_start=0, frame_end=None):
+    def frame_slice_count(self, frame_start: int = 0, frame_end: typing.Union[int, None] = None) -> int:
         return _total_frames_slice(self.total_frames, frame_start, frame_end)
 
-    def __next__(self):
+    def __next__(self) -> PIL.Image.Image:
         if self._idx < self.total_frames:
             self._idx += 1
             return self.preprocess_image(_image.copy_img(self._img), self.resize_resolution)
@@ -276,11 +300,11 @@ class MockImageAnimationReader(_preprocessors.ImagePreprocessorMixin, AnimationR
             raise StopIteration
 
 
-def _iterate_animation_frames_x2(seed_reader,
-                                 right_reader,
-                                 right_animation_frame_param_name,
-                                 frame_start,
-                                 frame_end):
+def _iterate_animation_frames_x2(seed_reader: AnimationReader,
+                                 right_reader: AnimationReader,
+                                 right_animation_frame_param_name: str,
+                                 frame_start: int = 0,
+                                 frame_end: typing.Union[int, None] = None):
     total_frames = seed_reader.frame_slice_count(frame_start, frame_end)
     right_total_frames = right_reader.frame_slice_count(frame_start, frame_end)
     out_frame_idx = 0
@@ -307,11 +331,11 @@ def _iterate_animation_frames_x2(seed_reader,
             break
 
 
-def _iterate_animation_frames_x3(seed_reader,
-                                 mask_reader,
-                                 control_reader,
-                                 frame_start,
-                                 frame_end):
+def _iterate_animation_frames_x3(seed_reader: AnimationReader,
+                                 mask_reader: typing.Union[AnimationReader, None] = None,
+                                 control_reader: typing.Union[AnimationReader, None] = None,
+                                 frame_start: int = 0,
+                                 frame_end: typing.Union[int, None] = None):
     total_frames = seed_reader.frame_slice_count(frame_start, frame_end)
     mask_total_frames = mask_reader.frame_slice_count(frame_start, frame_end)
     control_total_frames = control_reader.frame_slice_count(frame_start, frame_end)
@@ -342,11 +366,11 @@ def _iterate_animation_frames_x3(seed_reader,
             break
 
 
-def iterate_animation_frames(seed_reader,
-                             frame_start=0,
-                             frame_end=None,
-                             mask_reader=None,
-                             control_reader=None):
+def iterate_animation_frames(seed_reader: AnimationReader,
+                             mask_reader: typing.Union[AnimationReader, None] = None,
+                             control_reader: typing.Union[AnimationReader, None] = None,
+                             frame_start: int = 0,
+                             frame_end: typing.Union[int, None] = None):
     if mask_reader is not None and control_reader is not None:
         yield from _iterate_animation_frames_x3(seed_reader=seed_reader,
                                                 mask_reader=mask_reader,
@@ -385,7 +409,10 @@ def iterate_animation_frames(seed_reader,
 
 
 class ImageSeed:
-    def __init__(self, image, mask_image=None, control_image=None):
+    def __init__(self,
+                 image: typing.Union[PIL.Image.Image, AnimationFrame],
+                 mask_image: typing.Union[PIL.Image.Image, None] = None,
+                 control_image: typing.Union[PIL.Image.Image, None] = None):
 
         self.is_animation_frame = isinstance(image, AnimationFrame)
         self.frame_index = None
@@ -441,20 +468,20 @@ class ImageSeedParseError(Exception):
 
 class ImageSeedParseResult:
     def __init__(self):
-        self.uri = None
-        self.uri_is_local = False
-        self.mask_uri = None
-        self.mask_uri_is_local = False
-        self.control_uri = None
-        self.control_uri_is_local = False
-        self.resize_resolution = None
+        self.uri: typing.Union[str, None] = None
+        self.uri_is_local: bool = False
+        self.mask_uri: typing.Union[str, None] = None
+        self.mask_uri_is_local: bool = False
+        self.control_uri: typing.Union[str, None] = None
+        self.control_uri_is_local: bool = False
+        self.resize_resolution: typing.Union[typing.Tuple[int, int], None] = None
 
-    def is_single_image(self):
+    def is_single_image(self) -> bool:
         return self.uri is not None and self.mask_uri is None and self.control_uri is None
 
 
-def parse_image_seed_uri_legacy(url):
-    parts = (x.strip() for x in url.split(';'))
+def parse_image_seed_uri_legacy(uri: str):
+    parts = (x.strip() for x in uri.split(';'))
     result = ImageSeedParseResult()
 
     first = next(parts)
@@ -494,8 +521,8 @@ def parse_image_seed_uri_legacy(url):
     return result
 
 
-def parse_image_seed_uri(url):
-    parts = url.split(';')
+def parse_image_seed_uri(uri: str):
+    parts = uri.split(';')
 
     non_legacy = len(parts) > 3
 
@@ -513,14 +540,14 @@ def parse_image_seed_uri(url):
                 break
 
     if not non_legacy:
-        return parse_image_seed_uri_legacy(url)
+        return parse_image_seed_uri_legacy(uri)
 
     result = ImageSeedParseResult()
 
     seed_parser = _textprocessing.ConceptPathParser('Image Seed', ['mask', 'control', 'resize'])
 
     try:
-        parse_result = seed_parser.parse_concept_path(url)
+        parse_result = seed_parser.parse_concept_path(uri)
     except _textprocessing.ConceptPathParseError as e:
         raise ImageSeedParseError(e)
 
@@ -569,7 +596,7 @@ def parse_image_seed_uri(url):
     return result
 
 
-def image_mime_type_filter(mime_type):
+def image_mime_type_filter(mime_type: str) -> bool:
     return (mime_type_is_static_image(mime_type) or
             mime_type_is_video(mime_type) or
             mime_type_is_animable_image(mime_type))
@@ -578,7 +605,7 @@ def image_mime_type_filter(mime_type):
 WEB_FILE_CACHE = dict()
 
 
-def get_web_cache_directory():
+def get_web_cache_directory() -> str:
     user_cache_path = os.environ.get('DGENERATE_WEB_CACHE')
 
     if user_cache_path is not None:
@@ -608,7 +635,7 @@ def _wipe_web_cache_directory():
 atexit.register(_wipe_web_cache_directory)
 
 
-def generate_web_cache_filename():
+def generate_web_cache_filename() -> str:
     name = "cached_file"
     cache_dir = get_web_cache_directory()
     filename = os.path.join(cache_dir, name)
@@ -624,11 +651,11 @@ def generate_web_cache_filename():
     return filename
 
 
-def fetch_image_data_stream(uri,
-                            uri_desc,
-                            mime_type_filter=image_mime_type_filter,
-                            mime_type_reject_noun='input image',
-                            mime_acceptable_desc=''):
+def fetch_image_data_stream(uri: str,
+                            uri_desc: str,
+                            mime_type_filter: typing.Callable[[str], bool] = image_mime_type_filter,
+                            mime_type_reject_noun: str = 'input image',
+                            mime_acceptable_desc: str = ''):
     if uri.startswith('http://') or uri.startswith('https://'):
         cache_hit = WEB_FILE_CACHE.get(uri)
         if cache_hit is not None:
@@ -665,15 +692,15 @@ def fetch_image_data_stream(uri,
     return mime_type, open(uri, 'rb')
 
 
-def mime_type_is_animable_image(mime_type):
+def mime_type_is_animable_image(mime_type: str):
     return mime_type in {'image/gif', 'image/webp'}
 
 
-def mime_type_is_static_image(mime_type):
+def mime_type_is_static_image(mime_type: str):
     return mime_type in {'image/png', 'image/jpeg'}
 
 
-def mime_type_is_video(mime_type):
+def mime_type_is_video(mime_type: str):
     if mime_type is None:
         return False
 
@@ -681,19 +708,22 @@ def mime_type_is_video(mime_type):
 
 
 class ImageSeedInfo:
-    def __init__(self, is_animation, fps, duration):
+    def __init__(self,
+                 is_animation: bool,
+                 fps: typing.Union[float, int],
+                 duration: float):
         self.fps = fps
         self.duration = duration
         self.is_animation = is_animation
 
 
-def get_image_seed_info(image_seed, frame_start, frame_end):
-    with next(iterate_image_seed(image_seed, frame_start, frame_end)) as seed:
+def get_image_seed_info(image_seed_path: str, frame_start: int, frame_end: int):
+    with next(iterate_image_seed(image_seed_path, frame_start, frame_end)) as seed:
         return ImageSeedInfo(seed.is_animation_frame, seed.fps, seed.duration)
 
 
-def get_control_image_info(image_seed, frame_start, frame_end):
-    with next(iterate_control_image(image_seed, frame_start, frame_end)) as seed:
+def get_control_image_info(path: str, frame_start: int, frame_end: int):
+    with next(iterate_control_image(path, frame_start, frame_end)) as seed:
         return ImageSeedInfo(seed.is_animation_frame, seed.fps, seed.duration)
 
 
@@ -704,7 +734,10 @@ def _write_to_file(data, filepath):
     return filepath
 
 
-def create_and_exif_orient_pil_img(path_or_file, file_source, resize_resolution=None):
+def create_and_exif_orient_pil_img(
+        path_or_file: typing.Union[typing.BinaryIO, str],
+        file_source: str,
+        resize_resolution: typing.Union[typing.Tuple[int, int], None] = None):
     if isinstance(path_or_file, str):
         file = path_or_file
     else:
@@ -728,7 +761,7 @@ def create_and_exif_orient_pil_img(path_or_file, file_source, resize_resolution=
 
 
 class MultiContextManager:
-    def __init__(self, objects):
+    def __init__(self, objects: typing.Iterable[typing.ContextManager]):
         self.objects = objects
 
     def __enter__(self):
@@ -743,11 +776,11 @@ class MultiContextManager:
                 obj.__exit__(type, value, traceback)
 
 
-def iterate_control_image(uri,
-                          frame_start=0,
-                          frame_end=None,
-                          resize_resolution=None,
-                          preprocessor=None):
+def iterate_control_image(uri: str,
+                          frame_start: int = 0,
+                          frame_end: typing.Union[int, None] = None,
+                          resize_resolution: typing.Union[typing.Tuple[int, int], None] = None,
+                          preprocessor: _preprocessors.ImagePreprocessor = None):
     mime_acceptable_desc = 'image/png, image/jpeg, image/gif, image/webp, video/*'
 
     if isinstance(uri, ImageSeedParseResult):
@@ -792,11 +825,11 @@ def iterate_control_image(uri,
                                                  frame_end=frame_end))
 
 
-def _iterate_image_seed_x3(seed_reader,
-                           mask_reader,
-                           control_reader,
-                           frame_start=0,
-                           frame_end=None):
+def _iterate_image_seed_x3(seed_reader: AnimationReader,
+                           mask_reader: typing.Union[AnimationReader, None] = None,
+                           control_reader: typing.Union[AnimationReader, None] = None,
+                           frame_start: int = 0,
+                           frame_end: typing.Union[int, None] = None):
     if isinstance(seed_reader, MockImageAnimationReader) and \
             isinstance(mask_reader, MockImageAnimationReader) and \
             isinstance(control_reader, MockImageAnimationReader):
@@ -823,12 +856,12 @@ def _iterate_image_seed_x3(seed_reader,
                                              control_reader=control_reader))
 
 
-def _iterate_image_seed_x2(seed_reader,
-                           right_reader,
-                           right_image_seed_param_name,
-                           right_reader_iterate_param_name,
-                           frame_start=0,
-                           frame_end=None):
+def _iterate_image_seed_x2(seed_reader: AnimationReader,
+                           right_reader: AnimationReader,
+                           right_image_seed_param_name: str,
+                           right_reader_iterate_param_name: str,
+                           frame_start: int = 0,
+                           frame_end: typing.Union[int, None] = None):
     if isinstance(seed_reader, MockImageAnimationReader) \
             and isinstance(right_reader, MockImageAnimationReader):
         yield ImageSeed(image=seed_reader.__next__(),
@@ -849,13 +882,13 @@ def _iterate_image_seed_x2(seed_reader,
                                              **{right_reader_iterate_param_name: right_reader}))
 
 
-def iterate_image_seed(uri,
-                       frame_start=0,
-                       frame_end=None,
-                       resize_resolution=None,
-                       seed_image_preprocessor=None,
-                       mask_image_preprocessor=None,
-                       control_image_preprocessor=None):
+def iterate_image_seed(uri: str,
+                       frame_start: int = 0,
+                       frame_end: typing.Union[int, None] = None,
+                       resize_resolution: typing.Union[typing.Tuple[int, int], None] = None,
+                       seed_image_preprocessor: typing.Union[_preprocessors.ImagePreprocessor, None] = None,
+                       mask_image_preprocessor: typing.Union[_preprocessors.ImagePreprocessor, None] = None,
+                       control_image_preprocessor: typing.Union[_preprocessors.ImagePreprocessor, None] = None):
     if isinstance(uri, ImageSeedParseResult):
         parse_result = uri
     else:
@@ -891,7 +924,6 @@ def iterate_image_seed(uri,
 
     manage_context = [seed_data, mask_data, control_data]
 
-    seed_reader = None
     if seed_data is not None:
         if mime_type_is_animable_image(seed_mime_type):
             seed_reader = GifWebpReader(file=seed_data,

@@ -18,34 +18,54 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import argparse
 
-from .canny import *
+import dgenerate.plugin as _plugin
+from dgenerate.textprocessing import quote
+from .canny import CannyEdgeDetectPreprocess
 from .exceptions import *
-from .loader import *
-from .openpose import *
+from .loader import Loader
+from .openpose import OpenPosePreprocess
 from .pil_imageops import *
 from .preprocessor import ImagePreprocessor
 from .preprocessorchain import ImagePreprocessorChain
 from .preprocessormixin import ImagePreprocessorMixin
-from .. import messages
-from ..textprocessing import quote
+from .. import messages as _messages
+
+_help_parser = argparse.ArgumentParser(prog='dgenerate', exit_on_error=False)
+_help_parser.add_argument('--image-preprocessor-help', nargs='*', default=[], type=str)
+_help_parser.add_argument('--plugin-modules', nargs='+', default=[], type=str)
 
 
-def image_preprocessor_help(args):
-    if len(args) == 0:
-        messages.log(
-            f'Available image preprocessors:\n\n{" " * 4}{(chr(10) + " " * 4).join(quote(name) for name in get_all_names())}')
+def image_preprocessor_help(args: typing.List[str], throw: bool = False):
+    try:
+        parse_result = _help_parser.parse_args(args)
+    except argparse.ArgumentError as e:
+        _messages.log(f'dgenerate: error: {e}', level=_messages.ERROR)
+        if throw:
+            raise e
+        return 1
+
+    names = parse_result.image_preprocessor_help
+
+    module_loader = Loader()
+    module_loader.search_modules.update(_plugin.load_modules(parse_result.plugin_modules))
+
+    if len(names) == 0:
+        available = ('\n' + ' ' * 4).join(quote(name) for name in module_loader.get_all_names())
+        _messages.log(
+            f'Available image preprocessors:\n\n{" " * 4}{available}')
         return 0
 
     help_strs = []
-    for name in args:
+    for name in names:
         try:
-            help_strs.append(get_help(name))
+            help_strs.append(module_loader.get_help(name))
         except ImagePreprocessorNotFoundError:
-            messages.log(f'An image preprocessor with the name of "{name}" could not be found!',
-                         level=messages.ERROR)
+            _messages.log(f'An image preprocessor with the name of "{name}" could not be found!',
+                          level=_messages.ERROR)
             return 1
 
     for help_str in help_strs:
-        messages.log(help_str, underline=True)
+        _messages.log(help_str, underline=True)
     return 0

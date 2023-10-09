@@ -18,6 +18,8 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import argparse
+import typing
 
 import torch
 
@@ -30,13 +32,21 @@ import dgenerate.plugin as _plugin
 import dgenerate.preprocessors as _preprocessors
 
 
-def invoke_dgenerate(render_loop: _diffusionloop.DiffusionRenderLoop, with_args: list, throw=False):
-    if with_args:
-        if with_args[0] == '--image-preprocessor-help':
-            return _preprocessors.image_preprocessor_help(with_args[1:])
+def invoke_dgenerate(
+        render_loop: _diffusionloop.DiffusionRenderLoop,
+        args: typing.List[typing.Union[str, float, int]],
+        throw: bool = False):
+    if '--image-preprocessor-help' in args:
+        return _preprocessors.image_preprocessor_help(args, throw=throw)
 
-    arguments = _arguments.parse_args(with_args, exit_on_error=not throw)
-    render_loop.config.set(arguments)
+    try:
+        arguments = _arguments.parse_args(args, throw=True)
+    except argparse.ArgumentError as e:
+        if throw:
+            raise e
+        return 1
+
+    render_loop.config.set_from(arguments)
 
     render_loop.image_preprocessor_loader. \
         search_modules.update(_plugin.load_modules(arguments.plugin_module_paths))

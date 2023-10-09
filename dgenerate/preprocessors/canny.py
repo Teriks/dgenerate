@@ -137,7 +137,7 @@ class CannyEdgeDetectPreprocess(_preprocessor.ImagePreprocessor):
 
         return PIL.Image.fromarray(cv2.cvtColor(edges, convert_back))
 
-    def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
+    def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[typing.Tuple[int, int], None]):
         if self._pre_resize:
             return self._process(image)
         return image
