@@ -1,4 +1,4 @@
-#! dgenerate 1.1.0
+#! dgenerate 1.2.0
 
 Duskfallcrew/isometric-dreams-sd-1-5  \
 --textual-inversions Duskfallcrew/IsometricDreams_TextualInversions;weight-name=Isometric_Dreams-1000.pt \

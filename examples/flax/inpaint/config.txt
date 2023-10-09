@@ -1,4 +1,4 @@
-#! dgenerate 1.1.0
+#! dgenerate 1.2.0
 
 xvjiarui/stable-diffusion-2-inpainting --model-type flax \
 --dtype float16 \
