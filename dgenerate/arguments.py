@@ -870,6 +870,10 @@ parser.add_argument('-ifs', '--inference-steps', action='store', nargs='+',
                          change image content. (default: [30])""")
 
 
+class DgenerateUsageError(Exception):
+    pass
+
+
 def _parse_args(args=None) -> DgenerateArguments:
     args = parser.parse_args(args, namespace=DgenerateArguments())
 
@@ -879,20 +883,24 @@ def _parse_args(args=None) -> DgenerateArguments:
     def args_that_end_with(s):
         return (a for a in dir(args) if a.endswith(s) and getattr(args, a))
 
+    if args.frame_end is not None and args.frame_start > args.frame_end:
+        raise DgenerateUsageError(
+            '--frame-start must be less than or equal to --frame-end')
+
     if args.output_size is None and not args.image_seeds:
         args.output_size = (512, 512) if not _pipelinewrapper.model_type_is_sdxl(args.model_type) else (1024, 1024)
 
     if not args.image_seeds and args.image_seed_strengths:
-        raise argparse.ArgumentTypeError(
+        raise DgenerateUsageError(
             'you cannot specify --image-seed-strengths without --image-seeds.')
 
     if not _pipelinewrapper.model_type_is_upscaler(args.model_type):
         if args.upscaler_noise_levels:
-            raise argparse.ArgumentTypeError(
+            raise DgenerateUsageError(
                 'you cannot specify --upscaler-noise-levels for a '
                 'non upscaler model type, see --model-type.')
     elif args.control_net_paths:
-        raise argparse.ArgumentTypeError(
+        raise DgenerateUsageError(
             'argument --control-nets is not compatible '
             'with upscaler models, see --model-type.')
     elif args.upscaler_noise_levels is None:
@@ -900,11 +908,11 @@ def _parse_args(args=None) -> DgenerateArguments:
 
     if not _pipelinewrapper.model_type_is_pix2pix(args.model_type):
         if args.image_guidance_scales:
-            raise argparse.ArgumentTypeError(
+            raise DgenerateUsageError(
                 'argument --image-guidance-scales only valid with '
                 'pix2pix models, see --model-type.')
     elif args.control_net_paths:
-        raise argparse.ArgumentTypeError(
+        raise DgenerateUsageError(
             'argument --control-nets '
             'is not compatible with pix2pix models, see --model-type.')
     elif not args.image_guidance_scales:
@@ -912,8 +920,8 @@ def _parse_args(args=None) -> DgenerateArguments:
 
     if args.control_image_preprocessors:
         if not args.image_seeds:
-            raise argparse.ArgumentTypeError(f'you cannot specify --control-image-preprocessors '
-                                             f'without --image-seeds.')
+            raise DgenerateUsageError(f'you cannot specify --control-image-preprocessors '
+                                         f'without --image-seeds.')
 
     if not args.image_seeds:
         invalid_args = []
@@ -922,7 +930,7 @@ def _parse_args(args=None) -> DgenerateArguments:
                 f'you cannot specify --{preprocessor_args.replace("_", "-")} '
                 f'without --image-seeds.')
         if invalid_args:
-            raise argparse.ArgumentTypeError('\n'.join(invalid_args))
+            raise DgenerateUsageError('\n'.join(invalid_args))
 
     if not _pipelinewrapper.model_type_is_sdxl(args.model_type):
         invalid_args = []
@@ -930,7 +938,7 @@ def _parse_args(args=None) -> DgenerateArguments:
             invalid_args.append(f'you cannot specify --{sdxl_args.replace("_", "-")} '
                                 f'for a non SDXL model type, see --model-type.')
         if invalid_args:
-            raise argparse.ArgumentTypeError('\n'.join(invalid_args))
+            raise DgenerateUsageError('\n'.join(invalid_args))
 
         args.sdxl_high_noise_fractions = []
     else:
@@ -940,7 +948,7 @@ def _parse_args(args=None) -> DgenerateArguments:
                 invalid_args.append(f'you cannot specify --{sdxl_args.replace("_", "-")} '
                                     f'without --sdxl-refiner.')
             if invalid_args:
-                raise argparse.ArgumentTypeError('\n'.join(invalid_args))
+                raise DgenerateUsageError('\n'.join(invalid_args))
         else:
             if args.sdxl_high_noise_fractions is None:
                 # Default value
@@ -948,12 +956,12 @@ def _parse_args(args=None) -> DgenerateArguments:
 
     if not _pipelinewrapper.model_type_is_torch(args.model_type):
         if args.vae_tiling or args.vae_slicing:
-            raise argparse.ArgumentTypeError(
+            raise DgenerateUsageError(
                 'argument --vae-tiling/--vae-slicing not supported for '
                 'non torch model type, see --model-type.')
 
     if args.scheduler == 'help' and args.sdxl_refiner_scheduler == 'help':
-        raise argparse.ArgumentTypeError(
+        raise DgenerateUsageError(
             'cannot list compatible schedulers for the main model and the SDXL refiner at '
             'the same time. Do not use the scheduler "help" option for --scheduler '
             'and --sdxl-refiner-scheduler simultaneously.')
@@ -972,8 +980,8 @@ def parse_args(args: typing.List[typing.Union[str, float, int]],
                throw: bool = False) -> typing.Union[DgenerateArguments, None]:
     try:
         return _parse_args(args)
-    except argparse.ArgumentError as e:
+    except (DgenerateUsageError, argparse.ArgumentTypeError, argparse.ArgumentError) as e:
         _messages.log(f'dgenerate: error: {e}', level=_messages.ERROR)
         if throw:
-            raise e
+            raise DgenerateUsageError(e)
         return None

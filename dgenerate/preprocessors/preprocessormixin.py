@@ -27,9 +27,10 @@ class ImagePreprocessorMixin:
     def __init__(self, preprocessor: _preprocessor.ImagePreprocessor, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._preprocessor = preprocessor
+        self.preprocess_enabled: bool = True
 
     def _preprocess_pre_resize(self, image, resize_resolution):
-        if self._preprocessor is not None:
+        if self._preprocessor is not None and self.preprocess_enabled:
             _messages.debug_log('Starting Image Preprocess - '
                                 f'{self._preprocessor}.pre_resize('
                                 f'image="{image.filename}", resize_resolution={resize_resolution})')
@@ -41,7 +42,7 @@ class ImagePreprocessorMixin:
         return image
 
     def _preprocess_post_resize(self, image):
-        if self._preprocessor is not None:
+        if self._preprocessor is not None and self.preprocess_enabled:
             _messages.debug_log('Starting Image Preprocess - '
                                 f'{self._preprocessor}.post_resize('
                                 f'image="{image.filename}")')

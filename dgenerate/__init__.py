@@ -33,7 +33,7 @@ try:
     from dgenerate.diffusionloop import DiffusionRenderLoop, DiffusionRenderLoopConfig, gen_seeds
     from dgenerate.batchprocess import BatchProcessError, run_config
     from dgenerate.invoker import invoke_dgenerate
-    from dgenerate.arguments import parse_args
+    from dgenerate.arguments import parse_args, DgenerateUsageError
     from dgenerate import messages
 
     transformers.logging.set_verbosity(transformers.logging.CRITICAL)
