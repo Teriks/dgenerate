@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import typing
 
 import PIL.Image
 
@@ -26,6 +27,13 @@ import dgenerate.types as _types
 
 def resize_image_calc(old_size: _types.Size,
                       new_size: _types.OptionalSize):
+    """
+    Calculate the new aspect correct dimensions for a requested resize of an image, aligned by 8 pixels.
+
+    :param old_size: The old image size
+    :param new_size: The new image size
+    :return: Aspect correct size for resize
+    """
     if new_size is None or old_size == new_size:
         return old_size
 
@@ -36,15 +44,32 @@ def resize_image_calc(old_size: _types.Size,
     return width - width % 8, hsize - hsize % 8
 
 
-def is_aligned_by_8(x, y):
+def is_aligned_by_8(x, y) -> bool:
+    """
+    Check if x and y are aligned by 8
+    :param x: x
+    :param y: y
+    :return: bool
+    """
     return x % 8 == 0 and y % 8 == 0
 
 
-def align_by_8(x, y):
+def align_by_8(x, y) -> _types.Size:
+    """
+    Align x and y by 8 and return a tuple
+    :param x: x
+    :param y: y
+    :return: tuple(x, y)
+    """
     return x - x % 8, y - y % 8
 
 
 def copy_img(img: PIL.Image.Image):
+    """
+    Copy a :py:class:`PIL.Image.Image` while preserving its filename attribute.
+    :param img: the image
+    :return: a copy of the image
+    """
     c = img.copy()
 
     if hasattr(img, 'filename'):
@@ -55,6 +80,14 @@ def copy_img(img: PIL.Image.Image):
 
 def resize_image(img: PIL.Image.Image,
                  size: _types.OptionalSize):
+    """
+    Resize a :py:class:`PIL.Image.Image` and return a copy, resize is aspect
+    correct and aligned to 8 pixels. The filename attribute is preserved.
+
+    :param img: the image
+    :param size: the new size for the image
+    :return: the resized image
+    """
     new_size = resize_image_calc(old_size=img.size,
                                  new_size=size)
 
@@ -71,6 +104,11 @@ def resize_image(img: PIL.Image.Image,
 
 
 def to_rgb(img: PIL.Image.Image):
+    """
+    Convert a :py:class:`PIL.Image.Image` to RGB format while preserving its filename attribute.
+    :param img: the image
+    :return: a converted copy of the image
+    """
     c = img.convert('RGB')
     if hasattr(img, 'filename'):
         c.filename = img.filename

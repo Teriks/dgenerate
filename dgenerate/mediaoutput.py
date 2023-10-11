@@ -25,6 +25,9 @@ import av
 
 
 class AnimationWriter:
+    """
+    Interface for animation writers
+    """
     def __init__(self):
         pass
 
@@ -42,6 +45,9 @@ class AnimationWriter:
 
 
 class VideoWriter(AnimationWriter):
+    """
+    Animation writer for MP4 h264 format video
+    """
     def __init__(self, filename, fps: typing.Union[float, int]):
         super().__init__()
         self.filename = filename
@@ -79,7 +85,10 @@ class VideoWriter(AnimationWriter):
             self._container.mux(packet)
 
 
-class GifWebpWriter(AnimationWriter):
+class AnimatedImageWriter(AnimationWriter):
+    """
+    Animation writer for animated images such as GIFs and webp
+    """
     def __init__(self, filename: str, duration: float):
         super().__init__()
         self.collected_frames = []
@@ -109,8 +118,21 @@ class GifWebpWriter(AnimationWriter):
 
 
 def supported_animation_writer_formats():
+    """
+    Supported animation writer formats, file extensions with no period.
+    :return: list of file extensions.
+    """
     return ['mp4', 'gif', 'webp']
 
 
 def create_animation_writer(animation_format: str, out_filename: str, fps: typing.Union[float, int]):
-    return VideoWriter(out_filename, fps) if animation_format == 'mp4' else GifWebpWriter(out_filename, 1000 / fps)
+    """
+    Create an animation writer of a given format.
+
+    :param animation_format: The animation format, see :py:meth:`.supported_animation_writer_formats`
+    :param out_filename: the output file name
+    :param fps: FPS
+    :return: :py:class:`.AnimationWriter`
+    """
+    return VideoWriter(out_filename, fps) if animation_format.strip().lower() == 'mp4' \
+        else AnimatedImageWriter(out_filename, 1000 / fps)

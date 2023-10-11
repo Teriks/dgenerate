@@ -42,9 +42,9 @@ class ConceptPathParser:
         self.known_args = known_args
         self.concept_name = concept_name
 
-    def parse_concept_path(self, strin: str):
+    def parse_concept_path(self, string: str):
         args = dict()
-        parts = strin.split(';')
+        parts = string.split(';')
         parts = iter(parts)
         concept = parts.__next__()
         for i in parts:
@@ -75,7 +75,13 @@ class ConceptPathParser:
         return ConceptPath(concept, args)
 
 
-def oxford_comma(elements: typing.Sequence[str], conjunction: str):
+def oxford_comma(elements: typing.Sequence[str], conjunction: str) -> str:
+    """
+    Join a sequence of strings with commas, end with an oxford comma and conjunction if needed.
+    :param elements: strings
+    :param conjunction: "and", "or"
+    :return: a joined string
+    """
     cnt = len(elements)
     elements = (str(i) for i in elements)
     if cnt == 1:
@@ -93,40 +99,82 @@ def oxford_comma(elements: typing.Sequence[str], conjunction: str):
     return output
 
 
-def long_text_wrap_width():
+def long_text_wrap_width() -> int:
+    """
+    Return the current terminal width or the default value of 150 characters for textwraping purposes.
+    :return: int
+    """
     return min(shutil.get_terminal_size(fallback=(150, 0))[0], 150)
 
 
-def underline(strin: str):
-    return strin + '\n' + ('=' * min(len(max(strin.split('\n'), key=len)), long_text_wrap_width()))
+def underline(string: str, underline_char: str = '=') -> str:
+    """
+    Underline a string with the selected character.
+    :param string: the string
+    :param underline_char: the character to underline with
+    :return: the underlined string
+    """
+    return string + '\n' + (underline_char * min(len(max(string.split('\n'), key=len)), long_text_wrap_width()))
 
 
-def quote(strin: str):
-    return f'"{strin}"'
+def quote(string: str) -> str:
+    """
+    Wrap a string in double quotes.
+    :param string: the string
+    :return: The quoted string
+    """
+    return f'"{string}"'
 
 
-def unquote(strin: str):
-    strin = strin.strip(' ')
-    if strin.startswith('"') or strin.startswith('\''):
-        return str(ast.literal_eval('r' + strin))
+def unquote(string: str) -> str:
+    """
+    Remove quotes from a string, including single quotes.
+    :param string: the string
+    :return: The un-quoted string
+    """
+    string = string.strip(' ')
+    if string.startswith('"') or string.startswith('\''):
+        return str(ast.literal_eval('r' + string))
     else:
         # Is an unquoted string
-        return str(strin.strip(' '))
+        return str(string.strip(' '))
 
 
-def dashdown(strin: str):
-    return strin.replace('-', '_')
+def dashdown(string: str) -> str:
+    """
+    Replace '-' with '_'
+    :param string: the string
+    :return: modified string
+    """
+    return string.replace('-', '_')
 
 
-def dashup(strin: str):
-    return strin.replace('_', '-')
+def dashup(string: str) -> str:
+    """
+    Replace '_' with '-'
+    :param string: the string
+    :return: modified string
+    """
+    return string.replace('_', '-')
 
 
-def contains_space(strin: str):
-    return any(c.isspace() for c in strin)
+def contains_space(string: str) -> bool:
+    """
+    Check if a string contains any whitespace characters including newlines
+    :param string: the string
+    :return: bool
+    """
+    return any(c.isspace() for c in string)
 
 
-def quote_spaces(list_of_str: typing.Sequence[typing.Union[str, list, tuple]]):
+def quote_spaces(list_of_str: typing.Sequence[typing.Union[str, list, tuple]]) -> \
+        typing.Sequence[typing.Union[str, list, tuple]]:
+    """
+    Quote any strings containing spaces within a list, or list of lists/tuples
+    :param list_of_str: list of strings, and or lists/tuples containing string
+    :return: input data structure with strings quoted if needed
+    """
+
     vals = []
     for v in list_of_str:
         if isinstance(v, list):
@@ -145,11 +193,23 @@ def quote_spaces(list_of_str: typing.Sequence[typing.Union[str, list, tuple]]):
     return vals if isinstance(list_of_str, list) else tuple(vals)
 
 
-def justify_left(strin: str):
-    return '\n'.join(line.strip() if not line.isspace() else line for line in strin.split('\n'))
+def justify_left(string: str):
+    """
+    Justify text to the left.
+    :param string: string with text
+    :return: left justified text
+    """
+    return '\n'.join(line.strip() if not line.isspace() else line for line in string.split('\n'))
 
 
-def debug_format_args(args_dict: dict, value_transformer=None):
+def debug_format_args(args_dict: typing.Dict[str, typing.Any],
+                      value_transformer: typing.Optional[typing.Callable[[str, typing.Any], str]] = None):
+    """
+    Format function arguments in a way that can be printed for debug messages.
+    :param args_dict: argument dictionary
+    :param value_transformer: transform values in the argument dictionary
+    :return: formatted string
+    """
     def _value_transformer(key, value):
         if value_transformer is not None:
             return value_transformer(key, value)
