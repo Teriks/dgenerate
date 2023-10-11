@@ -888,8 +888,6 @@ class DgenerateArguments(dgenerate.DiffusionRenderLoopConfig):
         super().__init__()
 
     def check(self):
-        super(DgenerateArguments, self).check()
-
         def self_that_start_with(s):
             return (a for a in dir(self) if a.startswith(s) and getattr(self, a))
 
@@ -985,6 +983,8 @@ class DgenerateArguments(dgenerate.DiffusionRenderLoopConfig):
                 self.image_seed_strengths = [_pipelinewrapper.DEFAULT_IMAGE_SEED_STRENGTH]
         else:
             self.image_seed_strengths = []
+
+        super(DgenerateArguments, self).check()
 
 
 def _parse_args(args=None) -> DgenerateArguments:

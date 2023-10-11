@@ -1,7 +1,7 @@
 #! dgenerate 2.0.0
 
 diffusers/sdxl-instructpix2pix-768 --model-type torch-sdxl-pix2pix \
---variant fp16 --dtype float16 \
+--dtype float16 \
 --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
 --vae AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix \
 --vae-tiling \
