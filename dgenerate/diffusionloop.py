@@ -55,7 +55,7 @@ def _list_or_list_of_none(val):
 def iterate_attribute_combinations(attribute_defs, my_class):
     def assign(ctx, name, val):
         if val is not None:
-            if name in ctx.__dict__:
+            if name in ctx.__dict__ or typing.get_type_hints(ctx).keys():
                 ctx.__dict__[name] = val
             else:
                 raise RuntimeError(f'{ctx.__class__.__name__} missing attribute "{name}"')
