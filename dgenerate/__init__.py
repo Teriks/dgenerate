@@ -19,7 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-__version__ = '1.2.0'
+__version__ = '2.0.0'
 
 import sys
 import warnings
@@ -31,7 +31,7 @@ try:
     import diffusers
     import transformers
     from dgenerate.diffusionloop import DiffusionRenderLoop, DiffusionRenderLoopConfig, gen_seeds
-    from dgenerate.batchprocess import BatchProcessError, run_config
+    from dgenerate.batchprocess import BatchProcessError, create_config_runner
     from dgenerate.invoker import invoke_dgenerate
     from dgenerate.arguments import parse_args, DgenerateUsageError
     from dgenerate import messages
@@ -49,10 +49,9 @@ def main():
         if not sys.stdin.isatty():
             # Not a terminal, batch process STDIN
             try:
-                run_config(render_loop=render_loop,
-                           version=__version__,
-                           injected_args=sys.argv[1:],
-                           file_stream=sys.stdin)
+                create_config_runner(render_loop=render_loop,
+                                     version=__version__,
+                                     injected_args=sys.argv[1:]).run_file(sys.stdin)
             except BatchProcessError as e:
                 messages.log(f'Config Syntax Error: {e}', level=messages.ERROR)
                 sys.exit(1)

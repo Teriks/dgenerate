@@ -23,8 +23,8 @@ import typing
 
 class Prompt:
     def __init__(self,
-                 positive: typing.Union[str, None] = None,
-                 negative: typing.Union[str, None] = None,
+                 positive: typing.Optional[str] = None,
+                 negative: typing.Optional[str] = None,
                  delimiter: str = ';'):
         self.positive = positive
         self.negative = negative

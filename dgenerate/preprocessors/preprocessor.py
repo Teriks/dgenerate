@@ -28,6 +28,7 @@ import PIL.Image
 
 import dgenerate.preprocessors.exceptions as _exceptions
 import dgenerate.textprocessing as _textprocessing
+import dgenerate.types as _types
 
 
 class ImagePreprocessor:
@@ -46,7 +47,7 @@ class ImagePreprocessor:
             return [cls.__name__]
 
     @classmethod
-    def get_help(cls, called_by_name) -> str:
+    def get_help(cls, called_by_name: str) -> str:
         help_str = None
         if hasattr(cls, 'help'):
             help_str = cls.help(called_by_name)
@@ -87,22 +88,22 @@ class ImagePreprocessor:
             return called_by_name + f':{args_part}'
 
     @classmethod
-    def get_accepted_args(cls, called_by_name) -> typing.List[str]:
+    def get_accepted_args(cls, called_by_name: str) -> typing.List[str]:
         return [a[0] for a in
                 cls.get_accepted_args_with_defaults(called_by_name)]
 
     @classmethod
-    def get_required_args(cls, called_by_name) -> typing.List[str]:
+    def get_required_args(cls, called_by_name: str) -> typing.List[str]:
         return [a[0] for a in
                 cls.get_accepted_args_with_defaults(called_by_name) if len(a) == 1]
 
     @classmethod
-    def get_default_args(cls, called_by_name) -> typing.List[tuple]:
+    def get_default_args(cls, called_by_name: str) -> typing.List[typing.Tuple[str, typing.Any]]:
         return [a for a in
                 cls.get_accepted_args_with_defaults(called_by_name) if len(a) == 2]
 
     @classmethod
-    def get_accepted_args_with_defaults(cls, called_by_name) -> typing.List[tuple]:
+    def get_accepted_args_with_defaults(cls, called_by_name) -> typing.List[typing.Tuple[str, typing.Any]]:
         if hasattr(cls, 'ARGS'):
             if isinstance(cls.ARGS, dict):
                 if called_by_name not in cls.ARGS:
@@ -142,7 +143,8 @@ class ImagePreprocessor:
 
         return args_with_defaults
 
-    def get_int_arg(self, name, value) -> int:
+    @staticmethod
+    def get_int_arg(name: str, value: typing.Union[str, int]) -> int:
         if isinstance(value, dict):
             value = value.get(name)
         try:
@@ -150,7 +152,8 @@ class ImagePreprocessor:
         except ValueError:
             raise _exceptions.ImagePreprocessorArgumentError(f'Argument "{name}" must be an integer value.')
 
-    def get_float_arg(self, name, value) -> float:
+    @staticmethod
+    def get_float_arg(name: str, value: typing.Union[str, float]) -> float:
         if isinstance(value, dict):
             value = value.get(name)
         try:
@@ -158,7 +161,8 @@ class ImagePreprocessor:
         except ValueError:
             raise _exceptions.ImagePreprocessorArgumentError(f'Argument "{name}" must be a floating point value.')
 
-    def get_bool_arg(self, name, value) -> bool:
+    @staticmethod
+    def get_bool_arg(name: str, value: typing.Union[str, bool]) -> bool:
         if isinstance(value, dict):
             value = value.get(name)
         try:
@@ -166,7 +170,7 @@ class ImagePreprocessor:
         except ValueError:
             raise _exceptions.ImagePreprocessorArgumentError(f'Argument "{name}" must be a boolean value.')
 
-    def argument_error(self, msg):
+    def argument_error(self, msg: str):
         raise _exceptions.ImagePreprocessorArgumentError(msg)
 
     def __init__(self, **kwargs):
@@ -220,7 +224,7 @@ class ImagePreprocessor:
 
     @staticmethod
     def call_pre_resize(preprocessor, image: PIL.Image,
-                        resize_resolution: typing.Union[typing.Tuple[int, int], None]) -> PIL.Image.Image:
+                        resize_resolution: _types.OptionalSize) -> PIL.Image.Image:
         img = preprocessor.pre_resize(image, resize_resolution)
         if img is not image:
             preprocessor.__save_image(img)
@@ -237,7 +241,7 @@ class ImagePreprocessor:
             return img
         return image
 
-    def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[typing.Tuple[int, int], None]):
+    def pre_resize(self, image: PIL.Image, resize_resolution: _types.OptionalSize):
         return image
 
     def post_resize(self, image: PIL.Image):

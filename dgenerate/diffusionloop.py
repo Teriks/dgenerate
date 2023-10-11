@@ -35,7 +35,9 @@ import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.preprocessors as _preprocessors
+import dgenerate.prompt as _prompt
 import dgenerate.textprocessing as _textprocessing
+import dgenerate.types as _types
 
 
 def _has_len(obj):
@@ -115,7 +117,7 @@ def _safe_len(lst):
 
 
 def gen_seeds(n):
-    return [random.randint(0, 99999999999999) for i in range(0, n)]
+    return [random.randint(0, 99999999999999) for _ in range(0, n)]
 
 
 def _last_or_none(ls):
@@ -136,104 +138,118 @@ def _quote_string_lists(ls):
 
 
 class DiffusionRenderLoopConfig:
+    model_path: _types.OptionalPath = None
+    model_subfolder: _types.OptionalPath = None
+    sdxl_refiner_path: _types.OptionalPath = None
+
+    prompts: _types.Prompts = [_prompt.Prompt()]
+    sdxl_second_prompts: _types.OptionalPrompts = None
+    sdxl_refiner_prompts: _types.OptionalPrompts = None
+    sdxl_refiner_second_prompts: _types.OptionalPrompts = None
+
+    seeds: _types.Integers = gen_seeds(1)
+    guidance_scales: _types.Floats = [_pipelinewrapper.DEFAULT_GUIDANCE_SCALE]
+    inference_steps_values: _types.Integers = [_pipelinewrapper.DEFAULT_INFERENCE_STEPS]
+
+    image_seeds: _types.OptionalPaths = None
+    image_seed_strengths: _types.OptionalFloats = None
+    upscaler_noise_levels: _types.OptionalIntegers = None
+    guidance_rescales: _types.OptionalFloats = None
+    image_guidance_scales: _types.OptionalFloats = None
+
+    sdxl_high_noise_fractions: _types.OptionalFloats = None
+    sdxl_refiner_inference_steps: _types.OptionalIntegers = None
+    sdxl_refiner_guidance_scales: _types.OptionalFloats = None
+    sdxl_refiner_guidance_rescales: _types.OptionalFloats = None
+
+    sdxl_aesthetic_scores: _types.OptionalFloats = None
+    sdxl_original_sizes: _types.OptionalSizes = None
+    sdxl_target_sizes: _types.OptionalSizes = None
+    sdxl_crops_coords_top_left: _types.OptionalCoordinateList = None
+    sdxl_negative_aesthetic_scores: _types.OptionalFloats = None
+    sdxl_negative_original_sizes: _types.OptionalSizes = None
+    sdxl_negative_target_sizes: _types.OptionalSizes = None
+    sdxl_negative_crops_coords_top_left: _types.OptionalCoordinateList = None
+
+    sdxl_refiner_aesthetic_scores: _types.OptionalFloats = None
+    sdxl_refiner_original_sizes: _types.OptionalSizes = None
+    sdxl_refiner_target_sizes: _types.OptionalSizes = None
+    sdxl_refiner_crops_coords_top_left: _types.OptionalCoordinateList = None
+    sdxl_refiner_negative_aesthetic_scores: _types.OptionalFloats = None
+    sdxl_refiner_negative_original_sizes: _types.OptionalSizes = None
+    sdxl_refiner_negative_target_sizes: _types.OptionalSizes = None
+    sdxl_refiner_negative_crops_coords_top_left: _types.OptionalCoordinateList = None
+
+    vae_path: _types.OptionalPath = None
+    vae_tiling: bool = False
+    vae_slicing: bool = False
+
+    lora_paths: _types.OptionalPaths = None
+    textual_inversion_paths: _types.OptionalPaths = None
+    control_net_paths: _types.OptionalPaths = None
+
+    scheduler: _types.OptionalName = None
+    sdxl_refiner_scheduler: _types.OptionalName = None
+    safety_checker: bool = False
+    model_type: _pipelinewrapper.ModelTypes = _pipelinewrapper.ModelTypes.TORCH
+    device: _types.Name = 'cuda'
+    dtype: typing.Literal['float16', 'float32', 'auto'] = 'auto'
+    revision: _types.Name = 'main'
+    variant: _types.OptionalName = None
+    output_size: _types.OptionalSize = None
+    output_path: _types.Path = os.path.join(os.getcwd(), 'output')
+    output_prefix: typing.Optional[str] = None
+    output_overwrite: bool = False
+    output_configs: bool = False
+    output_metadata: bool = False
+
+    animation_format: _types.Name = 'mp4'
+    frame_start: _types.Integer = 0
+    frame_end: _types.OptionalInteger = None
+
+    auth_token: typing.Optional[str] = None
+
+    seed_image_preprocessors: _types.OptionalPaths = None
+    mask_image_preprocessors: _types.OptionalPaths = None
+    control_image_preprocessors: _types.OptionalPaths = None
+
     def __init__(self):
-        self.model_path = None
-        self.model_subfolder = None
-        self.sdxl_refiner_path = None
+        pass
 
-        self.prompts = ['']
-        self.sdxl_second_prompts = None
-        self.sdxl_refiner_prompts = None
-        self.sdxl_refiner_second_prompts = None
+    def generate_template_variables_with_types(self, variable_prefix: typing.Optional[str] = None) \
+            -> typing.Dict[str, typing.Tuple[typing.Type, typing.Any]]:
 
-        self.seeds = gen_seeds(1)
-        self.guidance_scales = [_pipelinewrapper.DEFAULT_GUIDANCE_SCALE]
-        self.inference_steps = [_pipelinewrapper.DEFAULT_INFERENCE_STEPS]
-
-        self.image_seeds = None
-        self.image_seed_strengths = None
-        self.upscaler_noise_levels = None
-        self.guidance_rescales = None
-        self.image_guidance_scales = None
-
-        self.sdxl_high_noise_fractions = None
-        self.sdxl_refiner_inference_steps = None
-        self.sdxl_refiner_guidance_scales = None
-        self.sdxl_refiner_guidance_rescales = None
-
-        self.sdxl_aesthetic_scores = None
-        self.sdxl_original_sizes = None
-        self.sdxl_target_sizes = None
-        self.sdxl_crops_coords_top_left = None
-        self.sdxl_negative_aesthetic_scores = None
-        self.sdxl_negative_original_sizes = None
-        self.sdxl_negative_target_sizes = None
-        self.sdxl_negative_crops_coords_top_left = None
-
-        self.sdxl_refiner_aesthetic_scores = None
-        self.sdxl_refiner_original_sizes = None
-        self.sdxl_refiner_target_sizes = None
-        self.sdxl_refiner_crops_coords_top_left = None
-        self.sdxl_refiner_negative_aesthetic_scores = None
-        self.sdxl_refiner_negative_original_sizes = None
-        self.sdxl_refiner_negative_target_sizes = None
-        self.sdxl_refiner_negative_crops_coords_top_left = None
-
-        self.vae_path = None
-        self.vae_tiling = False
-        self.vae_slicing = False
-
-        self.lora_paths = None
-        self.textual_inversion_paths = None
-        self.control_net_paths = None
-
-        self.scheduler = None
-        self.sdxl_refiner_scheduler = None
-        self.safety_checker = False
-        self.model_type = _pipelinewrapper.ModelTypes.TORCH
-        self.device = 'cuda'
-        self.dtype = 'auto'
-        self.revision = 'main'
-        self.variant = None
-        self.output_size = None
-        self.output_path = os.path.join(os.getcwd(), 'output')
-        self.output_prefix = None
-        self.output_overwrite = False
-        self.output_configs = False
-        self.output_metadata = False
-
-        self.animation_format = 'mp4'
-        self.frame_start = 0
-        self.frame_end = None
-
-        self.auth_token = None
-
-        self.seed_image_preprocessors = None
-        self.mask_image_preprocessors = None
-        self.control_image_preprocessors = None
-
-    def generate_template_variables(self, variable_prefix=None):
         template_variables = {}
 
         if variable_prefix is None:
             variable_prefix = ''
 
-        for k, v in self.__dict__.items():
-            if not (k.startswith('_') or callable(v)):
-                if variable_prefix:
-                    prefix = variable_prefix if not k.startswith(variable_prefix) else ''
+        for attr, hint in typing.get_type_hints(self.__class__).items():
+            value = getattr(self, attr)
+            if variable_prefix:
+                prefix = variable_prefix if not attr.startswith(variable_prefix) else ''
+            else:
+                prefix = ''
+            gen_name = prefix + attr
+            if gen_name not in template_variables:
+                if _types.is_type_or_optional(hint, list):
+                    t_val = value if value is not None else []
+                    template_variables[gen_name] = (hint, _quote_string_lists(t_val))
                 else:
-                    prefix = ''
-                if not isinstance(v, bool) and (k.endswith('s') or 'coords' in k):
-                    t_val = v if v is not None else []
-                    template_variables[prefix + k] = _quote_string_lists(t_val)
-                    template_variables[prefix + k.replace('coords', 'coord').rstrip('s')] = _last_or_none(t_val)
-                else:
-                    template_variables[prefix + k] = v if v is not None else None
+                    template_variables[gen_name] = (hint, value if value is not None else None)
 
         return template_variables
 
-    def set_from(self, obj, missing_value_throws=True):
+    def generate_template_variables(self,
+                                    variable_prefix:
+                                    typing.Optional[str] = None) -> typing.Dict[str, typing.Any]:
+        return {k: v[1] for k, v in
+                self.generate_template_variables_with_types(variable_prefix=variable_prefix).items()}
+
+    def set_from(self,
+                 obj: typing.Union[typing.Any, dict],
+                 missing_value_throws: bool = True):
+
         if isinstance(obj, dict):
             source = obj
         else:
@@ -248,7 +264,7 @@ class DiffusionRenderLoopConfig:
     def check(self):
         if not _has_len(self.prompts):
             raise ValueError('DiffusionRenderLoop.prompts must have len')
-        if not _has_len(self.inference_steps):
+        if not _has_len(self.inference_steps_values):
             raise ValueError('DiffusionRenderLoop.inference_steps must have len')
         if not _has_len(self.seeds):
             raise ValueError('DiffusionRenderLoop.seeds must have len')
@@ -305,11 +321,12 @@ class DiffusionRenderLoopConfig:
         if not isinstance(self.device, str) or not _pipelinewrapper.is_valid_device_string(self.device):
             raise ValueError(
                 'DiffusionRenderLoop.device must be "cuda" (optionally with a device ordinal "cuda:N") or "cpu"')
-        animation_formats = _mediaoutput.supported_animation_writer_formats()
+
+        animation_output_formats_pretty = _mediaoutput.supported_animation_writer_formats()
         if not (isinstance(self.animation_format, str) or
-                self.animation_format.lower() not in animation_formats):
+                self.animation_format.lower() not in animation_output_formats_pretty):
             raise ValueError(f'DiffusionRenderLoop.animation_format must be one of: '
-                             f'{_textprocessing.oxford_comma(animation_formats, "or")}')
+                             f'{_textprocessing.oxford_comma(animation_output_formats_pretty, "or")}')
         if self.output_size is None and not self.image_seeds:
             raise ValueError(
                 'DiffusionRenderLoop.output_size must not be None when no image seeds are specified.')
@@ -362,7 +379,7 @@ class DiffusionRenderLoopConfig:
                 len(self.prompts) *
                 len(self.seeds) *
                 len(self.guidance_scales) *
-                len(self.inference_steps))
+                len(self.inference_steps_values))
 
     def iterate_diffusion_args(self, **overrides) -> typing.Generator[_pipelinewrapper.DiffusionArguments, None, None]:
         def ov(n, v):
@@ -390,7 +407,7 @@ class DiffusionRenderLoopConfig:
             guidance_scale=ov('guidance_scale', self.guidance_scales),
             image_guidance_scale=ov('image_guidance_scale', self.image_guidance_scales),
             guidance_rescale=ov('guidance_rescale', self.guidance_rescales),
-            inference_steps=ov('inference_steps', self.inference_steps),
+            inference_steps=ov('inference_steps', self.inference_steps_values),
             sdxl_high_noise_fraction=ov('sdxl_high_noise_fraction', self.sdxl_high_noise_fractions),
             sdxl_refiner_inference_steps=ov('sdxl_refiner_inference_steps', self.sdxl_refiner_inference_steps),
             sdxl_refiner_guidance_scale=ov('sdxl_refiner_guidance_scale', self.sdxl_refiner_guidance_scales),
@@ -423,15 +440,18 @@ class DiffusionRenderLoopConfig:
 
 
 class DiffusionRenderLoop:
-    def __init__(self, config=None):
+    def __init__(self, config=None, preprocessor_loader=None):
         self._generation_step = -1
         self._frame_time_sum = 0
         self._last_frame_time = 0
         self._written_images = []
         self._written_animations = []
 
-        self.config = DiffusionRenderLoopConfig() if config is None else config
-        self.image_preprocessor_loader = _preprocessors.Loader()
+        self.config = \
+            DiffusionRenderLoopConfig() if config is None else config
+
+        self.preprocessor_loader = \
+            _preprocessors.Loader() if preprocessor_loader is None else preprocessor_loader
 
     @property
     def written_images(self):
@@ -441,31 +461,41 @@ class DiffusionRenderLoop:
     def written_animations(self):
         return self._written_animations
 
-    def generate_template_variables(self):
-        template_variables = self.config.generate_template_variables(
+    def generate_template_variables_with_types(self):
+        template_variables = self.config.generate_template_variables_with_types(
             variable_prefix='last_')
 
         template_variables.update({
-            'last_images': _quote_string_lists(self.written_images),
-            'last_image': _last_or_none(self.written_images),
-            'last_animations': _quote_string_lists(self.written_animations),
-            'last_animation': _last_or_none(self.written_animations)
+            'last_images': (_types.Paths, _quote_string_lists(self.written_images)),
+            'last_animations': (_types.Paths, _quote_string_lists(self.written_animations)),
         })
 
         return template_variables
+
+    def generate_template_variables(self):
+        return {k: v[1] for k, v in self.generate_template_variables_with_types().items()}
+
+    def generate_template_variables_help(self):
+        help_string = _textprocessing.underline(
+            'Available post invocation template variables are:') + '\n\n'
+
+        return help_string + '\n'.join(
+            ' ' * 4 + f'Name: {_textprocessing.quote(i[0])}\n{" " * 8}'
+                      f'Type: {i[1][0]}\n{" " * 8}Value: {i[1][1]}' for i in
+            self.generate_template_variables_with_types().items())
 
     @property
     def generation_step(self):
         return self._generation_step
 
     def _gen_filename(self, *args, ext):
-        def _make_path(args, ext, dup_number=None):
+        def _make_path(dup_number=None):
             return os.path.join(self.config.output_path,
                                 f'{self.config.output_prefix + "_" if self.config.output_prefix is not None else ""}' + '_'.
                                 join(str(s).replace('.', '-') for s in args) + (
                                     '' if dup_number is None else f'_duplicate_{dup_number}') + '.' + ext)
 
-        path = _make_path(args, ext)
+        path = _make_path()
 
         if self.config.output_overwrite:
             return path
@@ -475,12 +505,13 @@ class DiffusionRenderLoop:
 
         duplicate_number = 1
         while os.path.exists(path):
-            path = _make_path(args, ext, duplicate_number)
+            path = _make_path(duplicate_number)
             duplicate_number += 1
 
         return path
 
-    def _gen_filename_base(self, args_ctx: _pipelinewrapper.DiffusionArguments):
+    @staticmethod
+    def _gen_filename_base(args_ctx: _pipelinewrapper.DiffusionArguments):
         args = ['s', args_ctx.seed]
 
         if args_ctx.upscaler_noise_level is not None:
@@ -609,7 +640,7 @@ class DiffusionRenderLoop:
         pass
 
     def _load_preprocessors(self, preprocessors):
-        return self.image_preprocessor_loader.load(preprocessors, self.config.device)
+        return self.preprocessor_loader.load(preprocessors, self.config.device)
 
     def run(self):
         try:

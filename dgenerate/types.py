@@ -19,12 +19,51 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import sys
+import typing
 
-try:
-    from . import main
+import dgenerate.prompt as _prompt
 
-    main()
-except KeyboardInterrupt:
-    print('Aborting due to keyboard interrupt!', file=sys.stderr)
-    sys.exit(1)
+Size = typing.Tuple[int, int]
+Sizes = typing.List[Size]
+OptionalSize = typing.Optional[Size]
+OptionalSizes = typing.Optional[Sizes]
+Coordinate = typing.Tuple[int, int]
+OptionalCoordinate = typing.Optional[Coordinate]
+CoordinateList = typing.List[Coordinate]
+OptionalCoordinateList = typing.Optional[CoordinateList]
+Paths = typing.List[str]
+OptionalPaths = typing.Optional[Paths]
+Path = str
+Name = str
+OptionalPath = typing.Optional[Path]
+OptionalName = typing.Optional[Name]
+Integer = int
+Integers = typing.List[int]
+OptionalInteger = typing.Optional[int]
+OptionalIntegers = typing.Optional[Integers]
+Float = float
+Floats = typing.List[float]
+OptionalFloat = typing.Optional[float]
+OptionalFloats = typing.Optional[Floats]
+Version = typing.Tuple[int, int, int]
+OptionalPrompt = typing.Optional[_prompt.Prompt]
+Prompts = typing.List[_prompt.Prompt]
+OptionalPrompts = typing.Optional[Prompts]
+OptionalString = typing.Optional[str]
+
+
+def is_type_or_optional(hinted_type, comparison_type):
+    if hinted_type == comparison_type:
+        return True
+
+    origin = typing.get_origin(hinted_type)
+
+    if origin == comparison_type:
+        return True
+    if origin == typing.Union:
+        union_args = typing.get_args(hinted_type)
+        if len(union_args) == 2:
+            for a in union_args:
+                if typing.get_origin(a) == comparison_type:
+                    return True
+    return False

@@ -20,7 +20,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import argparse
 
-import dgenerate.plugin as _plugin
 from dgenerate.textprocessing import quote
 from .canny import CannyEdgeDetectPreprocess
 from .exceptions import *
@@ -31,6 +30,7 @@ from .preprocessor import ImagePreprocessor
 from .preprocessorchain import ImagePreprocessorChain
 from .preprocessormixin import ImagePreprocessorMixin
 from .. import messages as _messages
+import typing
 
 _help_parser = argparse.ArgumentParser(prog='dgenerate', exit_on_error=False)
 _help_parser.add_argument('--image-preprocessor-help', nargs='*', default=[], type=str)
@@ -41,7 +41,7 @@ class PreprocessorHelpUsageError(Exception):
     pass
 
 
-def image_preprocessor_help(args: typing.List[str], throw: bool = False):
+def image_preprocessor_help(args: typing.Sequence[str], throw: bool = False):
     try:
         parse_result = _help_parser.parse_args(args)
     except (argparse.ArgumentError, argparse.ArgumentTypeError) as e:
@@ -53,7 +53,7 @@ def image_preprocessor_help(args: typing.List[str], throw: bool = False):
     names = parse_result.image_preprocessor_help
 
     module_loader = Loader()
-    module_loader.search_modules.update(_plugin.load_modules(parse_result.plugin_modules))
+    module_loader.load_modules(parse_result.plugin_modules)
 
     if len(names) == 0:
         available = ('\n' + ' ' * 4).join(quote(name) for name in module_loader.get_all_names())

@@ -23,6 +23,7 @@ import itertools
 import sys
 import typing
 
+import dgenerate.plugin as _plugin
 import dgenerate.preprocessors.exceptions as _exceptions
 import dgenerate.preprocessors.preprocessor as _preprocessor
 import dgenerate.preprocessors.preprocessorchain as _preprocessorchain
@@ -32,6 +33,9 @@ import dgenerate.textprocessing as _textprocessing
 class Loader:
     def __init__(self):
         self.search_modules: set = set()
+
+    def load_modules(self, paths: typing.List[str]):
+        self.search_modules.update(_plugin.load_modules(paths))
 
     def _load(self, path, device):
         call_by_name = path.split(';', 1)[0].strip()
@@ -129,20 +133,21 @@ class Loader:
     def get_help(self, preprocessor_name: str) -> str:
         return self.get_class_by_name(preprocessor_name).get_help(preprocessor_name)
 
-    def load(self, path: typing.Union[str, list, tuple, None], device='cpu') -> \
+    def load(self, path: typing.Union[str, typing.Iterable, None], device: str = 'cpu') -> \
             typing.Union[_preprocessor.ImagePreprocessor, _preprocessorchain.ImagePreprocessorChain, None]:
 
         if path is None:
-            return None
+            raise ValueError('No preprocessor name provided!')
 
         if isinstance(path, str):
             return self._load(path, device)
 
-        if len(path) == 1:
-            return self._load(path[0], device)
+        paths = list(path)
 
-        chain = _preprocessorchain.ImagePreprocessorChain()
-        for i in path:
-            chain.add_processor(self._load(i, device))
+        if not paths:
+            raise ValueError('No preprocessor names provided!')
 
-        return chain
+        if len(paths) == 1:
+            return self._load(paths[0], device)
+
+        return _preprocessorchain.ImagePreprocessorChain(self._load(i, device) for i in paths)

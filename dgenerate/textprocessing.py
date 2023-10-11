@@ -75,7 +75,7 @@ class ConceptPathParser:
         return ConceptPath(concept, args)
 
 
-def oxford_comma(elements: list, conjunction: str):
+def oxford_comma(elements: typing.Sequence[str], conjunction: str):
     cnt = len(elements)
     elements = (str(i) for i in elements)
     if cnt == 1:
@@ -126,7 +126,7 @@ def contains_space(strin: str):
     return any(c.isspace() for c in strin)
 
 
-def quote_spaces(list_of_str: typing.Union[list, tuple]):
+def quote_spaces(list_of_str: typing.Sequence[typing.Union[str, list, tuple]]):
     vals = []
     for v in list_of_str:
         if isinstance(v, list):

@@ -23,18 +23,20 @@ import typing
 import PIL.Image
 
 import dgenerate.preprocessors.preprocessor as _preprocessor
+import dgenerate.types as _types
 
 
 class ImagePreprocessorChain(_preprocessor.ImagePreprocessor):
     HIDDEN = True
 
-    def __init__(self, preprocessors: typing.Union[None, list, tuple] = None, **kwargs):
+    def __init__(self, preprocessors: typing.Optional[typing.Iterable[_preprocessor.ImagePreprocessor]] = None,
+                 **kwargs):
         super().__init__(**kwargs)
 
         if preprocessors is None:
             self._preprocessors = []
         else:
-            self._preprocessors = preprocessors
+            self._preprocessors = list(preprocessors)
 
     def _preprocessor_names(self):
         for preprocessor in self._preprocessors:
@@ -49,10 +51,10 @@ class ImagePreprocessorChain(_preprocessor.ImagePreprocessor):
     def __repr__(self):
         return str(self)
 
-    def add_processor(self, preprocessor):
+    def add_processor(self, preprocessor: _preprocessor.ImagePreprocessor):
         self._preprocessors.append(preprocessor)
 
-    def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[typing.Tuple[int, int], None]):
+    def pre_resize(self, image: PIL.Image, resize_resolution: _types.OptionalSize):
         if self._preprocessors:
             p_image = image
             for preprocessor in self._preprocessors:
