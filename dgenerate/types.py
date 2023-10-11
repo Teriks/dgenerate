@@ -52,6 +52,16 @@ OptionalPrompts = typing.Optional[Prompts]
 OptionalString = typing.Optional[str]
 
 
+def get_public_attributes(obj) -> typing.Dict[str, typing.Any]:
+    return {k: getattr(obj, k) for k in dir(obj)
+            if not k.startswith("_") and not callable(getattr(obj, k))}
+
+
+def get_public_members(obj) -> typing.Dict[str, typing.Any]:
+    return {k: getattr(obj, k) for k in dir(obj)
+            if not k.startswith("_")}
+
+
 def is_type_or_optional(hinted_type, comparison_type):
     if hinted_type == comparison_type:
         return True

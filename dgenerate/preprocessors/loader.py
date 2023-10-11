@@ -28,6 +28,7 @@ import dgenerate.preprocessors.exceptions as _exceptions
 import dgenerate.preprocessors.preprocessor as _preprocessor
 import dgenerate.preprocessors.preprocessorchain as _preprocessorchain
 import dgenerate.textprocessing as _textprocessing
+import dgenerate.types as _types
 
 
 class Loader:
@@ -106,8 +107,7 @@ class Loader:
                 else:
                     return False
 
-            found_classes += [cls for cls in (getattr(mod, attr) for attr in dir(mod))
-                              if not _excluded(cls)]
+            found_classes += [value for name, value in _types.get_public_members(mod) if not _excluded(value)]
 
         return found_classes
 

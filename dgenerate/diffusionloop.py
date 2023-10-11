@@ -64,7 +64,7 @@ def iterate_attribute_combinations(
 
     for combination in itertools.product(*[d[1] for d in attribute_defs]):
         ctx_out = my_class()
-        dir_attributes = set(dir(ctx_out))
+        dir_attributes = set(_types.get_public_attributes(ctx_out).keys())
         for idx, d in enumerate(attribute_defs):
             attr = d[0]
             if len(d) == 2:
@@ -256,9 +256,9 @@ class DiffusionRenderLoopConfig:
         if isinstance(obj, dict):
             source = obj
         else:
-            source = {k: getattr(obj, k) for k in dir(obj)}
+            source = _types.get_public_attributes(obj)
 
-        for k, v in ((k, getattr(self, k)) for k in dir(self) if not k.startswith('_')):
+        for k, v in _types.get_public_attributes(self):
             if not callable(v):
                 if missing_value_throws and k not in source:
                     raise ValueError(f'Source object does not define: "{k}"')
