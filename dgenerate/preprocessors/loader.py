@@ -107,7 +107,7 @@ class Loader:
                 else:
                     return False
 
-            found_classes += [value for name, value in _types.get_public_members(mod) if not _excluded(value)]
+            found_classes += [value for name, value in _types.get_public_members(mod).items() if not _excluded(value)]
 
         return found_classes
 
