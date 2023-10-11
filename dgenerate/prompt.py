@@ -22,6 +22,9 @@ import typing
 
 
 class Prompt:
+    """
+    Represents a combined positive and optional negative prompt split by a delimiter character.
+    """
     def __init__(self,
                  positive: typing.Optional[str] = None,
                  negative: typing.Optional[str] = None,
@@ -39,6 +42,11 @@ class Prompt:
             return ''
 
     def parse(self, value: str):
+        """
+        Parse the positive and negative prompt from a string and set the positive and negative attributes.
+        :param value: the string
+        :return: :py:class:`.Prompt` (returns self)
+        """
         if value is None:
             raise ValueError('Input string may not be None.')
 

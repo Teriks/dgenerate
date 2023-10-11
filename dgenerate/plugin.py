@@ -19,14 +19,24 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import os
+import types
+import typing
 from importlib.machinery import SourceFileLoader
 
 import dgenerate.types as _types
 
-LOADED_PLUGIN_MODULES = {}
+LOADED_PLUGIN_MODULES: typing.Dict[str, types.ModuleType] = {}
+"""Plugin module in memory cache"""
 
 
-def load_modules(paths: _types.OptionalPaths):
+def load_modules(paths: _types.OptionalPaths) -> types.ModuleType:
+    """
+    Load python modules from a folder or directly from a .py file.
+    Cache them so that repeat requests for loading return an already loaded module.
+
+    :param paths: list of folder/file paths
+    :return: list of :py:class:`types.ModuleType`
+    """
     r = []
     for plugin_path in paths:
         name, ext = os.path.splitext(os.path.basename(plugin_path))

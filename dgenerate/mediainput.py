@@ -225,7 +225,7 @@ class VideoReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
         return self.preprocess_image(rgb_image, self.resize_resolution)
 
 
-class GifWebpReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
+class AnimatedImageReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
     """
     Implementation of :py:class:`.AnimationReader` that reads animated image formats using Pillow
     """
@@ -1043,10 +1043,10 @@ def _create_image_seed_reader(manage_context: list,
                               throw: bool):
     reader = None
     if mimetype_is_animated_image(mime_type):
-        reader = GifWebpReader(file=data,
-                               file_source=file_source,
-                               resize_resolution=resize_resolution,
-                               preprocessor=preprocessor)
+        reader = AnimatedImageReader(file=data,
+                                     file_source=file_source,
+                                     resize_resolution=resize_resolution,
+                                     preprocessor=preprocessor)
     elif mimetype_is_video(mime_type):
         reader = VideoReader(file=data,
                              file_source=file_source,

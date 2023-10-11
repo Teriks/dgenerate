@@ -53,16 +53,34 @@ OptionalString = typing.Optional[str]
 
 
 def get_public_attributes(obj) -> typing.Dict[str, typing.Any]:
+    """
+    Get the public attributes (excluding functions) and their values from an object.
+    :param obj: the object
+    :return: dict of attribute names to values
+    """
     return {k: getattr(obj, k) for k in dir(obj)
             if not k.startswith("_") and not callable(getattr(obj, k))}
 
 
 def get_public_members(obj) -> typing.Dict[str, typing.Any]:
+    """
+    Get the public members (including functions) and their values from an object.
+    :param obj: the object
+    :return: dict of attribute names to values
+    """
     return {k: getattr(obj, k) for k in dir(obj)
             if not k.startswith("_")}
 
 
 def is_type_or_optional(hinted_type, comparison_type):
+    """
+    Check if a hinted type is equal to a comparison type, even if the type hint is
+    optional (compare the inside if necessary).
+
+    :param hinted_type: The hinted type
+    :param comparison_type: The type to check for
+    :return: bool
+    """
     if hinted_type == comparison_type:
         return True
 

@@ -25,6 +25,12 @@ import typing
 
 def args_cache_key(args_dict: typing.Dict[str, typing.Any],
                    custom_hashes: typing.Dict[str, typing.Callable[[typing.Any], str]] = None):
+    """
+    Generate a cache key for a functions arguments to use for memoization.
+    :param args_dict: The args dictionary of the function
+    :param custom_hashes: Custom hash functions for specific argument names if needed
+    :return: string
+    """
     def value_hash(obj):
         if isinstance(obj, dict):
             return '{' + args_cache_key(obj) + '}'
@@ -48,6 +54,16 @@ def memoize(cache: typing.Dict[str, typing.Any],
             hasher: typing.Callable[[typing.Dict[str, typing.Any]], str] = args_cache_key,
             on_hit: typing.Callable[[str, typing.Any], None] = None,
             on_create: typing.Callable[[str, typing.Any], None] = None):
+    """
+    Decorator used to Memoize a function using a dictionary as a value cache.
+
+    :param cache: The dictionary to serve as a cache
+    :param exceptions: Function arguments to ignore
+    :param hasher: Responsible for hashing arguments and argument values
+    :param on_hit: Called on cache hit for the wrapped function
+    :param on_create: Called on cache miss for the wrapped function
+    :return: decorator
+    """
     if exceptions is None:
         exceptions = set()
 
