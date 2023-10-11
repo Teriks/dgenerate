@@ -25,6 +25,7 @@ import itertools
 import os
 import pathlib
 import random
+import textwrap
 import time
 import typing
 
@@ -482,9 +483,16 @@ class DiffusionRenderLoop:
         help_string = _textprocessing.underline(
             'Available post invocation template variables are:') + '\n\n'
 
+        def wrap(val):
+            return textwrap.fill(str(val),
+                                 width=_textprocessing.long_text_wrap_width(),
+                                 break_long_words=False,
+                                 break_on_hyphens=False,
+                                 subsequent_indent=' ' * 17)
+
         return help_string + '\n'.join(
             ' ' * 4 + f'Name: {_textprocessing.quote(i[0])}\n{" " * 8}'
-                      f'Type: {i[1][0]}\n{" " * 8}Value: {i[1][1]}' for i in
+                      f'Type: {i[1][0]}\n{" " * 8}Value: {wrap(i[1][1])}' for i in
             self.generate_template_variables_with_types().items())
 
     @property
