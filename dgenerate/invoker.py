@@ -21,25 +21,29 @@
 import typing
 
 import torch
-
 import dgenerate.arguments as _arguments
 import dgenerate.diffusionloop as _diffusionloop
 import dgenerate.mediainput as _mediainput
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
-import dgenerate.plugin as _plugin
 import dgenerate.preprocessors as _preprocessors
+import dgenerate.textprocessing as _textprocessing
 
 
 def invoke_dgenerate(
         render_loop: _diffusionloop.DiffusionRenderLoop,
-        args: typing.List[typing.Union[str, float, int]],
+        args: typing.Sequence[str],
         throw: bool = False):
     if '--image-preprocessor-help' in args:
         try:
             return _preprocessors.image_preprocessor_help(args, throw=throw)
         except _preprocessors.PreprocessorHelpUsageError as e:
             raise _arguments.DgenerateUsageError(e)
+
+    if '--templates-help' in args:
+        _messages.log(_diffusionloop.DiffusionRenderLoop(
+                config=_arguments.DgenerateArguments()).generate_template_variables_help())
+        return 0
 
     try:
         arguments = _arguments.parse_args(args, throw=True)
@@ -48,10 +52,10 @@ def invoke_dgenerate(
             raise e
         return 1
 
-    render_loop.config.set_from(arguments)
+    render_loop.config = arguments
 
-    render_loop.image_preprocessor_loader. \
-        search_modules.update(_plugin.load_modules(arguments.plugin_module_paths))
+    render_loop.preprocessor_loader. \
+        load_modules(arguments.plugin_module_paths)
 
     if arguments.verbose:
         _messages.LEVEL = _messages.DEBUG
@@ -61,12 +65,9 @@ def invoke_dgenerate(
 
     try:
         render_loop.run()
-    except (_mediainput.ImageSeedParseError,
-            _mediainput.ImageSeedSizeMismatchError,
-            _pipelinewrapper.InvalidSDXLRefinerPathError,
-            _pipelinewrapper.InvalidVaePathError,
-            _pipelinewrapper.InvalidLoRAPathError,
-            _pipelinewrapper.InvalidTextualInversionPathError,
+    except (_mediainput.ImageSeedError,
+            _mediainput.UnknownMimetypeError,
+            _pipelinewrapper.InvalidModelPathError,
             _pipelinewrapper.InvalidSchedulerName,
             _preprocessors.ImagePreprocessorArgumentError,
             _preprocessors.ImagePreprocessorNotFoundError,

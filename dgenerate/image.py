@@ -18,13 +18,14 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import typing
 
 import PIL.Image
 
+import dgenerate.types as _types
 
-def resize_image_calc(old_size: typing.Tuple[int, int],
-                      new_size: typing.Union[typing.Tuple[int, int], None]):
+
+def resize_image_calc(old_size: _types.Size,
+                      new_size: _types.OptionalSize):
     if new_size is None or old_size == new_size:
         return old_size
 
@@ -53,7 +54,7 @@ def copy_img(img: PIL.Image.Image):
 
 
 def resize_image(img: PIL.Image.Image,
-                 size: typing.Union[typing.Tuple[int, int], None]):
+                 size: _types.OptionalSize):
     new_size = resize_image_calc(old_size=img.size,
                                  new_size=size)
 

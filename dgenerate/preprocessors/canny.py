@@ -19,8 +19,6 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import typing
-
 import PIL.Image
 import cv2
 import numpy
@@ -28,6 +26,7 @@ import numpy as np
 
 import dgenerate.messages as _messages
 import dgenerate.preprocessors.preprocessor as _preprocessor
+import dgenerate.types as _types
 
 
 class CannyEdgeDetectPreprocess(_preprocessor.ImagePreprocessor):
@@ -103,7 +102,7 @@ class CannyEdgeDetectPreprocess(_preprocessor.ImagePreprocessor):
         ]
         return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
 
-    def _process(self, image):
+    def _process(self, image: PIL.Image):
 
         gray = self._threshold_algo is not None or self._gray
 
@@ -137,12 +136,12 @@ class CannyEdgeDetectPreprocess(_preprocessor.ImagePreprocessor):
 
         return PIL.Image.fromarray(cv2.cvtColor(edges, convert_back))
 
-    def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[typing.Tuple[int, int], None]):
+    def pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         if self._pre_resize:
             return self._process(image)
         return image
 
-    def post_resize(self, image: PIL.Image):
+    def post_resize(self, image: PIL.Image.Image):
         if not self._pre_resize:
             return self._process(image)
         return image

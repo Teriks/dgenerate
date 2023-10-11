@@ -31,15 +31,14 @@ import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.prompt as _prompt
 import dgenerate.textprocessing as _textprocessing
+import dgenerate.types as _types
 
 
-class DgenerateArguments(dgenerate.DiffusionRenderLoopConfig):
-    def __init__(self):
-        super().__init__()
+_SUPPORTED_MODEL_TYPES_PRETTY =\
+    _textprocessing.oxford_comma(_pipelinewrapper.supported_model_type_strings(), "or")
 
-        self.plugin_module_paths = []
-        self.verbose = False
-
+_SUPPORTED_ANIMATION_OUTPUT_FORMATS_PRETTY = \
+    _textprocessing.oxford_comma(_mediaoutput.supported_animation_writer_formats(), "or")
 
 parser = argparse.ArgumentParser(
     prog='dgenerate', exit_on_error=False,
@@ -63,11 +62,17 @@ parser.add_argument('--plugin-modules', action='store', default=[], nargs="+", d
                     image preprocessors.""")
 
 
-def _from_model_type(val):
+# This argument is handled in dgenerate.invoker.invoke_dgenerate
+parser.add_argument('--templates-help', action='store_true',  dest=None,
+                    help="""Print a list of template variables available after a dgenerate invocation 
+                    during batch processing from STDIN.""")
+
+
+def _model_type(val):
     val = val.lower()
     if val not in _pipelinewrapper.supported_model_type_strings():
         raise argparse.ArgumentTypeError(
-            f'Must be one of: {_textprocessing.oxford_comma(_pipelinewrapper.supported_model_type_strings(), "or")}. Unknown value: {val}')
+            f'Must be one of: {_SUPPORTED_MODEL_TYPES_PRETTY}. Unknown value: {val}')
     return _pipelinewrapper.get_model_type_enum(val)
 
 
@@ -110,9 +115,9 @@ def _type_guidance_scale(val):
     return val
 
 
-parser.add_argument('--model-type', action='store', default='torch', type=_from_model_type,
+parser.add_argument('--model-type', action='store', default='torch', type=_model_type,
                     help=f"""Use when loading different model types. 
-                         Currently supported: {_textprocessing.oxford_comma(_pipelinewrapper.supported_model_type_strings(), "or")}. (default: torch)""")
+                         Currently supported: {_SUPPORTED_MODEL_TYPES_PRETTY}. (default: torch)""")
 
 parser.add_argument('--revision', action='store', default="main", metavar="BRANCH",
                     help="""The model revision to use when loading from a huggingface repository,
@@ -374,7 +379,7 @@ def _type_micro_conditioning_size(size):
 
 def _type_image_coordinate(coord):
     if coord is None:
-        return (0, 0)
+        return 0, 0
 
     r = coord.split(',')
 
@@ -649,7 +654,7 @@ seed_options = parser.add_mutually_exclusive_group()
 def _type_seeds(val):
     try:
         val = int(val)
-    except ValueError as e:
+    except ValueError:
         raise argparse.ArgumentTypeError('Must be an integer')
 
     return val
@@ -664,7 +669,7 @@ seed_options.add_argument('-se', '--seeds', nargs='+', action='store', metavar="
 def _type_gen_seeds(val):
     try:
         val = int(val)
-    except ValueError as e:
+    except ValueError:
         raise argparse.ArgumentTypeError('Must be an integer')
 
     return dgenerate.gen_seeds(val)
@@ -679,16 +684,15 @@ seed_options.add_argument('-gse', '--gen-seeds', action='store', type=_type_gen_
 def _type_animation_format(val):
     val = val.lower()
     if val not in _mediaoutput.supported_animation_writer_formats():
-        supported = _textprocessing.oxford_comma(_mediaoutput.supported_animation_writer_formats(), "or")
         raise argparse.ArgumentTypeError(
-            f'Must be {supported}. Unknown value: {val}')
+            f'Must be {_SUPPORTED_ANIMATION_OUTPUT_FORMATS_PRETTY}. Unknown value: {val}')
     return val
 
 
 parser.add_argument('-af', '--animation-format', action='store', default='mp4', type=_type_animation_format,
                     metavar="FORMAT",
                     help=f"""Output format when generating an animation from an input video / gif / webp etc.
-                         Value must be one of: {_textprocessing.oxford_comma(_mediaoutput.supported_animation_writer_formats(), "or")}.
+                         Value must be one of: {_SUPPORTED_ANIMATION_OUTPUT_FORMATS_PRETTY}.
                          (default: mp4)""")
 
 
@@ -767,8 +771,9 @@ parser.add_argument('--control-image-preprocessors', action='store', nargs='+', 
                     preprocessors are available and how to use them, see: --image-preprocessor-help.
                     """)
 
+# This argument is handled in dgenerate.invoker.invoke_dgenerate
 parser.add_argument('--image-preprocessor-help', action='store', nargs='*', default=None, metavar="PREPROCESSOR",
-                    dest=None,  # This is handled elsewhere
+                    dest=None,
                     help="""Use this option alone (or with --plugin-modules) and no model 
                     specification in order to list available image preprocessor module names. 
                     Specifying one or more module names after this option will cause usage 
@@ -862,6 +867,7 @@ parser.add_argument('-gr', '--guidance-rescales', action='store', nargs='+', def
 parser.add_argument('-ifs', '--inference-steps', action='store', nargs='+',
                     default=[_pipelinewrapper.DEFAULT_INFERENCE_STEPS],
                     type=_type_inference_steps,
+                    dest='inference_steps_values',
                     metavar="INTEGER",
                     help="""Lists of inference steps values to try. The amount of inference (de-noising) steps
                          effects image clarity to a degree, higher values bring the image closer to what
@@ -874,109 +880,120 @@ class DgenerateUsageError(Exception):
     pass
 
 
+class DgenerateArguments(dgenerate.DiffusionRenderLoopConfig):
+    plugin_module_paths: _types.Paths = []
+    verbose: bool = False
+
+    def __init__(self):
+        super().__init__()
+
+    def check(self):
+        super(DgenerateArguments, self).check()
+
+        def self_that_start_with(s):
+            return (a for a in dir(self) if a.startswith(s) and getattr(self, a))
+
+        def self_that_end_with(s):
+            return (a for a in dir(self) if a.endswith(s) and getattr(self, a))
+
+        if self.frame_end is not None and self.frame_start > self.frame_end:
+            raise DgenerateUsageError(
+                '--frame-start must be less than or equal to --frame-end')
+
+        if self.output_size is None and not self.image_seeds:
+            self.output_size = (512, 512) if not _pipelinewrapper.model_type_is_sdxl(self.model_type) else (1024, 1024)
+
+        if not self.image_seeds and self.image_seed_strengths:
+            raise DgenerateUsageError(
+                'you cannot specify --image-seed-strengths without --image-seeds.')
+
+        if not _pipelinewrapper.model_type_is_upscaler(self.model_type):
+            if self.upscaler_noise_levels:
+                raise DgenerateUsageError(
+                    'you cannot specify --upscaler-noise-levels for a '
+                    'non upscaler model type, see --model-type.')
+        elif self.control_net_paths:
+            raise DgenerateUsageError(
+                'argument --control-nets is not compatible '
+                'with upscaler models, see --model-type.')
+        elif self.upscaler_noise_levels is None:
+            self.upscaler_noise_levels = [_pipelinewrapper.DEFAULT_X4_UPSCALER_NOISE_LEVEL]
+
+        if not _pipelinewrapper.model_type_is_pix2pix(self.model_type):
+            if self.image_guidance_scales:
+                raise DgenerateUsageError(
+                    'argument --image-guidance-scales only valid with '
+                    'pix2pix models, see --model-type.')
+        elif self.control_net_paths:
+            raise DgenerateUsageError(
+                'argument --control-nets '
+                'is not compatible with pix2pix models, see --model-type.')
+        elif not self.image_guidance_scales:
+            self.image_guidance_scales = [_pipelinewrapper.DEFAULT_IMAGE_GUIDANCE_SCALE]
+
+        if self.control_image_preprocessors:
+            if not self.image_seeds:
+                raise DgenerateUsageError(f'you cannot specify --control-image-preprocessors '
+                                          f'without --image-seeds.')
+
+        if not self.image_seeds:
+            invalid_self = []
+            for preprocessor_self in self_that_end_with('preprocessors'):
+                invalid_self.append(
+                    f'you cannot specify --{preprocessor_self.replace("_", "-")} '
+                    f'without --image-seeds.')
+            if invalid_self:
+                raise DgenerateUsageError('\n'.join(invalid_self))
+
+        if not _pipelinewrapper.model_type_is_sdxl(self.model_type):
+            invalid_self = []
+            for sdxl_self in self_that_start_with('sdxl'):
+                invalid_self.append(f'you cannot specify --{sdxl_self.replace("_", "-")} '
+                                    f'for a non SDXL model type, see --model-type.')
+            if invalid_self:
+                raise DgenerateUsageError('\n'.join(invalid_self))
+
+            self.sdxl_high_noise_fractions = []
+        else:
+            if not self.sdxl_refiner_path:
+                invalid_self = []
+                for sdxl_self in self_that_start_with('sdxl_refiner'):
+                    invalid_self.append(f'you cannot specify --{sdxl_self.replace("_", "-")} '
+                                        f'without --sdxl-refiner.')
+                if invalid_self:
+                    raise DgenerateUsageError('\n'.join(invalid_self))
+            else:
+                if self.sdxl_high_noise_fractions is None:
+                    # Default value
+                    self.sdxl_high_noise_fractions = [_pipelinewrapper.DEFAULT_SDXL_HIGH_NOISE_FRACTION]
+
+        if not _pipelinewrapper.model_type_is_torch(self.model_type):
+            if self.vae_tiling or self.vae_slicing:
+                raise DgenerateUsageError(
+                    'argument --vae-tiling/--vae-slicing not supported for '
+                    'non torch model type, see --model-type.')
+
+        if self.scheduler == 'help' and self.sdxl_refiner_scheduler == 'help':
+            raise DgenerateUsageError(
+                'cannot list compatible schedulers for the main model and the SDXL refiner at '
+                'the same time. Do not use the scheduler "help" option for --scheduler '
+                'and --sdxl-refiner-scheduler simultaneously.')
+
+        if self.image_seeds:
+            if self.image_seed_strengths is None:
+                # Default value
+                self.image_seed_strengths = [_pipelinewrapper.DEFAULT_IMAGE_SEED_STRENGTH]
+        else:
+            self.image_seed_strengths = []
+
+
 def _parse_args(args=None) -> DgenerateArguments:
     args = parser.parse_args(args, namespace=DgenerateArguments())
-
-    def args_that_start_with(s):
-        return (a for a in dir(args) if a.startswith(s) and getattr(args, a))
-
-    def args_that_end_with(s):
-        return (a for a in dir(args) if a.endswith(s) and getattr(args, a))
-
-    if args.frame_end is not None and args.frame_start > args.frame_end:
-        raise DgenerateUsageError(
-            '--frame-start must be less than or equal to --frame-end')
-
-    if args.output_size is None and not args.image_seeds:
-        args.output_size = (512, 512) if not _pipelinewrapper.model_type_is_sdxl(args.model_type) else (1024, 1024)
-
-    if not args.image_seeds and args.image_seed_strengths:
-        raise DgenerateUsageError(
-            'you cannot specify --image-seed-strengths without --image-seeds.')
-
-    if not _pipelinewrapper.model_type_is_upscaler(args.model_type):
-        if args.upscaler_noise_levels:
-            raise DgenerateUsageError(
-                'you cannot specify --upscaler-noise-levels for a '
-                'non upscaler model type, see --model-type.')
-    elif args.control_net_paths:
-        raise DgenerateUsageError(
-            'argument --control-nets is not compatible '
-            'with upscaler models, see --model-type.')
-    elif args.upscaler_noise_levels is None:
-        args.upscaler_noise_levels = [_pipelinewrapper.DEFAULT_X4_UPSCALER_NOISE_LEVEL]
-
-    if not _pipelinewrapper.model_type_is_pix2pix(args.model_type):
-        if args.image_guidance_scales:
-            raise DgenerateUsageError(
-                'argument --image-guidance-scales only valid with '
-                'pix2pix models, see --model-type.')
-    elif args.control_net_paths:
-        raise DgenerateUsageError(
-            'argument --control-nets '
-            'is not compatible with pix2pix models, see --model-type.')
-    elif not args.image_guidance_scales:
-        args.image_guidance_scales = [_pipelinewrapper.DEFAULT_IMAGE_GUIDANCE_SCALE]
-
-    if args.control_image_preprocessors:
-        if not args.image_seeds:
-            raise DgenerateUsageError(f'you cannot specify --control-image-preprocessors '
-                                         f'without --image-seeds.')
-
-    if not args.image_seeds:
-        invalid_args = []
-        for preprocessor_args in args_that_end_with('preprocessors'):
-            invalid_args.append(
-                f'you cannot specify --{preprocessor_args.replace("_", "-")} '
-                f'without --image-seeds.')
-        if invalid_args:
-            raise DgenerateUsageError('\n'.join(invalid_args))
-
-    if not _pipelinewrapper.model_type_is_sdxl(args.model_type):
-        invalid_args = []
-        for sdxl_args in args_that_start_with('sdxl'):
-            invalid_args.append(f'you cannot specify --{sdxl_args.replace("_", "-")} '
-                                f'for a non SDXL model type, see --model-type.')
-        if invalid_args:
-            raise DgenerateUsageError('\n'.join(invalid_args))
-
-        args.sdxl_high_noise_fractions = []
-    else:
-        if not args.sdxl_refiner_path:
-            invalid_args = []
-            for sdxl_args in args_that_start_with('sdxl_refiner'):
-                invalid_args.append(f'you cannot specify --{sdxl_args.replace("_", "-")} '
-                                    f'without --sdxl-refiner.')
-            if invalid_args:
-                raise DgenerateUsageError('\n'.join(invalid_args))
-        else:
-            if args.sdxl_high_noise_fractions is None:
-                # Default value
-                args.sdxl_high_noise_fractions = [_pipelinewrapper.DEFAULT_SDXL_HIGH_NOISE_FRACTION]
-
-    if not _pipelinewrapper.model_type_is_torch(args.model_type):
-        if args.vae_tiling or args.vae_slicing:
-            raise DgenerateUsageError(
-                'argument --vae-tiling/--vae-slicing not supported for '
-                'non torch model type, see --model-type.')
-
-    if args.scheduler == 'help' and args.sdxl_refiner_scheduler == 'help':
-        raise DgenerateUsageError(
-            'cannot list compatible schedulers for the main model and the SDXL refiner at '
-            'the same time. Do not use the scheduler "help" option for --scheduler '
-            'and --sdxl-refiner-scheduler simultaneously.')
-
-    if args.image_seeds:
-        if args.image_seed_strengths is None:
-            # Default value
-            args.image_seed_strengths = [_pipelinewrapper.DEFAULT_IMAGE_SEED_STRENGTH]
-    else:
-        args.image_seed_strengths = []
-
+    args.check()
     return args
 
 
-def parse_args(args: typing.List[typing.Union[str, float, int]],
+def parse_args(args: typing.Sequence[str],
                throw: bool = False) -> typing.Union[DgenerateArguments, None]:
     try:
         return _parse_args(args)

@@ -34,17 +34,21 @@ try:
     os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
     os.environ['XLA_PYTHON_CLIENT_ALLOCATOR'] = 'platform'
 except ImportError:
+    jnp = None
+    _flax_replicate = None
+    _flax_shard = None
     jax = None
     flax = None
 
 import enum
 import torch
-import PIL
+import PIL.Image
 import dgenerate.messages as _messages
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.memoize as _d_memoize
 from dgenerate.memoize import memoize as _memoize
 import dgenerate.prompt as _prompt
+import dgenerate.types as _types
 import diffusers
 
 _TORCH_MODEL_CACHE = dict()
@@ -64,19 +68,27 @@ DEFAULT_OUTPUT_WIDTH = 512
 DEFAULT_OUTPUT_HEIGHT = 512
 
 
-class SchedulerHelpException(Exception):
+class InvalidModelPathError(Exception):
     pass
 
 
-class InvalidSDXLRefinerPathError(Exception):
+class InvalidSDXLRefinerPathError(InvalidModelPathError):
     pass
 
 
-class InvalidVaePathError(Exception):
+class InvalidVaePathError(InvalidModelPathError):
     pass
 
 
-class InvalidControlNetPathError(Exception):
+class InvalidControlNetPathError(InvalidModelPathError):
+    pass
+
+
+class InvalidLoRAPathError(InvalidModelPathError):
+    pass
+
+
+class InvalidTextualInversionPathError(InvalidModelPathError):
     pass
 
 
@@ -84,11 +96,7 @@ class InvalidSchedulerName(Exception):
     pass
 
 
-class InvalidLoRAPathError(Exception):
-    pass
-
-
-class InvalidTextualInversionPathError(Exception):
+class SchedulerHelpException(Exception):
     pass
 
 
@@ -642,8 +650,9 @@ class _PipelineTypes:
     INPAINT = 3
 
 
-def _describe_pipeline_type(enum):
-    return {_PipelineTypes.BASIC: 'txt2img', _PipelineTypes.IMG2IMG: 'img2img', _PipelineTypes.INPAINT: 'inpaint'}[enum]
+def _describe_pipeline_type(type_enum):
+    return {_PipelineTypes.BASIC: 'txt2img', _PipelineTypes.IMG2IMG: 'img2img', _PipelineTypes.INPAINT: 'inpaint'}[
+        type_enum]
 
 
 def _args_except(args, *exceptions):
@@ -1145,7 +1154,7 @@ def _get_flax_dtype(dtype):
             'auto': None}[dtype.lower()]
 
 
-def _get_torch_dtype(dtype) -> typing.Union[torch.dtype, None]:
+def _get_torch_dtype(dtype: typing.Union[torch.dtype, str, None]) -> typing.Union[torch.dtype, None]:
     if dtype is None:
         return None
 
@@ -1170,6 +1179,8 @@ def _image_grid(imgs, rows, cols):
 
 
 class PipelineWrapperResult:
+    image: typing.Optional[PIL.Image.Image]
+
     def __init__(self, image):
         self.image = image
         self._dgenerate_opts = []
@@ -1182,7 +1193,9 @@ class PipelineWrapperResult:
             self.image.close()
             self.image = None
 
-    def gen_dgenerate_config(self, extra_args=None):
+    def gen_dgenerate_config(self,
+                             extra_args: typing.Optional[typing.Sequence[typing.Tuple[str, typing.Any]]] = None):
+
         from .__init__ import __version__
 
         model_path = self._dgenerate_opts[0]
@@ -1210,7 +1223,8 @@ class PipelineWrapperResult:
 
         return config
 
-    def gen_dgenerate_command(self, extra_args=None):
+    def gen_dgenerate_command(self,
+                              extra_args: typing.Optional[typing.Sequence[typing.Tuple[str, typing.Any]]] = None):
         model_path = self._dgenerate_opts[0]
         opts = self._dgenerate_opts[1:]
         if extra_args:
@@ -1223,38 +1237,37 @@ class PipelineWrapperResult:
 
 
 class DiffusionArguments:
-    def __init__(self):
-        self.prompt: typing.Union[_prompt.Prompt, None] = None
-        self.sdxl_second_prompt: typing.Union[_prompt.Prompt, None] = None
-        self.sdxl_refiner_prompt: typing.Union[_prompt.Prompt, None] = None
-        self.sdxl_refiner_second_prompt: typing.Union[_prompt.Prompt, None] = None
-        self.seed: typing.Union[int, None] = None
-        self.image_seed_strength: typing.Union[float, None] = None
-        self.upscaler_noise_level: typing.Union[int, None] = None
-        self.sdxl_high_noise_fraction: typing.Union[float, None] = None
-        self.sdxl_refiner_inference_steps: typing.Union[int, None] = None
-        self.sdxl_refiner_guidance_scale: typing.Union[float, None] = None
-        self.sdxl_refiner_guidance_rescale: typing.Union[float, None] = None
-        self.sdxl_aesthetic_score: typing.Union[float, None] = None
-        self.sdxl_original_size: typing.Union[tuple, None] = None
-        self.sdxl_target_size: typing.Union[tuple, None] = None
-        self.sdxl_crops_coords_top_left: typing.Union[tuple, None] = None
-        self.sdxl_negative_aesthetic_score: typing.Union[float, None] = None
-        self.sdxl_negative_original_size: typing.Union[tuple, None] = None
-        self.sdxl_negative_target_size: typing.Union[tuple, None] = None
-        self.sdxl_negative_crops_coords_top_left: typing.Union[tuple, None] = None
-        self.sdxl_refiner_aesthetic_score: typing.Union[float, None] = None
-        self.sdxl_refiner_original_size: typing.Union[tuple, None] = None
-        self.sdxl_refiner_target_size: typing.Union[tuple, None] = None
-        self.sdxl_refiner_crops_coords_top_left: typing.Union[tuple, None] = None
-        self.sdxl_refiner_negative_aesthetic_score: typing.Union[float, None] = None
-        self.sdxl_refiner_negative_original_size: typing.Union[tuple, None] = None
-        self.sdxl_refiner_negative_target_size: typing.Union[tuple, None] = None
-        self.sdxl_refiner_negative_crops_coords_top_left: typing.Union[tuple, None] = None
-        self.guidance_scale: typing.Union[float, None] = None
-        self.image_guidance_scale: typing.Union[float, None] = None
-        self.guidance_rescale: typing.Union[float, None] = None
-        self.inference_steps: typing.Union[int, None] = None
+    prompt: _types.OptionalPrompt = None
+    sdxl_second_prompt: _types.OptionalPrompt = None
+    sdxl_refiner_prompt: _types.OptionalPrompt = None
+    sdxl_refiner_second_prompt: _types.OptionalPrompt = None
+    seed: _types.OptionalInteger = None
+    image_seed_strength: _types.OptionalFloat = None
+    upscaler_noise_level: _types.OptionalInteger = None
+    sdxl_high_noise_fraction: _types.OptionalFloat = None
+    sdxl_refiner_inference_steps: _types.OptionalInteger = None
+    sdxl_refiner_guidance_scale: _types.OptionalFloat = None
+    sdxl_refiner_guidance_rescale: _types.OptionalFloat = None
+    sdxl_aesthetic_score: _types.OptionalFloat = None
+    sdxl_original_size: _types.OptionalSize = None
+    sdxl_target_size: _types.OptionalSize = None
+    sdxl_crops_coords_top_left: _types.OptionalCoordinate = None
+    sdxl_negative_aesthetic_score: _types.OptionalFloat = None
+    sdxl_negative_original_size: _types.OptionalSize = None
+    sdxl_negative_target_size: _types.OptionalSize = None
+    sdxl_negative_crops_coords_top_left: _types.OptionalCoordinate = None
+    sdxl_refiner_aesthetic_score: _types.OptionalFloat = None
+    sdxl_refiner_original_size: _types.OptionalSize = None
+    sdxl_refiner_target_size: _types.OptionalSize = None
+    sdxl_refiner_crops_coords_top_left: _types.OptionalCoordinate = None
+    sdxl_refiner_negative_aesthetic_score: _types.OptionalFloat = None
+    sdxl_refiner_negative_original_size: _types.OptionalSize = None
+    sdxl_refiner_negative_target_size: _types.OptionalSize = None
+    sdxl_refiner_negative_crops_coords_top_left: _types.OptionalCoordinate = None
+    guidance_scale: _types.OptionalFloat = None
+    image_guidance_scale: _types.OptionalFloat = None
+    guidance_rescale: _types.OptionalFloat = None
+    inference_steps: _types.OptionalInteger = None
 
     def get_pipeline_wrapper_args(self):
         pipeline_args = {}
@@ -1366,24 +1379,24 @@ class DiffusionPipelineWrapper:
         return str(self)
 
     def __init__(self,
-                 model_path,
-                 dtype,
+                 model_path: _types.Path,
+                 dtype: typing.Literal['float16', 'float32', 'auto'],
                  device='cuda',
                  model_type='torch',
-                 revision=None,
-                 variant=None,
-                 model_subfolder=None,
-                 vae_path=None,
-                 vae_tiling=False,
-                 vae_slicing=False,
-                 lora_paths=None,
-                 textual_inversion_paths=None,
-                 control_net_paths=None,
-                 sdxl_refiner_path=None,
-                 scheduler=None,
-                 sdxl_refiner_scheduler=None,
-                 safety_checker=False,
-                 auth_token=None):
+                 revision: _types.OptionalName = None,
+                 variant: _types.OptionalName = None,
+                 model_subfolder: _types.OptionalName = None,
+                 vae_path: _types.OptionalPath = None,
+                 vae_tiling: bool = False,
+                 vae_slicing: bool = False,
+                 lora_paths: typing.Union[str, _types.OptionalPaths] = None,
+                 textual_inversion_paths: typing.Union[str, _types.OptionalPaths] = None,
+                 control_net_paths: typing.Union[str, _types.OptionalPaths] = None,
+                 sdxl_refiner_path: _types.OptionalPath = None,
+                 scheduler: _types.OptionalName = None,
+                 sdxl_refiner_scheduler: _types.OptionalName = None,
+                 safety_checker: bool = False,
+                 auth_token: _types.OptionalString = None):
 
         self._model_subfolder = model_subfolder
         self._device = device
@@ -1463,82 +1476,82 @@ class DiffusionPipelineWrapper:
         return r
 
     @property
-    def revision(self):
+    def revision(self) -> _types.OptionalName:
         return self._revision
 
     @property
-    def safety_checker(self):
+    def safety_checker(self) -> bool:
         return self._safety_checker
 
     @property
-    def variant(self):
+    def variant(self) -> _types.OptionalName:
         return self._variant
 
     @property
-    def dtype(self):
+    def dtype(self) -> typing.Literal['float16', 'float32', 'auto']:
         return self._dtype
 
     @property
-    def textual_inversion_paths(self):
+    def textual_inversion_paths(self) -> _types.OptionalPaths:
         return [self._textual_inversion_paths] if \
             isinstance(self._textual_inversion_paths, str) else self._textual_inversion_paths
 
     @property
-    def control_net_paths(self):
+    def control_net_paths(self) -> _types.OptionalPaths:
         return [self._control_net_paths] if \
             isinstance(self._control_net_paths, str) else self._control_net_paths
 
     @property
-    def device(self):
+    def device(self) -> _types.Name:
         return self._device
 
     @property
-    def model_path(self):
+    def model_path(self) -> _types.Path:
         return self._model_path
 
     @property
-    def scheduler(self):
+    def scheduler(self) -> _types.OptionalName:
         return self._scheduler
 
     @property
-    def sdxl_refiner_scheduler(self):
+    def sdxl_refiner_scheduler(self) -> _types.OptionalName:
         return self._sdxl_refiner_scheduler
 
     @property
-    def sdxl_refiner_path(self):
+    def sdxl_refiner_path(self) -> _types.OptionalName:
         return self._sdxl_refiner_path
 
     @property
-    def model_type_enum(self):
+    def model_type_enum(self) -> ModelTypes:
         return self._model_type
 
     @property
-    def model_type_string(self):
+    def model_type_string(self) -> str:
         return get_model_type_string(self._model_type)
 
     @property
-    def model_subfolder(self):
+    def model_subfolder(self) -> _types.OptionalName:
         return self._model_subfolder
 
     @property
-    def vae_path(self):
+    def vae_path(self) -> _types.OptionalPath:
         return self._vae_path
 
     @property
-    def vae_tiling(self):
+    def vae_tiling(self) -> bool:
         return self._vae_tiling
 
     @property
-    def vae_slicing(self):
+    def vae_slicing(self) -> bool:
         return self._vae_slicing
 
     @property
-    def lora_paths(self):
+    def lora_paths(self) -> _types.OptionalPaths:
         return [self._lora_paths] if \
             isinstance(self._lora_paths, str) else self._lora_paths
 
     @property
-    def auth_token(self):
+    def auth_token(self) -> _types.OptionalString:
         return self._auth_token
 
     def _reconstruct_dgenerate_opts(self, **user_args):
@@ -1593,16 +1606,16 @@ class DiffusionPipelineWrapper:
             opts.append(('--image-guidance-scales', image_guidance_scale))
 
         if prompt is not None:
-            opts.append(('--prompts', _textprocessing.quote(prompt)))
+            opts.append(('--prompts', _textprocessing.quote(str(prompt))))
 
         if sdxl_second_prompt is not None:
-            opts.append(('--sdxl-second-prompt', _textprocessing.quote(sdxl_second_prompt)))
+            opts.append(('--sdxl-second-prompt', _textprocessing.quote(str(sdxl_second_prompt))))
 
         if sdxl_refiner_prompt is not None:
-            opts.append(('--sdxl-refiner-prompt', _textprocessing.quote(sdxl_refiner_prompt)))
+            opts.append(('--sdxl-refiner-prompt', _textprocessing.quote(str(sdxl_refiner_prompt))))
 
         if sdxl_refiner_second_prompt is not None:
-            opts.append(('--sdxl-refiner-second-prompt', _textprocessing.quote(sdxl_refiner_second_prompt)))
+            opts.append(('--sdxl-refiner-second-prompt', _textprocessing.quote(str(sdxl_refiner_second_prompt))))
 
         if self._revision is not None:
             opts.append(('--revision', self._revision))
@@ -1894,8 +1907,6 @@ class DiffusionPipelineWrapper:
 
         default_args['prng_seed'] = jax.random.split(jax.random.PRNGKey(user_args.get('seed', 0)), device_count)
 
-        processed_masks = None
-
         if negative_prompt is not None:
             negative_prompt_ids = _flax_shard(
                 self._flax_prepare_text_input([negative_prompt] * device_count))
@@ -1960,7 +1971,7 @@ class DiffusionPipelineWrapper:
         if pipeline_arg_name in inspect.getfullargspec(func).args:
             if user_arg_name in user_args:
                 # Only provide a default if the user
-                # provided the option and it's value was None
+                # provided the option, and it's value was None
                 val = user_args.get(user_arg_name, default)
                 val = val if not transform else transform(val)
                 default_args[pipeline_arg_name] = val
@@ -2018,7 +2029,8 @@ class DiffusionPipelineWrapper:
                                              f'sdxl_{user_prefix}negative_crops_coords_top_left',
                                              f'--sdxl-{option_prefix}negative-crops-coords-top-left', (0, 0))
 
-    def _pop_sdxl_conditioning_args(self, default_args):
+    @staticmethod
+    def _pop_sdxl_conditioning_args(default_args):
         default_args.pop('aesthetic_score', None)
         default_args.pop('target_size', None)
         default_args.pop('original_size', None)
@@ -2039,13 +2051,13 @@ class DiffusionPipelineWrapper:
                                              default_args, user_args,
                                              'prompt_2', 'sdxl_second_prompt',
                                              '--sdxl-second-prompts', _prompt.Prompt(),
-                                             transform=lambda prompt: prompt.positive)
+                                             transform=lambda p: p.positive)
 
         self._get_non_universal_pipeline_arg(self._pipeline,
                                              default_args, user_args,
                                              'negative_prompt_2', 'sdxl_second_prompt',
                                              '--sdxl-second-prompts', _prompt.Prompt(),
-                                             transform=lambda prompt: prompt.negative)
+                                             transform=lambda p: p.negative)
 
         self._get_non_universal_pipeline_arg(self._pipeline,
                                              default_args, user_args,
@@ -2142,25 +2154,25 @@ class DiffusionPipelineWrapper:
                                              default_args, user_args,
                                              'prompt', 'sdxl_refiner_prompt',
                                              '--sdxl-refiner-prompts', _prompt.Prompt(),
-                                             transform=lambda prompt: prompt.positive)
+                                             transform=lambda p: p.positive)
 
         self._get_non_universal_pipeline_arg(self._pipeline,
                                              default_args, user_args,
                                              'negative_prompt', 'sdxl_refiner_prompt',
                                              '--sdxl-refiner-prompts', _prompt.Prompt(),
-                                             transform=lambda prompt: prompt.negative)
+                                             transform=lambda p: p.negative)
 
         self._get_non_universal_pipeline_arg(self._pipeline,
                                              default_args, user_args,
                                              'prompt_2', 'sdxl_refiner_second_prompt',
                                              '--sdxl-refiner-second-prompts', _prompt.Prompt(),
-                                             transform=lambda prompt: prompt.positive)
+                                             transform=lambda p: p.positive)
 
         self._get_non_universal_pipeline_arg(self._pipeline,
                                              default_args, user_args,
                                              'negative_prompt_2', 'sdxl_refiner_second_prompt',
                                              '--sdxl-refiner-second-prompts', _prompt.Prompt(),
-                                             transform=lambda prompt: prompt.negative)
+                                             transform=lambda p: p.negative)
 
         self._get_non_universal_pipeline_arg(self._pipeline,
                                              default_args, user_args,

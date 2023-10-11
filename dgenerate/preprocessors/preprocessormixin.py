@@ -18,22 +18,29 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import PIL.Image
+
 import dgenerate.image as _d_image
 import dgenerate.messages as _messages
 import dgenerate.preprocessors.preprocessor as _preprocessor
+import dgenerate.types as _types
 
 
 class ImagePreprocessorMixin:
+    preprocessor_enabled: bool
+
     def __init__(self, preprocessor: _preprocessor.ImagePreprocessor, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._preprocessor = preprocessor
         self.preprocess_enabled: bool = True
 
-    def _preprocess_pre_resize(self, image, resize_resolution):
+    def _preprocess_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         if self._preprocessor is not None and self.preprocess_enabled:
+            filename = image.filename if hasattr(image, 'filename') else 'NO FILENAME'
+
             _messages.debug_log('Starting Image Preprocess - '
                                 f'{self._preprocessor}.pre_resize('
-                                f'image="{image.filename}", resize_resolution={resize_resolution})')
+                                f'image="{filename}", resize_resolution={resize_resolution})')
 
             processed = _preprocessor.ImagePreprocessor.call_pre_resize(self._preprocessor, image, resize_resolution)
 
@@ -41,11 +48,13 @@ class ImagePreprocessorMixin:
             return processed
         return image
 
-    def _preprocess_post_resize(self, image):
+    def _preprocess_post_resize(self, image: PIL.Image.Image):
         if self._preprocessor is not None and self.preprocess_enabled:
+            filename = image.filename if hasattr(image, 'filename') else 'NO FILENAME'
+
             _messages.debug_log('Starting Image Preprocess - '
                                 f'{self._preprocessor}.post_resize('
-                                f'image="{image.filename}")')
+                                f'image="{filename}")')
 
             processed = _preprocessor.ImagePreprocessor.call_post_resize(self._preprocessor, image)
 
@@ -53,7 +62,7 @@ class ImagePreprocessorMixin:
             return processed
         return image
 
-    def preprocess_image(self, image, resize_to):
+    def preprocess_image(self, image: PIL.Image.Image, resize_to: _types.OptionalSize):
 
         # This is the actual size it will end
         # up being resized to by resize_image

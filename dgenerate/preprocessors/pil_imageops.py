@@ -18,12 +18,12 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import typing
 
 import PIL.Image
 import PIL.ImageOps
 
 import dgenerate.preprocessors.preprocessor as _preprocessor
+import dgenerate.types as _types
 
 
 class MirrorFlipPreprocess(_preprocessor.ImagePreprocessor):
@@ -47,7 +47,7 @@ class MirrorFlipPreprocess(_preprocessor.ImagePreprocessor):
     def __str__(self):
         return f'{self.__class__.__name__}(function="{self.called_by_name}")'
 
-    def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[typing.Tuple[int, int], None]):
+    def pre_resize(self, image: PIL.Image, resize_resolution: _types.OptionalSize):
         return self._func(image)
 
     def post_resize(self, image: PIL.Image):
@@ -74,7 +74,7 @@ class SimpleColorPreprocess(_preprocessor.ImagePreprocessor):
     def __str__(self):
         return f'{self.__class__.__name__}(function="{self.called_by_name}")'
 
-    def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[typing.Tuple[int, int], None]):
+    def pre_resize(self, image: PIL.Image, resize_resolution: _types.OptionalSize):
         return image
 
     def post_resize(self, image: PIL.Image):
@@ -97,7 +97,7 @@ class PosterizePreprocess(_preprocessor.ImagePreprocessor):
             self.argument_error(
                 f'Argument "bits" must be an integer value between 1 and 8, received {self._bits}.')
 
-    def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[typing.Tuple[int, int], None]):
+    def pre_resize(self, image: PIL.Image, resize_resolution: _types.OptionalSize):
         return PIL.ImageOps.posterize(image, self._bits)
 
     def post_resize(self, image: PIL.Image):
@@ -120,7 +120,7 @@ class SolarizePreprocess(_preprocessor.ImagePreprocessor):
             self.argument_error(
                 f'Argument "threshold" must be an integer value between 0 and 255, received {self._threshold}.')
 
-    def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[typing.Tuple[int, int], None]):
+    def pre_resize(self, image: PIL.Image, resize_resolution: _types.OptionalSize):
         return PIL.ImageOps.solarize(image, self._threshold)
 
     def post_resize(self, image: PIL.Image):

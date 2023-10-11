@@ -51,10 +51,10 @@ dgenerate help output
 
 .. code-block::
 
-    usage: dgenerate [-h] [-v] [--version] [--plugin-modules PATH [PATH ...]] [--model-type MODEL_TYPE]
-                     [--revision BRANCH] [--variant VARIANT] [--subfolder MODEL_SUBFOLDER] [--auth-token TOKEN]
-                     [--vae MODEL_PATH] [--vae-tiling] [--vae-slicing] [--lora MODEL_PATH]
-                     [--textual-inversions MODEL_PATH [MODEL_PATH ...]]
+    usage: dgenerate [-h] [-v] [--version] [--plugin-modules PATH [PATH ...]] [--templates-help]
+                     [--model-type MODEL_TYPE] [--revision BRANCH] [--variant VARIANT]
+                     [--subfolder MODEL_SUBFOLDER] [--auth-token TOKEN] [--vae MODEL_PATH] [--vae-tiling]
+                     [--vae-slicing] [--lora MODEL_PATH] [--textual-inversions MODEL_PATH [MODEL_PATH ...]]
                      [--control-nets MODEL_PATH [MODEL_PATH ...]] [--scheduler SCHEDULER_NAME]
                      [--sdxl-refiner MODEL_PATH] [--sdxl-refiner-scheduler SCHEDULER_NAME]
                      [--sdxl-second-prompts PROMPT [PROMPT ...]] [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
@@ -99,6 +99,8 @@ dgenerate help output
                             Specify one or more plugin module folder paths (folder containing __init__.py) or
                             python .py file paths to load as plugins. Plugin modules can currently only implement
                             image preprocessors.
+      --templates-help      Print a list of template variables available after a dgenerate invocation during batch
+                            processing from STDIN.
       --model-type MODEL_TYPE
                             Use when loading different model types. Currently supported: torch, torch-pix2pix,
                             torch-sdxl, torch-sdxl-pix2pix, torch-upscaler-x2, or torch-upscaler-x4. (default:
@@ -1963,28 +1965,22 @@ you may use Unix style notation for environmental variables even on Windows.
 There is also information about the previous execution of dgenerate that is available to use
 via Jinja2 templating which can be passed to ``--image-seeds``, these include:
 
-* ``{{ last_image }}`` (A quoted filename)
 * ``{{ last_images }}`` (A list of quoted filenames)
-* ``{{ last_animation }}`` (A quoted filename)
 * ``{{ last_animations }}`` (A list of quoted filenames)
 
 There are templates for prompts, containing the previous prompt values:
 
-* ``{{ last_prompt }}`` (Dictionary with keys 'positive' and 'negative')
-* ``{{ last_prompts }}`` (List of the above)
-* ``{{ last_sdxl_second_prompt }}``
+* ``{{ last_prompts }}`` (List of prompt objects with the attributes 'positive' and 'negative')
 * ``{{ last_sdxl_second_prompts }}``
-* ``{{ last_sdxl_refiner_prompt }}``
 * ``{{ last_sdxl_refiner_prompts }}``
-* ``{{ last_sdxl_refiner_second_prompt }}``
 * ``{{ last_sdxl_refiner_second_prompts }}``
 
 Available custom jinja2 functions/filters are:
 
+* ``{{ last(list_of_items) }}`` Last element in a list
 * ``{{ unquote('"quotes_will_be_removed"') }}``
 * ``{{ quote('quotes_will_be_added') }}``
-* ``{{ format_prompt(last_prompt) }}`` (Format a prompt or list of prompts to "positive" or "positive; negative")
-* ``{{ format_prompt(last_prompts) }}`` (Formatted prompts quoted and seperated by spaces)
+* ``{{ format_prompt(prompt_object) }}`` (Format a prompt object with its delimiter)
 
 The above can be used as either a function or filter IE: ``{{ "quote_me" | quote }}``
 
@@ -2078,13 +2074,13 @@ Here are examples of other available directives and templating:
     # This could potentially be passed to --image-seeds of the next invocation
     # If you wanted to run another pass over the last image that was produced
 
-    \print {{ last_image }}
+    \print {{ last(last_images) }}
 
 
     # You can use "unquote" as a function or a jinja2 filter, for example
     # if you want to append a mask image file name
 
-    \print "{{ unquote(last_image) }};my-mask.png"
+    \print "{{ unquote(last(last_images)) }};my-mask.png"
 
 
     # Print a list of quoted filenames produced by the last invocation
@@ -2114,12 +2110,12 @@ Here are examples of other available directives and templating:
     # via "last_prompt", which can be formatted properly for reuse
     # by using the function "format_prompt"
 
-    stabilityai/stable-diffusion-2-1 --prompts {{ format_prompt(last_prompt) }}
+    stabilityai/stable-diffusion-2-1 --prompts {{ format_prompt(last(last_prompts)) }}
 
     # You can get only the positive or negative part if you want via the "positive"
     # and "negative" properties on a prompt object
 
-    stabilityai/stable-diffusion-2-1 --prompts "{{ last_prompt.positive }}"
+    stabilityai/stable-diffusion-2-1 --prompts "{{ last(last_prompts).positive }}"
 
     # "last_prompts" returns all the prompts used in the last invocation as a list
     # the "format_prompt" function can also work on a list

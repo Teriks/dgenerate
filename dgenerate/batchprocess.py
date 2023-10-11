@@ -12,6 +12,7 @@ import dgenerate.invoker as _invoker
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.textprocessing as _textprocessing
+import dgenerate.types as _types
 
 
 class BatchProcessError(Exception):
@@ -22,12 +23,12 @@ class BatchProcessor:
     def __init__(self,
                  invoker: typing.Callable[[list], int],
                  template_variable_generator: typing.Callable[[], dict],
-                 name: str,
-                 version: typing.Union[typing.Tuple[int, int, int], str],
+                 name: _types.Name,
+                 version: typing.Union[_types.Version, str],
                  template_variables: typing.Dict[str, typing.Any],
                  template_functions: typing.Dict[str, typing.Callable[[typing.Any], typing.Any]],
                  directives: typing.Dict[str, typing.Callable[[list], None]],
-                 injected_args: list):
+                 injected_args: typing.Sequence[str]):
 
         self.invoker = invoker
         self.template_variable_generator = template_variable_generator
@@ -57,10 +58,13 @@ class BatchProcessor:
             self._jinja_env.globals[name] = func
             self._jinja_env.filters[name] = func
 
-    def render_template(self, input_string: str):
-        return self.expand_vars(
-            self._jinja_env.from_string(input_string).
-            render(**self.template_variables))
+    def _render_template(self, input_string: str):
+        try:
+            return self.expand_vars(
+                self._jinja_env.from_string(input_string).
+                render(**self.template_variables))
+        except Exception as e:
+            raise BatchProcessError(e)
 
     def _look_for_version_mismatch(self, line_idx, line):
         versioning = re.match(r'#!\s+' + self.name + r'\s+([0-9]+\.[0-9]+\.[0-9]+)', line)
@@ -97,7 +101,7 @@ class BatchProcessor:
         if line.startswith('\\set'):
             directive_args = line.split(' ', 2)
             if len(directive_args) == 3:
-                self._jinja_user_define(directive_args[1].strip(), self.render_template(directive_args[2].strip()))
+                self._jinja_user_define(directive_args[1].strip(), self._render_template(directive_args[2].strip()))
                 return True
             else:
                 raise BatchProcessError(
@@ -105,14 +109,14 @@ class BatchProcessor:
         elif line.startswith('\\print'):
             directive_args = line.split(' ', 1)
             if len(directive_args) == 2:
-                _messages.log(self.render_template(directive_args[1].strip()))
+                _messages.log(self._render_template(directive_args[1].strip()))
                 return True
             else:
                 raise BatchProcessError(
                     '\\print directive received no arguments, syntax is: \\print value')
         if line.startswith('{'):
             try:
-                self.process_file(io.StringIO(self.render_template(line.replace('!END', '\n'))))
+                self.run_string(self._render_template(line.replace('!END', '\n')))
             except Exception as e:
                 raise BatchProcessError(
                     f'Error executing template, reason: {e}')
@@ -130,9 +134,9 @@ class BatchProcessor:
         return False
 
     def _lex_and_run_invocation(self, line_idx, invocation_string):
-        templated_cmd = self.render_template(invocation_string)
+        templated_cmd = self._render_template(invocation_string)
 
-        injected_args = self.injected_args.copy()
+        injected_args = list(self.injected_args)
 
         shell_lexed = shlex.split(templated_cmd) + injected_args
 
@@ -158,7 +162,7 @@ class BatchProcessor:
 
         self.template_variables.update(self.template_variable_generator())
 
-    def process_file(self, stream: typing.TextIO):
+    def run_file(self, stream: typing.TextIO):
         continuation = ''
 
         for line_idx, line in enumerate(stream):
@@ -181,12 +185,14 @@ class BatchProcessor:
 
                 continuation = ''
 
+    def run_string(self, string: str):
+        self.run_file(io.StringIO(string))
 
-def run_config(render_loop: _diffusionloop.DiffusionRenderLoop,
-               version: typing.Union[typing.Tuple[int, int, int], str],
-               injected_args: typing.List[typing.Union[str, float, int]],
-               file_stream: typing.TextIO,
-               throw: bool = False):
+
+def create_config_runner(render_loop: _diffusionloop.DiffusionRenderLoop,
+                         version: typing.Union[_types.Version, str],
+                         injected_args: typing.Sequence[str],
+                         throw: bool = False):
     def _format_prompt(prompt):
         pos = prompt.get('positive')
         neg = prompt.get('negative')
@@ -208,7 +214,8 @@ def run_config(render_loop: _diffusionloop.DiffusionRenderLoop,
     funcs = {
         'unquote': _textprocessing.unquote,
         'quote': _textprocessing.quote,
-        'format_prompt': format_prompt
+        'format_prompt': format_prompt,
+        'last': lambda a: a[-1] if a else None
     }
 
     directives = {
@@ -225,4 +232,4 @@ def run_config(render_loop: _diffusionloop.DiffusionRenderLoop,
         injected_args=injected_args,
         directives=directives)
 
-    runner.process_file(stream=file_stream)
+    return runner

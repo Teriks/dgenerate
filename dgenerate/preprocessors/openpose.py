@@ -19,7 +19,6 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import typing
 import PIL.Image
 import controlnet_aux as _cna
 import controlnet_aux.open_pose as _cna_open_pose
@@ -27,8 +26,8 @@ import controlnet_aux.util as _cna_util
 import cv2
 import numpy
 
-
-from .preprocessor import ImagePreprocessor
+import dgenerate.types as _types
+from dgenerate.preprocessors.preprocessor import ImagePreprocessor
 
 
 class OpenPosePreprocess(ImagePreprocessor):
@@ -89,7 +88,7 @@ class OpenPosePreprocess(ImagePreprocessor):
 
         return PIL.Image.fromarray(detected_map)
 
-    def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[typing.Tuple[int, int], None]):
+    def pre_resize(self, image: PIL.Image, resize_resolution: _types.OptionalSize):
         if self._pre_resize:
             return self._process(image)
         return image

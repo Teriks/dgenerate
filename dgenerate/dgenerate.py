@@ -23,6 +23,7 @@ import sys
 
 try:
     from . import main
+
     main()
 except KeyboardInterrupt:
     print('Aborting due to keyboard interrupt!', file=sys.stderr)
