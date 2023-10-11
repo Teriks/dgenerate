@@ -135,9 +135,8 @@ class Loader:
 
     def load(self, path: typing.Union[str, typing.Iterable, None], device: str = 'cpu') -> \
             typing.Union[_preprocessor.ImagePreprocessor, _preprocessorchain.ImagePreprocessorChain, None]:
-
         if path is None:
-            raise ValueError('No preprocessor name provided!')
+            return None
 
         if isinstance(path, str):
             return self._load(path, device)
@@ -145,7 +144,7 @@ class Loader:
         paths = list(path)
 
         if not paths:
-            raise ValueError('No preprocessor names provided!')
+            return None
 
         if len(paths) == 1:
             return self._load(paths[0], device)
