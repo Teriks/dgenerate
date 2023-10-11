@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import argparse
+import typing
 
 from dgenerate.textprocessing import quote
 from .canny import CannyEdgeDetectPreprocess
@@ -30,7 +31,6 @@ from .preprocessor import ImagePreprocessor
 from .preprocessorchain import ImagePreprocessorChain
 from .preprocessormixin import ImagePreprocessorMixin
 from .. import messages as _messages
-import typing
 
 _help_parser = argparse.ArgumentParser(prog='dgenerate', exit_on_error=False)
 _help_parser.add_argument('--image-preprocessor-help', nargs='*', default=[], type=str)

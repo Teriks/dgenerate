@@ -33,8 +33,7 @@ import dgenerate.prompt as _prompt
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 
-
-_SUPPORTED_MODEL_TYPES_PRETTY =\
+_SUPPORTED_MODEL_TYPES_PRETTY = \
     _textprocessing.oxford_comma(_pipelinewrapper.supported_model_type_strings(), "or")
 
 _SUPPORTED_ANIMATION_OUTPUT_FORMATS_PRETTY = \
@@ -61,9 +60,8 @@ parser.add_argument('--plugin-modules', action='store', default=[], nargs="+", d
                     python .py file paths to load as plugins. Plugin modules can currently only implement 
                     image preprocessors.""")
 
-
 # This argument is handled in dgenerate.invoker.invoke_dgenerate
-parser.add_argument('--templates-help', action='store_true',  dest=None,
+parser.add_argument('--templates-help', action='store_true', dest=None,
                     help="""Print a list of template variables available after a dgenerate invocation 
                     during batch processing from STDIN.""")
 
