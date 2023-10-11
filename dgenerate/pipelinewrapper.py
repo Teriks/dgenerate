@@ -135,7 +135,8 @@ def _simple_cache_miss_debug(title, cache_key, new):
 def _struct_hasher(obj):
     return _textprocessing.quote(
         _d_memoize.args_cache_key(
-            {k: v for k, v in sorted(obj.__dict__.items()) if not (k.startswith('_') or callable(v))}))
+            {k: getattr(obj, k) for k in sorted(dir(obj))
+             if not (k.startswith('_') or callable(getattr(obj, k)))}))
 
 
 class InvalidDeviceOrdinalException(Exception):
@@ -407,7 +408,8 @@ class LoRAPath:
         self.weight_name = weight_name
 
     def __str__(self):
-        return f'{self.__class__.__name__}({str(self.__dict__)})'
+        attr_dict = {k: getattr(self, k) for k in dir(self)}
+        return f'{self.__class__.__name__}({str(attr_dict)})'
 
     def __repr__(self):
         return str(self)
@@ -443,7 +445,8 @@ class TextualInversionPath:
         self.weight_name = weight_name
 
     def __str__(self):
-        return f'{self.__class__.__name__}({str(self.__dict__)})'
+        attr_dict = {k: getattr(self, k) for k in dir(self)}
+        return f'{self.__class__.__name__}({str(attr_dict)})'
 
     def __repr__(self):
         return str(self)
@@ -1271,7 +1274,8 @@ class DiffusionArguments:
 
     def get_pipeline_wrapper_args(self):
         pipeline_args = {}
-        for attr, val in self.__dict__.items():
+        for attr, hint in typing.get_type_hints(self).items():
+            val = getattr(self, attr)
             if not attr.startswith('_') and not (callable(val) or val is None):
                 pipeline_args[attr] = val
         return pipeline_args

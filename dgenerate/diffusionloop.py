@@ -52,25 +52,26 @@ def _list_or_list_of_none(val):
     return val if val else [None]
 
 
-def iterate_attribute_combinations(attribute_defs, my_class):
+def iterate_attribute_combinations(
+        attribute_defs: typing.List[typing.Tuple[str, typing.Any]],
+        my_class: typing.Type):
 
-    hinted_attributes = typing.get_type_hints(my_class).keys()
-
-    def assign(ctx, name, val):
+    def assign(ctx, dir_attr, name, val):
         if val is not None:
-            if name in ctx.__dict__ or name in hinted_attributes:
-                ctx.__dict__[name] = val
+            if name in dir_attr:
+                setattr(ctx, name, val)
             else:
                 raise RuntimeError(f'{ctx.__class__.__name__} missing attribute "{name}"')
 
     for combination in itertools.product(*[d[1] for d in attribute_defs]):
         ctx_out = my_class()
+        dir_attributes = set(dir(ctx_out))
         for idx, d in enumerate(attribute_defs):
             attr = d[0]
             if len(d) == 2:
-                assign(ctx_out, attr, combination[idx])
+                assign(ctx_out, dir_attributes, attr, combination[idx])
             else:
-                assign(ctx_out, attr, d[2](ctx_out, attr, combination[idx]))
+                assign(ctx_out, dir_attributes, attr, d[2](ctx_out, attr, combination[idx]))
         yield ctx_out
 
 
@@ -256,10 +257,10 @@ class DiffusionRenderLoopConfig:
         if isinstance(obj, dict):
             source = obj
         else:
-            source = obj.__dict__
+            source = {k: getattr(obj, k) for k in dir(obj)}
 
-        for k, v in self.__dict__.items():
-            if not k.startswith('_') and not callable(v):
+        for k, v in ((k, getattr(self, k)) for k in dir(self) if not k.startswith('_')):
+            if not callable(v):
                 if missing_value_throws and k not in source:
                     raise ValueError(f'Source object does not define: "{k}"')
                 setattr(self, k, source.get(k))

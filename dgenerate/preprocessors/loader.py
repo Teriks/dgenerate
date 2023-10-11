@@ -106,7 +106,8 @@ class Loader:
                 else:
                     return False
 
-            found_classes += [cls for cls in mod.__dict__.values() if not _excluded(cls)]
+            found_classes += [cls for cls in (getattr(mod, attr) for attr in dir(mod))
+                              if not _excluded(cls)]
 
         return found_classes
 
