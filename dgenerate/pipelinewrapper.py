@@ -135,7 +135,7 @@ def _simple_cache_miss_debug(title, cache_key, new):
 def _struct_hasher(obj):
     return _textprocessing.quote(
         _d_memoize.args_cache_key(
-            {k: getattr(obj, k) for k in sorted(dir(obj))
+            {k: getattr(obj, k) for k in dir(obj)
              if not (k.startswith('_') or callable(getattr(obj, k)))}))
 
 
