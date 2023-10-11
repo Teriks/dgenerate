@@ -71,5 +71,5 @@ def image_preprocessor_help(args: typing.Sequence[str], throw: bool = False):
             return 1
 
     for help_str in help_strs:
-        _messages.log(help_str, underline=True)
+        _messages.log(help_str + '\n', underline=True)
     return 0
