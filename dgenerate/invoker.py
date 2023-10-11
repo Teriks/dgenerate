@@ -52,7 +52,7 @@ def invoke_dgenerate(
             raise _arguments.DgenerateUsageError(e)
 
     if '--templates-help' in args:
-        _messages.log(render_loop.generate_template_variables_help())
+        _messages.log(render_loop.generate_template_variables_help()+'\n', underline=True)
         return 0
 
     try:

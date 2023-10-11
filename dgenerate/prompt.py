@@ -41,6 +41,9 @@ class Prompt:
         else:
             return ''
 
+    def __repr__(self):
+        return f'"{str(self)}"'
+
     def parse(self, value: str):
         """
         Parse the positive and negative prompt from a string and set the positive and negative attributes.
