@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import os
 import sys
 import typing
 
@@ -30,24 +31,59 @@ WARNING = 1
 ERROR = 2
 DEBUG = 3
 
+_err_file = sys.stderr
+_msg_file = sys.stdout
 
-def log(*args: typing.Any, **kwargs):
-    level = kwargs.get('level', INFO)
-    underline_me = kwargs.get('underline', False)
-    file = sys.stdout
+_handlers = []
+
+
+def set_error_file(file: typing.TextIO):
+    _errfile = file
+
+
+def set_message_file(file: typing.TextIO):
+    _msgfile = file
+
+
+def messages_to_null():
+    _msgfile = open(os.devnull, "w")
+
+
+def errors_to_null():
+    _errfile = open(os.devnull, "w")
+
+
+def add_logging_handler(callback: typing.Callable[[typing.ParamSpecArgs, int, bool, str], None]):
+    _handlers.append(callback)
+
+
+def remove_logging_handler(callback: typing.Callable[[typing.ParamSpecArgs, int, bool, str], None]):
+    _handlers.remove(callback)
+
+
+def log(*args: typing.Any, level=INFO, underline=False, underline_char='='):
+    file = _msg_file
     if level != INFO and LEVEL == INFO:
         if level != ERROR and level != WARNING:
             return
         else:
-            file = sys.stderr
+            file = _err_file
 
-    if underline_me:
-        print(_textprocessing.underline(' '.join(str(a) for a in args)), file=file)
+    if underline:
+        print(_textprocessing.underline(' '.join(str(a) for a in args),
+                                        underline_char=underline_char), file=file)
     else:
         print(' '.join(str(a) for a in args), file=file)
 
+    for handler in _handlers:
+        handler(*args,
+                level=level,
+                underline=underline,
+                underline_char=underline_char)
 
-def debug_log(*func_or_str: typing.Union[typing.Callable[[], typing.Any], typing.Any], **kwargs):
+
+def debug_log(*func_or_str: typing.Union[typing.Callable[[], typing.Any], typing.Any],
+              underline=False, underline_char='='):
     if LEVEL == DEBUG:
         vals = []
         for val in func_or_str:
@@ -55,4 +91,4 @@ def debug_log(*func_or_str: typing.Union[typing.Callable[[], typing.Any], typing
                 vals.append(val())
             else:
                 vals.append(val)
-        log(*vals, level=DEBUG, **kwargs)
+        log(*vals, level=DEBUG, underline=underline, underline_char=underline_char)
