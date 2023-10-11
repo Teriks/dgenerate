@@ -134,9 +134,7 @@ def _simple_cache_miss_debug(title, cache_key, new):
 
 def _struct_hasher(obj):
     return _textprocessing.quote(
-        _d_memoize.args_cache_key(
-            {k: getattr(obj, k) for k in dir(obj)
-             if not (k.startswith('_') or callable(getattr(obj, k)))}))
+        _d_memoize.args_cache_key(_types.get_public_attributes(obj)))
 
 
 class InvalidDeviceOrdinalException(Exception):
@@ -408,8 +406,7 @@ class LoRAPath:
         self.weight_name = weight_name
 
     def __str__(self):
-        attr_dict = {k: getattr(self, k) for k in dir(self)}
-        return f'{self.__class__.__name__}({str(attr_dict)})'
+        return f'{self.__class__.__name__}({str(_types.get_public_attributes(self))})'
 
     def __repr__(self):
         return str(self)
@@ -445,8 +442,7 @@ class TextualInversionPath:
         self.weight_name = weight_name
 
     def __str__(self):
-        attr_dict = {k: getattr(self, k) for k in dir(self)}
-        return f'{self.__class__.__name__}({str(attr_dict)})'
+        return f'{self.__class__.__name__}({str(_types.get_public_attributes(self))})'
 
     def __repr__(self):
         return str(self)
@@ -1374,10 +1370,7 @@ class DiffusionArguments:
 
 class DiffusionPipelineWrapper:
     def __str__(self):
-        pub_props = {k: getattr(self, k) for k in dir(self)
-                     if not k.startswith("_") and not callable(getattr(self, k))}
-
-        return f'{self.__class__.__name__}({pub_props})'
+        return f'{self.__class__.__name__}({str(_types.get_public_attributes(self))})'
 
     def __repr__(self):
         return str(self)

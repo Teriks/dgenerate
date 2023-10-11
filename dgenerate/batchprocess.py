@@ -7,6 +7,7 @@ import typing
 
 import jinja2
 
+import dgenerate
 import dgenerate.diffusionloop as _diffusionloop
 import dgenerate.invoker as _invoker
 import dgenerate.messages as _messages
@@ -189,10 +190,24 @@ class BatchProcessor:
         self.run_file(io.StringIO(string))
 
 
-def create_config_runner(render_loop: _diffusionloop.DiffusionRenderLoop,
-                         version: typing.Union[_types.Version, str],
-                         injected_args: typing.Sequence[str],
+def create_config_runner(injected_args: typing.Sequence[str],
+                         render_loop: typing.Optional[_diffusionloop.DiffusionRenderLoop] = None,
+                         version: typing.Union[_types.Version, str] = dgenerate.__version__,
                          throw: bool = False):
+    """
+    Create a :py:class:`BatchProcessor` that can run dgenerate batch processing configs from a string or file.
+
+    :param injected_args: dgenerate command line arguments in the form of list, see: shlex module, or sys.argv.
+        These arguments will be injected at the end of every dgenerate invocation in the config file.
+    :param render_loop: DiffusionRenderLoop instance, if None is provided one will be created.
+    :param version: Config version for "#! dgenerate x.x.x" version checks, defaults to dgenerate.__version__
+    :param throw: Whether to throw exceptions or handle them.
+    :return: integer return-code, anything other than 0 is failure
+    """
+
+    if render_loop is None:
+        render_loop = _diffusionloop.DiffusionRenderLoop()
+
     def _format_prompt(prompt):
         pos = prompt.get('positive')
         neg = prompt.get('negative')
@@ -223,7 +238,7 @@ def create_config_runner(render_loop: _diffusionloop.DiffusionRenderLoop,
     }
 
     runner = BatchProcessor(
-        invoker=lambda args: _invoker.invoke_dgenerate(render_loop, args, throw=throw),
+        invoker=lambda args: _invoker.invoke_dgenerate(args, render_loop=render_loop, throw=throw),
         template_variable_generator=lambda: render_loop.generate_template_variables(),
         name='dgenerate',
         version=version,

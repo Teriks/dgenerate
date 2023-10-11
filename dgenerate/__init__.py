@@ -57,7 +57,7 @@ def main():
                 messages.log(f'Config Syntax Error: {e}', level=messages.ERROR)
                 sys.exit(1)
         else:
-            sys.exit(invoke_dgenerate(render_loop, sys.argv[1:]))
+            sys.exit(invoke_dgenerate(sys.argv[1:], render_loop=render_loop))
     except KeyboardInterrupt:
         print('Aborting due to keyboard interrupt!', file=sys.stderr)
         sys.exit(1)

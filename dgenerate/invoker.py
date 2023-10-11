@@ -31,9 +31,20 @@ import dgenerate.preprocessors as _preprocessors
 
 
 def invoke_dgenerate(
-        render_loop: _diffusionloop.DiffusionRenderLoop,
         args: typing.Sequence[str],
+        render_loop: typing.Optional[_diffusionloop.DiffusionRenderLoop] = None,
         throw: bool = False):
+    """
+    Invoke dgenerate using its command line arguments and return a return code.
+
+    :param args: dgenerate command line arguments in the form of list, see: shlex module, or sys.argv
+    :param render_loop: DiffusionRenderLoop instance, if None is provided one will be created.
+    :param throw: Whether to throw exceptions or handle them.
+    :return: integer return-code, anything other than 0 is failure
+    """
+    if render_loop is None:
+        render_loop = _diffusionloop.DiffusionRenderLoop()
+
     if '--image-preprocessor-help' in args:
         try:
             return _preprocessors.image_preprocessor_help(args, throw=throw)
@@ -41,8 +52,7 @@ def invoke_dgenerate(
             raise _arguments.DgenerateUsageError(e)
 
     if '--templates-help' in args:
-        _messages.log(_diffusionloop.DiffusionRenderLoop(
-            config=_arguments.DgenerateArguments()).generate_template_variables_help())
+        _messages.log(render_loop.generate_template_variables_help())
         return 0
 
     try:
