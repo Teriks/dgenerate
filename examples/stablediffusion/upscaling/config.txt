@@ -4,7 +4,7 @@
 # two times the --output-size dimension IE: 512x512 in this case
 # The image is being resized to 256x256, and then upscaled by 2x
 
-stabilityai/sd-x2-latent-upscaler --variant fp16 --dtype float16 \
+stabilityai/sd-x2-latent-upscaler --dtype float16 \
 --model-type torch-upscaler-x2 \
 --prompts "a picture of a white cat" \
 --image-seeds "../../media/low_res_cat.png" \

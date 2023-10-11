@@ -25,6 +25,7 @@ import sys
 import warnings
 
 warnings.filterwarnings('ignore', module='controlnet_aux')
+warnings.filterwarnings('ignore', module='diffusers')
 warnings.filterwarnings('ignore', module='transformers')
 
 try:
