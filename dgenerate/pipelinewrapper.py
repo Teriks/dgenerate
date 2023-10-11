@@ -719,10 +719,10 @@ def _load_scheduler(pipeline, model_path, scheduler_name=None):
         compatibles = [c for c in compatibles if c.__name__ == 'EulerDiscreteScheduler']
 
     if _scheduler_is_help(scheduler_name):
-        _messages.log(f'Compatible schedulers for "{model_path}" are:\n')
-        for i in compatibles:
-            _messages.log((" " * 4) + _textprocessing.quote(i.__name__))
-        raise SchedulerHelpException()
+        help_string = _textprocessing.underline(f'Compatible schedulers for "{model_path}" are:') + '\n\n'
+        help_string += '\n'.join((" " * 4) + _textprocessing.quote(i.__name__) for i in compatibles) + '\n'
+        _messages.log(help_string, underline=True)
+        raise SchedulerHelpException(help_string)
 
     for i in compatibles:
         if i.__name__.endswith(scheduler_name):
@@ -972,7 +972,7 @@ def _create_torch_diffusion_pipeline(pipeline_type,
     parsed_control_net_paths = []
 
     if scheduler is None or not _scheduler_is_help(scheduler):
-        # prevent waiting on this stuff just get the scheduler
+        # prevent waiting on VAE load just to get the scheduler
         # help message for the main model
 
         if vae_path is not None:
@@ -982,35 +982,35 @@ def _create_torch_diffusion_pipeline(pipeline_type,
             _messages.debug_log(lambda:
                                 f'Added Torch VAE: "{vae_path}" to pipeline: "{pipeline_class.__name__}"')
 
-        if control_net_paths:
-            if model_type_is_pix2pix(model_type):
-                raise NotImplementedError(
-                    'Using ControlNets with pix2pix models is not supported.'
-                )
+    if control_net_paths:
+        if model_type_is_pix2pix(model_type):
+            raise NotImplementedError(
+                'Using ControlNets with pix2pix models is not supported.'
+            )
 
-            control_nets = None
+        control_nets = None
 
-            for control_net_path in control_net_paths:
-                parsed_control_net_path = parse_torch_control_net_path(control_net_path)
+        for control_net_path in control_net_paths:
+            parsed_control_net_path = parse_torch_control_net_path(control_net_path)
 
-                parsed_control_net_paths.append(parsed_control_net_path)
+            parsed_control_net_paths.append(parsed_control_net_path)
 
-                new_net = parsed_control_net_path.load(use_auth_token=auth_token,
-                                                       torch_dtype_fallback=torch_dtype)
+            new_net = parsed_control_net_path.load(use_auth_token=auth_token,
+                                                   torch_dtype_fallback=torch_dtype)
 
-                _messages.debug_log(lambda:
-                                    f'Added Torch ControlNet: "{control_net_path}" '
-                                    f'to pipeline: "{pipeline_class.__name__}"')
+            _messages.debug_log(lambda:
+                                f'Added Torch ControlNet: "{control_net_path}" '
+                                f'to pipeline: "{pipeline_class.__name__}"')
 
-                if control_nets is not None:
-                    if not isinstance(control_nets, list):
-                        control_nets = [control_nets, new_net]
-                    else:
-                        control_nets.append(new_net)
+            if control_nets is not None:
+                if not isinstance(control_nets, list):
+                    control_nets = [control_nets, new_net]
                 else:
-                    control_nets = new_net
+                    control_nets.append(new_net)
+            else:
+                control_nets = new_net
 
-            creation_kwargs['controlnet'] = control_nets
+        creation_kwargs['controlnet'] = control_nets
 
     if extra_args is not None:
         creation_kwargs.update(extra_args)
@@ -1124,7 +1124,7 @@ def _create_flax_diffusion_pipeline(pipeline_type,
     parsed_control_net_paths = []
 
     if scheduler is None or not _scheduler_is_help(scheduler):
-        # prevent waiting on this stuff just get the scheduler
+        # prevent waiting on VAE load just get the scheduler
         # help message for the main model
 
         if vae_path is not None:
@@ -1135,21 +1135,21 @@ def _create_flax_diffusion_pipeline(pipeline_type,
             _messages.debug_log(lambda:
                                 f'Added Flax VAE: "{vae_path}" to pipeline: "{pipeline_class.__name__}"')
 
-        if control_net_paths is not None:
-            control_net_path = control_net_paths[0]
+    if control_net_paths is not None:
+        control_net_path = control_net_paths[0]
 
-            parsed_flax_control_net_path = parse_flax_control_net_path(control_net_path)
+        parsed_flax_control_net_path = parse_flax_control_net_path(control_net_path)
 
-            parsed_control_net_paths.append(parsed_flax_control_net_path)
+        parsed_control_net_paths.append(parsed_flax_control_net_path)
 
-            control_net, control_net_params = parse_flax_control_net_path(control_net_path) \
-                .load(use_auth_token=auth_token, flax_dtype_fallback=flax_dtype)
+        control_net, control_net_params = parse_flax_control_net_path(control_net_path) \
+            .load(use_auth_token=auth_token, flax_dtype_fallback=flax_dtype)
 
-            _messages.debug_log(lambda:
-                                f'Added Flax ControlNet: "{control_net_path}" '
-                                f'to pipeline: "{pipeline_class.__name__}"')
+        _messages.debug_log(lambda:
+                            f'Added Flax ControlNet: "{control_net_path}" '
+                            f'to pipeline: "{pipeline_class.__name__}"')
 
-            kwargs['controlnet'] = control_net
+        kwargs['controlnet'] = control_net
 
     if extra_args is not None:
         kwargs.update(extra_args)
@@ -2537,7 +2537,6 @@ class DiffusionPipelineWrapper:
 
             if not _scheduler_is_help(self._sdxl_refiner_scheduler):
                 # Don't load this up if were just going to be getting
-                # information about compatible schedulers for the refiner
                 # information about compatible schedulers for the refiner
                 self._pipeline, self._parsed_control_net_paths = \
                     _create_torch_diffusion_pipeline(pipeline_type,
