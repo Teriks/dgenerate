@@ -51,12 +51,23 @@ import dgenerate.prompt as _prompt
 import dgenerate.types as _types
 import diffusers
 
-_TORCH_MODEL_CACHE = dict()
-_FLAX_MODEL_CACHE = dict()
-_TORCH_CONTROL_NET_CACHE = dict()
-_FLAX_CONTROL_NET_CACHE = dict()
-_TORCH_VAE_CACHE = dict()
-_FLAX_VAE_CACHE = dict()
+TORCH_MODEL_CACHE = dict()
+"""Global in memory cache for torch diffusers pipelines"""
+
+FLAX_MODEL_CACHE = dict()
+"""Global in memory cache for flax diffusers pipelines"""
+
+TORCH_CONTROL_NET_CACHE = dict()
+"""Global in memory cache for torch ControlNet models"""
+
+FLAX_CONTROL_NET_CACHE = dict()
+"""Global in memory cache for flax ControlNet models"""
+
+TORCH_VAE_CACHE = dict()
+"""Global in memory cache for torch VAE models"""
+
+FLAX_VAE_CACHE = dict()
+"""Global in memory cache for flax VAE models"""
 
 DEFAULT_INFERENCE_STEPS = 30
 DEFAULT_GUIDANCE_SCALE = 5
@@ -69,34 +80,58 @@ DEFAULT_OUTPUT_HEIGHT = 512
 
 
 class InvalidModelPathError(Exception):
+    """
+    Thrown on model path syntax or logical usage error
+    """
     pass
 
 
 class InvalidSDXLRefinerPathError(InvalidModelPathError):
+    """
+    Error in --sdxl-refiner path
+    """
     pass
 
 
 class InvalidVaePathError(InvalidModelPathError):
+    """
+    Error in --vae path
+    """
     pass
 
 
 class InvalidControlNetPathError(InvalidModelPathError):
+    """
+    Error in --control-nets path
+    """
     pass
 
 
 class InvalidLoRAPathError(InvalidModelPathError):
+    """
+    Error in --lora path
+    """
     pass
 
 
 class InvalidTextualInversionPathError(InvalidModelPathError):
+    """
+    Error in --textual-inversions path
+    """
     pass
 
 
 class InvalidSchedulerName(Exception):
+    """
+    Unknown scheduler name used
+    """
     pass
 
 
 class SchedulerHelpException(Exception):
+    """
+    Not an error, runtime scheduler help was requested, info printed, then this exception raised to get out
+    """
     pass
 
 
@@ -122,22 +157,25 @@ _textual_inversion_path_parser = _textprocessing.ConceptPathParser('Textual Inve
                                                                    ['revision', 'subfolder', 'weight-name'])
 
 
-def _simple_cache_hit_debug(title, cache_key, cache_hit):
+def _simple_cache_hit_debug(title: str, cache_key: str, cache_hit: typing.Any):
     _messages.debug_log(f'Cache Hit, Loaded {title}: "{cache_hit.__class__.__name__}",',
                         f'Cache Key: "{cache_key}"')
 
 
-def _simple_cache_miss_debug(title, cache_key, new):
+def _simple_cache_miss_debug(title: str, cache_key: str, new: typing.Any):
     _messages.debug_log(f'Cache Miss, Created {title}: "{new.__class__.__name__}",',
                         f'Cache Key: "{cache_key}"')
 
 
-def _struct_hasher(obj):
+def _struct_hasher(obj) -> str:
     return _textprocessing.quote(
         _d_memoize.args_cache_key(_types.get_public_attributes(obj)))
 
 
 class InvalidDeviceOrdinalException(Exception):
+    """
+    GPU in device specification (cuda:N) does not exist
+    """
     pass
 
 
@@ -155,6 +193,10 @@ def is_valid_device_string(device, raise_ordinal=True):
 
 
 class FlaxControlNetPath:
+    """
+    Representation of --control-nets path when --model-type flax*
+    """
+
     def __init__(self, model, scale, revision, subfolder, dtype, from_torch):
         self.model = model
         self.revision = revision
@@ -163,11 +205,11 @@ class FlaxControlNetPath:
         self.from_torch = from_torch
         self.scale = scale
 
-    @_memoize(_FLAX_CONTROL_NET_CACHE,
+    @_memoize(FLAX_CONTROL_NET_CACHE,
               hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _struct_hasher}),
               on_hit=lambda key, hit: _simple_cache_hit_debug("Flax ControlNet", key, hit),
               on_create=lambda key, new: _simple_cache_miss_debug("Flax ControlNet", key, new))
-    def load(self, flax_dtype_fallback, **kwargs):
+    def load(self, flax_dtype_fallback, **kwargs) -> diffusers.FlaxControlNetModel:
         single_file_load_path = _is_single_file_model_load(self.model)
 
         if single_file_load_path:
@@ -183,7 +225,13 @@ class FlaxControlNetPath:
         return new_net
 
 
-def parse_flax_control_net_path(path):
+def parse_flax_control_net_path(path) -> FlaxControlNetPath:
+    """
+    Parse a --model-type flax* --control-nets path specification and return an object representing its constituents
+
+    :param path: string with --control-nets path syntax
+    :return: :py:class:`.FlaxControlNetPath`
+    """
     try:
         r = _flax_control_net_path_parser.parse_concept_path(path)
 
@@ -221,6 +269,10 @@ def parse_flax_control_net_path(path):
 
 
 class TorchControlNetPath:
+    """
+    Representation of --control-nets path when --model-type torch*
+    """
+
     def __init__(self, model, scale, start, end, revision, variant, subfolder, dtype):
         self.model = model
         self.revision = revision
@@ -231,7 +283,7 @@ class TorchControlNetPath:
         self.start = start
         self.end = end
 
-    @_memoize(_TORCH_CONTROL_NET_CACHE,
+    @_memoize(TORCH_CONTROL_NET_CACHE,
               hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _struct_hasher}),
               on_hit=lambda key, hit: _simple_cache_hit_debug("Torch ControlNet", key, hit),
               on_create=lambda key, new: _simple_cache_miss_debug("Torch ControlNet", key, new))
@@ -257,6 +309,12 @@ class TorchControlNetPath:
 
 
 def parse_torch_control_net_path(path) -> TorchControlNetPath:
+    """
+    Parse a --model-type torch* --control-nets path specification and return an object representing its constituents
+
+    :param path: string with --control-nets path syntax
+    :return: :py:class:`.TorchControlNetPath`
+    """
     try:
         r = _torch_control_net_path_parser.parse_concept_path(path)
 
@@ -306,6 +364,10 @@ def parse_torch_control_net_path(path) -> TorchControlNetPath:
 
 
 class SDXLRefinerPath:
+    """
+    Representation of --sdxl-refiner path
+    """
+
     def __init__(self, model, revision, variant, dtype, subfolder):
         self.model = model
         self.revision = revision
@@ -315,6 +377,12 @@ class SDXLRefinerPath:
 
 
 def parse_sdxl_refiner_path(path) -> SDXLRefinerPath:
+    """
+    Parse an --sdxl-refiner path and return an object representing its constituents
+
+    :param path: string with --sdxl-refiner path syntax
+    :return: :py:class:`.SDXLRefinerPath`
+    """
     try:
         r = _sdxl_refiner_path_parser.parse_concept_path(path)
 
@@ -334,6 +402,10 @@ def parse_sdxl_refiner_path(path) -> SDXLRefinerPath:
 
 
 class TorchVAEPath:
+    """
+    Representation of --vae path when --model-type torch*
+    """
+
     def __init__(self, encoder, model, revision, variant, subfolder, dtype):
         self.encoder = encoder
         self.model = model
@@ -344,6 +416,12 @@ class TorchVAEPath:
 
 
 def parse_torch_vae_path(path) -> TorchVAEPath:
+    """
+    Parse a --model-type torch* --vae path and return an object representing its constituents
+
+    :param path: string with --vae path syntax
+    :return: :py:class:`.TorchVAEPath`
+    """
     try:
         r = _torch_vae_path_parser.parse_concept_path(path)
 
@@ -367,6 +445,10 @@ def parse_torch_vae_path(path) -> TorchVAEPath:
 
 
 class FlaxVAEPath:
+    """
+    Representation of --vae path when --model-type flax*
+    """
+
     def __init__(self, encoder, model, revision, dtype, subfolder):
         self.encoder = encoder
         self.model = model
@@ -376,6 +458,12 @@ class FlaxVAEPath:
 
 
 def parse_flax_vae_path(path) -> FlaxVAEPath:
+    """
+    Parse a --model-type flax* --vae path and return an object representing its constituents
+
+    :param path: string with --vae path syntax
+    :return: :py:class:`.FlaxVAEPath`
+    """
     try:
         r = _flax_vae_path_parser.parse_concept_path(path)
 
@@ -398,6 +486,10 @@ def parse_flax_vae_path(path) -> FlaxVAEPath:
 
 
 class LoRAPath:
+    """
+    Representation of --lora path
+    """
+
     def __init__(self, model, scale, revision, subfolder, weight_name):
         self.model = model
         self.scale = scale
@@ -422,6 +514,12 @@ class LoRAPath:
 
 
 def parse_lora_path(path) -> LoRAPath:
+    """
+    Parse a --lora path and return an object representing its constituents
+
+    :param path: string with --lora path syntax
+    :return: :py:class:`.LoRAPath`
+    """
     try:
         r = _lora_path_parser.parse_concept_path(path)
 
@@ -435,6 +533,10 @@ def parse_lora_path(path) -> LoRAPath:
 
 
 class TextualInversionPath:
+    """
+    Representation of --textual-inversions path
+    """
+
     def __init__(self, model, revision, subfolder, weight_name):
         self.model = model
         self.revision = revision
@@ -459,6 +561,12 @@ class TextualInversionPath:
 
 
 def parse_textual_inversion_path(path) -> TextualInversionPath:
+    """
+    Parse a --textual-inversions path and return an object representing its constituents
+
+    :param path: string with --textual-inversions path syntax
+    :return: :py:class:`.TextualInversionPath`
+    """
     try:
         r = _textual_inversion_path_parser.parse_concept_path(path)
 
@@ -498,7 +606,7 @@ def _path_hash_with_parser(parser):
     return hasher
 
 
-@_memoize(_TORCH_VAE_CACHE,
+@_memoize(TORCH_VAE_CACHE,
           hasher=lambda args: _d_memoize.args_cache_key(args,
                                                         {'path': _path_hash_with_parser(parse_torch_vae_path)}),
           on_hit=lambda key, hit: _simple_cache_hit_debug("Torch VAE", key, hit),
@@ -555,7 +663,7 @@ def _load_pytorch_vae(path,
     return vae
 
 
-@_memoize(_FLAX_VAE_CACHE,
+@_memoize(FLAX_VAE_CACHE,
           hasher=lambda args: _d_memoize.args_cache_key(args,
                                                         {'path': _path_hash_with_parser(parse_flax_vae_path)}),
           on_hit=lambda key, hit: _simple_cache_hit_debug("Flax VAE", key, hit),
@@ -627,12 +735,23 @@ def _load_scheduler(pipeline, model_path, scheduler_name=None):
 
 
 def clear_model_cache():
-    _TORCH_MODEL_CACHE.clear()
-    _TORCH_CONTROL_NET_CACHE.clear()
-    _FLAX_CONTROL_NET_CACHE.clear()
-    _TORCH_VAE_CACHE.clear()
-    _FLAX_VAE_CACHE.clear()
-    _FLAX_MODEL_CACHE.clear()
+    """
+    Clear all in memory model caches.
+
+        * TORCH_MODEL_CACHE
+        * FLAX_MODEL_CACHE
+        * TORCH_CONTROL_NET_CACHE
+        * FLAX_CONTROL_NET_CACHE
+        * TORCH_VAE_CACHE
+        * FLAX_VAE_CACHE
+
+    """
+    TORCH_MODEL_CACHE.clear()
+    TORCH_CONTROL_NET_CACHE.clear()
+    FLAX_CONTROL_NET_CACHE.clear()
+    TORCH_VAE_CACHE.clear()
+    FLAX_VAE_CACHE.clear()
+    FLAX_MODEL_CACHE.clear()
 
 
 def _disabled_safety_checker(images, clip_input):
@@ -731,7 +850,7 @@ def _path_list_hash_with_parser(parser):
     return hasher
 
 
-@_memoize(_TORCH_MODEL_CACHE,
+@_memoize(TORCH_MODEL_CACHE,
           hasher=lambda args: _d_memoize.args_cache_key(args,
                                                         {'vae_path': _path_hash_with_parser(parse_torch_vae_path),
                                                          'lora_paths':
@@ -952,7 +1071,7 @@ def _create_torch_diffusion_pipeline(pipeline_type,
     return pipeline, parsed_control_net_paths
 
 
-@_memoize(_FLAX_MODEL_CACHE,
+@_memoize(FLAX_MODEL_CACHE,
           hasher=lambda args: _d_memoize.args_cache_key(args,
                                                         {'vae_path': _path_hash_with_parser(parse_flax_vae_path),
                                                          'control_net_paths':
@@ -1060,6 +1179,9 @@ def _create_flax_diffusion_pipeline(pipeline_type,
 
 
 def supported_model_type_strings():
+    """
+    Return a list of supported --model-type strings
+    """
     base_set = ['torch', 'torch-pix2pix', 'torch-sdxl', 'torch-sdxl-pix2pix', 'torch-upscaler-x2', 'torch-upscaler-x4']
     if have_jax_flax():
         return base_set + ['flax']
@@ -1067,11 +1189,10 @@ def supported_model_type_strings():
         return base_set
 
 
-def supported_model_type_enums():
-    return [get_model_type_enum(i) for i in supported_model_type_strings()]
-
-
 class ModelTypes(enum.Enum):
+    """
+    Enum representation of --model-type
+    """
     TORCH = 1
     TORCH_PIX2PIX = 2
     TORCH_SDXL = 3
@@ -1081,7 +1202,20 @@ class ModelTypes(enum.Enum):
     FLAX = 7
 
 
+def supported_model_type_enums() -> typing.List[ModelTypes]:
+    """
+    Return a list of supported :py:class:`.ModelTypes` enum values
+    """
+    return [get_model_type_enum(i) for i in supported_model_type_strings()]
+
+
 def get_model_type_enum(id_str: typing.Union[ModelTypes, str]) -> ModelTypes:
+    """
+    Convert a --model-type string to its :py:class:`.ModelTypes` enum value
+    :param id_str: --model-type string
+    :return: :py:class:`.ModelTypes`
+    """
+
     if isinstance(id_str, ModelTypes):
         return id_str
 
@@ -1095,6 +1229,12 @@ def get_model_type_enum(id_str: typing.Union[ModelTypes, str]) -> ModelTypes:
 
 
 def get_model_type_string(model_type_enum: ModelTypes) -> str:
+    """
+    Convert a :py:class:`.ModelTypes` enum value to its --model-type string
+    :param model_type_enum: :py:class:`.ModelTypes` value
+    :return: --model-type string
+    """
+
     model_type = get_model_type_enum(model_type_enum)
 
     return {ModelTypes.TORCH: 'torch',
@@ -1106,37 +1246,66 @@ def get_model_type_string(model_type_enum: ModelTypes) -> str:
             ModelTypes.FLAX: 'flax'}[model_type]
 
 
-def model_type_is_upscaler(model_type: typing.Union[ModelTypes, str]):
+def model_type_is_upscaler(model_type: typing.Union[ModelTypes, str]) -> bool:
+    """
+    Does a --model-type string or :py:class:`.ModelTypes` enum value represent an upscaler model?
+    :param model_type: --model-type string or :py:class:`.ModelTypes` enum value
+    :return: bool
+    """
     model_type = get_model_type_string(model_type)
 
     return 'upscaler' in model_type
 
 
-def model_type_is_sdxl(model_type: typing.Union[ModelTypes, str]):
+def model_type_is_sdxl(model_type: typing.Union[ModelTypes, str]) -> bool:
+    """
+    Does a --model-type string or :py:class:`.ModelTypes` enum value represent an SDXL model?
+    :param model_type: --model-type string or :py:class:`.ModelTypes` enum value
+    :return: bool
+    """
     model_type = get_model_type_string(model_type)
 
     return 'sdxl' in model_type
 
 
-def model_type_is_torch(model_type: typing.Union[ModelTypes, str]):
+def model_type_is_torch(model_type: typing.Union[ModelTypes, str]) -> bool:
+    """
+    Does a --model-type string or :py:class:`.ModelTypes` enum value represent an Torch model?
+    :param model_type: --model-type string or :py:class:`.ModelTypes` enum value
+    :return: bool
+    """
     model_type = get_model_type_string(model_type)
 
     return 'torch' in model_type
 
 
-def model_type_is_flax(model_type: typing.Union[ModelTypes, str]):
+def model_type_is_flax(model_type: typing.Union[ModelTypes, str]) -> bool:
+    """
+    Does a --model-type string or :py:class:`.ModelTypes` enum value represent an Flax model?
+    :param model_type: --model-type string or :py:class:`.ModelTypes` enum value
+    :return: bool
+    """
     model_type = get_model_type_string(model_type)
 
     return 'flax' in model_type
 
 
-def model_type_is_pix2pix(model_type: typing.Union[ModelTypes, str]):
+def model_type_is_pix2pix(model_type: typing.Union[ModelTypes, str]) -> bool:
+    """
+    Does a --model-type string or :py:class:`.ModelTypes` enum value represent an pix2pix type model?
+    :param model_type: --model-type string or :py:class:`.ModelTypes` enum value
+    :return: bool
+    """
     model_type = get_model_type_string(model_type)
 
     return 'pix2pix' in model_type
 
 
 def have_jax_flax():
+    """
+    Do we have jax/flax support?
+    :return: bool
+    """
     return jax is not None
 
 
@@ -1178,6 +1347,9 @@ def _image_grid(imgs, rows, cols):
 
 
 class PipelineWrapperResult:
+    """
+    The result of calling :py:class:`.DiffusionPipelineWrapper`
+    """
     image: typing.Optional[PIL.Image.Image]
 
     def __init__(self, image):
@@ -1194,6 +1366,11 @@ class PipelineWrapperResult:
 
     def gen_dgenerate_config(self,
                              extra_args: typing.Optional[typing.Sequence[typing.Tuple[str, typing.Any]]] = None):
+        """
+        Generate a valid dgenerate config file with a single invocation that reproduces this result.
+        :param extra_args: Extra invocation arguments to add to the config file.
+        :return: The configuration as a string
+        """
 
         from .__init__ import __version__
 
@@ -1224,6 +1401,11 @@ class PipelineWrapperResult:
 
     def gen_dgenerate_command(self,
                               extra_args: typing.Optional[typing.Sequence[typing.Tuple[str, typing.Any]]] = None):
+        """
+        Generate a valid dgenerate command line invocation that reproduces this result.
+        :param extra_args: Extra arguments to add to the end of the command line.
+        :return: A string containing the dgenerate command line needed to reproduce this result.
+        """
         model_path = self._dgenerate_opts[0]
         opts = self._dgenerate_opts[1:]
         if extra_args:
@@ -1231,11 +1413,20 @@ class PipelineWrapperResult:
         return f'dgenerate {model_path} {" ".join(f"{opt[0]} {opt[1]}" for opt in opts)}'
 
     @property
-    def dgenerate_opts(self):
+    def dgenerate_opts(self) -> typing.List[typing.Tuple[str, typing.Any]]:
+        """
+        Replication of options passed to dgenerate to produce this result in the form of a list of tuples.
+
+        Format being [('--argument', value), ...]
+        :return: list of (tuples of length 2)
+        """
         return self._dgenerate_opts.copy()
 
 
 class DiffusionArguments:
+    """
+    Represents all possible arguments for a :py:class:`.DiffusionPipelineWrapper` call.
+    """
     prompt: _types.OptionalPrompt = None
     sdxl_second_prompt: _types.OptionalPrompt = None
     sdxl_refiner_prompt: _types.OptionalPrompt = None
@@ -1269,6 +1460,10 @@ class DiffusionArguments:
     inference_steps: _types.OptionalInteger = None
 
     def get_pipeline_wrapper_args(self):
+        """
+        Get the arguments dictionary needed to call :py:class:`.DiffusionPipelineWrapper`
+        :return: dictionary of argument names with values
+        """
         pipeline_args = {}
         for attr, hint in typing.get_type_hints(self).items():
             val = getattr(self, attr)
@@ -1302,7 +1497,12 @@ class DiffusionArguments:
                                        subsequent_indent=' ' * len(header))
             prompt_format.append(f'{header}"{prompt_val}"')
 
-    def describe_pipeline_wrapper_args(self):
+    def describe_pipeline_wrapper_args(self) -> str:
+        """
+        Describe the pipeline wrapper arguments in a pretty, human-readable way, with word wrapping
+        depending on console size or a maximum length depending on what stdout currently is.
+        :return: description string.
+        """
         prompt_format = []
         DiffusionArguments._describe_prompt(
             prompt_format, self.prompt,
@@ -1369,6 +1569,9 @@ class DiffusionArguments:
 
 
 class DiffusionPipelineWrapper:
+    """
+    Monolithic diffusion pipelines wrapper.
+    """
     def __str__(self):
         return f'{self.__class__.__name__}({str(_types.get_public_attributes(self))})'
 
@@ -1474,81 +1677,157 @@ class DiffusionPipelineWrapper:
 
     @property
     def revision(self) -> _types.OptionalName:
+        """
+        Currently set revision for the main model or None
+        :return: revision string or None
+        """
         return self._revision
 
     @property
     def safety_checker(self) -> bool:
+        """
+        Safety checker enabled status
+        :return: bool
+        """
         return self._safety_checker
 
     @property
     def variant(self) -> _types.OptionalName:
+        """
+        Currently set variant for the main model or None
+        :return: variant string or None
+        """
         return self._variant
 
     @property
     def dtype(self) -> typing.Literal['float16', 'float32', 'auto']:
+        """
+        Currently set dtype for the main model
+        :return: dtype string, one of: 'float16', 'float32', 'auto'
+        """
         return self._dtype
 
     @property
     def textual_inversion_paths(self) -> _types.OptionalPaths:
+        """
+        List of supplied --textual-inversions path strings or None
+        :return: list of strings or None
+        """
         return [self._textual_inversion_paths] if \
             isinstance(self._textual_inversion_paths, str) else self._textual_inversion_paths
 
     @property
     def control_net_paths(self) -> _types.OptionalPaths:
+        """
+        List of supplied --control-nets path strings or None
+        :return: list of strings or None
+        """
         return [self._control_net_paths] if \
             isinstance(self._control_net_paths, str) else self._control_net_paths
 
     @property
     def device(self) -> _types.Name:
+        """
+        Currently set --device string
+        :return: string
+        """
         return self._device
 
     @property
     def model_path(self) -> _types.Path:
+        """
+        Model path for the main model
+        :return: string
+        """
         return self._model_path
 
     @property
     def scheduler(self) -> _types.OptionalName:
+        """
+        Selected scheduler name for the main model or None
+        :return: string or None
+        """
         return self._scheduler
 
     @property
     def sdxl_refiner_scheduler(self) -> _types.OptionalName:
+        """
+        Selected scheduler name for the SDXL refiner or None
+        :return: string or None
+        """
         return self._sdxl_refiner_scheduler
 
     @property
     def sdxl_refiner_path(self) -> _types.OptionalName:
+        """
+        Model path for the SDXL refiner or None
+        :return: string or None
+        """
         return self._sdxl_refiner_path
 
     @property
     def model_type_enum(self) -> ModelTypes:
+        """
+        Currently set --model-type enum value
+        :return: :py:class:`.ModelTypes`
+        """
         return self._model_type
 
     @property
     def model_type_string(self) -> str:
+        """
+        Currently set --model-type string value
+        :return: string
+        """
         return get_model_type_string(self._model_type)
 
     @property
     def model_subfolder(self) -> _types.OptionalName:
+        """
+        Selected model subfolder for the main model, (remote repo subfolder or local) or None
+        :return: string or None
+        """
         return self._model_subfolder
 
     @property
     def vae_path(self) -> _types.OptionalPath:
+        """
+        Selected --vae path for the main model or None
+        :return: string or None
+        """
         return self._vae_path
 
     @property
     def vae_tiling(self) -> bool:
+        """
+        Current --vae-tiling status
+        :return: bool
+        """
         return self._vae_tiling
 
     @property
     def vae_slicing(self) -> bool:
+        """
+        Current --vae-slicing status
+        :return: bool
+        """
         return self._vae_slicing
 
     @property
     def lora_paths(self) -> _types.OptionalPaths:
+        """
+        List of supplied --lora path strings or None
+        :return: list of strings or None
+        """
         return [self._lora_paths] if \
             isinstance(self._lora_paths, str) else self._lora_paths
 
     @property
     def auth_token(self) -> _types.OptionalString:
+        """
+        Current --auth-token value or None
+        :return: string or None
+        """
         return self._auth_token
 
     def _reconstruct_dgenerate_opts(self, **user_args):
@@ -2347,6 +2626,12 @@ class DiffusionPipelineWrapper:
         return _PipelineTypes.BASIC
 
     def __call__(self, **kwargs) -> PipelineWrapperResult:
+        """
+        Call the pipeline and generate a result.
+
+        :param kwargs: See :py:meth:`.DiffusionArguments.get_pipeline_wrapper_args`
+        :return: :py:class:`.PipelineWrapperResult`
+        """
         self._lazy_init_pipeline(DiffusionPipelineWrapper._determine_pipeline_type(kwargs))
 
         default_args = self._pipeline_defaults(kwargs)

@@ -195,7 +195,7 @@ def create_config_runner(injected_args: typing.Sequence[str],
                          version: typing.Union[_types.Version, str] = dgenerate.__version__,
                          throw: bool = False):
     """
-    Create a :py:class:`BatchProcessor` that can run dgenerate batch processing configs from a string or file.
+    Create a :py:class:`.BatchProcessor` that can run dgenerate batch processing configs from a string or file.
 
     :param injected_args: dgenerate command line arguments in the form of list, see: shlex module, or sys.argv.
         These arguments will be injected at the end of every dgenerate invocation in the config file.
