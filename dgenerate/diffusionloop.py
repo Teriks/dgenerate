@@ -55,7 +55,6 @@ def _list_or_list_of_none(val):
 def iterate_attribute_combinations(
         attribute_defs: typing.List[typing.Tuple[str, typing.Any]],
         my_class: typing.Type):
-
     def assign(ctx, dir_attr, name, val):
         if val is not None:
             if name in dir_attr:

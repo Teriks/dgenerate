@@ -1071,7 +1071,8 @@ def iterate_control_image(uri: str,
                           frame_start: int = 0,
                           frame_end: _types.OptionalInteger = None,
                           resize_resolution: _types.OptionalSize = None,
-                          preprocessor: _preprocessors.ImagePreprocessor = None) -> typing.Generator[ImageSeed, None, None]:
+                          preprocessor: _preprocessors.ImagePreprocessor = None) -> \
+        typing.Generator[ImageSeed, None, None]:
     """
     Parse and load a control image/video in an `--image-seeds` path and return a generator that 
     produces :py:class:`.ImageSeed` objects while progressively reading that file.
@@ -1180,7 +1181,8 @@ def iterate_image_seed(uri: str,
                        resize_resolution: _types.OptionalSize = None,
                        seed_image_preprocessor: typing.Optional[_preprocessors.ImagePreprocessor] = None,
                        mask_image_preprocessor: typing.Optional[_preprocessors.ImagePreprocessor] = None,
-                       control_image_preprocessor: typing.Optional[_preprocessors.ImagePreprocessor] = None) -> typing.Generator[ImageSeed, None, None]:
+                       control_image_preprocessor: typing.Optional[_preprocessors.ImagePreprocessor] = None) -> \
+        typing.Generator[ImageSeed, None, None]:
     """
     Parse and load images/videos in an `--image-seeds` path and return a generator that
     produces :py:class:`.ImageSeed` objects while progressively reading those files.

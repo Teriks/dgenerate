@@ -21,13 +21,13 @@
 import typing
 
 import torch
+
 import dgenerate.arguments as _arguments
 import dgenerate.diffusionloop as _diffusionloop
 import dgenerate.mediainput as _mediainput
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.preprocessors as _preprocessors
-import dgenerate.textprocessing as _textprocessing
 
 
 def invoke_dgenerate(
@@ -42,7 +42,7 @@ def invoke_dgenerate(
 
     if '--templates-help' in args:
         _messages.log(_diffusionloop.DiffusionRenderLoop(
-                config=_arguments.DgenerateArguments()).generate_template_variables_help())
+            config=_arguments.DgenerateArguments()).generate_template_variables_help())
         return 0
 
     try:
