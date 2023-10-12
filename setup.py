@@ -113,7 +113,7 @@ def _to_version_str(parts):
     return '.'.join(str(p) for p in parts)
 
 
-def poetry_carret_to_pip(version):
+def poetry_caret_to_pip(version):
     v = [int(i) for i in version.split('.')]
     v2 = []
     bumped = False
@@ -170,9 +170,9 @@ def poetry_star_to_pip(version):
 
 def poetry_version_to_pip_requirement(version):
     if version.startswith('^'):
-        return poetry_carret_to_pip(version.lstrip('^'))
+        return poetry_caret_to_pip(version.lstrip('^'))
     if version.startswith('~'):
-        return poetry_carret_to_pip(version.lstrip('~'))
+        return poetry_tilde_to_pip(version.lstrip('~'))
     if '*' in version:
         return poetry_star_to_pip(version)
 
