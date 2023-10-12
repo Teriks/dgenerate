@@ -1,52 +1,19 @@
 # -*- mode: python ; coding: utf-8 -*-
-import io
-import os
+
 import re
-from ast import literal_eval
+from importlib.machinery import SourceFileLoader
 
 from PyInstaller.building.api import PYZ, EXE, COLLECT
 from PyInstaller.building.build_main import Analysis
 from PyInstaller.utils.hooks import copy_metadata, collect_data_files, collect_dynamic_libs
 
-dgenerate_init = os.path.join('..', 'dgenerate', '__init__.py')
-
-with io.open(dgenerate_init) as f:
-    version = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', f.read(), re.MULTILINE).group(1)
-
-
-def lockfile_deps():
-    poetry_lock_packages = re.compile(r"\[\[package\]\].*?optional = .*?python-versions.*?\n", re.MULTILINE | re.DOTALL)
-    with open('../poetry/poetry.lock') as f:
-        contents = f.read()
-        for match in poetry_lock_packages.findall(contents):
-            vals = match.strip().split('\n')[1:]
-            d = dict()
-            for val in vals:
-                left, right = val.split('=', 1)
-                right = right.strip()
-                if right == 'true':
-                    right = True
-                elif right == 'false':
-                    right = False
-                else:
-                    right = literal_eval(right)
-                d[left.strip()] = right
-            yield d
-
-
-def get_requires(optional=False, exclude: set = None):
-    if exclude is None:
-        exclude = set()
-    return list(f'{dep["name"]}=={dep["version"]}'
-                for dep in lockfile_deps()
-                if dep['optional'] == optional and dep['name'] not in exclude)
-
+setup = SourceFileLoader('setup_as_library', '../setup.py').load_module()
 
 wix_version = re.compile("Name=\"dgenerate\" Version=\".*?\"")
 
 with open('Product.wix', 'r') as f:
     content = f.read()
-    content_new = wix_version.sub(f"Name=\"dgenerate\" Version=\"{version.lstrip('v')}\"", content)
+    content_new = wix_version.sub(f"Name=\"dgenerate\" Version=\"{setup.VERSION.lstrip('v')}\"", content)
     with open('Product.wix', 'w') as f2:
         f2.write(content_new)
 
@@ -60,15 +27,16 @@ datas = []
 binaries = []
 module_collection_mode = {}
 
-for package in get_requires(exclude=exclude) + requires_extra_data:
-    name = package.split('=')[0]
+required_package_names = setup.get_poetry_lockfile_as_pip_requires(exclude=exclude).keys() + requires_extra_data
 
-    if name not in requires_extra_data:
-        datas += copy_metadata(name)
+for package_name in required_package_names:
 
-    print(f'Data Collection For: {name}')
-    module_collection_mode[name] = 'pyz+py'
-    datas += collect_data_files(name, include_py_files=True,
+    if package_name not in requires_extra_data:
+        datas += copy_metadata(package_name)
+
+    print(f'Data Collection For: {package_name}')
+    module_collection_mode[package_name] = 'pyz+py'
+    datas += collect_data_files(package_name, include_py_files=True,
                                 includes=['**/*.py',
                                           '**/*.pyi',
                                           '**/*.info',
@@ -77,8 +45,7 @@ for package in get_requires(exclude=exclude) + requires_extra_data:
                                           '**/*.cu',
                                           '**/*.cuh',
                                           '**/*.h'])
-    binaries += collect_dynamic_libs(name, search_patterns=['*.dll', '*.pyd'])
-
+    binaries += collect_dynamic_libs(package_name, search_patterns=['*.dll', '*.pyd'])
 
 a = Analysis(
     ['../dgenerate/dgenerate.py'],

@@ -21,6 +21,7 @@
 import inspect
 import numbers
 import typing
+import dgenerate.types as _types
 
 
 def args_cache_key(args_dict: typing.Dict[str, typing.Any],
@@ -39,7 +40,7 @@ def args_cache_key(args_dict: typing.Dict[str, typing.Any],
         elif obj is None or isinstance(obj, (str, numbers.Number)):
             return str(obj)
         else:
-            return f'<{obj.__class__.__name__}:{str(id(obj))}>'
+            return _types.class_and_id_string(obj)
 
     if custom_hashes:
         # Only for the top level, let user control recursion
