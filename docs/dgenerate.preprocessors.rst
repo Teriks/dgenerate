@@ -11,6 +11,7 @@ dgenerate.preprocessors.canny module
    :members:
    :undoc-members:
    :show-inheritance:
+   :special-members: __call__, __init__
 
 dgenerate.preprocessors.exceptions module
 -----------------------------------------
@@ -19,6 +20,7 @@ dgenerate.preprocessors.exceptions module
    :members:
    :undoc-members:
    :show-inheritance:
+   :special-members: __call__, __init__
 
 dgenerate.preprocessors.loader module
 -------------------------------------
@@ -27,6 +29,7 @@ dgenerate.preprocessors.loader module
    :members:
    :undoc-members:
    :show-inheritance:
+   :special-members: __call__, __init__
 
 dgenerate.preprocessors.openpose module
 ---------------------------------------
@@ -35,6 +38,7 @@ dgenerate.preprocessors.openpose module
    :members:
    :undoc-members:
    :show-inheritance:
+   :special-members: __call__, __init__
 
 dgenerate.preprocessors.pil\_imageops module
 --------------------------------------------
@@ -43,6 +47,7 @@ dgenerate.preprocessors.pil\_imageops module
    :members:
    :undoc-members:
    :show-inheritance:
+   :special-members: __call__, __init__
 
 dgenerate.preprocessors.preprocessor module
 -------------------------------------------
@@ -51,6 +56,7 @@ dgenerate.preprocessors.preprocessor module
    :members:
    :undoc-members:
    :show-inheritance:
+   :special-members: __call__, __init__
 
 dgenerate.preprocessors.preprocessorchain module
 ------------------------------------------------
@@ -59,6 +65,7 @@ dgenerate.preprocessors.preprocessorchain module
    :members:
    :undoc-members:
    :show-inheritance:
+   :special-members: __call__, __init__
 
 dgenerate.preprocessors.preprocessormixin module
 ------------------------------------------------
@@ -67,6 +74,7 @@ dgenerate.preprocessors.preprocessormixin module
    :members:
    :undoc-members:
    :show-inheritance:
+   :special-members: __call__, __init__
 
 Module contents
 ---------------
@@ -75,3 +83,4 @@ Module contents
    :members:
    :undoc-members:
    :show-inheritance:
+   :special-members: __call__, __init__

@@ -19,6 +19,7 @@ dgenerate.arguments module
    :members:
    :undoc-members:
    :show-inheritance:
+   :special-members: __call__, __init__
 
 dgenerate.batchprocess module
 -----------------------------
@@ -27,6 +28,7 @@ dgenerate.batchprocess module
    :members:
    :undoc-members:
    :show-inheritance:
+   :special-members: __call__, __init__
 
 dgenerate.diffusionloop module
 ------------------------------
@@ -35,6 +37,7 @@ dgenerate.diffusionloop module
    :members:
    :undoc-members:
    :show-inheritance:
+   :special-members: __call__, __init__
 
 dgenerate.image module
 ----------------------
@@ -43,6 +46,7 @@ dgenerate.image module
    :members:
    :undoc-members:
    :show-inheritance:
+   :special-members: __call__, __init__
 
 dgenerate.invoker module
 ------------------------
@@ -51,6 +55,7 @@ dgenerate.invoker module
    :members:
    :undoc-members:
    :show-inheritance:
+   :special-members: __call__, __init__
 
 dgenerate.mediainput module
 ---------------------------
@@ -59,6 +64,7 @@ dgenerate.mediainput module
    :members:
    :undoc-members:
    :show-inheritance:
+   :special-members: __call__, __init__
 
 dgenerate.mediaoutput module
 ----------------------------
@@ -67,6 +73,7 @@ dgenerate.mediaoutput module
    :members:
    :undoc-members:
    :show-inheritance:
+   :special-members: __call__, __init__
 
 dgenerate.memoize module
 ------------------------
@@ -75,6 +82,7 @@ dgenerate.memoize module
    :members:
    :undoc-members:
    :show-inheritance:
+   :special-members: __call__, __init__
 
 dgenerate.messages module
 -------------------------
@@ -83,6 +91,7 @@ dgenerate.messages module
    :members:
    :undoc-members:
    :show-inheritance:
+   :special-members: __call__, __init__
 
 dgenerate.pipelinewrapper module
 --------------------------------
@@ -91,6 +100,7 @@ dgenerate.pipelinewrapper module
    :members:
    :undoc-members:
    :show-inheritance:
+   :special-members: __call__, __init__
 
 dgenerate.plugin module
 -----------------------
@@ -99,6 +109,7 @@ dgenerate.plugin module
    :members:
    :undoc-members:
    :show-inheritance:
+   :special-members: __call__, __init__
 
 dgenerate.prompt module
 -----------------------
@@ -107,6 +118,7 @@ dgenerate.prompt module
    :members:
    :undoc-members:
    :show-inheritance:
+   :special-members: __call__, __init__, __str__
 
 dgenerate.textprocessing module
 -------------------------------
@@ -115,6 +127,7 @@ dgenerate.textprocessing module
    :members:
    :undoc-members:
    :show-inheritance:
+   :special-members: __call__, __init__
 
 dgenerate.types module
 ----------------------
@@ -123,6 +136,7 @@ dgenerate.types module
    :members:
    :undoc-members:
    :show-inheritance:
+   :special-members: __call__, __init__
 
 Module contents
 ---------------
@@ -131,3 +145,4 @@ Module contents
    :members:
    :undoc-members:
    :show-inheritance:
+   :special-members: __call__, __init__
