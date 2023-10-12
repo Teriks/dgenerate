@@ -39,7 +39,7 @@ if not VERSION:
 with open(os.path.join(setup_path, 'README.rst'), 'r', encoding='utf-8') as _f:
     README = _f.read()
 
-if not VERSION:
+if not README:
     raise RuntimeError('readme is not set')
 
 
@@ -63,7 +63,7 @@ def poetry_lockfile_deps():
 
 
 def get_poetry_lockfile_as_pip_requires(optionals=False, exclude=None):
-    exclude = {} if exclude is None else exclude
+    exclude = set() if exclude is None else exclude
     return {dep["name"]: '=='+dep["version"] for dep in poetry_lockfile_deps()
             if dep['optional'] == optionals and dep['name'] not in exclude}
 
@@ -192,7 +192,7 @@ if __name__ != 'setup_as_library':
 
     python_requirement = requires.get('python')
 
-    exclude = {'triton'} if 'linux' not in sys.platform else {}
+    exclude = {'triton'} if 'linux' not in sys.platform else set()
 
     pyproject_requirements = [name + spec for name, spec in
                               get_poetry_pyproject_as_pip_requires(
