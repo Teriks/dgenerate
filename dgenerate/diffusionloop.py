@@ -549,6 +549,13 @@ class DiffusionRenderLoop:
     those to library users through callbacks.
     """
     def __init__(self, config=None, preprocessor_loader=None):
+        """
+        Constructor.
+
+        :param config: :py:class:`.DiffusionRenderLoopConfig` or :py:class:`dgenerate.arguments.DgenerateArguments`
+        :param preprocessor_loader: :py:class:`dgenerate.preprocessors.loader.Loader`
+        """
+
         self._generation_step = -1
         self._frame_time_sum = 0
         self._last_frame_time = 0
