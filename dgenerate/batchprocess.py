@@ -17,10 +17,18 @@ import dgenerate.types as _types
 
 
 class BatchProcessError(Exception):
+    """
+    Thrown on errors encountered within a batch processing script
+    including non-zero return codes from the invoker.
+    """
     pass
 
 
 class BatchProcessor:
+    """
+    Implements dgenerates batch processing scripts in a generified manner.
+    """
+
     def __init__(self,
                  invoker: typing.Callable[[list], int],
                  template_variable_generator: typing.Callable[[], dict],
@@ -30,6 +38,20 @@ class BatchProcessor:
                  template_functions: typing.Dict[str, typing.Callable[[typing.Any], typing.Any]],
                  directives: typing.Dict[str, typing.Callable[[list], None]],
                  injected_args: typing.Sequence[str]):
+        """
+        Constructor.
+
+        :param invoker: A function for invoking lines recognized as shell commands, should return a return code.
+        :param template_variable_generator: Generate template variables for templating after an
+            invocation, should return a dictionary.
+        :param name: The name of this batch processor, currently used in the version check directive and messages
+        :param version: Version for version check hash bang directive.
+        :param template_variables: Live template variables, the inital environment, this dictionary will be
+            modified during runtime.
+        :param template_functions: Functions available to Jinja2
+        :param directives: batch processing directive handlers, for: \directive
+        :param injected_args: Arguments to be injected at the end of user specified arguments for every shell invocation
+        """
 
         self.invoker = invoker
         self.template_variable_generator = template_variable_generator
@@ -164,6 +186,10 @@ class BatchProcessor:
         self.template_variables.update(self.template_variable_generator())
 
     def run_file(self, stream: typing.TextIO):
+        """
+        Process a batch processing script from a file string
+        :param stream: A filestream in text read mode
+        """
         continuation = ''
 
         for line_idx, line in enumerate(stream):
@@ -187,6 +213,10 @@ class BatchProcessor:
                 continuation = ''
 
     def run_string(self, string: str):
+        """
+        Process a batch processing script from a string
+        :param string: a string containing the script
+        """
         self.run_file(io.StringIO(string))
 
 

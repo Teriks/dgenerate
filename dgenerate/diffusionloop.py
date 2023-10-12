@@ -54,8 +54,17 @@ def _list_or_list_of_none(val):
 
 
 def iterate_attribute_combinations(
-        attribute_defs: typing.List[typing.Tuple[str, typing.Any]],
+        attribute_defs: typing.List[typing.Tuple[str, typing.List]],
         my_class: typing.Type):
+
+    """
+    Iterate over every combination of attributes in a given class using a list of tuples maping
+    attribute names to a list of possible values.
+
+    :param attribute_defs: list of tuple (attribute_name, [list of values])
+    :param my_class: Construct this class and assign attribute values to it
+    :return: A generator over instances of the type mentioned in the my_class argument
+    """
     def assign(ctx, dir_attr, name, val):
         if val is not None:
             if name in dir_attr:
@@ -75,37 +84,74 @@ def iterate_attribute_combinations(
         yield ctx_out
 
 
-def iterate_diffusion_args(prompt,
-                           sdxl_second_prompt,
-                           sdxl_refiner_prompt,
-                           sdxl_refiner_second_prompt,
-                           seed,
-                           image_seed_strength,
-                           upscaler_noise_level,
-                           sdxl_high_noise_fraction,
-                           sdxl_refiner_inference_steps,
-                           sdxl_refiner_guidance_scale,
-                           sdxl_refiner_guidance_rescale,
-                           sdxl_aesthetic_score,
-                           sdxl_original_size,
-                           sdxl_target_size,
-                           sdxl_crops_coords_top_left,
-                           sdxl_negative_aesthetic_score,
-                           sdxl_negative_original_size,
-                           sdxl_negative_target_size,
-                           sdxl_negative_crops_coords_top_left,
-                           sdxl_refiner_aesthetic_score,
-                           sdxl_refiner_original_size,
-                           sdxl_refiner_target_size,
-                           sdxl_refiner_crops_coords_top_left,
-                           sdxl_refiner_negative_aesthetic_score,
-                           sdxl_refiner_negative_original_size,
-                           sdxl_refiner_negative_target_size,
-                           sdxl_refiner_negative_crops_coords_top_left,
-                           guidance_scale,
-                           image_guidance_scale,
-                           guidance_rescale,
-                           inference_steps) -> typing.Generator[_pipelinewrapper.DiffusionArguments, None, None]:
+def iterate_diffusion_args(prompt: _types.OptionalPrompts,
+                           sdxl_second_prompt: _types.OptionalPrompts,
+                           sdxl_refiner_prompt: _types.OptionalPrompts,
+                           sdxl_refiner_second_prompt: _types.OptionalPrompts,
+                           seed: _types.OptionalIntegers,
+                           image_seed_strength: _types.OptionalFloats,
+                           upscaler_noise_level: _types.OptionalIntegers,
+                           sdxl_high_noise_fraction: _types.OptionalFloats,
+                           sdxl_refiner_inference_steps: _types.OptionalIntegers,
+                           sdxl_refiner_guidance_scale: _types.OptionalFloats,
+                           sdxl_refiner_guidance_rescale: _types.OptionalFloats,
+                           sdxl_aesthetic_score: _types.OptionalFloats,
+                           sdxl_original_size: _types.OptionalSizes,
+                           sdxl_target_size: _types.OptionalSizes,
+                           sdxl_crops_coords_top_left: _types.OptionalCoordinateList,
+                           sdxl_negative_aesthetic_score: _types.OptionalFloats,
+                           sdxl_negative_original_size: _types.OptionalSizes,
+                           sdxl_negative_target_size: _types.OptionalSizes,
+                           sdxl_negative_crops_coords_top_left: _types.OptionalCoordinateList,
+                           sdxl_refiner_aesthetic_score: _types.OptionalFloats,
+                           sdxl_refiner_original_size: _types.OptionalSizes,
+                           sdxl_refiner_target_size: _types.OptionalSizes,
+                           sdxl_refiner_crops_coords_top_left: _types.OptionalCoordinateList,
+                           sdxl_refiner_negative_aesthetic_score: _types.OptionalFloats,
+                           sdxl_refiner_negative_original_size: _types.OptionalSizes,
+                           sdxl_refiner_negative_target_size: _types.OptionalSizes,
+                           sdxl_refiner_negative_crops_coords_top_left: _types.OptionalCoordinateList,
+                           guidance_scale: _types.OptionalFloats,
+                           image_guidance_scale: _types.OptionalFloats,
+                           guidance_rescale: _types.OptionalFloats,
+                           inference_steps: _types.OptionalIntegers) -> typing.Generator[_pipelinewrapper.DiffusionArguments, None, None]:
+    """
+    Iterate over every combination of possible attribute values of :py:class:`dgenerate.pipelinewrapper.DiffusionArguments` given a list of
+    values for each attribute.
+
+    :param prompt: list of :py:class:`dgenerate.prompt.Prompt` or None
+    :param sdxl_second_prompt: : list of :py:class:`dgenerate.prompt.Prompt` or None
+    :param sdxl_refiner_prompt: : list of :py:class:`dgenerate.prompt.Prompt` or None
+    :param sdxl_refiner_second_prompt: : list of :py:class:`dgenerate.prompt.Prompt` or None
+    :param seed: list of integers or None
+    :param image_seed_strength: list of floats or None
+    :param upscaler_noise_level: list of integers or None
+    :param sdxl_high_noise_fraction: list of floats or None
+    :param sdxl_refiner_inference_steps: list of integers or None
+    :param sdxl_refiner_guidance_scale: list of floats or None
+    :param sdxl_refiner_guidance_rescale: list of floats or None
+    :param sdxl_aesthetic_score: list of floats or None
+    :param sdxl_original_size: list of tuple(x, y) or None
+    :param sdxl_target_size: list of tuple(x, y) or None
+    :param sdxl_crops_coords_top_left: list of tuple(x, y) or None
+    :param sdxl_negative_aesthetic_score: list of floats or None
+    :param sdxl_negative_original_size: list of tuple(x, y) or None
+    :param sdxl_negative_target_size: list of tuple(x, y) or None
+    :param sdxl_negative_crops_coords_top_left: list of tuple(x, y) or None
+    :param sdxl_refiner_aesthetic_score: list of floats or None
+    :param sdxl_refiner_original_size: list of tuple(x, y) or None
+    :param sdxl_refiner_target_size: list of tuple(x, y) or None
+    :param sdxl_refiner_crops_coords_top_left: list of tuple(x, y) or None
+    :param sdxl_refiner_negative_aesthetic_score: list of floats or None
+    :param sdxl_refiner_negative_original_size: list of tuple(x, y) or None
+    :param sdxl_refiner_negative_target_size: list of tuple(x, y) or None
+    :param sdxl_refiner_negative_crops_coords_top_left: list of tuple(x, y) or None
+    :param guidance_scale: list of floats or None
+    :param image_guidance_scale: list of floats or None
+    :param guidance_rescale: list of floats or None
+    :param inference_steps: list of integers or None
+    :return: a generator over :py:class:`dgenerate.pipelinewrapper.DiffusionArguments` objects
+    """
     args = locals()
     defs = []
     for arg_name in inspect.getfullargspec(iterate_diffusion_args).args:
@@ -121,6 +167,11 @@ def _safe_len(lst):
 
 
 def gen_seeds(n):
+    """
+    Generate a list of N random seed integers
+    :param n: number of seeds to generate
+    :return: list of integer seeds
+    """
     return [random.randint(0, 99999999999999) for _ in range(0, n)]
 
 
@@ -142,6 +193,14 @@ def _quote_string_lists(ls):
 
 
 class DiffusionRenderLoopConfig:
+    """
+    This object represents configuration for :py:class:`DiffusionRenderLoop`.
+
+    It nearly directly maps to dgenerates command line arguments.
+
+    See subclass :py:class:`dgenerate.arguments.DgenerateArguments`
+    """
+
     model_path: _types.OptionalPath = None
     model_subfolder: _types.OptionalPath = None
     sdxl_refiner_path: _types.OptionalPath = None
@@ -222,6 +281,13 @@ class DiffusionRenderLoopConfig:
 
     def generate_template_variables_with_types(self, variable_prefix: typing.Optional[str] = None) \
             -> typing.Dict[str, typing.Tuple[typing.Type, typing.Any]]:
+        """
+        Generate a dictionary from this configuration object that maps attribute names to a tuple
+        containing (type_hint_type, value)
+
+        :param variable_prefix: Prefix every variable name with this prefix if specified
+        :return: a dictionary of attribute names to tuple(type_hint_type, value)
+        """
 
         template_variables = {}
 
@@ -247,12 +313,26 @@ class DiffusionRenderLoopConfig:
     def generate_template_variables(self,
                                     variable_prefix:
                                     typing.Optional[str] = None) -> typing.Dict[str, typing.Any]:
+        """
+        Generate a dictionary from this configuration object that is suitable for using as Jinja2 environmental variables.
+        :param variable_prefix: Prefix every variable name with this prefix if specified
+        :return: a dictionary of attribute names to values
+        """
         return {k: v[1] for k, v in
                 self.generate_template_variables_with_types(variable_prefix=variable_prefix).items()}
 
     def set_from(self,
                  obj: typing.Union[typing.Any, dict],
                  missing_value_throws: bool = True):
+        """
+        Set the attributes in this configuration object from a dictionary or another object
+        possessing keys / attributes of the same name.
+
+        :param obj: The object, or dictionary
+        :param missing_value_throws: whether to throw :py:class:`ValueError` if obj is missing
+            an attribute that exist in this object
+        :return: self
+        """
 
         if isinstance(obj, dict):
             source = obj
@@ -264,6 +344,7 @@ class DiffusionRenderLoopConfig:
                 if missing_value_throws and k not in source:
                     raise ValueError(f'Source object does not define: "{k}"')
                 setattr(self, k, source.get(k))
+        return self
 
     def check(self):
         if not _has_len(self.prompts):
@@ -345,6 +426,10 @@ class DiffusionRenderLoopConfig:
                 'DiffusionRenderLoop.frame_start must be an integer value less than DiffusionRenderLoop.frame_end')
 
     def calculate_generation_steps(self):
+        """
+        Calculate the number of generation steps that this configuration results in.
+        :return: int
+        """
         optional_factors = [
             self.sdxl_second_prompts,
             self.sdxl_refiner_prompts,
@@ -386,6 +471,14 @@ class DiffusionRenderLoopConfig:
                 len(self.inference_steps_values))
 
     def iterate_diffusion_args(self, **overrides) -> typing.Generator[_pipelinewrapper.DiffusionArguments, None, None]:
+        """
+        Iterate over :py:class:`dgenerate.pipelinewrapper.DiffusionPipelineWrapper` argument objects using
+        every combination of argument values in this configuration.
+
+        :param overrides: use key word arguments to override specific attributes of this object with a new list value.
+        :return: a generator over :py:class:`dgenerate.pipelinewrapper.DiffusionArguments`
+        """
+
         def ov(n, v):
             if not _pipelinewrapper.model_type_is_sdxl(self.model_type):
                 if n.startswith('sdxl'):
@@ -444,6 +537,13 @@ class DiffusionRenderLoopConfig:
 
 
 class DiffusionRenderLoop:
+    """
+    Render loop which implements the bulk of dgenerates rendering capability.
+
+    This object handles the scatter gun iteration over requested diffusion parameters,
+    the generation of animations, and writing images and media to disk or providing
+    those to library users through callbacks.
+    """
     def __init__(self, config=None, preprocessor_loader=None):
         self._generation_step = -1
         self._frame_time_sum = 0
@@ -466,6 +566,12 @@ class DiffusionRenderLoop:
         return self._written_animations
 
     def generate_template_variables_with_types(self):
+        """
+        Generate a dictionary from the render loop that describes its current / last used configuration with type hints.
+
+        :return: a dictionary of attribute names to tuple(type_hint_type, value)
+        """
+
         template_variables = self.config.generate_template_variables_with_types(
             variable_prefix='last_')
 
@@ -477,9 +583,28 @@ class DiffusionRenderLoop:
         return template_variables
 
     def generate_template_variables(self):
+        """
+        Generate a dictionary from the render loop that describes its current / last used configuration.
+
+        This is consumed by the :py:class:`dgenerate.batchprocess.BatchProcessor`
+        that is created by :py:meth:`dgenerate.batchprocess.create_config_runner` for
+        use in Jinja2 templating.
+
+        :return: a dictionary of attribute names to values
+        """
         return {k: v[1] for k, v in self.generate_template_variables_with_types().items()}
 
     def generate_template_variables_help(self):
+        """
+        Generate a help string describing available template variables, their types, and values
+        for use in batch processing.
+
+        This is used to implement --templates-help in :py:meth:`dgenerate.invoker.invoke_dgenerate`
+
+        :return: A human-readable description of all template variables
+        """
+
+
         help_string = _textprocessing.underline(
             'Available post invocation template variables are:') + '\n\n'
 
@@ -497,6 +622,10 @@ class DiffusionRenderLoop:
 
     @property
     def generation_step(self):
+        """
+        Returns the current generation step
+        :return: int
+        """
         return self._generation_step
 
     def _gen_filename(self, *args, ext):
@@ -654,6 +783,9 @@ class DiffusionRenderLoop:
         return self.preprocessor_loader.load(preprocessors, self.config.device)
 
     def run(self):
+        """
+        Run the diffusion loop, this calls :py:meth:`.DiffusionRenderLoopConfig.check` prior to running.
+        """
         try:
             self._run()
         except _pipelinewrapper.SchedulerHelpException:
