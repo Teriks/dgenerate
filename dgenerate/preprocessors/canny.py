@@ -102,7 +102,7 @@ class CannyEdgeDetectPreprocess(_preprocessor.ImagePreprocessor):
         ]
         return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
 
-    def _process(self, image: PIL.Image):
+    def _process(self, image: PIL.Image.Image):
 
         gray = self._threshold_algo is not None or self._gray
 

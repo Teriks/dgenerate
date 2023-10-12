@@ -47,10 +47,10 @@ class MirrorFlipPreprocess(_preprocessor.ImagePreprocessor):
     def __str__(self):
         return f'{self.__class__.__name__}(function="{self.called_by_name}")'
 
-    def pre_resize(self, image: PIL.Image, resize_resolution: _types.OptionalSize):
+    def pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         return self._func(image)
 
-    def post_resize(self, image: PIL.Image):
+    def post_resize(self, image: PIL.Image.Image):
         return image
 
 
@@ -74,10 +74,10 @@ class SimpleColorPreprocess(_preprocessor.ImagePreprocessor):
     def __str__(self):
         return f'{self.__class__.__name__}(function="{self.called_by_name}")'
 
-    def pre_resize(self, image: PIL.Image, resize_resolution: _types.OptionalSize):
+    def pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         return image
 
-    def post_resize(self, image: PIL.Image):
+    def post_resize(self, image: PIL.Image.Image):
         return self._func(image)
 
 
@@ -97,10 +97,10 @@ class PosterizePreprocess(_preprocessor.ImagePreprocessor):
             self.argument_error(
                 f'Argument "bits" must be an integer value between 1 and 8, received {self._bits}.')
 
-    def pre_resize(self, image: PIL.Image, resize_resolution: _types.OptionalSize):
+    def pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         return PIL.ImageOps.posterize(image, self._bits)
 
-    def post_resize(self, image: PIL.Image):
+    def post_resize(self, image: PIL.Image.Image):
         return image
 
 
@@ -120,8 +120,8 @@ class SolarizePreprocess(_preprocessor.ImagePreprocessor):
             self.argument_error(
                 f'Argument "threshold" must be an integer value between 0 and 255, received {self._threshold}.')
 
-    def pre_resize(self, image: PIL.Image, resize_resolution: _types.OptionalSize):
+    def pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         return PIL.ImageOps.solarize(image, self._threshold)
 
-    def post_resize(self, image: PIL.Image):
+    def post_resize(self, image: PIL.Image.Image):
         return image

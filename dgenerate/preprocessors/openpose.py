@@ -66,7 +66,7 @@ class OpenPosePreprocess(ImagePreprocessor):
         ]
         return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
 
-    def _process(self, image: PIL.Image):
+    def _process(self, image: PIL.Image.Image):
 
         input_image = _cna_util.HWC3(numpy.array(image, dtype=numpy.uint8))
 
@@ -88,12 +88,12 @@ class OpenPosePreprocess(ImagePreprocessor):
 
         return PIL.Image.fromarray(detected_map)
 
-    def pre_resize(self, image: PIL.Image, resize_resolution: _types.OptionalSize):
+    def pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         if self._pre_resize:
             return self._process(image)
         return image
 
-    def post_resize(self, image: PIL.Image):
+    def post_resize(self, image: PIL.Image.Image):
         if not self._pre_resize:
             return self._process(image)
         return image

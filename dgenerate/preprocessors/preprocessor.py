@@ -223,7 +223,7 @@ class ImagePreprocessor:
             image.save(self.__output_file)
 
     @staticmethod
-    def call_pre_resize(preprocessor, image: PIL.Image,
+    def call_pre_resize(preprocessor, image: PIL.Image.Image,
                         resize_resolution: _types.OptionalSize) -> PIL.Image.Image:
         img = preprocessor.pre_resize(image, resize_resolution)
         if img is not image:
@@ -233,7 +233,7 @@ class ImagePreprocessor:
         return image
 
     @staticmethod
-    def call_post_resize(preprocessor, image: PIL.Image) -> PIL.Image.Image:
+    def call_post_resize(preprocessor, image: PIL.Image.Image) -> PIL.Image.Image:
         img = preprocessor.post_resize(image)
         if img is not image:
             preprocessor.__save_image(img)
@@ -241,10 +241,10 @@ class ImagePreprocessor:
             return img
         return image
 
-    def pre_resize(self, image: PIL.Image, resize_resolution: _types.OptionalSize):
+    def pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         return image
 
-    def post_resize(self, image: PIL.Image):
+    def post_resize(self, image: PIL.Image.Image):
         return image
 
     def __str__(self):
