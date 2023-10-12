@@ -38,7 +38,8 @@ def invoke_dgenerate(
     Invoke dgenerate using its command line arguments and return a return code.
 
     :param args: dgenerate command line arguments in the form of list, see: shlex module, or sys.argv
-    :param render_loop: DiffusionRenderLoop instance, if None is provided one will be created.
+    :param render_loop: :py:class:`dgenerate.diffusionloop.DiffusionRenderLoop` instance,
+        if None is provided one will be created.
     :param throw: Whether to throw exceptions or handle them.
     :return: integer return-code, anything other than 0 is failure
     """
