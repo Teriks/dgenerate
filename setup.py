@@ -112,9 +112,20 @@ def _pad_version(parts):
 def _to_version_str(parts):
     return '.'.join(str(p) for p in parts)
 
+def _version_to_parts(string, cast=True):
+    parts = string.split('+')
+
+    extra = ''
+    if len(parts) == 2:
+        extra = '+'+parts[1]
+
+    version = parts[0]
+
+    return [int(i) if cast else i for i in version.split('.')], extra
+
 
 def poetry_caret_to_pip(version):
-    v = [int(i) for i in version.split('.')]
+    v, extra = _version_to_parts(version)
     v2 = []
     bumped = False
     for idx, p in enumerate(v):
@@ -127,7 +138,7 @@ def poetry_caret_to_pip(version):
     _pad_version(v)
     _pad_version(v2)
 
-    return f">={_to_version_str(v)},<{_to_version_str(v2)}"
+    return f">={_to_version_str(v)}{extra},<{_to_version_str(v2)}{extra}"
 
 
 def _bump_version_rest(parts):
@@ -141,7 +152,7 @@ def _bump_version_rest(parts):
 
 
 def poetry_tilde_to_pip(version):
-    v = [int(i) for i in version.split('.')]
+    v, extra = _version_to_parts(version)
     if len(v) > 2:
         v = v[:2]
 
@@ -150,11 +161,11 @@ def poetry_tilde_to_pip(version):
     _pad_version(v)
     _pad_version(v2)
 
-    return f">={_to_version_str(v)},<{_to_version_str(v2)}"
+    return f">={_to_version_str(v)}{extra},<{_to_version_str(v2)}{extra}"
 
 
 def poetry_star_to_pip(version):
-    v = [i for i in version.split('.')]
+    v, extra = _version_to_parts(version, cast=False)
     v = v[:v.index('*')]
 
     if not v:
@@ -165,7 +176,7 @@ def poetry_star_to_pip(version):
     _pad_version(v)
     _pad_version(v2)
 
-    return f">={_to_version_str(v)},<{_to_version_str(v2)}"
+    return f">={_to_version_str(v)}{extra},<{_to_version_str(v2)}{extra}"
 
 
 def poetry_version_to_pip_requirement(version):
