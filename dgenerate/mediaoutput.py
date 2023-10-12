@@ -120,6 +120,7 @@ class AnimatedImageWriter(AnimationWriter):
 def supported_animation_writer_formats():
     """
     Supported animation writer formats, file extensions with no period.
+
     :return: list of file extensions.
     """
     return ['mp4', 'gif', 'webp']

@@ -30,8 +30,11 @@ class ConceptPathParseError(Exception):
 
 
 class ConceptPath:
-    def __init__(self, model: str, args: typing.Dict[str, str]):
-        self.concept = model
+    """
+    Represents a parsed concept path.
+    """
+    def __init__(self, concept: str, args: typing.Dict[str, str]):
+        self.concept = concept
         self.args = args
 
     def __str__(self):
@@ -39,12 +42,29 @@ class ConceptPath:
 
 
 class ConceptPathParser:
+    """
+    Parser for dgenerate concept paths with arguments, IE: concept;arg1="a";arg2="b"
+
+    Used for --vae, --lora etc. as well as image preprocessor plugin module arguments.
+    """
 
     def __init__(self, concept_name: str, known_args=None):
+        """
+        Constructor.
+
+        :param concept_name: Concept name, used in error messages
+        :param known_args: valid arguments for the parser
+        """
         self.known_args = known_args
         self.concept_name = concept_name
 
     def parse_concept_path(self, string: str):
+        """
+        Parse a string.
+
+        :param string: the string
+        :return: :py:class:`.ConceptPath`
+        """
         args = dict()
         parts = string.split(';')
         parts = iter(parts)
@@ -80,6 +100,7 @@ class ConceptPathParser:
 def oxford_comma(elements: typing.Sequence[str], conjunction: str) -> str:
     """
     Join a sequence of strings with commas, end with an oxford comma and conjunction if needed.
+
     :param elements: strings
     :param conjunction: "and", "or"
     :return: a joined string
@@ -103,7 +124,8 @@ def oxford_comma(elements: typing.Sequence[str], conjunction: str) -> str:
 
 def long_text_wrap_width() -> int:
     """
-    Return the current terminal width or the default value of 150 characters for textwraping purposes.
+    Return the current terminal width or the default value of 150 characters for text-wrapping purposes.
+
     :return: int
     """
     return min(shutil.get_terminal_size(fallback=(150, 0))[0], 150)
@@ -112,6 +134,7 @@ def long_text_wrap_width() -> int:
 def underline(string: str, underline_char: str = '=') -> str:
     """
     Underline a string with the selected character.
+
     :param string: the string
     :param underline_char: the character to underline with
     :return: the underlined string
@@ -122,6 +145,7 @@ def underline(string: str, underline_char: str = '=') -> str:
 def quote(string: str) -> str:
     """
     Wrap a string in double quotes.
+
     :param string: the string
     :return: The quoted string
     """
@@ -131,6 +155,7 @@ def quote(string: str) -> str:
 def unquote(string: str) -> str:
     """
     Remove quotes from a string, including single quotes.
+
     :param string: the string
     :return: The un-quoted string
     """
@@ -145,6 +170,7 @@ def unquote(string: str) -> str:
 def dashdown(string: str) -> str:
     """
     Replace '-' with '_'
+
     :param string: the string
     :return: modified string
     """
@@ -154,6 +180,7 @@ def dashdown(string: str) -> str:
 def dashup(string: str) -> str:
     """
     Replace '_' with '-'
+
     :param string: the string
     :return: modified string
     """
@@ -163,6 +190,7 @@ def dashup(string: str) -> str:
 def contains_space(string: str) -> bool:
     """
     Check if a string contains any whitespace characters including newlines
+
     :param string: the string
     :return: bool
     """
@@ -172,7 +200,8 @@ def contains_space(string: str) -> bool:
 def quote_spaces(list_of_str: typing.Sequence[typing.Union[str, list, tuple]]) -> \
         typing.Sequence[typing.Union[str, list, tuple]]:
     """
-    Quote any strings containing spaces within a list, or list of lists/tuples
+    Quote any strings containing spaces within a list, or list of lists/tuples.
+
     :param list_of_str: list of strings, and or lists/tuples containing string
     :return: input data structure with strings quoted if needed
     """
@@ -198,6 +227,7 @@ def quote_spaces(list_of_str: typing.Sequence[typing.Union[str, list, tuple]]) -
 def justify_left(string: str):
     """
     Justify text to the left.
+
     :param string: string with text
     :return: left justified text
     """

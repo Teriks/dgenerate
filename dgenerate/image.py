@@ -47,6 +47,7 @@ def resize_image_calc(old_size: _types.Size,
 def is_aligned_by_8(x, y) -> bool:
     """
     Check if x and y are aligned by 8
+
     :param x: x
     :param y: y
     :return: bool
@@ -57,6 +58,7 @@ def is_aligned_by_8(x, y) -> bool:
 def align_by_8(x, y) -> _types.Size:
     """
     Align x and y by 8 and return a tuple
+
     :param x: x
     :param y: y
     :return: tuple(x, y)
@@ -67,6 +69,7 @@ def align_by_8(x, y) -> _types.Size:
 def copy_img(img: PIL.Image.Image):
     """
     Copy a :py:class:`PIL.Image.Image` while preserving its filename attribute.
+
     :param img: the image
     :return: a copy of the image
     """
@@ -106,6 +109,7 @@ def resize_image(img: PIL.Image.Image,
 def to_rgb(img: PIL.Image.Image):
     """
     Convert a :py:class:`PIL.Image.Image` to RGB format while preserving its filename attribute.
+
     :param img: the image
     :return: a converted copy of the image
     """

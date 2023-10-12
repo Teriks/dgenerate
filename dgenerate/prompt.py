@@ -47,6 +47,7 @@ class Prompt:
     def parse(self, value: str):
         """
         Parse the positive and negative prompt from a string and set the positive and negative attributes.
+
         :param value: the string
         :return: :py:class:`.Prompt` (returns self)
         """

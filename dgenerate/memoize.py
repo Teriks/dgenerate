@@ -28,6 +28,7 @@ def args_cache_key(args_dict: typing.Dict[str, typing.Any],
                    custom_hashes: typing.Dict[str, typing.Callable[[typing.Any], str]] = None):
     """
     Generate a cache key for a functions arguments to use for memoization.
+
     :param args_dict: The args dictionary of the function
     :param custom_hashes: Custom hash functions for specific argument names if needed
     :return: string

@@ -188,6 +188,7 @@ class BatchProcessor:
     def run_file(self, stream: typing.TextIO):
         """
         Process a batch processing script from a file string
+
         :param stream: A filestream in text read mode
         """
         continuation = ''
@@ -215,6 +216,7 @@ class BatchProcessor:
     def run_string(self, string: str):
         """
         Process a batch processing script from a string
+
         :param string: a string containing the script
         """
         self.run_file(io.StringIO(string))

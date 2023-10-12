@@ -1212,6 +1212,7 @@ def supported_model_type_enums() -> typing.List[ModelTypes]:
 def get_model_type_enum(id_str: typing.Union[ModelTypes, str]) -> ModelTypes:
     """
     Convert a --model-type string to its :py:class:`.ModelTypes` enum value
+
     :param id_str: --model-type string
     :return: :py:class:`.ModelTypes`
     """
@@ -1231,6 +1232,7 @@ def get_model_type_enum(id_str: typing.Union[ModelTypes, str]) -> ModelTypes:
 def get_model_type_string(model_type_enum: ModelTypes) -> str:
     """
     Convert a :py:class:`.ModelTypes` enum value to its --model-type string
+
     :param model_type_enum: :py:class:`.ModelTypes` value
     :return: --model-type string
     """
@@ -1249,6 +1251,7 @@ def get_model_type_string(model_type_enum: ModelTypes) -> str:
 def model_type_is_upscaler(model_type: typing.Union[ModelTypes, str]) -> bool:
     """
     Does a --model-type string or :py:class:`.ModelTypes` enum value represent an upscaler model?
+
     :param model_type: --model-type string or :py:class:`.ModelTypes` enum value
     :return: bool
     """
@@ -1260,6 +1263,7 @@ def model_type_is_upscaler(model_type: typing.Union[ModelTypes, str]) -> bool:
 def model_type_is_sdxl(model_type: typing.Union[ModelTypes, str]) -> bool:
     """
     Does a --model-type string or :py:class:`.ModelTypes` enum value represent an SDXL model?
+
     :param model_type: --model-type string or :py:class:`.ModelTypes` enum value
     :return: bool
     """
@@ -1271,6 +1275,7 @@ def model_type_is_sdxl(model_type: typing.Union[ModelTypes, str]) -> bool:
 def model_type_is_torch(model_type: typing.Union[ModelTypes, str]) -> bool:
     """
     Does a --model-type string or :py:class:`.ModelTypes` enum value represent an Torch model?
+
     :param model_type: --model-type string or :py:class:`.ModelTypes` enum value
     :return: bool
     """
@@ -1282,6 +1287,7 @@ def model_type_is_torch(model_type: typing.Union[ModelTypes, str]) -> bool:
 def model_type_is_flax(model_type: typing.Union[ModelTypes, str]) -> bool:
     """
     Does a --model-type string or :py:class:`.ModelTypes` enum value represent an Flax model?
+
     :param model_type: --model-type string or :py:class:`.ModelTypes` enum value
     :return: bool
     """
@@ -1293,6 +1299,7 @@ def model_type_is_flax(model_type: typing.Union[ModelTypes, str]) -> bool:
 def model_type_is_pix2pix(model_type: typing.Union[ModelTypes, str]) -> bool:
     """
     Does a --model-type string or :py:class:`.ModelTypes` enum value represent an pix2pix type model?
+
     :param model_type: --model-type string or :py:class:`.ModelTypes` enum value
     :return: bool
     """
@@ -1304,6 +1311,7 @@ def model_type_is_pix2pix(model_type: typing.Union[ModelTypes, str]) -> bool:
 def have_jax_flax():
     """
     Do we have jax/flax support?
+
     :return: bool
     """
     return jax is not None
@@ -1368,6 +1376,7 @@ class PipelineWrapperResult:
                              extra_args: typing.Optional[typing.Sequence[typing.Tuple[str, typing.Any]]] = None):
         """
         Generate a valid dgenerate config file with a single invocation that reproduces this result.
+
         :param extra_args: Extra invocation arguments to add to the config file.
         :return: The configuration as a string
         """
@@ -1403,6 +1412,7 @@ class PipelineWrapperResult:
                               extra_args: typing.Optional[typing.Sequence[typing.Tuple[str, typing.Any]]] = None):
         """
         Generate a valid dgenerate command line invocation that reproduces this result.
+
         :param extra_args: Extra arguments to add to the end of the command line.
         :return: A string containing the dgenerate command line needed to reproduce this result.
         """
@@ -1418,6 +1428,7 @@ class PipelineWrapperResult:
         Replication of options passed to dgenerate to produce this result in the form of a list of tuples.
 
         Format being [('--argument', value), ...]
+
         :return: list of (tuples of length 2)
         """
         return self._dgenerate_opts.copy()
@@ -1462,6 +1473,7 @@ class DiffusionArguments:
     def get_pipeline_wrapper_args(self):
         """
         Get the arguments dictionary needed to call :py:class:`.DiffusionPipelineWrapper`
+
         :return: dictionary of argument names with values
         """
         pipeline_args = {}
@@ -1501,6 +1513,7 @@ class DiffusionArguments:
         """
         Describe the pipeline wrapper arguments in a pretty, human-readable way, with word wrapping
         depending on console size or a maximum length depending on what stdout currently is.
+
         :return: description string.
         """
         prompt_format = []
@@ -1679,7 +1692,6 @@ class DiffusionPipelineWrapper:
     def revision(self) -> _types.OptionalName:
         """
         Currently set revision for the main model or None
-        :return: revision string or None
         """
         return self._revision
 
@@ -1687,7 +1699,6 @@ class DiffusionPipelineWrapper:
     def safety_checker(self) -> bool:
         """
         Safety checker enabled status
-        :return: bool
         """
         return self._safety_checker
 
@@ -1695,7 +1706,6 @@ class DiffusionPipelineWrapper:
     def variant(self) -> _types.OptionalName:
         """
         Currently set variant for the main model or None
-        :return: variant string or None
         """
         return self._variant
 
@@ -1703,7 +1713,6 @@ class DiffusionPipelineWrapper:
     def dtype(self) -> typing.Literal['float16', 'float32', 'auto']:
         """
         Currently set dtype for the main model
-        :return: dtype string, one of: 'float16', 'float32', 'auto'
         """
         return self._dtype
 
@@ -1711,7 +1720,6 @@ class DiffusionPipelineWrapper:
     def textual_inversion_paths(self) -> _types.OptionalPaths:
         """
         List of supplied --textual-inversions path strings or None
-        :return: list of strings or None
         """
         return [self._textual_inversion_paths] if \
             isinstance(self._textual_inversion_paths, str) else self._textual_inversion_paths
@@ -1720,7 +1728,6 @@ class DiffusionPipelineWrapper:
     def control_net_paths(self) -> _types.OptionalPaths:
         """
         List of supplied --control-nets path strings or None
-        :return: list of strings or None
         """
         return [self._control_net_paths] if \
             isinstance(self._control_net_paths, str) else self._control_net_paths
@@ -1729,7 +1736,6 @@ class DiffusionPipelineWrapper:
     def device(self) -> _types.Name:
         """
         Currently set --device string
-        :return: string
         """
         return self._device
 
@@ -1737,7 +1743,6 @@ class DiffusionPipelineWrapper:
     def model_path(self) -> _types.Path:
         """
         Model path for the main model
-        :return: string
         """
         return self._model_path
 
@@ -1745,7 +1750,6 @@ class DiffusionPipelineWrapper:
     def scheduler(self) -> _types.OptionalName:
         """
         Selected scheduler name for the main model or None
-        :return: string or None
         """
         return self._scheduler
 
@@ -1753,7 +1757,6 @@ class DiffusionPipelineWrapper:
     def sdxl_refiner_scheduler(self) -> _types.OptionalName:
         """
         Selected scheduler name for the SDXL refiner or None
-        :return: string or None
         """
         return self._sdxl_refiner_scheduler
 
@@ -1761,7 +1764,6 @@ class DiffusionPipelineWrapper:
     def sdxl_refiner_path(self) -> _types.OptionalName:
         """
         Model path for the SDXL refiner or None
-        :return: string or None
         """
         return self._sdxl_refiner_path
 
@@ -1769,7 +1771,6 @@ class DiffusionPipelineWrapper:
     def model_type_enum(self) -> ModelTypes:
         """
         Currently set --model-type enum value
-        :return: :py:class:`.ModelTypes`
         """
         return self._model_type
 
@@ -1777,7 +1778,6 @@ class DiffusionPipelineWrapper:
     def model_type_string(self) -> str:
         """
         Currently set --model-type string value
-        :return: string
         """
         return get_model_type_string(self._model_type)
 
@@ -1785,7 +1785,6 @@ class DiffusionPipelineWrapper:
     def model_subfolder(self) -> _types.OptionalName:
         """
         Selected model subfolder for the main model, (remote repo subfolder or local) or None
-        :return: string or None
         """
         return self._model_subfolder
 
@@ -1793,7 +1792,6 @@ class DiffusionPipelineWrapper:
     def vae_path(self) -> _types.OptionalPath:
         """
         Selected --vae path for the main model or None
-        :return: string or None
         """
         return self._vae_path
 
@@ -1801,7 +1799,6 @@ class DiffusionPipelineWrapper:
     def vae_tiling(self) -> bool:
         """
         Current --vae-tiling status
-        :return: bool
         """
         return self._vae_tiling
 
@@ -1809,7 +1806,6 @@ class DiffusionPipelineWrapper:
     def vae_slicing(self) -> bool:
         """
         Current --vae-slicing status
-        :return: bool
         """
         return self._vae_slicing
 
@@ -1817,7 +1813,6 @@ class DiffusionPipelineWrapper:
     def lora_paths(self) -> _types.OptionalPaths:
         """
         List of supplied --lora path strings or None
-        :return: list of strings or None
         """
         return [self._lora_paths] if \
             isinstance(self._lora_paths, str) else self._lora_paths
@@ -1826,7 +1821,6 @@ class DiffusionPipelineWrapper:
     def auth_token(self) -> _types.OptionalString:
         """
         Current --auth-token value or None
-        :return: string or None
         """
         return self._auth_token
 

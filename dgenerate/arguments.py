@@ -879,6 +879,11 @@ class DgenerateUsageError(Exception):
 
 
 class DgenerateArguments(dgenerate.DiffusionRenderLoopConfig):
+    """
+    Represents dgenerates parsed command line arguments, can be used
+    as a configuration object for :py:class:`dgenerate.diffusionloop.DiffusionRenderLoop`.
+    """
+
     plugin_module_paths: _types.Paths = []
     verbose: bool = False
 
@@ -993,6 +998,15 @@ def _parse_args(args=None) -> DgenerateArguments:
 
 def parse_args(args: typing.Sequence[str],
                throw: bool = False) -> typing.Union[DgenerateArguments, None]:
+    """
+    Parse dgenerates command line arguments and return a configuration object.
+
+    :param args: arguments list, as in args taken from sys.argv, or in that format
+    :param throw: throw :py:exc:`.DgenerateUsageError` on error?
+    :return: :py:class:`.DgenerateArguments`
+    """
+
+
     try:
         return _parse_args(args)
     except (DgenerateUsageError, argparse.ArgumentTypeError, argparse.ArgumentError) as e:
