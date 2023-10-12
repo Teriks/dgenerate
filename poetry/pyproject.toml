@@ -16,24 +16,24 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
-diffusers = "0.21.2"
-transformers = "4.31.0"
-accelerate = "0.22.0"
-pytorch-lightning = "2.0.7"
-omegaconf = "2.3.0"
-requests = "2.31.0"
-av = "10.0.0"
-pillow = "10.0.0"
-jinja2 = "3.1.2"
-torch = { version = "2.0.1+cu118", source = "pytorch" }
-torchsde = "0.2.6"
+diffusers = "^0.21.2"
+transformers = "^4.31.0"
+accelerate = "^0.22.0"
+pytorch-lightning = "^2.0.7"
+omegaconf = "^2.3.0"
+requests = "^2.31.0"
+av = "^10.0.0"
+pillow = "^10.0.0"
+jinja2 = "^3.1.2"
+torch = { version = "^2.0.1+cu118", source = "pytorch" }
+torchsde = "^0.2.6"
 fake-useragent = "1.1.3"
-flax = { version = "0.7.2", optional = true }
-jax = { version = "0.4.14", optional = true, extras = ["cuda11_pip"] }
-opencv-python = "4.8.1.78"
+flax = { version = "^0.7.4", optional = true }
+jax = { version = "^0.4.18", optional = true, extras = ["cuda11_pip"] }
+opencv-python = "^4.8.1.78"
 controlnet-aux = "0.0.7"
 # transient dependency of controlnet-aux openpose
-matplotlib = "3.8.0"
+matplotlib = "^3.8.0"
 
 [tool.poetry.extras]
 flax = ["flax", "jax"]
