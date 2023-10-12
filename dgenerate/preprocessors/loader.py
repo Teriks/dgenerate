@@ -35,7 +35,7 @@ class Loader:
     def __init__(self):
         self.search_modules: set = set()
 
-    def load_modules(self, paths: typing.List[str]):
+    def load_plugin_modules(self, paths: typing.List[str]):
         self.search_modules.update(_plugin.load_modules(paths))
 
     def _load(self, path, device):

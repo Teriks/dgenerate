@@ -53,7 +53,7 @@ def image_preprocessor_help(args: typing.Sequence[str], throw: bool = False):
     names = parse_result.image_preprocessor_help
 
     module_loader = Loader()
-    module_loader.load_modules(parse_result.plugin_modules)
+    module_loader.load_plugin_modules(parse_result.plugin_modules)
 
     if len(names) == 0:
         available = ('\n' + ' ' * 4).join(quote(name) for name in module_loader.get_all_names())
