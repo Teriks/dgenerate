@@ -611,6 +611,7 @@ class ImageSeedParseResult:
     def is_single_image(self) -> bool:
         """
         Did this image seed path only specify a singular image/video?
+
         :return: bool
         """
         return self.uri is not None and self.mask_uri is None and self.control_uri is None
@@ -661,6 +662,7 @@ def _parse_image_seed_uri_legacy(uri: str) -> ImageSeedParseResult:
 def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
     """
     Parse an `--image-seeds` path into its constituents
+
     :param uri: `--image-seeds` path
     :return: :py:class:`.ImageSeedParseResult`
     """
@@ -746,6 +748,7 @@ WEB_FILE_CACHE: typing.Dict[str, str] = dict()
 def get_web_cache_directory() -> str:
     """
     Get the default web cache directory or the value of the environmental variable DGENERATE_WEB_CACHE
+
     :return: string (directory path)
     """
     user_cache_path = os.environ.get('DGENERATE_WEB_CACHE')
@@ -780,6 +783,7 @@ atexit.register(_wipe_web_cache_directory)
 def generate_web_cache_filename() -> str:
     """
     Generate a filename that is unique in the web cache directory
+
     :return: string (filename)
     """
     name = "cached_file"
@@ -809,7 +813,7 @@ def fetch_image_data_stream(uri: str) -> typing.Tuple[str, typing.BinaryIO]:
     :param mime_type_filter: Function accepting a string (mime-type) and returning True if that mime-type is acceptable
     :param mime_acceptable_desc: String describing acceptable mime-types to be used in exceptions or None (auto generate)
 
-    :raises: :exception:`.UnknownMimetypeError`
+    :raises: :py:exc:`.UnknownMimetypeError`
 
     :rtype: (mime-type string, BinaryIO)
     """
@@ -861,6 +865,7 @@ def get_supported_static_image_mimetypes() -> typing.List[str]:
 def get_supported_image_mimetypes() -> typing.List[str]:
     """
     Get all supported `--image-seeds` image mimetypes, including animated image mimetypes
+
     :return: list of strings
     """
     return get_supported_static_image_mimetypes() + \
@@ -870,6 +875,7 @@ def get_supported_image_mimetypes() -> typing.List[str]:
 def get_supported_video_mimetypes() -> typing.List[str]:
     """
     Get all supported `--image-seeds` video mimetypes, may contain a wildcard
+
     :return: list of strings
     """
     return ['video/*']
@@ -878,6 +884,7 @@ def get_supported_video_mimetypes() -> typing.List[str]:
 def get_supported_mimetypes() -> typing.List[str]:
     """
     Get all supported `--image-seeds` mimetypes, video mimetype may contain a wildcard.
+
     :return: list of strings
     """
     return get_supported_image_mimetypes() + get_supported_video_mimetypes()
@@ -886,6 +893,7 @@ def get_supported_mimetypes() -> typing.List[str]:
 def mimetype_is_animated_image(mimetype: str) -> bool:
     """
     Check if a mimetype is one that dgenerate considers an animated image
+
     :param mimetype: The mimetype string
     :return: bool
     """
@@ -895,6 +903,7 @@ def mimetype_is_animated_image(mimetype: str) -> bool:
 def mimetype_is_static_image(mimetype: str) -> bool:
     """
     Check if a mimetype is one that dgenerate considers a static image
+
     :param mimetype: The mimetype string
     :return: bool
     """
@@ -904,6 +913,7 @@ def mimetype_is_static_image(mimetype: str) -> bool:
 def mimetype_is_video(mimetype: str) -> bool:
     """
     Check if a mimetype is a video mimetype supported by dgenerate
+
     :param mime_type: The mimetype string
     :return: bool
     """
@@ -915,6 +925,7 @@ def mimetype_is_video(mimetype: str) -> bool:
 def mime_type_is_supported(mimetype: str) -> bool:
     """
     Check if dgenerate supports a given input mimetype
+
     :param mime_type: The mimetype string
     :return: bool
     """

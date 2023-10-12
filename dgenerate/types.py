@@ -67,6 +67,7 @@ def class_and_id_string(obj) -> str:
 def get_public_attributes(obj) -> typing.Dict[str, typing.Any]:
     """
     Get the public attributes (excluding functions) and their values from an object.
+
     :param obj: the object
     :return: dict of attribute names to values
     """
@@ -77,6 +78,7 @@ def get_public_attributes(obj) -> typing.Dict[str, typing.Any]:
 def get_public_members(obj) -> typing.Dict[str, typing.Any]:
     """
     Get the public members (including functions) and their values from an object.
+
     :param obj: the object
     :return: dict of attribute names to values
     """

@@ -169,6 +169,7 @@ def _safe_len(lst):
 def gen_seeds(n):
     """
     Generate a list of N random seed integers
+
     :param n: number of seeds to generate
     :return: list of integer seeds
     """
@@ -314,7 +315,9 @@ class DiffusionRenderLoopConfig:
                                     variable_prefix:
                                     typing.Optional[str] = None) -> typing.Dict[str, typing.Any]:
         """
-        Generate a dictionary from this configuration object that is suitable for using as Jinja2 environmental variables.
+        Generate a dictionary from this configuration object that is suitable 
+        for using as Jinja2 environmental variables.
+        
         :param variable_prefix: Prefix every variable name with this prefix if specified
         :return: a dictionary of attribute names to values
         """
@@ -428,6 +431,7 @@ class DiffusionRenderLoopConfig:
     def calculate_generation_steps(self):
         """
         Calculate the number of generation steps that this configuration results in.
+
         :return: int
         """
         optional_factors = [
@@ -559,10 +563,16 @@ class DiffusionRenderLoop:
 
     @property
     def written_images(self):
+        """
+        List of image filenames written by the last run
+        """
         return self._written_images
 
     @property
     def written_animations(self):
+        """
+        List of animation filenames written by the last run
+        """
         return self._written_animations
 
     def generate_template_variables_with_types(self):
@@ -624,7 +634,6 @@ class DiffusionRenderLoop:
     def generation_step(self):
         """
         Returns the current generation step
-        :return: int
         """
         return self._generation_step
 

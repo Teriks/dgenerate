@@ -29,7 +29,7 @@ LOADED_PLUGIN_MODULES: typing.Dict[str, types.ModuleType] = {}
 """Plugin module in memory cache"""
 
 
-def load_modules(paths: _types.OptionalPaths) -> types.ModuleType:
+def load_modules(paths: _types.OptionalPaths) -> typing.List[types.ModuleType]:
     """
     Load python modules from a folder or directly from a .py file.
     Cache them so that repeat requests for loading return an already loaded module.
