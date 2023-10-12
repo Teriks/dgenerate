@@ -54,7 +54,7 @@ class ImagePreprocessorChain(_preprocessor.ImagePreprocessor):
     def add_processor(self, preprocessor: _preprocessor.ImagePreprocessor):
         self._preprocessors.append(preprocessor)
 
-    def pre_resize(self, image: PIL.Image, resize_resolution: _types.OptionalSize):
+    def pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         if self._preprocessors:
             p_image = image
             for preprocessor in self._preprocessors:
@@ -66,7 +66,7 @@ class ImagePreprocessorChain(_preprocessor.ImagePreprocessor):
         else:
             return image
 
-    def post_resize(self, image: PIL.Image):
+    def post_resize(self, image: PIL.Image.Image):
         if self._preprocessors:
             p_image = image
             for preprocessor in self._preprocessors:
