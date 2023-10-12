@@ -942,12 +942,13 @@ class ImageSeedInfo:
         self.total_frames = total_frames
 
 
-def get_image_seed_info(image_seed_path: str, frame_start: int = 0,
+def get_image_seed_info(image_seed_path: typing.Union[str, ImageSeedParseResult],
+                        frame_start: int = 0,
                         frame_end: _types.OptionalInteger = None) -> ImageSeedInfo:
     """
     Get an informational object from a dgenerate `--image-seeds` path
 
-    :param image_seed_path: The path string
+    :param image_seed_path: The path string or :py:class:`.ImageSeedParseResult`
     :param frame_start: slice start
     :param frame_end: slice end
     :return: :py:class:`.ImageSeedInfo`
@@ -956,12 +957,14 @@ def get_image_seed_info(image_seed_path: str, frame_start: int = 0,
         return ImageSeedInfo(seed.is_animation_frame, seed.total_frames, seed.fps, seed.duration)
 
 
-def get_control_image_info(path: str, frame_start: int = 0, frame_end: _types.OptionalInteger = None) -> ImageSeedInfo:
+def get_control_image_info(path: typing.Union[str, ImageSeedParseResult],
+                           frame_start: int = 0,
+                           frame_end: _types.OptionalInteger = None) -> ImageSeedInfo:
     """
     Get an informational object from a dgenerate `--image-seeds` path that is known to be a singular control image/video.
     More efficient in this case.
 
-    :param image_seed_path: The path string
+    :param path: The path string or :py:class:`.ImageSeedParseResult`
     :param frame_start: slice start
     :param frame_end: slice end
     :return: :py:class:`.ImageSeedInfo`
@@ -1067,7 +1070,7 @@ def _create_image_seed_reader(manage_context: list,
     return reader
 
 
-def iterate_control_image(uri: str,
+def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
                           frame_start: int = 0,
                           frame_end: _types.OptionalInteger = None,
                           resize_resolution: _types.OptionalSize = None,
@@ -1082,7 +1085,7 @@ def iterate_control_image(uri: str,
     This method is more efficient than :py:meth:`.iterate_image_seed` when it is known that 
     there is only one image/video in the path.
 
-    :param uri: `--image-seeds` path
+    :param uri: `--image-seeds` path or :py:class:`.ImageSeedParseResult`
     :param frame_start: starting frame, inclusive value
     :param frame_end: optional end frame, inclusive value
     :param resize_resolution: optional resize resolution
@@ -1175,7 +1178,7 @@ def _iterate_image_seed_x2(seed_reader: AnimationReader,
                                              **{right_reader_iterate_param_name: right_reader}))
 
 
-def iterate_image_seed(uri: str,
+def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
                        frame_start: int = 0,
                        frame_end: _types.OptionalInteger = None,
                        resize_resolution: _types.OptionalSize = None,
@@ -1190,7 +1193,7 @@ def iterate_image_seed(uri: str,
     One or more :py:class:`.ImageSeed` objects may be yielded depending on whether an animation is being read.
     
 
-    :param uri: `--image-seeds` path
+    :param uri: `--image-seeds` path or :py:class:`.ImageSeedParseResult`
     :param frame_start: starting frame, inclusive value
     :param frame_end: optional end frame, inclusive value
     :param resize_resolution: optional resize resolution
