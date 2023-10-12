@@ -109,7 +109,9 @@ class ImageSeedSizeMismatchError(ImageSeedError):
 
 
 class AnimationReader:
-    # interface
+    """
+    Abstract base class for animation readers.
+    """
     def __init__(self,
                  width: int,
                  height: int,
