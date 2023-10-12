@@ -64,7 +64,7 @@ def poetry_lockfile_deps():
 
 def get_poetry_lockfile_as_pip_requires(optionals=False, exclude=None):
     exclude = set() if exclude is None else exclude
-    return {dep["name"]: '=='+dep["version"] for dep in poetry_lockfile_deps()
+    return {dep["name"]: '==' + dep["version"] for dep in poetry_lockfile_deps()
             if dep['optional'] == optionals and dep['name'] not in exclude}
 
 
@@ -112,12 +112,13 @@ def _pad_version(parts):
 def _to_version_str(parts):
     return '.'.join(str(p) for p in parts)
 
+
 def _version_to_parts(string, cast=True):
     parts = string.split('+')
 
     extra = ''
     if len(parts) == 2:
-        extra = '+'+parts[1]
+        extra = '+' + parts[1]
 
     version = parts[0]
 
@@ -125,11 +126,11 @@ def _version_to_parts(string, cast=True):
 
 
 def poetry_caret_to_pip(version):
-    v, extra = _version_to_parts(version)
+    v, _ = _version_to_parts(version)
     v2 = []
     bumped = False
     for idx, p in enumerate(v):
-        if (p != 0 or idx == len(v) - 1 and not bumped) and not bumped:
+        if (p != 0 or idx == len(v) - 1) and not bumped:
             bumped = True
             v2.append(p + 1)
         else:
@@ -138,7 +139,7 @@ def poetry_caret_to_pip(version):
     _pad_version(v)
     _pad_version(v2)
 
-    return f">={_to_version_str(v)}{extra},<{_to_version_str(v2)}{extra}"
+    return f">={_to_version_str(v)},<{_to_version_str(v2)}"
 
 
 def _bump_version_rest(parts):
@@ -152,7 +153,7 @@ def _bump_version_rest(parts):
 
 
 def poetry_tilde_to_pip(version):
-    v, extra = _version_to_parts(version)
+    v, _ = _version_to_parts(version)
     if len(v) > 2:
         v = v[:2]
 
@@ -161,11 +162,11 @@ def poetry_tilde_to_pip(version):
     _pad_version(v)
     _pad_version(v2)
 
-    return f">={_to_version_str(v)}{extra},<{_to_version_str(v2)}{extra}"
+    return f">={_to_version_str(v)},<{_to_version_str(v2)}"
 
 
 def poetry_star_to_pip(version):
-    v, extra = _version_to_parts(version, cast=False)
+    v, _ = _version_to_parts(version, cast=False)
     v = v[:v.index('*')]
 
     if not v:
@@ -176,7 +177,7 @@ def poetry_star_to_pip(version):
     _pad_version(v)
     _pad_version(v2)
 
-    return f">={_to_version_str(v)}{extra},<{_to_version_str(v2)}{extra}"
+    return f">={_to_version_str(v)},<{_to_version_str(v2)}"
 
 
 def poetry_version_to_pip_requirement(version):
