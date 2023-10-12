@@ -52,6 +52,18 @@ OptionalPrompts = typing.Optional[Prompts]
 OptionalString = typing.Optional[str]
 
 
+def class_and_id_string(obj) -> str:
+    """
+    Return a string formated with an objects class name next to its memory ID.
+
+    IE: `<ClassName: id_integer>`
+
+    :param obj: the object
+    :return: formated string
+    """
+    return f'<{obj.__class__.__name__}: {str(id(obj))}>'
+
+
 def get_public_attributes(obj) -> typing.Dict[str, typing.Any]:
     """
     Get the public attributes (excluding functions) and their values from an object.

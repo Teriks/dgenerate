@@ -22,6 +22,8 @@ import ast
 import shutil
 import typing
 
+import dgenerate.types as _types
+
 
 class ConceptPathParseError(Exception):
     pass
@@ -203,18 +205,22 @@ def justify_left(string: str):
 
 
 def debug_format_args(args_dict: typing.Dict[str, typing.Any],
-                      value_transformer: typing.Optional[typing.Callable[[str, typing.Any], str]] = None):
+                      value_transformer: typing.Optional[typing.Callable[[str, typing.Any], str]] = None,
+                      max_value_len: int = 256):
     """
     Format function arguments in a way that can be printed for debug messages.
+
     :param args_dict: argument dictionary
     :param value_transformer: transform values in the argument dictionary
+    :param max_value_len: Max length of a formatted value before it is turned into a class and id string only
     :return: formatted string
     """
+
     def _value_transformer(key, value):
         if value_transformer is not None:
             return value_transformer(key, value)
         return value
 
     return str(
-        {k: str(_value_transformer(k, v)) if len(str(_value_transformer(k, v))) < 256
-        else v.__class__.__name__ for k, v in args_dict.items()})
+        {k: str(_value_transformer(k, v)) if len(str(_value_transformer(k, v))) < max_value_len
+         else _types.class_and_id_string(v) for k, v in args_dict.items()})

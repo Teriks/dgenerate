@@ -704,7 +704,7 @@ like this:
 
     # With flax if you want
 
-    pip3 install --editable .[dev, flax] --extra-index-url https://download.pytorch.org/whl/cu118/ \
+    pip3 install --editable .[dev,flax] --extra-index-url https://download.pytorch.org/whl/cu118/ \
     -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 
