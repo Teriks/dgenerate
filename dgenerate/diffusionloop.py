@@ -187,6 +187,9 @@ def _quote_string_lists(ls):
 
 
 class DiffusionRenderLoopConfigError(Exception):
+    """
+    Raised by :py:meth:`.DiffusionRenderLoopConfig.check` on configuration errors.
+    """
     pass
 
 
@@ -575,8 +578,8 @@ class DiffusionRenderLoopConfig:
 
     def iterate_diffusion_args(self, **overrides) -> typing.Generator[_pipelinewrapper.DiffusionArguments, None, None]:
         """
-        Iterate over :py:class:`dgenerate.pipelinewrapper.DiffusionPipelineWrapper` argument objects using
-        every combination of argument values in this configuration.
+        Iterate over :py:class:`dgenerate.pipelinewrapper.DiffusionArguments` argument objects using
+        every combination of argument values provided for that object by this configuration.
 
         :param overrides: use key word arguments to override specific attributes of this object with a new list value.
         :return: a generator over :py:class:`dgenerate.pipelinewrapper.DiffusionArguments`
@@ -718,7 +721,7 @@ class DiffusionRenderLoop:
 
         This is used to implement --templates-help in :py:meth:`dgenerate.invoker.invoke_dgenerate`
 
-        :return: A human-readable description of all template variables
+        :return: a human-readable description of all template variables
         """
 
         help_string = _textprocessing.underline(

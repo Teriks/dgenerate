@@ -1360,7 +1360,6 @@ class PipelineWrapperResult:
     images: typing.Optional[typing.List[PIL.Image.Image]]
     dgenerate_opts: typing.List[typing.Tuple[str, typing.Any]]
 
-
     @property
     def image_count(self):
         """
@@ -2404,7 +2403,7 @@ class DiffusionPipelineWrapper:
                 return images
             else:
                 return DiffusionPipelineWrapper._call_pipeline(
-                        *args, **kwargs).images
+                    *args, **kwargs).images
 
         default_args['generator'] = torch.Generator(device=self._device).manual_seed(user_args.get('seed', 0))
 

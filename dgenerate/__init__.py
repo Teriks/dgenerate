@@ -37,6 +37,9 @@ try:
     from dgenerate.invoker import invoke_dgenerate
     from dgenerate.arguments import parse_args, DgenerateUsageError
     from dgenerate.pipelinewrapper import ModelTypes
+    from dgenerate.mediainput import ImageSeedError, UnknownMimetypeError
+    from dgenerate.pipelinewrapper import InvalidModelPathError, InvalidSchedulerName, OutOfMemoryError
+    from dgenerate.preprocessors import ImagePreprocessorArgumentError, ImagePreprocessorNotFoundError
     from dgenerate import messages
 
     transformers.logging.set_verbosity(transformers.logging.CRITICAL)

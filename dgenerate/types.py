@@ -170,7 +170,7 @@ def get_type_of_optional(hinted_type):
     :param hinted_type: The hinted type to extract from
     :return: the type, or None
     """
-    
+
     origin = typing.get_origin(hinted_type)
     if origin is typing.Union:
         union_args = typing.get_args(hinted_type)

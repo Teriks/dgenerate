@@ -20,8 +20,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import typing
 
-import torch
-
 import dgenerate.arguments as _arguments
 import dgenerate.diffusionloop as _diffusionloop
 import dgenerate.mediainput as _mediainput
@@ -63,7 +61,7 @@ def invoke_dgenerate(
             raise _arguments.DgenerateUsageError(e)
 
     if '--templates-help' in args:
-        _messages.log(render_loop.generate_template_variables_help()+'\n', underline=True)
+        _messages.log(render_loop.generate_template_variables_help() + '\n', underline=True)
         return 0
 
     try:
