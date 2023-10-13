@@ -21,6 +21,7 @@
 import inspect
 import numbers
 import typing
+
 import dgenerate.types as _types
 
 
@@ -33,6 +34,7 @@ def args_cache_key(args_dict: typing.Dict[str, typing.Any],
     :param custom_hashes: Custom hash functions for specific argument names if needed
     :return: string
     """
+
     def value_hash(obj):
         if isinstance(obj, dict):
             return '{' + args_cache_key(obj) + '}'

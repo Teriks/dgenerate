@@ -25,6 +25,7 @@ class Prompt:
     """
     Represents a combined positive and optional negative prompt split by a delimiter character.
     """
+
     def __init__(self,
                  positive: typing.Optional[str] = None,
                  negative: typing.Optional[str] = None,

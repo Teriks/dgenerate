@@ -28,6 +28,7 @@ class AnimationWriter:
     """
     Interface for animation writers
     """
+
     def __init__(self):
         pass
 
@@ -48,6 +49,7 @@ class VideoWriter(AnimationWriter):
     """
     Animation writer for MP4 h264 format video
     """
+
     def __init__(self, filename, fps: typing.Union[float, int]):
         super().__init__()
         self.filename = filename
@@ -89,6 +91,7 @@ class AnimatedImageWriter(AnimationWriter):
     """
     Animation writer for animated images such as GIFs and webp
     """
+
     def __init__(self, filename: str, duration: float):
         super().__init__()
         self.collected_frames = []
