@@ -86,6 +86,24 @@ def get_public_members(obj) -> typing.Dict[str, typing.Any]:
             if not k.startswith("_")}
 
 
+def is_type(hinted_type, comparison_type):
+    """
+    Check if a hinted type is equal to a comparison type.
+
+    :param hinted_type: The hinted type
+    :param comparison_type: The type to check for
+    :return: bool
+    """
+
+    if hinted_type is comparison_type:
+        return True
+
+    if typing.get_origin(hinted_type) is comparison_type:
+        return True
+
+    return False
+
+
 def is_type_or_optional(hinted_type, comparison_type):
     """
     Check if a hinted type is equal to a comparison type, even if the type hint is
@@ -100,12 +118,66 @@ def is_type_or_optional(hinted_type, comparison_type):
 
     origin = typing.get_origin(hinted_type)
 
-    if origin == comparison_type:
+    if origin is comparison_type:
         return True
-    if origin == typing.Union:
+    if origin is typing.Union:
         union_args = typing.get_args(hinted_type)
         if len(union_args) == 2:
             for a in union_args:
-                if typing.get_origin(a) == comparison_type:
+                if is_type(a, comparison_type):
                     return True
     return False
+
+
+def get_type(hinted_type):
+    """
+    Get the basic type of hinted type
+
+    :param hinted_type: the type hint
+    :return: bool
+    """
+
+    o = typing.get_origin(hinted_type)
+    if o is None:
+        return hinted_type
+    return o
+
+
+def is_optional(hinted_type):
+    """
+    Check if a hinted type is optional
+
+    :param hinted_type: The hinted type
+    :param comparison_type: The type to check for
+    :return: bool
+    """
+
+    origin = typing.get_origin(hinted_type)
+
+    if origin is typing.Union:
+        union_args = typing.get_args(hinted_type)
+        if len(union_args) == 2:
+            for a in union_args:
+                if is_type(a, None):
+                    return True
+    return False
+
+
+def get_type_of_optional(hinted_type):
+    """
+    Get the first possible type for an optional type hint
+
+    :param hinted_type: The hinted type to extract from
+    :return: the type, or None
+    """
+    
+    origin = typing.get_origin(hinted_type)
+    if origin is typing.Union:
+        union_args = typing.get_args(hinted_type)
+        if len(union_args) == 2:
+            for a in union_args:
+                o = typing.get_origin(a)
+                if o is None:
+                    return a
+                return o
+    return None

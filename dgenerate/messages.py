@@ -34,7 +34,7 @@ WARNING = 1
 ERROR = 2
 """Log Level ERROR"""
 DEBUG = 3
-"""Log Level Debug"""
+"""Log Level DEBUG"""
 
 _err_file = sys.stderr
 _msg_file = sys.stdout

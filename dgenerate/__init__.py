@@ -31,10 +31,12 @@ warnings.filterwarnings('ignore', module='transformers')
 try:
     import diffusers
     import transformers
-    from dgenerate.diffusionloop import DiffusionRenderLoop, DiffusionRenderLoopConfig, gen_seeds
+    from dgenerate.diffusionloop import \
+        DiffusionRenderLoop, DiffusionRenderLoopConfig, DiffusionRenderLoopConfigError, gen_seeds
     from dgenerate.batchprocess import BatchProcessError, create_config_runner
     from dgenerate.invoker import invoke_dgenerate
     from dgenerate.arguments import parse_args, DgenerateUsageError
+    from dgenerate.pipelinewrapper import ModelTypes
     from dgenerate import messages
 
     transformers.logging.set_verbosity(transformers.logging.CRITICAL)
