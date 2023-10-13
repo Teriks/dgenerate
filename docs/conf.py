@@ -1,6 +1,10 @@
 import os
 import sys
+from importlib.machinery import SourceFileLoader
+
 sys.path.insert(0, os.path.abspath('..'))
+
+__setup = SourceFileLoader('setup_as_library', '../setup.py').load_module()
 
 
 # Configuration file for the Sphinx documentation builder.
@@ -14,7 +18,7 @@ sys.path.insert(0, os.path.abspath('..'))
 project = 'dgenerate'
 copyright = '2023, Teriks'
 author = 'Teriks'
-release = '2.0.0'
+release = __setup.VERSION
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -31,3 +35,5 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
+
+autodoc_member_order = 'groupwise'

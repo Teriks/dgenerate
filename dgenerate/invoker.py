@@ -41,6 +41,16 @@ def invoke_dgenerate(
     :param render_loop: :py:class:`dgenerate.diffusionloop.DiffusionRenderLoop` instance,
         if None is provided one will be created.
     :param throw: Whether to throw exceptions or handle them.
+
+    :raises: :py:class:`dgenerate.mediainput.ImageSeedError`
+             :py:class:`dgenerate.mediainput.UnknownMimetypeError`
+             :py:class:`dgenerate.pipelinewrapper.InvalidModelPathError`
+             :py:class:`dgenerate.pipelinewrapper.InvalidSchedulerName`
+             :py:class:`dgenerate.preprocessors.ImagePreprocessorArgumentError`
+             :py:class:`dgenerate.preprocessors.ImagePreprocessorNotFoundError`
+             :py:class:`dgenerate.preprocessors.ImagePreprocessorNotFoundError`
+
+
     :return: integer return-code, anything other than 0 is failure
     """
     if render_loop is None:
@@ -80,11 +90,12 @@ def invoke_dgenerate(
             _mediainput.UnknownMimetypeError,
             _pipelinewrapper.InvalidModelPathError,
             _pipelinewrapper.InvalidSchedulerName,
+            _pipelinewrapper.OutOfMemoryError,
             _preprocessors.ImagePreprocessorArgumentError,
             _preprocessors.ImagePreprocessorNotFoundError,
-            torch.cuda.OutOfMemoryError,
             NotImplementedError,
             EnvironmentError) as e:
+
         _messages.log(f'Error: {e}', level=_messages.ERROR)
         if throw:
             raise e
