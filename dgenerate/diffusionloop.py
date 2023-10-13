@@ -854,7 +854,10 @@ class DiffusionRenderLoop:
             for batch_idx, image in enumerate(generation_result.images):
                 file_name, ext = os.path.splitext(filename)
 
-                file_name = file_name + f'_image_{batch_idx}' + ext
+                if generation_result.image_count > 1:
+                    file_name = file_name + f'_image_{batch_idx}' + ext
+                else:
+                    file_name = filename
 
                 self._write_image(file_name, image, batch_idx, generation_result)
         else:
