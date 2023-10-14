@@ -32,8 +32,8 @@ import dgenerate.types as _types
 
 
 class Loader:
-    def __init__(self):
-        self.search_modules: set = set()
+    search_modules: typing.Set = set()
+    """Additional module objects for this loader to search, aside from the preprocessors sub module."""
 
     def load_plugin_modules(self, paths: _types.Paths):
         """
