@@ -1,8 +1,15 @@
 dgenerate.preprocessors package
 ===============================
 
-Submodules
-----------
+dgenerate.preprocessors module
+------------------------------
+
+.. automodule:: dgenerate.preprocessors
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :special-members: __call__, __init__
+
 
 dgenerate.preprocessors.canny module
 ------------------------------------
@@ -71,15 +78,6 @@ dgenerate.preprocessors.preprocessormixin module
 ------------------------------------------------
 
 .. automodule:: dgenerate.preprocessors.preprocessormixin
-   :members:
-   :undoc-members:
-   :show-inheritance:
-   :special-members: __call__, __init__
-
-Module contents
----------------
-
-.. automodule:: dgenerate.preprocessors
    :members:
    :undoc-members:
    :show-inheritance:

@@ -1,16 +1,15 @@
 dgenerate package
 =================
 
-Subpackages
------------
+dgenerate module
+----------------
 
-.. toctree::
-   :maxdepth: 4
+.. automodule:: dgenerate
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :special-members: __call__, __init__
 
-   dgenerate.preprocessors
-
-Submodules
-----------
 
 dgenerate.arguments module
 --------------------------
@@ -142,15 +141,6 @@ dgenerate.util module
 ----------------------
 
 .. automodule:: dgenerate.util
-   :members:
-   :undoc-members:
-   :show-inheritance:
-   :special-members: __call__, __init__
-
-Module contents
----------------
-
-.. automodule:: dgenerate
    :members:
    :undoc-members:
    :show-inheritance:

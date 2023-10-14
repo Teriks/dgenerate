@@ -38,10 +38,24 @@ _help_parser.add_argument('--plugin-modules', nargs='+', default=[], type=str)
 
 
 class PreprocessorHelpUsageError(Exception):
+    """
+    Raised on argument parse errors in :py:meth:`.image_preprocessor_help`
+    """
     pass
 
 
 def image_preprocessor_help(args: typing.Sequence[str], throw: bool = False):
+    """
+    Implements --image-preprocessor-help command line option
+
+    :param args: arguments (preprocessor names, or empty list)
+    :param throw: Should we throw exceptions or handle them?
+
+    :raises: :py:exc:`.PreprocessorHelpUsageError`
+             :py:exc:`dgenerate.preprocessors.exceptions.ImagePreprocessorNotFoundError`
+
+    :return: return-code, anything other than 0 is failure
+    """
     try:
         parse_result = _help_parser.parse_args(args)
     except (argparse.ArgumentError, argparse.ArgumentTypeError) as e:
