@@ -50,6 +50,9 @@ class Prompt:
         Parse the positive and negative prompt from a string and set the positive and negative attributes.
 
         :param value: the string
+
+        :raise: :py:class:`ValueError`
+
         :return: :py:class:`.Prompt` (returns self)
         """
         if value is None:

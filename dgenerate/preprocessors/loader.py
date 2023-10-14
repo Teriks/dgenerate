@@ -36,6 +36,13 @@ class Loader:
         self.search_modules: set = set()
 
     def load_plugin_modules(self, paths: _types.Paths):
+        """
+        Add a list of python module directories or python files to :py:attr:`.Loader.search_modules`
+
+        They will be newly imported or fetched if already previously imported.
+
+        :param paths: python module directories, python file paths
+        """
         self.search_modules.update(_plugin.load_modules(paths))
 
     def _load(self, path, device):
@@ -134,15 +141,28 @@ class Loader:
     def get_help(self, preprocessor_name: _types.Name) -> str:
         return self.get_class_by_name(preprocessor_name).get_help(preprocessor_name)
 
-    def load(self, path: typing.Union[_types.Uri, typing.Iterable[_types.Uri], None], device: str = 'cpu') -> \
+    def load(self, uri: typing.Union[_types.Uri, typing.Iterable[_types.Uri], None], device: str = 'cpu') -> \
             typing.Union[_preprocessor.ImagePreprocessor, _preprocessorchain.ImagePreprocessorChain, None]:
-        if path is None:
+        """
+        Load an image preprocessor or multiple image preprocessors. They are loaded by URI, which
+        is their name and any module arguments, for example: "canny;lower=50;upper=100"
+
+        Specifying multiple preprocessors with a list will create an image preprocessor chain object.
+
+
+        :param uri: Preprocessor URI or list of URIs
+        :param device: Request a specific rendering device, default is CPU
+        :return: :py:class:`dgenerate.preprocessor.ImagePreprocessor` or
+            :py:class:`dgenerate.preprocessor.ImagePreprocessorChain`
+        """
+
+        if uri is None:
             return None
 
-        if isinstance(path, str):
-            return self._load(path, device)
+        if isinstance(uri, str):
+            return self._load(uri, device)
 
-        paths = list(path)
+        paths = list(uri)
 
         if not paths:
             return None
