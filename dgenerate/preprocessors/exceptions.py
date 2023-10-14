@@ -20,8 +20,14 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 class ImagePreprocessorArgumentError(Exception):
+    """
+    Raised when an image preprocessor receives invalid arguments.
+    """
     pass
 
 
 class ImagePreprocessorNotFoundError(Exception):
+    """
+    Raised when a reference to an unknown image preprocessor name is made.
+    """
     pass
