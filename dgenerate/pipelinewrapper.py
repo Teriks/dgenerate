@@ -462,6 +462,9 @@ def parse_flax_control_net_uri(uri: _types.Uri) -> FlaxControlNetPath:
     Parse a --model-type flax* --control-nets uri specification and return an object representing its constituents
 
     :param uri: string with --control-nets uri syntax
+
+    :raise: :py:class:`.InvalidControlNetUriError`
+
     :return: :py:class:`.FlaxControlNetPath`
     """
     try:
@@ -547,6 +550,9 @@ def parse_torch_control_net_uri(uri: _types.Uri) -> TorchControlNetPath:
     Parse a --model-type torch* --control-nets uri specification and return an object representing its constituents
 
     :param path: string with --control-nets uri syntax
+
+    :raise: :py:class:`.InvalidControlNetUriError`
+
     :return: :py:class:`.TorchControlNetPath`
     """
     try:
@@ -617,6 +623,9 @@ def parse_sdxl_refiner_uri(uri: _types.Uri) -> SDXLRefinerPath:
     Parse an --sdxl-refiner uri and return an object representing its constituents
 
     :param path: string with --sdxl-refiner uri syntax
+
+    :raise: :py:class:`.InvalidSDXLRefinerUriError`
+
     :return: :py:class:`.SDXLRefinerPath`
     """
     try:
@@ -659,6 +668,9 @@ def parse_torch_vae_uri(uri: _types.Uri) -> TorchVAEPath:
     Parse a --model-type torch* --vae uri and return an object representing its constituents
 
     :param path: string with --vae uri syntax
+
+    :raise: :py:class:`.InvalidVaeUriError`
+
     :return: :py:class:`.TorchVAEPath`
     """
     try:
@@ -704,6 +716,9 @@ def parse_flax_vae_uri(uri: _types.Uri) -> FlaxVAEPath:
     Parse a --model-type flax* --vae uri and return an object representing its constituents
 
     :param path: string with --vae uri syntax
+
+    :raise: :py:class:`.InvalidVaeUriError`
+
     :return: :py:class:`.FlaxVAEPath`
     """
     try:
@@ -763,6 +778,9 @@ def parse_lora_uri(uri: _types.Uri) -> LoRAPath:
     Parse a --lora uri and return an object representing its constituents
 
     :param path: string with --lora uri syntax
+
+    :raise: :py:class:`.InvalidLoRAUriError`
+
     :return: :py:class:`.LoRAPath`
     """
     try:
@@ -810,6 +828,9 @@ def parse_textual_inversion_uri(uri: _types.Uri) -> TextualInversionPath:
     Parse a --textual-inversions uri and return an object representing its constituents
 
     :param path: string with --textual-inversions uri syntax
+
+    :raise: :py:class:`.InvalidTextualInversionUriError`
+
     :return: :py:class:`.TextualInversionPath`
     """
     try:
@@ -1485,7 +1506,7 @@ class PipelineWrapperResult:
     def add_dgenerate_opt(self, name: str, value: typing.Any):
         """
         Add an option value to be used by :py:meth:`.PipelineWrapperResult.gen_dgenerate_config`
-        
+
         :param name: The option name
         :param value: The option value
         """
@@ -1710,13 +1731,13 @@ class DiffusionPipelineWrapper:
                  revision: _types.OptionalName = None,
                  variant: _types.OptionalName = None,
                  model_subfolder: _types.OptionalName = None,
-                 vae_uri: _types.OptionalPath = None,
+                 vae_uri: _types.OptionalUri = None,
                  vae_tiling: bool = False,
                  vae_slicing: bool = False,
-                 lora_uris: typing.Union[str, _types.OptionalPaths] = None,
-                 textual_inversion_uris: typing.Union[str, _types.OptionalPaths] = None,
-                 control_net_uris: typing.Union[str, _types.OptionalPaths] = None,
-                 sdxl_refiner_uri: _types.OptionalPath = None,
+                 lora_uris: typing.Union[str, _types.OptionalUris] = None,
+                 textual_inversion_uris: typing.Union[str, _types.OptionalUris] = None,
+                 control_net_uris: typing.Union[str, _types.OptionalUris] = None,
+                 sdxl_refiner_uri: _types.OptionalUri = None,
                  scheduler: _types.OptionalName = None,
                  sdxl_refiner_scheduler: _types.OptionalName = None,
                  safety_checker: bool = False,
@@ -1828,7 +1849,7 @@ class DiffusionPipelineWrapper:
         return self._dtype
 
     @property
-    def textual_inversion_uris(self) -> _types.OptionalPaths:
+    def textual_inversion_uris(self) -> _types.OptionalUris:
         """
         List of supplied --textual-inversions path strings or None
         """
@@ -1836,7 +1857,7 @@ class DiffusionPipelineWrapper:
             isinstance(self._textual_inversion_uris, str) else self._textual_inversion_uris
 
     @property
-    def control_net_uris(self) -> _types.OptionalPaths:
+    def control_net_uris(self) -> _types.OptionalUris:
         """
         List of supplied --control-nets path strings or None
         """
@@ -1872,7 +1893,7 @@ class DiffusionPipelineWrapper:
         return self._sdxl_refiner_scheduler
 
     @property
-    def sdxl_refiner_uri(self) -> _types.OptionalName:
+    def sdxl_refiner_uri(self) -> _types.OptionalUri:
         """
         Model path for the SDXL refiner or None
         """
@@ -1900,7 +1921,7 @@ class DiffusionPipelineWrapper:
         return self._model_subfolder
 
     @property
-    def vae_uri(self) -> _types.OptionalPath:
+    def vae_uri(self) -> _types.OptionalUri:
         """
         Selected --vae path for the main model or None
         """
@@ -1921,7 +1942,7 @@ class DiffusionPipelineWrapper:
         return self._vae_slicing
 
     @property
-    def lora_uris(self) -> _types.OptionalPaths:
+    def lora_uris(self) -> _types.OptionalUris:
         """
         List of supplied --lora path strings or None
         """
@@ -1935,7 +1956,8 @@ class DiffusionPipelineWrapper:
         """
         return self._auth_token
 
-    def reconstruct_dgenerate_opts(self, **args):
+    def reconstruct_dgenerate_opts(self, **args) -> \
+            typing.List[typing.Union[typing.Tuple[str], typing.Tuple[str, typing.Any]]]:
         """
         Reconstruct dgenerates command line arguments from a particular set of pipeline call arguments.
 
@@ -2754,6 +2776,17 @@ class DiffusionPipelineWrapper:
         Call the pipeline and generate a result.
 
         :param kwargs: See :py:meth:`.DiffusionArguments.get_pipeline_wrapper_args`
+
+        :raises: :py:class:`dgenerate.pipelinewrapper.InvalidModelPathError`
+            :py:class:`dgenerate.pipelinewrapper.InvalidSDXLRefinerUriError`
+            :py:class:`dgenerate.pipelinewrapper.InvalidVaeUriError`
+            :py:class:`dgenerate.pipelinewrapper.InvalidLoRAUriError`
+            :py:class:`dgenerate.pipelinewrapper.InvalidControlNetUriError`
+            :py:class:`dgenerate.pipelinewrapper.InvalidTextualInversionUriError`
+            :py:class:`dgenerate.pipelinewrapper.InvalidSchedulerName`
+            :py:class:`dgenerate.pipelinewrapper.OutOfMemoryError`
+            :py:class:`NotImplementedError`
+
         :return: :py:class:`.PipelineWrapperResult`
         """
         self._lazy_init_pipeline(DiffusionPipelineWrapper._determine_pipeline_type(kwargs))

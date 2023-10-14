@@ -189,6 +189,8 @@ class BatchProcessor:
         """
         Process a batch processing script from a file string
 
+        :raise: :py:class:`.BatchProcessError`
+
         :param stream: A filestream in text read mode
         """
         continuation = ''
@@ -216,6 +218,8 @@ class BatchProcessor:
     def run_string(self, string: str):
         """
         Process a batch processing script from a string
+
+        :raise: :py:class:`.BatchProcessError`
 
         :param string: a string containing the script
         """

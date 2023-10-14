@@ -23,35 +23,52 @@ import typing
 
 import dgenerate.prompt as _prompt
 
-Size = typing.Tuple[int, int]
-Sizes = typing.List[Size]
-OptionalSize = typing.Optional[Size]
-OptionalSizes = typing.Optional[Sizes]
-Coordinate = typing.Tuple[int, int]
-OptionalCoordinate = typing.Optional[Coordinate]
-CoordinateList = typing.List[Coordinate]
-OptionalCoordinateList = typing.Optional[CoordinateList]
-Paths = typing.List[str]
-OptionalPaths = typing.Optional[Paths]
-Uris = typing.List[str]
-OptionalUris = typing.Optional[Uris]
 Uri = str
 Path = str
 Name = str
+
+Size = typing.Tuple[int, int]
+Sizes = typing.List[Size]
+
+OptionalSize = typing.Optional[Size]
+OptionalSizes = typing.Optional[Sizes]
+
+Coordinate = typing.Tuple[int, int]
+OptionalCoordinate = typing.Optional[Coordinate]
+
+CoordinateList = typing.List[Coordinate]
+OptionalCoordinateList = typing.Optional[CoordinateList]
+
+Paths = typing.List[str]
+OptionalPaths = typing.Optional[Paths]
+
+Uris = typing.List[str]
+OptionalUris = typing.Optional[Uris]
+
+Names = typing.List[Name]
+OptionalNames = typing.Optional[Names]
+
+OptionalUri = typing.Optional[Uri]
 OptionalPath = typing.Optional[Path]
 OptionalName = typing.Optional[Name]
-OptionalUri = typing.Optional[Uri]
+
 Integer = int
 Integers = typing.List[int]
+
 OptionalInteger = typing.Optional[int]
 OptionalIntegers = typing.Optional[Integers]
+
 Float = float
 Floats = typing.List[float]
+
 OptionalFloat = typing.Optional[float]
 OptionalFloats = typing.Optional[Floats]
+
 Version = typing.Tuple[int, int, int]
+
 OptionalPrompt = typing.Optional[_prompt.Prompt]
 Prompts = typing.List[_prompt.Prompt]
+
 OptionalPrompts = typing.Optional[Prompts]
 OptionalString = typing.Optional[str]
 

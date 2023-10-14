@@ -63,7 +63,7 @@ class ConceptUriParser:
         """
         Parse a string.
 
-        :param string: the string
+        :param uri: the string
         :return: :py:class:`.ConceptPath`
         """
         args = dict()

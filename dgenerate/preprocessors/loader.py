@@ -35,7 +35,7 @@ class Loader:
     def __init__(self):
         self.search_modules: set = set()
 
-    def load_plugin_modules(self, paths: typing.List[str]):
+    def load_plugin_modules(self, paths: _types.Paths):
         self.search_modules.update(_plugin.load_modules(paths))
 
     def _load(self, path, device):
@@ -125,16 +125,16 @@ class Loader:
 
         return classes[0]
 
-    def get_all_names(self) -> typing.List[str]:
+    def get_all_names(self) -> _types.Names:
         names = []
         for cls in self.get_available_classes():
             names += cls.get_names()
         return names
 
-    def get_help(self, preprocessor_name: str) -> str:
+    def get_help(self, preprocessor_name: _types.Name) -> str:
         return self.get_class_by_name(preprocessor_name).get_help(preprocessor_name)
 
-    def load(self, path: typing.Union[str, typing.Iterable, None], device: str = 'cpu') -> \
+    def load(self, path: typing.Union[_types.Uri, typing.Iterable[_types.Uri], None], device: str = 'cpu') -> \
             typing.Union[_preprocessor.ImagePreprocessor, _preprocessorchain.ImagePreprocessorChain, None]:
         if path is None:
             return None
