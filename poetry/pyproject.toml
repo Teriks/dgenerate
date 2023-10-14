@@ -34,6 +34,7 @@ opencv-python = "^4.8.1.78"
 controlnet-aux = "0.0.7"
 # transient dependency of controlnet-aux openpose
 matplotlib = "^3.8.0"
+portalocker = "^2.8.2"
 
 [tool.poetry.extras]
 flax = ["flax", "jax"]

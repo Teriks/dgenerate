@@ -19,9 +19,11 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import atexit
+import contextlib
 import mimetypes
 import os
 import pathlib
+import sqlite3
 import typing
 
 import PIL.Image
@@ -36,6 +38,7 @@ import dgenerate.messages as _messages
 import dgenerate.preprocessors as _preprocessors
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+import dgenerate.util as _util
 
 
 class AnimationFrame:
@@ -692,10 +695,10 @@ def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
 
     result = ImageSeedParseResult()
 
-    seed_parser = _textprocessing.ConceptPathParser('Image Seed', ['mask', 'control', 'resize'])
+    seed_parser = _textprocessing.ConceptUriParser('Image Seed', ['mask', 'control', 'resize'])
 
     try:
-        parse_result = seed_parser.parse_concept_path(uri)
+        parse_result = seed_parser.parse_concept_uri(uri)
     except _textprocessing.ConceptPathParseError as e:
         raise ImageSeedError(e)
 
@@ -744,10 +747,6 @@ def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
     return result
 
 
-WEB_FILE_CACHE: typing.Dict[str, str] = dict()
-"""In memory cache of filenames to files in the web cache folder"""
-
-
 def get_web_cache_directory() -> str:
     """
     Get the default web cache directory or the value of the environmental variable DGENERATE_WEB_CACHE
@@ -766,42 +765,94 @@ def get_web_cache_directory() -> str:
     return path
 
 
+@contextlib.contextmanager
+def _get_web_cache_db():
+    db_file = os.path.join(get_web_cache_directory(), 'cache.db')
+    lock_file = os.path.join(get_web_cache_directory(), 'cache.lock')
+    db = None
+    with _util.temp_file_lock(lock_file):
+        try:
+            db = sqlite3.connect(db_file)
+            db.execute(
+                'CREATE TABLE IF NOT EXISTS users (pid INTEGER, UNIQUE(pid))')
+            db.execute(
+                'CREATE TABLE IF NOT EXISTS files '
+                '(id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT UNIQUE, mime_type TEXT)')
+            db.execute(
+                'INSERT OR IGNORE INTO users(pid) VALUES(?)', [os.getpid()])
+            yield db
+            db.commit()
+        except Exception:
+            if db is not None:
+                db.rollback()
+            raise
+        finally:
+            db.close()
+
+
 def _wipe_web_cache_directory():
     folder = get_web_cache_directory()
-    _messages.debug_log(f'Wiping Web Cache Directory: "{folder}"')
-    for filename in os.listdir(get_web_cache_directory()):
-        file_path = os.path.join(folder, filename)
-        _messages.debug_log(f'Deleting File From Web Cache: "{file_path}"')
-        try:
-            if os.path.isfile(file_path) or os.path.islink(file_path):
-                os.unlink(file_path)
-        except Exception as e:
-            _messages.log(f'Failed to delete cached web file "{file_path}", reason: {e}',
-                          level=_messages.ERROR)
+
+    with _get_web_cache_db() as db:
+        db.execute('DELETE FROM users WHERE pid = (?)', [os.getpid()])
+        count = db.execute('SELECT COUNT(pid) FROM users').fetchone()[0]
+        if count != 0:
+            # Another instance is still using
+            return
+        db.execute('DROP TABLE files')
+        # delete any cache files that existed
+        for filename in os.listdir(get_web_cache_directory()):
+            file_path = os.path.join(folder, filename)
+            _, ext = os.path.splitext(filename)
+            if ext:
+                # Do not delete the database
+                continue
+
+            _messages.debug_log(f'Deleting File From Web Cache: "{file_path}"')
+            try:
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.unlink(file_path)
+            except Exception as e:
+                _messages.log(
+                    f'Failed to delete cached web file "{file_path}", reason: {e}',
+                    level=_messages.ERROR)
 
 
 atexit.register(_wipe_web_cache_directory)
 
 
-def generate_web_cache_filename() -> str:
-    """
-    Generate a filename that is unique in the web cache directory
-
-    :return: string (filename)
-    """
-    name = "cached_file"
+def _generate_web_cache_file(url, mime_acceptable_desc):
     cache_dir = get_web_cache_directory()
-    filename = os.path.join(cache_dir, name)
 
-    if not os.path.exists(filename):
-        return filename
+    with _get_web_cache_db() as db:
+        cursor = db.cursor()
 
-    idx = 1
-    while os.path.exists(filename):
-        filename = filename + f'_{idx}'
-        idx += 1
+        exists = cursor.execute(
+            'SELECT mime_type, id FROM files WHERE url = ?', [url]).fetchone()
 
-    return filename
+        if exists is not None:
+            return exists[0], os.path.join(cache_dir, f'web_{exists[1]}')
+
+        headers = {'User-Agent': fake_useragent.UserAgent().chrome}
+
+        req = requests.get(url, headers=headers, stream=True)
+        mime_type = req.headers['content-type']
+
+        if not mime_type_is_supported(mime_type):
+            raise UnknownMimetypeError(
+                f'Unknown mimetype "{mime_type}" for file "{url}". '
+                f'Expected: {mime_acceptable_desc}')
+
+        cursor.execute(
+            'INSERT INTO files(mime_type, url) VALUES(?, ?)', [mime_type, url])
+
+        path = os.path.join(cache_dir, f'web_{cursor.lastrowid}')
+
+        with open(path, mode='wb') as new_file:
+            new_file.write(req.content)
+            new_file.flush()
+
+        return mime_type, path
 
 
 class UnknownMimetypeError(Exception):
@@ -810,7 +861,10 @@ class UnknownMimetypeError(Exception):
 
 def fetch_image_data_stream(uri: str) -> typing.Tuple[str, typing.BinaryIO]:
     """
-    Get an open stream to a local file, or file at an HTTP or HTTPS URL, with caching.
+    Get an open stream to a local file, or file at an HTTP or HTTPS URL, with caching for web files.
+
+    Cacheing for downloaded files is threadsafe and multiprocess safe, multiple processes using this
+    module can share the cache simultaneously, the last process alive clears the cache when it exits.
 
     :param uri: Local file path or URL
     :param mime_type_filter: Function accepting a string (mime-type) and returning True if that mime-type is acceptable
@@ -824,25 +878,8 @@ def fetch_image_data_stream(uri: str) -> typing.Tuple[str, typing.BinaryIO]:
     mime_acceptable_desc = _textprocessing.oxford_comma(get_supported_mimetypes(), conjunction='or')
 
     if uri.startswith('http://') or uri.startswith('https://'):
-        cache_hit = WEB_FILE_CACHE.get(uri)
-        if cache_hit is not None:
-            mime_type = cache_hit[0]
-            file = cache_hit[1]
-            return mime_type, open(file, mode='rb')
-
-        headers = {'User-Agent': fake_useragent.UserAgent().chrome}
-        req = requests.get(uri, headers=headers, stream=True)
-        mime_type = req.headers['content-type']
-        if not mime_type_is_supported(mime_type):
-            raise UnknownMimetypeError(
-                f'Unknown mimetype "{mime_type}" for file "{uri}". Expected: {mime_acceptable_desc}')
-
-        cache_filename = generate_web_cache_filename()
-        with open(cache_filename, mode='wb'):
-            _write_to_file(req.content, cache_filename)
-
-        WEB_FILE_CACHE[uri] = (mime_type, cache_filename)
-        return mime_type, open(cache_filename, mode='rb')
+        mime_type, filename = _generate_web_cache_file(uri, mime_acceptable_desc)
+        return mime_type, open(filename, mode='rb')
     else:
         mime_type = mimetypes.guess_type(uri)[0]
 
@@ -956,22 +993,22 @@ class ImageSeedInfo:
         self.total_frames = total_frames
 
 
-def get_image_seed_info(image_seed_path: typing.Union[str, ImageSeedParseResult],
+def get_image_seed_info(uri: typing.Union[_types.Uri, ImageSeedParseResult],
                         frame_start: int = 0,
                         frame_end: _types.OptionalInteger = None) -> ImageSeedInfo:
     """
     Get an informational object from a dgenerate `--image-seeds` path
 
-    :param image_seed_path: The path string or :py:class:`.ImageSeedParseResult`
+    :param image_seed_uri: The uri string or :py:class:`.ImageSeedParseResult`
     :param frame_start: slice start
     :param frame_end: slice end
     :return: :py:class:`.ImageSeedInfo`
     """
-    with next(iterate_image_seed(image_seed_path, frame_start, frame_end)) as seed:
+    with next(iterate_image_seed(uri, frame_start, frame_end)) as seed:
         return ImageSeedInfo(seed.is_animation_frame, seed.total_frames, seed.fps, seed.duration)
 
 
-def get_control_image_info(path: typing.Union[str, ImageSeedParseResult],
+def get_control_image_info(path: typing.Union[_types.Path, ImageSeedParseResult],
                            frame_start: int = 0,
                            frame_end: _types.OptionalInteger = None) -> ImageSeedInfo:
     """
@@ -985,13 +1022,6 @@ def get_control_image_info(path: typing.Union[str, ImageSeedParseResult],
     """
     with next(iterate_control_image(path, frame_start, frame_end)) as seed:
         return ImageSeedInfo(seed.is_animation_frame, seed.total_frames, seed.fps, seed.duration)
-
-
-def _write_to_file(data, filepath):
-    with open(filepath, 'wb') as mask_video_file:
-        mask_video_file.write(data)
-        mask_video_file.flush()
-    return filepath
 
 
 def create_and_exif_orient_pil_img(

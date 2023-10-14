@@ -34,10 +34,13 @@ import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 
 _SUPPORTED_MODEL_TYPES_PRETTY = \
-    _textprocessing.oxford_comma(_pipelinewrapper.supported_model_type_strings(), "or")
+    _textprocessing.oxford_comma(_pipelinewrapper.supported_model_type_strings(), 'or')
 
 _SUPPORTED_ANIMATION_OUTPUT_FORMATS_PRETTY = \
-    _textprocessing.oxford_comma(_mediaoutput.supported_animation_writer_formats(), "or")
+    _textprocessing.oxford_comma(_mediaoutput.supported_animation_writer_formats(), 'or')
+
+_SUPPORTED_DATA_TYPES_PRETTY = \
+    _textprocessing.oxford_comma(_pipelinewrapper.supported_data_type_strings(), 'or')
 
 parser = argparse.ArgumentParser(
     prog='dgenerate', exit_on_error=False,
@@ -55,11 +58,11 @@ def _model_type(val):
 
 def _type_dtype(dtype):
     dtype = dtype.lower()
-
-    if dtype not in {'float16', 'float32', 'auto'}:
-        raise argparse.ArgumentTypeError('Must be float16, float32, or auto.')
+    supported_dtypes = _pipelinewrapper.supported_data_type_strings()
+    if dtype not in supported_dtypes:
+        raise argparse.ArgumentTypeError(f'Must be {_textprocessing.oxford_comma(supported_dtypes, "or")}.')
     else:
-        return dtype
+        return _pipelinewrapper.get_data_type_enum(dtype)
 
 
 def _type_prompts(prompt):
@@ -326,9 +329,9 @@ actions.append(
                         an image number suffix in the filename signifying which image in the batch they are."""))
 
 actions.append(
-    parser.add_argument('--vae', action='store', default=None, metavar="MODEL_PATH", dest='vae_path',
+    parser.add_argument('--vae', action='store', default=None, metavar="VAE_URI", dest='vae_uri',
                         help=
-                        """Specify a VAE. When using torch models the syntax is: 
+                        f"""Specify a VAE using a URI. When using torch models the URI syntax is: 
                         "AutoEncoderClass;model=(huggingface repository slug/blob link or file/folder path)".
                         
                         Examples: "AutoencoderKL;model=vae.pt", "AsymmetricAutoencoderKL;model=huggingface/vae",
@@ -361,7 +364,7 @@ actions.append(
                         huggingface repository or folder, weights from the specified subfolder.
                         
                         The "dtype" argument specifies the VAE model precision, it defaults to the value of -t/--dtype
-                        and should be one of: float16 / float32 / auto.
+                        and should be one of: {_SUPPORTED_DATA_TYPES_PRETTY}.
                         
                         If you wish to load a weights file directly from disk, the simplest
                         way is: --vae "AutoencoderKL;my_vae.safetensors", or with a 
@@ -391,9 +394,9 @@ actions.append(
                         issues generating large images."""))
 
 actions.append(
-    parser.add_argument('--loras', '--lora', action='store', default=None, metavar="MODEL_PATH", dest='lora_paths',
+    parser.add_argument('--loras', '--lora', action='store', default=None, metavar="LORA_URI", dest='lora_uris',
                         help=
-                        """Specify a LoRA model (flax not supported). This should be a
+                        """Specify a LoRA model using a URI (flax not supported). This should be a
                         huggingface repository slug, path to model file on disk (for example, a .pt, .pth, .bin,
                         .ckpt, or .safetensors file), or model folder containing model files.
                         
@@ -421,12 +424,14 @@ actions.append(
                         all other loading arguments are unused in this case and may produce an error message if used."""))
 
 actions.append(
-    parser.add_argument('--textual-inversions', nargs='+', action='store', default=None, metavar="MODEL_PATH",
-                        dest='textual_inversion_paths',
+    parser.add_argument('--textual-inversions', nargs='+', action='store', default=None,
+                        metavar="TEXTUAL_INVERSION_URI",
+                        dest='textual_inversion_uris',
                         help=
-                        """Specify one or more Textual Inversion models (flax and SDXL not supported). This should be a
-                        huggingface repository slug, path to model file on disk (for example, a .pt, .pth, .bin,
-                        .ckpt, or .safetensors file), or model folder containing model files. 
+                        """Specify one or more Textual Inversion models using URIs (flax and SDXL not supported). 
+                        This should be a huggingface repository slug, path to model file on disk 
+                        (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model folder 
+                        containing model files. 
                         
                         huggingface blob links are not supported, see "subfolder" and "weight-name" below instead.
                         
@@ -450,12 +455,13 @@ actions.append(
                         are unused in this case and may produce an error message if used."""))
 
 actions.append(
-    parser.add_argument('--control-nets', nargs='+', action='store', default=None, metavar="MODEL_PATH",
-                        dest='control_net_paths',
+    parser.add_argument('--control-nets', nargs='+', action='store', default=None, metavar="CONTROL_NET_URI",
+                        dest='control_net_uris',
                         help=
-                        """Specify one or more ControlNet models. This should be a
-                        huggingface repository slug / blob link, path to model file on disk (for example, a .pt, .pth, .bin,
-                        .ckpt, or .safetensors file), or model folder containing model files.
+                        f"""Specify one or more ControlNet models using URIs. This should be a
+                        huggingface repository slug / blob link, path to model file on disk 
+                        (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model 
+                        folder containing model files.
                         
                         Optional arguments can be provided after the ControlNet model specification, for torch
                         these include: "scale", "start", "end", "revision", "variant", "subfolder", and "dtype".
@@ -487,7 +493,7 @@ actions.append(
                         when loading from a huggingface repository or folder, weights from the specified subfolder.
                         
                         The "dtype" argument specifies the ControlNet model precision, it defaults to the value of -t/--dtype
-                        and should be one of: float16 / float32 / auto.
+                        and should be one of: {_SUPPORTED_DATA_TYPES_PRETTY}.
                         
                         The "from_torch" (only for --model-type flax) this argument specifies that the ControlNet is to be 
                         loaded and converted from a huggingface repository or file that is designed for pytorch. (Defaults to false)
@@ -516,11 +522,12 @@ actions.append(
                         + _flax_scheduler_help_part))
 
 actions.append(
-    parser.add_argument('--sdxl-refiner', action='store', default=None, metavar="MODEL_PATH",
-                        dest='sdxl_refiner_path',
-                        help="""Stable Diffusion XL (torch-sdxl) refiner model path. This should be a
-                        huggingface repository slug / blob link, path to model file on disk (for example, a .pt, .pth, .bin,
-                        .ckpt, or .safetensors file), or model folder containing model files. 
+    parser.add_argument('--sdxl-refiner', action='store', default=None, metavar="MODEL_URI",
+                        dest='sdxl_refiner_uri',
+                        help=f"""Stable Diffusion XL (torch-sdxl) refiner model path using a URI. 
+                        This should be a huggingface repository slug / blob link, path to model file 
+                        on disk (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model
+                        folder containing model files. 
                         
                         Optional arguments can be provided after the SDXL refiner model specification, 
                         these include: "revision", "variant", "subfolder", and "dtype".
@@ -540,7 +547,7 @@ actions.append(
                         when loading from a huggingface repository or folder, weights from the specified subfolder.
                         
                         The "dtype" argument specifies the SDXL refiner model precision, it defaults to the value of -t/--dtype
-                        and should be one of: float16 / float32 / auto.
+                        and should be one of: {_SUPPORTED_DATA_TYPES_PRETTY}.
                     
                         If you wish to load a weights file directly from disk, the simplest way is: 
                         --sdxl-refiner "my_sdxl_refiner.safetensors" or --sdxl-refiner "my_sdxl_refiner.safetensors;dtype=float16", 
@@ -750,7 +757,7 @@ actions.append(
 
 actions.append(
     parser.add_argument('-t', '--dtype', action='store', default='auto', type=_type_dtype,
-                        help='Model precision: float16 / float32 / auto. (default: auto)'))
+                        help=f'Model precision: {_SUPPORTED_DATA_TYPES_PRETTY}. (default: auto)'))
 
 actions.append(
     parser.add_argument('-s', '--output-size', action='store', default=None, type=_type_output_size,

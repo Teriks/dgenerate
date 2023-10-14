@@ -18,7 +18,6 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 import datetime
 import inspect
 import itertools
@@ -39,6 +38,7 @@ import dgenerate.preprocessors as _preprocessors
 import dgenerate.prompt as _prompt
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+import dgenerate.util as _util
 
 
 def iterate_attribute_combinations(
@@ -204,7 +204,7 @@ class DiffusionRenderLoopConfig:
 
     model_path: _types.OptionalPath = None
     model_subfolder: _types.OptionalPath = None
-    sdxl_refiner_path: _types.OptionalPath = None
+    sdxl_refiner_uri: _types.OptionalUri = None
 
     batch_size: _types.OptionalInteger = None
     batch_grid_size: _types.OptionalSize = None
@@ -247,20 +247,20 @@ class DiffusionRenderLoopConfig:
     sdxl_refiner_negative_target_sizes: _types.OptionalSizes = None
     sdxl_refiner_negative_crops_coords_top_left: _types.OptionalCoordinateList = None
 
-    vae_path: _types.OptionalPath = None
+    vae_uri: _types.OptionalUri = None
     vae_tiling: bool = False
     vae_slicing: bool = False
 
-    lora_paths: _types.OptionalPaths = None
-    textual_inversion_paths: _types.OptionalPaths = None
-    control_net_paths: _types.OptionalPaths = None
+    lora_uris: _types.OptionalUris = None
+    textual_inversion_uris: _types.OptionalUris = None
+    control_net_uris: _types.OptionalUris = None
 
     scheduler: _types.OptionalName = None
     sdxl_refiner_scheduler: _types.OptionalName = None
     safety_checker: bool = False
     model_type: _pipelinewrapper.ModelTypes = _pipelinewrapper.ModelTypes.TORCH
     device: _types.Name = 'cuda'
-    dtype: typing.Literal['float16', 'float32', 'auto'] = 'auto'
+    dtype: _pipelinewrapper.DataTypes = _pipelinewrapper.DataTypes.AUTO
     revision: _types.Name = 'main'
     variant: _types.OptionalName = None
     output_size: _types.OptionalSize = None
@@ -406,10 +406,10 @@ class DiffusionRenderLoopConfig:
                     _is(_types.get_type(hint), attr, v)
 
         # Detect logically incorrect config and set certain defaults
-
-        if self.dtype not in {'float32', 'float16', 'auto'}:
+        supported_dtypes = _pipelinewrapper.supported_data_type_strings()
+        if self.dtype not in _pipelinewrapper.supported_data_type_enums():
             raise DiffusionRenderLoopConfigError(
-                f'{a_namer("dtype")} must be float32, float16 or auto')
+                f'{a_namer("dtype")} must be {_textprocessing.oxford_comma(supported_dtypes, "or")}')
         if self.batch_size is not None and self.batch_size < 1:
             raise DiffusionRenderLoopConfigError(
                 f'{a_namer("batch_size")} must be greater than or equal to 1.')
@@ -456,9 +456,9 @@ class DiffusionRenderLoopConfig:
                 raise DiffusionRenderLoopConfigError(
                     f'you cannot specify {a_namer("upscaler_noise_levels")} for a '
                     f'non upscaler model type, see: {a_namer("model_type")}.')
-        elif self.control_net_paths:
+        elif self.control_net_uris:
             raise DiffusionRenderLoopConfigError(
-                f'{a_namer("control_net_paths")} is not compatible '
+                f'{a_namer("control_net_uris")} is not compatible '
                 f'with upscaler models, see: {a_namer("model_type")}.')
         elif self.upscaler_noise_levels is None:
             self.upscaler_noise_levels = [_pipelinewrapper.DEFAULT_X4_UPSCALER_NOISE_LEVEL]
@@ -468,9 +468,9 @@ class DiffusionRenderLoopConfig:
                 raise DiffusionRenderLoopConfigError(
                     f'argument {a_namer("image_guidance_scales")} only valid with '
                     f'pix2pix models, see: {a_namer("model_type")}.')
-        elif self.control_net_paths:
+        elif self.control_net_uris:
             raise DiffusionRenderLoopConfigError(
-                f'{a_namer("control_net_paths")} is not compatible with '
+                f'{a_namer("control_net_uris")} is not compatible with '
                 f'pix2pix models, see: {a_namer("model_type")}.')
         elif not self.image_guidance_scales:
             self.image_guidance_scales = [_pipelinewrapper.DEFAULT_IMAGE_GUIDANCE_SCALE]
@@ -500,11 +500,11 @@ class DiffusionRenderLoopConfig:
 
             self.sdxl_high_noise_fractions = []
         else:
-            if not self.sdxl_refiner_path:
+            if not self.sdxl_refiner_uri:
                 invalid_self = []
                 for sdxl_self in attr_that_start_with('sdxl_refiner'):
                     invalid_self.append(f'you cannot specify {a_namer(sdxl_self)} '
-                                        f'without {a_namer("sdxl_refiner_path")}.')
+                                        f'without {a_namer("sdxl_refiner_uri")}.')
                 if invalid_self:
                     raise DiffusionRenderLoopConfigError('\n'.join(invalid_self))
             else:
@@ -541,8 +541,8 @@ class DiffusionRenderLoopConfig:
             self.sdxl_refiner_prompts,
             self.sdxl_refiner_second_prompts,
             self.image_guidance_scales,
-            self.textual_inversion_paths,
-            self.control_net_paths,
+            self.textual_inversion_uris,
+            self.control_net_uris,
             self.image_seeds,
             self.image_seed_strengths,
             self.upscaler_noise_levels,
@@ -590,7 +590,7 @@ class DiffusionRenderLoopConfig:
                 if n.startswith('sdxl'):
                     return None
             else:
-                if n.startswith('sdxl_refiner') and not self.sdxl_refiner_path:
+                if n.startswith('sdxl_refiner') and not self.sdxl_refiner_uri:
                     return None
 
             if n in overrides:
@@ -746,27 +746,26 @@ class DiffusionRenderLoop:
         """
         return self._generation_step
 
+    def _output_directory_lock(self):
+        _util.temp_file_lock(os.path.join(self.config.output_path, '.write_lock'))
+
     def _gen_filename(self, *args, ext):
         def _make_path(dup_number=None):
-            return os.path.join(self.config.output_path,
-                                f'{self.config.output_prefix + "_" if self.config.output_prefix is not None else ""}' + '_'.
-                                join(str(s).replace('.', '-') for s in args) + (
-                                    '' if dup_number is None else f'_duplicate_{dup_number}') + '.' + ext)
+            prefix = self.config.output_prefix + '_' if \
+                self.config.output_prefix is not None else ''
 
-        path = _make_path()
+            dup = '' if dup_number is None else f'_duplicate_{dup_number}'
+
+            components = (str(s).replace('.', '-') for s in args)
+
+            return os.path.join(self.config.output_path,
+                                f'{prefix}' + '_'.join(components) + dup) + '.' + ext
 
         if self.config.output_overwrite:
+            path = _make_path()
             return path
 
-        if not os.path.exists(path):
-            return path
-
-        duplicate_number = 1
-        while os.path.exists(path):
-            path = _make_path(duplicate_number)
-            duplicate_number += 1
-
-        return path
+        return _util.touch_avoid_duplicate(self.config.output_path, _make_path)
 
     @staticmethod
     def _gen_filename_base(args_ctx: _pipelinewrapper.DiffusionArguments):
@@ -969,16 +968,16 @@ class DiffusionRenderLoop:
                                                                         model_type=self.config.model_type,
                                                                         revision=self.config.revision,
                                                                         variant=self.config.variant,
-                                                                        vae_path=self.config.vae_path,
-                                                                        lora_paths=self.config.lora_paths,
-                                                                        textual_inversion_paths=self.config.textual_inversion_paths,
+                                                                        vae_uri=self.config.vae_uri,
+                                                                        lora_uris=self.config.lora_uris,
+                                                                        textual_inversion_uris=self.config.textual_inversion_uris,
                                                                         scheduler=self.config.scheduler,
                                                                         sdxl_refiner_scheduler=self.config.sdxl_refiner_scheduler,
                                                                         safety_checker=self.config.safety_checker,
-                                                                        sdxl_refiner_path=self.config.sdxl_refiner_path,
+                                                                        sdxl_refiner_uri=self.config.sdxl_refiner_uri,
                                                                         auth_token=self.config.auth_token)
 
-            sdxl_high_noise_fractions = self.config.sdxl_high_noise_fractions if self.config.sdxl_refiner_path is not None else None
+            sdxl_high_noise_fractions = self.config.sdxl_high_noise_fractions if self.config.sdxl_refiner_uri is not None else None
 
             for args_ctx in self.config.iterate_diffusion_args(sdxl_high_noise_fraction=sdxl_high_noise_fractions,
                                                                image_seed_strength=None,
@@ -1000,18 +999,18 @@ class DiffusionRenderLoop:
                                                                     model_type=self.config.model_type,
                                                                     revision=self.config.revision,
                                                                     variant=self.config.variant,
-                                                                    vae_path=self.config.vae_path,
+                                                                    vae_uri=self.config.vae_uri,
                                                                     vae_tiling=self.config.vae_tiling,
                                                                     vae_slicing=self.config.vae_slicing,
-                                                                    lora_paths=self.config.lora_paths,
-                                                                    textual_inversion_paths=self.config.textual_inversion_paths,
-                                                                    control_net_paths=self.config.control_net_paths,
+                                                                    lora_uris=self.config.lora_uris,
+                                                                    textual_inversion_uris=self.config.textual_inversion_uris,
+                                                                    control_net_uris=self.config.control_net_uris,
                                                                     scheduler=self.config.scheduler,
                                                                     safety_checker=self.config.safety_checker,
-                                                                    sdxl_refiner_path=self.config.sdxl_refiner_path,
+                                                                    sdxl_refiner_uri=self.config.sdxl_refiner_uri,
                                                                     auth_token=self.config.auth_token)
 
-        sdxl_high_noise_fractions = self.config.sdxl_high_noise_fractions if self.config.sdxl_refiner_path is not None else None
+        sdxl_high_noise_fractions = self.config.sdxl_high_noise_fractions if self.config.sdxl_refiner_uri is not None else None
 
         image_seed_strengths = self.config.image_seed_strengths if \
             not (_pipelinewrapper.model_type_is_upscaler(self.config.model_type) or
@@ -1024,7 +1023,7 @@ class DiffusionRenderLoop:
             for img_seed in self.config.image_seeds:
                 parsed = _mediainput.parse_image_seed_uri(img_seed)
 
-                if self.config.control_net_paths and not parsed.is_single_image() and parsed.control_uri is None:
+                if self.config.control_net_uris and not parsed.is_single_image() and parsed.control_uri is None:
                     raise NotImplementedError(
                         f'You must specify a control image with the control argument '
                         f'IE: --image-seeds "my-seed.png;control=my-control.png" in your '
@@ -1036,7 +1035,7 @@ class DiffusionRenderLoop:
 
         for image_seed, parsed_image_seed in list(validate_image_seeds()):
 
-            is_single_control_image = self.config.control_net_paths and parsed_image_seed.is_single_image()
+            is_single_control_image = self.config.control_net_uris and parsed_image_seed.is_single_image()
             image_seed_strengths = image_seed_strengths if not is_single_control_image else None
             upscaler_noise_levels = upscaler_noise_levels if not is_single_control_image else None
 
