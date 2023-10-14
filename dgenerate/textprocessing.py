@@ -64,6 +64,9 @@ class ConceptUriParser:
         Parse a string.
 
         :param uri: the string
+
+        :raise: :py:class:`.ConceptPathParseError`
+
         :return: :py:class:`.ConceptPath`
         """
         args = dict()
