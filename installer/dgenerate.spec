@@ -27,7 +27,8 @@ datas = []
 binaries = []
 module_collection_mode = {}
 
-required_package_names = setup.get_poetry_lockfile_as_pip_requires(exclude=exclude).keys() + requires_extra_data
+required_package_names = \
+    list(setup.get_poetry_lockfile_as_pip_requires(exclude=exclude).keys()) + requires_extra_data
 
 for package_name in required_package_names:
 
