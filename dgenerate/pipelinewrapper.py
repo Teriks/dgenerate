@@ -1485,6 +1485,7 @@ class PipelineWrapperResult:
     def add_dgenerate_opt(self, name: str, value: typing.Any):
         """
         Add an option value to be used by :py:meth:`.PipelineWrapperResult.gen_dgenerate_config`
+        
         :param name: The option name
         :param value: The option value
         """
