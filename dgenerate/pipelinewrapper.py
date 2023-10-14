@@ -1914,6 +1914,20 @@ class DiffusionPipelineWrapper:
         return get_model_type_string(self._model_type)
 
     @property
+    def dtype_enum(self) -> DataTypes:
+        """
+        Currently set --dtype enum value
+        """
+        return self._dtype
+
+    @property
+    def dtype_string(self) -> str:
+        """
+        Currently set --dtype string value
+        """
+        return get_data_type_string(self._dtype)
+
+    @property
     def model_subfolder(self) -> _types.OptionalName:
         """
         Selected model subfolder for the main model, (remote repo subfolder or local) or None
@@ -2008,7 +2022,7 @@ class DiffusionPipelineWrapper:
 
         opts = [(self.model_path,),
                 ('--model-type', self.model_type_string),
-                ('--dtype', self._dtype),
+                ('--dtype', self.dtype_string),
                 ('--device', self._device),
                 ('--inference-steps', inference_steps),
                 ('--guidance-scales', guidance_scale),
