@@ -2,6 +2,7 @@
 
 import re
 from importlib.machinery import SourceFileLoader
+from importlib.metadata import PackageNotFoundError
 
 from PyInstaller.building.api import PYZ, EXE, COLLECT
 from PyInstaller.building.build_main import Analysis
@@ -33,7 +34,10 @@ required_package_names = \
 for package_name in required_package_names:
 
     if package_name not in requires_extra_data:
-        datas += copy_metadata(package_name)
+        try:
+            datas += copy_metadata(package_name)
+        except PackageNotFoundError:
+            print(f'copy_metadata failed for {package_name}')
 
     print(f'Data Collection For: {package_name}')
     module_collection_mode[package_name] = 'pyz+py'
