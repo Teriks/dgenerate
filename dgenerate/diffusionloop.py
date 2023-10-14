@@ -218,7 +218,7 @@ class DiffusionRenderLoopConfig:
     guidance_scales: _types.Floats = [_pipelinewrapper.DEFAULT_GUIDANCE_SCALE]
     inference_steps_values: _types.Integers = [_pipelinewrapper.DEFAULT_INFERENCE_STEPS]
 
-    image_seeds: _types.OptionalPaths = None
+    image_seeds: _types.OptionalUris = None
     image_seed_strengths: _types.OptionalFloats = None
     upscaler_noise_levels: _types.OptionalIntegers = None
     guidance_rescales: _types.OptionalFloats = None
@@ -276,9 +276,9 @@ class DiffusionRenderLoopConfig:
 
     auth_token: typing.Optional[str] = None
 
-    seed_image_preprocessors: _types.OptionalPaths = None
-    mask_image_preprocessors: _types.OptionalPaths = None
-    control_image_preprocessors: _types.OptionalPaths = None
+    seed_image_preprocessors: _types.OptionalUris = None
+    mask_image_preprocessors: _types.OptionalUris = None
+    control_image_preprocessors: _types.OptionalUris = None
 
     def __init__(self):
         pass
@@ -1023,13 +1023,13 @@ class DiffusionRenderLoop:
             for img_seed in self.config.image_seeds:
                 parsed = _mediainput.parse_image_seed_uri(img_seed)
 
-                if self.config.control_net_uris and not parsed.is_single_image() and parsed.control_uri is None:
+                if self.config.control_net_uris and not parsed.is_single_image() and parsed.control_path is None:
                     raise NotImplementedError(
                         f'You must specify a control image with the control argument '
                         f'IE: --image-seeds "my-seed.png;control=my-control.png" in your '
                         f'--image-seeds "{img_seed}" when using --control-nets in order '
                         f'to use inpainting. If you want to use the control image alone '
-                        f'without a mask, use --image-seeds "{parsed.uri}".')
+                        f'without a mask, use --image-seeds "{parsed.seed_path}".')
 
                 yield img_seed, parsed
 

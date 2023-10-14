@@ -42,11 +42,18 @@ def invoke_dgenerate(
 
     :raises: :py:class:`dgenerate.mediainput.ImageSeedError`
              :py:class:`dgenerate.mediainput.UnknownMimetypeError`
-             :py:class:`dgenerate.pipelinewrapper.InvalidModelPathError`
-             :py:class:`dgenerate.pipelinewrapper.InvalidSchedulerName`
              :py:class:`dgenerate.preprocessors.ImagePreprocessorArgumentError`
              :py:class:`dgenerate.preprocessors.ImagePreprocessorNotFoundError`
-             :py:class:`dgenerate.preprocessors.ImagePreprocessorNotFoundError`
+             :py:class:`dgenerate.pipelinewrapper.InvalidModelPathError`
+             :py:class:`dgenerate.pipelinewrapper.InvalidSDXLRefinerUriError`
+             :py:class:`dgenerate.pipelinewrapper.InvalidVaeUriError`
+             :py:class:`dgenerate.pipelinewrapper.InvalidLoRAUriError`
+             :py:class:`dgenerate.pipelinewrapper.InvalidControlNetUriError`
+             :py:class:`dgenerate.pipelinewrapper.InvalidTextualInversionUriError`
+             :py:class:`dgenerate.pipelinewrapper.InvalidSchedulerName`
+             :py:class:`dgenerate.pipelinewrapper.OutOfMemoryError`
+             :py:class:`NotImplementedError`
+             :py:class:`EnvironmentError`
 
 
     :return: integer return-code, anything other than 0 is failure

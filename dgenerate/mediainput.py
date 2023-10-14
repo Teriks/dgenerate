@@ -606,12 +606,12 @@ class ImageSeedParseResult:
     """
     The result of parsing an --image-seed path
     """
-    uri: _types.OptionalString = None
-    uri_is_local: bool = False
-    mask_uri: _types.OptionalString = None
-    mask_uri_is_local: bool = False
-    control_uri: _types.OptionalString = None
-    control_uri_is_local: bool = False
+    seed_path: _types.OptionalPath = None
+    seed_path_is_local: bool = False
+    mask_path: _types.OptionalPath = None
+    mask_path_is_local: bool = False
+    control_path: _types.OptionalPath = None
+    control_path_is_local: bool = False
     resize_resolution: _types.OptionalSize = None
 
     def is_single_image(self) -> bool:
@@ -620,7 +620,7 @@ class ImageSeedParseResult:
 
         :return: bool
         """
-        return self.uri is not None and self.mask_uri is None and self.control_uri is None
+        return self.seed_path is not None and self.mask_path is None and self.control_path is None
 
 
 def _parse_image_seed_uri_legacy(uri: str) -> ImageSeedParseResult:
@@ -628,11 +628,11 @@ def _parse_image_seed_uri_legacy(uri: str) -> ImageSeedParseResult:
     result = ImageSeedParseResult()
 
     first = next(parts)
-    result.uri = first
+    result.seed_path = first
     if first.startswith('http://') or first.startswith('https://'):
-        result.uri_is_local = False
+        result.seed_path_is_local = False
     elif os.path.exists(first):
-        result.uri_is_local = True
+        result.seed_path_is_local = True
     else:
         raise ImageSeedError(f'Image seed file "{first}" does not exist.')
 
@@ -643,11 +643,11 @@ def _parse_image_seed_uri_legacy(uri: str) -> ImageSeedParseResult:
                 'check image seed syntax, stray semicolon?')
 
         if part.startswith('http://') or part.startswith('https://'):
-            result.mask_uri = part
-            result.mask_uri_is_local = False
+            result.mask_path = part
+            result.mask_path_is_local = False
         elif os.path.exists(part):
-            result.mask_uri = part
-            result.mask_uri_is_local = True
+            result.mask_path = part
+            result.mask_path_is_local = True
         else:
             try:
                 dimensions = tuple(int(s.strip()) for s in part.split('x'))
@@ -702,34 +702,34 @@ def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
     except _textprocessing.ConceptPathParseError as e:
         raise ImageSeedError(e)
 
-    uri = parse_result.concept
-    result.uri = uri
-    if uri.startswith('http://') or uri.startswith('https://'):
-        result.uri_is_local = False
-    elif os.path.exists(uri):
-        result.uri_is_local = True
+    seed_path = parse_result.concept
+    result.seed_path = seed_path
+    if seed_path.startswith('http://') or seed_path.startswith('https://'):
+        result.seed_path_is_local = False
+    elif os.path.exists(seed_path):
+        result.seed_path_is_local = True
     else:
-        raise ImageSeedError(f'Image seed file "{uri}" does not exist.')
+        raise ImageSeedError(f'Image seed file "{seed_path}" does not exist.')
 
-    mask_uri = parse_result.args.get('mask', None)
-    if mask_uri is not None:
-        result.mask_uri = mask_uri
-        if mask_uri.startswith('http://') or mask_uri.startswith('https://'):
-            result.mask_uri_is_local = False
-        elif os.path.exists(mask_uri):
-            result.mask_uri_is_local = True
+    mask_path = parse_result.args.get('mask', None)
+    if mask_path is not None:
+        result.mask_path = mask_path
+        if mask_path.startswith('http://') or mask_path.startswith('https://'):
+            result.mask_path_is_local = False
+        elif os.path.exists(mask_path):
+            result.mask_path_is_local = True
         else:
-            raise ImageSeedError(f'Image mask file "{mask_uri}" does not exist.')
+            raise ImageSeedError(f'Image mask file "{mask_path}" does not exist.')
 
-    control_uri = parse_result.args.get('control', None)
-    if control_uri is not None:
-        result.control_uri = control_uri
-        if control_uri.startswith('http://') or control_uri.startswith('https://'):
-            result.control_uri_is_local = False
-        elif os.path.exists(control_uri):
-            result.control_uri_is_local = True
+    control_path = parse_result.args.get('control', None)
+    if control_path is not None:
+        result.control_path = control_path
+        if control_path.startswith('http://') or control_path.startswith('https://'):
+            result.control_path_is_local = False
+        elif os.path.exists(control_path):
+            result.control_path_is_local = True
         else:
-            raise ImageSeedError(f'Control image file "{control_uri}" does not exist.')
+            raise ImageSeedError(f'Control image file "{control_path}" does not exist.')
 
     resize = parse_result.args.get('resize', None)
     if resize is not None:
@@ -1138,7 +1138,7 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
     """
 
     if isinstance(uri, ImageSeedParseResult):
-        uri = uri.uri
+        uri = uri.seed_path
 
     control_mime_type, control_data = fetch_image_data_stream(uri=uri)
 
@@ -1252,16 +1252,16 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
     else:
         parse_result = parse_image_seed_uri(uri)
 
-    seed_mime_type, seed_data = fetch_image_data_stream(uri=parse_result.uri)
+    seed_mime_type, seed_data = fetch_image_data_stream(uri=parse_result.seed_path)
 
     mask_mime_type, mask_data = None, None
 
-    if parse_result.mask_uri is not None:
-        mask_mime_type, mask_data = fetch_image_data_stream(uri=parse_result.mask_uri)
+    if parse_result.mask_path is not None:
+        mask_mime_type, mask_data = fetch_image_data_stream(uri=parse_result.mask_path)
 
     control_mime_type, control_data = None, None
-    if parse_result.control_uri is not None:
-        control_mime_type, control_data = fetch_image_data_stream(uri=parse_result.control_uri)
+    if parse_result.control_path is not None:
+        control_mime_type, control_data = fetch_image_data_stream(uri=parse_result.control_path)
 
     if parse_result.resize_resolution is not None:
         resize_resolution = parse_result.resize_resolution
@@ -1273,7 +1273,7 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
 
     seed_reader = _create_image_seed_reader(manage_context=manage_context,
                                             mime_type=seed_mime_type,
-                                            file_source=parse_result.uri,
+                                            file_source=parse_result.seed_path,
                                             preprocessor=seed_image_preprocessor,
                                             resize_resolution=resize_resolution,
                                             data=seed_data,
@@ -1281,7 +1281,7 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
     # Optional
     mask_reader = _create_image_seed_reader(manage_context=manage_context,
                                             mime_type=mask_mime_type,
-                                            file_source=parse_result.mask_uri,
+                                            file_source=parse_result.mask_path,
                                             preprocessor=mask_image_preprocessor,
                                             resize_resolution=resize_resolution,
                                             data=mask_data,
@@ -1290,15 +1290,15 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
     # Optional
     control_reader = _create_image_seed_reader(manage_context=manage_context,
                                                mime_type=control_mime_type,
-                                               file_source=parse_result.control_uri,
+                                               file_source=parse_result.control_path,
                                                preprocessor=control_image_preprocessor,
                                                resize_resolution=resize_resolution,
                                                data=control_data,
                                                throw=False) if control_data is not None else None
 
-    size_mismatch_check = [(parse_result.uri, 'Image seed', seed_reader),
-                           (parse_result.mask_uri, 'Mask image', mask_reader),
-                           (parse_result.control_uri, 'Control image', control_reader)]
+    size_mismatch_check = [(parse_result.seed_path, 'Image seed', seed_reader),
+                           (parse_result.mask_path, 'Mask image', mask_reader),
+                           (parse_result.control_path, 'Control image', control_reader)]
 
     for left in size_mismatch_check:
         for right in size_mismatch_check:
