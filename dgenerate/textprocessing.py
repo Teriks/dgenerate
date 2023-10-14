@@ -42,14 +42,14 @@ class ConceptPath:
         return f"{self.concept}: {self.args}"
 
 
-class ConceptPathParser:
+class ConceptUriParser:
     """
     Parser for dgenerate concept paths with arguments, IE: concept;arg1="a";arg2="b"
 
     Used for --vae, --lora etc. as well as image preprocessor plugin module arguments.
     """
 
-    def __init__(self, concept_name: str, known_args=None):
+    def __init__(self, concept_name: _types.Name, known_args=None):
         """
         Constructor.
 
@@ -59,7 +59,7 @@ class ConceptPathParser:
         self.known_args = known_args
         self.concept_name = concept_name
 
-    def parse_concept_path(self, string: str):
+    def parse_concept_uri(self, uri: _types.Uri):
         """
         Parse a string.
 
@@ -67,7 +67,7 @@ class ConceptPathParser:
         :return: :py:class:`.ConceptPath`
         """
         args = dict()
-        parts = string.split(';')
+        parts = uri.split(';')
         parts = iter(parts)
         concept = parts.__next__()
         for i in parts:

@@ -96,35 +96,35 @@ class InvalidModelPathError(Exception):
     pass
 
 
-class InvalidSDXLRefinerPathError(InvalidModelPathError):
+class InvalidSDXLRefinerUriError(InvalidModelPathError):
     """
     Error in --sdxl-refiner path
     """
     pass
 
 
-class InvalidVaePathError(InvalidModelPathError):
+class InvalidVaeUriError(InvalidModelPathError):
     """
     Error in --vae path
     """
     pass
 
 
-class InvalidControlNetPathError(InvalidModelPathError):
+class InvalidControlNetUriError(InvalidModelPathError):
     """
     Error in --control-nets path
     """
     pass
 
 
-class InvalidLoRAPathError(InvalidModelPathError):
+class InvalidLoRAUriError(InvalidModelPathError):
     """
     Error in --lora path
     """
     pass
 
 
-class InvalidTextualInversionPathError(InvalidModelPathError):
+class InvalidTextualInversionUriError(InvalidModelPathError):
     """
     Error in --textual-inversions path
     """
@@ -145,26 +145,26 @@ class SchedulerHelpException(Exception):
     pass
 
 
-_sdxl_refiner_path_parser = _textprocessing.ConceptPathParser('SDXL Refiner',
-                                                              ['revision', 'variant', 'subfolder', 'dtype'])
+_sdxl_refiner_uri_parser = _textprocessing.ConceptUriParser('SDXL Refiner',
+                                                            ['revision', 'variant', 'subfolder', 'dtype'])
 
-_torch_vae_path_parser = _textprocessing.ConceptPathParser('VAE',
-                                                           ['model', 'revision', 'variant', 'subfolder', 'dtype'])
+_torch_vae_uri_parser = _textprocessing.ConceptUriParser('VAE',
+                                                         ['model', 'revision', 'variant', 'subfolder', 'dtype'])
 
-_flax_vae_path_parser = _textprocessing.ConceptPathParser('VAE', ['model', 'revision', 'subfolder', 'dtype'])
+_flax_vae_uri_parser = _textprocessing.ConceptUriParser('VAE', ['model', 'revision', 'subfolder', 'dtype'])
 
-_torch_control_net_path_parser = _textprocessing.ConceptPathParser('ControlNet',
-                                                                   ['scale', 'start', 'end', 'revision', 'variant',
-                                                                    'subfolder',
-                                                                    'dtype'])
+_torch_control_net_uri_parser = _textprocessing.ConceptUriParser('ControlNet',
+                                                                 ['scale', 'start', 'end', 'revision', 'variant',
+                                                                  'subfolder',
+                                                                  'dtype'])
 
-_flax_control_net_path_parser = _textprocessing.ConceptPathParser('ControlNet',
-                                                                  ['scale', 'revision', 'subfolder', 'dtype',
-                                                                   'from_torch'])
+_flax_control_net_uri_parser = _textprocessing.ConceptUriParser('ControlNet',
+                                                                ['scale', 'revision', 'subfolder', 'dtype',
+                                                                 'from_torch'])
 
-_lora_path_parser = _textprocessing.ConceptPathParser('LoRA', ['scale', 'revision', 'subfolder', 'weight-name'])
-_textual_inversion_path_parser = _textprocessing.ConceptPathParser('Textual Inversion',
-                                                                   ['revision', 'subfolder', 'weight-name'])
+_lora_uri_parser = _textprocessing.ConceptUriParser('LoRA', ['scale', 'revision', 'subfolder', 'weight-name'])
+_textual_inversion_uri_parser = _textprocessing.ConceptUriParser('Textual Inversion',
+                                                                 ['revision', 'subfolder', 'weight-name'])
 
 
 def _simple_cache_hit_debug(title: str, cache_key: str, cache_hit: typing.Any):
@@ -202,6 +202,228 @@ def is_valid_device_string(device, raise_ordinal=True):
     return False
 
 
+class DataTypes(enum.Enum):
+    AUTO = 0
+    FLOAT16 = 1
+    FLOAT32 = 2
+
+
+def supported_data_type_strings():
+    """
+    Return a list of supported --dtype strings
+    """
+    return ['auto', 'float16', 'float32']
+
+
+def supported_data_type_enums() -> typing.List[DataTypes]:
+    """
+    Return a list of supported :py:class:`.DataTypes` enum values
+    """
+    return [get_data_type_enum(i) for i in supported_data_type_strings()]
+
+
+def get_data_type_enum(id_str: typing.Union[DataTypes, str]) -> DataTypes:
+    """
+    Convert a --dtype string to its :py:class:`.DataTypes` enum value
+
+    :param id_str: --dtype string
+    :return: :py:class:`.DataTypes`
+    """
+
+    if isinstance(id_str, DataTypes):
+        return id_str
+
+    return {'auto': DataTypes.AUTO,
+            'float16': DataTypes.FLOAT16,
+            'float32': DataTypes.FLOAT32}[id_str.strip().lower()]
+
+
+def get_data_type_string(data_type_enum: DataTypes) -> str:
+    """
+    Convert a :py:class:`.DataTypes` enum value to its --dtype string
+
+    :param data_type_enum: :py:class:`.DataTypes` value
+    :return: --dtype string
+    """
+
+    model_type = get_data_type_enum(data_type_enum)
+
+    return {DataTypes.AUTO: 'auto',
+            DataTypes.FLOAT16: 'float16',
+            DataTypes.FLOAT32: 'float32'}[model_type]
+
+
+class ModelTypes(enum.Enum):
+    """
+    Enum representation of --model-type
+    """
+    TORCH = 0
+    TORCH_PIX2PIX = 1
+    TORCH_SDXL = 2
+    TORCH_SDXL_PIX2PIX = 3
+    TORCH_UPSCALER_X2 = 4
+    TORCH_UPSCALER_X4 = 5
+    FLAX = 6
+
+
+def supported_model_type_strings():
+    """
+    Return a list of supported --model-type strings
+    """
+    base_set = ['torch', 'torch-pix2pix', 'torch-sdxl', 'torch-sdxl-pix2pix', 'torch-upscaler-x2', 'torch-upscaler-x4']
+    if have_jax_flax():
+        return base_set + ['flax']
+    else:
+        return base_set
+
+
+def supported_model_type_enums() -> typing.List[ModelTypes]:
+    """
+    Return a list of supported :py:class:`.ModelTypes` enum values
+    """
+    return [get_model_type_enum(i) for i in supported_model_type_strings()]
+
+
+def get_model_type_enum(id_str: typing.Union[ModelTypes, str]) -> ModelTypes:
+    """
+    Convert a --model-type string to its :py:class:`.ModelTypes` enum value
+
+    :param id_str: --model-type string
+    :return: :py:class:`.ModelTypes`
+    """
+
+    if isinstance(id_str, ModelTypes):
+        return id_str
+
+    return {'torch': ModelTypes.TORCH,
+            'torch-pix2pix': ModelTypes.TORCH_PIX2PIX,
+            'torch-sdxl': ModelTypes.TORCH_SDXL,
+            'torch-sdxl-pix2pix': ModelTypes.TORCH_SDXL_PIX2PIX,
+            'torch-upscaler-x2': ModelTypes.TORCH_UPSCALER_X2,
+            'torch-upscaler-x4': ModelTypes.TORCH_UPSCALER_X4,
+            'flax': ModelTypes.FLAX}[id_str.strip().lower()]
+
+
+def get_model_type_string(model_type_enum: ModelTypes) -> str:
+    """
+    Convert a :py:class:`.ModelTypes` enum value to its --model-type string
+
+    :param model_type_enum: :py:class:`.ModelTypes` value
+    :return: --model-type string
+    """
+
+    model_type = get_model_type_enum(model_type_enum)
+
+    return {ModelTypes.TORCH: 'torch',
+            ModelTypes.TORCH_PIX2PIX: 'torch-pix2pix',
+            ModelTypes.TORCH_SDXL: 'torch-sdxl',
+            ModelTypes.TORCH_SDXL_PIX2PIX: 'torch-sdxl-pix2pix',
+            ModelTypes.TORCH_UPSCALER_X2: 'torch-upscaler-x2',
+            ModelTypes.TORCH_UPSCALER_X4: 'torch-upscaler-x4',
+            ModelTypes.FLAX: 'flax'}[model_type]
+
+
+def model_type_is_upscaler(model_type: typing.Union[ModelTypes, str]) -> bool:
+    """
+    Does a --model-type string or :py:class:`.ModelTypes` enum value represent an upscaler model?
+
+    :param model_type: --model-type string or :py:class:`.ModelTypes` enum value
+    :return: bool
+    """
+    model_type = get_model_type_string(model_type)
+
+    return 'upscaler' in model_type
+
+
+def model_type_is_sdxl(model_type: typing.Union[ModelTypes, str]) -> bool:
+    """
+    Does a --model-type string or :py:class:`.ModelTypes` enum value represent an SDXL model?
+
+    :param model_type: --model-type string or :py:class:`.ModelTypes` enum value
+    :return: bool
+    """
+    model_type = get_model_type_string(model_type)
+
+    return 'sdxl' in model_type
+
+
+def model_type_is_torch(model_type: typing.Union[ModelTypes, str]) -> bool:
+    """
+    Does a --model-type string or :py:class:`.ModelTypes` enum value represent an Torch model?
+
+    :param model_type: --model-type string or :py:class:`.ModelTypes` enum value
+    :return: bool
+    """
+    model_type = get_model_type_string(model_type)
+
+    return 'torch' in model_type
+
+
+def model_type_is_flax(model_type: typing.Union[ModelTypes, str]) -> bool:
+    """
+    Does a --model-type string or :py:class:`.ModelTypes` enum value represent an Flax model?
+
+    :param model_type: --model-type string or :py:class:`.ModelTypes` enum value
+    :return: bool
+    """
+    model_type = get_model_type_string(model_type)
+
+    return 'flax' in model_type
+
+
+def model_type_is_pix2pix(model_type: typing.Union[ModelTypes, str]) -> bool:
+    """
+    Does a --model-type string or :py:class:`.ModelTypes` enum value represent an pix2pix type model?
+
+    :param model_type: --model-type string or :py:class:`.ModelTypes` enum value
+    :return: bool
+    """
+    model_type = get_model_type_string(model_type)
+
+    return 'pix2pix' in model_type
+
+
+def have_jax_flax():
+    """
+    Do we have jax/flax support?
+
+    :return: bool
+    """
+    return jax is not None
+
+
+def _get_flax_dtype(dtype):
+    if dtype is None:
+        return None
+
+    if isinstance(dtype, jnp.dtype):
+        return dtype
+
+    if isinstance(dtype, DataTypes):
+        dtype = get_data_type_string(dtype)
+
+    return {'float16': jnp.bfloat16,
+            'float32': jnp.float32,
+            'float64': jnp.float64,
+            'auto': None}[dtype.lower()]
+
+
+def _get_torch_dtype(dtype: typing.Union[DataTypes, torch.dtype, str, None]) -> typing.Union[torch.dtype, None]:
+    if dtype is None:
+        return None
+
+    if isinstance(dtype, torch.dtype):
+        return dtype
+
+    if isinstance(dtype, DataTypes):
+        dtype = get_data_type_string(dtype)
+
+    return {'float16': torch.float16,
+            'float32': torch.float32,
+            'float64': torch.float64,
+            'auto': None}[dtype.lower()]
+
+
 class FlaxControlNetPath:
     """
     Representation of --control-nets path when --model-type flax*
@@ -235,35 +457,37 @@ class FlaxControlNetPath:
         return new_net
 
 
-def parse_flax_control_net_path(path) -> FlaxControlNetPath:
+def parse_flax_control_net_uri(uri: _types.Uri) -> FlaxControlNetPath:
     """
-    Parse a --model-type flax* --control-nets path specification and return an object representing its constituents
+    Parse a --model-type flax* --control-nets uri specification and return an object representing its constituents
 
-    :param path: string with --control-nets path syntax
+    :param uri: string with --control-nets uri syntax
     :return: :py:class:`.FlaxControlNetPath`
     """
     try:
-        r = _flax_control_net_path_parser.parse_concept_path(path)
+        r = _flax_control_net_uri_parser.parse_concept_uri(uri)
 
-        dtype = r.args.get('dtype', None)
+        dtype = r.args.get('dtype')
         scale = r.args.get('scale', 1.0)
-        from_torch = r.args.get('from_torch', None)
+        from_torch = r.args.get('from_torch')
 
         if from_torch is not None:
             try:
                 from_torch = bool(from_torch)
             except ValueError:
-                raise InvalidControlNetPathError(
+                raise InvalidControlNetUriError(
                     f'Flax Control Net from_torch must be undefined or boolean (true or false), received: {from_torch}')
 
-        if dtype not in {'float32', 'float16', 'auto', None}:
-            raise InvalidVaePathError(
-                f'Flax Control Net dtype must be float32, float16, auto, or left undefined, received: {dtype}')
+        supported_dtypes = supported_data_type_strings()
+        if dtype is not None and dtype not in supported_dtypes:
+            raise InvalidControlNetUriError(
+                f'Flax ControlNet "dtype" must be {", ".join(supported_dtypes)}, '
+                f'or left undefined, received: {dtype}')
 
         try:
             scale = float(scale)
         except ValueError:
-            raise InvalidControlNetPathError(
+            raise InvalidControlNetUriError(
                 f'Flax Control Net scale must be a floating point number, received {scale}')
 
         return FlaxControlNetPath(
@@ -275,7 +499,7 @@ def parse_flax_control_net_path(path) -> FlaxControlNetPath:
             from_torch=from_torch)
 
     except _textprocessing.ConceptPathParseError as e:
-        raise InvalidControlNetPathError(e)
+        raise InvalidControlNetUriError(e)
 
 
 class TorchControlNetPath:
@@ -318,45 +542,47 @@ class TorchControlNetPath:
         return new_net
 
 
-def parse_torch_control_net_path(path) -> TorchControlNetPath:
+def parse_torch_control_net_uri(uri: _types.Uri) -> TorchControlNetPath:
     """
-    Parse a --model-type torch* --control-nets path specification and return an object representing its constituents
+    Parse a --model-type torch* --control-nets uri specification and return an object representing its constituents
 
-    :param path: string with --control-nets path syntax
+    :param path: string with --control-nets uri syntax
     :return: :py:class:`.TorchControlNetPath`
     """
     try:
-        r = _torch_control_net_path_parser.parse_concept_path(path)
+        r = _torch_control_net_uri_parser.parse_concept_uri(uri)
 
-        dtype = r.args.get('dtype', None)
+        dtype = r.args.get('dtype')
         scale = r.args.get('scale', 1.0)
         start = r.args.get('start', 0.0)
         end = r.args.get('end', 1.0)
 
-        if dtype not in {'float32', 'float16', 'auto', None}:
-            raise InvalidVaePathError(
-                f'Torch ControlNet "dtype" must be float32, float16, auto, or left undefined, received: {dtype}')
+        supported_dtypes = supported_data_type_strings()
+        if dtype is not None and dtype not in supported_dtypes:
+            raise InvalidControlNetUriError(
+                f'Torch ControlNet "dtype" must be {", ".join(supported_dtypes)}, '
+                f'or left undefined, received: {dtype}')
 
         try:
             scale = float(scale)
         except ValueError:
-            raise InvalidControlNetPathError(
+            raise InvalidControlNetUriError(
                 f'Torch ControlNet "scale" must be a floating point number, received: {scale}')
 
         try:
             start = float(start)
         except ValueError:
-            raise InvalidControlNetPathError(
+            raise InvalidControlNetUriError(
                 f'Torch ControlNet "start" must be a floating point number, received: {start}')
 
         try:
             end = float(end)
         except ValueError:
-            raise InvalidControlNetPathError(
+            raise InvalidControlNetUriError(
                 f'Torch ControlNet "end" must be a floating point number, received: {end}')
 
         if start > end:
-            raise InvalidControlNetPathError(
+            raise InvalidControlNetUriError(
                 f'Torch ControlNet "start" must be less than or equal to "end".')
 
         return TorchControlNetPath(
@@ -370,7 +596,7 @@ def parse_torch_control_net_path(path) -> TorchControlNetPath:
             end=end)
 
     except _textprocessing.ConceptPathParseError as e:
-        raise InvalidControlNetPathError(e)
+        raise InvalidControlNetUriError(e)
 
 
 class SDXLRefinerPath:
@@ -386,20 +612,23 @@ class SDXLRefinerPath:
         self.subfolder = subfolder
 
 
-def parse_sdxl_refiner_path(path) -> SDXLRefinerPath:
+def parse_sdxl_refiner_uri(uri: _types.Uri) -> SDXLRefinerPath:
     """
-    Parse an --sdxl-refiner path and return an object representing its constituents
+    Parse an --sdxl-refiner uri and return an object representing its constituents
 
-    :param path: string with --sdxl-refiner path syntax
+    :param path: string with --sdxl-refiner uri syntax
     :return: :py:class:`.SDXLRefinerPath`
     """
     try:
-        r = _sdxl_refiner_path_parser.parse_concept_path(path)
+        r = _sdxl_refiner_uri_parser.parse_concept_uri(uri)
+
+        supported_dtypes = supported_data_type_strings()
 
         dtype = r.args.get('dtype', None)
-        if dtype not in {'float32', 'float16', 'auto', None}:
-            raise InvalidSDXLRefinerPathError(
-                f'Torch SDXL refiner dtype must be float32, float16, auto, or left undefined, received: {dtype}')
+        if dtype is not None and dtype not in supported_dtypes:
+            raise InvalidSDXLRefinerUriError(
+                f'Torch SDXL refiner "dtype" must be {", ".join(supported_dtypes)}, '
+                f'or left undefined, received: {dtype}')
 
         return SDXLRefinerPath(
             model=r.concept,
@@ -408,7 +637,7 @@ def parse_sdxl_refiner_path(path) -> SDXLRefinerPath:
             dtype=_get_torch_dtype(dtype),
             subfolder=r.args.get('subfolder', None))
     except _textprocessing.ConceptPathParseError as e:
-        raise InvalidSDXLRefinerPathError(e)
+        raise InvalidSDXLRefinerUriError(e)
 
 
 class TorchVAEPath:
@@ -425,24 +654,27 @@ class TorchVAEPath:
         self.subfolder = subfolder
 
 
-def parse_torch_vae_path(path) -> TorchVAEPath:
+def parse_torch_vae_uri(uri: _types.Uri) -> TorchVAEPath:
     """
-    Parse a --model-type torch* --vae path and return an object representing its constituents
+    Parse a --model-type torch* --vae uri and return an object representing its constituents
 
-    :param path: string with --vae path syntax
+    :param path: string with --vae uri syntax
     :return: :py:class:`.TorchVAEPath`
     """
     try:
-        r = _torch_vae_path_parser.parse_concept_path(path)
+        r = _torch_vae_uri_parser.parse_concept_uri(uri)
 
         model = r.args.get('model')
         if model is None:
-            raise InvalidVaePathError('model argument for torch VAE specification must be defined.')
+            raise InvalidVaeUriError('model argument for torch VAE specification must be defined.')
 
-        dtype = r.args.get('dtype', None)
-        if dtype not in {'float32', 'float16', 'auto', None}:
-            raise InvalidVaePathError(
-                f'Torch VAE dtype must be float32, float16, auto, or left undefined, received: {dtype}')
+        dtype = r.args.get('dtype')
+
+        supported_dtypes = supported_data_type_strings()
+        if dtype is not None and dtype not in supported_dtypes:
+            raise InvalidVaeUriError(
+                f'Torch VAE "dtype" must be {", ".join(supported_dtypes)}, '
+                f'or left undefined, received: {dtype}')
 
         return TorchVAEPath(encoder=r.concept,
                             model=model,
@@ -451,7 +683,7 @@ def parse_torch_vae_path(path) -> TorchVAEPath:
                             dtype=_get_torch_dtype(dtype),
                             subfolder=r.args.get('subfolder', None))
     except _textprocessing.ConceptPathParseError as e:
-        raise InvalidVaePathError(e)
+        raise InvalidVaeUriError(e)
 
 
 class FlaxVAEPath:
@@ -467,24 +699,27 @@ class FlaxVAEPath:
         self.subfolder = subfolder
 
 
-def parse_flax_vae_path(path) -> FlaxVAEPath:
+def parse_flax_vae_uri(uri: _types.Uri) -> FlaxVAEPath:
     """
-    Parse a --model-type flax* --vae path and return an object representing its constituents
+    Parse a --model-type flax* --vae uri and return an object representing its constituents
 
-    :param path: string with --vae path syntax
+    :param path: string with --vae uri syntax
     :return: :py:class:`.FlaxVAEPath`
     """
     try:
-        r = _flax_vae_path_parser.parse_concept_path(path)
+        r = _flax_vae_uri_parser.parse_concept_uri(uri)
 
         model = r.args.get('model')
         if model is None:
-            raise InvalidVaePathError('model argument for flax VAE specification must be defined.')
+            raise InvalidVaeUriError('model argument for flax VAE specification must be defined.')
 
-        dtype = r.args.get('dtype', None)
-        if dtype not in {'float32', 'float16', 'auto', None}:
-            raise InvalidVaePathError(
-                f'Flax VAE dtype must be float32, float16, auto, or left undefined {dtype}')
+        dtype = r.args.get('dtype')
+
+        supported_dtypes = supported_data_type_strings()
+        if dtype is not None and dtype not in supported_dtypes:
+            raise InvalidVaeUriError(
+                f'Flax VAE "dtype" must be {", ".join(supported_dtypes)}, '
+                f'or left undefined, received: {dtype}')
 
         return FlaxVAEPath(encoder=r.concept,
                            model=model,
@@ -492,7 +727,7 @@ def parse_flax_vae_path(path) -> FlaxVAEPath:
                            dtype=_get_flax_dtype(dtype),
                            subfolder=r.args.get('subfolder', None))
     except _textprocessing.ConceptPathParseError as e:
-        raise InvalidVaePathError(e)
+        raise InvalidVaeUriError(e)
 
 
 class LoRAPath:
@@ -523,15 +758,15 @@ class LoRAPath:
                                        **kwargs)
 
 
-def parse_lora_path(path) -> LoRAPath:
+def parse_lora_uri(uri: _types.Uri) -> LoRAPath:
     """
-    Parse a --lora path and return an object representing its constituents
+    Parse a --lora uri and return an object representing its constituents
 
-    :param path: string with --lora path syntax
+    :param path: string with --lora uri syntax
     :return: :py:class:`.LoRAPath`
     """
     try:
-        r = _lora_path_parser.parse_concept_path(path)
+        r = _lora_uri_parser.parse_concept_uri(uri)
 
         return LoRAPath(model=r.concept,
                         scale=float(r.args.get('scale', 1.0)),
@@ -539,7 +774,7 @@ def parse_lora_path(path) -> LoRAPath:
                         revision=r.args.get('revision', None),
                         subfolder=r.args.get('subfolder', None))
     except _textprocessing.ConceptPathParseError as e:
-        raise InvalidLoRAPathError(e)
+        raise InvalidLoRAUriError(e)
 
 
 class TextualInversionPath:
@@ -570,22 +805,22 @@ class TextualInversionPath:
                                             **kwargs)
 
 
-def parse_textual_inversion_path(path) -> TextualInversionPath:
+def parse_textual_inversion_uri(uri: _types.Uri) -> TextualInversionPath:
     """
-    Parse a --textual-inversions path and return an object representing its constituents
+    Parse a --textual-inversions uri and return an object representing its constituents
 
-    :param path: string with --textual-inversions path syntax
+    :param path: string with --textual-inversions uri syntax
     :return: :py:class:`.TextualInversionPath`
     """
     try:
-        r = _textual_inversion_path_parser.parse_concept_path(path)
+        r = _textual_inversion_uri_parser.parse_concept_uri(uri)
 
         return TextualInversionPath(model=r.concept,
                                     weight_name=r.args.get('weight-name', None),
                                     revision=r.args.get('revision', None),
                                     subfolder=r.args.get('subfolder', None))
     except _textprocessing.ConceptPathParseError as e:
-        raise InvalidTextualInversionPathError(e)
+        raise InvalidTextualInversionUriError(e)
 
 
 def _is_single_file_model_load(path):
@@ -606,7 +841,7 @@ def _is_single_file_model_load(path):
     return False
 
 
-def _path_hash_with_parser(parser):
+def _uri_hash_with_parser(parser):
     def hasher(path):
         if not path:
             return path
@@ -618,14 +853,14 @@ def _path_hash_with_parser(parser):
 
 @_memoize(TORCH_VAE_CACHE,
           hasher=lambda args: _d_memoize.args_cache_key(args,
-                                                        {'path': _path_hash_with_parser(parse_torch_vae_path)}),
+                                                        {'uri': _uri_hash_with_parser(parse_torch_vae_uri)}),
           on_hit=lambda key, hit: _simple_cache_hit_debug("Torch VAE", key, hit),
           on_create=lambda key, new: _simple_cache_miss_debug("Torch VAE", key, new))
-def _load_pytorch_vae(path,
-                      torch_dtype_fallback,
-                      use_auth_token) -> typing.Union[
+def _load_torch_vae(uri: _types.Uri,
+                    torch_dtype_fallback: torch.dtype,
+                    use_auth_token: bool) -> typing.Union[
     diffusers.AutoencoderKL, diffusers.AsymmetricAutoencoderKL, diffusers.AutoencoderTiny]:
-    parsed_concept = parse_torch_vae_path(path)
+    parsed_concept = parse_torch_vae_uri(uri)
 
     if parsed_concept.dtype is None:
         parsed_concept.dtype = torch_dtype_fallback
@@ -639,7 +874,7 @@ def _load_pytorch_vae(path,
     elif encoder_name == 'AutoencoderTiny':
         encoder = diffusers.AutoencoderTiny
     else:
-        raise InvalidVaePathError(f'Unknown VAE encoder class {encoder_name}')
+        raise InvalidVaeUriError(f'Unknown VAE encoder class {encoder_name}')
 
     path = parsed_concept.model
 
@@ -675,13 +910,13 @@ def _load_pytorch_vae(path,
 
 @_memoize(FLAX_VAE_CACHE,
           hasher=lambda args: _d_memoize.args_cache_key(args,
-                                                        {'path': _path_hash_with_parser(parse_flax_vae_path)}),
+                                                        {'uri': _uri_hash_with_parser(parse_flax_vae_uri)}),
           on_hit=lambda key, hit: _simple_cache_hit_debug("Flax VAE", key, hit),
           on_create=lambda key, new: _simple_cache_miss_debug("Flax VAE", key, new))
-def _load_flax_vae(path,
+def _load_flax_vae(uri: _types.Uri,
                    flax_dtype_fallback,
-                   use_auth_token):
-    parsed_concept = parse_flax_vae_path(path)
+                   use_auth_token: bool):
+    parsed_concept = parse_flax_vae_uri(uri)
 
     if parsed_concept.dtype is None:
         parsed_concept.dtype = flax_dtype_fallback
@@ -691,7 +926,7 @@ def _load_flax_vae(path,
     if encoder_name == 'FlaxAutoencoderKL':
         encoder = diffusers.FlaxAutoencoderKL
     else:
-        raise InvalidVaePathError(f'Unknown VAE flax encoder class {encoder_name}')
+        raise InvalidVaeUriError(f'Unknown VAE flax encoder class {encoder_name}')
 
     path = parsed_concept.model
 
@@ -847,30 +1082,30 @@ def _set_torch_safety_checker(pipeline, safety_checker_bool):
             pipeline.safety_checker = _disabled_safety_checker
 
 
-def _path_list_hash_with_parser(parser):
+def _uri_list_hash_with_parser(parser):
     def hasher(paths):
         if not paths:
             return paths
 
         if isinstance(paths, str):
-            return _path_hash_with_parser(parser)(paths)
+            return _uri_hash_with_parser(parser)(paths)
 
-        return '[' + ','.join(_path_hash_with_parser(parser)(path) for path in paths) + ']'
+        return '[' + ','.join(_uri_hash_with_parser(parser)(path) for path in paths) + ']'
 
     return hasher
 
 
 @_memoize(TORCH_MODEL_CACHE,
           hasher=lambda args: _d_memoize.args_cache_key(args,
-                                                        {'vae_path': _path_hash_with_parser(parse_torch_vae_path),
-                                                         'lora_paths':
-                                                             _path_list_hash_with_parser(parse_lora_path),
-                                                         'textual_inversion_paths':
-                                                             _path_list_hash_with_parser(
-                                                                 parse_textual_inversion_path),
-                                                         'control_net_paths':
-                                                             _path_list_hash_with_parser(
-                                                                 parse_torch_control_net_path)}),
+                                                        {'vae_uri': _uri_hash_with_parser(parse_torch_vae_uri),
+                                                         'lora_uris':
+                                                             _uri_list_hash_with_parser(parse_lora_uri),
+                                                         'textual_inversion_uris':
+                                                             _uri_list_hash_with_parser(
+                                                                 parse_textual_inversion_uri),
+                                                         'control_net_uris':
+                                                             _uri_list_hash_with_parser(
+                                                                 parse_torch_control_net_uri)}),
           on_hit=lambda key, hit: _simple_cache_hit_debug("Torch Pipeline", key, hit[0]),
           on_create=lambda key, new: _simple_cache_miss_debug('Torch Pipeline', key, new[0]))
 def _create_torch_diffusion_pipeline(pipeline_type,
@@ -880,10 +1115,10 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                                      variant,
                                      dtype,
                                      model_subfolder=None,
-                                     vae_path=None,
-                                     lora_paths=None,
-                                     textual_inversion_paths=None,
-                                     control_net_paths=None,
+                                     vae_uri=None,
+                                     lora_uris=None,
+                                     textual_inversion_uris=None,
+                                     control_net_uris=None,
                                      scheduler=None,
                                      safety_checker=False,
                                      auth_token=None,
@@ -899,7 +1134,7 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                 'Upscaler models only work with img2img generation, IE: --image-seeds (with no image masks).')
 
         if model_type == ModelTypes.TORCH_UPSCALER_X2:
-            if lora_paths or textual_inversion_paths:
+            if lora_uris or textual_inversion_uris:
                 raise NotImplementedError(
                     '--model-type torch-upscaler-x2 is not compatible with --lora or --textual-inversions.')
 
@@ -914,19 +1149,19 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                 raise NotImplementedError(
                     'pix2pix models only work in img2img mode and cannot work without --image-seeds.')
 
-            if control_net_paths:
+            if control_net_uris:
                 pipeline_class = diffusers.StableDiffusionXLControlNetPipeline if sdxl else diffusers.StableDiffusionControlNetPipeline
             else:
                 pipeline_class = diffusers.StableDiffusionXLPipeline if sdxl else diffusers.StableDiffusionPipeline
         elif pipeline_type == _PipelineTypes.IMG2IMG:
 
             if pix2pix:
-                if control_net_paths:
+                if control_net_uris:
                     raise NotImplementedError('pix2pix models are not compatible with --control-nets.')
 
                 pipeline_class = diffusers.StableDiffusionXLInstructPix2PixPipeline if sdxl else diffusers.StableDiffusionInstructPix2PixPipeline
             else:
-                if control_net_paths:
+                if control_net_uris:
                     if sdxl:
                         pipeline_class = diffusers.StableDiffusionXLControlNetImg2ImgPipeline
                     else:
@@ -939,7 +1174,7 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                 raise NotImplementedError(
                     'pix2pix models only work in img2img mode and cannot work in inpaint mode (with a mask).')
 
-            if control_net_paths:
+            if control_net_uris:
                 if sdxl:
                     pipeline_class = diffusers.StableDiffusionXLControlNetInpaintPipeline
                 else:
@@ -954,23 +1189,23 @@ def _create_torch_diffusion_pipeline(pipeline_type,
 
     # Block invalid Textual Inversion and LoRA usage
 
-    if textual_inversion_paths:
+    if textual_inversion_uris:
         if model_type == ModelTypes.TORCH_UPSCALER_X2:
             raise NotImplementedError(
                 'Model type torch-upscaler-x2 cannot be used with textual inversion models.')
 
-        if isinstance(textual_inversion_paths, str):
-            textual_inversion_paths = [textual_inversion_paths]
+        if isinstance(textual_inversion_uris, str):
+            textual_inversion_uris = [textual_inversion_uris]
 
-    if lora_paths is not None:
-        if not isinstance(lora_paths, str):
+    if lora_uris is not None:
+        if not isinstance(lora_uris, str):
             raise NotImplementedError('Using multiple LoRA models is currently not supported.')
 
         if model_type_is_upscaler(model_type):
             raise NotImplementedError(
                 'LoRA models cannot be used with upscaler models.')
 
-        lora_paths = [lora_paths]
+        lora_uris = [lora_uris]
 
     # ControlNet and VAE loading
 
@@ -979,20 +1214,20 @@ def _create_torch_diffusion_pipeline(pipeline_type,
 
     torch_dtype = _get_torch_dtype(dtype)
 
-    parsed_control_net_paths = []
+    parsed_control_net_uris = []
 
     if scheduler is None or not _scheduler_is_help(scheduler):
         # prevent waiting on VAE load just to get the scheduler
         # help message for the main model
 
-        if vae_path is not None:
-            creation_kwargs['vae'] = _load_pytorch_vae(vae_path,
-                                                       torch_dtype_fallback=torch_dtype,
-                                                       use_auth_token=auth_token)
+        if vae_uri is not None:
+            creation_kwargs['vae'] = _load_torch_vae(vae_uri,
+                                                     torch_dtype_fallback=torch_dtype,
+                                                     use_auth_token=auth_token)
             _messages.debug_log(lambda:
-                                f'Added Torch VAE: "{vae_path}" to pipeline: "{pipeline_class.__name__}"')
+                                f'Added Torch VAE: "{vae_uri}" to pipeline: "{pipeline_class.__name__}"')
 
-    if control_net_paths:
+    if control_net_uris:
         if model_type_is_pix2pix(model_type):
             raise NotImplementedError(
                 'Using ControlNets with pix2pix models is not supported.'
@@ -1000,16 +1235,16 @@ def _create_torch_diffusion_pipeline(pipeline_type,
 
         control_nets = None
 
-        for control_net_path in control_net_paths:
-            parsed_control_net_path = parse_torch_control_net_path(control_net_path)
+        for control_net_uri in control_net_uris:
+            parsed_control_net_uri = parse_torch_control_net_uri(control_net_uri)
 
-            parsed_control_net_paths.append(parsed_control_net_path)
+            parsed_control_net_uris.append(parsed_control_net_uri)
 
-            new_net = parsed_control_net_path.load(use_auth_token=auth_token,
-                                                   torch_dtype_fallback=torch_dtype)
+            new_net = parsed_control_net_uri.load(use_auth_token=auth_token,
+                                                  torch_dtype_fallback=torch_dtype)
 
             _messages.debug_log(lambda:
-                                f'Added Torch ControlNet: "{control_net_path}" '
+                                f'Added Torch ControlNet: "{control_net_uri}" '
                                 f'to pipeline: "{pipeline_class.__name__}"')
 
             if control_nets is not None:
@@ -1053,14 +1288,14 @@ def _create_torch_diffusion_pipeline(pipeline_type,
 
     # Textual Inversions and LoRAs
 
-    if textual_inversion_paths is not None:
-        for inversion_path in textual_inversion_paths:
-            parse_textual_inversion_path(inversion_path). \
+    if textual_inversion_uris is not None:
+        for inversion_uri in textual_inversion_uris:
+            parse_textual_inversion_uri(inversion_uri). \
                 load_on_pipeline(pipeline, use_auth_token=auth_token)
 
-    if lora_paths is not None:
-        for lora_path in lora_paths:
-            parse_lora_path(lora_path). \
+    if lora_uris is not None:
+        for lora_uri in lora_uris:
+            parse_lora_uri(lora_uri). \
                 load_on_pipeline(pipeline, use_auth_token=auth_token)
 
     # Safety Checker
@@ -1078,15 +1313,15 @@ def _create_torch_diffusion_pipeline(pipeline_type,
         pipeline.enable_model_cpu_offload(device=device)
 
     _messages.debug_log(f'Finished Creating Torch Pipeline: "{pipeline_class.__name__}"')
-    return pipeline, parsed_control_net_paths
+    return pipeline, parsed_control_net_uris
 
 
 @_memoize(FLAX_MODEL_CACHE,
           hasher=lambda args: _d_memoize.args_cache_key(args,
-                                                        {'vae_path': _path_hash_with_parser(parse_flax_vae_path),
-                                                         'control_net_paths':
-                                                             _path_list_hash_with_parser(
-                                                                 parse_flax_control_net_path)}),
+                                                        {'vae_uri': _uri_hash_with_parser(parse_flax_vae_uri),
+                                                         'control_net_uris':
+                                                             _uri_list_hash_with_parser(
+                                                                 parse_flax_control_net_uri)}),
           on_hit=lambda key, hit: _simple_cache_hit_debug("Flax Pipeline", key, hit[0]),
           on_create=lambda key, new: _simple_cache_miss_debug('Flax Pipeline', key, new[0]))
 def _create_flax_diffusion_pipeline(pipeline_type,
@@ -1094,17 +1329,17 @@ def _create_flax_diffusion_pipeline(pipeline_type,
                                     revision,
                                     dtype,
                                     model_subfolder=None,
-                                    vae_path=None,
-                                    control_net_paths=None,
+                                    vae_uri=None,
+                                    control_net_uris=None,
                                     scheduler=None,
                                     safety_checker=False,
                                     auth_token=None,
                                     extra_args=None):
     has_control_nets = False
-    if control_net_paths is not None:
-        if len(control_net_paths) > 1:
+    if control_net_uris is not None:
+        if len(control_net_uris) > 1:
             raise NotImplementedError('Flax does not support multiple --control-nets.')
-        if len(control_net_paths) == 1:
+        if len(control_net_uris) == 1:
             has_control_nets = True
 
     if pipeline_type == _PipelineTypes.BASIC:
@@ -1131,32 +1366,31 @@ def _create_flax_diffusion_pipeline(pipeline_type,
 
     flax_dtype = _get_flax_dtype(dtype)
 
-    parsed_control_net_paths = []
+    parsed_control_net_uris = []
 
     if scheduler is None or not _scheduler_is_help(scheduler):
         # prevent waiting on VAE load just get the scheduler
         # help message for the main model
 
-        if vae_path is not None:
-            vae_path, vae_params = _load_flax_vae(vae_path,
-                                                  flax_dtype_fallback=flax_dtype,
-                                                  use_auth_token=auth_token)
-            kwargs['vae'] = vae_path
+        if vae_uri is not None:
+            kwargs['vae'], vae_params = _load_flax_vae(vae_uri,
+                                                       flax_dtype_fallback=flax_dtype,
+                                                       use_auth_token=auth_token)
             _messages.debug_log(lambda:
-                                f'Added Flax VAE: "{vae_path}" to pipeline: "{pipeline_class.__name__}"')
+                                f'Added Flax VAE: "{vae_uri}" to pipeline: "{pipeline_class.__name__}"')
 
-    if control_net_paths is not None:
-        control_net_path = control_net_paths[0]
+    if control_net_uris is not None:
+        control_net_uri = control_net_uris[0]
 
-        parsed_flax_control_net_path = parse_flax_control_net_path(control_net_path)
+        parsed_flax_control_net_uri = parse_flax_control_net_uri(control_net_uri)
 
-        parsed_control_net_paths.append(parsed_flax_control_net_path)
+        parsed_control_net_uris.append(parsed_flax_control_net_uri)
 
-        control_net, control_net_params = parse_flax_control_net_path(control_net_path) \
+        control_net, control_net_params = parse_flax_control_net_uri(control_net_uri) \
             .load(use_auth_token=auth_token, flax_dtype_fallback=flax_dtype)
 
         _messages.debug_log(lambda:
-                            f'Added Flax ControlNet: "{control_net_path}" '
+                            f'Added Flax ControlNet: "{control_net_uri}" '
                             f'to pipeline: "{pipeline_class.__name__}"')
 
         kwargs['controlnet'] = control_net
@@ -1185,172 +1419,7 @@ def _create_flax_diffusion_pipeline(pipeline_type,
         pipeline.safety_checker = None
 
     _messages.debug_log(f'Finished Creating Flax Pipeline: "{pipeline_class.__name__}"')
-    return pipeline, params, parsed_control_net_paths
-
-
-def supported_model_type_strings():
-    """
-    Return a list of supported --model-type strings
-    """
-    base_set = ['torch', 'torch-pix2pix', 'torch-sdxl', 'torch-sdxl-pix2pix', 'torch-upscaler-x2', 'torch-upscaler-x4']
-    if have_jax_flax():
-        return base_set + ['flax']
-    else:
-        return base_set
-
-
-class ModelTypes(enum.Enum):
-    """
-    Enum representation of --model-type
-    """
-    TORCH = 1
-    TORCH_PIX2PIX = 2
-    TORCH_SDXL = 3
-    TORCH_SDXL_PIX2PIX = 4
-    TORCH_UPSCALER_X2 = 5
-    TORCH_UPSCALER_X4 = 6
-    FLAX = 7
-
-
-def supported_model_type_enums() -> typing.List[ModelTypes]:
-    """
-    Return a list of supported :py:class:`.ModelTypes` enum values
-    """
-    return [get_model_type_enum(i) for i in supported_model_type_strings()]
-
-
-def get_model_type_enum(id_str: typing.Union[ModelTypes, str]) -> ModelTypes:
-    """
-    Convert a --model-type string to its :py:class:`.ModelTypes` enum value
-
-    :param id_str: --model-type string
-    :return: :py:class:`.ModelTypes`
-    """
-
-    if isinstance(id_str, ModelTypes):
-        return id_str
-
-    return {'torch': ModelTypes.TORCH,
-            'torch-pix2pix': ModelTypes.TORCH_PIX2PIX,
-            'torch-sdxl': ModelTypes.TORCH_SDXL,
-            'torch-sdxl-pix2pix': ModelTypes.TORCH_SDXL_PIX2PIX,
-            'torch-upscaler-x2': ModelTypes.TORCH_UPSCALER_X2,
-            'torch-upscaler-x4': ModelTypes.TORCH_UPSCALER_X4,
-            'flax': ModelTypes.FLAX}[id_str.strip().lower()]
-
-
-def get_model_type_string(model_type_enum: ModelTypes) -> str:
-    """
-    Convert a :py:class:`.ModelTypes` enum value to its --model-type string
-
-    :param model_type_enum: :py:class:`.ModelTypes` value
-    :return: --model-type string
-    """
-
-    model_type = get_model_type_enum(model_type_enum)
-
-    return {ModelTypes.TORCH: 'torch',
-            ModelTypes.TORCH_PIX2PIX: 'torch-pix2pix',
-            ModelTypes.TORCH_SDXL: 'torch-sdxl',
-            ModelTypes.TORCH_SDXL_PIX2PIX: 'torch-sdxl-pix2pix',
-            ModelTypes.TORCH_UPSCALER_X2: 'torch-upscaler-x2',
-            ModelTypes.TORCH_UPSCALER_X4: 'torch-upscaler-x4',
-            ModelTypes.FLAX: 'flax'}[model_type]
-
-
-def model_type_is_upscaler(model_type: typing.Union[ModelTypes, str]) -> bool:
-    """
-    Does a --model-type string or :py:class:`.ModelTypes` enum value represent an upscaler model?
-
-    :param model_type: --model-type string or :py:class:`.ModelTypes` enum value
-    :return: bool
-    """
-    model_type = get_model_type_string(model_type)
-
-    return 'upscaler' in model_type
-
-
-def model_type_is_sdxl(model_type: typing.Union[ModelTypes, str]) -> bool:
-    """
-    Does a --model-type string or :py:class:`.ModelTypes` enum value represent an SDXL model?
-
-    :param model_type: --model-type string or :py:class:`.ModelTypes` enum value
-    :return: bool
-    """
-    model_type = get_model_type_string(model_type)
-
-    return 'sdxl' in model_type
-
-
-def model_type_is_torch(model_type: typing.Union[ModelTypes, str]) -> bool:
-    """
-    Does a --model-type string or :py:class:`.ModelTypes` enum value represent an Torch model?
-
-    :param model_type: --model-type string or :py:class:`.ModelTypes` enum value
-    :return: bool
-    """
-    model_type = get_model_type_string(model_type)
-
-    return 'torch' in model_type
-
-
-def model_type_is_flax(model_type: typing.Union[ModelTypes, str]) -> bool:
-    """
-    Does a --model-type string or :py:class:`.ModelTypes` enum value represent an Flax model?
-
-    :param model_type: --model-type string or :py:class:`.ModelTypes` enum value
-    :return: bool
-    """
-    model_type = get_model_type_string(model_type)
-
-    return 'flax' in model_type
-
-
-def model_type_is_pix2pix(model_type: typing.Union[ModelTypes, str]) -> bool:
-    """
-    Does a --model-type string or :py:class:`.ModelTypes` enum value represent an pix2pix type model?
-
-    :param model_type: --model-type string or :py:class:`.ModelTypes` enum value
-    :return: bool
-    """
-    model_type = get_model_type_string(model_type)
-
-    return 'pix2pix' in model_type
-
-
-def have_jax_flax():
-    """
-    Do we have jax/flax support?
-
-    :return: bool
-    """
-    return jax is not None
-
-
-def _get_flax_dtype(dtype):
-    if dtype is None:
-        return None
-
-    if isinstance(dtype, jnp.dtype):
-        return dtype
-
-    return {'float16': jnp.bfloat16,
-            'float32': jnp.float32,
-            'float64': jnp.float64,
-            'auto': None}[dtype.lower()]
-
-
-def _get_torch_dtype(dtype: typing.Union[torch.dtype, str, None]) -> typing.Union[torch.dtype, None]:
-    if dtype is None:
-        return None
-
-    if isinstance(dtype, torch.dtype):
-        return dtype
-
-    return {'float16': torch.float16,
-            'float32': torch.float32,
-            'float64': torch.float64,
-            'auto': None}[dtype.lower()]
+    return pipeline, params, parsed_control_net_uris
 
 
 class PipelineWrapperResult:
@@ -1634,19 +1703,19 @@ class DiffusionPipelineWrapper:
 
     def __init__(self,
                  model_path: _types.Path,
-                 dtype: typing.Literal['float16', 'float32', 'auto'],
-                 device='cuda',
-                 model_type='torch',
+                 dtype: typing.Union[DataTypes, str] = DataTypes.AUTO,
+                 device: str = 'cuda',
+                 model_type: typing.Union[ModelTypes, str] = ModelTypes.TORCH,
                  revision: _types.OptionalName = None,
                  variant: _types.OptionalName = None,
                  model_subfolder: _types.OptionalName = None,
-                 vae_path: _types.OptionalPath = None,
+                 vae_uri: _types.OptionalPath = None,
                  vae_tiling: bool = False,
                  vae_slicing: bool = False,
-                 lora_paths: typing.Union[str, _types.OptionalPaths] = None,
-                 textual_inversion_paths: typing.Union[str, _types.OptionalPaths] = None,
-                 control_net_paths: typing.Union[str, _types.OptionalPaths] = None,
-                 sdxl_refiner_path: _types.OptionalPath = None,
+                 lora_uris: typing.Union[str, _types.OptionalPaths] = None,
+                 textual_inversion_uris: typing.Union[str, _types.OptionalPaths] = None,
+                 control_net_uris: typing.Union[str, _types.OptionalPaths] = None,
+                 sdxl_refiner_uri: _types.OptionalPath = None,
                  scheduler: _types.OptionalName = None,
                  sdxl_refiner_scheduler: _types.OptionalName = None,
                  safety_checker: bool = False,
@@ -1660,40 +1729,40 @@ class DiffusionPipelineWrapper:
         self._flax_params = None
         self._revision = revision
         self._variant = variant
-        self._dtype = dtype
+        self._dtype = get_data_type_enum(dtype)
         self._device = device
-        self._vae_path = vae_path
+        self._vae_uri = vae_uri
         self._vae_tiling = vae_tiling
         self._vae_slicing = vae_slicing
         self._safety_checker = safety_checker
         self._scheduler = scheduler
         self._sdxl_refiner_scheduler = sdxl_refiner_scheduler
-        self._lora_paths = lora_paths
+        self._lora_uris = lora_uris
         self._lora_scale = None
-        self._textual_inversion_paths = textual_inversion_paths
-        self._control_net_paths = control_net_paths
-        self._parsed_control_net_paths = []
-        self._sdxl_refiner_path = sdxl_refiner_path
+        self._textual_inversion_uris = textual_inversion_uris
+        self._control_net_uris = control_net_uris
+        self._parsed_control_net_uris = []
+        self._sdxl_refiner_uri = sdxl_refiner_uri
         self._sdxl_refiner_pipeline = None
         self._auth_token = auth_token
         self._pipeline_type = None
 
-        if sdxl_refiner_path is not None:
-            parsed_path = parse_sdxl_refiner_path(sdxl_refiner_path)
-            self._sdxl_refiner_path = parsed_path.model
-            self._sdxl_refiner_revision = parsed_path.revision
-            self._sdxl_refiner_variant = parsed_path.variant
-            self._sdxl_refiner_dtype = parsed_path.dtype
-            self._sdxl_refiner_subfolder = parsed_path.subfolder
+        if sdxl_refiner_uri is not None:
+            parsed_uri = parse_sdxl_refiner_uri(sdxl_refiner_uri)
+            self._sdxl_refiner_uri = parsed_uri.model
+            self._sdxl_refiner_revision = parsed_uri.revision
+            self._sdxl_refiner_variant = parsed_uri.variant
+            self._sdxl_refiner_dtype = parsed_uri.dtype
+            self._sdxl_refiner_subfolder = parsed_uri.subfolder
 
-        if lora_paths is not None:
+        if lora_uris is not None:
             if model_type == 'flax':
                 raise NotImplementedError('LoRA loading is not implemented for flax.')
 
-            if not isinstance(lora_paths, str):
+            if not isinstance(lora_uris, str):
                 raise NotImplementedError('Using multiple LoRA models is currently not supported.')
 
-            self._lora_scale = parse_lora_path(lora_paths).scale
+            self._lora_scale = parse_lora_uri(lora_uris).scale
 
     @staticmethod
     def _pipeline_to(pipeline, device):
@@ -1751,27 +1820,27 @@ class DiffusionPipelineWrapper:
         return self._variant
 
     @property
-    def dtype(self) -> typing.Literal['float16', 'float32', 'auto']:
+    def dtype(self) -> DataTypes:
         """
         Currently set dtype for the main model
         """
         return self._dtype
 
     @property
-    def textual_inversion_paths(self) -> _types.OptionalPaths:
+    def textual_inversion_uris(self) -> _types.OptionalPaths:
         """
         List of supplied --textual-inversions path strings or None
         """
-        return [self._textual_inversion_paths] if \
-            isinstance(self._textual_inversion_paths, str) else self._textual_inversion_paths
+        return [self._textual_inversion_uris] if \
+            isinstance(self._textual_inversion_uris, str) else self._textual_inversion_uris
 
     @property
-    def control_net_paths(self) -> _types.OptionalPaths:
+    def control_net_uris(self) -> _types.OptionalPaths:
         """
         List of supplied --control-nets path strings or None
         """
-        return [self._control_net_paths] if \
-            isinstance(self._control_net_paths, str) else self._control_net_paths
+        return [self._control_net_uris] if \
+            isinstance(self._control_net_uris, str) else self._control_net_uris
 
     @property
     def device(self) -> _types.Name:
@@ -1802,11 +1871,11 @@ class DiffusionPipelineWrapper:
         return self._sdxl_refiner_scheduler
 
     @property
-    def sdxl_refiner_path(self) -> _types.OptionalName:
+    def sdxl_refiner_uri(self) -> _types.OptionalName:
         """
         Model path for the SDXL refiner or None
         """
-        return self._sdxl_refiner_path
+        return self._sdxl_refiner_uri
 
     @property
     def model_type_enum(self) -> ModelTypes:
@@ -1830,11 +1899,11 @@ class DiffusionPipelineWrapper:
         return self._model_subfolder
 
     @property
-    def vae_path(self) -> _types.OptionalPath:
+    def vae_uri(self) -> _types.OptionalPath:
         """
         Selected --vae path for the main model or None
         """
-        return self._vae_path
+        return self._vae_uri
 
     @property
     def vae_tiling(self) -> bool:
@@ -1851,12 +1920,12 @@ class DiffusionPipelineWrapper:
         return self._vae_slicing
 
     @property
-    def lora_paths(self) -> _types.OptionalPaths:
+    def lora_uris(self) -> _types.OptionalPaths:
         """
         List of supplied --lora path strings or None
         """
-        return [self._lora_paths] if \
-            isinstance(self._lora_paths, str) else self._lora_paths
+        return [self._lora_uris] if \
+            isinstance(self._lora_uris, str) else self._lora_uris
 
     @property
     def auth_token(self) -> _types.OptionalString:
@@ -1952,8 +2021,8 @@ class DiffusionPipelineWrapper:
         if self._model_subfolder is not None:
             opts.append(('--subfolder', self._model_subfolder))
 
-        if self._vae_path is not None:
-            opts.append(('--vae', self._vae_path))
+        if self._vae_uri is not None:
+            opts.append(('--vae', self._vae_uri))
 
         if self._vae_tiling:
             opts.append(('--vae-tiling',))
@@ -1961,17 +2030,17 @@ class DiffusionPipelineWrapper:
         if self._vae_slicing:
             opts.append(('--vae-slicing',))
 
-        if self._sdxl_refiner_path is not None:
-            opts.append(('--sdxl-refiner', self._sdxl_refiner_path))
+        if self._sdxl_refiner_uri is not None:
+            opts.append(('--sdxl-refiner', self._sdxl_refiner_uri))
 
-        if self._lora_paths is not None:
-            opts.append(('--lora', self._lora_paths))
+        if self._lora_uris is not None:
+            opts.append(('--lora', self._lora_uris))
 
-        if self._textual_inversion_paths is not None:
-            opts.append(('--textual-inversions', self._textual_inversion_paths))
+        if self._textual_inversion_uris is not None:
+            opts.append(('--textual-inversions', self._textual_inversion_uris))
 
-        if self._control_net_paths is not None:
-            opts.append(('--control-nets', self._control_net_paths))
+        if self._control_net_uris is not None:
+            opts.append(('--control-nets', self._control_net_uris))
 
         if self._scheduler is not None:
             opts.append(('--scheduler', self._scheduler))
@@ -2089,7 +2158,7 @@ class DiffusionPipelineWrapper:
 
             args['strength'] = strength
 
-        if self._control_net_paths is not None:
+        if self._control_net_uris is not None:
             control_image = user_args['control_image']
             if self._pipeline_type == _PipelineTypes.BASIC:
                 args['image'] = control_image
@@ -2136,22 +2205,22 @@ class DiffusionPipelineWrapper:
         return args
 
     def _get_control_net_conditioning_scale(self):
-        if not self._parsed_control_net_paths:
+        if not self._parsed_control_net_uris:
             return 1.0
-        return [p.scale for p in self._parsed_control_net_paths] if \
-            len(self._parsed_control_net_paths) > 1 else self._parsed_control_net_paths[0].scale
+        return [p.scale for p in self._parsed_control_net_uris] if \
+            len(self._parsed_control_net_uris) > 1 else self._parsed_control_net_uris[0].scale
 
     def _get_control_net_guidance_start(self):
-        if not self._parsed_control_net_paths:
+        if not self._parsed_control_net_uris:
             return 0.0
-        return [p.start for p in self._parsed_control_net_paths] if \
-            len(self._parsed_control_net_paths) > 1 else self._parsed_control_net_paths[0].start
+        return [p.start for p in self._parsed_control_net_uris] if \
+            len(self._parsed_control_net_uris) > 1 else self._parsed_control_net_uris[0].start
 
     def _get_control_net_guidance_end(self):
-        if not self._parsed_control_net_paths:
+        if not self._parsed_control_net_uris:
             return 1.0
-        return [p.end for p in self._parsed_control_net_paths] if \
-            len(self._parsed_control_net_paths) > 1 else self._parsed_control_net_paths[0].end
+        return [p.end for p in self._parsed_control_net_uris] if \
+            len(self._parsed_control_net_uris) > 1 else self._parsed_control_net_uris[0].end
 
     def _call_flax_control_net(self, positive_prompt, negative_prompt, default_args, user_args):
         device_count = jax.device_count()
@@ -2558,34 +2627,34 @@ class DiffusionPipelineWrapper:
 
         self._pipeline_type = pipeline_type
 
-        if model_type_is_sdxl(self._model_type) and self._textual_inversion_paths is not None:
+        if model_type_is_sdxl(self._model_type) and self._textual_inversion_uris is not None:
             raise NotImplementedError('Textual inversion not supported for SDXL.')
 
         if self._model_type == ModelTypes.FLAX:
             if not have_jax_flax():
                 raise NotImplementedError('flax and jax are not installed.')
 
-            if self._textual_inversion_paths is not None:
+            if self._textual_inversion_uris is not None:
                 raise NotImplementedError('Textual inversion not supported for flax.')
 
-            if self._pipeline_type != _PipelineTypes.BASIC and self._control_net_paths:
+            if self._pipeline_type != _PipelineTypes.BASIC and self._control_net_uris:
                 raise NotImplementedError('Inpaint and Img2Img not supported for flax with ControlNet.')
 
             if self._vae_tiling or self._vae_slicing:
                 raise NotImplementedError('--vae-tiling/--vae-slicing not supported for flax.')
 
-            self._pipeline, self._flax_params, self._parsed_control_net_paths = \
+            self._pipeline, self._flax_params, self._parsed_control_net_uris = \
                 _create_flax_diffusion_pipeline(pipeline_type,
                                                 self._model_path,
                                                 revision=self._revision,
                                                 dtype=self._dtype,
-                                                vae_path=self._vae_path,
-                                                control_net_paths=self._control_net_paths,
+                                                vae_uri=self._vae_uri,
+                                                control_net_uris=self._control_net_uris,
                                                 scheduler=self._scheduler,
                                                 safety_checker=self._safety_checker,
                                                 auth_token=self._auth_token)
 
-        elif self._sdxl_refiner_path is not None:
+        elif self._sdxl_refiner_uri is not None:
             if not model_type_is_sdxl(self._model_type):
                 raise NotImplementedError('Only Stable Diffusion XL models support refiners, '
                                           'please use --model-type torch-sdxl if you are trying to load an sdxl model.')
@@ -2593,7 +2662,7 @@ class DiffusionPipelineWrapper:
             if not _scheduler_is_help(self._sdxl_refiner_scheduler):
                 # Don't load this up if were just going to be getting
                 # information about compatible schedulers for the refiner
-                self._pipeline, self._parsed_control_net_paths = \
+                self._pipeline, self._parsed_control_net_uris = \
                     _create_torch_diffusion_pipeline(pipeline_type,
                                                      self._model_type,
                                                      self._model_path,
@@ -2601,9 +2670,9 @@ class DiffusionPipelineWrapper:
                                                      revision=self._revision,
                                                      variant=self._variant,
                                                      dtype=self._dtype,
-                                                     vae_path=self._vae_path,
-                                                     lora_paths=self._lora_paths,
-                                                     control_net_paths=self._control_net_paths,
+                                                     vae_uri=self._vae_uri,
+                                                     lora_uris=self._lora_uris,
+                                                     control_net_uris=self._control_net_uris,
                                                      scheduler=self._scheduler,
                                                      safety_checker=self._safety_checker,
                                                      auth_token=self._auth_token,
@@ -2620,7 +2689,7 @@ class DiffusionPipelineWrapper:
             self._sdxl_refiner_pipeline, discarded = \
                 _create_torch_diffusion_pipeline(refiner_pipeline_type,
                                                  ModelTypes.TORCH_SDXL,
-                                                 self._sdxl_refiner_path,
+                                                 self._sdxl_refiner_uri,
                                                  model_subfolder=self._sdxl_refiner_subfolder,
                                                  revision=self._sdxl_refiner_revision,
 
@@ -2637,9 +2706,9 @@ class DiffusionPipelineWrapper:
                                                  auth_token=self._auth_token,
                                                  extra_args=refiner_extra_args)
         else:
-            offload = self._control_net_paths and self._model_type == ModelTypes.TORCH_SDXL
+            offload = self._control_net_uris and self._model_type == ModelTypes.TORCH_SDXL
 
-            self._pipeline, self._parsed_control_net_paths = \
+            self._pipeline, self._parsed_control_net_uris = \
                 _create_torch_diffusion_pipeline(pipeline_type,
                                                  self._model_type,
                                                  self._model_path,
@@ -2647,10 +2716,10 @@ class DiffusionPipelineWrapper:
                                                  revision=self._revision,
                                                  variant=self._variant,
                                                  dtype=self._dtype,
-                                                 vae_path=self._vae_path,
-                                                 lora_paths=self._lora_paths,
-                                                 textual_inversion_paths=self._textual_inversion_paths,
-                                                 control_net_paths=self._control_net_paths,
+                                                 vae_uri=self._vae_uri,
+                                                 lora_uris=self._lora_uris,
+                                                 textual_inversion_uris=self._textual_inversion_uris,
+                                                 control_net_uris=self._control_net_uris,
                                                  scheduler=self._scheduler,
                                                  safety_checker=self._safety_checker,
                                                  auth_token=self._auth_token,

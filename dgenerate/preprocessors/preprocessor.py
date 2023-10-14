@@ -29,6 +29,7 @@ import PIL.Image
 import dgenerate.preprocessors.exceptions as _exceptions
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+import dgenerate.util as _util
 
 
 class ImagePreprocessor:
@@ -203,17 +204,7 @@ class ImagePreprocessor:
                 name = next(iter(self.get_names())) + f'_{dup_number}'
             return os.path.join(self.__output_dir, name) + '.png'
 
-        path = _make_path()
-
-        if not os.path.exists(path):
-            return path
-
-        duplicate_number = 1
-        while os.path.exists(path):
-            path = _make_path(duplicate_number)
-            duplicate_number += 1
-
-        return path
+        return _util.touch_avoid_duplicate(self.__output_dir, _make_path)
 
     def __save_image(self, image):
         if self.__output_dir is not None:

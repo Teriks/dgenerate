@@ -58,10 +58,10 @@ class Loader:
 
             parser_accepted_args.append(inherited_arg)
 
-        arg_parser = _textprocessing.ConceptPathParser("Image Preprocessor", parser_accepted_args)
+        arg_parser = _textprocessing.ConceptUriParser("Image Preprocessor", parser_accepted_args)
 
         try:
-            parsed_args = arg_parser.parse_concept_path(path).args
+            parsed_args = arg_parser.parse_concept_uri(path).args
         except _textprocessing.ConceptPathParseError as e:
             raise _exceptions.ImagePreprocessorArgumentError(str(e))
 
