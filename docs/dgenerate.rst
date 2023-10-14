@@ -138,7 +138,7 @@ dgenerate.types module
    :show-inheritance:
    :special-members: __call__, __init__
 
-dgenerate.types module
+dgenerate.util module
 ----------------------
 
 .. automodule:: dgenerate.util
