@@ -835,7 +835,7 @@ class DiffusionRenderLoop:
                 config_file.write(config_txt)
             _messages.log(
                 f'Wrote Image File: "{filename}"\n'
-                f'Wrote Image Config File: "{config_file_name}"',
+                f'Wrote Config File: "{config_file_name}"',
                 underline=is_last_image)
         else:
             _messages.log(f'Wrote Image File: "{filename}"',
