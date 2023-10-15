@@ -201,20 +201,22 @@ def contains_space(string: str) -> bool:
     return any(c.isspace() for c in string)
 
 
-def quote_spaces(list_of_str: typing.Union[typing.Any, typing.Sequence[typing.Union[typing.Any, list, tuple]]]) -> \
+def quote_spaces(value_or_struct: typing.Union[typing.Any, typing.Sequence[typing.Union[typing.Any, list, tuple]]]) -> \
         typing.Union[list, tuple, typing.Any]:
     """
-    Quote any string containing spaces, or strings containing spaces within a list, or list of lists/tuples.
+    Quote any str(value) containing spaces, or str(value)s containing spaces within a list, or list of lists/tuples.
 
-    :param list_of_str: string or (list of strings, and or lists/tuples containing strings)
+    The entire content of the data structure is stringified by this process.
+
+    :param value_or_struct: value or (list of values, and or lists/tuples containing values)
     :return: input data structure with strings quoted if needed
     """
 
-    if not isinstance(list_of_str, (list, tuple)):
-        return quote(str(list_of_str)) if contains_space(str(list_of_str)) else list_of_str
+    if not isinstance(value_or_struct, (list, tuple)):
+        return quote(str(value_or_struct)) if contains_space(str(value_or_struct)) else value_or_struct
 
     vals = []
-    for v in list_of_str:
+    for v in value_or_struct:
         if isinstance(v, list):
             vals.append(quote_spaces(v))
             continue
@@ -223,7 +225,16 @@ def quote_spaces(list_of_str: typing.Union[typing.Any, typing.Sequence[typing.Un
             continue
 
         vals.append(quote_spaces(v))
-    return vals if isinstance(list_of_str, list) else tuple(vals)
+    return vals if isinstance(value_or_struct, list) else tuple(vals)
+
+
+def format_size(i: typing.Iterable[int]):
+    """
+    Join together an iterable of integers with the character x
+    :param i: the iterable
+    :return: formated string
+    """
+    return 'x'.join(str(a) for a in i)
 
 
 def justify_left(string: str):
