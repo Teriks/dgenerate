@@ -1468,11 +1468,11 @@ class PipelineWrapperResult:
         """
         return self.images[0] if self.images else None
 
-    def image_grid(self, rows_cols: _types.Size):
+    def image_grid(self, cols_rows: _types.Size):
         """
         Render an image grid from the images in this result.
 
-        :param rows_cols: rows and columns desired as a tuple
+        :param cols_rows: columns and rows (WxH) desired as a tuple
         :return: :py:class:`PIL.Image.Image`
         """
         if not self.images:
@@ -1481,7 +1481,7 @@ class PipelineWrapperResult:
         if len(self.images) == 1:
             return self.images[0]
 
-        rows, cols = rows_cols
+        cols, rows = cols_rows
 
         w, h = self.images[0].size
         grid = PIL.Image.new('RGB', size=(cols * w, rows * h))
