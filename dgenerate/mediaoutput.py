@@ -18,10 +18,13 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import os
 import typing
 
 import PIL.Image
 import av
+
+import dgenerate.util as _util
 
 
 class AnimationWriter:
@@ -140,3 +143,79 @@ def create_animation_writer(animation_format: str, out_filename: str, fps: typin
     """
     return VideoWriter(out_filename, fps) if animation_format.strip().lower() == 'mp4' \
         else AnimatedImageWriter(out_filename, 1000 / fps)
+
+
+class MultiAnimationWriter(AnimationWriter):
+    """
+    Splits writes between N files with generated filename suffixes if necessary
+    depending on how many images were written on the first write.
+    """
+
+    def __init__(self,
+                 animation_format: str,
+                 filename: str,
+                 fps:
+                 typing.Union[float, int],
+                 allow_overwrites=False):
+        """
+        Constructor.
+        
+        :param animation_format: One of :py:meth:`.supported_animation_writer_formats`
+        :param filename: The desired filename, if multiple images are written a 
+            suffix _animation_N will be appended for each file
+        :param fps: Frames per second
+        :param allow_overwrites: Allow overwrites of existing files? or append _duplicate_N,
+            The overwrite dis-allowance is multiprocess safe between instances of this library.
+        """
+
+        super().__init__()
+        self.filename = filename
+        self.writers = []
+        self.filenames = []
+        self.animation_format = animation_format
+        self.fps = fps
+        self.allow_overwrites = allow_overwrites
+
+    def _gen_filename(self, num_images, image_idx):
+        base, ext = os.path.splitext(self.filename)
+        if num_images > 0:
+            base += f'_animation_{image_idx}{ext}'
+        else:
+            base = f'{base}{ext}'
+
+        if self.allow_overwrites:
+            return base
+
+        return _util.touch_avoid_duplicate(
+            os.path.dirname(self.filename),
+            _util.suffix_path_maker(base, '_duplicate_'))
+
+    def write(self, img: typing.Union[PIL.Image.Image, typing.List[PIL.Image.Image]]):
+        if not isinstance(img, list):
+            img = [img]
+
+        if not self.writers:
+            num_images = len(img)
+            for image_idx in range(0, num_images):
+                filename = self._gen_filename(num_images, image_idx)
+                self.filenames.append(filename)
+                self.writers.append(
+                    create_animation_writer(self.animation_format,
+                                            filename,
+                                            self.fps))
+
+        for writer, img in zip(self.writers, img):
+            writer.write(img)
+
+    def end(self, new_file=None):
+        self.filename = new_file
+
+        for writer in self.writers:
+            writer.end(new_file=new_file)
+
+        self.writers.clear()
+        self.filenames.clear()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        for writer in self.writers:
+            writer.__exit__(exc_type, exc_val, exc_tb)

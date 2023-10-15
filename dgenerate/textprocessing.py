@@ -201,14 +201,17 @@ def contains_space(string: str) -> bool:
     return any(c.isspace() for c in string)
 
 
-def quote_spaces(list_of_str: typing.Sequence[typing.Union[str, list, tuple]]) -> \
-        typing.Sequence[typing.Union[str, list, tuple]]:
+def quote_spaces(list_of_str: typing.Union[typing.Any, typing.Sequence[typing.Union[typing.Any, list, tuple]]]) -> \
+        typing.Union[list, tuple, typing.Any]:
     """
-    Quote any strings containing spaces within a list, or list of lists/tuples.
+    Quote any string containing spaces, or strings containing spaces within a list, or list of lists/tuples.
 
-    :param list_of_str: list of strings, and or lists/tuples containing string
+    :param list_of_str: string or (list of strings, and or lists/tuples containing strings)
     :return: input data structure with strings quoted if needed
     """
+
+    if not isinstance(list_of_str, (list, tuple)):
+        return quote(str(list_of_str)) if contains_space(str(list_of_str)) else list_of_str
 
     vals = []
     for v in list_of_str:
@@ -219,12 +222,7 @@ def quote_spaces(list_of_str: typing.Sequence[typing.Union[str, list, tuple]]) -
             vals.append(tuple(quote_spaces(v)))
             continue
 
-        val = str(v)
-
-        if contains_space(val):
-            vals.append(quote(v))
-        else:
-            vals.append(val)
+        vals.append(quote_spaces(v))
     return vals if isinstance(list_of_str, list) else tuple(vals)
 
 

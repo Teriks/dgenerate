@@ -27,6 +27,25 @@ import typing
 import portalocker
 
 
+def suffix_path_maker(filename, suffix):
+    """
+    To be used with :py:meth:`.touch_avoid_duplicate`, a pathmaker implementation that
+    appends a suffix and a number to a file when a duplicate is detected.
+
+    :param filename: Original filename
+    :param suffix: Suffix to append if needed, a trailing number will be appended
+    :return:
+    """
+
+    def pathmaker(attempt=None):
+        base, ext = os.path.splitext(filename)
+        if attempt is not None:
+            return f"{base}{suffix}{attempt}{ext}"
+        return filename
+
+    return pathmaker
+
+
 def touch_avoid_duplicate(directory: str,
                           pathmaker: typing.Callable[[typing.Optional[int]], str],
                           lockname: str = '.duplicate_check_lock'):

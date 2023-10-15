@@ -1491,7 +1491,7 @@ class PipelineWrapperResult:
 
     def __init__(self, images: typing.Optional[typing.List[PIL.Image.Image]]):
         self.images = images
-        self.dgenerate_opts = []
+        self.dgenerate_opts = dict()
 
     def __enter__(self):
         return self
@@ -1512,6 +1512,8 @@ class PipelineWrapperResult:
         """
         self.dgenerate_opts.append((name, value))
 
+
+
     @staticmethod
     def _set_opt_value_syntax(val):
         if isinstance(val, tuple):
@@ -1522,15 +1524,18 @@ class PipelineWrapperResult:
 
     @staticmethod
     def _format_option_pair(val):
-        if len(val) == 2:
+        if len(val) > 1:
             return f'{val[0]} {PipelineWrapperResult._set_opt_value_syntax(val[1])}'
         return val[0]
 
     def gen_dgenerate_config(self,
-                             extra_args: typing.Optional[typing.Sequence[typing.Tuple[str, typing.Any]]] = None):
+                             extra_args: typing.Optional[typing.Sequence[typing.Tuple[str, typing.Any]]] = None,
+                             extra_comments: typing.Optional[typing.Sequence[str]] = None):
         """
         Generate a valid dgenerate config file with a single invocation that reproduces this result.
 
+        :param extra_comments: Extra strings to use as comments after the
+            version check directive
         :param extra_args: Extra invocation arguments to add to the config file.
         :return: The configuration as a string
         """
@@ -1538,6 +1543,16 @@ class PipelineWrapperResult:
         from .__init__ import __version__
 
         config = f'#! dgenerate {__version__}\n\n'
+
+        if extra_comments:
+            wrote_comments = False
+            for comment in extra_comments:
+                wrote_comments = True
+                for part in comment.split('\n'):
+                    config += '# ' + part.rstrip()
+
+            if wrote_comments:
+                config += '\n\n'
 
         opts = _textprocessing.quote_spaces(
             self.dgenerate_opts + (extra_args if extra_args else []))
@@ -1979,6 +1994,13 @@ class DiffusionPipelineWrapper:
 
         :return: List of tuples of length 1 or 2 representing the option
         """
+
+        def _format_size(val):
+            if val is None:
+                return None
+
+            return f'{val[0]}x{val[1]}'
+
         batch_size: int = args.get('batch_size', None)
         prompt: _prompt.Prompt = args.get('prompt', None)
         sdxl_second_prompt: _prompt.Prompt = args.get('sdxl_second_prompt', None)
@@ -2004,21 +2026,40 @@ class DiffusionPipelineWrapper:
 
         sdxl_high_noise_fraction = args.get('sdxl_high_noise_fraction', None)
         sdxl_aesthetic_score = args.get('sdxl_aesthetic_score', None)
-        sdxl_original_size = args.get('sdxl_original_size', None)
-        sdxl_target_size = args.get('sdxl_target_size', None)
-        sdxl_crops_coords_top_left = args.get('sdxl_crops_coords_top_left', None)
+
+        sdxl_original_size = \
+            _format_size(args.get('sdxl_original_size', None))
+        sdxl_target_size = \
+            _format_size(args.get('sdxl_target_size', None))
+        sdxl_crops_coords_top_left = \
+            _format_size(args.get('sdxl_crops_coords_top_left', None))
+
         sdxl_negative_aesthetic_score = args.get('sdxl_negative_aesthetic_score', None)
-        sdxl_negative_original_size = args.get('sdxl_negative_original_size', None)
-        sdxl_negative_target_size = args.get('sdxl_negative_target_size', None)
-        sdxl_negative_crops_coords_top_left = args.get('sdxl_negative_crops_coords_top_left', None)
+
+        sdxl_negative_original_size = \
+            _format_size(args.get('sdxl_negative_original_size', None))
+        sdxl_negative_target_size = \
+            _format_size(args.get('sdxl_negative_target_size', None))
+        sdxl_negative_crops_coords_top_left = \
+            _format_size(args.get('sdxl_negative_crops_coords_top_left', None))
+
         sdxl_refiner_aesthetic_score = args.get('sdxl_refiner_aesthetic_score', None)
-        sdxl_refiner_original_size = args.get('sdxl_refiner_original_size', None)
-        sdxl_refiner_target_size = args.get('sdxl_refiner_target_size', None)
-        sdxl_refiner_crops_coords_top_left = args.get('sdxl_refiner_crops_coords_top_left', None)
+
+        sdxl_refiner_original_size = \
+            _format_size(args.get('sdxl_refiner_original_size', None))
+        sdxl_refiner_target_size = \
+            _format_size(args.get('sdxl_refiner_target_size', None))
+        sdxl_refiner_crops_coords_top_left = \
+            _format_size(args.get('sdxl_refiner_crops_coords_top_left', None))
+
         sdxl_refiner_negative_aesthetic_score = args.get('sdxl_refiner_negative_aesthetic_score', None)
-        sdxl_refiner_negative_original_size = args.get('sdxl_refiner_negative_original_size', None)
-        sdxl_refiner_negative_target_size = args.get('sdxl_refiner_negative_target_size', None)
-        sdxl_refiner_negative_crops_coords_top_left = args.get('sdxl_refiner_negative_crops_coords_top_left', None)
+
+        sdxl_refiner_negative_original_size = \
+            _format_size(args.get('sdxl_refiner_negative_original_size', None))
+        sdxl_refiner_negative_target_size = \
+            _format_size(args.get('sdxl_refiner_negative_target_size', None))
+        sdxl_refiner_negative_crops_coords_top_left = \
+            _format_size(args.get('sdxl_refiner_negative_crops_coords_top_left', None))
 
         opts = [(self.model_path,),
                 ('--model-type', self.model_type_string),

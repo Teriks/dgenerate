@@ -749,7 +749,7 @@ class DiffusionRenderLoop:
     def _output_directory_lock(self):
         _util.temp_file_lock(os.path.join(self.config.output_path, '.write_lock'))
 
-    def _gen_filename(self, *args, ext):
+    def _gen_image_filename(self, args, ext):
         def _make_path(dup_number=None):
             prefix = self.config.output_prefix + '_' if \
                 self.config.output_prefix is not None else ''
@@ -762,8 +762,7 @@ class DiffusionRenderLoop:
                                 f'{prefix}' + '_'.join(components) + dup) + '.' + ext
 
         if self.config.output_overwrite:
-            path = _make_path()
-            return path
+            return _make_path()
 
         return _util.touch_avoid_duplicate(self.config.output_path, _make_path)
 
@@ -800,27 +799,25 @@ class DiffusionRenderLoop:
 
         return args
 
-    def _gen_animation_filename(self,
-                                args_ctx: _pipelinewrapper.DiffusionArguments,
-                                generation_step,
-                                animation_format):
-        args = ['ANIM', *self._gen_filename_base(args_ctx)]
-
-        return self._gen_filename(*args, 'step', generation_step + 1, ext=animation_format)
-
     def _write_image(self, filename, image, batch_index, generation_result):
 
         extra_args = []
+        extra_comments = []
 
-        if self.config.batch_size > 1 and not \
-                _pipelinewrapper.model_type_is_flax(self.config.model_type):
-            # Batch size is controlled by CUDA_VISIBLE_DEVICES for flax
-            extra_args.append(('--batch-size', self.config.batch_size))
+        if generation_result.image_count > 1:
+            if not _pipelinewrapper.model_type_is_flax(self.config.model_type):
+                # Batch size is controlled by CUDA_VISIBLE_DEVICES for flax
+                extra_args.append(('--batch-size', self.config.batch_size))
+
+            extra_comments.append(
+                f'Image {batch_index} from a batch of {generation_result.image_count}')
 
         if self.config.batch_grid_size is not None:
             extra_args.append(('--batch-grid-size', self.config.batch_grid_size))
 
-        config_txt = generation_result.gen_dgenerate_config(extra_args=extra_args)
+        config_txt = generation_result.gen_dgenerate_config(
+            extra_args=extra_args,
+            extra_comments=extra_comments)
 
         is_last_image = batch_index == generation_result.image_count - 1
 
@@ -830,6 +827,7 @@ class DiffusionRenderLoop:
             image.save(filename, pnginfo=metadata)
         else:
             image.save(filename)
+
         if self.config.output_configs:
             config_file_name = os.path.splitext(filename)[0] + '.txt'
             with open(config_file_name, "w") as config_file:
@@ -845,56 +843,62 @@ class DiffusionRenderLoop:
         self._written_images.append(os.path.abspath(filename))
 
     def _write_generation_result(self,
-                                 filename,
+                                 filename_components,
                                  generation_result: _pipelinewrapper.PipelineWrapperResult):
 
         if self.config.batch_grid_size is None:
 
             for batch_idx, image in enumerate(generation_result.images):
-                file_name, ext = os.path.splitext(filename)
-
+                name_components = filename_components.copy()
                 if generation_result.image_count > 1:
-                    file_name = file_name + f'_image_{batch_idx}' + ext
-                else:
-                    file_name = filename
+                    name_components += ['image', batch_idx]
 
-                self._write_image(file_name, image, batch_idx, generation_result)
+                self._write_image(
+                    self._gen_image_filename(name_components, ext='png'),
+                    image, batch_idx, generation_result)
         else:
             if generation_result.image_count > 1:
                 image = generation_result.image_grid(self.config.batch_grid_size)
             else:
                 image = generation_result.image
 
-            self._write_image(filename, image, 0, generation_result)
+            self._write_image(
+                self._gen_image_filename(filename_components, ext='png'),
+                image, 0, generation_result)
 
     def _write_animation_frame(self,
                                args_ctx: _pipelinewrapper.DiffusionArguments,
                                image_seed_obj: _mediainput.ImageSeed,
                                generation_result: _pipelinewrapper.PipelineWrapperResult):
-        args = self._gen_filename_base(args_ctx)
 
-        filename = self._gen_filename(*args,
-                                      'frame',
-                                      image_seed_obj.frame_index + 1,
-                                      'step',
-                                      self._generation_step + 1,
-                                      ext='png')
+        filename_components = [*self._gen_filename_base(args_ctx),
+                               'frame',
+                               image_seed_obj.frame_index + 1,
+                               'step',
+                               self._generation_step + 1]
 
         generation_result.add_dgenerate_opt('--frame-start', image_seed_obj.frame_index)
         generation_result.add_dgenerate_opt('--frame-end', image_seed_obj.frame_index)
-        self._write_generation_result(filename, generation_result)
+
+        self._write_generation_result(filename_components, generation_result)
 
     def _write_image_seed_gen_image(self, args_ctx: _pipelinewrapper.DiffusionArguments,
                                     generation_result: _pipelinewrapper.PipelineWrapperResult):
-        args = self._gen_filename_base(args_ctx)
-        filename = self._gen_filename(*args, 'step', self._generation_step + 1, ext='png')
-        self._write_generation_result(filename, generation_result)
+
+        filename_components = [*self._gen_filename_base(args_ctx),
+                               'step',
+                               self._generation_step + 1]
+
+        self._write_generation_result(filename_components, generation_result)
 
     def _write_prompt_only_image(self, args_ctx: _pipelinewrapper.DiffusionArguments,
                                  generation_result: _pipelinewrapper.PipelineWrapperResult):
-        args = self._gen_filename_base(args_ctx)
-        filename = self._gen_filename(*args, 'step', self._generation_step + 1, ext='png')
-        self._write_generation_result(filename, generation_result)
+
+        filename_components = [*self._gen_filename_base(args_ctx),
+                               'step',
+                               self._generation_step + 1]
+
+        self._write_generation_result(filename_components, generation_result)
 
     def _pre_generation_step(self, args_ctx: _pipelinewrapper.DiffusionArguments):
         self._last_frame_time = 0
@@ -1122,39 +1126,45 @@ class DiffusionRenderLoop:
 
                             self._write_image_seed_gen_image(args_ctx, generation_result)
 
+    def _gen_animation_filename(self,
+                                args_ctx: _pipelinewrapper.DiffusionArguments,
+                                generation_step,
+                                animation_format):
+        args = ['ANIM', *self._gen_filename_base(args_ctx), 'step', generation_step + 1]
+
+        return os.path.join(self.config.output_path,
+                            '_'.join(str(a).replace('.', '-') for a in args) + f'.{animation_format}')
+
     def _render_animation(self, diffusion_model, arg_iterator, fps, seed_iterator_func, get_extra_args):
 
         animation_format_lower = self.config.animation_format.lower()
         first_args_ctx = next(arg_iterator)
 
-        out_filename = self._gen_animation_filename(first_args_ctx, self._generation_step + 1,
-                                                    animation_format_lower)
+        base_filename = \
+            self._gen_animation_filename(
+                first_args_ctx, self._generation_step + 1,
+                animation_format_lower)
+
         next_frame_terminates_anim = False
 
-        with _mediaoutput.create_animation_writer(animation_format_lower, out_filename, fps) as video_writer:
+        with _mediaoutput.MultiAnimationWriter(
+                animation_format=animation_format_lower,
+                filename=base_filename,
+                fps=fps, allow_overwrites=self.config.output_overwrite) as anim_writer:
 
             for args_ctx in itertools.chain([first_args_ctx], arg_iterator):
                 self._pre_generation_step(args_ctx)
 
                 if next_frame_terminates_anim:
                     next_frame_terminates_anim = False
-                    video_writer.end(
+                    anim_writer.end(
                         new_file=self._gen_animation_filename(args_ctx, self._generation_step,
                                                               animation_format_lower))
 
-                if self.config.output_configs:
-                    anim_config_file_name = os.path.splitext(video_writer.filename)[0] + '.txt'
-                    _messages.log(
-                        f'Writing Animation: "{video_writer.filename}"\nWriting Config File: "{anim_config_file_name}"',
-                        underline=True)
-                else:
-                    _messages.log(f'Writing Animation: "{video_writer.filename}"', underline=True)
-
-                self._written_animations.append(os.path.abspath(video_writer.filename))
 
                 for image_obj in seed_iterator_func():
-
                     with image_obj as image_seed_obj:
+
                         self._animation_frame_pre_generation(args_ctx, image_seed_obj)
 
                         extra_args = get_extra_args(image_seed_obj)
@@ -1164,34 +1174,69 @@ class DiffusionRenderLoop:
                                              batch_size=self.config.batch_size) as generation_result:
 
                             if generation_result.image_count > 1 and self.config.batch_grid_size is not None:
-                                video_writer.write(
+                                anim_writer.write(
                                     generation_result.image_grid(self.config.batch_grid_size))
                             else:
-                                video_writer.write(generation_result.image)
+                                anim_writer.write(generation_result.images)
 
-                            if self.config.output_configs:
-                                if not os.path.exists(anim_config_file_name):
+                            if image_obj.frame_index == 0:
+                                # Preform on first frame write
 
-                                    if self.config.frame_start is not None:
-                                        generation_result.add_dgenerate_opt('--frame-start',
-                                                                            self.config.frame_start)
+                                animation_filenames_message = \
+                                    '\n'.join(f'Writing Animation: "{f}"' for f in anim_writer.filenames)
 
-                                    if self.config.frame_end is not None:
-                                        generation_result.add_dgenerate_opt('--frame-end',
-                                                                            self.config.frame_end)
+                                if self.config.output_configs:
 
-                                    if self.config.animation_format is not None:
-                                        generation_result.add_dgenerate_opt('--animation-format',
-                                                                            self.config.animation_format)
+                                    _messages.log(animation_filenames_message)
 
-                                    config_text = \
-                                        generation_result.gen_dgenerate_config()
+                                    self._write_animation_config_file(
+                                        os.path.splitext(anim_writer.filename)[0] + '.txt',
+                                        generation_result)
 
-                                    with open(anim_config_file_name, "w") as config_file:
-                                        config_file.write(config_text)
+
+                                else:
+                                    _messages.log(animation_filenames_message, underline=True)
+
+                                for filename in anim_writer.filenames:
+                                    self._written_animations.append(os.path.abspath(filename))
 
                             self._write_animation_frame(args_ctx, image_seed_obj, generation_result)
 
                         next_frame_terminates_anim = image_seed_obj.frame_index == (image_seed_obj.total_frames - 1)
 
-                video_writer.end()
+                anim_writer.end()
+
+    def _write_animation_config_file(self, filename, generation_result):
+        extra_opts = []
+
+        if self.config.frame_start is not None and \
+                self.config.frame_start != 0:
+            extra_opts.append(('--frame-start',
+                               self.config.frame_start))
+
+        if self.config.frame_end is not None:
+            extra_opts.append(('--frame-end',
+                               self.config.frame_end))
+
+        if self.config.animation_format is not None:
+            extra_opts.append(('--animation-format',
+                               self.config.animation_format))
+        config_text = \
+            generation_result.gen_dgenerate_config(
+                extra_args=extra_opts)
+
+        if not self.config.output_overwrite:
+            filename = \
+                _util.touch_avoid_duplicate(
+                    self.config.output_path,
+                    pathmaker=_util.suffix_path_maker(filename,
+                                                      '_duplicate_'))
+
+        _messages.log(f'Writing Config File: "{filename}"',
+                      underline=True)
+
+        with open(filename, "w") as config_file:
+            config_file.write(config_text)
+
+
+
