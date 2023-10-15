@@ -2230,7 +2230,7 @@ class DiffusionPipelineWrapper:
             if (strength * inference_steps) < 1.0:
                 strength = 1.0 / inference_steps
                 _messages.log(
-                    f'WARNING: image-seed-strength * inference-steps '
+                    f'image-seed-strength * inference-steps '
                     f'was calculated at < 1, image-seed-strength defaulting to (1.0 / inference-steps): {strength}',
                     level=_messages.WARNING)
 
@@ -2674,7 +2674,7 @@ class DiffusionPipelineWrapper:
 
             if strength <= 0.0:
                 strength = 0.2
-                _messages.log(f'WARNING: Refiner edit mode image seed strength (1.0 - high-noise-fraction) '
+                _messages.log(f'Refiner edit mode image seed strength (1.0 - high-noise-fraction) '
                               f'was calculated at <= 0.0, defaulting to {strength}',
                               level=_messages.WARNING)
             else:
@@ -2686,7 +2686,7 @@ class DiffusionPipelineWrapper:
             if (strength * inference_steps) < 1.0:
                 strength = 1.0 / inference_steps
                 _messages.log(
-                    f'WARNING: Refiner edit mode image seed strength (1.0 - high-noise-fraction) * inference-steps '
+                    f'Refiner edit mode image seed strength (1.0 - high-noise-fraction) * inference-steps '
                     f'was calculated at < 1, defaulting to (1.0 / inference-steps): {strength}',
                     level=_messages.WARNING)
 
