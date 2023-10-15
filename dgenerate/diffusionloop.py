@@ -810,7 +810,7 @@ class DiffusionRenderLoop:
                 extra_args.append(('--batch-size', self.config.batch_size))
 
             extra_comments.append(
-                f'Image {batch_index} from a batch of {generation_result.image_count}')
+                f'Image {batch_index + 1} from a batch of {generation_result.image_count}')
 
         if self.config.batch_grid_size is not None:
             extra_args.append(('--batch-grid-size',
@@ -1241,6 +1241,13 @@ class DiffusionRenderLoop:
         if self.config.animation_format is not None:
             extra_opts.append(('--animation-format',
                                self.config.animation_format))
+
+        extra_comments = []
+
+        if generation_result.image_count > 1:
+            extra_comments.append(
+                f'Animation {batch_idx + 1} from a batch of {generation_result.image_count}')
+
         config_text = \
             generation_result.gen_dgenerate_config(
                 extra_args=extra_opts)
@@ -1257,5 +1264,3 @@ class DiffusionRenderLoop:
 
         _messages.log(f'Wrote Animation Config File: "{filename}"',
                       underline=batch_idx == generation_result.image_count - 1)
-
-
