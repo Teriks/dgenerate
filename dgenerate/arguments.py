@@ -309,24 +309,28 @@ actions.append(
                         granted to your huggingface account."""))
 actions.append(
     parser.add_argument('--batch-size', action='store', default=None, metavar="INTEGER", type=_type_batch_size,
-                        help="""The number of images to produce per set of individual diffusion parameters
+                        help="""The number of image variations to produce per set of individual diffusion parameters
                         in one rendering step simultaneously on a single GPU. When using flax, batch size
                         is controlled by the environmental variable CUDA_VISIBLE_DEVICES which is a comma 
                         seperated list of GPU device numbers (as listed by nvidia-smi). Usage of this 
                         argument with --model-type flax* will cause an error, diffusion with flax will 
                         generate an image on every GPU that is visible to CUDA and this is currently 
-                        unchangeable. When generating animations, only the first image in a batch is 
-                        used for each frame unless --batch-grid-size is specified in which case the 
-                        image grid becomes an animation frame, each image in the batch will still be 
-                        written to the output directory. (Torch Default: 1)"""))
+                        unchangeable. When generating animations with a --batch-size greater than one,
+                        a separate animation (with the filename suffix "animation_N") will be written to for 
+                        each image in the batch. If --batch-grid-size is specified when producing an animation 
+                        then the image grid is used for the output frames. During animation rendering each 
+                        image in the batch will still be written to the output directory along side the produced
+                        animation as either suffixed files or image grids depending on the options you choose. 
+                        (Torch Default: 1)"""))
 
 actions.append(
     parser.add_argument('--batch-grid-size', action='store', default=None, metavar="SIZE", type=_type_size,
                         help="""Produce a single image containing a grid of images with the number of
-                        ROWSxCOLUMNS given to this argument when --batch-size is more than 1, or when 
+                        ROWSxCOLUMNS given to this argument when --batch-size is greater than 1, or when 
                         using flax with multiple GPUs visible (via the environmental variable CUDA_VISIBLE_DEVICES). 
-                        If not specified with a batch size greater than 1, images will be written individually with 
-                        an image number suffix in the filename signifying which image in the batch they are."""))
+                        If not specified with a --batch-size greater than 1, images will be written individually with 
+                        an image number suffix (image_N) in the filename signifying which image in 
+                        the batch they are."""))
 
 actions.append(
     parser.add_argument('--vae', action='store', default=None, metavar="VAE_URI", dest='vae_uri',
@@ -383,15 +387,16 @@ actions.append(
                         into tiles to compute decoding and encoding in several steps. This is 
                         useful for saving a large amount of memory and to allow processing larger images. 
                         Note that if you are using --control-nets you may still run into memory 
-                        issues generating large images."""))
+                        issues generating large images, or with --batch-size greater than 1."""))
 
 actions.append(
     parser.add_argument('--vae-slicing', action='store_true', default=False,
                         help="""Enable VAE slicing (torch* models only). Assists in the generation 
                         of large images with lower memory overhead. The VAE will split the input tensor
-                        in slices to compute decoding in several steps. This is useful to save some memory. 
-                        Note that if you are using --control-nets you may still run into memory 
-                        issues generating large images."""))
+                        in slices to compute decoding in several steps. This is useful to save some memory,
+                        especially when --batch-size is greater than 1. Note that if you are using --control-nets
+                        you may still run into memory issues generating large images, or with --batch-size 
+                        greater than 1."""))
 
 actions.append(
     parser.add_argument('--loras', '--lora', action='store', default=None, metavar="LORA_URI", dest='lora_uris',
