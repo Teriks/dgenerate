@@ -112,11 +112,17 @@ def log(*args: typing.Any, level=INFO, underline=False, underline_char='='):
         else:
             file = _err_file
 
+    prefix = ''
+    if level == DEBUG:
+        prefix = 'DEBUG: '
+    if level == WARNING:
+        prefix = 'WARNING: '
+
     if underline:
-        print(_textprocessing.underline(' '.join(str(a) for a in args),
+        print(_textprocessing.underline(prefix+' '.join(str(a) for a in args),
                                         underline_char=underline_char), file=file)
     else:
-        print(' '.join(str(a) for a in args), file=file)
+        print(prefix+' '.join(str(a) for a in args), file=file)
 
     for handler in _handlers:
         handler(*args,
