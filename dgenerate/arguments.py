@@ -325,12 +325,11 @@ actions.append(
 
 actions.append(
     parser.add_argument('--batch-grid-size', action='store', default=None, metavar="SIZE", type=_type_size,
-                        help="""Produce a single image containing a grid of images with the number of
-                        ROWSxCOLUMNS given to this argument when --batch-size is greater than 1, or when 
-                        using flax with multiple GPUs visible (via the environmental variable CUDA_VISIBLE_DEVICES). 
-                        If not specified with a --batch-size greater than 1, images will be written individually with 
-                        an image number suffix (image_N) in the filename signifying which image in 
-                        the batch they are."""))
+                        help="""Produce a single image containing a grid of images with the number of COLUMNSxROWS 
+                        given to this argument when --batch-size is greater than 1, or when using flax with multiple 
+                        GPUs visible (via the environmental variable CUDA_VISIBLE_DEVICES). If not specified with a
+                        --batch-size greater than 1, images will be written individually with an image number suffix
+                        (image_N) in the filename signifying which image in the batch they are."""))
 
 actions.append(
     parser.add_argument('--vae', action='store', default=None, metavar="VAE_URI", dest='vae_uri',
