@@ -178,7 +178,7 @@ class MultiAnimationWriter(AnimationWriter):
 
     def _gen_filename(self, num_images, image_idx):
         base, ext = os.path.splitext(self.filename)
-        if num_images > 0:
+        if num_images > 1:
             base += f'_animation_{image_idx}{ext}'
         else:
             base = f'{base}{ext}'

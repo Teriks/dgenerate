@@ -1517,9 +1517,9 @@ class PipelineWrapperResult:
     @staticmethod
     def _set_opt_value_syntax(val):
         if isinstance(val, tuple):
-            return 'x'.join(val)
+            return _textprocessing.format_size(val)
         if isinstance(val, list):
-            return ' '.join(val)
+            return ' '.join(_textprocessing.quote_spaces(v) for v in val)
         return val
 
     @staticmethod

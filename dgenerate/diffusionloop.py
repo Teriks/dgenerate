@@ -813,7 +813,8 @@ class DiffusionRenderLoop:
                 f'Image {batch_index} from a batch of {generation_result.image_count}')
 
         if self.config.batch_grid_size is not None:
-            extra_args.append(('--batch-grid-size', self.config.batch_grid_size))
+            extra_args.append(('--batch-grid-size',
+                               _textprocessing.format_size(self.config.batch_grid_size)))
 
         config_txt = generation_result.gen_dgenerate_config(
             extra_args=extra_args,
@@ -834,7 +835,7 @@ class DiffusionRenderLoop:
                 config_file.write(config_txt)
             _messages.log(
                 f'Wrote Image File: "{filename}"\n'
-                f'Wrote Config File: "{config_file_name}"',
+                f'Wrote Image Config File: "{config_file_name}"',
                 underline=is_last_image)
         else:
             _messages.log(f'Wrote Image File: "{filename}"',
@@ -914,18 +915,20 @@ class DiffusionRenderLoop:
     def _pre_generation(self, args_ctx):
         pass
 
-    def _animation_frame_pre_generation(self, args_ctx: _pipelinewrapper.DiffusionArguments, image_seed_obj):
+    def _animation_frame_pre_generation(self,
+                                        args_ctx: _pipelinewrapper.DiffusionArguments,
+                                        image_seed: _mediainput.ImageSeed):
         if self._last_frame_time == 0:
             eta = 'tbd...'
         else:
             self._frame_time_sum += time.time() - self._last_frame_time
-            eta_seconds = (self._frame_time_sum / image_seed_obj.frame_index) * (
-                    image_seed_obj.total_frames - image_seed_obj.frame_index)
+            eta_seconds = (self._frame_time_sum / image_seed.frame_index) * (
+                    image_seed.total_frames - image_seed.frame_index)
             eta = str(datetime.timedelta(seconds=eta_seconds))
 
         self._last_frame_time = time.time()
         _messages.log(
-            f'Generating frame {image_seed_obj.frame_index + 1} / {image_seed_obj.total_frames}, Completion ETA: {eta}',
+            f'Generating frame {image_seed.frame_index + 1} / {image_seed.total_frames}, Completion ETA: {eta}',
             underline=True)
 
     def _with_image_seed_pre_generation(self, args_ctx: _pipelinewrapper.DiffusionArguments, image_seed_obj):
@@ -965,56 +968,65 @@ class DiffusionRenderLoop:
         if self.config.image_seeds:
             self._render_with_image_seeds()
         else:
-            diffusion_model = _pipelinewrapper.DiffusionPipelineWrapper(self.config.model_path,
-                                                                        model_subfolder=self.config.model_subfolder,
-                                                                        dtype=self.config.dtype,
-                                                                        device=self.config.device,
-                                                                        model_type=self.config.model_type,
-                                                                        revision=self.config.revision,
-                                                                        variant=self.config.variant,
-                                                                        vae_uri=self.config.vae_uri,
-                                                                        lora_uris=self.config.lora_uris,
-                                                                        textual_inversion_uris=self.config.textual_inversion_uris,
-                                                                        scheduler=self.config.scheduler,
-                                                                        sdxl_refiner_scheduler=self.config.sdxl_refiner_scheduler,
-                                                                        safety_checker=self.config.safety_checker,
-                                                                        sdxl_refiner_uri=self.config.sdxl_refiner_uri,
-                                                                        auth_token=self.config.auth_token)
+            pipeline_wrapper = \
+                _pipelinewrapper.DiffusionPipelineWrapper(
+                    self.config.model_path,
+                    model_subfolder=self.config.model_subfolder,
+                    dtype=self.config.dtype,
+                    device=self.config.device,
+                    model_type=self.config.model_type,
+                    revision=self.config.revision,
+                    variant=self.config.variant,
+                    vae_uri=self.config.vae_uri,
+                    lora_uris=self.config.lora_uris,
+                    textual_inversion_uris=self.config.textual_inversion_uris,
+                    scheduler=self.config.scheduler,
+                    sdxl_refiner_scheduler=self.config.sdxl_refiner_scheduler,
+                    safety_checker=self.config.safety_checker,
+                    sdxl_refiner_uri=self.config.sdxl_refiner_uri,
+                    auth_token=self.config.auth_token)
 
-            sdxl_high_noise_fractions = self.config.sdxl_high_noise_fractions if self.config.sdxl_refiner_uri is not None else None
+            sdxl_high_noise_fractions = \
+                self.config.sdxl_high_noise_fractions if \
+                    self.config.sdxl_refiner_uri is not None else None
 
-            for args_ctx in self.config.iterate_diffusion_args(sdxl_high_noise_fraction=sdxl_high_noise_fractions,
-                                                               image_seed_strength=None,
-                                                               upscaler_noise_level=None):
+            for args_ctx in self.config.iterate_diffusion_args(
+                    sdxl_high_noise_fraction=sdxl_high_noise_fractions,
+                    image_seed_strength=None,
+                    upscaler_noise_level=None):
                 self._pre_generation_step(args_ctx)
                 self._pre_generation(args_ctx)
 
-                with diffusion_model(**args_ctx.get_pipeline_wrapper_args(),
-                                     width=self.config.output_size[0],
-                                     height=self.config.output_size[1],
-                                     batch_size=self.config.batch_size) as generation_result:
+                with pipeline_wrapper(**args_ctx.get_pipeline_wrapper_args(),
+                                      width=self.config.output_size[0],
+                                      height=self.config.output_size[1],
+                                      batch_size=self.config.batch_size) as generation_result:
                     self._write_prompt_only_image(args_ctx, generation_result)
 
     def _render_with_image_seeds(self):
-        diffusion_model = _pipelinewrapper.DiffusionPipelineWrapper(self.config.model_path,
-                                                                    model_subfolder=self.config.model_subfolder,
-                                                                    dtype=self.config.dtype,
-                                                                    device=self.config.device,
-                                                                    model_type=self.config.model_type,
-                                                                    revision=self.config.revision,
-                                                                    variant=self.config.variant,
-                                                                    vae_uri=self.config.vae_uri,
-                                                                    vae_tiling=self.config.vae_tiling,
-                                                                    vae_slicing=self.config.vae_slicing,
-                                                                    lora_uris=self.config.lora_uris,
-                                                                    textual_inversion_uris=self.config.textual_inversion_uris,
-                                                                    control_net_uris=self.config.control_net_uris,
-                                                                    scheduler=self.config.scheduler,
-                                                                    safety_checker=self.config.safety_checker,
-                                                                    sdxl_refiner_uri=self.config.sdxl_refiner_uri,
-                                                                    auth_token=self.config.auth_token)
+        pipeline_wrapper = \
+            _pipelinewrapper.DiffusionPipelineWrapper(
+                self.config.model_path,
+                model_subfolder=self.config.model_subfolder,
+                dtype=self.config.dtype,
+                device=self.config.device,
+                model_type=self.config.model_type,
+                revision=self.config.revision,
+                variant=self.config.variant,
+                vae_uri=self.config.vae_uri,
+                vae_tiling=self.config.vae_tiling,
+                vae_slicing=self.config.vae_slicing,
+                lora_uris=self.config.lora_uris,
+                textual_inversion_uris=self.config.textual_inversion_uris,
+                control_net_uris=self.config.control_net_uris,
+                scheduler=self.config.scheduler,
+                safety_checker=self.config.safety_checker,
+                sdxl_refiner_uri=self.config.sdxl_refiner_uri,
+                auth_token=self.config.auth_token)
 
-        sdxl_high_noise_fractions = self.config.sdxl_high_noise_fractions if self.config.sdxl_refiner_uri is not None else None
+        sdxl_high_noise_fractions = \
+            self.config.sdxl_high_noise_fractions if \
+                self.config.sdxl_refiner_uri is not None else None
 
         image_seed_strengths = self.config.image_seed_strengths if \
             not (_pipelinewrapper.model_type_is_upscaler(self.config.model_type) or
@@ -1024,29 +1036,29 @@ class DiffusionRenderLoop:
             self.config.model_type == _pipelinewrapper.ModelTypes.TORCH_UPSCALER_X4 else None
 
         def validate_image_seeds():
-            for img_seed in self.config.image_seeds:
-                parsed = _mediainput.parse_image_seed_uri(img_seed)
+            for uri in self.config.image_seeds:
+                parsed = _mediainput.parse_image_seed_uri(uri)
 
                 if self.config.control_net_uris and not parsed.is_single_image() and parsed.control_path is None:
                     raise NotImplementedError(
                         f'You must specify a control image with the control argument '
                         f'IE: --image-seeds "my-seed.png;control=my-control.png" in your '
-                        f'--image-seeds "{img_seed}" when using --control-nets in order '
+                        f'--image-seeds "{uri}" when using --control-nets in order '
                         f'to use inpainting. If you want to use the control image alone '
                         f'without a mask, use --image-seeds "{parsed.seed_path}".')
 
-                yield img_seed, parsed
+                yield uri, parsed
 
-        for image_seed, parsed_image_seed in list(validate_image_seeds()):
+        for image_seed_uri, parsed_image_seed in list(validate_image_seeds()):
 
             is_single_control_image = self.config.control_net_uris and parsed_image_seed.is_single_image()
             image_seed_strengths = image_seed_strengths if not is_single_control_image else None
             upscaler_noise_levels = upscaler_noise_levels if not is_single_control_image else None
 
             if is_single_control_image:
-                _messages.log(f'Processing Control Image: "{image_seed}"', underline=True)
+                _messages.log(f'Processing Control Image: "{image_seed_uri}"', underline=True)
             else:
-                _messages.log(f'Processing Image Seed: "{image_seed}"', underline=True)
+                _messages.log(f'Processing Image Seed: "{image_seed_uri}"', underline=True)
 
             arg_iterator = self.config.iterate_diffusion_args(
                 sdxl_high_noise_fraction=sdxl_high_noise_fractions,
@@ -1062,7 +1074,7 @@ class DiffusionRenderLoop:
                     parsed_image_seed, self.config.frame_start, self.config.frame_end)
 
             if is_single_control_image:
-                def seed_iterator_func():
+                def image_seed_iterator():
                     yield from _mediainput.iterate_control_image(
                         parsed_image_seed,
                         self.config.frame_start,
@@ -1071,7 +1083,7 @@ class DiffusionRenderLoop:
                         preprocessor=self._load_preprocessors(self.config.control_image_preprocessors))
 
             else:
-                def seed_iterator_func():
+                def image_seed_iterator():
                     yield from _mediainput.iterate_image_seed(
                         parsed_image_seed,
                         self.config.frame_start,
@@ -1095,47 +1107,56 @@ class DiffusionRenderLoop:
                             extra_args['control_image'] = ims_obj.control_image
                         return extra_args
 
-                self._render_animation(diffusion_model,
-                                       arg_iterator,
-                                       seed_info.fps,
-                                       seed_iterator_func=seed_iterator_func,
-                                       get_extra_args=get_extra_args)
+                self._render_animation(pipeline_wrapper=pipeline_wrapper,
+                                       get_extra_wrapper_args=get_extra_args,
+                                       arg_iterator=arg_iterator,
+                                       image_seed_iterator=image_seed_iterator(),
+                                       fps=seed_info.fps)
                 break
 
-            for args_ctx in arg_iterator:
-                self._pre_generation_step(args_ctx)
-                with next(seed_iterator_func()) as image_obj:
-                    with image_obj as image_seed_obj:
-                        self._with_image_seed_pre_generation(args_ctx, image_seed_obj)
+            for diffusion_arguments in arg_iterator:
+                self._pre_generation_step(diffusion_arguments)
+                with next(image_seed_iterator()) as image_seed:
+                    with image_seed:
+                        self._with_image_seed_pre_generation(diffusion_arguments, image_seed)
 
-                        pipeline_args = args_ctx.get_pipeline_wrapper_args()
+                        pipeline_args = diffusion_arguments.get_pipeline_wrapper_args()
 
                         if not is_single_control_image:
-                            pipeline_args['image'] = image_seed_obj.image
+                            pipeline_args['image'] = image_seed.image
 
-                        if image_seed_obj.mask_image is not None:
-                            pipeline_args['mask_image'] = image_seed_obj.mask_image
+                        if image_seed.mask_image is not None:
+                            pipeline_args['mask_image'] = image_seed.mask_image
                         else:
-                            pipeline_args['control_image'] = (image_seed_obj.image if is_single_control_image
-                                                              else image_seed_obj.control_image)
+                            pipeline_args['control_image'] = (image_seed.image if is_single_control_image
+                                                              else image_seed.control_image)
 
                         with _mediainput.MultiContextManager(
-                                [image_seed_obj.mask_image, image_seed_obj.control_image]), \
-                                diffusion_model(**pipeline_args,
-                                                batch_size=self.config.batch_size) as generation_result:
+                                [image_seed.mask_image, image_seed.control_image]), \
+                                pipeline_wrapper(**pipeline_args,
+                                                 batch_size=self.config.batch_size) as generation_result:
 
-                            self._write_image_seed_gen_image(args_ctx, generation_result)
+                            self._write_image_seed_gen_image(diffusion_arguments, generation_result)
 
     def _gen_animation_filename(self,
                                 args_ctx: _pipelinewrapper.DiffusionArguments,
                                 generation_step,
                                 animation_format):
+
         args = ['ANIM', *self._gen_filename_base(args_ctx), 'step', generation_step + 1]
 
         return os.path.join(self.config.output_path,
                             '_'.join(str(a).replace('.', '-') for a in args) + f'.{animation_format}')
 
-    def _render_animation(self, diffusion_model, arg_iterator, fps, seed_iterator_func, get_extra_args):
+    def _render_animation(self,
+                          pipeline_wrapper: _pipelinewrapper.DiffusionPipelineWrapper,
+                          get_extra_wrapper_args:
+                          typing.Callable[[_mediainput.ImageSeed], typing.Dict[str, typing.Any]],
+                          arg_iterator:
+                          typing.Generator[_pipelinewrapper.DiffusionArguments, None, None],
+                          image_seed_iterator:
+                          typing.Generator[_mediainput.ImageSeed, None, None],
+                          fps: typing.Union[int, float]):
 
         animation_format_lower = self.config.animation_format.lower()
         first_args_ctx = next(arg_iterator)
@@ -1161,17 +1182,16 @@ class DiffusionRenderLoop:
                         new_file=self._gen_animation_filename(args_ctx, self._generation_step,
                                                               animation_format_lower))
 
+                for image_seed in image_seed_iterator:
+                    with image_seed:
 
-                for image_obj in seed_iterator_func():
-                    with image_obj as image_seed_obj:
+                        self._animation_frame_pre_generation(args_ctx, image_seed)
 
-                        self._animation_frame_pre_generation(args_ctx, image_seed_obj)
+                        extra_args = get_extra_wrapper_args(image_seed)
 
-                        extra_args = get_extra_args(image_seed_obj)
-
-                        with diffusion_model(**args_ctx.get_pipeline_wrapper_args(),
-                                             **extra_args,
-                                             batch_size=self.config.batch_size) as generation_result:
+                        with pipeline_wrapper(**args_ctx.get_pipeline_wrapper_args(),
+                                              **extra_args,
+                                              batch_size=self.config.batch_size) as generation_result:
 
                             if generation_result.image_count > 1 and self.config.batch_grid_size is not None:
                                 anim_writer.write(
@@ -1179,34 +1199,34 @@ class DiffusionRenderLoop:
                             else:
                                 anim_writer.write(generation_result.images)
 
-                            if image_obj.frame_index == 0:
+                            if image_seed.frame_index == 0:
                                 # Preform on first frame write
 
                                 animation_filenames_message = \
-                                    '\n'.join(f'Writing Animation: "{f}"' for f in anim_writer.filenames)
+                                    '\n'.join(f'Beginning Writes To Animation: "{f}"' for f in anim_writer.filenames)
 
                                 if self.config.output_configs:
 
                                     _messages.log(animation_filenames_message)
 
-                                    self._write_animation_config_file(
-                                        os.path.splitext(anim_writer.filename)[0] + '.txt',
-                                        generation_result)
-
-
+                                    for idx, filename in enumerate(anim_writer.filenames):
+                                        self._write_animation_config_file(
+                                            filename=os.path.splitext(filename)[0] + '.txt',
+                                            batch_idx=idx,
+                                            generation_result=generation_result)
                                 else:
                                     _messages.log(animation_filenames_message, underline=True)
 
                                 for filename in anim_writer.filenames:
                                     self._written_animations.append(os.path.abspath(filename))
 
-                            self._write_animation_frame(args_ctx, image_seed_obj, generation_result)
+                            self._write_animation_frame(args_ctx, image_seed, generation_result)
 
-                        next_frame_terminates_anim = image_seed_obj.frame_index == (image_seed_obj.total_frames - 1)
+                        next_frame_terminates_anim = image_seed.frame_index == (image_seed.total_frames - 1)
 
                 anim_writer.end()
 
-    def _write_animation_config_file(self, filename, generation_result):
+    def _write_animation_config_file(self, filename, batch_idx, generation_result):
         extra_opts = []
 
         if self.config.frame_start is not None and \
@@ -1232,11 +1252,10 @@ class DiffusionRenderLoop:
                     pathmaker=_util.suffix_path_maker(filename,
                                                       '_duplicate_'))
 
-        _messages.log(f'Writing Config File: "{filename}"',
-                      underline=True)
-
         with open(filename, "w") as config_file:
             config_file.write(config_text)
 
+        _messages.log(f'Wrote Animation Config File: "{filename}"',
+                      underline=batch_idx == generation_result.image_count - 1)
 
 
