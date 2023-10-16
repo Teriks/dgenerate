@@ -1491,7 +1491,7 @@ class PipelineWrapperResult:
 
     def __init__(self, images: typing.Optional[typing.List[PIL.Image.Image]]):
         self.images = images
-        self.dgenerate_opts = dict()
+        self.dgenerate_opts = list()
 
     def __enter__(self):
         return self
