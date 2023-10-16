@@ -301,6 +301,7 @@ def create_config_runner(injected_args: typing.Sequence[str],
         'quote': _textprocessing.quote,
         'format_prompt': format_prompt,
         'format_size': _textprocessing.format_size,
+        'quote_spaces': _textprocessing.quote_spaces,
         'last': lambda a: a[-1] if a else None
     }
 
