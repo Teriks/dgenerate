@@ -175,19 +175,10 @@ class ImagePreprocessor:
         raise _exceptions.ImagePreprocessorArgumentError(msg)
 
     def __init__(self, **kwargs):
-        output_dir = kwargs.get('output_dir')
-        output_file = kwargs.get('output_file')
-        device = kwargs.get('device', 'cpu')
-        called_by_name = kwargs.get('called_by_name')
-
-        if output_dir is not None and output_file is not None:
-            raise _exceptions.ImagePreprocessorArgumentError(
-                'output_dir and output_file may not be specified simultaneously')
-
-        self.__device = device
-        self.__output_dir = output_dir
-        self.__output_file = output_file
-        self.__called_by_name = called_by_name
+        self.__output_file = kwargs.get('output_file')
+        self.__output_overwrite = kwargs.get('output_overwrite', False)
+        self.__device = kwargs.get('device', 'cpu')
+        self.__called_by_name = kwargs.get('called_by_name')
 
     @property
     def device(self) -> str:
@@ -198,17 +189,11 @@ class ImagePreprocessor:
         return self.__called_by_name
 
     def __gen_filename(self):
-        def _make_path(dup_number=None):
-            name = next(iter(self.get_names()))
-            if dup_number is not None:
-                name = next(iter(self.get_names())) + f'_{dup_number}'
-            return os.path.join(self.__output_dir, name) + '.png'
-
-        return _util.touch_avoid_duplicate(self.__output_dir, _make_path)
+        return _util.touch_avoid_duplicate(os.path.dirname(self.__output_file),
+                                           _util.suffix_path_maker(self.__output_file, '_duplicate_'))
 
     def __save_image(self, image):
-        if self.__output_dir is not None:
-            Path(self.__output_dir).mkdir(parents=True, exist_ok=True)
+        if not self.__output_overwrite:
             image.save(self.__gen_filename())
         elif self.__output_file is not None:
             image.save(self.__output_file)

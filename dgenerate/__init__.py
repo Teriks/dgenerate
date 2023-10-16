@@ -59,7 +59,7 @@ def main():
                                      version=__version__,
                                      injected_args=sys.argv[1:]).run_file(sys.stdin)
             except BatchProcessError as e:
-                messages.log(f'Config Syntax Error: {e}', level=messages.ERROR)
+                messages.log(f'Config Error: {e}', level=messages.ERROR)
                 sys.exit(1)
         else:
             sys.exit(invoke_dgenerate(sys.argv[1:], render_loop=render_loop))

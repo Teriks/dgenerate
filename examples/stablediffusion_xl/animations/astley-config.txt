@@ -13,7 +13,7 @@ stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
 --sdxl-high-noise-fractions 0.8 \
 --image-seeds "../../media/rickroll-roll.gif" \
 --control-nets diffusers/controlnet-canny-sdxl-1.0;scale=1.0 \
---control-image-preprocessors "canny;blur=true;output-dir=astley" \
+--control-image-preprocessors "canny;blur=true;output-file=astley/astley-canny.png" \
 --animation-format mp4 \
 --output-size 1024 \
 --output-path astley
