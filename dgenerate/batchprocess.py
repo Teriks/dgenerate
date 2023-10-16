@@ -64,14 +64,15 @@ class BatchProcessor:
         Constructor.
 
         :param invoker: A function for invoking lines recognized as shell commands, should return a return code.
-        :param template_variable_generator: Generate template variables for templating after an
+        :param template_variable_generator: A function that generates template variables for templating after an
             invocation, should return a dictionary.
         :param name: The name of this batch processor, currently used in the version check directive and messages
         :param version: Version for version check hash bang directive.
-        :param template_variables: Live template variables, the inital environment, this dictionary will be
+        :param template_variables: Live template variables, the initial environment, this dictionary will be
             modified during runtime.
         :param template_functions: Functions available to Jinja2
-        :param directives: batch processing directive handlers, for: \directive
+        :param directives: batch processing directive handlers, for: *\\\\directives*. This is a dictionary
+            of names to functions which accept a single parameter, a list of directive arguments.
         :param injected_args: Arguments to be injected at the end of user specified arguments for every shell invocation
         """
 
@@ -82,6 +83,7 @@ class BatchProcessor:
         self.directives = directives
         self.injected_args = injected_args
         self.name = name
+        self._current_line = 0
 
         if isinstance(version, str):
             ver_parts = version.split('.')
@@ -102,6 +104,13 @@ class BatchProcessor:
         for name, func in self.template_functions.items():
             self._jinja_env.globals[name] = func
             self._jinja_env.filters[name] = func
+
+    @property
+    def current_line(self) -> int:
+        """
+        The current line in the file being processed.
+        """
+        return self._current_line
 
     def _render_template(self, input_string: str):
         try:
@@ -191,11 +200,11 @@ class BatchProcessor:
             templated_cmd += ' ' + ' '.join(injected_args)
 
         header = 'Processing Arguments: '
-        args_wrapped = textwrap.fill(templated_cmd,
-                                     width=_textprocessing.long_text_wrap_width() - len(header),
-                                     break_long_words=False,
-                                     break_on_hyphens=False,
-                                     subsequent_indent=' ' * len(header))
+        args_wrapped = \
+            _textprocessing.wrap(
+                templated_cmd,
+                width=_textprocessing.long_text_wrap_width() - len(header),
+                subsequent_indent=' ' * len(header))
 
         _messages.log(header + args_wrapped, underline=True)
 
@@ -218,6 +227,7 @@ class BatchProcessor:
         continuation = ''
 
         for line_idx, line in enumerate(stream):
+            self._current_line = line_idx
             line = line.strip()
             if line == '':
                 continue
@@ -259,7 +269,10 @@ def create_config_runner(injected_args: typing.Sequence[str],
         These arguments will be injected at the end of every dgenerate invocation in the config file.
     :param render_loop: DiffusionRenderLoop instance, if None is provided one will be created.
     :param version: Config version for "#! dgenerate x.x.x" version checks, defaults to dgenerate.__version__
-    :param throw: Whether to throw exceptions or handle them.
+    :param throw: Whether to throw exceptions from :py:meth:`dgenerate.invoker.invoke_dgenerate` or handle them,
+        if you set this to True exceptions will propagate out of dgenerate invocations instead of a
+        :py:exc:`.BatchProcessError` being raised, a line number where the error occurred can be obtained
+        using :py:attr:`.BatchProcessor.current_line`.
     :return: integer return-code, anything other than 0 is failure
     """
 
