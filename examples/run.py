@@ -3,6 +3,11 @@ import os.path
 import subprocess
 import sys
 
+try:
+    import dgenerate.batchprocess as _batchprocess
+except ImportError:
+    _batchprocess = None
+
 pwd = os.path.dirname(__file__)
 
 args = sys.argv[1:]
@@ -59,8 +64,12 @@ for config in configs:
     print(f'RUNNING CONFIG: {config}')
     sys.stdout.flush()
     proc = ["dgenerate"] + args + extra_args
-    with open(config) as f:
+    with open(config, mode='rt' if _batchprocess else 'rb') as f:
         try:
-            subprocess.run(proc, stdin=f, cwd=os.path.dirname(config), check=True)
+            if _batchprocess:
+                os.chdir(os.path.dirname(config))
+                _batchprocess.create_config_runner(args + extra_args, throw=True).run_file(f)
+            else:
+                subprocess.run(proc, stdin=f, cwd=os.path.dirname(config), check=True)
         except KeyboardInterrupt:
             sys.exit(1)
