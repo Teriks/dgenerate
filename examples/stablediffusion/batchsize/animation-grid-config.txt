@@ -1,13 +1,14 @@
 
 
 # Generate 4 images simultaneously on the GPU and create a 2x2 grid for each frame of the animation
-# The kitten gif is 498x286, keep the images around the same size 512
+# The kitten gif is 498x286, meaning the resized images will not be square
+# as the resize that occurs is aspect corrected
 
 Yntec/3DRendering \
---inference-steps 60 \
+--inference-steps 50 \
 --guidance-scale 8 \
---prompts "3D rendering of a cat, high quality; photo, real, bad quality" \
---image-seed-strength 0.8 \
+--prompts "3D rendering of a cat, high quality, animal; human, photo, real, bad quality" \
+--image-seed-strength 0.3 \
 --seeds 12345678 \
 --image-seeds "../../media/kitten.gif" \
 --animation-format mp4 \
@@ -15,4 +16,4 @@ Yntec/3DRendering \
 --batch-grid-size 2 \
 --vae-slicing \
 --output-size 800 \
---output-path animation-grid
+--output-path animation-seperate

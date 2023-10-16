@@ -12,4 +12,4 @@ Yntec/3DRendering \
 --batch-size 4 \
 --vae-slicing \
 --output-size 800 \
---output-path animation-grid
+--output-path animation-seperate
