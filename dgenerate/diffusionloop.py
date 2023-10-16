@@ -1270,7 +1270,8 @@ class DiffusionRenderLoop:
 
         config_text = \
             generation_result.gen_dgenerate_config(
-                extra_args=extra_opts)
+                extra_args=extra_opts,
+                extra_comments=extra_comments)
 
         if not self.config.output_overwrite:
             filename = \
