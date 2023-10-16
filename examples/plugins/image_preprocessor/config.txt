@@ -6,7 +6,7 @@
 --prompts "hello world" \
 --image-seeds "../../media/earth.jpg" \
 --vae-slicing \
---seed-image-preprocessors foobar;my-argument=1
+--seed-image-preprocessors foobar;my-argument=1;output-file=output/test.png
 
 
 # Run the BooFabPreprocessor plugin
@@ -16,4 +16,4 @@
 --prompts "hello world" \
 --vae-slicing \
 --image-seeds "../../media/earth.jpg" \
---seed-image-preprocessors boo;my-argument=1 fab;my-argument=2
+--seed-image-preprocessors boo;my-argument=1 fab;my-argument=2;output-file=output/test.png
