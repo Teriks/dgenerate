@@ -119,10 +119,10 @@ def log(*args: typing.Any, level=INFO, underline=False, underline_char='='):
         prefix = 'WARNING: '
 
     if underline:
-        print(_textprocessing.underline(prefix+' '.join(str(a) for a in args),
+        print(_textprocessing.underline(prefix + ' '.join(str(a) for a in args),
                                         underline_char=underline_char), file=file)
     else:
-        print(prefix+' '.join(str(a) for a in args), file=file)
+        print(prefix + ' '.join(str(a) for a in args), file=file)
 
     for handler in _handlers:
         handler(*args,

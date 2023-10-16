@@ -21,17 +21,15 @@
 import inspect
 import itertools
 import os
-import textwrap
 import typing
-
 
 import PIL.Image
 
+import dgenerate.messages as _messages
 import dgenerate.preprocessors.exceptions as _exceptions
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 import dgenerate.util as _util
-import dgenerate.messages as _messages
 
 
 class ImagePreprocessor:
@@ -202,7 +200,6 @@ class ImagePreprocessor:
 
             image.save(filename)
             _messages.debug_log(f'{debug_header}: "{filename}"')
-
 
     @staticmethod
     def call_pre_resize(preprocessor, image: PIL.Image.Image,

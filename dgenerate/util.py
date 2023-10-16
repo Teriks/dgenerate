@@ -26,7 +26,6 @@ import typing
 
 import portalocker
 
-
 PathMaker = typing.Callable[[typing.Optional[str], typing.Optional[int]], typing.Union[str, typing.List[str]]]
 
 
@@ -62,7 +61,7 @@ def suffix_path_maker(filenames, suffix):
 def touch_avoid_duplicate(directory: str,
                           pathmaker: PathMaker,
                           lockname: str = '.lock',
-                          return_list = False):
+                          return_list=False):
     """
     Generate a filename in a directory and avoid duplicates using a file lock in that directory
     with a known name. Use to ensure duplicate checking in a directory is multiprocess safe,
