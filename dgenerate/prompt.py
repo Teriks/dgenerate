@@ -60,11 +60,11 @@ class Prompt:
 
         parse = value.split(self.delimiter, 1)
         if len(parse) == 1:
-            self.positive = parse[0]
+            self.positive = parse[0].strip()
             self.negative = None
         elif len(parse) == 2:
-            self.positive = parse[0]
-            self.negative = parse[1]
+            self.positive = parse[0].strip()
+            self.negative = parse[1].strip()
         else:
             self.positive = None
             self.negative = None
