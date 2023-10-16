@@ -957,10 +957,12 @@ class DiffusionRenderLoop:
             vae_slicing=self.config.vae_slicing,
             lora_uris=self.config.lora_uris,
             textual_inversion_uris=self.config.textual_inversion_uris,
-            control_net_uris=self.config.control_net_uris if self.config.image_seeds else [],
+            control_net_uris=
+            self.config.control_net_uris if self.config.image_seeds else [],
             sdxl_refiner_uri=self.config.sdxl_refiner_uri,
             scheduler=self.config.scheduler,
-            sdxl_refiner_scheduler=self.config.sdxl_refiner_scheduler,
+            sdxl_refiner_scheduler=
+            self.config.sdxl_refiner_scheduler if self.config.sdxl_refiner_uri else None,
             safety_checker=self.config.safety_checker,
             auth_token=self.config.auth_token)
 
