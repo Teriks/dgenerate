@@ -1880,7 +1880,7 @@ The ``output-file`` argument can be used to write the preprocessed image to a sp
 processing steps occur such as when rendering an animation or multiple generation steps, a numbered suffix
 will be appended to this filename.
 
-The ``output-overwrite`` argument can be used to tell the preprocessor that you do not want numbered
+The ``output-overwrite`` is a boolean argument can be used to tell the preprocessor that you do not want numbered
 suffixes to be generated for ``output-file`` and to simply overwrite it.
 
 The ``device`` argument can be used to override what device any hardware accelerated image processing
