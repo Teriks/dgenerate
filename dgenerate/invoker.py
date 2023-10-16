@@ -72,7 +72,7 @@ def invoke_dgenerate(
         return 0
 
     try:
-        arguments = _arguments.parse_args(args, throw=True)
+        arguments = _arguments.parse_args(args)
     except _arguments.DgenerateUsageError as e:
         if throw:
             raise e

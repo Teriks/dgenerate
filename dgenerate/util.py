@@ -81,6 +81,7 @@ def touch_avoid_duplicate(directory: str,
         a single filename or list of filenames to touch with duplicate avoidance. Calls to the callback
         thereafter will have non None values for both arguments and the callback should take the passed
         base filename and apply a suffix using the attempt number.
+
     :param lockname: Name of the lock file to be used as a mutex
 
     :return: Unique path that has been touched (created but empty), or a tuple of paths

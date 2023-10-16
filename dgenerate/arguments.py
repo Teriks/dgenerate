@@ -1009,14 +1009,14 @@ def _parse_args(args=None) -> DgenerateArguments:
 
 
 def parse_args(args: typing.Sequence[str],
-               throw: bool = False) -> typing.Union[DgenerateArguments, None]:
+               throw: bool = True) -> typing.Union[DgenerateArguments, None]:
     """
     Parse dgenerates command line arguments and return a configuration object.
 
     :param args: arguments list, as in args taken from sys.argv, or in that format
-    :param throw: throw :py:exc:`.DgenerateUsageError` on error?
+    :param throw: throw :py:exc:`.DgenerateUsageError` on error? defaults to True
 
-    :raise: :py:class:`.DgenerateUsageError`
+    :raise: :py:class:`.DgenerateUsageError` or possibly None if throw=False
 
     :return: :py:class:`.DgenerateArguments`
     """

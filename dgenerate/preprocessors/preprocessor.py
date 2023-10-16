@@ -78,13 +78,10 @@ class ImagePreprocessor:
             args_part = ''
 
         if help_str:
-            wrap = '\n'.join(
-                textwrap.fill(s,
-                              initial_indent=' ' * 4,
-                              subsequent_indent=' ' * 4,
-                              break_long_words=False,
-                              break_on_hyphens=False,
-                              width=_textprocessing.long_text_wrap_width()) for s in help_str.split('\n'))
+            wrap = \
+                _textprocessing.wrap_paragraphs(
+                    help_str,
+                    width=_textprocessing.long_text_wrap_width())
 
             return called_by_name + f':{args_part}\n' + wrap
         else:

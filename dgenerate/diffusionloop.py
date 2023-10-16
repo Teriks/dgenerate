@@ -153,12 +153,6 @@ def iterate_diffusion_args(prompt: _types.OptionalPrompts,
     yield from iterate_attribute_combinations(defs, _pipelinewrapper.DiffusionArguments)
 
 
-def _safe_len(lst):
-    if lst is None:
-        return 0
-    return len(lst)
-
-
 def gen_seeds(n):
     """
     Generate a list of N random seed integers
@@ -167,23 +161,6 @@ def gen_seeds(n):
     :return: list of integer seeds
     """
     return [random.randint(0, 99999999999999) for _ in range(0, n)]
-
-
-def _last_or_none(ls):
-    if ls:
-        val = ls[-1]
-        if isinstance(val, str):
-            val = _textprocessing.quote(val)
-        return val
-    return None
-
-
-def _quote_string_lists(ls):
-    if not ls:
-        return ls
-    if ls and isinstance(ls[0], str):
-        return [_textprocessing.quote(i) for i in ls]
-    return ls
 
 
 class DiffusionRenderLoopConfigError(Exception):
@@ -308,7 +285,7 @@ class DiffusionRenderLoopConfig:
             if gen_name not in template_variables:
                 if _types.is_type_or_optional(hint, list):
                     t_val = value if value is not None else []
-                    template_variables[gen_name] = (hint, _quote_string_lists(t_val))
+                    template_variables[gen_name] = (hint, _textprocessing.quote_spaces(t_val))
                 else:
                     template_variables[gen_name] = (hint, value if value is not None else None)
 
@@ -567,8 +544,8 @@ class DiffusionRenderLoopConfig:
         ]
 
         product = 1
-        for i in optional_factors:
-            product *= max(_safe_len(i), 1)
+        for lst in optional_factors:
+            product *= max(0 if lst is None else len(lst), 1)
 
         return (product *
                 len(self.prompts) *
@@ -696,8 +673,8 @@ class DiffusionRenderLoop:
             variable_prefix='last_')
 
         template_variables.update({
-            'last_images': (_types.Paths, _quote_string_lists(self.written_images)),
-            'last_animations': (_types.Paths, _quote_string_lists(self.written_animations)),
+            'last_images': (_types.Paths, _textprocessing.quote_spaces(self.written_images)),
+            'last_animations': (_types.Paths, _textprocessing.quote_spaces(self.written_animations)),
         })
 
         return template_variables
@@ -728,11 +705,10 @@ class DiffusionRenderLoop:
             'Available post invocation template variables are:') + '\n\n'
 
         def wrap(val):
-            return textwrap.fill(str(val),
-                                 width=_textprocessing.long_text_wrap_width(),
-                                 break_long_words=False,
-                                 break_on_hyphens=False,
-                                 subsequent_indent=' ' * 17)
+            return _textprocessing.wrap(
+                str(val),
+                width=_textprocessing.long_text_wrap_width(),
+                subsequent_indent=' ' * 17)
 
         return help_string + '\n'.join(
             ' ' * 4 + f'Name: {_textprocessing.quote(i[0])}\n{" " * 8}'

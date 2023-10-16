@@ -1519,12 +1519,25 @@ class PipelineWrapperResult:
         if isinstance(val, tuple):
             return _textprocessing.format_size(val)
         if isinstance(val, list):
-            return ' '.join(_textprocessing.quote_spaces(v) for v in val)
-        return val
+            return ' '.join(PipelineWrapperResult._set_opt_value_syntax(v) for v in val)
+
+        return _textprocessing.quote_spaces(val)
+
 
     @staticmethod
     def _format_option_pair(val):
         if len(val) > 1:
+            if isinstance(val[1], _prompt.Prompt):
+                header_len = len(val[0]) + 2
+                prompt_text = \
+                    _textprocessing.wrap(
+                        _textprocessing.quote(val[1]),
+                        subsequent_indent=' ' * header_len,
+                        width=75)
+
+                prompt_text = ' \\\n'.join(prompt_text.split('\n'))
+                return f'{val[0]} {prompt_text}'
+
             return f'{val[0]} {PipelineWrapperResult._set_opt_value_syntax(val[1])}'
         return val[0]
 
@@ -1554,8 +1567,7 @@ class PipelineWrapperResult:
             if wrote_comments:
                 config += '\n\n'
 
-        opts = _textprocessing.quote_spaces(
-            self.dgenerate_opts + (extra_args if extra_args else []))
+        opts = self.dgenerate_opts + (extra_args if extra_args else [])
 
         for opt in opts[:-1]:
             config += f'{self._format_option_pair(opt)} \\\n'
@@ -1638,21 +1650,21 @@ class DiffusionArguments:
         prompt_val = prompt.positive
         if prompt_val:
             header = f'{pos_title}: '
-            prompt_val = textwrap.fill(prompt_val,
-                                       width=prompt_wrap_width - len(header),
-                                       break_long_words=False,
-                                       break_on_hyphens=False,
-                                       subsequent_indent=' ' * len(header))
+            prompt_val = \
+                _textprocessing.wrap(
+                    prompt_val,
+                    width=prompt_wrap_width - len(header),
+                    subsequent_indent=' ' * len(header))
             prompt_format.append(f'{header}"{prompt_val}"')
 
         prompt_val = prompt.negative
         if prompt_val:
             header = f'{neg_title}: '
-            prompt_val = textwrap.fill(prompt_val,
-                                       width=prompt_wrap_width - len(header),
-                                       break_long_words=False,
-                                       break_on_hyphens=False,
-                                       subsequent_indent=' ' * len(header))
+            prompt_val = \
+                _textprocessing.wrap(
+                    prompt_val,
+                    width=prompt_wrap_width - len(header),
+                    subsequent_indent=' ' * len(header))
             prompt_format.append(f'{header}"{prompt_val}"')
 
     def describe_pipeline_wrapper_args(self) -> str:

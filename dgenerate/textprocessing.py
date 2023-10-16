@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import ast
 import shutil
+import textwrap
 import typing
 
 import dgenerate.types as _types
@@ -228,11 +229,78 @@ def quote_spaces(value_or_struct: typing.Union[typing.Any, typing.Sequence[typin
     return vals if isinstance(value_or_struct, list) else tuple(vals)
 
 
+def wrap_paragraphs(text: str,
+                    width: int,
+                    break_long_words=False,
+                    break_on_hyphens=False,
+                    **fill_args):
+    """
+    Wrap text that may contain paragraphs without removing separating whitespace.
+
+    :param text: Text containing paragraphs
+    :param width: Wrap with in characters
+    :param break_long_words: break on long words? default False
+    :param break_on_hyphens: break on hyphens? default False
+    :param fill_args: extra keyword arguments to :py:meth:`textwrap.fill` if desired
+    :return: text wrapped string
+    """
+    paragraphs = []
+    in_spacing = False
+    for line in text.splitlines():
+        if not line and not in_spacing:
+            in_spacing = True
+            paragraphs.append([])
+        elif line:
+            in_spacing = False
+            if len(paragraphs) == 0:
+                paragraphs.append([])
+
+            paragraphs[-1].append(line)
+
+    return '\n\n'.join(
+        textwrap.fill(
+            text,
+            width=width,
+            break_long_words=break_long_words,
+            break_on_hyphens=break_on_hyphens,
+            **fill_args) for
+        text in (' '.join(paragraph) for paragraph in paragraphs))
+
+
+def wrap(text: str,
+         width: int,
+         initial_indent='',
+         subsequent_indent='',
+         break_long_words=False,
+         break_on_hyphens=False,
+         **fill_args):
+    """
+    Wrap text.
+
+    :param text: The prompt text
+    :param width: The wrap width
+    :param initial_indent: initial indent string
+    :param subsequent_indent: subsequent indent string
+    :param break_long_words: Break on long words?
+    :param break_on_hyphens: Break on hyphens?
+    :param fill_args: extra keyword arguments to :py:meth:`textwrap.fill` if desired
+    :return: text wrapped string
+    """
+    return textwrap.fill(
+        text,
+        width=width,
+        break_on_hyphens=break_on_hyphens,
+        break_long_words=break_long_words,
+        initial_indent=initial_indent,
+        subsequent_indent=subsequent_indent,
+        **fill_args)
+
+
 def format_size(size: typing.Iterable[int]):
     """
     Join together an iterable of integers with the character x
-    :param i: the iterable
-    :return: formated string
+    :param size: the iterable
+    :return: formatted string
     """
     return 'x'.join(str(a) for a in size)
 
