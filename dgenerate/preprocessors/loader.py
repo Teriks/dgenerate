@@ -50,7 +50,7 @@ class Loader:
 
         preprocessor_class = self.get_class_by_name(call_by_name)
 
-        inherited_args = ['output-file', 'output-dir', 'device']
+        inherited_args = ['output-file', 'output-overwrite', 'device']
 
         parser_accepted_args = preprocessor_class.get_accepted_args(call_by_name)
 
@@ -80,8 +80,8 @@ class Loader:
         for k, v in parsed_args.items():
             args_dict[_textprocessing.dashdown(k)] = v
 
-        args_dict['output_dir'] = parsed_args.get('output-dir')
         args_dict['output_file'] = parsed_args.get('output-file')
+        args_dict['output_overwrite'] = parsed_args.get('output-overwrite', False)
         args_dict['device'] = parsed_args.get('device', device)
         args_dict['called_by_name'] = call_by_name
 

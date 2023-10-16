@@ -749,25 +749,18 @@ class DiffusionRenderLoop:
     def _output_directory_lock(self):
         _util.temp_file_lock(os.path.join(self.config.output_path, '.write_lock'))
 
-    def _gen_image_filename(self, args, ext):
-        def _make_path(dup_number=None):
-            prefix = self.config.output_prefix + '_' if \
-                self.config.output_prefix is not None else ''
+    def _join_output_filename(self, components, ext):
 
-            dup = '' if dup_number is None else f'_duplicate_{dup_number}'
+        prefix = self.config.output_prefix + '_' if \
+            self.config.output_prefix is not None else ''
 
-            components = (str(s).replace('.', '-') for s in args)
+        components = (str(s).replace('.', '-') for s in components)
 
-            return os.path.join(self.config.output_path,
-                                f'{prefix}' + '_'.join(components) + dup) + '.' + ext
-
-        if self.config.output_overwrite:
-            return _make_path()
-
-        return _util.touch_avoid_duplicate(self.config.output_path, _make_path)
+        return os.path.join(self.config.output_path,
+                            f'{prefix}' + '_'.join(components)) + '.' + ext.lstrip('.')
 
     @staticmethod
-    def _gen_filename_base(args_ctx: _pipelinewrapper.DiffusionArguments):
+    def _gen_filename_components_base(args_ctx: _pipelinewrapper.DiffusionArguments):
         args = ['s', args_ctx.seed]
 
         if args_ctx.upscaler_noise_level is not None:
@@ -799,49 +792,78 @@ class DiffusionRenderLoop:
 
         return args
 
-    def _write_image(self, filename, image, batch_index, generation_result):
+    def _write_image(self, filename_components, image, batch_index, generation_result):
 
         extra_args = []
         extra_comments = []
 
-        if generation_result.image_count > 1:
-            if not _pipelinewrapper.model_type_is_flax(self.config.model_type):
-                # Batch size is controlled by CUDA_VISIBLE_DEVICES for flax
-                extra_args.append(('--batch-size', self.config.batch_size))
+        config_txt = None
 
-            extra_comments.append(
-                f'Image {batch_index + 1} from a batch of {generation_result.image_count}')
+        # Generate a reconstruction of dgenerates arguments
+        # For this image if necessary
 
-        if self.config.batch_grid_size is not None:
-            extra_args.append(('--batch-grid-size',
-                               _textprocessing.format_size(self.config.batch_grid_size)))
+        if self.config.output_configs or self.config.output_metadata:
+            if generation_result.image_count > 1:
+                if not _pipelinewrapper.model_type_is_flax(self.config.model_type):
+                    # Batch size is controlled by CUDA_VISIBLE_DEVICES for flax
+                    extra_args.append(('--batch-size', self.config.batch_size))
 
-        config_txt = generation_result.gen_dgenerate_config(
-            extra_args=extra_args,
-            extra_comments=extra_comments)
+                if self.config.batch_grid_size is not None:
+                    extra_args.append(('--batch-grid-size',
+                                       _textprocessing.format_size(self.config.batch_grid_size)))
+                else:
+                    extra_comments.append(
+                        f'Image {batch_index + 1} from a batch of {generation_result.image_count}')
 
-        is_last_image = batch_index == generation_result.image_count - 1
+            config_txt = generation_result.gen_dgenerate_config(
+                extra_args=extra_args,
+                extra_comments=extra_comments)
+
+        config_filename = None
+
+        # Generate and touch filenames avoiding duplicates in a way
+        # that is multiprocess safe between instances of dgenerate
+        if self.config.output_configs:
+            image_filename, config_filename = \
+                _util.touch_avoid_duplicate(
+                    self.config.output_path,
+                    pathmaker=_util.suffix_path_maker(
+                        [self._join_output_filename(filename_components, ext='png'),
+                         self._join_output_filename(filename_components, ext='txt')],
+                        suffix='_duplicate_'))
+        else:
+            image_filename = _util.touch_avoid_duplicate(
+                self.config.output_path,
+                pathmaker=_util.suffix_path_maker(
+                    self._join_output_filename(filename_components, ext='png'),
+                    suffix='_duplicate_'))
+
+        # Write out to the empty files
 
         if self.config.output_metadata:
             metadata = PIL.PngImagePlugin.PngInfo()
             metadata.add_text("DgenerateConfig", config_txt)
-            image.save(filename, pnginfo=metadata)
+            image.save(image_filename, pnginfo=metadata)
         else:
-            image.save(filename)
+            image.save(image_filename)
+
+        is_last_image = batch_index == generation_result.image_count - 1
+        # Only underline the last image write message in a batch of rendered
+        # images when --batch-size > 1
 
         if self.config.output_configs:
-            config_file_name = os.path.splitext(filename)[0] + '.txt'
-            with open(config_file_name, "w") as config_file:
+            with open(config_filename, "w") as config_file:
                 config_file.write(config_txt)
             _messages.log(
-                f'Wrote Image File: "{filename}"\n'
-                f'Wrote Config File: "{config_file_name}"',
+                f'Wrote Image File: "{image_filename}"\n'
+                f'Wrote Config File: "{config_filename}"',
                 underline=is_last_image)
         else:
-            _messages.log(f'Wrote Image File: "{filename}"',
+            _messages.log(f'Wrote Image File: "{image_filename}"',
                           underline=is_last_image)
 
-        self._written_images.append(os.path.abspath(filename))
+        # Append to written images for the current run
+        self._written_images.append(os.path.abspath(image_filename))
 
     def _write_generation_result(self,
                                  filename_components,
@@ -854,25 +876,21 @@ class DiffusionRenderLoop:
                 if generation_result.image_count > 1:
                     name_components += ['image', batch_idx]
 
-                self._write_image(
-                    self._gen_image_filename(name_components, ext='png'),
-                    image, batch_idx, generation_result)
+                self._write_image(name_components, image, batch_idx, generation_result)
         else:
             if generation_result.image_count > 1:
                 image = generation_result.image_grid(self.config.batch_grid_size)
             else:
                 image = generation_result.image
 
-            self._write_image(
-                self._gen_image_filename(filename_components, ext='png'),
-                image, 0, generation_result)
+            self._write_image(filename_components, image, 0, generation_result)
 
     def _write_animation_frame(self,
                                args_ctx: _pipelinewrapper.DiffusionArguments,
                                image_seed_obj: _mediainput.ImageSeed,
                                generation_result: _pipelinewrapper.PipelineWrapperResult):
 
-        filename_components = [*self._gen_filename_base(args_ctx),
+        filename_components = [*self._gen_filename_components_base(args_ctx),
                                'frame',
                                image_seed_obj.frame_index + 1,
                                'step',
@@ -886,7 +904,7 @@ class DiffusionRenderLoop:
     def _write_image_seed_gen_image(self, args_ctx: _pipelinewrapper.DiffusionArguments,
                                     generation_result: _pipelinewrapper.PipelineWrapperResult):
 
-        filename_components = [*self._gen_filename_base(args_ctx),
+        filename_components = [*self._gen_filename_components_base(args_ctx),
                                'step',
                                self._generation_step + 1]
 
@@ -895,7 +913,7 @@ class DiffusionRenderLoop:
     def _write_prompt_only_image(self, args_ctx: _pipelinewrapper.DiffusionArguments,
                                  generation_result: _pipelinewrapper.PipelineWrapperResult):
 
-        filename_components = [*self._gen_filename_base(args_ctx),
+        filename_components = [*self._gen_filename_components_base(args_ctx),
                                'step',
                                self._generation_step + 1]
 
@@ -1141,12 +1159,11 @@ class DiffusionRenderLoop:
     def _gen_animation_filename(self,
                                 args_ctx: _pipelinewrapper.DiffusionArguments,
                                 generation_step,
-                                animation_format):
+                                ext):
 
-        args = ['ANIM', *self._gen_filename_base(args_ctx), 'step', generation_step + 1]
+        components = ['ANIM', *self._gen_filename_components_base(args_ctx), 'step', generation_step + 1]
 
-        return os.path.join(self.config.output_path,
-                            '_'.join(str(a).replace('.', '-') for a in args) + f'.{animation_format}')
+        return self._join_output_filename(components, ext=ext)
 
     def _render_animation(self,
                           pipeline_wrapper: _pipelinewrapper.DiffusionPipelineWrapper,
@@ -1164,7 +1181,7 @@ class DiffusionRenderLoop:
         base_filename = \
             self._gen_animation_filename(
                 first_args_ctx, self._generation_step + 1,
-                animation_format_lower)
+                ext=animation_format_lower)
 
         next_frame_terminates_anim = False
 
@@ -1178,9 +1195,11 @@ class DiffusionRenderLoop:
 
                 if next_frame_terminates_anim:
                     next_frame_terminates_anim = False
+
                     anim_writer.end(
-                        new_file=self._gen_animation_filename(args_ctx, self._generation_step,
-                                                              animation_format_lower))
+                        new_file=self._gen_animation_filename(
+                            args_ctx, self._generation_step,
+                            ext=animation_format_lower))
 
                 for image_seed in image_seed_iterator:
                     with image_seed:
@@ -1244,7 +1263,8 @@ class DiffusionRenderLoop:
 
         extra_comments = []
 
-        if generation_result.image_count > 1:
+        if generation_result.image_count > 1 and \
+                self.config.batch_grid_size is None:
             extra_comments.append(
                 f'Animation {batch_idx + 1} from a batch of {generation_result.image_count}')
 

@@ -1,0 +1,13 @@
+#! dgenerate 2.0.0
+
+# Write the variations as seperate files to the output directory with the suffix _image_N
+
+stabilityai/stable-diffusion-2 \
+--inference-steps 40 \
+--guidance-scales 8 \
+--output-size 1024 \
+--gen-seeds 2 \
+--batch-size 2 \
+--vae-slicing \
+--prompts "An astronaut walking on the moon; artwork" \
+--output-path static-seperate

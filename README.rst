@@ -1874,13 +1874,14 @@ Specifying one or more specific preprocessors for example: ``--image-preprocesso
 documentation pertaining to those preprocessor modules. This includes accepted arguments for the preprocessor module
 and a description of the module.
 
-All preprocessors posses the arguments: ``output-dir``, ``output-file``, and ``device``
+All preprocessors posses the arguments: ``output-file``, ``output-overwrite``, and ``device``
 
-The ``output-dir`` argument can be used to write the preprocessed images to a directory for debugging purposes,
-this will write an image with a unique name for every image preprocessed into a the folder specified.
+The ``output-file`` argument can be used to write the preprocessed image to a specific file, if multiple
+processing steps occur such as when rendering an animation or multiple generation steps, a numbered suffix
+will be appended to this filename.
 
-The ``output-file`` argument can be used to write the preprocessed image to a specific file, this file will be
-overwritten if more than one preprocessing step occurs.
+The ``output-overwrite`` argument can be used to tell the preprocessor that you do not want numbered
+suffixes to be generated for ``output-file`` and to simply overwrite it.
 
 The ``device`` argument can be used to override what device any hardware accelerated image processing
 occurs on if any. It defaults to the value of ``--device`` and has the same syntax for specifying device

@@ -179,33 +179,45 @@ class MultiAnimationWriter(AnimationWriter):
     def _gen_filename(self, num_images, image_idx):
         base, ext = os.path.splitext(self.filename)
         if num_images > 1:
-            base += f'_animation_{image_idx}{ext}'
+            return f'_animation_{image_idx}{ext}'
         else:
-            base = f'{base}{ext}'
-
-        if self.allow_overwrites:
-            return base
-
-        return _util.touch_avoid_duplicate(
-            os.path.dirname(self.filename),
-            _util.suffix_path_maker(base, '_duplicate_'))
+            return f'{base}{ext}'
 
     def write(self, img: typing.Union[PIL.Image.Image, typing.List[PIL.Image.Image]]):
         if not isinstance(img, list):
             img = [img]
 
         if not self.writers:
+            # Lazy initialize all the writers we need
             num_images = len(img)
-            for image_idx in range(0, num_images):
-                filename = self._gen_filename(num_images, image_idx)
-                self.filenames.append(filename)
-                self.writers.append(
-                    create_animation_writer(self.animation_format,
-                                            filename,
-                                            self.fps))
 
-        for writer, img in zip(self.writers, img):
-            writer.write(img)
+            requested_filenames = [self._gen_filename(num_images, idx) for idx in range(0, num_images)]
+
+            if not self.allow_overwrites:
+                # Touch all the files we will be writing to
+                # Avoid duplication
+                self.filenames = _util.touch_avoid_duplicate(
+                    os.path.dirname(self.filename),
+                    return_list = True,
+                    pathmaker=_util.suffix_path_maker(
+                        requested_filenames,
+                        suffix='_duplicate_'
+                    ))
+            else:
+                # Overwrite anything
+                self.filenames = requested_filenames
+
+            for filename in self.filenames:
+                self.writers.append(
+                    create_animation_writer(self.animation_format, filename, self.fps))
+
+        elif len(self.writers) != len(img):
+            # Sanity check
+            raise RuntimeError('To many images written, subsequent writes must '
+                               'use the amount of images from the first write.')
+
+        for writer, image in zip(self.writers, img):
+            writer.write(image)
 
     def end(self, new_file=None):
         self.filename = new_file
