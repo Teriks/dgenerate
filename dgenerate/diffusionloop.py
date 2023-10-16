@@ -427,6 +427,10 @@ class DiffusionRenderLoopConfig:
             raise DiffusionRenderLoopConfigError(
                 f'you cannot specify {a_namer("image_seed_strengths")} without {a_namer("image_seeds")}.')
 
+        if not self.image_seeds and self.control_net_uris:
+            raise DiffusionRenderLoopConfigError(
+                f'you cannot specify {a_namer("control_net_uris")} without {a_namer("image_seeds")}.')
+
         if not _pipelinewrapper.model_type_is_upscaler(self.model_type):
             if self.upscaler_noise_levels:
                 raise DiffusionRenderLoopConfigError(
@@ -953,7 +957,7 @@ class DiffusionRenderLoop:
             vae_slicing=self.config.vae_slicing,
             lora_uris=self.config.lora_uris,
             textual_inversion_uris=self.config.textual_inversion_uris,
-            control_net_uris=self.config.control_net_uris,
+            control_net_uris=self.config.control_net_uris if self.config.image_seeds else [],
             sdxl_refiner_uri=self.config.sdxl_refiner_uri,
             scheduler=self.config.scheduler,
             sdxl_refiner_scheduler=self.config.sdxl_refiner_scheduler,
