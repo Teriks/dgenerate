@@ -286,7 +286,9 @@ class DiffusionRenderLoopConfig:
                     t_val = value if value is not None else []
                     template_variables[gen_name] = (hint, _textprocessing.quote_spaces(t_val))
                 else:
-                    template_variables[gen_name] = (hint, value if value is not None else None)
+                    template_variables[gen_name] = \
+                        (hint, _textprocessing.quote_spaces(value)
+                         if value is not None else None)
 
         return template_variables
 
