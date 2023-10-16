@@ -1217,7 +1217,7 @@ def _create_torch_diffusion_pipeline(pipeline_type,
         if isinstance(textual_inversion_uris, str):
             textual_inversion_uris = [textual_inversion_uris]
 
-    if lora_uris is not None:
+    if lora_uris:
         if not isinstance(lora_uris, str):
             raise NotImplementedError('Using multiple LoRA models is currently not supported.')
 
@@ -1308,12 +1308,12 @@ def _create_torch_diffusion_pipeline(pipeline_type,
 
     # Textual Inversions and LoRAs
 
-    if textual_inversion_uris is not None:
+    if textual_inversion_uris:
         for inversion_uri in textual_inversion_uris:
             parse_textual_inversion_uri(inversion_uri). \
                 load_on_pipeline(pipeline, use_auth_token=auth_token)
 
-    if lora_uris is not None:
+    if lora_uris:
         for lora_uri in lora_uris:
             parse_lora_uri(lora_uri). \
                 load_on_pipeline(pipeline, use_auth_token=auth_token)
@@ -1800,7 +1800,7 @@ class DiffusionPipelineWrapper:
             self._sdxl_refiner_dtype = parsed_uri.dtype
             self._sdxl_refiner_subfolder = parsed_uri.subfolder
 
-        if lora_uris is not None:
+        if lora_uris:
             if model_type == 'flax':
                 raise NotImplementedError('LoRA loading is not implemented for flax.')
 
@@ -2119,13 +2119,13 @@ class DiffusionPipelineWrapper:
         if self._sdxl_refiner_uri is not None:
             opts.append(('--sdxl-refiner', self._sdxl_refiner_uri))
 
-        if self._lora_uris is not None:
+        if self._lora_uris:
             opts.append(('--lora', self._lora_uris))
 
-        if self._textual_inversion_uris is not None:
+        if self._textual_inversion_uris:
             opts.append(('--textual-inversions', self._textual_inversion_uris))
 
-        if self._control_net_uris is not None:
+        if self._control_net_uris:
             opts.append(('--control-nets', self._control_net_uris))
 
         if self._scheduler is not None:
@@ -2713,14 +2713,14 @@ class DiffusionPipelineWrapper:
 
         self._pipeline_type = pipeline_type
 
-        if model_type_is_sdxl(self._model_type) and self._textual_inversion_uris is not None:
+        if model_type_is_sdxl(self._model_type) and self._textual_inversion_uris:
             raise NotImplementedError('Textual inversion not supported for SDXL.')
 
         if self._model_type == ModelTypes.FLAX:
             if not have_jax_flax():
                 raise NotImplementedError('flax and jax are not installed.')
 
-            if self._textual_inversion_uris is not None:
+            if self._textual_inversion_uris:
                 raise NotImplementedError('Textual inversion not supported for flax.')
 
             if self._pipeline_type != _PipelineTypes.BASIC and self._control_net_uris:
