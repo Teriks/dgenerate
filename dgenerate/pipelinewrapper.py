@@ -22,7 +22,6 @@ import decimal
 import inspect
 import os
 import re
-import textwrap
 import typing
 
 try:
@@ -1512,8 +1511,6 @@ class PipelineWrapperResult:
         """
         self.dgenerate_opts.append((name, value))
 
-
-
     @staticmethod
     def _set_opt_value_syntax(val):
         if isinstance(val, tuple):
@@ -1522,7 +1519,6 @@ class PipelineWrapperResult:
             return ' '.join(PipelineWrapperResult._set_opt_value_syntax(v) for v in val)
 
         return _textprocessing.quote_spaces(val)
-
 
     @staticmethod
     def _format_option_pair(val):

@@ -198,7 +198,7 @@ class MultiAnimationWriter(AnimationWriter):
                 # Avoid duplication
                 self.filenames = _util.touch_avoid_duplicate(
                     os.path.dirname(self.filename),
-                    return_list = True,
+                    return_list=True,
                     pathmaker=_util.suffix_path_maker(
                         requested_filenames,
                         suffix='_duplicate_'
