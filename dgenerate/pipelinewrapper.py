@@ -1356,7 +1356,7 @@ def _create_flax_diffusion_pipeline(pipeline_type,
                                     auth_token=None,
                                     extra_args=None):
     has_control_nets = False
-    if control_net_uris is not None:
+    if control_net_uris:
         if len(control_net_uris) > 1:
             raise NotImplementedError('Flax does not support multiple --control-nets.')
         if len(control_net_uris) == 1:
@@ -1399,7 +1399,7 @@ def _create_flax_diffusion_pipeline(pipeline_type,
             _messages.debug_log(lambda:
                                 f'Added Flax VAE: "{vae_uri}" to pipeline: "{pipeline_class.__name__}"')
 
-    if control_net_uris is not None:
+    if control_net_uris:
         control_net_uri = control_net_uris[0]
 
         parsed_flax_control_net_uri = parse_flax_control_net_uri(control_net_uri)
