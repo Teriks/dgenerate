@@ -45,10 +45,11 @@ class FooBarPreprocessor(dgenerate.preprocessors.ImagePreprocessor):
         # If you do modify the image, it is acceptable to modify it in place, or
         # to return a copy of it
 
-        for i in range(0, 100):
+        # Make a white square in the upper left corner which will proc
+        # a debug image write as requested in the config using the 'output-file` argument
+        for x in range(0, 100):
             for y in range(0, 100):
-                image.putpixel((i, y), (255,255,255))
-
+                image.putpixel((x, y), (255, 255, 255))
 
         print("FOO:", self._my_argument, self._my_argument_2, self._my_argument_3)
         return image
