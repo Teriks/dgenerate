@@ -81,6 +81,8 @@ class ImagePreprocessor:
             wrap = \
                 _textprocessing.wrap_paragraphs(
                     help_str,
+                    initial_indent=' ' * 4,
+                    subsequent_indent=' ' * 4,
                     width=_textprocessing.long_text_wrap_width())
 
             return called_by_name + f':{args_part}\n' + wrap
