@@ -964,6 +964,26 @@ class DiffusionRenderLoop:
         except _pipelinewrapper.SchedulerHelpException:
             pass
 
+    def _create_pipeline_wrapper(self):
+        return _pipelinewrapper.DiffusionPipelineWrapper(
+            self.config.model_path,
+            model_subfolder=self.config.model_subfolder,
+            dtype=self.config.dtype,
+            device=self.config.device,
+            model_type=self.config.model_type,
+            revision=self.config.revision,
+            variant=self.config.variant,
+            vae_uri=self.config.vae_uri,
+            vae_tiling=self.config.vae_tiling,
+            vae_slicing=self.config.vae_slicing,
+            lora_uris=self.config.lora_uris,
+            textual_inversion_uris=self.config.textual_inversion_uris,
+            scheduler=self.config.scheduler,
+            sdxl_refiner_scheduler=self.config.sdxl_refiner_scheduler,
+            safety_checker=self.config.safety_checker,
+            sdxl_refiner_uri=self.config.sdxl_refiner_uri,
+            auth_token=self.config.auth_token)
+
     def _run(self):
         self.config.check()
 
@@ -986,23 +1006,7 @@ class DiffusionRenderLoop:
         if self.config.image_seeds:
             self._render_with_image_seeds()
         else:
-            pipeline_wrapper = \
-                _pipelinewrapper.DiffusionPipelineWrapper(
-                    self.config.model_path,
-                    model_subfolder=self.config.model_subfolder,
-                    dtype=self.config.dtype,
-                    device=self.config.device,
-                    model_type=self.config.model_type,
-                    revision=self.config.revision,
-                    variant=self.config.variant,
-                    vae_uri=self.config.vae_uri,
-                    lora_uris=self.config.lora_uris,
-                    textual_inversion_uris=self.config.textual_inversion_uris,
-                    scheduler=self.config.scheduler,
-                    sdxl_refiner_scheduler=self.config.sdxl_refiner_scheduler,
-                    safety_checker=self.config.safety_checker,
-                    sdxl_refiner_uri=self.config.sdxl_refiner_uri,
-                    auth_token=self.config.auth_token)
+            pipeline_wrapper = self._create_pipeline_wrapper()
 
             sdxl_high_noise_fractions = \
                 self.config.sdxl_high_noise_fractions if \
@@ -1022,25 +1026,7 @@ class DiffusionRenderLoop:
                     self._write_prompt_only_image(args_ctx, generation_result)
 
     def _render_with_image_seeds(self):
-        pipeline_wrapper = \
-            _pipelinewrapper.DiffusionPipelineWrapper(
-                self.config.model_path,
-                model_subfolder=self.config.model_subfolder,
-                dtype=self.config.dtype,
-                device=self.config.device,
-                model_type=self.config.model_type,
-                revision=self.config.revision,
-                variant=self.config.variant,
-                vae_uri=self.config.vae_uri,
-                vae_tiling=self.config.vae_tiling,
-                vae_slicing=self.config.vae_slicing,
-                lora_uris=self.config.lora_uris,
-                textual_inversion_uris=self.config.textual_inversion_uris,
-                control_net_uris=self.config.control_net_uris,
-                scheduler=self.config.scheduler,
-                safety_checker=self.config.safety_checker,
-                sdxl_refiner_uri=self.config.sdxl_refiner_uri,
-                auth_token=self.config.auth_token)
+        pipeline_wrapper = self._create_pipeline_wrapper()
 
         sdxl_high_noise_fractions = \
             self.config.sdxl_high_noise_fractions if \

@@ -60,4 +60,7 @@ for config in configs:
     sys.stdout.flush()
     proc = ["dgenerate"] + args + extra_args
     with open(config) as f:
-        subprocess.run(proc, stdin=f, cwd=os.path.dirname(config), check=True)
+        try:
+            subprocess.run(proc, stdin=f, cwd=os.path.dirname(config), check=True)
+        except KeyboardInterrupt:
+            sys.exit(1)

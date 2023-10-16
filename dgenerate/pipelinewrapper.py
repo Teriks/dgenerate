@@ -2848,8 +2848,8 @@ class DiffusionPipelineWrapper:
 
         default_args = self._pipeline_defaults(kwargs)
 
-        _messages.debug_log(f'Calling Pipeline Wrapper: "{self}",'
-                            '\nCalled with User Args: ',
+        _messages.debug_log(f'Calling Pipeline Wrapper: "{self}"')
+        _messages.debug_log(f'Pipeline Wrapper Args: ',
                             lambda: _textprocessing.debug_format_args(kwargs))
 
         if self._model_type == ModelTypes.FLAX:
