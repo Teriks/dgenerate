@@ -1878,7 +1878,8 @@ All preprocessors posses the arguments: ``output-file``, ``output-overwrite``, a
 
 The ``output-file`` argument can be used to write the preprocessed image to a specific file, if multiple
 processing steps occur such as when rendering an animation or multiple generation steps, a numbered suffix
-will be appended to this filename.
+will be appended to this filename. Note that an output file will only be produced in the case that the
+preprocessor actually modifies an input image in some way.
 
 The ``output-overwrite`` is a boolean argument can be used to tell the preprocessor that you do not want numbered
 suffixes to be generated for ``output-file`` and to simply overwrite it.
