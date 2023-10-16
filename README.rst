@@ -2083,18 +2083,18 @@ via Jinja2 templating which can be passed to ``--image-seeds``, these include:
 
 There are templates for prompts, containing the previous prompt values:
 
-* ``{{ last_prompts }}`` (List of prompt objects with the attributes 'positive' and 'negative')
+* ``{{ last_prompts }}`` (List of prompt objects with the un-quoted attributes 'positive' and 'negative')
 * ``{{ last_sdxl_second_prompts }}``
 * ``{{ last_sdxl_refiner_prompts }}``
 * ``{{ last_sdxl_refiner_second_prompts }}``
 
 Available custom jinja2 functions/filters are:
 
-* ``{{ last(list_of_items) }}`` Last element in a list
+* ``{{ last(list_of_items) }}`` (Last element in a list)
 * ``{{ unquote('"quotes_will_be_removed"') }}``
 * ``{{ quote('quotes_will_be_added') }}``
-* ``{{ quote_spaces(str_or_list) }}`` Quote any string that contains spaces, works on lists
-* ``{{ format_prompt(prompt_object) }}`` (Format and quote a prompt object with its delimiter)
+* ``{{ quote_spaces(str_or_list) }}`` (Quote any string that contains spaces, works on lists)
+* ``{{ format_prompt(prompt_object) }}`` (Format and quote a prompt object with its delimiter, works on lists)
 
 The above can be used as either a function or filter IE: ``{{ "quote_me" | quote }}``
 
@@ -2226,7 +2226,8 @@ Here are examples of other available directives and templating:
     stabilityai/stable-diffusion-2-1 --prompts {{ format_prompt(last(last_prompts)) }}
 
     # You can get only the positive or negative part if you want via the "positive"
-    # and "negative" properties on a prompt object
+    # and "negative" properties on a prompt object, these attributes are not
+    # quoted so you need to quote them one way or another
 
     stabilityai/stable-diffusion-2-1 --prompts "{{ last(last_prompts).positive }}"
 
@@ -2235,7 +2236,7 @@ Here are examples of other available directives and templating:
 
     stabilityai/stable-diffusion-2-1 --prompts "prompt 1" "prompt 2" "prompt 3"
 
-    stabilityai/stable-diffusion-2-1 --prompts "{{ format_prompt(last_prompts) }}"
+    stabilityai/stable-diffusion-2-1 --prompts {{ format_prompt(last_prompts) }}
 
 
     # Execute additional config with full templating.
