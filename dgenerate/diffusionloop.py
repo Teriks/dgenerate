@@ -284,11 +284,9 @@ class DiffusionRenderLoopConfig:
             if gen_name not in template_variables:
                 if _types.is_type_or_optional(hint, list):
                     t_val = value if value is not None else []
-                    template_variables[gen_name] = (hint, _textprocessing.quote_spaces(t_val))
+                    template_variables[gen_name] = (hint, t_val)
                 else:
-                    template_variables[gen_name] = \
-                        (hint, _textprocessing.quote_spaces(value)
-                         if value is not None else None)
+                    template_variables[gen_name] = (hint, value)
 
         return template_variables
 
@@ -678,8 +676,8 @@ class DiffusionRenderLoop:
             variable_prefix='last_')
 
         template_variables.update({
-            'last_images': (_types.Paths, _textprocessing.quote_spaces(self.written_images)),
-            'last_animations': (_types.Paths, _textprocessing.quote_spaces(self.written_animations)),
+            'last_images': (_types.Paths, self.written_images),
+            'last_animations': (_types.Paths, self.written_animations),
         })
 
         return template_variables

@@ -2244,7 +2244,7 @@ class DiffusionPipelineWrapper:
 
             args['strength'] = strength
 
-        if self._control_net_uris is not None:
+        if self._control_net_uris:
             control_image = user_args['control_image']
             if self._pipeline_type == _PipelineTypes.BASIC:
                 args['image'] = control_image

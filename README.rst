@@ -2078,8 +2078,8 @@ you may use Unix style notation for environmental variables even on Windows.
 There is also information about the previous execution of dgenerate that is available to use
 via Jinja2 templating which can be passed to ``--image-seeds``, these include:
 
-* ``{{ last_images }}`` (A list of quoted filenames)
-* ``{{ last_animations }}`` (A list of quoted filenames)
+* ``{{ last_images }}`` (A list of un-quoted filenames)
+* ``{{ last_animations }}`` (A list of un-quoted filenames)
 
 There are templates for prompts, containing the previous prompt values:
 
@@ -2093,7 +2093,8 @@ Available custom jinja2 functions/filters are:
 * ``{{ last(list_of_items) }}`` Last element in a list
 * ``{{ unquote('"quotes_will_be_removed"') }}``
 * ``{{ quote('quotes_will_be_added') }}``
-* ``{{ format_prompt(prompt_object) }}`` (Format a prompt object with its delimiter)
+* ``{{ quote_spaces(str_or_list) }}`` Quote any string that contains spaces, works on lists
+* ``{{ format_prompt(prompt_object) }}`` (Format and quote a prompt object with its delimiter)
 
 The above can be used as either a function or filter IE: ``{{ "quote_me" | quote }}``
 
@@ -2187,35 +2188,34 @@ Here are examples of other available directives and templating:
     # This could potentially be passed to --image-seeds of the next invocation
     # If you wanted to run another pass over the last image that was produced
 
-    \print {{ last(last_images) }}
+    \print {{ quote(last(last_images)) }}
 
 
-    # You can use "unquote" as a function or a jinja2 filter, for example
     # if you want to append a mask image file name
 
-    \print "{{ unquote(last(last_images)) }};my-mask.png"
+    \print "{{ last(last_images) }};my-mask.png"
 
 
-    # Print a list of quoted filenames produced by the last invocation
-    # seperated by spaces if there is multiple, this could also be
-    # passed to --image-seeds
+    # Print a list of properly quoted filenames produced by the last
+    # invocation seperated by spaces if there is multiple, this could
+    # also be passed to --image-seeds
 
-    \print {{ last_images | join(' ') }}
+    \print {{ quote_spaces(last_images) | join(' ') }}
 
 
     # For loops are possible
 
-    \print {% for image in last_images %}{{ image }} {% endfor %}
+    \print {% for image in last_images %}{{ quote(image) }} {% endfor %}
 
 
     # For loops are possible with continuation
     # however continuations will replace newlines
     # and whitespace with a single space.
 
-    # IE this template will be: "{% for image in last_images %} {{ image }} {% endfor %}"
+    # IE this template will be: "{% for image in last_images %} {{ quote(image) }} {% endfor %}"
 
     \print {% for image in last_images %} \
-            {{ image }} \
+            {{ quote(image) }} \
            {% endfor %}
 
 
@@ -2245,7 +2245,7 @@ Here are examples of other available directives and templating:
     # You really should not need to use this feature.
 
     {% for image in last_images %} \
-        stabilityai/stable-diffusion-2-1 --image-seeds {{ image }} --prompt {{ my_prompt }} !END \
+        stabilityai/stable-diffusion-2-1 --image-seeds {{ quote(image) }} --prompt {{ my_prompt }} !END \
     {% endfor %}
 
 
@@ -2254,14 +2254,14 @@ Here are examples of other available directives and templating:
 
     {% for image in last_images %} \
         stabilityai/stable-diffusion-2-1 \ !END \
-        --image-seeds {{ image }} \ !END \
+        --image-seeds {{ quote(image) }} \ !END \
         --prompt {{ my_prompt }} !END \
     {% endfor %}
 
 
     # The above are both basically equivalent to this
 
-    stabilityai/stable-diffusion-2-1 --image-seeds {{ last_images | join(' ') }} --prompt {{ my_prompt }}
+    stabilityai/stable-diffusion-2-1 --image-seeds {{ quote_spaces(last_images) | join(' ') }} --prompt {{ my_prompt }}
 
 
 To utilize configuration files on Linux, pipe them into the command or use redirection:
