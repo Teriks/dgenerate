@@ -228,13 +228,13 @@ def quote_spaces(value_or_struct: typing.Union[typing.Any, typing.Sequence[typin
     return vals if isinstance(value_or_struct, list) else tuple(vals)
 
 
-def format_size(i: typing.Iterable[int]):
+def format_size(size: typing.Iterable[int]):
     """
     Join together an iterable of integers with the character x
     :param i: the iterable
     :return: formated string
     """
-    return 'x'.join(str(a) for a in i)
+    return 'x'.join(str(a) for a in size)
 
 
 def justify_left(string: str):

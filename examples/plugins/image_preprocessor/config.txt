@@ -16,4 +16,4 @@
 --prompts "hello world" \
 --vae-slicing \
 --image-seeds "../../media/earth.jpg" \
---seed-image-preprocessors boo;my-argument=1 fab;my-argument=2;output-file=output/test.png
+--seed-image-preprocessors boo;my-argument=1 fab;my-argument=2;output-file=output/boofab.png

@@ -19,10 +19,11 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import inspect
+import itertools
 import os
 import textwrap
 import typing
-from pathlib import Path
+
 
 import PIL.Image
 
@@ -30,6 +31,7 @@ import dgenerate.preprocessors.exceptions as _exceptions
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 import dgenerate.util as _util
+import dgenerate.messages as _messages
 
 
 class ImagePreprocessor:
@@ -192,30 +194,73 @@ class ImagePreprocessor:
         return _util.touch_avoid_duplicate(os.path.dirname(self.__output_file),
                                            _util.suffix_path_maker(self.__output_file, '_duplicate_'))
 
-    def __save_image(self, image):
-        if not self.__output_overwrite:
-            image.save(self.__gen_filename())
-        elif self.__output_file is not None:
-            image.save(self.__output_file)
+    def __save_debug_image(self, image, debug_header):
+        if self.__output_file is not None:
+            if not self.__output_overwrite:
+                filename = self.__gen_filename()
+            else:
+                filename = self.__output_file
+
+            image.save(filename)
+            _messages.debug_log(f'{debug_header}: "{filename}"')
+
 
     @staticmethod
     def call_pre_resize(preprocessor, image: PIL.Image.Image,
                         resize_resolution: _types.OptionalSize) -> PIL.Image.Image:
-        img = preprocessor.pre_resize(image, resize_resolution)
-        if img is not image:
-            preprocessor.__save_image(img)
-            img.filename = image.filename
-            return img
-        return image
+        img_copy = image.copy()
+
+        processed = preprocessor.pre_resize(image, resize_resolution)
+        if processed is not image:
+            preprocessor.__save_debug_image(
+                processed,
+                'Wrote Preprocessor Debug Image (because copied)')
+
+            processed.filename = image.filename
+            return processed
+
+        # Not copied but may be modified
+
+        identical = all(a == b for a, b in
+                        itertools.zip_longest(processed.getdata(),
+                                              img_copy.getdata(),
+                                              fillvalue=None))
+
+        if not identical:
+            # Write the debug output if it was modified in place
+            preprocessor.__save_debug_image(
+                processed,
+                'Wrote Preprocessor Debug Image (because modified)')
+
+        return processed
 
     @staticmethod
     def call_post_resize(preprocessor, image: PIL.Image.Image) -> PIL.Image.Image:
-        img = preprocessor.post_resize(image)
-        if img is not image:
-            preprocessor.__save_image(img)
-            img.filename = image.filename
-            return img
-        return image
+        img_copy = image.copy()
+
+        processed = preprocessor.post_resize(image)
+        if processed is not image:
+            preprocessor.__save_debug_image(
+                processed,
+                'Wrote Preprocessor Debug Image (because copied)')
+
+            processed.filename = image.filename
+            return processed
+
+        # Not copied but may be modified
+
+        identical = all(a == b for a, b in
+                        itertools.zip_longest(processed.getdata(),
+                                              img_copy.getdata(),
+                                              fillvalue=None))
+
+        if not identical:
+            # Write the debug output if it was modified in place
+            preprocessor.__save_debug_image(
+                processed,
+                'Wrote Preprocessor Debug Image (because modified)')
+
+        return processed
 
     def pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         return image
