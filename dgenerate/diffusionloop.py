@@ -849,7 +849,7 @@ class DiffusionRenderLoop:
             for batch_idx, image in enumerate(generation_result.images):
                 name_components = filename_components.copy()
                 if generation_result.image_count > 1:
-                    name_components += ['image', batch_idx]
+                    name_components += ['image', batch_idx + 1]
 
                 self._write_image(name_components, image, batch_idx, generation_result)
         else:
@@ -942,21 +942,22 @@ class DiffusionRenderLoop:
     def _create_pipeline_wrapper(self):
         return _pipelinewrapper.DiffusionPipelineWrapper(
             self.config.model_path,
-            model_subfolder=self.config.model_subfolder,
             dtype=self.config.dtype,
             device=self.config.device,
             model_type=self.config.model_type,
             revision=self.config.revision,
             variant=self.config.variant,
+            model_subfolder=self.config.model_subfolder,
             vae_uri=self.config.vae_uri,
             vae_tiling=self.config.vae_tiling,
             vae_slicing=self.config.vae_slicing,
             lora_uris=self.config.lora_uris,
             textual_inversion_uris=self.config.textual_inversion_uris,
+            control_net_uris=self.config.control_net_uris,
+            sdxl_refiner_uri=self.config.sdxl_refiner_uri,
             scheduler=self.config.scheduler,
             sdxl_refiner_scheduler=self.config.sdxl_refiner_scheduler,
             safety_checker=self.config.safety_checker,
-            sdxl_refiner_uri=self.config.sdxl_refiner_uri,
             auth_token=self.config.auth_token)
 
     def _run(self):
