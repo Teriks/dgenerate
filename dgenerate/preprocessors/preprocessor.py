@@ -189,7 +189,7 @@ class ImagePreprocessor:
 
     def __gen_filename(self):
         return _util.touch_avoid_duplicate(os.path.dirname(self.__output_file),
-                                           _util.suffix_path_maker(self.__output_file, '_duplicate_'))
+                                           _util.suffix_path_maker(self.__output_file, '_'))
 
     def __save_debug_image(self, image, debug_header):
         if self.__output_file is not None:
