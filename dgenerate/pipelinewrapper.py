@@ -1105,10 +1105,10 @@ def _set_torch_safety_checker(pipeline, safety_checker_bool):
 def _uri_list_hash_with_parser(parser):
     def hasher(paths):
         if not paths:
-            return paths
+            return '[]'
 
         if isinstance(paths, str):
-            return _uri_hash_with_parser(parser)(paths)
+            return '[' +  _uri_hash_with_parser(parser)(paths) + ']'
 
         return '[' + ','.join(_uri_hash_with_parser(parser)(path) for path in paths) + ']'
 
