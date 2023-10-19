@@ -44,7 +44,7 @@ try:
     from dgenerate import messages
 
     transformers.logging.set_verbosity(transformers.logging.CRITICAL)
-    diffusers.logging.set_verbosity(diffusers.logging.DEBUG)
+    diffusers.logging.set_verbosity(diffusers.logging.CRITICAL)
 except KeyboardInterrupt:
     print('Aborting due to keyboard interrupt!')
     sys.exit(1)
@@ -58,7 +58,7 @@ def main():
             try:
                 create_config_runner(render_loop=render_loop,
                                      version=__version__,
-                                     injected_args=sys.argv[1:]).run_file(sys.stdin)
+                                     injected_args=sys.argv[1:], throw=True).run_file(sys.stdin)
             except BatchProcessError as e:
                 messages.log(f'Config Error: {e}', level=messages.ERROR)
                 sys.exit(1)

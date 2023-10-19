@@ -20,7 +20,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
-import os
 import typing
 
 import diffusers.schedulers
@@ -273,6 +272,14 @@ actions.append(
                         help="""Specify one or more plugin module folder paths (folder containing __init__.py) or 
                         python .py file paths to load as plugins. Plugin modules can currently only implement 
                         image preprocessors."""))
+
+
+actions.append(
+    parser.add_argument('--offline-mode', action='store_true', default=False, dest='local_files_only',
+                        help="""Whether dgenerate should try to download huggingface models that do not 
+                        exist in the disk cache, or only use what is available in the cache. Referencing 
+                        a model on huggingface that has not been cached because it was not previously 
+                        downloaded will result in a failure when using this option."""))
 
 # This argument is handled in dgenerate.invoker.invoke_dgenerate
 actions.append(
