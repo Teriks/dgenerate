@@ -256,8 +256,7 @@ class DiffusionRenderLoopConfig:
     mask_image_preprocessors: _types.OptionalUris = None
     control_image_preprocessors: _types.OptionalUris = None
 
-    def __init__(self):
-        pass
+    local_files_only: bool = False
 
     def generate_template_variables_with_types(self, variable_prefix: typing.Optional[str] = None) \
             -> typing.Dict[str, typing.Tuple[typing.Type, typing.Any]]:
@@ -964,7 +963,8 @@ class DiffusionRenderLoop:
             sdxl_refiner_scheduler=
             self.config.sdxl_refiner_scheduler if self.config.sdxl_refiner_uri else None,
             safety_checker=self.config.safety_checker,
-            auth_token=self.config.auth_token)
+            auth_token=self.config.auth_token,
+            local_files_only=self.config.local_files_only)
 
     def _run(self):
         self.config.check()
