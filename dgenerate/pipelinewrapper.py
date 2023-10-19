@@ -1115,8 +1115,8 @@ def _load_torch_vae(uri: _types.Uri,
             # There is a bug in their cast
             vae = encoder.from_single_file(path,
                                            revision=parsed_concept.revision,
-                                           local_files_only=local_files_only). \
-                to(dtype=parsed_concept.dtype, non_blocking=False)
+                                           local_files_only=local_files_only)\
+                .to(dtype=parsed_concept.dtype, non_blocking=False)
         else:
             vae = encoder.from_single_file(path,
                                            revision=parsed_concept.revision,

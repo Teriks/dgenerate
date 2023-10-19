@@ -260,7 +260,8 @@ actions.append(
 
 actions.append(
     parser.add_argument('-v', '--verbose', action='store_true', default=False,
-                        help="""Output information useful for debugging, such as pipeline call and model load parameters."""))
+                        help="""Output information useful for debugging, such as pipeline 
+                        call and model load parameters."""))
 
 actions.append(
     parser.add_argument('--version', action='version', version=f"dgenerate v{dgenerate.__version__}",
@@ -273,9 +274,8 @@ actions.append(
                         python .py file paths to load as plugins. Plugin modules can currently only implement 
                         image preprocessors."""))
 
-
 actions.append(
-    parser.add_argument('--offline-mode', action='store_true', default=False, dest='local_files_only',
+    parser.add_argument('--offline-mode', action='store_true', default=False,
                         help="""Whether dgenerate should try to download huggingface models that do not 
                         exist in the disk cache, or only use what is available in the cache. Referencing 
                         a model on huggingface that has not been cached because it was not previously 
