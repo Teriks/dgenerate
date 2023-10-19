@@ -202,3 +202,15 @@ def get_type_of_optional(hinted_type):
                     return a
                 return o
     return None
+
+
+def fullname(obj):
+    """
+    Get the fully qualified name of an object.
+    :param obj: The object
+    :return: Fully qualified name
+    """
+    module = obj.__class__.__module__
+    if module is None or module == str.__class__.__module__:
+        return obj.__class__.__name__
+    return module + '.' + obj.__class__.__name__

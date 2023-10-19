@@ -773,7 +773,7 @@ actions.append(
                         be separated by "x".  (default: 512x512 when no image seeds are specified)"""))
 
 actions.append(
-    parser.add_argument('-o', '--output-path', action='store', default=os.path.join(os.getcwd(), 'output'),
+    parser.add_argument('-o', '--output-path', action='store', default='output',
                         metavar="PATH",
                         help="""Output path for generated images and files.
                         This directory will be created if it does not exist. (default: ./output)"""))

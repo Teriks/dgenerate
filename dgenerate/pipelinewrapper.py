@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import decimal
+import gc
 import inspect
 import os
 import re
@@ -49,25 +50,8 @@ import dgenerate.memoize as _d_memoize
 from dgenerate.memoize import memoize as _memoize
 import dgenerate.prompt as _prompt
 import dgenerate.types as _types
+import dgenerate.util as _util
 import diffusers
-
-TORCH_MODEL_CACHE = dict()
-"""Global in memory cache for torch diffusers pipelines"""
-
-FLAX_MODEL_CACHE = dict()
-"""Global in memory cache for flax diffusers pipelines"""
-
-TORCH_CONTROL_NET_CACHE = dict()
-"""Global in memory cache for torch ControlNet models"""
-
-FLAX_CONTROL_NET_CACHE = dict()
-"""Global in memory cache for flax ControlNet models"""
-
-TORCH_VAE_CACHE = dict()
-"""Global in memory cache for torch VAE models"""
-
-FLAX_VAE_CACHE = dict()
-"""Global in memory cache for flax VAE models"""
 
 DEFAULT_INFERENCE_STEPS = 30
 DEFAULT_GUIDANCE_SCALE = 5
@@ -77,6 +61,210 @@ DEFAULT_SDXL_HIGH_NOISE_FRACTION = 0.8
 DEFAULT_X4_UPSCALER_NOISE_LEVEL = 20
 DEFAULT_OUTPUT_WIDTH = 512
 DEFAULT_OUTPUT_HEIGHT = 512
+
+TORCH_MODEL_CACHE = dict()
+"""Global in memory cache for torch diffusers pipelines"""
+
+FLAX_MODEL_CACHE = dict()
+"""Global in memory cache for flax diffusers pipelines"""
+
+MODEL_CACHE_SIZE = 0
+
+TORCH_CONTROL_NET_CACHE = dict()
+"""Global in memory cache for torch ControlNet models"""
+
+FLAX_CONTROL_NET_CACHE = dict()
+"""Global in memory cache for flax ControlNet models"""
+
+CONTROL_NET_CACHE_SIZE = 0
+
+TORCH_VAE_CACHE = dict()
+"""Global in memory cache for torch VAE models"""
+
+FLAX_VAE_CACHE = dict()
+"""Global in memory cache for flax VAE models"""
+
+VAE_CACHE_SIZE = 0
+
+MEMORY_CACHE_CONSTRAINTS = ['used_percent > 25']
+"""
+Cache constraint expressions for when to clear all pipeline caches via :py:meth:`dgenerate.util.memory_constraints`
+
+If any of these constraints are met, a call to :py:meth:`.enforce_cache_constraints` will call
+:py:meth:`.clear_all_caches` and force a garbage collection.
+
+"""
+
+MODEL_MEMORY_CACHE_CONSTRAINTS = []
+"""
+Cache constraint expressions for when to clear all model caches via :py:meth:`dgenerate.util.memory_constraints`
+
+If any of these constraints are met, a call to :py:meth:`.enforce_cache_constraints` will call
+:py:meth:`.clear_model_caches` and force a garbage collection.
+
+"""
+
+CONTROL_NET_MEMORY_CACHE_CONSTRAINTS = []
+"""
+Cache constraint expressions for when to clear all model caches via :py:meth:`dgenerate.util.memory_constraints`
+
+If any of these constraints are met, a call to :py:meth:`.enforce_cache_constraints` will call
+:py:meth:`.clear_control_net_caches` and force a garbage collection.
+
+"""
+
+VAE_MEMORY_CACHE_CONSTRAINTS = []
+"""
+Cache constraint expressions for when to clear all model caches via :py:meth:`dgenerate.util.memory_constraints`
+
+If any of these constraints are met, a call to :py:meth:`.enforce_cache_constraints` will call
+:py:meth:`.clear_vae_caches` and force a garbage collection.
+
+"""
+
+
+def clear_model_caches(collect=True):
+    """
+    Clear TORCH_MODEL_CACHE and FLAX_MODEL_CACHE and then garbage collect.
+
+    :param collect: Call :py:meth:`gc.collect` ?
+    """
+    TORCH_MODEL_CACHE.clear()
+    TORCH_CONTROL_NET_CACHE.clear()
+
+    if collect:
+        _messages.debug_log(
+            f'{_types.fullname(clear_model_caches)} calling gc.collect() by request')
+
+        gc.collect()
+
+
+def clear_control_net_caches(collect=True):
+    """
+    Clear TORCH_CONTROL_NET_CACHE and FLAX_CONTROL_NET_CACHE and then garbage collect.
+
+    :param collect: Call :py:meth:`gc.collect` ?
+    """
+    TORCH_CONTROL_NET_CACHE.clear()
+    FLAX_CONTROL_NET_CACHE.clear()
+
+    if collect:
+        _messages.debug_log(
+            f'{_types.fullname(clear_control_net_caches)} calling gc.collect() by request')
+
+        gc.collect()
+
+
+def clear_vae_caches(collect=True):
+    """
+    Clear TORCH_VAE_CACHE and FLAX_VAE_CACHE and then garbage collect.
+
+    :param collect: Call :py:meth:`gc.collect` ?
+    """
+    TORCH_VAE_CACHE.clear()
+    FLAX_VAE_CACHE.clear()
+
+    if collect:
+        _messages.debug_log(
+            f'{_types.fullname(clear_vae_caches)} calling gc.collect() by request')
+
+        gc.collect()
+
+
+def clear_all_caches(collect=True):
+    """
+    Clear all in memory model caches and garbage collect.
+
+        * TORCH_MODEL_CACHE
+        * FLAX_MODEL_CACHE
+        * TORCH_CONTROL_NET_CACHE
+        * FLAX_CONTROL_NET_CACHE
+        * TORCH_VAE_CACHE
+        * FLAX_VAE_CACHE
+
+    :param collect: Call :py:meth:`gc.collect` ?
+
+    """
+    TORCH_MODEL_CACHE.clear()
+    TORCH_CONTROL_NET_CACHE.clear()
+    FLAX_CONTROL_NET_CACHE.clear()
+    TORCH_VAE_CACHE.clear()
+    FLAX_VAE_CACHE.clear()
+    FLAX_MODEL_CACHE.clear()
+
+    if collect:
+        _messages.debug_log(
+            f'{_types.fullname(clear_all_caches)} calling gc.collect() by request')
+
+        gc.collect()
+
+
+def enforce_cache_constraints(collect=True):
+    """
+    Enforce all cache constraints and clear caches accordingly
+
+    :param collect: Call :py:meth:`gc.collect` ?
+    :return: Whether any caches were cleared due to constraint expressions.
+    """
+
+    m_name = __name__
+
+    _messages.debug_log(f'Enforcing {m_name} cache memory constraints:')
+
+    _messages.debug_log(f'Used Memory GB: '
+                        f'{_util.get_used_memory("GB")}')
+    _messages.debug_log(f'Used Percentage: '
+                        f'{_util.get_used_memory_percent()}')
+    _messages.debug_log(f'Available Memory GB: '
+                        f'{_util.get_available_memory("GB")}')
+
+    _messages.debug_log(f'(bytes) {m_name}.MODEL_CACHE_SIZE =', MODEL_CACHE_SIZE)
+    _messages.debug_log(f'(bytes) {m_name}.VAE_CACHE_SIZE =', VAE_CACHE_SIZE)
+    _messages.debug_log(f'(bytes) {m_name}.CONTROL_NET_CACHE_SIZE =', CONTROL_NET_CACHE_SIZE)
+
+    _messages.debug_log(f'{m_name}.MEMORY_CACHE_CONSTRAINTS =', MEMORY_CACHE_CONSTRAINTS)
+    _messages.debug_log(f'{m_name}.MODEL_MEMORY_CACHE_CONSTRAINTS =', MODEL_MEMORY_CACHE_CONSTRAINTS)
+    _messages.debug_log(f'{m_name}.VAE_MEMORY_CACHE_CONSTRAINTS =', VAE_MEMORY_CACHE_CONSTRAINTS)
+    _messages.debug_log(f'{m_name}.CONTROL_NET_MEMORY_CACHE_CONSTRAINTS =', CONTROL_NET_MEMORY_CACHE_CONSTRAINTS)
+
+    cleared_any = False
+    if _util.memory_constraints(MEMORY_CACHE_CONSTRAINTS):
+        _messages.debug_log(f'{m_name}.MEMORY_CACHE_CONSTRAINTS '
+                            f'{MEMORY_CACHE_CONSTRAINTS} met, '
+                            f'calling {_types.fullname(clear_all_caches)}.')
+
+        clear_all_caches(collect=False)
+        cleared_any = True
+    else:
+        if _util.memory_constraints(MODEL_MEMORY_CACHE_CONSTRAINTS):
+            _messages.debug_log(f'{m_name}.MODEL_MEMORY_CACHE_CONSTRAINTS '
+                                f'{MODEL_MEMORY_CACHE_CONSTRAINTS} met, '
+                                f'calling {_types.fullname(clear_model_caches)}.')
+
+            clear_model_caches(collect=False)
+            cleared_any = True
+        if _util.memory_constraints(CONTROL_NET_MEMORY_CACHE_CONSTRAINTS):
+            _messages.debug_log(f'{m_name}.CONTROL_NET_MEMORY_CACHE_CONSTRAINTS '
+                                f'{CONTROL_NET_MEMORY_CACHE_CONSTRAINTS} met, '
+                                f'calling {_types.fullname(clear_control_net_caches)}.')
+
+            clear_control_net_caches(collect=False)
+            cleared_any = True
+        if _util.memory_constraints(VAE_MEMORY_CACHE_CONSTRAINTS):
+            _messages.debug_log(f'{m_name}.VAE_MEMORY_CACHE_CONSTRAINTS '
+                                f'{VAE_MEMORY_CACHE_CONSTRAINTS} met, '
+                                f'calling {_types.fullname(clear_vae_caches)}.')
+
+            clear_vae_caches(collect=False)
+            cleared_any = True
+
+    if collect and cleared_any:
+        _messages.debug_log(
+            f'{_types.fullname(enforce_cache_constraints)} calling gc.collect() by request')
+
+        gc.collect()
+
+    return cleared_any
 
 
 class OutOfMemoryError(Exception):
@@ -844,6 +1032,11 @@ def parse_textual_inversion_uri(uri: _types.Uri) -> TextualInversionPath:
 
 
 def _is_single_file_model_load(path):
+    """
+    Should we use diffusers.loaders.FromSingleFileMixin.from_single_file on this path?
+    :param path: The path
+    :return: true or false
+    """
     path, ext = os.path.splitext(path)
 
     if path.startswith('http://') or path.startswith('https://'):
@@ -999,26 +1192,6 @@ def _load_scheduler(pipeline, model_path, scheduler_name=None):
         f'options are:\n\n{chr(10).join(sorted(" " * 4 + _textprocessing.quote(i.__name__.split(".")[-1]) for i in compatibles))}')
 
 
-def clear_model_cache():
-    """
-    Clear all in memory model caches.
-
-        * TORCH_MODEL_CACHE
-        * FLAX_MODEL_CACHE
-        * TORCH_CONTROL_NET_CACHE
-        * FLAX_CONTROL_NET_CACHE
-        * TORCH_VAE_CACHE
-        * FLAX_VAE_CACHE
-
-    """
-    TORCH_MODEL_CACHE.clear()
-    TORCH_CONTROL_NET_CACHE.clear()
-    FLAX_CONTROL_NET_CACHE.clear()
-    TORCH_VAE_CACHE.clear()
-    FLAX_VAE_CACHE.clear()
-    FLAX_MODEL_CACHE.clear()
-
-
 def _disabled_safety_checker(images, clip_input):
     if len(images.shape) == 4:
         num_images = images.shape[0]
@@ -1108,7 +1281,7 @@ def _uri_list_hash_with_parser(parser):
             return '[]'
 
         if isinstance(paths, str):
-            return '[' +  _uri_hash_with_parser(parser)(paths) + ']'
+            return '[' + _uri_hash_with_parser(parser)(paths) + ']'
 
         return '[' + ','.join(_uri_hash_with_parser(parser)(path) for path in paths) + ']'
 
@@ -2512,6 +2685,7 @@ class DiffusionPipelineWrapper:
         default_args.pop('negative_crops_coords_top_left', None)
 
     def _call_torch(self, default_args, user_args):
+
         prompt: _prompt.Prompt() = user_args.get('prompt', _prompt.Prompt())
         default_args['prompt'] = prompt.positive if prompt.positive else ''
         default_args['negative_prompt'] = prompt.negative
@@ -2709,7 +2883,7 @@ class DiffusionPipelineWrapper:
     def _lazy_init_pipeline(self, pipeline_type):
         if self._pipeline is not None:
             if self._pipeline_type == pipeline_type:
-                return
+                return False
 
         self._pipeline_type = pipeline_type
 
@@ -2821,6 +2995,8 @@ class DiffusionPipelineWrapper:
                                     vae_tiling=self._vae_tiling,
                                     vae_slicing=self._vae_slicing)
 
+        return True
+
     @staticmethod
     def _determine_pipeline_type(kwargs):
         if 'image' in kwargs and 'mask_image' in kwargs:
@@ -2852,13 +3028,20 @@ class DiffusionPipelineWrapper:
 
         :return: :py:class:`.PipelineWrapperResult`
         """
-        self._lazy_init_pipeline(DiffusionPipelineWrapper._determine_pipeline_type(kwargs))
-
-        default_args = self._pipeline_defaults(kwargs)
 
         _messages.debug_log(f'Calling Pipeline Wrapper: "{self}"')
         _messages.debug_log(f'Pipeline Wrapper Args: ',
                             lambda: _textprocessing.debug_format_args(kwargs))
+
+        enforce_cache_constraints()
+
+        loaded_new = self._lazy_init_pipeline(
+            DiffusionPipelineWrapper._determine_pipeline_type(kwargs))
+
+        if loaded_new:
+            enforce_cache_constraints()
+
+        default_args = self._pipeline_defaults(kwargs)
 
         if self._model_type == ModelTypes.FLAX:
             try:

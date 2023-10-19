@@ -44,7 +44,7 @@ try:
     from dgenerate import messages
 
     transformers.logging.set_verbosity(transformers.logging.CRITICAL)
-    diffusers.logging.set_verbosity(diffusers.logging.CRITICAL)
+    diffusers.logging.set_verbosity(diffusers.logging.DEBUG)
 except KeyboardInterrupt:
     print('Aborting due to keyboard interrupt!')
     sys.exit(1)

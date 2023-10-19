@@ -65,11 +65,13 @@ for config in configs:
     sys.stdout.flush()
     proc = ["dgenerate"] + args + extra_args
     with open(config, mode='rt' if _batchprocess else 'rb') as f:
+        dirname = os.path.dirname(config)
         try:
             if _batchprocess:
-                os.chdir(os.path.dirname(config))
+                print('ENTERING DIRECTORY:', dirname)
+                os.chdir(dirname)
                 _batchprocess.create_config_runner(args + extra_args, throw=True).run_file(f)
             else:
-                subprocess.run(proc, stdin=f, cwd=os.path.dirname(config), check=True)
+                subprocess.run(proc, stdin=f, cwd=dirname, check=True)
         except KeyboardInterrupt:
             sys.exit(1)
