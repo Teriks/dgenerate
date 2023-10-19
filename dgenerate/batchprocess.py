@@ -257,7 +257,7 @@ class BatchProcessor:
         self.run_file(io.StringIO(string))
 
 
-def create_config_runner(injected_args: typing.Sequence[str],
+def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = None,
                          render_loop: typing.Optional[_diffusionloop.DiffusionRenderLoop] = None,
                          version: typing.Union[_types.Version, str] = dgenerate.__version__,
                          throw: bool = False):
@@ -306,7 +306,7 @@ def create_config_runner(injected_args: typing.Sequence[str],
     }
 
     directives = {
-        'clear_model_cache': lambda args: _pipelinewrapper.clear_model_cache()
+        'clear_pipeline_caches': lambda args: _pipelinewrapper.clear_all_caches()
     }
 
     runner = BatchProcessor(
@@ -316,7 +316,7 @@ def create_config_runner(injected_args: typing.Sequence[str],
         version=version,
         template_variables=template_variables,
         template_functions=funcs,
-        injected_args=injected_args,
+        injected_args=injected_args if injected_args else [],
         directives=directives)
 
     return runner

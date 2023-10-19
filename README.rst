@@ -643,7 +643,7 @@ Install dgenerate:
 
     # If you want a specific version
 
-    pipx install git+https://github.com/Teriks/dgenerate.git@v1.2.0 ^
+    pipx install git+https://github.com/Teriks/dgenerate.git@v2.0.0 ^
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/"
 
 
@@ -763,12 +763,12 @@ Install dgenerate
 
     # If you want a specific version
 
-    pipx install git+https://github.com/Teriks/dgenerate.git@v1.2.0 \
+    pipx install git+https://github.com/Teriks/dgenerate.git@v2.0.0 \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/"
 
     # Specific version with flax/jax support
 
-    pipx install "dgenerate[flax] @ git+https://github.com/Teriks/dgenerate.git@v1.2.0" \
+    pipx install "dgenerate[flax] @ git+https://github.com/Teriks/dgenerate.git@v2.0.0" \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/ \
     -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html"
 
@@ -2069,7 +2069,7 @@ A number of things affect cache hit or miss upon model invocation, information r
 caching behavior of a pipeline can be observed using ``-v/--verbose``
 
 When loading multiple different models be aware that they will all be retained in memory for
-the duration of program execution, unless all models are flushed using the ``\clear_model_cache`` directive.
+the duration of program execution, unless all models are flushed using the ``\clear_pipeline_caches`` directive.
 Memory consumption may become and issue if you are not careful.
 
 Environmental variables will be expanded in the provided input to **STDIN** when using this feature,
@@ -2106,7 +2106,7 @@ The following is a config file example that covers very basic syntax concepts:
 
 .. code-block::
 
-    #! dgenerate 1.2.0
+    #! dgenerate 2.0.0
 
     # If a hash-bang version is provided in the format above
     # a warning will be produced if the version you are running
@@ -2139,10 +2139,10 @@ The following is a config file example that covers very basic syntax concepts:
     --guidance-scales 10
 
 
-    # A clear model cache directive can be used inbetween invocations if cached models that
+    # A clear pipeline caches directive can be used inbetween invocations if cached models that
     # are no longer needed in your generation pipeline start causing out of memory issues
 
-    \clear_model_cache
+    \clear_pipeline_caches
 
 
     # This model was used before but will have to be fully instantiated from scratch again
@@ -2157,7 +2157,7 @@ Here are examples of other available directives and templating:
 
 .. code-block:: bash
 
-    #! dgenerate 1.2.0
+    #! dgenerate 2.0.0
 
     # You can define your own template variables with the \set directive
 

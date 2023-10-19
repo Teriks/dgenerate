@@ -25,6 +25,7 @@ import pathlib
 import typing
 
 import portalocker
+import psutil
 
 PathMaker = typing.Callable[[typing.Optional[str], typing.Optional[int]], typing.Union[str, typing.List[str]]]
 
@@ -109,6 +110,156 @@ def touch_avoid_duplicate(directory: str,
         if len(paths) == 1 and not return_list:
             return paths[0]
         return paths
+
+
+class MemoryConstraintSyntaxError:
+    """
+    Thrown by :py:meth:`.memory_constraints` on syntax errors or
+    if an expression returns a non boolean value
+    """
+    pass
+
+
+def memory_constraints(expressions: typing.Optional[typing.Union[str, list]],
+                       extra_vars: typing.Optional[typing.Dict[str, typing.Union[int, float]]] = None,
+                       mode=any,
+                       pid=os.getpid()) -> bool:
+    """
+    Evaluate a user boolean expression involving the the processes used memory in bytes, used memory percent, and available system memory in bytes.
+
+    Available functions are:
+        * kb(bytes to kilobytes)
+        * mb(bytes to megabytes)
+        * gb(bytes to gigabytes)
+        * kib(bytes to kibibytes)
+        * mib(bytes to mebibytes)
+        * gib(bytes to gibibytes)
+
+    Available values are:
+
+        * used / u (memory used by the process in bytes)
+        * used_percent / up (memory used by the process, as whole percent, example: 25.4)
+        * available / a (available memory remaining on the system in bytes)
+        * total / t (total memory on the system in bytes)
+
+    Example expressions:
+
+        * ``used > gb(1)`` (when the process has used more than 1GB of memory)
+        * ``used_percent > 25`` (when the process has used more than 25 percent of system memory)
+        * ``available < gb(2)`` (when the available memory on the system is less than 2GB)
+
+    :raise: :py:exc:`ValueError` if extra_vars overwrites a reserved variable name
+
+    :raise: :py:exc:`.MemoryConstraintSyntaxError` on syntax errors or if the return value
+        of an expression is not a boolean value.
+
+    :param expressions: a string containing an expression or a list of expressions,
+        If expressions is None or empty this function will return False.
+    :param extra_vars: extra integer or float variables
+    :param mode: the standard library function 'any' (equating to OR all expressions) or
+        the standard library function 'all' (equating to AND all expressions). The default
+        is 'any' which ORs all expressions.
+    :param pid: PID of the process from which to aquire the 'used' and 'used_percent' variable
+        values from, defaults to the current process.
+    :return: Boolean result of the expression
+    """
+
+    if not expressions:
+        return False
+
+    if isinstance(expressions, str):
+        expressions = [expressions]
+
+    p_info = psutil.Process(os.getpid())
+    used = p_info.memory_info().rss
+    used_percent = p_info.memory_percent()
+
+    mem_info = psutil.virtual_memory()
+
+    available = mem_info.available
+    total = mem_info.total
+
+    globals = {'gb': lambda x: x * 1000 ** 3,
+               'mb': lambda x: x * 1000 ** 2,
+               'kb': lambda x: x * 1000,
+               'gib': lambda x: x * 1024 ** 3,
+               'mib': lambda x: x * 1024 ** 2,
+               'kib': lambda x: x * 1024}
+
+    locals = {
+        'used': used,
+        'u': used,
+        'used_percent': used_percent,
+        'up': used_percent,
+        'available': available,
+        'a': available,
+        'total': total,
+        't': total
+    }
+
+    if extra_vars:
+        for key, value in extra_vars.items():
+            if key in locals:
+                raise ValueError(
+                    f'extra_vars cannot redefine reserved attribute: {key}')
+            locals[key] = value
+
+    try:
+        value = mode(eval(e, globals, locals) for e in expressions)
+        if not isinstance(value, bool):
+            raise MemoryConstraintSyntaxError('Memory constraint must return a boolean value.')
+        return value
+    except Exception as e:
+        raise MemoryConstraintSyntaxError(e)
+
+
+_MEM_FACTORS = {
+    'b': 1,
+    'kb': 1000,
+    'mb': 1000 ** 2,
+    'gb': 1000 ** 3,
+    'kib': 1024,
+    'mib': 1024 ** 2,
+    'gib': 1024 ** 3,
+}
+
+
+def get_used_memory(measure='b', pid = os.getpid()) -> float:
+    """
+    Get the memory used by a process in a selectable unit.
+
+    :param measure: one of (case insensitive): b (bytes), kb (kilobytes),
+        mb (megabytes), gb (gigabytes), kib (kibibytes),
+        mib (mebibytes), gib (gibibytes)
+
+    :param pid: The process PID to retrieve this information from, defaults to the current process.
+
+    :return: Requested value.
+    """
+    return psutil.Process(pid).memory_info().rss / _MEM_FACTORS[measure.strip().lower()]
+
+
+def get_used_memory_percent(pid = os.getpid()) -> float:
+    """
+    Get the percentage of memory used by a process.
+
+    :param pid: PID of the process, defaults to the current process.
+    :return: A whole percentage, for example: 25.4
+    """
+    return psutil.Process(pid).memory_percent()
+
+
+def get_available_memory(measure='b'):
+    """
+    Get the available memory remaining on the system in a selectable unit.
+
+    :param measure: one of (case insensitive): b (bytes), kb (kilobytes),
+        mb (megabytes), gb (gigabytes), kib (kibibytes),
+        mib (mebibytes), gib (gibibytes)
+
+    :return: Requested value.
+    """
+    return psutil.virtual_memory().available / _MEM_FACTORS[measure.strip().lower()]
 
 
 @contextlib.contextmanager

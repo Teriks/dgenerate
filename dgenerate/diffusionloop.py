@@ -240,7 +240,7 @@ class DiffusionRenderLoopConfig:
     revision: _types.Name = 'main'
     variant: _types.OptionalName = None
     output_size: _types.OptionalSize = None
-    output_path: _types.Path = os.path.join(os.getcwd(), 'output')
+    output_path: _types.Path = 'output'
     output_prefix: typing.Optional[str] = None
     output_overwrite: bool = False
     output_configs: bool = False
