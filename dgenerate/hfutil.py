@@ -183,7 +183,7 @@ def fetch_model_files_with_size(repo_id,
                 enumerate_directory(os.path.dirname(other)))
         else:
             # Nothing matching what we are expecting in the
-            # huggingface cache, ask the APU
+            # huggingface cache, ask the API
 
             _messages.debug_log('Fetching Model File Info with huggingface API call:',
                                 'api.list_files_info('+
@@ -270,8 +270,6 @@ def estimate_model_memory_use(path,
         else:
             extensions = {'.bin'}
 
-
-
     def estimate():
         size_sum = 0
         if 'unet' in directories:
@@ -289,7 +287,6 @@ def estimate_model_memory_use(path,
             if include_text_encoder_2:
                 important_directories.add('text_encoder_2')
 
-
             for directory, files in directories.items():
                 if directory not in important_directories:
                     continue
@@ -305,7 +302,7 @@ def estimate_model_memory_use(path,
 
                     _messages.debug_log(
                         "Estimate Considering:", os.path.join(directory, file),
-                        ", Sized:", size)
+                        ", Size:", size)
 
             return size_sum
         else:
@@ -320,7 +317,7 @@ def estimate_model_memory_use(path,
                 if ext not in extensions:
                     continue
                 _messages.debug_log("Estimate Considering:", os.path.join(
-                    directory if directory != '.' else '', file), "Sized:", size)
+                    directory if directory != '.' else '', file), "Size:", size)
                 size_sum += size
         return size_sum
 
