@@ -615,9 +615,8 @@ class ImageGeneratedCallbackArgument(_types.SetFromMixin):
 
     batch_index: int = 0
     """
-    The index in the image batch for this image. 
-    Will only every be greater than zero if :py:attr:`.DiffusionRenderLoopConfig.batch_size` > 1 and 
-    :py:attr:`.DiffusionRenderLoopConfig.batch_grid_size`is None
+    The index in the image batch for this image. Will only every be greater than zero if 
+    :py:attr:`.DiffusionRenderLoopConfig.batch_size` > 1 and :py:attr:`.DiffusionRenderLoopConfig.batch_grid_size` is None
     """
 
     suggested_filename: str = None
