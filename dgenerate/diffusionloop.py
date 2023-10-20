@@ -313,10 +313,10 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
         :param attribute_namer: Callable for naming attributes mentioned in exception messages
         """
 
-        def a_namer(attr):
+        def a_namer(attr_name):
             if attribute_namer:
-                return attribute_namer(attr)
-            return f'DiffusionRenderLoopConfig.{attr}'
+                return attribute_namer(attr_name)
+            return f'DiffusionRenderLoopConfig.{attr_name}'
 
         def _has_len(name, value):
             try:
@@ -603,36 +603,41 @@ class ImageGeneratedCallbackArgument(_types.SetFromMixin):
     :py:class:`.DiffusionRenderLoop.image_generated_callbacks`.
     """
 
-    image: PIL.Image.Image
+    image: PIL.Image.Image = None
     """
     The generated image.
     """
 
-    batch_index: int
+    generation_step: int = 0
+    """
+    The current generation step. (zero indexed)
+    """
+
+    batch_index: int = 0
     """
     The index in the image batch for this image. 
     Will only every be greater than zero if :py:attr:`.DiffusionRenderLoopConfig.batch_size` > 1 and 
     :py:attr:`.DiffusionRenderLoopConfig.batch_grid_size`is None
     """
 
-    suggested_filename: str
+    suggested_filename: str = None
     """
     A suggested filename for saving this image as. This filename will be unique
     to the render loop run and configuration.
     """
 
-    args: _pipelinewrapper.DiffusionArguments
+    args: _pipelinewrapper.DiffusionArguments = None
     """
     Diffusion argument object, contains :py:class:`dgenerate.pipelinewrapper.DiffusionPipelineWrapper` 
     arguments used to produce this image
     """
 
-    command: str
+    command: str = None
     """
     Reproduction of a command line that can be used to reproduce this image
     """
 
-    config: str
+    config: str = None
     """
     Reproduction of a dgenerate config file that can be used to reproduce this image
     """
@@ -640,6 +645,13 @@ class ImageGeneratedCallbackArgument(_types.SetFromMixin):
     is_frame: bool = False
     """
     Is this image a frame in an animation?
+    """
+
+    frame_index: int = 0
+    """
+    The frame index if this is an animation frame.
+    Also available through image_seed.frame_index, 
+    though here for convenience
     """
 
     image_seed: typing.Optional[_mediainput.ImageSeed] = None
@@ -769,7 +781,7 @@ class DiffusionRenderLoop:
     @property
     def generation_step(self):
         """
-        Returns the current generation step
+        Returns the current generation step, (zero indexed)
         """
         return self._generation_step
 
@@ -853,6 +865,8 @@ class DiffusionRenderLoop:
 
             argument.set_from(callback_argument_extras,
                               missing_value_throws=False)
+
+            argument.generation_step = self.generation_step
 
             argument.image = image
             argument.batch_index = batch_index
@@ -956,6 +970,7 @@ class DiffusionRenderLoop:
         self._write_generation_result(filename_components, generation_result,
                                       {'args': args_ctx,
                                        'is_frame': True,
+                                       'frame_index': image_seed_obj.frame_index,
                                        'image_seed': image_seed_obj})
 
     def _write_image_seed_gen_image(self, args_ctx: _pipelinewrapper.DiffusionArguments,

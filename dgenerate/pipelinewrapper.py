@@ -2116,9 +2116,7 @@ class PipelineWrapperResult:
         :param extra_args: Extra arguments to add to the end of the command line.
         :return: A string containing the dgenerate command line needed to reproduce this result.
         """
-        opts = _textprocessing.quote_spaces(self.dgenerate_opts)
-
-        return f'dgenerate {" ".join(f"{self._format_option_pair(opt)}" for opt in opts)}'
+        return f'dgenerate {" ".join(f"{self._format_option_pair(opt)}" for opt in self.dgenerate_opts)}'
 
 
 class DiffusionArguments:
