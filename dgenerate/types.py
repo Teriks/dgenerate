@@ -22,6 +22,7 @@ import inspect
 import typing
 
 import dgenerate.prompt as _prompt
+import dgenerate.types as _types
 
 Uri = str
 Path = str
@@ -249,7 +250,7 @@ class SetFromMixin:
         else:
             source = _types.get_public_attributes(obj)
 
-        for k, v in _types.get_public_attributes(self):
+        for k, v in _types.get_public_attributes(self).items():
             if not callable(v):
                 if missing_value_throws and k not in source:
                     raise ValueError(f'Source object does not define: "{k}"')
