@@ -12,7 +12,7 @@ config.inference_steps_values = [40]
 config.guidance_scales = [5]
 config.prompts = [Prompt().parse('an astronaut walking on the moon; fake')]
 config.output_path = ''
-config.device = 'cuda:1'
+config.device = 'cuda'
 
 render_loop = DiffusionRenderLoop(config=config)
 
