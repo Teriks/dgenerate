@@ -25,7 +25,7 @@ import pathlib
 import huggingface_hub
 
 import dgenerate.messages as _messages
-import dgenerate.util as _util
+import dgenerate.types as _types
 
 
 def fetch_model_files_with_size(repo_id,
@@ -38,7 +38,7 @@ def fetch_model_files_with_size(repo_id,
                                 local_files_only=False):
     __args_debug = locals()
     _messages.debug_log(
-        f'{_util.fullname(fetch_model_files_with_size)}({__args_debug})')
+        f'{_types.fullname(fetch_model_files_with_size)}({__args_debug})')
 
     def post_discover_check(found):
         if not isinstance(found, str):
@@ -242,7 +242,7 @@ def estimate_model_memory_use(path,
     __debug_args = locals()
 
     _messages.debug_log(
-        f'{_util.fullname(estimate_model_memory_use)}({__debug_args})')
+        f'{_types.fullname(estimate_model_memory_use)}({__debug_args})')
 
     if safetensors:
         try:
@@ -340,6 +340,6 @@ def estimate_model_memory_use(path,
             e = estimate()
 
     _messages.debug_log(
-        f'{_util.fullname(estimate_model_memory_use)}() = {e} Bytes')
+        f'{_types.fullname(estimate_model_memory_use)}() = {e} Bytes')
 
     return e
