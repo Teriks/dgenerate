@@ -39,7 +39,7 @@ dgenerate.diffusionloop module
    :special-members: __call__, __init__
 
 dgenerate.hfutil module
-----------------------
+-----------------------
 
 .. automodule:: dgenerate.hfutil
    :members:

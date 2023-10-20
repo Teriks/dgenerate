@@ -27,6 +27,7 @@ import random
 import time
 import typing
 
+import PIL.Image
 import PIL.PngImagePlugin
 
 import dgenerate.mediainput as _mediainput
@@ -169,7 +170,7 @@ class DiffusionRenderLoopConfigError(Exception):
     pass
 
 
-class DiffusionRenderLoopConfig:
+class DiffusionRenderLoopConfig(_types.SetFromMixin):
     """
     This object represents configuration for :py:class:`DiffusionRenderLoop`.
 
@@ -301,31 +302,6 @@ class DiffusionRenderLoopConfig:
         """
         return {k: v[1] for k, v in
                 self.generate_template_variables_with_types(variable_prefix=variable_prefix).items()}
-
-    def set_from(self,
-                 obj: typing.Union[typing.Any, dict],
-                 missing_value_throws: bool = True):
-        """
-        Set the attributes in this configuration object from a dictionary or another object
-        possessing keys / attributes of the same name.
-
-        :param obj: The object, or dictionary
-        :param missing_value_throws: whether to throw :py:class:`ValueError` if obj is missing
-            an attribute that exist in this object
-        :return: self
-        """
-
-        if isinstance(obj, dict):
-            source = obj
-        else:
-            source = _types.get_public_attributes(obj)
-
-        for k, v in _types.get_public_attributes(self):
-            if not callable(v):
-                if missing_value_throws and k not in source:
-                    raise ValueError(f'Source object does not define: "{k}"')
-                setattr(self, k, source.get(k))
-        return self
 
     def check(self, attribute_namer: typing.Callable[[str], str] = None):
         """
@@ -621,6 +597,63 @@ class DiffusionRenderLoopConfig:
                                                            self.sdxl_refiner_negative_crops_coords_top_left))
 
 
+class ImageGeneratedCallbackArgument(_types.SetFromMixin):
+    """
+    This argument object gets passed to callbacks registered to
+    :py:class:`.DiffusionRenderLoop.image_generated_callbacks`.
+    """
+
+    image: PIL.Image.Image
+    """
+    The generated image.
+    """
+
+    batch_index: int
+    """
+    The index in the image batch for this image. 
+    Will only every be greater than zero if :py:attr:`.DiffusionRenderLoopConfig.batch_size` > 1 and 
+    :py:attr:`.DiffusionRenderLoopConfig.batch_grid_size`is None
+    """
+
+    suggested_filename: str
+    """
+    A suggested filename for saving this image as. This filename will be unique
+    to the render loop run and configuration.
+    """
+
+    args: _pipelinewrapper.DiffusionArguments
+    """
+    Diffusion argument object, contains :py:class:`dgenerate.pipelinewrapper.DiffusionPipelineWrapper` 
+    arguments used to produce this image
+    """
+
+    command: str
+    """
+    Reproduction of a command line that can be used to reproduce this image
+    """
+
+    config: str
+    """
+    Reproduction of a dgenerate config file that can be used to reproduce this image
+    """
+
+    is_frame: bool = False
+    """
+    Is this image a frame in an animation?
+    """
+
+    image_seed: typing.Optional[_mediainput.ImageSeed] = None
+    """
+    If an --image-seed specification was used in the generation of this image,
+    this object represents that image seed and contains the images that contributed
+    to the generation of this image.
+    """
+
+
+ImageGeneratedCallbacks = typing.List[
+    typing.Callable[[ImageGeneratedCallbackArgument], None]]
+
+
 class DiffusionRenderLoop:
     """
     Render loop which implements the bulk of dgenerates rendering capability.
@@ -628,6 +661,22 @@ class DiffusionRenderLoop:
     This object handles the scatter gun iteration over requested diffusion parameters,
     the generation of animations, and writing images and media to disk or providing
     those to library users through callbacks.
+    """
+
+    disable_writes: bool = False
+    """
+    Disable or enable all writes to disk, if you intend to only ever use the callbacks of the
+    render loop when using dgenerate as a library, this is a useful option.
+    
+    last_images and last_animations will not be available as template variables in
+    batch processing scripts with this enabled, they will be empty lists
+    """
+
+    image_generated_callbacks: ImageGeneratedCallbacks = []
+    """
+    Optional callbacks for handling individual images that have been generated.
+    
+    The callback has a single argument: :py:class:`.ImageGeneratedCallbackArgument`
     """
 
     def __init__(self, config=None, preprocessor_loader=None):
@@ -724,9 +773,6 @@ class DiffusionRenderLoop:
         """
         return self._generation_step
 
-    def _output_directory_lock(self):
-        _util.temp_file_lock(os.path.join(self.config.output_path, '.write_lock'))
-
     def _join_output_filename(self, components, ext):
 
         prefix = self.config.output_prefix + '_' if \
@@ -770,7 +816,12 @@ class DiffusionRenderLoop:
 
         return args
 
-    def _write_image(self, filename_components, image, batch_index, generation_result):
+    def _write_image(self,
+                     filename_components: typing.List[str],
+                     image: PIL.Image.Image,
+                     batch_index: int,
+                     generation_result: _pipelinewrapper.PipelineWrapperResult,
+                     callback_argument_extras: dict):
 
         extra_args = []
         extra_comments = []
@@ -780,7 +831,7 @@ class DiffusionRenderLoop:
         # Generate a reconstruction of dgenerates arguments
         # For this image if necessary
 
-        if self.config.output_configs or self.config.output_metadata:
+        if self.image_generated_callbacks or self.config.output_configs or self.config.output_metadata:
             if generation_result.image_count > 1:
                 if not _pipelinewrapper.model_type_is_flax(self.config.model_type):
                     # Batch size is controlled by CUDA_VISIBLE_DEVICES for flax
@@ -796,6 +847,24 @@ class DiffusionRenderLoop:
             config_txt = generation_result.gen_dgenerate_config(
                 extra_args=extra_args,
                 extra_comments=extra_comments)
+
+        if self.image_generated_callbacks:
+            argument = ImageGeneratedCallbackArgument()
+
+            argument.set_from(callback_argument_extras,
+                              missing_value_throws=False)
+
+            argument.image = image
+            argument.batch_index = batch_index
+            argument.suggested_filename = self._join_output_filename(filename_components, ext='png')
+            argument.config = config_txt
+            argument.command = generation_result.gen_dgenerate_command(extra_args=extra_args)
+
+            for callback in self.image_generated_callbacks:
+                callback(argument)
+
+        if self.disable_writes:
+            return
 
         config_filename = None
 
@@ -844,8 +913,9 @@ class DiffusionRenderLoop:
         self._written_images.append(os.path.abspath(image_filename))
 
     def _write_generation_result(self,
-                                 filename_components,
-                                 generation_result: _pipelinewrapper.PipelineWrapperResult):
+                                 filename_components: typing.List[str],
+                                 generation_result: _pipelinewrapper.PipelineWrapperResult,
+                                 callback_argument_extras: dict):
 
         if self.config.batch_grid_size is None:
 
@@ -854,20 +924,26 @@ class DiffusionRenderLoop:
                 if generation_result.image_count > 1:
                     name_components += ['image', batch_idx + 1]
 
-                self._write_image(name_components, image, batch_idx, generation_result)
+                self._write_image(name_components,
+                                  image,
+                                  batch_idx,
+                                  generation_result,
+                                  callback_argument_extras)
         else:
             if generation_result.image_count > 1:
                 image = generation_result.image_grid(self.config.batch_grid_size)
             else:
                 image = generation_result.image
 
-            self._write_image(filename_components, image, 0, generation_result)
+            self._write_image(filename_components,
+                              image, 0,
+                              generation_result,
+                              callback_argument_extras)
 
     def _write_animation_frame(self,
                                args_ctx: _pipelinewrapper.DiffusionArguments,
                                image_seed_obj: _mediainput.ImageSeed,
                                generation_result: _pipelinewrapper.PipelineWrapperResult):
-
         filename_components = [*self._gen_filename_components_base(args_ctx),
                                'frame',
                                image_seed_obj.frame_index + 1,
@@ -877,25 +953,30 @@ class DiffusionRenderLoop:
         generation_result.add_dgenerate_opt('--frame-start', image_seed_obj.frame_index)
         generation_result.add_dgenerate_opt('--frame-end', image_seed_obj.frame_index)
 
-        self._write_generation_result(filename_components, generation_result)
+        self._write_generation_result(filename_components, generation_result,
+                                      {'args': args_ctx,
+                                       'is_frame': True,
+                                       'image_seed': image_seed_obj})
 
     def _write_image_seed_gen_image(self, args_ctx: _pipelinewrapper.DiffusionArguments,
+                                    image_seed_obj: _mediainput.ImageSeed,
                                     generation_result: _pipelinewrapper.PipelineWrapperResult):
-
         filename_components = [*self._gen_filename_components_base(args_ctx),
                                'step',
                                self._generation_step + 1]
 
-        self._write_generation_result(filename_components, generation_result)
+        self._write_generation_result(filename_components, generation_result,
+                                      {'args': args_ctx,
+                                       'image_seed': image_seed_obj})
 
     def _write_prompt_only_image(self, args_ctx: _pipelinewrapper.DiffusionArguments,
                                  generation_result: _pipelinewrapper.PipelineWrapperResult):
-
         filename_components = [*self._gen_filename_components_base(args_ctx),
                                'step',
                                self._generation_step + 1]
 
-        self._write_generation_result(filename_components, generation_result)
+        self._write_generation_result(filename_components, generation_result,
+                                      {'args': args_ctx})
 
     def _pre_generation_step(self, args_ctx: _pipelinewrapper.DiffusionArguments):
         self._last_frame_time = 0
@@ -1122,7 +1203,7 @@ class DiffusionRenderLoop:
                                 pipeline_wrapper(**pipeline_args,
                                                  batch_size=self.config.batch_size) as generation_result:
 
-                            self._write_image_seed_gen_image(diffusion_arguments, generation_result)
+                            self._write_image_seed_gen_image(diffusion_arguments, image_seed, generation_result)
 
     def _gen_animation_filename(self,
                                 args_ctx: _pipelinewrapper.DiffusionArguments,
@@ -1153,10 +1234,16 @@ class DiffusionRenderLoop:
 
         next_frame_terminates_anim = False
 
-        with _mediaoutput.MultiAnimationWriter(
+        if self.disable_writes:
+            # The interface can be used as a mock object
+            anim_writer = _mediaoutput.AnimationWriter()
+        else:
+            anim_writer = _mediaoutput.MultiAnimationWriter(
                 animation_format=animation_format_lower,
                 filename=base_filename,
-                fps=fps, allow_overwrites=self.config.output_overwrite) as anim_writer:
+                fps=fps, allow_overwrites=self.config.output_overwrite)
+
+        with anim_writer:
 
             for args_ctx in itertools.chain([first_args_ctx], arg_iterator):
                 self._pre_generation_step(args_ctx)
@@ -1189,23 +1276,26 @@ class DiffusionRenderLoop:
                             if image_seed.frame_index == 0:
                                 # Preform on first frame write
 
-                                animation_filenames_message = \
-                                    '\n'.join(f'Beginning Writes To Animation: "{f}"' for f in anim_writer.filenames)
+                                if not self.disable_writes:
 
-                                if self.config.output_configs:
+                                    animation_filenames_message = \
+                                        '\n'.join(f'Beginning Writes To Animation: "{f}"'
+                                                  for f in anim_writer.filenames)
 
-                                    _messages.log(animation_filenames_message)
+                                    if self.config.output_configs:
 
-                                    for idx, filename in enumerate(anim_writer.filenames):
-                                        self._write_animation_config_file(
-                                            filename=os.path.splitext(filename)[0] + '.txt',
-                                            batch_idx=idx,
-                                            generation_result=generation_result)
-                                else:
-                                    _messages.log(animation_filenames_message, underline=True)
+                                        _messages.log(animation_filenames_message)
 
-                                for filename in anim_writer.filenames:
-                                    self._written_animations.append(os.path.abspath(filename))
+                                        for idx, filename in enumerate(anim_writer.filenames):
+                                            self._write_animation_config_file(
+                                                filename=os.path.splitext(filename)[0] + '.txt',
+                                                batch_idx=idx,
+                                                generation_result=generation_result)
+                                    else:
+                                        _messages.log(animation_filenames_message, underline=True)
+
+                                    for filename in anim_writer.filenames:
+                                        self._written_animations.append(os.path.abspath(filename))
 
                             self._write_animation_frame(args_ctx, image_seed, generation_result)
 
