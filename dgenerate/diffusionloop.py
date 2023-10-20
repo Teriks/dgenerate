@@ -193,7 +193,7 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
 
     seeds: _types.Integers = gen_seeds(1)
     guidance_scales: _types.Floats = [_pipelinewrapper.DEFAULT_GUIDANCE_SCALE]
-    inference_steps_values: _types.Integers = [_pipelinewrapper.DEFAULT_INFERENCE_STEPS]
+    inference_steps: _types.Integers = [_pipelinewrapper.DEFAULT_INFERENCE_STEPS]
 
     image_seeds: _types.OptionalUris = None
     image_seed_strengths: _types.OptionalFloats = None
@@ -529,7 +529,7 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
                 len(self.prompts) *
                 len(self.seeds) *
                 len(self.guidance_scales) *
-                len(self.inference_steps_values))
+                len(self.inference_steps))
 
     def iterate_diffusion_args(self, **overrides) -> typing.Generator[_pipelinewrapper.DiffusionArguments, None, None]:
         """
@@ -565,7 +565,7 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
             guidance_scale=ov('guidance_scale', self.guidance_scales),
             image_guidance_scale=ov('image_guidance_scale', self.image_guidance_scales),
             guidance_rescale=ov('guidance_rescale', self.guidance_rescales),
-            inference_steps=ov('inference_steps', self.inference_steps_values),
+            inference_steps=ov('inference_steps', self.inference_steps),
             sdxl_high_noise_fraction=ov('sdxl_high_noise_fraction', self.sdxl_high_noise_fractions),
             sdxl_refiner_inference_steps=ov('sdxl_refiner_inference_steps', self.sdxl_refiner_inference_steps),
             sdxl_refiner_guidance_scale=ov('sdxl_refiner_guidance_scale', self.sdxl_refiner_guidance_scales),

@@ -8,7 +8,7 @@ from dgenerate import \
 config = DiffusionRenderLoopConfig()
 
 config.model_path = 'stabilityai/stable-diffusion-2'
-config.inference_steps_values = [40]
+config.inference_steps = [40]
 config.guidance_scales = [5]
 config.prompts = [Prompt().parse('an astronaut walking on the moon; fake')]
 config.output_path = ''

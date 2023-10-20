@@ -973,7 +973,6 @@ actions.append(
     parser.add_argument('-ifs', '--inference-steps', action='store', nargs='+',
                         default=[_pipelinewrapper.DEFAULT_INFERENCE_STEPS],
                         type=_type_inference_steps,
-                        dest='inference_steps_values',
                         metavar="INTEGER",
                         help="""Lists of inference steps values to try. The amount of inference (de-noising) steps
                         effects image clarity to a degree, higher values bring the image closer to what
