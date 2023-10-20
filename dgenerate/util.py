@@ -224,7 +224,7 @@ _MEM_FACTORS = {
 }
 
 
-def get_used_memory(measure='b', pid = os.getpid()) -> float:
+def get_used_memory(measure='b', pid=os.getpid()) -> int:
     """
     Get the memory used by a process in a selectable unit.
 
@@ -239,7 +239,7 @@ def get_used_memory(measure='b', pid = os.getpid()) -> float:
     return psutil.Process(pid).memory_info().rss / _MEM_FACTORS[measure.strip().lower()]
 
 
-def get_used_memory_percent(pid = os.getpid()) -> float:
+def get_used_memory_percent(pid=os.getpid()) -> float:
     """
     Get the percentage of memory used by a process.
 
@@ -260,6 +260,28 @@ def get_available_memory(measure='b'):
     :return: Requested value.
     """
     return psutil.virtual_memory().available / _MEM_FACTORS[measure.strip().lower()]
+
+
+def bytes_best_human_unit(byte_count: int, delimiter='') -> str:
+    """
+    Return a string for humans from a byte count using an appropriate unit: IE 1KB, 1MB, 1GB etc.
+
+    :param delimiter: add this string between the value and the unit
+    :param byte_count: the byte count
+    :return: formated string
+    """
+    gb = byte_count / 1000 ** 3
+    mb = byte_count / 1000 ** 2
+    kb = byte_count / 1000
+
+    if gb > 1:
+        return f'{round(gb, 2)}{delimiter}GB'
+    if mb > 1:
+        return f'{round(mb, 2)}{delimiter}MB'
+    if kb > 1:
+        return f'{round(kb, 2)}{delimiter}KB'
+
+    return f'{byte_count}{delimiter}B'
 
 
 @contextlib.contextmanager

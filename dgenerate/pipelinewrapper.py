@@ -25,6 +25,8 @@ import os
 import re
 import typing
 
+import dgenerate.pipelinewrapper
+
 try:
     import jax
     import jaxlib
@@ -51,6 +53,7 @@ from dgenerate.memoize import memoize as _memoize
 import dgenerate.prompt as _prompt
 import dgenerate.types as _types
 import dgenerate.util as _util
+import dgenerate.hfutil as _hfutil
 import diffusers
 
 DEFAULT_INFERENCE_STEPS = 30
@@ -62,29 +65,57 @@ DEFAULT_X4_UPSCALER_NOISE_LEVEL = 20
 DEFAULT_OUTPUT_WIDTH = 512
 DEFAULT_OUTPUT_HEIGHT = 512
 
-TORCH_MODEL_CACHE = dict()
+_TORCH_PIPELINE_CACHE = dict()
 """Global in memory cache for torch diffusers pipelines"""
 
-FLAX_MODEL_CACHE = dict()
+_FLAX_PIPELINE_CACHE = dict()
 """Global in memory cache for flax diffusers pipelines"""
 
-MODEL_CACHE_SIZE = 0
+_PIPELINE_CACHE_SIZE = 0
+"""Estimated memory consumption in bytes of all pipelines cached in memory"""
 
-TORCH_CONTROL_NET_CACHE = dict()
+_TORCH_CONTROL_NET_CACHE = dict()
 """Global in memory cache for torch ControlNet models"""
 
-FLAX_CONTROL_NET_CACHE = dict()
+_FLAX_CONTROL_NET_CACHE = dict()
 """Global in memory cache for flax ControlNet models"""
 
-CONTROL_NET_CACHE_SIZE = 0
+_CONTROL_NET_CACHE_SIZE = 0
+"""Estimated memory consumption in bytes of all ControlNet models cached in memory"""
 
-TORCH_VAE_CACHE = dict()
+_TORCH_VAE_CACHE = dict()
 """Global in memory cache for torch VAE models"""
 
-FLAX_VAE_CACHE = dict()
+_FLAX_VAE_CACHE = dict()
 """Global in memory cache for flax VAE models"""
 
-VAE_CACHE_SIZE = 0
+_VAE_CACHE_SIZE = 0
+"""Estimated memory consumption in bytes of all VAE models cached in memory"""
+
+
+def pipeline_cache_size() -> int:
+    """
+    Return the estimated memory usage in bytes of all diffusers pipelines currently cached in memory.
+    :return: memory usage in bytes.
+    """
+    return _PIPELINE_CACHE_SIZE
+
+
+def vae_cache_size() -> int:
+    """
+    Return the estimated memory usage in bytes of all user specified VAEs currently cached in memory.
+    :return:  memory usage in bytes.
+    """
+    return _VAE_CACHE_SIZE
+
+
+def control_net_cache_size() -> int:
+    """
+    Return the estimated memory usage in bytes of all user specified ControlNet models currently cached in memory.
+    :return:
+    """
+    return _CONTROL_NET_CACHE_SIZE
+
 
 MEMORY_CACHE_CONSTRAINTS = ['used_percent > 25']
 """
@@ -92,16 +123,14 @@ Cache constraint expressions for when to clear all pipeline caches via :py:meth:
 
 If any of these constraints are met, a call to :py:meth:`.enforce_cache_constraints` will call
 :py:meth:`.clear_all_caches` and force a garbage collection.
-
 """
 
-MODEL_MEMORY_CACHE_CONSTRAINTS = []
+PIPELINE_MEMORY_CACHE_CONSTRAINTS = []
 """
 Cache constraint expressions for when to clear all model caches via :py:meth:`dgenerate.util.memory_constraints`
 
 If any of these constraints are met, a call to :py:meth:`.enforce_cache_constraints` will call
-:py:meth:`.clear_model_caches` and force a garbage collection.
-
+:py:meth:`.clear_pipeline_caches` and force a garbage collection.
 """
 
 CONTROL_NET_MEMORY_CACHE_CONSTRAINTS = []
@@ -110,7 +139,6 @@ Cache constraint expressions for when to clear all model caches via :py:meth:`dg
 
 If any of these constraints are met, a call to :py:meth:`.enforce_cache_constraints` will call
 :py:meth:`.clear_control_net_caches` and force a garbage collection.
-
 """
 
 VAE_MEMORY_CACHE_CONSTRAINTS = []
@@ -119,22 +147,23 @@ Cache constraint expressions for when to clear all model caches via :py:meth:`dg
 
 If any of these constraints are met, a call to :py:meth:`.enforce_cache_constraints` will call
 :py:meth:`.clear_vae_caches` and force a garbage collection.
-
 """
 
 
-def clear_model_caches(collect=True):
+def clear_pipeline_caches(collect=True):
     """
-    Clear TORCH_MODEL_CACHE and FLAX_MODEL_CACHE and then garbage collect.
+    Clear TORCH_PIPELINE_CACHE and FLAX_PIPELINE_CACHE and then garbage collect.
 
     :param collect: Call :py:meth:`gc.collect` ?
     """
-    TORCH_MODEL_CACHE.clear()
-    TORCH_CONTROL_NET_CACHE.clear()
+    dgenerate.pipelinewrapper._TORCH_PIPELINE_CACHE.clear()
+    dgenerate.pipelinewrapper._FLAX_PIPELINE_CACHE.clear()
+
+    dgenerate.pipelinewrapper._PIPELINE_CACHE_SIZE = 0
 
     if collect:
         _messages.debug_log(
-            f'{_types.fullname(clear_model_caches)} calling gc.collect() by request')
+            f'{_types.fullname(clear_pipeline_caches)} calling gc.collect() by request')
 
         gc.collect()
 
@@ -145,8 +174,10 @@ def clear_control_net_caches(collect=True):
 
     :param collect: Call :py:meth:`gc.collect` ?
     """
-    TORCH_CONTROL_NET_CACHE.clear()
-    FLAX_CONTROL_NET_CACHE.clear()
+    dgenerate.pipelinewrapper._TORCH_CONTROL_NET_CACHE.clear()
+    dgenerate.pipelinewrapper._FLAX_CONTROL_NET_CACHE.clear()
+
+    dgenerate.pipelinewrapper._CONTROL_NET_CACHE_SIZE = 0
 
     if collect:
         _messages.debug_log(
@@ -161,8 +192,10 @@ def clear_vae_caches(collect=True):
 
     :param collect: Call :py:meth:`gc.collect` ?
     """
-    TORCH_VAE_CACHE.clear()
-    FLAX_VAE_CACHE.clear()
+    dgenerate.pipelinewrapper._TORCH_VAE_CACHE.clear()
+    dgenerate.pipelinewrapper._FLAX_VAE_CACHE.clear()
+
+    dgenerate.pipelinewrapper._VAE_CACHE_SIZE = 0
 
     if collect:
         _messages.debug_log(
@@ -175,8 +208,8 @@ def clear_all_caches(collect=True):
     """
     Clear all in memory model caches and garbage collect.
 
-        * TORCH_MODEL_CACHE
-        * FLAX_MODEL_CACHE
+        * TORCH_PIPELINE_CACHE
+        * FLAX_PIPELINE_CACHE
         * TORCH_CONTROL_NET_CACHE
         * FLAX_CONTROL_NET_CACHE
         * TORCH_VAE_CACHE
@@ -185,18 +218,31 @@ def clear_all_caches(collect=True):
     :param collect: Call :py:meth:`gc.collect` ?
 
     """
-    TORCH_MODEL_CACHE.clear()
-    TORCH_CONTROL_NET_CACHE.clear()
-    FLAX_CONTROL_NET_CACHE.clear()
-    TORCH_VAE_CACHE.clear()
-    FLAX_VAE_CACHE.clear()
-    FLAX_MODEL_CACHE.clear()
+    dgenerate.pipelinewrapper._TORCH_PIPELINE_CACHE.clear()
+    dgenerate.pipelinewrapper._FLAX_PIPELINE_CACHE.clear()
+    dgenerate.pipelinewrapper._TORCH_CONTROL_NET_CACHE.clear()
+    dgenerate.pipelinewrapper._FLAX_CONTROL_NET_CACHE.clear()
+    dgenerate.pipelinewrapper._TORCH_VAE_CACHE.clear()
+    dgenerate.pipelinewrapper._FLAX_VAE_CACHE.clear()
+
+    dgenerate.pipelinewrapper._PIPELINE_CACHE_SIZE = 0
+    dgenerate.pipelinewrapper._VAE_CACHE_SIZE = 0
+    dgenerate.pipelinewrapper._CONTROL_NET_CACHE_SIZE = 0
 
     if collect:
         _messages.debug_log(
             f'{_types.fullname(clear_all_caches)} calling gc.collect() by request')
 
         gc.collect()
+
+
+def _debug_system_memory():
+    _messages.debug_log(f'Used Memory: '
+                        f'{_util.bytes_best_human_unit(_util.get_used_memory())}')
+    _messages.debug_log(f'Used Percentage: '
+                        f'{_util.get_used_memory_percent()}')
+    _messages.debug_log(f'Available Memory: '
+                        f'{_util.bytes_best_human_unit(_util.get_available_memory())}')
 
 
 def enforce_cache_constraints(collect=True):
@@ -209,62 +255,96 @@ def enforce_cache_constraints(collect=True):
 
     m_name = __name__
 
-    _messages.debug_log(f'Enforcing {m_name} cache memory constraints:')
+    _messages.debug_log(f'Enforcing {m_name}.MEMORY_CACHE_CONSTRAINTS =', MEMORY_CACHE_CONSTRAINTS)
 
-    _messages.debug_log(f'Used Memory GB: '
-                        f'{_util.get_used_memory("GB")}')
-    _messages.debug_log(f'Used Percentage: '
-                        f'{_util.get_used_memory_percent()}')
-    _messages.debug_log(f'Available Memory GB: '
-                        f'{_util.get_available_memory("GB")}')
+    _debug_system_memory()
 
-    _messages.debug_log(f'(bytes) {m_name}.MODEL_CACHE_SIZE =', MODEL_CACHE_SIZE)
-    _messages.debug_log(f'(bytes) {m_name}.VAE_CACHE_SIZE =', VAE_CACHE_SIZE)
-    _messages.debug_log(f'(bytes) {m_name}.CONTROL_NET_CACHE_SIZE =', CONTROL_NET_CACHE_SIZE)
-
-    _messages.debug_log(f'{m_name}.MEMORY_CACHE_CONSTRAINTS =', MEMORY_CACHE_CONSTRAINTS)
-    _messages.debug_log(f'{m_name}.MODEL_MEMORY_CACHE_CONSTRAINTS =', MODEL_MEMORY_CACHE_CONSTRAINTS)
-    _messages.debug_log(f'{m_name}.VAE_MEMORY_CACHE_CONSTRAINTS =', VAE_MEMORY_CACHE_CONSTRAINTS)
-    _messages.debug_log(f'{m_name}.CONTROL_NET_MEMORY_CACHE_CONSTRAINTS =', CONTROL_NET_MEMORY_CACHE_CONSTRAINTS)
-
-    cleared_any = False
     if _util.memory_constraints(MEMORY_CACHE_CONSTRAINTS):
         _messages.debug_log(f'{m_name}.MEMORY_CACHE_CONSTRAINTS '
                             f'{MEMORY_CACHE_CONSTRAINTS} met, '
                             f'calling {_types.fullname(clear_all_caches)}.')
 
-        clear_all_caches(collect=False)
-        cleared_any = True
-    else:
-        if _util.memory_constraints(MODEL_MEMORY_CACHE_CONSTRAINTS):
-            _messages.debug_log(f'{m_name}.MODEL_MEMORY_CACHE_CONSTRAINTS '
-                                f'{MODEL_MEMORY_CACHE_CONSTRAINTS} met, '
-                                f'calling {_types.fullname(clear_model_caches)}.')
+        clear_all_caches(collect=collect)
+        return True
 
-            clear_model_caches(collect=False)
-            cleared_any = True
-        if _util.memory_constraints(CONTROL_NET_MEMORY_CACHE_CONSTRAINTS):
-            _messages.debug_log(f'{m_name}.CONTROL_NET_MEMORY_CACHE_CONSTRAINTS '
-                                f'{CONTROL_NET_MEMORY_CACHE_CONSTRAINTS} met, '
-                                f'calling {_types.fullname(clear_control_net_caches)}.')
+    return False
 
-            clear_control_net_caches(collect=False)
-            cleared_any = True
-        if _util.memory_constraints(VAE_MEMORY_CACHE_CONSTRAINTS):
-            _messages.debug_log(f'{m_name}.VAE_MEMORY_CACHE_CONSTRAINTS '
-                                f'{VAE_MEMORY_CACHE_CONSTRAINTS} met, '
-                                f'calling {_types.fullname(clear_vae_caches)}.')
 
-            clear_vae_caches(collect=False)
-            cleared_any = True
+def enforce_pipeline_cache_constraints(new_pipeline_size, collect=True):
+    m_name = __name__
 
-    if collect and cleared_any:
-        _messages.debug_log(
-            f'{_types.fullname(enforce_cache_constraints)} calling gc.collect() by request')
+    _messages.debug_log(f'Enforcing {m_name}.PIPELINE_MEMORY_CACHE_CONSTRAINTS =',
+                        PIPELINE_MEMORY_CACHE_CONSTRAINTS)
 
-        gc.collect()
+    _messages.debug_log(f'cache_size =',
+                        _util.bytes_best_human_unit(pipeline_cache_size()))
 
-    return cleared_any
+    _messages.debug_log(f'pipeline_size =',
+                        _util.bytes_best_human_unit(new_pipeline_size))
+
+    _debug_system_memory()
+
+    if _util.memory_constraints(PIPELINE_MEMORY_CACHE_CONSTRAINTS,
+                                extra_vars={'cache_size': pipeline_cache_size(),
+                                            'pipeline_size': new_pipeline_size}):
+        _messages.debug_log(f'{m_name}.PIPELINE_MEMORY_CACHE_CONSTRAINTS '
+                            f'{PIPELINE_MEMORY_CACHE_CONSTRAINTS} met, '
+                            f'calling {_types.fullname(clear_pipeline_caches)}.')
+        clear_pipeline_caches(collect=collect)
+        return True
+    return False
+
+
+def enforce_vae_cache_constraints(new_vae_size, collect=True):
+    m_name = __name__
+
+    _messages.debug_log(f'Enforcing {m_name}.VAE_MEMORY_CACHE_CONSTRAINTS =',
+                        VAE_MEMORY_CACHE_CONSTRAINTS)
+
+    _messages.debug_log(f'cache_size =',
+                        _util.bytes_best_human_unit(vae_cache_size()))
+
+    _messages.debug_log(f'vae_size =',
+                        _util.bytes_best_human_unit(new_vae_size))
+
+    _debug_system_memory()
+
+    if _util.memory_constraints(VAE_MEMORY_CACHE_CONSTRAINTS,
+                                extra_vars={'cache_size': vae_cache_size(),
+                                            'vae_size': new_vae_size}):
+        _messages.debug_log(f'{m_name}.VAE_MEMORY_CACHE_CONSTRAINTS '
+                            f'{VAE_MEMORY_CACHE_CONSTRAINTS} met, '
+                            f'calling {_types.fullname(clear_vae_caches)}.')
+
+        clear_vae_caches(collect=collect)
+        return True
+    return False
+
+
+def enforce_control_net_cache_constraints(new_control_net_size, collect=True):
+    m_name = __name__
+
+    _messages.debug_log(f'Enforcing {m_name}.CONTROL_NET_MEMORY_CACHE_CONSTRAINTS =',
+                        CONTROL_NET_MEMORY_CACHE_CONSTRAINTS)
+
+    _messages.debug_log(f'cache_size =',
+                        _util.bytes_best_human_unit(control_net_cache_size()))
+
+    _messages.debug_log(f'control_net_size =',
+                        _util.bytes_best_human_unit(new_control_net_size))
+
+    _debug_system_memory()
+
+    if _util.memory_constraints(CONTROL_NET_MEMORY_CACHE_CONSTRAINTS,
+                                extra_vars={'cache_size': control_net_cache_size(),
+                                            'control_net_size': new_control_net_size}):
+        _messages.debug_log(f'{m_name}.CONTROL_NET_MEMORY_CACHE_CONSTRAINTS '
+                            f'{CONTROL_NET_MEMORY_CACHE_CONSTRAINTS} met, '
+                            f'calling {_types.fullname(clear_control_net_caches)}.')
+
+        clear_control_net_caches(collect=collect)
+        return True
+    return False
 
 
 class OutOfMemoryError(Exception):
@@ -624,7 +704,7 @@ class FlaxControlNetPath:
         self.from_torch = from_torch
         self.scale = scale
 
-    @_memoize(FLAX_CONTROL_NET_CACHE,
+    @_memoize(_FLAX_CONTROL_NET_CACHE,
               exceptions={'local_files_only'},
               hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _struct_hasher}),
               on_hit=lambda key, hit: _simple_cache_hit_debug("Flax ControlNet", key, hit),
@@ -635,6 +715,19 @@ class FlaxControlNetPath:
         if single_file_load_path:
             raise NotImplementedError('Flax --control-nets do not support single file loads from disk.')
         else:
+
+            estimated_memory_usage = _hfutil.estimate_model_memory_use(
+                path=self.model,
+                revision=self.revision,
+                subfolder=self.subfolder,
+                flax=not self.from_torch,
+                use_auth_token=kwargs.get('use_auth_token'),
+                local_files_only=kwargs.get('local_files_only')
+            )
+
+            enforce_control_net_cache_constraints(
+                new_control_net_size=estimated_memory_usage)
+
             new_net: diffusers.FlaxControlNetModel = \
                 diffusers.FlaxControlNetModel.from_pretrained(self.model,
                                                               revision=self.revision,
@@ -642,6 +735,11 @@ class FlaxControlNetPath:
                                                               dtype=flax_dtype_fallback if self.dtype is None else self.dtype,
                                                               from_pt=self.from_torch,
                                                               **kwargs)
+
+        _messages.debug_log('Estimated Flax ControlNet Memory Use:',
+                            _util.bytes_best_human_unit(estimated_memory_usage))
+
+        dgenerate.pipelinewrapper._CONTROL_NET_CACHE_SIZE += estimated_memory_usage
         return new_net
 
 
@@ -708,7 +806,7 @@ class TorchControlNetPath:
         self.start = start
         self.end = end
 
-    @_memoize(TORCH_CONTROL_NET_CACHE,
+    @_memoize(_TORCH_CONTROL_NET_CACHE,
               exceptions={'local_files_only'},
               hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _struct_hasher}),
               on_hit=lambda key, hit: _simple_cache_hit_debug("Torch ControlNet", key, hit),
@@ -718,12 +816,36 @@ class TorchControlNetPath:
         single_file_load_path = _is_single_file_model_load(self.model)
 
         if single_file_load_path:
+
+            estimated_memory_usage = _hfutil.estimate_model_memory_use(
+                path=self.model,
+                revision=self.revision,
+                use_auth_token=kwargs.get('use_auth_token'),
+                local_files_only=kwargs.get('local_files_only')
+            )
+
+            enforce_control_net_cache_constraints(
+                new_control_net_size=estimated_memory_usage)
+
             new_net: diffusers.ControlNetModel = \
                 diffusers.ControlNetModel.from_single_file(self.model,
                                                            revision=self.revision,
                                                            torch_dtype=torch_dtype_fallback if self.dtype is None else self.dtype,
                                                            **kwargs)
         else:
+
+            estimated_memory_usage = _hfutil.estimate_model_memory_use(
+                path=self.model,
+                revision=self.revision,
+                variant=self.variant,
+                subfolder=self.subfolder,
+                use_auth_token=kwargs.get('use_auth_token'),
+                local_files_only=kwargs.get('local_files_only')
+            )
+
+            enforce_control_net_cache_constraints(
+                new_control_net_size=estimated_memory_usage)
+
             new_net: diffusers.ControlNetModel = \
                 diffusers.ControlNetModel.from_pretrained(self.model,
                                                           revision=self.revision,
@@ -731,6 +853,11 @@ class TorchControlNetPath:
                                                           subfolder=self.subfolder,
                                                           torch_dtype=torch_dtype_fallback if self.dtype is None else self.dtype,
                                                           **kwargs)
+
+        _messages.debug_log('Estimated Torch ControlNet Memory Use:',
+                            _util.bytes_best_human_unit(estimated_memory_usage))
+
+        dgenerate.pipelinewrapper._CONTROL_NET_CACHE_SIZE += estimated_memory_usage
         return new_net
 
 
@@ -1071,7 +1198,7 @@ def _uri_hash_with_parser(parser):
     return hasher
 
 
-@_memoize(TORCH_VAE_CACHE,
+@_memoize(_TORCH_VAE_CACHE,
           exceptions={'local_files_only'},
           hasher=lambda args: _d_memoize.args_cache_key(args,
                                                         {'uri': _uri_hash_with_parser(parse_torch_vae_uri)}),
@@ -1111,11 +1238,20 @@ def _load_torch_vae(uri: _types.Uri,
         if parsed_concept.subfolder is not None:
             raise NotImplementedError('Single file VAE loads do not support the subfolder option.')
 
+        estimated_memory_use = _hfutil.estimate_model_memory_use(
+            path=path,
+            revision=parsed_concept.revision,
+            local_files_only=local_files_only,
+            use_auth_token=use_auth_token
+        )
+
+        enforce_vae_cache_constraints(new_vae_size=estimated_memory_use)
+
         if encoder is diffusers.AutoencoderKL:
             # There is a bug in their cast
             vae = encoder.from_single_file(path,
                                            revision=parsed_concept.revision,
-                                           local_files_only=local_files_only)\
+                                           local_files_only=local_files_only) \
                 .to(dtype=parsed_concept.dtype, non_blocking=False)
         else:
             vae = encoder.from_single_file(path,
@@ -1124,6 +1260,18 @@ def _load_torch_vae(uri: _types.Uri,
                                            local_files_only=local_files_only)
 
     else:
+
+        estimated_memory_use = _hfutil.estimate_model_memory_use(
+            path=path,
+            revision=parsed_concept.revision,
+            variant=parsed_concept.variant,
+            subfolder=parsed_concept.subfolder,
+            local_files_only=local_files_only,
+            use_auth_token=use_auth_token
+        )
+
+        enforce_vae_cache_constraints(new_vae_size=estimated_memory_use)
+
         vae = encoder.from_pretrained(path,
                                       revision=parsed_concept.revision,
                                       variant=parsed_concept.variant,
@@ -1131,10 +1279,15 @@ def _load_torch_vae(uri: _types.Uri,
                                       subfolder=parsed_concept.subfolder,
                                       use_auth_token=use_auth_token,
                                       local_files_only=local_files_only)
+
+    _messages.debug_log('Estimated Torch VAE Memory Use:',
+                        _util.bytes_best_human_unit(estimated_memory_use))
+
+    dgenerate.pipelinewrapper._VAE_CACHE_SIZE += estimated_memory_use
     return vae
 
 
-@_memoize(FLAX_VAE_CACHE,
+@_memoize(_FLAX_VAE_CACHE,
           exceptions={'local_files_only'},
           hasher=lambda args: _d_memoize.args_cache_key(args,
                                                         {'uri': _uri_hash_with_parser(parse_flax_vae_uri)}),
@@ -1169,17 +1322,46 @@ def _load_flax_vae(uri: _types.Uri,
         # in the future this will be supported?
         if parsed_concept.subfolder is not None:
             raise NotImplementedError('Single file VAE loads do not support the subfolder option.')
+
+        estimated_memory_use = _hfutil.estimate_model_memory_use(
+            path=path,
+            revision=parsed_concept.revision,
+            local_files_only=local_files_only,
+            use_auth_token=use_auth_token,
+            flax=True
+        )
+
+        enforce_vae_cache_constraints(new_vae_size=estimated_memory_use)
+
         vae = encoder.from_single_file(path,
                                        revision=parsed_concept.revision,
                                        dtype=parsed_concept.dtype,
+                                       use_auth_token=use_auth_token,
                                        local_files_only=local_files_only)
     else:
+
+        estimated_memory_use = _hfutil.estimate_model_memory_use(
+            path=path,
+            revision=parsed_concept.revision,
+            subfolder=parsed_concept.subfolder,
+            local_files_only=local_files_only,
+            use_auth_token=use_auth_token,
+            flax=True
+        )
+
+        enforce_vae_cache_constraints(new_vae_size=estimated_memory_use)
+
         vae = encoder.from_pretrained(path,
                                       revision=parsed_concept.revision,
                                       dtype=parsed_concept.dtype,
                                       subfolder=parsed_concept.subfolder,
                                       use_auth_token=use_auth_token,
                                       local_files_only=local_files_only)
+
+    _messages.debug_log('Estimated Flax VAE Memory Use:',
+                        _util.bytes_best_human_unit(estimated_memory_use))
+
+    dgenerate.pipelinewrapper._VAE_CACHE_SIZE += estimated_memory_use
     return vae
 
 
@@ -1305,7 +1487,65 @@ def _uri_list_hash_with_parser(parser):
     return hasher
 
 
-@_memoize(TORCH_MODEL_CACHE,
+def _estimate_pipeline_memory_use(
+        model_path,
+        revision,
+        variant=None,
+        subfolder=None,
+        vae_uri=None,
+        lora_uris=None,
+        textual_inversion_uris=None,
+        safety_checker=False,
+        auth_token=None,
+        extra_args=None,
+        local_files_only=False,
+        flax=False):
+    usage = _hfutil.estimate_model_memory_use(
+        path=model_path,
+        revision=revision,
+        variant=variant,
+        subfolder=subfolder,
+        include_vae=not vae_uri,
+        safety_checker=safety_checker,
+        include_text_encoder=not extra_args or 'text_encoder' not in extra_args,
+        include_text_encoder_2=not extra_args or 'text_encoder_2' not in extra_args,
+        use_auth_token=auth_token,
+        local_files_only=local_files_only,
+        flax=flax
+    )
+
+    if lora_uris:
+        for lora_uri in lora_uris:
+            parsed = parse_lora_uri(lora_uri)
+
+            usage += _hfutil.estimate_model_memory_use(
+                path=parsed.model,
+                revision=parsed.revision,
+                subfolder=parsed.subfolder,
+                weight_name=parsed.weight_name,
+                use_auth_token=auth_token,
+                local_files_only=local_files_only,
+                flax=flax
+            )
+
+    if textual_inversion_uris:
+        for textual_inversion_uri in textual_inversion_uris:
+            parsed = parse_textual_inversion_uri(textual_inversion_uri)
+
+            usage += _hfutil.estimate_model_memory_use(
+                path=parsed.model,
+                revision=parsed.revision,
+                subfolder=parsed.subfolder,
+                weight_name=parsed.weight_name,
+                use_auth_token=auth_token,
+                local_files_only=local_files_only,
+                flax=flax
+            )
+
+    return usage
+
+
+@_memoize(_TORCH_PIPELINE_CACHE,
           exceptions={'local_files_only'},
           hasher=lambda args: _d_memoize.args_cache_key(args,
                                                         {'vae_uri': _uri_hash_with_parser(parse_torch_vae_uri),
@@ -1397,7 +1637,26 @@ def _create_torch_diffusion_pipeline(pipeline_type,
             # Should be impossible
             raise NotImplementedError('Pipeline type not implemented.')
 
-    _messages.debug_log(f'Creating Torch Pipeline: "{pipeline_class.__name__}"')
+    estimated_memory_usage = _estimate_pipeline_memory_use(
+        model_path=model_path,
+        revision=revision,
+        variant=variant,
+        subfolder=model_subfolder,
+        vae_uri=vae_uri,
+        lora_uris=lora_uris,
+        textual_inversion_uris=textual_inversion_uris,
+        safety_checker=True,  # it is always going to get loaded, monkey patched out currently
+        auth_token=auth_token,
+        extra_args=extra_args,
+        local_files_only=local_files_only
+    )
+
+    _messages.debug_log(
+        f'Creating Torch Pipeline: "{pipeline_class.__name__}", '
+        f'Estimated CPU Side Memory Use: {_util.bytes_best_human_unit(estimated_memory_usage)}')
+
+    enforce_pipeline_cache_constraints(
+        new_pipeline_size=estimated_memory_usage)
 
     # Block invalid Textual Inversion and LoRA usage
 
@@ -1532,11 +1791,14 @@ def _create_torch_diffusion_pipeline(pipeline_type,
     elif model_cpu_offload and 'cuda' in device:
         pipeline.enable_model_cpu_offload(device=device)
 
+    dgenerate.pipelinewrapper._PIPELINE_CACHE_SIZE += \
+        estimated_memory_usage
+
     _messages.debug_log(f'Finished Creating Torch Pipeline: "{pipeline_class.__name__}"')
     return pipeline, parsed_control_net_uris
 
 
-@_memoize(FLAX_MODEL_CACHE,
+@_memoize(_FLAX_PIPELINE_CACHE,
           exceptions={'local_files_only'},
           hasher=lambda args: _d_memoize.args_cache_key(args,
                                                         {'vae_uri': _uri_hash_with_parser(parse_flax_vae_uri),
@@ -1580,7 +1842,24 @@ def _create_flax_diffusion_pipeline(pipeline_type,
     else:
         raise NotImplementedError('Pipeline type not implemented.')
 
-    _messages.debug_log(f'Creating Flax Pipeline: "{pipeline_class.__name__}"')
+    estimated_memory_usage = _estimate_pipeline_memory_use(
+        model_path=model_path,
+        revision=revision,
+        subfolder=model_subfolder,
+        vae_uri=vae_uri,
+        safety_checker=True,  # it is always going to get loaded, monkey patched out currently
+        auth_token=auth_token,
+        extra_args=extra_args,
+        local_files_only=local_files_only,
+        flax=True
+    )
+
+    _messages.debug_log(
+        f'Creating Flax Pipeline: "{pipeline_class.__name__}", '
+        f'Estimated CPU Side Memory Use: {_util.bytes_best_human_unit(estimated_memory_usage)}')
+
+    enforce_pipeline_cache_constraints(
+        new_pipeline_size=estimated_memory_usage)
 
     kwargs = {}
     vae_params = None
@@ -1643,6 +1922,9 @@ def _create_flax_diffusion_pipeline(pipeline_type,
 
     if not safety_checker:
         pipeline.safety_checker = None
+
+    dgenerate.pipelinewrapper._PIPELINE_CACHE_SIZE += \
+        estimated_memory_usage
 
     _messages.debug_log(f'Finished Creating Flax Pipeline: "{pipeline_class.__name__}"')
     return pipeline, params, parsed_control_net_uris
@@ -2050,7 +2332,6 @@ class DiffusionPipelineWrapper:
 
         DiffusionPipelineWrapper._LAST_CALLED_PIPE = pipeline
         return r
-
 
     def local_files_only(self) -> bool:
         """

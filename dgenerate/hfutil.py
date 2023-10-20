@@ -22,8 +22,10 @@ import glob
 import os
 import pathlib
 
-import dgenerate.messages as _messages
 import huggingface_hub
+
+import dgenerate.messages as _messages
+import dgenerate.util as _util
 
 
 def fetch_model_files_with_size(repo_id,
@@ -31,11 +33,12 @@ def fetch_model_files_with_size(repo_id,
                                 variant=None,
                                 subfolder=None,
                                 weight_name=None,
-                                auth_token=None,
-                                extensions=None):
+                                use_auth_token=None,
+                                extensions=None,
+                                local_files_only=False):
     __args_debug = locals()
     _messages.debug_log(
-        f'dgenerate.hfutil.fetch_model_files_with_size({__args_debug})')
+        f'{_util.fullname(fetch_model_files_with_size)}({__args_debug})')
 
     def post_discover_check(found):
         if not isinstance(found, str):
@@ -74,7 +77,7 @@ def fetch_model_files_with_size(repo_id,
 
     def enumerate_file(f):
         yield os.path.join(subfolder if subfolder else '',
-                           os.path.basename(repo_id)), os.path.getsize(repo_id)
+                           os.path.basename(f)), os.path.getsize(f)
 
     if os.path.isfile(repo_id):
         yield from enumerate_file(repo_id)
@@ -122,6 +125,9 @@ def fetch_model_files_with_size(repo_id,
             )
 
         lora = post_discover_check(lora)
+
+        top_level_weights = None
+        other = None
 
         if not isinstance(lora, str):
 
@@ -181,15 +187,15 @@ def fetch_model_files_with_size(repo_id,
             # or was found, or whatever weight_name was found
             yield from yield_with_check(
                 enumerate_directory(os.path.dirname(other)))
-        else:
+        elif not local_files_only:
             # Nothing matching what we are expecting in the
             # huggingface cache, ask the API
 
             _messages.debug_log('Fetching Model File Info with huggingface API call:',
-                                'api.list_files_info('+
-                                str({'repo_id': repo_id, 'revision': revision, 'paths': subfolder})+')')
+                                'api.list_files_info(' +
+                                str({'repo_id': repo_id, 'revision': revision, 'paths': subfolder}) + ')')
 
-            api = huggingface_hub.HfApi(token=auth_token)
+            api = huggingface_hub.HfApi(token=use_auth_token)
 
             info_entries = list(api.list_files_info(repo_id,
                                                     revision=revision,
@@ -216,22 +222,27 @@ def fetch_model_files_with_size(repo_id,
                         yield normalized_filename, info.size
             except Exception as e:
                 _messages.debug_log('huggingface API error: ', e)
+        else:
+            yield from ()
 
 
 def estimate_model_memory_use(path,
                               revision='main',
                               variant=None,
                               flax=False,
-                              auth_token=None,
+                              use_auth_token=None,
                               safety_checker=False,
                               include_vae=True,
                               include_text_encoder=True,
                               include_text_encoder_2=True,
                               subfolder=None,
                               weight_name=None,
-                              safetensors=True):
+                              safetensors=True,
+                              local_files_only=False):
+    __debug_args = locals()
+
     _messages.debug_log(
-        f'dgenerate.hfutil.estimate_model_memory_use({locals()})')
+        f'{_util.fullname(estimate_model_memory_use)}({__debug_args})')
 
     if safetensors:
         try:
@@ -246,7 +257,8 @@ def estimate_model_memory_use(path,
                                                   variant=variant,
                                                   subfolder=subfolder,
                                                   weight_name=weight_name,
-                                                  auth_token=auth_token,
+                                                  use_auth_token=use_auth_token,
+                                                  local_files_only=local_files_only,
                                                   extensions={'.msgpack',
                                                               '.safetensors',
                                                               '.bin'}):
@@ -301,8 +313,8 @@ def estimate_model_memory_use(path,
                     size_sum += size
 
                     _messages.debug_log(
-                        "Estimate Considering:", os.path.join(directory, file),
-                        ", Size:", size)
+                        'Estimate Considering:', os.path.join(directory, file),
+                        f', Size: {size} Bytes')
 
             return size_sum
         else:
@@ -316,8 +328,8 @@ def estimate_model_memory_use(path,
                 _, ext = os.path.splitext(file)
                 if ext not in extensions:
                     continue
-                _messages.debug_log("Estimate Considering:", os.path.join(
-                    directory if directory != '.' else '', file), "Size:", size)
+                _messages.debug_log('Estimate Considering:', os.path.join(
+                    directory if directory != '.' else '', file), f', Size: {size} Bytes')
                 size_sum += size
         return size_sum
 
@@ -326,5 +338,8 @@ def estimate_model_memory_use(path,
         if not flax and not weight_name and safetensors:
             extensions = {'.bin'}
             e = estimate()
+
+    _messages.debug_log(
+        f'{_util.fullname(estimate_model_memory_use)}() = {e} Bytes')
 
     return e

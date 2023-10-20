@@ -18,7 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
+import inspect
 import typing
 
 import dgenerate.prompt as _prompt
@@ -206,11 +206,14 @@ def get_type_of_optional(hinted_type):
 
 def fullname(obj):
     """
-    Get the fully qualified name of an object.
+    Get the fully qualified name of an object or function
     :param obj: The object
     :return: Fully qualified name
     """
+    if inspect.isfunction(obj):
+        return inspect.getmodule(obj).__name__ + obj.__qualname__
+
     module = obj.__class__.__module__
     if module is None or module == str.__class__.__module__:
-        return obj.__class__.__name__
-    return module + '.' + obj.__class__.__name__
+        return obj.__class__.__qualname__
+    return module + '.' + obj.__class__.__qualname__
