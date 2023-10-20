@@ -207,6 +207,7 @@ def get_type_of_optional(hinted_type):
 def fullname(obj):
     """
     Get the fully qualified name of an object or function
+
     :param obj: The object
     :return: Fully qualified name
     """

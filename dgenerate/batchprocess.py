@@ -50,15 +50,25 @@ class BatchProcessor:
     Implements dgenerates batch processing scripts in a generified manner.
     """
 
+    invoker: typing.Callable[[list], int]
+    name: _types.Name
+    version: _types.Version
+    template_variable_generator: typing.Callable[[], dict]
+    template_variables: typing.Dict[str, typing.Any]
+    template_functions: typing.Dict[str, typing.Callable[[typing.Any], typing.Any]]
+    directives: typing.Dict[str, typing.Callable[[list], None]]
+    injected_args: typing.Sequence[str]
+
     def __init__(self,
                  invoker: typing.Callable[[list], int],
-                 template_variable_generator: typing.Callable[[], dict],
                  name: _types.Name,
                  version: typing.Union[_types.Version, str],
-                 template_variables: typing.Dict[str, typing.Any],
-                 template_functions: typing.Dict[str, typing.Callable[[typing.Any], typing.Any]],
-                 directives: typing.Dict[str, typing.Callable[[list], None]],
-                 injected_args: typing.Sequence[str]):
+                 template_variable_generator: typing.Optional[typing.Callable[[], dict]] = None,
+                 template_variables: typing.Optional[typing.Dict[str, typing.Any]] = None,
+                 template_functions: typing.Optional[
+                     typing.Dict[str, typing.Callable[[typing.Any], typing.Any]]] = None,
+                 directives: typing.Optional[typing.Dict[str, typing.Callable[[list], None]]] = None,
+                 injected_args: typing.Optional[typing.Sequence[str]] = None):
         """
         Constructor.
 
@@ -76,12 +86,19 @@ class BatchProcessor:
         """
 
         self.invoker = invoker
-        self.template_variable_generator = template_variable_generator
-        self.template_variables = template_variables
-        self.template_functions = template_functions
-        self.directives = directives
-        self.injected_args = injected_args
         self.name = name
+
+        self.template_variable_generator = \
+            template_variable_generator if \
+                template_variable_generator else lambda x: dict()
+
+        self.template_variables = template_variables if template_variables else dict()
+        self.template_functions = template_functions if template_functions else dict()
+
+        self.directives = directives if directives else dict()
+
+        self.injected_args = injected_args if injected_args else []
+
         self._current_line = 0
 
         if isinstance(version, str):
@@ -306,7 +323,7 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
     }
 
     directives = {
-        'clear_pipeline_caches': lambda args: _pipelinewrapper.clear_all_caches()
+        'clear_pipeline_caches': lambda args: _pipelinewrapper.clear_all_cache()
     }
 
     runner = BatchProcessor(

@@ -117,42 +117,54 @@ def control_net_cache_size() -> int:
     return _CONTROL_NET_CACHE_SIZE
 
 
-MEMORY_CACHE_CONSTRAINTS = ['used_percent > 25']
+CACHE_MEMORY_CONSTRAINTS: typing.List[str] = ['used_percent > 90']
 """
-Cache constraint expressions for when to clear all pipeline caches via :py:meth:`dgenerate.util.memory_constraints`
+Cache constraint expressions for when to clear all model caches (DiffusionPipeline, VAE, and ControlNet), 
+syntax provided via :py:meth:`dgenerate.util.memory_constraints`
 
 If any of these constraints are met, a call to :py:meth:`.enforce_cache_constraints` will call
-:py:meth:`.clear_all_caches` and force a garbage collection.
+:py:meth:`.clear_all_cache` and force a garbage collection.
 """
 
-PIPELINE_MEMORY_CACHE_CONSTRAINTS = []
+PIPELINE_CACHE_MEMORY_CONSTRAINTS: typing.List[str] = ['pipline_size > (available * 0.75)']
 """
-Cache constraint expressions for when to clear all model caches via :py:meth:`dgenerate.util.memory_constraints`
+Cache constraint expressions for when to clear the DiffusionPipeline cache, 
+syntax provided via :py:meth:`dgenerate.util.memory_constraints`
 
 If any of these constraints are met, a call to :py:meth:`.enforce_cache_constraints` will call
-:py:meth:`.clear_pipeline_caches` and force a garbage collection.
+:py:meth:`.clear_pipeline_cache` and force a garbage collection.
+
+Extra variables include: "cache_size" (the current estimated cache size in bytes), 
+and "pipeline_size" (the estimated size of the new pipeline before it is brought into memory, in bytes)
+
 """
 
-CONTROL_NET_MEMORY_CACHE_CONSTRAINTS = []
+CONTROL_NET_CACHE_MEMORY_CONSTRAINTS: typing.List[str] = ['control_net_size > (available * 0.75)']
 """
-Cache constraint expressions for when to clear all model caches via :py:meth:`dgenerate.util.memory_constraints`
+Cache constraint expressions for when to clear the ControlNet cache, syntax provided via :py:meth:`dgenerate.util.memory_constraints`
 
 If any of these constraints are met, a call to :py:meth:`.enforce_cache_constraints` will call
-:py:meth:`.clear_control_net_caches` and force a garbage collection.
+:py:meth:`.clear_control_net_cache` and force a garbage collection.
+
+Extra variables include: "cache_size" (the current estimated cache size in bytes), 
+and "control_net_size" (the estimated size of the new ControlNet before it is brought into memory, in bytes)
 """
 
-VAE_MEMORY_CACHE_CONSTRAINTS = []
+VAE_CACHE_MEMORY_CONSTRAINTS: typing.List[str] = ['vae_size > (available * 0.75)']
 """
-Cache constraint expressions for when to clear all model caches via :py:meth:`dgenerate.util.memory_constraints`
+Cache constraint expressions for when to clear VAE cache, syntax provided via :py:meth:`dgenerate.util.memory_constraints`
 
 If any of these constraints are met, a call to :py:meth:`.enforce_cache_constraints` will call
-:py:meth:`.clear_vae_caches` and force a garbage collection.
+:py:meth:`.clear_vae_cache` and force a garbage collection.
+
+Extra variables include: "cache_size" (the current estimated cache size in bytes), 
+and "vae_size" (the estimated size of the new VAE before it is brought into memory, in bytes)
 """
 
 
-def clear_pipeline_caches(collect=True):
+def clear_pipeline_cache(collect=True):
     """
-    Clear TORCH_PIPELINE_CACHE and FLAX_PIPELINE_CACHE and then garbage collect.
+    Clear DiffusionPipeline cache and then garbage collect.
 
     :param collect: Call :py:meth:`gc.collect` ?
     """
@@ -163,14 +175,14 @@ def clear_pipeline_caches(collect=True):
 
     if collect:
         _messages.debug_log(
-            f'{_types.fullname(clear_pipeline_caches)} calling gc.collect() by request')
+            f'{_types.fullname(clear_pipeline_cache)} calling gc.collect() by request')
 
         gc.collect()
 
 
-def clear_control_net_caches(collect=True):
+def clear_control_net_cache(collect=True):
     """
-    Clear TORCH_CONTROL_NET_CACHE and FLAX_CONTROL_NET_CACHE and then garbage collect.
+    Clear ControlNet cache and then garbage collect.
 
     :param collect: Call :py:meth:`gc.collect` ?
     """
@@ -181,14 +193,14 @@ def clear_control_net_caches(collect=True):
 
     if collect:
         _messages.debug_log(
-            f'{_types.fullname(clear_control_net_caches)} calling gc.collect() by request')
+            f'{_types.fullname(clear_control_net_cache)} calling gc.collect() by request')
 
         gc.collect()
 
 
-def clear_vae_caches(collect=True):
+def clear_vae_cache(collect=True):
     """
-    Clear TORCH_VAE_CACHE and FLAX_VAE_CACHE and then garbage collect.
+    Clear VAE cache and then garbage collect.
 
     :param collect: Call :py:meth:`gc.collect` ?
     """
@@ -199,12 +211,12 @@ def clear_vae_caches(collect=True):
 
     if collect:
         _messages.debug_log(
-            f'{_types.fullname(clear_vae_caches)} calling gc.collect() by request')
+            f'{_types.fullname(clear_vae_cache)} calling gc.collect() by request')
 
         gc.collect()
 
 
-def clear_all_caches(collect=True):
+def clear_all_cache(collect=True):
     """
     Clear all in memory model caches and garbage collect.
 
@@ -231,7 +243,7 @@ def clear_all_caches(collect=True):
 
     if collect:
         _messages.debug_log(
-            f'{_types.fullname(clear_all_caches)} calling gc.collect() by request')
+            f'{_types.fullname(clear_all_cache)} calling gc.collect() by request')
 
         gc.collect()
 
@@ -247,34 +259,43 @@ def _debug_system_memory():
 
 def enforce_cache_constraints(collect=True):
     """
-    Enforce all cache constraints and clear caches accordingly
+    Enforce :py:attr:`CACHE_MEMORY_CONSTRAINTS` and clear caches accordingly
 
-    :param collect: Call :py:meth:`gc.collect` ?
+    :param collect: Call :py:meth:`gc.collect` after a cache clear ?
     :return: Whether any caches were cleared due to constraint expressions.
     """
 
     m_name = __name__
 
-    _messages.debug_log(f'Enforcing {m_name}.MEMORY_CACHE_CONSTRAINTS =', MEMORY_CACHE_CONSTRAINTS)
+    _messages.debug_log(f'Enforcing {m_name}.CACHE_MEMORY_CONSTRAINTS =',
+                        CACHE_MEMORY_CONSTRAINTS)
 
     _debug_system_memory()
 
-    if _util.memory_constraints(MEMORY_CACHE_CONSTRAINTS):
-        _messages.debug_log(f'{m_name}.MEMORY_CACHE_CONSTRAINTS '
-                            f'{MEMORY_CACHE_CONSTRAINTS} met, '
-                            f'calling {_types.fullname(clear_all_caches)}.')
+    if _util.memory_constraints(CACHE_MEMORY_CONSTRAINTS):
+        _messages.debug_log(f'{m_name}.CACHE_MEMORY_CONSTRAINTS '
+                            f'{CACHE_MEMORY_CONSTRAINTS} met, '
+                            f'calling {_types.fullname(clear_all_cache)}.')
 
-        clear_all_caches(collect=collect)
+        clear_all_cache(collect=collect)
         return True
 
     return False
 
 
 def enforce_pipeline_cache_constraints(new_pipeline_size, collect=True):
+    """
+    Enforce :py:attr:`.PIPELINE_CACHE_MEMORY_CONSTRAINTS` and clear the
+    DiffusionPipeline cache if needed.
+
+    :param collect: Call :py:meth:`gc.collect` after a cache clear ?
+    :return: Whether the cache was cleared due to constraint expressions.
+    """
+
     m_name = __name__
 
-    _messages.debug_log(f'Enforcing {m_name}.PIPELINE_MEMORY_CACHE_CONSTRAINTS =',
-                        PIPELINE_MEMORY_CACHE_CONSTRAINTS)
+    _messages.debug_log(f'Enforcing {m_name}.PIPELINE_CACHE_MEMORY_CONSTRAINTS =',
+                        PIPELINE_CACHE_MEMORY_CONSTRAINTS)
 
     _messages.debug_log(f'cache_size =',
                         _util.bytes_best_human_unit(pipeline_cache_size()))
@@ -284,22 +305,30 @@ def enforce_pipeline_cache_constraints(new_pipeline_size, collect=True):
 
     _debug_system_memory()
 
-    if _util.memory_constraints(PIPELINE_MEMORY_CACHE_CONSTRAINTS,
+    if _util.memory_constraints(PIPELINE_CACHE_MEMORY_CONSTRAINTS,
                                 extra_vars={'cache_size': pipeline_cache_size(),
                                             'pipeline_size': new_pipeline_size}):
-        _messages.debug_log(f'{m_name}.PIPELINE_MEMORY_CACHE_CONSTRAINTS '
-                            f'{PIPELINE_MEMORY_CACHE_CONSTRAINTS} met, '
-                            f'calling {_types.fullname(clear_pipeline_caches)}.')
-        clear_pipeline_caches(collect=collect)
+        _messages.debug_log(f'{m_name}.PIPELINE_CACHE_MEMORY_CONSTRAINTS '
+                            f'{PIPELINE_CACHE_MEMORY_CONSTRAINTS} met, '
+                            f'calling {_types.fullname(clear_pipeline_cache)}.')
+        clear_pipeline_cache(collect=collect)
         return True
     return False
 
 
 def enforce_vae_cache_constraints(new_vae_size, collect=True):
+    """
+    Enforce :py:attr:`.VAE_CACHE_MEMORY_CONSTRAINTS` and clear the
+    VAE cache if needed.
+
+    :param collect: Call :py:meth:`gc.collect` after a cache clear ?
+    :return: Whether the cache was cleared due to constraint expressions.
+    """
+
     m_name = __name__
 
-    _messages.debug_log(f'Enforcing {m_name}.VAE_MEMORY_CACHE_CONSTRAINTS =',
-                        VAE_MEMORY_CACHE_CONSTRAINTS)
+    _messages.debug_log(f'Enforcing {m_name}.VAE_CACHE_MEMORY_CONSTRAINTS =',
+                        VAE_CACHE_MEMORY_CONSTRAINTS)
 
     _messages.debug_log(f'cache_size =',
                         _util.bytes_best_human_unit(vae_cache_size()))
@@ -309,23 +338,31 @@ def enforce_vae_cache_constraints(new_vae_size, collect=True):
 
     _debug_system_memory()
 
-    if _util.memory_constraints(VAE_MEMORY_CACHE_CONSTRAINTS,
+    if _util.memory_constraints(VAE_CACHE_MEMORY_CONSTRAINTS,
                                 extra_vars={'cache_size': vae_cache_size(),
                                             'vae_size': new_vae_size}):
-        _messages.debug_log(f'{m_name}.VAE_MEMORY_CACHE_CONSTRAINTS '
-                            f'{VAE_MEMORY_CACHE_CONSTRAINTS} met, '
-                            f'calling {_types.fullname(clear_vae_caches)}.')
+        _messages.debug_log(f'{m_name}.VAE_CACHE_MEMORY_CONSTRAINTS '
+                            f'{VAE_CACHE_MEMORY_CONSTRAINTS} met, '
+                            f'calling {_types.fullname(clear_vae_cache)}.')
 
-        clear_vae_caches(collect=collect)
+        clear_vae_cache(collect=collect)
         return True
     return False
 
 
 def enforce_control_net_cache_constraints(new_control_net_size, collect=True):
+    """
+    Enforce :py:attr:`.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS` and clear the
+    ControlNet cache if needed.
+
+    :param collect: Call :py:meth:`gc.collect` after a cache clear ?
+    :return: Whether the cache was cleared due to constraint expressions.
+    """
+
     m_name = __name__
 
-    _messages.debug_log(f'Enforcing {m_name}.CONTROL_NET_MEMORY_CACHE_CONSTRAINTS =',
-                        CONTROL_NET_MEMORY_CACHE_CONSTRAINTS)
+    _messages.debug_log(f'Enforcing {m_name}.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS =',
+                        CONTROL_NET_CACHE_MEMORY_CONSTRAINTS)
 
     _messages.debug_log(f'cache_size =',
                         _util.bytes_best_human_unit(control_net_cache_size()))
@@ -335,14 +372,14 @@ def enforce_control_net_cache_constraints(new_control_net_size, collect=True):
 
     _debug_system_memory()
 
-    if _util.memory_constraints(CONTROL_NET_MEMORY_CACHE_CONSTRAINTS,
+    if _util.memory_constraints(CONTROL_NET_CACHE_MEMORY_CONSTRAINTS,
                                 extra_vars={'cache_size': control_net_cache_size(),
                                             'control_net_size': new_control_net_size}):
-        _messages.debug_log(f'{m_name}.CONTROL_NET_MEMORY_CACHE_CONSTRAINTS '
-                            f'{CONTROL_NET_MEMORY_CACHE_CONSTRAINTS} met, '
-                            f'calling {_types.fullname(clear_control_net_caches)}.')
+        _messages.debug_log(f'{m_name}.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS '
+                            f'{CONTROL_NET_CACHE_MEMORY_CONSTRAINTS} met, '
+                            f'calling {_types.fullname(clear_control_net_cache)}.')
 
-        clear_control_net_caches(collect=collect)
+        clear_control_net_cache(collect=collect)
         return True
     return False
 
@@ -717,7 +754,7 @@ class FlaxControlNetPath:
         else:
 
             estimated_memory_usage = _hfutil.estimate_model_memory_use(
-                path=self.model,
+                repo_id=self.model,
                 revision=self.revision,
                 subfolder=self.subfolder,
                 flax=not self.from_torch,
@@ -818,7 +855,7 @@ class TorchControlNetPath:
         if single_file_load_path:
 
             estimated_memory_usage = _hfutil.estimate_model_memory_use(
-                path=self.model,
+                repo_id=self.model,
                 revision=self.revision,
                 use_auth_token=kwargs.get('use_auth_token'),
                 local_files_only=kwargs.get('local_files_only')
@@ -835,7 +872,7 @@ class TorchControlNetPath:
         else:
 
             estimated_memory_usage = _hfutil.estimate_model_memory_use(
-                path=self.model,
+                repo_id=self.model,
                 revision=self.revision,
                 variant=self.variant,
                 subfolder=self.subfolder,
@@ -1239,7 +1276,7 @@ def _load_torch_vae(uri: _types.Uri,
             raise NotImplementedError('Single file VAE loads do not support the subfolder option.')
 
         estimated_memory_use = _hfutil.estimate_model_memory_use(
-            path=path,
+            repo_id=path,
             revision=parsed_concept.revision,
             local_files_only=local_files_only,
             use_auth_token=use_auth_token
@@ -1262,7 +1299,7 @@ def _load_torch_vae(uri: _types.Uri,
     else:
 
         estimated_memory_use = _hfutil.estimate_model_memory_use(
-            path=path,
+            repo_id=path,
             revision=parsed_concept.revision,
             variant=parsed_concept.variant,
             subfolder=parsed_concept.subfolder,
@@ -1324,7 +1361,7 @@ def _load_flax_vae(uri: _types.Uri,
             raise NotImplementedError('Single file VAE loads do not support the subfolder option.')
 
         estimated_memory_use = _hfutil.estimate_model_memory_use(
-            path=path,
+            repo_id=path,
             revision=parsed_concept.revision,
             local_files_only=local_files_only,
             use_auth_token=use_auth_token,
@@ -1341,7 +1378,7 @@ def _load_flax_vae(uri: _types.Uri,
     else:
 
         estimated_memory_use = _hfutil.estimate_model_memory_use(
-            path=path,
+            repo_id=path,
             revision=parsed_concept.revision,
             subfolder=parsed_concept.subfolder,
             local_files_only=local_files_only,
@@ -1501,7 +1538,7 @@ def _estimate_pipeline_memory_use(
         local_files_only=False,
         flax=False):
     usage = _hfutil.estimate_model_memory_use(
-        path=model_path,
+        repo_id=model_path,
         revision=revision,
         variant=variant,
         subfolder=subfolder,
@@ -1515,11 +1552,14 @@ def _estimate_pipeline_memory_use(
     )
 
     if lora_uris:
+        if isinstance(lora_uris, str):
+            lora_uris = [lora_uris]
+
         for lora_uri in lora_uris:
             parsed = parse_lora_uri(lora_uri)
 
             usage += _hfutil.estimate_model_memory_use(
-                path=parsed.model,
+                repo_id=parsed.model,
                 revision=parsed.revision,
                 subfolder=parsed.subfolder,
                 weight_name=parsed.weight_name,
@@ -1529,11 +1569,14 @@ def _estimate_pipeline_memory_use(
             )
 
     if textual_inversion_uris:
+        if isinstance(textual_inversion_uris, str):
+            textual_inversion_uris = [textual_inversion_uris]
+
         for textual_inversion_uri in textual_inversion_uris:
             parsed = parse_textual_inversion_uri(textual_inversion_uri)
 
             usage += _hfutil.estimate_model_memory_use(
-                path=parsed.model,
+                repo_id=parsed.model,
                 revision=parsed.revision,
                 subfolder=parsed.subfolder,
                 weight_name=parsed.weight_name,
