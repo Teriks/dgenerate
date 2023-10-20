@@ -848,11 +848,11 @@ def _generate_web_cache_file(url, mime_acceptable_desc):
 
         path = os.path.join(cache_dir, f'web_{cursor.lastrowid}')
 
-        with open(path, mode='wb') as new_file:
-            new_file.write(req.content)
-            new_file.flush()
+    with open(path, mode='wb') as new_file:
+        new_file.write(req.content)
+        new_file.flush()
 
-        return mime_type, path
+    return mime_type, path
 
 
 class UnknownMimetypeError(Exception):
