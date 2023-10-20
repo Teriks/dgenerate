@@ -21,12 +21,69 @@
 import glob
 import os
 import pathlib
+import re
 import typing
 
 import huggingface_hub
 
 import dgenerate.messages as _messages
 import dgenerate.types as _types
+
+
+class HFBlobLink:
+    """
+    Represents the constituents of a huggingface blob link.
+    """
+
+    repo_id: str
+    revision: str
+    subfolder: str
+    filename: str
+
+    def __init__(self,
+                 repo_id,
+                 revision,
+                 subfolder,
+                 weight_name):
+        self.repo_id = repo_id
+        self.revision = revision
+        self.subfolder = subfolder
+        self.weight_name = weight_name
+
+    def __str__(self):
+        return str(_types.get_public_attributes(self))
+
+    def __repr__(self):
+        return str(self)
+
+    __REGEX = re.compile(
+        r'(https|http)://(?:www\.)?huggingface\.co/'
+        r'(?P<repo_id>.+)/blob/(?P<revision>.+?)/'
+        r'(?:(?P<subfolder>.+)/)?(?P<weight_name>.+)')
+
+    @staticmethod
+    def parse(blob_link):
+        """
+        Attempt to parse a huggingface blob link out of a string.
+
+        If the string does not contain a blob link, return None
+        :param blob_link: supposed blob link string
+        :return: :py:class:`.HFBlobLink` or None
+        """
+
+        match = HFBlobLink.__REGEX.match(blob_link)
+
+        if match:
+            result = HFBlobLink(match.group('repo_id'),
+                                match.group('revision'),
+                                match.group('subfolder'),
+                                match.group('weight_name'))
+
+            _messages.debug_log(
+                f'Parsed huggingface Blob Link: {blob_link} -> {result}')
+            return result
+
+        return None
 
 
 def fetch_model_files_with_size(repo_id: str,
@@ -62,11 +119,19 @@ def fetch_model_files_with_size(repo_id: str,
     _messages.debug_log(
         f'{_types.fullname(fetch_model_files_with_size)}({__args_debug})')
 
+    blob_link = HFBlobLink.parse(repo_id)
+
+    if blob_link is not None:
+        repo_id = blob_link.repo_id
+        revision = blob_link.revision
+        subfolder = blob_link.subfolder
+        weight_name = blob_link.weight_name
+
     def post_discover_check(found):
         if not isinstance(found, str):
             return None
         if found:
-            if (weight_name and weight_name != os.path.basename(found)):
+            if weight_name and weight_name != os.path.basename(found):
                 # Weight name specified but no match
                 return None
 
@@ -78,7 +143,7 @@ def fetch_model_files_with_size(repo_id: str,
                     # Variant missmatch
                     return None
             elif found_variant:
-                # Has a variant but we wanted the non variant version
+                # Has a variant but we wanted the non-variant version
                 return None
 
             if extensions and os.path.splitext(found)[1] not in extensions:
@@ -233,8 +298,9 @@ def fetch_model_files_with_size(repo_id: str,
 
             try:
                 for info in info_entries:
-                    if have_unet and not os.path.dirname(info.rfilename):
-                        # Ignore top level directory when a unet folder is detected
+                    if have_unet and not weight_name and not os.path.dirname(info.rfilename):
+                        # Ignore top level directory when a unet
+                        # folder is detected unless weight_name is specified
                         continue
 
                     normalized_filename = post_discover_check(
@@ -357,7 +423,7 @@ def estimate_model_memory_use(repo_id: str,
                     size_sum += size
 
                     _messages.debug_log(
-                        'Estimate Considering:', os.path.join(directory, file),
+                        'Estimate Considering:', os.path.join(directory, file) +
                         f', Size: {size} Bytes')
 
             return size_sum
@@ -372,8 +438,9 @@ def estimate_model_memory_use(repo_id: str,
                 _, ext = os.path.splitext(file)
                 if ext not in extensions:
                     continue
-                _messages.debug_log('Estimate Considering:', os.path.join(
-                    directory if directory != '.' else '', file), f', Size: {size} Bytes')
+                _messages.debug_log('Estimate Considering:',
+                                    os.path.join(directory if directory != '.' else '', file) +
+                                    f', Size: {size} Bytes')
                 size_sum += size
         return size_sum
 
