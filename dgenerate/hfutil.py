@@ -21,6 +21,7 @@
 import glob
 import os
 import pathlib
+import typing
 
 import huggingface_hub
 
@@ -28,14 +29,35 @@ import dgenerate.messages as _messages
 import dgenerate.types as _types
 
 
-def fetch_model_files_with_size(repo_id,
-                                revision='main',
-                                variant=None,
-                                subfolder=None,
-                                weight_name=None,
-                                use_auth_token=None,
-                                extensions=None,
-                                local_files_only=False):
+def fetch_model_files_with_size(repo_id: str,
+                                revision: typing.Optional[str] = 'main',
+                                variant: typing.Optional[str] = None,
+                                subfolder: typing.Optional[str] = None,
+                                weight_name: typing.Optional[str] = None,
+                                use_auth_token: typing.Optional[str] = None,
+                                extensions: typing.Optional[typing.Union[set, list]] = None,
+                                local_files_only: bool = False):
+    """
+    Attempt to fetch model files with their size that are relevant for the type of model being loaded.
+
+    Either from huggingface disk cache or through the huggingface API if not on disk and local_files_only is False.
+
+    This function also works on paths to folders or singular files on disk.
+
+    :param repo_id: huggingface repo_id, or path to folder or file on disk
+    :param revision: repo revision, IE: branch
+    :param variant: files variant, IE: fp16
+    :param subfolder: subfolder in the repo where the models exist
+    :param weight_name: look for a specific model file name
+    :param use_auth_token: optional huggingface auth token
+    :param extensions: if specified, only search for extensions in this set, or list
+    :param local_files_only: utilize the hugggingface API if necessary?
+        if this is True, and it is necessary to fetch info from the API, this function
+        will simply yield nothing
+
+    :return: generator over (filename, file size bytes)
+    """
+
     __args_debug = locals()
     _messages.debug_log(
         f'{_types.fullname(fetch_model_files_with_size)}({__args_debug})')
@@ -226,19 +248,41 @@ def fetch_model_files_with_size(repo_id,
             yield from ()
 
 
-def estimate_model_memory_use(path,
-                              revision='main',
-                              variant=None,
-                              flax=False,
-                              use_auth_token=None,
-                              safety_checker=False,
-                              include_vae=True,
-                              include_text_encoder=True,
-                              include_text_encoder_2=True,
-                              subfolder=None,
-                              weight_name=None,
-                              safetensors=True,
-                              local_files_only=False):
+def estimate_model_memory_use(repo_id: str,
+                              revision: typing.Optional[str] = 'main',
+                              variant: typing.Optional[str] = None,
+                              subfolder: typing.Optional[str] = None,
+                              weight_name: typing.Optional[str] = None,
+                              safety_checker: bool = False,
+                              include_vae: bool = True,
+                              include_text_encoder: bool = True,
+                              include_text_encoder_2: bool = True,
+                              safetensors: bool = True,
+                              flax: bool = False,
+                              use_auth_token: typing.Optional[str] = None,
+                              local_files_only: bool = False):
+    """
+    Attempt to estimate the CPU side memory consumption of a model before it is loaded into memory.
+
+    Either from huggingface disk cache or through the huggingface API if not on disk and local_files_only is False.
+
+    This function also works on paths to folders or singular files on disk.
+
+    :param repo_id: huggingface repo_id, or path to folder or file on disk
+    :param revision: repo revision, IE: branch
+    :param variant: files variant, IE: fp16
+    :param subfolder: subfolder in the repo where the models exist
+    :param weight_name: look for a specific model file name
+    :param safety_checker: include the safety checker model if it exists?
+    :param include_vae: include the vae model if it exists?
+    :param include_text_encoder: include the text encoder model if it exists?
+    :param include_text_encoder_2: include the second text encoder model if it exists?
+    :param safetensors: Use safetensors if available?
+    :param flax: Only look for msgpack files?
+    :param use_auth_token: optional huggingface auth token
+    :param local_files_only: should we only look for files cached on disk and never hit the API?
+    :return: generator over (filename, file size bytes)
+    """
     __debug_args = locals()
 
     _messages.debug_log(
@@ -252,7 +296,7 @@ def estimate_model_memory_use(path,
 
     directories = {}
 
-    for file, size in fetch_model_files_with_size(path,
+    for file, size in fetch_model_files_with_size(repo_id,
                                                   revision=revision,
                                                   variant=variant,
                                                   subfolder=subfolder,
