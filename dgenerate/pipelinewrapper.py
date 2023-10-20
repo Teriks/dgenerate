@@ -126,7 +126,7 @@ If any of these constraints are met, a call to :py:meth:`.enforce_cache_constrai
 :py:meth:`.clear_all_cache` and force a garbage collection.
 """
 
-PIPELINE_CACHE_MEMORY_CONSTRAINTS: typing.List[str] = ['pipline_size > (available * 0.75)']
+PIPELINE_CACHE_MEMORY_CONSTRAINTS: typing.List[str] = ['pipeline_size > (available * 0.75)']
 """
 Cache constraint expressions for when to clear the DiffusionPipeline cache, 
 syntax provided via :py:meth:`dgenerate.util.memory_constraints`
