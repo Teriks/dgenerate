@@ -137,14 +137,12 @@ def memory_constraints(expressions: typing.Optional[typing.Union[str, list]],
         * gib(bytes to gibibytes)
 
     Available values are:
-
         * used / u (memory used by the process in bytes)
         * used_percent / up (memory used by the process, as whole percent, example: 25.4)
         * available / a (available memory remaining on the system in bytes)
         * total / t (total memory on the system in bytes)
 
     Example expressions:
-
         * ``used > gb(1)`` (when the process has used more than 1GB of memory)
         * ``used_percent > 25`` (when the process has used more than 25 percent of system memory)
         * ``available < gb(2)`` (when the available memory on the system is less than 2GB)
