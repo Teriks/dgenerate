@@ -252,10 +252,10 @@ def clear_all_cache(collect=True):
 
 def _debug_system_memory():
     _messages.debug_log(f'Used Memory: '
-                        f'{_util.bytes_best_human_unit(_util.get_used_memory())}')
-    _messages.debug_log(f'Used Percentage: '
-                        f'{round(_util.get_used_memory_percent(), 2)}')
-    _messages.debug_log(f'Available Memory: '
+                        f'{_util.bytes_best_human_unit(_util.get_used_memory())}, '
+                        f'Used Percentage: '
+                        f'{round(_util.get_used_memory_percent(), 2)}%, '
+                        f'Available Memory: '
                         f'{_util.bytes_best_human_unit(_util.get_available_memory())}')
 
 
@@ -297,13 +297,9 @@ def enforce_pipeline_cache_constraints(new_pipeline_size, collect=True):
     m_name = __name__
 
     _messages.debug_log(f'Enforcing {m_name}.PIPELINE_CACHE_MEMORY_CONSTRAINTS =',
-                        PIPELINE_CACHE_MEMORY_CONSTRAINTS)
-
-    _messages.debug_log(f'cache_size =',
-                        _util.bytes_best_human_unit(pipeline_cache_size()))
-
-    _messages.debug_log(f'pipeline_size =',
-                        _util.bytes_best_human_unit(new_pipeline_size))
+                        PIPELINE_CACHE_MEMORY_CONSTRAINTS,
+                        f'(cache_size = {_util.bytes_best_human_unit(pipeline_cache_size())},',
+                        f'pipeline_size = {_util.bytes_best_human_unit(new_pipeline_size)})')
 
     _debug_system_memory()
 
@@ -330,13 +326,9 @@ def enforce_vae_cache_constraints(new_vae_size, collect=True):
     m_name = __name__
 
     _messages.debug_log(f'Enforcing {m_name}.VAE_CACHE_MEMORY_CONSTRAINTS =',
-                        VAE_CACHE_MEMORY_CONSTRAINTS)
-
-    _messages.debug_log(f'cache_size =',
-                        _util.bytes_best_human_unit(vae_cache_size()))
-
-    _messages.debug_log(f'vae_size =',
-                        _util.bytes_best_human_unit(new_vae_size))
+                        VAE_CACHE_MEMORY_CONSTRAINTS,
+                        f'(cache_size = {_util.bytes_best_human_unit(vae_cache_size())},',
+                        f'vae_size = {_util.bytes_best_human_unit(new_vae_size)})')
 
     _debug_system_memory()
 
@@ -364,13 +356,9 @@ def enforce_control_net_cache_constraints(new_control_net_size, collect=True):
     m_name = __name__
 
     _messages.debug_log(f'Enforcing {m_name}.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS =',
-                        CONTROL_NET_CACHE_MEMORY_CONSTRAINTS)
-
-    _messages.debug_log(f'cache_size =',
-                        _util.bytes_best_human_unit(control_net_cache_size()))
-
-    _messages.debug_log(f'control_net_size =',
-                        _util.bytes_best_human_unit(new_control_net_size))
+                        CONTROL_NET_CACHE_MEMORY_CONSTRAINTS,
+                        f'(cache_size = {_util.bytes_best_human_unit(control_net_cache_size())},',
+                        f'control_net_size = {_util.bytes_best_human_unit(new_control_net_size)})')
 
     _debug_system_memory()
 
