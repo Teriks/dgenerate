@@ -616,7 +616,7 @@ class ImageGeneratedCallbackArgument(_types.SetFromMixin):
     batch_index: int = 0
     """
     The index in the image batch for this image. Will only every be greater than zero if 
-    :py:attr:`.DiffusionRenderLoopConfig.batch_size` > 1 and :py:attr:`.DiffusionRenderLoopConfig.batch_grid_size` is None
+    :py:attr:`.DiffusionRenderLoopConfig.batch_size` > 1 and :py:attr:`.DiffusionRenderLoopConfig.batch_grid_size` is None.
     """
 
     suggested_filename: str = None
@@ -628,17 +628,17 @@ class ImageGeneratedCallbackArgument(_types.SetFromMixin):
     args: _pipelinewrapper.DiffusionArguments = None
     """
     Diffusion argument object, contains :py:class:`dgenerate.pipelinewrapper.DiffusionPipelineWrapper` 
-    arguments used to produce this image
+    arguments used to produce this image.
     """
 
     command: str = None
     """
-    Reproduction of a command line that can be used to reproduce this image
+    Reproduction of a command line that can be used to reproduce this image.
     """
 
     config: str = None
     """
-    Reproduction of a dgenerate config file that can be used to reproduce this image
+    Reproduction of a dgenerate config file that can be used to reproduce this image.
     """
 
     is_frame: bool = False
@@ -650,7 +650,7 @@ class ImageGeneratedCallbackArgument(_types.SetFromMixin):
     """
     The frame index if this is an animation frame.
     Also available through image_seed.frame_index, 
-    though here for convenience
+    though here for convenience.
     """
 
     image_seed: typing.Optional[_mediainput.ImageSeed] = None
