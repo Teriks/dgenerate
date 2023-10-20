@@ -622,7 +622,7 @@ class ImageGeneratedCallbackArgument(_types.SetFromMixin):
     suggested_filename: str = None
     """
     A suggested filename for saving this image as. This filename will be unique
-    to the render loop run and configuration.
+    to the render loop run / configuration.
     """
 
     args: _pipelinewrapper.DiffusionArguments = None
