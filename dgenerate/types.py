@@ -222,3 +222,36 @@ def fullname(obj):
     if module is None or module == str.__class__.__module__:
         return obj.__class__.__qualname__
     return module + '.' + obj.__class__.__qualname__
+
+
+class SetFromMixin:
+    """
+    Allows an object ot have its attributes set from a dictionary
+    or attributes taken from another object with an overlapping set
+    of attribute names.
+    """
+
+    def set_from(self,
+                 obj: typing.Union[typing.Any, dict],
+                 missing_value_throws: bool = True):
+        """
+        Set the attributes in this configuration object from a dictionary or another object
+        possessing keys / attributes of the same name.
+
+        :param obj: The object, or dictionary
+        :param missing_value_throws: whether to throw :py:class:`ValueError` if obj is missing
+            an attribute that exist in this object
+        :return: self
+        """
+
+        if isinstance(obj, dict):
+            source = obj
+        else:
+            source = _types.get_public_attributes(obj)
+
+        for k, v in _types.get_public_attributes(self):
+            if not callable(v):
+                if missing_value_throws and k not in source:
+                    raise ValueError(f'Source object does not define: "{k}"')
+                setattr(self, k, source.get(k))
+        return self
