@@ -141,7 +141,8 @@ and "pipeline_size" (the estimated size of the new pipeline before it is brought
 
 CONTROL_NET_CACHE_MEMORY_CONSTRAINTS: typing.List[str] = ['control_net_size > (available * 0.75)']
 """
-Cache constraint expressions for when to clear the ControlNet cache, syntax provided via :py:meth:`dgenerate.util.memory_constraints`
+Cache constraint expressions for when to clear the ControlNet cache, 
+syntax provided via :py:meth:`dgenerate.util.memory_constraints`
 
 If any of these constraints are met, a call to :py:meth:`.enforce_cache_constraints` will call
 :py:meth:`.clear_control_net_cache` and force a garbage collection.
@@ -152,7 +153,8 @@ and "control_net_size" (the estimated size of the new ControlNet before it is br
 
 VAE_CACHE_MEMORY_CONSTRAINTS: typing.List[str] = ['vae_size > (available * 0.75)']
 """
-Cache constraint expressions for when to clear VAE cache, syntax provided via :py:meth:`dgenerate.util.memory_constraints`
+Cache constraint expressions for when to clear VAE cache, 
+syntax provided via :py:meth:`dgenerate.util.memory_constraints`
 
 If any of these constraints are met, a call to :py:meth:`.enforce_cache_constraints` will call
 :py:meth:`.clear_vae_cache` and force a garbage collection.
@@ -252,7 +254,7 @@ def _debug_system_memory():
     _messages.debug_log(f'Used Memory: '
                         f'{_util.bytes_best_human_unit(_util.get_used_memory())}')
     _messages.debug_log(f'Used Percentage: '
-                        f'{_util.get_used_memory_percent()}')
+                        f'{round(_util.get_used_memory_percent(), 2)}')
     _messages.debug_log(f'Available Memory: '
                         f'{_util.bytes_best_human_unit(_util.get_available_memory())}')
 
