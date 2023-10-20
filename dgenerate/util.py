@@ -123,9 +123,10 @@ class MemoryConstraintSyntaxError:
 def memory_constraints(expressions: typing.Optional[typing.Union[str, list]],
                        extra_vars: typing.Optional[typing.Dict[str, typing.Union[int, float]]] = None,
                        mode=any,
-                       pid=os.getpid()) -> bool:
+                       pid: typing.Optional[int] = None) -> bool:
     """
-    Evaluate a user boolean expression involving the the processes used memory in bytes, used memory percent, and available system memory in bytes.
+    Evaluate a user boolean expression involving the processes used memory in bytes,
+    used memory percent, and available system memory in bytes.
 
     Available functions are:
         * kb(bytes to kilobytes)
@@ -159,7 +160,7 @@ def memory_constraints(expressions: typing.Optional[typing.Union[str, list]],
     :param mode: the standard library function 'any' (equating to OR all expressions) or
         the standard library function 'all' (equating to AND all expressions). The default
         is 'any' which ORs all expressions.
-    :param pid: PID of the process from which to aquire the 'used' and 'used_percent' variable
+    :param pid: PID of the process from which to acquire the 'used' and 'used_percent' variable
         values from, defaults to the current process.
     :return: Boolean result of the expression
     """
@@ -170,7 +171,10 @@ def memory_constraints(expressions: typing.Optional[typing.Union[str, list]],
     if isinstance(expressions, str):
         expressions = [expressions]
 
-    p_info = psutil.Process(os.getpid())
+    if pid is None:
+        pid = os.getpid()
+
+    p_info = psutil.Process(pid)
     used = p_info.memory_info().rss
     used_percent = p_info.memory_percent()
 
@@ -224,7 +228,7 @@ _MEM_FACTORS = {
 }
 
 
-def get_used_memory(measure='b', pid=os.getpid()) -> int:
+def get_used_memory(measure='b', pid: typing.Optional[int] = None) -> int:
     """
     Get the memory used by a process in a selectable unit.
 
@@ -236,16 +240,24 @@ def get_used_memory(measure='b', pid=os.getpid()) -> int:
 
     :return: Requested value.
     """
+
+    if pid is None:
+        pid = os.getpid()
+
     return psutil.Process(pid).memory_info().rss / _MEM_FACTORS[measure.strip().lower()]
 
 
-def get_used_memory_percent(pid=os.getpid()) -> float:
+def get_used_memory_percent(pid: typing.Optional[int] = None) -> float:
     """
     Get the percentage of memory used by a process.
 
     :param pid: PID of the process, defaults to the current process.
     :return: A whole percentage, for example: 25.4
     """
+
+    if pid is None:
+        pid = os.getpid()
+
     return psutil.Process(pid).memory_percent()
 
 
