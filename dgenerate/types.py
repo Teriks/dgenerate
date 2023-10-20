@@ -211,7 +211,7 @@ def fullname(obj):
     :return: Fully qualified name
     """
     if inspect.isfunction(obj):
-        return inspect.getmodule(obj).__name__ + obj.__qualname__
+        return inspect.getmodule(obj).__name__ + '.' + obj.__qualname__
 
     module = obj.__class__.__module__
     if module is None or module == str.__class__.__module__:
