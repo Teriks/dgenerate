@@ -30,6 +30,7 @@ import typing
 import PIL.Image
 import PIL.PngImagePlugin
 
+import dgenerate.filelock as _filelock
 import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.messages as _messages
@@ -38,14 +39,13 @@ import dgenerate.preprocessors as _preprocessors
 import dgenerate.prompt as _prompt
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-import dgenerate.util as _util
 
 
 def iterate_attribute_combinations(
         attribute_defs: typing.List[typing.Tuple[str, typing.List]],
         my_class: typing.Type):
     """
-    Iterate over every combination of attributes in a given class using a list of tuples maping
+    Iterate over every combination of attributes in a given class using a list of tuples mapping
     attribute names to a list of possible values.
 
     :param attribute_defs: list of tuple (attribute_name, [list of values])
@@ -102,8 +102,7 @@ def iterate_diffusion_args(prompt: _types.OptionalPrompts,
                            guidance_scale: _types.OptionalFloats,
                            image_guidance_scale: _types.OptionalFloats,
                            guidance_rescale: _types.OptionalFloats,
-                           inference_steps: _types.OptionalIntegers) -> typing.Generator[
-    _pipelinewrapper.DiffusionArguments, None, None]:
+                           inference_steps: _types.OptionalIntegers) -> typing.Generator[_pipelinewrapper.DiffusionArguments, None, None]:
     """
     Iterate over every combination of possible attribute values of :py:class:`dgenerate.pipelinewrapper.DiffusionArguments` given a list of
     values for each attribute.
@@ -331,15 +330,15 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
                 raise DiffusionRenderLoopConfigError(
                     f'{a_namer(name)} must be None or a tuple of length 2, value was: {value}')
 
-        def _is_optional(type, name, value):
-            if value is not None and not isinstance(value, type):
+        def _is_optional(value_type, name, value):
+            if value is not None and not isinstance(value, value_type):
                 raise DiffusionRenderLoopConfigError(
-                    f'{a_namer(name)} must be None or type {type.__name__}, value was: {value}')
+                    f'{a_namer(name)} must be None or type {value_type.__name__}, value was: {value}')
 
-        def _is(type, name, value):
-            if not isinstance(value, type):
+        def _is(value_type, name, value):
+            if not isinstance(value, value_type):
                 raise DiffusionRenderLoopConfigError(
-                    f'{a_namer(name)} must be type {type.__name__}, value was: {value}')
+                    f'{a_namer(name)} must be type {value_type.__name__}, value was: {value}')
 
         # Detect incorrect types
         for attr, hint in typing.get_type_hints(self).items():
@@ -887,16 +886,16 @@ class DiffusionRenderLoop:
         # that is multiprocess safe between instances of dgenerate
         if self.config.output_configs:
             image_filename, config_filename = \
-                _util.touch_avoid_duplicate(
+                _filelock.touch_avoid_duplicate(
                     self.config.output_path,
-                    pathmaker=_util.suffix_path_maker(
+                    path_maker=_filelock.suffix_path_maker(
                         [self._join_output_filename(filename_components, ext='png'),
                          self._join_output_filename(filename_components, ext='txt')],
                         suffix='_duplicate_'))
         else:
-            image_filename = _util.touch_avoid_duplicate(
+            image_filename = _filelock.touch_avoid_duplicate(
                 self.config.output_path,
-                pathmaker=_util.suffix_path_maker(
+                path_maker=_filelock.suffix_path_maker(
                     self._join_output_filename(filename_components, ext='png'),
                     suffix='_duplicate_'))
 
@@ -1089,7 +1088,7 @@ class DiffusionRenderLoop:
 
             sdxl_high_noise_fractions = \
                 self.config.sdxl_high_noise_fractions if \
-                    self.config.sdxl_refiner_uri is not None else None
+                self.config.sdxl_refiner_uri is not None else None
 
             for args_ctx in self.config.iterate_diffusion_args(
                     sdxl_high_noise_fraction=sdxl_high_noise_fractions,
@@ -1109,7 +1108,7 @@ class DiffusionRenderLoop:
 
         sdxl_high_noise_fractions = \
             self.config.sdxl_high_noise_fractions if \
-                self.config.sdxl_refiner_uri is not None else None
+            self.config.sdxl_refiner_uri is not None else None
 
         image_seed_strengths = self.config.image_seed_strengths if \
             not (_pipelinewrapper.model_type_is_upscaler(self.config.model_type) or
@@ -1150,10 +1149,10 @@ class DiffusionRenderLoop:
             )
 
             if is_single_control_image:
-                seed_info = _mediainput.get_image_seed_info(
+                seed_info = _mediainput.get_control_image_info(
                     parsed_image_seed, self.config.frame_start, self.config.frame_end)
             else:
-                seed_info = _mediainput.get_control_image_info(
+                seed_info = _mediainput.get_image_seed_info(
                     parsed_image_seed, self.config.frame_start, self.config.frame_end)
 
             if is_single_control_image:
@@ -1349,10 +1348,10 @@ class DiffusionRenderLoop:
 
         if not self.config.output_overwrite:
             filename = \
-                _util.touch_avoid_duplicate(
+                _filelock.touch_avoid_duplicate(
                     self.config.output_path,
-                    pathmaker=_util.suffix_path_maker(filename,
-                                                      '_duplicate_'))
+                    path_maker=_filelock.suffix_path_maker(filename,
+                                                           '_duplicate_'))
 
         with open(filename, "w") as config_file:
             config_file.write(config_text)

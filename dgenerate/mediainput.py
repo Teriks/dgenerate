@@ -33,12 +33,12 @@ import av
 import fake_useragent
 import requests
 
+import dgenerate.filelock as _filelock
 import dgenerate.image as _image
 import dgenerate.messages as _messages
 import dgenerate.preprocessors as _preprocessors
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-import dgenerate.util as _util
 
 
 class AnimationFrame:
@@ -65,7 +65,6 @@ class AnimationFrame:
     """
     Duration of the frame in milliseconds
     """
-
 
     image: PIL.Image.Image
     """
@@ -607,9 +606,9 @@ def iterate_animation_frames(seed_reader: AnimationReader,
     Read :py:class:`.AnimationFrame` objects from up to three :py:class:`.AnimationReader` objects simultaneously
     with an optional inclusive frame slice.
 
-    :param seed_reader: Reads into :py:attr:`.ImageSeed.image`
-    :param mask_reader: Reads into :py:attr:`.ImageSeed.mask`
-    :param control_reader: Reads into :py:attr:`.ImageSeed.control`
+    :param seed_reader: Reads into :py:attr:`.AnimationFrame.image`
+    :param mask_reader: Reads into :py:attr:`.AnimationFrame.mask_image`
+    :param control_reader: Reads into :py:attr:`.AnimationFrame.control_image`
     :param frame_start: Frame slice start, inclusive value
     :param frame_end: Frame slice end, inclusive value
     :return: Generator object yielding :py:class:`.AnimationFrame`
@@ -747,6 +746,7 @@ class ImageSeedParseResult:
         return self.seed_path is not None and self.mask_path is None and self.control_path is None
 
 
+# noinspection HttpUrlsUsage
 def _parse_image_seed_uri_legacy(uri: str) -> ImageSeedParseResult:
     parts = (x.strip() for x in uri.split(';'))
     result = ImageSeedParseResult()
@@ -789,11 +789,12 @@ def _parse_image_seed_uri_legacy(uri: str) -> ImageSeedParseResult:
     return result
 
 
+# noinspection HttpUrlsUsage
 def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
     """
-    Parse an `--image-seeds` path into its constituents
+    Parse an `--image-seeds` uri into its constituents
 
-    :param uri: `--image-seeds` path
+    :param uri: `--image-seeds` uri
     :return: :py:class:`.ImageSeedParseResult`
     """
 
@@ -894,7 +895,7 @@ def _get_web_cache_db():
     db_file = os.path.join(get_web_cache_directory(), 'cache.db')
     lock_file = os.path.join(get_web_cache_directory(), 'cache.lock')
     db = None
-    with _util.temp_file_lock(lock_file):
+    with _filelock.temp_file_lock(lock_file):
         try:
             db = sqlite3.connect(db_file)
             db.execute(
@@ -983,6 +984,7 @@ class UnknownMimetypeError(Exception):
     pass
 
 
+# noinspection HttpUrlsUsage
 def fetch_image_data_stream(uri: str) -> typing.Tuple[str, typing.BinaryIO]:
     """
     Get an open stream to a local file, or file at an HTTP or HTTPS URL, with caching for web files.
@@ -991,8 +993,6 @@ def fetch_image_data_stream(uri: str) -> typing.Tuple[str, typing.BinaryIO]:
     module can share the cache simultaneously, the last process alive clears the cache when it exits.
 
     :param uri: Local file path or URL
-    :param mime_type_filter: Function accepting a string (mime-type) and returning True if that mime-type is acceptable
-    :param mime_acceptable_desc: String describing acceptable mime-types to be used in exceptions or None (auto generate)
 
     :raises: :py:exc:`.UnknownMimetypeError`
 
@@ -1032,8 +1032,7 @@ def get_supported_image_mimetypes() -> typing.List[str]:
 
     :return: list of strings
     """
-    return get_supported_static_image_mimetypes() + \
-           get_supported_animated_image_mimetypes()
+    return get_supported_static_image_mimetypes() + get_supported_animated_image_mimetypes()
 
 
 def get_supported_video_mimetypes() -> typing.List[str]:
@@ -1078,7 +1077,8 @@ def mimetype_is_video(mimetype: str) -> bool:
     """
     Check if a mimetype is a video mimetype supported by dgenerate
 
-    :param mime_type: The mimetype string
+    :param mimetype: The mimetype string
+
     :return: bool
     """
     if mimetype is None:
@@ -1086,11 +1086,13 @@ def mimetype_is_video(mimetype: str) -> bool:
     return mimetype.startswith('video')
 
 
+# noinspection PyPep8
 def mime_type_is_supported(mimetype: str) -> bool:
     """
     Check if dgenerate supports a given input mimetype
 
-    :param mime_type: The mimetype string
+    :param mimetype: The mimetype string
+
     :return: bool
     """
     return mimetype_is_static_image(mimetype) or \
@@ -1099,7 +1101,7 @@ def mime_type_is_supported(mimetype: str) -> bool:
 
 
 class ImageSeedInfo:
-    """Information acquired about an `--image-seeds` path"""
+    """Information acquired about an `--image-seeds` uri"""
 
     fps: typing.Union[float, int]
     duration: float
@@ -1121,9 +1123,9 @@ def get_image_seed_info(uri: typing.Union[_types.Uri, ImageSeedParseResult],
                         frame_start: int = 0,
                         frame_end: _types.OptionalInteger = None) -> ImageSeedInfo:
     """
-    Get an informational object from a dgenerate `--image-seeds` path
+    Get an informational object from a dgenerate `--image-seeds` uri
 
-    :param image_seed_uri: The uri string or :py:class:`.ImageSeedParseResult`
+    :param uri: The uri string or :py:class:`.ImageSeedParseResult`
     :param frame_start: slice start
     :param frame_end: slice end
     :return: :py:class:`.ImageSeedInfo`
@@ -1239,7 +1241,7 @@ def _create_image_seed_reader(manage_context: list,
     return reader
 
 
-def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
+def iterate_control_image(path: typing.Union[str, ImageSeedParseResult],
                           frame_start: int = 0,
                           frame_end: _types.OptionalInteger = None,
                           resize_resolution: _types.OptionalSize = None,
@@ -1254,7 +1256,10 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
     This method is more efficient than :py:meth:`.iterate_image_seed` when it is known that 
     there is only one image/video in the path.
 
-    :param uri: `--image-seeds` path or :py:class:`.ImageSeedParseResult`
+    The image read will be available from the :py:attr:`.ImageSeed.image` attribute. The control
+    attribute is unused in this case.
+
+    :param path: `--image-seeds` path or :py:class:`.ImageSeedParseResult`
     :param frame_start: starting frame, inclusive value
     :param frame_end: optional end frame, inclusive value
     :param resize_resolution: optional resize resolution
@@ -1262,10 +1267,10 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
     :return: generator over :py:class:`.ImageSeed` objects
     """
 
-    if isinstance(uri, ImageSeedParseResult):
-        uri = uri.seed_path
+    if isinstance(path, ImageSeedParseResult):
+        path = path.seed_path
 
-    control_mime_type, control_data = fetch_image_data_stream(uri=uri)
+    control_mime_type, control_data = fetch_image_data_stream(uri=path)
 
     manage_context = [control_data]
 
@@ -1274,7 +1279,7 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
 
     control_reader = _create_image_seed_reader(manage_context=manage_context,
                                                mime_type=control_mime_type,
-                                               file_source=uri,
+                                               file_source=path,
                                                preprocessor=preprocessor,
                                                resize_resolution=resize_resolution,
                                                data=control_data,
@@ -1356,13 +1361,13 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
                        control_image_preprocessor: typing.Optional[_preprocessors.ImagePreprocessor] = None) -> \
         typing.Generator[ImageSeed, None, None]:
     """
-    Parse and load images/videos in an `--image-seeds` path and return a generator that
+    Parse and load images/videos in an `--image-seeds` uri and return a generator that
     produces :py:class:`.ImageSeed` objects while progressively reading those files.
     
     One or more :py:class:`.ImageSeed` objects may be yielded depending on whether an animation is being read.
     
 
-    :param uri: `--image-seeds` path or :py:class:`.ImageSeedParseResult`
+    :param uri: `--image-seeds` uri or :py:class:`.ImageSeedParseResult`
     :param frame_start: starting frame, inclusive value
     :param frame_end: optional end frame, inclusive value
     :param resize_resolution: optional resize resolution

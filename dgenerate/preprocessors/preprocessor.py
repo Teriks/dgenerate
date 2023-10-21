@@ -25,12 +25,11 @@ import typing
 
 import PIL.Image
 
+import dgenerate.filelock as _filelock
 import dgenerate.messages as _messages
-import dgenerate.preprocessors
 import dgenerate.preprocessors.exceptions as _exceptions
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-import dgenerate.util as _util
 
 
 class ImagePreprocessor:
@@ -310,8 +309,8 @@ class ImagePreprocessor:
         return self.__called_by_name
 
     def __gen_filename(self):
-        return _util.touch_avoid_duplicate(os.path.dirname(self.__output_file),
-                                           _util.suffix_path_maker(self.__output_file, '_'))
+        return _filelock.touch_avoid_duplicate(os.path.dirname(self.__output_file),
+                                               _filelock.suffix_path_maker(self.__output_file, '_'))
 
     def __save_debug_image(self, image, debug_header):
         if self.__output_file is not None:

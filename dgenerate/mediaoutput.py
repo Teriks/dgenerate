@@ -24,7 +24,7 @@ import typing
 import PIL.Image
 import av
 
-import dgenerate.util as _util
+import dgenerate.filelock as _filelock
 
 
 class AnimationWriter:
@@ -194,10 +194,10 @@ class MultiAnimationWriter(AnimationWriter):
             if not self.allow_overwrites:
                 # Touch all the files we will be writing to
                 # Avoid duplication
-                self.filenames = _util.touch_avoid_duplicate(
+                self.filenames = _filelock.touch_avoid_duplicate(
                     os.path.dirname(self.filename),
                     return_list=True,
-                    pathmaker=_util.suffix_path_maker(
+                    path_maker=_filelock.suffix_path_maker(
                         requested_filenames,
                         suffix='_duplicate_'
                     ))

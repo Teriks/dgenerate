@@ -21,6 +21,7 @@
 
 import argparse
 import typing
+from argparse import Action
 
 import diffusers.schedulers
 
@@ -251,7 +252,7 @@ def _type_batch_size(val):
     return val
 
 
-actions = []
+actions: typing.List[Action] = []
 
 actions.append(
     parser.add_argument('model_path', action='store',
@@ -522,7 +523,7 @@ actions.append(
 
 _flax_scheduler_help_part = \
     f' Flax schedulers: ({", ".join(e.name for e in diffusers.schedulers.FlaxKarrasDiffusionSchedulers)})' \
-        if _pipelinewrapper.have_jax_flax() else ''
+    if _pipelinewrapper.have_jax_flax() else ''
 
 actions.append(
     parser.add_argument('--scheduler', action='store', default=None, metavar="SCHEDULER_NAME",
@@ -610,8 +611,8 @@ actions.append(
     parser.add_argument('--sdxl-original-size', '--sdxl-original-sizes', dest='sdxl_original_sizes', metavar="SIZE",
                         action='store', nargs='+', default=[], type=_type_size,
                         help="""One or more Stable Diffusion XL (torch-sdxl) "original-size" micro-conditioning parameters in
-                        the format (WIDTHxHEIGHT). If not the same as --sdxl-target-size the image will appear to be
-                        down or upsampled. --sdxl-original-size defaults to --output-size if not specified. Part of
+                        the format (WIDTH)x(HEIGHT). If not the same as --sdxl-target-size the image will appear to be
+                        down or up-sampled. --sdxl-original-size defaults to --output-size if not specified. Part of
                         SDXL\'s micro-conditioning as explained in section 2.2 of 
                         [https://huggingface.co/papers/2307.01952]"""))
 
@@ -619,7 +620,7 @@ actions.append(
     parser.add_argument('--sdxl-target-size', '--sdxl-target-sizes', dest='sdxl_target_sizes', metavar="SIZE",
                         action='store', nargs='+', default=[], type=_type_size,
                         help="""One or more Stable Diffusion XL (torch-sdxl) "target-size" micro-conditioning parameters in
-                        the format (WIDTHxHEIGHT). For most cases, --sdxl-target-size should be set to the desired
+                        the format (WIDTH)x(HEIGHT). For most cases, --sdxl-target-size should be set to the desired
                         height and width of the generated image. If not specified it will default to --output-size.
                         Part of SDXL\'s micro-conditioning as explained in section 2.2 of 
                         [https://huggingface.co/papers/2307.01952]"""))
@@ -948,7 +949,7 @@ actions.append(
     parser.add_argument('-igs', '--image-guidance-scales', action='store', nargs='+', default=None,
                         metavar="FLOAT",
                         type=_type_image_guidance_scale,
-                        help="""Push the generated image towards the inital image when using --model-type *-pix2pix models.
+                        help="""Push the generated image towards the initial image when using --model-type *-pix2pix models.
                         Use in conjunction with --image-seeds, inpainting (masks) and --control-nets are not supported.
                         Image guidance scale is enabled by setting image-guidance-scale > 1. Higher image guidance scale
                         encourages generated images that are closely linked to the source image, usually at the expense

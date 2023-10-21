@@ -24,9 +24,9 @@ import typing
 from dgenerate.textprocessing import quote
 from .canny import CannyEdgeDetectPreprocess
 from .exceptions import *
+from .imageops import *
 from .loader import Loader
 from .openpose import OpenPosePreprocess
-from .imageops import *
 from .preprocessor import ImagePreprocessor
 from .preprocessorchain import ImagePreprocessorChain
 from .preprocessormixin import ImagePreprocessorMixin
