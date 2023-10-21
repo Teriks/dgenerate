@@ -38,7 +38,7 @@ class HFBlobLink:
     repo_id: str
     revision: str
     subfolder: str
-    filename: str
+    weight_name: str
 
     def __init__(self,
                  repo_id,
