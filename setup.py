@@ -230,7 +230,8 @@ if __name__ != 'setup_as_library':
               'flax': lockfile_flax_requirements,
               'dev': ['pyinstaller==6.0.0',
                       'sphinx==7.2.6',
-                      'sphinx_rtd_theme==1.3.0']
+                      'sphinx_rtd_theme==1.3.0'],
+              'docs': ['sphinx_rtd_theme==1.3.0']
           },
           entry_points={
               'console_scripts': [
