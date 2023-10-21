@@ -47,10 +47,10 @@ dgenerate.preprocessors.openpose module
    :show-inheritance:
    :special-members: __call__, __init__
 
-dgenerate.preprocessors.pil\_imageops module
---------------------------------------------
+dgenerate.preprocessors.imageops module
+---------------------------------------
 
-.. automodule:: dgenerate.preprocessors.pil_imageops
+.. automodule:: dgenerate.preprocessors.imageops
    :members:
    :undoc-members:
    :show-inheritance:

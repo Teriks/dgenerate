@@ -692,8 +692,6 @@ class DiffusionRenderLoop:
 
     def __init__(self, config=None, preprocessor_loader=None):
         """
-        Constructor.
-
         :param config: :py:class:`.DiffusionRenderLoopConfig` or :py:class:`dgenerate.arguments.DgenerateArguments`
         :param preprocessor_loader: :py:class:`dgenerate.preprocessors.loader.Loader`
         """

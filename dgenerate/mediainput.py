@@ -130,26 +130,56 @@ class AnimationReader:
 
     @property
     def width(self) -> int:
+        """
+        Width dimension, (X dimension).
+
+        :return: width
+        """
         return self._width
 
     @property
     def size(self) -> _types.Size:
+        """
+        returns (width, height) as a tuple.
+
+        :return: (width, height)
+        """
         return self._width, self._height
 
     @property
     def height(self) -> int:
+        """
+        Height dimension, (Y dimension).
+
+        :return: height
+        """
         return self._height
 
     @property
     def anim_fps(self) -> typing.Union[float, int]:
+        """
+        Frame per second.
+
+        :return: float or integer
+        """
         return self._anim_fps
 
     @property
     def anim_frame_duration(self) -> float:
+        """
+        Duration of each frame in milliseconds.
+
+        :return: duration
+        """
         return self._anim_frame_duration
 
     @property
     def total_frames(self) -> int:
+        """
+        Total number of frames that can be read.
+
+        :return: count
+        """
         return self._total_frames
 
     def __enter__(self):
@@ -165,6 +195,14 @@ class AnimationReader:
         raise StopIteration
 
     def frame_slice_count(self, frame_start: int = 0, frame_end: _types.OptionalInteger = None) -> int:
+        """
+        Calculate the number of frames that exist within a frame slice of the content
+        provided by this animation reader.
+
+        :param frame_start: start frame (inclusive)
+        :param frame_end: end frame (inclusive)
+        :return: count
+        """
         return frame_slice_count(self.total_frames, frame_start, frame_end)
 
 
@@ -222,9 +260,6 @@ class VideoReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._container.close()
 
-    def frame_slice_count(self, frame_start=0, frame_end=None):
-        return frame_slice_count(self.total_frames, frame_start, frame_end)
-
     def __next__(self):
         rgb_image = next(self._iter).to_image()
         rgb_image.filename = self._file_source
@@ -278,9 +313,6 @@ class AnimatedImageReader(_preprocessors.ImagePreprocessorMixin, AnimationReader
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._img.close()
 
-    def frame_slice_count(self, frame_start: int = 0, frame_end: _types.OptionalInteger = None):
-        return frame_slice_count(self.total_frames, frame_start, frame_end)
-
     def __next__(self) -> PIL.Image.Image:
         with next(self._iter) as img:
             rgb_image = _image.to_rgb(img)
@@ -327,17 +359,22 @@ class MockImageAnimationReader(_preprocessors.ImagePreprocessorMixin, AnimationR
 
     @property
     def total_frames(self) -> int:
+        """
+        Settable total_frames property.
+
+        :return: frame count
+        """
         return self._total_frames
 
     @total_frames.setter
     def total_frames(self, cnt):
+        """
+        Settable total_frames property.
+        """
         self._total_frames = cnt
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._img.close()
-
-    def frame_slice_count(self, frame_start: int = 0, frame_end: _types.OptionalInteger = None) -> int:
-        return frame_slice_count(self.total_frames, frame_start, frame_end)
 
     def __next__(self) -> PIL.Image.Image:
         if self._idx < self.total_frames:
@@ -863,7 +900,7 @@ def fetch_image_data_stream(uri: str) -> typing.Tuple[str, typing.BinaryIO]:
     """
     Get an open stream to a local file, or file at an HTTP or HTTPS URL, with caching for web files.
 
-    Cacheing for downloaded files is threadsafe and multiprocess safe, multiple processes using this
+    Caching for downloaded files is multiprocess safe, multiple processes using this
     module can share the cache simultaneously, the last process alive clears the cache when it exits.
 
     :param uri: Local file path or URL

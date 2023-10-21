@@ -8,8 +8,8 @@ Welcome to dgenerate's documentation!
 
 This is the library documentation for `dgenerate <https://github.com/Teriks/dgenerate>`_.
 
-For command line usage documentation see the `readme <https://github.com/Teriks/dgenerate/README.rst>`_
-or the `examples folder <https://github.com/Teriks/dgenerate/examples>`_ in the github repository.
+For command line usage documentation see the `readme <https://github.com/Teriks/dgenerate/blob/master/README.rst>`_
+or the `examples folder <https://github.com/Teriks/dgenerate/tree/master/examples>`_ in the github repository.
 
 .. toctree::
    :maxdepth: 3

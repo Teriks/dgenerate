@@ -26,6 +26,7 @@ import typing
 import PIL.Image
 
 import dgenerate.messages as _messages
+import dgenerate.preprocessors
 import dgenerate.preprocessors.exceptions as _exceptions
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
@@ -33,8 +34,18 @@ import dgenerate.util as _util
 
 
 class ImagePreprocessor:
+    """
+    Abstract base class for image preprocessor implementations.
+    """
+
     @classmethod
     def get_names(cls) -> typing.List[str]:
+        """
+        Get the names that this class can be loaded / invoked by.
+
+        :return:
+        """
+
         if not issubclass(cls, ImagePreprocessor):
             raise ValueError(
                 'provided class is not a subclass of dgenerate.preprocessors.ImagePreprocessor')
@@ -49,13 +60,26 @@ class ImagePreprocessor:
 
     @classmethod
     def get_help(cls, called_by_name: str) -> str:
+        """
+        Get formatted help information about the image preprocessor.
+
+        This includes any implemented help strings and an auto formatted
+        description of the preprocessors accepted arguments.
+
+        :param called_by_name: The name used to invoke the preprocessor.
+            Help may vary depending on how many names the preprocessor
+            implementation handles and what invoking it by a certain
+            name does.
+
+        :return: Formatted help string
+        """
+
         help_str = None
         if hasattr(cls, 'help'):
             help_str = cls.help(called_by_name)
             if help_str:
                 help_str = _textprocessing.justify_left(help_str).strip()
-
-        if cls.__doc__:
+        elif cls.__doc__:
             help_str = _textprocessing.justify_left(cls.__doc__).strip()
 
         args_with_defaults = cls.get_accepted_args_with_defaults(called_by_name)
@@ -89,21 +113,59 @@ class ImagePreprocessor:
 
     @classmethod
     def get_accepted_args(cls, called_by_name: str) -> typing.List[str]:
+        """
+        Get a list of accepted argument names for a preprocessor class.
+
+        :param called_by_name: The name used to invoke the preprocessor.
+            Arguments may vary depending on what name was used to invoke the preprocessor.
+
+        :return: list of argument names
+        """
         return [a[0] for a in
                 cls.get_accepted_args_with_defaults(called_by_name)]
 
     @classmethod
     def get_required_args(cls, called_by_name: str) -> typing.List[str]:
+        """
+        Get a list of required arguments for this preprocessor class.
+
+        :param called_by_name: The name used to invoke the preprocessor.
+            Required arguments may vary by name used to invoke.
+
+        :return: list of argument names
+        """
         return [a[0] for a in
                 cls.get_accepted_args_with_defaults(called_by_name) if len(a) == 1]
 
     @classmethod
     def get_default_args(cls, called_by_name: str) -> typing.List[typing.Tuple[str, typing.Any]]:
+        """
+        Get the names and values of arguments for this preprocessor that possess default values.
+
+        :param called_by_name: The name used to invoke the preprocessor.
+            Default arguments may vary by name used to invoke.
+
+        :return: list of arguments with default value: (name, value)
+        """
         return [a for a in
                 cls.get_accepted_args_with_defaults(called_by_name) if len(a) == 2]
 
     @classmethod
     def get_accepted_args_with_defaults(cls, called_by_name) -> typing.List[typing.Tuple[str, typing.Any]]:
+        """
+        Retrieve the argument signature of an image preprocessor implementation. As a list of tuples
+        which are: (name,) or (name, default_value) depending on if a default value for the argument
+        is present in the signature.
+
+        :param called_by_name: The name used to invoke the preprocessor.
+            Argument signature may vary by name used to invoke.
+
+        :return: mixed list of tuples, of length 1 or 2, depending on if
+            the argument has a default value. IE: (name,) or (name, default_value).
+            Arguments with defaults are not guaranteed to be positioned at the end
+            of this sequence.
+        """
+
         if hasattr(cls, 'ARGS'):
             if isinstance(cls.ARGS, dict):
                 if called_by_name not in cls.ARGS:
@@ -144,7 +206,23 @@ class ImagePreprocessor:
         return args_with_defaults
 
     @staticmethod
-    def get_int_arg(name: str, value: typing.Union[str, int]) -> int:
+    def get_int_arg(name: str, value: typing.Union[str, int, typing.Dict]) -> int:
+        """
+        Convert an argument value from a string to an integer.
+        Throw :py:class:`._exceptions.ImagePreprocessorArgumentError` if there
+        is an error parsing the value.
+
+        :raises: :py:class:`._exceptions.ImagePreprocessorArgumentError`
+
+        :param name: the argument name for descriptive purposes,
+            and/or for specifying the dictionary key when *value*
+            is a dictionary.
+
+        :param value: an integer value as a string, or optionally a
+            dictionary to get the value from using the argument *name*.
+
+        :return: int
+        """
         if isinstance(value, dict):
             value = value.get(name)
         try:
@@ -153,7 +231,24 @@ class ImagePreprocessor:
             raise _exceptions.ImagePreprocessorArgumentError(f'Argument "{name}" must be an integer value.')
 
     @staticmethod
-    def get_float_arg(name: str, value: typing.Union[str, float]) -> float:
+    def get_float_arg(name: str, value: typing.Union[str, float, typing.Dict]) -> float:
+        """
+        Convert an argument value from a string to a float.
+        Throw :py:class:`._exceptions.ImagePreprocessorArgumentError` if there
+        is an error parsing the value.
+
+        :raises: :py:class:`._exceptions.ImagePreprocessorArgumentError`
+
+        :param name: the argument name for descriptive purposes,
+            and/or for specifying the dictionary key when *value*
+            is a dictionary.
+
+        :param value: a float value as a string, or optionally a
+            dictionary to get the value from using the argument *name*.
+
+        :return: float
+        """
+
         if isinstance(value, dict):
             value = value.get(name)
         try:
@@ -162,7 +257,24 @@ class ImagePreprocessor:
             raise _exceptions.ImagePreprocessorArgumentError(f'Argument "{name}" must be a floating point value.')
 
     @staticmethod
-    def get_bool_arg(name: str, value: typing.Union[str, bool]) -> bool:
+    def get_bool_arg(name: str, value: typing.Union[str, bool, typing.Dict]) -> bool:
+        """
+        Convert an argument value from a string to a boolean value.
+        Throw :py:class:`._exceptions.ImagePreprocessorArgumentError` if there
+        is an error parsing the value.
+
+        :raises: :py:class:`._exceptions.ImagePreprocessorArgumentError`
+
+        :param name: the argument name for descriptive purposes,
+            and/or for specifying the dictionary key when *value*
+            is a dictionary.
+
+        :param value: a boolean value as a string, or optionally a
+            dictionary to get the value from using the argument *name*.
+
+        :return: bool
+        """
+
         if isinstance(value, dict):
             value = value.get(name)
         try:
@@ -181,10 +293,20 @@ class ImagePreprocessor:
 
     @property
     def device(self) -> str:
+        """
+        The rendering device requested for this preprocessor.
+
+        :return: device string, for example "cuda", "cuda:N", or "cpu"
+        """
         return self.__device
 
     @property
     def called_by_name(self) -> str:
+        """
+        The name the preprocessor was invoked by.
+
+        :return: name
+        """
         return self.__called_by_name
 
     def __gen_filename(self):
@@ -202,8 +324,24 @@ class ImagePreprocessor:
             _messages.debug_log(f'{debug_header}: "{filename}"')
 
     @staticmethod
-    def call_pre_resize(preprocessor, image: PIL.Image.Image,
+    def call_pre_resize(preprocessor,
+                        image: PIL.Image.Image,
                         resize_resolution: _types.OptionalSize) -> PIL.Image.Image:
+        """
+        Invoke a preprocessors :py:meth:`.ImagePreprocessor.pre_resize` method.
+
+        Implements important behaviors depending on if the image was modified.
+
+        This is the only appropriate way to invoke a preprocessor manually.
+
+        :param preprocessor: :py:class:`.ImagePreprocessor` implementation instance
+        :param image: the image to pass
+        :param resize_resolution: the size that the image is going to be resized
+            to after this step, or None if it is not being resized.
+
+        :return: processed image, may be the same image or a copy.
+        """
+
         img_copy = image.copy()
 
         processed = preprocessor.pre_resize(image, resize_resolution)
@@ -231,7 +369,21 @@ class ImagePreprocessor:
         return processed
 
     @staticmethod
-    def call_post_resize(preprocessor, image: PIL.Image.Image) -> PIL.Image.Image:
+    def call_post_resize(preprocessor,
+                         image: PIL.Image.Image) -> PIL.Image.Image:
+        """
+        Invoke a preprocessors :py:meth:`.ImagePreprocessor.post_resize` method.
+
+        Implements important behaviors depending on if the image was modified.
+
+        This is the only appropriate way to invoke a preprocessor manually.
+
+        :param preprocessor: :py:class:`.ImagePreprocessor` implementation instance
+        :param image: the image to pass
+
+        :return: processed image, may be the same image or a copy.
+        """
+
         img_copy = image.copy()
 
         processed = preprocessor.post_resize(image)
@@ -259,9 +411,32 @@ class ImagePreprocessor:
         return processed
 
     def pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
+        """
+        Implementation of pre_resize that does nothing. Inheritor must implement.
+
+        This method should not be invoked directly, use the class method
+        :py:meth:`.ImagePreprocessor.call_pre_resize` to invoke it.
+
+        :param image: image to process
+        :param resize_resolution: image will be resized to this resolution
+            after this process is complete.  If None is passed no resize is
+            going to occur. It is not the duty of the inheritor to resize the
+            image, in fact it should NEVER be resized.
+
+        :return: the processed image
+        """
         return image
 
     def post_resize(self, image: PIL.Image.Image):
+        """
+        Implementation of post_resize that does nothing. Inheritor must implement.
+
+        This method should not be invoked directly, use the class method
+        :py:meth:`.ImagePreprocessor.call_post_resize` to invoke it.
+
+        :param image: image to process
+        :return: the processed image
+        """
         return image
 
     def __str__(self):
