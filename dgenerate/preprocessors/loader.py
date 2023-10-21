@@ -38,8 +38,8 @@ class Loader:
     extra_classes: typing.Set = set()
     """
     Additional directly defined implementation classes. This is empty by default and is for allowing
-    library users to quickly add a class implementing :py:class:`_preprocessor.ImagePreprocessor` if 
-    desired without creating a new file for it.
+    library users to quickly add a class implementing :py:class:`dgenerate.preprocessors.preprocessor.ImagePreprocessor`
+    if desired without creating a new file for it.
     """
 
     def add_class(self, cls: typing.Type[_preprocessor.ImagePreprocessor]):
@@ -47,7 +47,8 @@ class Loader:
         Add an image preprocessor implementation by its class, this is unused by dgenerate
         and is provided for the convenience of library users.
 
-        :param cls: class the implements :py:class:`_preprocessor.ImagePreprocessor`, (not an instance, but the type)
+        :param cls: class the implements :py:class:`dgenerate.preprocessors.preprocessor.ImagePreprocessor`,
+            (not an instance, use the type itself)
         """
 
         self.extra_classes.add(cls)

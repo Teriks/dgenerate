@@ -34,7 +34,7 @@ class FooBarPreprocessor(dgenerate.preprocessors.ImagePreprocessor):
         self._my_argument_2 = self.get_bool_arg('my_argument_2', my_argument_2)
         self._my_argument_3 = self.get_float_arg('my_argument_3', my_argument_3)
 
-    def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
+    def pre_resize(self, image: PIL.Image.Image, resize_resolution: typing.Union[None, tuple]):
 
         # This step runs before dgenerate resizes an image to the value of --output-size
         # "resize_resolution" is the resolution that the image is going to be resized to
@@ -117,10 +117,10 @@ class BooFabPreprocessor(dgenerate.preprocessors.ImagePreprocessor):
             self._my_argument_2 = self.get_float_arg('my_argument_2', kwargs)
             self._my_argument_3 = self.get_bool_arg('my_argument_3', kwargs)
 
-    def pre_resize(self, image: PIL.Image, resize_resolution: typing.Union[None, tuple]):
+    def pre_resize(self, image: PIL.Image.Image, resize_resolution: typing.Union[None, tuple]):
         print(f'{self.called_by_name}:', self._my_argument, self._my_argument_2, self._my_argument_3)
         return image
 
-    def post_resize(self, image: PIL.Image):
+    def post_resize(self, image: PIL.Image.Image):
         print(f'{self.called_by_name}:', self._my_argument, self._my_argument_2, self._my_argument_3)
         return image

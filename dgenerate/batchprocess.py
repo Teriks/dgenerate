@@ -70,8 +70,6 @@ class BatchProcessor:
                  directives: typing.Optional[typing.Dict[str, typing.Callable[[list], None]]] = None,
                  injected_args: typing.Optional[typing.Sequence[str]] = None):
         """
-        Constructor.
-
         :param invoker: A function for invoking lines recognized as shell commands, should return a return code.
         :param template_variable_generator: A function that generates template variables for templating after an
             invocation, should return a dictionary.

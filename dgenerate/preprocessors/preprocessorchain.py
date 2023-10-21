@@ -27,10 +27,20 @@ import dgenerate.types as _types
 
 
 class ImagePreprocessorChain(_preprocessor.ImagePreprocessor):
+    """
+    Implements chainable image preprocessors.
+
+    Chains preprocessing steps together in a sequence.
+    """
+
     HIDDEN = True
 
     def __init__(self, preprocessors: typing.Optional[typing.Iterable[_preprocessor.ImagePreprocessor]] = None,
                  **kwargs):
+        """
+        :param preprocessors: optional initial preprocessors to fill the chain, accepts an iterable
+        :param kwargs: forwarded to base class
+        """
         super().__init__(**kwargs)
 
         if preprocessors is None:
@@ -52,9 +62,31 @@ class ImagePreprocessorChain(_preprocessor.ImagePreprocessor):
         return str(self)
 
     def add_processor(self, preprocessor: _preprocessor.ImagePreprocessor):
+        """
+        Add a preprocessor implementation to the chain.
+
+        :param preprocessor: :py:class:`dgenerate.preprocessors.preprocessor.ImagePreprocessor`
+        """
         self._preprocessors.append(preprocessor)
 
     def pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
+        """
+        Invoke pre_resize on all preprocessors in this preprocessor chain in turn.
+
+        Every subsequent invocation receives the last preprocessed image as its argument.
+
+        This method should not be invoked directly, use the class method
+        :py:meth:`dgenerate.preprocessors.preprocessor.ImagePreprocessor.call_pre_resize` to invoke it.
+
+        :param image: initial image to preprocess
+        :param resize_resolution: the size which the image will be resized to after this
+            step, this is only information for the preprocessors and the image will not be
+            resized by this method. Image preprocessors should never resize images as it is
+            the responsibility of dgenerate to do that for the user.
+
+        :return: the processed image, possibly affected by every preprocessor in the chain
+        """
+
         if self._preprocessors:
             p_image = image
             for preprocessor in self._preprocessors:
@@ -67,6 +99,18 @@ class ImagePreprocessorChain(_preprocessor.ImagePreprocessor):
             return image
 
     def post_resize(self, image: PIL.Image.Image):
+        """
+        Invoke post_resize on all preprocessors in this preprocessor chain in turn.
+
+        Every subsequent invocation receives the last preprocessed image as its argument.
+
+        This method should not be invoked directly, use the class method
+        :py:meth:`dgenerate.preprocessors.preprocessor.ImagePreprocessor.call_post_resize` to invoke it.
+
+        :param image: initial image to preprocess
+        :return: the processed image, possibly affected by every preprocessor in the chain
+        """
+
         if self._preprocessors:
             p_image = image
             for preprocessor in self._preprocessors:

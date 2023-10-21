@@ -158,8 +158,6 @@ class MultiAnimationWriter(AnimationWriter):
                  typing.Union[float, int],
                  allow_overwrites=False):
         """
-        Constructor.
-        
         :param animation_format: One of :py:meth:`.supported_animation_writer_formats`
         :param filename: The desired filename, if multiple images are written a 
             suffix _animation_N will be appended for each file

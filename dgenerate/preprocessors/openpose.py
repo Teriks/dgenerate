@@ -47,6 +47,14 @@ class OpenPosePreprocess(ImagePreprocessor):
                  include_hand=False,
                  include_face=False,
                  pre_resize=False, **kwargs):
+        """
+
+        :param include_body: generate a body rig?
+        :param include_hand: include detailed hand rigging?
+        :param include_face: include detailed face rigging?
+        :param pre_resize: process the image before it is resized, or after? default is after (False)
+        :param kwargs: forwarded to base class
+        """
 
         super().__init__(**kwargs)
 
@@ -89,11 +97,27 @@ class OpenPosePreprocess(ImagePreprocessor):
         return PIL.Image.fromarray(detected_map)
 
     def pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
+        """
+        Pre resize, OpenPose rig generation may or may not occur here depending
+        on the boolean value of the preprocessor argument "pre-resize"
+
+
+        :param image: image to process
+        :param resize_resolution: purely informational, is unused by this preprocessor
+        :return: possibly an OpenPose rig image, or the input image
+        """
         if self._pre_resize:
             return self._process(image)
         return image
 
     def post_resize(self, image: PIL.Image.Image):
+        """
+        Post resize, OpenPose rig generation may or may not occur here depending
+        on the boolean value of the preprocessor argument "pre-resize"
+
+        :param image: image to process
+        :return: possibly an OpenPose rig image, or the input image
+        """
         if not self._pre_resize:
             return self._process(image)
         return image

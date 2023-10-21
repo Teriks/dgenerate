@@ -52,8 +52,6 @@ class ConceptUriParser:
 
     def __init__(self, concept_name: _types.Name, known_args=None):
         """
-        Constructor.
-
         :param concept_name: Concept name, used in error messages
         :param known_args: valid arguments for the parser
         """

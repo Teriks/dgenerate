@@ -30,6 +30,11 @@ class Prompt:
                  positive: typing.Optional[str] = None,
                  negative: typing.Optional[str] = None,
                  delimiter: str = ';'):
+        """
+        :param positive: positive prompt component
+        :param negative: negative prompt component
+        :param delimiter: delimiter for stringification and parsing
+        """
         self.positive = positive
         self.negative = negative
         self.delimiter = delimiter

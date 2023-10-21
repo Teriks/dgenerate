@@ -60,6 +60,20 @@ class CannyEdgeDetectPreprocess(_preprocessor.ImagePreprocessor):
                  threshold_algo=None,
                  sigma=0.33,
                  pre_resize=False, **kwargs):
+        """
+        :param lower: lower threshold for canny edge detection
+        :param upper: upper threshold for canny edge detection
+        :param aperture_size: aperture size, an odd integer from 3 to 7
+        :param L2_gradient: Use L2_gradient? https://docs.opencv.org/3.4/da/d22/tutorial_py_canny.html
+        :param blur: apply a 3x3 gaussian blur before processing?
+        :param gray: convert to cv2.GRAY format before processing?
+        :param threshold_algo: optional auto thresholding algorithm. One of "otsu", "triangle", or "median".
+            the lower, and upper threshold values are determined automagically from the image content if
+            this argument is supplied a value.
+        :param sigma: scales the range of the automatic threshold calculation
+        :param pre_resize: process the image before it is resized, or after? default is after (False)
+        :param kwargs: forwarded to base class
+        """
         super().__init__(**kwargs)
 
         # The module loader will pass the values from the command line as strings
@@ -137,11 +151,26 @@ class CannyEdgeDetectPreprocess(_preprocessor.ImagePreprocessor):
         return PIL.Image.fromarray(cv2.cvtColor(edges, convert_back))
 
     def pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
+        """
+        Pre resize, canny edge detection may or may not occur here depending
+        on the boolean value of the preprocessor argument "pre-resize"
+
+        :param image: image to process
+        :param resize_resolution: purely informational, is unused by this preprocessor
+        :return: possibly a canny edge detected image, or the input image
+        """
         if self._pre_resize:
             return self._process(image)
         return image
 
     def post_resize(self, image: PIL.Image.Image):
+        """
+        Post resize, canny edge detection may or may not occur here depending
+        on the boolean value of the preprocessor argument "pre-resize"
+
+        :param image: image to process
+        :return: possibly a canny edge detected image, or the input image
+        """
         if not self._pre_resize:
             return self._process(image)
         return image

@@ -27,9 +27,24 @@ import dgenerate.types as _types
 
 
 class ImagePreprocessorMixin:
+    """
+    Mixin functionality for objects that do image preprocessing such as
+    implementors of :py:class:`dgenerate.mediainput.AnimationReader`
+    """
+
     preprocessor_enabled: bool
+    """
+    Enable or disable image preprocessing.
+    """
 
     def __init__(self, preprocessor: _preprocessor.ImagePreprocessor, *args, **kwargs):
+        """
+        :param preprocessor: the preprocessor implementation that will be doing
+            the image preprocessing.
+
+        :param args: mixin forwarded args
+        :param kwargs: mixin forwarded kwargs
+        """
         super().__init__(*args, **kwargs)
         self._preprocessor = preprocessor
         self.preprocess_enabled: bool = True
@@ -63,6 +78,18 @@ class ImagePreprocessorMixin:
         return image
 
     def preprocess_image(self, image: PIL.Image.Image, resize_to: _types.OptionalSize):
+        """
+        Preform image preprocessing on an image, including the requested resizing step.
+
+        Invokes the assigned image preprocessor pre and post resizing with appropriate
+        arguments and correct resource management.
+
+        :param image: image to process
+        :param resize_to: image will be resized to this dimension by this method.
+
+        :return: the processed image, processed by the
+            preprocessor assigned in the constructor.
+        """
 
         # This is the actual size it will end
         # up being resized to by resize_image

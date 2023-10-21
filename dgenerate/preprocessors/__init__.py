@@ -26,7 +26,7 @@ from .canny import CannyEdgeDetectPreprocess
 from .exceptions import *
 from .loader import Loader
 from .openpose import OpenPosePreprocess
-from .pil_imageops import *
+from .imageops import *
 from .preprocessor import ImagePreprocessor
 from .preprocessorchain import ImagePreprocessorChain
 from .preprocessormixin import ImagePreprocessorMixin
