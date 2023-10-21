@@ -210,6 +210,11 @@ if __name__ != 'setup_as_library':
                               get_poetry_pyproject_as_pip_requires(
                                   exclude=exclude.union({'python'})).items()]
 
+    if 'READTHEDOCS' in os.environ:
+        for idx, requires in enumerate(pyproject_requirements):
+            # no cuda
+            pyproject_requirements[idx] = requires.replace('+cu118', '')
+
     lockfile_flax_requirements = [name + spec for name, spec in
                                   get_poetry_lockfile_as_pip_requires(optionals=True).items()]
 
@@ -231,7 +236,7 @@ if __name__ != 'setup_as_library':
               'dev': ['pyinstaller==6.0.0',
                       'sphinx==7.2.6',
                       'sphinx_rtd_theme==1.3.0'],
-              'docs': ['sphinx_rtd_theme==1.3.0', 'torch==2.0.1']
+              'readthedocs': ['sphinx_rtd_theme==1.3.0']
           },
           entry_points={
               'console_scripts': [

@@ -14,7 +14,7 @@ python:
     - method: pip
       path: .
       extra_requirements:
-        - docs
+        - readthedocs
 
 sphinx:
   configuration: docs/conf.py
