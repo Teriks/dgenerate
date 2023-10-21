@@ -56,7 +56,7 @@ class Prompt:
 
         :param value: the string
 
-        :raise: :py:class:`ValueError`
+        :raise: :py:class:`ValueError` if value is None
 
         :return: :py:class:`.Prompt` (returns self)
         """

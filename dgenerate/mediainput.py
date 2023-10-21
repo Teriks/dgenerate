@@ -43,15 +43,45 @@ import dgenerate.util as _util
 
 class AnimationFrame:
     """
-    A realized animation frame with attached image data.
+    A realized --image-seed animation frame with attached image data.
     """
+
     frame_index: int
+    """
+    Index of the frame in the animation
+    """
+
     total_frames: int
+    """
+    Total frames in the animation that this frame belongs to
+    """
+
     anim_fps: typing.Union[float, int]
+    """
+    Frames per second
+    """
+
     anim_frame_duration: float
+    """
+    Duration of the frame in milliseconds
+    """
+
+
     image: PIL.Image.Image
+    """
+    The seed image component of the frame
+    """
+
     mask_image: PIL.Image.Image = None
+    """
+    The mask image component of the frame (optional)
+    """
+
     control_image: PIL.Image.Image = None
+    """
+    The control image component of the frame (optional)
+    for use with ControlNets
+    """
 
     def __init__(self,
                  frame_index: int,
@@ -122,6 +152,14 @@ class AnimationReader:
                  anim_fps: typing.Union[float, int],
                  anim_frame_duration: float,
                  total_frames: int, **kwargs):
+        """
+        :param width: width of the animation, X dimension
+        :param height: height of the animation, Y dimension
+        :param anim_fps: frames per second
+        :param anim_frame_duration: frame duration in milliseconds
+        :param total_frames: total frames in the animation
+        :param kwargs: for mixins
+        """
         self._width = width
         self._height = height
         self._anim_fps = anim_fps
@@ -208,7 +246,9 @@ class AnimationReader:
 
 class VideoReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
     """
-    Implementation :py:class:`.AnimationReader` that reads Video files with PyAV
+    Implementation :py:class:`.AnimationReader` that reads Video files with PyAV.
+
+    All frame images from this animation reader will be aligned by 8 pixels.
     """
 
     def __init__(self,
@@ -216,6 +256,18 @@ class VideoReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
                  file_source: str,
                  resize_resolution: _types.OptionalSize = None,
                  preprocessor: _preprocessors.ImagePreprocessor = None):
+        """
+        :param file: a file path or binary file stream
+        :param file_source: the source filename for the video data, should be the filename.
+            this is for informational purpose when reading from a stream or a cached file
+            and should be provided in every case even if it is a symbolic value only. It
+            should possess a file extension as it is used to determine file format when
+            reading from a byte stream.
+
+        :param resize_resolution: Progressively resize each frame to this resolution while
+            reading. The provided resolution will be aligned by 8 pixels.
+        :param preprocessor: optionally preprocess every frame with this image preprocessor
+        """
         self._filename = file
         self._file_source = file_source
         if isinstance(file, str):
@@ -268,7 +320,9 @@ class VideoReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
 
 class AnimatedImageReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
     """
-    Implementation of :py:class:`.AnimationReader` that reads animated image formats using Pillow
+    Implementation of :py:class:`.AnimationReader` that reads animated image formats using Pillow.
+
+    All frames from this animation reader will be aligned by 8 pixels.
     """
 
     def __init__(self,
@@ -276,6 +330,20 @@ class AnimatedImageReader(_preprocessors.ImagePreprocessorMixin, AnimationReader
                  file_source: str,
                  resize_resolution: _types.OptionalSize = None,
                  preprocessor: _preprocessors.ImagePreprocessor = None):
+        """
+        :param file: a file path or binary file stream
+
+        :param file_source: the source filename for the animated image, should be the filename.
+            this is for informational purpose when reading from a stream or a cached file
+            and should be provided in every case even if it is a symbolic value only. It
+            should possess a file extension.
+
+        :param resize_resolution: Progressively resize each frame to this
+            resolution while reading. The provided resolution will be aligned
+            by 8 pixels.
+
+        :param preprocessor: optionally preprocess every frame with this image preprocessor
+        """
         self._img = PIL.Image.open(file)
         self._file_source = file_source
 
@@ -324,6 +392,8 @@ class MockImageAnimationReader(_preprocessors.ImagePreprocessorMixin, AnimationR
     """
     Implementation of :py:class:`.AnimationReader` that repeats a single PIL image
     as many times as desired in order to mock/emulate an animation.
+
+    All frame images from this animation reader will be aligned by 8 pixels.
     """
 
     def __init__(self,
@@ -331,7 +401,20 @@ class MockImageAnimationReader(_preprocessors.ImagePreprocessorMixin, AnimationR
                  resize_resolution: _types.OptionalSize = None,
                  image_repetitions: int = 1,
                  preprocessor: _preprocessors.ImagePreprocessor = None):
-        self._img = img
+        """
+        :param img: source image to copy for each frame, the image is immediately copied
+            once upon construction of the mock reader, and then once per frame thereafter.
+            Your copy of the image can be disposed of after the construction of this object.
+
+        :param resize_resolution: the source image will be resized to this dimension with
+            a maintained aspect ratio. This occurs once upon construction, a copy is then yielded
+            for each frame that is read. The provided resolution will be aligned by 8 pixels.
+        :param image_repetitions: number of frames that this mock reader provides
+            using a copy of the source image.
+        :param preprocessor: optionally preprocess the initial image with
+            this image preprocessor, this occurs once.
+        """
+        self._img = _image.copy_img(img)
         self._idx = 0
         self.resize_resolution = resize_resolution
 
@@ -357,6 +440,10 @@ class MockImageAnimationReader(_preprocessors.ImagePreprocessorMixin, AnimationR
                          total_frames=total_frames,
                          preprocessor=preprocessor)
 
+        # Only need to preprocess once
+
+        self._img = self.preprocess_image(self._img, self.resize_resolution)
+
     @property
     def total_frames(self) -> int:
         """
@@ -379,7 +466,7 @@ class MockImageAnimationReader(_preprocessors.ImagePreprocessorMixin, AnimationR
     def __next__(self) -> PIL.Image.Image:
         if self._idx < self.total_frames:
             self._idx += 1
-            return self.preprocess_image(_image.copy_img(self._img), self.resize_resolution)
+            return _image.copy_img(self._img)
         else:
             raise StopIteration
 
@@ -1137,9 +1224,10 @@ def _create_image_seed_reader(manage_context: list,
                              resize_resolution=resize_resolution,
                              preprocessor=preprocessor)
     elif mimetype_is_static_image(mime_type):
-        reader = MockImageAnimationReader(img=create_and_exif_orient_pil_img(data, file_source, resize_resolution),
-                                          resize_resolution=resize_resolution,
-                                          preprocessor=preprocessor)
+        with create_and_exif_orient_pil_img(data, file_source, resize_resolution) as img:
+            reader = MockImageAnimationReader(img=img,
+                                              resize_resolution=resize_resolution,
+                                              preprocessor=preprocessor)
     else:
         if throw:
             supported = _textprocessing.oxford_comma(get_supported_mimetypes(), conjunction='or')
