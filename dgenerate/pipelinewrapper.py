@@ -275,7 +275,7 @@ def enforce_cache_constraints(collect=True):
     _messages.debug_log(f'Enforcing {m_name}.CACHE_MEMORY_CONSTRAINTS =',
                         CACHE_MEMORY_CONSTRAINTS)
 
-    _messages.log(_memory.memory_use_debug_string())
+    _messages.debug_log(_memory.memory_use_debug_string())
 
     if _memory.memory_constraints(CACHE_MEMORY_CONSTRAINTS):
         _messages.debug_log(f'{m_name}.CACHE_MEMORY_CONSTRAINTS '
@@ -305,7 +305,7 @@ def enforce_pipeline_cache_constraints(new_pipeline_size, collect=True):
                         f'(cache_size = {_memory.bytes_best_human_unit(pipeline_cache_size())},',
                         f'pipeline_size = {_memory.bytes_best_human_unit(new_pipeline_size)})')
 
-    _messages.log(_memory.memory_use_debug_string())
+    _messages.debug_log(_memory.memory_use_debug_string())
 
     if _memory.memory_constraints(PIPELINE_CACHE_MEMORY_CONSTRAINTS,
                                   extra_vars={'cache_size': pipeline_cache_size(),
@@ -335,7 +335,7 @@ def enforce_vae_cache_constraints(new_vae_size, collect=True):
                         f'(cache_size = {_memory.bytes_best_human_unit(vae_cache_size())},',
                         f'vae_size = {_memory.bytes_best_human_unit(new_vae_size)})')
 
-    _messages.log(_memory.memory_use_debug_string())
+    _messages.debug_log(_memory.memory_use_debug_string())
 
     if _memory.memory_constraints(VAE_CACHE_MEMORY_CONSTRAINTS,
                                   extra_vars={'cache_size': vae_cache_size(),
@@ -366,7 +366,7 @@ def enforce_control_net_cache_constraints(new_control_net_size, collect=True):
                         f'(cache_size = {_memory.bytes_best_human_unit(control_net_cache_size())},',
                         f'control_net_size = {_memory.bytes_best_human_unit(new_control_net_size)})')
 
-    _messages.log(_memory.memory_use_debug_string())
+    _messages.debug_log(_memory.memory_use_debug_string())
 
     if _memory.memory_constraints(CONTROL_NET_CACHE_MEMORY_CONSTRAINTS,
                                   extra_vars={'cache_size': control_net_cache_size(),

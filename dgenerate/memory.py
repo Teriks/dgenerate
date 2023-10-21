@@ -199,6 +199,20 @@ def get_available_memory(measure='b'):
     return psutil.virtual_memory().available / _MEM_FACTORS[measure.strip().lower()]
 
 
+def get_total_memory(measure='b'):
+    """
+    Get the total physical memory on the system.
+
+    :param measure: one of (case insensitive): b (bytes), kb (kilobytes),
+        mb (megabytes), gb (gigabytes), kib (kibibytes),
+        mib (mebibytes), gib (gibibytes)
+
+    :return: Requested value.
+    """
+
+    return psutil.virtual_memory().total / _MEM_FACTORS[measure.strip().lower()]
+
+
 def bytes_best_human_unit(byte_count: int, delimiter='') -> str:
     """
     Return a string for humans from a byte count using an appropriate unit: IE 1KB, 1MB, 1GB etc.
@@ -227,13 +241,15 @@ def memory_use_debug_string(pid=None):
     available system memory.
 
     Example:
-        "Used Memory: 500MB, Used Percent: 20%, Used Total Percent: 10%, Available Memory: 10GB"
+        "Used Memory: 465.25MB, Available Memory: 50.94GB, Used Percent: 0.91%, Total Memory: 68.64GB, Used Total Percent: 0.68%"
 
     Where:
         * Used Memory = :py:meth:`.get_used_memory`
-        * Used Percent = :py:meth:`.get_used_memory_percent`
-        * Used Percent Total = :py:meth:`.get_used_memory_percent_total`
         * Available Memory = :py:meth:`.get_available_memory`
+        * Used Percent = :py:meth:`.get_used_memory_percent`
+        * Total Memory = :py:meth:`.get_total_memory`
+        * Used Percent Total = :py:meth:`.get_used_memory_percent_total`
+
 
     :param pid: PID of the process to describe, defaults to the current process.
     :return: formatted string
@@ -244,9 +260,11 @@ def memory_use_debug_string(pid=None):
 
     return (f'Used Memory: '
             f'{bytes_best_human_unit(get_used_memory(pid=pid))}, '
+            f'Available Memory: '
+            f'{bytes_best_human_unit(get_available_memory())}, '
             f'Used Percent: '
             f'{round(get_used_memory_percent(pid=pid), 2)}%, '
+            f'Total Memory: '
+            f'{bytes_best_human_unit(get_total_memory())}, '
             f'Used Total Percent: '
-            f'{round(get_used_memory_percent_total(pid=pid), 2)}%, '
-            f'Available Memory: '
-            f'{bytes_best_human_unit(get_available_memory())}')
+            f'{round(get_used_memory_percent_total(pid=pid), 2)}%')
