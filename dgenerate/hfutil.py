@@ -66,7 +66,8 @@ class HFBlobLink:
         """
         Attempt to parse a huggingface blob link out of a string.
 
-        If the string does not contain a blob link, return None
+        If the string does not contain a blob link, return None.
+
         :param blob_link: supposed blob link string
         :return: :py:class:`.HFBlobLink` or None
         """
