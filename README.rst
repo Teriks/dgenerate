@@ -1,5 +1,11 @@
+
+.. |Documentation Status| image:: https://readthedocs.org/projects/dgenerate/badge/?version=latest
+   :target: http://dgenerate.readthedocs.io/en/latest/?badge=latest
+
 Overview
 ========
+
+|Documentation Status|
 
 **dgenerate** is a command line tool for generating images and animation sequences using stable diffusion.
 
