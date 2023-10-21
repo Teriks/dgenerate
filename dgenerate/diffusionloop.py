@@ -692,8 +692,12 @@ class DiffusionRenderLoop:
 
     def __init__(self, config=None, preprocessor_loader=None):
         """
-        :param config: :py:class:`.DiffusionRenderLoopConfig` or :py:class:`dgenerate.arguments.DgenerateArguments`
-        :param preprocessor_loader: :py:class:`dgenerate.preprocessors.loader.Loader`
+        :param config: :py:class:`.DiffusionRenderLoopConfig` or :py:class:`dgenerate.arguments.DgenerateArguments`.
+            If None is provided, a :py:class:`.DiffusionRenderLoopConfig` instance will be created and
+            assigned to :py:attr:`.DiffusionRenderLoop.config`.
+        :param preprocessor_loader: :py:class:`dgenerate.preprocessors.loader.Loader`.
+            If None is provided, an instance will be created and assigned to
+            :py:attr:`.DiffusionRenderLoop.preprocessor_loader`.
         """
 
         self._generation_step = -1
