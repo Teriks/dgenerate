@@ -2,8 +2,7 @@ from dgenerate import \
     DiffusionRenderLoop, \
     DiffusionRenderLoopConfig, \
     ImageGeneratedCallbackArgument, \
-    Prompt \
-
+    Prompt
 
 config = DiffusionRenderLoopConfig()
 
@@ -13,6 +12,11 @@ config.guidance_scales = [5]
 config.prompts = [Prompt().parse('an astronaut walking on the moon; fake')]
 config.output_path = ''
 config.device = 'cuda'
+
+# One seed will be randomly generated for you if none are specified
+
+# config.seeds = [123456789]
+
 
 render_loop = DiffusionRenderLoop(config=config)
 

@@ -35,6 +35,23 @@ class Loader:
     search_modules: typing.Set = set()
     """Additional module objects for this loader to search, aside from the preprocessors sub module."""
 
+    extra_classes: typing.Set = set()
+    """
+    Additional directly defined implementation classes. This is empty by default and is for allowing
+    library users to quickly add a class implementing :py:class:`_preprocessor.ImagePreprocessor` if 
+    desired without creating a new file for it.
+    """
+
+    def add_class(self, cls: typing.Type[_preprocessor.ImagePreprocessor]):
+        """
+        Add an image preprocessor implementation by its class, this is unused by dgenerate
+        and is provided for the convenience of library users.
+
+        :param cls: class the implements :py:class:`_preprocessor.ImagePreprocessor`, (not an instance, but the type)
+        """
+
+        self.extra_classes.add(cls)
+
     def load_plugin_modules(self, paths: _types.Paths):
         """
         Add a list of python module directories or python files to :py:attr:`.Loader.search_modules`
@@ -114,7 +131,9 @@ class Loader:
                 else:
                     return False
 
-            found_classes += [value for name, value in _types.get_public_members(mod).items() if not _excluded(value)]
+            found_classes += [value for value in
+                              itertools.chain(_types.get_public_members(mod).values(), self.extra_classes)
+                              if not _excluded(value)]
 
         return found_classes
 
