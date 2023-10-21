@@ -100,7 +100,7 @@ def fetch_model_files_with_size(repo_id: str,
 
     Either from huggingface disk cache or through the huggingface API if not on disk and local_files_only is False.
 
-    This function also works on paths to folders or singular files on disk.
+    This function also works on blob links, paths to folders, or singular files on disk.
 
     :param repo_id: huggingface repo_id, or path to folder or file on disk
     :param revision: repo revision, IE: branch
@@ -333,7 +333,7 @@ def estimate_model_memory_use(repo_id: str,
 
     Either from huggingface disk cache or through the huggingface API if not on disk and local_files_only is False.
 
-    This function also works on paths to folders or singular files on disk.
+    This function also works on blob links, paths to folders, or singular files on disk.
 
     :param repo_id: huggingface repo_id, or path to folder or file on disk
     :param revision: repo revision, IE: branch
