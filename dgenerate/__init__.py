@@ -38,13 +38,22 @@ try:
         DiffusionRenderLoopConfigError, \
         ImageGeneratedCallbackArgument, \
         gen_seeds
+
+    from dgenerate.pipelinewrapper import \
+        InvalidModelPathError, \
+        InvalidSchedulerName, \
+        ModelTypes, \
+        DataTypes, \
+        DiffusionArguments, \
+        OutOfMemoryError
+
     from dgenerate.prompt import Prompt
     from dgenerate.batchprocess import BatchProcessError, create_config_runner
     from dgenerate.invoker import invoke_dgenerate
     from dgenerate.arguments import parse_args, DgenerateUsageError
     from dgenerate.pipelinewrapper import ModelTypes, DiffusionArguments
     from dgenerate.mediainput import ImageSeedError, UnknownMimetypeError, ImageSeed
-    from dgenerate.pipelinewrapper import InvalidModelPathError, InvalidSchedulerName, OutOfMemoryError
+
     from dgenerate.preprocessors import ImagePreprocessorArgumentError, ImagePreprocessorNotFoundError
     from dgenerate import messages
 
