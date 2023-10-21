@@ -22,7 +22,6 @@ import inspect
 import typing
 
 import dgenerate.prompt as _prompt
-import dgenerate.types as _types
 
 Uri = str
 Path = str
@@ -76,12 +75,12 @@ OptionalString = typing.Optional[str]
 
 def class_and_id_string(obj) -> str:
     """
-    Return a string formated with an objects class name next to its memory ID.
+    Return a string formatted with an objects class name next to its memory ID.
 
     IE: `<ClassName: id_integer>`
 
     :param obj: the object
-    :return: formated string
+    :return: formatted string
     """
     return f'<{obj.__class__.__name__}: {str(id(obj))}>'
 
@@ -170,7 +169,6 @@ def is_optional(hinted_type):
     Check if a hinted type is optional
 
     :param hinted_type: The hinted type
-    :param comparison_type: The type to check for
     :return: bool
     """
 
@@ -248,9 +246,9 @@ class SetFromMixin:
         if isinstance(obj, dict):
             source = obj
         else:
-            source = _types.get_public_attributes(obj)
+            source = get_public_attributes(obj)
 
-        for k, v in _types.get_public_attributes(self).items():
+        for k, v in get_public_attributes(self).items():
             if not callable(v):
                 if missing_value_throws and k not in source:
                     raise ValueError(f'Source object does not define: "{k}"')

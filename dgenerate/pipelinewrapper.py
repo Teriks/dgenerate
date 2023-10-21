@@ -25,8 +25,6 @@ import os
 import re
 import typing
 
-import dgenerate.pipelinewrapper
-
 try:
     import jax
     import jaxlib
@@ -52,7 +50,7 @@ import dgenerate.memoize as _d_memoize
 from dgenerate.memoize import memoize as _memoize
 import dgenerate.prompt as _prompt
 import dgenerate.types as _types
-import dgenerate.util as _util
+import dgenerate.memory as _memory
 import dgenerate.hfutil as _hfutil
 import diffusers
 
@@ -170,10 +168,13 @@ def clear_pipeline_cache(collect=True):
 
     :param collect: Call :py:meth:`gc.collect` ?
     """
-    dgenerate.pipelinewrapper._TORCH_PIPELINE_CACHE.clear()
-    dgenerate.pipelinewrapper._FLAX_PIPELINE_CACHE.clear()
+    global _TORCH_PIPELINE_CACHE, \
+        _FLAX_PIPELINE_CACHE, \
+        _PIPELINE_CACHE_SIZE
 
-    dgenerate.pipelinewrapper._PIPELINE_CACHE_SIZE = 0
+    _TORCH_PIPELINE_CACHE.clear()
+    _FLAX_PIPELINE_CACHE.clear()
+    _PIPELINE_CACHE_SIZE = 0
 
     if collect:
         _messages.debug_log(
@@ -188,10 +189,14 @@ def clear_control_net_cache(collect=True):
 
     :param collect: Call :py:meth:`gc.collect` ?
     """
-    dgenerate.pipelinewrapper._TORCH_CONTROL_NET_CACHE.clear()
-    dgenerate.pipelinewrapper._FLAX_CONTROL_NET_CACHE.clear()
+    global _TORCH_CONTROL_NET_CACHE, \
+        _FLAX_CONTROL_NET_CACHE, \
+        _CONTROL_NET_CACHE_SIZE
 
-    dgenerate.pipelinewrapper._CONTROL_NET_CACHE_SIZE = 0
+    _TORCH_CONTROL_NET_CACHE.clear()
+    _FLAX_CONTROL_NET_CACHE.clear()
+
+    _CONTROL_NET_CACHE_SIZE = 0
 
     if collect:
         _messages.debug_log(
@@ -206,10 +211,14 @@ def clear_vae_cache(collect=True):
 
     :param collect: Call :py:meth:`gc.collect` ?
     """
-    dgenerate.pipelinewrapper._TORCH_VAE_CACHE.clear()
-    dgenerate.pipelinewrapper._FLAX_VAE_CACHE.clear()
+    global _TORCH_VAE_CACHE, \
+        _FLAX_VAE_CACHE, \
+        _VAE_CACHE_SIZE
 
-    dgenerate.pipelinewrapper._VAE_CACHE_SIZE = 0
+    _TORCH_VAE_CACHE.clear()
+    _FLAX_VAE_CACHE.clear()
+
+    _VAE_CACHE_SIZE = 0
 
     if collect:
         _messages.debug_log(
@@ -222,41 +231,35 @@ def clear_all_cache(collect=True):
     """
     Clear all in memory model caches and garbage collect.
 
-        * TORCH_PIPELINE_CACHE
-        * FLAX_PIPELINE_CACHE
-        * TORCH_CONTROL_NET_CACHE
-        * FLAX_CONTROL_NET_CACHE
-        * TORCH_VAE_CACHE
-        * FLAX_VAE_CACHE
-
     :param collect: Call :py:meth:`gc.collect` ?
 
     """
-    dgenerate.pipelinewrapper._TORCH_PIPELINE_CACHE.clear()
-    dgenerate.pipelinewrapper._FLAX_PIPELINE_CACHE.clear()
-    dgenerate.pipelinewrapper._TORCH_CONTROL_NET_CACHE.clear()
-    dgenerate.pipelinewrapper._FLAX_CONTROL_NET_CACHE.clear()
-    dgenerate.pipelinewrapper._TORCH_VAE_CACHE.clear()
-    dgenerate.pipelinewrapper._FLAX_VAE_CACHE.clear()
+    global _TORCH_PIPELINE_CACHE, \
+        _FLAX_PIPELINE_CACHE, \
+        _TORCH_CONTROL_NET_CACHE, \
+        _FLAX_CONTROL_NET_CACHE, \
+        _TORCH_VAE_CACHE, \
+        _FLAX_VAE_CACHE, \
+        _PIPELINE_CACHE_SIZE, \
+        _CONTROL_NET_CACHE_SIZE, \
+        _VAE_CACHE_SIZE
 
-    dgenerate.pipelinewrapper._PIPELINE_CACHE_SIZE = 0
-    dgenerate.pipelinewrapper._VAE_CACHE_SIZE = 0
-    dgenerate.pipelinewrapper._CONTROL_NET_CACHE_SIZE = 0
+    _TORCH_PIPELINE_CACHE.clear()
+    _FLAX_PIPELINE_CACHE.clear()
+    _TORCH_CONTROL_NET_CACHE.clear()
+    _FLAX_CONTROL_NET_CACHE.clear()
+    _TORCH_VAE_CACHE.clear()
+    _FLAX_VAE_CACHE.clear()
+
+    _PIPELINE_CACHE_SIZE = 0
+    _CONTROL_NET_CACHE_SIZE = 0
+    _VAE_CACHE_SIZE = 0
 
     if collect:
         _messages.debug_log(
             f'{_types.fullname(clear_all_cache)} calling gc.collect() by request')
 
         gc.collect()
-
-
-def _debug_system_memory():
-    _messages.debug_log(f'Used Memory: '
-                        f'{_util.bytes_best_human_unit(_util.get_used_memory())}, '
-                        f'Used Percentage: '
-                        f'{round(_util.get_used_memory_percent(), 2)}%, '
-                        f'Available Memory: '
-                        f'{_util.bytes_best_human_unit(_util.get_available_memory())}')
 
 
 def enforce_cache_constraints(collect=True):
@@ -272,9 +275,9 @@ def enforce_cache_constraints(collect=True):
     _messages.debug_log(f'Enforcing {m_name}.CACHE_MEMORY_CONSTRAINTS =',
                         CACHE_MEMORY_CONSTRAINTS)
 
-    _debug_system_memory()
+    _messages.log(_memory.memory_use_debug_string())
 
-    if _util.memory_constraints(CACHE_MEMORY_CONSTRAINTS):
+    if _memory.memory_constraints(CACHE_MEMORY_CONSTRAINTS):
         _messages.debug_log(f'{m_name}.CACHE_MEMORY_CONSTRAINTS '
                             f'{CACHE_MEMORY_CONSTRAINTS} met, '
                             f'calling {_types.fullname(clear_all_cache)}.')
@@ -290,6 +293,7 @@ def enforce_pipeline_cache_constraints(new_pipeline_size, collect=True):
     Enforce :py:attr:`.PIPELINE_CACHE_MEMORY_CONSTRAINTS` and clear the
     DiffusionPipeline cache if needed.
 
+    :param new_pipeline_size: estimated size in bytes of any new pipeline that is about to enter memory
     :param collect: Call :py:meth:`gc.collect` after a cache clear ?
     :return: Whether the cache was cleared due to constraint expressions.
     """
@@ -298,14 +302,14 @@ def enforce_pipeline_cache_constraints(new_pipeline_size, collect=True):
 
     _messages.debug_log(f'Enforcing {m_name}.PIPELINE_CACHE_MEMORY_CONSTRAINTS =',
                         PIPELINE_CACHE_MEMORY_CONSTRAINTS,
-                        f'(cache_size = {_util.bytes_best_human_unit(pipeline_cache_size())},',
-                        f'pipeline_size = {_util.bytes_best_human_unit(new_pipeline_size)})')
+                        f'(cache_size = {_memory.bytes_best_human_unit(pipeline_cache_size())},',
+                        f'pipeline_size = {_memory.bytes_best_human_unit(new_pipeline_size)})')
 
-    _debug_system_memory()
+    _messages.log(_memory.memory_use_debug_string())
 
-    if _util.memory_constraints(PIPELINE_CACHE_MEMORY_CONSTRAINTS,
-                                extra_vars={'cache_size': pipeline_cache_size(),
-                                            'pipeline_size': new_pipeline_size}):
+    if _memory.memory_constraints(PIPELINE_CACHE_MEMORY_CONSTRAINTS,
+                                  extra_vars={'cache_size': pipeline_cache_size(),
+                                              'pipeline_size': new_pipeline_size}):
         _messages.debug_log(f'{m_name}.PIPELINE_CACHE_MEMORY_CONSTRAINTS '
                             f'{PIPELINE_CACHE_MEMORY_CONSTRAINTS} met, '
                             f'calling {_types.fullname(clear_pipeline_cache)}.')
@@ -319,6 +323,7 @@ def enforce_vae_cache_constraints(new_vae_size, collect=True):
     Enforce :py:attr:`.VAE_CACHE_MEMORY_CONSTRAINTS` and clear the
     VAE cache if needed.
 
+    :param new_vae_size: estimated size in bytes of any new vae that is about to enter memory
     :param collect: Call :py:meth:`gc.collect` after a cache clear ?
     :return: Whether the cache was cleared due to constraint expressions.
     """
@@ -327,14 +332,14 @@ def enforce_vae_cache_constraints(new_vae_size, collect=True):
 
     _messages.debug_log(f'Enforcing {m_name}.VAE_CACHE_MEMORY_CONSTRAINTS =',
                         VAE_CACHE_MEMORY_CONSTRAINTS,
-                        f'(cache_size = {_util.bytes_best_human_unit(vae_cache_size())},',
-                        f'vae_size = {_util.bytes_best_human_unit(new_vae_size)})')
+                        f'(cache_size = {_memory.bytes_best_human_unit(vae_cache_size())},',
+                        f'vae_size = {_memory.bytes_best_human_unit(new_vae_size)})')
 
-    _debug_system_memory()
+    _messages.log(_memory.memory_use_debug_string())
 
-    if _util.memory_constraints(VAE_CACHE_MEMORY_CONSTRAINTS,
-                                extra_vars={'cache_size': vae_cache_size(),
-                                            'vae_size': new_vae_size}):
+    if _memory.memory_constraints(VAE_CACHE_MEMORY_CONSTRAINTS,
+                                  extra_vars={'cache_size': vae_cache_size(),
+                                              'vae_size': new_vae_size}):
         _messages.debug_log(f'{m_name}.VAE_CACHE_MEMORY_CONSTRAINTS '
                             f'{VAE_CACHE_MEMORY_CONSTRAINTS} met, '
                             f'calling {_types.fullname(clear_vae_cache)}.')
@@ -349,6 +354,7 @@ def enforce_control_net_cache_constraints(new_control_net_size, collect=True):
     Enforce :py:attr:`.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS` and clear the
     ControlNet cache if needed.
 
+    :param new_control_net_size: estimated size in bytes of any new control net that is about to enter memory
     :param collect: Call :py:meth:`gc.collect` after a cache clear ?
     :return: Whether the cache was cleared due to constraint expressions.
     """
@@ -357,14 +363,14 @@ def enforce_control_net_cache_constraints(new_control_net_size, collect=True):
 
     _messages.debug_log(f'Enforcing {m_name}.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS =',
                         CONTROL_NET_CACHE_MEMORY_CONSTRAINTS,
-                        f'(cache_size = {_util.bytes_best_human_unit(control_net_cache_size())},',
-                        f'control_net_size = {_util.bytes_best_human_unit(new_control_net_size)})')
+                        f'(cache_size = {_memory.bytes_best_human_unit(control_net_cache_size())},',
+                        f'control_net_size = {_memory.bytes_best_human_unit(new_control_net_size)})')
 
-    _debug_system_memory()
+    _messages.log(_memory.memory_use_debug_string())
 
-    if _util.memory_constraints(CONTROL_NET_CACHE_MEMORY_CONSTRAINTS,
-                                extra_vars={'cache_size': control_net_cache_size(),
-                                            'control_net_size': new_control_net_size}):
+    if _memory.memory_constraints(CONTROL_NET_CACHE_MEMORY_CONSTRAINTS,
+                                  extra_vars={'cache_size': control_net_cache_size(),
+                                              'control_net_size': new_control_net_size}):
         _messages.debug_log(f'{m_name}.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS '
                             f'{CONTROL_NET_CACHE_MEMORY_CONSTRAINTS} met, '
                             f'calling {_types.fullname(clear_control_net_cache)}.')
@@ -764,9 +770,10 @@ class FlaxControlNetPath:
                                                               **kwargs)
 
         _messages.debug_log('Estimated Flax ControlNet Memory Use:',
-                            _util.bytes_best_human_unit(estimated_memory_usage))
+                            _memory.bytes_best_human_unit(estimated_memory_usage))
 
-        dgenerate.pipelinewrapper._CONTROL_NET_CACHE_SIZE += estimated_memory_usage
+        global _CONTROL_NET_CACHE_SIZE
+        _CONTROL_NET_CACHE_SIZE += estimated_memory_usage
         return new_net
 
 
@@ -882,9 +889,10 @@ class TorchControlNetPath:
                                                           **kwargs)
 
         _messages.debug_log('Estimated Torch ControlNet Memory Use:',
-                            _util.bytes_best_human_unit(estimated_memory_usage))
+                            _memory.bytes_best_human_unit(estimated_memory_usage))
 
-        dgenerate.pipelinewrapper._CONTROL_NET_CACHE_SIZE += estimated_memory_usage
+        global _CONTROL_NET_CACHE_SIZE
+        _CONTROL_NET_CACHE_SIZE += estimated_memory_usage
         return new_net
 
 
@@ -892,7 +900,7 @@ def parse_torch_control_net_uri(uri: _types.Uri) -> TorchControlNetPath:
     """
     Parse a --model-type torch* --control-nets uri specification and return an object representing its constituents
 
-    :param path: string with --control-nets uri syntax
+    :param uri: string with --control-nets uri syntax
 
     :raise: :py:class:`.InvalidControlNetUriError`
 
@@ -965,7 +973,7 @@ def parse_sdxl_refiner_uri(uri: _types.Uri) -> SDXLRefinerPath:
     """
     Parse an --sdxl-refiner uri and return an object representing its constituents
 
-    :param path: string with --sdxl-refiner uri syntax
+    :param uri: string with --sdxl-refiner uri syntax
 
     :raise: :py:class:`.InvalidSDXLRefinerUriError`
 
@@ -1010,7 +1018,7 @@ def parse_torch_vae_uri(uri: _types.Uri) -> TorchVAEPath:
     """
     Parse a --model-type torch* --vae uri and return an object representing its constituents
 
-    :param path: string with --vae uri syntax
+    :param uri: string with --vae uri syntax
 
     :raise: :py:class:`.InvalidVaeUriError`
 
@@ -1058,7 +1066,7 @@ def parse_flax_vae_uri(uri: _types.Uri) -> FlaxVAEPath:
     """
     Parse a --model-type flax* --vae uri and return an object representing its constituents
 
-    :param path: string with --vae uri syntax
+    :param uri: string with --vae uri syntax
 
     :raise: :py:class:`.InvalidVaeUriError`
 
@@ -1123,7 +1131,7 @@ def parse_lora_uri(uri: _types.Uri) -> LoRAPath:
     """
     Parse a --lora uri and return an object representing its constituents
 
-    :param path: string with --lora uri syntax
+    :param uri: string with --lora uri syntax
 
     :raise: :py:class:`.InvalidLoRAUriError`
 
@@ -1175,7 +1183,7 @@ def parse_textual_inversion_uri(uri: _types.Uri) -> TextualInversionPath:
     """
     Parse a --textual-inversions uri and return an object representing its constituents
 
-    :param path: string with --textual-inversions uri syntax
+    :param uri: string with --textual-inversions uri syntax
 
     :raise: :py:class:`.InvalidTextualInversionUriError`
 
@@ -1192,6 +1200,7 @@ def parse_textual_inversion_uri(uri: _types.Uri) -> TextualInversionPath:
         raise InvalidTextualInversionUriError(e)
 
 
+# noinspection HttpUrlsUsage
 def _is_single_file_model_load(path):
     """
     Should we use diffusers.loaders.FromSingleFileMixin.from_single_file on this path?
@@ -1233,9 +1242,10 @@ def _uri_hash_with_parser(parser):
           on_create=lambda key, new: _simple_cache_miss_debug("Torch VAE", key, new))
 def _load_torch_vae(uri: _types.Uri,
                     torch_dtype_fallback: torch.dtype,
-                    use_auth_token: bool,
-                    local_files_only=False) -> typing.Union[
-    diffusers.AutoencoderKL, diffusers.AsymmetricAutoencoderKL, diffusers.AutoencoderTiny]:
+                    use_auth_token: str,
+                    local_files_only=False) -> typing.Union[diffusers.AutoencoderKL,
+                                                            diffusers.AsymmetricAutoencoderKL,
+                                                            diffusers.AutoencoderTiny]:
     parsed_concept = parse_torch_vae_uri(uri)
 
     if parsed_concept.dtype is None:
@@ -1308,9 +1318,10 @@ def _load_torch_vae(uri: _types.Uri,
                                       local_files_only=local_files_only)
 
     _messages.debug_log('Estimated Torch VAE Memory Use:',
-                        _util.bytes_best_human_unit(estimated_memory_use))
+                        _memory.bytes_best_human_unit(estimated_memory_use))
 
-    dgenerate.pipelinewrapper._VAE_CACHE_SIZE += estimated_memory_use
+    global _VAE_CACHE_SIZE
+    _VAE_CACHE_SIZE += estimated_memory_use
     return vae
 
 
@@ -1322,7 +1333,7 @@ def _load_torch_vae(uri: _types.Uri,
           on_create=lambda key, new: _simple_cache_miss_debug("Flax VAE", key, new))
 def _load_flax_vae(uri: _types.Uri,
                    flax_dtype_fallback,
-                   use_auth_token: bool,
+                   use_auth_token: str,
                    local_files_only=False):
     parsed_concept = parse_flax_vae_uri(uri)
 
@@ -1386,9 +1397,10 @@ def _load_flax_vae(uri: _types.Uri,
                                       local_files_only=local_files_only)
 
     _messages.debug_log('Estimated Flax VAE Memory Use:',
-                        _util.bytes_best_human_unit(estimated_memory_use))
+                        _memory.bytes_best_human_unit(estimated_memory_use))
 
-    dgenerate.pipelinewrapper._VAE_CACHE_SIZE += estimated_memory_use
+    global _VAE_CACHE_SIZE
+    _VAE_CACHE_SIZE += estimated_memory_use
     return vae
 
 
@@ -1686,7 +1698,7 @@ def _create_torch_diffusion_pipeline(pipeline_type,
 
     _messages.debug_log(
         f'Creating Torch Pipeline: "{pipeline_class.__name__}", '
-        f'Estimated CPU Side Memory Use: {_util.bytes_best_human_unit(estimated_memory_usage)}')
+        f'Estimated CPU Side Memory Use: {_memory.bytes_best_human_unit(estimated_memory_usage)}')
 
     enforce_pipeline_cache_constraints(
         new_pipeline_size=estimated_memory_usage)
@@ -1816,16 +1828,17 @@ def _create_torch_diffusion_pipeline(pipeline_type,
 
     # Model Offloading
 
-    pipeline._dgenerate_sequential_offload = sequential_cpu_offload
-    pipeline._dgenerate_cpu_offload = model_cpu_offload
+    # Tag the pipeline with our own attributes
+    pipeline.DGENERATE_SEQUENTIAL_OFFLOAD = sequential_cpu_offload
+    pipeline.DGENERATE_CPU_OFFLOAD = model_cpu_offload
 
     if sequential_cpu_offload and 'cuda' in device:
         pipeline.enable_sequential_cpu_offload(device=device)
     elif model_cpu_offload and 'cuda' in device:
         pipeline.enable_model_cpu_offload(device=device)
 
-    dgenerate.pipelinewrapper._PIPELINE_CACHE_SIZE += \
-        estimated_memory_usage
+    global _PIPELINE_CACHE_SIZE
+    _PIPELINE_CACHE_SIZE += estimated_memory_usage
 
     _messages.debug_log(f'Finished Creating Torch Pipeline: "{pipeline_class.__name__}"')
     return pipeline, parsed_control_net_uris
@@ -1889,7 +1902,7 @@ def _create_flax_diffusion_pipeline(pipeline_type,
 
     _messages.debug_log(
         f'Creating Flax Pipeline: "{pipeline_class.__name__}", '
-        f'Estimated CPU Side Memory Use: {_util.bytes_best_human_unit(estimated_memory_usage)}')
+        f'Estimated CPU Side Memory Use: {_memory.bytes_best_human_unit(estimated_memory_usage)}')
 
     enforce_pipeline_cache_constraints(
         new_pipeline_size=estimated_memory_usage)
@@ -1956,8 +1969,8 @@ def _create_flax_diffusion_pipeline(pipeline_type,
     if not safety_checker:
         pipeline.safety_checker = None
 
-    dgenerate.pipelinewrapper._PIPELINE_CACHE_SIZE += \
-        estimated_memory_usage
+    global _PIPELINE_CACHE_SIZE
+    _PIPELINE_CACHE_SIZE += estimated_memory_usage
 
     _messages.debug_log(f'Finished Creating Flax Pipeline: "{pipeline_class.__name__}"')
     return pipeline, params, parsed_control_net_uris
@@ -2104,7 +2117,7 @@ class PipelineWrapperResult:
         :param extra_args: Extra arguments to add to the end of the command line.
         :return: A string containing the dgenerate command line needed to reproduce this result.
         """
-        return f'dgenerate {" ".join(f"{self._format_option_pair(opt)}" for opt in self.dgenerate_opts)}'
+        return f'dgenerate {" ".join(f"{self._format_option_pair(opt)}" for opt in self.dgenerate_opts + extra_args)}'
 
 
 class DiffusionArguments:
@@ -2333,8 +2346,8 @@ class DiffusionPipelineWrapper:
     @staticmethod
     def _pipeline_to(pipeline, device):
         if hasattr(pipeline, 'to'):
-            if not pipeline._dgenerate_cpu_offload and \
-                    not pipeline._dgenerate_sequential_offload:
+            if not pipeline.DGENERATE_CPU_OFFLOAD and \
+                    not pipeline.DGENERATE_SEQUENTIAL_OFFLOAD:
                 return pipeline.to(device)
             else:
                 return pipeline
@@ -3375,14 +3388,14 @@ class DiffusionPipelineWrapper:
 
         :param kwargs: See :py:meth:`.DiffusionArguments.get_pipeline_wrapper_args`
 
-        :raises: :py:class:`dgenerate.pipelinewrapper.InvalidModelPathError`
-            :py:class:`dgenerate.pipelinewrapper.InvalidSDXLRefinerUriError`
-            :py:class:`dgenerate.pipelinewrapper.InvalidVaeUriError`
-            :py:class:`dgenerate.pipelinewrapper.InvalidLoRAUriError`
-            :py:class:`dgenerate.pipelinewrapper.InvalidControlNetUriError`
-            :py:class:`dgenerate.pipelinewrapper.InvalidTextualInversionUriError`
-            :py:class:`dgenerate.pipelinewrapper.InvalidSchedulerName`
-            :py:class:`dgenerate.pipelinewrapper.OutOfMemoryError`
+        :raises: :py:class:`.InvalidModelPathError`
+            :py:class:`.InvalidSDXLRefinerUriError`
+            :py:class:`.InvalidVaeUriError`
+            :py:class:`.InvalidLoRAUriError`
+            :py:class:`.InvalidControlNetUriError`
+            :py:class:`.InvalidTextualInversionUriError`
+            :py:class:`.InvalidSchedulerName`
+            :py:class:`.OutOfMemoryError`
             :py:class:`NotImplementedError`
 
         :return: :py:class:`.PipelineWrapperResult`

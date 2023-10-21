@@ -109,7 +109,7 @@ def fetch_model_files_with_size(repo_id: str,
     :param weight_name: look for a specific model file name
     :param use_auth_token: optional huggingface auth token
     :param extensions: if specified, only search for extensions in this set, or list
-    :param local_files_only: utilize the hugggingface API if necessary?
+    :param local_files_only: utilize the huggingface API if necessary?
         if this is True, and it is necessary to fetch info from the API, this function
         will simply yield nothing
 
@@ -424,8 +424,8 @@ def estimate_model_memory_use(repo_id: str,
                     size_sum += size
 
                     _messages.debug_log(
-                        'Estimate Considering:', os.path.join(directory, file) +
-                        f', Size: {size} Bytes')
+                        'Estimate Considering:',
+                        os.path.join(directory, file) + f', Size: {size} Bytes')
 
             return size_sum
         else:

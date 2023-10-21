@@ -36,8 +36,8 @@ ERROR = 2
 DEBUG = 3
 """Log Level DEBUG"""
 
-_err_file = sys.stderr
-_msg_file = sys.stdout
+_ERROR_FILE = sys.stderr
+_MESSAGE_FILE = sys.stdout
 
 _handlers = []
 
@@ -48,8 +48,8 @@ def set_error_file(file: typing.TextIO):
 
     :param file: The file stream
     """
-
-    _errfile = file
+    global _ERROR_FILE
+    _ERROR_FILE = file
 
 
 def set_message_file(file: typing.TextIO):
@@ -58,29 +58,31 @@ def set_message_file(file: typing.TextIO):
 
     :param file: The file stream
     """
-
-    _msgfile = file
+    global _MESSAGE_FILE
+    _MESSAGE_FILE = file
 
 
 def messages_to_null():
     """
     Force dgenerates normal output to a null file.
     """
-    _msgfile = open(os.devnull, "w")
+    global _MESSAGE_FILE
+    _MESSAGE_FILE = open(os.devnull, "w")
 
 
 def errors_to_null():
     """
     Force dgenerates error output to a null file.
     """
-    _errfile = open(os.devnull, "w")
+    global _ERROR_FILE
+    _ERROR_FILE = open(os.devnull, "w")
 
 
 def add_logging_handler(callback: typing.Callable[[typing.ParamSpecArgs, int, bool, str], None]):
     """
     Add your own logging handler callback.
 
-    :param callback: Callback accepting (\*args, LEVEL, underline (bool), underline_char)
+    :param callback: Callback accepting (\\*args, LEVEL, underline (bool), underline_char)
     """
     _handlers.append(callback)
 
@@ -105,12 +107,14 @@ def log(*args: typing.Any, level=INFO, underline=False, underline_char='='):
     :param underline_char: Underline character
     :return:
     """
-    file = _msg_file
+    global _MESSAGE_FILE, _ERROR_FILE
+
+    file = _MESSAGE_FILE
     if level != INFO and LEVEL == INFO:
         if level != ERROR and level != WARNING:
             return
         else:
-            file = _err_file
+            file = _ERROR_FILE
 
     prefix = ''
     if level == DEBUG:

@@ -88,7 +88,7 @@ class BatchProcessor:
 
         self.template_variable_generator = \
             template_variable_generator if \
-                template_variable_generator else lambda x: dict()
+            template_variable_generator else lambda x: dict()
 
         self.template_variables = template_variables if template_variables else dict()
         self.template_functions = template_functions if template_functions else dict()
@@ -103,14 +103,14 @@ class BatchProcessor:
             ver_parts = version.split('.')
             if len(ver_parts) != 3:
                 raise ValueError(
-                    f'version expected to be a version string in the format major.minor.patch. recieved: "{version}"')
+                    f'version expected to be a version string in the format major.minor.patch. received: "{version}"')
             self.version: typing.Tuple[int, int, int] = \
                 (int(ver_parts[0]), int(ver_parts[1]), int(ver_parts[2]))
         else:
             self.version: typing.Tuple[int, int, int] = tuple(version)
             if len(self.version) != 3:
                 raise ValueError(
-                    f'version tuple expected to contain three components: (major, minor, patch). recieved: {self.version}')
+                    f'version tuple expected to contain three components: (major, minor, patch). received: {self.version}')
 
         self.expand_vars = os.path.expandvars
         self._jinja_env = jinja2.Environment()
