@@ -2067,9 +2067,8 @@ There are templates for prompts, containing the previous prompt values:
 Available custom jinja2 functions/filters are:
 
 * ``{{ last(list_of_items) }}`` (Last element in a list)
-* ``{{ unquote('"quotes_will_be_removed"') }}``
-* ``{{ quote('quotes_will_be_added') }}``
-* ``{{ quote_spaces(str_or_list) }}`` (Quote any string that contains spaces, works on lists)
+* ``{{ unquote('"unescape-me"') }}`` (shell unquote, works on strings and lists)
+* ``{{ quote('escape-me') }}`` (shell quote, works on strings and lists)
 * ``{{ format_prompt(prompt_object) }}`` (Format and quote a prompt object with its delimiter, works on lists)
 
 The above can be used as either a function or filter IE: ``{{ "quote_me" | quote }}``
@@ -2176,7 +2175,7 @@ Here are examples of other available directives and templating:
     # invocation seperated by spaces if there is multiple, this could
     # also be passed to --image-seeds
 
-    \print {{ quote_spaces(last_images) | join(' ') }}
+    \print {{ quote(last_images) | join(' ') }}
 
 
     # For loops are possible
@@ -2238,7 +2237,7 @@ Here are examples of other available directives and templating:
 
     # The above are both basically equivalent to this
 
-    stabilityai/stable-diffusion-2-1 --image-seeds {{ quote_spaces(last_images) | join(' ') }} --prompt {{ my_prompt }}
+    stabilityai/stable-diffusion-2-1 --image-seeds {{ quote(last_images) | join(' ') }} --prompt {{ my_prompt }}
 
 
 To utilize configuration files on Linux, pipe them into the command or use redirection:

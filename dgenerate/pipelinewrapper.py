@@ -23,6 +23,7 @@ import gc
 import inspect
 import os
 import re
+import shlex
 import typing
 
 try:
@@ -2077,8 +2078,7 @@ class PipelineWrapperResult:
             return _textprocessing.format_size(val)
         if isinstance(val, list):
             return ' '.join(PipelineWrapperResult._set_opt_value_syntax(v) for v in val)
-
-        return _textprocessing.quote_spaces(val)
+        return shlex.quote(str(val))
 
     @staticmethod
     def _format_option_pair(val):
@@ -2087,7 +2087,7 @@ class PipelineWrapperResult:
                 header_len = len(val[0]) + 2
                 prompt_text = \
                     _textprocessing.wrap(
-                        _textprocessing.quote(val[1]),
+                        _textprocessing.quote(str(val[1])),
                         subsequent_indent=' ' * header_len,
                         width=75)
 
@@ -2095,7 +2095,13 @@ class PipelineWrapperResult:
                 return f'{val[0]} {prompt_text}'
 
             return f'{val[0]} {PipelineWrapperResult._set_opt_value_syntax(val[1])}'
-        return val[0]
+
+        solo_val = str(val[0])
+        if solo_val.startswith('-'):
+            return solo_val
+
+        # Not a switch option, some value
+        return shlex.quote(solo_val)
 
     def gen_dgenerate_config(self,
                              extra_args: typing.Optional[typing.Sequence[typing.Tuple[str, typing.Any]]] = None,
@@ -2143,7 +2149,7 @@ class PipelineWrapperResult:
         :param extra_args: Extra arguments to add to the end of the command line.
         :return: A string containing the dgenerate command line needed to reproduce this result.
         """
-        return f'dgenerate {" ".join(f"{self._format_option_pair(opt)}" for opt in self.dgenerate_opts + extra_args)}'
+        return f'dgenerate {" ".join(f"{self._format_option_pair(opt)}" for opt in self.dgenerate_opts + list(extra_args))}'
 
 
 class DiffusionArguments:
@@ -2661,12 +2667,15 @@ class DiffusionPipelineWrapper:
         """
         return self._auth_token
 
-    def reconstruct_dgenerate_opts(self, **args) -> \
+    def reconstruct_dgenerate_opts(self, shell_quote=True, **args) -> \
             typing.List[typing.Union[typing.Tuple[str], typing.Tuple[str, typing.Any]]]:
         """
-        Reconstruct dgenerates command line arguments from a particular set of pipeline call arguments.
+        Reconstruct dgenerates command line arguments from a particular set of pipeline wrapper call arguments.
 
-        :param args: arguments to :py:class:`.DiffusionArguments`
+        See: :py:class:`.DiffusionArguments.get_pipeline_wrapper_args`
+
+        :param shell_quote: Shell quote and format the argument values? or return them raw.
+        :param args: pipeline wrapper keyword arguments
 
         :return: List of tuples of length 1 or 2 representing the option
         """
@@ -2880,8 +2889,7 @@ class DiffusionPipelineWrapper:
                 if not seed_args:
                     opts.append(('--image-seeds', image.filename))
                 else:
-                    opts.append(('--image-seeds',
-                                 _textprocessing.quote(image.filename + ';' + ';'.join(seed_args))))
+                    opts.append(('--image-seeds', image.filename + ';' + ';'.join(seed_args)))
 
                 if image_seed_strength is not None:
                     opts.append(('--image-seed-strengths', image_seed_strength))
@@ -2891,6 +2899,22 @@ class DiffusionPipelineWrapper:
         elif control_image is not None:
             if hasattr(control_image, 'filename'):
                 opts.append(('--image-seeds', control_image.filename))
+
+        if shell_quote:
+            for idx, option in opts:
+                if len(option) > 1:
+                    name, value = option
+                    if isinstance(value, (str, _prompt.Prompt)):
+                        opts[idx] = (name, shlex.quote(str(value)))
+                    elif isinstance(value, tuple):
+                        opts[idx] = (name, _textprocessing.format_size(value))
+                    else:
+                        opts[idx] = (name, str(value))
+                else:
+                    solo_val = str(option[0])
+                    if not solo_val.startswith('-'):
+                        # not a solo switch option, some value
+                        opts[idx] = (shlex.quote(solo_val),)
 
         return opts
 
@@ -3557,5 +3581,6 @@ class DiffusionPipelineWrapper:
             except torch.cuda.OutOfMemoryError as e:
                 raise OutOfMemoryError(e)
 
-        result.dgenerate_opts = self.reconstruct_dgenerate_opts(**kwargs)
+        result.dgenerate_opts = self.reconstruct_dgenerate_opts(**kwargs,
+                                                                shell_quote=False)
         return result

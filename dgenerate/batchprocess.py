@@ -35,6 +35,7 @@ import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+import dgenerate.prompt as _prompt
 
 
 class BatchProcessError(Exception):
@@ -57,7 +58,7 @@ class BatchProcessor:
     template_variables: typing.Dict[str, typing.Any]
     template_functions: typing.Dict[str, typing.Callable[[typing.Any], typing.Any]]
     directives: typing.Dict[str, typing.Callable[[list], None]]
-    injected_args: typing.Sequence[str]
+    injected_args: typing.List[str]
 
     def __init__(self,
                  invoker: typing.Callable[[list], int],
@@ -68,7 +69,7 @@ class BatchProcessor:
                  template_functions: typing.Optional[
                      typing.Dict[str, typing.Callable[[typing.Any], typing.Any]]] = None,
                  directives: typing.Optional[typing.Dict[str, typing.Callable[[list], None]]] = None,
-                 injected_args: typing.Optional[typing.Sequence[str]] = None):
+                 injected_args: typing.Optional[typing.List[str]] = None):
         """
         :param invoker: A function for invoking lines recognized as shell commands, should return a return code.
         :param template_variable_generator: A function that generates template variables for templating after an
@@ -138,25 +139,27 @@ class BatchProcessor:
         versioning = re.match(r'#!\s+' + self.name + r'\s+([0-9]+\.[0-9]+\.[0-9]+)', line)
         if versioning:
             config_file_version = versioning.group(1)
-            config_file_version = [int(p) for p in config_file_version.split('.')]
+            config_file_version_parts = config_file_version.split('.')
 
             cur_major_version = self.version[0]
-            config_major_version = config_file_version[0]
+            config_major_version = int(config_file_version_parts[0])
             cur_minor_version = self.version[1]
-            config_minor_version = config_file_version[1]
+            config_minor_version = int(config_file_version_parts[1])
+
+            version_str = '.'.join(str(i) for i in self.version)
 
             if cur_major_version != config_major_version:
                 _messages.log(
                     f'Failed version check (major version missmatch) on line {line_idx}, '
-                    f'running an incompatible version of {self.name}! You are running version {self.version} '
+                    f'running an incompatible version of {self.name}! You are running version {version_str} '
                     f'and the config file specifies the required version: {config_file_version}'
                     , underline=True, level=_messages.WARNING)
             elif cur_minor_version < config_minor_version:
                 _messages.log(
                     f'Failed version check (current minor version less than requested) '
                     f'on line {line_idx}, running an incompatible version of {self.name}! '
-                    f'You are running version {self.version} and the config file specifies '
-                    f'the required version: {config_file_version}'
+                    f'You are running version {version_str} and the config file specifies '
+                    f'the required version: {".".join(config_file_version)}'
                     , underline=True, level=_messages.WARNING)
 
     def _jinja_user_define(self, name, value):
@@ -204,14 +207,11 @@ class BatchProcessor:
     def _lex_and_run_invocation(self, line_idx, invocation_string):
         templated_cmd = self._render_template(invocation_string)
 
-        injected_args = list(self.injected_args)
+        shell_lexed = shlex.split(templated_cmd) + self.injected_args
 
-        shell_lexed = shlex.split(templated_cmd) + injected_args
-
-        injected_args = _textprocessing.quote_spaces(injected_args)
-
-        if injected_args:
-            templated_cmd += ' ' + ' '.join(injected_args)
+        if self.injected_args:
+            templated_cmd += \
+                ' ' + ' '.join(shlex.quote(str(s)) for s in self.injected_args)
 
         header = 'Processing Arguments: '
         args_wrapped = \
@@ -294,8 +294,8 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
         render_loop = _diffusionloop.DiffusionRenderLoop()
 
     def _format_prompt(prompt):
-        pos = prompt.get('positive')
-        neg = prompt.get('negative')
+        pos = prompt.positive
+        neg = prompt.negative
 
         if pos is None:
             raise BatchProcessError('Attempt to format a prompt with no positive prompt value.')
@@ -305,18 +305,27 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
         return _textprocessing.quote(pos)
 
     def format_prompt(prompt_or_list):
-        if isinstance(prompt_or_list, dict):
+        if isinstance(prompt_or_list, _prompt.Prompt):
             return _format_prompt(prompt_or_list)
         return ' '.join(_format_prompt(p) for p in prompt_or_list)
+
+    def quote(string_or_list):
+        if isinstance(string_or_list, list):
+            return [shlex.quote(s) for s in string_or_list]
+        return shlex.quote(string_or_list)
+
+    def unquote(string_or_list):
+        if isinstance(string_or_list, list):
+            return [shlex.split(s) for s in string_or_list]
+        return shlex.split(string_or_list)
 
     template_variables = {}
 
     funcs = {
-        'unquote': _textprocessing.unquote,
-        'quote': _textprocessing.quote,
+        'unquote': unquote,
+        'quote': quote,
         'format_prompt': format_prompt,
         'format_size': _textprocessing.format_size,
-        'quote_spaces': _textprocessing.quote_spaces,
         'last': lambda a: a[-1] if a else None
     }
 
