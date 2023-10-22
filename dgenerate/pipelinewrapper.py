@@ -2483,8 +2483,12 @@ class DiffusionPipelineWrapper:
                     DiffusionPipelineWrapper._pipeline_to_cpu_update_cache_info(pipeline)
                 else:
                     DiffusionPipelineWrapper._pipeline_off_cpu_update_cache_info(pipeline)
-
-                return pipeline.to(device)
+                try:
+                    return pipeline.to(device)
+                except RuntimeError as e:
+                    if 'memory' in str(e).lower():
+                        raise OutOfMemoryError(e)
+                    raise e
             else:
                 return pipeline
         return pipeline
