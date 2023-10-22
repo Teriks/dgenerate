@@ -48,7 +48,7 @@ class Prompt:
             return ''
 
     def __repr__(self):
-        return str(self)
+        return f"'{str(self)}'"
 
     def parse(self, value: str):
         """
