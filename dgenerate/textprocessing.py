@@ -149,6 +149,8 @@ def quote(string: str) -> str:
     """
     Wrap a string in double quotes.
 
+    This is not equivalent to shell quoting.
+
     :param string: the string
     :return: The quoted string
     """
@@ -163,7 +165,13 @@ def unquote(string: str) -> str:
     :return: The un-quoted string
     """
     string = string.strip(' ')
-    if string.startswith('"') or string.startswith('\''):
+    if string.startswith('"'):
+        if not string.endswith('"'):
+            raise ValueError('Missing ending ["] quote.')
+        return str(ast.literal_eval('r' + string))
+    if string.startswith("'"):
+        if not string.endswith("'"):
+            raise ValueError('Missing ending [\'] quote.')
         return str(ast.literal_eval('r' + string))
     else:
         # Is an unquoted string
@@ -206,6 +214,8 @@ def quote_spaces(value_or_struct: typing.Union[typing.Any, typing.Sequence[typin
     Quote any str(value) containing spaces, or str(value)s containing spaces within a list, or list of lists/tuples.
 
     The entire content of the data structure is stringified by this process.
+
+    This is not equivalent to shell quoting.
 
     :param value_or_struct: value or (list of values, and or lists/tuples containing values)
     :return: input data structure with strings quoted if needed
