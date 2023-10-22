@@ -38,6 +38,15 @@ dgenerate.diffusionloop module
    :show-inheritance:
    :special-members: __call__, __init__
 
+dgenerate.filelock module
+-------------------------
+
+.. automodule:: dgenerate.filelock
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :special-members: __call__, __init__
+
 dgenerate.hfutil module
 -----------------------
 
@@ -92,6 +101,15 @@ dgenerate.memoize module
    :show-inheritance:
    :special-members: __call__, __init__
 
+dgenerate.memory module
+-----------------------
+
+.. automodule:: dgenerate.memory
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :special-members: __call__, __init__
+
 dgenerate.messages module
 -------------------------
 
@@ -141,15 +159,6 @@ dgenerate.types module
 ----------------------
 
 .. automodule:: dgenerate.types
-   :members:
-   :undoc-members:
-   :show-inheritance:
-   :special-members: __call__, __init__
-
-dgenerate.util module
-----------------------
-
-.. automodule:: dgenerate.util
    :members:
    :undoc-members:
    :show-inheritance:
