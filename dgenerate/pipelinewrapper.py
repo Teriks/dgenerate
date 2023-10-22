@@ -133,8 +133,8 @@ syntax provided via :py:meth:`dgenerate.util.memory_constraints`
 If any of these constraints are met, a call to :py:meth:`.enforce_cache_constraints` will call
 :py:meth:`.clear_pipeline_cache` and force a garbage collection.
 
-Extra variables include: "cache_size" (the current estimated cache size in bytes), 
-and "pipeline_size" (the estimated size of the new pipeline before it is brought into memory, in bytes)
+Extra variables include: *cache_size* (the current estimated cache size in bytes), 
+and *pipeline_size* (the estimated size of the new pipeline before it is brought into memory, in bytes)
 
 """
 
@@ -146,8 +146,8 @@ syntax provided via :py:meth:`dgenerate.util.memory_constraints`
 If any of these constraints are met, a call to :py:meth:`.enforce_cache_constraints` will call
 :py:meth:`.clear_control_net_cache` and force a garbage collection.
 
-Extra variables include: "cache_size" (the current estimated cache size in bytes), 
-and "control_net_size" (the estimated size of the new ControlNet before it is brought into memory, in bytes)
+Extra variables include: *cache_size* (the current estimated cache size in bytes), 
+and *control_net_size* (the estimated size of the new ControlNet before it is brought into memory, in bytes)
 """
 
 VAE_CACHE_MEMORY_CONSTRAINTS: typing.List[str] = ['vae_size > (available * 0.75)']
@@ -158,8 +158,8 @@ syntax provided via :py:meth:`dgenerate.util.memory_constraints`
 If any of these constraints are met, a call to :py:meth:`.enforce_cache_constraints` will call
 :py:meth:`.clear_vae_cache` and force a garbage collection.
 
-Extra variables include: "cache_size" (the current estimated cache size in bytes), 
-and "vae_size" (the estimated size of the new VAE before it is brought into memory, in bytes)
+Extra variables include: *cache_size* (the current estimated cache size in bytes), 
+and *vae_size* (the estimated size of the new VAE before it is brought into memory, in bytes)
 """
 
 
