@@ -2022,17 +2022,21 @@ When a model is loaded dgenerate caches it in memory with it's creation paramete
 the pipeline mode (basic, img2img, inpaint), attached control nets, vae's, lora's and textual inversions.
 If another invocation of the model occurs with creation parameters that are identical, it will be loaded out of cache.
 
-Main/Refiner Models, VAE's, and Control Net models are cached individually.
+Diffusion Pipelines, VAE's, and Control Net models are cached individually.
 
-VAE's and ControlNet models objects can be reused by main / refiner models in certain situations
-and this is taken advantage of.
+VAE's and ControlNet model objects can be reused by diffusion pipelines (Main or Refiner models) in
+certain situations and this is taken advantage of by using in memory caching.
 
-A number of things affect cache hit or miss upon model invocation, information regarding runtime
-caching behavior of a pipeline can be observed using ``-v/--verbose``
+A number of things affect cache hit or miss upon model invocation, extensive information
+regarding runtime caching behavior of a pipelines and other models can be observed using
+``-v/--verbose``
 
 When loading multiple different models be aware that they will all be retained in memory for
-the duration of program execution, unless all models are flushed using the ``\clear_model_cache`` directive.
-Memory consumption may become and issue if you are not careful.
+the duration of program execution, unless all models are flushed using the ``\clear_model_cache`` or
+individually using one of: ''\clear_pipeline_cache``, ``\clear_vae_cache``, or ``\clear_control_net_cache``.
+dgenerate uses heuristics to clear the in memory cache automatically when needed, including a size estimation
+of models before they enter system memory, however by default it will use system memory very aggressively
+and it is not entirely impossible to run your system out of memory if you are not careful.
 
 Environmental variables will be expanded in the provided input to **STDIN** when using this feature,
 you may use Unix style notation for environmental variables even on Windows.
