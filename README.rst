@@ -2085,8 +2085,8 @@ The following is a config file example that covers very basic syntax concepts:
 
     # If a hash-bang version is provided in the format above
     # a warning will be produced if the version you are running
-    # is not compatible, this can be used anywhere in the config
-    # file, a line number will be mentioned in the warning when the
+    # is not compatible (SemVer), this can be used anywhere in the
+    # config file, a line number will be mentioned in the warning when the
     # version check fails
 
     # Comments in the file will be ignored

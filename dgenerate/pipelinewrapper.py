@@ -2083,20 +2083,23 @@ class PipelineWrapperResult:
     @staticmethod
     def _format_option_pair(val):
         if len(val) > 1:
-            if isinstance(val[1], _prompt.Prompt):
-                header_len = len(val[0]) + 2
+            opt_name, opt_value = val
+
+            if isinstance(opt_value, _prompt.Prompt):
+                header_len = len(opt_name) + 2
                 prompt_text = \
                     _textprocessing.wrap(
-                        _textprocessing.quote(str(val[1])),
+                        shlex.quote(str(opt_value)),
                         subsequent_indent=' ' * header_len,
                         width=75)
 
                 prompt_text = ' \\\n'.join(prompt_text.split('\n'))
-                return f'{val[0]} {prompt_text}'
+                return f'{opt_name} {prompt_text}'
 
-            return f'{val[0]} {PipelineWrapperResult._set_opt_value_syntax(val[1])}'
+            return f'{opt_name} {PipelineWrapperResult._set_opt_value_syntax(opt_value)}'
 
         solo_val = str(val[0])
+
         if solo_val.startswith('-'):
             return solo_val
 

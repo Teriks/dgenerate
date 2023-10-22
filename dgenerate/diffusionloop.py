@@ -835,6 +835,8 @@ class DiffusionRenderLoop:
                      generation_result: _pipelinewrapper.PipelineWrapperResult,
                      callback_argument_extras: dict):
 
+        self._ensure_output_path()
+
         extra_args = []
         extra_comments = []
 
@@ -1062,10 +1064,18 @@ class DiffusionRenderLoop:
             auth_token=self.config.auth_token,
             local_files_only=self.config.offline_mode)
 
+    def _ensure_output_path(self):
+        """
+        Create the output path mentioned in the configuration and its parent directory's if necessary
+        """
+
+        if not self.disable_writes:
+            pathlib.Path(self.config.output_path).mkdir(parents=True, exist_ok=True)
+
     def _run(self):
         self.config.check()
 
-        pathlib.Path(self.config.output_path).mkdir(parents=True, exist_ok=True)
+        self._ensure_output_path()
 
         self._written_images = []
         self._written_animations = []
@@ -1282,6 +1292,8 @@ class DiffusionRenderLoop:
                                               **extra_args,
                                               batch_size=self.config.batch_size) as generation_result:
 
+                            self._ensure_output_path()
+
                             if generation_result.image_count > 1 and self.config.batch_grid_size is not None:
                                 anim_writer.write(
                                     generation_result.image_grid(self.config.batch_grid_size))
@@ -1319,6 +1331,8 @@ class DiffusionRenderLoop:
                 anim_writer.end()
 
     def _write_animation_config_file(self, filename, batch_idx, generation_result):
+        self._ensure_output_path()
+
         extra_opts = []
 
         if self.config.frame_start is not None and \

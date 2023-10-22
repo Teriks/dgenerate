@@ -205,18 +205,14 @@ class BatchProcessor:
         return False
 
     def _lex_and_run_invocation(self, line_idx, invocation_string):
-        templated_cmd = self._render_template(invocation_string)
+        shell_lexed = shlex.split(self._render_template(invocation_string)) + self.injected_args
 
-        shell_lexed = shlex.split(templated_cmd) + self.injected_args
-
-        if self.injected_args:
-            templated_cmd += \
-                ' ' + ' '.join(shlex.quote(str(s)) for s in self.injected_args)
+        cmd_info = ' '.join(shlex.quote(str(s)) for s in shell_lexed)
 
         header = 'Processing Arguments: '
         args_wrapped = \
             _textprocessing.wrap(
-                templated_cmd,
+                cmd_info,
                 width=_textprocessing.long_text_wrap_width() - len(header),
                 subsequent_indent=' ' * len(header))
 
@@ -301,8 +297,8 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
             raise BatchProcessError('Attempt to format a prompt with no positive prompt value.')
 
         if pos and neg:
-            return _textprocessing.quote(f"{pos}; {neg}")
-        return _textprocessing.quote(pos)
+            return shlex.quote(f"{pos}; {neg}")
+        return shlex.quote(pos)
 
     def format_prompt(prompt_or_list):
         if isinstance(prompt_or_list, _prompt.Prompt):
