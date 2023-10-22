@@ -7,7 +7,7 @@ Overview
 
 |Documentation Status|
 
-**dgenerate** is a command line tool for generating images and animation sequences using stable diffusion.
+**dgenerate** is a command line tool and library for generating images and animation sequences using stable diffusion.
 
 **dgenerate** can generate multiple images or animated outputs using multiple combinations of input parameters
 for stable diffusion in batch, so that the differences in generated output can be compared / curated easily.
@@ -22,6 +22,8 @@ GIF's and WebP can also be processed, with memory constraints.
 This software requires an Nvidia GPU supporting CUDA 11.8+, CPU rendering is possible but extraordinarily slow.
 
 ----
+
+This readme mostly covers command line usage, for library documentation visit `readthedocs <http://dgenerate.readthedocs.io/en/latest/?badge=latest>`_.
 
 
 * How to install

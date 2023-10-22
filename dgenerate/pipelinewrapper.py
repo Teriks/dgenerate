@@ -2380,6 +2380,10 @@ class DiffusionPipelineWrapper:
 
     @staticmethod
     def _pipeline_to_cpu_update_cache_info(pipeline):
+
+        # Update CPU side memory overhead estimates when
+        # a pipeline gets casted back to the CPU
+
         global _PIPELINE_CACHE_SIZE, \
             _VAE_CACHE_SIZE, \
             _CONTROL_NET_CACHE_SIZE
@@ -2433,6 +2437,23 @@ class DiffusionPipelineWrapper:
 
     @staticmethod
     def _pipeline_off_cpu_update_cache_info(pipeline):
+
+        # Update CPU side memory overhead estimates when a
+        # pipeline gets casted to the GPU or some other
+        # processing device
+
+        # It is not the case that once the model is casted off the CPU
+        # that there is no CPU side memory overhead for that model,
+        # in fact there is usually a non insignificant amount of system
+        # ram still used when the model is casted to another device. This
+        # function does not account for that and assumes that once the model is
+        # casted off of the CPU, that all of its memory overhead is on the
+        # other device IE: VRAM or some other tensor processing unit.
+        # This is not entirely correct but probably close enough for the
+        # CPU side memory overhead estimates, and for use as a heuristic
+        # value for garbage collection of the model cache that exists
+        # in CPU side memory
+
         global _PIPELINE_CACHE_SIZE, \
             _VAE_CACHE_SIZE, \
             _CONTROL_NET_CACHE_SIZE
