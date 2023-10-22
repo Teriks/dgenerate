@@ -65,6 +65,9 @@ except KeyboardInterrupt:
 
 
 def main():
+    """
+    Entry point for the dgenerate command line tool.
+    """
     try:
         render_loop = DiffusionRenderLoop()
         if not sys.stdin.isatty():
