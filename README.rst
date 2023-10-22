@@ -1626,7 +1626,7 @@ Specifying Control Nets
 
 One or more Control Net models may be specified with ``--control-nets``, currently only one
 control image can be specified which will be used across all control nets a control guidance,
-this will change in the future.
+this will change in the future to allow for different images to guide each control net.
 
 You can provide a huggingface repository slug / blob link, .pt, .pth, .bin, .ckpt, or .safetensors files.
 
