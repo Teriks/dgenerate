@@ -754,7 +754,7 @@ class DiffusionRenderLoop:
         """
         return {k: v[1] for k, v in self.generate_template_variables_with_types().items()}
 
-    def generate_template_variables_help(self):
+    def generate_template_variables_help(self, show_values: bool = True):
         """
         Generate a help string describing available template variables, their types, and values
         for use in batch processing.
@@ -775,7 +775,7 @@ class DiffusionRenderLoop:
 
         return help_string + '\n'.join(
             ' ' * 4 + f'Name: {_textprocessing.quote(i[0])}\n{" " * 8}'
-                      f'Type: {i[1][0]}\n{" " * 8}Value: {wrap(i[1][1])}' for i in
+                      f'Type: {i[1][0]}' + (f'\n{" " * 8}Value: {wrap(i[1][1])}' if show_values else '') for i in
             self.generate_template_variables_with_types().items())
 
     @property
