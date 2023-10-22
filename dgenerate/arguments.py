@@ -473,14 +473,15 @@ actions.append(
                         f"""Specify one or more ControlNet models using URIs. This should be a
                         huggingface repository slug / blob link, path to model file on disk 
                         (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model 
-                        folder containing model files.
+                        folder containing model files. Currently all ControlNot models will 
+                        receive the same guidance image, in the future this will probably change.
                         
                         Optional arguments can be provided after the ControlNet model specification, for torch
                         these include: "scale", "start", "end", "revision", "variant", "subfolder", and "dtype".
                         
                         For flax: "scale", "revision", "subfolder", "dtype", "from_torch" (bool)
                         
-                        They can be specified as so in any order, they are not positional:cd 
+                        They can be specified as so in any order, they are not positional:
                         "huggingface/controlnet;scale=1.0;start=0.0;end=1.0;revision=main;variant=fp16;subfolder=repo_subfolder;dtype=float16".
                         
                         The "scale" argument specifies the scaling factor applied to the ControlNet model, 
