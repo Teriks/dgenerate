@@ -286,7 +286,8 @@ actions.append(
 actions.append(
     parser.add_argument('--templates-help', action='store_true', dest=None,
                         help="""Print a list of template variables available after a dgenerate invocation 
-                        during batch processing from STDIN."""))
+                        during batch processing from STDIN. When used as a command option, their values
+                        are not presented, just their names and types."""))
 
 actions.append(
     parser.add_argument('--model-type', action='store', default='torch', type=_model_type,

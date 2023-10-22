@@ -326,7 +326,12 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
     }
 
     directives = {
-        'clear_pipeline_caches': lambda args: _pipelinewrapper.clear_all_cache()
+        'templates_help': lambda args: _messages.log(
+            render_loop.generate_template_variables_help(show_values=True) + '\n', underline=True),
+        'clear_model_cache': lambda args: _pipelinewrapper.clear_model_cache(),
+        'clear_pipeline_cache': lambda args: _pipelinewrapper.clear_pipeline_cache(),
+        'clear_vae_cache': lambda args: _pipelinewrapper.clear_vae_cache(),
+        'clear_control_net_cache': lambda args: _pipelinewrapper.clear_control_net_cache()
     }
 
     runner = BatchProcessor(

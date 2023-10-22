@@ -122,7 +122,7 @@ Cache constraint expressions for when to clear all model caches (DiffusionPipeli
 syntax provided via :py:meth:`dgenerate.util.memory_constraints`
 
 If any of these constraints are met, a call to :py:meth:`.enforce_cache_constraints` will call
-:py:meth:`.clear_all_cache` and force a garbage collection.
+:py:meth:`.clear_model_cache` and force a garbage collection.
 """
 
 PIPELINE_CACHE_MEMORY_CONSTRAINTS: typing.List[str] = ['pipeline_size > (available * 0.75)']
@@ -228,7 +228,7 @@ def clear_vae_cache(collect=True):
         gc.collect()
 
 
-def clear_all_cache(collect=True):
+def clear_model_cache(collect=True):
     """
     Clear all in memory model caches and garbage collect.
 
@@ -258,7 +258,7 @@ def clear_all_cache(collect=True):
 
     if collect:
         _messages.debug_log(
-            f'{_types.fullname(clear_all_cache)} calling gc.collect() by request')
+            f'{_types.fullname(clear_model_cache)} calling gc.collect() by request')
 
         gc.collect()
 
@@ -281,9 +281,9 @@ def enforce_cache_constraints(collect=True):
     if _memory.memory_constraints(CACHE_MEMORY_CONSTRAINTS):
         _messages.debug_log(f'{m_name}.CACHE_MEMORY_CONSTRAINTS '
                             f'{CACHE_MEMORY_CONSTRAINTS} met, '
-                            f'calling {_types.fullname(clear_all_cache)}.')
+                            f'calling {_types.fullname(clear_model_cache)}.')
 
-        clear_all_cache(collect=collect)
+        clear_model_cache(collect=collect)
         return True
 
     return False
