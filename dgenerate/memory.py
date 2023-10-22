@@ -34,14 +34,14 @@ def memory_constraints(expressions: typing.Optional[typing.Union[str, list]],
 
     Available values are:
         * used / u (memory currently used by the process in bytes)
-        * used_percent_total / upt (memory used by the process, as percent of total system memory, example: 25.4)
+        * used_total_percent / utp (memory used by the process, as percent of total system memory, example: 25.4)
         * used_percent / up (memory used by the process, as a percent of used + available memory, example 75.4)
         * available / a (available memory remaining on the system in bytes that can be used without going to the swap)
         * total / t (total memory on the system in bytes)
 
     Example expressions:
         * ``used > gb(1)`` (when the process has used more than 1GB of memory)
-        * ``used_percent_total > 25`` (when the process has used more than 25 percent of system memory)
+        * ``used_total_percent > 25`` (when the process has used more than 25 percent of system memory)
         * ``used_percent > 25`` (when the process has used more than 25 percent of virtual memory available to it)
         * ``available < gb(2)`` (when the available memory on the system is less than 2GB)
 
@@ -72,7 +72,7 @@ def memory_constraints(expressions: typing.Optional[typing.Union[str, list]],
 
     p_info = psutil.Process(pid)
     used = p_info.memory_info().rss
-    used_percent_total = p_info.memory_percent()
+    used_total_percent = p_info.memory_percent()
 
     mem_info = psutil.virtual_memory()
 
@@ -93,18 +93,13 @@ def memory_constraints(expressions: typing.Optional[typing.Union[str, list]],
         'u': used,
         'used_percent': used_percent,
         'up': used_percent,
-        'used_percent_total': used_percent_total,
-        'upt': used_percent_total,
+        'used_total_percent': used_total_percent,
+        'utp': used_total_percent,
         'available': available,
         'a': available,
         'total': total,
         't': total
     }
-
-    _messages.debug_log(
-        f'{_types.fullname(memory_constraints)} constraint = '
-        f'[{", ".join(_textprocessing.quote_spaces(expressions))}], '
-        f'vars = {str(eval_locals)}')
 
     if extra_vars:
         for key, value in extra_vars.items():
@@ -112,6 +107,11 @@ def memory_constraints(expressions: typing.Optional[typing.Union[str, list]],
                 raise ValueError(
                     f'extra_vars cannot redefine reserved attribute: {key}')
             eval_locals[key] = value
+
+    _messages.debug_log(
+        f'{_types.fullname(memory_constraints)} constraint = '
+        f'[{", ".join(_textprocessing.quote_spaces(expressions))}], '
+        f'vars = {str(eval_locals)}')
 
     try:
         value = mode(eval(e, eval_globals, eval_locals) for e in expressions)
@@ -152,7 +152,7 @@ def get_used_memory(measure='b', pid: typing.Optional[int] = None) -> int:
     return psutil.Process(pid).memory_info().rss / _MEM_FACTORS[measure.strip().lower()]
 
 
-def get_used_memory_percent_total(pid: typing.Optional[int] = None) -> float:
+def get_used_total_memory_percent(pid: typing.Optional[int] = None) -> float:
     """
     Get the percentage of memory used by a process as a percentage of total system memory.
 
@@ -248,7 +248,7 @@ def memory_use_debug_string(pid=None):
         * Available Memory = :py:meth:`.get_available_memory`
         * Used Percent = :py:meth:`.get_used_memory_percent`
         * Total Memory = :py:meth:`.get_total_memory`
-        * Used Percent Total = :py:meth:`.get_used_memory_percent_total`
+        * Used Percent Total = :py:meth:`.get_used_total_memory_percent`
 
 
     :param pid: PID of the process to describe, defaults to the current process.
@@ -267,4 +267,4 @@ def memory_use_debug_string(pid=None):
             f'Total Memory: '
             f'{bytes_best_human_unit(get_total_memory())}, '
             f'Used Total Percent: '
-            f'{round(get_used_memory_percent_total(pid=pid), 2)}%')
+            f'{round(get_used_total_memory_percent(pid=pid), 2)}%')

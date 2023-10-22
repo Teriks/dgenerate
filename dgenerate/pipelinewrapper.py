@@ -774,6 +774,10 @@ class FlaxControlNetPath:
 
         global _CONTROL_NET_CACHE_SIZE
         _CONTROL_NET_CACHE_SIZE += estimated_memory_usage
+
+        # Tag for internal use
+        new_net.DGENERATE_SIZE_ESTIMATE = estimated_memory_usage
+
         return new_net
 
 
@@ -893,6 +897,10 @@ class TorchControlNetPath:
 
         global _CONTROL_NET_CACHE_SIZE
         _CONTROL_NET_CACHE_SIZE += estimated_memory_usage
+
+        # Tag for internal use
+        new_net.DGENERATE_SIZE_ESTIMATE = estimated_memory_usage
+
         return new_net
 
 
@@ -1322,6 +1330,11 @@ def _load_torch_vae(uri: _types.Uri,
 
     global _VAE_CACHE_SIZE
     _VAE_CACHE_SIZE += estimated_memory_use
+
+    # Tag for internal use
+
+    vae.DGENERATE_SIZE_ESTIMATE = estimated_memory_use
+
     return vae
 
 
@@ -1401,6 +1414,11 @@ def _load_flax_vae(uri: _types.Uri,
 
     global _VAE_CACHE_SIZE
     _VAE_CACHE_SIZE += estimated_memory_use
+
+    # Tag for internal use
+
+    vae.DGENERATE_SIZE_ESTIMATE = estimated_memory_use
+
     return vae
 
 
@@ -1840,6 +1858,10 @@ def _create_torch_diffusion_pipeline(pipeline_type,
     global _PIPELINE_CACHE_SIZE
     _PIPELINE_CACHE_SIZE += estimated_memory_usage
 
+    # Tag for internal use
+
+    pipeline.DGENERATE_SIZE_ESTIMATE = estimated_memory_usage
+
     _messages.debug_log(f'Finished Creating Torch Pipeline: "{pipeline_class.__name__}"')
     return pipeline, parsed_control_net_uris
 
@@ -1971,6 +1993,10 @@ def _create_flax_diffusion_pipeline(pipeline_type,
 
     global _PIPELINE_CACHE_SIZE
     _PIPELINE_CACHE_SIZE += estimated_memory_usage
+
+    # Tag for internal use
+
+    pipeline.DGENERATE_SIZE_ESTIMATE = estimated_memory_usage
 
     _messages.debug_log(f'Finished Creating Flax Pipeline: "{pipeline_class.__name__}"')
     return pipeline, params, parsed_control_net_uris
@@ -2344,10 +2370,111 @@ class DiffusionPipelineWrapper:
             self._lora_scale = parse_lora_uri(lora_uris).scale
 
     @staticmethod
+    def _pipeline_to_cpu_update_cache_info(pipeline):
+        global _PIPELINE_CACHE_SIZE, \
+            _VAE_CACHE_SIZE, \
+            _CONTROL_NET_CACHE_SIZE
+
+        enforce_pipeline_cache_constraints(pipeline.DGENERATE_SIZE_ESTIMATE)
+        _PIPELINE_CACHE_SIZE += pipeline.DGENERATE_SIZE_ESTIMATE
+
+        _messages.debug_log(f'{_types.class_and_id_string(pipeline)} '
+                            f'Size = {pipeline.DGENERATE_SIZE_ESTIMATE} Bytes '
+                            f'is entering CPU side memory, {_types.fullname(pipeline_cache_size)}() '
+                            f'is now {pipeline_cache_size()} Bytes')
+
+        if hasattr(pipeline, 'vae') and pipeline.vae is not None:
+            if hasattr(pipeline.vae, 'DGENERATE_SIZE_ESTIMATE'):
+                # VAE returning to CPU side memory
+                enforce_vae_cache_constraints(pipeline.vae.DGENERATE_SIZE_ESTIMATE)
+                _VAE_CACHE_SIZE += pipeline.vae.DGENERATE_SIZE_ESTIMATE
+
+                _messages.debug_log(f'{_types.class_and_id_string(pipeline.vae)} '
+                                    f'Size = {pipeline.vae.DGENERATE_SIZE_ESTIMATE} Bytes '
+                                    f'is entering CPU side memory, {_types.fullname(vae_cache_size)}() '
+                                    f'is now {vae_cache_size()} Bytes')
+
+        if hasattr(pipeline, 'controlnet') and pipeline.controlnet is not None:
+            if isinstance(pipeline.controlnet,
+                          diffusers.pipelines.controlnet.MultiControlNetModel):
+                total_size = 0
+                for control_net in pipeline.controlnet.nets:
+                    total_size += control_net.DGENERATE_SIZE_ESTIMATE
+
+                    _messages.debug_log(f'{_types.class_and_id_string(control_net)} '
+                                        f'Size = {control_net.DGENERATE_SIZE_ESTIMATE} Bytes '
+                                        f'from "MultiControlNetModel" is entering CPU side memory.')
+
+                enforce_control_net_cache_constraints(total_size)
+                _CONTROL_NET_CACHE_SIZE += total_size
+
+                _messages.debug_log(f'"MultiControlNetModel" size fully estimated, '
+                                    f'{_types.fullname(control_net_cache_size)}() '
+                                    f'is now {control_net_cache_size()} Bytes')
+
+            else:
+                # ControlNet returning to CPU side memory
+                enforce_control_net_cache_constraints(pipeline.controlnet.DGENERATE_SIZE_ESTIMATE)
+                _CONTROL_NET_CACHE_SIZE += pipeline.controlnet.DGENERATE_SIZE_ESTIMATE
+
+                _messages.debug_log(f'{_types.class_and_id_string(pipeline.controlnet)} '
+                                    f'Size = {pipeline.controlnet.DGENERATE_SIZE_ESTIMATE} Bytes '
+                                    f'is entering CPU side memory, {_types.fullname(control_net_cache_size)}() '
+                                    f'is now {control_net_cache_size()} Bytes')
+
+    @staticmethod
+    def _pipeline_off_cpu_update_cache_info(pipeline):
+        global _PIPELINE_CACHE_SIZE, \
+            _VAE_CACHE_SIZE, \
+            _CONTROL_NET_CACHE_SIZE
+
+        _PIPELINE_CACHE_SIZE -= pipeline.DGENERATE_SIZE_ESTIMATE
+
+        _messages.debug_log(f'{_types.class_and_id_string(pipeline)} '
+                            f'Size = {pipeline.DGENERATE_SIZE_ESTIMATE} Bytes '
+                            f'is leaving CPU side memory, {_types.fullname(pipeline_cache_size)}() '
+                            f'is now {pipeline_cache_size()} Bytes')
+
+        if hasattr(pipeline, 'vae') and pipeline.vae is not None:
+            if hasattr(pipeline.vae, 'DGENERATE_SIZE_ESTIMATE'):
+                _VAE_CACHE_SIZE -= pipeline.vae.DGENERATE_SIZE_ESTIMATE
+
+                _messages.debug_log(f'{_types.class_and_id_string(pipeline.vae)} '
+                                    f'Size = {pipeline.vae.DGENERATE_SIZE_ESTIMATE} Bytes '
+                                    f'is leaving CPU side memory, {_types.fullname(vae_cache_size)}() '
+                                    f'is now {vae_cache_size()} Bytes')
+
+        if hasattr(pipeline, 'controlnet') and pipeline.controlnet is not None:
+            if isinstance(pipeline.controlnet,
+                          diffusers.pipelines.controlnet.MultiControlNetModel):
+                for control_net in pipeline.controlnet.nets:
+                    _CONTROL_NET_CACHE_SIZE -= control_net.DGENERATE_SIZE_ESTIMATE
+
+                    _messages.debug_log(f'{_types.class_and_id_string(control_net)} Size = '
+                                        f'{control_net.DGENERATE_SIZE_ESTIMATE} Bytes '
+                                        f'from "MultiControlNetModel" is leaving CPU side memory, '
+                                        f'{_types.fullname(control_net_cache_size)}() is now '
+                                        f'{control_net_cache_size()} Bytes')
+
+            elif isinstance(pipeline.controlnet, diffusers.models.ControlNetModel):
+                _CONTROL_NET_CACHE_SIZE -= pipeline.controlnet.DGENERATE_SIZE_ESTIMATE
+
+                _messages.debug_log(f'{_types.class_and_id_string(pipeline.controlnet)} '
+                                    f'Size = {pipeline.controlnet.DGENERATE_SIZE_ESTIMATE} Bytes '
+                                    f'is leaving CPU side memory, {_types.fullname(control_net_cache_size)}() '
+                                    f'is now {control_net_cache_size()} Bytes')
+
+    @staticmethod
     def _pipeline_to(pipeline, device):
         if hasattr(pipeline, 'to'):
             if not pipeline.DGENERATE_CPU_OFFLOAD and \
                     not pipeline.DGENERATE_SEQUENTIAL_OFFLOAD:
+
+                if device == 'cpu':
+                    DiffusionPipelineWrapper._pipeline_to_cpu_update_cache_info(pipeline)
+                else:
+                    DiffusionPipelineWrapper._pipeline_off_cpu_update_cache_info(pipeline)
+
                 return pipeline.to(device)
             else:
                 return pipeline
@@ -2787,6 +2914,13 @@ class DiffusionPipelineWrapper:
 
         if self._control_net_uris:
             control_image = user_args['control_image']
+
+            args['width'] = user_args.get('width', control_image.width)
+            args['height'] = user_args.get('height', control_image.height)
+
+            if len(self.control_net_uris) > 1:
+                control_image = [control_image for _ in range(0, len(self.control_net_uris))]
+
             if self._pipeline_type == _PipelineTypes.BASIC:
                 args['image'] = control_image
             elif self._pipeline_type == _PipelineTypes.IMG2IMG or \
@@ -2798,9 +2932,6 @@ class DiffusionPipelineWrapper:
             mask_image = user_args.get('mask_image')
             if mask_image is not None:
                 args['mask_image'] = mask_image
-
-            args['width'] = user_args.get('width', control_image.width)
-            args['height'] = user_args.get('height', control_image.height)
 
         elif 'image' in user_args:
             image = user_args['image']
