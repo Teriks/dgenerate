@@ -142,8 +142,8 @@ class CannyEdgeDetectPreprocess(_preprocessor.ImagePreprocessor):
             elif self._threshold_algo == 'median':
                 lower, upper = self._get_range(np.median(cv_img))
 
-        _messages.debug_log(f'Canny Processing with: lower {lower}, upper {upper}, '
-                            f'aperture-size {self._aperture_size}, L2gradient {self._L2_gradient}')
+        _messages.debug_log(f'Canny Processing with cv2.Canny: (lower={lower}, upper={upper}, '
+                            f'apertureSize={self._aperture_size}, L2gradient={self._L2_gradient})')
 
         edges = cv2.Canny(cv_img, lower, upper,
                           apertureSize=self._aperture_size,
