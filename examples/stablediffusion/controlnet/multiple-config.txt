@@ -12,6 +12,6 @@ runwayml/stable-diffusion-v1-5 \
 --vae-tiling \
 --vae-slicing \
 --prompts "A boxer throwing a punch in the ring" \
---control-nets "lllyasviel/sd-controlnet-openpose;scale=1.0;end=0.5" \
---image-seeds "../../media/man-fighting-pose.jpg" \
---control-image-preprocessors "openpose;include-hand=true;include-face=true;output-file=boxer/boxer-openpose.png"
+--control-nets "lllyasviel/sd-controlnet-openpose;scale=1.0;end=0.5" "lllyasviel/sd-controlnet-canny;scale=1.0;start=0.5" \
+--image-seeds "../../media/man-fighting-pose.jpg, ../../media/man-fighting-pose.jpg" \
+--control-image-preprocessors "openpose;include-hand=true;include-face=true;output-file=boxer/boxer-openpose.png" + "canny;lower=50;upper=100"

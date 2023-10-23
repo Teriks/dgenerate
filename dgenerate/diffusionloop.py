@@ -102,7 +102,8 @@ def iterate_diffusion_args(prompt: _types.OptionalPrompts,
                            guidance_scale: _types.OptionalFloats,
                            image_guidance_scale: _types.OptionalFloats,
                            guidance_rescale: _types.OptionalFloats,
-                           inference_steps: _types.OptionalIntegers) -> typing.Generator[_pipelinewrapper.DiffusionArguments, None, None]:
+                           inference_steps: _types.OptionalIntegers) -> typing.Generator[
+    _pipelinewrapper.DiffusionArguments, None, None]:
     """
     Iterate over every combination of possible attribute values of :py:class:`dgenerate.pipelinewrapper.DiffusionArguments` given a list of
     values for each attribute.
@@ -185,14 +186,14 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
     batch_size: _types.OptionalInteger = None
     batch_grid_size: _types.OptionalSize = None
 
-    prompts: _types.Prompts = [_prompt.Prompt()]
+    prompts: _types.Prompts
     sdxl_second_prompts: _types.OptionalPrompts = None
     sdxl_refiner_prompts: _types.OptionalPrompts = None
     sdxl_refiner_second_prompts: _types.OptionalPrompts = None
 
-    seeds: _types.Integers = gen_seeds(1)
-    guidance_scales: _types.Floats = [_pipelinewrapper.DEFAULT_GUIDANCE_SCALE]
-    inference_steps: _types.Integers = [_pipelinewrapper.DEFAULT_INFERENCE_STEPS]
+    seeds: _types.Integers
+    guidance_scales: _types.Floats
+    inference_steps: _types.Integers
 
     image_seeds: _types.OptionalUris = None
     image_seed_strengths: _types.OptionalFloats = None
@@ -257,6 +258,12 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
     control_image_preprocessors: _types.OptionalUris = None
 
     offline_mode: bool = False
+
+    def __init__(self):
+        self.guidance_scales = [_pipelinewrapper.DEFAULT_GUIDANCE_SCALE]
+        self.inference_steps = [_pipelinewrapper.DEFAULT_INFERENCE_STEPS]
+        self.prompts = [_prompt.Prompt()]
+        self.seeds = gen_seeds(1)
 
     def generate_template_variables_with_types(self, variable_prefix: typing.Optional[str] = None) \
             -> typing.Dict[str, typing.Tuple[typing.Type, typing.Any]]:
@@ -682,7 +689,7 @@ class DiffusionRenderLoop:
     batch processing scripts with this enabled, they will be empty lists
     """
 
-    image_generated_callbacks: ImageGeneratedCallbacks = []
+    image_generated_callbacks: ImageGeneratedCallbacks
     """
     Optional callbacks for handling individual images that have been generated.
     
@@ -710,6 +717,8 @@ class DiffusionRenderLoop:
 
         self.preprocessor_loader = \
             _preprocessors.Loader() if preprocessor_loader is None else preprocessor_loader
+
+        self.image_generated_callbacks = []
 
     @property
     def written_images(self):
@@ -1028,9 +1037,6 @@ class DiffusionRenderLoop:
     def _with_image_seed_pre_generation(self, args_ctx: _pipelinewrapper.DiffusionArguments, image_seed_obj):
         pass
 
-    def _load_preprocessors(self, preprocessors):
-        return self.preprocessor_loader.load(preprocessors, self.config.device)
-
     def run(self):
         """
         Run the diffusion loop, this calls :py:meth:`.DiffusionRenderLoopConfig.check` prior to running.
@@ -1098,7 +1104,7 @@ class DiffusionRenderLoop:
 
             sdxl_high_noise_fractions = \
                 self.config.sdxl_high_noise_fractions if \
-                self.config.sdxl_refiner_uri is not None else None
+                    self.config.sdxl_refiner_uri is not None else None
 
             for args_ctx in self.config.iterate_diffusion_args(
                     sdxl_high_noise_fraction=sdxl_high_noise_fractions,
@@ -1113,12 +1119,52 @@ class DiffusionRenderLoop:
                                       batch_size=self.config.batch_size) as generation_result:
                     self._write_prompt_only_image(args_ctx, generation_result)
 
+    def _load_preprocessors(self, preprocessors):
+        if preprocessors is None:
+            return None
+
+        return self.preprocessor_loader.load(preprocessors, self.config.device)
+
+    def _load_seed_preprocessors(self):
+        r = self._load_preprocessors(self.config.seed_image_preprocessors)
+
+        _messages.debug_log('Loaded Seed Image Preprocessor:', r)
+        return r
+
+    def _load_mask_preprocessors(self):
+        r = self._load_preprocessors(self.config.mask_image_preprocessors)
+
+        _messages.debug_log('Loaded Mask Image Preprocessor:', r)
+
+        return r
+
+    def _load_control_preprocessors(self):
+        if not self.config.control_image_preprocessors:
+            return None
+
+        preprocessors = [[]]
+
+        for preprocessor in self.config.control_image_preprocessors:
+            if preprocessor != '+':
+                preprocessors[-1].append(preprocessor)
+            else:
+                preprocessors.append([])
+
+        if len(preprocessors) == 1:
+            r = self._load_preprocessors(preprocessors[0][0])
+        else:
+            r = [self._load_preprocessors(p) for p in preprocessors]
+
+        _messages.debug_log('Loaded Control Image Preprocessor(s): ', r)
+
+        return r
+
     def _render_with_image_seeds(self):
         pipeline_wrapper = self._create_pipeline_wrapper()
 
         sdxl_high_noise_fractions = \
             self.config.sdxl_high_noise_fractions if \
-            self.config.sdxl_refiner_uri is not None else None
+                self.config.sdxl_refiner_uri is not None else None
 
         image_seed_strengths = self.config.image_seed_strengths if \
             not (_pipelinewrapper.model_type_is_upscaler(self.config.model_type) or
@@ -1172,7 +1218,7 @@ class DiffusionRenderLoop:
                         self.config.frame_start,
                         self.config.frame_end,
                         self.config.output_size,
-                        preprocessor=self._load_preprocessors(self.config.control_image_preprocessors))
+                        preprocessor=self._load_control_preprocessors())
 
             else:
                 def image_seed_iterator():
@@ -1181,9 +1227,9 @@ class DiffusionRenderLoop:
                         self.config.frame_start,
                         self.config.frame_end,
                         self.config.output_size,
-                        seed_image_preprocessor=self._load_preprocessors(self.config.seed_image_preprocessors),
-                        mask_image_preprocessor=self._load_preprocessors(self.config.mask_image_preprocessors),
-                        control_image_preprocessor=self._load_preprocessors(self.config.control_image_preprocessors))
+                        seed_image_preprocessor=self._load_seed_preprocessors(),
+                        mask_image_preprocessor=self._load_mask_preprocessors(),
+                        control_image_preprocessor=self._load_control_preprocessors())
 
             if seed_info.is_animation:
 
@@ -1222,11 +1268,8 @@ class DiffusionRenderLoop:
                         else:
                             pipeline_args['control_image'] = (image_seed.image if is_single_control_image
                                                               else image_seed.control_image)
-
-                        with _mediainput.MultiContextManager(
-                                [image_seed.mask_image, image_seed.control_image]), \
-                                pipeline_wrapper(**pipeline_args,
-                                                 batch_size=self.config.batch_size) as generation_result:
+                        with image_seed, pipeline_wrapper(**pipeline_args,
+                                                          batch_size=self.config.batch_size) as generation_result:
 
                             self._write_image_seed_gen_image(diffusion_arguments, image_seed, generation_result)
 
