@@ -1191,8 +1191,8 @@ def _check_image_dimensions_match(images):
         for iy in images:
             if ix.size != iy.size:
                 raise ImageSeedSizeMismatchError(
-                    f'Dimension of "{ix.filename}" ({_textprocessing.format_size(ix.size)}) does '
-                    f'not match "{iy.filename}" ({_textprocessing.format_size(iy.size)})')
+                    f'Dimension of "{_image.get_filename(ix)}" ({_textprocessing.format_size(ix.size)}) does '
+                    f'not match "{_image.get_filename(iy)}" ({_textprocessing.format_size(iy.size)})')
 
 
 def _flatten(xs):

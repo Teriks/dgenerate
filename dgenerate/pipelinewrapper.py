@@ -53,6 +53,7 @@ import dgenerate.prompt as _prompt
 import dgenerate.types as _types
 import dgenerate.memory as _memory
 import dgenerate.hfutil as _hfutil
+import dgenerate.image as _image
 import diffusers
 
 DEFAULT_INFERENCE_STEPS = 30
@@ -2909,20 +2910,23 @@ class DiffusionPipelineWrapper:
             seed_args = []
 
             if mask_image is not None:
-                seed_args.append(f'mask={mask_image.filename}')
+                seed_args.append(f'mask={_image.get_filename(mask_image)}')
             if control_image is not None:
                 if isinstance(control_image, list):
-                    seed_args.append(f'control={", ".join(c.filename for c in control_image)}')
-                elif hasattr(control_image, 'filename'):
-                    seed_args.append(f'control={control_image.filename}')
+                    seed_args.append(f'control={", ".join(_image.get_filename(c) for c in control_image)}')
+                else:
+                    seed_args.append(f'control={_image.get_filename(control_image)}')
 
             if isinstance(image, list):
-                opts.append(('--image-seeds', ','.join(i.filename for i in image)))
-            elif hasattr(image, 'filename'):
+                opts.append(('--image-seeds',
+                             ','.join(_image.get_filename(i) for i in image)))
+            elif image:
                 if not seed_args:
-                    opts.append(('--image-seeds', image.filename))
+                    opts.append(('--image-seeds',
+                                 _image.get_filename(image)))
                 else:
-                    opts.append(('--image-seeds', image.filename + ';' + ';'.join(seed_args)))
+                    opts.append(('--image-seeds',
+                                 _image.get_filename(image) + ';' + ';'.join(seed_args)))
 
             if upscaler_noise_level is not None:
                 opts.append(('--upscaler-noise-levels', upscaler_noise_level))
@@ -2933,9 +2937,9 @@ class DiffusionPipelineWrapper:
         elif control_image is not None:
             if isinstance(control_image, list):
                 opts.append(('--image-seeds',
-                             ', '.join(c.filename for c in control_image)))
+                             ', '.join(_image.get_filename(c) for c in control_image)))
             elif hasattr(control_image, 'filename'):
-                opts.append(('--image-seeds', control_image.filename))
+                opts.append(('--image-seeds', _image.get_filename(control_image)))
 
         if shell_quote:
             for idx, option in opts:

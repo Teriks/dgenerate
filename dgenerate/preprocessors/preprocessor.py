@@ -30,6 +30,7 @@ import dgenerate.messages as _messages
 import dgenerate.preprocessors.exceptions as _exceptions
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+import dgenerate.image as _image
 
 
 class ImagePreprocessor:
@@ -349,7 +350,7 @@ class ImagePreprocessor:
                 processed,
                 'Wrote Preprocessor Debug Image (because copied)')
 
-            processed.filename = image.filename
+            processed.filename = _image.get_filename(image)
             return processed
 
         # Not copied but may be modified
@@ -391,7 +392,7 @@ class ImagePreprocessor:
                 processed,
                 'Wrote Preprocessor Debug Image (because copied)')
 
-            processed.filename = image.filename
+            processed.filename = _image.get_filename(image)
             return processed
 
         # Not copied but may be modified
