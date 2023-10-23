@@ -1235,7 +1235,7 @@ class DiffusionRenderLoop:
 
                 if is_single_control_image:
                     def get_extra_args(ci_obj: _mediainput.ImageSeed):
-                        return {'control_image': ci_obj.image}
+                        return {'control_image': ci_obj.control_image}
                 else:
                     def get_extra_args(ims_obj: _mediainput.ImageSeed):
                         extra_args = {'image': ims_obj.image}
@@ -1266,8 +1266,8 @@ class DiffusionRenderLoop:
                         if image_seed.mask_image is not None:
                             pipeline_args['mask_image'] = image_seed.mask_image
                         else:
-                            pipeline_args['control_image'] = (image_seed.image if is_single_control_image
-                                                              else image_seed.control_image)
+                            pipeline_args['control_image'] = image_seed.control_image
+
                         with image_seed, pipeline_wrapper(**pipeline_args,
                                                           batch_size=self.config.batch_size) as generation_result:
 
