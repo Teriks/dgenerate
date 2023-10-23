@@ -2931,7 +2931,10 @@ class DiffusionPipelineWrapper:
                 opts.append(('--image-seed-strengths', image_seed_strength))
 
         elif control_image is not None:
-            if hasattr(control_image, 'filename'):
+            if isinstance(control_image, list):
+                opts.append(('--image-seeds',
+                             ', '.join(c.filename for c in control_image)))
+            elif hasattr(control_image, 'filename'):
                 opts.append(('--image-seeds', control_image.filename))
 
         if shell_quote:

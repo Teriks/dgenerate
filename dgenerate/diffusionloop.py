@@ -1151,7 +1151,7 @@ class DiffusionRenderLoop:
                 preprocessors.append([])
 
         if len(preprocessors) == 1:
-            r = self._load_preprocessors(preprocessors[0][0])
+            r = self._load_preprocessors(preprocessors[0])
         else:
             r = [self._load_preprocessors(p) for p in preprocessors]
 
