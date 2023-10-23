@@ -32,15 +32,19 @@ import dgenerate.types as _types
 
 
 class Loader:
-    search_modules: typing.Set = set()
+    search_modules: typing.Set
     """Additional module objects for this loader to search, aside from the preprocessors sub module."""
 
-    extra_classes: typing.Set = set()
+    extra_classes: typing.Set
     """
     Additional directly defined implementation classes. This is empty by default and is for allowing
     library users to quickly add a class implementing :py:class:`dgenerate.preprocessors.preprocessor.ImagePreprocessor`
     if desired without creating a new file for it.
     """
+
+    def __init__(self):
+        self.search_modules = set()
+        self.extra_classes = set()
 
     def add_class(self, cls: typing.Type[_preprocessor.ImagePreprocessor]):
         """
@@ -161,7 +165,7 @@ class Loader:
     def get_help(self, preprocessor_name: _types.Name) -> str:
         return self.get_class_by_name(preprocessor_name).get_help(preprocessor_name)
 
-    def load(self, uri: typing.Union[_types.Uri, typing.Iterable[_types.Uri], None], device: str = 'cpu') -> \
+    def load(self, uri: typing.Union[_types.Uri, typing.Iterable[_types.Uri]], device: str = 'cpu') -> \
             typing.Union[_preprocessor.ImagePreprocessor, _preprocessorchain.ImagePreprocessorChain, None]:
         """
         Load an image preprocessor or multiple image preprocessors. They are loaded by URI, which
@@ -177,7 +181,7 @@ class Loader:
         """
 
         if uri is None:
-            return None
+            raise ValueError('uri must not be None')
 
         if isinstance(uri, str):
             return self._load(uri, device)

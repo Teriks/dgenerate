@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import atexit
+import collections.abc
 import contextlib
 import mimetypes
 import os
@@ -39,78 +40,6 @@ import dgenerate.messages as _messages
 import dgenerate.preprocessors as _preprocessors
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-
-
-class AnimationFrame:
-    """
-    A realized --image-seed animation frame with attached image data.
-    """
-
-    frame_index: int
-    """
-    Index of the frame in the animation
-    """
-
-    total_frames: int
-    """
-    Total frames in the animation that this frame belongs to
-    """
-
-    anim_fps: typing.Union[float, int]
-    """
-    Frames per second
-    """
-
-    anim_frame_duration: float
-    """
-    Duration of the frame in milliseconds
-    """
-
-    image: PIL.Image.Image
-    """
-    The seed image component of the frame
-    """
-
-    mask_image: PIL.Image.Image = None
-    """
-    The mask image component of the frame (optional)
-    """
-
-    control_image: PIL.Image.Image = None
-    """
-    The control image component of the frame (optional)
-    for use with ControlNets
-    """
-
-    def __init__(self,
-                 frame_index: int,
-                 total_frames: int,
-                 anim_fps: typing.Union[float, int],
-                 anim_frame_duration: float,
-                 image: PIL.Image.Image,
-                 mask_image: PIL.Image.Image = None,
-                 control_image: PIL.Image.Image = None):
-
-        self.frame_index = frame_index
-        self.total_frames = total_frames
-        self.fps = anim_fps
-        self.duration = anim_frame_duration
-        self.image = image
-        self.mask_image = mask_image
-        self.control_image = control_image
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, exc_tb):
-        self.close()
-
-    def close(self):
-        self.image.close()
-        if self.mask_image is not None:
-            self.mask_image.close()
-        if self.control_image is not None:
-            self.control_image.close()
 
 
 def frame_slice_count(total_frames: int, frame_start: int, frame_end: typing.Optional[int] = None) -> int:
@@ -148,7 +77,7 @@ class AnimationReader:
     def __init__(self,
                  width: int,
                  height: int,
-                 anim_fps: typing.Union[float, int],
+                 anim_fps: typing.Union[int],
                  anim_frame_duration: float,
                  total_frames: int, **kwargs):
         """
@@ -193,7 +122,7 @@ class AnimationReader:
         return self._height
 
     @property
-    def anim_fps(self) -> typing.Union[float, int]:
+    def anim_fps(self) -> typing.Union[int]:
         """
         Frame per second.
 
@@ -231,17 +160,6 @@ class AnimationReader:
     def __next__(self) -> PIL.Image.Image:
         raise StopIteration
 
-    def frame_slice_count(self, frame_start: int = 0, frame_end: _types.OptionalInteger = None) -> int:
-        """
-        Calculate the number of frames that exist within a frame slice of the content
-        provided by this animation reader.
-
-        :param frame_start: start frame (inclusive)
-        :param frame_end: end frame (inclusive)
-        :return: count
-        """
-        return frame_slice_count(self.total_frames, frame_start, frame_end)
-
 
 class VideoReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
     """
@@ -257,11 +175,13 @@ class VideoReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
                  preprocessor: _preprocessors.ImagePreprocessor = None):
         """
         :param file: a file path or binary file stream
+
         :param file_source: the source filename for the video data, should be the filename.
             this is for informational purpose when reading from a stream or a cached file
             and should be provided in every case even if it is a symbolic value only. It
             should possess a file extension as it is used to determine file format when
-            reading from a byte stream.
+            reading from a byte stream.:py:class:`PIL.Image.Image` objects produced by
+            the reader will have this value set to their *filename* attribute.
 
         :param resize_resolution: Progressively resize each frame to this resolution while
             reading. The provided resolution will be aligned by 8 pixels.
@@ -335,7 +255,8 @@ class AnimatedImageReader(_preprocessors.ImagePreprocessorMixin, AnimationReader
         :param file_source: the source filename for the animated image, should be the filename.
             this is for informational purpose when reading from a stream or a cached file
             and should be provided in every case even if it is a symbolic value only. It
-            should possess a file extension.
+            should possess a file extension. :py:class:`PIL.Image.Image` objects produced by
+            the reader will have this value set to their *filename* attribute.
 
         :param resize_resolution: Progressively resize each frame to this
             resolution while reading. The provided resolution will be aligned
@@ -470,250 +391,6 @@ class MockImageAnimationReader(_preprocessors.ImagePreprocessorMixin, AnimationR
             raise StopIteration
 
 
-def _iterate_animation_frames_x2(seed_reader: AnimationReader,
-                                 right_reader: AnimationReader,
-                                 right_animation_frame_param_name: str,
-                                 frame_start: int = 0,
-                                 frame_end: _types.OptionalInteger = None):
-    total_frames = seed_reader.frame_slice_count(frame_start, frame_end)
-    right_total_frames = right_reader.frame_slice_count(frame_start, frame_end)
-    out_frame_idx = 0
-
-    # Account for videos possibly having a differing number of frames
-    total_frames = min(total_frames, right_total_frames)
-
-    have_preprocess_seed = isinstance(seed_reader, _preprocessors.ImagePreprocessorMixin)
-    have_preprocess_right = isinstance(right_reader, _preprocessors.ImagePreprocessorMixin)
-
-    preprocess_seed_old = True
-    preprocess_right_old = True
-
-    if have_preprocess_seed:
-        preprocess_seed_old = seed_reader.preprocess_enabled
-        seed_reader.preprocess_enabled = frame_start == 0
-
-    if have_preprocess_right:
-        preprocess_right_old = right_reader.preprocess_enabled
-        right_reader.preprocess_enabled = frame_start == 0
-
-    for in_frame_idx, frame in enumerate(zip(seed_reader, right_reader)):
-        if in_frame_idx == frame_start - 1:
-            # The next frame is preprocessed
-            if have_preprocess_seed:
-                seed_reader.preprocess_enabled = True
-            if have_preprocess_right:
-                right_reader.preprocess_enabled = True
-
-        seed_image = frame[0]
-        right_image = frame[1]
-
-        if in_frame_idx >= frame_start:
-            yield AnimationFrame(frame_index=out_frame_idx,
-                                 total_frames=total_frames,
-                                 anim_fps=seed_reader.anim_fps,
-                                 anim_frame_duration=seed_reader.anim_frame_duration,
-                                 image=seed_image,
-                                 **{right_animation_frame_param_name: right_image})
-            out_frame_idx += 1
-
-        if frame_end is not None and in_frame_idx == frame_end:
-            break
-
-    if have_preprocess_seed:
-        seed_reader.preprocess_enabled = preprocess_seed_old
-
-    if have_preprocess_right:
-        right_reader.preprocess_enabled = preprocess_right_old
-
-
-def _iterate_animation_frames_x3(seed_reader: AnimationReader,
-                                 mask_reader: typing.Optional[AnimationReader] = None,
-                                 control_reader: typing.Optional[AnimationReader] = None,
-                                 frame_start: int = 0,
-                                 frame_end: _types.OptionalInteger = None):
-    total_frames = seed_reader.frame_slice_count(frame_start, frame_end)
-    mask_total_frames = mask_reader.frame_slice_count(frame_start, frame_end)
-    control_total_frames = control_reader.frame_slice_count(frame_start, frame_end)
-    out_frame_idx = 0
-
-    # Account for videos possibly having a differing number of frames
-    total_frames = min(total_frames, mask_total_frames, control_total_frames)
-
-    have_preprocess_seed = isinstance(seed_reader, _preprocessors.ImagePreprocessorMixin)
-    have_preprocess_mask = isinstance(mask_reader, _preprocessors.ImagePreprocessorMixin)
-    have_preprocess_control = isinstance(control_reader, _preprocessors.ImagePreprocessorMixin)
-
-    preprocess_seed_old = True
-    preprocess_mask_old = True
-    preprocess_control_old = True
-
-    if have_preprocess_seed:
-        preprocess_seed_old = seed_reader.preprocess_enabled
-        seed_reader.preprocess_enabled = frame_start == 0
-
-    if have_preprocess_mask:
-        preprocess_mask_old = mask_reader.preprocess_enabled
-        mask_reader.preprocess_enabled = frame_start == 0
-
-    if have_preprocess_control:
-        preprocess_control_old = control_reader.preprocess_enabled
-        control_reader.preprocess_enabled = frame_start == 0
-
-    for in_frame_idx, frame in enumerate(zip(seed_reader, mask_reader, control_reader)):
-
-        if in_frame_idx == frame_start - 1:
-            # The next frame is preprocessed
-            if have_preprocess_seed:
-                seed_reader.preprocess_enabled = True
-            if have_preprocess_mask:
-                mask_reader.preprocess_enabled = True
-            if have_preprocess_control:
-                control_reader.preprocess_enabled = True
-
-        image = frame[0]
-        mask = frame[1]
-        control = frame[2]
-
-        if in_frame_idx >= frame_start:
-            yield AnimationFrame(frame_index=out_frame_idx,
-                                 total_frames=total_frames,
-                                 anim_fps=seed_reader.anim_fps,
-                                 anim_frame_duration=seed_reader.anim_frame_duration,
-                                 image=image,
-                                 mask_image=mask,
-                                 control_image=control)
-            out_frame_idx += 1
-
-        if frame_end is not None and in_frame_idx == frame_end:
-            break
-
-    if have_preprocess_seed:
-        seed_reader.preprocess_enabled = preprocess_seed_old
-
-    if have_preprocess_mask:
-        mask_reader.preprocess_enabled = preprocess_mask_old
-
-    if have_preprocess_control:
-        control_reader.preprocess_enabled = preprocess_control_old
-
-
-def iterate_animation_frames(seed_reader: AnimationReader,
-                             mask_reader: typing.Optional[AnimationReader] = None,
-                             control_reader: typing.Optional[AnimationReader] = None,
-                             frame_start: int = 0,
-                             frame_end: _types.OptionalInteger = None) -> typing.Generator[AnimationFrame, None, None]:
-    """
-    Read :py:class:`.AnimationFrame` objects from up to three :py:class:`.AnimationReader` objects simultaneously
-    with an optional inclusive frame slice.
-
-    :param seed_reader: Reads into :py:attr:`.AnimationFrame.image`
-    :param mask_reader: Reads into :py:attr:`.AnimationFrame.mask_image`
-    :param control_reader: Reads into :py:attr:`.AnimationFrame.control_image`
-    :param frame_start: Frame slice start, inclusive value
-    :param frame_end: Frame slice end, inclusive value
-    :return: Generator object yielding :py:class:`.AnimationFrame`
-    """
-
-    if mask_reader is not None and control_reader is not None:
-        yield from _iterate_animation_frames_x3(seed_reader=seed_reader,
-                                                mask_reader=mask_reader,
-                                                control_reader=control_reader,
-                                                frame_start=frame_start,
-                                                frame_end=frame_end)
-    elif mask_reader is not None:
-        yield from _iterate_animation_frames_x2(seed_reader=seed_reader,
-                                                right_reader=mask_reader,
-                                                right_animation_frame_param_name='mask_image',
-                                                frame_start=frame_start,
-                                                frame_end=frame_end)
-    elif control_reader is not None:
-        yield from _iterate_animation_frames_x2(seed_reader=seed_reader,
-                                                right_reader=control_reader,
-                                                right_animation_frame_param_name='control_image',
-                                                frame_start=frame_start,
-                                                frame_end=frame_end)
-    else:
-        total_frames = seed_reader.frame_slice_count(frame_start, frame_end)
-        out_frame_idx = 0
-
-        have_preprocess = isinstance(seed_reader, _preprocessors.ImagePreprocessorMixin)
-
-        preprocess_old = True
-        if have_preprocess:
-            preprocess_old = seed_reader.preprocess_enabled
-            seed_reader.preprocess_enabled = frame_start == 0
-
-        for in_frame_idx, frame in enumerate(seed_reader):
-            if have_preprocess and in_frame_idx == frame_start - 1:
-                # The next frame is preprocessed
-                seed_reader.preprocess_enabled = True
-
-            if in_frame_idx >= frame_start:
-                yield AnimationFrame(frame_index=out_frame_idx,
-                                     total_frames=total_frames,
-                                     anim_fps=seed_reader.anim_fps,
-                                     anim_frame_duration=seed_reader.anim_frame_duration,
-                                     image=frame)
-                out_frame_idx += 1
-
-            if frame_end is not None and in_frame_idx == frame_end:
-                break
-
-        if have_preprocess:
-            seed_reader.preprocess_enabled = preprocess_old
-
-
-class ImageSeed:
-    """
-    An ImageSeed with attached image data
-    """
-
-    frame_index: _types.OptionalInteger = None
-    total_frames: _types.OptionalInteger = None
-    fps: typing.Union[int, float, None] = None
-    duration: _types.OptionalFloat = None
-    image: PIL.Image.Image
-    mask_image: PIL.Image.Image
-    control_image: PIL.Image.Image
-    is_animation_frame: bool
-
-    def __init__(self,
-                 image: typing.Union[PIL.Image.Image, AnimationFrame],
-                 mask_image: typing.Optional[PIL.Image.Image] = None,
-                 control_image: typing.Optional[PIL.Image.Image] = None):
-
-        self.is_animation_frame: bool = isinstance(image, AnimationFrame)
-
-        if self.is_animation_frame:
-            self.image = image.image
-            self.mask_image = image.mask_image
-            self.control_image = image.control_image
-            if image.total_frames > 1:
-                self.frame_index = image.frame_index
-                self.total_frames = image.total_frames
-                self.fps = image.fps
-                self.duration = image.duration
-            else:
-                self.is_animation_frame = False
-        else:
-            self.image = image
-            self.mask_image = mask_image
-            self.control_image = control_image
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, exc_tb):
-        self.close()
-
-    def close(self):
-        self.image.close()
-        if self.mask_image is not None:
-            self.mask_image.close()
-        if self.control_image is not None:
-            self.control_image.close()
-
-
 def _exif_orient(image):
     exif = image.getexif()
     for k in exif.keys():
@@ -730,16 +407,13 @@ class ImageSeedParseResult:
     The result of parsing an --image-seed path
     """
     seed_path: _types.OptionalPath = None
-    seed_path_is_local: bool = False
     mask_path: _types.OptionalPath = None
-    mask_path_is_local: bool = False
     control_path: _types.OptionalPath = None
-    control_path_is_local: bool = False
     resize_resolution: _types.OptionalSize = None
 
     def is_single_image(self) -> bool:
         """
-        Did this image seed path only specify a singular image/video?
+        Did this image seed path only specify a singular image/video in the seed_path property?
 
         :return: bool
         """
@@ -753,12 +427,16 @@ def _parse_image_seed_uri_legacy(uri: str) -> ImageSeedParseResult:
 
     first = next(parts)
     result.seed_path = first
-    if first.startswith('http://') or first.startswith('https://'):
-        result.seed_path_is_local = False
-    elif os.path.exists(first):
-        result.seed_path_is_local = True
-    else:
-        raise ImageSeedError(f'Image seed file "{first}" does not exist.')
+
+    first_parts = first.split(',')
+
+    for part in first_parts:
+        part = part.strip()
+        if not (part.startswith('http://') or part.startswith('https://') or os.path.exists(part)):
+            if len(first_parts) > 0:
+                raise ImageSeedError(f'Control image file "{part}" does not exist.')
+            else:
+                raise ImageSeedError(f'Image sed file "{part}" does not exist.')
 
     for part in parts:
         if part == '':
@@ -768,10 +446,8 @@ def _parse_image_seed_uri_legacy(uri: str) -> ImageSeedParseResult:
 
         if part.startswith('http://') or part.startswith('https://'):
             result.mask_path = part
-            result.mask_path_is_local = False
         elif os.path.exists(part):
             result.mask_path = part
-            result.mask_path_is_local = True
         else:
             try:
                 dimensions = tuple(int(s.strip()) for s in part.split('x'))
@@ -827,34 +503,25 @@ def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
     except _textprocessing.ConceptPathParseError as e:
         raise ImageSeedError(e)
 
+    def _ensure_exists(path, title):
+        if not (path.startswith('http://') or path.startswith('https://') or os.path.exists(path)):
+            raise ImageSeedError(f'{title} file "{path}" does not exist.')
+
     seed_path = parse_result.concept
+    _ensure_exists(seed_path, 'Image seed')
     result.seed_path = seed_path
-    if seed_path.startswith('http://') or seed_path.startswith('https://'):
-        result.seed_path_is_local = False
-    elif os.path.exists(seed_path):
-        result.seed_path_is_local = True
-    else:
-        raise ImageSeedError(f'Image seed file "{seed_path}" does not exist.')
 
     mask_path = parse_result.args.get('mask', None)
     if mask_path is not None:
+        _ensure_exists(mask_path, 'Image mask')
         result.mask_path = mask_path
-        if mask_path.startswith('http://') or mask_path.startswith('https://'):
-            result.mask_path_is_local = False
-        elif os.path.exists(mask_path):
-            result.mask_path_is_local = True
-        else:
-            raise ImageSeedError(f'Image mask file "{mask_path}" does not exist.')
 
     control_path = parse_result.args.get('control', None)
     if control_path is not None:
         result.control_path = control_path
-        if control_path.startswith('http://') or control_path.startswith('https://'):
-            result.control_path_is_local = False
-        elif os.path.exists(control_path):
-            result.control_path_is_local = True
-        else:
-            raise ImageSeedError(f'Control image file "{control_path}" does not exist.')
+        for p in control_path.split(','):
+            p = p.strip()
+            _ensure_exists(p, 'Control image')
 
     resize = parse_result.args.get('resize', None)
     if resize is not None:
@@ -1103,7 +770,7 @@ def mime_type_is_supported(mimetype: str) -> bool:
 class ImageSeedInfo:
     """Information acquired about an `--image-seeds` uri"""
 
-    fps: typing.Union[float, int]
+    fps: typing.Union[int]
     duration: float
     is_animation: bool
     total_frames: int
@@ -1111,7 +778,7 @@ class ImageSeedInfo:
     def __init__(self,
                  is_animation: bool,
                  total_frames: int,
-                 fps: typing.Union[float, int],
+                 fps: typing.Union[int],
                  duration: float):
         self.fps = fps
         self.duration = duration
@@ -1160,7 +827,7 @@ def create_and_exif_orient_pil_img(
     to 8 pixels in every case.
 
     :param path_or_file: file path or binary IO object
-    :param file_source: Image.filename is set to this value
+    :param file_source: :py:attr:`PIL.Image.Image.filename` is set to this value
     :param resize_resolution: Optional resize resolution
     :return: :py:class:`PIL.Image.Image`
     """
@@ -1187,74 +854,434 @@ def create_and_exif_orient_pil_img(
             return resized
 
 
-class MultiContextManager:
+def create_animation_reader(mimetype: str,
+                            file_source: str,
+                            file: typing.BinaryIO,
+                            resize_resolution: _types.OptionalSize = None,
+                            preprocessor: typing.Optional[_preprocessors.ImagePreprocessor] = None,
+                            ) -> AnimationReader:
     """
-    Manages the life of multiple ContextManager implementing objects
+    Create an animation reader object from mimetype specification and binary file stream.
+
+    Images will return a :py:class:`.MockImageAnimationReader` with a *total_frames* value of 1,
+    which can then be adjusted by you.
+
+    :py:class:`.VideoReader` or :py:class:`.AnimatedImageReader` will be returned for Video
+    files and Animated Images respectively.
+
+    :param mimetype: one of :py:meth:`.get_supported_mimetypes`
+
+    :param file_source: the source filename for videos/animated images, should be the filename.
+        this is for informational purpose and should be provided in every case even if it is a
+        symbolic value only. It should possess a file extension. :py:class:`PIL.Image.Image`
+        objects produced by the reader will have this value set to their *filename* attribute.
+
+    :param resize_resolution: Progressively resize each frame to this
+        resolution while reading. The provided resolution will be aligned
+        by 8 pixels.
+
+    :param preprocessor: optionally preprocess every frame with this image preprocessor
+
+    :return: :py:class:`.AnimationReader`
     """
 
-    def __init__(self, objects: typing.Iterable[typing.ContextManager]):
-        self.objects = objects
+    if mimetype_is_animated_image(mimetype):
+        return AnimatedImageReader(file=file,
+                                   file_source=file_source,
+                                   resize_resolution=resize_resolution,
+                                   preprocessor=preprocessor)
+    elif mimetype_is_video(mimetype):
+        return VideoReader(file=file,
+                           file_source=file_source,
+                           resize_resolution=resize_resolution,
+                           preprocessor=preprocessor)
+    elif mimetype_is_static_image(mimetype):
+        with create_and_exif_orient_pil_img(file, file_source,
+                                            resize_resolution) as img:
+            return MockImageAnimationReader(img=img,
+                                            resize_resolution=resize_resolution,
+                                            preprocessor=preprocessor)
+    else:
+        supported = _textprocessing.oxford_comma(get_supported_mimetypes(), conjunction='or')
+        raise UnknownMimetypeError(
+            f'Unknown mimetype "{mimetype}" for file "{file_source}". Expected: {supported}')
 
-    def __enter__(self):
-        for obj in self.objects:
-            if obj is not None:
-                obj.__enter__()
+
+class AnimationReaderSpec:
+    path: str
+    """
+    File path or or URL
+    """
+
+    preprocessor: typing.Optional[_preprocessors.ImagePreprocessor] = None
+    """
+    Optional image preprocessor associated with the file
+    """
+
+    def __init__(self, path: str,
+                 preprocessor: typing.Optional[_preprocessors.ImagePreprocessor] = None):
+        """
+        :param path: File path or or URL
+        :param preprocessor: Optional image preprocessor associated with the file
+        """
+        self.path = path
+        self.preprocessor = preprocessor
+
+
+class MultiAnimationReader:
+    """
+    Zips together multiple automatically created :py:class:`.AnimationReader` implementations and
+    allows enumeration over their reads, which are collected into a list of a defined order.
+
+    Images when zipped together with animated files will be repeated over the total amount of frames.
+
+    The animation with the lowest amount of frames determines the total amount of
+    frames that can be read when animations are involved.
+
+    If all paths point to images, then :py:attr:`.MultiAnimationReader.total_frames` will be 1.
+
+    All images read by this reader are aligned by 8 pixels, there is no guarantee that
+    images read from the individual readers are the same size and you must handle that condition.
+    """
+
+    readers: typing.List[AnimationReader]
+    _file_streams: typing.List[typing.BinaryIO]
+    _total_frames: int = 0
+    _frame_start: int = 0
+    _frame_end: typing.Optional[int] = None
+    _frame_index: int = -1
+
+    @property
+    def frame_index(self) -> int:
+        """
+        Current frame index while reading.
+        """
+        return self._frame_index
+
+    @property
+    def frame_end(self) -> int:
+        """
+        Frame slice end value (inclusive)
+        """
+        return self._frame_end
+
+    @property
+    def frame_start(self) -> int:
+        """
+        Frame slice start value (inclusive)
+        """
+        return self._frame_start
+
+    @property
+    def total_frames(self) -> int:
+        """
+        Total number of frames readable from this reader.
+        """
+        return self._total_frames
+
+    @property
+    def anim_fps(self) -> typing.Optional[int]:
+        """
+        Frames per second, this will be None if there is only a single frame
+        """
+        return self._anim_fps
+
+    @property
+    def anim_frame_duration(self) -> typing.Optional[float]:
+        """
+        Duration of a frame in milliseconds, this will be None if there is only a single frame
+        """
+        return self._anim_frame_duration
+
+    def __init__(self,
+                 specs: typing.List[AnimationReaderSpec],
+                 resize_resolution: _types.OptionalSize = None,
+                 frame_start: int = 0,
+                 frame_end: typing.Optional[int] = None,
+                 path_opener: typing.Callable[[str], typing.BinaryIO] = fetch_image_data_stream):
+        """
+        :param specs: list of :py:class:`.AnimationReaderSpec`
+        :param resize_resolution: optional resize resolution for frames
+        :param frame_start: inclusive frame slice start frame
+        :param frame_end: inclusive frame slice end frame
+        :param path_opener: opens a binary file stream from paths
+            mentioned by :py:class:`.AnimationReaderSpec`
+        """
+
+        if frame_end is not None:
+            if frame_start > frame_end:
+                raise ValueError('frame_start must be less than or equal to frame_end')
+
+        self.readers = []
+        self._file_streams = []
+
+        self._frame_start = frame_start
+        self._frame_end = frame_end
+        self._anim_frame_duration = None
+        self._anim_fps = None
+
+        for spec in specs:
+            mimetype, file_stream = path_opener(spec.path)
+
+            self.readers.append(
+                create_animation_reader(
+                    mimetype=mimetype,
+                    file_source=spec.path,
+                    file=file_stream,
+                    resize_resolution=resize_resolution,
+                    preprocessor=spec.preprocessor)
+            )
+            self._file_streams.append(file_stream)
+
+        non_images = [r for r in self.readers if not isinstance(r, MockImageAnimationReader)]
+
+        if non_images:
+            self._total_frames = min(
+                non_images, key=lambda r: r.total_frames).total_frames
+
+            self._total_frames = frame_slice_count(self.total_frames, frame_start, frame_end)
+
+            self._anim_fps = non_images[0].anim_fps
+            self._anim_frame_duration = non_images[0].anim_frame_duration
+
+            for r in self.readers:
+                if isinstance(r, MockImageAnimationReader):
+                    r.total_frames = self.total_frames
+        else:
+            self._total_frames = 1
+
+    def __next__(self):
+        if self._frame_index == -1:
+            # First call, skip up to frame start
+            for idx in range(0, self._frame_start):
+                for r in self.readers:
+                    if isinstance(r, _preprocessors.ImagePreprocessorMixin):
+                        old_val = r.preprocess_enabled
+                        r.preprocess_enabled = False
+                        try:
+                            r.__next__().close()
+                        finally:
+                            r.preprocess_enabled = old_val
+                    else:
+                        r.__next__().close()
+
+                if self._frame_index == self._frame_end:
+                    # This should only be able to happen if frame_start > frame_end
+                    # which is checked for in the constructor
+                    raise AssertionError(
+                        'impossible iteration termination condition '
+                        'in MultiAnimationReader reader')
+
+                self._frame_index += 1
+
+        if self._frame_index == self._frame_end:
+            raise StopIteration
+
+        read = [r.__next__() for r in self.readers]
+
+        self._frame_index += 1
+
+        return read
+
+    def __iter__(self):
         return self
 
-    def __exit__(self, t, v, traceback):
-        for obj in self.objects:
-            if obj is not None:
-                obj.__exit__(t, v, traceback)
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        for r in self.readers:
+            r.__exit__(exc_type, exc_val, exc_tb)
+        for file_stream in self._file_streams:
+            file_stream.close()
 
 
-def _create_image_seed_reader(manage_context: list,
-                              mime_type: str,
-                              file_source: str,
-                              preprocessor: typing.Optional[_preprocessors.ImagePreprocessor],
-                              resize_resolution: _types.OptionalSize,
-                              data: typing.BinaryIO,
-                              throw: bool):
-    reader = None
-    if mimetype_is_animated_image(mime_type):
-        reader = AnimatedImageReader(file=data,
-                                     file_source=file_source,
-                                     resize_resolution=resize_resolution,
-                                     preprocessor=preprocessor)
-    elif mimetype_is_video(mime_type):
-        reader = VideoReader(file=data,
-                             file_source=file_source,
-                             resize_resolution=resize_resolution,
-                             preprocessor=preprocessor)
-    elif mimetype_is_static_image(mime_type):
-        with create_and_exif_orient_pil_img(data, file_source, resize_resolution) as img:
-            reader = MockImageAnimationReader(img=img,
-                                              resize_resolution=resize_resolution,
-                                              preprocessor=preprocessor)
+class ImageSeed:
+    """
+    An ImageSeed with attached image data
+    """
+
+    frame_index: _types.OptionalInteger = None
+    total_frames: _types.OptionalInteger = None
+    fps: typing.Union[int, float, None] = None
+    duration: _types.OptionalFloat = None
+    image: typing.Union[PIL.Image.Image, typing.List[PIL.Image.Image]]
+    mask_image: typing.Optional[PIL.Image.Image]
+    control_image: typing.Union[PIL.Image.Image, typing.List[PIL.Image.Image], None]
+    is_animation_frame: bool
+
+    def __init__(self,
+                 image: typing.Union[PIL.Image.Image, typing.List[PIL.Image.Image]],
+                 mask_image: typing.Optional[PIL.Image.Image] = None,
+                 control_image: typing.Union[PIL.Image.Image, typing.List[PIL.Image.Image], None] = None):
+        self.image = image
+        self.mask_image = mask_image
+        self.control_image = control_image
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_tb):
+        if isinstance(self.image, list):
+            for i in self.image:
+                i.close()
+        else:
+            self.image.close()
+
+        if self.mask_image is not None:
+            self.mask_image.close()
+        if self.control_image is not None:
+            if isinstance(self.control_image, list):
+                for i in self.control_image:
+                    i.close()
+            else:
+                self.control_image.close()
+
+
+def _check_image_dimensions_match(images):
+    ix: PIL.Image.Image
+    for ix in images:
+        iy: PIL.Image.Image
+        for iy in images:
+            if ix.size != iy.size:
+                raise ImageSeedSizeMismatchError(
+                    f'Dimension of {ix.filename} do not match {iy.filename}')
+
+
+def _flatten(xs):
+    for x in xs:
+        if isinstance(x, collections.abc.Iterable) and not isinstance(x, (str, bytes)):
+            yield from _flatten(x)
+        else:
+            yield x
+
+
+ControlPreprocessorSpec = typing.Union[_preprocessors.ImagePreprocessor,
+                                       typing.List[_preprocessors.ImagePreprocessor], None]
+
+
+def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
+                       frame_start: int = 0,
+                       frame_end: _types.OptionalInteger = None,
+                       resize_resolution: _types.OptionalSize = None,
+                       seed_image_preprocessor: typing.Optional[_preprocessors.ImagePreprocessor] = None,
+                       mask_image_preprocessor: typing.Optional[_preprocessors.ImagePreprocessor] = None,
+                       control_image_preprocessor: ControlPreprocessorSpec = None) -> \
+        typing.Generator[ImageSeed, None, None]:
+    """
+    Parse and load images/videos in an `--image-seeds` uri and return a generator that
+    produces :py:class:`.ImageSeed` objects while progressively reading those files.
+
+    One or more :py:class:`.ImageSeed` objects may be yielded depending on whether an animation is being read.
+
+
+    :param uri: `--image-seeds` uri or :py:class:`.ImageSeedParseResult`
+    :param frame_start: starting frame, inclusive value
+    :param frame_end: optional end frame, inclusive value
+    :param resize_resolution: optional resize resolution
+    :param seed_image_preprocessor: optional :py:class:`dgenerate.preprocessors.ImagePreprocessor`
+    :param mask_image_preprocessor: optional :py:class:`dgenerate.preprocessors.ImagePreprocessor`
+    :param control_image_preprocessor: optional :py:class:`dgenerate.preprocessors.ImagePreprocessor`
+    :return: generator over :py:class:`.ImageSeed` objects
+    """
+
+    if frame_end is not None:
+        if frame_start > frame_end:
+            raise ValueError('frame_start must be less than or equal to frame_end')
+
+    if isinstance(uri, ImageSeedParseResult):
+        parse_result = uri
     else:
-        if throw:
-            supported = _textprocessing.oxford_comma(get_supported_mimetypes(), conjunction='or')
-            raise UnknownMimetypeError(
-                f'Unknown mimetype "{mime_type}" for file "{file_source}". Expected: {supported}')
+        parse_result = parse_image_seed_uri(uri)
 
-    if reader is not None:
-        manage_context.insert(0, reader)
-    return reader
+    reader_specs = [
+        AnimationReaderSpec(parse_result.seed_path, seed_image_preprocessor)
+    ]
+
+    if parse_result.mask_path is not None:
+        reader_specs.append(AnimationReaderSpec(parse_result.mask_path, mask_image_preprocessor))
+
+    if parse_result.control_path is not None:
+        if isinstance(control_image_preprocessor, list):
+            reader_specs += [
+                AnimationReaderSpec(p.strip(), control_image_preprocessor[idx])
+                for idx, p in enumerate(parse_result.control_path.split(','))
+            ]
+        else:
+            reader_specs += [
+                AnimationReaderSpec(p.strip(), control_image_preprocessor)
+                for p in parse_result.control_path.split(',')
+            ]
+
+    if parse_result.resize_resolution is not None:
+        resize_resolution = parse_result.resize_resolution
+
+    with MultiAnimationReader(specs=reader_specs,
+                              resize_resolution=resize_resolution,
+                              frame_start=frame_start,
+                              frame_end=frame_end) as reader:
+
+        is_animation = reader.total_frames > 1
+
+        dimensions_checked = False
+
+        for frame in reader:
+
+            if parse_result.mask_path is not None and parse_result.control_path is not None:
+                if len(frame) == 3:
+                    # Single control image
+                    image_seed = ImageSeed(image=frame[0],
+                                           mask_image=frame[1],
+                                           control_image=frame[2])
+                else:
+                    # Multiple control images
+                    image_seed = ImageSeed(image=frame[0],
+                                           mask_image=frame[1],
+                                           control_image=frame[2:])
+            elif parse_result.mask_path is not None:
+                image_seed = ImageSeed(image=frame[0], mask_image=frame[1])
+            elif parse_result.control_path is not None:
+                if len(frame) == 2:
+                    # Single control image
+                    image_seed = ImageSeed(image=frame[0], control_image=frame[1])
+                else:
+                    # Multiple control images
+                    image_seed = ImageSeed(image=frame[0], control_image=frame[1:])
+            else:
+                image_seed = ImageSeed(image=frame[0])
+
+            if not dimensions_checked:
+                images = list(_flatten([image_seed.image if image_seed.image else [],
+                                        image_seed.mask_image if image_seed.mask_image else [],
+                                        image_seed.control_image if image_seed.control_image else []]))
+
+                _check_image_dimensions_match(images)
+
+                dimensions_checked = True
+
+            image_seed.is_animation_frame = is_animation
+            if is_animation:
+                image_seed.fps = reader.anim_fps
+                image_seed.duration = reader.anim_frame_duration
+                image_seed.frame_index = reader.frame_index
+                image_seed.total_frames = reader.total_frames
+            yield image_seed
 
 
 def iterate_control_image(path: typing.Union[str, ImageSeedParseResult],
                           frame_start: int = 0,
                           frame_end: _types.OptionalInteger = None,
                           resize_resolution: _types.OptionalSize = None,
-                          preprocessor: _preprocessors.ImagePreprocessor = None) -> \
+                          preprocessor: ControlPreprocessorSpec = None) -> \
         typing.Generator[ImageSeed, None, None]:
     """
-    Parse and load a control image/video in an `--image-seeds` path and return a generator that 
+    Parse and load a control image/video in an `--image-seeds` path and return a generator that
     produces :py:class:`.ImageSeed` objects while progressively reading that file.
 
     One or more :py:class:`.ImageSeed` objects may be yielded depending on whether an animation is being read.
 
-    This method is more efficient than :py:meth:`.iterate_image_seed` when it is known that 
-    there is only one image/video in the path.
+    This method is more efficient than :py:meth:`.iterate_image_seed` when it is known that
+    there is only control image/video in the path.
 
     The image read will be available from the :py:attr:`.ImageSeed.image` attribute. The control
     attribute is unused in this case.
@@ -1267,210 +1294,54 @@ def iterate_control_image(path: typing.Union[str, ImageSeedParseResult],
     :return: generator over :py:class:`.ImageSeed` objects
     """
 
+    if frame_end is not None:
+        if frame_start > frame_end:
+            raise ValueError('frame_start must be less than or equal to frame_end')
+
     if isinstance(path, ImageSeedParseResult):
         path = path.seed_path
 
-    control_mime_type, control_data = fetch_image_data_stream(uri=path)
+    reader_specs = []
 
-    manage_context = [control_data]
-
-    if control_data is None:
-        raise ImageSeedError('Control image not specified or irretrievable.')
-
-    control_reader = _create_image_seed_reader(manage_context=manage_context,
-                                               mime_type=control_mime_type,
-                                               file_source=path,
-                                               preprocessor=preprocessor,
-                                               resize_resolution=resize_resolution,
-                                               data=control_data,
-                                               throw=True)
-
-    with MultiContextManager(manage_context):
-        if isinstance(control_reader, MockImageAnimationReader):
-            yield ImageSeed(image=control_reader.__next__())
-        else:
-            yield from (ImageSeed(animation_frame) for animation_frame in
-                        iterate_animation_frames(seed_reader=control_reader,
-                                                 frame_start=frame_start,
-                                                 frame_end=frame_end))
-
-
-def _iterate_image_seed_x3(seed_reader: AnimationReader,
-                           mask_reader: typing.Optional[AnimationReader] = None,
-                           control_reader: typing.Optional[AnimationReader] = None,
-                           frame_start: int = 0,
-                           frame_end: _types.OptionalInteger = None):
-    if isinstance(seed_reader, MockImageAnimationReader) and \
-            isinstance(mask_reader, MockImageAnimationReader) and \
-            isinstance(control_reader, MockImageAnimationReader):
-        yield ImageSeed(image=seed_reader.__next__(),
-                        mask_image=mask_reader.__next__(),
-                        control_image=control_reader.__next__())
-
+    if isinstance(preprocessor, list):
+        reader_specs += [
+            AnimationReaderSpec(p.strip(), preprocessor[idx])
+            for idx, p in enumerate(path.split(','))
+        ]
     else:
-        readers = [seed_reader, mask_reader, control_reader]
-        for i in readers:
-            if isinstance(i, MockImageAnimationReader):
-                others = [reader for reader in readers if not isinstance(reader, MockImageAnimationReader)]
-                if len(others) > 1:
-                    i.total_frames = min(others,
-                                         key=lambda rd: rd.total_frames).total_frames
-                else:
-                    i.total_frames = others[0].total_frames
+        reader_specs += [
+            AnimationReaderSpec(p.strip(), preprocessor)
+            for p in path.split(',')
+        ]
 
-        yield from (ImageSeed(animation_frame) for animation_frame in
-                    iterate_animation_frames(seed_reader=seed_reader,
-                                             frame_start=frame_start,
-                                             frame_end=frame_end,
-                                             mask_reader=mask_reader,
-                                             control_reader=control_reader))
+    with MultiAnimationReader(specs=reader_specs,
+                              resize_resolution=resize_resolution,
+                              frame_start=frame_start,
+                              frame_end=frame_end) as reader:
 
+        is_animation = reader.total_frames > 1
 
-def _iterate_image_seed_x2(seed_reader: AnimationReader,
-                           right_reader: AnimationReader,
-                           right_image_seed_param_name: str,
-                           right_reader_iterate_param_name: str,
-                           frame_start: int = 0,
-                           frame_end: _types.OptionalInteger = None):
-    if isinstance(seed_reader, MockImageAnimationReader) \
-            and isinstance(right_reader, MockImageAnimationReader):
-        yield ImageSeed(image=seed_reader.__next__(),
-                        **{right_image_seed_param_name: right_reader.__next__()})
-    else:
-        if isinstance(seed_reader, MockImageAnimationReader) and \
-                not isinstance(right_reader, MockImageAnimationReader):
-            seed_reader.total_frames = right_reader.total_frames
+        dimensions_checked = False
 
-        if not isinstance(seed_reader, MockImageAnimationReader) and \
-                isinstance(right_reader, MockImageAnimationReader):
-            right_reader.total_frames = seed_reader.total_frames
-
-        yield from (ImageSeed(animation_frame) for animation_frame in
-                    iterate_animation_frames(seed_reader=seed_reader,
-                                             frame_start=frame_start,
-                                             frame_end=frame_end,
-                                             **{right_reader_iterate_param_name: right_reader}))
-
-
-def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
-                       frame_start: int = 0,
-                       frame_end: _types.OptionalInteger = None,
-                       resize_resolution: _types.OptionalSize = None,
-                       seed_image_preprocessor: typing.Optional[_preprocessors.ImagePreprocessor] = None,
-                       mask_image_preprocessor: typing.Optional[_preprocessors.ImagePreprocessor] = None,
-                       control_image_preprocessor: typing.Optional[_preprocessors.ImagePreprocessor] = None) -> \
-        typing.Generator[ImageSeed, None, None]:
-    """
-    Parse and load images/videos in an `--image-seeds` uri and return a generator that
-    produces :py:class:`.ImageSeed` objects while progressively reading those files.
-    
-    One or more :py:class:`.ImageSeed` objects may be yielded depending on whether an animation is being read.
-    
-
-    :param uri: `--image-seeds` uri or :py:class:`.ImageSeedParseResult`
-    :param frame_start: starting frame, inclusive value
-    :param frame_end: optional end frame, inclusive value
-    :param resize_resolution: optional resize resolution
-    :param seed_image_preprocessor: optional :py:class:`dgenerate.preprocessors.ImagePreprocessor`
-    :param mask_image_preprocessor: optional :py:class:`dgenerate.preprocessors.ImagePreprocessor`
-    :param control_image_preprocessor: optional :py:class:`dgenerate.preprocessors.ImagePreprocessor`
-    :return: generator over :py:class:`.ImageSeed` objects
-    """
-
-    if isinstance(uri, ImageSeedParseResult):
-        parse_result = uri
-    else:
-        parse_result = parse_image_seed_uri(uri)
-
-    seed_mime_type, seed_data = fetch_image_data_stream(uri=parse_result.seed_path)
-
-    mask_mime_type, mask_data = None, None
-
-    if parse_result.mask_path is not None:
-        mask_mime_type, mask_data = fetch_image_data_stream(uri=parse_result.mask_path)
-
-    control_mime_type, control_data = None, None
-    if parse_result.control_path is not None:
-        control_mime_type, control_data = fetch_image_data_stream(uri=parse_result.control_path)
-
-    if parse_result.resize_resolution is not None:
-        resize_resolution = parse_result.resize_resolution
-
-    manage_context = [seed_data, mask_data, control_data]
-
-    if seed_data is None:
-        raise ImageSeedError(f'Image seed not specified or irretrievable.')
-
-    seed_reader = _create_image_seed_reader(manage_context=manage_context,
-                                            mime_type=seed_mime_type,
-                                            file_source=parse_result.seed_path,
-                                            preprocessor=seed_image_preprocessor,
-                                            resize_resolution=resize_resolution,
-                                            data=seed_data,
-                                            throw=True)
-    # Optional
-    mask_reader = _create_image_seed_reader(manage_context=manage_context,
-                                            mime_type=mask_mime_type,
-                                            file_source=parse_result.mask_path,
-                                            preprocessor=mask_image_preprocessor,
-                                            resize_resolution=resize_resolution,
-                                            data=mask_data,
-                                            throw=False) if mask_data is not None else None
-
-    # Optional
-    control_reader = _create_image_seed_reader(manage_context=manage_context,
-                                               mime_type=control_mime_type,
-                                               file_source=parse_result.control_path,
-                                               preprocessor=control_image_preprocessor,
-                                               resize_resolution=resize_resolution,
-                                               data=control_data,
-                                               throw=False) if control_data is not None else None
-
-    size_mismatch_check = [(parse_result.seed_path, 'Image seed', seed_reader),
-                           (parse_result.mask_path, 'Mask image', mask_reader),
-                           (parse_result.control_path, 'Control image', control_reader)]
-
-    for left in size_mismatch_check:
-        for right in size_mismatch_check:
-            if left[2] is not None and right[2] is not None:
-                if left[2].size != right[2].size:
-                    raise ImageSeedSizeMismatchError(
-                        f'{left[1]} "{left[0]}" is mismatched in dimension with {right[1].lower()} "{right[0]}"')
-
-    with MultiContextManager(manage_context):
-
-        if mask_reader is not None and control_reader is not None:
-            yield from _iterate_image_seed_x3(
-                seed_reader=seed_reader,
-                mask_reader=mask_reader,
-                control_reader=control_reader,
-                frame_start=frame_start,
-                frame_end=frame_end)
-
-        elif mask_reader is not None:
-
-            yield from _iterate_image_seed_x2(
-                seed_reader=seed_reader,
-                right_reader=mask_reader,
-                right_image_seed_param_name='mask_image',
-                right_reader_iterate_param_name='mask_reader',
-                frame_start=frame_start,
-                frame_end=frame_end)
-
-        elif control_reader is not None:
-            yield from _iterate_image_seed_x2(
-                seed_reader=seed_reader,
-                right_reader=control_reader,
-                right_image_seed_param_name='control_image',
-                right_reader_iterate_param_name='control_reader',
-                frame_start=frame_start,
-                frame_end=frame_end
-            )
-        else:
-            if isinstance(seed_reader, MockImageAnimationReader):
-                yield ImageSeed(image=seed_reader.__next__())
+        for frame in reader:
+            if len(frame) > 0:
+                # Multiple control images
+                image_seed = ImageSeed(image=frame)
             else:
-                yield from (ImageSeed(animation_frame) for animation_frame in
-                            iterate_animation_frames(seed_reader=seed_reader,
-                                                     frame_start=frame_start,
-                                                     frame_end=frame_end))
+                # Single control images
+                image_seed = ImageSeed(image=frame[0])
+
+            if not dimensions_checked:
+                images = list(_flatten([image_seed.image]))
+
+                _check_image_dimensions_match(images)
+
+                dimensions_checked = True
+
+            image_seed.is_animation_frame = is_animation
+            if is_animation:
+                image_seed.fps = reader.anim_fps
+                image_seed.duration = reader.anim_frame_duration
+                image_seed.frame_index = reader.frame_index
+                image_seed.total_frames = reader.total_frames
+            yield image_seed

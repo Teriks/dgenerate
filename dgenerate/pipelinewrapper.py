@@ -2906,24 +2906,30 @@ class DiffusionPipelineWrapper:
             opts.append(('--output-size', f'{width}'))
 
         if image is not None:
-            if hasattr(image, 'filename'):
-                seed_args = []
+            seed_args = []
 
-                if mask_image is not None and hasattr(mask_image, 'filename'):
-                    seed_args.append(f'mask={mask_image.filename}')
-                if control_image is not None and hasattr(control_image, 'filename'):
+            if mask_image is not None:
+                seed_args.append(f'mask={mask_image.filename}')
+            if control_image is not None:
+                if isinstance(control_image, list):
+                    seed_args.append(f'control={", ".join(c.filename for c in control_image)}')
+                elif hasattr(control_image, 'filename'):
                     seed_args.append(f'control={control_image.filename}')
 
+            if isinstance(image, list):
+                opts.append(('--image-seeds', ','.join(i.filename for i in image)))
+            elif hasattr(image, 'filename'):
                 if not seed_args:
                     opts.append(('--image-seeds', image.filename))
                 else:
                     opts.append(('--image-seeds', image.filename + ';' + ';'.join(seed_args)))
 
-                if image_seed_strength is not None:
-                    opts.append(('--image-seed-strengths', image_seed_strength))
+            if upscaler_noise_level is not None:
+                opts.append(('--upscaler-noise-levels', upscaler_noise_level))
 
-                if upscaler_noise_level is not None:
-                    opts.append(('--upscaler-noise-levels', upscaler_noise_level))
+            if image_seed_strength is not None:
+                opts.append(('--image-seed-strengths', image_seed_strength))
+
         elif control_image is not None:
             if hasattr(control_image, 'filename'):
                 opts.append(('--image-seeds', control_image.filename))
@@ -2967,11 +2973,12 @@ class DiffusionPipelineWrapper:
         if self._control_net_uris:
             control_image = user_args['control_image']
 
-            args['width'] = user_args.get('width', control_image.width)
-            args['height'] = user_args.get('height', control_image.height)
-
-            if len(self.control_net_uris) > 1:
-                control_image = [control_image for _ in range(0, len(self.control_net_uris))]
+            if isinstance(control_image, list):
+                args['width'] = user_args.get('width', control_image[0].width)
+                args['height'] = user_args.get('height', control_image[0].height)
+            else:
+                args['width'] = user_args.get('width', control_image.width)
+                args['height'] = user_args.get('height', control_image.height)
 
             if self._pipeline_type == _PipelineTypes.BASIC:
                 args['image'] = control_image

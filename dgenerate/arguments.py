@@ -525,7 +525,7 @@ actions.append(
 
 _flax_scheduler_help_part = \
     f' Flax schedulers: ({", ".join(e.name for e in diffusers.schedulers.FlaxKarrasDiffusionSchedulers)})' \
-    if _pipelinewrapper.have_jax_flax() else ''
+        if _pipelinewrapper.have_jax_flax() else ''
 
 actions.append(
     parser.add_argument('--scheduler', action='store', default=None, metavar="SCHEDULER_NAME",
@@ -873,13 +873,18 @@ actions.append(
                         "my-seed-image.png;512x512" or "my-seed-image.png;my-image-mask.png;512x512".
                         Inpainting masks can be downloaded for you from a URL or be a path to a file on disk.
                         When using --control-nets, a singular image specification is interpreted as the control
-                        guidance image. Using --control-nets with img2img or inpainting can be accomplished with
-                        the syntax: "my-seed-image.png;mask=my-image-mask.png;control=my-control-image.png;resize=512x512".
+                        guidance image, and you can specify multiple control image sources by separating them with
+                        commas in the case where multiple ControlNets are specified, IE: 
+                        (--image-seeds "control-image1.png, control-image2.png") OR
+                        (--image-seeds "seed.png;control=control-image1.png, control-image2.png"). 
+                        Using --control-nets with img2img or inpainting can be accomplished with the syntax: 
+                        "my-seed-image.png;mask=my-image-mask.png;control=my-control-image.png;resize=512x512".
                         The "mask" and "resize" arguments are optional when using --control-nets. Videos, GIFs,
                         and WEBP are also supported as inputs when using --control-nets, even for the "control"
-                        argument. --image-seeds is capable of reading from 3 animated files at once or any combination
-                        of animated files and images, the animated file with the least amount of frames dictates how
-                        many frames are generated.
+                        argument. --image-seeds is capable of reading from multiple animated files at once or any 
+                        combination of animated files and images, the animated file with the least amount of frames 
+                        dictates how many frames are generated and static images are duplicated over the total amount
+                        of frames.
                         """))
 
 image_seed_noise_opts = parser.add_mutually_exclusive_group()
@@ -904,10 +909,15 @@ actions.append(
     parser.add_argument('--control-image-preprocessors', action='store', nargs='+', default=None,
                         metavar="PREPROCESSOR",
                         help="""Specify one or more image preprocessor actions to preform on the control
-                        image specified by --image-seeds. For example: 
-                        --control-image-preprocessors "canny;lower=50;upper=100". This option is ment to be used 
-                        in combination with --control-nets. To obtain more information about what image 
-                        preprocessors are available and how to use them, see: --image-preprocessor-help.
+                        image specified by --image-seeds, this option is meant to be used with --control-nets. 
+                        Example: --control-image-preprocessors "canny;lower=50;upper=100". The delimiter "+" can be 
+                        used to specify a different preprocessor group for each image when using multiple control images with --control-nets. 
+                        For example if you have --image-seeds "img1.png, img2.png" or --image-seeds "...;control=img1.png, img2.png" 
+                        specified and multiple ControlNet models specified with --control-nets, you can specify preprocessors for 
+                        those control images with the syntax: (--control-image-preprocessors "processes-img1" + "processes-img2"), 
+                        this syntax also supports chaining of preprocessors, for example: (--control-image-preprocessors "first-processes-img1"
+                         "second-process-img1" + "processes-img2"). To obtain more information about what image preprocessors 
+                        are available and how to use them, see: --image-preprocessor-help.
                         """))
 
 # This argument is handled in dgenerate.invoker.invoke_dgenerate
@@ -994,8 +1004,12 @@ class DgenerateArguments(dgenerate.DiffusionRenderLoopConfig):
     as a configuration object for :py:class:`dgenerate.diffusionloop.DiffusionRenderLoop`.
     """
 
-    plugin_module_paths: _types.Paths = []
+    plugin_module_paths: _types.Paths
     verbose: bool = False
+
+    def __init__(self):
+        super().__init__()
+        self.plugin_module_paths = []
 
 
 _attr_name_to_option = {a.dest: a.option_strings[-1] if a.option_strings else a.dest for a in actions}
