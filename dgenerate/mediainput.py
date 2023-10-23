@@ -64,7 +64,7 @@ class ImageSeedError(Exception):
 
 class ImageSeedSizeMismatchError(ImageSeedError):
     """
-    Raised when the constituents of an image seed are mismatched in dimension.
+    Raised when the constituent image sources of an image seed specification are mismatched in dimension.
     """
     pass
 

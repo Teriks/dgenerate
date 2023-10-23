@@ -33,9 +33,9 @@ import dgenerate.diffusionloop as _diffusionloop
 import dgenerate.invoker as _invoker
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
+import dgenerate.prompt as _prompt
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-import dgenerate.prompt as _prompt
 
 
 class BatchProcessError(Exception):
@@ -89,7 +89,7 @@ class BatchProcessor:
 
         self.template_variable_generator = \
             template_variable_generator if \
-            template_variable_generator else lambda x: dict()
+                template_variable_generator else lambda x: dict()
 
         self.template_variables = template_variables if template_variables else dict()
         self.template_functions = template_functions if template_functions else dict()

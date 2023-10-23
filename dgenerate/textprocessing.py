@@ -342,5 +342,5 @@ def debug_format_args(args_dict: typing.Dict[str, typing.Any],
 
     return str(
         {k: str(_value_transformer(k, v)) if
-            len(str(_value_transformer(k, v))) < max_value_len
-            else _types.class_and_id_string(v) for k, v in args_dict.items()})
+        len(str(_value_transformer(k, v))) < max_value_len
+        else _types.class_and_id_string(v) for k, v in args_dict.items()})
