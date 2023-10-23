@@ -1102,16 +1102,47 @@ class ImageSeed:
     """
 
     frame_index: _types.OptionalInteger = None
+    """
+    Frame index in the case that :py:attr:`.ImageSeed.is_animation_frame` is True
+    """
+
     total_frames: _types.OptionalInteger = None
+    """
+    Total frame count in the case that :py:attr:`.ImageSeed.is_animation_frame` is True
+    """
+
     fps: typing.Union[int, float, None] = None
+    """
+    Frames per second in the case that :py:attr:`.ImageSeed.is_animation_frame` is True
+    """
+
     duration: _types.OptionalFloat = None
-    image: typing.Union[PIL.Image.Image, typing.List[PIL.Image.Image]]
+    """
+    Duration of a frame in milliseconds in the case that :py:attr:`.ImageSeed.is_animation_frame` is True
+    """
+
+    image: typing.Optional[PIL.Image.Image]
+    """
+    An optional image used for img2img or inpainting mode in combination with :py:attr:`.ImageSeed.mask`
+    """
+
     mask_image: typing.Optional[PIL.Image.Image]
+    """
+    An optional inpaint mask image, may be None
+    """
+
     control_image: typing.Union[PIL.Image.Image, typing.List[PIL.Image.Image], None]
+    """
+    A control guidance image, or a list of control guidance images, or None.
+    """
+
     is_animation_frame: bool
+    """
+    Is this part of an animation?
+    """
 
     def __init__(self,
-                 image: typing.Union[PIL.Image.Image, typing.List[PIL.Image.Image]],
+                 image: typing.Optional[PIL.Image.Image] = None,
                  mask_image: typing.Optional[PIL.Image.Image] = None,
                  control_image: typing.Union[PIL.Image.Image, typing.List[PIL.Image.Image], None] = None):
         self.image = image
@@ -1174,14 +1205,19 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
 
     One or more :py:class:`.ImageSeed` objects may be yielded depending on whether an animation is being read.
 
-
     :param uri: `--image-seeds` uri or :py:class:`.ImageSeedParseResult`
     :param frame_start: starting frame, inclusive value
     :param frame_end: optional end frame, inclusive value
     :param resize_resolution: optional resize resolution
     :param seed_image_preprocessor: optional :py:class:`dgenerate.preprocessors.ImagePreprocessor`
     :param mask_image_preprocessor: optional :py:class:`dgenerate.preprocessors.ImagePreprocessor`
-    :param control_image_preprocessor: optional :py:class:`dgenerate.preprocessors.ImagePreprocessor`
+
+    :param control_image_preprocessor: optional :py:class:`dgenerate.preprocessors.ImagePreprocessor` or list of them.
+        A list is used to specify preprocessors for individual images in a multi guidance image specification
+        such as path = "img1.png, img2.png".  In the case that a multi guidance image specification is used
+        and only one preprocessor is given, that preprocessor will be used on every image / video in the
+        specification.
+
     :return: generator over :py:class:`.ImageSeed` objects
     """
 
@@ -1280,17 +1316,19 @@ def iterate_control_image(path: typing.Union[str, ImageSeedParseResult],
 
     One or more :py:class:`.ImageSeed` objects may be yielded depending on whether an animation is being read.
 
-    This method is more efficient than :py:meth:`.iterate_image_seed` when it is known that
-    there is only control image/video in the path.
+    This method is to be used when it is known that there is only a control image/video specification in the path.
 
-    The image read will be available from the :py:attr:`.ImageSeed.image` attribute. The control
-    attribute is unused in this case.
+    The image or images read will be available from the :py:attr:`.ImageSeed.control_image` attribute.
 
     :param path: `--image-seeds` path or :py:class:`.ImageSeedParseResult`
     :param frame_start: starting frame, inclusive value
     :param frame_end: optional end frame, inclusive value
     :param resize_resolution: optional resize resolution
-    :param preprocessor: optional :py:class:`dgenerate.preprocessors.ImagePreprocessor`
+    :param preprocessor: optional :py:class:`dgenerate.preprocessors.ImagePreprocessor` or list of them.
+        A list is used to specify preprocessors for individual images in a multi guidance image specification
+        such as path = "img1.png, img2.png".  In the case that a multi guidance image specification is used
+        and only one preprocessor is given, that preprocessor will be used on every image / video in the
+        specification.
     :return: generator over :py:class:`.ImageSeed` objects
     """
 
@@ -1326,10 +1364,10 @@ def iterate_control_image(path: typing.Union[str, ImageSeedParseResult],
         for frame in reader:
             if len(frame) > 0:
                 # Multiple control images
-                image_seed = ImageSeed(image=frame)
+                image_seed = ImageSeed(control_image=frame)
             else:
                 # Single control images
-                image_seed = ImageSeed(image=frame[0])
+                image_seed = ImageSeed(control_image=frame[0])
 
             if not dimensions_checked:
                 images = list(_flatten([image_seed.image]))
