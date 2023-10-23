@@ -111,7 +111,7 @@ class CannyEdgeDetectPreprocess(_preprocessor.ImagePreprocessor):
             ('aperture_size', self._aperture_size),
             ('L2_gradient', self._L2_gradient),
             ('blur', self._blur),
-            ('threshold_algo', self._pre_resize),
+            ('threshold_algo', self._threshold_algo),
             ('sigma', self._sigma),
             ('pre_resize', self._pre_resize)
         ]
