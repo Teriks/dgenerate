@@ -1153,20 +1153,17 @@ class ImageSeed:
         return self
 
     def __exit__(self, exc_type, exc_value, exc_tb):
-        if isinstance(self.image, list):
-            for i in self.image:
-                i.close()
-        else:
+        if self.image is not None:
             self.image.close()
 
         if self.mask_image is not None:
             self.mask_image.close()
-        if self.control_image is not None:
-            if isinstance(self.control_image, list):
-                for i in self.control_image:
-                    i.close()
-            else:
-                self.control_image.close()
+
+        if isinstance(self.control_image, list):
+            for i in self.control_image:
+                i.close()
+        elif self.control_image is not None:
+            self.control_image.close()
 
 
 def _check_image_dimensions_match(images):
