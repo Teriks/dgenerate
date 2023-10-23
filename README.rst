@@ -1917,7 +1917,7 @@ is used in the example below with a Control Net that is trained to generate imag
 
 The ``--control-image-preprocessors`` has a special additional syntax that the other preprocessor specification
 options do not, which is used to describe which preprocessor group is affecting which control guidance image
-source in a ``--image-seeds`` specification.
+source in an ``--image-seeds`` specification.
 
 For instance if you have multiple control guidance images and multiple control nets which are going
 to be those images, or frames etc. and you want to preprocess each guidance image with a separate
