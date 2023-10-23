@@ -1919,8 +1919,8 @@ The ``--control-image-preprocessors`` has a special additional syntax that the o
 options do not, which is used to describe which preprocessor group is affecting which control guidance image
 source in an ``--image-seeds`` specification.
 
-For instance if you have multiple control guidance images and multiple control nets which are going
-to be those images, or frames etc. and you want to preprocess each guidance image with a separate
+For instance if you have multiple control guidance images, and multiple control nets which are going
+to use those images, or frames etc. and you want to preprocess each guidance image with a separate
 preprocessor OR preprocessor chain. You can specify how each image is processed by delimiting the
 preprocessor specification groups with + (the plus symbol)
 
