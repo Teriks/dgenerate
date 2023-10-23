@@ -866,10 +866,13 @@ def create_animation_reader(mimetype: str,
     Images will return a :py:class:`.MockImageAnimationReader` with a *total_frames* value of 1,
     which can then be adjusted by you.
 
+
     :py:class:`.VideoReader` or :py:class:`.AnimatedImageReader` will be returned for Video
     files and Animated Images respectively.
 
     :param mimetype: one of :py:meth:`.get_supported_mimetypes`
+
+    :param file: the binary file stream
 
     :param file_source: the source filename for videos/animated images, should be the filename.
         this is for informational purpose and should be provided in every case even if it is a
