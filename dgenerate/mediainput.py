@@ -1214,7 +1214,7 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
 
     :param control_image_preprocessor: optional :py:class:`dgenerate.preprocessors.ImagePreprocessor` or list of them.
         A list is used to specify preprocessors for individual images in a multi guidance image specification
-        such as path = "img1.png, img2.png".  In the case that a multi guidance image specification is used
+        such as uri = "seed.png;control=img1.png, img2.png".  In the case that a multi guidance image specification is used
         and only one preprocessor is given, that preprocessor will be used on every image / video in the
         specification.
 
@@ -1370,7 +1370,7 @@ def iterate_control_image(path: typing.Union[str, ImageSeedParseResult],
                 image_seed = ImageSeed(control_image=frame[0])
 
             if not dimensions_checked:
-                images = list(_flatten([image_seed.image]))
+                images = list(_flatten([image_seed.control_image]))
 
                 _check_image_dimensions_match(images)
 
