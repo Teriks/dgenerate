@@ -465,7 +465,6 @@ def _parse_image_seed_uri_legacy(uri: str) -> ImageSeedParseResult:
     return result
 
 
-# noinspection HttpUrlsUsage
 def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
     """
     Parse an `--image-seeds` uri into its constituents
@@ -503,6 +502,7 @@ def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
     except _textprocessing.ConceptPathParseError as e:
         raise ImageSeedError(e)
 
+    # noinspection HttpUrlsUsage
     def _ensure_exists(path, title):
         if not (path.startswith('http://') or path.startswith('https://') or os.path.exists(path)):
             raise ImageSeedError(f'{title} file "{path}" does not exist.')
