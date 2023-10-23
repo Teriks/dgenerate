@@ -1944,7 +1944,7 @@ In the case that you would only like the second image affected:
     * ``--control-image-preprocessors + "affect-image2"``
 
 
-Effectively the plus creates a Null preprocessor as the first entry in the example above.
+The plus symbol effectively creates a Null preprocessor as the first entry in the example above.
 
 This can be used with an arbitrary amount of control image sources and control nets, take
 for example the specification:
