@@ -24,6 +24,7 @@ import dgenerate.image as _d_image
 import dgenerate.messages as _messages
 import dgenerate.preprocessors.preprocessor as _preprocessor
 import dgenerate.types as _types
+import dgenerate.image as _image
 
 
 class ImagePreprocessorMixin:
@@ -51,7 +52,7 @@ class ImagePreprocessorMixin:
 
     def _preprocess_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         if self._preprocessor is not None and self.preprocess_enabled:
-            filename = image.filename if hasattr(image, 'filename') else 'NO FILENAME'
+            filename = _image.get_filename(image)
 
             _messages.debug_log('Starting Image Preprocess - '
                                 f'{self._preprocessor}.pre_resize('
@@ -65,7 +66,7 @@ class ImagePreprocessorMixin:
 
     def _preprocess_post_resize(self, image: PIL.Image.Image):
         if self._preprocessor is not None and self.preprocess_enabled:
-            filename = image.filename if hasattr(image, 'filename') else 'NO FILENAME'
+            filename = _image.get_filename(image)
 
             _messages.debug_log('Starting Image Preprocess - '
                                 f'{self._preprocessor}.post_resize('
