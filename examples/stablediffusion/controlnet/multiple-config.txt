@@ -6,7 +6,7 @@
 runwayml/stable-diffusion-v1-5 \
 --inference-steps 40 \
 --guidance-scales 8 \
---output-path boxer \
+--output-path multiple \
 --gen-seeds 2 \
 --output-size 1024 \
 --vae-tiling \
