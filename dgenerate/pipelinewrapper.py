@@ -2938,7 +2938,7 @@ class DiffusionPipelineWrapper:
             if isinstance(control_image, list):
                 opts.append(('--image-seeds',
                              ', '.join(_image.get_filename(c) for c in control_image)))
-            elif hasattr(control_image, 'filename'):
+            else:
                 opts.append(('--image-seeds', _image.get_filename(control_image)))
 
         if shell_quote:
