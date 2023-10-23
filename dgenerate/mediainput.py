@@ -42,7 +42,7 @@ import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 
 
-def frame_slice_count(total_frames: int, frame_start: int, frame_end: typing.Optional[int] = None) -> int:
+def frame_slice_count(total_frames: int, frame_start: int, frame_end: _types.OptionalInteger = None) -> int:
     """
     Calculate the number of frames resulting from frame slicing.
 
@@ -77,7 +77,7 @@ class AnimationReader:
     def __init__(self,
                  width: int,
                  height: int,
-                 anim_fps: typing.Union[int],
+                 anim_fps: int,
                  anim_frame_duration: float,
                  total_frames: int, **kwargs):
         """
@@ -122,7 +122,7 @@ class AnimationReader:
         return self._height
 
     @property
-    def anim_fps(self) -> typing.Union[int]:
+    def anim_fps(self) -> int:
         """
         Frame per second.
 
@@ -770,18 +770,33 @@ def mime_type_is_supported(mimetype: str) -> bool:
 class ImageSeedInfo:
     """Information acquired about an `--image-seeds` uri"""
 
-    fps: typing.Union[int]
-    duration: float
+    anim_fps: _types.OptionalInteger
+    """
+    Animation frames per second in the case that :py:attr:`.ImageSeedInfo.is_animation` is True
+    """
+
+    anim_frame_duration: _types.OptionalFloat
+    """
+    Animation frame duration in milliseconds in the case that :py:attr:`.ImageSeedInfo.is_animation` is True
+    """
+
+    total_frames: _types.OptionalInteger
+    """
+    Animation frame count in the case that :py:attr:`.ImageSeedInfo.is_animation` is True
+    """
+
     is_animation: bool
-    total_frames: int
+    """
+    Does this image seed specification result in an animation?
+    """
 
     def __init__(self,
                  is_animation: bool,
-                 total_frames: int,
-                 fps: typing.Union[int],
-                 duration: float):
-        self.fps = fps
-        self.duration = duration
+                 total_frames: _types.OptionalInteger,
+                 anim_fps: _types.OptionalInteger,
+                 anim_frame_duration: _types.OptionalFloat):
+        self.anim_fps = anim_fps
+        self.anim_frame_duration = anim_frame_duration
         self.is_animation = is_animation
         self.total_frames = total_frames
 
@@ -798,7 +813,7 @@ def get_image_seed_info(uri: typing.Union[_types.Uri, ImageSeedParseResult],
     :return: :py:class:`.ImageSeedInfo`
     """
     with next(iterate_image_seed(uri, frame_start, frame_end)) as seed:
-        return ImageSeedInfo(seed.is_animation_frame, seed.total_frames, seed.fps, seed.duration)
+        return ImageSeedInfo(seed.is_animation_frame, seed.total_frames, seed.anim_fps, seed.anim_frame_duration)
 
 
 def get_control_image_info(path: typing.Union[_types.Path, ImageSeedParseResult],
@@ -814,7 +829,7 @@ def get_control_image_info(path: typing.Union[_types.Path, ImageSeedParseResult]
     :return: :py:class:`.ImageSeedInfo`
     """
     with next(iterate_control_image(path, frame_start, frame_end)) as seed:
-        return ImageSeedInfo(seed.is_animation_frame, seed.total_frames, seed.fps, seed.duration)
+        return ImageSeedInfo(seed.is_animation_frame, seed.total_frames, seed.anim_fps, seed.anim_frame_duration)
 
 
 def create_and_exif_orient_pil_img(
@@ -951,7 +966,7 @@ class MultiAnimationReader:
     _file_streams: typing.List[typing.BinaryIO]
     _total_frames: int = 0
     _frame_start: int = 0
-    _frame_end: typing.Optional[int] = None
+    _frame_end: _types.OptionalInteger = None
     _frame_index: int = -1
 
     @property
@@ -983,14 +998,14 @@ class MultiAnimationReader:
         return self._total_frames
 
     @property
-    def anim_fps(self) -> typing.Optional[int]:
+    def anim_fps(self) -> _types.OptionalInteger:
         """
         Frames per second, this will be None if there is only a single frame
         """
         return self._anim_fps
 
     @property
-    def anim_frame_duration(self) -> typing.Optional[float]:
+    def anim_frame_duration(self) -> _types.OptionalFloat:
         """
         Duration of a frame in milliseconds, this will be None if there is only a single frame
         """
@@ -1000,7 +1015,7 @@ class MultiAnimationReader:
                  specs: typing.List[AnimationReaderSpec],
                  resize_resolution: _types.OptionalSize = None,
                  frame_start: int = 0,
-                 frame_end: typing.Optional[int] = None,
+                 frame_end: _types.OptionalInteger = None,
                  path_opener: typing.Callable[[str], typing.BinaryIO] = fetch_image_data_stream):
         """
         :param specs: list of :py:class:`.AnimationReaderSpec`
@@ -1114,12 +1129,12 @@ class ImageSeed:
     Total frame count in the case that :py:attr:`.ImageSeed.is_animation_frame` is True
     """
 
-    fps: typing.Union[int, float, None] = None
+    anim_fps: typing.Union[int, float, None] = None
     """
     Frames per second in the case that :py:attr:`.ImageSeed.is_animation_frame` is True
     """
 
-    duration: _types.OptionalFloat = None
+    anim_frame_duration: _types.OptionalFloat = None
     """
     Duration of a frame in milliseconds in the case that :py:attr:`.ImageSeed.is_animation_frame` is True
     """
@@ -1298,10 +1313,10 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
 
             image_seed.is_animation_frame = is_animation
             if is_animation:
-                image_seed.fps = reader.anim_fps
-                image_seed.duration = reader.anim_frame_duration
+                image_seed.anim_fps = reader.anim_fps
+                image_seed.anim_frame_duration = reader.anim_frame_duration
                 image_seed.frame_index = reader.frame_index
-                image_seed.total_frames = reader.total_frames
+                image_seed.total_frames = reader.total_frames if is_animation else None
             yield image_seed
 
 
@@ -1379,8 +1394,8 @@ def iterate_control_image(path: typing.Union[str, ImageSeedParseResult],
 
             image_seed.is_animation_frame = is_animation
             if is_animation:
-                image_seed.fps = reader.anim_fps
-                image_seed.duration = reader.anim_frame_duration
+                image_seed.anim_fps = reader.anim_fps
+                image_seed.anim_frame_duration = reader.anim_frame_duration
                 image_seed.frame_index = reader.frame_index
-                image_seed.total_frames = reader.total_frames
+                image_seed.total_frames = reader.total_frames if is_animation else None
             yield image_seed

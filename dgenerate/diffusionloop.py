@@ -1249,7 +1249,7 @@ class DiffusionRenderLoop:
                                        get_extra_wrapper_args=get_extra_args,
                                        arg_iterator=arg_iterator,
                                        image_seed_iterator=image_seed_iterator(),
-                                       fps=seed_info.fps)
+                                       fps=seed_info.anim_fps)
                 break
 
             for diffusion_arguments in arg_iterator:
