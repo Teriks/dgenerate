@@ -120,12 +120,12 @@ def to_rgb(img: PIL.Image.Image):
 
 def get_filename(img: PIL.Image.Image):
     """
-    Get the :py:attr:`PIL.Image.Image.filename` attribute or "NO_FILENAME_ATTRIBUTE" if it does not exist.
+    Get the :py:attr:`PIL.Image.Image.filename` attribute or "NO_FILENAME" if it does not exist.
 
     :param img: :py:class:`PIL.Image.Image`
-    :return: filename string or "NO_FILENAME_ATTRIBUTE"
+    :return: filename string or "NO_FILENAME"
     """
 
     if hasattr(img, 'filename'):
         return img.filename
-    return 'NO_FILENAME_ATTRIBUTE'
+    return 'NO_FILENAME'
