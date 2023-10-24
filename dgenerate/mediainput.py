@@ -1161,8 +1161,9 @@ class ImageSeed:
         if self.mask_image is not None:
             self.mask_image.close()
 
-        for i in self.control_images:
-            i.close()
+        if self.control_images:
+            for i in self.control_images:
+                i.close()
 
 
 def _check_image_dimensions_match(images):
