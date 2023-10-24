@@ -409,7 +409,7 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
 
     vae_uri: _types.OptionalUri = None
     """
-    Optional user specified VAE URI, this corresponds to the `--vae` argument of the dgenerate command line tool.
+    Optional user specified VAE URI, this corresponds to the ``--vae`` argument of the dgenerate command line tool.
     """
 
     vae_tiling: bool = False
@@ -574,7 +574,8 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
     """
     Avoid ever connecting to the huggingface API? this can be used if all your models are cached or
     if you are only ever using models that exist on disk. This is currently broken for LoRA 
-    specifications due to a bug in the huggingface diffusers library.
+    specifications due to a bug in the huggingface diffusers library. Corresponds to the
+    ``--offline-mode`` argument of the dgenerate command line tool.
     """
 
     def __init__(self):
