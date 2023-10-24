@@ -203,6 +203,22 @@ def get_type_of_optional(hinted_type):
     return None
 
 
+def parse_bool(string: str):
+    """
+    Parse a case insensitive boolean value from a string, for example "true" or "false"
+
+    :raises: :py:exc:`ValueError` on parse failure.
+
+    :param string: the string
+    :return: python boolean type equivalent
+    """
+    try:
+        return {'true': True, 'false': False}[string.strip().lower()]
+    except KeyError:
+        raise ValueError(
+            f'"{string}" is not a boolean value')
+
+
 def fullname(obj):
     """
     Get the fully qualified name of an object or function

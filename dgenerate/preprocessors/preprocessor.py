@@ -278,9 +278,10 @@ class ImagePreprocessor:
         if isinstance(value, dict):
             value = value.get(name)
         try:
-            return bool(value)
+            return _types.parse_bool(value)
         except ValueError:
-            raise _exceptions.ImagePreprocessorArgumentError(f'Argument "{name}" must be a boolean value.')
+            raise _exceptions.ImagePreprocessorArgumentError(
+                f'Argument "{name}" must be a boolean value.')
 
     def argument_error(self, msg: str):
         raise _exceptions.ImagePreprocessorArgumentError(msg)
