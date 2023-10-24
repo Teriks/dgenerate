@@ -863,6 +863,26 @@ class DiffusionRenderLoop:
 
         return render_loop_opts
 
+    def _setup_batch_size_config_opts(self,
+                                      file_title: str,
+                                      extra_opts_out: typing.List[
+                                          typing.Union[typing.Tuple[str, typing.Any], typing.Tuple[str]]],
+                                      extra_comments_out: typing.List[str],
+                                      batch_index: int,
+                                      generation_result: _pipelinewrapper.PipelineWrapperResult):
+
+        if generation_result.image_count > 1:
+            if not _pipelinewrapper.model_type_is_flax(self.config.model_type):
+                # Batch size is controlled by CUDA_VISIBLE_DEVICES for flax
+                extra_opts_out.append(('--batch-size', self.config.batch_size))
+
+            if self.config.batch_grid_size is not None:
+                extra_opts_out.append(('--batch-grid-size',
+                                       _textprocessing.format_size(self.config.batch_grid_size)))
+            else:
+                extra_comments_out.append(
+                    f'{file_title} {batch_index + 1} from a batch of {generation_result.image_count}')
+
     def _gen_dgenerate_config(self,
                               args: typing.Optional[_pipelinewrapper.DiffusionArguments] = None,
                               extra_opts: typing.Optional[
@@ -906,17 +926,11 @@ class DiffusionRenderLoop:
         # For this image if necessary
 
         if self.image_generated_callbacks or self.config.output_configs or self.config.output_metadata:
-            if generation_result.image_count > 1:
-                if not _pipelinewrapper.model_type_is_flax(self.config.model_type):
-                    # Batch size is controlled by CUDA_VISIBLE_DEVICES for flax
-                    extra_opts.append(('--batch-size', self.config.batch_size))
-
-                if self.config.batch_grid_size is not None:
-                    extra_opts.append(('--batch-grid-size',
-                                       _textprocessing.format_size(self.config.batch_grid_size)))
-                else:
-                    extra_comments.append(
-                        f'Image {batch_index + 1} from a batch of {generation_result.image_count}')
+            self._setup_batch_size_config_opts(file_title="Image",
+                                               extra_opts_out=extra_opts,
+                                               extra_comments_out=extra_comments,
+                                               batch_index=batch_index,
+                                               generation_result=generation_result)
 
             if image_seed is not None and image_seed.is_animation_frame:
                 extra_opts.append(('--frame-start', image_seed.frame_index))
@@ -1183,22 +1197,22 @@ class DiffusionRenderLoop:
                     self._write_prompt_only_image(diffusion_args, generation_result)
 
     def _load_preprocessors(self, preprocessors):
-        if preprocessors is None:
-            return None
-
         return self.preprocessor_loader.load(preprocessors, self.config.device)
 
     def _load_seed_preprocessors(self):
-        r = self._load_preprocessors(self.config.seed_image_preprocessors)
+        if not self.config.seed_image_preprocessors:
+            return None
 
+        r = self._load_preprocessors(self.config.seed_image_preprocessors)
         _messages.debug_log('Loaded Seed Image Preprocessor:', r)
         return r
 
     def _load_mask_preprocessors(self):
+        if not self.config.mask_image_preprocessors:
+            return None
+
         r = self._load_preprocessors(self.config.mask_image_preprocessors)
-
         _messages.debug_log('Loaded Mask Image Preprocessor:', r)
-
         return r
 
     def _load_control_preprocessors(self):
@@ -1420,7 +1434,7 @@ class DiffusionRenderLoop:
                                         for idx, filename in enumerate(anim_writer.filenames):
                                             self._write_animation_config_file(
                                                 filename=os.path.splitext(filename)[0] + '.txt',
-                                                batch_idx=idx,
+                                                batch_index=idx,
                                                 diffusion_args=diffusion_args,
                                                 generation_result=generation_result)
                                     else:
@@ -1435,7 +1449,11 @@ class DiffusionRenderLoop:
 
                 anim_writer.end()
 
-    def _write_animation_config_file(self, filename, batch_idx, diffusion_args, generation_result):
+    def _write_animation_config_file(self,
+                                     filename: str,
+                                     batch_index: int,
+                                     diffusion_args: _pipelinewrapper.DiffusionArguments,
+                                     generation_result: _pipelinewrapper.PipelineWrapperResult):
         self._ensure_output_path()
 
         extra_opts = []
@@ -1455,10 +1473,11 @@ class DiffusionRenderLoop:
 
         extra_comments = []
 
-        if generation_result.image_count > 1 and \
-                self.config.batch_grid_size is None:
-            extra_comments.append(
-                f'Animation {batch_idx + 1} from a batch of {generation_result.image_count}')
+        self._setup_batch_size_config_opts(file_title="Animation",
+                                           extra_opts_out=extra_opts,
+                                           extra_comments_out=extra_comments,
+                                           batch_index=batch_index,
+                                           generation_result=generation_result)
 
         config_text = \
             self._gen_dgenerate_config(
@@ -1477,4 +1496,4 @@ class DiffusionRenderLoop:
             config_file.write(config_text)
 
         _messages.log(f'Wrote Animation Config File: "{filename}"',
-                      underline=batch_idx == generation_result.image_count - 1)
+                      underline=batch_index == generation_result.image_count - 1)
