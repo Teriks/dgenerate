@@ -422,7 +422,7 @@ class ImageSeedParseResult:
     control_path: _types.OptionalPath = None
     """
     Optional controlnet guidance path, or comma seperated list of controlnet guidance paths. 
-    This field is only used when the secondary syntax of `--image-seeds` is encountered.
+    This field is only used when the secondary syntax of ``--image-seeds`` is encountered.
     
     In parses such as:
     
@@ -435,7 +435,7 @@ class ImageSeedParseResult:
 
     resize_resolution: _types.OptionalSize = None
     """
-    Per image user specified resize resolution for all components of the `--image-seed` specification.
+    Per image user specified resize resolution for all components of the ``--image-seed`` specification.
     
     This field available in parses such as:
     
@@ -462,7 +462,7 @@ class ImageSeedParseResult:
             * ``--image-seeds "control-image1.png, control-image2.png"``
 
         Since this is an ambiguous parse, it must be resolved later with the help of other specified arguments.
-        Such as by the specification of `--control-nets`, which makes the intention unambiguous.
+        Such as by the specification of ``--control-nets``, which makes the intention unambiguous.
 
         :return: bool
         """
@@ -516,9 +516,9 @@ def _parse_image_seed_uri_legacy(uri: str) -> ImageSeedParseResult:
 
 def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
     """
-    Parse an `--image-seeds` uri into its constituents
+    Parse an ``--image-seeds`` uri into its constituents
 
-    :param uri: `--image-seeds` uri
+    :param uri: ``--image-seeds`` uri
     :return: :py:class:`.ImageSeedParseResult`
     """
 
@@ -744,7 +744,7 @@ def get_supported_static_image_mimetypes() -> typing.List[str]:
 
 def get_supported_image_mimetypes() -> typing.List[str]:
     """
-    Get all supported `--image-seeds` image mimetypes, including animated image mimetypes
+    Get all supported ``--image-seeds`` image mimetypes, including animated image mimetypes
 
     :return: list of strings
     """
@@ -753,7 +753,7 @@ def get_supported_image_mimetypes() -> typing.List[str]:
 
 def get_supported_video_mimetypes() -> typing.List[str]:
     """
-    Get all supported `--image-seeds` video mimetypes, may contain a wildcard
+    Get all supported ``--image-seeds`` video mimetypes, may contain a wildcard
 
     :return: list of strings
     """
@@ -762,7 +762,7 @@ def get_supported_video_mimetypes() -> typing.List[str]:
 
 def get_supported_mimetypes() -> typing.List[str]:
     """
-    Get all supported `--image-seeds` mimetypes, video mimetype may contain a wildcard.
+    Get all supported ``--image-seeds`` mimetypes, video mimetype may contain a wildcard.
 
     :return: list of strings
     """
@@ -910,9 +910,13 @@ def create_animation_reader(mimetype: str,
 
 
 class AnimationReaderSpec:
+    """
+    Used by :py:class:`.MultiAnimationReader` to define resource paths.
+    """
+
     path: str
     """
-    File path or or URL
+    File path (or HTTP/HTTPS URL with default **path_opener**)
     """
 
     preprocessor: typing.Optional[_preprocessors.ImagePreprocessor] = None
@@ -923,7 +927,7 @@ class AnimationReaderSpec:
     def __init__(self, path: str,
                  preprocessor: typing.Optional[_preprocessors.ImagePreprocessor] = None):
         """
-        :param path: File path or or URL
+        :param path: File path or URL
         :param preprocessor: Optional image preprocessor associated with the file
         """
         self.path = path
@@ -1198,10 +1202,10 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
                        control_image_preprocessor: ControlPreprocessorSpec = None) -> \
         typing.Generator[ImageSeed, None, None]:
     """
-    Parse and load images/videos in an `--image-seeds` uri and return a generator that
+    Parse and load images/videos in an ``--image-seeds`` uri and return a generator that
     produces :py:class:`.ImageSeed` objects while progressively reading those files.
 
-    This method is used to iterate over an `--image-seeds` uri in the case that the image source
+    This method is used to iterate over an ``--image-seeds`` uri in the case that the image source
     mentioned is to be used for img2img / inpaint operations, and handles this syntax:
 
         * ``--image-seeds "img2img.png;mask.png"``
@@ -1216,7 +1220,7 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
 
     One or more :py:class:`.ImageSeed` objects may be yielded depending on whether an animation is being read.
 
-    :param uri: `--image-seeds` uri or :py:class:`.ImageSeedParseResult`
+    :param uri: ``--image-seeds`` uri or :py:class:`.ImageSeedParseResult`
     :param frame_start: starting frame, inclusive value
     :param frame_end: optional end frame, inclusive value
     :param resize_resolution: optional resize resolution
@@ -1310,7 +1314,7 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
                           preprocessor: ControlPreprocessorSpec = None) -> \
         typing.Generator[ImageSeed, None, None]:
     """
-    Parse and load a control image/video in an `--image-seeds` uri and return a generator that
+    Parse and load a control image/video in an ``--image-seeds`` uri and return a generator that
     produces :py:class:`.ImageSeed` objects while progressively reading that file.
 
     One or more :py:class:`.ImageSeed` objects may be yielded depending on whether an animation is being read.
@@ -1326,7 +1330,7 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
 
     The image or images read will be available from the :py:attr:`.ImageSeed.control_images` attribute.
 
-    :param uri: `--image-seeds` uri or :py:class:`.ImageSeedParseResult`
+    :param uri: ``--image-seeds`` uri or :py:class:`.ImageSeedParseResult`
     :param frame_start: starting frame, inclusive value
     :param frame_end: optional end frame, inclusive value
     :param resize_resolution: optional resize resolution
@@ -1387,7 +1391,7 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
 
 
 class ImageSeedInfo:
-    """Information acquired about an `--image-seeds` uri"""
+    """Information acquired about an ``--image-seeds`` uri"""
 
     anim_fps: _types.OptionalInteger
     """
@@ -1424,9 +1428,9 @@ def get_image_seed_info(uri: typing.Union[_types.Uri, ImageSeedParseResult],
                         frame_start: int = 0,
                         frame_end: _types.OptionalInteger = None) -> ImageSeedInfo:
     """
-    Get an informational object from a dgenerate `--image-seeds` uri.
+    Get an informational object from a dgenerate ``--image-seeds`` uri.
 
-    This method is used to obtain information about an `--image-seeds` uri in the case that the
+    This method is used to obtain information about an ``--image-seeds`` uri in the case that the
     image source mentioned is to be used for img2img / inpaint operations, and handles this syntax:
 
         * ``--image-seeds "img2img.png;mask.png"``
@@ -1452,7 +1456,7 @@ def get_control_image_info(uri: typing.Union[_types.Path, ImageSeedParseResult],
                            frame_start: int = 0,
                            frame_end: _types.OptionalInteger = None) -> ImageSeedInfo:
     """
-    Get an informational object from a dgenerate `--image-seeds` uri that is known to be a
+    Get an informational object from a dgenerate ``--image-seeds`` uri that is known to be a
     control image/video specification.
 
     This can consist of a single resource path or a list of comma seperated image and

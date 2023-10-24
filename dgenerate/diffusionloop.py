@@ -181,69 +181,69 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
 
     model_path: _types.OptionalPath = None
     """
-    Primary diffusion model path, `model_path` argument of dgenerate command line tool.
+    Primary diffusion model path, ``model_path`` argument of dgenerate command line tool.
     """
 
     model_subfolder: _types.OptionalPath = None
     """
-    Primary model subfolder argument, `--subfolder` argument of dgenerate command line tool.
+    Primary model subfolder argument, ``--subfolder`` argument of dgenerate command line tool.
     """
 
     sdxl_refiner_uri: _types.OptionalUri = None
     """
-    SDXL Refiner model URI, `--sdxl-refiner` argument of dgenerate command line tool.
+    SDXL Refiner model URI, ``--sdxl-refiner`` argument of dgenerate command line tool.
     """
 
     batch_size: _types.OptionalInteger = None
     """
-    Image generation batch size, `--batch-size` argument of dgenerate command line tool.
+    Image generation batch size, ``--batch-size`` argument of dgenerate command line tool.
     """
 
     batch_grid_size: _types.OptionalSize = None
     """
     Optional image grid size specification for when **batch_size** is greater than one.
-    This is the `--batch-grid-size` argument of the dgenerate command line tool.
+    This is the ``--batch-grid-size`` argument of the dgenerate command line tool.
     """
 
     prompts: _types.Prompts
     """
-    List of prompt objects, this corresponds to the `--prompts` argument of the dgenerate
+    List of prompt objects, this corresponds to the ``--prompts`` argument of the dgenerate
     command line tool.
     """
 
     sdxl_second_prompts: _types.OptionalPrompts = None
     """
-    Optional list of SDXL secondary prompts, this corresponds to the `--sdxl-secondary-prompts` argument
+    Optional list of SDXL secondary prompts, this corresponds to the ``--sdxl-secondary-prompts`` argument
     of the dgenerate command line tool.
     """
 
     sdxl_refiner_prompts: _types.OptionalPrompts = None
     """
-    Optional list of SDXL refiner prompt overrides, this corresponds to the `--sdxl-refiner-prompts` argument
+    Optional list of SDXL refiner prompt overrides, this corresponds to the ``--sdxl-refiner-prompts`` argument
     of the dgenerate command line tool.
     """
 
     sdxl_refiner_second_prompts: _types.OptionalPrompts = None
     """
     Optional list of SDXL refiner secondary prompt overrides, this corresponds 
-    to the `--sdxl-refiner-second-prompts` argument of the dgenerate command line tool.
+    to the ``--sdxl-refiner-second-prompts`` argument of the dgenerate command line tool.
     """
 
     seeds: _types.Integers
     """
-    List of integer seeds, this corresponds to the `--seeds` argument of 
+    List of integer seeds, this corresponds to the ``--seeds`` argument of 
     the dgenerate command line tool.
     """
 
     guidance_scales: _types.Floats
     """
-    List of floating point guidance scales, this corresponds to the `--guidance-scales` argument 
+    List of floating point guidance scales, this corresponds to the ``--guidance-scales`` argument 
     of the dgenerate command line tool.
     """
 
     inference_steps: _types.Integers
     """
-    List of inference steps values, this corresponds to the `--inference-steps` argument of the
+    List of inference steps values, this corresponds to the ``--inference-steps`` argument of the
     dgenerate command line tool.
     """
 
@@ -254,52 +254,52 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
 
     image_seed_strengths: _types.OptionalFloats = None
     """
-    Optional list of floating point image seed strengths, this corresponds to the `--image-seed-strengths` argument
+    Optional list of floating point image seed strengths, this corresponds to the ``--image-seed-strengths`` argument
     of the dgenerate command line tool.
     """
 
     upscaler_noise_levels: _types.OptionalIntegers = None
     """
-    Optional list of integer upscaler noise levels, this corresponds to the `--upscaler-noise-levels` argument
+    Optional list of integer upscaler noise levels, this corresponds to the ``--upscaler-noise-levels`` argument
     of the dgenerate command line tool that is used with upscaler model types.
     """
 
     guidance_rescales: _types.OptionalFloats = None
     """
     List of floating point guidance rescale values which are supported by some pipelines, (there will be an
-    error if it is unsupported upon running), this corresponds to the `--guidance-rescales` argument of 
+    error if it is unsupported upon running), this corresponds to the ``--guidance-rescales`` argument of 
     the dgenerate command line tool.
     """
 
     image_guidance_scales: _types.OptionalFloats = None
     """
     Optional list of floating point image guidance scales, used for pix2pix model types, this corresponds
-    to the `--image-guidance-scales` argument of the dgenerate command line tool.
+    to the ``--image-guidance-scales`` argument of the dgenerate command line tool.
     """
 
     sdxl_high_noise_fractions: _types.OptionalFloats = None
     """
     Optional list of SDXL refiner high noise fractions (floats), this value is the fraction of inference steps
     that the base model handles, the inverse proportion of the provided fraction is handled by the refiner model.
-    This corresponds to the `--sdxl-high-noise-fractions` argument of the dgenerate command line tool.
+    This corresponds to the ``--sdxl-high-noise-fractions`` argument of the dgenerate command line tool.
     """
 
     sdxl_refiner_inference_steps: _types.OptionalIntegers = None
     """
     Optional list of inference steps value overrides for the SDXL refiner, this corresponds 
-    to the `--sdxl-refiner-inference-steps` argument of the dgenerate command line tool.
+    to the ``--sdxl-refiner-inference-steps`` argument of the dgenerate command line tool.
     """
 
     sdxl_refiner_guidance_scales: _types.OptionalFloats = None
     """
     Optional list of guidance scale value overrides for the SDXL refiner, this corresponds 
-    to the `--sdxl-refiner-guidance-scales` argument of the dgenerate command line tool.
+    to the ``--sdxl-refiner-guidance-scales`` argument of the dgenerate command line tool.
     """
 
     sdxl_refiner_guidance_rescales: _types.OptionalFloats = None
     """
     Optional list of guidance rescale value overrides for the SDXL refiner, this corresponds 
-    to the `--sdxl-refiner-guidance-rescales` argument of the dgenerate command line tool.
+    to the ``--sdxl-refiner-guidance-rescales`` argument of the dgenerate command line tool.
     """
 
     sdxl_aesthetic_scores: _types.OptionalFloats = None
@@ -327,35 +327,35 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
 
     vae_tiling: bool = False
     """
-    Enable VAE tiling? `--vae-tiling`
+    Enable VAE tiling? ``--vae-tiling``
     """
 
     vae_slicing: bool = False
     """
-    Enable VAE slicing? `--vae-slicing`
+    Enable VAE slicing? ``--vae-slicing``
     """
 
     lora_uris: _types.OptionalUris = None
     """
-    Optional user specified LoRA URIs, this corresponds to the `--lora/--loras` argument of the dgenerate 
+    Optional user specified LoRA URIs, this corresponds to the ``--lora/--loras`` argument of the dgenerate 
     command line tool. Currently only one lora is supported, providing more than one will cause an error.
     """
 
     textual_inversion_uris: _types.OptionalUris = None
     """
-    Optional user specified Textual Inversion URIs, this corresponds to the `--textual-inversions`
+    Optional user specified Textual Inversion URIs, this corresponds to the ``--textual-inversions``
     argument of the dgenerate command line tool.
     """
 
     control_net_uris: _types.OptionalUris = None
     """
-    Optional user specified ControlNet URIs, this corresponds to the `--control-nets` argument
+    Optional user specified ControlNet URIs, this corresponds to the ``--control-nets`` argument
     of the dgenerate command line tool.
     """
 
     scheduler: _types.OptionalName = None
     """
-    Optional primary model scheduler/sampler class name specification, this corresponds to the `--scheduler`
+    Optional primary model scheduler/sampler class name specification, this corresponds to the ``--scheduler``
     argument of the dgenerate command line tool. Setting this to 'help' will yield a help message to stdout
     describing scheduler names compatible with the current configuration upon running.
     """
@@ -363,122 +363,122 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
     sdxl_refiner_scheduler: _types.OptionalName = None
     """
     Optional SDXL refiner model scheduler/sampler class name specification, this corresponds to the 
-    `--sdxl-refiner-scheduler` argument of the dgenerate command line tool. Setting this to 'help' 
+    ``--sdxl-refiner-scheduler`` argument of the dgenerate command line tool. Setting this to 'help' 
     will yield a help message to stdout describing scheduler names compatible with the current 
     configuration upon running.
     """
 
     safety_checker: bool = False
     """
-    Enable safety checker? `--safety-checker`
+    Enable safety checker? ``--safety-checker``
     """
 
     model_type: _pipelinewrapper.ModelTypes = _pipelinewrapper.ModelTypes.TORCH
     """
-    Corresponds to the `--model-type` argument of the dgenerate command line tool.
+    Corresponds to the ``--model-type`` argument of the dgenerate command line tool.
     """
 
     device: _types.Name = 'cuda'
     """
     Processing device specification, for example "cuda" or "cuda:N" where N is an 
     alternate GPU id as reported by nvidia-smi if you want to specify a specific GPU.
-    This corresponds to the `--device` argument of the dgenerate command line tool.
+    This corresponds to the ``--device`` argument of the dgenerate command line tool.
     """
 
     dtype: _pipelinewrapper.DataTypes = _pipelinewrapper.DataTypes.AUTO
     """
     Primary model data type specification, IE: integer precision. Default is auto selection.
     Lower precision datatypes result in less GPU memory usage.
-    This corresponds to the `--dtype` argument of the dgenerate command line tool.
+    This corresponds to the ``--dtype`` argument of the dgenerate command line tool.
     """
 
     revision: _types.Name = 'main'
     """
     Repo revision selector for the main model when loading from a huggingface repository.
-    This corresponds to the `--revision` argument of the dgenerate command line tool.
+    This corresponds to the ``--revision`` argument of the dgenerate command line tool.
     """
 
     variant: _types.OptionalName = None
     """
     Primary model weights variant string.
-    This corresponds to the `--variant` argument of the dgenerate command line tool.
+    This corresponds to the ``--variant`` argument of the dgenerate command line tool.
     """
 
     output_size: _types.OptionalSize = None
     """
     Desired output size, sizes not aligned by 8 pixels will result in an error message.
-    This corresponds to the `--output-size` argument of the dgenerate command line tool.
+    This corresponds to the ``--output-size`` argument of the dgenerate command line tool.
     """
 
     output_path: _types.Path = 'output'
     """
     Render loop write folder, where images and animations will be written.
-    This corresponds to the `--output-path` argument of the dgenerate command line tool.
+    This corresponds to the ``--output-path`` argument of the dgenerate command line tool.
     """
 
     output_prefix: typing.Optional[str] = None
     """
     Output filename prefix, add an optional prefix string to all written files.
-    This corresponds to the `--output-prefix` argument of the dgenerate command line tool.
+    This corresponds to the ``--output-prefix`` argument of the dgenerate command line tool.
     """
 
     output_overwrite: bool = False
     """
     Allow overwrites of files? or avoid this with a file suffix in a multiprocess safe manner?
-    This corresponds to the `--output-overwrite` argument of the dgenerate command line tool.
+    This corresponds to the ``--output-overwrite`` argument of the dgenerate command line tool.
     """
 
     output_configs: bool = False
     """
     Output a config text file next to every generated image or animation? this file will contain configuration
     that is pipeable to dgenerate stdin, which will reproduce said file.
-    This corresponds to the `--output-configs` argument of the dgenerate command line tool.
+    This corresponds to the ``--output-configs`` argument of the dgenerate command line tool.
     """
 
     output_metadata: bool = False
     """
     Write config text to the metadata of all written images? this data is not written to animated files, only PNGs.
-    This corresponds to the `--output-metadata` argument of the dgenerate command line tool.
+    This corresponds to the ``--output-metadata`` argument of the dgenerate command line tool.
     """
 
     animation_format: _types.Name = 'mp4'
     """
     Format for any rendered animations, see: :py:meth:`dgenerate.mediaoutput.supported_animation_writer_formats()`
-    This corresponds to the `--animation-format` argument of the dgenerate command line tool.
+    This corresponds to the ``--animation-format`` argument of the dgenerate command line tool.
     """
 
     frame_start: _types.Integer = 0
     """
     Start frame inclusive frame slice for any rendered animations.
-    This corresponds to the `--frame-start` argument of the dgenerate command line tool.
+    This corresponds to the ``--frame-start`` argument of the dgenerate command line tool.
     """
 
     frame_end: _types.OptionalInteger = None
     """
     Optional end frame inclusive frame slice for any rendered animations.
-    This corresponds to the `--frame-end` argument of the dgenerate command line tool.
+    This corresponds to the ``--frame-end`` argument of the dgenerate command line tool.
     """
 
     auth_token: typing.Optional[str] = None
     """
     Optional huggingface API token which will allow the download of restricted repositories 
     that your huggingface account has been granted access to.
-    This corresponds to the `--auth-token` argument of the dgenerate command line tool.
+    This corresponds to the ``--auth-token`` argument of the dgenerate command line tool.
     """
 
     seed_image_preprocessors: _types.OptionalUris = None
     """
-    Corresponds to the `--seed-image-preprocessors` argument of the dgenerate command line tool verbatim.
+    Corresponds to the ``--seed-image-preprocessors`` argument of the dgenerate command line tool verbatim.
     """
 
     mask_image_preprocessors: _types.OptionalUris = None
     """
-    Corresponds to the `--mask-image-preprocessors` argument of the dgenerate command line tool verbatim.
+    Corresponds to the ``--mask-image-preprocessors`` argument of the dgenerate command line tool verbatim.
     """
 
     control_image_preprocessors: _types.OptionalUris = None
     """
-    Corresponds to the `--control-image-preprocessors` argument of the dgenerate command line tool verbatim,
+    Corresponds to the ``--control-image-preprocessors`` argument of the dgenerate command line tool verbatim,
     including the grouping syntax using the "+" symbol, the plus symbol should be used as its own list element,
     IE: it is a token.
     """

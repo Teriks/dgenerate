@@ -307,6 +307,7 @@ def wrap(text: str,
 def format_size(size: typing.Iterable[int]):
     """
     Join together an iterable of integers with the character x
+
     :param size: the iterable
     :return: formatted string
     """
