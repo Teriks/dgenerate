@@ -249,7 +249,7 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
 
     image_seeds: _types.OptionalUris = None
     """
-    List of --image-seed URI strings.
+    List of ``--image-seeds`` URI strings.
     """
 
     image_seed_strengths: _types.OptionalFloats = None
