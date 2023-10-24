@@ -31,7 +31,6 @@ class FooBarPreprocessor(dgenerate.preprocessors.ImagePreprocessor):
         # correctly and printed for the user on the command line
 
         self._my_argument = self.get_int_arg('my_argument', my_argument)
-        print(my_argument_2)
         self._my_argument_2 = self.get_bool_arg('my_argument_2', my_argument_2)
         self._my_argument_3 = self.get_float_arg('my_argument_3', my_argument_3)
 
