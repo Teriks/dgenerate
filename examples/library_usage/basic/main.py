@@ -22,9 +22,6 @@ render_loop = DiffusionRenderLoop(config=config)
 
 
 def render_callback(arg: ImageGeneratedCallbackArgument):
-
-    arg.image_seed.control_images
-
     print('Filename:', arg.suggested_filename)
     print('Seed:', arg.diffusion_args.seed)
     print('Prompt:', arg.diffusion_args.prompt)
