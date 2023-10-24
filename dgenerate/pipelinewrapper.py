@@ -400,35 +400,35 @@ class InvalidModelPathError(Exception):
 
 class InvalidSDXLRefinerUriError(InvalidModelPathError):
     """
-    Error in --sdxl-refiner path
+    Error in --sdxl-refiner uri
     """
     pass
 
 
 class InvalidVaeUriError(InvalidModelPathError):
     """
-    Error in --vae path
+    Error in --vae uri
     """
     pass
 
 
 class InvalidControlNetUriError(InvalidModelPathError):
     """
-    Error in --control-nets path
+    Error in --control-nets uri
     """
     pass
 
 
 class InvalidLoRAUriError(InvalidModelPathError):
     """
-    Error in --lora path
+    Error in --lora uri
     """
     pass
 
 
 class InvalidTextualInversionUriError(InvalidModelPathError):
     """
-    Error in --textual-inversions path
+    Error in --textual-inversions uri
     """
     pass
 
@@ -726,9 +726,9 @@ def _get_torch_dtype(dtype: typing.Union[DataTypes, torch.dtype, str, None]) -> 
             'auto': None}[dtype.lower()]
 
 
-class FlaxControlNetPath:
+class FlaxControlNetUri:
     """
-    Representation of --control-nets path when --model-type flax*
+    Representation of --control-nets uri when --model-type flax*
     """
 
     def __init__(self, model, scale, revision, subfolder, dtype, from_torch):
@@ -783,7 +783,7 @@ class FlaxControlNetPath:
         return new_net
 
 
-def parse_flax_control_net_uri(uri: _types.Uri) -> FlaxControlNetPath:
+def parse_flax_control_net_uri(uri: _types.Uri) -> FlaxControlNetUri:
     """
     Parse a --model-type flax* --control-nets uri specification and return an object representing its constituents
 
@@ -819,7 +819,7 @@ def parse_flax_control_net_uri(uri: _types.Uri) -> FlaxControlNetPath:
             raise InvalidControlNetUriError(
                 f'Flax Control Net scale must be a floating point number, received {scale}')
 
-        return FlaxControlNetPath(
+        return FlaxControlNetUri(
             model=r.concept,
             revision=r.args.get('revision', None),
             subfolder=r.args.get('subfolder', None),
@@ -831,9 +831,9 @@ def parse_flax_control_net_uri(uri: _types.Uri) -> FlaxControlNetPath:
         raise InvalidControlNetUriError(e)
 
 
-class TorchControlNetPath:
+class TorchControlNetUri:
     """
-    Representation of --control-nets path when --model-type torch*
+    Representation of --control-nets uri when --model-type torch*
     """
 
     def __init__(self, model, scale, start, end, revision, variant, subfolder, dtype):
@@ -906,7 +906,7 @@ class TorchControlNetPath:
         return new_net
 
 
-def parse_torch_control_net_uri(uri: _types.Uri) -> TorchControlNetPath:
+def parse_torch_control_net_uri(uri: _types.Uri) -> TorchControlNetUri:
     """
     Parse a --model-type torch* --control-nets uri specification and return an object representing its constituents
 
@@ -952,7 +952,7 @@ def parse_torch_control_net_uri(uri: _types.Uri) -> TorchControlNetPath:
             raise InvalidControlNetUriError(
                 f'Torch ControlNet "start" must be less than or equal to "end".')
 
-        return TorchControlNetPath(
+        return TorchControlNetUri(
             model=r.concept,
             revision=r.args.get('revision', None),
             variant=r.args.get('variant', None),
@@ -966,9 +966,9 @@ def parse_torch_control_net_uri(uri: _types.Uri) -> TorchControlNetPath:
         raise InvalidControlNetUriError(e)
 
 
-class SDXLRefinerPath:
+class SDXLRefinerUri:
     """
-    Representation of --sdxl-refiner path
+    Representation of --sdxl-refiner uri
     """
 
     def __init__(self, model, revision, variant, dtype, subfolder):
@@ -979,7 +979,7 @@ class SDXLRefinerPath:
         self.subfolder = subfolder
 
 
-def parse_sdxl_refiner_uri(uri: _types.Uri) -> SDXLRefinerPath:
+def parse_sdxl_refiner_uri(uri: _types.Uri) -> SDXLRefinerUri:
     """
     Parse an --sdxl-refiner uri and return an object representing its constituents
 
@@ -1000,7 +1000,7 @@ def parse_sdxl_refiner_uri(uri: _types.Uri) -> SDXLRefinerPath:
                 f'Torch SDXL refiner "dtype" must be {", ".join(supported_dtypes)}, '
                 f'or left undefined, received: {dtype}')
 
-        return SDXLRefinerPath(
+        return SDXLRefinerUri(
             model=r.concept,
             revision=r.args.get('revision', None),
             variant=r.args.get('variant', None),
@@ -1010,9 +1010,9 @@ def parse_sdxl_refiner_uri(uri: _types.Uri) -> SDXLRefinerPath:
         raise InvalidSDXLRefinerUriError(e)
 
 
-class TorchVAEPath:
+class TorchVAEUri:
     """
-    Representation of --vae path when --model-type torch*
+    Representation of --vae uri when --model-type torch*
     """
 
     def __init__(self, encoder, model, revision, variant, subfolder, dtype):
@@ -1024,7 +1024,7 @@ class TorchVAEPath:
         self.subfolder = subfolder
 
 
-def parse_torch_vae_uri(uri: _types.Uri) -> TorchVAEPath:
+def parse_torch_vae_uri(uri: _types.Uri) -> TorchVAEUri:
     """
     Parse a --model-type torch* --vae uri and return an object representing its constituents
 
@@ -1049,19 +1049,19 @@ def parse_torch_vae_uri(uri: _types.Uri) -> TorchVAEPath:
                 f'Torch VAE "dtype" must be {", ".join(supported_dtypes)}, '
                 f'or left undefined, received: {dtype}')
 
-        return TorchVAEPath(encoder=r.concept,
-                            model=model,
-                            revision=r.args.get('revision', None),
-                            variant=r.args.get('variant', None),
-                            dtype=_get_torch_dtype(dtype),
-                            subfolder=r.args.get('subfolder', None))
+        return TorchVAEUri(encoder=r.concept,
+                           model=model,
+                           revision=r.args.get('revision', None),
+                           variant=r.args.get('variant', None),
+                           dtype=_get_torch_dtype(dtype),
+                           subfolder=r.args.get('subfolder', None))
     except _textprocessing.ConceptPathParseError as e:
         raise InvalidVaeUriError(e)
 
 
-class FlaxVAEPath:
+class FlaxVAEUri:
     """
-    Representation of --vae path when --model-type flax*
+    Representation of --vae uri when --model-type flax*
     """
 
     def __init__(self, encoder, model, revision, dtype, subfolder):
@@ -1072,7 +1072,7 @@ class FlaxVAEPath:
         self.subfolder = subfolder
 
 
-def parse_flax_vae_uri(uri: _types.Uri) -> FlaxVAEPath:
+def parse_flax_vae_uri(uri: _types.Uri) -> FlaxVAEUri:
     """
     Parse a --model-type flax* --vae uri and return an object representing its constituents
 
@@ -1097,18 +1097,18 @@ def parse_flax_vae_uri(uri: _types.Uri) -> FlaxVAEPath:
                 f'Flax VAE "dtype" must be {", ".join(supported_dtypes)}, '
                 f'or left undefined, received: {dtype}')
 
-        return FlaxVAEPath(encoder=r.concept,
-                           model=model,
-                           revision=r.args.get('revision', None),
-                           dtype=_get_flax_dtype(dtype),
-                           subfolder=r.args.get('subfolder', None))
+        return FlaxVAEUri(encoder=r.concept,
+                          model=model,
+                          revision=r.args.get('revision', None),
+                          dtype=_get_flax_dtype(dtype),
+                          subfolder=r.args.get('subfolder', None))
     except _textprocessing.ConceptPathParseError as e:
         raise InvalidVaeUriError(e)
 
 
-class LoRAPath:
+class LoRAUri:
     """
-    Representation of --lora path
+    Representation of --lora uri
     """
 
     def __init__(self, model, scale, revision, subfolder, weight_name):
@@ -1137,7 +1137,7 @@ class LoRAPath:
             _messages.debug_log(f'Added LoRA: "{self}" to pipeline: "{pipeline.__class__.__name__}"')
 
 
-def parse_lora_uri(uri: _types.Uri) -> LoRAPath:
+def parse_lora_uri(uri: _types.Uri) -> LoRAUri:
     """
     Parse a --lora uri and return an object representing its constituents
 
@@ -1150,18 +1150,18 @@ def parse_lora_uri(uri: _types.Uri) -> LoRAPath:
     try:
         r = _lora_uri_parser.parse_concept_uri(uri)
 
-        return LoRAPath(model=r.concept,
-                        scale=float(r.args.get('scale', 1.0)),
-                        weight_name=r.args.get('weight-name', None),
-                        revision=r.args.get('revision', None),
-                        subfolder=r.args.get('subfolder', None))
+        return LoRAUri(model=r.concept,
+                       scale=float(r.args.get('scale', 1.0)),
+                       weight_name=r.args.get('weight-name', None),
+                       revision=r.args.get('revision', None),
+                       subfolder=r.args.get('subfolder', None))
     except _textprocessing.ConceptPathParseError as e:
         raise InvalidLoRAUriError(e)
 
 
-class TextualInversionPath:
+class TextualInversionUri:
     """
-    Representation of --textual-inversions path
+    Representation of --textual-inversions uri
     """
 
     def __init__(self, model, revision, subfolder, weight_name):
@@ -1189,7 +1189,7 @@ class TextualInversionPath:
             _messages.debug_log(f'Added Textual Inversion: "{self}" to pipeline: "{pipeline.__class__.__name__}"')
 
 
-def parse_textual_inversion_uri(uri: _types.Uri) -> TextualInversionPath:
+def parse_textual_inversion_uri(uri: _types.Uri) -> TextualInversionUri:
     """
     Parse a --textual-inversions uri and return an object representing its constituents
 
@@ -1202,10 +1202,10 @@ def parse_textual_inversion_uri(uri: _types.Uri) -> TextualInversionPath:
     try:
         r = _textual_inversion_uri_parser.parse_concept_uri(uri)
 
-        return TextualInversionPath(model=r.concept,
-                                    weight_name=r.args.get('weight-name', None),
-                                    revision=r.args.get('revision', None),
-                                    subfolder=r.args.get('subfolder', None))
+        return TextualInversionUri(model=r.concept,
+                                   weight_name=r.args.get('weight-name', None),
+                                   revision=r.args.get('revision', None),
+                                   subfolder=r.args.get('subfolder', None))
     except _textprocessing.ConceptPathParseError as e:
         raise InvalidTextualInversionUriError(e)
 
@@ -2488,7 +2488,7 @@ class DiffusionPipelineWrapper:
     @property
     def textual_inversion_uris(self) -> _types.OptionalUris:
         """
-        List of supplied --textual-inversions path strings or None
+        List of supplied --textual-inversions uri strings or None
         """
         return [self._textual_inversion_uris] if \
             isinstance(self._textual_inversion_uris, str) else self._textual_inversion_uris
@@ -2496,7 +2496,7 @@ class DiffusionPipelineWrapper:
     @property
     def control_net_uris(self) -> _types.OptionalUris:
         """
-        List of supplied --control-nets path strings or None
+        List of supplied --control-nets uri strings or None
         """
         return [self._control_net_uris] if \
             isinstance(self._control_net_uris, str) else self._control_net_uris
@@ -2574,7 +2574,7 @@ class DiffusionPipelineWrapper:
     @property
     def vae_uri(self) -> _types.OptionalUri:
         """
-        Selected --vae path for the main model or None
+        Selected --vae uri for the main model or None
         """
         return self._vae_uri
 
@@ -2595,7 +2595,7 @@ class DiffusionPipelineWrapper:
     @property
     def lora_uris(self) -> _types.OptionalUris:
         """
-        List of supplied --lora path strings or None
+        List of supplied --lora uri strings or None
         """
         return [self._lora_uris] if \
             isinstance(self._lora_uris, str) else self._lora_uris
