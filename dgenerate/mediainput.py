@@ -1310,7 +1310,7 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
                           preprocessor: ControlPreprocessorSpec = None) -> \
         typing.Generator[ImageSeed, None, None]:
     """
-    Parse and load a control image/video in an `--image-seeds` path and return a generator that
+    Parse and load a control image/video in an `--image-seeds` uri and return a generator that
     produces :py:class:`.ImageSeed` objects while progressively reading that file.
 
     One or more :py:class:`.ImageSeed` objects may be yielded depending on whether an animation is being read.
