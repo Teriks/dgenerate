@@ -988,7 +988,7 @@ class ImageGeneratedCallbackArgument:
 
     image_seed: typing.Optional[_mediainput.ImageSeed] = None
     """
-    If an --image-seed specification was used in the generation of this image,
+    If an ``--image-seeds`` specification was used in the generation of this image,
     this object represents that image seed and contains the images that contributed
     to the generation of this image.
     """
@@ -1096,7 +1096,7 @@ class DiffusionRenderLoop:
         Generate a help string describing available template variables, their types, and values
         for use in batch processing.
 
-        This is used to implement --templates-help in :py:meth:`dgenerate.invoker.invoke_dgenerate`
+        This is used to implement ``--templates-help`` in :py:meth:`dgenerate.invoker.invoke_dgenerate`
 
         :return: a human-readable description of all template variables
         """
