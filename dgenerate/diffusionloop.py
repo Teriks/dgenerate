@@ -303,22 +303,109 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
     """
 
     sdxl_aesthetic_scores: _types.OptionalFloats = None
+    """
+    Optional list of SDXL aesthetic-score conditioning values, this corresponds 
+    to the ``--sdxl-aesthetic-scores`` argument of the dgenerate command line tool.
+    """
+
     sdxl_original_sizes: _types.OptionalSizes = None
+    """
+    Optional list of SDXL original-size micro-conditioning parameters, this corresponds 
+    to the ``--sdxl-original-sizes`` argument of the dgenerate command line tool.
+    """
+
     sdxl_target_sizes: _types.OptionalSizes = None
+    """
+    Optional list of SDXL target-size micro-conditioning parameters, this corresponds 
+    to the ``--sdxl-target-sizes`` argument of the dgenerate command line tool.
+    """
+
     sdxl_crops_coords_top_left: _types.OptionalCoordinateList = None
+    """
+    Optional list of SDXL top-left-crop-coords micro-conditioning parameters, this corresponds 
+    to the ``--sdxl-crops-coords-top-left`` argument of the dgenerate command line tool.
+    """
+
     sdxl_negative_aesthetic_scores: _types.OptionalFloats = None
+    """
+    Optional list of negative influence SDXL aesthetic-score conditioning values, 
+    this corresponds to the ``--sdxl-negative-aesthetic-scores`` argument of the dgenerate
+    command line tool.
+    """
+
     sdxl_negative_original_sizes: _types.OptionalSizes = None
+    """
+    Optional list of negative influence SDXL original-size micro-conditioning parameters, 
+    this corresponds to the ``--sdxl-negative-original-sizes`` argument of the dgenerate command 
+    line tool.
+    """
+
     sdxl_negative_target_sizes: _types.OptionalSizes = None
+    """
+    Optional list of negative influence SDXL target-size micro-conditioning parameters, 
+    this corresponds to the ``--sdxl-negative-target-sizes`` argument of the dgenerate 
+    command line tool.
+    """
+
     sdxl_negative_crops_coords_top_left: _types.OptionalCoordinateList = None
+    """
+    Optional list of negative influence SDXL top-left crop coords micro-conditioning parameters, 
+    this corresponds to the ``--sdxl-negative-crops-coords-top-left`` argument of the dgenerate 
+    command line tool.
+    """
 
     sdxl_refiner_aesthetic_scores: _types.OptionalFloats = None
+    """
+    Optional list of SDXL-refiner override aesthetic-score conditioning values, this 
+    corresponds to the ``--sdxl-refiner-aesthetic-scores`` argument of the dgenerate command 
+    line tool.
+    """
+
     sdxl_refiner_original_sizes: _types.OptionalSizes = None
+    """
+    Optional list of SDXL-refiner override original-size micro-conditioning parameters, 
+    this corresponds to the ``--sdxl-refiner-original-sizes`` argument of the dgenerate command line tool.
+    """
+
     sdxl_refiner_target_sizes: _types.OptionalSizes = None
+    """
+    Optional list of SDXL-refiner override target-size micro-conditioning parameters, this 
+    corresponds to the ``--sdxl-refiner-target-sizes`` argument of the dgenerate command line tool.
+    """
+
     sdxl_refiner_crops_coords_top_left: _types.OptionalCoordinateList = None
+    """
+    Optional list of SDXL-refiner override top-left-crop-coords micro-conditioning parameters, this 
+    corresponds to the ``--sdxl-refiner-crops-coords-top-left`` argument of the dgenerate command line tool.
+    """
+
     sdxl_refiner_negative_aesthetic_scores: _types.OptionalFloats = None
+    """
+    Optional list of negative influence SDXL-refiner override aesthetic-score conditioning values, 
+    this corresponds to the ``--sdxl-refiner-negative-aesthetic-scores`` argument of the dgenerate
+    command line tool.
+    """
+
     sdxl_refiner_negative_original_sizes: _types.OptionalSizes = None
+    """
+    Optional list of negative influence SDXL-refiner override original-size micro-conditioning 
+    parameters, this corresponds to the ``--sdxl-refiner-negative-original-sizes`` argument of 
+    the dgenerate command line tool.
+    """
+
     sdxl_refiner_negative_target_sizes: _types.OptionalSizes = None
+    """
+    Optional list of negative influence SDXL-refiner override target-size micro-conditioning 
+    parameters, this corresponds to the ``--sdxl-refiner-negative-target-sizes`` argument of 
+    the dgenerate command line tool.
+    """
+
     sdxl_refiner_negative_crops_coords_top_left: _types.OptionalCoordinateList = None
+    """
+    Optional list of negative influence SDXL-refiner top-left crop coords micro-conditioning parameters, 
+    this corresponds to the ``--sdxl-refiner-negative-crops-coords-top-left`` argument of the dgenerate 
+    command line tool.
+    """
 
     vae_uri: _types.OptionalUri = None
     """
