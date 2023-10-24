@@ -3017,7 +3017,7 @@ class DiffusionPipelineWrapper:
             args['strength'] = strength
 
         if self._control_net_uris:
-            control_images = user_args['control_images']
+            control_images = user_args.get('control_images')
 
             if not control_images:
                 raise ValueError(
@@ -3028,7 +3028,7 @@ class DiffusionPipelineWrapper:
 
             if control_images_cnt < control_net_uris_cnt:
                 # Pad it out so that the last image mentioned is used
-                # for the rest of the control nets specified
+                # for the rest of the controlnets specified
 
                 for i in range(0, control_net_uris_cnt - control_images_cnt):
                     control_images.append(control_images[-1])
