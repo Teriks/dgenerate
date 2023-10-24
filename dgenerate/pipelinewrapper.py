@@ -802,7 +802,7 @@ def parse_flax_control_net_uri(uri: _types.Uri) -> FlaxControlNetUri:
 
         if from_torch is not None:
             try:
-                from_torch = bool(from_torch)
+                from_torch = _types.parse_bool(from_torch)
             except ValueError:
                 raise InvalidControlNetUriError(
                     f'Flax Control Net from_torch must be undefined or boolean (true or false), received: {from_torch}')
