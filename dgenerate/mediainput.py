@@ -404,20 +404,69 @@ def _exif_orient(image):
 
 class ImageSeedParseResult:
     """
-    The result of parsing an --image-seed path
+    The result of parsing an --image-seeds uri
     """
-    seed_path: _types.OptionalPath = None
-    mask_path: _types.OptionalPath = None
-    control_path: _types.OptionalPath = None
-    resize_resolution: _types.OptionalSize = None
 
-    def is_single_image(self) -> bool:
+    seed_path: _types.Path
+    """
+    The seed path, contains an image path that will be used for img2img operations
+    or the base image in inpaint operations. Or a controlnet guidance path, or a comma
+    seperated list of controlnet guidance paths. A path being a file path, or an HTTP/HTTPS URL.
+    """
+
+    mask_path: _types.OptionalPath = None
+    """
+    Optional path to an inpaint mask, may be an HTTP/HTTPS URL or file path.
+    """
+
+    control_path: _types.OptionalPath = None
+    """
+    Optional controlnet guidance path, or comma seperated list of controlnet guidance paths. 
+    This field is only used when the secondary syntax of `--image-seeds` is encountered.
+    
+    In parses such as:
+    
+        * ``--image-seeds "img2img.png;control=control.png"``
+        * ``--image-seeds "img2img.png;control=control1.png, control2.png"``
+        * ``--image-seeds "img2img.png;mask=mask.png;control=control.png"``
+        * ``--image-seeds "img2img.png;mask=mask.png;control=control1.png, control2.png"``
+        
+    """
+
+    resize_resolution: _types.OptionalSize = None
+    """
+    Per image user specified resize resolution for all components of the `--image-seed` specification.
+    
+    This field available in parses such as:
+    
+        * ``--image-seeds "img2img.png;512x512"``
+        * ``--image-seeds "img2img.png;mask.png;512x512"``
+        * ``--image-seeds "img2img.png;control=control.png;resize=512x512"``
+        * ``--image-seeds "img2img.png;control=control1.png, control2.png;resize=512x512"``
+        * ``--image-seeds "img2img.png;mask=mask.png;control=control.png;resize=512x512"``
+        * ``--image-seeds "img2img.png;mask=mask.png;control=control1.png, control2.png;resize=512x512"``
+    """
+
+    def is_single_spec(self) -> bool:
         """
-        Did this image seed path only specify a singular image/video in the seed_path property?
+        Is this ``--image-seeds`` uri a single resource or resource group specification existing
+        within the **seed_path** attribute of this object?
+
+        For instance could it be a single img2img image definition, or a controlnet guidance
+        image or list of controlnet guidance images?
+
+        Possible parses which trigger this condition are:
+
+            * ``--image-seeds "img2img.png"``
+            * ``--image-seeds "control-image.png"``
+            * ``--image-seeds "control-image1.png, control-image2.png"``
+
+        Since this is an ambiguous parse, it must be resolved later with the help of other specified arguments.
+        Such as by the specification of `--control-nets`, which makes the intention unambiguous.
 
         :return: bool
         """
-        return self.seed_path is not None and self.mask_path is None and self.control_path is None
+        return self.mask_path is None and self.control_path is None
 
 
 # noinspection HttpUrlsUsage
@@ -767,71 +816,6 @@ def mime_type_is_supported(mimetype: str) -> bool:
            mimetype_is_video(mimetype)
 
 
-class ImageSeedInfo:
-    """Information acquired about an `--image-seeds` uri"""
-
-    anim_fps: _types.OptionalInteger
-    """
-    Animation frames per second in the case that :py:attr:`.ImageSeedInfo.is_animation` is True
-    """
-
-    anim_frame_duration: _types.OptionalFloat
-    """
-    Animation frame duration in milliseconds in the case that :py:attr:`.ImageSeedInfo.is_animation` is True
-    """
-
-    total_frames: _types.OptionalInteger
-    """
-    Animation frame count in the case that :py:attr:`.ImageSeedInfo.is_animation` is True
-    """
-
-    is_animation: bool
-    """
-    Does this image seed specification result in an animation?
-    """
-
-    def __init__(self,
-                 is_animation: bool,
-                 total_frames: _types.OptionalInteger,
-                 anim_fps: _types.OptionalInteger,
-                 anim_frame_duration: _types.OptionalFloat):
-        self.anim_fps = anim_fps
-        self.anim_frame_duration = anim_frame_duration
-        self.is_animation = is_animation
-        self.total_frames = total_frames
-
-
-def get_image_seed_info(uri: typing.Union[_types.Uri, ImageSeedParseResult],
-                        frame_start: int = 0,
-                        frame_end: _types.OptionalInteger = None) -> ImageSeedInfo:
-    """
-    Get an informational object from a dgenerate `--image-seeds` uri
-
-    :param uri: The uri string or :py:class:`.ImageSeedParseResult`
-    :param frame_start: slice start
-    :param frame_end: slice end
-    :return: :py:class:`.ImageSeedInfo`
-    """
-    with next(iterate_image_seed(uri, frame_start, frame_end)) as seed:
-        return ImageSeedInfo(seed.is_animation_frame, seed.total_frames, seed.anim_fps, seed.anim_frame_duration)
-
-
-def get_control_image_info(path: typing.Union[_types.Path, ImageSeedParseResult],
-                           frame_start: int = 0,
-                           frame_end: _types.OptionalInteger = None) -> ImageSeedInfo:
-    """
-    Get an informational object from a dgenerate `--image-seeds` path that is known to be a singular control image/video.
-    More efficient in this case.
-
-    :param path: The path string or :py:class:`.ImageSeedParseResult`
-    :param frame_start: slice start
-    :param frame_end: slice end
-    :return: :py:class:`.ImageSeedInfo`
-    """
-    with next(iterate_control_image(path, frame_start, frame_end)) as seed:
-        return ImageSeedInfo(seed.is_animation_frame, seed.total_frames, seed.anim_fps, seed.anim_frame_duration)
-
-
 def create_and_exif_orient_pil_img(
         path_or_file: typing.Union[typing.BinaryIO, str],
         file_source: str,
@@ -1149,9 +1133,9 @@ class ImageSeed:
     An optional inpaint mask image, may be None
     """
 
-    control_image: typing.Union[PIL.Image.Image, typing.List[PIL.Image.Image], None]
+    control_images: typing.Optional[typing.List[PIL.Image.Image]]
     """
-    A control guidance image, or a list of control guidance images, or None.
+    List of control guidance images, or None.
     """
 
     is_animation_frame: bool
@@ -1162,10 +1146,10 @@ class ImageSeed:
     def __init__(self,
                  image: typing.Optional[PIL.Image.Image] = None,
                  mask_image: typing.Optional[PIL.Image.Image] = None,
-                 control_image: typing.Union[PIL.Image.Image, typing.List[PIL.Image.Image], None] = None):
+                 control_images: typing.Optional[typing.List[PIL.Image.Image]] = None):
         self.image = image
         self.mask_image = mask_image
-        self.control_image = control_image
+        self.control_images = control_images
 
     def __enter__(self):
         return self
@@ -1177,11 +1161,8 @@ class ImageSeed:
         if self.mask_image is not None:
             self.mask_image.close()
 
-        if isinstance(self.control_image, list):
-            for i in self.control_image:
-                i.close()
-        elif self.control_image is not None:
-            self.control_image.close()
+        for i in self.control_images:
+            i.close()
 
 
 def _check_image_dimensions_match(images):
@@ -1218,6 +1199,19 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
     """
     Parse and load images/videos in an `--image-seeds` uri and return a generator that
     produces :py:class:`.ImageSeed` objects while progressively reading those files.
+
+    This method is used to iterate over an `--image-seeds` uri in the case that the image source
+    mentioned is to be used for img2img / inpaint operations, and handles this syntax:
+
+        * ``--image-seeds "img2img.png;mask.png"``
+        * ``--image-seeds "img2img.png;mask.png;512x512"``
+
+    Additionally controlnet guidance resources are handled via the secondary syntax:
+
+        * ``--image-seeds "img2img.png;control=control1.png, control2.png"``
+        * ``--image-seeds "img2img.png;control=control1.png, control2.png;resize=512x512"``
+        * ``--image-seeds "img2img.png;mask=mask.png;control=control1.png, control2.png"``
+        * ``--image-seeds "img2img.png;mask=mask.png;control=control1.png, control2.png;resize=512x512"``
 
     One or more :py:class:`.ImageSeed` objects may be yielded depending on whether an animation is being read.
 
@@ -1280,32 +1274,20 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
         for frame in reader:
 
             if parse_result.mask_path is not None and parse_result.control_path is not None:
-                if len(frame) == 3:
-                    # Single control image
-                    image_seed = ImageSeed(image=frame[0],
-                                           mask_image=frame[1],
-                                           control_image=frame[2])
-                else:
-                    # Multiple control images
-                    image_seed = ImageSeed(image=frame[0],
-                                           mask_image=frame[1],
-                                           control_image=frame[2:])
+                image_seed = ImageSeed(image=frame[0],
+                                       mask_image=frame[1],
+                                       control_images=frame[2:])
             elif parse_result.mask_path is not None:
                 image_seed = ImageSeed(image=frame[0], mask_image=frame[1])
             elif parse_result.control_path is not None:
-                if len(frame) == 2:
-                    # Single control image
-                    image_seed = ImageSeed(image=frame[0], control_image=frame[1])
-                else:
-                    # Multiple control images
-                    image_seed = ImageSeed(image=frame[0], control_image=frame[1:])
+                image_seed = ImageSeed(image=frame[0], control_images=frame[1:])
             else:
                 image_seed = ImageSeed(image=frame[0])
 
             if not dimensions_checked:
                 images = list(_flatten([image_seed.image if image_seed.image else [],
                                         image_seed.mask_image if image_seed.mask_image else [],
-                                        image_seed.control_image if image_seed.control_image else []]))
+                                        image_seed.control_images if image_seed.control_images else []]))
 
                 _check_image_dimensions_match(images)
 
@@ -1320,7 +1302,7 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
             yield image_seed
 
 
-def iterate_control_image(path: typing.Union[str, ImageSeedParseResult],
+def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
                           frame_start: int = 0,
                           frame_end: _types.OptionalInteger = None,
                           resize_resolution: _types.OptionalSize = None,
@@ -1332,11 +1314,18 @@ def iterate_control_image(path: typing.Union[str, ImageSeedParseResult],
 
     One or more :py:class:`.ImageSeed` objects may be yielded depending on whether an animation is being read.
 
-    This method is to be used when it is known that there is only a control image/video specification in the path.
+    This can consist of a single resource path or a list of comma seperated image and
+    video resource paths, which may be files on disk or remote files (http / https).
 
-    The image or images read will be available from the :py:attr:`.ImageSeed.control_image` attribute.
+    This method is to be used when it is known that there is only a controlnet guidance resource
+    specification in the path, and it handles this specification syntax:
 
-    :param path: `--image-seeds` path or :py:class:`.ImageSeedParseResult`
+        * ``--image-seeds "control1.png"``
+        * ``--image-seeds "control1.png, control2.png"``
+
+    The image or images read will be available from the :py:attr:`.ImageSeed.control_images` attribute.
+
+    :param uri: `--image-seeds` uri or :py:class:`.ImageSeedParseResult`
     :param frame_start: starting frame, inclusive value
     :param frame_end: optional end frame, inclusive value
     :param resize_resolution: optional resize resolution
@@ -1352,20 +1341,20 @@ def iterate_control_image(path: typing.Union[str, ImageSeedParseResult],
         if frame_start > frame_end:
             raise ValueError('frame_start must be less than or equal to frame_end')
 
-    if isinstance(path, ImageSeedParseResult):
-        path = path.seed_path
+    if isinstance(uri, ImageSeedParseResult):
+        uri = uri.seed_path
 
     reader_specs = []
 
     if isinstance(preprocessor, list):
         reader_specs += [
             AnimationReaderSpec(p.strip(), preprocessor[idx])
-            for idx, p in enumerate(path.split(','))
+            for idx, p in enumerate(uri.split(','))
         ]
     else:
         reader_specs += [
             AnimationReaderSpec(p.strip(), preprocessor)
-            for p in path.split(',')
+            for p in uri.split(',')
         ]
 
     with MultiAnimationReader(specs=reader_specs,
@@ -1378,15 +1367,10 @@ def iterate_control_image(path: typing.Union[str, ImageSeedParseResult],
         dimensions_checked = False
 
         for frame in reader:
-            if len(frame) > 0:
-                # Multiple control images
-                image_seed = ImageSeed(control_image=frame)
-            else:
-                # Single control images
-                image_seed = ImageSeed(control_image=frame[0])
+            image_seed = ImageSeed(control_images=frame)
 
             if not dimensions_checked:
-                images = list(_flatten([image_seed.control_image]))
+                images = list(_flatten([image_seed.control_images]))
 
                 _check_image_dimensions_match(images)
 
@@ -1399,3 +1383,90 @@ def iterate_control_image(path: typing.Union[str, ImageSeedParseResult],
                 image_seed.frame_index = reader.frame_index
                 image_seed.total_frames = reader.total_frames if is_animation else None
             yield image_seed
+
+
+class ImageSeedInfo:
+    """Information acquired about an `--image-seeds` uri"""
+
+    anim_fps: _types.OptionalInteger
+    """
+    Animation frames per second in the case that :py:attr:`.ImageSeedInfo.is_animation` is True
+    """
+
+    anim_frame_duration: _types.OptionalFloat
+    """
+    Animation frame duration in milliseconds in the case that :py:attr:`.ImageSeedInfo.is_animation` is True
+    """
+
+    total_frames: _types.OptionalInteger
+    """
+    Animation frame count in the case that :py:attr:`.ImageSeedInfo.is_animation` is True
+    """
+
+    is_animation: bool
+    """
+    Does this image seed specification result in an animation?
+    """
+
+    def __init__(self,
+                 is_animation: bool,
+                 total_frames: _types.OptionalInteger,
+                 anim_fps: _types.OptionalInteger,
+                 anim_frame_duration: _types.OptionalFloat):
+        self.anim_fps = anim_fps
+        self.anim_frame_duration = anim_frame_duration
+        self.is_animation = is_animation
+        self.total_frames = total_frames
+
+
+def get_image_seed_info(uri: typing.Union[_types.Uri, ImageSeedParseResult],
+                        frame_start: int = 0,
+                        frame_end: _types.OptionalInteger = None) -> ImageSeedInfo:
+    """
+    Get an informational object from a dgenerate `--image-seeds` uri.
+
+    This method is used to obtain information about an `--image-seeds` uri in the case that the
+    image source mentioned is to be used for img2img / inpaint operations, and handles this syntax:
+
+        * ``--image-seeds "img2img.png;mask.png"``
+        * ``--image-seeds "img2img.png;mask.png;512x512"``
+
+    Additionally control net image sources are handled via the secondary syntax:
+
+        * ``--image-seeds "img2img.png;control=control1.png, control2.png"``
+        * ``--image-seeds "img2img.png;control=control1.png, control2.png;resize=512x512"``
+        * ``--image-seeds "img2img.png;mask=mask.png;control=control1.png, control2.png"``
+        * ``--image-seeds "img2img.png;mask=mask.png;control=control1.png, control2.png;resize=512x512"``
+
+    :param uri: The uri string or :py:class:`.ImageSeedParseResult`
+    :param frame_start: slice start
+    :param frame_end: slice end
+    :return: :py:class:`.ImageSeedInfo`
+    """
+    with next(iterate_image_seed(uri, frame_start, frame_end)) as seed:
+        return ImageSeedInfo(seed.is_animation_frame, seed.total_frames, seed.anim_fps, seed.anim_frame_duration)
+
+
+def get_control_image_info(uri: typing.Union[_types.Path, ImageSeedParseResult],
+                           frame_start: int = 0,
+                           frame_end: _types.OptionalInteger = None) -> ImageSeedInfo:
+    """
+    Get an informational object from a dgenerate `--image-seeds` uri that is known to be a
+    control image/video specification.
+
+    This can consist of a single resource path or a list of comma seperated image and
+    video resource paths, which may be files on disk or remote files (http / https).
+
+    This method is to be used when it is known that there is only a control image/video specification in the path,
+    and it handles this specification syntax:
+
+        * ``--image-seeds "control1.png"``
+        * ``--image-seeds "control1.png, control2.png"``
+
+    :param uri: The path string or :py:class:`.ImageSeedParseResult`
+    :param frame_start: slice start
+    :param frame_end: slice end
+    :return: :py:class:`.ImageSeedInfo`
+    """
+    with next(iterate_control_image(uri, frame_start, frame_end)) as seed:
+        return ImageSeedInfo(seed.is_animation_frame, seed.total_frames, seed.anim_fps, seed.anim_frame_duration)

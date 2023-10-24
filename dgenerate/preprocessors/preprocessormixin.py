@@ -21,10 +21,10 @@
 import PIL.Image
 
 import dgenerate.image as _d_image
+import dgenerate.image as _image
 import dgenerate.messages as _messages
 import dgenerate.preprocessors.preprocessor as _preprocessor
 import dgenerate.types as _types
-import dgenerate.image as _image
 
 
 class ImagePreprocessorMixin:
