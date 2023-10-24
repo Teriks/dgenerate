@@ -46,7 +46,7 @@ class PreprocessorHelpUsageError(Exception):
 
 def image_preprocessor_help(args: typing.Sequence[str], throw: bool = False):
     """
-    Implements --image-preprocessor-help command line option
+    Implements ``--image-preprocessor-help`` command line option
 
     :param args: arguments (preprocessor names, or empty list)
     :param throw: Should we throw exceptions or handle them?

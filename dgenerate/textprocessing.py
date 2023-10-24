@@ -47,7 +47,7 @@ class ConceptUriParser:
     """
     Parser for dgenerate concept paths with arguments, IE: concept;arg1="a";arg2="b"
 
-    Used for --vae, --lora etc. as well as image preprocessor plugin module arguments.
+    Used for ``--vae``, ``--lora`` etc. as well as image preprocessor plugin module arguments.
     """
 
     def __init__(self, concept_name: _types.Name, known_args=None):

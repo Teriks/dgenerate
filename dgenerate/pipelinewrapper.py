@@ -403,35 +403,35 @@ class InvalidModelPathError(Exception):
 
 class InvalidSDXLRefinerUriError(InvalidModelPathError):
     """
-    Error in --sdxl-refiner uri
+    Error in ``--sdxl-refiner`` uri
     """
     pass
 
 
 class InvalidVaeUriError(InvalidModelPathError):
     """
-    Error in --vae uri
+    Error in ``--vae`` uri
     """
     pass
 
 
 class InvalidControlNetUriError(InvalidModelPathError):
     """
-    Error in --control-nets uri
+    Error in ``--control-nets`` uri
     """
     pass
 
 
 class InvalidLoRAUriError(InvalidModelPathError):
     """
-    Error in --lora uri
+    Error in ``--lora`` uri
     """
     pass
 
 
 class InvalidTextualInversionUriError(InvalidModelPathError):
     """
-    Error in --textual-inversions uri
+    Error in ``--textual-inversions`` uri
     """
     pass
 
@@ -515,7 +515,7 @@ class DataTypes(enum.Enum):
 
 def supported_data_type_strings():
     """
-    Return a list of supported --dtype strings
+    Return a list of supported ``--dtype`` strings
     """
     return ['auto', 'float16', 'float32']
 
@@ -529,9 +529,9 @@ def supported_data_type_enums() -> typing.List[DataTypes]:
 
 def get_data_type_enum(id_str: typing.Union[DataTypes, str]) -> DataTypes:
     """
-    Convert a --dtype string to its :py:class:`.DataTypes` enum value
+    Convert a ``--dtype`` string to its :py:class:`.DataTypes` enum value
 
-    :param id_str: --dtype string
+    :param id_str: ``--dtype`` string
     :return: :py:class:`.DataTypes`
     """
 
@@ -545,10 +545,10 @@ def get_data_type_enum(id_str: typing.Union[DataTypes, str]) -> DataTypes:
 
 def get_data_type_string(data_type_enum: DataTypes) -> str:
     """
-    Convert a :py:class:`.DataTypes` enum value to its --dtype string
+    Convert a :py:class:`.DataTypes` enum value to its ``--dtype`` string
 
     :param data_type_enum: :py:class:`.DataTypes` value
-    :return: --dtype string
+    :return: ``--dtype`` string
     """
 
     model_type = get_data_type_enum(data_type_enum)
@@ -560,7 +560,7 @@ def get_data_type_string(data_type_enum: DataTypes) -> str:
 
 class ModelTypes(enum.Enum):
     """
-    Enum representation of --model-type
+    Enum representation of ``--model-type``
     """
     TORCH = 0
     TORCH_PIX2PIX = 1
@@ -573,7 +573,7 @@ class ModelTypes(enum.Enum):
 
 def supported_model_type_strings():
     """
-    Return a list of supported --model-type strings
+    Return a list of supported ``--model-type`` strings
     """
     base_set = ['torch', 'torch-pix2pix', 'torch-sdxl', 'torch-sdxl-pix2pix', 'torch-upscaler-x2', 'torch-upscaler-x4']
     if have_jax_flax():
@@ -591,9 +591,9 @@ def supported_model_type_enums() -> typing.List[ModelTypes]:
 
 def get_model_type_enum(id_str: typing.Union[ModelTypes, str]) -> ModelTypes:
     """
-    Convert a --model-type string to its :py:class:`.ModelTypes` enum value
+    Convert a ``--model-type`` string to its :py:class:`.ModelTypes` enum value
 
-    :param id_str: --model-type string
+    :param id_str: ``--model-type`` string
     :return: :py:class:`.ModelTypes`
     """
 
@@ -611,10 +611,10 @@ def get_model_type_enum(id_str: typing.Union[ModelTypes, str]) -> ModelTypes:
 
 def get_model_type_string(model_type_enum: ModelTypes) -> str:
     """
-    Convert a :py:class:`.ModelTypes` enum value to its --model-type string
+    Convert a :py:class:`.ModelTypes` enum value to its ``--model-type`` string
 
     :param model_type_enum: :py:class:`.ModelTypes` value
-    :return: --model-type string
+    :return: ``--model-type`` string
     """
 
     model_type = get_model_type_enum(model_type_enum)

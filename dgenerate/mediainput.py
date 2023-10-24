@@ -404,7 +404,7 @@ def _exif_orient(image):
 
 class ImageSeedParseResult:
     """
-    The result of parsing an --image-seeds uri
+    The result of parsing an ``--image-seeds`` uri
     """
 
     seed_path: _types.Path
