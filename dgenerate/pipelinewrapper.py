@@ -96,6 +96,7 @@ _VAE_CACHE_SIZE = 0
 def pipeline_cache_size() -> int:
     """
     Return the estimated memory usage in bytes of all diffusers pipelines currently cached in memory.
+
     :return: memory usage in bytes.
     """
     return _PIPELINE_CACHE_SIZE
@@ -104,6 +105,7 @@ def pipeline_cache_size() -> int:
 def vae_cache_size() -> int:
     """
     Return the estimated memory usage in bytes of all user specified VAEs currently cached in memory.
+
     :return:  memory usage in bytes.
     """
     return _VAE_CACHE_SIZE
@@ -112,7 +114,8 @@ def vae_cache_size() -> int:
 def control_net_cache_size() -> int:
     """
     Return the estimated memory usage in bytes of all user specified ControlNet models currently cached in memory.
-    :return:
+
+    :return:  memory usage in bytes.
     """
     return _CONTROL_NET_CACHE_SIZE
 
@@ -2072,6 +2075,9 @@ class DiffusionArguments:
     image: typing.Optional[PIL.Image.Image] = None
     mask_image: typing.Optional[PIL.Image.Image] = None
     control_images: typing.Optional[typing.List[PIL.Image.Image]] = None
+    width: _types.OptionalSize = None
+    height: _types.OptionalSize = None
+    batch_size: _types.OptionalInteger = None
     sdxl_second_prompt: _types.OptionalPrompt = None
     sdxl_refiner_prompt: _types.OptionalPrompt = None
     sdxl_refiner_second_prompt: _types.OptionalPrompt = None
@@ -2450,9 +2456,11 @@ class DiffusionPipelineWrapper:
         DiffusionPipelineWrapper._LAST_CALLED_PIPE = pipeline
         return r
 
+    @property
     def local_files_only(self) -> bool:
         """
-        Currently set value for local_files_only
+        Currently set value for **local_files_only**
+
         :return:
         """
         return self._local_files_only
