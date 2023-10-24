@@ -203,20 +203,25 @@ def get_type_of_optional(hinted_type):
     return None
 
 
-def parse_bool(string: str):
+def parse_bool(string_or_bool: typing.Union[str, bool]):
     """
     Parse a case insensitive boolean value from a string, for example "true" or "false"
 
+    Additionally, values that are already bool are passed through.
+
     :raises: :py:exc:`ValueError` on parse failure.
 
-    :param string: the string
+    :param string_or_bool: the string, or a bool value
     :return: python boolean type equivalent
     """
+    if isinstance(string_or_bool, bool):
+        return string_or_bool
+
     try:
-        return {'true': True, 'false': False}[string.strip().lower()]
+        return {'true': True, 'false': False}[string_or_bool.strip().lower()]
     except KeyError:
         raise ValueError(
-            f'"{string}" is not a boolean value')
+            f'"{string_or_bool}" is not a boolean value')
 
 
 def fullname(obj):

@@ -196,12 +196,15 @@ class ImagePreprocessor:
         sig_args = spec.args[1:]
         defaults_cnt = len(spec.defaults) if spec.defaults else 0
         no_defaults_before = len(sig_args) - defaults_cnt
+
+        default_idx = 0
         for idx, arg in enumerate(sig_args):
             if idx < no_defaults_before:
                 args_with_defaults.append((_textprocessing.dashup(arg),))
             else:
                 args_with_defaults.append((_textprocessing.dashup(arg),
-                                           spec.defaults[idx - defaults_cnt]))
+                                           spec.defaults[default_idx]))
+                default_idx += 1
 
         return args_with_defaults
 
