@@ -630,9 +630,9 @@ def get_model_type_string(model_type_enum: ModelTypes) -> str:
 
 def model_type_is_upscaler(model_type: typing.Union[ModelTypes, str]) -> bool:
     """
-    Does a --model-type string or :py:class:`.ModelTypes` enum value represent an upscaler model?
+    Does a ``--model-type`` string or :py:class:`.ModelTypes` enum value represent an upscaler model?
 
-    :param model_type: --model-type string or :py:class:`.ModelTypes` enum value
+    :param model_type: ``--model-type`` string or :py:class:`.ModelTypes` enum value
     :return: bool
     """
     model_type = get_model_type_string(model_type)
@@ -642,9 +642,9 @@ def model_type_is_upscaler(model_type: typing.Union[ModelTypes, str]) -> bool:
 
 def model_type_is_sdxl(model_type: typing.Union[ModelTypes, str]) -> bool:
     """
-    Does a --model-type string or :py:class:`.ModelTypes` enum value represent an SDXL model?
+    Does a ``--model-type`` string or :py:class:`.ModelTypes` enum value represent an SDXL model?
 
-    :param model_type: --model-type string or :py:class:`.ModelTypes` enum value
+    :param model_type: ``--model-type`` string or :py:class:`.ModelTypes` enum value
     :return: bool
     """
     model_type = get_model_type_string(model_type)
@@ -654,9 +654,9 @@ def model_type_is_sdxl(model_type: typing.Union[ModelTypes, str]) -> bool:
 
 def model_type_is_torch(model_type: typing.Union[ModelTypes, str]) -> bool:
     """
-    Does a --model-type string or :py:class:`.ModelTypes` enum value represent an Torch model?
+    Does a ``--model-type`` string or :py:class:`.ModelTypes` enum value represent an Torch model?
 
-    :param model_type: --model-type string or :py:class:`.ModelTypes` enum value
+    :param model_type: ``--model-type`` string or :py:class:`.ModelTypes` enum value
     :return: bool
     """
     model_type = get_model_type_string(model_type)
@@ -666,9 +666,9 @@ def model_type_is_torch(model_type: typing.Union[ModelTypes, str]) -> bool:
 
 def model_type_is_flax(model_type: typing.Union[ModelTypes, str]) -> bool:
     """
-    Does a --model-type string or :py:class:`.ModelTypes` enum value represent an Flax model?
+    Does a ``--model-type`` string or :py:class:`.ModelTypes` enum value represent an Flax model?
 
-    :param model_type: --model-type string or :py:class:`.ModelTypes` enum value
+    :param model_type: ``--model-type`` string or :py:class:`.ModelTypes` enum value
     :return: bool
     """
     model_type = get_model_type_string(model_type)
@@ -678,9 +678,9 @@ def model_type_is_flax(model_type: typing.Union[ModelTypes, str]) -> bool:
 
 def model_type_is_pix2pix(model_type: typing.Union[ModelTypes, str]) -> bool:
     """
-    Does a --model-type string or :py:class:`.ModelTypes` enum value represent an pix2pix type model?
+    Does a ``--model-type`` string or :py:class:`.ModelTypes` enum value represent an pix2pix type model?
 
-    :param model_type: --model-type string or :py:class:`.ModelTypes` enum value
+    :param model_type: ``--model-type`` string or :py:class:`.ModelTypes` enum value
     :return: bool
     """
     model_type = get_model_type_string(model_type)
@@ -731,7 +731,7 @@ def _get_torch_dtype(dtype: typing.Union[DataTypes, torch.dtype, str, None]) -> 
 
 class FlaxControlNetUri:
     """
-    Representation of --control-nets uri when --model-type flax*
+    Representation of ``--control-nets`` uri when ``--model-type`` flax*
     """
 
     def __init__(self, model, scale, revision, subfolder, dtype, from_torch):
@@ -788,9 +788,9 @@ class FlaxControlNetUri:
 
 def parse_flax_control_net_uri(uri: _types.Uri) -> FlaxControlNetUri:
     """
-    Parse a --model-type flax* --control-nets uri specification and return an object representing its constituents
+    Parse a ``--model-type`` flax* ``--control-nets`` uri specification and return an object representing its constituents
 
-    :param uri: string with --control-nets uri syntax
+    :param uri: string with ``--control-nets`` uri syntax
 
     :raise: :py:class:`.InvalidControlNetUriError`
 
@@ -836,7 +836,7 @@ def parse_flax_control_net_uri(uri: _types.Uri) -> FlaxControlNetUri:
 
 class TorchControlNetUri:
     """
-    Representation of --control-nets uri when --model-type torch*
+    Representation of ``--control-nets`` uri when ``--model-type`` torch*
     """
 
     def __init__(self, model, scale, start, end, revision, variant, subfolder, dtype):
@@ -911,9 +911,9 @@ class TorchControlNetUri:
 
 def parse_torch_control_net_uri(uri: _types.Uri) -> TorchControlNetUri:
     """
-    Parse a --model-type torch* --control-nets uri specification and return an object representing its constituents
+    Parse a ``--model-type`` torch* ``--control-nets`` uri specification and return an object representing its constituents
 
-    :param uri: string with --control-nets uri syntax
+    :param uri: string with ``--control-nets`` uri syntax
 
     :raise: :py:class:`.InvalidControlNetUriError`
 
@@ -971,7 +971,7 @@ def parse_torch_control_net_uri(uri: _types.Uri) -> TorchControlNetUri:
 
 class SDXLRefinerUri:
     """
-    Representation of --sdxl-refiner uri
+    Representation of ``--sdxl-refiner`` uri
     """
 
     def __init__(self, model, revision, variant, dtype, subfolder):
@@ -984,9 +984,9 @@ class SDXLRefinerUri:
 
 def parse_sdxl_refiner_uri(uri: _types.Uri) -> SDXLRefinerUri:
     """
-    Parse an --sdxl-refiner uri and return an object representing its constituents
+    Parse an ``--sdxl-refiner`` uri and return an object representing its constituents
 
-    :param uri: string with --sdxl-refiner uri syntax
+    :param uri: string with ``--sdxl-refiner`` uri syntax
 
     :raise: :py:class:`.InvalidSDXLRefinerUriError`
 
@@ -1015,7 +1015,7 @@ def parse_sdxl_refiner_uri(uri: _types.Uri) -> SDXLRefinerUri:
 
 class TorchVAEUri:
     """
-    Representation of --vae uri when --model-type torch*
+    Representation of ``--vae`` uri when ``--model-type`` torch*
     """
 
     def __init__(self, encoder, model, revision, variant, subfolder, dtype):
@@ -1029,9 +1029,9 @@ class TorchVAEUri:
 
 def parse_torch_vae_uri(uri: _types.Uri) -> TorchVAEUri:
     """
-    Parse a --model-type torch* --vae uri and return an object representing its constituents
+    Parse a ``--model-type`` torch* ``--vae`` uri and return an object representing its constituents
 
-    :param uri: string with --vae uri syntax
+    :param uri: string with ``--vae`` uri syntax
 
     :raise: :py:class:`.InvalidVaeUriError`
 
@@ -1064,7 +1064,7 @@ def parse_torch_vae_uri(uri: _types.Uri) -> TorchVAEUri:
 
 class FlaxVAEUri:
     """
-    Representation of --vae uri when --model-type flax*
+    Representation of ``--vae`` uri when ``--model-type`` flax*
     """
 
     def __init__(self, encoder, model, revision, dtype, subfolder):
@@ -1077,9 +1077,9 @@ class FlaxVAEUri:
 
 def parse_flax_vae_uri(uri: _types.Uri) -> FlaxVAEUri:
     """
-    Parse a --model-type flax* --vae uri and return an object representing its constituents
+    Parse a ``--model-type`` flax* ``--vae`` uri and return an object representing its constituents
 
-    :param uri: string with --vae uri syntax
+    :param uri: string with ``--vae`` uri syntax
 
     :raise: :py:class:`.InvalidVaeUriError`
 
@@ -1111,7 +1111,7 @@ def parse_flax_vae_uri(uri: _types.Uri) -> FlaxVAEUri:
 
 class LoRAUri:
     """
-    Representation of --lora uri
+    Representation of ``--lora`` uri
     """
 
     def __init__(self, model, scale, revision, subfolder, weight_name):
@@ -1142,9 +1142,9 @@ class LoRAUri:
 
 def parse_lora_uri(uri: _types.Uri) -> LoRAUri:
     """
-    Parse a --lora uri and return an object representing its constituents
+    Parse a ``--lora`` uri and return an object representing its constituents
 
-    :param uri: string with --lora uri syntax
+    :param uri: string with ``--lora`` uri syntax
 
     :raise: :py:class:`.InvalidLoRAUriError`
 
@@ -1164,7 +1164,7 @@ def parse_lora_uri(uri: _types.Uri) -> LoRAUri:
 
 class TextualInversionUri:
     """
-    Representation of --textual-inversions uri
+    Representation of ``--textual-inversions`` uri
     """
 
     def __init__(self, model, revision, subfolder, weight_name):
@@ -1194,9 +1194,9 @@ class TextualInversionUri:
 
 def parse_textual_inversion_uri(uri: _types.Uri) -> TextualInversionUri:
     """
-    Parse a --textual-inversions uri and return an object representing its constituents
+    Parse a ``--textual-inversions`` uri and return an object representing its constituents
 
-    :param uri: string with --textual-inversions uri syntax
+    :param uri: string with ``--textual-inversions`` uri syntax
 
     :raise: :py:class:`.InvalidTextualInversionUriError`
 
@@ -2547,14 +2547,14 @@ class DiffusionPipelineWrapper:
     @property
     def model_type_enum(self) -> ModelTypes:
         """
-        Currently set --model-type enum value
+        Currently set ``--model-type`` enum value
         """
         return self._model_type
 
     @property
     def model_type_string(self) -> str:
         """
-        Currently set --model-type string value
+        Currently set ``--model-type`` string value
         """
         return get_model_type_string(self._model_type)
 
