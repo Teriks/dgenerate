@@ -1127,7 +1127,7 @@ class LoRAPath:
     def load_on_pipeline(self, pipeline, **kwargs):
         if hasattr(pipeline, 'load_lora_weights'):
             _messages.debug_log('pipeline.load_lora_weights('
-                                + str(_types.get_public_attributes(self).update(kwargs)) + ')')
+                                + str(_types.get_public_attributes(self) | kwargs) + ')')
 
             pipeline.load_lora_weights(self.model,
                                        revision=self.revision,
@@ -1179,7 +1179,7 @@ class TextualInversionPath:
     def load_on_pipeline(self, pipeline, **kwargs):
         if hasattr(pipeline, 'load_textual_inversion'):
             _messages.debug_log('pipeline.load_textual_inversion(' +
-                                str(_types.get_public_attributes(self).update(kwargs)) + ')')
+                                str(_types.get_public_attributes(self) | kwargs) + ')')
 
             pipeline.load_textual_inversion(self.model,
                                             revision=self.revision,
@@ -2009,7 +2009,6 @@ class PipelineWrapperResult:
     The result of calling :py:class:`.DiffusionPipelineWrapper`
     """
     images: typing.Optional[typing.List[PIL.Image.Image]]
-    dgenerate_opts: typing.List[typing.Tuple[str, typing.Any]]
 
     @property
     def image_count(self):
@@ -2064,103 +2063,15 @@ class PipelineWrapperResult:
                     i.close()
                     self.images = None
 
-    def add_dgenerate_opt(self, name: str, value: typing.Any):
-        """
-        Add an option value to be used by :py:meth:`.PipelineWrapperResult.gen_dgenerate_config`
-
-        :param name: The option name
-        :param value: The option value
-        """
-        self.dgenerate_opts.append((name, value))
-
-    @staticmethod
-    def _set_opt_value_syntax(val):
-        if isinstance(val, tuple):
-            return _textprocessing.format_size(val)
-        if isinstance(val, list):
-            return ' '.join(PipelineWrapperResult._set_opt_value_syntax(v) for v in val)
-        return shlex.quote(str(val))
-
-    @staticmethod
-    def _format_option_pair(val):
-        if len(val) > 1:
-            opt_name, opt_value = val
-
-            if isinstance(opt_value, _prompt.Prompt):
-                header_len = len(opt_name) + 2
-                prompt_text = \
-                    _textprocessing.wrap(
-                        shlex.quote(str(opt_value)),
-                        subsequent_indent=' ' * header_len,
-                        width=75)
-
-                prompt_text = ' \\\n'.join(prompt_text.split('\n'))
-                return f'{opt_name} {prompt_text}'
-
-            return f'{opt_name} {PipelineWrapperResult._set_opt_value_syntax(opt_value)}'
-
-        solo_val = str(val[0])
-
-        if solo_val.startswith('-'):
-            return solo_val
-
-        # Not a switch option, some value
-        return shlex.quote(solo_val)
-
-    def gen_dgenerate_config(self,
-                             extra_args: typing.Optional[typing.Sequence[typing.Tuple[str, typing.Any]]] = None,
-                             extra_comments: typing.Optional[typing.Sequence[str]] = None):
-        """
-        Generate a valid dgenerate config file with a single invocation that reproduces this result.
-
-        :param extra_comments: Extra strings to use as comments after the
-            version check directive
-        :param extra_args: Extra invocation arguments to add to the config file.
-        :return: The configuration as a string
-        """
-
-        from .__init__ import __version__
-
-        config = f'#! dgenerate {__version__}\n\n'
-
-        if extra_comments:
-            wrote_comments = False
-            for comment in extra_comments:
-                wrote_comments = True
-                for part in comment.split('\n'):
-                    config += '# ' + part.rstrip()
-
-            if wrote_comments:
-                config += '\n\n'
-
-        opts = self.dgenerate_opts + (extra_args if extra_args else [])
-
-        for opt in opts[:-1]:
-            config += f'{self._format_option_pair(opt)} \\\n'
-
-        last = opts[-1]
-
-        if len(last) == 2:
-            config += self._format_option_pair(last)
-
-        return config
-
-    def gen_dgenerate_command(self,
-                              extra_args: typing.Optional[typing.Sequence[typing.Tuple[str, typing.Any]]] = None):
-        """
-        Generate a valid dgenerate command line invocation that reproduces this result.
-
-        :param extra_args: Extra arguments to add to the end of the command line.
-        :return: A string containing the dgenerate command line needed to reproduce this result.
-        """
-        return f'dgenerate {" ".join(f"{self._format_option_pair(opt)}" for opt in self.dgenerate_opts + list(extra_args))}'
-
 
 class DiffusionArguments:
     """
     Represents all possible arguments for a :py:class:`.DiffusionPipelineWrapper` call.
     """
     prompt: _types.OptionalPrompt = None
+    image: typing.Optional[PIL.Image.Image] = None
+    mask_image: typing.Optional[PIL.Image.Image] = None
+    control_images: typing.Optional[typing.List[PIL.Image.Image]] = None
     sdxl_second_prompt: _types.OptionalPrompt = None
     sdxl_refiner_prompt: _types.OptionalPrompt = None
     sdxl_refiner_second_prompt: _types.OptionalPrompt = None
@@ -2192,7 +2103,7 @@ class DiffusionArguments:
     guidance_rescale: _types.OptionalFloat = None
     inference_steps: _types.OptionalInteger = None
 
-    def get_pipeline_wrapper_args(self):
+    def get_pipeline_wrapper_kwargs(self):
         """
         Get the arguments dictionary needed to call :py:class:`.DiffusionPipelineWrapper`
 
@@ -2696,18 +2607,33 @@ class DiffusionPipelineWrapper:
         """
         return self._auth_token
 
-    def reconstruct_dgenerate_opts(self, shell_quote=True, **args) -> \
+    def reconstruct_dgenerate_opts(self,
+                                   args: typing.Optional[DiffusionArguments] = None,
+                                   extra_opts: typing.Optional[
+                                       typing.List[
+                                           typing.Union[typing.Tuple[str], typing.Tuple[str, typing.Any]]]] = None,
+                                   shell_quote=True,
+                                   **kwargs) -> \
             typing.List[typing.Union[typing.Tuple[str], typing.Tuple[str, typing.Any]]]:
         """
         Reconstruct dgenerates command line arguments from a particular set of pipeline wrapper call arguments.
 
-        See: :py:class:`.DiffusionArguments.get_pipeline_wrapper_args`
+        :param args: :py:class:`.DiffusionArguments` object to take values from
+
+        :param extra_opts: Extra option pairs to be added to the end of reconstructed options,
+            this should be a list of tuples of length 1 (switch only) or length 2 (switch with args)
 
         :param shell_quote: Shell quote and format the argument values? or return them raw.
-        :param args: pipeline wrapper keyword arguments
+
+        :param kwargs: pipeline wrapper keyword arguments, these will override values derived from
+            any :py:class:`.DiffusionArguments` object given to the *args* argument. See:
+            :py:class:`.DiffusionArguments.get_pipeline_wrapper_kwargs`
 
         :return: List of tuples of length 1 or 2 representing the option
         """
+
+        if args is not None:
+            kwargs = args.get_pipeline_wrapper_kwargs() | (kwargs if kwargs else dict())
 
         def _format_size(val):
             if val is None:
@@ -2715,65 +2641,65 @@ class DiffusionPipelineWrapper:
 
             return f'{val[0]}x{val[1]}'
 
-        batch_size: int = args.get('batch_size', None)
-        prompt: _prompt.Prompt = args.get('prompt', None)
-        sdxl_second_prompt: _prompt.Prompt = args.get('sdxl_second_prompt', None)
-        sdxl_refiner_prompt: _prompt.Prompt = args.get('sdxl_refiner_prompt', None)
-        sdxl_refiner_second_prompt: _prompt.Prompt = args.get('sdxl_refiner_second_prompt', None)
+        batch_size: int = kwargs.get('batch_size', None)
+        prompt: _prompt.Prompt = kwargs.get('prompt', None)
+        sdxl_second_prompt: _prompt.Prompt = kwargs.get('sdxl_second_prompt', None)
+        sdxl_refiner_prompt: _prompt.Prompt = kwargs.get('sdxl_refiner_prompt', None)
+        sdxl_refiner_second_prompt: _prompt.Prompt = kwargs.get('sdxl_refiner_second_prompt', None)
 
-        image = args.get('image', None)
-        control_image = args.get('control_image', None)
-        image_seed_strength = args.get('image_seed_strength', None)
-        upscaler_noise_level = args.get('upscaler_noise_level', None)
-        mask_image = args.get('mask_image', None)
-        seed = args.get('seed')
-        width = args.get('width', None)
-        height = args.get('height', None)
-        inference_steps = args.get('inference_steps')
-        guidance_scale = args.get('guidance_scale')
-        guidance_rescale = args.get('guidance_rescale')
-        image_guidance_scale = args.get('image_guidance_scale')
+        image = kwargs.get('image', None)
+        control_images = kwargs.get('control_images', None)
+        image_seed_strength = kwargs.get('image_seed_strength', None)
+        upscaler_noise_level = kwargs.get('upscaler_noise_level', None)
+        mask_image = kwargs.get('mask_image', None)
+        seed = kwargs.get('seed')
+        width = kwargs.get('width', None)
+        height = kwargs.get('height', None)
+        inference_steps = kwargs.get('inference_steps')
+        guidance_scale = kwargs.get('guidance_scale')
+        guidance_rescale = kwargs.get('guidance_rescale')
+        image_guidance_scale = kwargs.get('image_guidance_scale')
 
-        sdxl_refiner_inference_steps = args.get('sdxl_refiner_inference_steps')
-        sdxl_refiner_guidance_scale = args.get('sdxl_refiner_guidance_scale')
-        sdxl_refiner_guidance_rescale = args.get('sdxl_refiner_guidance_rescale')
+        sdxl_refiner_inference_steps = kwargs.get('sdxl_refiner_inference_steps')
+        sdxl_refiner_guidance_scale = kwargs.get('sdxl_refiner_guidance_scale')
+        sdxl_refiner_guidance_rescale = kwargs.get('sdxl_refiner_guidance_rescale')
 
-        sdxl_high_noise_fraction = args.get('sdxl_high_noise_fraction', None)
-        sdxl_aesthetic_score = args.get('sdxl_aesthetic_score', None)
+        sdxl_high_noise_fraction = kwargs.get('sdxl_high_noise_fraction', None)
+        sdxl_aesthetic_score = kwargs.get('sdxl_aesthetic_score', None)
 
         sdxl_original_size = \
-            _format_size(args.get('sdxl_original_size', None))
+            _format_size(kwargs.get('sdxl_original_size', None))
         sdxl_target_size = \
-            _format_size(args.get('sdxl_target_size', None))
+            _format_size(kwargs.get('sdxl_target_size', None))
         sdxl_crops_coords_top_left = \
-            _format_size(args.get('sdxl_crops_coords_top_left', None))
+            _format_size(kwargs.get('sdxl_crops_coords_top_left', None))
 
-        sdxl_negative_aesthetic_score = args.get('sdxl_negative_aesthetic_score', None)
+        sdxl_negative_aesthetic_score = kwargs.get('sdxl_negative_aesthetic_score', None)
 
         sdxl_negative_original_size = \
-            _format_size(args.get('sdxl_negative_original_size', None))
+            _format_size(kwargs.get('sdxl_negative_original_size', None))
         sdxl_negative_target_size = \
-            _format_size(args.get('sdxl_negative_target_size', None))
+            _format_size(kwargs.get('sdxl_negative_target_size', None))
         sdxl_negative_crops_coords_top_left = \
-            _format_size(args.get('sdxl_negative_crops_coords_top_left', None))
+            _format_size(kwargs.get('sdxl_negative_crops_coords_top_left', None))
 
-        sdxl_refiner_aesthetic_score = args.get('sdxl_refiner_aesthetic_score', None)
+        sdxl_refiner_aesthetic_score = kwargs.get('sdxl_refiner_aesthetic_score', None)
 
         sdxl_refiner_original_size = \
-            _format_size(args.get('sdxl_refiner_original_size', None))
+            _format_size(kwargs.get('sdxl_refiner_original_size', None))
         sdxl_refiner_target_size = \
-            _format_size(args.get('sdxl_refiner_target_size', None))
+            _format_size(kwargs.get('sdxl_refiner_target_size', None))
         sdxl_refiner_crops_coords_top_left = \
-            _format_size(args.get('sdxl_refiner_crops_coords_top_left', None))
+            _format_size(kwargs.get('sdxl_refiner_crops_coords_top_left', None))
 
-        sdxl_refiner_negative_aesthetic_score = args.get('sdxl_refiner_negative_aesthetic_score', None)
+        sdxl_refiner_negative_aesthetic_score = kwargs.get('sdxl_refiner_negative_aesthetic_score', None)
 
         sdxl_refiner_negative_original_size = \
-            _format_size(args.get('sdxl_refiner_negative_original_size', None))
+            _format_size(kwargs.get('sdxl_refiner_negative_original_size', None))
         sdxl_refiner_negative_target_size = \
-            _format_size(args.get('sdxl_refiner_negative_target_size', None))
+            _format_size(kwargs.get('sdxl_refiner_negative_target_size', None))
         sdxl_refiner_negative_crops_coords_top_left = \
-            _format_size(args.get('sdxl_refiner_negative_crops_coords_top_left', None))
+            _format_size(kwargs.get('sdxl_refiner_negative_crops_coords_top_left', None))
 
         opts = [(self.model_path,),
                 ('--model-type', self.model_type_string),
@@ -2783,7 +2709,7 @@ class DiffusionPipelineWrapper:
                 ('--guidance-scales', guidance_scale),
                 ('--seeds', seed)]
 
-        if batch_size is not None:
+        if batch_size is not None and batch_size > 1:
             opts.append(('--batch-size', batch_size))
 
         if guidance_rescale is not None:
@@ -2911,11 +2837,8 @@ class DiffusionPipelineWrapper:
 
             if mask_image is not None:
                 seed_args.append(f'mask={_image.get_filename(mask_image)}')
-            if control_image is not None:
-                if isinstance(control_image, list):
-                    seed_args.append(f'control={", ".join(_image.get_filename(c) for c in control_image)}')
-                else:
-                    seed_args.append(f'control={_image.get_filename(control_image)}')
+            if control_images:
+                seed_args.append(f'control={", ".join(_image.get_filename(c) for c in control_images)}')
 
             if isinstance(image, list):
                 opts.append(('--image-seeds',
@@ -2934,15 +2857,15 @@ class DiffusionPipelineWrapper:
             if image_seed_strength is not None:
                 opts.append(('--image-seed-strengths', image_seed_strength))
 
-        elif control_image is not None:
-            if isinstance(control_image, list):
-                opts.append(('--image-seeds',
-                             ', '.join(_image.get_filename(c) for c in control_image)))
-            else:
-                opts.append(('--image-seeds', _image.get_filename(control_image)))
+        elif control_images:
+            opts.append(('--image-seeds',
+                         ', '.join(_image.get_filename(c) for c in control_images)))
+
+        if extra_opts:
+            opts += extra_opts
 
         if shell_quote:
-            for idx, option in opts:
+            for idx, option in enumerate(opts):
                 if len(option) > 1:
                     name, value = option
                     if isinstance(value, (str, _prompt.Prompt)):
@@ -2958,6 +2881,114 @@ class DiffusionPipelineWrapper:
                         opts[idx] = (shlex.quote(solo_val),)
 
         return opts
+
+    @staticmethod
+    def _set_opt_value_syntax(val):
+        if isinstance(val, tuple):
+            return _textprocessing.format_size(val)
+        if isinstance(val, list):
+            return ' '.join(DiffusionPipelineWrapper._set_opt_value_syntax(v) for v in val)
+        return shlex.quote(str(val))
+
+    @staticmethod
+    def _format_option_pair(val):
+        if len(val) > 1:
+            opt_name, opt_value = val
+
+            if isinstance(opt_value, _prompt.Prompt):
+                header_len = len(opt_name) + 2
+                prompt_text = \
+                    _textprocessing.wrap(
+                        shlex.quote(str(opt_value)),
+                        subsequent_indent=' ' * header_len,
+                        width=75)
+
+                prompt_text = ' \\\n'.join(prompt_text.split('\n'))
+                return f'{opt_name} {prompt_text}'
+
+            return f'{opt_name} {DiffusionPipelineWrapper._set_opt_value_syntax(opt_value)}'
+
+        solo_val = str(val[0])
+
+        if solo_val.startswith('-'):
+            return solo_val
+
+        # Not a switch option, some value
+        return shlex.quote(solo_val)
+
+    def gen_dgenerate_config(self,
+                             args: typing.Optional[DiffusionArguments] = None,
+                             extra_opts: typing.Optional[
+                                 typing.List[typing.Union[typing.Tuple[str], typing.Tuple[str, typing.Any]]]] = None,
+                             extra_comments: typing.Optional[typing.Sequence[str]] = None,
+                             **kwargs):
+        """
+        Generate a valid dgenerate config file with a single invocation that reproduces this result.
+
+        :param args: :py:class:`.DiffusionArguments` object to take values from
+        :param extra_comments: Extra strings to use as comments after the initial
+            version check directive
+        :param extra_opts: Extra option pairs to be added to the end of reconstructed options
+            of the dgenerate invocation, this should be a list of tuples of length 1 (switch only)
+            or length 2 (switch with args)
+        :param kwargs: pipeline wrapper keyword arguments, these will override values derived from
+            any :py:class:`.DiffusionArguments` object given to the *args* argument. See:
+            :py:class:`.DiffusionArguments.get_pipeline_wrapper_kwargs`
+        :return: The configuration as a string
+        """
+
+        from .__init__ import __version__
+
+        config = f'#! dgenerate {__version__}\n\n'
+
+        if extra_comments:
+            wrote_comments = False
+            for comment in extra_comments:
+                wrote_comments = True
+                for part in comment.split('\n'):
+                    config += '# ' + part.rstrip()
+
+            if wrote_comments:
+                config += '\n\n'
+
+        opts = \
+            self.reconstruct_dgenerate_opts(args, **kwargs, shell_quote=False) + \
+            (extra_opts if extra_opts else [])
+
+        for opt in opts[:-1]:
+            config += f'{self._format_option_pair(opt)} \\\n'
+
+        last = opts[-1]
+
+        if len(last) == 2:
+            config += self._format_option_pair(last)
+
+        return config
+
+    def gen_dgenerate_command(self,
+                              args: typing.Optional[DiffusionArguments] = None,
+                              extra_opts: typing.Optional[
+                                  typing.List[typing.Union[typing.Tuple[str], typing.Tuple[str, typing.Any]]]] = None,
+                              **kwargs):
+        """
+        Generate a valid dgenerate command line invocation that reproduces this result.
+
+        :param args: :py:class:`.DiffusionArguments` object to take values from
+        :param extra_opts: Extra option pairs to be added to the end of reconstructed options
+            of the dgenerate invocation, this should be a list of tuples of length 1 (switch only)
+            or length 2 (switch with args)
+        :param kwargs: pipeline wrapper keyword arguments, these will override values derived from
+            any :py:class:`.DiffusionArguments` object given to the *args* argument. See:
+            :py:class:`.DiffusionArguments.get_pipeline_wrapper_kwargs`
+        :return: A string containing the dgenerate command line needed to reproduce this result.
+        """
+
+        opt_string = \
+            ' '.join(f"{self._format_option_pair(opt)}"
+                     for opt in self.reconstruct_dgenerate_opts(args, **kwargs,
+                                                                shell_quote=False) + extra_opts)
+
+        return f'dgenerate {opt_string}'
 
     def _pipeline_defaults(self, user_args):
         args = dict()
@@ -2978,21 +3009,21 @@ class DiffusionPipelineWrapper:
             args['strength'] = strength
 
         if self._control_net_uris:
-            control_image = user_args['control_image']
+            control_images = user_args['control_images']
 
-            if isinstance(control_image, list):
-                args['width'] = user_args.get('width', control_image[0].width)
-                args['height'] = user_args.get('height', control_image[0].height)
-            else:
-                args['width'] = user_args.get('width', control_image.width)
-                args['height'] = user_args.get('height', control_image.height)
+            if not control_images:
+                raise ValueError(
+                    'Must provide control images when using ControlNet models.')
+
+            args['width'] = user_args.get('width', control_images[0].width)
+            args['height'] = user_args.get('height', control_images[0].height)
 
             if self._pipeline_type == _PipelineTypes.BASIC:
-                args['image'] = control_image
+                args['image'] = control_images
             elif self._pipeline_type == _PipelineTypes.IMG2IMG or \
                     self._pipeline_type == _PipelineTypes.INPAINT:
                 args['image'] = user_args['image']
-                args['control_image'] = control_image
+                args['control_image'] = control_images
                 set_strength()
 
             mask_image = user_args.get('mask_image')
@@ -3579,11 +3610,15 @@ class DiffusionPipelineWrapper:
         # All other situations handled by BASIC type
         return _PipelineTypes.BASIC
 
-    def __call__(self, **kwargs) -> PipelineWrapperResult:
+    def __call__(self, args: typing.Optional[DiffusionArguments] = None, **kwargs) -> PipelineWrapperResult:
         """
         Call the pipeline and generate a result.
 
-        :param kwargs: See :py:meth:`.DiffusionArguments.get_pipeline_wrapper_args`
+        :param args: Optional :py:class:`.DiffusionArguments`
+
+        :param kwargs: See :py:meth:`.DiffusionArguments.get_pipeline_wrapper_kwargs`,
+            any keyword arguments given here will override values derived from the
+            :py:class:`.DiffusionArguments` object given to the *args* parameter.
 
         :raises: :py:class:`.InvalidModelPathError`
             :py:class:`.InvalidSDXLRefinerUriError`
@@ -3597,6 +3632,9 @@ class DiffusionPipelineWrapper:
 
         :return: :py:class:`.PipelineWrapperResult`
         """
+
+        if args is not None:
+            kwargs = args.get_pipeline_wrapper_kwargs() | (kwargs if kwargs else dict())
 
         _messages.debug_log(f'Calling Pipeline Wrapper: "{self}"')
         _messages.debug_log(f'Pipeline Wrapper Args: ',
@@ -3623,6 +3661,4 @@ class DiffusionPipelineWrapper:
             except torch.cuda.OutOfMemoryError as e:
                 raise OutOfMemoryError(e)
 
-        result.dgenerate_opts = self.reconstruct_dgenerate_opts(**kwargs,
-                                                                shell_quote=False)
         return result

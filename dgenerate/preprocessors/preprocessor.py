@@ -26,11 +26,11 @@ import typing
 import PIL.Image
 
 import dgenerate.filelock as _filelock
+import dgenerate.image as _image
 import dgenerate.messages as _messages
 import dgenerate.preprocessors.exceptions as _exceptions
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-import dgenerate.image as _image
 
 
 class ImagePreprocessor:

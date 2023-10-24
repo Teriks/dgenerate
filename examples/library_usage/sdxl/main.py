@@ -55,10 +55,10 @@ render_loop = DiffusionRenderLoop(config=config)
 
 def render_callback(arg: ImageGeneratedCallbackArgument):
     print('Filename:', arg.suggested_filename)
-    print('Seed:', arg.args.seed)
-    print('Prompt:', arg.args.prompt)
-    print('Reproduce With Command:', arg.command)
-    print(f'Reproduce With Config:\n{arg.config}')
+    print('Seed:', arg.diffusion_args.seed)
+    print('Prompt:', arg.diffusion_args.prompt)
+    print('Reproduce With Command:', arg.command_string)
+    print(f'Reproduce With Config:\n{arg.config_string}')
     arg.image.save(arg.suggested_filename)
 
 
