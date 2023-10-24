@@ -1039,9 +1039,9 @@ def parse_args(args: typing.Sequence[str],
     :param args: arguments list, as in args taken from sys.argv, or in that format
     :param throw: throw :py:exc:`.DgenerateUsageError` on error? defaults to True
 
-    :raise: :py:class:`.DgenerateUsageError` or possibly None if throw=False
+    :raise: :py:class:`.DgenerateUsageError`
 
-    :return: :py:class:`.DgenerateArguments`
+    :return: :py:class:`.DgenerateArguments`  or possibly None if ``throw=False``
     """
 
     try:

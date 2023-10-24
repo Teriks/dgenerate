@@ -3021,8 +3021,28 @@ class DiffusionPipelineWrapper:
 
             if not control_images:
                 raise ValueError(
-                    'Must provide control images when using ControlNet models.')
+                    'Must provide control_images argument when using ControlNet models.')
 
+            control_images_cnt = len(control_images)
+            control_net_uris_cnt = len(self._control_net_uris)
+
+            if control_images_cnt < control_net_uris_cnt:
+                # Pad it out so that the last image mentioned is used
+                # for the rest of the control nets specified
+
+                for i in range(0, control_net_uris_cnt - control_images_cnt):
+                    control_images.append(control_images[-1])
+
+            elif control_images_cnt > control_net_uris_cnt:
+                # User provided too many control_images, behavior is undefined.
+
+                raise NotImplementedError(
+                    f'You specified {control_images_cnt} control image sources and '
+                    f'only {control_net_uris_cnt} ControlNet URIs. The amount of '
+                    f'control images must be less than or equal to the amount of ControlNet URIs.')
+
+            # They should always be of equal dimension, anything
+            # else results in an error down the line.
             args['width'] = user_args.get('width', control_images[0].width)
             args['height'] = user_args.get('height', control_images[0].height)
 
