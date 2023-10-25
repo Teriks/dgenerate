@@ -4,6 +4,7 @@ xvjiarui/stable-diffusion-2-inpainting --model-type flax \
 --dtype float16 \
 --inference-steps 50 \
 --guidance-scales 8 \
+--batch-grid-size 1x2 \
 --image-seeds "../../media/dog-on-bench.png;../../media/dog-on-bench-mask.png" \
 --image-seed-strengths 0.8 \
 --seeds 39877139643371 \
