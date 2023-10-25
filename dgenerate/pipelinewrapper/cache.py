@@ -26,7 +26,6 @@ import diffusers
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
-import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 
 _TORCH_PIPELINE_CACHE = dict()
@@ -349,27 +348,12 @@ def enforce_control_net_cache_constraints(new_control_net_size, collect=True):
     return False
 
 
-def simple_cache_hit_debug(title: str, cache_key: str, cache_hit: typing.Any):
-    _messages.debug_log(f'Cache Hit, Loaded {title}: "{cache_hit.__class__.__name__}",',
-                        f'Cache Key: "{cache_key}"')
-
-
-def simple_cache_miss_debug(title: str, cache_key: str, new: typing.Any):
-    _messages.debug_log(f'Cache Miss, Created {title}: "{new.__class__.__name__}",',
-                        f'Cache Key: "{cache_key}"')
-
-
-def struct_hasher(obj) -> str:
-    return _textprocessing.quote(
-        _d_memoize.args_cache_key(_types.get_public_attributes(obj)))
-
-
 def uri_hash_with_parser(parser):
     def hasher(path):
         if not path:
             return path
 
-        return struct_hasher(parser(path))
+        return _d_memoize.struct_hasher(parser(path))
 
     return hasher
 
