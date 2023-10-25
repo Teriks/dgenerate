@@ -843,11 +843,6 @@ class FlaxControlNetUri:
         self.scale = scale
         self.from_torch = from_torch
 
-    @_memoize(_FLAX_CONTROL_NET_CACHE,
-              exceptions={'local_files_only'},
-              hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _struct_hasher}),
-              on_hit=lambda key, hit: _simple_cache_hit_debug("Flax ControlNet", key, hit),
-              on_create=lambda key, new: _simple_cache_miss_debug("Flax ControlNet", key, new))
     def load(self,
              dtype_fallback: DataTypes = DataTypes.AUTO,
              use_auth_token: _types.OptionalString = None,
@@ -865,6 +860,17 @@ class FlaxControlNetUri:
 
         :return: :py:class:`diffusers.FlaxControlNetModel`
         """
+        return self._load(dtype_fallback, use_auth_token, local_files_only)
+
+    @_memoize(_FLAX_CONTROL_NET_CACHE,
+              exceptions={'local_files_only'},
+              hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _struct_hasher}),
+              on_hit=lambda key, hit: _simple_cache_hit_debug("Flax ControlNet", key, hit),
+              on_create=lambda key, new: _simple_cache_miss_debug("Flax ControlNet", key, new))
+    def _load(self,
+              dtype_fallback: DataTypes = DataTypes.AUTO,
+              use_auth_token: _types.OptionalString = None,
+              local_files_only: bool = False) -> typing.Tuple[diffusers.FlaxControlNetModel, typing.Any]:
 
         single_file_load_path = _is_single_file_model_load(self.model)
 
@@ -1020,11 +1026,6 @@ class TorchControlNetUri:
         self.start = start
         self.end = end
 
-    @_memoize(_TORCH_CONTROL_NET_CACHE,
-              exceptions={'local_files_only'},
-              hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _struct_hasher}),
-              on_hit=lambda key, hit: _simple_cache_hit_debug("Torch ControlNet", key, hit),
-              on_create=lambda key, new: _simple_cache_miss_debug("Torch ControlNet", key, new))
     def load(self,
              dtype_fallback: DataTypes = DataTypes.AUTO,
              use_auth_token: _types.OptionalString = None,
@@ -1042,6 +1043,18 @@ class TorchControlNetUri:
 
         :return: :py:class:`diffusers.ControlNetModel`
         """
+
+        return self._load(dtype_fallback, use_auth_token, local_files_only)
+
+    @_memoize(_TORCH_CONTROL_NET_CACHE,
+              exceptions={'local_files_only'},
+              hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _struct_hasher}),
+              on_hit=lambda key, hit: _simple_cache_hit_debug("Torch ControlNet", key, hit),
+              on_create=lambda key, new: _simple_cache_miss_debug("Torch ControlNet", key, new))
+    def _load(self,
+              dtype_fallback: DataTypes = DataTypes.AUTO,
+              use_auth_token: _types.OptionalString = None,
+              local_files_only: bool = False) -> diffusers.ControlNetModel:
 
         single_file_load_path = _is_single_file_model_load(self.model)
 
@@ -1285,17 +1298,25 @@ class TorchVAEUri:
         self.dtype = get_data_type_enum(dtype) if dtype else None
         self.subfolder = subfolder
 
-    @_memoize(_TORCH_VAE_CACHE,
-              exceptions={'local_files_only'},
-              hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _struct_hasher}),
-              on_hit=lambda key, hit: _simple_cache_hit_debug("Torch VAE", key, hit),
-              on_create=lambda key, new: _simple_cache_miss_debug("Torch VAE", key, new))
     def load(self,
              dtype_fallback: DataTypes = DataTypes.AUTO,
              use_auth_token: _types.OptionalString = None,
              local_files_only=False) -> typing.Union[diffusers.AutoencoderKL,
                                                      diffusers.AsymmetricAutoencoderKL,
                                                      diffusers.AutoencoderTiny]:
+        return self._load(dtype_fallback, use_auth_token, local_files_only)
+
+    @_memoize(_TORCH_VAE_CACHE,
+              exceptions={'local_files_only'},
+              hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _struct_hasher}),
+              on_hit=lambda key, hit: _simple_cache_hit_debug("Torch VAE", key, hit),
+              on_create=lambda key, new: _simple_cache_miss_debug("Torch VAE", key, new))
+    def _load(self,
+              dtype_fallback: DataTypes = DataTypes.AUTO,
+              use_auth_token: _types.OptionalString = None,
+              local_files_only=False) -> typing.Union[diffusers.AutoencoderKL,
+                                                      diffusers.AsymmetricAutoencoderKL,
+                                                      diffusers.AutoencoderTiny]:
 
         if self.dtype is None:
             torch_dtype = _get_torch_dtype(dtype_fallback)
@@ -1459,15 +1480,21 @@ class FlaxVAEUri:
         self.dtype = dtype
         self.subfolder = subfolder
 
+    def load(self,
+             dtype_fallback: DataTypes = DataTypes.AUTO,
+             use_auth_token: _types.OptionalString = None,
+             local_files_only=False) -> typing.Tuple[diffusers.FlaxAutoencoderKL, typing.Any]:
+        return self._load(dtype_fallback, use_auth_token, local_files_only)
+
     @_memoize(_FLAX_VAE_CACHE,
               exceptions={'local_files_only'},
               hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _struct_hasher}),
               on_hit=lambda key, hit: _simple_cache_hit_debug("Flax VAE", key, hit),
               on_create=lambda key, new: _simple_cache_miss_debug("Flax VAE", key, new))
-    def load(self,
-             dtype_fallback: DataTypes = DataTypes.AUTO,
-             use_auth_token: _types.OptionalString = None,
-             local_files_only=False) -> typing.Tuple[diffusers.FlaxAutoencoderKL, typing.Any]:
+    def _load(self,
+              dtype_fallback: DataTypes = DataTypes.AUTO,
+              use_auth_token: _types.OptionalString = None,
+              local_files_only=False) -> typing.Tuple[diffusers.FlaxAutoencoderKL, typing.Any]:
 
         if self.dtype is None:
             flax_dtype = _get_flax_dtype(dtype_fallback)
@@ -1953,6 +1980,28 @@ class TorchPipelineCreationResult:
         self.parsed_control_net_uris = parsed_control_net_uris
 
 
+def create_torch_diffusion_pipeline(pipeline_type: PipelineTypes,
+                                    model_type: ModelTypes,
+                                    model_path: str,
+                                    revision: _types.OptionalString = None,
+                                    variant: _types.OptionalString = None,
+                                    subfolder: _types.OptionalString = None,
+                                    dtype: DataTypes = DataTypes.AUTO,
+                                    vae_uri: _types.OptionalUri = None,
+                                    lora_uris: _types.OptionalUris = None,
+                                    textual_inversion_uris: _types.OptionalUris = None,
+                                    control_net_uris: _types.OptionalUris = None,
+                                    scheduler: _types.OptionalString = None,
+                                    safety_checker: bool = False,
+                                    auth_token: _types.OptionalString = None,
+                                    device: str = 'cuda',
+                                    extra_args: typing.Optional[typing.Dict[str, typing.Any]] = None,
+                                    model_cpu_offload: bool = False,
+                                    sequential_cpu_offload: bool = False,
+                                    local_files_only: bool = False) -> TorchPipelineCreationResult:
+    return _create_torch_diffusion_pipeline(**locals())
+
+
 @_memoize(_TORCH_PIPELINE_CACHE,
           exceptions={'local_files_only'},
           hasher=lambda args: _d_memoize.args_cache_key(args,
@@ -1967,7 +2016,7 @@ class TorchPipelineCreationResult:
                                                                  parse_torch_control_net_uri)}),
           on_hit=lambda key, hit: _simple_cache_hit_debug("Torch Pipeline", key, hit.pipeline),
           on_create=lambda key, new: _simple_cache_miss_debug('Torch Pipeline', key, new.pipeline))
-def create_torch_diffusion_pipeline(pipeline_type: PipelineTypes,
+def _create_torch_diffusion_pipeline(pipeline_type: PipelineTypes,
                                     model_type: ModelTypes,
                                     model_path: str,
                                     revision: _types.OptionalString = None,
@@ -2251,15 +2300,6 @@ class FlaxPipelineCreationResult:
         self.flax_control_net_params = flax_control_net_params
 
 
-@_memoize(_FLAX_PIPELINE_CACHE,
-          exceptions={'local_files_only'},
-          hasher=lambda args: _d_memoize.args_cache_key(args,
-                                                        {'vae_uri': _uri_hash_with_parser(parse_flax_vae_uri),
-                                                         'control_net_uris':
-                                                             _uri_list_hash_with_parser(
-                                                                 parse_flax_control_net_uri)}),
-          on_hit=lambda key, hit: _simple_cache_hit_debug("Flax Pipeline", key, hit.pipeline),
-          on_create=lambda key, new: _simple_cache_miss_debug('Flax Pipeline', key, new.pipeline))
 def create_flax_diffusion_pipeline(pipeline_type: PipelineTypes,
                                    model_path: str,
                                    revision: _types.OptionalString = None,
@@ -2272,6 +2312,30 @@ def create_flax_diffusion_pipeline(pipeline_type: PipelineTypes,
                                    auth_token: _types.OptionalString = None,
                                    extra_args: typing.Optional[typing.Dict[str, typing.Any]] = None,
                                    local_files_only: bool = False) -> FlaxPipelineCreationResult:
+    return _create_flax_diffusion_pipeline(**locals())
+
+
+@_memoize(_FLAX_PIPELINE_CACHE,
+          exceptions={'local_files_only'},
+          hasher=lambda args: _d_memoize.args_cache_key(args,
+                                                        {'vae_uri': _uri_hash_with_parser(parse_flax_vae_uri),
+                                                         'control_net_uris':
+                                                             _uri_list_hash_with_parser(
+                                                                 parse_flax_control_net_uri)}),
+          on_hit=lambda key, hit: _simple_cache_hit_debug("Flax Pipeline", key, hit.pipeline),
+          on_create=lambda key, new: _simple_cache_miss_debug('Flax Pipeline', key, new.pipeline))
+def _create_flax_diffusion_pipeline(pipeline_type: PipelineTypes,
+                                    model_path: str,
+                                    revision: _types.OptionalString = None,
+                                    subfolder: _types.OptionalString = None,
+                                    dtype: DataTypes = DataTypes.AUTO,
+                                    vae_uri: _types.OptionalString = None,
+                                    control_net_uris: _types.OptionalString = None,
+                                    scheduler: _types.OptionalString = None,
+                                    safety_checker: bool = False,
+                                    auth_token: _types.OptionalString = None,
+                                    extra_args: typing.Optional[typing.Dict[str, typing.Any]] = None,
+                                    local_files_only: bool = False) -> FlaxPipelineCreationResult:
     has_control_nets = False
     if control_net_uris:
         if len(control_net_uris) > 1:
