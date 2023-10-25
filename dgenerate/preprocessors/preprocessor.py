@@ -283,16 +283,11 @@ class ImagePreprocessor:
     def argument_error(self, msg: str):
         raise _exceptions.ImagePreprocessorArgumentError(msg)
 
-    def __init__(self,
-                 called_by_name: str,
-                 device: str = 'cpu',
-                 output_file: _types.OptionalPath = None,
-                 output_overwrite: bool = False):
-
-        self.__output_file = output_file
-        self.__output_overwrite = output_overwrite
-        self.__device = device
-        self.__called_by_name = called_by_name
+    def __init__(self, **kwargs):
+        self.__output_file = kwargs.get('output_file')
+        self.__output_overwrite = kwargs.get('output_overwrite')
+        self.__device = kwargs.get('device', 'cpu')
+        self.__called_by_name = kwargs.get('called_by_name')
 
     @property
     def device(self) -> str:
