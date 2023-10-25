@@ -94,13 +94,15 @@ def fetch_model_files_with_size(repo_id: str,
                                 weight_name: typing.Optional[str] = None,
                                 use_auth_token: typing.Optional[str] = None,
                                 extensions: typing.Optional[typing.Union[set, list]] = None,
-                                local_files_only: bool = False):
+                                local_files_only: bool = False,
+                                flax: bool = False):
     """
     Attempt to fetch model files with their size that are relevant for the type of model being loaded.
 
     Either from huggingface disk cache or through the huggingface API if not on disk and local_files_only is False.
 
     This function also works on blob links, paths to folders, or singular files on disk.
+
 
     :param repo_id: huggingface repo_id, or path to folder or file on disk
     :param revision: repo revision, IE: branch
@@ -112,6 +114,8 @@ def fetch_model_files_with_size(repo_id: str,
     :param local_files_only: utilize the huggingface API if necessary?
         if this is True, and it is necessary to fetch info from the API, this function
         will simply yield nothing
+    :param flax: if False, only look for torch diffusion weights.
+        If True, only look for flax diffusion weights.
 
     :return: generator over (filename, file size bytes)
     """
@@ -166,6 +170,32 @@ def fetch_model_files_with_size(repo_id: str,
         yield os.path.join(subfolder if subfolder else '',
                            os.path.basename(f)), os.path.getsize(f)
 
+    def find_diffuser_weights(search_dir):
+        if flax:
+            found = huggingface_hub.try_to_load_from_cache(
+                repo_id=repo_id,
+                revision=revision,
+                filename=os.path.join(search_dir,
+                                      f'diffusion_flax_model{variant_part}msgpack')
+            )
+        else:
+            found = huggingface_hub.try_to_load_from_cache(
+                repo_id=repo_id,
+                revision=revision,
+                filename=os.path.join(search_dir,
+                                      f'diffusion_pytorch_model{variant_part}safetensors')
+            )
+
+            if not isinstance(found, str):
+                found = huggingface_hub.try_to_load_from_cache(
+                    repo_id=repo_id,
+                    revision=revision,
+                    filename=os.path.join(search_dir,
+                                          f'diffusion_pytorch_model{variant_part}bin')
+                )
+
+        return post_discover_check(found)
+
     if os.path.isfile(repo_id):
         yield from enumerate_file(repo_id)
     elif os.path.isdir(repo_id):
@@ -176,24 +206,8 @@ def fetch_model_files_with_size(repo_id: str,
         else:
             variant_part = '.'
 
-        unet_search_dir = os.path.join(subfolder, 'unet') if subfolder else 'unet'
-
-        unet = huggingface_hub.try_to_load_from_cache(
-            repo_id=repo_id,
-            revision=revision,
-            filename=os.path.join(unet_search_dir,
-                                  f'diffusion_pytorch_model{variant_part}safetensors')
-        )
-
-        if not isinstance(unet, str):
-            unet = huggingface_hub.try_to_load_from_cache(
-                repo_id=repo_id,
-                revision=revision,
-                filename=os.path.join(unet_search_dir,
-                                      f'diffusion_pytorch_model{variant_part}bin')
-            )
-
-        unet = post_discover_check(unet)
+        unet = find_diffuser_weights(
+            os.path.join(subfolder, 'unet') if subfolder else 'unet')
 
         lora_search_dir = subfolder if subfolder else ''
 
@@ -218,24 +232,8 @@ def fetch_model_files_with_size(repo_id: str,
 
         if not isinstance(lora, str):
 
-            top_level_search_dir = subfolder if subfolder else ''
-
-            top_level_weights = huggingface_hub.try_to_load_from_cache(
-                repo_id=repo_id,
-                revision=revision,
-                filename=os.path.join(top_level_search_dir,
-                                      f'diffusion_pytorch_model{variant_part}safetensors')
-            )
-
-            if not isinstance(top_level_weights, str):
-                top_level_weights = huggingface_hub.try_to_load_from_cache(
-                    repo_id=repo_id,
-                    revision=revision,
-                    filename=os.path.join(top_level_search_dir,
-                                          f'diffusion_pytorch_model{variant_part}bin')
-                )
-
-            top_level_weights = post_discover_check(top_level_weights)
+            top_level_weights = find_diffuser_weights(
+                subfolder if subfolder else '')
 
             if not top_level_weights:
                 other_search_name = 'config.json' if not weight_name else weight_name
@@ -371,7 +369,8 @@ def estimate_model_memory_use(repo_id: str,
                                                   local_files_only=local_files_only,
                                                   extensions={'.msgpack',
                                                               '.safetensors',
-                                                              '.bin'}):
+                                                              '.bin'},
+                                                  flax=flax):
         d = os.path.dirname(file)
         d = '.' if not d else d
 
@@ -454,3 +453,28 @@ def estimate_model_memory_use(repo_id: str,
         f'{_types.fullname(estimate_model_memory_use)}() = {e} Bytes')
 
     return e
+
+
+# noinspection HttpUrlsUsage
+def is_single_file_model_load(path):
+    """
+    Should we use :py:meth:`diffusers.loaders.FromSingleFileMixin.from_single_file` on this path?
+
+    :param path: The path
+    :return: true or false
+    """
+    path, ext = os.path.splitext(path)
+
+    if path.startswith('http://') or path.startswith('https://'):
+        return True
+
+    if os.path.isdir(path):
+        return True
+
+    if not ext:
+        return False
+
+    if ext in {'.pt', '.pth', '.bin', '.msgpack', '.ckpt', '.safetensors'}:
+        return True
+
+    return False

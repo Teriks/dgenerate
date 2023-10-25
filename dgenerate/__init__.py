@@ -40,7 +40,7 @@ try:
         gen_seeds
 
     from dgenerate.pipelinewrapper import \
-        InvalidModelPathError, \
+        InvalidModelUriError, \
         InvalidSchedulerName, \
         ModelTypes, \
         DataTypes, \

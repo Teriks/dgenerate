@@ -21,7 +21,8 @@
 import argparse
 import typing
 
-from dgenerate.textprocessing import quote
+import dgenerate.textprocessing as _textprocessing
+from dgenerate import messages as _messages
 from .canny import CannyEdgeDetectPreprocess
 from .exceptions import *
 from .imageops import *
@@ -30,7 +31,8 @@ from .openpose import OpenPosePreprocess
 from .preprocessor import ImagePreprocessor
 from .preprocessorchain import ImagePreprocessorChain
 from .preprocessormixin import ImagePreprocessorMixin
-from .. import messages as _messages
+
+__all__ = [name for name in dir() if not name.startswith('_')]
 
 _help_parser = argparse.ArgumentParser(prog='dgenerate', exit_on_error=False)
 _help_parser.add_argument('--image-preprocessor-help', nargs='*', default=[], type=str)
@@ -70,7 +72,7 @@ def image_preprocessor_help(args: typing.Sequence[str], throw: bool = False):
     module_loader.load_plugin_modules(parse_result.plugin_modules)
 
     if len(names) == 0:
-        available = ('\n' + ' ' * 4).join(quote(name) for name in module_loader.get_all_names())
+        available = ('\n' + ' ' * 4).join(_textprocessing.quote(name) for name in module_loader.get_all_names())
         _messages.log(
             f'Available image preprocessors:\n\n{" " * 4}{available}')
         return 0

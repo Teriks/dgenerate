@@ -47,14 +47,6 @@ dgenerate.filelock module
    :show-inheritance:
    :special-members: __call__, __init__
 
-dgenerate.hfutil module
------------------------
-
-.. automodule:: dgenerate.hfutil
-   :members:
-   :undoc-members:
-   :show-inheritance:
-   :special-members: __call__, __init__
 
 dgenerate.image module
 ----------------------
@@ -136,6 +128,17 @@ dgenerate.plugin module
    :undoc-members:
    :show-inheritance:
    :special-members: __call__, __init__
+
+
+dgenerate.preprocessors module
+------------------------------
+
+.. automodule:: dgenerate.preprocessors
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :special-members: __call__, __init__
+
 
 dgenerate.prompt module
 -----------------------
