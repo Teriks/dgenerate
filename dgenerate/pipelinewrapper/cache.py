@@ -387,6 +387,32 @@ def uri_list_hash_with_parser(parser):
     return hasher
 
 
+def pipeline_create_update_cache_info(pipeline, estimated_size):
+    global _PIPELINE_CACHE_SIZE
+
+    _PIPELINE_CACHE_SIZE += estimated_size
+
+    # Tag for internal use
+
+    pipeline.DGENERATE_SIZE_ESTIMATE = estimated_size
+
+
+def controlnet_create_update_cache_info(controlnet, estimated_size):
+    global _CONTROL_NET_CACHE_SIZE
+    _CONTROL_NET_CACHE_SIZE += estimated_size
+
+    # Tag for internal use
+    controlnet.DGENERATE_SIZE_ESTIMATE = estimated_size
+
+
+def vae_create_update_cache_info(vae, estimated_size):
+    global _VAE_CACHE_SIZE
+    _VAE_CACHE_SIZE += estimated_size
+
+    # Tag for internal use
+    vae.DGENERATE_SIZE_ESTIMATE = estimated_size
+
+
 def pipeline_to_cpu_update_cache_info(
         pipeline: typing.Union[diffusers.DiffusionPipeline, diffusers.FlaxDiffusionPipeline]):
     # Update CPU side memory overhead estimates when
@@ -497,3 +523,18 @@ def pipeline_off_cpu_update_cache_info(
                                 f'Size = {pipeline.controlnet.DGENERATE_SIZE_ESTIMATE} Bytes '
                                 f'is leaving CPU side memory, {_types.fullname(control_net_cache_size)}() '
                                 f'is now {control_net_cache_size()} Bytes')
+
+
+__all__ = [
+    'CACHE_MEMORY_CONSTRAINTS',
+    'CONTROL_NET_CACHE_MEMORY_CONSTRAINTS',
+    'PIPELINE_CACHE_MEMORY_CONSTRAINTS',
+    'VAE_CACHE_MEMORY_CONSTRAINTS',
+    'clear_pipeline_cache',
+    'clear_control_net_cache',
+    'clear_vae_cache',
+    'clear_model_cache',
+    'pipeline_cache_size',
+    'control_net_cache_size',
+    'vae_cache_size'
+]

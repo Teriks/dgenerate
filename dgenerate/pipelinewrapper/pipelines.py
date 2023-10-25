@@ -516,11 +516,8 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     elif model_cpu_offload and 'cuda' in device:
         pipeline.enable_model_cpu_offload(device=device)
 
-    _cache._PIPELINE_CACHE_SIZE += estimated_memory_usage
-
-    # Tag for internal use
-
-    pipeline.DGENERATE_SIZE_ESTIMATE = estimated_memory_usage
+    _cache.pipeline_create_update_cache_info(pipeline=pipeline,
+                                             estimated_size=estimated_memory_usage)
 
     _messages.debug_log(f'Finished Creating Torch Pipeline: "{pipeline_class.__name__}"')
 
@@ -703,11 +700,8 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     if not safety_checker:
         pipeline.safety_checker = None
 
-    _cache._PIPELINE_CACHE_SIZE += estimated_memory_usage
-
-    # Tag for internal use
-
-    pipeline.DGENERATE_SIZE_ESTIMATE = estimated_memory_usage
+    _cache.pipeline_create_update_cache_info(pipeline=pipeline,
+                                             estimated_size=estimated_memory_usage)
 
     _messages.debug_log(f'Finished Creating Flax Pipeline: "{pipeline_class.__name__}"')
 

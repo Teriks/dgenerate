@@ -1600,11 +1600,6 @@ class DiffusionPipelineWrapper:
             :py:class:`.DiffusionArguments` object given to the *args* parameter.
 
         :raises: :py:class:`.InvalidModelUriError`
-            :py:class:`.InvalidSDXLRefinerUriError`
-            :py:class:`.InvalidVaeUriError`
-            :py:class:`.InvalidLoRAUriError`
-            :py:class:`.InvalidControlNetUriError`
-            :py:class:`.InvalidTextualInversionUriError`
             :py:class:`.InvalidSchedulerName`
             :py:class:`.OutOfMemoryError`
             :py:class:`NotImplementedError`
