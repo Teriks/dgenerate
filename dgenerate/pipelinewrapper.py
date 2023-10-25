@@ -3553,9 +3553,6 @@ class DiffusionPipelineWrapper:
         if user_args.get('guidance_rescale') is not None:
             raise NotImplementedError('--guidance-rescales is not supported when using --model-type flax.')
 
-        os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(str(i) for i in
-                                                      range(0, user_args.get('batch_size', 1)))
-
         prompt: _prompt.Prompt() = user_args.get('prompt', _prompt.Prompt())
         positive_prompt = prompt.positive if prompt.positive else ''
         negative_prompt = prompt.negative
