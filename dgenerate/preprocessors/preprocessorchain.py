@@ -35,13 +35,11 @@ class ImagePreprocessorChain(_preprocessor.ImagePreprocessor):
 
     HIDDEN = True
 
-    def __init__(self, preprocessors: typing.Optional[typing.Iterable[_preprocessor.ImagePreprocessor]] = None,
-                 **kwargs):
+    def __init__(self, preprocessors: typing.Optional[typing.Iterable[_preprocessor.ImagePreprocessor]] = None):
         """
         :param preprocessors: optional initial preprocessors to fill the chain, accepts an iterable
-        :param kwargs: forwarded to base class
         """
-        super().__init__(**kwargs)
+        super().__init__(called_by_name='chain')
 
         if preprocessors is None:
             self._preprocessors = []

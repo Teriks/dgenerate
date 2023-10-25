@@ -44,12 +44,7 @@ def invoke_dgenerate(
              :py:class:`dgenerate.mediainput.UnknownMimetypeError`
              :py:class:`dgenerate.preprocessors.ImagePreprocessorArgumentError`
              :py:class:`dgenerate.preprocessors.ImagePreprocessorNotFoundError`
-             :py:class:`dgenerate.pipelinewrapper.InvalidModelPathError`
-             :py:class:`dgenerate.pipelinewrapper.InvalidSDXLRefinerUriError`
-             :py:class:`dgenerate.pipelinewrapper.InvalidVaeUriError`
-             :py:class:`dgenerate.pipelinewrapper.InvalidLoRAUriError`
-             :py:class:`dgenerate.pipelinewrapper.InvalidControlNetUriError`
-             :py:class:`dgenerate.pipelinewrapper.InvalidTextualInversionUriError`
+             :py:class:`dgenerate.pipelinewrapper.InvalidModelUriError`
              :py:class:`dgenerate.pipelinewrapper.InvalidSchedulerName`
              :py:class:`dgenerate.pipelinewrapper.OutOfMemoryError`
              :py:class:`NotImplementedError`
@@ -93,7 +88,7 @@ def invoke_dgenerate(
         render_loop.run()
     except (_mediainput.ImageSeedError,
             _mediainput.UnknownMimetypeError,
-            _pipelinewrapper.InvalidModelPathError,
+            _pipelinewrapper.InvalidModelUriError,
             _pipelinewrapper.InvalidSchedulerName,
             _pipelinewrapper.OutOfMemoryError,
             _preprocessors.ImagePreprocessorArgumentError,
