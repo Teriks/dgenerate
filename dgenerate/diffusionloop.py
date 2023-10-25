@@ -716,7 +716,7 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
                 raise DiffusionRenderLoopConfigError(
                     f'you cannot specify {a_namer("batch_size")} when using flax, '
                     'use the environmental variable: CUDA_VISIBLE_DEVICES')
-        else:
+        elif not _pipelinewrapper.model_type_is_flax(self.model_type):
             self.batch_size = 1
 
         if self.output_size is None and not self.image_seeds:
