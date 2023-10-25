@@ -903,7 +903,7 @@ class FlaxControlNetUri:
         _CONTROL_NET_CACHE_SIZE += estimated_memory_usage
 
         # Tag for internal use
-        new_net.DGENERATE_SIZE_ESTIMATE = estimated_memory_usage
+        new_net[0].DGENERATE_SIZE_ESTIMATE = estimated_memory_usage
 
         return new_net
 
@@ -1538,7 +1538,7 @@ class FlaxVAEUri:
 
         # Tag for internal use
 
-        vae.DGENERATE_SIZE_ESTIMATE = estimated_memory_use
+        vae[0].DGENERATE_SIZE_ESTIMATE = estimated_memory_use
 
         return vae
 
@@ -3497,6 +3497,8 @@ class DiffusionPipelineWrapper:
             len(self._parsed_control_net_uris) > 1 else self._parsed_control_net_uris[0].end
 
     def _call_flax_control_net(self, positive_prompt, negative_prompt, default_args, user_args):
+        # Only works with txt2image
+
         device_count = jax.device_count()
 
         pipe: diffusers.FlaxStableDiffusionControlNetPipeline = self._pipeline
