@@ -1135,7 +1135,7 @@ class SDXLRefinerUri:
                  revision: _types.OptionalString = None,
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalPath = None,
-                 dtype: typing.Optional[DataTypes] = None):
+                 dtype: typing.Union[DataTypes, str, None] = None):
         self.model = model
         self.revision = revision
         self.variant = variant
@@ -1179,13 +1179,145 @@ class TorchVAEUri:
     Representation of ``--vae`` uri when ``--model-type`` torch*
     """
 
-    def __init__(self, encoder, model, revision, variant, subfolder, dtype):
+    encoder: str
+    """
+    Encoder class name such as "AutoencoderKL"
+    """
+
+    model: str
+    """
+    Model path, huggingface slug, file path, or blob link
+    """
+
+    revision: _types.OptionalString
+    """
+    Model repo revision
+    """
+
+    variant: _types.OptionalString
+    """
+    Model repo revision
+    """
+
+    subfolder: _types.OptionalPath
+    """
+    Model repo subfolder
+    """
+
+    dtype: typing.Optional[DataTypes]
+    """
+    Model dtype (precision)
+    """
+
+    def __init__(self,
+                 encoder: str,
+                 model: str,
+                 revision: _types.OptionalString = None,
+                 variant: _types.OptionalString = None,
+                 subfolder: _types.OptionalString = None,
+                 dtype: typing.Union[DataTypes, str, None] = None):
+
         self.encoder = encoder
         self.model = model
         self.revision = revision
         self.variant = variant
-        self.dtype = dtype
+        self.dtype = get_data_type_enum(dtype) if dtype else None
         self.subfolder = subfolder
+
+    @_memoize(_TORCH_VAE_CACHE,
+              exceptions={'local_files_only'},
+              hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _struct_hasher}),
+              on_hit=lambda key, hit: _simple_cache_hit_debug("Torch VAE", key, hit),
+              on_create=lambda key, new: _simple_cache_miss_debug("Torch VAE", key, new))
+    def load(self,
+             dtype_fallback: DataTypes = DataTypes.AUTO,
+             use_auth_token: _types.OptionalString = None,
+             local_files_only=False) -> typing.Union[diffusers.AutoencoderKL,
+                                                     diffusers.AsymmetricAutoencoderKL,
+                                                     diffusers.AutoencoderTiny]:
+
+        if self.dtype is None:
+            torch_dtype = _get_torch_dtype(dtype_fallback)
+        else:
+            torch_dtype = _get_torch_dtype(self.dtype)
+
+        encoder_name = self.encoder
+
+        if encoder_name == 'AutoencoderKL':
+            encoder = diffusers.AutoencoderKL
+        elif encoder_name == 'AsymmetricAutoencoderKL':
+            encoder = diffusers.AsymmetricAutoencoderKL
+        elif encoder_name == 'AutoencoderTiny':
+            encoder = diffusers.AutoencoderTiny
+        else:
+            raise InvalidVaeUriError(f'Unknown VAE encoder class {encoder_name}')
+
+        path = self.model
+
+        can_single_file_load = hasattr(encoder, 'from_single_file')
+        single_file_load_path = _is_single_file_model_load(path)
+
+        if single_file_load_path and not can_single_file_load:
+            raise NotImplementedError(f'{encoder_name} is not capable of loading from a single file, '
+                                      f'must be loaded from a huggingface repository slug or folder on disk.')
+
+        if single_file_load_path:
+            if self.subfolder is not None:
+                raise NotImplementedError('Single file VAE loads do not support the subfolder option.')
+
+            estimated_memory_use = _hfutil.estimate_model_memory_use(
+                repo_id=path,
+                revision=self.revision,
+                local_files_only=local_files_only,
+                use_auth_token=use_auth_token
+            )
+
+            enforce_vae_cache_constraints(new_vae_size=estimated_memory_use)
+
+            if encoder is diffusers.AutoencoderKL:
+                # There is a bug in their cast
+                vae = encoder.from_single_file(path,
+                                               revision=self.revision,
+                                               local_files_only=local_files_only) \
+                    .to(dtype=torch_dtype, non_blocking=False)
+            else:
+                vae = encoder.from_single_file(path,
+                                               revision=self.revision,
+                                               torch_dtype=torch_dtype,
+                                               local_files_only=local_files_only)
+
+        else:
+
+            estimated_memory_use = _hfutil.estimate_model_memory_use(
+                repo_id=path,
+                revision=self.revision,
+                variant=self.variant,
+                subfolder=self.subfolder,
+                local_files_only=local_files_only,
+                use_auth_token=use_auth_token
+            )
+
+            enforce_vae_cache_constraints(new_vae_size=estimated_memory_use)
+
+            vae = encoder.from_pretrained(path,
+                                          revision=self.revision,
+                                          variant=self.variant,
+                                          torch_dtype=torch_dtype,
+                                          subfolder=self.subfolder,
+                                          use_auth_token=use_auth_token,
+                                          local_files_only=local_files_only)
+
+        _messages.debug_log('Estimated Torch VAE Memory Use:',
+                            _memory.bytes_best_human_unit(estimated_memory_use))
+
+        global _VAE_CACHE_SIZE
+        _VAE_CACHE_SIZE += estimated_memory_use
+
+        # Tag for internal use
+
+        vae.DGENERATE_SIZE_ESTIMATE = estimated_memory_use
+
+        return vae
 
 
 def parse_torch_vae_uri(uri: _types.Uri) -> TorchVAEUri:
@@ -1217,7 +1349,7 @@ def parse_torch_vae_uri(uri: _types.Uri) -> TorchVAEUri:
                            model=model,
                            revision=r.args.get('revision', None),
                            variant=r.args.get('variant', None),
-                           dtype=_get_torch_dtype(dtype),
+                           dtype=dtype,
                            subfolder=r.args.get('subfolder', None))
     except _textprocessing.ConceptPathParseError as e:
         raise InvalidVaeUriError(e)
@@ -1406,102 +1538,6 @@ def _uri_hash_with_parser(parser):
         return _struct_hasher(parser(path))
 
     return hasher
-
-
-@_memoize(_TORCH_VAE_CACHE,
-          exceptions={'local_files_only'},
-          hasher=lambda args: _d_memoize.args_cache_key(args,
-                                                        {'uri': _uri_hash_with_parser(parse_torch_vae_uri)}),
-          on_hit=lambda key, hit: _simple_cache_hit_debug("Torch VAE", key, hit),
-          on_create=lambda key, new: _simple_cache_miss_debug("Torch VAE", key, new))
-def _load_torch_vae(uri: _types.Uri,
-                    torch_dtype_fallback: torch.dtype,
-                    use_auth_token: str,
-                    local_files_only=False) -> typing.Union[diffusers.AutoencoderKL,
-                                                            diffusers.AsymmetricAutoencoderKL,
-                                                            diffusers.AutoencoderTiny]:
-    parsed_concept = parse_torch_vae_uri(uri)
-
-    if parsed_concept.dtype is None:
-        parsed_concept.dtype = torch_dtype_fallback
-
-    encoder_name = parsed_concept.encoder
-
-    if encoder_name == 'AutoencoderKL':
-        encoder = diffusers.AutoencoderKL
-    elif encoder_name == 'AsymmetricAutoencoderKL':
-        encoder = diffusers.AsymmetricAutoencoderKL
-    elif encoder_name == 'AutoencoderTiny':
-        encoder = diffusers.AutoencoderTiny
-    else:
-        raise InvalidVaeUriError(f'Unknown VAE encoder class {encoder_name}')
-
-    path = parsed_concept.model
-
-    can_single_file_load = hasattr(encoder, 'from_single_file')
-    single_file_load_path = _is_single_file_model_load(path)
-
-    if single_file_load_path and not can_single_file_load:
-        raise NotImplementedError(f'{encoder_name} is not capable of loading from a single file, '
-                                  f'must be loaded from a huggingface repository slug or folder on disk.')
-
-    if single_file_load_path:
-        if parsed_concept.subfolder is not None:
-            raise NotImplementedError('Single file VAE loads do not support the subfolder option.')
-
-        estimated_memory_use = _hfutil.estimate_model_memory_use(
-            repo_id=path,
-            revision=parsed_concept.revision,
-            local_files_only=local_files_only,
-            use_auth_token=use_auth_token
-        )
-
-        enforce_vae_cache_constraints(new_vae_size=estimated_memory_use)
-
-        if encoder is diffusers.AutoencoderKL:
-            # There is a bug in their cast
-            vae = encoder.from_single_file(path,
-                                           revision=parsed_concept.revision,
-                                           local_files_only=local_files_only) \
-                .to(dtype=parsed_concept.dtype, non_blocking=False)
-        else:
-            vae = encoder.from_single_file(path,
-                                           revision=parsed_concept.revision,
-                                           torch_dtype=parsed_concept.dtype,
-                                           local_files_only=local_files_only)
-
-    else:
-
-        estimated_memory_use = _hfutil.estimate_model_memory_use(
-            repo_id=path,
-            revision=parsed_concept.revision,
-            variant=parsed_concept.variant,
-            subfolder=parsed_concept.subfolder,
-            local_files_only=local_files_only,
-            use_auth_token=use_auth_token
-        )
-
-        enforce_vae_cache_constraints(new_vae_size=estimated_memory_use)
-
-        vae = encoder.from_pretrained(path,
-                                      revision=parsed_concept.revision,
-                                      variant=parsed_concept.variant,
-                                      torch_dtype=parsed_concept.dtype,
-                                      subfolder=parsed_concept.subfolder,
-                                      use_auth_token=use_auth_token,
-                                      local_files_only=local_files_only)
-
-    _messages.debug_log('Estimated Torch VAE Memory Use:',
-                        _memory.bytes_best_human_unit(estimated_memory_use))
-
-    global _VAE_CACHE_SIZE
-    _VAE_CACHE_SIZE += estimated_memory_use
-
-    # Tag for internal use
-
-    vae.DGENERATE_SIZE_ESTIMATE = estimated_memory_use
-
-    return vae
 
 
 @_memoize(_FLAX_VAE_CACHE,
@@ -1921,10 +1957,13 @@ def _create_torch_diffusion_pipeline(pipeline_type: _PipelineTypes,
         # help message for the main model
 
         if vae_uri is not None:
-            creation_kwargs['vae'] = _load_torch_vae(vae_uri,
-                                                     torch_dtype_fallback=torch_dtype,
-                                                     use_auth_token=auth_token,
-                                                     local_files_only=local_files_only)
+            parsed_vae_uri = parse_torch_vae_uri(vae_uri)
+            creation_kwargs['vae'] = \
+                parsed_vae_uri.load(
+                    dtype_fallback=dtype,
+                    use_auth_token=auth_token,
+                    local_files_only=local_files_only)
+
             _messages.debug_log(lambda:
                                 f'Added Torch VAE: "{vae_uri}" to pipeline: "{pipeline_class.__name__}"')
 
