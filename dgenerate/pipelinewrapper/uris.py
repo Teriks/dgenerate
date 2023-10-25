@@ -161,7 +161,7 @@ class FlaxControlNetUri:
         :param local_files_only: Avoid connecting to huggingface to download models and
             only use cached models?
 
-        :return: :py:class:`diffusers.FlaxControlNetModel`
+        :return: tuple (:py:class:`diffusers.FlaxControlNetModel`, flax_control_net_params)
         """
         return self._load(dtype_fallback, use_auth_token, local_files_only)
 
@@ -208,10 +208,8 @@ class FlaxControlNetUri:
         _messages.debug_log('Estimated Flax ControlNet Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_usage))
 
-        _cache._CONTROL_NET_CACHE_SIZE += estimated_memory_usage
-
-        # Tag for internal use
-        new_net[0].DGENERATE_SIZE_ESTIMATE = estimated_memory_usage
+        _cache.controlnet_create_update_cache_info(controlnet=new_net[0],
+                                                   estimated_size=estimated_memory_usage)
 
         return new_net
 
@@ -407,10 +405,8 @@ class TorchControlNetUri:
         _messages.debug_log('Estimated Torch ControlNet Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_usage))
 
-        _cache._CONTROL_NET_CACHE_SIZE += estimated_memory_usage
-
-        # Tag for internal use
-        new_net.DGENERATE_SIZE_ESTIMATE = estimated_memory_usage
+        _cache.controlnet_create_update_cache_info(controlnet=new_net,
+                                                   estimated_size=estimated_memory_usage)
 
         return new_net
 
@@ -605,6 +601,17 @@ class TorchVAEUri:
              local_files_only=False) -> typing.Union[diffusers.AutoencoderKL,
                                                      diffusers.AsymmetricAutoencoderKL,
                                                      diffusers.AutoencoderTiny]:
+        """
+        Load a VAE of type: :py:class:`diffusers.AutoencoderKL`, :py:class:`diffusers.AsymmetricAutoencoderKL`,
+          or :py:class:`diffusers.AutoencoderTiny` from this URI
+
+        :param dtype_fallback: If the URI does not specify a dtype, use this dtype.
+        :param use_auth_token: optional huggingface auth token.
+        :param local_files_only: avoid downloading files and only look for cached files
+            when the model path is a huggingface slug or blob link
+        :return: :py:class:`diffusers.AutoencoderKL`, :py:class:`diffusers.AsymmetricAutoencoderKL`,
+          or :py:class:`diffusers.AutoencoderTiny`
+        """
         return self._load(dtype_fallback, use_auth_token, local_files_only)
 
     @_memoize(_cache._TORCH_VAE_CACHE,
@@ -693,11 +700,8 @@ class TorchVAEUri:
         _messages.debug_log('Estimated Torch VAE Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_use))
 
-        _cache._VAE_CACHE_SIZE += estimated_memory_use
-
-        # Tag for internal use
-
-        vae.DGENERATE_SIZE_ESTIMATE = estimated_memory_use
+        _cache.vae_create_update_cache_info(vae=vae,
+                                            estimated_size=estimated_memory_use)
 
         return vae
 
@@ -784,6 +788,15 @@ class FlaxVAEUri:
              dtype_fallback: _enums.DataTypes = _enums.DataTypes.AUTO,
              use_auth_token: _types.OptionalString = None,
              local_files_only=False) -> typing.Tuple[diffusers.FlaxAutoencoderKL, typing.Any]:
+        """
+        Load a :py:class:`diffusers.FlaxAutoencoderKL` VAE and its flax_params from this URI
+
+        :param dtype_fallback: If the URI does not specify a dtype, use this dtype.
+        :param use_auth_token: optional huggingface auth token.
+        :param local_files_only: avoid downloading files and only look for cached files
+            when the model path is a huggingface slug or blob link
+        :return: tuple (:py:class:`diffusers.FlaxAutoencoderKL`, flax_vae_params)
+        """
         return self._load(dtype_fallback, use_auth_token, local_files_only)
 
     @_memoize(_cache._FLAX_VAE_CACHE,
@@ -860,11 +873,8 @@ class FlaxVAEUri:
         _messages.debug_log('Estimated Flax VAE Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_use))
 
-        _cache._VAE_CACHE_SIZE += estimated_memory_use
-
-        # Tag for internal use
-
-        vae[0].DGENERATE_SIZE_ESTIMATE = estimated_memory_use
+        _cache.vae_create_update_cache_info(vae=vae[0],
+                                            estimated_size=estimated_memory_use)
 
         return vae
 
@@ -955,6 +965,15 @@ class LoRAUri:
                          pipeline: diffusers.DiffusionPipeline,
                          use_auth_token: _types.OptionalString = None,
                          local_files_only=False):
+        """
+        Load LoRA weights on to a pipeline using this URI
+
+        :param pipeline: :py:class:`diffusers.DiffusionPipeline`
+        :param use_auth_token: optional huggingface auth token.
+        :param local_files_only: avoid downloading files and only look for cached files
+            when the model path is a huggingface slug
+        """
+
         extra_args = {k: v for k, v in locals().items() if k not in {'self', 'pipeline'}}
 
         if hasattr(pipeline, 'load_lora_weights'):
@@ -1036,6 +1055,15 @@ class TextualInversionUri:
                          pipeline: diffusers.DiffusionPipeline,
                          use_auth_token: _types.OptionalString = None,
                          local_files_only=False):
+        """
+        Load Textual Inversion weights on to a pipeline using this URI
+
+        :param pipeline: :py:class:`diffusers.DiffusionPipeline`
+        :param use_auth_token: optional huggingface auth token.
+        :param local_files_only: avoid downloading files and only look for cached files
+            when the model path is a huggingface slug
+        """
+
         extra_args = {k: v for k, v in locals().items() if k not in {'self', 'pipeline'}}
 
         if hasattr(pipeline, 'load_textual_inversion'):
