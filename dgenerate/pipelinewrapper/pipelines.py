@@ -271,8 +271,8 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                                                             'control_net_uris':
                                                                 _cache.uri_list_hash_with_parser(
                                                                     _uris.parse_torch_control_net_uri)}),
-          on_hit=lambda key, hit: _cache.simple_cache_hit_debug("Torch Pipeline", key, hit.pipeline),
-          on_create=lambda key, new: _cache.simple_cache_miss_debug('Torch Pipeline', key, new.pipeline))
+          on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Torch Pipeline", key, hit.pipeline),
+          on_create=lambda key, new: _d_memoize.simple_cache_miss_debug('Torch Pipeline', key, new.pipeline))
 def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                                      model_type: _enums.ModelTypes,
                                      model_path: str,
@@ -579,8 +579,8 @@ def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                                                             'control_net_uris':
                                                                 _cache.uri_list_hash_with_parser(
                                                                     _uris.parse_flax_control_net_uri)}),
-          on_hit=lambda key, hit: _cache.simple_cache_hit_debug("Flax Pipeline", key, hit.pipeline),
-          on_create=lambda key, new: _cache.simple_cache_miss_debug('Flax Pipeline', key, new.pipeline))
+          on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Flax Pipeline", key, hit.pipeline),
+          on_create=lambda key, new: _d_memoize.simple_cache_miss_debug('Flax Pipeline', key, new.pipeline))
 def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                                     model_path: str,
                                     revision: _types.OptionalString = None,

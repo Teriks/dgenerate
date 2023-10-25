@@ -22,6 +22,8 @@ import inspect
 import numbers
 import typing
 
+import dgenerate.messages as _messages
+import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 
 
@@ -128,3 +130,57 @@ def memoize(cache: typing.Dict[str, typing.Any],
         return wrapper
 
     return decorate
+
+
+def simple_cache_hit_debug(title: str, cache_key: str, cache_hit: typing.Any):
+    """
+    Basic cache hit debug message for :py:meth:`.memoize` decorator **on_hit** parameter.
+
+    Example:
+        ``on_hit=lambda key, hit: simple_cache_hit_debug("My Object", key, hit)``
+
+
+    Debug Prints:
+        ``Cache Hit, Loaded My Object: (fully qualified name of hit object), Cache Key: (key)``
+
+
+    :param title: Object Title
+    :param cache_key: cache key
+    :param cache_hit: cached object
+    """
+    _messages.debug_log(f'Cache Hit, Loaded {title}: "{_types.fullname(cache_hit)}",',
+                        f'Cache Key: "{cache_key}"')
+
+
+def simple_cache_miss_debug(title: str, cache_key: str, new: typing.Any):
+    """
+    Basic cache hit debug message for :py:meth:`.memoize` decorator **on_create** parameter.
+
+    Example:
+        ``on_create=lambda key, hit: simple_cache_miss_debug("My Object", key, hit)``
+
+
+    Debug Prints:
+        ``Cache Miss, Created My Object: (fully qualified name of new object), Cache Key: (key)``
+
+
+    :param title: Object Title
+    :param cache_key: cache key
+    :param new: newly created object
+    """
+    _messages.debug_log(f'Cache Miss, Created {title}: "{_types.fullname(new)}",',
+                        f'Cache Key: "{cache_key}"')
+
+
+def struct_hasher(obj: typing.Any,
+                  custom_hashes: typing.Dict[str, typing.Callable[[typing.Any], str]] = None) -> str:
+    """
+    Create a hash string from a simple objects public attributes.
+
+    :param obj: the object
+    :param custom_hashes: Custom hash functions for specific attribute names if needed
+    :return: string
+    """
+    return _textprocessing.quote(
+        args_cache_key(args_dict=_types.get_public_attributes(obj),
+                       custom_hashes=custom_hashes))

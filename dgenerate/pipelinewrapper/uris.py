@@ -167,9 +167,9 @@ class FlaxControlNetUri:
 
     @_memoize(_cache._FLAX_CONTROL_NET_CACHE,
               exceptions={'local_files_only'},
-              hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _cache.struct_hasher}),
-              on_hit=lambda key, hit: _cache.simple_cache_hit_debug("Flax ControlNet", key, hit),
-              on_create=lambda key, new: _cache.simple_cache_miss_debug("Flax ControlNet", key, new))
+              hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _d_memoize.struct_hasher}),
+              on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Flax ControlNet", key, hit[0]),
+              on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Flax ControlNet", key, new[0]))
     def _load(self,
               dtype_fallback: _enums.DataTypes = _enums.DataTypes.AUTO,
               use_auth_token: _types.OptionalString = None,
@@ -348,9 +348,9 @@ class TorchControlNetUri:
 
     @_memoize(_cache._TORCH_CONTROL_NET_CACHE,
               exceptions={'local_files_only'},
-              hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _cache.struct_hasher}),
-              on_hit=lambda key, hit: _cache.simple_cache_hit_debug("Torch ControlNet", key, hit),
-              on_create=lambda key, new: _cache.simple_cache_miss_debug("Torch ControlNet", key, new))
+              hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _d_memoize.struct_hasher}),
+              on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Torch ControlNet", key, hit),
+              on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Torch ControlNet", key, new))
     def _load(self,
               dtype_fallback: _enums.DataTypes = _enums.DataTypes.AUTO,
               use_auth_token: _types.OptionalString = None,
@@ -602,7 +602,7 @@ class TorchVAEUri:
                                                      diffusers.AsymmetricAutoencoderKL,
                                                      diffusers.AutoencoderTiny]:
         """
-        Load a VAE of type: :py:class:`diffusers.AutoencoderKL`, :py:class:`diffusers.AsymmetricAutoencoderKL`,
+        Load a VAE of type :py:class:`diffusers.AutoencoderKL`, :py:class:`diffusers.AsymmetricAutoencoderKL`,
           or :py:class:`diffusers.AutoencoderTiny` from this URI
 
         :param dtype_fallback: If the URI does not specify a dtype, use this dtype.
@@ -616,9 +616,9 @@ class TorchVAEUri:
 
     @_memoize(_cache._TORCH_VAE_CACHE,
               exceptions={'local_files_only'},
-              hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _cache.struct_hasher}),
-              on_hit=lambda key, hit: _cache.simple_cache_hit_debug("Torch VAE", key, hit),
-              on_create=lambda key, new: _cache.simple_cache_miss_debug("Torch VAE", key, new))
+              hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _d_memoize.struct_hasher}),
+              on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Torch VAE", key, hit),
+              on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Torch VAE", key, new))
     def _load(self,
               dtype_fallback: _enums.DataTypes = _enums.DataTypes.AUTO,
               use_auth_token: _types.OptionalString = None,
@@ -801,9 +801,9 @@ class FlaxVAEUri:
 
     @_memoize(_cache._FLAX_VAE_CACHE,
               exceptions={'local_files_only'},
-              hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _cache.struct_hasher}),
-              on_hit=lambda key, hit: _cache.simple_cache_hit_debug("Flax VAE", key, hit),
-              on_create=lambda key, new: _cache.simple_cache_miss_debug("Flax VAE", key, new))
+              hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _d_memoize.struct_hasher}),
+              on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Flax VAE", key, hit[0]),
+              on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Flax VAE", key, new[0]))
     def _load(self,
               dtype_fallback: _enums.DataTypes = _enums.DataTypes.AUTO,
               use_auth_token: _types.OptionalString = None,
