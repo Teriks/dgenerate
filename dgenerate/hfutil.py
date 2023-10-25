@@ -156,8 +156,7 @@ def fetch_model_files_with_size(repo_id: str,
         files = glob.iglob(os.path.join(d,
                                         '**' if not subfolder else subfolder,
                                         '*' if not weight_name else weight_name),
-                           recursive=True,
-                           include_hidden=True)
+                           recursive=True)
         for file in files:
             if os.path.isfile(file) and post_discover_check(file):
                 yield os.path.join(subfolder if subfolder else '',
