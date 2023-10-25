@@ -5,6 +5,7 @@ runwayml/stable-diffusion-v1-5 --model-type flax \
 --dtype float16 \
 --inference-steps 40 \
 --guidance-scales 8 \
+--batch-grid-size 1x2 \
 --gen-seeds 2 \
 --prompts "Painting, Girl with a pearl earing by Leonardo Da Vinci, masterpiece; low quality, low resolution, blank eyeballs" \
 --control-nets lllyasviel/sd-controlnet-canny;scale=0.5;from_torch=true \
