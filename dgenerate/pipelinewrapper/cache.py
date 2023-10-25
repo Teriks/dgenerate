@@ -349,6 +349,15 @@ def enforce_control_net_cache_constraints(new_control_net_size, collect=True):
 
 
 def uri_hash_with_parser(parser):
+    """
+    Create a hash function from a particular URI parser function that hashes a URI string.
+
+    The URI is parsed and then the object that results from parsing is hashed with
+    :py:meth:`dgenerate.memoize.struct_hasher`.
+
+    :param parser: The URI parser function
+    :return: a hash function compatible with :py:meth:`dgenerate.memoize.memoize`
+    """
     def hasher(path):
         if not path:
             return path
@@ -359,6 +368,12 @@ def uri_hash_with_parser(parser):
 
 
 def uri_list_hash_with_parser(parser):
+    """
+    Create a hash function from a particular URI parser function that hashes a list of URIs.
+
+    :param parser: The URI parser function
+    :return: a hash function compatible with :py:meth:`dgenerate.memoize.memoize`
+    """
     def hasher(paths):
         if not paths:
             return '[]'
@@ -371,7 +386,15 @@ def uri_list_hash_with_parser(parser):
     return hasher
 
 
-def pipeline_create_update_cache_info(pipeline, estimated_size):
+def pipeline_create_update_cache_info(pipeline, estimated_size: int):
+    """
+    Add additional information about the size of a newly created :py:class:`diffusers.DiffusionPipeline` to the cache.
+
+    Tag the object with an internal tag.
+
+    :param pipeline: the :py:class:`diffusers.DiffusionPipeline` object
+    :param estimated_size: size bytes
+    """
     global _PIPELINE_CACHE_SIZE
 
     _PIPELINE_CACHE_SIZE += estimated_size
@@ -381,7 +404,15 @@ def pipeline_create_update_cache_info(pipeline, estimated_size):
     pipeline.DGENERATE_SIZE_ESTIMATE = estimated_size
 
 
-def controlnet_create_update_cache_info(controlnet, estimated_size):
+def controlnet_create_update_cache_info(controlnet, estimated_size: int):
+    """
+    Add additional information about the size of a newly created ControlNet model to the cache.
+
+    Tag the object with an internal tag.
+
+    :param controlnet: the ControlNet object
+    :param estimated_size: size bytes
+    """
     global _CONTROL_NET_CACHE_SIZE
     _CONTROL_NET_CACHE_SIZE += estimated_size
 
@@ -389,7 +420,15 @@ def controlnet_create_update_cache_info(controlnet, estimated_size):
     controlnet.DGENERATE_SIZE_ESTIMATE = estimated_size
 
 
-def vae_create_update_cache_info(vae, estimated_size):
+def vae_create_update_cache_info(vae, estimated_size: int):
+    """
+    Add additional information about the size of a newly created VAE model to the cache.
+
+    Tag the object with an internal tag.
+
+    :param vae: the VAE object
+    :param estimated_size: size bytes
+    """
     global _VAE_CACHE_SIZE
     _VAE_CACHE_SIZE += estimated_size
 
