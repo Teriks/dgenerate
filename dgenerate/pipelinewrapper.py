@@ -3509,7 +3509,11 @@ class DiffusionPipelineWrapper:
         else:
             negative_prompt_ids = None
 
-        processed_image = pipe.prepare_image_inputs([default_args.get('image')] * device_count)
+        control_net_image = default_args.get('image')
+        if isinstance(control_net_image, list):
+            control_net_image = control_net_image[0]
+
+        processed_image = pipe.prepare_image_inputs([control_net_image] * device_count)
         default_args.pop('image')
 
         p_params = _flax_replicate(self._flax_params)
