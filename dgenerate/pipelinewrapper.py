@@ -737,7 +737,7 @@ class FlaxControlNetUri:
     Representation of ``--control-nets`` uri when ``--model-type`` flax*
     """
 
-    model: _types.OptionalPath
+    model: str
     """
     Model path, huggingface slug
     """
@@ -768,7 +768,7 @@ class FlaxControlNetUri:
     """
 
     def __init__(self,
-                 model: _types.OptionalPath,
+                 model: str,
                  revision: _types.OptionalString = None,
                  subfolder: _types.OptionalPath = None,
                  dtype: typing.Union[DataTypes, str, None] = None,
@@ -900,7 +900,7 @@ class TorchControlNetUri:
     Representation of ``--control-nets`` uri when ``--model-type`` torch*
     """
 
-    model: _types.OptionalPath
+    model: str
     """
     Model path, huggingface slug
     """
@@ -941,7 +941,7 @@ class TorchControlNetUri:
     """
 
     def __init__(self,
-                 model: _types.OptionalPath,
+                 model: str,
                  revision: _types.OptionalString,
                  variant: _types.OptionalString,
                  subfolder: _types.OptionalPath,
@@ -1105,11 +1105,41 @@ class SDXLRefinerUri:
     Representation of ``--sdxl-refiner`` uri
     """
 
-    def __init__(self, model, revision, variant, dtype, subfolder):
+    model: str
+    """
+    Model path, huggingface slug
+    """
+
+    revision: _types.OptionalString
+    """
+    Model repo revision
+    """
+
+    variant: _types.OptionalString
+    """
+    Model repo revision
+    """
+
+    subfolder: _types.OptionalPath
+    """
+    Model repo subfolder
+    """
+
+    dtype: typing.Optional[DataTypes]
+    """
+    Model dtype (precision)
+    """
+
+    def __init__(self,
+                 model: str,
+                 revision: _types.OptionalString = None,
+                 variant: _types.OptionalString = None,
+                 subfolder: _types.OptionalPath = None,
+                 dtype: typing.Optional[DataTypes] = None):
         self.model = model
         self.revision = revision
         self.variant = variant
-        self.dtype = dtype
+        self.dtype = get_data_type_enum(dtype) if dtype else None
         self.subfolder = subfolder
 
 
@@ -1138,7 +1168,7 @@ def parse_sdxl_refiner_uri(uri: _types.Uri) -> SDXLRefinerUri:
             model=r.concept,
             revision=r.args.get('revision', None),
             variant=r.args.get('variant', None),
-            dtype=_get_torch_dtype(dtype),
+            dtype=dtype,
             subfolder=r.args.get('subfolder', None))
     except _textprocessing.ConceptPathParseError as e:
         raise InvalidSDXLRefinerUriError(e)
