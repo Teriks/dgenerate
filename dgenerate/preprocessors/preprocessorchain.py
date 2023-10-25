@@ -39,7 +39,7 @@ class ImagePreprocessorChain(_preprocessor.ImagePreprocessor):
         """
         :param preprocessors: optional initial preprocessors to fill the chain, accepts an iterable
         """
-        super().__init__()
+        super().__init__(called_by_name='chain')
 
         if preprocessors is None:
             self._preprocessors = []
