@@ -192,19 +192,14 @@ class ImagePreprocessor:
             return [] if fixed_args is None else fixed_args
 
         args_with_defaults = []
-        spec = inspect.getfullargspec(cls.__init__)
-        sig_args = spec.args[1:]
-        defaults_cnt = len(spec.defaults) if spec.defaults else 0
-        no_defaults_before = len(sig_args) - defaults_cnt
 
-        default_idx = 0
-        for idx, arg in enumerate(sig_args):
-            if idx < no_defaults_before:
-                args_with_defaults.append((_textprocessing.dashup(arg),))
+        spec = _types.get_accepted_args_with_defaults(cls.__init__)
+
+        for arg in spec:
+            if len(arg) == 1:
+                args_with_defaults.append((_textprocessing.dashup(arg[0]),))
             else:
-                args_with_defaults.append((_textprocessing.dashup(arg),
-                                           spec.defaults[default_idx]))
-                default_idx += 1
+                args_with_defaults.append((_textprocessing.dashup(arg[0]), arg[1]))
 
         return args_with_defaults
 

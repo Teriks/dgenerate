@@ -510,6 +510,43 @@ def is_valid_device_string(device, raise_ordinal=True):
     return False
 
 
+class PipelineTypes(enum.Enum):
+    TXT2IMG = 1
+    IMG2IMG = 2
+    INPAINT = 3
+
+
+def get_pipeline_type_enum(id_str: typing.Union[PipelineTypes, str, None]) -> PipelineTypes:
+    """
+    Get a :py:class:`.PipelineTypes` enum value from a string.
+
+    :param id_str: one of: "txt2img", "img2img", or "inpaint"
+    :return: :py:class:`.PipelineTypes`
+    """
+
+    if isinstance(id_str, PipelineTypes):
+        return id_str
+
+    return {'txt2img': PipelineTypes.TXT2IMG,
+            'img2img': PipelineTypes.IMG2IMG,
+            'inpaint': PipelineTypes.INPAINT}[id_str.strip().lower()]
+
+
+def get_pipeline_type_string(pipeline_type_enum: PipelineTypes):
+    """
+    Convert a :py:class:`.PipelineTypes` enum value to a string.
+
+    :param pipeline_type_enum: :py:class:`.PipelineTypes` value
+
+    :return: one of: "txt2img", "img2img", or "inpaint"
+    """
+    pipeline_type = get_pipeline_type_enum(pipeline_type_enum)
+
+    return {PipelineTypes.TXT2IMG: 'txt2img',
+            PipelineTypes.IMG2IMG: 'img2img',
+            PipelineTypes.INPAINT: 'inpaint'}[pipeline_type]
+
+
 class DataTypes(enum.Enum):
     AUTO = 0
     FLOAT16 = 1
@@ -732,6 +769,30 @@ def _get_torch_dtype(dtype: typing.Union[DataTypes, torch.dtype, str, None]) -> 
             'auto': None}[dtype.lower()]
 
 
+# noinspection HttpUrlsUsage
+def _is_single_file_model_load(path):
+    """
+    Should we use diffusers.loaders.FromSingleFileMixin.from_single_file on this path?
+    :param path: The path
+    :return: true or false
+    """
+    path, ext = os.path.splitext(path)
+
+    if path.startswith('http://') or path.startswith('https://'):
+        return True
+
+    if os.path.isdir(path):
+        return True
+
+    if not ext:
+        return False
+
+    if ext in {'.pt', '.pth', '.bin', '.msgpack', '.ckpt', '.safetensors'}:
+        return True
+
+    return False
+
+
 class FlaxControlNetUri:
     """
     Representation of ``--control-nets`` uri when ``--model-type`` flax*
@@ -790,7 +851,7 @@ class FlaxControlNetUri:
     def load(self,
              dtype_fallback: DataTypes = DataTypes.AUTO,
              use_auth_token: _types.OptionalString = None,
-             local_files_only: bool = False) -> diffusers.FlaxControlNetModel:
+             local_files_only: bool = False) -> typing.Tuple[diffusers.FlaxControlNetModel, typing.Any]:
         """
         Load a :py:class:`diffusers.FlaxControlNetModel` from this URI.
 
@@ -1360,12 +1421,126 @@ class FlaxVAEUri:
     Representation of ``--vae`` uri when ``--model-type`` flax*
     """
 
-    def __init__(self, encoder, model, revision, dtype, subfolder):
+    encoder: str
+    """
+    Encoder class name such as "FlaxAutoencoderKL"
+    """
+
+    model: str
+    """
+    Model path, huggingface slug, file path, or blob link
+    """
+
+    revision: _types.OptionalString
+    """
+    Model repo revision
+    """
+
+    subfolder: _types.OptionalPath
+    """
+    Model repo subfolder
+    """
+
+    dtype: typing.Optional[DataTypes]
+    """
+    Model dtype (precision)
+    """
+
+    def __init__(self,
+                 encoder: str,
+                 model: str,
+                 revision: _types.OptionalString,
+                 subfolder: _types.OptionalPath,
+                 dtype: typing.Optional[DataTypes]):
+
         self.encoder = encoder
         self.model = model
         self.revision = revision
         self.dtype = dtype
         self.subfolder = subfolder
+
+    @_memoize(_FLAX_VAE_CACHE,
+              exceptions={'local_files_only'},
+              hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _struct_hasher}),
+              on_hit=lambda key, hit: _simple_cache_hit_debug("Flax VAE", key, hit),
+              on_create=lambda key, new: _simple_cache_miss_debug("Flax VAE", key, new))
+    def load(self,
+             dtype_fallback: DataTypes = DataTypes.AUTO,
+             use_auth_token: _types.OptionalString = None,
+             local_files_only=False) -> typing.Tuple[diffusers.FlaxAutoencoderKL, typing.Any]:
+
+        if self.dtype is None:
+            flax_dtype = _get_flax_dtype(dtype_fallback)
+        else:
+            flax_dtype = _get_flax_dtype(self.dtype)
+
+        encoder_name = self.encoder
+
+        if encoder_name == 'FlaxAutoencoderKL':
+            encoder = diffusers.FlaxAutoencoderKL
+        else:
+            raise InvalidVaeUriError(f'Unknown VAE flax encoder class {encoder_name}')
+
+        path = self.model
+
+        can_single_file_load = hasattr(encoder, 'from_single_file')
+        single_file_load_path = _is_single_file_model_load(path)
+
+        if single_file_load_path and not can_single_file_load:
+            raise NotImplementedError(f'{encoder_name} is not capable of loading from a single file, '
+                                      f'must be loaded from a huggingface repository slug or folder on disk.')
+
+        if single_file_load_path:
+            # in the future this will be supported?
+            if self.subfolder is not None:
+                raise NotImplementedError('Single file VAE loads do not support the subfolder option.')
+
+            estimated_memory_use = _hfutil.estimate_model_memory_use(
+                repo_id=path,
+                revision=self.revision,
+                local_files_only=local_files_only,
+                use_auth_token=use_auth_token,
+                flax=True
+            )
+
+            enforce_vae_cache_constraints(new_vae_size=estimated_memory_use)
+
+            vae = encoder.from_single_file(path,
+                                           revision=self.revision,
+                                           dtype=flax_dtype,
+                                           use_auth_token=use_auth_token,
+                                           local_files_only=local_files_only)
+        else:
+
+            estimated_memory_use = _hfutil.estimate_model_memory_use(
+                repo_id=path,
+                revision=self.revision,
+                subfolder=self.subfolder,
+                local_files_only=local_files_only,
+                use_auth_token=use_auth_token,
+                flax=True
+            )
+
+            enforce_vae_cache_constraints(new_vae_size=estimated_memory_use)
+
+            vae = encoder.from_pretrained(path,
+                                          revision=self.revision,
+                                          dtype=flax_dtype,
+                                          subfolder=self.subfolder,
+                                          use_auth_token=use_auth_token,
+                                          local_files_only=local_files_only)
+
+        _messages.debug_log('Estimated Flax VAE Memory Use:',
+                            _memory.bytes_best_human_unit(estimated_memory_use))
+
+        global _VAE_CACHE_SIZE
+        _VAE_CACHE_SIZE += estimated_memory_use
+
+        # Tag for internal use
+
+        vae.DGENERATE_SIZE_ESTIMATE = estimated_memory_use
+
+        return vae
 
 
 def parse_flax_vae_uri(uri: _types.Uri) -> FlaxVAEUri:
@@ -1407,7 +1582,37 @@ class LoRAUri:
     Representation of ``--lora`` uri
     """
 
-    def __init__(self, model, scale, revision, subfolder, weight_name):
+    model: str
+    """
+    Model path, huggingface slug, file path
+    """
+
+    revision: _types.OptionalString
+    """
+    Model repo revision
+    """
+
+    subfolder: _types.OptionalPath
+    """
+    Model repo subfolder
+    """
+
+    weight_name: _types.OptionalName
+    """
+    Model weight-name
+    """
+
+    scale: float
+    """
+    LoRA scale
+    """
+
+    def __init__(self,
+                 model: str,
+                 revision: _types.OptionalString = None,
+                 subfolder: _types.OptionalPath = None,
+                 weight_name: _types.OptionalName = None,
+                 scale: float = 1.0):
         self.model = model
         self.scale = scale
         self.revision = revision
@@ -1420,16 +1625,21 @@ class LoRAUri:
     def __repr__(self):
         return str(self)
 
-    def load_on_pipeline(self, pipeline, **kwargs):
+    def load_on_pipeline(self,
+                         pipeline: diffusers.DiffusionPipeline,
+                         use_auth_token: _types.OptionalString = None,
+                         local_files_only=False):
+        extra_args = {k: v for k, v in locals() if k not in {'self', 'pipeline'}}
+
         if hasattr(pipeline, 'load_lora_weights'):
             _messages.debug_log('pipeline.load_lora_weights('
-                                + str(_types.get_public_attributes(self) | kwargs) + ')')
+                                + str(_types.get_public_attributes(self) | extra_args) + ')')
 
             pipeline.load_lora_weights(self.model,
                                        revision=self.revision,
                                        subfolder=self.subfolder,
                                        weight_name=self.weight_name,
-                                       **kwargs)
+                                       **extra_args)
             _messages.debug_log(f'Added LoRA: "{self}" to pipeline: "{pipeline.__class__.__name__}"')
 
 
@@ -1460,7 +1670,31 @@ class TextualInversionUri:
     Representation of ``--textual-inversions`` uri
     """
 
-    def __init__(self, model, revision, subfolder, weight_name):
+    model: str
+    """
+    Model path, huggingface slug, file path
+    """
+
+    revision: _types.OptionalString
+    """
+    Model repo revision
+    """
+
+    subfolder: _types.OptionalPath
+    """
+    Model repo subfolder
+    """
+
+    weight_name: _types.OptionalName
+    """
+    Model weight-name
+    """
+
+    def __init__(self,
+                 model: str,
+                 revision: _types.OptionalString = None,
+                 subfolder: _types.OptionalPath = None,
+                 weight_name: _types.OptionalName = None):
         self.model = model
         self.revision = revision
         self.subfolder = subfolder
@@ -1472,16 +1706,21 @@ class TextualInversionUri:
     def __repr__(self):
         return str(self)
 
-    def load_on_pipeline(self, pipeline, **kwargs):
+    def load_on_pipeline(self,
+                         pipeline: diffusers.DiffusionPipeline,
+                         use_auth_token: _types.OptionalString = None,
+                         local_files_only=False):
+        extra_args = {k: v for k, v in locals() if k not in {'self', 'pipeline'}}
+
         if hasattr(pipeline, 'load_textual_inversion'):
             _messages.debug_log('pipeline.load_textual_inversion(' +
-                                str(_types.get_public_attributes(self) | kwargs) + ')')
+                                str(_types.get_public_attributes(self) | extra_args) + ')')
 
             pipeline.load_textual_inversion(self.model,
                                             revision=self.revision,
                                             subfolder=self.subfolder,
                                             weight_name=self.weight_name,
-                                            **kwargs)
+                                            **extra_args)
             _messages.debug_log(f'Added Textual Inversion: "{self}" to pipeline: "{pipeline.__class__.__name__}"')
 
 
@@ -1506,30 +1745,6 @@ def parse_textual_inversion_uri(uri: _types.Uri) -> TextualInversionUri:
         raise InvalidTextualInversionUriError(e)
 
 
-# noinspection HttpUrlsUsage
-def _is_single_file_model_load(path):
-    """
-    Should we use diffusers.loaders.FromSingleFileMixin.from_single_file on this path?
-    :param path: The path
-    :return: true or false
-    """
-    path, ext = os.path.splitext(path)
-
-    if path.startswith('http://') or path.startswith('https://'):
-        return True
-
-    if os.path.isdir(path):
-        return True
-
-    if not ext:
-        return False
-
-    if ext in {'.pt', '.pth', '.bin', '.msgpack', '.ckpt', '.safetensors'}:
-        return True
-
-    return False
-
-
 def _uri_hash_with_parser(parser):
     def hasher(path):
         if not path:
@@ -1538,90 +1753,6 @@ def _uri_hash_with_parser(parser):
         return _struct_hasher(parser(path))
 
     return hasher
-
-
-@_memoize(_FLAX_VAE_CACHE,
-          exceptions={'local_files_only'},
-          hasher=lambda args: _d_memoize.args_cache_key(args,
-                                                        {'uri': _uri_hash_with_parser(parse_flax_vae_uri)}),
-          on_hit=lambda key, hit: _simple_cache_hit_debug("Flax VAE", key, hit),
-          on_create=lambda key, new: _simple_cache_miss_debug("Flax VAE", key, new))
-def _load_flax_vae(uri: _types.Uri,
-                   flax_dtype_fallback,
-                   use_auth_token: str,
-                   local_files_only=False):
-    parsed_concept = parse_flax_vae_uri(uri)
-
-    if parsed_concept.dtype is None:
-        parsed_concept.dtype = flax_dtype_fallback
-
-    encoder_name = parsed_concept.encoder
-
-    if encoder_name == 'FlaxAutoencoderKL':
-        encoder = diffusers.FlaxAutoencoderKL
-    else:
-        raise InvalidVaeUriError(f'Unknown VAE flax encoder class {encoder_name}')
-
-    path = parsed_concept.model
-
-    can_single_file_load = hasattr(encoder, 'from_single_file')
-    single_file_load_path = _is_single_file_model_load(path)
-
-    if single_file_load_path and not can_single_file_load:
-        raise NotImplementedError(f'{encoder_name} is not capable of loading from a single file, '
-                                  f'must be loaded from a huggingface repository slug or folder on disk.')
-
-    if single_file_load_path:
-        # in the future this will be supported?
-        if parsed_concept.subfolder is not None:
-            raise NotImplementedError('Single file VAE loads do not support the subfolder option.')
-
-        estimated_memory_use = _hfutil.estimate_model_memory_use(
-            repo_id=path,
-            revision=parsed_concept.revision,
-            local_files_only=local_files_only,
-            use_auth_token=use_auth_token,
-            flax=True
-        )
-
-        enforce_vae_cache_constraints(new_vae_size=estimated_memory_use)
-
-        vae = encoder.from_single_file(path,
-                                       revision=parsed_concept.revision,
-                                       dtype=parsed_concept.dtype,
-                                       use_auth_token=use_auth_token,
-                                       local_files_only=local_files_only)
-    else:
-
-        estimated_memory_use = _hfutil.estimate_model_memory_use(
-            repo_id=path,
-            revision=parsed_concept.revision,
-            subfolder=parsed_concept.subfolder,
-            local_files_only=local_files_only,
-            use_auth_token=use_auth_token,
-            flax=True
-        )
-
-        enforce_vae_cache_constraints(new_vae_size=estimated_memory_use)
-
-        vae = encoder.from_pretrained(path,
-                                      revision=parsed_concept.revision,
-                                      dtype=parsed_concept.dtype,
-                                      subfolder=parsed_concept.subfolder,
-                                      use_auth_token=use_auth_token,
-                                      local_files_only=local_files_only)
-
-    _messages.debug_log('Estimated Flax VAE Memory Use:',
-                        _memory.bytes_best_human_unit(estimated_memory_use))
-
-    global _VAE_CACHE_SIZE
-    _VAE_CACHE_SIZE += estimated_memory_use
-
-    # Tag for internal use
-
-    vae.DGENERATE_SIZE_ESTIMATE = estimated_memory_use
-
-    return vae
 
 
 def _load_scheduler(pipeline, model_path, scheduler_name=None):
@@ -1658,17 +1789,6 @@ def _disabled_safety_checker(images, clip_input):
         return images, False
 
 
-class _PipelineTypes:
-    BASIC = 1
-    IMG2IMG = 2
-    INPAINT = 3
-
-
-def _describe_pipeline_type(type_enum):
-    return {_PipelineTypes.BASIC: 'txt2img', _PipelineTypes.IMG2IMG: 'img2img', _PipelineTypes.INPAINT: 'inpaint'}[
-        type_enum]
-
-
 def _args_except(args, *exceptions):
     return {k: v for k, v in args.items() if k not in exceptions}
 
@@ -1679,7 +1799,10 @@ def _scheduler_is_help(name):
     return name.strip().lower() == 'help'
 
 
-def _set_vae_slicing_tiling(pipeline, vae_tiling, vae_slicing):
+def set_vae_slicing_tiling(pipeline: typing.Union[diffusers.DiffusionPipeline,
+                                                  diffusers.FlaxDiffusionPipeline],
+                           vae_tiling: bool,
+                           vae_slicing: bool):
     has_vae = hasattr(pipeline, 'vae') and pipeline.vae is not None
     pipeline_class = pipeline.__class__
 
@@ -1810,6 +1933,26 @@ def _estimate_pipeline_memory_use(
     return usage
 
 
+class TorchPipelineCreationResult:
+    pipeline: diffusers.DiffusionPipeline
+    parsed_vae_uri: typing.Optional[TorchVAEUri]
+    parsed_lora_uris: typing.List[LoRAUri]
+    parsed_textual_inversion_uris: typing.List[TextualInversionUri]
+    parsed_control_net_uris: typing.List[TorchControlNetUri]
+
+    def __init__(self,
+                 pipeline: diffusers.DiffusionPipeline,
+                 parsed_vae_uri: typing.Optional[TorchVAEUri],
+                 parsed_lora_uris: typing.List[LoRAUri],
+                 parsed_textual_inversion_uris: typing.List[TextualInversionUri],
+                 parsed_control_net_uris: typing.List[TorchControlNetUri]):
+        self.pipeline = pipeline
+        self.parsed_vae_uri = parsed_vae_uri
+        self.parsed_lora_uris = parsed_lora_uris
+        self.parsed_textual_inversion_uris = parsed_textual_inversion_uris
+        self.parsed_control_net_uris = parsed_control_net_uris
+
+
 @_memoize(_TORCH_PIPELINE_CACHE,
           exceptions={'local_files_only'},
           hasher=lambda args: _d_memoize.args_cache_key(args,
@@ -1822,31 +1965,31 @@ def _estimate_pipeline_memory_use(
                                                          'control_net_uris':
                                                              _uri_list_hash_with_parser(
                                                                  parse_torch_control_net_uri)}),
-          on_hit=lambda key, hit: _simple_cache_hit_debug("Torch Pipeline", key, hit[0]),
-          on_create=lambda key, new: _simple_cache_miss_debug('Torch Pipeline', key, new[0]))
-def _create_torch_diffusion_pipeline(pipeline_type: _PipelineTypes,
-                                     model_type: ModelTypes,
-                                     model_path: str,
-                                     revision: _types.OptionalString,
-                                     variant: _types.OptionalString,
-                                     dtype: DataTypes,
-                                     model_subfolder: _types.OptionalString = None,
-                                     vae_uri: _types.OptionalUri = None,
-                                     lora_uris: _types.OptionalUris = None,
-                                     textual_inversion_uris: _types.OptionalUris = None,
-                                     control_net_uris: _types.OptionalUris = None,
-                                     scheduler: _types.OptionalString = None,
-                                     safety_checker: bool = False,
-                                     auth_token: _types.OptionalString = None,
-                                     device: str = 'cuda',
-                                     extra_args: typing.Optional[typing.Dict[str, typing.Any]] = None,
-                                     model_cpu_offload: bool = False,
-                                     sequential_cpu_offload: bool = False,
-                                     local_files_only: bool = False):
+          on_hit=lambda key, hit: _simple_cache_hit_debug("Torch Pipeline", key, hit.pipeline),
+          on_create=lambda key, new: _simple_cache_miss_debug('Torch Pipeline', key, new.pipeline))
+def create_torch_diffusion_pipeline(pipeline_type: PipelineTypes,
+                                    model_type: ModelTypes,
+                                    model_path: str,
+                                    revision: _types.OptionalString = None,
+                                    variant: _types.OptionalString = None,
+                                    subfolder: _types.OptionalString = None,
+                                    dtype: DataTypes = DataTypes.AUTO,
+                                    vae_uri: _types.OptionalUri = None,
+                                    lora_uris: _types.OptionalUris = None,
+                                    textual_inversion_uris: _types.OptionalUris = None,
+                                    control_net_uris: _types.OptionalUris = None,
+                                    scheduler: _types.OptionalString = None,
+                                    safety_checker: bool = False,
+                                    auth_token: _types.OptionalString = None,
+                                    device: str = 'cuda',
+                                    extra_args: typing.Optional[typing.Dict[str, typing.Any]] = None,
+                                    model_cpu_offload: bool = False,
+                                    sequential_cpu_offload: bool = False,
+                                    local_files_only: bool = False) -> TorchPipelineCreationResult:
     # Pipeline class selection
 
     if model_type_is_upscaler(model_type):
-        if pipeline_type != _PipelineTypes.IMG2IMG and not _scheduler_is_help(scheduler):
+        if pipeline_type != PipelineTypes.IMG2IMG and not _scheduler_is_help(scheduler):
             raise NotImplementedError(
                 'Upscaler models only work with img2img generation, IE: --image-seeds (with no image masks).')
 
@@ -1861,7 +2004,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _PipelineTypes,
         sdxl = model_type_is_sdxl(model_type)
         pix2pix = model_type_is_pix2pix(model_type)
 
-        if pipeline_type == _PipelineTypes.BASIC:
+        if pipeline_type == PipelineTypes.TXT2IMG:
             if pix2pix:
                 raise NotImplementedError(
                     'pix2pix models only work in img2img mode and cannot work without --image-seeds.')
@@ -1870,7 +2013,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _PipelineTypes,
                 pipeline_class = diffusers.StableDiffusionXLControlNetPipeline if sdxl else diffusers.StableDiffusionControlNetPipeline
             else:
                 pipeline_class = diffusers.StableDiffusionXLPipeline if sdxl else diffusers.StableDiffusionPipeline
-        elif pipeline_type == _PipelineTypes.IMG2IMG:
+        elif pipeline_type == PipelineTypes.IMG2IMG:
 
             if pix2pix:
                 if control_net_uris:
@@ -1886,7 +2029,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _PipelineTypes,
                 else:
                     pipeline_class = diffusers.StableDiffusionXLImg2ImgPipeline if sdxl else diffusers.StableDiffusionImg2ImgPipeline
 
-        elif pipeline_type == _PipelineTypes.INPAINT:
+        elif pipeline_type == PipelineTypes.INPAINT:
             if pix2pix:
                 raise NotImplementedError(
                     'pix2pix models only work in img2img mode and cannot work in inpaint mode (with a mask).')
@@ -1906,7 +2049,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _PipelineTypes,
         model_path=model_path,
         revision=revision,
         variant=variant,
-        subfolder=model_subfolder,
+        subfolder=subfolder,
         vae_uri=vae_uri,
         lora_uris=lora_uris,
         textual_inversion_uris=textual_inversion_uris,
@@ -1951,6 +2094,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _PipelineTypes,
     torch_dtype = _get_torch_dtype(dtype)
 
     parsed_control_net_uris = []
+    parsed_vae_uri = None
 
     if scheduler is None or not _scheduler_is_help(scheduler):
         # prevent waiting on VAE load just to get the scheduler
@@ -1958,6 +2102,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _PipelineTypes,
 
         if vae_uri is not None:
             parsed_vae_uri = parse_torch_vae_uri(vae_uri)
+
             creation_kwargs['vae'] = \
                 parsed_vae_uri.load(
                     dtype_fallback=dtype,
@@ -2004,7 +2149,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _PipelineTypes,
     # Create Pipeline
 
     if _is_single_file_model_load(model_path):
-        if model_subfolder is not None:
+        if subfolder is not None:
             raise NotImplementedError('Single file model loads do not support the subfolder option.')
         pipeline = pipeline_class.from_single_file(model_path,
                                                    revision=revision,
@@ -2018,7 +2163,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _PipelineTypes,
                                                   revision=revision,
                                                   variant=variant,
                                                   torch_dtype=torch_dtype,
-                                                  subfolder=model_subfolder,
+                                                  subfolder=subfolder,
                                                   use_auth_token=auth_token,
                                                   local_files_only=local_files_only,
                                                   **creation_kwargs)
@@ -2031,19 +2176,24 @@ def _create_torch_diffusion_pipeline(pipeline_type: _PipelineTypes,
 
     # Textual Inversions and LoRAs
 
+    parsed_textual_inversion_uris = []
+    parsed_lora_uris = []
+
     if textual_inversion_uris:
         for inversion_uri in textual_inversion_uris:
-            parse_textual_inversion_uri(inversion_uri). \
-                load_on_pipeline(pipeline,
-                                 use_auth_token=auth_token,
-                                 local_files_only=local_files_only)
+            parsed = parse_textual_inversion_uri(inversion_uri)
+            parsed_textual_inversion_uris.append(parsed)
+            parsed.load_on_pipeline(pipeline,
+                                    use_auth_token=auth_token,
+                                    local_files_only=local_files_only)
 
     if lora_uris:
         for lora_uri in lora_uris:
-            parse_lora_uri(lora_uri). \
-                load_on_pipeline(pipeline,
-                                 use_auth_token=auth_token,
-                                 local_files_only=local_files_only)
+            parsed = parse_lora_uri(lora_uri)
+            parsed_lora_uris.append(parsed)
+            parsed.load_on_pipeline(pipeline,
+                                    use_auth_token=auth_token,
+                                    local_files_only=local_files_only)
 
     # Safety Checker
 
@@ -2068,7 +2218,37 @@ def _create_torch_diffusion_pipeline(pipeline_type: _PipelineTypes,
     pipeline.DGENERATE_SIZE_ESTIMATE = estimated_memory_usage
 
     _messages.debug_log(f'Finished Creating Torch Pipeline: "{pipeline_class.__name__}"')
-    return pipeline, parsed_control_net_uris
+
+    return TorchPipelineCreationResult(
+        pipeline=pipeline,
+        parsed_vae_uri=parsed_vae_uri,
+        parsed_lora_uris=parsed_lora_uris,
+        parsed_textual_inversion_uris=parsed_textual_inversion_uris,
+        parsed_control_net_uris=parsed_control_net_uris
+    )
+
+
+class FlaxPipelineCreationResult:
+    pipeline: diffusers.FlaxDiffusionPipeline
+    flax_params: typing.Dict[str, typing.Any]
+    parsed_vae_uri: typing.Optional[FlaxVAEUri]
+    flax_vae_params: typing.Optional[typing.Dict[str, typing.Any]]
+    parsed_control_net_uris: typing.List[FlaxControlNetUri]
+    flax_control_net_params: typing.Optional[typing.Dict[str, typing.Any]]
+
+    def __init__(self,
+                 pipeline: diffusers.FlaxDiffusionPipeline,
+                 flax_params: typing.Dict[str, typing.Any],
+                 parsed_vae_uri: typing.Optional[FlaxVAEUri],
+                 flax_vae_params: typing.Optional[typing.Dict[str, typing.Any]],
+                 parsed_control_net_uris: typing.List[FlaxControlNetUri],
+                 flax_control_net_params: typing.Optional[typing.Dict[str, typing.Any]]):
+        self.pipeline = pipeline
+        self.flax_params = flax_params
+        self.parsed_control_net_uris = parsed_control_net_uris
+        self.parsed_vae_uri = parsed_vae_uri
+        self.flax_vae_params = flax_vae_params
+        self.flax_control_net_params = flax_control_net_params
 
 
 @_memoize(_FLAX_PIPELINE_CACHE,
@@ -2078,20 +2258,20 @@ def _create_torch_diffusion_pipeline(pipeline_type: _PipelineTypes,
                                                          'control_net_uris':
                                                              _uri_list_hash_with_parser(
                                                                  parse_flax_control_net_uri)}),
-          on_hit=lambda key, hit: _simple_cache_hit_debug("Flax Pipeline", key, hit[0]),
-          on_create=lambda key, new: _simple_cache_miss_debug('Flax Pipeline', key, new[0]))
-def _create_flax_diffusion_pipeline(pipeline_type: _PipelineTypes,
-                                    model_path: str,
-                                    revision: _types.OptionalString,
-                                    dtype: DataTypes,
-                                    model_subfolder: _types.OptionalString = None,
-                                    vae_uri: _types.OptionalString = None,
-                                    control_net_uris: _types.OptionalString = None,
-                                    scheduler: _types.OptionalString = None,
-                                    safety_checker: bool = False,
-                                    auth_token: _types.OptionalString = None,
-                                    extra_args: typing.Optional[typing.Dict[str, typing.Any]] = None,
-                                    local_files_only: bool = False):
+          on_hit=lambda key, hit: _simple_cache_hit_debug("Flax Pipeline", key, hit.pipeline),
+          on_create=lambda key, new: _simple_cache_miss_debug('Flax Pipeline', key, new.pipeline))
+def create_flax_diffusion_pipeline(pipeline_type: PipelineTypes,
+                                   model_path: str,
+                                   revision: _types.OptionalString = None,
+                                   subfolder: _types.OptionalString = None,
+                                   dtype: DataTypes = DataTypes.AUTO,
+                                   vae_uri: _types.OptionalString = None,
+                                   control_net_uris: _types.OptionalString = None,
+                                   scheduler: _types.OptionalString = None,
+                                   safety_checker: bool = False,
+                                   auth_token: _types.OptionalString = None,
+                                   extra_args: typing.Optional[typing.Dict[str, typing.Any]] = None,
+                                   local_files_only: bool = False) -> FlaxPipelineCreationResult:
     has_control_nets = False
     if control_net_uris:
         if len(control_net_uris) > 1:
@@ -2099,16 +2279,16 @@ def _create_flax_diffusion_pipeline(pipeline_type: _PipelineTypes,
         if len(control_net_uris) == 1:
             has_control_nets = True
 
-    if pipeline_type == _PipelineTypes.BASIC:
+    if pipeline_type == PipelineTypes.TXT2IMG:
         if has_control_nets:
             pipeline_class = diffusers.FlaxStableDiffusionControlNetPipeline
         else:
             pipeline_class = diffusers.FlaxStableDiffusionPipeline
-    elif pipeline_type == _PipelineTypes.IMG2IMG:
+    elif pipeline_type == PipelineTypes.IMG2IMG:
         if has_control_nets:
             raise NotImplementedError('Flax does not support img2img mode with --control-nets.')
         pipeline_class = diffusers.FlaxStableDiffusionImg2ImgPipeline
-    elif pipeline_type == _PipelineTypes.INPAINT:
+    elif pipeline_type == PipelineTypes.INPAINT:
         if has_control_nets:
             raise NotImplementedError('Flax does not support inpaint mode with --control-nets.')
         pipeline_class = diffusers.FlaxStableDiffusionInpaintPipeline
@@ -2118,7 +2298,7 @@ def _create_flax_diffusion_pipeline(pipeline_type: _PipelineTypes,
     estimated_memory_usage = _estimate_pipeline_memory_use(
         model_path=model_path,
         revision=revision,
-        subfolder=model_subfolder,
+        subfolder=subfolder,
         vae_uri=vae_uri,
         safety_checker=True,  # it is always going to get loaded, monkey patched out currently
         auth_token=auth_token,
@@ -2141,16 +2321,19 @@ def _create_flax_diffusion_pipeline(pipeline_type: _PipelineTypes,
     flax_dtype = _get_flax_dtype(dtype)
 
     parsed_control_net_uris = []
+    parsed_flax_vae_uri = None
 
     if scheduler is None or not _scheduler_is_help(scheduler):
         # prevent waiting on VAE load just get the scheduler
         # help message for the main model
 
         if vae_uri is not None:
-            kwargs['vae'], vae_params = _load_flax_vae(vae_uri,
-                                                       flax_dtype_fallback=flax_dtype,
-                                                       use_auth_token=auth_token,
-                                                       local_files_only=local_files_only)
+            parsed_flax_vae_uri = parse_flax_vae_uri(vae_uri)
+
+            kwargs['vae'], vae_params = parsed_flax_vae_uri.load(
+                dtype_fallback=dtype,
+                use_auth_token=auth_token,
+                local_files_only=local_files_only)
             _messages.debug_log(lambda:
                                 f'Added Flax VAE: "{vae_uri}" to pipeline: "{pipeline_class.__name__}"')
 
@@ -2161,7 +2344,7 @@ def _create_flax_diffusion_pipeline(pipeline_type: _PipelineTypes,
 
         parsed_control_net_uris.append(parsed_flax_control_net_uri)
 
-        control_net, control_net_params = parse_flax_control_net_uri(control_net_uri) \
+        control_net, control_net_params = parsed_flax_control_net_uri \
             .load(use_auth_token=auth_token,
                   dtype_fallback=dtype,
                   local_files_only=local_files_only)
@@ -2178,7 +2361,7 @@ def _create_flax_diffusion_pipeline(pipeline_type: _PipelineTypes,
     pipeline, params = pipeline_class.from_pretrained(model_path,
                                                       revision=revision,
                                                       dtype=flax_dtype,
-                                                      subfolder=model_subfolder,
+                                                      subfolder=subfolder,
                                                       use_auth_token=auth_token,
                                                       local_files_only=local_files_only,
                                                       **kwargs)
@@ -2204,7 +2387,15 @@ def _create_flax_diffusion_pipeline(pipeline_type: _PipelineTypes,
     pipeline.DGENERATE_SIZE_ESTIMATE = estimated_memory_usage
 
     _messages.debug_log(f'Finished Creating Flax Pipeline: "{pipeline_class.__name__}"')
-    return pipeline, params, parsed_control_net_uris
+
+    return FlaxPipelineCreationResult(
+        pipeline=pipeline,
+        flax_params=params,
+        parsed_vae_uri=parsed_flax_vae_uri,
+        flax_vae_params=vae_params,
+        parsed_control_net_uris=parsed_control_net_uris,
+        flax_control_net_params=control_net_params
+    )
 
 
 class PipelineWrapperResult:
@@ -3246,10 +3437,10 @@ class DiffusionPipelineWrapper:
             args['width'] = user_args.get('width', control_images[0].width)
             args['height'] = user_args.get('height', control_images[0].height)
 
-            if self._pipeline_type == _PipelineTypes.BASIC:
+            if self._pipeline_type == PipelineTypes.TXT2IMG:
                 args['image'] = control_images
-            elif self._pipeline_type == _PipelineTypes.IMG2IMG or \
-                    self._pipeline_type == _PipelineTypes.INPAINT:
+            elif self._pipeline_type == PipelineTypes.IMG2IMG or \
+                    self._pipeline_type == PipelineTypes.INPAINT:
                 args['image'] = user_args['image']
                 args['control_image'] = control_images
                 set_strength()
@@ -3450,7 +3641,7 @@ class DiffusionPipelineWrapper:
             if val is not None:
                 raise NotImplementedError(
                     f'{option_name} cannot be used with --model-type "{self.model_type_string}" in '
-                    f'{_describe_pipeline_type(self._pipeline_type)} mode with the current '
+                    f'{get_pipeline_type_string(self._pipeline_type)} mode with the current '
                     f'combination of arguments and model.')
             return None
 
@@ -3721,23 +3912,27 @@ class DiffusionPipelineWrapper:
             if self._textual_inversion_uris:
                 raise NotImplementedError('Textual inversion not supported for flax.')
 
-            if self._pipeline_type != _PipelineTypes.BASIC and self._control_net_uris:
+            if self._pipeline_type != PipelineTypes.TXT2IMG and self._control_net_uris:
                 raise NotImplementedError('Inpaint and Img2Img not supported for flax with ControlNet.')
 
             if self._vae_tiling or self._vae_slicing:
                 raise NotImplementedError('--vae-tiling/--vae-slicing not supported for flax.')
 
-            self._pipeline, self._flax_params, self._parsed_control_net_uris = \
-                _create_flax_diffusion_pipeline(pipeline_type,
-                                                self._model_path,
-                                                revision=self._revision,
-                                                dtype=self._dtype,
-                                                vae_uri=self._vae_uri,
-                                                control_net_uris=self._control_net_uris,
-                                                scheduler=self._scheduler,
-                                                safety_checker=self._safety_checker,
-                                                auth_token=self._auth_token,
-                                                local_files_only=self._local_files_only)
+            creation_result = \
+                create_flax_diffusion_pipeline(pipeline_type,
+                                               self._model_path,
+                                               revision=self._revision,
+                                               dtype=self._dtype,
+                                               vae_uri=self._vae_uri,
+                                               control_net_uris=self._control_net_uris,
+                                               scheduler=self._scheduler,
+                                               safety_checker=self._safety_checker,
+                                               auth_token=self._auth_token,
+                                               local_files_only=self._local_files_only)
+
+            self._pipeline = creation_result.pipeline
+            self._flax_params = creation_result.flax_params
+            self._parsed_control_net_uris = creation_result.parsed_control_net_uris
 
         elif self._sdxl_refiner_uri is not None:
             if not model_type_is_sdxl(self._model_type):
@@ -3747,24 +3942,26 @@ class DiffusionPipelineWrapper:
             if not _scheduler_is_help(self._sdxl_refiner_scheduler):
                 # Don't load this up if were just going to be getting
                 # information about compatible schedulers for the refiner
-                self._pipeline, self._parsed_control_net_uris = \
-                    _create_torch_diffusion_pipeline(pipeline_type,
-                                                     self._model_type,
-                                                     self._model_path,
-                                                     model_subfolder=self._model_subfolder,
-                                                     revision=self._revision,
-                                                     variant=self._variant,
-                                                     dtype=self._dtype,
-                                                     vae_uri=self._vae_uri,
-                                                     lora_uris=self._lora_uris,
-                                                     control_net_uris=self._control_net_uris,
-                                                     scheduler=self._scheduler,
-                                                     safety_checker=self._safety_checker,
-                                                     auth_token=self._auth_token,
-                                                     device=self._device,
-                                                     local_files_only=self._local_files_only)
+                creation_result = \
+                    create_torch_diffusion_pipeline(pipeline_type,
+                                                    self._model_type,
+                                                    self._model_path,
+                                                    subfolder=self._model_subfolder,
+                                                    revision=self._revision,
+                                                    variant=self._variant,
+                                                    dtype=self._dtype,
+                                                    vae_uri=self._vae_uri,
+                                                    lora_uris=self._lora_uris,
+                                                    control_net_uris=self._control_net_uris,
+                                                    scheduler=self._scheduler,
+                                                    safety_checker=self._safety_checker,
+                                                    auth_token=self._auth_token,
+                                                    device=self._device,
+                                                    local_files_only=self._local_files_only)
+                self._pipeline = creation_result.pipeline
+                self._parsed_control_net_uris = creation_result.parsed_control_net_uris
 
-            refiner_pipeline_type = _PipelineTypes.IMG2IMG if pipeline_type is _PipelineTypes.BASIC else pipeline_type
+            refiner_pipeline_type = PipelineTypes.IMG2IMG if pipeline_type is PipelineTypes.TXT2IMG else pipeline_type
 
             if self._pipeline is not None:
                 refiner_extra_args = {'vae': self._pipeline.vae,
@@ -3772,56 +3969,59 @@ class DiffusionPipelineWrapper:
             else:
                 refiner_extra_args = None
 
-            self._sdxl_refiner_pipeline, discarded = \
-                _create_torch_diffusion_pipeline(refiner_pipeline_type,
-                                                 ModelTypes.TORCH_SDXL,
-                                                 self._sdxl_refiner_uri,
-                                                 model_subfolder=self._sdxl_refiner_subfolder,
-                                                 revision=self._sdxl_refiner_revision,
+            creation_result = \
+                create_torch_diffusion_pipeline(refiner_pipeline_type,
+                                                ModelTypes.TORCH_SDXL,
+                                                self._sdxl_refiner_uri,
+                                                subfolder=self._sdxl_refiner_subfolder,
+                                                revision=self._sdxl_refiner_revision,
 
-                                                 variant=self._sdxl_refiner_variant if
-                                                 self._sdxl_refiner_variant is not None else self._variant,
+                                                variant=self._sdxl_refiner_variant if
+                                                self._sdxl_refiner_variant is not None else self._variant,
 
-                                                 dtype=self._sdxl_refiner_dtype if
-                                                 self._sdxl_refiner_dtype is not None else self._dtype,
+                                                dtype=self._sdxl_refiner_dtype if
+                                                self._sdxl_refiner_dtype is not None else self._dtype,
 
-                                                 scheduler=self._scheduler if
-                                                 self._sdxl_refiner_scheduler is None else self._sdxl_refiner_scheduler,
+                                                scheduler=self._scheduler if
+                                                self._sdxl_refiner_scheduler is None else self._sdxl_refiner_scheduler,
 
-                                                 safety_checker=self._safety_checker,
-                                                 auth_token=self._auth_token,
-                                                 extra_args=refiner_extra_args,
-                                                 local_files_only=self._local_files_only)
+                                                safety_checker=self._safety_checker,
+                                                auth_token=self._auth_token,
+                                                extra_args=refiner_extra_args,
+                                                local_files_only=self._local_files_only)
+            self._sdxl_refiner_pipeline = creation_result.pipeline
         else:
             offload = self._control_net_uris and self._model_type == ModelTypes.TORCH_SDXL
 
-            self._pipeline, self._parsed_control_net_uris = \
-                _create_torch_diffusion_pipeline(pipeline_type,
-                                                 self._model_type,
-                                                 self._model_path,
-                                                 model_subfolder=self._model_subfolder,
-                                                 revision=self._revision,
-                                                 variant=self._variant,
-                                                 dtype=self._dtype,
-                                                 vae_uri=self._vae_uri,
-                                                 lora_uris=self._lora_uris,
-                                                 textual_inversion_uris=self._textual_inversion_uris,
-                                                 control_net_uris=self._control_net_uris,
-                                                 scheduler=self._scheduler,
-                                                 safety_checker=self._safety_checker,
-                                                 auth_token=self._auth_token,
-                                                 device=self._device,
-                                                 sequential_cpu_offload=offload,
-                                                 local_files_only=self._local_files_only)
+            creation_result = \
+                create_torch_diffusion_pipeline(pipeline_type,
+                                                self._model_type,
+                                                self._model_path,
+                                                subfolder=self._model_subfolder,
+                                                revision=self._revision,
+                                                variant=self._variant,
+                                                dtype=self._dtype,
+                                                vae_uri=self._vae_uri,
+                                                lora_uris=self._lora_uris,
+                                                textual_inversion_uris=self._textual_inversion_uris,
+                                                control_net_uris=self._control_net_uris,
+                                                scheduler=self._scheduler,
+                                                safety_checker=self._safety_checker,
+                                                auth_token=self._auth_token,
+                                                device=self._device,
+                                                sequential_cpu_offload=offload,
+                                                local_files_only=self._local_files_only)
+            self._pipeline = creation_result.pipeline
+            self._parsed_control_net_uris = creation_result.parsed_control_net_uris
 
-        _set_vae_slicing_tiling(pipeline=self._pipeline,
-                                vae_tiling=self._vae_tiling,
-                                vae_slicing=self._vae_slicing)
+        set_vae_slicing_tiling(pipeline=self._pipeline,
+                               vae_tiling=self._vae_tiling,
+                               vae_slicing=self._vae_slicing)
 
         if self._sdxl_refiner_pipeline is not None:
-            _set_vae_slicing_tiling(pipeline=self._sdxl_refiner_pipeline,
-                                    vae_tiling=self._vae_tiling,
-                                    vae_slicing=self._vae_slicing)
+            set_vae_slicing_tiling(pipeline=self._sdxl_refiner_pipeline,
+                                   vae_tiling=self._vae_tiling,
+                                   vae_slicing=self._vae_slicing)
 
         return True
 
@@ -3829,14 +4029,14 @@ class DiffusionPipelineWrapper:
     def _determine_pipeline_type(kwargs):
         if 'image' in kwargs and 'mask_image' in kwargs:
             # Inpainting is handled by INPAINT type
-            return _PipelineTypes.INPAINT
+            return PipelineTypes.INPAINT
 
         if 'image' in kwargs:
             # Image only is handled by IMG2IMG type
-            return _PipelineTypes.IMG2IMG
+            return PipelineTypes.IMG2IMG
 
         # All other situations handled by BASIC type
-        return _PipelineTypes.BASIC
+        return PipelineTypes.TXT2IMG
 
     def __call__(self, args: typing.Optional[DiffusionArguments] = None, **kwargs) -> PipelineWrapperResult:
         """
