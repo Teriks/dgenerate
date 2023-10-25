@@ -88,18 +88,19 @@ def memoize(cache: typing.Dict[str, typing.Any],
 
             args_after_positionals = spec.args[args_len:]
 
-            unprovided_args = [(arg, idx - args_len) for idx, arg in enumerate(args_after_positionals) if
-                               arg not in kwargs]
+            unprovided_args = [arg for arg in args_after_positionals if arg not in kwargs]
 
-            if spec.defaults is not None:
+            defaults = {arg[0]: arg[1] for arg in _types.get_default_args(func)}
+
+            if defaults:
                 try:
-                    kwargs.update({k: spec.defaults[v] for k, v in unprovided_args})
-                except IndexError:
-                    raise ValueError(f'Missing positional argument.')
+                    kwargs.update({k: defaults[k] for k in unprovided_args})
+                except KeyError as e:
+                    raise ValueError(f'Missing positional argument {e}.')
             else:
                 if unprovided_args:
                     raise ValueError(
-                        f'Missing arguments: {", ".join(x[0] for x in unprovided_args)}')
+                        f'Missing arguments: {", ".join(unprovided_args)}')
 
             # provided_arguments
             provided_arguments = spec.args[:args_len]

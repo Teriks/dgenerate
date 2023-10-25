@@ -275,3 +275,39 @@ class SetFromMixin:
                     raise ValueError(f'Source object does not define: "{k}"')
                 setattr(self, k, source.get(k))
         return self
+
+
+def get_accepted_args_with_defaults(func) -> typing.Tuple[str, typing.Any]:
+    """
+    Get the argument signature of a simple function with any default values present.
+
+    :param func: the function
+    :return: generator over tuples of length 1 or 2,
+        length 2 indicates a default argument value is present. (name,) or (name, value)
+    """
+
+    spec = inspect.getfullargspec(func)
+    sig_args = spec.args[1:]
+    defaults_cnt = len(spec.defaults) if spec.defaults else 0
+    no_defaults_before = len(sig_args) - defaults_cnt
+
+    default_idx = 0
+    for idx, arg in enumerate(sig_args):
+        if idx < no_defaults_before:
+            yield arg,
+        else:
+            yield arg, spec.defaults[default_idx]
+
+            default_idx += 1
+
+
+def get_default_args(func) -> typing.Tuple[str, typing.Any]:
+    """
+    Get a list of default arguments from a simple function with their default values.
+
+    :param func: the function
+    :return: generator over tuples of length 2 (name, value)
+    """
+    for arg in get_accepted_args_with_defaults(func):
+        if len(arg) > 1:
+            yield arg
