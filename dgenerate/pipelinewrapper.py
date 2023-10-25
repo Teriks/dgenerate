@@ -296,7 +296,7 @@ def enforce_cache_constraints(collect=True):
 def enforce_pipeline_cache_constraints(new_pipeline_size, collect=True):
     """
     Enforce :py:attr:`.PIPELINE_CACHE_MEMORY_CONSTRAINTS` and clear the
-    DiffusionPipeline cache if needed.
+    :py:class:`diffusers.DiffusionPipeline` cache if needed.
 
     :param new_pipeline_size: estimated size in bytes of any new pipeline that is about to enter memory
     :param collect: Call :py:meth:`gc.collect` after a cache clear ?
@@ -445,7 +445,10 @@ class InvalidSchedulerName(Exception):
 
 class SchedulerHelpException(Exception):
     """
-    Not an error, runtime scheduler help was requested, info printed, then this exception raised to get out
+    Not an error, runtime scheduler help was requested by passing "help" to a scheduler name
+    argument of :py:meth:`.DiffusionPipelineWrapper.__init__` such as ``scheduler`` or ``sdxl_refiner_scheduler``.
+    Upon calling :py:meth:`.DiffusionPipelineWrapper.__call__` info was printed using :py:meth:`dgenerate.messages.log`,
+    then this exception raised to get out of the call stack.
     """
     pass
 
@@ -527,7 +530,7 @@ def supported_data_type_enums() -> typing.List[DataTypes]:
     return [get_data_type_enum(i) for i in supported_data_type_strings()]
 
 
-def get_data_type_enum(id_str: typing.Union[DataTypes, str]) -> DataTypes:
+def get_data_type_enum(id_str: typing.Union[DataTypes, str, None]) -> DataTypes:
     """
     Convert a ``--dtype`` string to its :py:class:`.DataTypes` enum value
 
@@ -697,7 +700,7 @@ def have_jax_flax():
     return jax is not None
 
 
-def _get_flax_dtype(dtype):
+def _get_flax_dtype(dtype: typing.Union[DataTypes, typing.Any, None]):
     if dtype is None:
         return None
 
@@ -734,20 +737,74 @@ class FlaxControlNetUri:
     Representation of ``--control-nets`` uri when ``--model-type`` flax*
     """
 
-    def __init__(self, model, scale, revision, subfolder, dtype, from_torch):
+    model: _types.OptionalPath
+    """
+    Model path, huggingface slug
+    """
+
+    revision: _types.OptionalString
+    """
+    Model repo revision
+    """
+
+    subfolder: _types.OptionalPath
+    """
+    Model repo subfolder
+    """
+
+    dtype: typing.Optional[DataTypes]
+    """
+    Model dtype (precision)
+    """
+
+    scale: float
+    """
+    ControlNet guidance scale
+    """
+
+    from_torch: bool
+    """
+    Load from a model format meant for torch?
+    """
+
+    def __init__(self,
+                 model: _types.OptionalPath,
+                 revision: _types.OptionalString = None,
+                 subfolder: _types.OptionalPath = None,
+                 dtype: typing.Union[DataTypes, str, None] = None,
+                 scale: float = 1.0,
+                 from_torch: bool = False):
+
         self.model = model
         self.revision = revision
         self.subfolder = subfolder
-        self.dtype = dtype
-        self.from_torch = from_torch
+        self.dtype = get_data_type_enum(dtype) if dtype else None
         self.scale = scale
+        self.from_torch = from_torch
 
     @_memoize(_FLAX_CONTROL_NET_CACHE,
               exceptions={'local_files_only'},
               hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _struct_hasher}),
               on_hit=lambda key, hit: _simple_cache_hit_debug("Flax ControlNet", key, hit),
               on_create=lambda key, new: _simple_cache_miss_debug("Flax ControlNet", key, new))
-    def load(self, flax_dtype_fallback, **kwargs) -> diffusers.FlaxControlNetModel:
+    def load(self,
+             dtype_fallback: DataTypes = DataTypes.AUTO,
+             use_auth_token: _types.OptionalString = None,
+             local_files_only: bool = False) -> diffusers.FlaxControlNetModel:
+        """
+        Load a :py:class:`diffusers.FlaxControlNetModel` from this URI.
+
+        :param dtype_fallback: Fallback datatype if ``dtype`` was not specified in the URI.
+
+        :param use_auth_token: Optional huggingface API auth token, used for downloading
+            restricted repos that your account has access to.
+
+        :param local_files_only: Avoid connecting to huggingface to download models and
+            only use cached models?
+
+        :return: :py:class:`diffusers.FlaxControlNetModel`
+        """
+
         single_file_load_path = _is_single_file_model_load(self.model)
 
         if single_file_load_path:
@@ -759,20 +816,24 @@ class FlaxControlNetUri:
                 revision=self.revision,
                 subfolder=self.subfolder,
                 flax=not self.from_torch,
-                use_auth_token=kwargs.get('use_auth_token'),
-                local_files_only=kwargs.get('local_files_only')
+                use_auth_token=use_auth_token,
+                local_files_only=local_files_only
             )
 
             enforce_control_net_cache_constraints(
                 new_control_net_size=estimated_memory_usage)
 
+            flax_dtype = _get_flax_dtype(
+                dtype_fallback if self.dtype is None else self.dtype)
+
             new_net: diffusers.FlaxControlNetModel = \
                 diffusers.FlaxControlNetModel.from_pretrained(self.model,
                                                               revision=self.revision,
                                                               subfolder=self.subfolder,
-                                                              dtype=flax_dtype_fallback if self.dtype is None else self.dtype,
+                                                              dtype=flax_dtype,
                                                               from_pt=self.from_torch,
-                                                              **kwargs)
+                                                              use_auth_token=use_auth_token,
+                                                              local_files_only=local_files_only)
 
         _messages.debug_log('Estimated Flax ControlNet Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_usage))
@@ -827,7 +888,7 @@ def parse_flax_control_net_uri(uri: _types.Uri) -> FlaxControlNetUri:
             revision=r.args.get('revision', None),
             subfolder=r.args.get('subfolder', None),
             scale=scale,
-            dtype=_get_flax_dtype(dtype),
+            dtype=dtype,
             from_torch=from_torch)
 
     except _textprocessing.ConceptPathParseError as e:
@@ -839,12 +900,61 @@ class TorchControlNetUri:
     Representation of ``--control-nets`` uri when ``--model-type`` torch*
     """
 
-    def __init__(self, model, scale, start, end, revision, variant, subfolder, dtype):
+    model: _types.OptionalPath
+    """
+    Model path, huggingface slug
+    """
+
+    revision: _types.OptionalString
+    """
+    Model repo revision
+    """
+
+    variant: _types.OptionalString
+    """
+    Model repo revision
+    """
+
+    subfolder: _types.OptionalPath
+    """
+    Model repo subfolder
+    """
+
+    dtype: typing.Optional[DataTypes]
+    """
+    Model dtype (precision)
+    """
+
+    scale: float
+    """
+    ControlNet guidance scale
+    """
+
+    start: float
+    """
+    ControlNet guidance start point, fraction of inference / timesteps.
+    """
+
+    end: float
+    """
+    ControlNet guidance end point, fraction of inference / timesteps.
+    """
+
+    def __init__(self,
+                 model: _types.OptionalPath,
+                 revision: _types.OptionalString,
+                 variant: _types.OptionalString,
+                 subfolder: _types.OptionalPath,
+                 dtype: typing.Union[DataTypes, str, None] = None,
+                 scale: float = 1.0,
+                 start: float = 0.0,
+                 end: float = 1.0):
+
         self.model = model
         self.revision = revision
         self.variant = variant
         self.subfolder = subfolder
-        self.dtype = dtype
+        self.dtype = get_data_type_enum(dtype) if dtype else None
         self.scale = scale
         self.start = start
         self.end = end
@@ -854,17 +964,36 @@ class TorchControlNetUri:
               hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _struct_hasher}),
               on_hit=lambda key, hit: _simple_cache_hit_debug("Torch ControlNet", key, hit),
               on_create=lambda key, new: _simple_cache_miss_debug("Torch ControlNet", key, new))
-    def load(self, torch_dtype_fallback, **kwargs) -> diffusers.ControlNetModel:
+    def load(self,
+             dtype_fallback: DataTypes = DataTypes.AUTO,
+             use_auth_token: _types.OptionalString = None,
+             local_files_only: bool = False) -> diffusers.ControlNetModel:
+        """
+        Load a :py:class:`diffusers.ControlNetModel` from this URI.
+
+        :param dtype_fallback: Fallback datatype if ``dtype`` was not specified in the URI.
+
+        :param use_auth_token: Optional huggingface API auth token, used for downloading
+            restricted repos that your account has access to.
+
+        :param local_files_only: Avoid connecting to huggingface to download models and
+            only use cached models?
+
+        :return: :py:class:`diffusers.ControlNetModel`
+        """
 
         single_file_load_path = _is_single_file_model_load(self.model)
+
+        torch_dtype = _get_torch_dtype(
+            dtype_fallback if self.dtype is None else self.dtype)
 
         if single_file_load_path:
 
             estimated_memory_usage = _hfutil.estimate_model_memory_use(
                 repo_id=self.model,
                 revision=self.revision,
-                use_auth_token=kwargs.get('use_auth_token'),
-                local_files_only=kwargs.get('local_files_only')
+                use_auth_token=use_auth_token,
+                local_files_only=local_files_only
             )
 
             enforce_control_net_cache_constraints(
@@ -873,8 +1002,9 @@ class TorchControlNetUri:
             new_net: diffusers.ControlNetModel = \
                 diffusers.ControlNetModel.from_single_file(self.model,
                                                            revision=self.revision,
-                                                           torch_dtype=torch_dtype_fallback if self.dtype is None else self.dtype,
-                                                           **kwargs)
+                                                           torch_dtype=torch_dtype,
+                                                           use_auth_token=use_auth_token,
+                                                           local_files_only=local_files_only)
         else:
 
             estimated_memory_usage = _hfutil.estimate_model_memory_use(
@@ -882,8 +1012,8 @@ class TorchControlNetUri:
                 revision=self.revision,
                 variant=self.variant,
                 subfolder=self.subfolder,
-                use_auth_token=kwargs.get('use_auth_token'),
-                local_files_only=kwargs.get('local_files_only')
+                use_auth_token=use_auth_token,
+                local_files_only=local_files_only
             )
 
             enforce_control_net_cache_constraints(
@@ -894,8 +1024,9 @@ class TorchControlNetUri:
                                                           revision=self.revision,
                                                           variant=self.variant,
                                                           subfolder=self.subfolder,
-                                                          torch_dtype=torch_dtype_fallback if self.dtype is None else self.dtype,
-                                                          **kwargs)
+                                                          torch_dtype=torch_dtype,
+                                                          use_auth_token=use_auth_token,
+                                                          local_files_only=local_files_only)
 
         _messages.debug_log('Estimated Torch ControlNet Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_usage))
@@ -960,7 +1091,7 @@ def parse_torch_control_net_uri(uri: _types.Uri) -> TorchControlNetUri:
             revision=r.args.get('revision', None),
             variant=r.args.get('variant', None),
             subfolder=r.args.get('subfolder', None),
-            dtype=_get_torch_dtype(dtype),
+            dtype=dtype,
             scale=scale,
             start=start,
             end=end)
@@ -1627,25 +1758,25 @@ def _estimate_pipeline_memory_use(
                                                                  parse_torch_control_net_uri)}),
           on_hit=lambda key, hit: _simple_cache_hit_debug("Torch Pipeline", key, hit[0]),
           on_create=lambda key, new: _simple_cache_miss_debug('Torch Pipeline', key, new[0]))
-def _create_torch_diffusion_pipeline(pipeline_type,
-                                     model_type,
-                                     model_path,
-                                     revision,
-                                     variant,
-                                     dtype,
-                                     model_subfolder=None,
-                                     vae_uri=None,
-                                     lora_uris=None,
-                                     textual_inversion_uris=None,
-                                     control_net_uris=None,
-                                     scheduler=None,
-                                     safety_checker=False,
-                                     auth_token=None,
-                                     device='cuda',
-                                     extra_args=None,
-                                     model_cpu_offload=False,
-                                     sequential_cpu_offload=False,
-                                     local_files_only=False):
+def _create_torch_diffusion_pipeline(pipeline_type: _PipelineTypes,
+                                     model_type: ModelTypes,
+                                     model_path: str,
+                                     revision: _types.OptionalString,
+                                     variant: _types.OptionalString,
+                                     dtype: DataTypes,
+                                     model_subfolder: _types.OptionalString = None,
+                                     vae_uri: _types.OptionalUri = None,
+                                     lora_uris: _types.OptionalUris = None,
+                                     textual_inversion_uris: _types.OptionalUris = None,
+                                     control_net_uris: _types.OptionalUris = None,
+                                     scheduler: _types.OptionalString = None,
+                                     safety_checker: bool = False,
+                                     auth_token: _types.OptionalString = None,
+                                     device: str = 'cuda',
+                                     extra_args: typing.Optional[typing.Dict[str, typing.Any]] = None,
+                                     model_cpu_offload: bool = False,
+                                     sequential_cpu_offload: bool = False,
+                                     local_files_only: bool = False):
     # Pipeline class selection
 
     if model_type_is_upscaler(model_type):
@@ -1781,7 +1912,7 @@ def _create_torch_diffusion_pipeline(pipeline_type,
             parsed_control_net_uris.append(parsed_control_net_uri)
 
             new_net = parsed_control_net_uri.load(use_auth_token=auth_token,
-                                                  torch_dtype_fallback=torch_dtype,
+                                                  dtype_fallback=dtype,
                                                   local_files_only=local_files_only)
 
             _messages.debug_log(lambda:
@@ -1880,18 +2011,18 @@ def _create_torch_diffusion_pipeline(pipeline_type,
                                                                  parse_flax_control_net_uri)}),
           on_hit=lambda key, hit: _simple_cache_hit_debug("Flax Pipeline", key, hit[0]),
           on_create=lambda key, new: _simple_cache_miss_debug('Flax Pipeline', key, new[0]))
-def _create_flax_diffusion_pipeline(pipeline_type,
-                                    model_path,
-                                    revision,
-                                    dtype,
-                                    model_subfolder=None,
-                                    vae_uri=None,
-                                    control_net_uris=None,
-                                    scheduler=None,
-                                    safety_checker=False,
-                                    auth_token=None,
-                                    extra_args=None,
-                                    local_files_only=False):
+def _create_flax_diffusion_pipeline(pipeline_type: _PipelineTypes,
+                                    model_path: str,
+                                    revision: _types.OptionalString,
+                                    dtype: DataTypes,
+                                    model_subfolder: _types.OptionalString = None,
+                                    vae_uri: _types.OptionalString = None,
+                                    control_net_uris: _types.OptionalString = None,
+                                    scheduler: _types.OptionalString = None,
+                                    safety_checker: bool = False,
+                                    auth_token: _types.OptionalString = None,
+                                    extra_args: typing.Optional[typing.Dict[str, typing.Any]] = None,
+                                    local_files_only: bool = False):
     has_control_nets = False
     if control_net_uris:
         if len(control_net_uris) > 1:
@@ -1963,7 +2094,7 @@ def _create_flax_diffusion_pipeline(pipeline_type,
 
         control_net, control_net_params = parse_flax_control_net_uri(control_net_uri) \
             .load(use_auth_token=auth_token,
-                  flax_dtype_fallback=flax_dtype,
+                  dtype_fallback=dtype,
                   local_files_only=local_files_only)
 
         _messages.debug_log(lambda:
@@ -3036,7 +3167,7 @@ class DiffusionPipelineWrapper:
             elif control_images_cnt > control_net_uris_cnt:
                 # User provided too many control_images, behavior is undefined.
 
-                raise NotImplementedError(
+                raise ValueError(
                     f'You specified {control_images_cnt} control image sources and '
                     f'only {control_net_uris_cnt} ControlNet URIs. The amount of '
                     f'control images must be less than or equal to the amount of ControlNet URIs.')
