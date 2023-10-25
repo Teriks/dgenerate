@@ -284,6 +284,15 @@ class ImagePreprocessor:
         raise _exceptions.ImagePreprocessorArgumentError(msg)
 
     def __init__(self, **kwargs):
+        """
+        Arguments:
+            * called_by_name (string, invoked by what name?)
+            * device (device string, such as "cuda", "cuda:1")
+            * output_file (file path, output a debug image here)
+            * output_overwrite (bool, overwrite debug images? or use a duplicate suffix instead.)
+
+        :param kwargs: see Arguments
+        """
         self.__output_file = kwargs.get('output_file')
         self.__output_overwrite = kwargs.get('output_overwrite')
         self.__device = kwargs.get('device', 'cpu')
