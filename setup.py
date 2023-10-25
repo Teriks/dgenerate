@@ -190,11 +190,9 @@ def poetry_version_to_pip_requirement(version):
 
     if version.startswith('=', 1):
         return version
-    elif version.startswith('!', 1):
+    elif version.startswith('<'):
         return version
-    elif version.startswith('<', 1):
-        return version
-    elif version.startswith('>', 1):
+    elif version.startswith('>'):
         return version
     else:
         return f"=={version}"
@@ -215,6 +213,8 @@ if __name__ != 'setup_as_library':
     pyproject_requirements = [name + spec for name, spec in
                               get_poetry_pyproject_as_pip_requires(
                                   exclude=exclude.union({'python'})).items()]
+
+    print(pyproject_requirements)
 
     if 'READTHEDOCS' in os.environ:
         for idx, requires in enumerate(pyproject_requirements):
