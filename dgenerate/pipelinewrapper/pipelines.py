@@ -215,10 +215,29 @@ def _estimate_pipeline_memory_use(
 
 class TorchPipelineCreationResult:
     pipeline: diffusers.DiffusionPipeline
+    """
+    A created subclass of :py:class:`diffusers.DiffusionPipeline`
+    """
+
     parsed_vae_uri: typing.Optional[_uris.TorchVAEUri]
+    """
+    Parsed VAE URI if one was present
+    """
+
     parsed_lora_uris: typing.List[_uris.LoRAUri]
+    """
+    Parsed LoRA URIs if any were present
+    """
+
     parsed_textual_inversion_uris: typing.List[_uris.TextualInversionUri]
+    """
+    Parsed Textual Inversion URIs if any were present
+    """
+
     parsed_control_net_uris: typing.List[_uris.TorchControlNetUri]
+    """
+    Parsed Control Net URIs if any were present
+    """
 
     def __init__(self,
                  pipeline: diffusers.DiffusionPipeline,
@@ -233,6 +252,13 @@ class TorchPipelineCreationResult:
         self.parsed_control_net_uris = parsed_control_net_uris
 
     def call(self, *args, **kwargs) -> diffusers.utils.BaseOutput:
+        """
+        Call **pipeline**
+
+        :param args: forward args to pipeline
+        :param kwargs: forward kwargs to pipeline
+        :return: A subclass of :py:class:`diffusers.utils.BaseOutput`
+        """
         return self.pipeline(*args, **kwargs)
 
 
@@ -255,6 +281,32 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                                     model_cpu_offload: bool = False,
                                     sequential_cpu_offload: bool = False,
                                     local_files_only: bool = False) -> TorchPipelineCreationResult:
+    """
+    Create a :py:class:`diffusers.DiffusionPipeline` in dgenerates in memory cacheing system.
+
+    :param pipeline_type: py:class:`dgenerate.pipelinewrapper.PipelineTypes` enum value
+    :param model_type:  py:class:`dgenerate.pipelinewrapper.ModelTypes` enum value
+    :param model_path: huggingface slug, huggingface blob link, path to folder on disk, path to file on disk
+    :param revision: huggingface repo revision (branch)
+    :param variant: model weights name variant, for example 'fp16'
+    :param subfolder: huggingface repo subfolder if applicable
+    :param dtype: Optional py:class:`dgenerate.pipelinewrapper.DataTypes` enum value
+    :param vae_uri: Optional ``--vae`` URI string for specifying a specific VAE
+    :param lora_uris: Optional ``--lora`` URI strings for specifying LoRA weights, currently only one LoRA at a time is supported
+    :param textual_inversion_uris: Optional ``--textual-inversions`` URI strings for specifying Textual Inversion weights
+    :param control_net_uris: Optional ``--control-nets`` URI strings for specifying ControlNet models
+    :param scheduler: Optional scheduler (sampler) class name, unqualified, or "help" to print supported values
+        to STDOUT and raise :py:exc:`dgenerate.pipelinewrapper.SchedulerHelpException`
+    :param safety_checker: Safety checker enabled? default is false
+    :param auth_token: Optional huggingface API token for accessing repositories that are restricted to your account
+    :param device: Optional ``--device`` string, defaults to "cuda"
+    :param extra_args: Extra arguments to pass directly into
+        :py:meth:`diffusers.DiffusionPipeline.from_single_file` or :py:meth:`diffusers.DiffusionPipeline.from_pretrained`
+    :param model_cpu_offload: This pipeline has model_cpu_offloading enabled?
+    :param sequential_cpu_offload: This pipeline has sequential_cpu_offloading enabled?
+    :param local_files_only: Only look in the huggingface cache and do not connect to download models?
+    :return: :py:class:`.TorchPipelineCreationResult`
+    """
     return _create_torch_diffusion_pipeline(**locals())
 
 
@@ -531,12 +583,36 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
 
 
 class FlaxPipelineCreationResult:
+
     pipeline: diffusers.FlaxDiffusionPipeline
+    """
+    A created subclass of :py:class:`diffusers.FlaxDiffusionPipeline`
+    """
+
     flax_params: typing.Dict[str, typing.Any]
+    """
+    Flax specific Pipeline params object
+    """
+
     parsed_vae_uri: typing.Optional[_uris.FlaxVAEUri]
+    """
+    Parsed VAE URI if one was present
+    """
+
     flax_vae_params: typing.Optional[typing.Dict[str, typing.Any]]
+    """
+    Flax specific VAE params object
+    """
+
     parsed_control_net_uris: typing.List[_uris.FlaxControlNetUri]
+    """
+    Parsed Control Net URIs if any were present
+    """
+
     flax_control_net_params: typing.Optional[typing.Dict[str, typing.Any]]
+    """
+    Flax specific Control Net params object
+    """
 
     def __init__(self,
                  pipeline: diffusers.FlaxDiffusionPipeline,
@@ -553,6 +629,13 @@ class FlaxPipelineCreationResult:
         self.flax_control_net_params = flax_control_net_params
 
     def call(self, *args, **kwargs) -> diffusers.utils.BaseOutput:
+        """
+        Call **pipeline**
+
+        :param args: forward args to pipeline
+        :param kwargs: forward kwargs to pipeline
+        :return: A subclass of :py:class:`diffusers.utils.BaseOutput`
+        """
         return self.pipeline(*args, **kwargs)
 
 
@@ -568,6 +651,26 @@ def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                                    auth_token: _types.OptionalString = None,
                                    extra_args: typing.Optional[typing.Dict[str, typing.Any]] = None,
                                    local_files_only: bool = False) -> FlaxPipelineCreationResult:
+    """
+    Create a :py:class:`diffusers.FlaxDiffusionPipeline` in dgenerates in memory cacheing system.
+
+    :param pipeline_type: py:class:`dgenerate.pipelinewrapper.PipelineTypes` enum value
+    :param model_path: huggingface slug, huggingface blob link, path to folder on disk, path to file on disk
+    :param revision: huggingface repo revision (branch)
+    :param subfolder: huggingface repo subfolder if applicable
+    :param dtype: Optional py:class:`dgenerate.pipelinewrapper.DataTypes` enum value
+    :param vae_uri: Optional Flax specific ``--vae`` URI string for specifying a specific VAE
+    :param control_net_uris: Optional ``--control-nets`` URI strings for specifying ControlNet models
+    :param scheduler: Optional scheduler (sampler) class name, unqualified, or "help" to print supported values
+        to STDOUT and raise :py:exc:`dgenerate.pipelinewrapper.SchedulerHelpException`
+    :param safety_checker: Safety checker enabled? default is false
+    :param auth_token: Optional huggingface API token for accessing repositories that are restricted to your account
+    :param device: Optional ``--device`` string, defaults to "cuda"
+    :param extra_args: Extra arguments to pass directly into
+        :py:meth:`diffusers.DiffusionPipeline.from_single_file` or :py:meth:`diffusers.DiffusionPipeline.from_pretrained`
+    :param local_files_only: Only look in the huggingface cache and do not connect to download models?
+    :return: :py:class:`.FlaxPipelineCreationResult`
+    """
     return _create_flax_diffusion_pipeline(**locals())
 
 
