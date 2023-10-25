@@ -190,6 +190,12 @@ def poetry_version_to_pip_requirement(version):
 
     if version.startswith('=', 1):
         return version
+    elif version.startswith('!', 1):
+        return version
+    elif version.startswith('<', 1):
+        return version
+    elif version.startswith('>', 1):
+        return version
     else:
         return f"=={version}"
 
