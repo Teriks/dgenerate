@@ -1656,7 +1656,7 @@ class LoRAUri:
                          pipeline: diffusers.DiffusionPipeline,
                          use_auth_token: _types.OptionalString = None,
                          local_files_only=False):
-        extra_args = {k: v for k, v in locals() if k not in {'self', 'pipeline'}}
+        extra_args = {k: v for k, v in locals().items() if k not in {'self', 'pipeline'}}
 
         if hasattr(pipeline, 'load_lora_weights'):
             _messages.debug_log('pipeline.load_lora_weights('
@@ -1737,7 +1737,7 @@ class TextualInversionUri:
                          pipeline: diffusers.DiffusionPipeline,
                          use_auth_token: _types.OptionalString = None,
                          local_files_only=False):
-        extra_args = {k: v for k, v in locals() if k not in {'self', 'pipeline'}}
+        extra_args = {k: v for k, v in locals().items() if k not in {'self', 'pipeline'}}
 
         if hasattr(pipeline, 'load_textual_inversion'):
             _messages.debug_log('pipeline.load_textual_inversion(' +
