@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import enum
 import inspect
 import numbers
 import typing
@@ -42,7 +43,7 @@ def args_cache_key(args_dict: typing.Dict[str, typing.Any],
             return '{' + args_cache_key(obj) + '}'
         elif isinstance(obj, list):
             return f'[{",".join(args_cache_key(o) if o is isinstance(o, (dict, list)) else value_hash(o) for o in obj)}]'
-        elif obj is None or isinstance(obj, (str, numbers.Number)):
+        elif obj is None or isinstance(obj, (str, numbers.Number, enum.Enum)):
             return str(obj)
         else:
             return _types.class_and_id_string(obj)
