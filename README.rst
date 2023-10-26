@@ -62,7 +62,7 @@ dgenerate help output
 
     usage: dgenerate [-h] [-v] [--version] [--plugin-modules PATH [PATH ...]] [--offline-mode]
                      [--templates-help] [--model-type MODEL_TYPE] [--revision BRANCH] [--variant VARIANT]
-                     [--subfolder MODEL_SUBFOLDER] [--auth-token TOKEN] [--batch-size INTEGER]
+                     [--subfolder SUBFOLDER] [--auth-token TOKEN] [--batch-size INTEGER]
                      [--batch-grid-size SIZE] [--vae VAE_URI] [--vae-tiling] [--vae-slicing] [--loras LORA_URI]
                      [--textual-inversions TEXTUAL_INVERSION_URI [TEXTUAL_INVERSION_URI ...]]
                      [--control-nets CONTROL_NET_URI [CONTROL_NET_URI ...]] [--scheduler SCHEDULER_NAME]
@@ -126,7 +126,7 @@ dgenerate help output
       --variant VARIANT     If specified when loading from a huggingface repository or folder, load weights from
                             "variant" filename, e.g. "pytorch_model.<variant>.safetensors". Defaults to
                             automatic selection. This option is ignored if using flax.
-      --subfolder MODEL_SUBFOLDER
+      --subfolder SUBFOLDER
                             Main model subfolder. If specified when loading from a huggingface repository or
                             folder, load weights from the specified subfolder.
       --auth-token TOKEN    Huggingface auth token. Required to download restricted repositories that have
@@ -418,7 +418,9 @@ dgenerate help output
                             has no effect.
       -d DEVICE, --device DEVICE
                             cuda / cpu. (default: cuda). Use: cuda:0, cuda:1, cuda:2, etc. to specify a specific
-                            GPU.
+                            GPU. This argument is ignored when using flax, for flax use the environmental
+                            variable CUDA_VISIBLE_DEVICES to specify which GPUs are visible to cuda, flax will
+                            use every visible GPU.
       -t DTYPE, --dtype DTYPE
                             Model precision: auto, float16, or float32. (default: auto)
       -s SIZE, --output-size SIZE
@@ -563,7 +565,6 @@ dgenerate help output
                             AI is targeting for the content of the image. Values between 30-40 produce good
                             results, higher values may improve image quality and or change image content.
                             (default: [30])
-
 
 
 

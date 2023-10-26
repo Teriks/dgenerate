@@ -767,7 +767,10 @@ actions.append(
 
 actions.append(
     parser.add_argument('-d', '--device', action='store', default='cuda', type=_type_device,
-                        help='cuda / cpu. (default: cuda). Use: cuda:0, cuda:1, cuda:2, etc. to specify a specific GPU.'))
+                        help="""cuda / cpu. (default: cuda). Use: cuda:0, cuda:1, cuda:2, etc. to specify a specific GPU.
+                             This argument is ignored when using flax, for flax use the environmental variable
+                             CUDA_VISIBLE_DEVICES to specify which GPUs are visible to cuda, flax will use every
+                             visible GPU."""))
 
 actions.append(
     parser.add_argument('-t', '--dtype', action='store', default='auto', type=_type_dtype,
