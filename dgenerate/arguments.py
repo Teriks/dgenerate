@@ -623,8 +623,8 @@ actions.append(
                         action='store', nargs='+', default=[], type=_type_size,
                         help="""One or more Stable Diffusion XL (torch-sdxl) "target-size" micro-conditioning parameters in
                         the format (WIDTH)x(HEIGHT). For most cases, --sdxl-target-size should be set to the desired
-                        height and width of the generated image. If not specified it will default to --output-size.
-                        Part of SDXL\'s micro-conditioning as explained in section 2.2 of 
+                        height and width of the generated image. If not specified it will default to --output-size or
+                        the size of any input images. Part of SDXL\'s micro-conditioning as explained in section 2.2 of 
                         [https://huggingface.co/papers/2307.01952]"""))
 
 actions.append(
