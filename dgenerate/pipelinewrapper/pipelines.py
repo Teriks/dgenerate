@@ -51,7 +51,15 @@ class SchedulerHelpException(Exception):
     pass
 
 
-def set_torch_safety_checker(pipeline: diffusers.DiffusionPipeline, safety_checker: bool):
+def _disabled_safety_checker(images, clip_input):
+    if len(images.shape) == 4:
+        num_images = images.shape[0]
+        return images, [False] * num_images
+    else:
+        return images, False
+
+
+def _set_torch_safety_checker(pipeline: diffusers.DiffusionPipeline, safety_checker: bool):
     if not safety_checker:
         if hasattr(pipeline, 'safety_checker') and pipeline.safety_checker is not None:
             # If it's already None for some reason you'll get a call
@@ -62,60 +70,30 @@ def set_torch_safety_checker(pipeline: diffusers.DiffusionPipeline, safety_check
             pipeline.safety_checker = _disabled_safety_checker
 
 
-def set_vae_slicing_tiling(pipeline: typing.Union[diffusers.DiffusionPipeline,
-                                                  diffusers.FlaxDiffusionPipeline],
-                           vae_tiling: bool,
-                           vae_slicing: bool):
-    has_vae = hasattr(pipeline, 'vae') and pipeline.vae is not None
-    pipeline_class = pipeline.__class__
+def scheduler_is_help(name: str):
+    """
+    This scheduler name is simply a request for help?, IE: "help"?
 
-    if vae_tiling:
-        if has_vae:
-            if hasattr(pipeline.vae, 'enable_tiling'):
-                _messages.debug_log(f'Enabling VAE tiling on Pipeline: "{pipeline_class.__name__}",',
-                                    f'VAE: "{pipeline.vae.__class__.__name__}"')
-                pipeline.vae.enable_tiling()
-            else:
-                raise NotImplementedError(
-                    '--vae-tiling not supported as loaded VAE does not support it.'
-                )
-        else:
-            raise NotImplementedError(
-                '--vae-tiling not supported as no VAE is present for the specified model.')
-    elif has_vae:
-        if hasattr(pipeline.vae, 'disable_tiling'):
-            _messages.debug_log(f'Disabling VAE tiling on Pipeline: "{pipeline_class.__name__}",',
-                                f'VAE: "{pipeline.vae.__class__.__name__}"')
-            pipeline.vae.disable_tiling()
-
-    if vae_slicing:
-        if has_vae:
-            if hasattr(pipeline.vae, 'enable_slicing'):
-                _messages.debug_log(f'Enabling VAE slicing on Pipeline: "{pipeline_class.__name__}",',
-                                    f'VAE: "{pipeline.vae.__class__.__name__}"')
-                pipeline.vae.enable_slicing()
-            else:
-                raise NotImplementedError(
-                    '--vae-slicing not supported as loaded VAE does not support it.'
-                )
-        else:
-            raise NotImplementedError(
-                '--vae-slicing not supported as no VAE is present for the specified model.')
-    elif has_vae:
-        if hasattr(pipeline.vae, 'disable_slicing'):
-            _messages.debug_log(f'Disabling VAE slicing on Pipeline: "{pipeline_class.__name__}",',
-                                f'VAE: "{pipeline.vae.__class__.__name__}"')
-            pipeline.vae.disable_slicing()
-
-
-def scheduler_is_help(name):
+    :param name: string to test
+    :return: true of false
+    """
     if name is None:
         return False
     return name.strip().lower() == 'help'
 
 
 def load_scheduler(pipeline: typing.Union[diffusers.DiffusionPipeline, diffusers.FlaxDiffusionPipeline],
-                   model_path: str, scheduler_name=None):
+                   scheduler_name=None, model_path: typing.Optional[str] = None):
+    """
+    Load a specific compatible scheduler class name onto a huggingface diffusers pipeline object.
+
+    :param pipeline: pipeline object
+    :param scheduler_name: compatible scheduler class name, pass "help" to recieve a print out to STDOUT
+        and raise :py:exc:`.SchedulerHelpException`
+    :param model_path: Optional model path to be used in the message to STDOUT produced by passing "help"
+    :return:
+    """
+
     if scheduler_name is None:
         return
 
@@ -141,17 +119,9 @@ def load_scheduler(pipeline: typing.Union[diffusers.DiffusionPipeline, diffusers
         f'options are:\n\n{chr(10).join(sorted(" " * 4 + _textprocessing.quote(i.__name__.split(".")[-1]) for i in compatibles))}')
 
 
-def _disabled_safety_checker(images, clip_input):
-    if len(images.shape) == 4:
-        num_images = images.shape[0]
-        return images, [False] * num_images
-    else:
-        return images, False
-
-
-def _estimate_pipeline_memory_use(
+def estimate_pipeline_memory_use(
         model_path,
-        revision,
+        revision='main',
         variant=None,
         subfolder=None,
         vae_uri=None,
@@ -162,12 +132,33 @@ def _estimate_pipeline_memory_use(
         extra_args=None,
         local_files_only=False,
         flax=False):
+    """
+    Estimate the CPU side memory use of a model.
+
+    :param model_path: huggingface slug, blob link, path to folder on disk, path to model file.
+    :param revision: huggingface repo revision if using a huggingface slug
+    :param variant: model file variant desired, for example "fp16"
+    :param subfolder: huggingface repo subfolder if using a huggingface slug
+    :param vae_uri: optional user specified ``--vae`` URI that will be loaded on to the pipeline
+    :param lora_uris: optional user specified ``--lora`` URIs that will be loaded on to the pipeline
+    :param textual_inversion_uris: optional user specified ``--textual-inversion`` URIs that will be loaded on to the pipeline
+    :param safety_checker: consider the safety checker? dgenerate usually loads the safety checker and then retroactively
+        disables it if needed, so it usually considers the size of the safety checker model.
+    :param auth_token: optional huggingface auth token to access restricted repositories that your account has access to.
+    :param extra_args: ``extra_args`` as to be passed to :py:meth:`.create_torch_diffusion_pipeline`
+        or :py:meth:`.create_flax_diffusion_pipeline`
+    :param local_files_only: Only ever attempt to look in the local huggingface cache? if ``False`` the huggingface
+        API will be contacted when necessary.
+    :param flax: This is a flax model?
+    :return: size estimate in bytes.
+    """
+
     usage = _hfutil.estimate_model_memory_use(
         repo_id=model_path,
         revision=revision,
         variant=variant,
         subfolder=subfolder,
-        include_vae=not vae_uri,
+        include_vae=not vae_uri or 'vae' not in extra_args,
         safety_checker=safety_checker,
         include_text_encoder=not extra_args or 'text_encoder' not in extra_args,
         include_text_encoder_2=not extra_args or 'text_encoder_2' not in extra_args,
@@ -213,11 +204,130 @@ def _estimate_pipeline_memory_use(
     return usage
 
 
-class TorchPipelineCreationResult:
-    pipeline: diffusers.DiffusionPipeline
+def set_vae_slicing_tiling(pipeline: typing.Union[diffusers.DiffusionPipeline,
+                                                  diffusers.FlaxDiffusionPipeline],
+                           vae_tiling: bool,
+                           vae_slicing: bool):
     """
-    A created subclass of :py:class:`diffusers.DiffusionPipeline`
+    Set the vae_slicing and vae_tiling status on a created huggingface diffusers pipeline.
+
+    :param pipeline: pipeline object
+    :param vae_tiling: tiling status
+    :param vae_slicing: slicing status
+    :return:
     """
+
+    has_vae = hasattr(pipeline, 'vae') and pipeline.vae is not None
+    pipeline_class = pipeline.__class__
+
+    if vae_tiling:
+        if has_vae:
+            if hasattr(pipeline.vae, 'enable_tiling'):
+                _messages.debug_log(f'Enabling VAE tiling on Pipeline: "{pipeline_class.__name__}",',
+                                    f'VAE: "{pipeline.vae.__class__.__name__}"')
+                pipeline.vae.enable_tiling()
+            else:
+                raise NotImplementedError(
+                    '--vae-tiling not supported as loaded VAE does not support it.'
+                )
+        else:
+            raise NotImplementedError(
+                '--vae-tiling not supported as no VAE is present for the specified model.')
+    elif has_vae:
+        if hasattr(pipeline.vae, 'disable_tiling'):
+            _messages.debug_log(f'Disabling VAE tiling on Pipeline: "{pipeline_class.__name__}",',
+                                f'VAE: "{pipeline.vae.__class__.__name__}"')
+            pipeline.vae.disable_tiling()
+
+    if vae_slicing:
+        if has_vae:
+            if hasattr(pipeline.vae, 'enable_slicing'):
+                _messages.debug_log(f'Enabling VAE slicing on Pipeline: "{pipeline_class.__name__}",',
+                                    f'VAE: "{pipeline.vae.__class__.__name__}"')
+                pipeline.vae.enable_slicing()
+            else:
+                raise NotImplementedError(
+                    '--vae-slicing not supported as loaded VAE does not support it.'
+                )
+        else:
+            raise NotImplementedError(
+                '--vae-slicing not supported as no VAE is present for the specified model.')
+    elif has_vae:
+        if hasattr(pipeline.vae, 'disable_slicing'):
+            _messages.debug_log(f'Disabling VAE slicing on Pipeline: "{pipeline_class.__name__}",',
+                                f'VAE: "{pipeline.vae.__class__.__name__}"')
+            pipeline.vae.disable_slicing()
+
+
+class PipelineCreationResult:
+    def __init__(self, pipeline):
+        self._pipeline = pipeline
+
+    @property
+    def pipeline(self):
+        return self._pipeline
+
+    def get_pipeline_modules(self, names= typing.Iterable[str]):
+        """
+        Get associated pipeline module such as ``vae`` etc, in
+        a dictionary mapped from name to module value.
+
+        Possible Module Names:
+
+            * ``vae``
+            * ``text_encoder``
+            * ``text_encoder_2``
+            * ``tokenizer``
+            * ``tokenizer_2``
+            * ``safety_checker``
+            * ``feature_extractor``
+            * ``controlnet``
+            * ``scheduler``
+            * ``unet``
+            * ``watermark``
+
+        If the module is not present or a recognized name, a :py:exc:`NotImplementedError`
+        will be thrown describing the module that is not part of the pipeline.
+
+        :raises: :py:exc:`NotImplementedError`
+
+        :param names: module names, such as ``vae``, ``text_encoder``
+        :return: dictionary
+        """
+
+        module_values = dict()
+
+        acceptable_lookups = {
+            'vae',
+            'text_encoder',
+            'text_encoder_2',
+            'tokenizer',
+            'tokenizer_2'
+            'safety_checker',
+            'feature_extractor',
+            'controlnet',
+            'scheduler',
+            'unet',
+            'watermark'
+        }
+
+        for name in names:
+            if name not in acceptable_lookups:
+                raise NotImplementedError(f'"{name}" is not a recognized pipeline module name.')
+            if not hasattr(self.pipeline, name):
+                raise NotImplementedError(f'created pipeline does not possess a module named: "{name}".')
+            module_values[name] = getattr(self.pipeline, name)
+
+        return module_values
+
+
+class TorchPipelineCreationResult(PipelineCreationResult):
+    @property
+    def pipeline(self) -> diffusers.DiffusionPipeline:
+        """
+        A created subclass of :py:class:`diffusers.DiffusionPipeline`
+        """
+        return super().pipeline
 
     parsed_vae_uri: typing.Optional[_uris.TorchVAEUri]
     """
@@ -245,7 +355,8 @@ class TorchPipelineCreationResult:
                  parsed_lora_uris: typing.List[_uris.LoRAUri],
                  parsed_textual_inversion_uris: typing.List[_uris.TextualInversionUri],
                  parsed_control_net_uris: typing.List[_uris.TorchControlNetUri]):
-        self.pipeline = pipeline
+        super().__init__(pipeline)
+
         self.parsed_vae_uri = parsed_vae_uri
         self.parsed_lora_uris = parsed_lora_uris
         self.parsed_textual_inversion_uris = parsed_textual_inversion_uris
@@ -405,7 +516,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
             # Should be impossible
             raise NotImplementedError('Pipeline type not implemented.')
 
-    estimated_memory_usage = _estimate_pipeline_memory_use(
+    estimated_memory_usage = estimate_pipeline_memory_use(
         model_path=model_path,
         revision=revision,
         variant=variant,
@@ -557,7 +668,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
 
     # Safety Checker
 
-    set_torch_safety_checker(pipeline, safety_checker)
+    _set_torch_safety_checker(pipeline, safety_checker)
 
     # Model Offloading
 
@@ -584,12 +695,13 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     )
 
 
-class FlaxPipelineCreationResult:
-
-    pipeline: diffusers.FlaxDiffusionPipeline
-    """
-    A created subclass of :py:class:`diffusers.FlaxDiffusionPipeline`
-    """
+class FlaxPipelineCreationResult(PipelineCreationResult):
+    @property
+    def pipeline(self) -> diffusers.FlaxDiffusionPipeline:
+        """
+        A created subclass of :py:class:`diffusers.FlaxDiffusionPipeline`
+        """
+        return super().pipeline
 
     flax_params: typing.Dict[str, typing.Any]
     """
@@ -623,7 +735,8 @@ class FlaxPipelineCreationResult:
                  flax_vae_params: typing.Optional[typing.Dict[str, typing.Any]],
                  parsed_control_net_uris: typing.List[_uris.FlaxControlNetUri],
                  flax_control_net_params: typing.Optional[typing.Dict[str, typing.Any]]):
-        self.pipeline = pipeline
+        super().__init__(pipeline)
+
         self.flax_params = flax_params
         self.parsed_control_net_uris = parsed_control_net_uris
         self.parsed_vae_uri = parsed_vae_uri
@@ -670,8 +783,7 @@ def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     :param safety_checker: Safety checker enabled? default is false
     :param auth_token: Optional huggingface API token for accessing repositories that are restricted to your account
     :param device: Optional ``--device`` string, defaults to "cuda"
-    :param extra_args: Extra arguments to pass directly into
-        :py:meth:`diffusers.DiffusionPipeline.from_single_file` or :py:meth:`diffusers.DiffusionPipeline.from_pretrained`
+    :param extra_args: Extra arguments to pass directly into :py:meth:`diffusers.FlaxDiffusionPipeline.from_pretrained`
     :param local_files_only: Only look in the huggingface cache and do not connect to download models?
     :return: :py:class:`.FlaxPipelineCreationResult`
     """
@@ -727,7 +839,7 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     else:
         raise NotImplementedError('Pipeline type not implemented.')
 
-    estimated_memory_usage = _estimate_pipeline_memory_use(
+    estimated_memory_usage = estimate_pipeline_memory_use(
         model_path=model_path,
         revision=revision,
         subfolder=subfolder,

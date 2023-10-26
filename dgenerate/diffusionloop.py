@@ -1023,6 +1023,21 @@ class DiffusionRenderLoop:
     The callback has a single argument: :py:class:`.ImageGeneratedCallbackArgument`
     """
 
+    model_extra_args = None
+    refiner_extra_args = None
+
+    @property
+    def pipeline_wrapper(self) -> _pipelinewrapper.DiffusionPipelineWrapper:
+        """
+        Get the last used :py:class:`dgenerate.pipelinewrapper.DiffusionPipelineWrapper` instance.
+
+        Will be ``None`` if :py:meth:`.DiffusionRenderLoop.run` has never been called.
+
+        :return: :py:class:`dgenerate.pipelinewrapper.DiffusionPipelineWrapper` or ``None``
+        """
+
+        return self._pipeline_wrapper
+
     def __init__(self, config=None, preprocessor_loader=None):
         """
         :param config: :py:class:`.DiffusionRenderLoopConfig` or :py:class:`dgenerate.arguments.DgenerateArguments`.
@@ -1438,8 +1453,6 @@ class DiffusionRenderLoop:
             self._run()
         except _pipelinewrapper.SchedulerHelpException:
             pass
-        finally:
-            self._pipeline_wrapper = None
 
     def _create_pipeline_wrapper(self):
         self._pipeline_wrapper = _pipelinewrapper.DiffusionPipelineWrapper(
@@ -1463,7 +1476,9 @@ class DiffusionRenderLoop:
             self.config.sdxl_refiner_scheduler if self.config.sdxl_refiner_uri else None,
             safety_checker=self.config.safety_checker,
             auth_token=self.config.auth_token,
-            local_files_only=self.config.offline_mode)
+            local_files_only=self.config.offline_mode,
+            model_extra_args=self.model_extra_args,
+            refiner_extra_args=self.refiner_extra_args)
         return self._pipeline_wrapper
 
     def _ensure_output_path(self):
