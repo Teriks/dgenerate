@@ -34,24 +34,35 @@ if first_arg and not first_arg.startswith('-'):
     if ext:
         configs = [first_arg]
     else:
-        search = os.path.join(pwd, *os.path.split(first_arg), '**', '*config.txt')
-        configs = glob.glob(search, recursive=True)
+
+        configs = glob.glob(
+            os.path.join(pwd, *os.path.split(first_arg), '**', '*main.py'),
+            recursive=True)
+
+        configs += glob.glob(
+            os.path.join(pwd, *os.path.split(first_arg), '**', '*config.txt'),
+            recursive=True)
+
     args = args[1:]
 else:
-    search = os.path.join(pwd, '**', '*config.txt')
-    configs = glob.glob(search, recursive=True)
+    configs = glob.glob(
+        os.path.join(pwd, *os.path.split(first_arg), '**', '*main.py'),
+        recursive=True)
+
+    configs += glob.glob(os.path.join(pwd, '**', '*config.txt'),
+                         recursive=True)
 
 for config in configs:
     c = os.path.relpath(config, pwd)
 
     if _skip_animations and 'animation' in c:
-        print(f'SKIPPING ANIMATION CONFIG: {config}')
+        print(f'SKIPPING ANIMATION: {config}')
         sys.stdout.flush()
         continue
 
     if 'flax' in c:
         if os.name == 'nt':
-            print(f'SKIPPING FLAX CONFIG ON WINDOWS: {config}')
+            print(f'SKIPPING FLAX ON WINDOWS: {config}')
             sys.stdout.flush()
             continue
 
@@ -61,17 +72,24 @@ for config in configs:
         sys.stdout.flush()
         extra_args = ['--frame-end', '2']
 
-    print(f'RUNNING CONFIG: {config}')
+    print(f'RUNNING: {config}')
     sys.stdout.flush()
-    proc = ["dgenerate"] + args + extra_args
+
     with open(config, mode='rt' if _batchprocess else 'rb') as f:
         dirname = os.path.dirname(config)
-        try:
-            if _batchprocess:
-                print('ENTERING DIRECTORY:', dirname)
-                os.chdir(dirname)
-                _batchprocess.create_config_runner(args + extra_args, throw=True).run_file(f)
-            else:
-                subprocess.run(proc, stdin=f, cwd=dirname, check=True)
-        except KeyboardInterrupt:
-            sys.exit(1)
+        _, ext = os.path.splitext(config)
+        if ext == '.config':
+            try:
+                if _batchprocess:
+                    print('ENTERING DIRECTORY:', dirname)
+                    os.chdir(dirname)
+                    _batchprocess.create_config_runner(args + extra_args, throw=True).run_file(f)
+                else:
+                    subprocess.run(["dgenerate"] + args + extra_args, stdin=f, cwd=dirname, check=True)
+            except KeyboardInterrupt:
+                sys.exit(1)
+        else:
+            try:
+                subprocess.run([sys.executable] + [config], stdin=f, cwd=dirname, check=True)
+            except KeyboardInterrupt:
+                sys.exit(1)
