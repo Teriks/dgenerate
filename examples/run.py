@@ -78,7 +78,7 @@ for config in configs:
     with open(config, mode='rt' if _batchprocess else 'rb') as f:
         dirname = os.path.dirname(config)
         _, ext = os.path.splitext(config)
-        if ext == '.config':
+        if ext == '.txt':
             try:
                 if _batchprocess:
                     print('ENTERING DIRECTORY:', dirname)
