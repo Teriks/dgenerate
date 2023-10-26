@@ -1023,8 +1023,15 @@ class DiffusionRenderLoop:
     The callback has a single argument: :py:class:`.ImageGeneratedCallbackArgument`
     """
 
-    model_extra_args = None
-    refiner_extra_args = None
+    model_extra_modules: typing.Dict[str, typing.Any] = None
+    """
+    Extra raw diffusers modules to use in the creation of the main model pipeline.
+    """
+
+    refiner_extra_modules: typing.Dict[str, typing.Any] = None
+    """
+    Extra raw diffusers modules to use in the creation of any refiner model pipeline.
+    """
 
     @property
     def pipeline_wrapper(self) -> _pipelinewrapper.DiffusionPipelineWrapper:
@@ -1477,8 +1484,8 @@ class DiffusionRenderLoop:
             safety_checker=self.config.safety_checker,
             auth_token=self.config.auth_token,
             local_files_only=self.config.offline_mode,
-            model_extra_args=self.model_extra_args,
-            refiner_extra_args=self.refiner_extra_args)
+            model_extra_modules=self.model_extra_modules,
+            refiner_extra_modules=self.refiner_extra_modules)
         return self._pipeline_wrapper
 
     def _ensure_output_path(self):
