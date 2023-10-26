@@ -1471,7 +1471,8 @@ class DiffusionPipelineWrapper:
 
             creation_result = \
                 _pipelines.create_flax_diffusion_pipeline(pipeline_type=pipeline_type,
-                                                          model_type=self._model_path,
+                                                          model_path=self._model_path,
+                                                          model_type=self._model_type,
                                                           revision=self._revision,
                                                           dtype=self._dtype,
                                                           vae_uri=self._vae_uri,
