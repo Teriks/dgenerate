@@ -1470,8 +1470,8 @@ class DiffusionPipelineWrapper:
                 raise NotImplementedError('--vae-tiling/--vae-slicing not supported for flax.')
 
             creation_result = \
-                _pipelines.create_flax_diffusion_pipeline(pipeline_type,
-                                                          self._model_path,
+                _pipelines.create_flax_diffusion_pipeline(pipeline_type=pipeline_type,
+                                                          model_type=self._model_path,
                                                           revision=self._revision,
                                                           dtype=self._dtype,
                                                           vae_uri=self._vae_uri,
@@ -1494,9 +1494,9 @@ class DiffusionPipelineWrapper:
                 # Don't load this up if were just going to be getting
                 # information about compatible schedulers for the refiner
                 creation_result = \
-                    _pipelines.create_torch_diffusion_pipeline(pipeline_type,
-                                                               self._model_type,
-                                                               self._model_path,
+                    _pipelines.create_torch_diffusion_pipeline(pipeline_type=pipeline_type,
+                                                               model_path=self._model_path,
+                                                               model_type=self._model_type,
                                                                subfolder=self._model_subfolder,
                                                                revision=self._revision,
                                                                variant=self._variant,
@@ -1521,9 +1521,9 @@ class DiffusionPipelineWrapper:
                 refiner_extra_args = None
 
             creation_result = \
-                _pipelines.create_torch_diffusion_pipeline(refiner_pipeline_type,
-                                                           _enums.ModelTypes.TORCH_SDXL,
-                                                           self._sdxl_refiner_uri,
+                _pipelines.create_torch_diffusion_pipeline(pipeline_type=refiner_pipeline_type,
+                                                           model_path=self._parsed_sdxl_refiner_uri.model,
+                                                           model_type=_enums.ModelTypes.TORCH_SDXL,
                                                            subfolder=self._parsed_sdxl_refiner_uri.subfolder,
                                                            revision=self._parsed_sdxl_refiner_uri.revision,
 
@@ -1545,9 +1545,9 @@ class DiffusionPipelineWrapper:
             offload = self._control_net_uris and self._model_type == _enums.ModelTypes.TORCH_SDXL
 
             creation_result = \
-                _pipelines.create_torch_diffusion_pipeline(pipeline_type,
-                                                           self._model_type,
-                                                           self._model_path,
+                _pipelines.create_torch_diffusion_pipeline(pipeline_type=pipeline_type,
+                                                           model_path=self._model_path,
+                                                           model_type=self._model_type,
                                                            subfolder=self._model_subfolder,
                                                            revision=self._revision,
                                                            variant=self._variant,

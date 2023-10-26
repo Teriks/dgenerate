@@ -263,8 +263,8 @@ class TorchPipelineCreationResult:
 
 
 def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
-                                    model_type: _enums.ModelTypes,
                                     model_path: str,
+                                    model_type: _enums.ModelTypes = _enums.ModelTypes.TORCH,
                                     revision: _types.OptionalString = None,
                                     variant: _types.OptionalString = None,
                                     subfolder: _types.OptionalString = None,
@@ -326,8 +326,8 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
           on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Torch Pipeline", key, hit.pipeline),
           on_create=lambda key, new: _d_memoize.simple_cache_miss_debug('Torch Pipeline', key, new.pipeline))
 def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
-                                     model_type: _enums.ModelTypes,
                                      model_path: str,
+                                     model_type: _enums.ModelTypes = _enums.ModelTypes.TORCH,
                                      revision: _types.OptionalString = None,
                                      variant: _types.OptionalString = None,
                                      subfolder: _types.OptionalString = None,
@@ -344,6 +344,8 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                                      model_cpu_offload: bool = False,
                                      sequential_cpu_offload: bool = False,
                                      local_files_only: bool = False) -> TorchPipelineCreationResult:
+    if not _enums.model_type_is_torch(model_type):
+        raise ValueError('model_type must be a TORCH ModelTypes enum value.')
     # Pipeline class selection
 
     if _enums.model_type_is_upscaler(model_type):
@@ -641,6 +643,7 @@ class FlaxPipelineCreationResult:
 
 def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                                    model_path: str,
+                                   model_type: _enums.ModelTypes = _enums.ModelTypes.FLAX,
                                    revision: _types.OptionalString = None,
                                    subfolder: _types.OptionalString = None,
                                    dtype: _enums.DataTypes = _enums.DataTypes.AUTO,
@@ -656,6 +659,7 @@ def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
 
     :param pipeline_type: py:class:`dgenerate.pipelinewrapper.PipelineTypes` enum value
     :param model_path: huggingface slug, huggingface blob link, path to folder on disk, path to file on disk
+    :param model_type: Currently only accepts :py:attr:`dgenerate.pipelinewapper.ModelTypes.FLAX`
     :param revision: huggingface repo revision (branch)
     :param subfolder: huggingface repo subfolder if applicable
     :param dtype: Optional py:class:`dgenerate.pipelinewrapper.DataTypes` enum value
@@ -686,6 +690,7 @@ def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
           on_create=lambda key, new: _d_memoize.simple_cache_miss_debug('Flax Pipeline', key, new.pipeline))
 def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                                     model_path: str,
+                                    model_type: _enums.ModelTypes = _enums.ModelTypes.FLAX,
                                     revision: _types.OptionalString = None,
                                     subfolder: _types.OptionalString = None,
                                     dtype: _enums.DataTypes = _enums.DataTypes.AUTO,
@@ -696,6 +701,9 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                                     auth_token: _types.OptionalString = None,
                                     extra_args: typing.Optional[typing.Dict[str, typing.Any]] = None,
                                     local_files_only: bool = False) -> FlaxPipelineCreationResult:
+    if not _enums.model_type_is_flax(model_type):
+        raise ValueError('model_type must be a FLAX ModelTypes enum value.')
+
     has_control_nets = False
     if control_net_uris:
         if len(control_net_uris) > 1:
