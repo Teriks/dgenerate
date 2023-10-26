@@ -325,17 +325,34 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
         'last': lambda a: a[-1] if a else None
     }
 
+    main_modules_stack = []
+
+    def push_modules_directive(args):
+        if len(args) == 0:
+            # Skip an invocation :)
+            main_modules_stack.append(None)
+
+        creation_result = render_loop.pipeline_wrapper.recall_main_pipeline()
+        main_modules_stack.append(creation_result.get_pipeline_modules(args))
+
     directives = {
         'templates_help': lambda args: _messages.log(
             render_loop.generate_template_variables_help(show_values=True) + '\n', underline=True),
         'clear_model_cache': lambda args: _pipelinewrapper.clear_model_cache(),
         'clear_pipeline_cache': lambda args: _pipelinewrapper.clear_pipeline_cache(),
         'clear_vae_cache': lambda args: _pipelinewrapper.clear_vae_cache(),
-        'clear_control_net_cache': lambda args: _pipelinewrapper.clear_control_net_cache()
+        'clear_control_net_cache': lambda args: _pipelinewrapper.clear_control_net_cache(),
+        'push_modules': push_modules_directive
     }
 
+    def invoker(args):
+        if main_modules_stack:
+            render_loop.model_extra_args = main_modules_stack.pop()
+
+        return _invoker.invoke_dgenerate(args, render_loop=render_loop, throw=throw)
+
     runner = BatchProcessor(
-        invoker=lambda args: _invoker.invoke_dgenerate(args, render_loop=render_loop, throw=throw),
+        invoker=invoker,
         template_variable_generator=lambda: render_loop.generate_template_variables(),
         name='dgenerate',
         version=version,

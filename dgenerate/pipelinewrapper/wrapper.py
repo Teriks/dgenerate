@@ -122,7 +122,7 @@ class PipelineWrapperResult:
                     self.images = None
 
 
-class DiffusionArguments:
+class DiffusionArguments(_types.SetFromMixin):
     """
     Represents all possible arguments for a :py:class:`.DiffusionPipelineWrapper` call.
     """
@@ -398,7 +398,6 @@ class DiffusionArguments:
     Guidance rescale factor should fix overexposure when using zero terminal SNR.
     """
 
-
     inference_steps: _types.OptionalInteger = None
     """
     The number of denoising steps. More denoising steps usually lead to a higher quality image 
@@ -417,6 +416,24 @@ class DiffusionArguments:
             if not attr.startswith('_') and not (callable(val) or val is None):
                 pipeline_args[attr] = val
         return pipeline_args
+
+    def determine_pipeline_type(self):
+        """
+        Determine the :py:attr:`dgenerate.pipelinewrapper.PipelineTypes` needed to utilize these arguments.
+
+        :return: :py:attr:`dgenerate.pipelinewrapper.PipelineTypes`
+        """
+
+        if self.image is not None and self.mask_image is not None:
+            # Inpainting is handled by INPAINT type
+            return _enums.PipelineTypes.INPAINT
+
+        if self.image is not None:
+            # Image only is handled by IMG2IMG type
+            return _enums.PipelineTypes.IMG2IMG
+
+        # All other situations handled by TXT2IMG type
+        return _enums.PipelineTypes.TXT2IMG
 
     @staticmethod
     def _describe_prompt(prompt_format, prompt: _prompt.Prompt, pos_title, neg_title):
@@ -546,7 +563,9 @@ class DiffusionPipelineWrapper:
                  device: str = 'cuda',
                  safety_checker: bool = False,
                  auth_token: _types.OptionalString = None,
-                 local_files_only: bool = False):
+                 local_files_only: bool = False,
+                 model_extra_args=None,
+                 refiner_extra_args=None):
 
         self._subfolder = subfolder
         self._device = device
@@ -573,6 +592,10 @@ class DiffusionPipelineWrapper:
         self._auth_token = auth_token
         self._pipeline_type = None
         self._local_files_only = local_files_only
+        self._recall_main_pipeline = None
+        self._recall_refiner_pipeline = None
+        self._model_extra_args = model_extra_args
+        self._refiner_extra_args = refiner_extra_args
 
         self._parsed_sdxl_refiner_uri = None
         self._sdxl_refiner_uri = sdxl_refiner_uri
@@ -817,103 +840,43 @@ class DiffusionPipelineWrapper:
         :return: List of tuples of length 1 or 2 representing the option
         """
 
+        copy_args = DiffusionArguments()
+
         if args is not None:
-            kwargs = args.get_pipeline_wrapper_kwargs() | (kwargs if kwargs else dict())
+            copy_args.set_from(args)
 
-        def _format_size(val):
-            if val is None:
-                return None
+        copy_args.set_from(kwargs, missing_value_throws=False)
 
-            return f'{val[0]}x{val[1]}'
-
-        batch_size: int = kwargs.get('batch_size', None)
-        prompt: _prompt.Prompt = kwargs.get('prompt', None)
-        sdxl_second_prompt: _prompt.Prompt = kwargs.get('sdxl_second_prompt', None)
-        sdxl_refiner_prompt: _prompt.Prompt = kwargs.get('sdxl_refiner_prompt', None)
-        sdxl_refiner_second_prompt: _prompt.Prompt = kwargs.get('sdxl_refiner_second_prompt', None)
-
-        image = kwargs.get('image', None)
-        control_images = kwargs.get('control_images', None)
-        image_seed_strength = kwargs.get('image_seed_strength', None)
-        upscaler_noise_level = kwargs.get('upscaler_noise_level', None)
-        mask_image = kwargs.get('mask_image', None)
-        seed = kwargs.get('seed')
-        width = kwargs.get('width', None)
-        height = kwargs.get('height', None)
-        inference_steps = kwargs.get('inference_steps')
-        guidance_scale = kwargs.get('guidance_scale')
-        guidance_rescale = kwargs.get('guidance_rescale')
-        image_guidance_scale = kwargs.get('image_guidance_scale')
-
-        sdxl_refiner_inference_steps = kwargs.get('sdxl_refiner_inference_steps')
-        sdxl_refiner_guidance_scale = kwargs.get('sdxl_refiner_guidance_scale')
-        sdxl_refiner_guidance_rescale = kwargs.get('sdxl_refiner_guidance_rescale')
-
-        sdxl_high_noise_fraction = kwargs.get('sdxl_high_noise_fraction', None)
-        sdxl_aesthetic_score = kwargs.get('sdxl_aesthetic_score', None)
-
-        sdxl_original_size = \
-            _format_size(kwargs.get('sdxl_original_size', None))
-        sdxl_target_size = \
-            _format_size(kwargs.get('sdxl_target_size', None))
-        sdxl_crops_coords_top_left = \
-            _format_size(kwargs.get('sdxl_crops_coords_top_left', None))
-
-        sdxl_negative_aesthetic_score = kwargs.get('sdxl_negative_aesthetic_score', None)
-
-        sdxl_negative_original_size = \
-            _format_size(kwargs.get('sdxl_negative_original_size', None))
-        sdxl_negative_target_size = \
-            _format_size(kwargs.get('sdxl_negative_target_size', None))
-        sdxl_negative_crops_coords_top_left = \
-            _format_size(kwargs.get('sdxl_negative_crops_coords_top_left', None))
-
-        sdxl_refiner_aesthetic_score = kwargs.get('sdxl_refiner_aesthetic_score', None)
-
-        sdxl_refiner_original_size = \
-            _format_size(kwargs.get('sdxl_refiner_original_size', None))
-        sdxl_refiner_target_size = \
-            _format_size(kwargs.get('sdxl_refiner_target_size', None))
-        sdxl_refiner_crops_coords_top_left = \
-            _format_size(kwargs.get('sdxl_refiner_crops_coords_top_left', None))
-
-        sdxl_refiner_negative_aesthetic_score = kwargs.get('sdxl_refiner_negative_aesthetic_score', None)
-
-        sdxl_refiner_negative_original_size = \
-            _format_size(kwargs.get('sdxl_refiner_negative_original_size', None))
-        sdxl_refiner_negative_target_size = \
-            _format_size(kwargs.get('sdxl_refiner_negative_target_size', None))
-        sdxl_refiner_negative_crops_coords_top_left = \
-            _format_size(kwargs.get('sdxl_refiner_negative_crops_coords_top_left', None))
+        args = copy_args
 
         opts = [(self.model_path,),
                 ('--model-type', self.model_type_string),
                 ('--dtype', self.dtype_string),
                 ('--device', self._device),
-                ('--inference-steps', inference_steps),
-                ('--guidance-scales', guidance_scale),
-                ('--seeds', seed)]
+                ('--inference-steps', args.inference_steps),
+                ('--guidance-scales', args.guidance_scale),
+                ('--seeds', args.seed)]
 
-        if batch_size is not None and batch_size > 1:
-            opts.append(('--batch-size', batch_size))
+        if args.batch_size is not None and args.batch_size > 1:
+            opts.append(('--batch-size', args.batch_size))
 
-        if guidance_rescale is not None:
-            opts.append(('--guidance-rescales', guidance_rescale))
+        if args.guidance_rescale is not None:
+            opts.append(('--guidance-rescales', args.guidance_rescale))
 
-        if image_guidance_scale is not None:
-            opts.append(('--image-guidance-scales', image_guidance_scale))
+        if args.image_guidance_scale is not None:
+            opts.append(('--image-guidance-scales', args.image_guidance_scale))
 
-        if prompt is not None:
-            opts.append(('--prompts', prompt))
+        if args.prompt is not None:
+            opts.append(('--prompts', args.prompt))
 
-        if sdxl_second_prompt is not None:
-            opts.append(('--sdxl-second-prompt', sdxl_second_prompt))
+        if args.sdxl_second_prompt is not None:
+            opts.append(('--sdxl-second-prompt', args.sdxl_second_prompt))
 
-        if sdxl_refiner_prompt is not None:
-            opts.append(('--sdxl-refiner-prompt', sdxl_refiner_prompt))
+        if args.sdxl_refiner_prompt is not None:
+            opts.append(('--sdxl-refiner-prompt', args.sdxl_refiner_prompt))
 
-        if sdxl_refiner_second_prompt is not None:
-            opts.append(('--sdxl-refiner-second-prompt', sdxl_refiner_second_prompt))
+        if args.sdxl_refiner_second_prompt is not None:
+            opts.append(('--sdxl-refiner-second-prompt', args.sdxl_refiner_second_prompt))
 
         if self._revision is not None:
             opts.append(('--revision', self._revision))
@@ -952,99 +915,96 @@ class DiffusionPipelineWrapper:
             if self._sdxl_refiner_scheduler != self._scheduler:
                 opts.append(('--sdxl-refiner-scheduler', self._sdxl_refiner_scheduler))
 
-        if sdxl_high_noise_fraction is not None:
-            opts.append(('--sdxl-high-noise-fractions', sdxl_high_noise_fraction))
+        if args.sdxl_high_noise_fraction is not None:
+            opts.append(('--sdxl-high-noise-fractions', args.sdxl_high_noise_fraction))
 
-        if sdxl_refiner_inference_steps is not None:
-            opts.append(('--sdxl-refiner-inference-steps', sdxl_refiner_inference_steps))
+        if args.sdxl_refiner_inference_steps is not None:
+            opts.append(('--sdxl-refiner-inference-steps', args.sdxl_refiner_inference_steps))
 
-        if sdxl_refiner_guidance_scale is not None:
-            opts.append(('--sdxl-refiner-guidance-scales', sdxl_refiner_guidance_scale))
+        if args.sdxl_refiner_guidance_scale is not None:
+            opts.append(('--sdxl-refiner-guidance-scales', args.sdxl_refiner_guidance_scale))
 
-        if sdxl_refiner_guidance_rescale is not None:
-            opts.append(('--sdxl-refiner-guidance-rescales', sdxl_refiner_guidance_rescale))
+        if args.sdxl_refiner_guidance_rescale is not None:
+            opts.append(('--sdxl-refiner-guidance-rescales', args.sdxl_refiner_guidance_rescale))
 
-        if sdxl_aesthetic_score is not None:
-            opts.append(('--sdxl-aesthetic-scores', sdxl_aesthetic_score))
+        if args.sdxl_aesthetic_score is not None:
+            opts.append(('--sdxl-aesthetic-scores', args.sdxl_aesthetic_score))
 
-        if sdxl_original_size is not None:
-            opts.append(('--sdxl-original-size', sdxl_original_size))
+        if args.sdxl_original_size is not None:
+            opts.append(('--sdxl-original-size', args.sdxl_original_size))
 
-        if sdxl_target_size is not None:
-            opts.append(('--sdxl-target-size', sdxl_target_size))
+        if args.sdxl_target_size is not None:
+            opts.append(('--sdxl-target-size', args.sdxl_target_size))
 
-        if sdxl_crops_coords_top_left is not None:
-            opts.append(('--sdxl-crops-coords-top-left', sdxl_crops_coords_top_left))
+        if args.sdxl_crops_coords_top_left is not None:
+            opts.append(('--sdxl-crops-coords-top-left', args.sdxl_crops_coords_top_left))
 
-        if sdxl_negative_aesthetic_score is not None:
-            opts.append(('--sdxl-negative-aesthetic-scores', sdxl_negative_aesthetic_score))
+        if args.sdxl_negative_aesthetic_score is not None:
+            opts.append(('--sdxl-negative-aesthetic-scores', args.sdxl_negative_aesthetic_score))
 
-        if sdxl_negative_original_size is not None:
-            opts.append(('--sdxl-negative-original-sizes', sdxl_negative_original_size))
+        if args.sdxl_negative_original_size is not None:
+            opts.append(('--sdxl-negative-original-sizes', args.sdxl_negative_original_size))
 
-        if sdxl_negative_target_size is not None:
-            opts.append(('--sdxl-negative-target-sizes', sdxl_negative_target_size))
+        if args.sdxl_negative_target_size is not None:
+            opts.append(('--sdxl-negative-target-sizes', args.sdxl_negative_target_size))
 
-        if sdxl_negative_crops_coords_top_left is not None:
-            opts.append(('--sdxl-negative-crops-coords-top-left', sdxl_negative_crops_coords_top_left))
+        if args.sdxl_negative_crops_coords_top_left is not None:
+            opts.append(('--sdxl-negative-crops-coords-top-left', args.sdxl_negative_crops_coords_top_left))
 
-        if sdxl_refiner_aesthetic_score is not None:
-            opts.append(('--sdxl-refiner-aesthetic-scores', sdxl_refiner_aesthetic_score))
+        if args.sdxl_refiner_aesthetic_score is not None:
+            opts.append(('--sdxl-refiner-aesthetic-scores', args.sdxl_refiner_aesthetic_score))
 
-        if sdxl_refiner_original_size is not None:
-            opts.append(('--sdxl-refiner-original-sizes', sdxl_refiner_original_size))
+        if args.sdxl_refiner_original_size is not None:
+            opts.append(('--sdxl-refiner-original-sizes', args.sdxl_refiner_original_size))
 
-        if sdxl_refiner_target_size is not None:
-            opts.append(('--sdxl-refiner-target-sizes', sdxl_refiner_target_size))
+        if args.sdxl_refiner_target_size is not None:
+            opts.append(('--sdxl-refiner-target-sizes', args.sdxl_refiner_target_size))
 
-        if sdxl_refiner_crops_coords_top_left is not None:
-            opts.append(('--sdxl-refiner-crops-coords-top-left', sdxl_refiner_crops_coords_top_left))
+        if args.sdxl_refiner_crops_coords_top_left is not None:
+            opts.append(('--sdxl-refiner-crops-coords-top-left', args.sdxl_refiner_crops_coords_top_left))
 
-        if sdxl_refiner_negative_aesthetic_score is not None:
-            opts.append(('--sdxl-refiner-negative-aesthetic-scores', sdxl_refiner_negative_aesthetic_score))
+        if args.sdxl_refiner_negative_aesthetic_score is not None:
+            opts.append(('--sdxl-refiner-negative-aesthetic-scores', args.sdxl_refiner_negative_aesthetic_score))
 
-        if sdxl_refiner_negative_original_size is not None:
-            opts.append(('--sdxl-refiner-negative-original-sizes', sdxl_refiner_negative_original_size))
+        if args.sdxl_refiner_negative_original_size is not None:
+            opts.append(('--sdxl-refiner-negative-original-sizes', args.sdxl_refiner_negative_original_size))
 
-        if sdxl_refiner_negative_target_size is not None:
-            opts.append(('--sdxl-refiner-negative-target-sizes', sdxl_refiner_negative_target_size))
+        if args.sdxl_refiner_negative_target_size is not None:
+            opts.append(('--sdxl-refiner-negative-target-sizes', args.sdxl_refiner_negative_target_size))
 
-        if sdxl_refiner_negative_crops_coords_top_left is not None:
-            opts.append(('--sdxl-refiner-negative-crops-coords-top-left', sdxl_refiner_negative_crops_coords_top_left))
+        if args.sdxl_refiner_negative_crops_coords_top_left is not None:
+            opts.append(
+                ('--sdxl-refiner-negative-crops-coords-top-left', args.sdxl_refiner_negative_crops_coords_top_left))
 
-        if width is not None and height is not None:
-            opts.append(('--output-size', f'{width}x{height}'))
-        elif width is not None:
-            opts.append(('--output-size', f'{width}'))
+        if args.width is not None and args.height is not None:
+            opts.append(('--output-size', f'{args.width}x{args.height}'))
+        elif args.width is not None:
+            opts.append(('--output-size', f'{args.width}'))
 
-        if image is not None:
+        if args.image is not None:
             seed_args = []
 
-            if mask_image is not None:
-                seed_args.append(f'mask={_image.get_filename(mask_image)}')
-            if control_images:
-                seed_args.append(f'control={", ".join(_image.get_filename(c) for c in control_images)}')
+            if args.mask_image is not None:
+                seed_args.append(f'mask={_image.get_filename(args.mask_image)}')
+            if args.control_images:
+                seed_args.append(f'control={", ".join(_image.get_filename(c) for c in args.control_images)}')
 
-            if isinstance(image, list):
+            if not seed_args:
                 opts.append(('--image-seeds',
-                             ','.join(_image.get_filename(i) for i in image)))
-            elif image:
-                if not seed_args:
-                    opts.append(('--image-seeds',
-                                 _image.get_filename(image)))
-                else:
-                    opts.append(('--image-seeds',
-                                 _image.get_filename(image) + ';' + ';'.join(seed_args)))
+                             _image.get_filename(args.image)))
+            else:
+                opts.append(('--image-seeds',
+                             _image.get_filename(args.image) + ';' + ';'.join(seed_args)))
 
-            if upscaler_noise_level is not None:
-                opts.append(('--upscaler-noise-levels', upscaler_noise_level))
+            if args.upscaler_noise_level is not None:
+                opts.append(('--upscaler-noise-levels', args.upscaler_noise_level))
 
-            if image_seed_strength is not None:
-                opts.append(('--image-seed-strengths', image_seed_strength))
+            if args.image_seed_strength is not None:
+                opts.append(('--image-seed-strengths', args.image_seed_strength))
 
-        elif control_images:
+        elif args.control_images:
             opts.append(('--image-seeds',
-                         ', '.join(_image.get_filename(c) for c in control_images)))
+                         ', '.join(_image.get_filename(c) for c in args.control_images)))
 
         if extra_opts:
             opts += extra_opts
@@ -1175,17 +1135,26 @@ class DiffusionPipelineWrapper:
 
         return f'dgenerate {opt_string}'
 
-    def _pipeline_defaults(self, user_args):
+    def _pipeline_default_args(self, user_args: DiffusionArguments):
+        """
+        Get a default arrangement of arguments to be passed to a huggingface
+        diffusers pipeline call that are somewhat universal.
+
+        :param user_args: user arguments to the pipeline wrapper
+        :return: kwargs dictionary
+        """
+
         args = dict()
-        args['guidance_scale'] = float(user_args.get('guidance_scale', _constants.DEFAULT_GUIDANCE_SCALE))
-        args['num_inference_steps'] = int(user_args.get('inference_steps', _constants.DEFAULT_INFERENCE_STEPS))
+        args['guidance_scale'] = float(_types.default(user_args.guidance_scale, _constants.DEFAULT_GUIDANCE_SCALE))
+
+        args['num_inference_steps'] = int(_types.default(user_args.inference_steps, _constants.DEFAULT_INFERENCE_STEPS))
 
         def set_strength():
-            strength = float(user_args.get('image_seed_strength', _constants.DEFAULT_IMAGE_SEED_STRENGTH))
-            inference_steps = args.get('num_inference_steps')
+            strength = float(_types.default(user_args.image_seed_strength,
+                                            _constants.DEFAULT_IMAGE_SEED_STRENGTH))
 
-            if (strength * inference_steps) < 1.0:
-                strength = 1.0 / inference_steps
+            if (strength * user_args.inference_steps) < 1.0:
+                strength = 1.0 / user_args.inference_steps
                 _messages.log(
                     f'image-seed-strength * inference-steps '
                     f'was calculated at < 1, image-seed-strength defaulting to (1.0 / inference-steps): {strength}',
@@ -1194,7 +1163,7 @@ class DiffusionPipelineWrapper:
             args['strength'] = strength
 
         if self._control_net_uris:
-            control_images = user_args.get('control_images')
+            control_images = user_args.control_images
 
             if not control_images:
                 raise ValueError(
@@ -1220,33 +1189,34 @@ class DiffusionPipelineWrapper:
 
             # They should always be of equal dimension, anything
             # else results in an error down the line.
-            args['width'] = user_args.get('width', control_images[0].width)
-            args['height'] = user_args.get('height', control_images[0].height)
+            args['width'] = _types.default(user_args.width, control_images[0].width)
+
+            args['height'] = _types.default(user_args.height, control_images[0].height)
 
             if self._pipeline_type == _enums.PipelineTypes.TXT2IMG:
                 args['image'] = control_images
             elif self._pipeline_type == _enums.PipelineTypes.IMG2IMG or \
                     self._pipeline_type == _enums.PipelineTypes.INPAINT:
-                args['image'] = user_args['image']
+                args['image'] = user_args.image
                 args['control_image'] = control_images
                 set_strength()
 
-            mask_image = user_args.get('mask_image')
+            mask_image = user_args.mask_image
             if mask_image is not None:
                 args['mask_image'] = mask_image
 
-        elif 'image' in user_args:
-            image = user_args['image']
+        elif user_args.image is not None:
+            image = user_args.image
             args['image'] = image
 
             if _enums.model_type_is_upscaler(self._model_type):
                 if self._model_type == _enums.ModelTypes.TORCH_UPSCALER_X4:
                     args['noise_level'] = int(
-                        user_args.get('upscaler_noise_level', _constants.DEFAULT_X4_UPSCALER_NOISE_LEVEL))
+                        _types.default(user_args.upscaler_noise_level, _constants.DEFAULT_X4_UPSCALER_NOISE_LEVEL))
             elif not _enums.model_type_is_pix2pix(self._model_type):
                 set_strength()
 
-            mask_image = user_args.get('mask_image')
+            mask_image = user_args.mask_image
             if mask_image is not None:
                 args['mask_image'] = mask_image
                 args['width'] = image.size[0]
@@ -1257,8 +1227,8 @@ class DiffusionPipelineWrapper:
                 args['width'] = image.size[0]
                 args['height'] = image.size[1]
         else:
-            args['height'] = user_args.get('height', _constants.DEFAULT_OUTPUT_HEIGHT)
-            args['width'] = user_args.get('width', _constants.DEFAULT_OUTPUT_WIDTH)
+            args['height'] = _types.default(user_args.height, _constants.DEFAULT_OUTPUT_HEIGHT)
+            args['width'] = _types.default(user_args.width, _constants.DEFAULT_OUTPUT_WIDTH)
 
         if self._lora_scale is not None:
             args['cross_attention_kwargs'] = {'scale': self._lora_scale}
@@ -1283,15 +1253,20 @@ class DiffusionPipelineWrapper:
         return [p.end for p in self._parsed_control_net_uris] if \
             len(self._parsed_control_net_uris) > 1 else self._parsed_control_net_uris[0].end
 
-    def _call_flax_control_net(self, positive_prompt, negative_prompt, default_args, user_args):
+    def _call_flax_control_net(self, positive_prompt, negative_prompt, pipeline_args, user_args: DiffusionArguments):
         # Only works with txt2image
 
         device_count = jax.device_count()
 
         pipe: diffusers.FlaxStableDiffusionControlNetPipeline = self._pipeline
 
-        default_args['prng_seed'] = jax.random.split(jax.random.PRNGKey(user_args.get('seed', 0)),
-                                                     device_count)
+        pipeline_args['prng_seed'] = \
+            jax.random.split(
+                jax.random.PRNGKey(
+                    _types.default(user_args.seed,
+                                   _constants.DEFAULT_SEED)),
+                device_count)
+
         prompt_ids = pipe.prepare_text_inputs([positive_prompt] * device_count)
 
         if negative_prompt is not None:
@@ -1299,20 +1274,20 @@ class DiffusionPipelineWrapper:
         else:
             negative_prompt_ids = None
 
-        control_net_image = default_args.get('image')
+        control_net_image = pipeline_args.get('image')
         if isinstance(control_net_image, list):
             control_net_image = control_net_image[0]
 
         processed_image = pipe.prepare_image_inputs([control_net_image] * device_count)
-        default_args.pop('image')
+        pipeline_args.pop('image')
 
         p_params = _flax_replicate(self._flax_params)
         prompt_ids = _flax_shard(prompt_ids)
         negative_prompt_ids = _flax_shard(negative_prompt_ids)
         processed_image = _flax_shard(processed_image)
 
-        default_args.pop('width', None)
-        default_args.pop('height', None)
+        pipeline_args.pop('width', None)
+        pipeline_args.pop('height', None)
 
         images = DiffusionPipelineWrapper._call_pipeline(
             pipeline=self._pipeline,
@@ -1322,7 +1297,7 @@ class DiffusionPipelineWrapper:
             params=p_params,
             neg_prompt_ids=negative_prompt_ids,
             controlnet_conditioning_scale=self._get_control_net_conditioning_scale(),
-            jit=True, **default_args)[0]
+            jit=True, **pipeline_args)[0]
 
         return PipelineWrapperResult(
             self._pipeline.numpy_to_pil(images.reshape((images.shape[0],) + images.shape[-3:])))
@@ -1338,27 +1313,30 @@ class DiffusionPipelineWrapper:
         )
         return text_input.input_ids
 
-    def _call_flax(self, default_args, user_args):
-        for arg, val in user_args.items():
+    def _call_flax(self, pipeline_args, user_args: DiffusionArguments):
+        for arg, val in _types.get_public_attributes(user_args).items():
             if arg.startswith('sdxl') and val is not None:
                 raise NotImplementedError(
-                    f'{arg.replace("_", "-")}s may only be used with SDXL models.')
+                    f'--{arg.replace("_", "-")}s may only be used with SDXL models.')
 
-        if user_args.get('guidance_rescale') is not None:
+        if user_args.guidance_rescale is not None:
             raise NotImplementedError('--guidance-rescales is not supported when using --model-type flax.')
 
-        prompt: _prompt.Prompt() = user_args.get('prompt', _prompt.Prompt())
+        prompt: _prompt.Prompt() = _types.default(user_args.prompt, _prompt.Prompt())
         positive_prompt = prompt.positive if prompt.positive else ''
         negative_prompt = prompt.negative
 
         if hasattr(self._pipeline, 'controlnet'):
             return self._call_flax_control_net(positive_prompt, negative_prompt,
-                                               default_args, user_args)
+                                               pipeline_args, user_args)
 
         device_count = jax.device_count()
 
-        default_args['prng_seed'] = jax.random.split(jax.random.PRNGKey(user_args.get('seed', 0)),
-                                                     device_count)
+        pipeline_args['prng_seed'] = \
+            jax.random.split(
+                jax.random.PRNGKey(
+                    _types.default(user_args.seed, _constants.DEFAULT_SEED)),
+                device_count)
 
         if negative_prompt is not None:
             negative_prompt_ids = _flax_shard(
@@ -1366,30 +1344,30 @@ class DiffusionPipelineWrapper:
         else:
             negative_prompt_ids = None
 
-        if 'image' in default_args:
-            if 'mask_image' in default_args:
+        if 'image' in pipeline_args:
+            if 'mask_image' in pipeline_args:
 
                 prompt_ids, processed_images, processed_masks = \
                     self._pipeline.prepare_inputs(prompt=[positive_prompt] * device_count,
-                                                  image=[default_args['image']] * device_count,
-                                                  mask=[default_args['mask_image']] * device_count)
+                                                  image=[pipeline_args['image']] * device_count,
+                                                  mask=[pipeline_args['mask_image']] * device_count)
 
-                default_args['masked_image'] = _flax_shard(processed_images)
-                default_args['mask'] = _flax_shard(processed_masks)
+                pipeline_args['masked_image'] = _flax_shard(processed_images)
+                pipeline_args['mask'] = _flax_shard(processed_masks)
 
                 # inpainting pipeline does not have a strength argument, simply ignore it
-                default_args.pop('strength')
+                pipeline_args.pop('strength')
 
-                default_args.pop('image')
-                default_args.pop('mask_image')
+                pipeline_args.pop('image')
+                pipeline_args.pop('mask_image')
             else:
                 prompt_ids, processed_images = self._pipeline.prepare_inputs(
                     prompt=[positive_prompt] * device_count,
-                    image=[default_args['image']] * device_count)
-                default_args['image'] = _flax_shard(processed_images)
+                    image=[pipeline_args['image']] * device_count)
+                pipeline_args['image'] = _flax_shard(processed_images)
 
-            default_args['width'] = processed_images[0].shape[2]
-            default_args['height'] = processed_images[0].shape[1]
+            pipeline_args['width'] = processed_images[0].shape[2]
+            pipeline_args['height'] = processed_images[0].shape[1]
         else:
             prompt_ids = self._pipeline.prepare_inputs([positive_prompt] * device_count)
 
@@ -1399,19 +1377,18 @@ class DiffusionPipelineWrapper:
             prompt_ids=_flax_shard(prompt_ids),
             neg_prompt_ids=negative_prompt_ids,
             params=_flax_replicate(self._flax_params),
-            **default_args, jit=True)[0]
+            **pipeline_args, jit=True)[0]
 
         return PipelineWrapperResult(self._pipeline.numpy_to_pil(
             images.reshape((images.shape[0],) + images.shape[-3:])))
 
-    def _get_non_universal_pipeline_arg(self,
+    def _set_non_universal_pipeline_arg(self,
                                         pipeline,
-                                        default_args,
-                                        user_args,
+                                        pipeline_args,
+                                        user_args: DiffusionArguments,
                                         pipeline_arg_name,
                                         user_arg_name,
                                         option_name,
-                                        default,
                                         transform=None):
         if pipeline.__call__.__wrapped__ is not None:
             # torch.no_grad()
@@ -1419,25 +1396,24 @@ class DiffusionPipelineWrapper:
         else:
             func = pipeline.__call__
 
+        pipeline_kwargs = user_args.get_pipeline_wrapper_kwargs()
+
         if pipeline_arg_name in inspect.getfullargspec(func).args:
-            if user_arg_name in user_args:
-                # Only provide a default if the user
-                # provided the option, and it's value was None
-                val = user_args.get(user_arg_name, default)
+            if user_arg_name in pipeline_kwargs:
+                # Only provide if the user provided the option
+                # otherwise, defer to the pipelines default value
+                val = getattr(user_args, user_arg_name)
                 val = val if not transform else transform(val)
-                default_args[pipeline_arg_name] = val
-                return val
-            return None
+                pipeline_args[pipeline_arg_name] = val
         else:
-            val = user_args.get(user_arg_name, None)
+            val = _types.default(getattr(user_args, user_arg_name), None)
             if val is not None:
                 raise NotImplementedError(
                     f'{option_name} cannot be used with --model-type "{self.model_type_string}" in '
                     f'{_enums.get_pipeline_type_string(self._pipeline_type)} mode with the current '
                     f'combination of arguments and model.')
-            return None
 
-    def _get_sdxl_conditioning_args(self, pipeline, default_args, user_args, user_prefix=None):
+    def _get_sdxl_conditioning_args(self, pipeline, pipeline_args, user_args: DiffusionArguments, user_prefix=None):
         if user_prefix:
             user_prefix += '_'
             option_prefix = _textprocessing.dashup(user_prefix)
@@ -1445,88 +1421,89 @@ class DiffusionPipelineWrapper:
             user_prefix = ''
             option_prefix = ''
 
-        self._get_non_universal_pipeline_arg(pipeline, default_args, user_args,
+        self._set_non_universal_pipeline_arg(pipeline, pipeline_args, user_args,
                                              'aesthetic_score', f'sdxl_{user_prefix}aesthetic_score',
-                                             f'--sdxl-{option_prefix}aesthetic-scores', None)
-        self._get_non_universal_pipeline_arg(pipeline, default_args, user_args,
+                                             f'--sdxl-{option_prefix}aesthetic-scores')
+        self._set_non_universal_pipeline_arg(pipeline, pipeline_args, user_args,
                                              'original_size', f'sdxl_{user_prefix}original_size',
-                                             f'--sdxl-{option_prefix}original-sizes', None)
-        self._get_non_universal_pipeline_arg(pipeline, default_args, user_args,
+                                             f'--sdxl-{option_prefix}original-sizes')
+        self._set_non_universal_pipeline_arg(pipeline, pipeline_args, user_args,
                                              'target_size', f'sdxl_{user_prefix}target_size',
-                                             f'--sdxl-{option_prefix}target-sizes', None)
+                                             f'--sdxl-{option_prefix}target-sizes')
 
-        self._get_non_universal_pipeline_arg(pipeline, default_args, user_args,
+        self._set_non_universal_pipeline_arg(pipeline, pipeline_args, user_args,
                                              'crops_coords_top_left',
                                              f'sdxl_{user_prefix}crops_coords_top_left',
-                                             f'--sdxl-{option_prefix}crops-coords-top-left', (0, 0))
+                                             f'--sdxl-{option_prefix}crops-coords-top-left')
 
-        self._get_non_universal_pipeline_arg(pipeline, default_args, user_args,
+        self._set_non_universal_pipeline_arg(pipeline, pipeline_args, user_args,
                                              'negative_aesthetic_score',
                                              f'sdxl_{user_prefix}negative_aesthetic_score',
-                                             f'--sdxl-{option_prefix}negative-aesthetic-scores', None)
+                                             f'--sdxl-{option_prefix}negative-aesthetic-scores')
 
-        self._get_non_universal_pipeline_arg(pipeline, default_args, user_args,
+        self._set_non_universal_pipeline_arg(pipeline, pipeline_args, user_args,
                                              'negative_original_size',
                                              f'sdxl_{user_prefix}negative_original_size',
-                                             f'--sdxl-{option_prefix}negative-original-sizes', None)
+                                             f'--sdxl-{option_prefix}negative-original-sizes')
 
-        self._get_non_universal_pipeline_arg(pipeline, default_args, user_args,
+        self._set_non_universal_pipeline_arg(pipeline, pipeline_args, user_args,
                                              'negative_target_size',
                                              f'sdxl_{user_prefix}negative_target_size',
-                                             f'--sdxl-{option_prefix}negative-target-sizes', None)
+                                             f'--sdxl-{option_prefix}negative-target-sizes')
 
-        self._get_non_universal_pipeline_arg(pipeline, default_args, user_args,
+        self._set_non_universal_pipeline_arg(pipeline, pipeline_args, user_args,
                                              'negative_crops_coords_top_left',
                                              f'sdxl_{user_prefix}negative_crops_coords_top_left',
-                                             f'--sdxl-{option_prefix}negative-crops-coords-top-left', (0, 0))
+                                             f'--sdxl-{option_prefix}negative-crops-coords-top-left')
 
     @staticmethod
-    def _pop_sdxl_conditioning_args(default_args):
-        default_args.pop('aesthetic_score', None)
-        default_args.pop('target_size', None)
-        default_args.pop('original_size', None)
-        default_args.pop('crops_coords_top_left', None)
-        default_args.pop('negative_aesthetic_score', None)
-        default_args.pop('negative_target_size', None)
-        default_args.pop('negative_original_size', None)
-        default_args.pop('negative_crops_coords_top_left', None)
+    def _pop_sdxl_conditioning_args(pipeline_args):
+        pipeline_args.pop('aesthetic_score', None)
+        pipeline_args.pop('target_size', None)
+        pipeline_args.pop('original_size', None)
+        pipeline_args.pop('crops_coords_top_left', None)
+        pipeline_args.pop('negative_aesthetic_score', None)
+        pipeline_args.pop('negative_target_size', None)
+        pipeline_args.pop('negative_original_size', None)
+        pipeline_args.pop('negative_crops_coords_top_left', None)
 
-    def _call_torch(self, default_args, user_args):
+    def _call_torch(self, pipeline_args, user_args: DiffusionArguments):
 
-        prompt: _prompt.Prompt() = user_args.get('prompt', _prompt.Prompt())
-        default_args['prompt'] = prompt.positive if prompt.positive else ''
-        default_args['negative_prompt'] = prompt.negative
+        prompt: _prompt.Prompt() = _types.default(user_args.prompt, _prompt.Prompt())
+        pipeline_args['prompt'] = prompt.positive if prompt.positive else ''
+        pipeline_args['negative_prompt'] = prompt.negative
 
-        self._get_sdxl_conditioning_args(self._pipeline, default_args, user_args)
+        self._get_sdxl_conditioning_args(self._pipeline, pipeline_args, user_args)
 
-        self._get_non_universal_pipeline_arg(self._pipeline,
-                                             default_args, user_args,
+        self._set_non_universal_pipeline_arg(self._pipeline,
+                                             pipeline_args, user_args,
                                              'prompt_2', 'sdxl_second_prompt',
-                                             '--sdxl-second-prompts', _prompt.Prompt(),
+                                             '--sdxl-second-prompts',
                                              transform=lambda p: p.positive)
 
-        self._get_non_universal_pipeline_arg(self._pipeline,
-                                             default_args, user_args,
+        self._set_non_universal_pipeline_arg(self._pipeline,
+                                             pipeline_args, user_args,
                                              'negative_prompt_2', 'sdxl_second_prompt',
-                                             '--sdxl-second-prompts', _prompt.Prompt(),
+                                             '--sdxl-second-prompts',
                                              transform=lambda p: p.negative)
 
-        self._get_non_universal_pipeline_arg(self._pipeline,
-                                             default_args, user_args,
+        self._set_non_universal_pipeline_arg(self._pipeline,
+                                             pipeline_args, user_args,
                                              'guidance_rescale', 'guidance_rescale',
-                                             '--guidance-rescales', 0.0)
+                                             '--guidance-rescales')
 
-        self._get_non_universal_pipeline_arg(self._pipeline,
-                                             default_args, user_args,
+        self._set_non_universal_pipeline_arg(self._pipeline,
+                                             pipeline_args, user_args,
                                              'image_guidance_scale', 'image_guidance_scale',
-                                             '--image-guidance-scales', 1.5)
+                                             '--image-guidance-scales')
 
-        batch_size = user_args.get('batch_size', 1)
+        batch_size = _types.default(user_args.batch_size, 1)
+
         mock_batching = False
 
         if self._model_type != _enums.ModelTypes.TORCH_UPSCALER_X2:
             # Upscaler does not take this argument, can only produce one image
-            default_args['num_images_per_prompt'] = batch_size
+            pipeline_args['num_images_per_prompt'] = batch_size
         else:
             mock_batching = batch_size > 1
 
@@ -1541,34 +1518,36 @@ class DiffusionPipelineWrapper:
                 return DiffusionPipelineWrapper._call_pipeline(
                     *args, **kwargs).images
 
-        default_args['generator'] = torch.Generator(device=self._device).manual_seed(user_args.get('seed', 0))
+        pipeline_args['generator'] = \
+            torch.Generator(device=self._device).manual_seed(
+                _types.default(user_args.seed, _constants.DEFAULT_SEED))
 
         if isinstance(self._pipeline, diffusers.StableDiffusionInpaintPipelineLegacy):
             # Not necessary, will cause an error
-            default_args.pop('width')
-            default_args.pop('height')
+            pipeline_args.pop('width')
+            pipeline_args.pop('height')
 
         has_control_net = hasattr(self._pipeline, 'controlnet')
         sd_edit = has_control_net or isinstance(self._pipeline,
                                                 diffusers.StableDiffusionXLInpaintPipeline)
 
         if has_control_net:
-            default_args['controlnet_conditioning_scale'] = \
+            pipeline_args['controlnet_conditioning_scale'] = \
                 self._get_control_net_conditioning_scale()
 
-            default_args['control_guidance_start'] = \
+            pipeline_args['control_guidance_start'] = \
                 self._get_control_net_guidance_start()
 
-            default_args['control_guidance_end'] = \
+            pipeline_args['control_guidance_end'] = \
                 self._get_control_net_guidance_end()
 
         if self._sdxl_refiner_pipeline is None:
             return PipelineWrapperResult(generate_images(
                 pipeline=self._pipeline,
-                device=self._device, **default_args))
+                device=self._device, **pipeline_args))
 
-        high_noise_fraction = user_args.get('sdxl_high_noise_fraction',
-                                            _constants.DEFAULT_SDXL_HIGH_NOISE_FRACTION)
+        high_noise_fraction = _types.default(user_args.sdxl_high_noise_fraction,
+                                             _constants.DEFAULT_SDXL_HIGH_NOISE_FRACTION)
 
         if sd_edit:
             i_start = dict()
@@ -1579,84 +1558,84 @@ class DiffusionPipelineWrapper:
 
         image = DiffusionPipelineWrapper._call_pipeline(pipeline=self._pipeline,
                                                         device=self._device,
-                                                        **default_args,
+                                                        **pipeline_args,
                                                         **i_end,
                                                         output_type='latent').images
 
-        default_args['image'] = image
+        pipeline_args['image'] = image
 
         if not isinstance(self._sdxl_refiner_pipeline, diffusers.StableDiffusionXLInpaintPipeline):
             # Width / Height not necessary for any other refiner
             if not (isinstance(self._pipeline, diffusers.StableDiffusionXLImg2ImgPipeline) and
                     isinstance(self._sdxl_refiner_pipeline, diffusers.StableDiffusionXLImg2ImgPipeline)):
                 # Width / Height does not get passed to img2img
-                default_args.pop('width')
-                default_args.pop('height')
+                pipeline_args.pop('width')
+                pipeline_args.pop('height')
 
         # refiner does not use LoRA
-        default_args.pop('cross_attention_kwargs', None)
+        pipeline_args.pop('cross_attention_kwargs', None)
 
         # Or any of these
-        self._pop_sdxl_conditioning_args(default_args)
-        default_args.pop('guidance_rescale', None)
-        default_args.pop('controlnet_conditioning_scale', None)
-        default_args.pop('control_guidance_start', None)
-        default_args.pop('control_guidance_end', None)
-        default_args.pop('image_guidance_scale', None)
-        default_args.pop('control_image', None)
+        self._pop_sdxl_conditioning_args(pipeline_args)
+        pipeline_args.pop('guidance_rescale', None)
+        pipeline_args.pop('controlnet_conditioning_scale', None)
+        pipeline_args.pop('control_guidance_start', None)
+        pipeline_args.pop('control_guidance_end', None)
+        pipeline_args.pop('image_guidance_scale', None)
+        pipeline_args.pop('control_image', None)
 
         # we will handle the strength parameter if it is necessary below
-        default_args.pop('strength', None)
+        pipeline_args.pop('strength', None)
 
         # We do not want to override the refiner secondary prompt
         # with that of --sdxl-second-prompts by default
-        default_args.pop('prompt_2', None)
-        default_args.pop('negative_prompt_2', None)
+        pipeline_args.pop('prompt_2', None)
+        pipeline_args.pop('negative_prompt_2', None)
 
         self._get_sdxl_conditioning_args(self._sdxl_refiner_pipeline,
-                                         default_args, user_args,
+                                         pipeline_args, user_args,
                                          user_prefix='refiner')
 
-        self._get_non_universal_pipeline_arg(self._pipeline,
-                                             default_args, user_args,
+        self._set_non_universal_pipeline_arg(self._pipeline,
+                                             pipeline_args, user_args,
                                              'prompt', 'sdxl_refiner_prompt',
-                                             '--sdxl-refiner-prompts', _prompt.Prompt(),
+                                             '--sdxl-refiner-prompts',
                                              transform=lambda p: p.positive)
 
-        self._get_non_universal_pipeline_arg(self._pipeline,
-                                             default_args, user_args,
+        self._set_non_universal_pipeline_arg(self._pipeline,
+                                             pipeline_args, user_args,
                                              'negative_prompt', 'sdxl_refiner_prompt',
-                                             '--sdxl-refiner-prompts', _prompt.Prompt(),
+                                             '--sdxl-refiner-prompts',
                                              transform=lambda p: p.negative)
 
-        self._get_non_universal_pipeline_arg(self._pipeline,
-                                             default_args, user_args,
+        self._set_non_universal_pipeline_arg(self._pipeline,
+                                             pipeline_args, user_args,
                                              'prompt_2', 'sdxl_refiner_second_prompt',
-                                             '--sdxl-refiner-second-prompts', _prompt.Prompt(),
+                                             '--sdxl-refiner-second-prompts',
                                              transform=lambda p: p.positive)
 
-        self._get_non_universal_pipeline_arg(self._pipeline,
-                                             default_args, user_args,
+        self._set_non_universal_pipeline_arg(self._pipeline,
+                                             pipeline_args, user_args,
                                              'negative_prompt_2', 'sdxl_refiner_second_prompt',
-                                             '--sdxl-refiner-second-prompts', _prompt.Prompt(),
+                                             '--sdxl-refiner-second-prompts',
                                              transform=lambda p: p.negative)
 
-        self._get_non_universal_pipeline_arg(self._pipeline,
-                                             default_args, user_args,
+        self._set_non_universal_pipeline_arg(self._pipeline,
+                                             pipeline_args, user_args,
                                              'guidance_rescale', 'sdxl_refiner_guidance_rescale',
-                                             '--sdxl-refiner-guidance-rescales', 0.0)
+                                             '--sdxl-refiner-guidance-rescales')
 
-        sdxl_refiner_inference_steps = user_args.get('sdxl_refiner_inference_steps')
+        sdxl_refiner_inference_steps = user_args.sdxl_refiner_inference_steps
         if sdxl_refiner_inference_steps is not None:
-            default_args['num_inference_steps'] = sdxl_refiner_inference_steps
+            pipeline_args['num_inference_steps'] = sdxl_refiner_inference_steps
 
-        sdxl_refiner_guidance_scale = user_args.get('sdxl_refiner_guidance_scale')
+        sdxl_refiner_guidance_scale = user_args.sdxl_refiner_guidance_scale
         if sdxl_refiner_guidance_scale is not None:
-            default_args['guidance_scale'] = sdxl_refiner_guidance_scale
+            pipeline_args['guidance_scale'] = sdxl_refiner_guidance_scale
 
-        sdxl_refiner_guidance_rescale = user_args.get('sdxl_refiner_guidance_rescale')
+        sdxl_refiner_guidance_rescale = user_args.sdxl_refiner_guidance_rescale
         if sdxl_refiner_guidance_rescale is not None:
-            default_args['guidance_rescale'] = sdxl_refiner_guidance_rescale
+            pipeline_args['guidance_rescale'] = sdxl_refiner_guidance_rescale
 
         if sd_edit:
             strength = float(decimal.Decimal('1.0') - decimal.Decimal(str(high_noise_fraction)))
@@ -1670,7 +1649,7 @@ class DiffusionPipelineWrapper:
                 _messages.log(f'Running refiner in edit mode with '
                               f'refiner image seed strength = {strength}, IE: (1.0 - high-noise-fraction)')
 
-            inference_steps = default_args.get('num_inference_steps')
+            inference_steps = pipeline_args.get('num_inference_steps')
 
             if (strength * inference_steps) < 1.0:
                 strength = 1.0 / inference_steps
@@ -1679,13 +1658,48 @@ class DiffusionPipelineWrapper:
                     f'was calculated at < 1, defaulting to (1.0 / inference-steps): {strength}',
                     level=_messages.WARNING)
 
-            default_args['strength'] = strength
+            pipeline_args['strength'] = strength
 
         return PipelineWrapperResult(
             DiffusionPipelineWrapper._call_pipeline(
                 pipeline=self._sdxl_refiner_pipeline,
                 device=self._device,
-                **default_args, **i_start).images)
+                **pipeline_args, **i_start).images)
+
+    def recall_main_pipeline(self) -> _pipelines.PipelineCreationResult:
+        """
+        Fetch the last used main pipeline creation result, possibly the pipeline
+        will be recreated if no longer in the in memory cache. If there is no
+        pipeline currently created, which will be the case if an image was
+        never generated yet, :py:exc:`RuntimeError` will be raised.
+
+        :raises: :py:exc:`RuntimeError`
+
+        :return: :py:class:`dgenerate.pipelinewrapper.PipelineCreationResult`
+        """
+
+        if self._recall_main_pipeline is None:
+            raise RuntimeError('Cannot recall main pipeline as one has not been created.')
+
+        return self._recall_main_pipeline()
+
+    def recall_refiner_pipeline(self) -> _pipelines.PipelineCreationResult:
+        """
+        Fetch the last used refiner pipeline creation result, possibly the
+        pipeline will be recreated if no longer in the in memory cache.
+        If there is no refiner pipeline currently created, which will be the
+        case if an image was never generated yet or a refiner model was not
+        specified, :py:exc:`RuntimeError` will be raised.
+
+        :raises: :py:exc:`RuntimeError`
+
+        :return: :py:class:`dgenerate.pipelinewrapper.PipelineCreationResult`
+        """
+
+        if self._recall_refiner_pipeline is None:
+            raise RuntimeError('Cannot recall refiner pipeline as one has not been created.')
+
+        return self._recall_refiner_pipeline()
 
     def _lazy_init_pipeline(self, pipeline_type):
         if self._pipeline is not None:
@@ -1693,6 +1707,15 @@ class DiffusionPipelineWrapper:
                 return False
 
         self._pipeline_type = pipeline_type
+
+        # We do not want objects captured by these
+        # closures to stick around in memory because
+        # they are large
+        self._recall_main_pipeline = None
+        self._recall_refiner_pipeline = None
+
+        create_main_pipeline = None
+        create_refiner_pipeline = None
 
         if _enums.model_type_is_sdxl(self._model_type) and self._textual_inversion_uris:
             raise NotImplementedError('Textual inversion not supported for SDXL.')
@@ -1710,19 +1733,27 @@ class DiffusionPipelineWrapper:
             if self._vae_tiling or self._vae_slicing:
                 raise NotImplementedError('--vae-tiling/--vae-slicing not supported for flax.')
 
-            creation_result = \
-                _pipelines.create_flax_diffusion_pipeline(pipeline_type=pipeline_type,
-                                                          model_path=self._model_path,
-                                                          model_type=self._model_type,
-                                                          revision=self._revision,
-                                                          dtype=self._dtype,
-                                                          vae_uri=self._vae_uri,
-                                                          control_net_uris=self._control_net_uris,
-                                                          scheduler=self._scheduler,
-                                                          safety_checker=self._safety_checker,
-                                                          auth_token=self._auth_token,
-                                                          local_files_only=self._local_files_only)
+            def create_main_pipeline():
+                result = \
+                    _pipelines.create_flax_diffusion_pipeline(
+                        pipeline_type=pipeline_type,
+                        model_path=self._model_path,
+                        model_type=self._model_type,
+                        revision=self._revision,
+                        dtype=self._dtype,
+                        vae_uri=self._vae_uri,
+                        control_net_uris=self._control_net_uris,
+                        scheduler=self._scheduler,
+                        safety_checker=self._safety_checker,
+                        auth_token=self._auth_token,
+                        local_files_only=self._local_files_only,
+                        extra_args=self._model_extra_args)
+                _pipelines.set_vae_slicing_tiling(pipeline=result.pipeline,
+                                                  vae_tiling=self._vae_tiling,
+                                                  vae_slicing=self._vae_slicing)
+                return result
 
+            creation_result = create_main_pipeline()
             self._pipeline = creation_result.pipeline
             self._flax_params = creation_result.flax_params
             self._parsed_control_net_uris = creation_result.parsed_control_net_uris
@@ -1735,101 +1766,112 @@ class DiffusionPipelineWrapper:
             if not _pipelines.scheduler_is_help(self._sdxl_refiner_scheduler):
                 # Don't load this up if were just going to be getting
                 # information about compatible schedulers for the refiner
-                creation_result = \
-                    _pipelines.create_torch_diffusion_pipeline(pipeline_type=pipeline_type,
-                                                               model_path=self._model_path,
-                                                               model_type=self._model_type,
-                                                               subfolder=self._subfolder,
-                                                               revision=self._revision,
-                                                               variant=self._variant,
-                                                               dtype=self._dtype,
-                                                               vae_uri=self._vae_uri,
-                                                               lora_uris=self._lora_uris,
-                                                               control_net_uris=self._control_net_uris,
-                                                               scheduler=self._scheduler,
-                                                               safety_checker=self._safety_checker,
-                                                               auth_token=self._auth_token,
-                                                               device=self._device,
-                                                               local_files_only=self._local_files_only)
+                def create_main_pipeline():
+                    result = \
+                        _pipelines.create_torch_diffusion_pipeline(
+                            pipeline_type=pipeline_type,
+                            model_path=self._model_path,
+                            model_type=self._model_type,
+                            subfolder=self._subfolder,
+                            revision=self._revision,
+                            variant=self._variant,
+                            dtype=self._dtype,
+                            vae_uri=self._vae_uri,
+                            lora_uris=self._lora_uris,
+                            control_net_uris=self._control_net_uris,
+                            scheduler=self._scheduler,
+                            safety_checker=self._safety_checker,
+                            auth_token=self._auth_token,
+                            device=self._device,
+                            local_files_only=self._local_files_only,
+                            extra_args=self._model_extra_args)
+                    _pipelines.set_vae_slicing_tiling(pipeline=result.pipeline,
+                                                      vae_tiling=self._vae_tiling,
+                                                      vae_slicing=self._vae_slicing)
+                    return result
+
+                creation_result = create_main_pipeline()
                 self._pipeline = creation_result.pipeline
                 self._parsed_control_net_uris = creation_result.parsed_control_net_uris
 
             refiner_pipeline_type = _enums.PipelineTypes.IMG2IMG if pipeline_type is _enums.PipelineTypes.TXT2IMG else pipeline_type
 
             if self._pipeline is not None:
+
                 refiner_extra_args = {'vae': self._pipeline.vae,
                                       'text_encoder_2': self._pipeline.text_encoder_2}
+
+                if self._refiner_extra_args is not None:
+                    refiner_extra_args.update(self._refiner_extra_args)
+
             else:
-                refiner_extra_args = None
+                refiner_extra_args = self._refiner_extra_args
 
-            creation_result = \
-                _pipelines.create_torch_diffusion_pipeline(pipeline_type=refiner_pipeline_type,
-                                                           model_path=self._parsed_sdxl_refiner_uri.model,
-                                                           model_type=_enums.ModelTypes.TORCH_SDXL,
-                                                           subfolder=self._parsed_sdxl_refiner_uri.subfolder,
-                                                           revision=self._parsed_sdxl_refiner_uri.revision,
+            def create_refiner_pipeline():
+                result = \
+                    _pipelines.create_torch_diffusion_pipeline(
+                        pipeline_type=refiner_pipeline_type,
+                        model_path=self._parsed_sdxl_refiner_uri.model,
+                        model_type=_enums.ModelTypes.TORCH_SDXL,
+                        subfolder=self._parsed_sdxl_refiner_uri.subfolder,
+                        revision=self._parsed_sdxl_refiner_uri.revision,
 
-                                                           variant=self._parsed_sdxl_refiner_uri.variant if
-                                                           self._parsed_sdxl_refiner_uri.variant is not None else self._variant,
+                        variant=self._parsed_sdxl_refiner_uri.variant if
+                        self._parsed_sdxl_refiner_uri.variant is not None else self._variant,
 
-                                                           dtype=self._parsed_sdxl_refiner_uri.dtype if
-                                                           self._parsed_sdxl_refiner_uri.dtype is not None else self._dtype,
+                        dtype=self._parsed_sdxl_refiner_uri.dtype if
+                        self._parsed_sdxl_refiner_uri.dtype is not None else self._dtype,
 
-                                                           scheduler=self._scheduler if
-                                                           self._sdxl_refiner_scheduler is None else self._sdxl_refiner_scheduler,
+                        scheduler=self._scheduler if
+                        self._sdxl_refiner_scheduler is None else self._sdxl_refiner_scheduler,
 
-                                                           safety_checker=self._safety_checker,
-                                                           auth_token=self._auth_token,
-                                                           extra_args=refiner_extra_args,
-                                                           local_files_only=self._local_files_only)
-            self._sdxl_refiner_pipeline = creation_result.pipeline
+                        safety_checker=self._safety_checker,
+                        auth_token=self._auth_token,
+                        extra_args=refiner_extra_args,
+                        local_files_only=self._local_files_only)
+                _pipelines.set_vae_slicing_tiling(pipeline=result.pipeline,
+                                                  vae_tiling=self._vae_tiling,
+                                                  vae_slicing=self._vae_slicing)
+                return result
+
+            self._sdxl_refiner_pipeline = create_refiner_pipeline().pipeline
         else:
             offload = self._control_net_uris and self._model_type == _enums.ModelTypes.TORCH_SDXL
 
-            creation_result = \
-                _pipelines.create_torch_diffusion_pipeline(pipeline_type=pipeline_type,
-                                                           model_path=self._model_path,
-                                                           model_type=self._model_type,
-                                                           subfolder=self._subfolder,
-                                                           revision=self._revision,
-                                                           variant=self._variant,
-                                                           dtype=self._dtype,
-                                                           vae_uri=self._vae_uri,
-                                                           lora_uris=self._lora_uris,
-                                                           textual_inversion_uris=self._textual_inversion_uris,
-                                                           control_net_uris=self._control_net_uris,
-                                                           scheduler=self._scheduler,
-                                                           safety_checker=self._safety_checker,
-                                                           auth_token=self._auth_token,
-                                                           device=self._device,
-                                                           sequential_cpu_offload=offload,
-                                                           local_files_only=self._local_files_only)
+            def create_main_pipeline():
+                result = \
+                    _pipelines.create_torch_diffusion_pipeline(
+                        pipeline_type=pipeline_type,
+                        model_path=self._model_path,
+                        model_type=self._model_type,
+                        subfolder=self._subfolder,
+                        revision=self._revision,
+                        variant=self._variant,
+                        dtype=self._dtype,
+                        vae_uri=self._vae_uri,
+                        lora_uris=self._lora_uris,
+                        textual_inversion_uris=self._textual_inversion_uris,
+                        control_net_uris=self._control_net_uris,
+                        scheduler=self._scheduler,
+                        safety_checker=self._safety_checker,
+                        auth_token=self._auth_token,
+                        device=self._device,
+                        sequential_cpu_offload=offload,
+                        local_files_only=self._local_files_only,
+                        extra_args=self._model_extra_args)
+                _pipelines.set_vae_slicing_tiling(pipeline=result.pipeline,
+                                                  vae_tiling=self._vae_tiling,
+                                                  vae_slicing=self._vae_slicing)
+                return result
+
+            creation_result = create_main_pipeline()
             self._pipeline = creation_result.pipeline
             self._parsed_control_net_uris = creation_result.parsed_control_net_uris
 
-        _pipelines.set_vae_slicing_tiling(pipeline=self._pipeline,
-                                          vae_tiling=self._vae_tiling,
-                                          vae_slicing=self._vae_slicing)
-
-        if self._sdxl_refiner_pipeline is not None:
-            _pipelines.set_vae_slicing_tiling(pipeline=self._sdxl_refiner_pipeline,
-                                              vae_tiling=self._vae_tiling,
-                                              vae_slicing=self._vae_slicing)
+        self._recall_main_pipeline = create_main_pipeline
+        self._recall_refiner_pipeline = create_refiner_pipeline
 
         return True
-
-    @staticmethod
-    def _determine_pipeline_type(kwargs):
-        if 'image' in kwargs and 'mask_image' in kwargs:
-            # Inpainting is handled by INPAINT type
-            return _enums.PipelineTypes.INPAINT
-
-        if 'image' in kwargs:
-            # Image only is handled by IMG2IMG type
-            return _enums.PipelineTypes.IMG2IMG
-
-        # All other situations handled by BASIC type
-        return _enums.PipelineTypes.TXT2IMG
 
     def __call__(self, args: typing.Optional[DiffusionArguments] = None, **kwargs) -> PipelineWrapperResult:
         """
@@ -1849,31 +1891,39 @@ class DiffusionPipelineWrapper:
         :return: :py:class:`.PipelineWrapperResult`
         """
 
+        copy_args = DiffusionArguments()
+
         if args is not None:
-            kwargs = args.get_pipeline_wrapper_kwargs() | (kwargs if kwargs else dict())
+            copy_args.set_from(args)
+
+        copy_args.set_from(kwargs, missing_value_throws=False)
 
         _messages.debug_log(f'Calling Pipeline Wrapper: "{self}"')
         _messages.debug_log(f'Pipeline Wrapper Args: ',
-                            lambda: _textprocessing.debug_format_args(kwargs))
+                            lambda: _textprocessing.debug_format_args(
+                                copy_args.get_pipeline_wrapper_kwargs()))
 
         _cache.enforce_cache_constraints()
 
         loaded_new = self._lazy_init_pipeline(
-            DiffusionPipelineWrapper._determine_pipeline_type(kwargs))
+            copy_args.determine_pipeline_type())
 
         if loaded_new:
             _cache.enforce_cache_constraints()
 
-        default_args = self._pipeline_defaults(kwargs)
+        pipeline_args = \
+            self._pipeline_default_args(user_args=copy_args)
 
         if self._model_type == _enums.ModelTypes.FLAX:
             try:
-                result = self._call_flax(default_args, kwargs)
+                result = self._call_flax(pipeline_args=pipeline_args,
+                                         user_args=copy_args)
             except jaxlib.xla_extension.XlaRuntimeError as e:
                 raise OutOfMemoryError(e)
         else:
             try:
-                result = self._call_torch(default_args, kwargs)
+                result = self._call_torch(pipeline_args=pipeline_args,
+                                          user_args=copy_args)
             except torch.cuda.OutOfMemoryError as e:
                 raise OutOfMemoryError(e)
 

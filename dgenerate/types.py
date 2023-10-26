@@ -271,9 +271,11 @@ class SetFromMixin:
 
         for k, v in get_public_attributes(self).items():
             if not callable(v):
-                if missing_value_throws and k not in source:
-                    raise ValueError(f'Source object does not define: "{k}"')
-                setattr(self, k, source.get(k))
+                if k not in source:
+                    if missing_value_throws:
+                        raise ValueError(f'Source object does not define: "{k}"')
+                else:
+                    setattr(self, k, source.get(k))
         return self
 
 
@@ -311,3 +313,13 @@ def get_default_args(func) -> typing.Tuple[str, typing.Any]:
     for arg in get_accepted_args_with_defaults(func):
         if len(arg) > 1:
             yield arg
+
+
+def default(value, default_value):
+    """
+    Return value if value is not None, otherwise default
+    :param value:
+    :param default_value:
+    :return: bool
+    """
+    return value if value is not None else default_value

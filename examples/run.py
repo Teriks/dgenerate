@@ -46,7 +46,7 @@ if first_arg and not first_arg.startswith('-'):
     args = args[1:]
 else:
     configs = glob.glob(
-        os.path.join(pwd, *os.path.split(first_arg), '**', '*main.py'),
+        os.path.join(pwd, '**', '*main.py'),
         recursive=True)
 
     configs += glob.glob(os.path.join(pwd, '**', '*config.txt'),
@@ -80,7 +80,7 @@ for config in configs:
         _, ext = os.path.splitext(config)
         if ext == '.txt':
             try:
-                if _batchprocess:
+                if _batchprocess is not None:
                     print('ENTERING DIRECTORY:', dirname)
                     os.chdir(dirname)
                     _batchprocess.create_config_runner(args + extra_args, throw=True).run_file(f)
@@ -88,7 +88,8 @@ for config in configs:
                     subprocess.run(["dgenerate"] + args + extra_args, stdin=f, cwd=dirname, check=True)
             except KeyboardInterrupt:
                 sys.exit(1)
-        else:
+        elif _batchprocess is not None:
+            # library is installed
             try:
                 subprocess.run([sys.executable] + [config], stdin=f, cwd=dirname, check=True)
             except KeyboardInterrupt:
