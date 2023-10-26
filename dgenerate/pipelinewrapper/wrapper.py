@@ -245,8 +245,8 @@ class DiffusionArguments:
     Override the default amount of inference steps preformed by the SDXL refiner. 
     Which is normally set to the value for the primary model.
     
-    :py:attr:`.DiffusionArguments.sdxl_high_noise_fraction` still factors in to the actual
-     amount of inference steps preformed.
+    The attribute :py:attr:`.DiffusionArguments.sdxl_high_noise_fraction` still 
+    factors in to the actual amount of inference steps preformed.
     """
 
     sdxl_refiner_guidance_scale: _types.OptionalFloat = None

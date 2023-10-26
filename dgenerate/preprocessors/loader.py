@@ -119,6 +119,13 @@ class Loader:
                 f'Invalid argument given to image preprocessor "{call_by_name}": {e}')
 
     def get_available_classes(self) -> typing.List[typing.Type[_preprocessor.ImagePreprocessor]]:
+        """
+        Return a list of all :py:class:`dgenerate.preprocessors.ImagePreprocessor` implementations
+        visble to this loader.
+
+        :return: list of :py:class:`dgenerate.preprocessors.ImagePreprocessor`
+        """
+
         found_classes = []
         for mod in itertools.chain([sys.modules['dgenerate.preprocessors']], self.search_modules):
             def _excluded(cls):
@@ -143,6 +150,17 @@ class Loader:
         return found_classes
 
     def get_class_by_name(self, preprocessor_name) -> typing.Type[_preprocessor.ImagePreprocessor]:
+        """
+        Get a :py:class:`dgenerate.preprocessors.ImagePreprocessor` implementation from the loader
+        using one of the implementations defined :py:attr:`dgenerate.preprocessors.ImagePreprocessor.NAMES`
+
+        :raises: :py:exc:`RuntimeError` if more than one class was found using the provided name.
+                 :py:exc:`dgenerate.preprocessor.ImagePreprocessorNotFoundError` if the name could not be found.
+
+        :param preprocessor_name: the name to search for
+        :return: :py:class:`dgenerate.preprocessors.ImagePreprocessor`
+        """
+
         classes = [cls for cls in self.get_available_classes() if
                    preprocessor_name in cls.get_names()]
 
@@ -157,12 +175,28 @@ class Loader:
         return classes[0]
 
     def get_all_names(self) -> _types.Names:
+        """
+        Get all :py:attr:`dgenerate.preprocessors.ImagePreprocessor.NAMES` values visible to this loader.
+
+        :return: list of names (strings)
+        """
+
         names = []
         for cls in self.get_available_classes():
             names += cls.get_names()
         return names
 
     def get_help(self, preprocessor_name: _types.Name) -> str:
+        """
+        Get the formatted help string for a specific preprocessor by name.
+
+        :raises: :py:exc:`RuntimeError` if more than one class was found using the provided name.
+                 :py:exc:`dgenerate.preprocessor.ImagePreprocessorNotFoundError` if the name could not be found.
+
+        :param preprocessor_name: the preprocessor name to search for
+        :return: formatted help string
+        """
+
         return self.get_class_by_name(preprocessor_name).get_help(preprocessor_name)
 
     def load(self, uri: typing.Union[_types.Uri, typing.Iterable[_types.Uri]], device: str = 'cpu') -> \
@@ -172,6 +206,10 @@ class Loader:
         is their name and any module arguments, for example: "canny;lower=50;upper=100"
 
         Specifying multiple preprocessors with a list will create an image preprocessor chain object.
+
+        :raises: :py:exc:`RuntimeError` if more than one class was found using the provided name mentioned in the URI.
+                 :py:exc:`dgenerate.preprocessor.ImagePreprocessorNotFoundError` if the name mentioned in the URI could not be found.
+                 :py:exc:`dgenerate.preprocessor.ImagePreprocessorArgumentError` if the URI contained invalid arguments.
 
 
         :param uri: Preprocessor URI or list of URIs
