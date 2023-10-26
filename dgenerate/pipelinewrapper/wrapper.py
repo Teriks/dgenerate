@@ -127,42 +127,283 @@ class DiffusionArguments:
     Represents all possible arguments for a :py:class:`.DiffusionPipelineWrapper` call.
     """
     prompt: _types.OptionalPrompt = None
+    """
+    Primary prompt
+    """
+
     image: typing.Optional[PIL.Image.Image] = None
+    """
+    Image for img2img operations, or the base for inpainting operations.
+    
+    All input images involved in a generation must match in dimension and be aligned by 8 pixels.
+    """
+
     mask_image: typing.Optional[PIL.Image.Image] = None
+    """
+    Mask image for inpainting operations.
+    
+    All input images involved in a generation must match in dimension and be aligned by 8 pixels.
+    """
+
     control_images: typing.Optional[typing.List[PIL.Image.Image]] = None
+    """
+    ControlNet guidance images to use if ``control_net_uris`` were given to the 
+    constructor of :py:class:`.DiffusionPipelineWrapper`.
+    
+    All input images involved in a generation must match in dimension and be aligned by 8 pixels.
+    """
+
     width: _types.OptionalSize = None
+    """
+    Output image width.
+    
+    Ignored when img2img, inpainting, or controlnet guidance images are involved.
+    
+    Width will be the width of the input image in those cases.
+    
+    Output image width, must be aligned by 8
+    """
+
     height: _types.OptionalSize = None
+    """
+    Output image height.
+    
+    Ignored when img2img, inpainting, or controlnet guidance images are involved.
+    
+    Width will be the width of the input image in those cases.
+    
+    Output image width, must be aligned by 8
+    """
+
     batch_size: _types.OptionalInteger = None
+    """
+    Number of images to produce in a single generation step on the same GPU.
+    
+    Invalid to use with FLAX ModeTypes.
+    """
+
     sdxl_second_prompt: _types.OptionalPrompt = None
+    """
+    Secondary prompt for the SDXL main pipeline when a refiner URI is specified in the 
+    constructor of :py:class:`.DiffusionPipelineWrapper`. Usually the **prompt**
+    attribute of this object is used, unless you override it by giving this attribute
+    a value.
+    """
+
     sdxl_refiner_prompt: _types.OptionalPrompt = None
+    """
+    Primary prompt for the SDXL refiner when a refiner URI is specified in the 
+    constructor of :py:class:`.DiffusionPipelineWrapper`. Usually the **prompt**
+    attribute of this object is used, unless you override it by giving this attribute
+    a value.
+    """
+
     sdxl_refiner_second_prompt: _types.OptionalPrompt = None
+    """
+    Secondary prompt for the SDXL refiner when a refiner URI is specified in the 
+    constructor of :py:class:`.DiffusionPipelineWrapper`. Usually the **sdxl_refiner_prompt**
+    attribute of this object is used, unless you override it by giving this attribute
+    a value.
+    """
+
     seed: _types.OptionalInteger = None
+    """
+    An integer to serve as an RNG seed.
+    """
+
     image_seed_strength: _types.OptionalFloat = None
+    """
+    Image seed strength, which relates to how much an img2img source (**image** attribute)
+    is used during generation. Between 0.001 (close to zero but not 0) and 1.0, the closer to
+    1.0 the less the image is used for generation, IE. the more creative freedom the AI has.
+    """
+
     upscaler_noise_level: _types.OptionalInteger = None
+    """
+    Upscaler noise level for the :py:attr:`dgenerate.pipelinewrapper.ModelTypes.TORCH_UPSCALER_X4` model type only.
+    """
+
     sdxl_high_noise_fraction: _types.OptionalFloat = None
+    """
+    SDXL high noise fraction. This proportion of timesteps/inference steps are handled by the primary model,
+    while the inverse proportion is handled by the refiner model when an SDXL **model_type** value.
+    
+    When the refiner is operating in edit mode the number of total inference steps
+    for the refiner will be calculated in a different manner, currently the
+    refiner operates in edit mode during generations involving ControlNets as 
+    well as inpainting. 
+    
+    In edit mode, the refiner uses img2img with an image seed strength
+    to add details to the image instead of cooperative denoising, this image 
+    seed strength is calculated as (1.0 - :py:attr:`.DiffusionArguments.sdxl_high_noise_fraction`), and the 
+    number of inference steps for the refiner is then calculated as 
+    (image_seed_strength * inference_steps).
+    """
+
     sdxl_refiner_inference_steps: _types.OptionalInteger = None
+    """
+    Override the default amount of inference steps preformed by the SDXL refiner. 
+    Which is normally set to the value for the primary model.
+    
+    :py:attr:`.DiffusionArguments.sdxl_high_noise_fraction` still factors in to the actual
+     amount of inference steps preformed.
+    """
+
     sdxl_refiner_guidance_scale: _types.OptionalFloat = None
+    """
+    Override the guidance scale used by the SDXL refiner, which is normally set to the value of
+    :py:attr:`.DiffusionArguments.guidance_scale`.
+    """
+
     sdxl_refiner_guidance_rescale: _types.OptionalFloat = None
+    """
+    Override the guidance rescale value used by the SDXL refiner, which is normally set to the value of
+    :py:attr:`.DiffusionArguments.guidance_rescale`.
+    """
+
     sdxl_aesthetic_score: _types.OptionalFloat = None
+    """
+    Optional, defaults to 6.0. This argument is used for img2img and inpainting operations only
+    Used to simulate an aesthetic score of the generated image by influencing the positive text condition.
+    Part of SDXL's micro-conditioning as explained in section 2.2 of [https://huggingface.co/papers/2307.01952](https://huggingface.co/papers/2307.01952).
+    """
+
     sdxl_original_size: _types.OptionalSize = None
+    """
+    Optional SDXL conditioning parameter. 
+    If :py:attr:`.DiffusionArguments.sdxl_original_size` is not the same as :py:attr:`.DiffusionArguments.sdxl_target_size` 
+    the image will appear to be down- or up-sampled. :py:attr:`.DiffusionArguments.sdxl_original_size` defaults to ``(width, height)`` 
+    if not specified or the size of any input images provided. Part of SDXL's micro-conditioning as explained in section 2.2 of 
+    [https://huggingface.co/papers/2307.01952](https://huggingface.co/papers/2307.01952).
+    """
+
     sdxl_target_size: _types.OptionalSize = None
+    """
+    Optional SDXL conditioning parameter.
+    For most cases, :py:attr:`.DiffusionArguments.sdxl_target_size` should be set to the desired height and width of the generated image. If
+    not specified it will default to ``(width, height)`` or the size of any input images provided. Part of SDXL's 
+    micro-conditioning as explained in section 2.2 of [https://huggingface.co/papers/2307.01952](https://huggingface.co/papers/2307.01952).
+    """
+
     sdxl_crops_coords_top_left: _types.OptionalCoordinate = None
+    """
+    Optional SDXL conditioning parameter.
+    :py:attr:`.DiffusionArguments.sdxl_crops_coords_top_left` can be used to generate an image that appears to be "cropped" from the position
+    :py:attr:`.DiffusionArguments.sdxl_crops_coords_top_left` downwards. Favorable, well-centered images are usually achieved by setting
+    :py:attr:`.DiffusionArguments.sdxl_crops_coords_top_left` to (0, 0). Part of SDXL's micro-conditioning as explained in section 2.2 of
+    [https://huggingface.co/papers/2307.01952](https://huggingface.co/papers/2307.01952).
+    """
+
     sdxl_negative_aesthetic_score: _types.OptionalFloat = None
+    """
+    Negative influence version of :py:attr:`.DiffusionArguments.sdxl_aesthetic_score`
+    """
+
     sdxl_negative_original_size: _types.OptionalSize = None
+    """
+    This value is only supported for certain :py:class:`dgenerate.pipelinewrapper.DiffusionPipelineWrapper`
+    configurations, an error will be produced when it is unsupported. It is not known to be supported
+    by ``pix2pix``.
+    
+    Optional SDXL conditioning parameter.
+    To negatively condition the generation process based on a specific image resolution. Part of SDXL's
+    micro-conditioning as explained in section 2.2 of
+    [https://huggingface.co/papers/2307.01952](https://huggingface.co/papers/2307.01952). For more
+    information, refer to this issue thread: https://github.com/huggingface/diffusers/issues/4208.
+    """
+
     sdxl_negative_target_size: _types.OptionalSize = None
+    """
+    This value is only supported for certain :py:class:`dgenerate.pipelinewrapper.DiffusionPipelineWrapper`
+    configurations, an error will be produced when it is unsupported. It is not known to be supported
+    by ``pix2pix``.
+    
+    Optional SDXL conditioning parameter.
+    To negatively condition the generation process based on a target image resolution. It should be as same
+    as the :py:attr:`.DiffusionArguments.target_size` for most cases. Part of SDXL's micro-conditioning as 
+    explained in section 2.2 of [https://huggingface.co/papers/2307.01952](https://huggingface.co/papers/2307.01952).
+    For more information, refer to this issue thread: https://github.com/huggingface/diffusers/issues/4208.
+    """
+
     sdxl_negative_crops_coords_top_left: _types.OptionalCoordinate = None
+    """
+    Negative influence version of :py:attr:`.DiffusionArguments.sdxl_crops_coords_top_left`
+    """
+
     sdxl_refiner_aesthetic_score: _types.OptionalFloat = None
+    """
+    Override the refiner value usually taken from :py:attr:`.DiffusionArguments.sdxl_aesthetic_score`
+    """
+
     sdxl_refiner_original_size: _types.OptionalSize = None
+    """
+    Override the refiner value usually taken from :py:attr:`.DiffusionArguments.sdxl_original_size`
+    """
+
     sdxl_refiner_target_size: _types.OptionalSize = None
+    """
+    Override the refiner value usually taken from :py:attr:`.DiffusionArguments.sdxl_target_size`
+    """
+
     sdxl_refiner_crops_coords_top_left: _types.OptionalCoordinate = None
+    """
+    Override the refiner value usually taken from :py:attr:`.DiffusionArguments.sdxl_crops_coords_top_left`
+    """
+
     sdxl_refiner_negative_aesthetic_score: _types.OptionalFloat = None
+    """
+    Override the refiner value usually taken from :py:attr:`.DiffusionArguments.sdxl_negative_aesthetic_score`
+    """
+
     sdxl_refiner_negative_original_size: _types.OptionalSize = None
+    """
+    Override the refiner value usually taken from :py:attr:`.DiffusionArguments.sdxl_negative_original_size`
+    """
+
     sdxl_refiner_negative_target_size: _types.OptionalSize = None
+    """
+    Override the refiner value usually taken from :py:attr:`.DiffusionArguments.sdxl_negative_target_size`
+    """
+
     sdxl_refiner_negative_crops_coords_top_left: _types.OptionalCoordinate = None
+    """
+    Override the refiner value usually taken from :py:attr:`.DiffusionArguments.sdxl_negative_crops_coords_top_left`
+    """
+
     guidance_scale: _types.OptionalFloat = None
+    """
+    A higher guidance scale value encourages the model to generate images closely linked to the text
+    :py:attr:`.DiffusionArguments.prompt` at the expense of lower image quality. Guidance scale is enabled 
+    when :py:attr:`.DiffusionArguments.guidance_scale`  > 1
+    """
+
     image_guidance_scale: _types.OptionalFloat = None
+    """
+    This value is only relevant for ``pix2pix`` :py:class:`dgenerate.pipelinewrapper.ModelTypes`.
+    
+    Image guidance scale is to push the generated image towards the initial image :py:attr:`.DiffusionArguments.image`. 
+    Image guidance scale is enabled by setting :py:attr:`.DiffusionArguments.image_guidance_scale` > 1. Higher image 
+    guidance scale encourages to generate images that are closely linked to the source image :py:attr:`.DiffusionArguments.image`, 
+    usually at the expense of lower image quality.
+    """
+
     guidance_rescale: _types.OptionalFloat = None
+    """
+    This value is only supported for certain :py:class:`dgenerate.pipelinewrapper.DiffusionPipelineWrapper`
+    configurations, an error will be produced when it is unsupported.
+    
+    Guidance rescale factor proposed by [Common Diffusion Noise Schedules and Sample Steps are
+    Flawed](https://arxiv.org/pdf/2305.08891.pdf) `guidance_scale` is defined as `φ` in equation 16. of
+    [Common Diffusion Noise Schedules and Sample Steps are Flawed](https://arxiv.org/pdf/2305.08891.pdf).
+    Guidance rescale factor should fix overexposure when using zero terminal SNR.
+    """
+
+
     inference_steps: _types.OptionalInteger = None
+    """
+    The number of denoising steps. More denoising steps usually lead to a higher quality image 
+    at the expense of slower inference.
+    """
 
     def get_pipeline_wrapper_kwargs(self):
         """
@@ -288,26 +529,26 @@ class DiffusionPipelineWrapper:
 
     def __init__(self,
                  model_path: _types.Path,
-                 dtype: typing.Union[_enums.DataTypes, str] = _enums.DataTypes.AUTO,
-                 device: str = 'cuda',
                  model_type: typing.Union[_enums.ModelTypes, str] = _enums.ModelTypes.TORCH,
                  revision: _types.OptionalName = None,
                  variant: _types.OptionalName = None,
-                 model_subfolder: _types.OptionalName = None,
+                 subfolder: _types.OptionalName = None,
+                 dtype: typing.Union[_enums.DataTypes, str] = _enums.DataTypes.AUTO,
                  vae_uri: _types.OptionalUri = None,
                  vae_tiling: bool = False,
                  vae_slicing: bool = False,
                  lora_uris: typing.Union[str, _types.OptionalUris] = None,
                  textual_inversion_uris: typing.Union[str, _types.OptionalUris] = None,
                  control_net_uris: typing.Union[str, _types.OptionalUris] = None,
-                 sdxl_refiner_uri: _types.OptionalUri = None,
                  scheduler: _types.OptionalName = None,
+                 sdxl_refiner_uri: _types.OptionalUri = None,
                  sdxl_refiner_scheduler: _types.OptionalName = None,
+                 device: str = 'cuda',
                  safety_checker: bool = False,
                  auth_token: _types.OptionalString = None,
                  local_files_only: bool = False):
 
-        self._model_subfolder = model_subfolder
+        self._subfolder = subfolder
         self._device = device
         self._model_type = _enums.get_model_type_enum(model_type)
         self._model_path = model_path
@@ -509,11 +750,11 @@ class DiffusionPipelineWrapper:
         return _enums.get_data_type_string(self._dtype)
 
     @property
-    def model_subfolder(self) -> _types.OptionalName:
+    def subfolder(self) -> _types.OptionalName:
         """
         Selected model subfolder for the main model, (remote repo subfolder or local) or None
         """
-        return self._model_subfolder
+        return self._subfolder
 
     @property
     def vae_uri(self) -> _types.OptionalUri:
@@ -680,8 +921,8 @@ class DiffusionPipelineWrapper:
         if self._variant is not None:
             opts.append(('--variant', self._variant))
 
-        if self._model_subfolder is not None:
-            opts.append(('--subfolder', self._model_subfolder))
+        if self._subfolder is not None:
+            opts.append(('--subfolder', self._subfolder))
 
         if self._vae_uri is not None:
             opts.append(('--vae', self._vae_uri))
@@ -1498,7 +1739,7 @@ class DiffusionPipelineWrapper:
                     _pipelines.create_torch_diffusion_pipeline(pipeline_type=pipeline_type,
                                                                model_path=self._model_path,
                                                                model_type=self._model_type,
-                                                               subfolder=self._model_subfolder,
+                                                               subfolder=self._subfolder,
                                                                revision=self._revision,
                                                                variant=self._variant,
                                                                dtype=self._dtype,
@@ -1549,7 +1790,7 @@ class DiffusionPipelineWrapper:
                 _pipelines.create_torch_diffusion_pipeline(pipeline_type=pipeline_type,
                                                            model_path=self._model_path,
                                                            model_type=self._model_type,
-                                                           subfolder=self._model_subfolder,
+                                                           subfolder=self._subfolder,
                                                            revision=self._revision,
                                                            variant=self._variant,
                                                            dtype=self._dtype,

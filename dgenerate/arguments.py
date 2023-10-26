@@ -614,8 +614,8 @@ actions.append(
                         action='store', nargs='+', default=[], type=_type_size,
                         help="""One or more Stable Diffusion XL (torch-sdxl) "original-size" micro-conditioning parameters in
                         the format (WIDTH)x(HEIGHT). If not the same as --sdxl-target-size the image will appear to be
-                        down or up-sampled. --sdxl-original-size defaults to --output-size if not specified. Part of
-                        SDXL\'s micro-conditioning as explained in section 2.2 of 
+                        down or up-sampled. --sdxl-original-size defaults to --output-size or the size of any input
+                        images if not specified. Part of SDXL\'s micro-conditioning as explained in section 2.2 of 
                         [https://huggingface.co/papers/2307.01952]"""))
 
 actions.append(
@@ -647,7 +647,7 @@ actions.append(
                         action='store', nargs='+', default=[], type=_type_size,
                         help="""One or more Stable Diffusion XL (torch-sdxl) "negative-original-sizes" micro-conditioning parameters.
                         To negatively condition the generation process based on a target image resolution. It should be as same
-                        as the "target_size" for most cases. Part of SDXL's micro-conditioning as explained in section 2.2 of
+                        as the "--sdxl-target-size" for most cases. Part of SDXL's micro-conditioning as explained in section 2.2 of
                         [https://huggingface.co/papers/2307.01952]. For more information, refer to this issue thread:
                         https://github.com/huggingface/diffusers/issues/4208."""))
 
