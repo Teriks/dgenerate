@@ -30,9 +30,19 @@ class ConceptPathParseError(Exception):
     pass
 
 
-class ConceptPath:
+class ConceptUri:
     """
     Represents a parsed concept path.
+    """
+
+    concept: str
+    """
+    The primary concept mentioned in the URI.
+    """
+
+    args: typing.Dict[str, str]
+    """
+    Provided keyword arguments with their (string) values.
     """
 
     def __init__(self, concept: str, args: typing.Dict[str, str]):
@@ -50,12 +60,31 @@ class ConceptUriParser:
     Used for ``--vae``, ``--lora`` etc. as well as image preprocessor plugin module arguments.
     """
 
-    def __init__(self, concept_name: _types.Name, known_args=None):
+    concept_name: _types.Name
+    """
+    Name / title string for this concept. Used in parse error exceptions.
+    """
+
+    known_args: typing.Set[str]
+    """
+    Unique recognized keyword arguments
+    """
+
+    def __init__(self, concept_name: _types.Name, known_args: typing.Sequence[str] = None):
         """
+        :raises: :py:exc:`ValueError` if duplicate argument names are specified.
+
         :param concept_name: Concept name, used in error messages
-        :param known_args: valid arguments for the parser
+        :param known_args: valid arguments for the parser, must be unique
         """
-        self.known_args = known_args
+
+        check = set()
+        for arg in known_args:
+            if arg in check:
+                raise ValueError(f'duplicate argument specification {arg}')
+            check.add(arg)
+
+        self.known_args = check
         self.concept_name = concept_name
 
     def parse_concept_uri(self, uri: _types.Uri):
@@ -86,7 +115,7 @@ class ConceptUriParser:
             if self.known_args is not None and name not in self.known_args:
                 raise ConceptPathParseError(
                     f'Unknown path argument "{name}" for {self.concept_name} concept "{concept}", '
-                    f'valid arguments: {", ".join(list(self.known_args))}')
+                    f'valid arguments: {", ".join(sorted(self.known_args))}')
 
             if name in args:
                 raise ConceptPathParseError(
@@ -97,7 +126,7 @@ class ConceptUriParser:
             except SyntaxError as e:
                 raise ConceptPathParseError(f'Syntax Error parsing argument {name} for '
                                             f'{self.concept_name} concept "{concept}": {e}')
-        return ConceptPath(concept, args)
+        return ConceptUri(concept, args)
 
 
 def oxford_comma(elements: typing.Sequence[str], conjunction: str) -> str:
