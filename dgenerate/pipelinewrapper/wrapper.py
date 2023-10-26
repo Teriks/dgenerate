@@ -564,8 +564,8 @@ class DiffusionPipelineWrapper:
                  safety_checker: bool = False,
                  auth_token: _types.OptionalString = None,
                  local_files_only: bool = False,
-                 model_extra_args=None,
-                 refiner_extra_args=None):
+                 model_extra_modules=None,
+                 refiner_extra_modules=None):
 
         self._subfolder = subfolder
         self._device = device
@@ -594,8 +594,8 @@ class DiffusionPipelineWrapper:
         self._local_files_only = local_files_only
         self._recall_main_pipeline = None
         self._recall_refiner_pipeline = None
-        self._model_extra_args = model_extra_args
-        self._refiner_extra_args = refiner_extra_args
+        self._model_extra_modules = model_extra_modules
+        self._refiner_extra_modules = refiner_extra_modules
 
         self._parsed_sdxl_refiner_uri = None
         self._sdxl_refiner_uri = sdxl_refiner_uri
@@ -1747,7 +1747,7 @@ class DiffusionPipelineWrapper:
                         safety_checker=self._safety_checker,
                         auth_token=self._auth_token,
                         local_files_only=self._local_files_only,
-                        extra_args=self._model_extra_args)
+                        extra_modules=self._model_extra_modules)
                 _pipelines.set_vae_slicing_tiling(pipeline=result.pipeline,
                                                   vae_tiling=self._vae_tiling,
                                                   vae_slicing=self._vae_slicing)
@@ -1784,7 +1784,7 @@ class DiffusionPipelineWrapper:
                             auth_token=self._auth_token,
                             device=self._device,
                             local_files_only=self._local_files_only,
-                            extra_args=self._model_extra_args)
+                            extra_modules=self._model_extra_modules)
                     _pipelines.set_vae_slicing_tiling(pipeline=result.pipeline,
                                                       vae_tiling=self._vae_tiling,
                                                       vae_slicing=self._vae_slicing)
@@ -1798,14 +1798,14 @@ class DiffusionPipelineWrapper:
 
             if self._pipeline is not None:
 
-                refiner_extra_args = {'vae': self._pipeline.vae,
+                refiner_extra_modules = {'vae': self._pipeline.vae,
                                       'text_encoder_2': self._pipeline.text_encoder_2}
 
-                if self._refiner_extra_args is not None:
-                    refiner_extra_args.update(self._refiner_extra_args)
+                if self._refiner_extra_modules is not None:
+                    refiner_extra_modules.update(self._refiner_extra_modules)
 
             else:
-                refiner_extra_args = self._refiner_extra_args
+                refiner_extra_modules = self._refiner_extra_modules
 
             def create_refiner_pipeline():
                 result = \
@@ -1827,7 +1827,7 @@ class DiffusionPipelineWrapper:
 
                         safety_checker=self._safety_checker,
                         auth_token=self._auth_token,
-                        extra_args=refiner_extra_args,
+                        extra_modules=refiner_extra_modules,
                         local_files_only=self._local_files_only)
                 _pipelines.set_vae_slicing_tiling(pipeline=result.pipeline,
                                                   vae_tiling=self._vae_tiling,
@@ -1858,7 +1858,7 @@ class DiffusionPipelineWrapper:
                         device=self._device,
                         sequential_cpu_offload=offload,
                         local_files_only=self._local_files_only,
-                        extra_args=self._model_extra_args)
+                        extra_modules=self._model_extra_modules)
                 _pipelines.set_vae_slicing_tiling(pipeline=result.pipeline,
                                                   vae_tiling=self._vae_tiling,
                                                   vae_slicing=self._vae_slicing)

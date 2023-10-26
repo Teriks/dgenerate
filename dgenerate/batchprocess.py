@@ -347,7 +347,7 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
 
     def invoker(args):
         if main_modules_stack:
-            render_loop.model_extra_args = main_modules_stack.pop()
+            render_loop.model_extra_modules = main_modules_stack.pop()
 
         return _invoker.invoke_dgenerate(args, render_loop=render_loop, throw=throw)
 

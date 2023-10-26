@@ -388,7 +388,7 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                                     safety_checker: bool = False,
                                     auth_token: _types.OptionalString = None,
                                     device: str = 'cuda',
-                                    extra_args: typing.Optional[typing.Dict[str, typing.Any]] = None,
+                                    extra_modules: typing.Optional[typing.Dict[str, typing.Any]] = None,
                                     model_cpu_offload: bool = False,
                                     sequential_cpu_offload: bool = False,
                                     local_files_only: bool = False) -> TorchPipelineCreationResult:
@@ -411,7 +411,7 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     :param safety_checker: Safety checker enabled? default is false
     :param auth_token: Optional huggingface API token for accessing repositories that are restricted to your account
     :param device: Optional ``--device`` string, defaults to "cuda"
-    :param extra_args: Extra arguments to pass directly into
+    :param extra_modules: Extra module arguments to pass directly into
         :py:meth:`diffusers.DiffusionPipeline.from_single_file` or :py:meth:`diffusers.DiffusionPipeline.from_pretrained`
     :param model_cpu_offload: This pipeline has model_cpu_offloading enabled?
     :param sequential_cpu_offload: This pipeline has sequential_cpu_offloading enabled?
@@ -451,7 +451,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                                      safety_checker: bool = False,
                                      auth_token: _types.OptionalString = None,
                                      device: str = 'cuda',
-                                     extra_args: typing.Optional[typing.Dict[str, typing.Any]] = None,
+                                     extra_modules: typing.Optional[typing.Dict[str, typing.Any]] = None,
                                      model_cpu_offload: bool = False,
                                      sequential_cpu_offload: bool = False,
                                      local_files_only: bool = False) -> TorchPipelineCreationResult:
@@ -526,7 +526,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
         textual_inversion_uris=textual_inversion_uris,
         safety_checker=True,  # it is always going to get loaded, monkey patched out currently
         auth_token=auth_token,
-        extra_args=extra_args,
+        extra_args=extra_modules,
         local_files_only=local_files_only
     )
 
@@ -614,8 +614,8 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
 
         creation_kwargs['controlnet'] = control_nets
 
-    if extra_args is not None:
-        creation_kwargs.update(extra_args)
+    if extra_modules is not None:
+        creation_kwargs.update(extra_modules)
 
     # Create Pipeline
 
@@ -765,7 +765,7 @@ def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                                    scheduler: _types.OptionalString = None,
                                    safety_checker: bool = False,
                                    auth_token: _types.OptionalString = None,
-                                   extra_args: typing.Optional[typing.Dict[str, typing.Any]] = None,
+                                   extra_modules: typing.Optional[typing.Dict[str, typing.Any]] = None,
                                    local_files_only: bool = False) -> FlaxPipelineCreationResult:
     """
     Create a :py:class:`diffusers.FlaxDiffusionPipeline` in dgenerates in memory cacheing system.
@@ -783,7 +783,7 @@ def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     :param safety_checker: Safety checker enabled? default is false
     :param auth_token: Optional huggingface API token for accessing repositories that are restricted to your account
     :param device: Optional ``--device`` string, defaults to "cuda"
-    :param extra_args: Extra arguments to pass directly into :py:meth:`diffusers.FlaxDiffusionPipeline.from_pretrained`
+    :param extra_modules: Extra module arguments to pass directly into :py:meth:`diffusers.FlaxDiffusionPipeline.from_pretrained`
     :param local_files_only: Only look in the huggingface cache and do not connect to download models?
     :return: :py:class:`.FlaxPipelineCreationResult`
     """
@@ -811,7 +811,7 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                                     scheduler: _types.OptionalString = None,
                                     safety_checker: bool = False,
                                     auth_token: _types.OptionalString = None,
-                                    extra_args: typing.Optional[typing.Dict[str, typing.Any]] = None,
+                                    extra_modules: typing.Optional[typing.Dict[str, typing.Any]] = None,
                                     local_files_only: bool = False) -> FlaxPipelineCreationResult:
     if not _enums.model_type_is_flax(model_type):
         raise ValueError('model_type must be a FLAX ModelTypes enum value.')
@@ -846,7 +846,7 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
         vae_uri=vae_uri,
         safety_checker=True,  # it is always going to get loaded, monkey patched out currently
         auth_token=auth_token,
-        extra_args=extra_args,
+        extra_args=extra_modules,
         local_files_only=local_files_only,
         flax=True
     )
@@ -899,8 +899,8 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
 
         kwargs['controlnet'] = control_net
 
-    if extra_args is not None:
-        kwargs.update(extra_args)
+    if extra_modules is not None:
+        kwargs.update(extra_modules)
 
     pipeline, params = pipeline_class.from_pretrained(model_path,
                                                       revision=revision,
