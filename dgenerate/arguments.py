@@ -306,7 +306,7 @@ actions.append(
                         Defaults to automatic selection. This option is ignored if using flax."""))
 
 actions.append(
-    parser.add_argument('--subfolder', action='store', default=None, dest='model_subfolder',
+    parser.add_argument('--subfolder', action='store', default=None,
                         help="""Main model subfolder.
                         If specified when loading from a huggingface repository or folder,
                         load weights from the specified subfolder."""))

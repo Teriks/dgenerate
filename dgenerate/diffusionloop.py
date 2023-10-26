@@ -184,7 +184,7 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
     Primary diffusion model path, ``model_path`` argument of dgenerate command line tool.
     """
 
-    model_subfolder: _types.OptionalPath = None
+    subfolder: _types.OptionalPath = None
     """
     Primary model subfolder argument, ``--subfolder`` argument of dgenerate command line tool.
     """
@@ -1449,7 +1449,7 @@ class DiffusionRenderLoop:
             model_type=self.config.model_type,
             revision=self.config.revision,
             variant=self.config.variant,
-            model_subfolder=self.config.model_subfolder,
+            subfolder=self.config.subfolder,
             vae_uri=self.config.vae_uri,
             vae_tiling=self.config.vae_tiling,
             vae_slicing=self.config.vae_slicing,

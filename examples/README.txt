@@ -35,3 +35,9 @@ python run.py stablediffusion/basic -v
 python run.py stablediffusion/animations/kitten-config.txt -v
 
 
+# you can run library_usage examples but arguments
+# will be ignored for them
+
+python run.py library_usage/basic
+
+
