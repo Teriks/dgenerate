@@ -200,7 +200,10 @@ class BatchProcessor:
             if impl is None:
                 raise BatchProcessError(f'Unknown directive "\\{directive}" on line {line_idx}.')
 
-            impl(directive_args[1:])
+            try:
+                impl(shlex.split(directive_args[1]))
+            except Exception as e:
+                raise BatchProcessError(f'Error on line {line_idx}: {e}')
             return True
         return False
 
@@ -325,15 +328,26 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
         'last': lambda a: a[-1] if a else None
     }
 
-    main_modules_stack = []
+    saved_modules = dict()
 
-    def push_modules_directive(args):
-        if len(args) == 0:
-            # Skip an invocation :)
-            main_modules_stack.append(None)
+    def save_modules_directive(args):
+        if len(args) < 2:
+            raise BatchProcessError(
+                'save modules directive must have at least 2 arguments, a variable name and one or more module names.')
 
         creation_result = render_loop.pipeline_wrapper.recall_main_pipeline()
-        main_modules_stack.append(creation_result.get_pipeline_modules(args))
+        saved_modules[args[0]] = creation_result.get_pipeline_modules(args[1:])
+
+    def use_modules_directive(args):
+        saved_name = args[0]
+        render_loop.model_extra_modules = saved_modules[saved_name]
+
+    def clear_modules_directive(args):
+        if len(args) > 0:
+            for arg in args:
+                del saved_modules[arg]
+        else:
+            saved_modules.clear()
 
     directives = {
         'templates_help': lambda args: _messages.log(
@@ -342,14 +356,16 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
         'clear_pipeline_cache': lambda args: _pipelinewrapper.clear_pipeline_cache(),
         'clear_vae_cache': lambda args: _pipelinewrapper.clear_vae_cache(),
         'clear_control_net_cache': lambda args: _pipelinewrapper.clear_control_net_cache(),
-        'push_modules': push_modules_directive
+        'save_modules': save_modules_directive,
+        'use_modules': use_modules_directive,
+        'clear_modules': clear_modules_directive,
     }
 
     def invoker(args):
-        if main_modules_stack:
-            render_loop.model_extra_modules = main_modules_stack.pop()
-
-        return _invoker.invoke_dgenerate(args, render_loop=render_loop, throw=throw)
+        try:
+            return _invoker.invoke_dgenerate(args, render_loop=render_loop, throw=throw)
+        finally:
+            render_loop.model_extra_modules = None
 
     runner = BatchProcessor(
         invoker=invoker,
@@ -360,5 +376,8 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
         template_functions=funcs,
         injected_args=injected_args if injected_args else [],
         directives=directives)
+
+
+
 
     return runner
