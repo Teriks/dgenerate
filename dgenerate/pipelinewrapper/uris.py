@@ -18,9 +18,11 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import os.path
 import typing
 
 import diffusers
+import huggingface_hub
 
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
@@ -980,7 +982,34 @@ class LoRAUri:
             _messages.debug_log('pipeline.load_lora_weights('
                                 + str(_types.get_public_attributes(self) | extra_args) + ')')
 
-            pipeline.load_lora_weights(self.model,
+            load_path = self.model
+
+            if local_files_only:
+                # Temporary fix for diffusers bug
+
+                subfolder = self.subfolder if self.subfolder else ''
+
+                probable_path_1 = os.path.join(
+                    subfolder, 'pytorch_lora_weights.safetensors' if
+                    self.weight_name is not None else self.weight_name)
+
+                probable_path_2 = os.path.join(
+                    subfolder, 'pytorch_lora_weights.bin')
+
+                file_path = huggingface_hub.try_to_load_from_cache(probable_path_1,
+                                                                   revision=self.revision)
+
+                if file_path is None:
+                    file_path = huggingface_hub.try_to_load_from_cache(probable_path_2,
+                                                                       revision=self.revision)
+
+                if file_path is None:
+                    raise RuntimeError(
+                        f'LoRA model "{self.model}" was not available in the local huggingface cache.')
+
+                load_path = os.path.dirname(file_path)
+
+            pipeline.load_lora_weights(load_path,
                                        revision=self.revision,
                                        subfolder=self.subfolder,
                                        weight_name=self.weight_name,

@@ -40,6 +40,7 @@ controlnet-aux = "0.0.7"
 matplotlib = "^3.8.0"
 portalocker = "^2.8.2"
 psutil = "^5.9.6"
+sentencepiece = "^0.1.99"
 
 [tool.poetry.extras]
 flax = ["flax", "jax"]
