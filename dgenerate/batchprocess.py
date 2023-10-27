@@ -377,7 +377,4 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
         injected_args=injected_args if injected_args else [],
         directives=directives)
 
-
-
-
     return runner
