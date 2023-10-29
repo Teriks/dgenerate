@@ -10,5 +10,5 @@ stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
 --batch-size 2
 --vae-slicing
 --vae-tiling
---prompts "Artwork of a train passenger looking out the window of a train traveling
+--prompts "Artwork of a train passenger looking out the window of a train traveling \
            through a forested mountain, masterpiece, high quality"
