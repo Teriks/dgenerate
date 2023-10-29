@@ -58,12 +58,14 @@ def _disabled_safety_checker(images, clip_input):
     else:
         return images, False
 
+
 def _floyd_disabled_safety_checker(images, clip_input):
     if len(images.shape) == 4:
         num_images = images.shape[0]
         return images, [False] * num_images, False
     else:
         return images, False, False
+
 
 def _set_torch_safety_checker(pipeline: diffusers.DiffusionPipeline, safety_checker: bool):
     if not safety_checker:
@@ -279,7 +281,7 @@ class PipelineCreationResult:
     def pipeline(self):
         return self._pipeline
 
-    def get_pipeline_modules(self, names= typing.Iterable[str]):
+    def get_pipeline_modules(self, names=typing.Iterable[str]):
         """
         Get associated pipeline module such as ``vae`` etc, in
         a dictionary mapped from name to module value.
@@ -431,6 +433,46 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     :return: :py:class:`.TorchPipelineCreationResult`
     """
     return _create_torch_diffusion_pipeline(**locals())
+
+
+class TorchPipelineFactory:
+    """
+    Combines :py:meth:`.create_torch_diffusion_pipeline` and :py:meth:`.set_vae_slicing_tiling` into a factory
+    that can recreate the same Torch pipeline over again, possibly from cache.
+    """
+
+    def __init__(self,
+                 pipeline_type: _enums.PipelineTypes,
+                 model_path: str,
+                 model_type: _enums.ModelTypes = _enums.ModelTypes.TORCH,
+                 revision: _types.OptionalString = None,
+                 variant: _types.OptionalString = None,
+                 subfolder: _types.OptionalString = None,
+                 dtype: _enums.DataTypes = _enums.DataTypes.AUTO,
+                 vae_uri: _types.OptionalUri = None,
+                 lora_uris: _types.OptionalUris = None,
+                 textual_inversion_uris: _types.OptionalUris = None,
+                 control_net_uris: _types.OptionalUris = None,
+                 scheduler: _types.OptionalString = None,
+                 safety_checker: bool = False,
+                 auth_token: _types.OptionalString = None,
+                 device: str = 'cuda',
+                 extra_modules: typing.Optional[typing.Dict[str, typing.Any]] = None,
+                 model_cpu_offload: bool = False,
+                 sequential_cpu_offload: bool = False,
+                 local_files_only: bool = False,
+                 vae_tiling=False,
+                 vae_slicing=False):
+        self._args = {k: v for k, v in locals().items() if k not in {'self', 'vae_tiling', 'vae_slicing'}}
+        self._vae_tiling = vae_tiling
+        self._vae_slicing = vae_slicing
+
+    def __call__(self) -> TorchPipelineCreationResult:
+        r = create_torch_diffusion_pipeline(**self._args)
+        set_vae_slicing_tiling(r.pipeline,
+                               vae_tiling=self._vae_tiling,
+                               vae_slicing=self._vae_slicing)
+        return r
 
 
 @_memoize(_cache._TORCH_PIPELINE_CACHE,
@@ -704,10 +746,11 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
 
     # Safety Checker
 
-    if _enums.model_type_is_floyd(model_type):
-        _set_floyd_safety_checker(pipeline, safety_checker)
-    else:
-        _set_torch_safety_checker(pipeline, safety_checker)
+    if extra_modules and 'safety_checker' not in extra_modules:
+        if _enums.model_type_is_floyd(model_type):
+            _set_floyd_safety_checker(pipeline, safety_checker)
+        else:
+            _set_torch_safety_checker(pipeline, safety_checker)
 
     # Model Offloading
 
@@ -827,6 +870,39 @@ def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     :return: :py:class:`.FlaxPipelineCreationResult`
     """
     return _create_flax_diffusion_pipeline(**locals())
+
+
+class FlaxPipelineFactory:
+    """
+    Combines :py:meth:`.create_flax_diffusion_pipeline` and :py:meth:`.set_vae_slicing_tiling` into a factory
+    that can recreate the same Flax pipeline over again, possibly from cache.
+    """
+
+    def __init__(self, pipeline_type: _enums.PipelineTypes,
+                 model_path: str,
+                 model_type: _enums.ModelTypes = _enums.ModelTypes.FLAX,
+                 revision: _types.OptionalString = None,
+                 subfolder: _types.OptionalString = None,
+                 dtype: _enums.DataTypes = _enums.DataTypes.AUTO,
+                 vae_uri: _types.OptionalString = None,
+                 control_net_uris: _types.OptionalString = None,
+                 scheduler: _types.OptionalString = None,
+                 safety_checker: bool = False,
+                 auth_token: _types.OptionalString = None,
+                 extra_modules: typing.Optional[typing.Dict[str, typing.Any]] = None,
+                 local_files_only: bool = False,
+                 vae_tiling: bool = False,
+                 vae_slicing: bool = False):
+        self._args = {k: v for k, v in locals().items() if k not in {'self', 'vae_tiling', 'vae_slicing'}}
+        self._vae_tiling = vae_tiling
+        self._vae_slicing = vae_slicing
+
+    def __call__(self) -> FlaxPipelineCreationResult:
+        r = create_flax_diffusion_pipeline(**self._args)
+        set_vae_slicing_tiling(r.pipeline,
+                               vae_tiling=self._vae_tiling,
+                               vae_slicing=self._vae_slicing)
+        return r
 
 
 @_memoize(_cache._FLAX_PIPELINE_CACHE,

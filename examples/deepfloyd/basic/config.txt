@@ -30,7 +30,8 @@ DeepFloyd/IF-II-L-v1.0 \
 --seeds {{ last_seeds | join(' ') }} \
 --seeds-to-images \
 --image-seeds {{ quote(last_images) }} \
---output-prefix stage2
+--output-prefix stage2 \
+--safety-checker
 
 \use_modules stage_1_modules
 
