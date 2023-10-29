@@ -1,9 +1,9 @@
 #! dgenerate 2.0.0
 
-Duskfallcrew/isometric-dreams-sd-1-5  \
---textual-inversions Duskfallcrew/IsometricDreams_TextualInversions;weight-name=Isometric_Dreams-1000.pt \
---scheduler KDPM2DiscreteScheduler \
---inference-steps 30 \
---guidance-scales 7 \
---gen-seeds 2 \
+Duskfallcrew/isometric-dreams-sd-1-5 
+--textual-inversions Duskfallcrew/IsometricDreams_TextualInversions;weight-name=Isometric_Dreams-1000.pt
+--scheduler KDPM2DiscreteScheduler
+--inference-steps 30
+--guidance-scales 7
+--gen-seeds 2
 --prompts "a bright photo of the Isometric_Dreams, a tv and a stereo in it and a book shelf, a table, a couch,a room with a bed"

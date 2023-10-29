@@ -3,14 +3,14 @@
 # Place the variations side by side on an image grid
 # That is 2 wide and 1 high
 
-stabilityai/stable-diffusion-2 \
---inference-steps 40 \
---guidance-scales 8 \
---output-size 512 \
---gen-seeds 2 \
---batch-size 2 \
---batch-grid-size 2x1 \
---vae-slicing \
---vae-tiling \
---prompts "An astronaut walking on the moon; artwork" \
+stabilityai/stable-diffusion-2
+--inference-steps 40
+--guidance-scales 8
+--output-size 512
+--gen-seeds 2
+--batch-size 2
+--batch-grid-size 2x1
+--vae-slicing
+--vae-tiling
+--prompts "An astronaut walking on the moon; artwork"
 --output-path static-grid

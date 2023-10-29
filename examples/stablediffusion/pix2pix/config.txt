@@ -1,8 +1,8 @@
 #! dgenerate 2.0.0
 
-timbrooks/instruct-pix2pix --model-type "torch-pix2pix" --dtype float16 \
---inference-steps 30 \
---guidance-scales 5 \
---image-guidance-scales 1.5 \
---image-seeds "../../media/beach.jpg" \
+timbrooks/instruct-pix2pix --model-type "torch-pix2pix" --dtype float16
+--inference-steps 30
+--guidance-scales 5
+--image-guidance-scales 1.5
+--image-seeds "../../media/beach.jpg"
 --prompts "Make it snow on the beach"

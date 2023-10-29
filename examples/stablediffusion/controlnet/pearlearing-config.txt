@@ -2,11 +2,11 @@
 
 # Use an already processed image with the canny control net
 
-runwayml/stable-diffusion-v1-5 \
---inference-steps 40 \
---guidance-scales 8 \
---gen-seeds 2 \
---prompts "Painting, Girl with a pearl earing by Leonardo Da Vinci, masterpiece; low quality, low resolution, blank eyeballs" \
---control-nets lllyasviel/sd-controlnet-canny;scale=0.5 \
---image-seeds "../../media/vermeer_canny_edged.png" \
+runwayml/stable-diffusion-v1-5
+--inference-steps 40
+--guidance-scales 8
+--gen-seeds 2
+--prompts "Painting, Girl with a pearl earing by Leonardo Da Vinci, masterpiece; low quality, low resolution, blank eyeballs"
+--control-nets lllyasviel/sd-controlnet-canny;scale=0.5
+--image-seeds "../../media/vermeer_canny_edged.png"
 --output-path pearlearing

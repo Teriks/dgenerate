@@ -5,46 +5,46 @@
 
 # The first stage can be invoked with the --model-type torch-ifs
 
-DeepFloyd/IF-I-L-v1.0 \
---variant fp16 \
---dtype float16 \
---model-type torch-if \
---inference-steps 100 \
---guidance-scales 10 \
---output-size 64 \
---gen-seeds 2 \
---prompts "A big highway sign saying 'dgenerate', realistic photo; fake, artwork" \
---output-prefix stage1 \
+DeepFloyd/IF-I-L-v1.0
+--variant fp16
+--dtype float16
+--model-type torch-if
+--inference-steps 100
+--guidance-scales 10
+--output-size 64
+--gen-seeds 2
+--prompts "A big highway sign saying 'dgenerate', realistic photo; fake, artwork"
+--output-prefix stage1
 --safety-checker
 
 \save_modules stage_1_modules feature_extractor safety_checker
 
 
-DeepFloyd/IF-II-L-v1.0 \
---variant fp16 \
---dtype float16 \
---model-type torch-ifs \
---inference-steps 70 \
---guidance-scales 10 \
---prompts {{ format_prompt(last_prompts) }} \
---seeds {{ last_seeds | join(' ') }} \
---seeds-to-images \
---image-seeds {{ quote(last_images) }} \
---output-prefix stage2 \
+DeepFloyd/IF-II-L-v1.0
+--variant fp16
+--dtype float16
+--model-type torch-ifs
+--inference-steps 70
+--guidance-scales 10
+--prompts {{ format_prompt(last_prompts) }}
+--seeds {{ last_seeds | join(' ') }}
+--seeds-to-images
+--image-seeds {{ quote(last_images) }}
+--output-prefix stage2
 --safety-checker
 
 \use_modules stage_1_modules
 
-stabilityai/stable-diffusion-x4-upscaler \
---variant fp16 \
---dtype float16 \
---model-type torch-upscaler-x4 \
---inference-steps 30 \
---prompts {{ format_prompt(last_prompts) }} \
---seeds {{ last_seeds | join(' ') }} \
---seeds-to-images \
---image-seeds {{ quote(last_images) }} \
---upscaler-noise-level 100 \
+stabilityai/stable-diffusion-x4-upscaler
+--variant fp16
+--dtype float16
+--model-type torch-upscaler-x4
+--inference-steps 30
+--prompts {{ format_prompt(last_prompts) }}
+--seeds {{ last_seeds | join(' ') }}
+--seeds-to-images
+--image-seeds {{ quote(last_images) }}
+--upscaler-noise-level 100
 --output-prefix stage3
 
 \clear_modules
