@@ -89,7 +89,7 @@ class BatchProcessor:
 
         self.template_variable_generator = \
             template_variable_generator if \
-                template_variable_generator else lambda x: dict()
+                template_variable_generator else lambda: dict()
 
         self.template_variables = template_variables if template_variables else dict()
         self.template_functions = template_functions if template_functions else dict()
@@ -265,7 +265,7 @@ class BatchProcessor:
         for line_idx, line in enumerate(stream):
             try:
                 old_pos = stream.tell()
-                next_line = next(stream)
+                next_line = next(stream).strip()
                 stream.seek(old_pos)
             except StopIteration:
                 next_line = None
@@ -273,7 +273,8 @@ class BatchProcessor:
             self._current_line = line_idx
             line = line.strip()
             if line == '':
-                if continuation and last_line and last_line.startswith('-'):
+                if continuation and last_line \
+                        and last_line.startswith('-') and not last_line.endswith('\\'):
                     run_continuation('', line_idx)
             elif line.startswith('#'):
                 self._look_for_version_mismatch(line_idx, line)
@@ -285,7 +286,6 @@ class BatchProcessor:
 
         if continuation:
             run_continuation('', line_idx)
-
 
     def run_file(self, stream: typing.TextIO):
         """

@@ -2142,7 +2142,10 @@ The above can be used as either a function or filter IE: ``{{ "quote_me" | quote
 
 Empty lines and comments starting with ``#`` will be ignored.
 
-You can create a multiline continuation using ``\`` to indicate that a line continues.
+You can create a multiline continuation using ``\`` to indicate that a line continues,
+if the next line starts with ``-`` it is considered part of a continuation as well even if ``\`` had
+not been used previously. Comments cannot be interspersed with invocation arguments without the use
+of ``\``, at least on the last line before whitespace and comments start.
 
 The following is a config file example that covers very basic syntax concepts:
 
@@ -2169,16 +2172,20 @@ The following is a config file example that covers very basic syntax concepts:
     stabilityai/stable-diffusion-2-1 --prompts "an astronaut riding a horse" --output-path unique_output_1  --inference-steps 30 --guidance-scales 10
     stabilityai/stable-diffusion-2-1 --prompts "a cowboy riding a horse" --output-path unique_output_2 --inference-steps 30 --guidance-scales 10
 
-    # Multiline continuations are possible by using \
+    # Multiline continuations are possible implicitly for argument
+    # switches IE lines starting with '-'
 
-    stabilityai/stable-diffusion-2-1 --prompts "a martian riding a horse" \
-    --output-path unique_output_3  \
+    stabilityai/stable-diffusion-2-1 --prompts "a martian riding a horse"
+    --output-path unique_output_3
+    --inference-steps 30 \
 
     # There can be comments or newlines within the continuation
-    # The continuation ends when a line does not end in \
+    # but you must provide \ to indicate that it is going to happen
 
-    --inference-steps 30 \
     --guidance-scales 10
+
+    # The continuation ends (on the next line) when the last line does
+    # not end in \ or start with -
 
 
     # A clear model cache directive can be used inbetween invocations if cached models that
@@ -2205,7 +2212,7 @@ The following is a config file example that covers very basic syntax concepts:
     # This model was used before but will have to be fully instantiated from scratch again
     # after a cache flush which may take some time
 
-    stabilityai/stable-diffusion-2-1 --prompts "a martian riding a horse" \
+    stabilityai/stable-diffusion-2-1 --prompts "a martian riding a horse"
     --output-path unique_output_4
 
 
@@ -2549,8 +2556,8 @@ well as some basic Jinja2 templating usage.
     # Probably try to avoid this :)
 
     {% for image in last_images %} \
-        stabilityai/stable-diffusion-2-1 \ !END \
-        --image-seeds {{ quote(image) }} \ !END \
+        stabilityai/stable-diffusion-2-1 !END
+        --image-seeds {{ quote(image) }} !END
         --prompt {{ my_prompt }} !END \
     {% endfor %}
 

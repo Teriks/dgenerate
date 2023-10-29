@@ -2,14 +2,14 @@
 
 # Generate 4 images simultaneously on the GPU, write to 4 different animations
 
-Yntec/3DRendering \
---inference-steps 60 \
---guidance-scale 8 \
---prompts "3D rendering of a cat, high quality, animal; human, photo, real, bad quality" \
---image-seed-strength 0.3 \
---seeds 12345678 \
---image-seeds "../../media/kitten.gif" \
---batch-size 4 \
---vae-slicing \
---output-size 800 \
+Yntec/3DRendering
+--inference-steps 60
+--guidance-scale 8
+--prompts "3D rendering of a cat, high quality, animal; human, photo, real, bad quality"
+--image-seed-strength 0.3
+--seeds 12345678
+--image-seeds "../../media/kitten.gif"
+--batch-size 4
+--vae-slicing
+--output-size 800
 --output-path animation-separate

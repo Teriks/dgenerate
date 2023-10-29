@@ -3,13 +3,13 @@
 # The grid size in this example assumes that you have 2 GPUs visible
 # if this is not the case, adjust it
 
-runwayml/stable-diffusion-v1-5 --model-type flax \
---revision bf16 \
---dtype float16 \
---inference-steps 40 \
---guidance-scales 8 \
---batch-grid-size 1x2 \
---gen-seeds 2 \
---prompts "Painting, Girl with a pearl earing by Leonardo Da Vinci, masterpiece; low quality, low resolution, blank eyeballs" \
---control-nets lllyasviel/sd-controlnet-canny;scale=0.5;from_torch=true \
+runwayml/stable-diffusion-v1-5 --model-type flax
+--revision bf16
+--dtype float16
+--inference-steps 40
+--guidance-scales 8
+--batch-grid-size 1x2
+--gen-seeds 2
+--prompts "Painting, Girl with a pearl earing by Leonardo Da Vinci, masterpiece; low quality, low resolution, blank eyeballs"
+--control-nets lllyasviel/sd-controlnet-canny;scale=0.5;from_torch=true
 --image-seeds "../../media/vermeer_canny_edged.png"

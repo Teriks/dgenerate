@@ -3,12 +3,12 @@
 
 # Strange but interesting upscaling effect on a gif
 
-stabilityai/stable-diffusion-2 \
---inference-steps 50 \
---prompts "A small orange kitten looking up at the camera, 4k, high resolution, real; fake" \
---image-seed-strengths 0.3 \
---seeds 85214917063096 \
---image-seeds "../../media/kitten.gif" \
---animation-format gif \
---output-size 1024x584 \
+stabilityai/stable-diffusion-2
+--inference-steps 50
+--prompts "A small orange kitten looking up at the camera, 4k, high resolution, real; fake"
+--image-seed-strengths 0.3
+--seeds 85214917063096
+--image-seeds "../../media/kitten.gif"
+--animation-format gif
+--output-size 1024x584
 --output-path kitten

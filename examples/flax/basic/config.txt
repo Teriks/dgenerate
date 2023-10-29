@@ -3,12 +3,12 @@
 # The grid size in this example assumes that you have 2 GPUs visible
 # if this is not the case, adjust it
 
-stabilityai/stable-diffusion-2 --model-type flax \
---revision bf16 \
---dtype float16 \
---inference-steps 80 \
---guidance-scales 10 \
---batch-grid-size 1x2 \
---gen-seeds 2 \
---prompts "Horse standing in the open door of a red barn, real, photo, high resolution; artwork, fake, imaginary" \
+stabilityai/stable-diffusion-2 --model-type flax
+--revision bf16
+--dtype float16
+--inference-steps 80
+--guidance-scales 10
+--batch-grid-size 1x2
+--gen-seeds 2
+--prompts "Horse standing in the open door of a red barn, real, photo, high resolution; artwork, fake, imaginary"
 --output-size 768
