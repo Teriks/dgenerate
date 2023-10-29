@@ -41,6 +41,8 @@ matplotlib = "^3.8.0"
 portalocker = "^2.8.2"
 psutil = "^5.9.6"
 sentencepiece = "^0.1.99"
+ftfy = "^6.1.1"
+beautifulsoup4 = "^4.12.2"
 
 [tool.poetry.extras]
 flax = ["flax", "jax"]

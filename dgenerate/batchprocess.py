@@ -127,13 +127,19 @@ class BatchProcessor:
         """
         return self._current_line
 
-    def _render_template(self, input_string: str):
+    def render_template(self, string: str):
+        """
+        Render a template from a string
+        
+        :param string: the string containing the Jinja2 template.
+        :return: rendered string
+        """
         try:
             return self.expand_vars(
-                self._jinja_env.from_string(input_string).
+                self._jinja_env.from_string(string).
                 render(**self.template_variables))
-        except Exception as e:
-            raise BatchProcessError(e)
+        except jinja2.TemplateSyntaxError as e:
+            raise BatchProcessError(f'Template Syntax Error: {e}')
 
     def _look_for_version_mismatch(self, line_idx, line):
         versioning = re.match(r'#!\s+' + self.name + r'\s+([0-9]+\.[0-9]+\.[0-9]+)', line)
@@ -165,32 +171,31 @@ class BatchProcessor:
     def _jinja_user_define(self, name, value):
         if name in self.template_functions:
             raise BatchProcessError(
-                f'Cannot define template variable "{name}", reserved variable name.')
+                f'Cannot define template variable "{name}" on line {self.current_line}, '
+                f'reserved variable name.')
         self._jinja_env.globals[name] = value
 
     def _directive_handlers(self, line_idx, line):
         if line.startswith('\\set'):
             directive_args = line.split(' ', 2)
             if len(directive_args) == 3:
-                self._jinja_user_define(directive_args[1].strip(), self._render_template(directive_args[2].strip()))
+                self._jinja_user_define(directive_args[1].strip(), self.render_template(directive_args[2].strip()))
                 return True
             else:
                 raise BatchProcessError(
-                    '\\set directive received less than 2 arguments, syntax is: \\set name value')
+                    f'\\set directive received less than 2 arguments, '
+                    f'syntax is: \\set name value')
         elif line.startswith('\\print'):
             directive_args = line.split(' ', 1)
             if len(directive_args) == 2:
-                _messages.log(self._render_template(directive_args[1].strip()))
+                _messages.log(self.render_template(directive_args[1].strip()))
                 return True
             else:
                 raise BatchProcessError(
-                    '\\print directive received no arguments, syntax is: \\print value')
+                    f'\\print directive received no arguments, '
+                    f'syntax is: \\print value')
         if line.startswith('{'):
-            try:
-                self.run_string(self._render_template(line.replace('!END', '\n')))
-            except Exception as e:
-                raise BatchProcessError(
-                    f'Error executing template, reason: {e}')
+            self.run_string(self.render_template(line.replace('!END', '\n')))
             return True
         elif line.startswith('\\'):
             directive_args = line.split(' ', 1)
@@ -198,19 +203,29 @@ class BatchProcessor:
             directive = directive_args[0].lstrip('\\')
             impl = self.directives.get(directive)
             if impl is None:
-                raise BatchProcessError(f'Unknown directive "\\{directive}" on line {line_idx}.')
-
+                raise BatchProcessError(f'Unknown directive "\\{directive}".')
+            directive_args = directive_args[1:]
             try:
-                impl(shlex.split(directive_args[1]))
+                if directive_args:
+                    impl(shlex.split(directive_args[0]))
+                else:
+                    impl([])
             except Exception as e:
-                raise BatchProcessError(f'Error on line {line_idx}: {e}')
+                raise BatchProcessError(e)
             return True
         return False
 
     def _lex_and_run_invocation(self, line_idx, invocation_string):
-        shell_lexed = shlex.split(self._render_template(invocation_string)) + self.injected_args
+        raw_templated_string = self.render_template(invocation_string)
 
-        cmd_info = ' '.join(shlex.quote(str(s)) for s in shell_lexed)
+        shell_lexed = shlex.split(raw_templated_string) + self.injected_args
+
+        raw_injected_args = ' '.join(str(a) for a in self.injected_args)
+
+        if raw_injected_args:
+            cmd_info = raw_templated_string + ' ' + raw_injected_args
+        else:
+            cmd_info = raw_templated_string
 
         header = 'Processing Arguments: '
         args_wrapped = \
@@ -225,9 +240,52 @@ class BatchProcessor:
 
         if return_code != 0:
             raise BatchProcessError(
-                f'Invocation error in input config file line: {line_idx}')
+                f'Invocation error return code: {return_code}')
 
         self.template_variables.update(self.template_variable_generator())
+
+    def _run_file(self, stream: typing.TextIO):
+        continuation = ''
+
+        def run_continuation(line, line_idx):
+            nonlocal continuation
+            completed_continuation = (continuation + ' ' + line).lstrip()
+
+            if self._directive_handlers(line_idx, completed_continuation):
+                continuation = ''
+                return
+
+            self._lex_and_run_invocation(line_idx, completed_continuation)
+
+            continuation = ''
+
+        last_line = None
+        line_idx = 0
+
+        for line_idx, line in enumerate(stream):
+            try:
+                old_pos = stream.tell()
+                next_line = next(stream)
+                stream.seek(old_pos)
+            except StopIteration:
+                next_line = None
+
+            self._current_line = line_idx
+            line = line.strip()
+            if line == '':
+                if continuation and last_line and last_line.startswith('-'):
+                    run_continuation('', line_idx)
+            elif line.startswith('#'):
+                self._look_for_version_mismatch(line_idx, line)
+            elif line.endswith('\\') or next_line and next_line.startswith('-'):
+                continuation += ' ' + line.rstrip(' \\')
+            else:
+                run_continuation(line, line_idx)
+            last_line = line
+
+        if continuation:
+            run_continuation('', line_idx)
+
 
     def run_file(self, stream: typing.TextIO):
         """
@@ -237,28 +295,10 @@ class BatchProcessor:
 
         :param stream: A filestream in text read mode
         """
-        continuation = ''
-
-        for line_idx, line in enumerate(stream):
-            self._current_line = line_idx
-            line = line.strip()
-            if line == '':
-                continue
-            if line.startswith('#'):
-                self._look_for_version_mismatch(line_idx, line)
-                continue
-            if line.endswith('\\'):
-                continuation += ' ' + line.rstrip(' \\')
-            else:
-                completed_continuation = (continuation + ' ' + line).lstrip()
-
-                if self._directive_handlers(line_idx, completed_continuation):
-                    continuation = ''
-                    continue
-
-                self._lex_and_run_invocation(line_idx, completed_continuation)
-
-                continuation = ''
+        try:
+            self._run_file(stream)
+        except BatchProcessError as e:
+            raise BatchProcessError(f'Error on line {self.current_line}: {e}')
 
     def run_string(self, string: str):
         """
@@ -310,15 +350,15 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
 
     def quote(string_or_list):
         if isinstance(string_or_list, list):
-            return [shlex.quote(s) for s in string_or_list]
-        return shlex.quote(string_or_list)
+            return ' '.join(shlex.quote(str(s)) for s in string_or_list)
+        return shlex.quote(str(string_or_list))
 
     def unquote(string_or_list):
         if isinstance(string_or_list, list):
-            return [shlex.split(s) for s in string_or_list]
-        return shlex.split(string_or_list)
+            return [shlex.split(str(s)) for s in string_or_list]
+        return shlex.split(str(string_or_list))
 
-    template_variables = {}
+    template_variables = {'saved_modules': dict()}
 
     funcs = {
         'unquote': unquote,
@@ -328,30 +368,70 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
         'last': lambda a: a[-1] if a else None
     }
 
-    saved_modules = dict()
-
     def save_modules_directive(args):
+        saved_modules = template_variables.get('saved_modules')
+
         if len(args) < 2:
             raise BatchProcessError(
-                'save modules directive must have at least 2 arguments, a variable name and one or more module names.')
+                '\\save_modules directive must have at least 2 arguments, '
+                'a variable name and one or more module names.')
 
         creation_result = render_loop.pipeline_wrapper.recall_main_pipeline()
         saved_modules[args[0]] = creation_result.get_pipeline_modules(args[1:])
 
     def use_modules_directive(args):
+        saved_modules = template_variables.get('saved_modules')
+
+        if not saved_modules:
+            raise BatchProcessError(
+                'no modules are currently saved that can be referenced.')
+
         saved_name = args[0]
         render_loop.model_extra_modules = saved_modules[saved_name]
 
     def clear_modules_directive(args):
+        saved_modules = template_variables.get('saved_modules')
+
         if len(args) > 0:
             for arg in args:
                 del saved_modules[arg]
         else:
             saved_modules.clear()
 
+    def gen_seeds_directive(args):
+        if len(args) == 2:
+            try:
+                template_variables[args[0]] = \
+                    ' '.join(str(s) for s in _diffusionloop.gen_seeds(int(args[1])))
+            except ValueError:
+                raise BatchProcessError(
+                    'The second argument of \\gen_seeds must be an integer value.')
+        else:
+            raise BatchProcessError(
+                '\\gen_seeds directive takes 2 arguments, template variable '
+                'name (to store value at), and number of seeds to generate.')
+
+    def templates_help_directive(args):
+        values = render_loop.generate_template_variables_with_types()
+        values['saved_modules'] = (typing.Dict[str, typing.Any], template_variables.get('saved_modules'))
+
+        header = None
+        if len(args) > 0:
+            values = {k: v for k, v in values.items() if k in args}
+
+            if len(values) > 1:
+                header = "Template variables are"
+            else:
+                header = 'Template variable is'
+
+        _messages.log(
+            render_loop.generate_template_variables_help(values=values,
+                                                         header=header,
+                                                         show_values=True) + '\n',
+            underline=True)
+
     directives = {
-        'templates_help': lambda args: _messages.log(
-            render_loop.generate_template_variables_help(show_values=True) + '\n', underline=True),
+        'templates_help': templates_help_directive,
         'clear_model_cache': lambda args: _pipelinewrapper.clear_model_cache(),
         'clear_pipeline_cache': lambda args: _pipelinewrapper.clear_pipeline_cache(),
         'clear_vae_cache': lambda args: _pipelinewrapper.clear_vae_cache(),
@@ -359,6 +439,7 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
         'save_modules': save_modules_directive,
         'use_modules': use_modules_directive,
         'clear_modules': clear_modules_directive,
+        'gen_seeds': gen_seeds_directive,
     }
 
     def invoker(args):

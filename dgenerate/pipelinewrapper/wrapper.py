@@ -153,6 +153,13 @@ class DiffusionArguments(_types.SetFromMixin):
     All input images involved in a generation must match in dimension and be aligned by 8 pixels.
     """
 
+    floyd_image: typing.Optional[PIL.Image.Image] = None
+    """
+    The output image of the last stage when preforming img2img or 
+    inpainting generation with Deep Floyd. When preforming txt2img 
+    generation :py:attr:`DiffusionArguments.image` is used.
+    """
+
     width: _types.OptionalSize = None
     """
     Output image width.
@@ -1197,6 +1204,7 @@ class DiffusionPipelineWrapper:
                 args['image'] = control_images
             elif self._pipeline_type == _enums.PipelineTypes.IMG2IMG or \
                     self._pipeline_type == _enums.PipelineTypes.INPAINT:
+
                 args['image'] = user_args.image
                 args['control_image'] = control_images
                 set_strength()
@@ -1207,20 +1215,38 @@ class DiffusionPipelineWrapper:
 
         elif user_args.image is not None:
             image = user_args.image
-            args['image'] = image
+
+            floyd_og_image_needed = \
+                self._pipeline_type == _enums.PipelineTypes.INPAINT and \
+                _enums.model_type_is_floyd_ifs(self._model_type)
+
+            floyd_og_image_needed |= \
+                self._model_type == _enums.ModelTypes.TORCH_IFS_IMG2IMG
+
+            if floyd_og_image_needed:
+                if user_args.floyd_image is None:
+                    raise ValueError('must specify "floyd_image" to disambiguate this operation, '
+                                     '"floyd_image" being the output of a previous floyd stage.')
+
+                args['original_image'] = image
+                args['image'] = user_args.floyd_image
+            else:
+                args['image'] = image
 
             if _enums.model_type_is_upscaler(self._model_type):
                 if self._model_type == _enums.ModelTypes.TORCH_UPSCALER_X4:
                     args['noise_level'] = int(
                         _types.default(user_args.upscaler_noise_level, _constants.DEFAULT_X4_UPSCALER_NOISE_LEVEL))
-            elif not _enums.model_type_is_pix2pix(self._model_type):
+            elif not _enums.model_type_is_pix2pix(self._model_type) and \
+                    self._model_type != _enums.ModelTypes.TORCH_IFS:
                 set_strength()
 
             mask_image = user_args.mask_image
             if mask_image is not None:
                 args['mask_image'] = mask_image
-                args['width'] = image.size[0]
-                args['height'] = image.size[1]
+                if not _enums.model_type_is_floyd(self._model_type):
+                    args['width'] = image.size[0]
+                    args['height'] = image.size[1]
 
             if self._model_type == _enums.ModelTypes.TORCH_SDXL_PIX2PIX:
                 # Required
@@ -1799,7 +1825,7 @@ class DiffusionPipelineWrapper:
             if self._pipeline is not None:
 
                 refiner_extra_modules = {'vae': self._pipeline.vae,
-                                      'text_encoder_2': self._pipeline.text_encoder_2}
+                                         'text_encoder_2': self._pipeline.text_encoder_2}
 
                 if self._refiner_extra_modules is not None:
                     refiner_extra_modules.update(self._refiner_extra_modules)
@@ -1837,6 +1863,7 @@ class DiffusionPipelineWrapper:
             self._sdxl_refiner_pipeline = create_refiner_pipeline().pipeline
         else:
             offload = self._control_net_uris and self._model_type == _enums.ModelTypes.TORCH_SDXL
+            offload = offload or _enums.model_type_is_floyd(self._model_type)
 
             def create_main_pipeline():
                 result = \
