@@ -84,7 +84,6 @@ for config in configs:
                     print('ENTERING DIRECTORY:', dirname)
                     os.chdir(dirname)
                     content = f.read()
-                    print(content)
                     _batchprocess.create_config_runner(args + extra_args, throw=True).run_string(content)
                 else:
                     subprocess.run(["dgenerate"] + args + extra_args, stdin=f, cwd=dirname, check=True)
