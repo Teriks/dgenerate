@@ -866,7 +866,7 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
 
         return (product *
                 len(self.prompts) *
-                len(self.seeds) if not self.seeds_to_images else 1 *
+                (len(self.seeds) if not self.seeds_to_images else 1) *
                 len(self.guidance_scales) *
                 len(self.inference_steps))
 

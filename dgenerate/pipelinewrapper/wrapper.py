@@ -1734,14 +1734,9 @@ class DiffusionPipelineWrapper:
 
         self._pipeline_type = pipeline_type
 
-        # We do not want objects captured by these
-        # closures to stick around in memory because
-        # they are large
         self._recall_main_pipeline = None
         self._recall_refiner_pipeline = None
 
-        create_main_pipeline = None
-        create_refiner_pipeline = None
 
         if _enums.model_type_is_sdxl(self._model_type) and self._textual_inversion_uris:
             raise NotImplementedError('Textual inversion not supported for SDXL.')
@@ -1759,9 +1754,7 @@ class DiffusionPipelineWrapper:
             if self._vae_tiling or self._vae_slicing:
                 raise NotImplementedError('--vae-tiling/--vae-slicing not supported for flax.')
 
-            def create_main_pipeline():
-                result = \
-                    _pipelines.create_flax_diffusion_pipeline(
+            self.recall_main_pipeline = _pipelines.FlaxPipelineFactory(
                         pipeline_type=pipeline_type,
                         model_path=self._model_path,
                         model_type=self._model_type,
@@ -1773,13 +1766,11 @@ class DiffusionPipelineWrapper:
                         safety_checker=self._safety_checker,
                         auth_token=self._auth_token,
                         local_files_only=self._local_files_only,
-                        extra_modules=self._model_extra_modules)
-                _pipelines.set_vae_slicing_tiling(pipeline=result.pipeline,
-                                                  vae_tiling=self._vae_tiling,
-                                                  vae_slicing=self._vae_slicing)
-                return result
+                        extra_modules=self._model_extra_modules,
+                        vae_tiling=self._vae_tiling,
+                        vae_slicing=self._vae_slicing)
 
-            creation_result = create_main_pipeline()
+            creation_result = self.recall_main_pipeline()
             self._pipeline = creation_result.pipeline
             self._flax_params = creation_result.flax_params
             self._parsed_control_net_uris = creation_result.parsed_control_net_uris
@@ -1792,31 +1783,27 @@ class DiffusionPipelineWrapper:
             if not _pipelines.scheduler_is_help(self._sdxl_refiner_scheduler):
                 # Don't load this up if were just going to be getting
                 # information about compatible schedulers for the refiner
-                def create_main_pipeline():
-                    result = \
-                        _pipelines.create_torch_diffusion_pipeline(
-                            pipeline_type=pipeline_type,
-                            model_path=self._model_path,
-                            model_type=self._model_type,
-                            subfolder=self._subfolder,
-                            revision=self._revision,
-                            variant=self._variant,
-                            dtype=self._dtype,
-                            vae_uri=self._vae_uri,
-                            lora_uris=self._lora_uris,
-                            control_net_uris=self._control_net_uris,
-                            scheduler=self._scheduler,
-                            safety_checker=self._safety_checker,
-                            auth_token=self._auth_token,
-                            device=self._device,
-                            local_files_only=self._local_files_only,
-                            extra_modules=self._model_extra_modules)
-                    _pipelines.set_vae_slicing_tiling(pipeline=result.pipeline,
-                                                      vae_tiling=self._vae_tiling,
-                                                      vae_slicing=self._vae_slicing)
-                    return result
+                self.recall_main_pipeline = _pipelines.TorchPipelineFactory(
+                    pipeline_type=pipeline_type,
+                    model_path=self._model_path,
+                    model_type=self._model_type,
+                    subfolder=self._subfolder,
+                    revision=self._revision,
+                    variant=self._variant,
+                    dtype=self._dtype,
+                    vae_uri=self._vae_uri,
+                    lora_uris=self._lora_uris,
+                    control_net_uris=self._control_net_uris,
+                    scheduler=self._scheduler,
+                    safety_checker=self._safety_checker,
+                    auth_token=self._auth_token,
+                    device=self._device,
+                    local_files_only=self._local_files_only,
+                    extra_modules=self._model_extra_modules,
+                    vae_tiling=self._vae_tiling,
+                    vae_slicing=self._vae_slicing)
 
-                creation_result = create_main_pipeline()
+                creation_result = self.recall_main_pipeline()
                 self._pipeline = creation_result.pipeline
                 self._parsed_control_net_uris = creation_result.parsed_control_net_uris
 
@@ -1833,70 +1820,60 @@ class DiffusionPipelineWrapper:
             else:
                 refiner_extra_modules = self._refiner_extra_modules
 
-            def create_refiner_pipeline():
-                result = \
-                    _pipelines.create_torch_diffusion_pipeline(
-                        pipeline_type=refiner_pipeline_type,
-                        model_path=self._parsed_sdxl_refiner_uri.model,
-                        model_type=_enums.ModelTypes.TORCH_SDXL,
-                        subfolder=self._parsed_sdxl_refiner_uri.subfolder,
-                        revision=self._parsed_sdxl_refiner_uri.revision,
+            self.recall_refiner_pipeline = _pipelines.TorchPipelineFactory(
+                pipeline_type=refiner_pipeline_type,
+                model_path=self._parsed_sdxl_refiner_uri.model,
+                model_type=_enums.ModelTypes.TORCH_SDXL,
+                subfolder=self._parsed_sdxl_refiner_uri.subfolder,
+                revision=self._parsed_sdxl_refiner_uri.revision,
 
-                        variant=self._parsed_sdxl_refiner_uri.variant if
-                        self._parsed_sdxl_refiner_uri.variant is not None else self._variant,
+                variant=self._parsed_sdxl_refiner_uri.variant if
+                self._parsed_sdxl_refiner_uri.variant is not None else self._variant,
 
-                        dtype=self._parsed_sdxl_refiner_uri.dtype if
-                        self._parsed_sdxl_refiner_uri.dtype is not None else self._dtype,
+                dtype=self._parsed_sdxl_refiner_uri.dtype if
+                self._parsed_sdxl_refiner_uri.dtype is not None else self._dtype,
 
-                        scheduler=self._scheduler if
-                        self._sdxl_refiner_scheduler is None else self._sdxl_refiner_scheduler,
+                scheduler=self._scheduler if
+                self._sdxl_refiner_scheduler is None else self._sdxl_refiner_scheduler,
 
-                        safety_checker=self._safety_checker,
-                        auth_token=self._auth_token,
-                        extra_modules=refiner_extra_modules,
-                        local_files_only=self._local_files_only)
-                _pipelines.set_vae_slicing_tiling(pipeline=result.pipeline,
-                                                  vae_tiling=self._vae_tiling,
-                                                  vae_slicing=self._vae_slicing)
-                return result
+                safety_checker=self._safety_checker,
+                auth_token=self._auth_token,
+                extra_modules=refiner_extra_modules,
+                local_files_only=self._local_files_only,
+                vae_tiling=self._vae_tiling,
+                vae_slicing=self._vae_slicing
+            )
 
-            self._sdxl_refiner_pipeline = create_refiner_pipeline().pipeline
+            self._sdxl_refiner_pipeline = self.recall_refiner_pipeline().pipeline
         else:
             offload = self._control_net_uris and self._model_type == _enums.ModelTypes.TORCH_SDXL
             offload = offload or _enums.model_type_is_floyd(self._model_type)
 
-            def create_main_pipeline():
-                result = \
-                    _pipelines.create_torch_diffusion_pipeline(
-                        pipeline_type=pipeline_type,
-                        model_path=self._model_path,
-                        model_type=self._model_type,
-                        subfolder=self._subfolder,
-                        revision=self._revision,
-                        variant=self._variant,
-                        dtype=self._dtype,
-                        vae_uri=self._vae_uri,
-                        lora_uris=self._lora_uris,
-                        textual_inversion_uris=self._textual_inversion_uris,
-                        control_net_uris=self._control_net_uris,
-                        scheduler=self._scheduler,
-                        safety_checker=self._safety_checker,
-                        auth_token=self._auth_token,
-                        device=self._device,
-                        sequential_cpu_offload=offload,
-                        local_files_only=self._local_files_only,
-                        extra_modules=self._model_extra_modules)
-                _pipelines.set_vae_slicing_tiling(pipeline=result.pipeline,
-                                                  vae_tiling=self._vae_tiling,
-                                                  vae_slicing=self._vae_slicing)
-                return result
+            self.recall_main_pipeline = _pipelines.TorchPipelineFactory(
+                pipeline_type=pipeline_type,
+                model_path=self._model_path,
+                model_type=self._model_type,
+                subfolder=self._subfolder,
+                revision=self._revision,
+                variant=self._variant,
+                dtype=self._dtype,
+                vae_uri=self._vae_uri,
+                lora_uris=self._lora_uris,
+                textual_inversion_uris=self._textual_inversion_uris,
+                control_net_uris=self._control_net_uris,
+                scheduler=self._scheduler,
+                safety_checker=self._safety_checker,
+                auth_token=self._auth_token,
+                device=self._device,
+                sequential_cpu_offload=offload,
+                local_files_only=self._local_files_only,
+                extra_modules=self._model_extra_modules,
+                vae_tiling=self._vae_tiling,
+                vae_slicing=self._vae_slicing)
 
-            creation_result = create_main_pipeline()
+            creation_result = self.recall_main_pipeline()
             self._pipeline = creation_result.pipeline
             self._parsed_control_net_uris = creation_result.parsed_control_net_uris
-
-        self._recall_main_pipeline = create_main_pipeline
-        self._recall_refiner_pipeline = create_refiner_pipeline
 
         return True
 
