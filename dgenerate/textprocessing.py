@@ -186,6 +186,16 @@ def quote(string: str) -> str:
     return f'"{string}"'
 
 
+def is_quoted(string: str) -> bool:
+    """
+    Return True if a string is quoted with an identical starting and end quote.
+
+    :param string: the string
+    :return: ``True`` or ``False``
+    """
+    return (string.startswith('"') and string.endswith('"')) or (string.startswith("'") and string.endswith("'"))
+
+
 def unquote(string: str) -> str:
     """
     Remove quotes from a string, including single quotes.

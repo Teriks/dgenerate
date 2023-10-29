@@ -134,17 +134,29 @@ class ModelTypes(enum.Enum):
     TORCH = 0
     TORCH_PIX2PIX = 1
     TORCH_SDXL = 2
-    TORCH_SDXL_PIX2PIX = 3
-    TORCH_UPSCALER_X2 = 4
-    TORCH_UPSCALER_X4 = 5
-    FLAX = 6
+    TORCH_IF = 3,
+    TORCH_IFS = 4,
+    TORCH_IFS_IMG2IMG = 9,
+    TORCH_SDXL_PIX2PIX = 5
+    TORCH_UPSCALER_X2 = 6
+    TORCH_UPSCALER_X4 = 7
+    FLAX = 8
 
 
 def supported_model_type_strings():
     """
     Return a list of supported ``--model-type`` strings
     """
-    base_set = ['torch', 'torch-pix2pix', 'torch-sdxl', 'torch-sdxl-pix2pix', 'torch-upscaler-x2', 'torch-upscaler-x4']
+    base_set = ['torch',
+                'torch-pix2pix',
+                'torch-sdxl',
+                'torch-sdxl-pix2pix',
+                'torch-upscaler-x2',
+                'torch-upscaler-x4',
+                'torch-if',
+                'torch-ifs',
+                'torch-ifs-img2img']
+
     if have_jax_flax():
         return base_set + ['flax']
     else:
@@ -172,6 +184,9 @@ def get_model_type_enum(id_str: typing.Union[ModelTypes, str]) -> ModelTypes:
     return {'torch': ModelTypes.TORCH,
             'torch-pix2pix': ModelTypes.TORCH_PIX2PIX,
             'torch-sdxl': ModelTypes.TORCH_SDXL,
+            'torch-if': ModelTypes.TORCH_IF,
+            'torch-ifs': ModelTypes.TORCH_IFS,
+            'torch-ifs-img2img': ModelTypes.TORCH_IFS_IMG2IMG,
             'torch-sdxl-pix2pix': ModelTypes.TORCH_SDXL_PIX2PIX,
             'torch-upscaler-x2': ModelTypes.TORCH_UPSCALER_X2,
             'torch-upscaler-x4': ModelTypes.TORCH_UPSCALER_X4,
@@ -191,6 +206,9 @@ def get_model_type_string(model_type_enum: ModelTypes) -> str:
     return {ModelTypes.TORCH: 'torch',
             ModelTypes.TORCH_PIX2PIX: 'torch-pix2pix',
             ModelTypes.TORCH_SDXL: 'torch-sdxl',
+            ModelTypes.TORCH_IF: 'torch-if',
+            ModelTypes.TORCH_IFS: 'torch-ifs',
+            ModelTypes.TORCH_IFS_IMG2IMG: 'torch-ifs-img2img',
             ModelTypes.TORCH_SDXL_PIX2PIX: 'torch-sdxl-pix2pix',
             ModelTypes.TORCH_UPSCALER_X2: 'torch-upscaler-x2',
             ModelTypes.TORCH_UPSCALER_X4: 'torch-upscaler-x4',
@@ -255,6 +273,44 @@ def model_type_is_pix2pix(model_type: typing.Union[ModelTypes, str]) -> bool:
     model_type = get_model_type_string(model_type)
 
     return 'pix2pix' in model_type
+
+
+def model_type_is_floyd(model_type: typing.Union[ModelTypes, str]) -> bool:
+    """
+    Does a ``--model-type`` string or :py:class:`.ModelTypes` enum value represent an floyd "if" of "ifs" type model?
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelTypes` enum value
+    :return: bool
+    """
+    model_type = get_model_type_enum(model_type)
+
+    return model_type == ModelTypes.TORCH_IF or \
+           model_type == ModelTypes.TORCH_IFS or \
+           model_type == ModelTypes.TORCH_IFS_IMG2IMG
+
+
+def model_type_is_floyd_if(model_type: typing.Union[ModelTypes, str]) -> bool:
+    """
+    Does a ``--model-type`` string or :py:class:`.ModelTypes` enum value represent an floyd "if" type model?
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelTypes` enum value
+    :return: bool
+    """
+    model_type = get_model_type_enum(model_type)
+
+    return model_type == ModelTypes.TORCH_IF
+
+
+def model_type_is_floyd_ifs(model_type: typing.Union[ModelTypes, str]) -> bool:
+    """
+    Does a ``--model-type`` string or :py:class:`.ModelTypes` enum value represent an floyd "ifs" type model?
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelTypes` enum value
+    :return: bool
+    """
+    model_type = get_model_type_enum(model_type)
+
+    return model_type == ModelTypes.TORCH_IFS or model_type == ModelTypes.TORCH_IFS_IMG2IMG
 
 
 def have_jax_flax():

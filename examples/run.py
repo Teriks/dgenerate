@@ -83,7 +83,9 @@ for config in configs:
                 if _batchprocess is not None:
                     print('ENTERING DIRECTORY:', dirname)
                     os.chdir(dirname)
-                    _batchprocess.create_config_runner(args + extra_args, throw=True).run_file(f)
+                    content = f.read()
+                    print(content)
+                    _batchprocess.create_config_runner(args + extra_args, throw=True).run_string(content)
                 else:
                     subprocess.run(["dgenerate"] + args + extra_args, stdin=f, cwd=dirname, check=True)
             except KeyboardInterrupt:

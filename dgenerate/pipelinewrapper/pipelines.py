@@ -58,6 +58,12 @@ def _disabled_safety_checker(images, clip_input):
     else:
         return images, False
 
+def _floyd_disabled_safety_checker(images, clip_input):
+    if len(images.shape) == 4:
+        num_images = images.shape[0]
+        return images, [False] * num_images, False
+    else:
+        return images, False, False
 
 def _set_torch_safety_checker(pipeline: diffusers.DiffusionPipeline, safety_checker: bool):
     if not safety_checker:
@@ -68,6 +74,12 @@ def _set_torch_safety_checker(pipeline: diffusers.DiffusionPipeline, safety_chec
             # The attribute will not exist for SDXL pipelines currently
 
             pipeline.safety_checker = _disabled_safety_checker
+
+
+def _set_floyd_safety_checker(pipeline: diffusers.DiffusionPipeline, safety_checker: bool):
+    if not safety_checker:
+        if hasattr(pipeline, 'safety_checker') and pipeline.safety_checker is not None:
+            pipeline.safety_checker = _floyd_disabled_safety_checker
 
 
 def scheduler_is_help(name: str):
@@ -286,10 +298,10 @@ class PipelineCreationResult:
             * ``unet``
             * ``watermark``
 
-        If the module is not present or a recognized name, a :py:exc:`NotImplementedError`
+        If the module is not present or a recognized name, a :py:exc:`ValueError`
         will be thrown describing the module that is not part of the pipeline.
 
-        :raises: :py:exc:`NotImplementedError`
+        :raises: :py:exc:`ValueError`
 
         :param names: module names, such as ``vae``, ``text_encoder``
         :return: dictionary
@@ -302,7 +314,7 @@ class PipelineCreationResult:
             'text_encoder',
             'text_encoder_2',
             'tokenizer',
-            'tokenizer_2'
+            'tokenizer_2',
             'safety_checker',
             'feature_extractor',
             'controlnet',
@@ -313,9 +325,9 @@ class PipelineCreationResult:
 
         for name in names:
             if name not in acceptable_lookups:
-                raise NotImplementedError(f'"{name}" is not a recognized pipeline module name.')
+                raise ValueError(f'"{name}" is not a recognized pipeline module name.')
             if not hasattr(self.pipeline, name):
-                raise NotImplementedError(f'created pipeline does not possess a module named: "{name}".')
+                raise ValueError(f'Created pipeline does not possess a module named: "{name}".')
             module_values[name] = getattr(self.pipeline, name)
 
         return module_values
@@ -459,6 +471,14 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
         raise ValueError('model_type must be a TORCH ModelTypes enum value.')
     # Pipeline class selection
 
+    if _enums.model_type_is_floyd(model_type):
+        if control_net_uris:
+            raise NotImplementedError(
+                'Deep Floyd --model-type values are not compatible with --control-nets.')
+        if textual_inversion_uris:
+            raise NotImplementedError(
+                'Deep Floyd --model-type values are not compatible with --textual-inversions.')
+
     if _enums.model_type_is_upscaler(model_type):
         if pipeline_type != _enums.PipelineTypes.IMG2IMG and not scheduler_is_help(scheduler):
             raise NotImplementedError(
@@ -480,32 +500,42 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                 raise NotImplementedError(
                     'pix2pix models only work in img2img mode and cannot work without --image-seeds.')
 
-            if control_net_uris:
+            if model_type == _enums.ModelTypes.TORCH_IF:
+                pipeline_class = diffusers.IFPipeline
+            elif model_type == _enums.ModelTypes.TORCH_IFS:
+                raise NotImplementedError('deep floyd super resolution (IFS) not supported without --image-seeds.')
+            elif control_net_uris:
                 pipeline_class = diffusers.StableDiffusionXLControlNetPipeline if sdxl else diffusers.StableDiffusionControlNetPipeline
             else:
                 pipeline_class = diffusers.StableDiffusionXLPipeline if sdxl else diffusers.StableDiffusionPipeline
         elif pipeline_type == _enums.PipelineTypes.IMG2IMG:
-
             if pix2pix:
                 if control_net_uris:
                     raise NotImplementedError('pix2pix models are not compatible with --control-nets.')
 
                 pipeline_class = diffusers.StableDiffusionXLInstructPix2PixPipeline if sdxl else diffusers.StableDiffusionInstructPix2PixPipeline
-            else:
-                if control_net_uris:
-                    if sdxl:
-                        pipeline_class = diffusers.StableDiffusionXLControlNetImg2ImgPipeline
-                    else:
-                        pipeline_class = diffusers.StableDiffusionControlNetImg2ImgPipeline
+            elif model_type == _enums.ModelTypes.TORCH_IF:
+                pipeline_class = diffusers.IFImg2ImgPipeline
+            elif model_type == _enums.ModelTypes.TORCH_IFS:
+                pipeline_class = diffusers.IFSuperResolutionPipeline
+            elif model_type == _enums.ModelTypes.TORCH_IFS_IMG2IMG:
+                pipeline_class = diffusers.IFImg2ImgSuperResolutionPipeline
+            elif control_net_uris:
+                if sdxl:
+                    pipeline_class = diffusers.StableDiffusionXLControlNetImg2ImgPipeline
                 else:
-                    pipeline_class = diffusers.StableDiffusionXLImg2ImgPipeline if sdxl else diffusers.StableDiffusionImg2ImgPipeline
-
+                    pipeline_class = diffusers.StableDiffusionControlNetImg2ImgPipeline
+            else:
+                pipeline_class = diffusers.StableDiffusionXLImg2ImgPipeline if sdxl else diffusers.StableDiffusionImg2ImgPipeline
         elif pipeline_type == _enums.PipelineTypes.INPAINT:
             if pix2pix:
                 raise NotImplementedError(
                     'pix2pix models only work in img2img mode and cannot work in inpaint mode (with a mask).')
-
-            if control_net_uris:
+            if model_type == _enums.ModelTypes.TORCH_IF:
+                pipeline_class = diffusers.IFInpaintingPipeline
+            elif model_type == _enums.ModelTypes.TORCH_IFS:
+                pipeline_class = diffusers.IFInpaintingSuperResolutionPipeline
+            elif control_net_uris:
                 if sdxl:
                     pipeline_class = diffusers.StableDiffusionXLControlNetInpaintPipeline
                 else:
@@ -524,7 +554,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
         vae_uri=vae_uri,
         lora_uris=lora_uris,
         textual_inversion_uris=textual_inversion_uris,
-        safety_checker=True,  # it is always going to get loaded, monkey patched out currently
+        safety_checker=safety_checker,
         auth_token=auth_token,
         extra_args=extra_modules,
         local_files_only=local_files_only
@@ -614,6 +644,12 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
 
         creation_kwargs['controlnet'] = control_nets
 
+    if _enums.model_type_is_floyd(model_type):
+        creation_kwargs['watermarker'] = None
+
+    if not safety_checker and not _enums.model_type_is_sdxl(model_type):
+        creation_kwargs['safety_checker'] = None
+
     if extra_modules is not None:
         creation_kwargs.update(extra_modules)
 
@@ -668,7 +704,10 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
 
     # Safety Checker
 
-    _set_torch_safety_checker(pipeline, safety_checker)
+    if _enums.model_type_is_floyd(model_type):
+        _set_floyd_safety_checker(pipeline, safety_checker)
+    else:
+        _set_torch_safety_checker(pipeline, safety_checker)
 
     # Model Offloading
 
@@ -844,7 +883,7 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
         revision=revision,
         subfolder=subfolder,
         vae_uri=vae_uri,
-        safety_checker=True,  # it is always going to get loaded, monkey patched out currently
+        safety_checker=safety_checker,
         auth_token=auth_token,
         extra_args=extra_modules,
         local_files_only=local_files_only,
@@ -858,7 +897,7 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     _cache.enforce_pipeline_cache_constraints(
         new_pipeline_size=estimated_memory_usage)
 
-    kwargs = {}
+    creation_kwargs = {}
     vae_params = None
     control_net_params = None
 
@@ -874,7 +913,7 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
         if vae_uri is not None:
             parsed_flax_vae_uri = _uris.parse_flax_vae_uri(vae_uri)
 
-            kwargs['vae'], vae_params = parsed_flax_vae_uri.load(
+            creation_kwargs['vae'], vae_params = parsed_flax_vae_uri.load(
                 dtype_fallback=dtype,
                 use_auth_token=auth_token,
                 local_files_only=local_files_only)
@@ -897,10 +936,13 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                             f'Added Flax ControlNet: "{control_net_uri}" '
                             f'to pipeline: "{pipeline_class.__name__}"')
 
-        kwargs['controlnet'] = control_net
+        creation_kwargs['controlnet'] = control_net
 
     if extra_modules is not None:
-        kwargs.update(extra_modules)
+        creation_kwargs.update(extra_modules)
+
+    if not safety_checker:
+        creation_kwargs['safety_checker'] = None
 
     pipeline, params = pipeline_class.from_pretrained(model_path,
                                                       revision=revision,
@@ -908,7 +950,7 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                                                       subfolder=subfolder,
                                                       use_auth_token=auth_token,
                                                       local_files_only=local_files_only,
-                                                      **kwargs)
+                                                      **creation_kwargs)
 
     if vae_params is not None:
         params['vae'] = vae_params

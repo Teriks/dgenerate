@@ -235,6 +235,12 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
     the dgenerate command line tool.
     """
 
+    seeds_to_images: bool = False
+    """
+    Should :py:attr:`DiffusionRenderLoopConfig.seeds` be interpreted as seeds for each
+    image input instead of combinatorial? this includes control images.
+    """
+
     guidance_scales: _types.Floats
     """
     List of floating point guidance scales, this corresponds to the ``--guidance-scales`` argument 
@@ -720,12 +726,20 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
             self.batch_size = 1
 
         if self.output_size is None and not self.image_seeds:
-            self.output_size = (512, 512) if not \
-                _pipelinewrapper.model_type_is_sdxl(self.model_type) else (1024, 1024)
+            if _pipelinewrapper.model_type_is_sdxl(self.model_type):
+                self.output_size = (1024, 1024)
+            elif _pipelinewrapper.model_type_is_floyd_ifs(self.model_type):
+                self.output_size = (64, 64)
+            else:
+                self.output_size = (512, 512)
 
         if not self.image_seeds and self.image_seed_strengths:
             raise DiffusionRenderLoopConfigError(
                 f'you cannot specify {a_namer("image_seed_strengths")} without {a_namer("image_seeds")}.')
+
+        if self.seeds_to_images and not self.image_seeds:
+            raise DiffusionRenderLoopConfigError(
+                f'{a_namer("seeds_to_images")} can not be specified without {a_namer("image_seeds")}')
 
         if not self.image_seeds and self.control_net_uris:
             raise DiffusionRenderLoopConfigError(
@@ -852,7 +866,7 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
 
         return (product *
                 len(self.prompts) *
-                len(self.seeds) *
+                len(self.seeds) if not self.seeds_to_images else 1 *
                 len(self.guidance_scales) *
                 len(self.inference_steps))
 
@@ -1084,7 +1098,7 @@ class DiffusionRenderLoop:
         """
         return self._written_animations
 
-    def generate_template_variables_with_types(self):
+    def generate_template_variables_with_types(self) -> typing.Dict[str, typing.Tuple[typing.Type, typing.Any]]:
         """
         Generate a dictionary from the render loop that describes its current / last used configuration with type hints.
 
@@ -1101,7 +1115,7 @@ class DiffusionRenderLoop:
 
         return template_variables
 
-    def generate_template_variables(self):
+    def generate_template_variables(self) -> typing.Dict[str, typing.Any]:
         """
         Generate a dictionary from the render loop that describes its current / last used configuration.
 
@@ -1113,18 +1127,33 @@ class DiffusionRenderLoop:
         """
         return {k: v[1] for k, v in self.generate_template_variables_with_types().items()}
 
-    def generate_template_variables_help(self, show_values: bool = True):
+    def generate_template_variables_help(self,
+                                         values: typing.Optional[typing.Dict[str, typing.Tuple[typing.Type, typing.Any]]] = None,
+                                         show_values: bool = True,
+                                         header=None):
         """
         Generate a help string describing available template variables, their types, and values
         for use in batch processing.
 
         This is used to implement ``--templates-help`` in :py:meth:`dgenerate.invoker.invoke_dgenerate`
 
+
+
+        :type values: Optional values to use, if None is specified they will be generated with
+            :py:meth:`DiffusionRenderLoop.generate_template_variables_with_types`
+
+        :param show_values: Show the value of the template variable or just the name?
+
+        :param header: Override the default help message header.
+
         :return: a human-readable description of all template variables
         """
 
-        help_string = _textprocessing.underline(
-            'Available post invocation template variables are:') + '\n\n'
+        if header is not None:
+            help_string = _textprocessing.underline(f'{header}:') + '\n\n'
+        else:
+            help_string = _textprocessing.underline(
+                'Available post invocation template variables are:') + '\n\n'
 
         def wrap(val):
             return _textprocessing.wrap(
@@ -1132,10 +1161,12 @@ class DiffusionRenderLoop:
                 width=_textprocessing.long_text_wrap_width(),
                 subsequent_indent=' ' * 17)
 
+        if values is None:
+            values = self.generate_template_variables_with_types()
+
         return help_string + '\n'.join(
             ' ' * 4 + f'Name: {_textprocessing.quote(i[0])}\n{" " * 8}'
-                      f'Type: {i[1][0]}' + (f'\n{" " * 8}Value: {wrap(i[1][1])}' if show_values else '') for i in
-            self.generate_template_variables_with_types().items())
+                      f'Type: {i[1][0]}' + (f'\n{" " * 8}Value: {wrap(i[1][1])}' if show_values else '') for i in values.items())
 
     @property
     def generation_step(self):
@@ -1592,7 +1623,7 @@ class DiffusionRenderLoop:
             self.config.model_type == _pipelinewrapper.ModelTypes.TORCH_UPSCALER_X4 else None
 
         def validate_image_seeds():
-            for uri in self.config.image_seeds:
+            for idx, uri in enumerate(self.config.image_seeds):
                 parsed = _mediainput.parse_image_seed_uri(uri)
 
                 if self.config.control_net_uris and not parsed.is_single_spec() and parsed.control_path is None:
@@ -1603,9 +1634,9 @@ class DiffusionRenderLoop:
                         f'to use inpainting. If you want to use the control image alone '
                         f'without a mask, use --image-seeds "{parsed.seed_path}".')
 
-                yield uri, parsed
+                yield uri, parsed, self.config.seeds[idx % len(self.config.seeds)]
 
-        for image_seed_uri, parsed_image_seed in list(validate_image_seeds()):
+        for image_seed_uri, parsed_image_seed, seed_to_image in list(validate_image_seeds()):
 
             is_control_guidance_spec = self.config.control_net_uris and parsed_image_seed.is_single_spec()
             image_seed_strengths = image_seed_strengths if not is_control_guidance_spec else None
@@ -1616,10 +1647,15 @@ class DiffusionRenderLoop:
             else:
                 _messages.log(f'Processing Image Seed: "{image_seed_uri}"', underline=True)
 
+            overrides = {}
+            if self.config.seeds_to_images:
+                overrides['seed'] = [seed_to_image]
+
             arg_iterator = self.config.iterate_diffusion_args(
                 sdxl_high_noise_fraction=sdxl_high_noise_fractions,
                 image_seed_strength=image_seed_strengths,
-                upscaler_noise_level=upscaler_noise_levels
+                upscaler_noise_level=upscaler_noise_levels,
+                **overrides
             )
 
             if is_control_guidance_spec:
@@ -1663,6 +1699,8 @@ class DiffusionRenderLoop:
                             args.mask_image = ims_obj.mask_image
                         if ims_obj.control_images is not None:
                             args.control_images = ims_obj.control_images
+                        elif ims_obj.floyd_image is not None:
+                            args.floyd_image = image_seed.floyd_image
 
                 self._render_animation(pipeline_wrapper=pipeline_wrapper,
                                        set_extra_wrapper_args=set_extra_args,
@@ -1682,8 +1720,12 @@ class DiffusionRenderLoop:
 
                         if image_seed.mask_image is not None:
                             diffusion_arguments.mask_image = image_seed.mask_image
-                        else:
+
+                        if image_seed.control_images:
                             diffusion_arguments.control_images = image_seed.control_images
+
+                        elif image_seed.floyd_image:
+                            diffusion_arguments.floyd_image = image_seed.floyd_image
 
                         with image_seed, pipeline_wrapper(diffusion_arguments,
                                                           batch_size=self.config.batch_size) as generation_result:
