@@ -323,8 +323,3 @@ def default(value, default_value):
     :return: bool
     """
     return value if value is not None else default_value
-
-
-def closure(func, *args, **kwargs):
-    def c():
-        return func(*args, **kwargs)
