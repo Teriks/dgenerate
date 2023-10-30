@@ -329,8 +329,7 @@ class PipelineCreationResult:
             'feature_extractor',
             'controlnet',
             'scheduler',
-            'unet',
-            'watermark'
+            'unet'
         }
 
         for name in names:

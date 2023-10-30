@@ -25,6 +25,19 @@ DeepFloyd/IF-I-L-v1.0
 
 \save_modules stage_1_modules feature_extractor safety_checker
 
+# valid module names are:
+#
+#  'vae'
+#  'text_encoder'
+#  'text_encoder_2'
+#  'tokenizer'
+#  'tokenizer_2'
+#  'safety_checker'
+#  'feature_extractor'
+#  'controlnet'
+#  'scheduler'
+#  'unet'
+
 
 DeepFloyd/IF-II-L-v1.0
 --variant fp16
