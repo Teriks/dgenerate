@@ -32,10 +32,10 @@ warnings.filterwarnings('ignore', module='huggingface_hub')
 try:
     import diffusers
     import transformers
-    from dgenerate.diffusionloop import \
-        DiffusionRenderLoop, \
-        DiffusionRenderLoopConfig, \
-        DiffusionRenderLoopConfigError, \
+    from dgenerate.renderloop import \
+        RenderLoop, \
+        RenderLoopConfig, \
+        RenderLoopConfigError, \
         ImageGeneratedCallbackArgument, \
         gen_seeds
 
@@ -69,7 +69,7 @@ def main():
     Entry point for the dgenerate command line tool.
     """
     try:
-        render_loop = DiffusionRenderLoop()
+        render_loop = RenderLoop()
         if not sys.stdin.isatty():
             # Not a terminal, batch process STDIN
             try:

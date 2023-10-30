@@ -1,12 +1,12 @@
 from dgenerate import \
-    DiffusionRenderLoop, \
-    DiffusionRenderLoopConfig, \
+    RenderLoop, \
+    RenderLoopConfig, \
     ImageGeneratedCallbackArgument, \
     Prompt, \
     ModelTypes, \
     DataTypes
 
-config = DiffusionRenderLoopConfig()
+config = RenderLoopConfig()
 
 config.model_path = 'stabilityai/stable-diffusion-xl-base-1.0'
 
@@ -47,7 +47,7 @@ config.dtype = DataTypes.FLOAT16
 # config.seeds = [123456789]
 
 
-render_loop = DiffusionRenderLoop(config=config)
+render_loop = RenderLoop(config=config)
 
 
 # Output size for SDXL defaults to 1024

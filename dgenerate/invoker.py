@@ -21,7 +21,7 @@
 import typing
 
 import dgenerate.arguments as _arguments
-import dgenerate.diffusionloop as _diffusionloop
+import dgenerate.renderloop as _renderloop
 import dgenerate.mediainput as _mediainput
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
@@ -30,13 +30,13 @@ import dgenerate.preprocessors as _preprocessors
 
 def invoke_dgenerate(
         args: typing.Sequence[str],
-        render_loop: typing.Optional[_diffusionloop.DiffusionRenderLoop] = None,
+        render_loop: typing.Optional[_renderloop.RenderLoop] = None,
         throw: bool = False):
     """
     Invoke dgenerate using its command line arguments and return a return code.
 
     :param args: dgenerate command line arguments in the form of list, see: shlex module, or sys.argv
-    :param render_loop: :py:class:`dgenerate.diffusionloop.DiffusionRenderLoop` instance,
+    :param render_loop: :py:class:`dgenerate.renderloop.RenderLoop` instance,
         if None is provided one will be created.
     :param throw: Whether to throw exceptions or handle them.
 
@@ -54,7 +54,7 @@ def invoke_dgenerate(
     :return: integer return-code, anything other than 0 is failure
     """
     if render_loop is None:
-        render_loop = _diffusionloop.DiffusionRenderLoop()
+        render_loop = _renderloop.RenderLoop()
 
     if '--image-preprocessor-help' in args:
         try:

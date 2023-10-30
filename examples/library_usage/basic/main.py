@@ -1,10 +1,10 @@
 from dgenerate import \
-    DiffusionRenderLoop, \
-    DiffusionRenderLoopConfig, \
+    RenderLoop, \
+    RenderLoopConfig, \
     ImageGeneratedCallbackArgument, \
     Prompt
 
-config = DiffusionRenderLoopConfig()
+config = RenderLoopConfig()
 
 config.model_path = 'stabilityai/stable-diffusion-2'
 config.inference_steps = [40]
@@ -18,7 +18,7 @@ config.device = 'cuda'
 # config.seeds = [123456789]
 
 
-render_loop = DiffusionRenderLoop(config=config)
+render_loop = RenderLoop(config=config)
 
 
 def render_callback(arg: ImageGeneratedCallbackArgument):

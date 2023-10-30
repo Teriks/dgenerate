@@ -553,7 +553,8 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
             if model_type == _enums.ModelTypes.TORCH_IF:
                 pipeline_class = diffusers.IFPipeline
             elif model_type == _enums.ModelTypes.TORCH_IFS:
-                raise NotImplementedError('deep floyd super resolution (IFS) not supported without --image-seeds.')
+                raise NotImplementedError(
+                    'Deep Floyd IF super resolution (IFS) only works in img2img mode and cannot work without --image-seeds.')
             elif control_net_uris:
                 pipeline_class = diffusers.StableDiffusionXLControlNetPipeline if sdxl else diffusers.StableDiffusionControlNetPipeline
             else:
@@ -561,7 +562,8 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
         elif pipeline_type == _enums.PipelineTypes.IMG2IMG:
             if pix2pix:
                 if control_net_uris:
-                    raise NotImplementedError('pix2pix models are not compatible with --control-nets.')
+                    raise NotImplementedError(
+                        'pix2pix models are not compatible with --control-nets.')
 
                 pipeline_class = diffusers.StableDiffusionXLInstructPix2PixPipeline if sdxl else diffusers.StableDiffusionInstructPix2PixPipeline
             elif model_type == _enums.ModelTypes.TORCH_IF:
@@ -628,7 +630,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     if textual_inversion_uris:
         if model_type == _enums.ModelTypes.TORCH_UPSCALER_X2:
             raise NotImplementedError(
-                'Model type torch-upscaler-x2 cannot be used with textual inversion models.')
+                '--model-type torch-upscaler-x2 cannot be used with textual inversion models.')
 
         if isinstance(textual_inversion_uris, str):
             textual_inversion_uris = [textual_inversion_uris]

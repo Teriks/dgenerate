@@ -1,7 +1,6 @@
 #! dgenerate 2.0.0
 
 \set image_to_vary ../../media/dog-on-bench.png
-\set seeds 98094395657214 8809233395657214
 
 DeepFloyd/IF-I-L-v1.0
 --variant fp16
@@ -9,9 +8,9 @@ DeepFloyd/IF-I-L-v1.0
 --model-type torch-if
 --inference-steps 100
 --guidance-scales 5
---seeds {{ seeds }}
+--gen-seeds 10
 --image-seeds {{ image_to_vary }}
---prompts "A fluffy white dog sitting on a bench with a thought bubble that says bark"
+--prompts "A fluffy white dog sitting on a bench with a thought bubble that says bark; fake, artwork, cartoon"
 --output-prefix stage1
 
 \save_modules stage_1_modules feature_extractor
