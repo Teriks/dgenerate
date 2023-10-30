@@ -167,15 +167,18 @@ def estimate_pipeline_memory_use(
     :return: size estimate in bytes.
     """
 
+    if extra_args is None:
+        extra_args = dict()
+
     usage = _hfutil.estimate_model_memory_use(
         repo_id=model_path,
         revision=revision,
         variant=variant,
         subfolder=subfolder,
         include_vae=not vae_uri or 'vae' not in extra_args,
-        safety_checker=safety_checker,
-        include_text_encoder=not extra_args or 'text_encoder' not in extra_args,
-        include_text_encoder_2=not extra_args or 'text_encoder_2' not in extra_args,
+        safety_checker=safety_checker and 'safety_checker' not in extra_args,
+        include_text_encoder='text_encoder' not in extra_args,
+        include_text_encoder_2='text_encoder_2' not in extra_args,
         use_auth_token=auth_token,
         local_files_only=local_files_only,
         flax=flax
@@ -588,15 +591,21 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
             # Should be impossible
             raise NotImplementedError('Pipeline type not implemented.')
 
+
+    vae_override = extra_modules and 'vae' in extra_modules
+    controlnet_override = extra_modules and 'controlnet' in extra_modules
+    safety_checker_override = extra_modules and 'safety_checker' in extra_modules
+
+
     estimated_memory_usage = estimate_pipeline_memory_use(
         model_path=model_path,
         revision=revision,
         variant=variant,
         subfolder=subfolder,
-        vae_uri=vae_uri,
+        vae_uri=vae_uri if not vae_override else None,
         lora_uris=lora_uris,
         textual_inversion_uris=textual_inversion_uris,
-        safety_checker=safety_checker,
+        safety_checker=safety_checker and not safety_checker_override,
         auth_token=auth_token,
         extra_args=extra_modules,
         local_files_only=local_files_only
@@ -643,7 +652,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
         # prevent waiting on VAE load just to get the scheduler
         # help message for the main model
 
-        if vae_uri is not None:
+        if vae_uri is not None and not vae_override:
             parsed_vae_uri = _uris.parse_torch_vae_uri(vae_uri)
 
             creation_kwargs['vae'] = \
@@ -655,7 +664,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
             _messages.debug_log(lambda:
                                 f'Added Torch VAE: "{vae_uri}" to pipeline: "{pipeline_class.__name__}"')
 
-    if control_net_uris:
+    if control_net_uris and not controlnet_override:
         if _enums.model_type_is_pix2pix(model_type):
             raise NotImplementedError(
                 'Using ControlNets with pix2pix models is not supported.'
@@ -689,7 +698,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     if _enums.model_type_is_floyd(model_type):
         creation_kwargs['watermarker'] = None
 
-    if not safety_checker and not _enums.model_type_is_sdxl(model_type):
+    if not safety_checker and not _enums.model_type_is_sdxl(model_type) and not safety_checker_override:
         creation_kwargs['safety_checker'] = None
 
     if extra_modules is not None:
@@ -746,7 +755,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
 
     # Safety Checker
 
-    if extra_modules and 'safety_checker' not in extra_modules:
+    if not safety_checker_override:
         if _enums.model_type_is_floyd(model_type):
             _set_floyd_safety_checker(pipeline, safety_checker)
         else:
@@ -874,7 +883,7 @@ def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
 
 class FlaxPipelineFactory:
     """
-    Combines :py:meth:`.create_flax_diffusion_pipeline` and :py:meth:`.set_vae_slicing_tiling` into a factory
+    Turns :py:meth:`.create_flax_diffusion_pipeline` into a factory
     that can recreate the same Flax pipeline over again, possibly from cache.
     """
 
@@ -890,19 +899,11 @@ class FlaxPipelineFactory:
                  safety_checker: bool = False,
                  auth_token: _types.OptionalString = None,
                  extra_modules: typing.Optional[typing.Dict[str, typing.Any]] = None,
-                 local_files_only: bool = False,
-                 vae_tiling: bool = False,
-                 vae_slicing: bool = False):
-        self._args = {k: v for k, v in locals().items() if k not in {'self', 'vae_tiling', 'vae_slicing'}}
-        self._vae_tiling = vae_tiling
-        self._vae_slicing = vae_slicing
+                 local_files_only: bool = False):
+        self._args = {k: v for k, v in locals().items() if k not in {'self'}}
 
     def __call__(self) -> FlaxPipelineCreationResult:
-        r = create_flax_diffusion_pipeline(**self._args)
-        set_vae_slicing_tiling(r.pipeline,
-                               vae_tiling=self._vae_tiling,
-                               vae_slicing=self._vae_slicing)
-        return r
+        return create_flax_diffusion_pipeline(**self._args)
 
 
 @_memoize(_cache._FLAX_PIPELINE_CACHE,
@@ -954,12 +955,18 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     else:
         raise NotImplementedError('Pipeline type not implemented.')
 
+ 
+    vae_override = extra_modules and 'vae' in extra_modules
+    controlnet_override = extra_modules and 'controlnet' in extra_modules
+    safety_checker_override = extra_modules and 'safety_checker' in extra_modules
+
+
     estimated_memory_usage = estimate_pipeline_memory_use(
         model_path=model_path,
         revision=revision,
         subfolder=subfolder,
-        vae_uri=vae_uri,
-        safety_checker=safety_checker,
+        vae_uri=vae_uri if not vae_override else None,
+        safety_checker=safety_checker and not safety_checker_override,
         auth_token=auth_token,
         extra_args=extra_modules,
         local_files_only=local_files_only,
@@ -986,7 +993,7 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
         # prevent waiting on VAE load just get the scheduler
         # help message for the main model
 
-        if vae_uri is not None:
+        if vae_uri is not None and not vae_override:
             parsed_flax_vae_uri = _uris.parse_flax_vae_uri(vae_uri)
 
             creation_kwargs['vae'], vae_params = parsed_flax_vae_uri.load(
@@ -996,7 +1003,7 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
             _messages.debug_log(lambda:
                                 f'Added Flax VAE: "{vae_uri}" to pipeline: "{pipeline_class.__name__}"')
 
-    if control_net_uris:
+    if control_net_uris and not controlnet_override:
         control_net_uri = control_net_uris[0]
 
         parsed_flax_control_net_uri = _uris.parse_flax_control_net_uri(control_net_uri)
@@ -1017,7 +1024,7 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     if extra_modules is not None:
         creation_kwargs.update(extra_modules)
 
-    if not safety_checker:
+    if not safety_checker and not safety_checker_override:
         creation_kwargs['safety_checker'] = None
 
     pipeline, params = pipeline_class.from_pretrained(model_path,
@@ -1038,7 +1045,7 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                    model_path=model_path,
                    scheduler_name=scheduler)
 
-    if not safety_checker:
+    if not safety_checker and not safety_checker_override:
         pipeline.safety_checker = None
 
     _cache.pipeline_create_update_cache_info(pipeline=pipeline,
