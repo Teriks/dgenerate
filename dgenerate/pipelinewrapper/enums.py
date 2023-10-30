@@ -134,13 +134,13 @@ class ModelTypes(enum.Enum):
     TORCH = 0
     TORCH_PIX2PIX = 1
     TORCH_SDXL = 2
-    TORCH_IF = 3,
-    TORCH_IFS = 4,
-    TORCH_IFS_IMG2IMG = 9,
-    TORCH_SDXL_PIX2PIX = 5
-    TORCH_UPSCALER_X2 = 6
-    TORCH_UPSCALER_X4 = 7
-    FLAX = 8
+    TORCH_IF = 3
+    TORCH_IFS = 4
+    TORCH_IFS_IMG2IMG = 5
+    TORCH_SDXL_PIX2PIX = 6
+    TORCH_UPSCALER_X2 = 7
+    TORCH_UPSCALER_X4 = 8
+    FLAX = 9
 
 
 def supported_model_type_strings():
