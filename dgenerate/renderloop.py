@@ -857,7 +857,8 @@ class RenderLoopConfig(_types.SetFromMixin):
 
                     # Default value
                     self.image_seed_strengths = [_pipelinewrapper.DEFAULT_IMAGE_SEED_STRENGTH]
-                else:
+            else:
+                if no_seed_strength:
                     raise RenderLoopConfigError(
                         f'{a_namer("image_seed_strengths")} cannot be used with pix2pix or upscaler models.')
 

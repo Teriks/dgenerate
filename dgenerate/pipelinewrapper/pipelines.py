@@ -84,7 +84,7 @@ def _set_floyd_safety_checker(pipeline: diffusers.DiffusionPipeline, safety_chec
             pipeline.safety_checker = _floyd_disabled_safety_checker
 
 
-def scheduler_is_help(name: str):
+def scheduler_is_help(name: typing.Optional[str]):
     """
     This scheduler name is simply a request for help?, IE: "help"?
 
@@ -655,7 +655,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     parsed_control_net_uris = []
     parsed_vae_uri = None
 
-    if scheduler is None or not scheduler_is_help(scheduler):
+    if not scheduler_is_help(scheduler):
         # prevent waiting on VAE load just to get the scheduler
         # help message for the main model
 
@@ -997,7 +997,7 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     parsed_control_net_uris = []
     parsed_flax_vae_uri = None
 
-    if scheduler is None or not scheduler_is_help(scheduler):
+    if not scheduler_is_help(scheduler):
         # prevent waiting on VAE load just get the scheduler
         # help message for the main model
 
