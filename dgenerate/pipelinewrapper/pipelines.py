@@ -134,7 +134,9 @@ def load_scheduler(pipeline: typing.Union[diffusers.DiffusionPipeline, diffusers
 
 
 def estimate_pipeline_memory_use(
-        model_path,
+        pipeline_type: _enums.PipelineTypes,
+        model_path: str,
+        model_type: _enums.ModelTypes,
         revision='main',
         variant=None,
         subfolder=None,
@@ -144,12 +146,14 @@ def estimate_pipeline_memory_use(
         safety_checker=False,
         auth_token=None,
         extra_args=None,
-        local_files_only=False,
-        flax=False):
+        local_files_only=False):
     """
     Estimate the CPU side memory use of a model.
 
+
+    :param pipeline_type: :py:class:`dgenerate.pipelinewrapper.PipelineTypes`
     :param model_path: huggingface slug, blob link, path to folder on disk, path to model file.
+    :param model_type: :py:class:`dgenerate.pipelinewrapper.ModelTypes`
     :param revision: huggingface repo revision if using a huggingface slug
     :param variant: model file variant desired, for example "fp16"
     :param subfolder: huggingface repo subfolder if using a huggingface slug
@@ -181,7 +185,8 @@ def estimate_pipeline_memory_use(
         include_text_encoder_2='text_encoder_2' not in extra_args,
         use_auth_token=auth_token,
         local_files_only=local_files_only,
-        flax=flax
+        flax=_enums.model_type_is_flax(model_type),
+        sentencepiece=_enums.model_type_is_floyd(model_type)
     )
 
     if lora_uris:
@@ -198,7 +203,7 @@ def estimate_pipeline_memory_use(
                 weight_name=parsed.weight_name,
                 use_auth_token=auth_token,
                 local_files_only=local_files_only,
-                flax=flax
+                flax=_enums.model_type_is_flax(model_type)
             )
 
     if textual_inversion_uris:
@@ -215,7 +220,7 @@ def estimate_pipeline_memory_use(
                 weight_name=parsed.weight_name,
                 use_auth_token=auth_token,
                 local_files_only=local_files_only,
-                flax=flax
+                flax=_enums.model_type_is_flax(model_type)
             )
 
     return usage
@@ -591,13 +596,13 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
             # Should be impossible
             raise NotImplementedError('Pipeline type not implemented.')
 
-
     vae_override = extra_modules and 'vae' in extra_modules
     controlnet_override = extra_modules and 'controlnet' in extra_modules
     safety_checker_override = extra_modules and 'safety_checker' in extra_modules
 
-
     estimated_memory_usage = estimate_pipeline_memory_use(
+        pipeline_type=pipeline_type,
+        model_type=model_type,
         model_path=model_path,
         revision=revision,
         variant=variant,
@@ -955,13 +960,13 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     else:
         raise NotImplementedError('Pipeline type not implemented.')
 
- 
     vae_override = extra_modules and 'vae' in extra_modules
     controlnet_override = extra_modules and 'controlnet' in extra_modules
     safety_checker_override = extra_modules and 'safety_checker' in extra_modules
 
-
     estimated_memory_usage = estimate_pipeline_memory_use(
+        pipeline_type=pipeline_type,
+        model_type=model_type,
         model_path=model_path,
         revision=revision,
         subfolder=subfolder,
@@ -969,8 +974,7 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
         safety_checker=safety_checker and not safety_checker_override,
         auth_token=auth_token,
         extra_args=extra_modules,
-        local_files_only=local_files_only,
-        flax=True
+        local_files_only=local_files_only
     )
 
     _messages.debug_log(

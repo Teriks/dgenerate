@@ -141,13 +141,16 @@ def fetch_model_files_with_size(repo_id: str,
                                 use_auth_token: typing.Optional[str] = None,
                                 extensions: typing.Optional[typing.Union[set, list]] = None,
                                 local_files_only: bool = False,
-                                flax: bool = False):
+                                flax: bool = False,
+                                sentencepiece: bool = False,
+                                watermarker: bool = False):
     """
     Attempt to fetch model files with their size that are relevant for the type of model being loaded.
 
     Either from huggingface disk cache or through the huggingface API if not on disk and local_files_only is False.
 
     This function also works on blob links, paths to folders, or singular files on disk.
+
 
 
     :param repo_id: huggingface repo_id, or path to folder or file on disk
@@ -162,6 +165,8 @@ def fetch_model_files_with_size(repo_id: str,
         will simply yield nothing
     :param flax: if False, only look for torch diffusion weights.
         If True, only look for flax diffusion weights.
+    :param sentencepiece: Forcibly include tokenizer/spiece.model for models with a unet?
+    :param watermarker: Forcibly include watermarker/diffusion_pytorch_model.bin for models with a unet?
 
     :return: generator over (filename, file size bytes)
     """
@@ -182,6 +187,17 @@ def fetch_model_files_with_size(repo_id: str,
         if not isinstance(found, str):
             return None
         if found:
+            path_with_one_parent = os.path.join(
+                pathlib.Path(found).parents[0].name, pathlib.Path(found).name)
+
+            if sentencepiece:
+                if path_with_one_parent == os.path.join('tokenizer', 'spiece.model'):
+                    return found
+
+            if watermarker:
+                if path_with_one_parent == os.path.join('watermarker', 'diffusion_pytorch_model.bin'):
+                    return found
+
             if weight_name and weight_name != os.path.basename(found):
                 # Weight name specified but no match
                 return None
@@ -363,6 +379,8 @@ def estimate_model_memory_use(repo_id: str,
                               include_text_encoder_2: bool = True,
                               safetensors: bool = True,
                               flax: bool = False,
+                              sentencepiece: bool = False,
+                              watermarker: bool = False,
                               use_auth_token: typing.Optional[str] = None,
                               local_files_only: bool = False):
     """
@@ -383,6 +401,8 @@ def estimate_model_memory_use(repo_id: str,
     :param include_text_encoder_2: include the second text encoder model if it exists?
     :param safetensors: Use safetensors if available?
     :param flax: Only look for msgpack files?
+    :param sentencepiece: Forcibly include tokenizer/spiece.model for models with a unet?
+    :param watermarker: Forcibly include watermarker/diffusion_pytorch_model.bin for models with a unet?
     :param use_auth_token: optional huggingface auth token
     :param local_files_only: should we only look for files cached on disk and never hit the API?
     :return: generator over (filename, file size bytes)
@@ -410,7 +430,9 @@ def estimate_model_memory_use(repo_id: str,
                                                   extensions={'.msgpack',
                                                               '.safetensors',
                                                               '.bin'},
-                                                  flax=flax):
+                                                  flax=flax,
+                                                  sentencepiece=sentencepiece,
+                                                  watermarker=watermarker):
         d = os.path.dirname(file)
         d = '.' if not d else d
 
@@ -431,7 +453,7 @@ def estimate_model_memory_use(repo_id: str,
         else:
             extensions = {'.bin'}
 
-    def estimate():
+    def estimate(forced_only=False):
         size_sum = 0
         if 'unet' in directories:
 
@@ -439,14 +461,20 @@ def estimate_model_memory_use(repo_id: str,
                 'unet'
             }
 
-            if include_vae:
+            if not forced_only and include_vae:
                 important_directories.add('vae')
 
-            if include_text_encoder:
+            if not forced_only and include_text_encoder:
                 important_directories.add('text_encoder')
 
-            if include_text_encoder_2:
+            if not forced_only and include_text_encoder_2:
                 important_directories.add('text_encoder_2')
+
+            if forced_only and sentencepiece:
+                important_directories.add('tokenizer')
+
+            if forced_only and watermarker:
+                important_directories.add('watermarker')
 
             for directory, files in directories.items():
                 if directory not in important_directories:
@@ -455,8 +483,16 @@ def estimate_model_memory_use(repo_id: str,
                 for file, size in files.items():
                     base, ext = os.path.splitext(file)
 
-                    if ext not in extensions or \
-                            not safety_checker and directory.startswith('safety_checker'):
+                    forced_include = sentencepiece and (
+                                directory == 'tokenizer' and os.path.basename(file) == 'spiece.model')
+                    forced_include |= watermarker and (
+                                directory == 'watermarker' and os.path.basename(file) == 'diffusion_pytorch_model.bin')
+                    forced_include |= safety_checker and directory == 'safety_checker'
+
+                    if forced_only and not forced_include:
+                        continue
+
+                    if not forced_only and ext not in extensions:
                         continue
 
                     size_sum += size
@@ -488,6 +524,9 @@ def estimate_model_memory_use(repo_id: str,
         if not flax and not weight_name and safetensors:
             extensions = {'.bin'}
             e = estimate()
+
+    if sentencepiece or watermarker:
+        e += estimate(forced_only=True)
 
     _messages.debug_log(
         f'{_types.fullname(estimate_model_memory_use)}() = {e} Bytes')
