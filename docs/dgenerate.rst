@@ -29,10 +29,10 @@ dgenerate.batchprocess module
    :show-inheritance:
    :special-members: __call__, __init__
 
-dgenerate.diffusionloop module
+dgenerate.renderloop module
 ------------------------------
 
-.. automodule:: dgenerate.diffusionloop
+.. automodule:: dgenerate.renderloop
    :members:
    :undoc-members:
    :show-inheritance:
