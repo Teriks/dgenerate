@@ -90,6 +90,9 @@ class PipelineWrapperResult:
         """
         Render an image grid from the images in this result.
 
+        :raise: :py:exc:`.ValueError` if no images are present on this object.
+            This is impossible if this object was produced by :py:class:`.DiffusionPipelineWrapper`.
+
         :param cols_rows: columns and rows (WxH) desired as a tuple
         :return: :py:class:`PIL.Image.Image`
         """
