@@ -995,7 +995,9 @@ class DiffusionPipelineWrapper:
                 seed_args.append(f'mask={_image.get_filename(args.mask_image)}')
             if args.control_images:
                 seed_args.append(f'control={", ".join(_image.get_filename(c) for c in args.control_images)}')
-
+            elif args.floyd_image is not None:
+                seed_args.append(f'floyd={_image.get_filename(args.floyd_image)}')
+   
             if not seed_args:
                 opts.append(('--image-seeds',
                              _image.get_filename(args.image)))
@@ -1766,9 +1768,7 @@ class DiffusionPipelineWrapper:
                         safety_checker=self._safety_checker,
                         auth_token=self._auth_token,
                         local_files_only=self._local_files_only,
-                        extra_modules=self._model_extra_modules,
-                        vae_tiling=self._vae_tiling,
-                        vae_slicing=self._vae_slicing)
+                        extra_modules=self._model_extra_modules)
 
             creation_result = self.recall_main_pipeline()
             self._pipeline = creation_result.pipeline

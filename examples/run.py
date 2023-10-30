@@ -13,11 +13,16 @@ pwd = os.path.dirname(__file__)
 args = sys.argv[1:]
 
 _skip_animations = False
+_skip_library = False
 _short_animations = False
 
 if 'skip_animations' in args:
     _skip_animations = True
     args.remove('skip_animations')
+
+if 'skip_library' in args:
+    _skip_library = True
+    args.remove('skip_library')
 
 if 'short_animations' in args:
     _skip_animations = False
@@ -89,7 +94,7 @@ for config in configs:
                     subprocess.run(["dgenerate"] + args + extra_args, stdin=f, cwd=dirname, check=True)
             except KeyboardInterrupt:
                 sys.exit(1)
-        elif _batchprocess is not None:
+        elif _batchprocess is not None and not _skip_library:
             # library is installed
             try:
                 subprocess.run([sys.executable] + [config], stdin=f, cwd=dirname, check=True)

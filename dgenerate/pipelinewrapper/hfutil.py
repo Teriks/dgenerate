@@ -87,6 +87,52 @@ class HFBlobLink:
         return None
 
 
+def variant_match(filename: str, variant: typing.Optional[str] = None):
+    """
+    Match a model filename against a huggingface variant specifier such as "fp16"
+
+    If no variant is specified and the filename contains a variant, this function will
+    return false.
+
+    Examples:
+
+        * ``variant_match('file.fp16-0001-of-0002.bin', variant=None) -> False``
+        * ``variant_match('file.bin', variant=None) -> True``
+
+    If a variant is specified and the filename contains a matching
+    variant specifier, this function will return True.
+
+    Examples:
+
+        * ``variant_match('file.fp16.bin', variant='fp16') -> True``
+        * ``variant_match('file.8bit.bin', variant='fp16') -> False``
+
+    If the file has shard information such as in the filename ``file.fp16-0001-of-0002.bin``,
+    variant will be matched against the variant part (in this example filename, variant 'fp16'),
+    and considered a match if **variant** is 'fp16'.
+
+    Examples:
+
+        * ``variant_match('file.fp16-0001-of-0002.bin', variant='fp16') -> True``
+        * ``variant_match('file.8bit-0001-of-0002.bin', variant='fp16') -> False``
+
+    :param filename: The filename
+    :param variant: the variant string
+    :return: ``True`` or ``False``
+    """
+    base, ext = os.path.splitext(filename)
+    _, file_variant = os.path.splitext(base)
+
+    if not variant:
+        if file_variant:
+            return False
+        else:
+            return True
+
+    pattern = r'\.' + variant + r'(-[0-9]+-of-[0-9]+)?'
+    return re.match(pattern, file_variant) is not None
+
+
 def fetch_model_files_with_size(repo_id: str,
                                 revision: typing.Optional[str] = 'main',
                                 variant: typing.Optional[str] = None,
@@ -140,15 +186,9 @@ def fetch_model_files_with_size(repo_id: str,
                 # Weight name specified but no match
                 return None
 
-            _, found_variant = os.path.splitext(os.path.splitext(found)[0])
-            found_variant = found_variant.lstrip('.')
-
-            if variant:
-                if found_variant != variant:
-                    # Variant missmatch
-                    return None
-            elif found_variant:
-                # Has a variant but we wanted the non-variant version
+            if not variant_match(filename=found,
+                                 variant=variant):
+                # Variant missmatch
                 return None
 
             if extensions and os.path.splitext(found)[1] not in extensions:
