@@ -600,6 +600,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     vae_override = extra_modules and 'vae' in extra_modules
     controlnet_override = extra_modules and 'controlnet' in extra_modules
     safety_checker_override = extra_modules and 'safety_checker' in extra_modules
+    scheduler_override = extra_modules and 'scheduler' in extra_modules
 
     estimated_memory_usage = estimate_pipeline_memory_use(
         pipeline_type=pipeline_type,
@@ -734,9 +735,10 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
 
     # Select Scheduler
 
-    load_scheduler(pipeline=pipeline,
-                   model_path=model_path,
-                   scheduler_name=scheduler)
+    if not scheduler_override:
+        load_scheduler(pipeline=pipeline,
+                       model_path=model_path,
+                       scheduler_name=scheduler)
 
     # Textual Inversions and LoRAs
 
@@ -964,6 +966,7 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     vae_override = extra_modules and 'vae' in extra_modules
     controlnet_override = extra_modules and 'controlnet' in extra_modules
     safety_checker_override = extra_modules and 'safety_checker' in extra_modules
+    scheduler_override = extra_modules and 'scheduler' in extra_modules
 
     estimated_memory_usage = estimate_pipeline_memory_use(
         pipeline_type=pipeline_type,
@@ -1046,9 +1049,10 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     if control_net_params is not None:
         params['controlnet'] = control_net_params
 
-    load_scheduler(pipeline=pipeline,
-                   model_path=model_path,
-                   scheduler_name=scheduler)
+    if not scheduler_override:
+        load_scheduler(pipeline=pipeline,
+                       model_path=model_path,
+                       scheduler_name=scheduler)
 
     if not safety_checker and not safety_checker_override:
         pipeline.safety_checker = None
