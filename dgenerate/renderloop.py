@@ -163,16 +163,16 @@ def gen_seeds(n):
     return [random.randint(0, 99999999999999) for _ in range(0, n)]
 
 
-class DiffusionRenderLoopConfigError(Exception):
+class RenderLoopConfigError(Exception):
     """
-    Raised by :py:meth:`.DiffusionRenderLoopConfig.check` on configuration errors.
+    Raised by :py:meth:`.RenderLoopConfig.check` on configuration errors.
     """
     pass
 
 
-class DiffusionRenderLoopConfig(_types.SetFromMixin):
+class RenderLoopConfig(_types.SetFromMixin):
     """
-    This object represents configuration for :py:class:`DiffusionRenderLoop`.
+    This object represents configuration for :py:class:`RenderLoop`.
 
     It nearly directly maps to dgenerates command line arguments.
 
@@ -237,7 +237,7 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
 
     seeds_to_images: bool = False
     """
-    Should :py:attr:`DiffusionRenderLoopConfig.seeds` be interpreted as seeds for each
+    Should :py:attr:`RenderLoopConfig.seeds` be interpreted as seeds for each
     image input instead of combinatorial? this includes control images.
     """
 
@@ -256,6 +256,12 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
     image_seeds: _types.OptionalUris = None
     """
     List of ``--image-seeds`` URI strings.
+    """
+
+    parsed_image_seeds: typing.Optional[typing.List[_mediainput.ImageSeedParseResult]] = None
+    """
+    The results of parsing URIs mentioned in :py:attr:`.RenderLoopConfig.image_seeds`, 
+    will only be available if :py:meth:`.RenderLoopConfig.check` has been called.
     """
 
     image_seed_strengths: _types.OptionalFloats = None
@@ -639,7 +645,7 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
         Check the configuration for type and logical usage errors, set
         defaults for certain values when needed and not specified.
 
-        :raises: :py:class:`.DiffusionRenderLoopConfigError` on errors
+        :raises: :py:class:`.RenderLoopConfigError` on errors
 
         :param attribute_namer: Callable for naming attributes mentioned in exception messages
         """
@@ -647,29 +653,29 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
         def a_namer(attr_name):
             if attribute_namer:
                 return attribute_namer(attr_name)
-            return f'DiffusionRenderLoopConfig.{attr_name}'
+            return f'RenderLoopConfig.{attr_name}'
 
         def _has_len(name, value):
             try:
                 len(value)
                 return True
             except TypeError:
-                raise DiffusionRenderLoopConfigError(
+                raise RenderLoopConfigError(
                     f'{a_namer(name)} must be able to be used with len(), value was: {value}')
 
         def _is_optional_two_tuple(name, value):
             if value is not None and not (isinstance(value, tuple) and len(value) == 2):
-                raise DiffusionRenderLoopConfigError(
+                raise RenderLoopConfigError(
                     f'{a_namer(name)} must be None or a tuple of length 2, value was: {value}')
 
         def _is_optional(value_type, name, value):
             if value is not None and not isinstance(value, value_type):
-                raise DiffusionRenderLoopConfigError(
+                raise RenderLoopConfigError(
                     f'{a_namer(name)} must be None or type {value_type.__name__}, value was: {value}')
 
         def _is(value_type, name, value):
             if not isinstance(value, value_type):
-                raise DiffusionRenderLoopConfigError(
+                raise RenderLoopConfigError(
                     f'{a_namer(name)} must be type {value_type.__name__}, value was: {value}')
 
         # Detect incorrect types
@@ -690,17 +696,17 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
         # Detect logically incorrect config and set certain defaults
         supported_dtypes = _pipelinewrapper.supported_data_type_strings()
         if self.dtype not in _pipelinewrapper.supported_data_type_enums():
-            raise DiffusionRenderLoopConfigError(
+            raise RenderLoopConfigError(
                 f'{a_namer("dtype")} must be {_textprocessing.oxford_comma(supported_dtypes, "or")}')
         if self.batch_size is not None and self.batch_size < 1:
-            raise DiffusionRenderLoopConfigError(
+            raise RenderLoopConfigError(
                 f'{a_namer("batch_size")} must be greater than or equal to 1.')
         if self.model_type not in _pipelinewrapper.supported_model_type_enums():
             supported_model_types = _textprocessing.oxford_comma(_pipelinewrapper.supported_model_type_strings(), "or")
-            raise DiffusionRenderLoopConfigError(
+            raise RenderLoopConfigError(
                 f'{a_namer("model_type")} must be one of: {supported_model_types}')
         if not _pipelinewrapper.is_valid_device_string(self.device):
-            raise DiffusionRenderLoopConfigError(
+            raise RenderLoopConfigError(
                 f'{a_namer("device")} must be "cuda" (optionally with a device ordinal "cuda:N") or "cpu"')
 
         def attr_that_start_with(s):
@@ -710,16 +716,16 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
             return (a for a in dir(self) if a.endswith(s) and getattr(self, a))
 
         if self.model_path is None:
-            raise DiffusionRenderLoopConfigError(
+            raise RenderLoopConfigError(
                 f'{a_namer("model_path")} must be specified')
 
         if self.frame_end is not None and self.frame_start > self.frame_end:
-            raise DiffusionRenderLoopConfigError(
+            raise RenderLoopConfigError(
                 f'{a_namer("frame_start")} must be less than or equal to {a_namer("frame_end")}')
 
         if self.batch_size is not None:
             if _pipelinewrapper.model_type_is_flax(self.model_type):
-                raise DiffusionRenderLoopConfigError(
+                raise RenderLoopConfigError(
                     f'you cannot specify {a_namer("batch_size")} when using flax, '
                     'use the environmental variable: CUDA_VISIBLE_DEVICES')
         elif not _pipelinewrapper.model_type_is_flax(self.model_type):
@@ -728,42 +734,66 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
         if self.output_size is None and not self.image_seeds:
             if _pipelinewrapper.model_type_is_sdxl(self.model_type):
                 self.output_size = (1024, 1024)
-            elif _pipelinewrapper.model_type_is_floyd_ifs(self.model_type):
+            elif _pipelinewrapper.model_type_is_floyd_if(self.model_type):
                 self.output_size = (64, 64)
             else:
                 self.output_size = (512, 512)
 
-        if not self.image_seeds and self.image_seed_strengths:
-            raise DiffusionRenderLoopConfigError(
-                f'you cannot specify {a_namer("image_seed_strengths")} without {a_namer("image_seeds")}.')
+        if not self.image_seeds:
+            if _pipelinewrapper.model_type_is_floyd_ifs(self.model_type):
+                raise RenderLoopConfigError(
+                    f'you cannot specify Deep Floyd IF super-resolution '
+                    f'({a_namer("model_type")} "{self.model_type})" without {a_namer("image_seeds")}.'
+                )
 
-        if self.seeds_to_images and not self.image_seeds:
-            raise DiffusionRenderLoopConfigError(
-                f'{a_namer("seeds_to_images")} can not be specified without {a_namer("image_seeds")}')
+            if _pipelinewrapper.model_type_is_upscaler(self.model_type):
+                raise RenderLoopConfigError(
+                    f'you cannot specify an upscaler model '
+                    f'({a_namer("model_type")} "{self.model_type})" without {a_namer("image_seeds")}.'
+                )
 
-        if not self.image_seeds and self.control_net_uris:
-            raise DiffusionRenderLoopConfigError(
-                f'you cannot specify {a_namer("control_net_uris")} without {a_namer("image_seeds")}.')
+            if _pipelinewrapper.model_type_is_pix2pix(self.model_type):
+                raise RenderLoopConfigError(
+                    f'you cannot specify a pix2pix model '
+                    f'({a_namer("model_type")} "{self.model_type})" without {a_namer("image_seeds")}.'
+                )
+
+            if self.image_seed_strengths:
+                raise RenderLoopConfigError(
+                    f'you cannot specify {a_namer("image_seed_strengths")} without {a_namer("image_seeds")}.')
+
+            if self.seeds_to_images:
+                raise RenderLoopConfigError(
+                    f'{a_namer("seeds_to_images")} can not be specified without {a_namer("image_seeds")}.')
+
+            if self.control_net_uris:
+                raise RenderLoopConfigError(
+                    f'you cannot specify {a_namer("control_net_uris")} without {a_namer("image_seeds")}.')
 
         if not _pipelinewrapper.model_type_is_upscaler(self.model_type):
             if self.upscaler_noise_levels:
-                raise DiffusionRenderLoopConfigError(
+                raise RenderLoopConfigError(
                     f'you cannot specify {a_namer("upscaler_noise_levels")} for a '
                     f'non upscaler model type, see: {a_namer("model_type")}.')
         elif self.control_net_uris:
-            raise DiffusionRenderLoopConfigError(
+            raise RenderLoopConfigError(
                 f'{a_namer("control_net_uris")} is not compatible '
                 f'with upscaler models, see: {a_namer("model_type")}.')
         elif self.upscaler_noise_levels is None:
-            self.upscaler_noise_levels = [_pipelinewrapper.DEFAULT_X4_UPSCALER_NOISE_LEVEL]
+            if self.model_type == _pipelinewrapper.ModelTypes.TORCH_UPSCALER_X4:
+                self.upscaler_noise_levels = [_pipelinewrapper.DEFAULT_X4_UPSCALER_NOISE_LEVEL]
+        elif self.model_type != _pipelinewrapper.ModelTypes.TORCH_UPSCALER_X4:
+            raise RenderLoopConfigError(
+                f'you cannot specify {a_namer("upscaler_noise_levels")} for an upscaler '
+                f'model type that is not "torch-upscaler-x4", see: {a_namer("model_type")}.')
 
         if not _pipelinewrapper.model_type_is_pix2pix(self.model_type):
             if self.image_guidance_scales:
-                raise DiffusionRenderLoopConfigError(
+                raise RenderLoopConfigError(
                     f'argument {a_namer("image_guidance_scales")} only valid with '
                     f'pix2pix models, see: {a_namer("model_type")}.')
         elif self.control_net_uris:
-            raise DiffusionRenderLoopConfigError(
+            raise RenderLoopConfigError(
                 f'{a_namer("control_net_uris")} is not compatible with '
                 f'pix2pix models, see: {a_namer("model_type")}.')
         elif not self.image_guidance_scales:
@@ -771,7 +801,7 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
 
         if self.control_image_preprocessors:
             if not self.image_seeds:
-                raise DiffusionRenderLoopConfigError(
+                raise RenderLoopConfigError(
                     f'you cannot specify {a_namer("control_image_preprocessors")} '
                     f'without {a_namer("image_seeds")}.')
 
@@ -782,7 +812,7 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
                     f'you cannot specify {a_namer(preprocessor_self)} '
                     f'without {a_namer("image_seeds")}.')
             if invalid_self:
-                raise DiffusionRenderLoopConfigError('\n'.join(invalid_self))
+                raise RenderLoopConfigError('\n'.join(invalid_self))
 
         if not _pipelinewrapper.model_type_is_sdxl(self.model_type):
             invalid_self = []
@@ -790,9 +820,9 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
                 invalid_self.append(f'you cannot specify {a_namer(sdxl_self)} '
                                     f'for a non SDXL model type, see: {a_namer("model_type")}.')
             if invalid_self:
-                raise DiffusionRenderLoopConfigError('\n'.join(invalid_self))
+                raise RenderLoopConfigError('\n'.join(invalid_self))
 
-            self.sdxl_high_noise_fractions = []
+            self.sdxl_high_noise_fractions = None
         else:
             if not self.sdxl_refiner_uri:
                 invalid_self = []
@@ -800,7 +830,7 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
                     invalid_self.append(f'you cannot specify {a_namer(sdxl_self)} '
                                         f'without {a_namer("sdxl_refiner_uri")}.')
                 if invalid_self:
-                    raise DiffusionRenderLoopConfigError('\n'.join(invalid_self))
+                    raise RenderLoopConfigError('\n'.join(invalid_self))
             else:
                 if self.sdxl_high_noise_fractions is None:
                     # Default value
@@ -808,21 +838,69 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
 
         if not _pipelinewrapper.model_type_is_torch(self.model_type):
             if self.vae_tiling or self.vae_slicing:
-                raise DiffusionRenderLoopConfigError(
+                raise RenderLoopConfigError(
                     f'{a_namer("vae_tiling")}/{a_namer("vae_slicing")} not supported for '
                     f'non torch model type, see: {a_namer("model_type")}.')
 
         if self.scheduler == 'help' and self.sdxl_refiner_scheduler == 'help':
-            raise DiffusionRenderLoopConfigError(
+            raise RenderLoopConfigError(
                 'cannot list compatible schedulers for the main model and the SDXL refiner at '
                 f'the same time. Do not use the scheduler "help" option for {a_namer("scheduler")} '
                 f'and {a_namer("sdxl_refiner_scheduler")} simultaneously.')
+
         if self.image_seeds:
+            no_seed_strength = (_pipelinewrapper.model_type_is_upscaler(self.model_type) or
+                                _pipelinewrapper.model_type_is_pix2pix(self.model_type))
+
             if self.image_seed_strengths is None:
-                # Default value
-                self.image_seed_strengths = [_pipelinewrapper.DEFAULT_IMAGE_SEED_STRENGTH]
-        else:
-            self.image_seed_strengths = []
+                if not no_seed_strength:
+
+                    # Default value
+                    self.image_seed_strengths = [_pipelinewrapper.DEFAULT_IMAGE_SEED_STRENGTH]
+                else:
+                    raise RenderLoopConfigError(
+                        f'{a_namer("image_seed_strengths")} cannot be used with pix2pix or upscaler models.')
+
+            self.parsed_image_seeds = []
+
+            for uri in self.image_seeds:
+                parsed = _mediainput.parse_image_seed_uri(uri)
+                self.parsed_image_seeds.append(parsed)
+
+                is_control_guidance_spec = self.control_net_uris and parsed.is_single_spec()
+
+                if is_control_guidance_spec and self.image_seed_strengths:
+                    raise RenderLoopConfigError(
+                        f'Cannot use {a_namer("image_seed_strengths")} with a control guidance image '
+                        f'specification "{uri}". IE: when {a_namer("control_net_uris")} is specified and '
+                        f'your {a_namer("image_seeds")} specification has a single source or comma '
+                        f'seperated list of sources.')
+
+                if is_control_guidance_spec and self.upscaler_noise_levels:
+                    # upscaler noise level should already be handled but handle it again just incase
+                    raise RenderLoopConfigError(
+                        f'Cannot use {a_namer("upscaler_noise_levels")} with a control guidance image '
+                        f'specification "{uri}". IE: when {a_namer("control_net_uris")} is specified and '
+                        f'your {a_namer("image_seeds")} specification has a single source or comma '
+                        f'seperated list of sources.')
+
+                if self.control_net_uris and not parsed.is_single_spec() and parsed.control_path is None:
+                    raise RenderLoopConfigError(
+                        f'You must specify a control image with the control argument '
+                        f'IE: "my-seed.png;control=my-control.png" in your '
+                        f'{a_namer("image_seeds")} "{uri}" when using {a_namer("control_net_uris")} '
+                        f'in order to use inpainting. If you want to use the control image alone '
+                        f'without a mask, use {a_namer("image_seeds")} "{parsed.seed_path}".')
+
+                if self.model_type == _pipelinewrapper.ModelTypes.TORCH_IFS_IMG2IMG or \
+                        (parsed.mask_path and _pipelinewrapper.model_type_is_floyd_ifs(self.model_type)):
+                    mask_part = 'mask=my-mask.png;' if parsed.mask_path else ''
+
+                    raise RenderLoopConfigError(
+                        f'You must specify a floyd image with the floyd argument '
+                        f'IE: "my-seed.png;{mask_part}floyd=previous-stage-image.png" '
+                        f'in your {a_namer("image_seeds")} "{uri}" to disambiguate this '
+                        f'usage of Deep Floyd IF super-resolution.')
 
     def calculate_generation_steps(self):
         """
@@ -939,7 +1017,7 @@ class DiffusionRenderLoopConfig(_types.SetFromMixin):
 class ImageGeneratedCallbackArgument:
     """
     This argument object gets passed to callbacks registered to
-    :py:class:`.DiffusionRenderLoop.image_generated_callbacks`.
+    :py:class:`.RenderLoop.image_generated_callbacks`.
     """
 
     image: PIL.Image.Image = None
@@ -955,7 +1033,7 @@ class ImageGeneratedCallbackArgument:
     batch_index: int = 0
     """
     The index in the image batch for this image. Will only every be greater than zero if 
-    :py:attr:`.DiffusionRenderLoopConfig.batch_size` > 1 and :py:attr:`.DiffusionRenderLoopConfig.batch_grid_size` is None.
+    :py:attr:`.RenderLoopConfig.batch_size` > 1 and :py:attr:`.RenderLoopConfig.batch_grid_size` is None.
     """
 
     suggested_filename: str = None
@@ -1012,7 +1090,7 @@ ImageGeneratedCallbacks = typing.List[
     typing.Callable[[ImageGeneratedCallbackArgument], None]]
 
 
-class DiffusionRenderLoop:
+class RenderLoop:
     """
     Render loop which implements the bulk of dgenerates rendering capability.
 
@@ -1052,7 +1130,7 @@ class DiffusionRenderLoop:
         """
         Get the last used :py:class:`dgenerate.pipelinewrapper.DiffusionPipelineWrapper` instance.
 
-        Will be ``None`` if :py:meth:`.DiffusionRenderLoop.run` has never been called.
+        Will be ``None`` if :py:meth:`.RenderLoop.run` has never been called.
 
         :return: :py:class:`dgenerate.pipelinewrapper.DiffusionPipelineWrapper` or ``None``
         """
@@ -1061,12 +1139,12 @@ class DiffusionRenderLoop:
 
     def __init__(self, config=None, preprocessor_loader=None):
         """
-        :param config: :py:class:`.DiffusionRenderLoopConfig` or :py:class:`dgenerate.arguments.DgenerateArguments`.
-            If None is provided, a :py:class:`.DiffusionRenderLoopConfig` instance will be created and
-            assigned to :py:attr:`.DiffusionRenderLoop.config`.
+        :param config: :py:class:`.RenderLoopConfig` or :py:class:`dgenerate.arguments.DgenerateArguments`.
+            If None is provided, a :py:class:`.RenderLoopConfig` instance will be created and
+            assigned to :py:attr:`.RenderLoop.config`.
         :param preprocessor_loader: :py:class:`dgenerate.preprocessors.loader.Loader`.
             If None is provided, an instance will be created and assigned to
-            :py:attr:`.DiffusionRenderLoop.preprocessor_loader`.
+            :py:attr:`.RenderLoop.preprocessor_loader`.
         """
 
         self._generation_step = -1
@@ -1077,7 +1155,7 @@ class DiffusionRenderLoop:
         self._pipeline_wrapper = None
 
         self.config = \
-            DiffusionRenderLoopConfig() if config is None else config
+            RenderLoopConfig() if config is None else config
 
         self.preprocessor_loader = \
             _preprocessors.Loader() if preprocessor_loader is None else preprocessor_loader
@@ -1128,7 +1206,8 @@ class DiffusionRenderLoop:
         return {k: v[1] for k, v in self.generate_template_variables_with_types().items()}
 
     def generate_template_variables_help(self,
-                                         values: typing.Optional[typing.Dict[str, typing.Tuple[typing.Type, typing.Any]]] = None,
+                                         values: typing.Optional[
+                                             typing.Dict[str, typing.Tuple[typing.Type, typing.Any]]] = None,
                                          show_values: bool = True,
                                          header=None):
         """
@@ -1140,7 +1219,7 @@ class DiffusionRenderLoop:
 
 
         :type values: Optional values to use, if None is specified they will be generated with
-            :py:meth:`DiffusionRenderLoop.generate_template_variables_with_types`
+            :py:meth:`RenderLoop.generate_template_variables_with_types`
 
         :param show_values: Show the value of the template variable or just the name?
 
@@ -1166,7 +1245,8 @@ class DiffusionRenderLoop:
 
         return help_string + '\n'.join(
             ' ' * 4 + f'Name: {_textprocessing.quote(i[0])}\n{" " * 8}'
-                      f'Type: {i[1][0]}' + (f'\n{" " * 8}Value: {wrap(i[1][1])}' if show_values else '') for i in values.items())
+                      f'Type: {i[1][0]}' + (f'\n{" " * 8}Value: {wrap(i[1][1])}' if show_values else '') for i in
+            values.items())
 
     @property
     def generation_step(self):
@@ -1485,7 +1565,7 @@ class DiffusionRenderLoop:
 
     def run(self):
         """
-        Run the diffusion loop, this calls :py:meth:`.DiffusionRenderLoopConfig.check` prior to running.
+        Run the diffusion loop, this calls :py:meth:`.RenderLoopConfig.check` prior to running.
         """
         try:
             self._run()
@@ -1611,36 +1691,14 @@ class DiffusionRenderLoop:
     def _render_with_image_seeds(self):
         pipeline_wrapper = self._create_pipeline_wrapper()
 
-        sdxl_high_noise_fractions = \
-            self.config.sdxl_high_noise_fractions if \
-                self.config.sdxl_refiner_uri is not None else None
+        def iterate_image_seeds():
+            # image seeds have already had logical and syntax validation preformed
+            for idx, uri_to_parsed in enumerate(zip(self.config.image_seeds, self.config.parsed_image_seeds)):
+                yield uri_to_parsed[0], uri_to_parsed[1], self.config.seeds[idx % len(self.config.seeds)]
 
-        image_seed_strengths = self.config.image_seed_strengths if \
-            not (_pipelinewrapper.model_type_is_upscaler(self.config.model_type) or
-                 _pipelinewrapper.model_type_is_pix2pix(self.config.model_type)) else None
-
-        upscaler_noise_levels = self.config.upscaler_noise_levels if \
-            self.config.model_type == _pipelinewrapper.ModelTypes.TORCH_UPSCALER_X4 else None
-
-        def validate_image_seeds():
-            for idx, uri in enumerate(self.config.image_seeds):
-                parsed = _mediainput.parse_image_seed_uri(uri)
-
-                if self.config.control_net_uris and not parsed.is_single_spec() and parsed.control_path is None:
-                    raise NotImplementedError(
-                        f'You must specify a control image with the control argument '
-                        f'IE: --image-seeds "my-seed.png;control=my-control.png" in your '
-                        f'--image-seeds "{uri}" when using --control-nets in order '
-                        f'to use inpainting. If you want to use the control image alone '
-                        f'without a mask, use --image-seeds "{parsed.seed_path}".')
-
-                yield uri, parsed, self.config.seeds[idx % len(self.config.seeds)]
-
-        for image_seed_uri, parsed_image_seed, seed_to_image in list(validate_image_seeds()):
+        for image_seed_uri, parsed_image_seed, seed_to_image in list(iterate_image_seeds()):
 
             is_control_guidance_spec = self.config.control_net_uris and parsed_image_seed.is_single_spec()
-            image_seed_strengths = image_seed_strengths if not is_control_guidance_spec else None
-            upscaler_noise_levels = upscaler_noise_levels if not is_control_guidance_spec else None
 
             if is_control_guidance_spec:
                 _messages.log(f'Processing Control Image: "{image_seed_uri}"', underline=True)
@@ -1652,9 +1710,9 @@ class DiffusionRenderLoop:
                 overrides['seed'] = [seed_to_image]
 
             arg_iterator = self.config.iterate_diffusion_args(
-                sdxl_high_noise_fraction=sdxl_high_noise_fractions,
-                image_seed_strength=image_seed_strengths,
-                upscaler_noise_level=upscaler_noise_levels,
+                sdxl_high_noise_fraction=self.config.sdxl_high_noise_fractions,
+                image_seed_strength=self.config.image_seed_strengths,
+                upscaler_noise_level=self.config.upscaler_noise_levels,
                 **overrides
             )
 

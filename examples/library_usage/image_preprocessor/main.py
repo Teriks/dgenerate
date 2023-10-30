@@ -4,8 +4,8 @@ import PIL.Image
 import PIL.ImageOps
 
 from dgenerate import \
-    DiffusionRenderLoop, \
-    DiffusionRenderLoopConfig, \
+    RenderLoop, \
+    RenderLoopConfig, \
     ImageGeneratedCallbackArgument, \
     Prompt
 from dgenerate.preprocessors import ImagePreprocessor
@@ -39,7 +39,7 @@ class MyPreprocessor(ImagePreprocessor):
         return image
 
 
-config = DiffusionRenderLoopConfig()
+config = RenderLoopConfig()
 
 config.model_path = 'stabilityai/stable-diffusion-2'
 config.inference_steps = [40]
@@ -67,7 +67,7 @@ config.seed_image_preprocessors = ['foo']
 # config.seeds = [123456789]
 
 
-render_loop = DiffusionRenderLoop(config=config)
+render_loop = RenderLoop(config=config)
 
 # Add our preprocessor class
 render_loop.preprocessor_loader.add_class(MyPreprocessor)

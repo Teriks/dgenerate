@@ -1012,10 +1012,10 @@ class DgenerateUsageError(Exception):
     pass
 
 
-class DgenerateArguments(dgenerate.DiffusionRenderLoopConfig):
+class DgenerateArguments(dgenerate.RenderLoopConfig):
     """
     Represents dgenerates parsed command line arguments, can be used
-    as a configuration object for :py:class:`dgenerate.diffusionloop.DiffusionRenderLoop`.
+    as a configuration object for :py:class:`dgenerate.renderloop.RenderLoop`.
     """
 
     plugin_module_paths: _types.Paths
@@ -1060,7 +1060,7 @@ def parse_args(args: typing.Sequence[str],
 
     try:
         return _parse_args(args)
-    except (dgenerate.DiffusionRenderLoopConfigError, argparse.ArgumentTypeError, argparse.ArgumentError) as e:
+    except (dgenerate.RenderLoopConfigError, argparse.ArgumentTypeError, argparse.ArgumentError) as e:
         _messages.log(f'dgenerate: error: {e}', level=_messages.ERROR)
         if throw:
             raise DgenerateUsageError(e)

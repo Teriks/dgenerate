@@ -29,7 +29,7 @@ import typing
 import jinja2
 
 import dgenerate
-import dgenerate.diffusionloop as _diffusionloop
+import dgenerate.renderloop as _renderloop
 import dgenerate.invoker as _invoker
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
@@ -312,7 +312,7 @@ class BatchProcessor:
 
 
 def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = None,
-                         render_loop: typing.Optional[_diffusionloop.DiffusionRenderLoop] = None,
+                         render_loop: typing.Optional[_renderloop.RenderLoop] = None,
                          version: typing.Union[_types.Version, str] = dgenerate.__version__,
                          throw: bool = False):
     """
@@ -320,7 +320,7 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
 
     :param injected_args: dgenerate command line arguments in the form of list, see: shlex module, or sys.argv.
         These arguments will be injected at the end of every dgenerate invocation in the config file.
-    :param render_loop: DiffusionRenderLoop instance, if None is provided one will be created.
+    :param render_loop: RenderLoop instance, if None is provided one will be created.
     :param version: Config version for "#! dgenerate x.x.x" version checks, defaults to dgenerate.__version__
     :param throw: Whether to throw exceptions from :py:meth:`dgenerate.invoker.invoke_dgenerate` or handle them,
         if you set this to True exceptions will propagate out of dgenerate invocations instead of a
@@ -330,7 +330,7 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
     """
 
     if render_loop is None:
-        render_loop = _diffusionloop.DiffusionRenderLoop()
+        render_loop = _renderloop.RenderLoop()
 
     def _format_prompt(prompt):
         pos = prompt.positive
@@ -402,7 +402,7 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
         if len(args) == 2:
             try:
                 template_variables[args[0]] = \
-                    ' '.join(str(s) for s in _diffusionloop.gen_seeds(int(args[1])))
+                    ' '.join(str(s) for s in _renderloop.gen_seeds(int(args[1])))
             except ValueError:
                 raise BatchProcessError(
                     'The second argument of \\gen_seeds must be an integer value.')
