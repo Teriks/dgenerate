@@ -895,13 +895,15 @@ class RenderLoopConfig(_types.SetFromMixin):
 
                 if self.model_type == _pipelinewrapper.ModelTypes.TORCH_IFS_IMG2IMG or \
                         (parsed.mask_path and _pipelinewrapper.model_type_is_floyd_ifs(self.model_type)):
-                    mask_part = 'mask=my-mask.png;' if parsed.mask_path else ''
+                    
+                    if not parsed.floyd_path:
+                        mask_part = 'mask=my-mask.png;' if parsed.mask_path else ''
 
-                    raise RenderLoopConfigError(
-                        f'You must specify a floyd image with the floyd argument '
-                        f'IE: "my-seed.png;{mask_part}floyd=previous-stage-image.png" '
-                        f'in your {a_namer("image_seeds")} "{uri}" to disambiguate this '
-                        f'usage of Deep Floyd IF super-resolution.')
+                        raise RenderLoopConfigError(
+                            f'You must specify a floyd image with the floyd argument '
+                            f'IE: "my-seed.png;{mask_part}floyd=previous-stage-image.png" '
+                            f'in your {a_namer("image_seeds")} "{uri}" to disambiguate this '
+                            f'usage of Deep Floyd IF super-resolution.')
 
     def calculate_generation_steps(self):
         """

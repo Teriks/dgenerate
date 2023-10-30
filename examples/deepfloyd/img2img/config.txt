@@ -8,7 +8,7 @@ DeepFloyd/IF-I-L-v1.0
 --model-type torch-if
 --inference-steps 100
 --guidance-scales 5
---gen-seeds 10
+--gen-seeds 2
 --image-seeds {{ image_to_vary }}
 --prompts "A fluffy white dog sitting on a bench with a thought bubble that says bark; fake, artwork, cartoon"
 --output-prefix stage1
