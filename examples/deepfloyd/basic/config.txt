@@ -12,8 +12,9 @@ DeepFloyd/IF-I-L-v1.0
 --inference-steps 100
 --guidance-scales 10
 --output-size 64
---gen-seeds 10
---prompts "A big highway sign saying 'dgenerate', realistic photo; fake, artwork, cartoon"
+--gen-seeds 2
+--prompts "A big highway sign saying 'dgenerate', realistic photo, 4k; \
+          fake, artwork, cartoon, low quality"
 --output-prefix stage1
 --safety-checker
 
