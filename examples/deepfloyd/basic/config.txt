@@ -17,6 +17,12 @@ DeepFloyd/IF-I-L-v1.0
 --output-prefix stage1
 --safety-checker
 
+# We can save certain modules from the diffusers pipeline used in the last invocation
+# for reuse in later invocations using the \save_modules directive, a group of modules
+# can be saved to a single variable name, in this case the variable name is "stage_1_modules"
+# and we are saving the "feature_extractor" and "safety_checker" modules from the pipeline
+# used in the invocation above.
+
 \save_modules stage_1_modules feature_extractor safety_checker
 
 
@@ -33,6 +39,11 @@ DeepFloyd/IF-II-L-v1.0
 --output-prefix stage2
 --safety-checker
 
+
+# \use_modules can be used to indicate that the next invocation should
+# use a set of modules that we have saved to a variable name, in this case
+# modules from the first stage of Deep Floyd.
+
 \use_modules stage_1_modules
 
 stabilityai/stable-diffusion-x4-upscaler
@@ -48,8 +59,15 @@ stabilityai/stable-diffusion-x4-upscaler
 --output-prefix stage3
 
 # Notice that --safety-checker is not used on the invocation above,
-# it is not neccessary because we are using the saved safety_checker module from
+# it is not neccessary because we are using the saved "safety_checker" module from
 # stage 1, which implicitly enables it in the invocation above because it was
-# enabled and loaded for the stage 1 invocation where it was saved from.
+# enabled and loaded for the stage 1 invocation.
 
 \clear_modules
+
+# You should use \clear_modules when you are are sure you are not going to need the
+# modules for reuse any longer, because they are models and or objects that may consume a
+# non insignificant amount of memory and they will not leave memory until you clear them.
+# If dgenerate is going to exit immediately and nothing else is in your config, this is not
+# a problem, but if there are more invocations in your config after you are done using the
+# saved modules, you should clear them to save memory.
