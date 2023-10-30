@@ -991,19 +991,21 @@ class LoRAUri:
 
                 probable_path_1 = os.path.join(
                     subfolder, 'pytorch_lora_weights.safetensors' if
-                    self.weight_name is not None else self.weight_name)
+                    self.weight_name is None else self.weight_name)
 
                 probable_path_2 = os.path.join(
                     subfolder, 'pytorch_lora_weights.bin')
 
-                file_path = huggingface_hub.try_to_load_from_cache(probable_path_1,
+                file_path = huggingface_hub.try_to_load_from_cache(self.model,
+                                                                   filename=probable_path_1,
                                                                    revision=self.revision)
 
-                if file_path is None:
-                    file_path = huggingface_hub.try_to_load_from_cache(probable_path_2,
+                if not isinstance(file_path, str):
+                    file_path = huggingface_hub.try_to_load_from_cache(self.model,
+                                                                       filename=probable_path_2,
                                                                        revision=self.revision)
 
-                if file_path is None:
+                if not isinstance(file_path, str):
                     raise RuntimeError(
                         f'LoRA model "{self.model}" was not available in the local huggingface cache.')
 
