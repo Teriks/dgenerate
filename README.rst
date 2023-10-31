@@ -2167,7 +2167,7 @@ directive mentioned in an example further down.
 Available custom jinja2 functions/filters are:
 
 * ``{{ last(list_of_items) }}`` (Last element in a list)
-* ``{{ unquote('"unescape-me"') }}`` (shell unquote, works on strings and lists)
+* ``{{ unquote('"unescape-me"') }}`` (shell unquote / split, works on strings and lists)
 * ``{{ quote('escape-me') }}`` (shell quote, works on strings and lists)
 * ``{{ format_prompt(prompt_object) }}`` (Format and quote a prompt object with its delimiter, works on lists)
 
