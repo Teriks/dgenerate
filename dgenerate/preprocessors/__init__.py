@@ -21,6 +21,7 @@
 import argparse
 import typing
 
+import dgenerate.types as _types
 import dgenerate.textprocessing as _textprocessing
 from dgenerate import messages as _messages
 from .canny import CannyEdgeDetectPreprocess
@@ -31,8 +32,6 @@ from .openpose import OpenPosePreprocess
 from .preprocessor import ImagePreprocessor
 from .preprocessorchain import ImagePreprocessorChain
 from .preprocessormixin import ImagePreprocessorMixin
-
-__all__ = [name for name in dir() if not name.startswith('_')]
 
 _help_parser = argparse.ArgumentParser(prog='dgenerate', exit_on_error=False)
 _help_parser.add_argument('--image-preprocessor-help', nargs='*', default=[], type=str)

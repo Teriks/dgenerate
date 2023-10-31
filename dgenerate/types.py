@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import inspect
+import types
 import typing
 
 import dgenerate.prompt as _prompt
@@ -323,3 +324,19 @@ def default(value, default_value):
     :return: bool
     """
     return value if value is not None else default_value
+
+
+def module_all():
+    """
+    Return the name of all public non-module type global objects inside the current module.
+
+    Can be used for __all__
+
+    :return: list of names
+    """
+    all_names = []
+    local_stack = inspect.stack()[1][0]
+    for name, value in local_stack.f_globals.items():
+        if not name.startswith('_') and not isinstance(value, types.ModuleType):
+            all_names.append(name)
+    return all_names
