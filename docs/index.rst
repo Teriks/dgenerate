@@ -11,11 +11,19 @@ This is the library documentation for `dgenerate <https://github.com/Teriks/dgen
 For command line usage documentation see the `readme <https://github.com/Teriks/dgenerate/blob/master/README.rst>`_
 or the `examples folder <https://github.com/Teriks/dgenerate/tree/master/examples>`_ in the github repository.
 
-.. toctree::
-   :maxdepth: 3
-   :caption: Contents:
+Content:
+--------
 
-   modules
+.. toctree::
+   :maxdepth: 2
+
+   dgenerate
+
+
+.. toctree::
+   :maxdepth: 2
+
+   dgenerate_submodules
 
 Indices and tables
 ==================

@@ -742,7 +742,7 @@ class UnknownMimetypeError(Exception):
 
 
 # noinspection HttpUrlsUsage
-def fetch_image_data_stream(uri: str) -> typing.Tuple[str, typing.BinaryIO]:
+def fetch_media_data_stream(uri: str) -> typing.Tuple[str, typing.BinaryIO]:
     """
     Get an open stream to a local file, or file at an HTTP or HTTPS URL, with caching for web files.
 
@@ -857,7 +857,7 @@ def mime_type_is_supported(mimetype: str) -> bool:
            mimetype_is_video(mimetype)
 
 
-def create_and_exif_orient_pil_img(
+def create_image(
         path_or_file: typing.Union[typing.BinaryIO, str],
         file_source: str,
         resize_resolution: _types.OptionalSize = None) -> PIL.Image.Image:
@@ -939,8 +939,8 @@ def create_animation_reader(mimetype: str,
                            resize_resolution=resize_resolution,
                            preprocessor=preprocessor)
     elif mimetype_is_static_image(mimetype):
-        with create_and_exif_orient_pil_img(file, file_source,
-                                            resize_resolution) as img:
+        with create_image(file, file_source,
+                          resize_resolution) as img:
             return MockImageAnimationReader(img=img,
                                             resize_resolution=resize_resolution,
                                             preprocessor=preprocessor)
@@ -1045,7 +1045,7 @@ class MultiAnimationReader:
                  resize_resolution: _types.OptionalSize = None,
                  frame_start: int = 0,
                  frame_end: _types.OptionalInteger = None,
-                 path_opener: typing.Callable[[str], typing.BinaryIO] = fetch_image_data_stream):
+                 path_opener: typing.Callable[[str], typing.BinaryIO] = fetch_media_data_stream):
         """
         :param specs: list of :py:class:`.AnimationReaderSpec`
         :param resize_resolution: optional resize resolution for frames

@@ -16,7 +16,6 @@ runwayml/stable-diffusion-v1-5
 --image-seeds "../../media/man-fighting-pose.jpg, ../../media/man-fighting-pose.jpg"
 --control-image-preprocessors \
 "openpose;include-hand=true;include-face=true;output-file=multiple/boxer-openpose.png" + \
-"canny;lower=50;upper=100;output-file=multiple/boxer-canny.png" + \
 "canny;lower=50;upper=100;output-file=multiple/boxer-canny.png"
 
 
