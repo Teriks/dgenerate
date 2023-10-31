@@ -37,7 +37,7 @@ def invoke_dgenerate(
 
     dgenerate is invoked in the current process, this method does not spawn a subprocess.
 
-    :param args: dgenerate command line arguments in the form of list, see: shlex module, or sys.argv
+    :param args: dgenerate command line arguments in the form of a list, see: shlex module, or sys.argv
     :param render_loop: :py:class:`dgenerate.renderloop.RenderLoop` instance,
         if None is provided one will be created.
     :param throw: Whether to throw exceptions or handle them.
