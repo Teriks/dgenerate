@@ -40,14 +40,17 @@ import dgenerate.types as _types
 
 class PeekReader:
     """
-    Read from a TextIO file object while peeking at the next line in the file.
+    Read from a ``TextIO`` file object while peeking at the next line in the file.
 
     This is an iterable reader wrapper that yields the tuple (current_line, next_line)
 
-    **next_line** will be None if the next line is the end of the file.
+    **next_line** will be ``None`` if the next line is the end of the file.
     """
 
     def __init__(self, file: typing.TextIO):
+        """
+        :param file: The ``TextIO`` reader to wrap.
+        """
         self._file = file
         self._last_next_line = None
 

@@ -28,7 +28,6 @@ import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.types as _types
 
-
 __all__ = [
     'CACHE_MEMORY_CONSTRAINTS',
     'CONTROL_NET_CACHE_MEMORY_CONSTRAINTS',
@@ -373,6 +372,7 @@ def uri_hash_with_parser(parser):
     :param parser: The URI parser function
     :return: a hash function compatible with :py:meth:`dgenerate.memoize.memoize`
     """
+
     def hasher(path):
         if not path:
             return path
@@ -389,6 +389,7 @@ def uri_list_hash_with_parser(parser):
     :param parser: The URI parser function
     :return: a hash function compatible with :py:meth:`dgenerate.memoize.memoize`
     """
+
     def hasher(paths):
         if not paths:
             return '[]'

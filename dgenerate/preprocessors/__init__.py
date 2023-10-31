@@ -21,7 +21,6 @@
 import argparse
 import typing
 
-import dgenerate.types as _types
 import dgenerate.textprocessing as _textprocessing
 from dgenerate import messages as _messages
 from .canny import CannyEdgeDetectPreprocess
