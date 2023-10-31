@@ -888,16 +888,17 @@ class RenderLoopConfig(_types.SetFromMixin):
                             f'amount of ControlNet models must be equal.'
                         )
 
-                    control_preprocessor_chain_count = \
-                        (sum(1 for p in self.control_image_preprocessors if p == CONTROL_IMAGE_PREPROCESSOR_SEP) + 1)
+                    if self.control_image_preprocessors:
+                        control_preprocessor_chain_count = \
+                            (sum(1 for p in self.control_image_preprocessors if p == CONTROL_IMAGE_PREPROCESSOR_SEP) + 1)
 
-                    if control_preprocessor_chain_count > num_control_images:
-                        raise RenderLoopConfigError(
-                            f'Your {a_namer("image_seeds")} specification "{uri}" defines {num_control_images} '
-                            f'control guidance image sources, and you have specified {control_preprocessor_chain_count} '
-                            f'{a_namer("control_image_preprocessors")} actions / action chains. The amount of preprocessors '
-                            f'must not exceed the amount of control guidance images.'
-                        )
+                        if control_preprocessor_chain_count > num_control_images:
+                            raise RenderLoopConfigError(
+                                f'Your {a_namer("image_seeds")} specification "{uri}" defines {num_control_images} '
+                                f'control guidance image sources, and you have specified {control_preprocessor_chain_count} '
+                                f'{a_namer("control_image_preprocessors")} actions / action chains. The amount of preprocessors '
+                                f'must not exceed the amount of control guidance images.'
+                            )
 
                 is_control_guidance_spec = self.control_net_uris and parsed.is_single_spec
 
