@@ -28,6 +28,21 @@ import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.types as _types
 
+
+__all__ = [
+    'CACHE_MEMORY_CONSTRAINTS',
+    'CONTROL_NET_CACHE_MEMORY_CONSTRAINTS',
+    'PIPELINE_CACHE_MEMORY_CONSTRAINTS',
+    'VAE_CACHE_MEMORY_CONSTRAINTS',
+    'clear_pipeline_cache',
+    'clear_control_net_cache',
+    'clear_vae_cache',
+    'clear_model_cache',
+    'pipeline_cache_size',
+    'control_net_cache_size',
+    'vae_cache_size'
+]
+
 _TORCH_PIPELINE_CACHE = dict()
 """Global in memory cache for torch diffusers pipelines"""
 
@@ -546,18 +561,3 @@ def pipeline_off_cpu_update_cache_info(
                                 f'Size = {pipeline.controlnet.DGENERATE_SIZE_ESTIMATE} Bytes '
                                 f'is leaving CPU side memory, {_types.fullname(control_net_cache_size)}() '
                                 f'is now {control_net_cache_size()} Bytes')
-
-
-__all__ = [
-    'CACHE_MEMORY_CONSTRAINTS',
-    'CONTROL_NET_CACHE_MEMORY_CONSTRAINTS',
-    'PIPELINE_CACHE_MEMORY_CONSTRAINTS',
-    'VAE_CACHE_MEMORY_CONSTRAINTS',
-    'clear_pipeline_cache',
-    'clear_control_net_cache',
-    'clear_vae_cache',
-    'clear_model_cache',
-    'pipeline_cache_size',
-    'control_net_cache_size',
-    'vae_cache_size'
-]
