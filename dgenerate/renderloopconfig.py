@@ -828,10 +828,9 @@ class RenderLoopConfig(_types.SetFromMixin):
                                         f'without {a_namer("sdxl_refiner_uri")}.')
                 if invalid_self:
                     raise RenderLoopConfigError('\n'.join(invalid_self))
-            else:
-                if self.sdxl_high_noise_fractions is None:
-                    # Default value
-                    self.sdxl_high_noise_fractions = [_pipelinewrapper.DEFAULT_SDXL_HIGH_NOISE_FRACTION]
+            elif self.sdxl_high_noise_fractions is None:
+                # Default value
+                self.sdxl_high_noise_fractions = [_pipelinewrapper.DEFAULT_SDXL_HIGH_NOISE_FRACTION]
 
         if not _pipelinewrapper.model_type_is_torch(self.model_type):
             if self.vae_tiling or self.vae_slicing:
