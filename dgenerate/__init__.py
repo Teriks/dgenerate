@@ -55,7 +55,8 @@ try:
     from dgenerate.mediainput import ImageSeedError, UnknownMimetypeError, ImageSeed
 
     from dgenerate.preprocessors import ImagePreprocessorArgumentError, ImagePreprocessorNotFoundError
-    from dgenerate import messages
+    import dgenerate.messages
+    import dgenerate.types
 
     transformers.logging.set_verbosity(transformers.logging.CRITICAL)
     diffusers.logging.set_verbosity(diffusers.logging.CRITICAL)
@@ -77,10 +78,13 @@ def main():
                                      version=__version__,
                                      injected_args=sys.argv[1:]).run_file(sys.stdin)
             except BatchProcessError as e:
-                messages.log(f'Config Error: {e}', level=messages.ERROR)
+                dgenerate.messages.log(f'Config Error: {e}', level=dgenerate.messages.ERROR)
                 sys.exit(1)
         else:
             sys.exit(invoke_dgenerate(sys.argv[1:], render_loop=render_loop))
     except KeyboardInterrupt:
         print('Aborting due to keyboard interrupt!', file=sys.stderr)
         sys.exit(1)
+
+
+__all__ = dgenerate.types.module_all()

@@ -319,7 +319,7 @@ class BatchProcessor:
 
     def run_file(self, stream: typing.TextIO):
         """
-        Process a batch processing script from a file string
+        Process a batch processing script from a file stream
 
         :raise: :py:class:`.BatchProcessError`
 

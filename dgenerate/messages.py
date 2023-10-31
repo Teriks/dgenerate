@@ -39,6 +39,14 @@ DEBUG = 3
 _ERROR_FILE = sys.stderr
 _MESSAGE_FILE = sys.stdout
 
+AUTO_FLUSH_MESSAGES = True
+"""
+Whether to auto flush the output stream when printing to ``stdout`` 
+or the output file assigned with :py:meth:`.set_message_file`.
+
+Errors are printed to ``stderr`` which is unbuffered by default.
+"""
+
 _handlers = []
 
 
@@ -124,9 +132,9 @@ def log(*args: typing.Any, level=INFO, underline=False, underline_char='='):
 
     if underline:
         print(_textprocessing.underline(prefix + ' '.join(str(a) for a in args),
-                                        underline_char=underline_char), file=file, flush=True)
+                                        underline_char=underline_char), file=file, flush=AUTO_FLUSH_MESSAGES)
     else:
-        print(prefix + ' '.join(str(a) for a in args), file=file, flush=True)
+        print(prefix + ' '.join(str(a) for a in args), file=file, flush=AUTO_FLUSH_MESSAGES)
 
     for handler in _handlers:
         handler(*args,
