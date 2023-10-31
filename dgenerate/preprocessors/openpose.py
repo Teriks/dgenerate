@@ -121,3 +121,6 @@ class OpenPosePreprocess(ImagePreprocessor):
         if not self._pre_resize:
             return self._process(image)
         return image
+
+
+__all__ = _types.module_all()

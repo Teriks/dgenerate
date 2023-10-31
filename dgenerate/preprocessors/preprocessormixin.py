@@ -116,3 +116,6 @@ class ImagePreprocessorMixin:
             image.close()
 
         return pre_processed
+
+
+__all__ = _types.module_all()

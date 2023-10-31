@@ -448,3 +448,6 @@ class ImagePreprocessor:
 
     def __repr__(self):
         return str(self)
+
+
+__all__ = _types.module_all()

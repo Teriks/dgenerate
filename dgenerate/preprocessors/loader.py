@@ -233,3 +233,6 @@ class Loader:
             return self._load(paths[0], device)
 
         return _preprocessorchain.ImagePreprocessorChain(self._load(i, device) for i in paths)
+
+
+__all__ = _types.module_all()

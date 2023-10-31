@@ -206,3 +206,6 @@ class SolarizePreprocess(_preprocessor.ImagePreprocessor):
         :return: the same image
         """
         return image
+
+
+__all__ = _types.module_all()
