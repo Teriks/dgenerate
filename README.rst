@@ -1207,7 +1207,7 @@ If you generate an image you like using a random seed, you can later reuse that 
 
 Updates to the backing model may affect determinism in the generation.
 
-Output images have a name format that starts with the seed, IE: `s_(seed here)_ ...png`
+Output images have a name format that starts with the seed, IE: ``s_(seed here)_ ...png``
 
 Reusing a seed has the effect of perfectly reproducing the image in the case that all
 other parameters are left alone, including the model version.
