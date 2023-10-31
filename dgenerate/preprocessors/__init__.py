@@ -21,6 +21,7 @@
 import argparse
 import typing
 
+import dgenerate.types as _types
 import dgenerate.textprocessing as _textprocessing
 from dgenerate import messages as _messages
 from .canny import CannyEdgeDetectPreprocess
@@ -87,3 +88,6 @@ def image_preprocessor_help(args: typing.Sequence[str], throw: bool = False):
     for help_str in help_strs:
         _messages.log(help_str + '\n', underline=True)
     return 0
+
+
+__all__ = _types.module_all()
