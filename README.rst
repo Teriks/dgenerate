@@ -2629,6 +2629,21 @@ well as some basic Jinja2 templating usage.
 
     # that saves the feature_extractor module objects in the pipeline above
 
+    # Possible Module Names:
+
+    # vae
+    # text_encoder
+    # text_encoder_2
+    # tokenizer
+    # tokenizer_2
+    # safety_checker
+    # feature_extractor
+    # controlnet
+    # scheduler
+    # unet
+
+    # To use the saved modules in the next invocation use  \use_modules
+
     \use_modules stage_1_modules
 
     # now the next invocation will use those modules instead of loading them from internal
