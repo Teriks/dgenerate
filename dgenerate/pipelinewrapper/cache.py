@@ -231,7 +231,7 @@ def clear_model_cache(collect=True):
 
 def enforce_cache_constraints(collect=True):
     """
-    Enforce :py:attr:`CACHE_MEMORY_CONSTRAINTS` and clear caches accordingly
+    Enforce :py:attr:`dgenerate.pipelinewrapper.CACHE_MEMORY_CONSTRAINTS` and clear caches accordingly
 
     :param collect: Call :py:meth:`gc.collect` after a cache clear ?
     :return: Whether any caches were cleared due to constraint expressions.
@@ -257,7 +257,7 @@ def enforce_cache_constraints(collect=True):
 
 def enforce_pipeline_cache_constraints(new_pipeline_size, collect=True):
     """
-    Enforce :py:attr:`.PIPELINE_CACHE_MEMORY_CONSTRAINTS` and clear the
+    Enforce :py:attr:`dgenerate.pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS` and clear the
     :py:class:`diffusers.DiffusionPipeline` cache if needed.
 
     :param new_pipeline_size: estimated size in bytes of any new pipeline that is about to enter memory
@@ -287,7 +287,7 @@ def enforce_pipeline_cache_constraints(new_pipeline_size, collect=True):
 
 def enforce_vae_cache_constraints(new_vae_size, collect=True):
     """
-    Enforce :py:attr:`.VAE_CACHE_MEMORY_CONSTRAINTS` and clear the
+    Enforce :py:attr:`dgenerate.pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS` and clear the
     VAE cache if needed.
 
     :param new_vae_size: estimated size in bytes of any new vae that is about to enter memory
@@ -318,7 +318,7 @@ def enforce_vae_cache_constraints(new_vae_size, collect=True):
 
 def enforce_control_net_cache_constraints(new_control_net_size, collect=True):
     """
-    Enforce :py:attr:`.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS` and clear the
+    Enforce :py:attr:`dgenerate.pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS` and clear the
     ControlNet cache if needed.
 
     :param new_control_net_size: estimated size in bytes of any new control net that is about to enter memory
