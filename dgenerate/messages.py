@@ -124,9 +124,9 @@ def log(*args: typing.Any, level=INFO, underline=False, underline_char='='):
 
     if underline:
         print(_textprocessing.underline(prefix + ' '.join(str(a) for a in args),
-                                        underline_char=underline_char), file=file)
+                                        underline_char=underline_char), file=file, flush=True)
     else:
-        print(prefix + ' '.join(str(a) for a in args), file=file)
+        print(prefix + ' '.join(str(a) for a in args), file=file, flush=True)
 
     for handler in _handlers:
         handler(*args,

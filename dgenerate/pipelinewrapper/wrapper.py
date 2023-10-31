@@ -1184,20 +1184,13 @@ class DiffusionPipelineWrapper:
             control_images_cnt = len(control_images)
             control_net_uris_cnt = len(self._control_net_uris)
 
-            if control_images_cnt < control_net_uris_cnt:
-                # Pad it out so that the last image mentioned is used
-                # for the rest of the controlnets specified
-
-                for i in range(0, control_net_uris_cnt - control_images_cnt):
-                    control_images.append(control_images[-1])
-
-            elif control_images_cnt > control_net_uris_cnt:
-                # User provided too many control_images, behavior is undefined.
+            if control_images_cnt != control_net_uris_cnt:
+                # User provided a mismatched number of ControlNet models and control_images, behavior is undefined.
 
                 raise ValueError(
-                    f'You specified {control_images_cnt} control image sources and '
+                    f'You specified {control_images_cnt} control guidance images and '
                     f'only {control_net_uris_cnt} ControlNet URIs. The amount of '
-                    f'control images must be less than or equal to the amount of ControlNet URIs.')
+                    f'control guidance images must be equal to the amount of ControlNet URIs.')
 
             # They should always be of equal dimension, anything
             # else results in an error down the line.

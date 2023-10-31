@@ -238,7 +238,7 @@ def parse_flax_control_net_uri(uri: _types.Uri) -> FlaxControlNetUri:
                 from_torch = _types.parse_bool(from_torch)
             except ValueError:
                 raise InvalidControlNetUriError(
-                    f'Flax Control Net from_torch must be undefined or boolean (true or false), received: {from_torch}')
+                    f'Flax ControlNet from_torch must be undefined or boolean (true or false), received: {from_torch}')
 
         supported_dtypes = _enums.supported_data_type_strings()
         if dtype is not None and dtype not in supported_dtypes:
@@ -250,7 +250,7 @@ def parse_flax_control_net_uri(uri: _types.Uri) -> FlaxControlNetUri:
             scale = float(scale)
         except ValueError:
             raise InvalidControlNetUriError(
-                f'Flax Control Net scale must be a floating point number, received {scale}')
+                f'Flax ControlNet scale must be a floating point number, received {scale}')
 
         return FlaxControlNetUri(
             model=r.concept,

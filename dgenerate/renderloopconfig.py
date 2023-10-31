@@ -9,6 +9,12 @@ import dgenerate.prompt as _prompt
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 
+CONTROL_IMAGE_PREPROCESSOR_SEP = '+'
+"""
+The character that is used to separate control image preprocessor chains
+when specifying preprocessors for multiple control guidance images
+"""
+
 
 def iterate_attribute_combinations(
         attribute_defs: typing.List[typing.Tuple[str, typing.List]],
@@ -840,7 +846,41 @@ class RenderLoopConfig(_types.SetFromMixin):
                 parsed = _mediainput.parse_image_seed_uri(uri)
                 self.parsed_image_seeds.append(parsed)
 
-                is_control_guidance_spec = self.control_net_uris and parsed.is_single_spec()
+                mask_part = 'mask=my-mask.png;' if parsed.mask_path else ''
+                # ^ Used for nice messages about image seed keyword argument misuse
+
+                if self.control_net_uris:
+                    control_image_paths = parsed.get_control_image_paths()
+                    num_control_images = len(control_image_paths)
+
+                    if control_image_paths is None:
+                        raise RenderLoopConfigError(
+                            f'You must specify control net guidance images in your {a_namer("image_seeds")} '
+                            f'specification "{uri}" (for example: "img2img;{mask_part}control=control1.png, control2.png") '
+                            f'when using {a_namer("control_net_uris")}'
+                        )
+
+                    if num_control_images != len(self.control_net_uris):
+                        raise RenderLoopConfigError(
+                            f'Your {a_namer("image_seeds")} specification "{uri}" defines {num_control_images} '
+                            f'control guidance image sources, and you have specified {len(self.control_net_uris)} '
+                            f'{a_namer("control_net_uris")} URIs. The amount of guidance image sources and the '
+                            f'amount of ControlNet models must be equal.'
+                        )
+
+                    control_preprocessor_chain_count = \
+                        (sum(1 for p in self.control_image_preprocessors if p == CONTROL_IMAGE_PREPROCESSOR_SEP) + 1)
+
+                    if control_preprocessor_chain_count > num_control_images:
+
+                        raise RenderLoopConfigError(
+                            f'Your {a_namer("image_seeds")} specification "{uri}" defines {num_control_images} '
+                            f'control guidance image sources, and you have specified {control_preprocessor_chain_count} '
+                            f'{a_namer("control_image_preprocessors")} actions / action chains. The amount of preprocessors '
+                            f'must not exceed the amount of control guidance images.'
+                        )
+
+                is_control_guidance_spec = self.control_net_uris and parsed.is_single_spec
 
                 if is_control_guidance_spec and self.image_seed_strengths:
                     if image_seed_strengths_default_set:
@@ -869,7 +909,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                             f'your {a_namer("image_seeds")} specification has a single source or comma '
                             f'seperated list of sources.')
 
-                if self.control_net_uris and not parsed.is_single_spec() and parsed.control_path is None:
+                if self.control_net_uris and not parsed.is_single_spec and parsed.control_path is None:
                     raise RenderLoopConfigError(
                         f'You must specify a control image with the control argument '
                         f'IE: "my-seed.png;control=my-control.png" in your '
@@ -881,8 +921,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                         (parsed.mask_path and _pipelinewrapper.model_type_is_floyd_ifs(self.model_type)):
 
                     if not parsed.floyd_path:
-                        mask_part = 'mask=my-mask.png;' if parsed.mask_path else ''
-
                         raise RenderLoopConfigError(
                             f'You must specify a floyd image with the floyd argument '
                             f'IE: "my-seed.png;{mask_part}floyd=previous-stage-image.png" '
