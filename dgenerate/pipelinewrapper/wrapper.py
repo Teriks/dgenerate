@@ -1251,8 +1251,15 @@ class DiffusionPipelineWrapper:
                 args['width'] = image.size[0]
                 args['height'] = image.size[1]
         else:
-            args['height'] = _types.default(user_args.height, _constants.DEFAULT_OUTPUT_HEIGHT)
-            args['width'] = _types.default(user_args.width, _constants.DEFAULT_OUTPUT_WIDTH)
+            if _enums.model_type_is_sdxl(self._model_type):
+                args['height'] = _types.default(user_args.height, _constants.DEFAULT_SDXL_OUTPUT_HEIGHT)
+                args['width'] = _types.default(user_args.width, _constants.DEFAULT_SDXL_OUTPUT_WIDTH)
+            elif _enums.model_type_is_floyd_if(self._model_type):
+                args['height'] = _types.default(user_args.height, _constants.DEFAULT_FLOYD_IF_OUTPUT_HEIGHT)
+                args['width'] = _types.default(user_args.width, _constants.DEFAULT_FLOYD_IF_OUTPUT_WIDTH)
+            else:
+                args['height'] = _types.default(user_args.height, _constants.DEFAULT_OUTPUT_HEIGHT)
+                args['width'] = _types.default(user_args.width, _constants.DEFAULT_OUTPUT_WIDTH)
 
         if self._lora_scale is not None:
             args['cross_attention_kwargs'] = {'scale': self._lora_scale}
@@ -1927,3 +1934,6 @@ class DiffusionPipelineWrapper:
                 raise OutOfMemoryError(e)
 
         return result
+
+
+__all__ = _types.module_all()

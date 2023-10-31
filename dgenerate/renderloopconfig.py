@@ -728,11 +728,14 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         if self.output_size is None and not self.image_seeds:
             if _pipelinewrapper.model_type_is_sdxl(self.model_type):
-                self.output_size = (1024, 1024)
+                self.output_size = (_pipelinewrapper.DEFAULT_SDXL_OUTPUT_WIDTH,
+                                    _pipelinewrapper.DEFAULT_SDXL_OUTPUT_HEIGHT)
             elif _pipelinewrapper.model_type_is_floyd_if(self.model_type):
-                self.output_size = (64, 64)
+                self.output_size = (_pipelinewrapper.DEFAULT_FLOYD_IF_OUTPUT_WIDTH,
+                                    _pipelinewrapper.DEFAULT_FLOYD_IF_OUTPUT_HEIGHT)
             else:
-                self.output_size = (512, 512)
+                self.output_size = (_pipelinewrapper.DEFAULT_OUTPUT_WIDTH,
+                                    _pipelinewrapper.DEFAULT_OUTPUT_HEIGHT)
 
         if not self.image_seeds:
             if _pipelinewrapper.model_type_is_floyd_ifs(self.model_type):

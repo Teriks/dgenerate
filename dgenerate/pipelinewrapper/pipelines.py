@@ -1069,3 +1069,6 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
         parsed_control_net_uris=parsed_control_net_uris,
         flax_control_net_params=control_net_params
     )
+
+
+__all__ = _types.module_all()

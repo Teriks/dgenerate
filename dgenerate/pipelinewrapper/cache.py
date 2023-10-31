@@ -28,20 +28,6 @@ import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.types as _types
 
-__all__ = [
-    'CACHE_MEMORY_CONSTRAINTS',
-    'CONTROL_NET_CACHE_MEMORY_CONSTRAINTS',
-    'PIPELINE_CACHE_MEMORY_CONSTRAINTS',
-    'VAE_CACHE_MEMORY_CONSTRAINTS',
-    'clear_pipeline_cache',
-    'clear_control_net_cache',
-    'clear_vae_cache',
-    'clear_model_cache',
-    'pipeline_cache_size',
-    'control_net_cache_size',
-    'vae_cache_size'
-]
-
 _TORCH_PIPELINE_CACHE = dict()
 """Global in memory cache for torch diffusers pipelines"""
 
@@ -111,12 +97,11 @@ PIPELINE_CACHE_MEMORY_CONSTRAINTS: typing.List[str] = ['pipeline_size > (availab
 Cache constraint expressions for when to clear the DiffusionPipeline cache, 
 syntax provided via :py:meth:`dgenerate.util.memory_constraints`
 
-If any of these constraints are met, a call to :py:meth:`.enforce_cache_constraints` will call
+If any of these constraints are met, a call to :py:meth:`.enforce_pipeline_cache_constraints` will call
 :py:meth:`.clear_pipeline_cache` and force a garbage collection.
 
 Extra variables include: *cache_size* (the current estimated cache size in bytes), 
 and *pipeline_size* (the estimated size of the new pipeline before it is brought into memory, in bytes)
-
 """
 
 CONTROL_NET_CACHE_MEMORY_CONSTRAINTS: typing.List[str] = ['control_net_size > (available * 0.75)']
@@ -124,7 +109,7 @@ CONTROL_NET_CACHE_MEMORY_CONSTRAINTS: typing.List[str] = ['control_net_size > (a
 Cache constraint expressions for when to clear the ControlNet cache, 
 syntax provided via :py:meth:`dgenerate.util.memory_constraints`
 
-If any of these constraints are met, a call to :py:meth:`.enforce_cache_constraints` will call
+If any of these constraints are met, a call to :py:meth:`.enforce_control_net_cache_constraints` will call
 :py:meth:`.clear_control_net_cache` and force a garbage collection.
 
 Extra variables include: *cache_size* (the current estimated cache size in bytes), 
@@ -136,7 +121,7 @@ VAE_CACHE_MEMORY_CONSTRAINTS: typing.List[str] = ['vae_size > (available * 0.75)
 Cache constraint expressions for when to clear VAE cache, 
 syntax provided via :py:meth:`dgenerate.util.memory_constraints`
 
-If any of these constraints are met, a call to :py:meth:`.enforce_cache_constraints` will call
+If any of these constraints are met, a call to :py:meth:`.enforce_vae_cache_constraints` will call
 :py:meth:`.clear_vae_cache` and force a garbage collection.
 
 Extra variables include: *cache_size* (the current estimated cache size in bytes), 
@@ -562,3 +547,6 @@ def pipeline_off_cpu_update_cache_info(
                                 f'Size = {pipeline.controlnet.DGENERATE_SIZE_ESTIMATE} Bytes '
                                 f'is leaving CPU side memory, {_types.fullname(control_net_cache_size)}() '
                                 f'is now {control_net_cache_size()} Bytes')
+
+
+__all__ = _types.module_all()

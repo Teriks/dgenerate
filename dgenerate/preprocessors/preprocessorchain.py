@@ -119,3 +119,6 @@ class ImagePreprocessorChain(_preprocessor.ImagePreprocessor):
             return p_image
         else:
             return image
+
+
+__all__ = _types.module_all()

@@ -1128,3 +1128,6 @@ def parse_textual_inversion_uri(uri: _types.Uri) -> TextualInversionUri:
                                    subfolder=r.args.get('subfolder', None))
     except _textprocessing.ConceptPathParseError as e:
         raise InvalidTextualInversionUriError(e)
+
+
+__all__ = _types.module_all()

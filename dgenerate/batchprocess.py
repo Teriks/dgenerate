@@ -298,10 +298,10 @@ class BatchProcessor:
         line_idx = 0
 
         for line_idx, line_and_next in enumerate(PeekReader(stream)):
-            line, next_line = line_and_next
+            line, next_line = (s.strip() for s in line_and_next)
 
             self._current_line = line_idx
-            line = line.strip()
+
             if line == '':
                 if continuation and last_line \
                         and last_line.startswith('-') and not last_line.endswith('\\'):
