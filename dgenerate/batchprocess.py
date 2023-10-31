@@ -444,7 +444,8 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
 
     def templates_help_directive(args):
         values = render_loop.generate_template_variables_with_types()
-        values['saved_modules'] = (typing.Dict[str, typing.Any], template_variables.get('saved_modules'))
+        values['saved_modules'] = (typing.Dict[str, typing.Dict[str, typing.Any]],
+                                   template_variables.get('saved_modules'))
 
         header = None
         if len(args) > 0:
