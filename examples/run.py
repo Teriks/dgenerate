@@ -57,28 +57,28 @@ else:
     configs += glob.glob(os.path.join(pwd, '**', '*config.txt'),
                          recursive=True)
 
+
+def log(*args):
+    print(*args, flush=False)
+
 for config in configs:
     c = os.path.relpath(config, pwd)
 
     if _skip_animations and 'animation' in c:
-        print(f'SKIPPING ANIMATION: {config}')
-        sys.stdout.flush()
+        log(f'SKIPPING ANIMATION: {config}')
         continue
 
     if 'flax' in c:
         if os.name == 'nt':
-            print(f'SKIPPING FLAX ON WINDOWS: {config}')
-            sys.stdout.flush()
+            log(f'SKIPPING FLAX ON WINDOWS: {config}')
             continue
 
     extra_args = []
     if _short_animations and 'animation' in c:
-        print(f'SHORTENING ANIMATION TO 3 FRAMES MAX: {config}')
-        sys.stdout.flush()
+        log(f'SHORTENING ANIMATION TO 3 FRAMES MAX: {config}')
         extra_args = ['--frame-end', '2']
 
-    print(f'RUNNING: {config}')
-    sys.stdout.flush()
+    log(f'RUNNING: {config}')
 
     with open(config, mode='rt' if _batchprocess else 'rb') as f:
         dirname = os.path.dirname(config)
@@ -86,10 +86,14 @@ for config in configs:
         if ext == '.txt':
             try:
                 if _batchprocess is not None:
-                    print('ENTERING DIRECTORY:', dirname)
+                    log('ENTERING DIRECTORY:', dirname)
                     os.chdir(dirname)
                     content = f.read()
-                    _batchprocess.create_config_runner(args + extra_args, throw=True).run_string(content)
+                    try:
+                        _batchprocess.create_config_runner(args + extra_args).run_string(content)
+                    except _batchprocess.BatchProcessError as e:
+                        log(e)
+                        sys.exit(1)
                 else:
                     subprocess.run(["dgenerate"] + args + extra_args, stdin=f, cwd=dirname, check=True)
             except KeyboardInterrupt:

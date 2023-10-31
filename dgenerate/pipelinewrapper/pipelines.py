@@ -367,7 +367,7 @@ class TorchPipelineCreationResult(PipelineCreationResult):
 
     parsed_control_net_uris: typing.List[_uris.TorchControlNetUri]
     """
-    Parsed Control Net URIs if any were present
+    Parsed ControlNet URIs if any were present
     """
 
     def __init__(self,
@@ -819,12 +819,12 @@ class FlaxPipelineCreationResult(PipelineCreationResult):
 
     parsed_control_net_uris: typing.List[_uris.FlaxControlNetUri]
     """
-    Parsed Control Net URIs if any were present
+    Parsed ControlNet URIs if any were present
     """
 
     flax_control_net_params: typing.Optional[typing.Dict[str, typing.Any]]
     """
-    Flax specific Control Net params object
+    Flax specific ControlNet params object
     """
 
     def __init__(self,

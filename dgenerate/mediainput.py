@@ -459,6 +459,25 @@ class ImageSeedParseResult:
         * ``--image-seeds "img2img.png;mask=mask.png;control=control1.png, control2.png;resize=512x512"``
     """
 
+    def get_control_image_paths(self) -> typing.Optional[typing.List[str]]:
+        """
+        Split :py:attr:`.ImageSeed.seed_path` by ',' if :py:attr:`.ImageSeed.is_single_spec` is True and return the result.
+
+        If the image seed is not a single specification, split :py:attr:`.ImageSeed.control_path` and return the result.
+
+        If :py:attr:`.ImageSeed.control_path` is not set and the image seed is not a single specification, return ``None``.
+
+        :return: list of resource paths, or None
+        """
+
+        if self.is_single_spec:
+            return self.seed_path.split(',')
+        elif self.control_path:
+            return self.control_path.split(',')
+        else:
+            return None
+
+    @property
     def is_single_spec(self) -> bool:
         """
         Is this ``--image-seeds`` uri a single resource or resource group specification existing
@@ -1235,6 +1254,15 @@ ControlPreprocessorSpec = typing.Union[_preprocessors.ImagePreprocessor,
                                        typing.List[_preprocessors.ImagePreprocessor], None]
 
 
+def _validate_control_image_preprocessor_count(preprocessors, guidance_images):
+    num_preprocessors = len(preprocessors)
+    num_guidance_images = len(guidance_images)
+    if num_preprocessors > num_guidance_images:
+        raise ValueError('Too many control image preprocessors specified, '
+                         f'there are {num_preprocessors} preprocessors and '
+                         f'{num_guidance_images} control guidance image sources.')
+
+
 def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
                        frame_start: int = 0,
                        frame_end: _types.OptionalInteger = None,
@@ -1277,9 +1305,14 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
 
     :param control_image_preprocessor: optional :py:class:`dgenerate.preprocessors.ImagePreprocessor` or list of them.
         A list is used to specify preprocessors for individual images in a multi guidance image specification
-        such as uri = "seed.png;control=img1.png, img2.png".  In the case that a multi guidance image specification is used
-        and only one preprocessor is given, that preprocessor will be used on every image / video in the
-        specification.
+        such as uri = "img2img.png;control=img1.png, img2.png".  In the case that a multi guidance image
+        specification is used and only one preprocessor is given, that preprocessor will be used on only the
+        first image / video in the specification. Images in a guidance specification with no corresponding
+        preprocessor value will have their preprocessor set to ``None``, specifying extra preprocessors
+        as compared to control guidance image sources will cause :py:exc:`ValueError` to be raised.
+
+    :raise: :py:exc:`ValueError` if there are more **control_image_preprocessor** values than
+        there are control guidance image sources in the URI.
 
     :return: generator over :py:class:`.ImageSeed` objects
     """
@@ -1301,16 +1334,21 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
         reader_specs.append(AnimationReaderSpec(parse_result.mask_path, mask_image_preprocessor))
 
     if parse_result.control_path is not None:
-        if isinstance(control_image_preprocessor, list):
-            reader_specs += [
-                AnimationReaderSpec(p.strip(), control_image_preprocessor[idx])
-                for idx, p in enumerate(parse_result.control_path.split(','))
-            ]
-        else:
-            reader_specs += [
-                AnimationReaderSpec(p.strip(), control_image_preprocessor)
-                for p in parse_result.control_path.split(',')
-            ]
+        if not isinstance(control_image_preprocessor, list):
+            control_image_preprocessor = [control_image_preprocessor]
+
+        control_guidance_image_paths = parse_result.get_control_image_paths()
+
+        _validate_control_image_preprocessor_count(
+            preprocessors=control_image_preprocessor,
+            guidance_images=control_guidance_image_paths)
+
+        reader_specs += [
+            AnimationReaderSpec(
+                p.strip(),
+                control_image_preprocessor[idx] if idx < len(control_image_preprocessor) else None)
+            for idx, p in enumerate(control_guidance_image_paths)
+        ]
 
     if parse_result.floyd_path is not None:
         # There should never be a reason to preprocess floyd stage output
@@ -1395,11 +1433,18 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
     :param frame_start: starting frame, inclusive value
     :param frame_end: optional end frame, inclusive value
     :param resize_resolution: optional resize resolution
+
     :param preprocessor: optional :py:class:`dgenerate.preprocessors.ImagePreprocessor` or list of them.
         A list is used to specify preprocessors for individual images in a multi guidance image specification
-        such as path = "img1.png, img2.png".  In the case that a multi guidance image specification is used
-        and only one preprocessor is given, that preprocessor will be used on every image / video in the
-        specification.
+        such as uri = "img1.png, img2.png".  In the case that a multi guidance image specification is used and only
+        one preprocessor is given, that preprocessor will be used on only the first image / video in the specification.
+        Images in a guidance specification with no corresponding preprocessor value will have their preprocessor
+        set to ``None``, specifying extra preprocessors as compared to control guidance image sources will
+        cause :py:exc:`ValueError` to be raised.
+
+    :raise: :py:exc:`ValueError` if there are more **preprocessor** values than
+        there are control guidance image sources in the URI.
+
     :return: generator over :py:class:`.ImageSeed` objects
     """
 
@@ -1412,16 +1457,21 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
 
     reader_specs = []
 
-    if isinstance(preprocessor, list):
-        reader_specs += [
-            AnimationReaderSpec(p.strip(), preprocessor[idx])
-            for idx, p in enumerate(uri.split(','))
-        ]
-    else:
-        reader_specs += [
-            AnimationReaderSpec(p.strip(), preprocessor)
-            for p in uri.split(',')
-        ]
+    if not isinstance(preprocessor, list):
+        preprocessor = [preprocessor]
+
+    control_guidance_image_paths = uri.split(',')
+
+    _validate_control_image_preprocessor_count(
+        preprocessors=preprocessor,
+        guidance_images=control_guidance_image_paths)
+
+    reader_specs += [
+        AnimationReaderSpec(
+            p.strip(),
+            preprocessor[idx] if idx < len(preprocessor) else None)
+        for idx, p in enumerate(control_guidance_image_paths)
+    ]
 
     with MultiAnimationReader(specs=reader_specs,
                               resize_resolution=resize_resolution,

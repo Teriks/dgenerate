@@ -29,13 +29,45 @@ import typing
 import jinja2
 
 import dgenerate
-import dgenerate.renderloop as _renderloop
 import dgenerate.invoker as _invoker
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.prompt as _prompt
+import dgenerate.renderloop as _renderloop
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+
+
+class PeekReader:
+    """
+    Read from a TextIO file object while peeking at the next line in the file.
+
+    This is an iterable reader wrapper that yields the tuple (current_line, next_line)
+
+    **next_line** will be None if the next line is the end of the file.
+    """
+
+    def __init__(self, file: typing.TextIO):
+        self._file = file
+        self._last_next_line = None
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self._last_next_line is not None:
+            self._cur_line = self._last_next_line
+            self._last_next_line = None
+        else:
+            self._cur_line = next(self._file)
+
+        try:
+            self._next_line = next(self._file)
+            self._last_next_line = self._next_line
+        except StopIteration:
+            self._next_line = None
+
+        return self._cur_line, self._next_line
 
 
 class BatchProcessError(Exception):
@@ -262,13 +294,8 @@ class BatchProcessor:
         last_line = None
         line_idx = 0
 
-        for line_idx, line in enumerate(stream):
-            try:
-                old_pos = stream.tell()
-                next_line = next(stream).strip()
-                stream.seek(old_pos)
-            except StopIteration:
-                next_line = None
+        for line_idx, line_and_next in enumerate(PeekReader(stream)):
+            line, next_line = line_and_next
 
             self._current_line = line_idx
             line = line.strip()
@@ -402,7 +429,7 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
         if len(args) == 2:
             try:
                 template_variables[args[0]] = \
-                    ' '.join(str(s) for s in _renderloop.gen_seeds(int(args[1])))
+                    [str(s) for s in _renderloop.gen_seeds(int(args[1]))]
             except ValueError:
                 raise BatchProcessError(
                     'The second argument of \\gen_seeds must be an integer value.')
