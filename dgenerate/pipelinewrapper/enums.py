@@ -20,8 +20,10 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import enum
 import typing
-import dgenerate.types as _types
+
 import torch
+
+import dgenerate.types as _types
 
 try:
     import jax
