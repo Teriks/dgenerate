@@ -298,7 +298,8 @@ class BatchProcessor:
         line_idx = 0
 
         for line_idx, line_and_next in enumerate(PeekReader(stream)):
-            line, next_line = (s.strip() for s in line_and_next)
+            line, next_line = (s.strip() if s is not None else None
+                               for s in line_and_next)
 
             self._current_line = line_idx
 
