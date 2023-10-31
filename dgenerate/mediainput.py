@@ -631,7 +631,7 @@ def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
 
 def get_web_cache_directory() -> str:
     """
-    Get the default web cache directory or the value of the environmental variable DGENERATE_WEB_CACHE
+    Get the default web cache directory or the value of the environmental variable ``DGENERATE_WEB_CACHE``
 
     :return: string (directory path)
     """
