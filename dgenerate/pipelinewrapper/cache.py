@@ -86,7 +86,7 @@ def control_net_cache_size() -> int:
 CACHE_MEMORY_CONSTRAINTS: typing.List[str] = ['used_percent > 90']
 """
 Cache constraint expressions for when to clear all model caches (DiffusionPipeline, VAE, and ControlNet), 
-syntax provided via :py:meth:`dgenerate.util.memory_constraints`
+syntax provided via :py:meth:`dgenerate.memory.memory_constraints`
 
 If any of these constraints are met, a call to :py:meth:`.enforce_cache_constraints` will call
 :py:meth:`.clear_model_cache` and force a garbage collection.
@@ -95,7 +95,7 @@ If any of these constraints are met, a call to :py:meth:`.enforce_cache_constrai
 PIPELINE_CACHE_MEMORY_CONSTRAINTS: typing.List[str] = ['pipeline_size > (available * 0.75)']
 """
 Cache constraint expressions for when to clear the DiffusionPipeline cache, 
-syntax provided via :py:meth:`dgenerate.util.memory_constraints`
+syntax provided via :py:meth:`dgenerate.memory.memory_constraints`
 
 If any of these constraints are met, a call to :py:meth:`.enforce_pipeline_cache_constraints` will call
 :py:meth:`.clear_pipeline_cache` and force a garbage collection.
@@ -107,7 +107,7 @@ and *pipeline_size* (the estimated size of the new pipeline before it is brought
 CONTROL_NET_CACHE_MEMORY_CONSTRAINTS: typing.List[str] = ['control_net_size > (available * 0.75)']
 """
 Cache constraint expressions for when to clear the ControlNet cache, 
-syntax provided via :py:meth:`dgenerate.util.memory_constraints`
+syntax provided via :py:meth:`dgenerate.memory.memory_constraints`
 
 If any of these constraints are met, a call to :py:meth:`.enforce_control_net_cache_constraints` will call
 :py:meth:`.clear_control_net_cache` and force a garbage collection.
@@ -119,7 +119,7 @@ and *control_net_size* (the estimated size of the new ControlNet before it is br
 VAE_CACHE_MEMORY_CONSTRAINTS: typing.List[str] = ['vae_size > (available * 0.75)']
 """
 Cache constraint expressions for when to clear VAE cache, 
-syntax provided via :py:meth:`dgenerate.util.memory_constraints`
+syntax provided via :py:meth:`dgenerate.memory.memory_constraints`
 
 If any of these constraints are met, a call to :py:meth:`.enforce_vae_cache_constraints` will call
 :py:meth:`.clear_vae_cache` and force a garbage collection.
