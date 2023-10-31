@@ -2627,7 +2627,7 @@ well as some basic Jinja2 templating usage.
 
     \save_modules stage_1_modules feature_extractor
 
-    # that saves the feature_extractor module objects in the pipeline above
+    # that saves the feature_extractor module object in the pipeline above
 
     # Possible Module Names:
 
