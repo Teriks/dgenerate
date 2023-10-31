@@ -2623,9 +2623,9 @@ well as some basic Jinja2 templating usage.
     --dtype float16
     --prompt "an astronaut walking on the moon"
     --safety-checker
-    --output-size 256
+    --output-size 512
 
-    \save_modules stage_1_modules vae feature_extractor safety_checker
+    \save_modules stage_1_modules vae feature_extractor
 
     \templates_help saved_modules
 
@@ -2642,6 +2642,7 @@ well as some basic Jinja2 templating usage.
     --model-type torch-upscaler-x4
     --prompts {{ format_prompt(last_prompts) }}
     --image-seeds {{ quote(last_images) }}
+    --vae-tiling
 
     # you should clear out the saved modules if you no longer need them
     # and your config file is going to continue, or if the dgenerate
@@ -2649,7 +2650,6 @@ well as some basic Jinja2 templating usage.
     # some library usage scenarios
 
     \clear_modules stage_1_modules
-
 
 
 To utilize configuration files on Linux, pipe them into the command or use redirection:
