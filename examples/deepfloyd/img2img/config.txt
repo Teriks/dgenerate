@@ -10,7 +10,7 @@ DeepFloyd/IF-I-L-v1.0
 --guidance-scales 5
 --gen-seeds 2
 --image-seeds {{ image_to_vary }}
---prompts "A fluffy white dog sitting on a bench with a thought bubble that says bark; fake, artwork, cartoon"
+--prompts "A fluffy white dog sitting on a bench, thought bubble that says 'bark'; fake, artwork, cartoon"
 --output-prefix stage1
 
 \save_modules stage_1_modules feature_extractor

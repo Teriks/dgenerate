@@ -306,7 +306,6 @@ class PipelineCreationResult:
             * ``controlnet``
             * ``scheduler``
             * ``unet``
-            * ``watermark``
 
         If the module is not present or a recognized name, a :py:exc:`ValueError`
         will be thrown describing the module that is not part of the pipeline.

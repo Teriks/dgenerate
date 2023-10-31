@@ -11,7 +11,7 @@ DeepFloyd/IF-I-L-v1.0
 --guidance-scales 10
 --gen-seeds 2
 --image-seeds "{{ image_to_vary }};{{ mask_image }}"
---prompts "A fluffy cat sitting on a bench with a thought bubble that says meow; fake, artwork, cartoon"
+--prompts "A fluffy orange cat sitting on a bench, thought bubble with the text 'meow'; fake, artwork, cartoon"
 --output-prefix stage1
 
 \save_modules stage_1_modules feature_extractor
