@@ -863,89 +863,108 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.parsed_image_seeds = []
 
             for uri in self.image_seeds:
-                parsed = _mediainput.parse_image_seed_uri(uri)
-                self.parsed_image_seeds.append(parsed)
+                self._check_image_seed_uri(
+                    uri=uri,
+                    attribute_namer=attribute_namer,
+                    image_seed_strengths_default_set=image_seed_strengths_default_set,
+                    upscaler_noise_levels_default_set=upscaler_noise_levels_default_set)
 
-                mask_part = 'mask=my-mask.png;' if parsed.mask_path else ''
-                # ^ Used for nice messages about image seed keyword argument misuse
+    def _check_image_seed_uri(self,
+                              uri,
+                              attribute_namer,
+                              image_seed_strengths_default_set,
+                              upscaler_noise_levels_default_set):
+        """
+        :param uri: The URI
+        :param attribute_namer: attribute namer
+        :param image_seed_strengths_default_set: whether check() has set an image_seed_strengths default value
+        :param upscaler_noise_levels_default_set: whether check() has set an upscaler_noise_levels default value
+        """
 
-                if self.control_net_uris:
-                    control_image_paths = parsed.get_control_image_paths()
-                    num_control_images = len(control_image_paths)
+        a_namer = attribute_namer
+        parsed = _mediainput.parse_image_seed_uri(uri)
+        self.parsed_image_seeds.append(parsed)
 
-                    if control_image_paths is None:
-                        raise RenderLoopConfigError(
-                            f'You must specify control net guidance images in your {a_namer("image_seeds")} '
-                            f'specification "{uri}" (for example: "img2img;{mask_part}control=control1.png, control2.png") '
-                            f'when using {a_namer("control_net_uris")}'
-                        )
+        mask_part = 'mask=my-mask.png;' if parsed.mask_path else ''
+        # ^ Used for nice messages about image seed keyword argument misuse
 
-                    if num_control_images != len(self.control_net_uris):
-                        raise RenderLoopConfigError(
-                            f'Your {a_namer("image_seeds")} specification "{uri}" defines {num_control_images} '
-                            f'control guidance image sources, and you have specified {len(self.control_net_uris)} '
-                            f'{a_namer("control_net_uris")} URIs. The amount of guidance image sources and the '
-                            f'amount of ControlNet models must be equal.'
-                        )
+        if self.control_net_uris:
+            control_image_paths = parsed.get_control_image_paths()
+            num_control_images = len(control_image_paths)
 
-                    if self.control_image_preprocessors:
-                        control_preprocessor_chain_count = \
-                            (sum(1 for p in self.control_image_preprocessors if p == CONTROL_IMAGE_PREPROCESSOR_SEP) + 1)
+            if control_image_paths is None:
+                raise RenderLoopConfigError(
+                    f'You must specify control net guidance images in your {a_namer("image_seeds")} '
+                    f'specification "{uri}" (for example: "img2img;{mask_part}control=control1.png, control2.png") '
+                    f'when using {a_namer("control_net_uris")}'
+                )
 
-                        if control_preprocessor_chain_count > num_control_images:
-                            raise RenderLoopConfigError(
-                                f'Your {a_namer("image_seeds")} specification "{uri}" defines {num_control_images} '
-                                f'control guidance image sources, and you have specified {control_preprocessor_chain_count} '
-                                f'{a_namer("control_image_preprocessors")} actions / action chains. The amount of preprocessors '
-                                f'must not exceed the amount of control guidance images.'
-                            )
+            if num_control_images != len(self.control_net_uris):
+                raise RenderLoopConfigError(
+                    f'Your {a_namer("image_seeds")} specification "{uri}" defines {num_control_images} '
+                    f'control guidance image sources, and you have specified {len(self.control_net_uris)} '
+                    f'{a_namer("control_net_uris")} URIs. The amount of guidance image sources and the '
+                    f'amount of ControlNet models must be equal.'
+                )
 
-                is_control_guidance_spec = self.control_net_uris and parsed.is_single_spec
+            if self.control_image_preprocessors:
+                control_preprocessor_chain_count = \
+                    (sum(1 for p in self.control_image_preprocessors if p == CONTROL_IMAGE_PREPROCESSOR_SEP) + 1)
 
-                if is_control_guidance_spec and self.image_seed_strengths:
-                    if image_seed_strengths_default_set:
-                        # check() set this default that isn't valid
-                        # upon further parsing
-                        self.image_seed_strengths = None
-                    else:
-                        # user set this
-                        raise RenderLoopConfigError(
-                            f'Cannot use {a_namer("image_seed_strengths")} with a control guidance image '
-                            f'specification "{uri}". IE: when {a_namer("control_net_uris")} is specified and '
-                            f'your {a_namer("image_seeds")} specification has a single source or comma '
-                            f'seperated list of sources.')
-
-                if is_control_guidance_spec and self.upscaler_noise_levels:
-                    # upscaler noise level should already be handled but handle it again just incase
-                    if upscaler_noise_levels_default_set:
-                        # check() set this default that isn't valid
-                        # upon further parsing
-                        self.upscaler_noise_levels = None
-                    else:
-                        # user set this
-                        raise RenderLoopConfigError(
-                            f'Cannot use {a_namer("upscaler_noise_levels")} with a control guidance image '
-                            f'specification "{uri}". IE: when {a_namer("control_net_uris")} is specified and '
-                            f'your {a_namer("image_seeds")} specification has a single source or comma '
-                            f'seperated list of sources.')
-
-                if self.control_net_uris and not parsed.is_single_spec and parsed.control_path is None:
+                if control_preprocessor_chain_count > num_control_images:
                     raise RenderLoopConfigError(
-                        f'You must specify a control image with the control argument '
-                        f'IE: "my-seed.png;control=my-control.png" in your '
-                        f'{a_namer("image_seeds")} "{uri}" when using {a_namer("control_net_uris")} '
-                        f'in order to use inpainting. If you want to use the control image alone '
-                        f'without a mask, use {a_namer("image_seeds")} "{parsed.seed_path}".')
+                        f'Your {a_namer("image_seeds")} specification "{uri}" defines {num_control_images} '
+                        f'control guidance image sources, and you have specified {control_preprocessor_chain_count} '
+                        f'{a_namer("control_image_preprocessors")} actions / action chains. The amount of preprocessors '
+                        f'must not exceed the amount of control guidance images.'
+                    )
 
-                if self.model_type == _pipelinewrapper.ModelTypes.TORCH_IFS_IMG2IMG or \
-                        (parsed.mask_path and _pipelinewrapper.model_type_is_floyd_ifs(self.model_type)):
+        is_control_guidance_spec = self.control_net_uris and parsed.is_single_spec
 
-                    if not parsed.floyd_path:
-                        raise RenderLoopConfigError(
-                            f'You must specify a floyd image with the floyd argument '
-                            f'IE: "my-seed.png;{mask_part}floyd=previous-stage-image.png" '
-                            f'in your {a_namer("image_seeds")} "{uri}" to disambiguate this '
-                            f'usage of Deep Floyd IF super-resolution.')
+        if is_control_guidance_spec and self.image_seed_strengths:
+            if image_seed_strengths_default_set:
+                # check() set this default that isn't valid
+                # upon further parsing
+                self.image_seed_strengths = None
+            else:
+                # user set this
+                raise RenderLoopConfigError(
+                    f'Cannot use {a_namer("image_seed_strengths")} with a control guidance image '
+                    f'specification "{uri}". IE: when {a_namer("control_net_uris")} is specified and '
+                    f'your {a_namer("image_seeds")} specification has a single source or comma '
+                    f'seperated list of sources.')
+
+        if is_control_guidance_spec and self.upscaler_noise_levels:
+            # upscaler noise level should already be handled but handle it again just incase
+            if upscaler_noise_levels_default_set:
+                # check() set this default that isn't valid
+                # upon further parsing
+                self.upscaler_noise_levels = None
+            else:
+                # user set this
+                raise RenderLoopConfigError(
+                    f'Cannot use {a_namer("upscaler_noise_levels")} with a control guidance image '
+                    f'specification "{uri}". IE: when {a_namer("control_net_uris")} is specified and '
+                    f'your {a_namer("image_seeds")} specification has a single source or comma '
+                    f'seperated list of sources.')
+
+        if self.control_net_uris and not parsed.is_single_spec and parsed.control_path is None:
+            raise RenderLoopConfigError(
+                f'You must specify a control image with the control argument '
+                f'IE: "my-seed.png;control=my-control.png" in your '
+                f'{a_namer("image_seeds")} "{uri}" when using {a_namer("control_net_uris")} '
+                f'in order to use inpainting. If you want to use the control image alone '
+                f'without a mask, use {a_namer("image_seeds")} "{parsed.seed_path}".')
+
+        if self.model_type == _pipelinewrapper.ModelTypes.TORCH_IFS_IMG2IMG or \
+                (parsed.mask_path and _pipelinewrapper.model_type_is_floyd_ifs(self.model_type)):
+
+            if not parsed.floyd_path:
+                raise RenderLoopConfigError(
+                    f'You must specify a floyd image with the floyd argument '
+                    f'IE: "my-seed.png;{mask_part}floyd=previous-stage-image.png" '
+                    f'in your {a_namer("image_seeds")} "{uri}" to disambiguate this '
+                    f'usage of Deep Floyd IF super-resolution.')
 
     def calculate_generation_steps(self):
         """
