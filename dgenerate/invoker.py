@@ -21,11 +21,11 @@
 import typing
 
 import dgenerate.arguments as _arguments
-import dgenerate.renderloop as _renderloop
 import dgenerate.mediainput as _mediainput
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.preprocessors as _preprocessors
+import dgenerate.renderloop as _renderloop
 
 
 def invoke_dgenerate(

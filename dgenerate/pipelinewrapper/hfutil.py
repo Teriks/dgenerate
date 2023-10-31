@@ -484,9 +484,9 @@ def estimate_model_memory_use(repo_id: str,
                     base, ext = os.path.splitext(file)
 
                     forced_include = sentencepiece and (
-                                directory == 'tokenizer' and os.path.basename(file) == 'spiece.model')
+                            directory == 'tokenizer' and os.path.basename(file) == 'spiece.model')
                     forced_include |= watermarker and (
-                                directory == 'watermarker' and os.path.basename(file) == 'diffusion_pytorch_model.bin')
+                            directory == 'watermarker' and os.path.basename(file) == 'diffusion_pytorch_model.bin')
                     forced_include |= safety_checker and directory == 'safety_checker'
 
                     if forced_only and not forced_include:

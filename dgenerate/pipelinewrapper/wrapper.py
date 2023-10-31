@@ -1000,7 +1000,7 @@ class DiffusionPipelineWrapper:
                 seed_args.append(f'control={", ".join(_image.get_filename(c) for c in args.control_images)}')
             elif args.floyd_image is not None:
                 seed_args.append(f'floyd={_image.get_filename(args.floyd_image)}')
-   
+
             if not seed_args:
                 opts.append(('--image-seeds',
                              _image.get_filename(args.image)))
@@ -1735,7 +1735,6 @@ class DiffusionPipelineWrapper:
         self._recall_main_pipeline = None
         self._recall_refiner_pipeline = None
 
-
         if _enums.model_type_is_sdxl(self._model_type) and self._textual_inversion_uris:
             raise NotImplementedError('Textual inversion not supported for SDXL.')
 
@@ -1753,18 +1752,18 @@ class DiffusionPipelineWrapper:
                 raise NotImplementedError('--vae-tiling/--vae-slicing not supported for flax.')
 
             self.recall_main_pipeline = _pipelines.FlaxPipelineFactory(
-                        pipeline_type=pipeline_type,
-                        model_path=self._model_path,
-                        model_type=self._model_type,
-                        revision=self._revision,
-                        dtype=self._dtype,
-                        vae_uri=self._vae_uri,
-                        control_net_uris=self._control_net_uris,
-                        scheduler=self._scheduler,
-                        safety_checker=self._safety_checker,
-                        auth_token=self._auth_token,
-                        local_files_only=self._local_files_only,
-                        extra_modules=self._model_extra_modules)
+                pipeline_type=pipeline_type,
+                model_path=self._model_path,
+                model_type=self._model_type,
+                revision=self._revision,
+                dtype=self._dtype,
+                vae_uri=self._vae_uri,
+                control_net_uris=self._control_net_uris,
+                scheduler=self._scheduler,
+                safety_checker=self._safety_checker,
+                auth_token=self._auth_token,
+                local_files_only=self._local_files_only,
+                extra_modules=self._model_extra_modules)
 
             creation_result = self.recall_main_pipeline()
             self._pipeline = creation_result.pipeline
