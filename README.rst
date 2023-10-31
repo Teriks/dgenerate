@@ -2625,11 +2625,9 @@ well as some basic Jinja2 templating usage.
     --safety-checker
     --output-size 512
 
-    \save_modules stage_1_modules vae feature_extractor
+    \save_modules stage_1_modules feature_extractor
 
-    \templates_help saved_modules
-
-    # that saves the vae, feature_extractor, and safety_checker module objects in the pipeline above
+    # that saves the feature_extractor module objects in the pipeline above
 
     \use_modules stage_1_modules
 
