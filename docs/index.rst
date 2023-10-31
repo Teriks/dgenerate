@@ -8,11 +8,12 @@ Welcome to dgenerate's documentation!
 
 This is the library documentation for `dgenerate <https://github.com/Teriks/dgenerate>`_.
 
-For command line usage documentation see the `readme <https://github.com/Teriks/dgenerate/blob/master/README.rst>`_
-or the `examples folder <https://github.com/Teriks/dgenerate/tree/master/examples>`_ in the github repository.
+For command line usage documentation see the `Command Line Manual`_
+or the `Examples Folder <https://github.com/Teriks/dgenerate/tree/master/examples>`_ in
+the github repository.
 
-Content:
---------
+Library Documentation
+---------------------
 
 .. toctree::
    :maxdepth: 2
@@ -24,6 +25,15 @@ Content:
    :maxdepth: 2
 
    dgenerate_submodules
+
+
+Command Line Manual
+-------------------
+
+.. toctree::
+   :maxdepth: 2
+
+   readme
 
 Indices and tables
 ==================

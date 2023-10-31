@@ -26,33 +26,33 @@ This readme mostly covers command line usage, for library documentation visit `r
 
 
 * How to install
-    * `Windows Install </#windows-install>`_
-    * `Linux or WSL Install </#linux-or-wsl-install>`_
+    * `Windows Install`_
+    * `Linux or WSL Install`_
 
 * Usage Examples
-    * `Basic Usage </#basic-usage>`_
-    * `Negative Prompt </#negative-prompt>`_
-    * `Multiple Prompts </#multiple-prompts>`_
-    * `Image Seed </#image-seed>`_
-    * `Inpainting </#inpainting>`_
-    * `Per Image Seed Resizing </#per-image-seed-resizing>`_
-    * `Animated Output </#animated-output>`_
-    * `Animation Slicing </#animation-slicing>`_
-    * `Inpainting Animations </#inpainting-animations>`_
-    * `Deterministic Output </#deterministic-output>`_
-    * `Specifying a specific GPU for CUDA </#specifying-a-specific-gpu-for-cuda>`_
-    * `Specifying a Scheduler (sampler) </#specifying-a-scheduler-sampler>`_
-    * `Specifying a VAE </#specifying-a-vae>`_
-    * `VAE Tiling and Slicing </#vae-tiling-and-slicing>`_
-    * `Specifying a LoRA Finetune </#specifying-a-lora-finetune>`_
-    * `Specifying Textual Inversions </#specifying-textual-inversions>`_
-    * `Specifying Control Nets </#specifying-control-nets>`_
-    * `Specifying Generation Batch Size </#specifying-generation-batch-size>`_
-    * `Image Preprocessors </#image-preprocessors>`_
-    * `Writing Plugins </#writing-plugins>`_
-    * `Batch Processing From STDIN </#batch-processing-from-stdin>`_
-    * `Batch Processing Argument Injection </#batch-processing-argument-injection>`_
-    * `File Cache Control </#file-cache-control>`_
+    * `Basic Usage`_
+    * `Negative Prompt`_
+    * `Multiple Prompts`_
+    * `Image Seed`_
+    * `Inpainting`_
+    * `Per Image Seed Resizing`_
+    * `Animated Output`_
+    * `Animation Slicing`_
+    * `Inpainting Animations`_
+    * `Deterministic Output`_
+    * `Specifying a specific GPU for CUDA`_
+    * `Specifying a Scheduler (sampler)`_
+    * `Specifying a VAE`_
+    * `VAE Tiling and Slicing`_
+    * `Specifying a LoRA Finetune`_
+    * `Specifying Textual Inversions`_
+    * `Specifying Control Nets`_
+    * `Specifying Generation Batch Size`_
+    * `Image Preprocessors`_
+    * `Writing Plugins`_
+    * `Batch Processing From STDIN`_
+    * `Batch Processing Argument Injection`_
+    * `File Cache Control`_
 
 dgenerate help output
 ---------------------
@@ -956,7 +956,7 @@ If you do not adjust the output size of the generated image, the size of the inp
 
 
 The syntax "my-image-seed.png;control=my-control-image.png" can be used with ``--control-nets`` to specify
-img2img mode with a ControlNet, see: `Specifying Control Nets </#specifying-control-nets>`_ for more information.
+img2img mode with a ControlNet, see: `Specifying Control Nets`_ for more information.
 
 
 Inpainting
@@ -966,15 +966,13 @@ Inpainting on an image can be preformed by providing a mask image with your imag
 of identical size to your image seed.  White areas of the mask image will be used to tell the AI what areas of the seed image should be filled
 in with generated content.
 
-.. _Inpainting Animations: /#inpainting-animations
-
 For using inpainting on animated image seeds, jump to: `Inpainting Animations`_
 
 In order to use inpainting, specify your image seed like so:
 ``--image-seeds "my-image-seed.png;my-mask-image.png"`` or ``--image-seeds "my-image-seed.png;mask=my-mask-image.png"``
 
 The format is your image seed and mask image seperated by ``;``, optionally mask can be named argument.
-The alternate syntax is for disambiguation when using `Control Nets </#specifying-control-nets>`_.
+The alternate syntax is for disambiguation when `Specifying Control Nets`_.
 
 Mask images can be downloaded from URL's just like image seeds, however for this example the syntax specifies a file on disk for brevity.
 
@@ -1007,7 +1005,7 @@ This will work when using a mask image for inpainting as well, including when us
 The syntax is: ``--image-seeds "my-image-seed.png;512x512"`` or ``--image-seeds "my-image-seed.png;my-mask-image.png;512x512"``
 or ``--image-seeds "my-image-seed.png;mask=my-mask-image.png;resize=512x512"``
 
-The alternate syntax with named arguments is for disambiguation when using `Control Nets </#specifying-control-nets>`_.
+The alternate syntax with named arguments is for disambiguation when `Specifying Control Nets`_.
 
 When one dimension is specified, that dimension is the width, and the height is
 calculated from the aspect ratio of the input image.
@@ -1060,7 +1058,7 @@ Animations can also be generated using an alternate syntax for ``--image-seeds``
 that allows the specification of a control image source when it is desired to use
 ``--control-nets`` with img2img or inpainting.
 
-For more information about this see: `Specifying Control Nets </#specifying-control-nets>`_
+For more information about this see: `Specifying Control Nets`_
 
 As well as the information about ``--image-seeds`` from dgenerates ``--help``
 output.
@@ -1223,7 +1221,7 @@ with ImageMagick for example as so:
 
     magick identify -format "%[Property:DgenerateConfig] generated_file.png
 
-Generated configuration files can be read back into dgenerate using `Batch Processing From STDIN </#batch-processing-from-stdin>`_.
+Generated configuration files can be read back into dgenerate using `Batch Processing From STDIN`_.
 
 Specifying a seed directly and changing the prompt slightly, or parameters such as image seed strength
 if using a seed image, guidance scale, or inference steps, will allow for generating variations close
@@ -2250,7 +2248,7 @@ The following is a config file example that covers very basic syntax concepts:
 
 
 To receive information about Jinja2 template variables that are set after a dgenerate invocation.
-You can use the ``\templates_help`` directive which is similar to the ``--templates-help` option
+You can use the ``\templates_help`` directive which is similar to the ``--templates-help`` option
 except it will print out all of the template variables assigned values instead of just their
 names and types. This is useful for figuring out the values of template variables set after
 a dgenerate invocation in a config file for debugging purposes.
