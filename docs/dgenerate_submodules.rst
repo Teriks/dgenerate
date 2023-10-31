@@ -1,5 +1,5 @@
-dgenerate sub modules
-=====================
+dgenerate submodules
+====================
 
 dgenerate.arguments module
 --------------------------
