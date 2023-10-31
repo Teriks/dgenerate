@@ -35,6 +35,8 @@ def invoke_dgenerate(
     """
     Invoke dgenerate using its command line arguments and return a return code.
 
+    dgenerate is invoked in the current process, this method does not spawn a subprocess.
+
     :param args: dgenerate command line arguments in the form of list, see: shlex module, or sys.argv
     :param render_loop: :py:class:`dgenerate.renderloop.RenderLoop` instance,
         if None is provided one will be created.
