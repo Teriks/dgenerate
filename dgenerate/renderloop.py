@@ -781,7 +781,7 @@ class RenderLoop:
                         if ims_obj.control_images is not None:
                             args.control_images = ims_obj.control_images
                         elif ims_obj.floyd_image is not None:
-                            args.floyd_image = image_seed.floyd_image
+                            args.floyd_image = ims_obj.floyd_image
 
                 self._render_animation(pipeline_wrapper=pipeline_wrapper,
                                        set_extra_wrapper_args=set_extra_args,
