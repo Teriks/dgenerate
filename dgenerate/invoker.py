@@ -68,45 +68,42 @@ def invoke_dgenerate(
         _messages.log(render_loop.generate_template_variables_help(show_values=False) + '\n', underline=True)
         return 0
 
+    arguments = None
+    constraint_lists = []
     try:
         arguments = _arguments.parse_args(args)
-    except _arguments.DgenerateUsageError as e:
-        if throw:
-            raise e
-        return 1
 
-    render_loop.config = arguments
+        if arguments.cache_memory_constraints:
+            constraint_lists.append(_pipelinewrapper.CACHE_MEMORY_CONSTRAINTS)
+            _pipelinewrapper.CACHE_MEMORY_CONSTRAINTS = arguments.cache_memory_constraints
 
-    render_loop.preprocessor_loader. \
-        load_plugin_modules(arguments.plugin_module_paths)
+        if arguments.pipeline_cache_memory_constraints:
+            constraint_lists.append(_pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS)
+            _pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS = arguments.pipeline_cache_memory_constraints
 
-    if arguments.verbose:
-        _messages.LEVEL = _messages.DEBUG
-    else:
-        # enable setting and unsetting in batch processing
-        _messages.LEVEL = _messages.INFO
+        if arguments.vae_cache_memory_constraints:
+            constraint_lists.append(_pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS)
+            _pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS = arguments.vae_cache_memory_constraints
 
-    constraint_lists = []
+        if arguments.control_net_cache_memory_constraints:
+            constraint_lists.append(_pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS)
+            _pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS = arguments.control_net_cache_memory_constraints
 
-    if arguments.cache_memory_constraints:
-        constraint_lists.append(_pipelinewrapper.CACHE_MEMORY_CONSTRAINTS)
-        _pipelinewrapper.CACHE_MEMORY_CONSTRAINTS = arguments.cache_memory_constraints
+        render_loop.config = arguments
 
-    if arguments.pipeline_cache_memory_constraints:
-        constraint_lists.append(_pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS)
-        _pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS = arguments.pipeline_cache_memory_constraints
+        render_loop.preprocessor_loader. \
+            load_plugin_modules(arguments.plugin_module_paths)
 
-    if arguments.vae_cache_memory_constraints:
-        constraint_lists.append(_pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS)
-        _pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS = arguments.vae_cache_memory_constraints
+        if arguments.verbose:
+            _messages.LEVEL = _messages.DEBUG
+        else:
+            # enable setting and unsetting in batch processing
+            _messages.LEVEL = _messages.INFO
 
-    if arguments.control_net_cache_memory_constraints:
-        constraint_lists.append(_pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS)
-        _pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS = arguments.control_net_cache_memory_constraints
-
-    try:
         render_loop.run()
-    except (_mediainput.ImageSeedError,
+
+    except (_arguments.DgenerateUsageError,
+            _mediainput.ImageSeedError,
             _mediainput.UnknownMimetypeError,
             _pipelinewrapper.InvalidModelUriError,
             _pipelinewrapper.InvalidSchedulerName,
@@ -121,17 +118,18 @@ def invoke_dgenerate(
             raise e
         return 1
     finally:
-        if arguments.control_net_cache_memory_constraints:
-            _pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()
+        if arguments is not None:
+            if arguments.control_net_cache_memory_constraints:
+                _pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()
 
-        if arguments.vae_cache_memory_constraints:
-            _pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()
+            if arguments.vae_cache_memory_constraints:
+                _pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()
 
-        if arguments.pipeline_cache_memory_constraints:
-            _pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()
+            if arguments.pipeline_cache_memory_constraints:
+                _pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()
 
-        if arguments.cache_memory_constraints:
-            _pipelinewrapper.CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()
+            if arguments.cache_memory_constraints:
+                _pipelinewrapper.CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()
 
     # Return the template environment for pipelining
     return 0
