@@ -788,7 +788,7 @@ class RenderLoop:
                                        arg_iterator=arg_iterator,
                                        image_seed_iterator=image_seed_iterator,
                                        fps=seed_info.anim_fps)
-                break
+                continue
 
             for diffusion_arguments in arg_iterator:
                 self._pre_generation_step(diffusion_arguments)
