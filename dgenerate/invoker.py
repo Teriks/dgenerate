@@ -86,6 +86,24 @@ def invoke_dgenerate(
         # enable setting and unsetting in batch processing
         _messages.LEVEL = _messages.INFO
 
+    constraint_lists = []
+
+    if arguments.cache_memory_constraints:
+        constraint_lists.append(_pipelinewrapper.CACHE_MEMORY_CONSTRAINTS)
+        _pipelinewrapper.CACHE_MEMORY_CONSTRAINTS = arguments.cache_memory_constraints
+
+    if arguments.pipeline_cache_memory_constraints:
+        constraint_lists.append(_pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS)
+        _pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS = arguments.pipeline_cache_memory_constraints
+
+    if arguments.vae_cache_memory_constraints:
+        constraint_lists.append(_pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS)
+        _pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS = arguments.vae_cache_memory_constraints
+
+    if arguments.control_net_cache_memory_constraints:
+        constraint_lists.append(_pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS)
+        _pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS = arguments.control_net_cache_memory_constraints
+
     try:
         render_loop.run()
     except (_mediainput.ImageSeedError,
@@ -102,5 +120,18 @@ def invoke_dgenerate(
         if throw:
             raise e
         return 1
+    finally:
+        if arguments.control_net_cache_memory_constraints:
+            _pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()
+
+        if arguments.vae_cache_memory_constraints:
+            _pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()
+
+        if arguments.pipeline_cache_memory_constraints:
+            _pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()
+
+        if arguments.cache_memory_constraints:
+            _pipelinewrapper.CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()
+
     # Return the template environment for pipelining
     return 0

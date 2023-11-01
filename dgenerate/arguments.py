@@ -1013,6 +1013,39 @@ actions.append(
                         change image content. (default: [30])"""))
 
 
+def _type_expression(arg):
+    pass
+
+
+actions.append(
+    parser.add_argument('--cache-memory-constraints', action='store', nargs='+',
+                        default=None,
+                        type=_type_expression,
+                        metavar="EXPR",
+                        help="""See: [https://dgenerate.readthedocs.io/en/latest/dgenerate_submodules.html#dgenerate.pipelinewrapper.CACHE_MEMORY_CONSTRAINTS]"""))
+
+actions.append(
+    parser.add_argument('--pipeline-cache-memory-constraints', action='store', nargs='+',
+                        default=None,
+                        type=_type_expression,
+                        metavar="EXPR",
+                        help="""See: [https://dgenerate.readthedocs.io/en/latest/dgenerate_submodules.html#dgenerate.pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS]"""))
+
+actions.append(
+    parser.add_argument('--vae-cache-memory-constraints', action='store', nargs='+',
+                        default=None,
+                        type=_type_expression,
+                        metavar="EXPR",
+                        help="""See: [https://dgenerate.readthedocs.io/en/latest/dgenerate_submodules.html#dgenerate.pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS]"""))
+
+actions.append(
+    parser.add_argument('--control-net-cache-memory-constraints', action='store', nargs='+',
+                        default=None,
+                        type=_type_expression,
+                        metavar="EXPR",
+                        help="""See: [https://dgenerate.readthedocs.io/en/latest/dgenerate_submodules.html#dgenerate.pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS]"""))
+
+
 class DgenerateUsageError(Exception):
     pass
 
@@ -1025,6 +1058,10 @@ class DgenerateArguments(dgenerate.RenderLoopConfig):
 
     plugin_module_paths: _types.Paths
     verbose: bool = False
+    cache_memory_constraints: typing.Optional[typing.List[str]] = None
+    pipeline_cache_memory_constraints: typing.Optional[typing.List[str]] = None
+    vae_cache_memory_constraints: typing.Optional[typing.List[str]] = None
+    control_net_cache_memory_constraints: typing.Optional[typing.List[str]] = None
 
     def __init__(self):
         super().__init__()
