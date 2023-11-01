@@ -786,7 +786,7 @@ class RenderLoop:
                 self._render_animation(pipeline_wrapper=pipeline_wrapper,
                                        set_extra_wrapper_args=set_extra_args,
                                        arg_iterator=arg_iterator,
-                                       image_seed_iterator=image_seed_iterator(),
+                                       image_seed_iterator=image_seed_iterator,
                                        fps=seed_info.anim_fps)
                 break
 
@@ -829,7 +829,7 @@ class RenderLoop:
                           arg_iterator:
                           typing.Generator[_pipelinewrapper.DiffusionArguments, None, None],
                           image_seed_iterator:
-                          typing.Generator[_mediainput.ImageSeed, None, None],
+                          typing.Callable[[], typing.Generator[_mediainput.ImageSeed, None, None]],
                           fps: typing.Union[int, float]):
 
         animation_format_lower = self.config.animation_format.lower()
@@ -864,7 +864,7 @@ class RenderLoop:
                             diffusion_args, self._generation_step,
                             ext=animation_format_lower))
 
-                for image_seed in image_seed_iterator:
+                for image_seed in image_seed_iterator():
                     with image_seed:
 
                         self._animation_frame_pre_generation(diffusion_args, image_seed)
