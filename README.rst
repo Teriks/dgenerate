@@ -2251,9 +2251,9 @@ To receive information about Jinja2 template variables that are set after a dgen
 You can use the ``\templates_help`` directive which is similar to the ``--templates-help`` option
 except it will print out all of the template variables assigned values instead of just their
 names and types. This is useful for figuring out the values of template variables set after
-a dgenerate invocation in a config file for debugging purposes. You can specify template
-variable names as arguments to ``\templates_help`` to receive help for only the mentioned
-variables.
+a dgenerate invocation in a config file for debugging purposes. You can specify one or
+more template variable names as arguments to ``\templates_help`` to receive help for only
+the mentioned variable names.
 
 .. code-block:: bash
 
