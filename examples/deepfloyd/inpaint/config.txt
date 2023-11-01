@@ -7,11 +7,11 @@ DeepFloyd/IF-I-L-v1.0
 --variant fp16
 --dtype float16
 --model-type torch-if
---inference-steps 100
+--inference-steps 30
 --guidance-scales 10
 --gen-seeds 2
 --image-seeds "{{ image_to_vary }};{{ mask_image }}"
---prompts "A fluffy orange cat sitting on a bench, thought bubble with the text 'meow'; fake, artwork, cartoon"
+--prompts "An orange cat sitting on a bench; fake, artwork, cartoon"
 --output-prefix stage1
 
 \save_modules stage_1_modules feature_extractor
@@ -25,7 +25,7 @@ DeepFloyd/IF-II-L-v1.0
 --variant fp16
 --dtype float16
 --model-type torch-ifs
---inference-steps 70
+--inference-steps 30
 --guidance-scales 10
 --prompts {{ format_prompt(last_prompts) }}
 --seeds {{ last_seeds | join(' ') }}
