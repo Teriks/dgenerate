@@ -1034,7 +1034,9 @@ preforming per image seed `Animation Slicing`_, or specifying the previous Deep 
 with the **floyd** keyword argument.
 
 When one dimension is specified, that dimension is the width, and the height is
-calculated from the aspect ratio of the input image.
+calculated from the aspect ratio of the input image.  Currently the height of an
+image is always calculated to be aspect correct by default for all resizing methods,
+in any case, this will be adjustable in the future.
 
 .. code-block:: bash
 
