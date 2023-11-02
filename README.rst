@@ -1067,23 +1067,28 @@ output.
 Animation Slicing
 =================
 
-Animated inputs can be sliced by a frame range, currently this only works globally so
-if you provide multiple animated inputs they will all be sliced in an identical manner 
-using the provided slice setting. Individual slice settings per image seed will probably 
-be added in the future.
+Animated inputs can be sliced by a frame range either globally using
+``--frame-start`` and ``--frame-end`` or locally using the named argument
+syntax for ``--image-seeds``, for instance: ``--image-seeds "animated.gif;frame-start=3;frame-end=10".
+
+Specifying a frame slice locally in an image seed overrides the global frame
+slice setting defined by ``--frame-start`` and ``--frame-end``, and is specific only
+to that image seed, other image seed definitions will not be affected.
 
 Perhaps you only want to run diffusion on the first frame of an animated input in
 order to save time in finding good parameters for generating every frame. You could
-do something like this in order to test different parameters on only the first frame,
-which will be much faster than rendering the entire video/gif outright.
+slice to only the first frame using ``--frame-start 0 --frame-end 0``, which will be much
+faster than rendering the entire video/gif outright.
 
-The slice range is inclusive, meaning that the frames pecified by ``--frame-start`` and ``--frame-end``
-will be included in the slice.  Both slice points do not have to be specified at the same time, IE, you can slice
-the tail end of a video out, or seek to a certain frame in the video and start from there if you wanted, by only
-specifying a start, or an end parameter instead of both simultaneously.
+The slice range zero indexed and also inclusive, inclusive means that the starting and ending frames
+specified by ``--frame-start`` and ``--frame-end`` will be included in the slice.  Both slice points
+do not have to be specified at the same time. You can exclude the tail end of a video with
+just ``--frame-end`` alone, or seek to a certain start frame in the video with ``--frame-start`` alone
+and render from there onward.
 
-If your slice only results in the processing of a single frame, it will be treated as a normal image seed and only
-image output will be produced instead of an animation.
+If your slice only results in the processing of a single frame, an animated file format will
+not be generated, only a single image output will be generated for that image seed during the
+generation step.
 
 
 .. code-block:: bash
