@@ -779,15 +779,24 @@ actions.append(
 actions.append(
     parser.add_argument('-s', '--output-size', action='store', default=None, type=_type_output_size,
                         metavar="SIZE",
-                        help="""Image output size.
-                        If an image seed is used it will be resized to this dimension with aspect ratio
-                        maintained before being used for generation, width will be fixed and a new height will be calculated,
-                        in most cases this will result of an image output of an equal size to the input (this value), except
-                        in the case of upscalers and Deep Floyd --model-type values (torch-if*). If only one integer
-                        value is provided, that is the value for both dimensions. X/Y dimension values should be separated by "x".  
-                        This value defaults to 512x512 for Stable Diffusion when no --image-seeds are specified, 1024x1024 for 
-                        Stable Diffusion XL (SDXL) model types, and 64x64 for --model-type torch-ifs / torch-ifs-img2img 
-                        (Deep Floyd super-scalers)"""))
+                        help="""Image output size, for txt2img generation, this is the exact output size.
+                        If an image seed is used its Seed, Mask, and/or Control component image sources will be 
+                        resized to this dimension with aspect ratio maintained before being used for generation by default. 
+                        Unless --no-aspect is specified, width will be fixed and a new height will be calculated for the input images. 
+                        In most cases resizing the image inputs will result in an image output of an equal size to the inputs, except 
+                        in the case of upscalers and Deep Floyd --model-type values (torch-if*). If only one integer value is provided, 
+                        that is the value for both dimensions. X/Y dimension values should be separated by "x".  This value defaults to 
+                        512x512 for Stable Diffusion when no --image-seeds are specified (IE txt2img mode), 1024x1024 for 
+                        Stable Diffusion XL (SDXL) model types, and 64x64 for --model-type torch-if (Deep Floyd stage 1). 
+                        Deep Floyd stage 1 images passed to superscaler models (--model-type torch-ifs*) that are specified with
+                        the 'floyd' keyword argument in an --image-seeds definition are never resized or processed in any way."""))
+
+actions.append(
+    parser.add_argument('-na', '--no-aspect', action='store_true',
+                        help="""This option disables aspect correct resizing of images provided to --image-seeds globally.
+                                Seed, Mask, and Control guidance images will be resized to the closest dimension specified by --output-size
+                                that is aligned by 8 pixels with no consideration of the source aspect ratio. This can be 
+                                overriden at the --image-seeds level with the image seed keyword argument 'aspect=true/false'."""))
 
 actions.append(
     parser.add_argument('-o', '--output-path', action='store', default='output',

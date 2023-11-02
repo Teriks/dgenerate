@@ -504,6 +504,13 @@ class RenderLoopConfig(_types.SetFromMixin):
     This corresponds to the ``--output-size`` argument of the dgenerate command line tool.
     """
 
+    no_aspect: bool = False
+    """
+    Should Seed, Mask, and Control guidance images specified in :py:attr:`.RenderLoopConfig.image_seeds`
+    definitions (``--image-seeds``) have their aspect ratio ignored when being resized to 
+    :py:attr:`.RenderLoopConfig.output_size` (``--output-size``) ?
+    """
+
     output_path: _types.Path = 'output'
     """
     Render loop write folder, where images and animations will be written.

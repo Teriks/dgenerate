@@ -173,6 +173,7 @@ class VideoReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
                  file: typing.Union[str, typing.BinaryIO],
                  file_source: str,
                  resize_resolution: _types.OptionalSize = None,
+                 aspect_correct: bool = True,
                  preprocessor: _preprocessors.ImagePreprocessor = None):
         """
         :param file: a file path or binary file stream
@@ -186,6 +187,9 @@ class VideoReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
 
         :param resize_resolution: Progressively resize each frame to this resolution while
             reading. The provided resolution will be aligned by 8 pixels.
+
+        :param aspect_correct: Should resize operations be aspect correct?
+
         :param preprocessor: optionally preprocess every frame with this image preprocessor
         """
         self._filename = file
@@ -198,19 +202,23 @@ class VideoReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
                 raise NotImplementedError(
                     'Cannot determine the format of a video file lacking a file extension.')
             self._container = av.open(file, format=ext.lstrip('.').lower())
-        self.resize_resolution = resize_resolution
 
-        if self.resize_resolution is None:
+        self._resize_resolution = resize_resolution
+        self._aspect_correct = aspect_correct
+
+        if self._resize_resolution is None:
             width = int(self._container.streams.video[0].width)
             height = int(self._container.streams.video[0].height)
             if not _image.is_aligned_by_8(width, height):
                 width, height = _image.resize_image_calc(old_size=(width, height),
-                                                         new_size=_image.align_by_8(width, height))
-                self.resize_resolution = (width, height)
+                                                         new_size=_image.align_by_8(width, height),
+                                                         aspect_correct=aspect_correct)
+                self._resize_resolution = (width, height)
         else:
             width, height = _image.resize_image_calc(old_size=(int(self._container.streams.video[0].width),
                                                                int(self._container.streams.video[0].height)),
-                                                     new_size=self.resize_resolution)
+                                                     new_size=self._resize_resolution,
+                                                     aspect_correct=aspect_correct)
 
         anim_fps = int(self._container.streams.video[0].average_rate)
         anim_frame_duration = 1000 / anim_fps
@@ -235,7 +243,9 @@ class VideoReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
     def __next__(self):
         rgb_image = next(self._iter).to_image()
         rgb_image.filename = self._file_source
-        return self.preprocess_image(rgb_image, self.resize_resolution)
+        return self.preprocess_image(image=rgb_image,
+                                     resize_to=self._resize_resolution,
+                                     aspect_correct=self._aspect_correct)
 
 
 class AnimatedImageReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
@@ -249,6 +259,7 @@ class AnimatedImageReader(_preprocessors.ImagePreprocessorMixin, AnimationReader
                  file: typing.Union[str, typing.BinaryIO],
                  file_source: str,
                  resize_resolution: _types.OptionalSize = None,
+                 aspect_correct: bool = True,
                  preprocessor: _preprocessors.ImagePreprocessor = None):
         """
         :param file: a file path or binary file stream
@@ -263,13 +274,16 @@ class AnimatedImageReader(_preprocessors.ImagePreprocessorMixin, AnimationReader
             resolution while reading. The provided resolution will be aligned
             by 8 pixels.
 
+        :param aspect_correct: Should resize operations be aspect correct?
+
         :param preprocessor: optionally preprocess every frame with this image preprocessor
         """
         self._img = PIL.Image.open(file)
         self._file_source = file_source
 
         self._iter = PIL.ImageSequence.Iterator(self._img)
-        self.resize_resolution = resize_resolution
+        self._resize_resolution = resize_resolution
+        self._aspect_correct = aspect_correct
 
         total_frames = self._img.n_frames
 
@@ -281,16 +295,18 @@ class AnimatedImageReader(_preprocessors.ImagePreprocessorMixin, AnimationReader
 
         anim_fps = 1000 / anim_frame_duration
 
-        if self.resize_resolution is None:
+        if self._resize_resolution is None:
             width = self._img.size[0]
             height = self._img.size[1]
             if not _image.is_aligned_by_8(width, height):
                 width, height = _image.resize_image_calc(old_size=(width, height),
-                                                         new_size=_image.align_by_8(width, height))
-                self.resize_resolution = (width, height)
+                                                         new_size=_image.align_by_8(width, height),
+                                                         aspect_correct=aspect_correct)
+                self._resize_resolution = (width, height)
         else:
             width, height = _image.resize_image_calc(old_size=self._img.size,
-                                                     new_size=self.resize_resolution)
+                                                     new_size=self._resize_resolution,
+                                                     aspect_correct=aspect_correct)
 
         super().__init__(width=width,
                          height=height,
@@ -306,7 +322,9 @@ class AnimatedImageReader(_preprocessors.ImagePreprocessorMixin, AnimationReader
         with next(self._iter) as img:
             rgb_image = _image.to_rgb(img)
             rgb_image.filename = self._file_source
-            return self.preprocess_image(rgb_image, self.resize_resolution)
+            return self.preprocess_image(image=rgb_image,
+                                         resize_to=self._resize_resolution,
+                                         aspect_correct=self._aspect_correct)
 
 
 class MockImageAnimationReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
@@ -320,6 +338,7 @@ class MockImageAnimationReader(_preprocessors.ImagePreprocessorMixin, AnimationR
     def __init__(self,
                  img: PIL.Image.Image,
                  resize_resolution: _types.OptionalSize = None,
+                 aspect_correct: bool = True,
                  image_repetitions: int = 1,
                  preprocessor: _preprocessors.ImagePreprocessor = None):
         """
@@ -330,6 +349,9 @@ class MockImageAnimationReader(_preprocessors.ImagePreprocessorMixin, AnimationR
         :param resize_resolution: the source image will be resized to this dimension with
             a maintained aspect ratio. This occurs once upon construction, a copy is then yielded
             for each frame that is read. The provided resolution will be aligned by 8 pixels.
+
+        :param aspect_correct: Should resize operations be aspect correct?
+
         :param image_repetitions: number of frames that this mock reader provides
             using a copy of the source image.
         :param preprocessor: optionally preprocess the initial image with
@@ -337,22 +359,25 @@ class MockImageAnimationReader(_preprocessors.ImagePreprocessorMixin, AnimationR
         """
         self._img = _image.copy_img(img)
         self._idx = 0
-        self.resize_resolution = resize_resolution
+        self._resize_resolution = resize_resolution
+        self._aspect_correct = aspect_correct
 
         total_frames = image_repetitions
         anim_fps = 30
         anim_frame_duration = 1000 / anim_fps
 
-        if self.resize_resolution is None:
+        if self._resize_resolution is None:
             width = self._img.size[0]
             height = self._img.size[1]
             if not _image.is_aligned_by_8(width, height):
                 width, height = _image.resize_image_calc(old_size=(width, height),
-                                                         new_size=_image.align_by_8(width, height))
-                self.resize_resolution = (width, height)
+                                                         new_size=_image.align_by_8(width, height),
+                                                         aspect_correct=aspect_correct)
+                self._resize_resolution = (width, height)
         else:
             width, height = _image.resize_image_calc(old_size=self._img.size,
-                                                     new_size=self.resize_resolution)
+                                                     new_size=self._resize_resolution,
+                                                     aspect_correct=aspect_correct)
 
         super().__init__(width=width,
                          height=height,
@@ -363,7 +388,9 @@ class MockImageAnimationReader(_preprocessors.ImagePreprocessorMixin, AnimationR
 
         # Only need to preprocess once
 
-        self._img = self.preprocess_image(self._img, self.resize_resolution)
+        self._img = self.preprocess_image(image=self._img,
+                                          resize_to=self._resize_resolution,
+                                          aspect_correct=self._aspect_correct)
 
     @property
     def total_frames(self) -> int:
@@ -460,6 +487,15 @@ class ImageSeedParseResult:
         * ``--image-seeds "img2img.png;control=control1.png, control2.png;resize=512x512"``
         * ``--image-seeds "img2img.png;mask=mask.png;control=control.png;resize=512x512"``
         * ``--image-seeds "img2img.png;mask=mask.png;control=control1.png, control2.png;resize=512x512"``
+        
+    This should override any globally defined resize value.
+    """
+
+    aspect_correct: _types.OptionalBoolean = None
+    """
+    Aspect correct resize setting override from the **aspect** image seed keyword argument, 
+    if this is None it was not specified. This value if defined should override any globally
+    defined aspect correct resize setting.
     """
 
     frame_start: _types.OptionalInteger = None
@@ -572,6 +608,7 @@ def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
                     'control',
                     'floyd',
                     'resize',
+                    'aspect',
                     'frame-start',
                     'frame-end']
 
@@ -590,6 +627,7 @@ def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
                 break
 
     if not non_legacy:
+        # No keyword arguments, basic old syntax
         return _parse_image_seed_uri_legacy(uri)
 
     result = ImageSeedParseResult()
@@ -641,6 +679,19 @@ def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
             result.resize_resolution = (dimensions[0], dimensions[0])
         else:
             result.resize_resolution = dimensions
+
+    aspect = parse_result.args.get('aspect', None)
+
+    if aspect is not None:
+        try:
+            aspect = _types.parse_bool(aspect)
+        except ValueError:
+            raise ImageSeedError(
+                'Image seed aspect keyword argument must be a boolean value '
+                'indicating if aspect correct resizing is enabled. '
+                'received an un-parseable / non boolean value.')
+
+    result.aspect_correct = aspect
 
     frame_start = parse_result.args.get('frame-start', None)
     frame_end = parse_result.args.get('frame-end', None)
@@ -901,7 +952,8 @@ def mime_type_is_supported(mimetype: str) -> bool:
 def create_image(
         path_or_file: typing.Union[typing.BinaryIO, str],
         file_source: str,
-        resize_resolution: _types.OptionalSize = None) -> PIL.Image.Image:
+        resize_resolution: _types.OptionalSize = None,
+        aspect_correct: bool = True) -> PIL.Image.Image:
     """
     Create an RGB format PIL image from a file path or binary file stream.
     The image is oriented according to any EXIF directives. Image is aligned
@@ -910,6 +962,7 @@ def create_image(
     :param path_or_file: file path or binary IO object
     :param file_source: :py:attr:`PIL.Image.Image.filename` is set to this value
     :param resize_resolution: Optional resize resolution
+    :param aspect_correct: preserve aspect ratio when resize_resolution is specified?
     :return: :py:class:`PIL.Image.Image`
     """
 
@@ -931,7 +984,9 @@ def create_image(
     else:
         with PIL.Image.open(file) as img, _image.to_rgb(img) as rgb_img, _exif_orient(rgb_img) as o_img:
             o_img.filename = file_source
-            resized = _image.resize_image(o_img, resize_resolution)
+            resized = _image.resize_image(img=o_img,
+                                          size=resize_resolution,
+                                          aspect_correct=aspect_correct)
             return resized
 
 
@@ -939,6 +994,7 @@ def create_animation_reader(mimetype: str,
                             file_source: str,
                             file: typing.BinaryIO,
                             resize_resolution: _types.OptionalSize = None,
+                            aspect_correct: bool = True,
                             preprocessor: typing.Optional[_preprocessors.ImagePreprocessor] = None,
                             ) -> AnimationReader:
     """
@@ -946,7 +1002,6 @@ def create_animation_reader(mimetype: str,
 
     Images will return a :py:class:`.MockImageAnimationReader` with a *total_frames* value of 1,
     which can then be adjusted by you.
-
 
     :py:class:`.VideoReader` or :py:class:`.AnimatedImageReader` will be returned for Video
     files and Animated Images respectively.
@@ -964,6 +1019,8 @@ def create_animation_reader(mimetype: str,
         resolution while reading. The provided resolution will be aligned
         by 8 pixels.
 
+    :param aspect_correct: Should resize operations be aspect correct?
+
     :param preprocessor: optionally preprocess every frame with this image preprocessor
 
     :return: :py:class:`.AnimationReader`
@@ -973,17 +1030,22 @@ def create_animation_reader(mimetype: str,
         return AnimatedImageReader(file=file,
                                    file_source=file_source,
                                    resize_resolution=resize_resolution,
+                                   aspect_correct=aspect_correct,
                                    preprocessor=preprocessor)
     elif mimetype_is_video(mimetype):
         return VideoReader(file=file,
                            file_source=file_source,
                            resize_resolution=resize_resolution,
+                           aspect_correct=aspect_correct,
                            preprocessor=preprocessor)
     elif mimetype_is_static_image(mimetype):
-        with create_image(file, file_source,
-                          resize_resolution) as img:
+        with create_image(path_or_file=file,
+                          file_source=file_source,
+                          resize_resolution=resize_resolution,
+                          aspect_correct=aspect_correct) as img:
             return MockImageAnimationReader(img=img,
                                             resize_resolution=resize_resolution,
+                                            aspect_correct=aspect_correct,
                                             preprocessor=preprocessor)
     else:
         supported = _textprocessing.oxford_comma(get_supported_mimetypes(), conjunction='or')
@@ -1006,12 +1068,29 @@ class AnimationReaderSpec:
     Optional image preprocessor associated with the file
     """
 
+    aspect_correct: bool = True
+    """
+    Aspect correct resize enabled?
+    """
+
+    resize_resolution: _types.OptionalSize = None
+    """
+    Optional resize resolution.
+    """
+
     def __init__(self, path: str,
-                 preprocessor: typing.Optional[_preprocessors.ImagePreprocessor] = None):
+                 preprocessor: typing.Optional[_preprocessors.ImagePreprocessor] = None,
+                 resize_resolution: _types.OptionalSize = None,
+                 aspect_correct: bool = True):
         """
         :param path: File path or URL
+        :param resize_resolution: Resize resolution
+        :param aspect_correct: Aspect correct resize enabled?
         :param preprocessor: Optional image preprocessor associated with the file
         """
+
+        self.aspect_correct = aspect_correct
+        self.resize_resolution = resize_resolution
         self.path = path
         self.preprocessor = preprocessor
 
@@ -1083,13 +1162,11 @@ class MultiAnimationReader:
 
     def __init__(self,
                  specs: typing.List[AnimationReaderSpec],
-                 resize_resolution: _types.OptionalSize = None,
                  frame_start: int = 0,
                  frame_end: _types.OptionalInteger = None,
                  path_opener: typing.Callable[[str], typing.BinaryIO] = fetch_media_data_stream):
         """
         :param specs: list of :py:class:`.AnimationReaderSpec`
-        :param resize_resolution: optional resize resolution for frames
         :param frame_start: inclusive frame slice start frame
         :param frame_end: inclusive frame slice end frame
         :param path_opener: opens a binary file stream from paths
@@ -1116,7 +1193,8 @@ class MultiAnimationReader:
                     mimetype=mimetype,
                     file_source=spec.path,
                     file=file_stream,
-                    resize_resolution=resize_resolution,
+                    resize_resolution=spec.resize_resolution,
+                    aspect_correct=spec.aspect_correct,
                     preprocessor=spec.preprocessor)
             )
             self._file_streams.append(file_stream)
@@ -1308,6 +1386,7 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
                        frame_start: int = 0,
                        frame_end: _types.OptionalInteger = None,
                        resize_resolution: _types.OptionalSize = None,
+                       aspect_correct: bool = True,
                        seed_image_preprocessor: typing.Optional[_preprocessors.ImagePreprocessor] = None,
                        mask_image_preprocessor: typing.Optional[_preprocessors.ImagePreprocessor] = None,
                        control_image_preprocessor: ControlPreprocessorSpec = None) -> \
@@ -1342,10 +1421,18 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
 
     One or more :py:class:`.ImageSeed` objects may be yielded depending on whether an animation is being read.
 
+
     :param uri: ``--image-seeds`` uri or :py:class:`.ImageSeedParseResult`
     :param frame_start: starting frame, inclusive value
     :param frame_end: optional end frame, inclusive value
-    :param resize_resolution: optional resize resolution
+
+    :param resize_resolution: optional global resize resolution. The URI syntax of image seeds
+        allows for overriding this value.
+
+    :param aspect_correct: should the global resize operation be aspect correct by default?
+        The URI syntax for image seeds allows for overriding this value with the **aspect**
+        keyword argument.
+
     :param seed_image_preprocessor: optional :py:class:`dgenerate.preprocessors.ImagePreprocessor`
     :param mask_image_preprocessor: optional :py:class:`dgenerate.preprocessors.ImagePreprocessor`
 
@@ -1372,12 +1459,25 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
     else:
         parse_result = parse_image_seed_uri(uri)
 
+    if parse_result.resize_resolution is not None:
+        resize_resolution = parse_result.resize_resolution
+
+    if parse_result.aspect_correct is not None:
+        aspect_correct = parse_result.aspect_correct
+
     reader_specs = [
-        AnimationReaderSpec(parse_result.seed_path, seed_image_preprocessor)
+        AnimationReaderSpec(path=parse_result.seed_path,
+                            preprocessor=seed_image_preprocessor,
+                            resize_resolution=resize_resolution,
+                            aspect_correct=aspect_correct)
     ]
 
     if parse_result.mask_path is not None:
-        reader_specs.append(AnimationReaderSpec(parse_result.mask_path, mask_image_preprocessor))
+        reader_specs.append(AnimationReaderSpec(
+            path=parse_result.mask_path,
+            preprocessor=mask_image_preprocessor,
+            resize_resolution=resize_resolution,
+            aspect_correct=aspect_correct))
 
     if parse_result.control_path is not None:
         if not isinstance(control_image_preprocessor, list):
@@ -1391,17 +1491,19 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
 
         reader_specs += [
             AnimationReaderSpec(
-                p.strip(),
-                control_image_preprocessor[idx] if idx < len(control_image_preprocessor) else None)
+                path=p.strip(),
+                preprocessor=control_image_preprocessor[idx] if idx < len(control_image_preprocessor) else None,
+                resize_resolution=resize_resolution,
+                aspect_correct=aspect_correct)
             for idx, p in enumerate(control_guidance_image_paths)
         ]
 
     if parse_result.floyd_path is not None:
         # There should never be a reason to preprocess floyd stage output
-        reader_specs.append(AnimationReaderSpec(parse_result.floyd_path, None))
-
-    if parse_result.resize_resolution is not None:
-        resize_resolution = parse_result.resize_resolution
+        # also do not resize it
+        reader_specs.append(AnimationReaderSpec(
+            path=parse_result.floyd_path,
+            resize_resolution=None))
 
     if parse_result.frame_start is not None:
         frame_start = parse_result.frame_start
@@ -1410,7 +1512,6 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
         frame_end = parse_result.frame_end
 
     with MultiAnimationReader(specs=reader_specs,
-                              resize_resolution=resize_resolution,
                               frame_start=frame_start,
                               frame_end=frame_end) as reader:
 
@@ -1462,6 +1563,7 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
                           frame_start: int = 0,
                           frame_end: _types.OptionalInteger = None,
                           resize_resolution: _types.OptionalSize = None,
+                          aspect_correct: bool = True,
                           preprocessor: ControlPreprocessorSpec = None) -> \
         typing.Generator[ImageSeed, None, None]:
     """
@@ -1489,7 +1591,13 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
     :param uri: ``--image-seeds`` uri or :py:class:`.ImageSeedParseResult`
     :param frame_start: starting frame, inclusive value
     :param frame_end: optional end frame, inclusive value
-    :param resize_resolution: optional resize resolution
+
+    :param resize_resolution: optional global resize resolution. The URI syntax of image seeds
+        allows for overriding this value.
+
+    :param aspect_correct: should the global resize operation be aspect correct by default?
+        The URI syntax for image seeds allows for overriding this value with the **aspect**
+        keyword argument.
 
     :param preprocessor: optional :py:class:`dgenerate.preprocessors.ImagePreprocessor` or list of them.
         A list is used to specify preprocessors for individual images in a multi guidance image specification
@@ -1520,6 +1628,12 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
             f'any other image source arguments such as "mask" or "control" or "floyd", '
             f'only a single specification is needed.')
 
+    if parse_result.resize_resolution is not None:
+        resize_resolution = parse_result.resize_resolution
+
+    if parse_result.aspect_correct is not None:
+        aspect_correct = parse_result.aspect_correct
+
     reader_specs = []
 
     if not isinstance(preprocessor, list):
@@ -1533,13 +1647,12 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
 
     reader_specs += [
         AnimationReaderSpec(
-            p.strip(),
-            preprocessor[idx] if idx < len(preprocessor) else None)
+            path=p.strip(),
+            preprocessor=preprocessor[idx] if idx < len(preprocessor) else None,
+            resize_resolution=resize_resolution,
+            aspect_correct=aspect_correct)
         for idx, p in enumerate(control_guidance_image_paths)
     ]
-
-    if parse_result.resize_resolution is not None:
-        resize_resolution = parse_result.resize_resolution
 
     if parse_result.frame_start is not None:
         frame_start = parse_result.frame_start
@@ -1548,7 +1661,6 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
         frame_end = parse_result.frame_end
 
     with MultiAnimationReader(specs=reader_specs,
-                              resize_resolution=resize_resolution,
                               frame_start=frame_start,
                               frame_end=frame_end) as reader:
 

@@ -732,12 +732,7 @@ class RenderLoop:
             if self.config.seeds_to_images:
                 overrides['seed'] = [seed_to_image]
 
-            arg_iterator = self.config.iterate_diffusion_args(
-                sdxl_high_noise_fraction=self.config.sdxl_high_noise_fractions,
-                image_seed_strength=self.config.image_seed_strengths,
-                upscaler_noise_level=self.config.upscaler_noise_levels,
-                **overrides
-            )
+            arg_iterator = self.config.iterate_diffusion_args(**overrides)
 
             if is_control_guidance_spec:
                 seed_info = _mediainput.get_control_image_info(
@@ -749,19 +744,21 @@ class RenderLoop:
             if is_control_guidance_spec:
                 def image_seed_iterator():
                     yield from _mediainput.iterate_control_image(
-                        parsed_image_seed,
-                        self.config.frame_start,
-                        self.config.frame_end,
-                        self.config.output_size,
+                        uri=parsed_image_seed,
+                        frame_start=self.config.frame_start,
+                        frame_end=self.config.frame_end,
+                        resize_resolution=self.config.output_size,
+                        aspect_correct=not self.config.no_aspect,
                         preprocessor=self._load_control_preprocessors())
 
             else:
                 def image_seed_iterator():
                     yield from _mediainput.iterate_image_seed(
-                        parsed_image_seed,
-                        self.config.frame_start,
-                        self.config.frame_end,
-                        self.config.output_size,
+                        uri=parsed_image_seed,
+                        frame_start=self.config.frame_start,
+                        frame_end=self.config.frame_end,
+                        resize_resolution=self.config.output_size,
+                        aspect_correct=not self.config.no_aspect,
                         seed_image_preprocessor=self._load_seed_preprocessors(),
                         mask_image_preprocessor=self._load_mask_preprocessors(),
                         control_image_preprocessor=self._load_control_preprocessors())

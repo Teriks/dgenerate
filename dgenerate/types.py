@@ -74,6 +74,9 @@ OptionalPrompts = typing.Optional[Prompts]
 OptionalString = typing.Optional[str]
 
 
+OptionalBoolean = typing.Optional[bool]
+
+
 def class_and_id_string(obj) -> str:
     """
     Return a string formatted with an objects class name next to its memory ID.
