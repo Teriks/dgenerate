@@ -1791,8 +1791,8 @@ Multiple control image sources can be specified in these ways when using multipl
 It is considered a syntax error if you specify a non-equal amount of control guidance
 images and ``--control-nets`` URIs and you will receive an error message if you do so.
 
-The "mask" argument is optional and used to request inpainting, ``resize=WIDTHxHEIGHT`` can be used to
-select a per ``--image-size`` resize dimension for all image sources involved in that particular
+The **mask** argument is optional and used to request inpainting, ``resize=WIDTHxHEIGHT`` can be used to
+select a per ``--image-seeds`` resize dimension for all image sources involved in that particular
 specification.
 
 ControlNet guidance images may actually be animations such as MP4's, GIF's etc. Frames can be
