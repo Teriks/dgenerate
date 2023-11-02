@@ -968,7 +968,7 @@ it's URI syntax described further in the section `Inpainting`_.
 In addition to this it can be used to provide control guidance images in the case of txt2img, img2img, or inpainting
 via the use of a URI syntax involving keyword arguments.
 
-The syntax "my-image-seed.png;control=my-control-image.png" can be used with ``--control-nets`` to specify
+The syntax ``--image-seeds "my-image-seed.png;control=my-control-image.png"`` can be used with ``--control-nets`` to specify
 img2img mode with a ControlNet for example, see: `Specifying Control Nets`_ for more information.
 
 
