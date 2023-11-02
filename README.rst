@@ -923,26 +923,33 @@ All using 50 inference steps, and 10 for guidance scale value.
 Image Seed
 ==========
 
-Use a photo of Buzz Aldrin on the moon to generate a photo of an astronaut standing on mars using Img2Img,
-this uses an image seed downloaded from wikipedia.
+The ``--image-seeds`` argument can be used to specify one or more image input resource groups
+for use in rendering, and allows for the specification of img2img source images, inpaint masks,
+control net guidance images, deep floyd stage images, image group resizing, and frame slicing values
+for animations. It possesses it's own URI syntax for defining different image inputs used for image generation,
+the example described below is the simplest case for one image input (img2img).
 
-Disk file paths may also be used for image seeds, multiple image seeds may be provided, images will be
-generated from each image seed individually.
+This example uses a photo of Buzz Aldrin on the moon to generate a photo of an astronaut standing on mars
+using img2img, this uses an image seed downloaded from wikipedia.
 
-Generate this image using 5 different seeds, 3 different inference-step values, 3 different
-guidance-scale values as above.
-
-In addition this image will be generated using 3 different image seed strengths.
-
-Adjust output size to 512x512 and output generated images to 'astronaut' folder, if the image seed
-is not a 1:1 aspect ratio the width will be fixed to the requested width and the height of the output image
-calculated to maintain aspect ratio.
-
-If you do not adjust the output size of the generated image, the size of the input image seed will be used.
-
-135 uniquely named images will be generated (5x3x3x3)
+Disk file paths may also be used for image seeds and generally that is the standard use case,
+multiple image seed definitions may be provided and images will be generated from each image
+seed individually.
 
 .. code-block:: bash
+
+    # Generate this image using 5 different seeds, 3 different inference-step values, 3 different
+    # guidance-scale values as above.
+
+    # In addition this image will be generated using 3 different image seed strengths.
+
+    # Adjust output size to 512x512 and output generated images to 'astronaut' folder, if the image seed
+    # is not a 1:1 aspect ratio the width will be fixed to the requested width and the height of the output image
+    # calculated to maintain aspect ratio.
+
+    # If you do not adjust the output size of the generated image, the size of the input image seed will be used.
+
+    # 135 uniquely named images will be generated (5x3x3x3)
 
     dgenerate stabilityai/stable-diffusion-2-1 \
     --prompts "an astronaut walking on mars" \
@@ -955,8 +962,14 @@ If you do not adjust the output size of the generated image, the size of the inp
     --output-size 512x512
 
 
+``--image-seeds`` serves as the entire mechanism for determining if img2img or inpainting is going to occur via
+it's URI syntax described further in the section `Inpainting`_.
+
+In addition to this it can be used to provide control guidance images in the case of txt2img, img2img, or inpainting
+via the use of a URI syntax involving keyword arguments.
+
 The syntax "my-image-seed.png;control=my-control-image.png" can be used with ``--control-nets`` to specify
-img2img mode with a ControlNet, see: `Specifying Control Nets`_ for more information.
+img2img mode with a ControlNet for example, see: `Specifying Control Nets`_ for more information.
 
 
 Inpainting
@@ -968,11 +981,15 @@ in with generated content.
 
 For using inpainting on animated image seeds, jump to: `Inpainting Animations`_
 
-In order to use inpainting, specify your image seed like so:
-``--image-seeds "my-image-seed.png;my-mask-image.png"`` or ``--image-seeds "my-image-seed.png;mask=my-mask-image.png"``
+The following syntax's are possible:
 
-The format is your image seed and mask image seperated by ``;``, optionally mask can be named argument.
-The alternate syntax is for disambiguation when `Specifying Control Nets`_.
+    * ``--image-seeds "my-image-seed.png;my-mask-image.png"``
+    * ``--image-seeds "my-image-seed.png;mask=my-mask-image.png"``
+
+The format is your image seed and mask image seperated by ``;``, optionally **mask** can be named argument.
+The alternate syntax is for disambiguation when preforming img2img or inpainting operations while `Specifying Control Nets`_
+or other operations where keyword arguments might be necessary for disambiguation such as per image seed `Animation Slicing`_,
+and the specification of the image from a previous Deep Floyd stage using the **floyd** argument.
 
 Mask images can be downloaded from URL's just like image seeds, however for this example the syntax specifies a file on disk for brevity.
 
@@ -1002,10 +1019,17 @@ You can specify their output size individually at the end of each provided image
 
 This will work when using a mask image for inpainting as well, including when using animated inputs.
 
-The syntax is: ``--image-seeds "my-image-seed.png;512x512"`` or ``--image-seeds "my-image-seed.png;my-mask-image.png;512x512"``
-or ``--image-seeds "my-image-seed.png;mask=my-mask-image.png;resize=512x512"``
+This also works when `Specifying Control Nets`_ and guidance images for control nets.
 
-The alternate syntax with named arguments is for disambiguation when `Specifying Control Nets`_.
+Here are some possible definitions:
+
+    * ``--image-seeds "my-image-seed.png;512x512"``
+    * ``--image-seeds "my-image-seed.png;my-mask-image.png;512x512"``
+    * ``--image-seeds "my-image-seed.png;mask=my-mask-image.png;resize=512x512"``
+
+The alternate syntax with named arguments is for disambiguation when `Specifying Control Nets`_, or
+preforming per image seed `Animation Slicing`_, or specifying the previous Deep Floyd stage output
+with the **floyd** keyword argument.
 
 When one dimension is specified, that dimension is the width, and the height is
 calculated from the aspect ratio of the input image.
@@ -1071,6 +1095,18 @@ Animated inputs can be sliced by a frame range either globally using
 ``--frame-start`` and ``--frame-end`` or locally using the named argument
 syntax for ``--image-seeds``, for instance: ``--image-seeds "animated.gif;frame-start=3;frame-end=10"``.
 
+When using animation slicing at the ``--image-seed`` level, all image input definitions
+other than the main image must be specified using keyword arguments.
+
+For example here are some possible definitions:
+
+    * ``--image-seeds "animated.gif;frame-start=3;frame-end=10"``
+    * ``--image-seeds "animated.gif;mask=animated-mask.gif;frame-start=3;frame-end=10``
+    * ``--image-seeds "animated.gif;control=animated-control-guidance.gif;frame-start=3;frame-end=10``
+    * ``--image-seeds "animated.gif;mask=animated-mask.gif;control=animated-control-guidance.gif;frame-start=3;frame-end=10``
+    * ``--image-seeds "animated.gif;floyd=floyd-stage1.gif;frame-start=3;frame-end=10"``
+    * ``--image-seeds "animated.gif;mask=animated-mask.gif;floyd=floyd-stage1.gif;frame-start=3;frame-end=10"``
+
 Specifying a frame slice locally in an image seed overrides the global frame
 slice setting defined by ``--frame-start`` and ``--frame-end``, and is specific only
 to that image seed, other image seed definitions will not be affected.
@@ -1084,7 +1120,7 @@ The slice range zero indexed and also inclusive, inclusive means that the starti
 specified by ``--frame-start`` and ``--frame-end`` will be included in the slice.  Both slice points
 do not have to be specified at the same time. You can exclude the tail end of a video with
 just ``--frame-end`` alone, or seek to a certain start frame in the video with ``--frame-start`` alone
-and render from there onward.
+and render from there onward, this applies for keyword arguments in the ``--image-seeds`` definition as well.
 
 If your slice only results in the processing of a single frame, an animated file format will
 not be generated, only a single image output will be generated for that image seed during the
