@@ -1068,18 +1068,35 @@ This also works when `Specifying Control Nets`_ and guidance images for control 
 
 Here are some possible definitions:
 
-    * ``--image-seeds "my-image-seed.png;512x512"``
-    * ``--image-seeds "my-image-seed.png;my-mask-image.png;512x512"``
-    * ``--image-seeds "my-image-seed.png;mask=my-mask-image.png;resize=512x512"``
+    * ``--image-seeds "my-image-seed.png;512x512"`` (img2img)
+    * ``--image-seeds "my-image-seed.png;resize=512x512"`` (img2img)
+    * ``--image-seeds "my-image-seed.png;my-mask-image.png;512x512"`` (inpainting)
+    * ``--image-seeds "my-image-seed.png;mask=my-mask-image.png;resize=512x512"`` (inpainting)
 
 The alternate syntax with named arguments is for disambiguation when `Specifying Control Nets`_, or
 preforming per image seed `Animation Slicing`_, or specifying the previous Deep Floyd stage output
 with the **floyd** keyword argument.
 
-When one dimension is specified, that dimension is the width, and the height is
-calculated from the aspect ratio of the input image.  Currently the height of an
-image is always calculated to be aspect correct by default for all resizing methods
-in any case, this will be adjustable in the future.
+When one dimension is specified, that dimension is the width, and the height.
+
+The height of an image is calculated to be aspect correct by default for all resizing
+methods unless ``--no-aspect`` has been given as an argument on the command line or the
+**aspect** keyword argument is used in the ``--image-seeds`` definition.
+
+The the aspect correct resize behavior can be controlled on a per image seed definition basis
+using the **aspect** keyword argument.  Any value given to this argument overrides the presence
+or absense of the ``--no-aspect`` command line argument.
+
+the **aspect** keyword argument can only be used when all other components of the image seed
+definition are defined using keyword arguments. ``aspect=false`` disables aspect correct resizing,
+and ``aspect=true`` enables it.
+
+Some possible definitions:
+
+    * ``--image-seeds "my-image-seed.png;resize=512x512;aspect=false"``
+    * ``--image-seeds "my-image-seed.png;my-mask-image.png;512x512;aspect=false"``
+    * ``--image-seeds "my-image-seed.png;mask=my-mask-image.png;resize=512x512;aspect=false"``
+
 
 .. code-block:: bash
 
