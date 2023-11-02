@@ -1805,9 +1805,9 @@ Arguments pertaining to the loading of each ControlNet model may be specified in
 way as when using ``--vae`` with the addition of a ``scale`` argument and ``from_torch`` argument
 when using flax.
 
-Available arguments when using torch are: ``scale``, ``start``, ``end``, ``revision``, ``variant``, ``subfolder``, ``dtype``
+Available arguments when using torch ``--model-type`` values are: ``scale``, ``start``, ``end``, ``revision``, ``variant``, ``subfolder``, ``dtype``
 
-Available arguments when using flax are: ``scale``, ``revision``, ``subfolder``, ``dtype``, ``from_torch``
+Available arguments when using flax ``--model-type`` values are: ``scale``, ``revision``, ``subfolder``, ``dtype``, ``from_torch``
 
 Most named arguments apply to loading from a huggingface repository or folder
 that may or may not be a local git repository on disk, when loading directly from a .safetensors file
