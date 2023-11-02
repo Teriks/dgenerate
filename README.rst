@@ -1100,6 +1100,9 @@ Some possible definitions:
 
 .. code-block:: bash
 
+    # This example preforms img2img generation, followed by inpainting
+    # generation using 2 image seed definitions.
+
     dgenerate stabilityai/stable-diffusion-2-1 \
     --image-seeds "my-image-seed.png;1024" "my-image-seed.png;my-mask-image.png;512x512" \
     --prompts "Face of a yellow cat, high resolution, sitting on a park bench" \
