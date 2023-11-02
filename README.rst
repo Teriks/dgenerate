@@ -1097,10 +1097,9 @@ Some possible definitions:
     * ``--image-seeds "my-image-seed.png;mask=my-mask-image.png;resize=512x512;aspect=false"`` (inpainting)
 
 
-.. code-block:: bash
+The following example preforms img2img generation, followed by inpainting generation using 2 image seed definitions.
 
-    # This example preforms img2img generation, followed by inpainting
-    # generation using 2 image seed definitions.
+.. code-block:: bash
 
     dgenerate stabilityai/stable-diffusion-2-1 \
     --image-seeds "my-image-seed.png;1024" "my-image-seed.png;my-mask-image.png;512x512" \
