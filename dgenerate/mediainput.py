@@ -24,6 +24,7 @@ import contextlib
 import mimetypes
 import os
 import pathlib
+import re
 import sqlite3
 import typing
 
@@ -438,6 +439,8 @@ class ImageSeedParseResult:
     Optional path to a result from a Deep Floyd IF stage, used only for img2img and inpainting mode
     with Deep Floyd.  This is the only way to specify the image that was output by a stage in that case.
     
+    the arguments floyd and control are mutually exclusive.
+    
     In parses such as:
     
         * ``--image-seeds "img2img.png;floyd=stage1-output.png"``
@@ -457,6 +460,16 @@ class ImageSeedParseResult:
         * ``--image-seeds "img2img.png;control=control1.png, control2.png;resize=512x512"``
         * ``--image-seeds "img2img.png;mask=mask.png;control=control.png;resize=512x512"``
         * ``--image-seeds "img2img.png;mask=mask.png;control=control1.png, control2.png;resize=512x512"``
+    """
+
+    frame_start: _types.OptionalInteger = None
+    """
+    Optional start frame specification for per-image seed slicing.
+    """
+
+    frame_end: _types.OptionalInteger = None
+    """
+    Optional end frame specification for per-image seed slicing.
     """
 
     def get_control_image_paths(self) -> typing.Optional[typing.List[str]]:
@@ -486,6 +499,8 @@ class ImageSeedParseResult:
         For instance could it be a single img2img image definition, or a controlnet guidance
         image or list of controlnet guidance images?
 
+        This requires that ``mask_path``, ``control_path``, and ``floyd_path`` are all undefined.
+
         Possible parses which trigger this condition are:
 
             * ``--image-seeds "img2img.png"``
@@ -497,7 +512,7 @@ class ImageSeedParseResult:
 
         :return: bool
         """
-        return self.mask_path is None and self.control_path is None
+        return self.mask_path is None and self.control_path is None and self.floyd_path is None
 
 
 # noinspection HttpUrlsUsage
@@ -553,6 +568,13 @@ def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
     :return: :py:class:`.ImageSeedParseResult`
     """
 
+    keyword_args = ['mask',
+                    'control',
+                    'floyd',
+                    'resize',
+                    'frame-start',
+                    'frame-end']
+
     parts = uri.split(';')
 
     non_legacy: bool = len(parts) > 3
@@ -560,17 +582,11 @@ def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
     if not non_legacy:
         for i in parts:
             i = i.strip()
-            if i.startswith('mask='):
-                non_legacy = True
-                break
-            if i.startswith('control='):
-                non_legacy = True
-                break
-            if i.startswith('resize='):
-                non_legacy = True
-                break
-            if i.startswith('floyd='):
-                non_legacy = True
+            for kwarg in keyword_args:
+                if re.match(f'{kwarg}\\s*=', i) is not None:
+                    non_legacy = True
+                    break
+            if non_legacy:
                 break
 
     if not non_legacy:
@@ -578,7 +594,7 @@ def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
 
     result = ImageSeedParseResult()
 
-    seed_parser = _textprocessing.ConceptUriParser('Image Seed', ['mask', 'control', 'floyd', 'resize'])
+    seed_parser = _textprocessing.ConceptUriParser('Image Seed', keyword_args)
 
     try:
         parse_result = seed_parser.parse_concept_uri(uri)
@@ -625,6 +641,31 @@ def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
             result.resize_resolution = (dimensions[0], dimensions[0])
         else:
             result.resize_resolution = dimensions
+
+    frame_start = parse_result.args('frame-start', None)
+    frame_end = parse_result.args('frame-end', None)
+
+    if frame_start is not None:
+        try:
+            frame_start = int(frame_start)
+        except ValueError:
+            raise ImageSeedError(
+                f'frame_start argument must be an integer.')
+
+    if frame_end is not None:
+        try:
+            frame_end = int(frame_end)
+        except ValueError:
+            raise ImageSeedError(
+                f'frame_end argument must be an integer.')
+
+        if frame_start is not None and (frame_start > frame_end):
+            raise ImageSeedError(
+                f'frame_start argument must be less '
+                f'than or equal to frame_end argument.')
+
+    result.frame_start = frame_start
+    result.frame_end = frame_end
 
     return result
 
@@ -1278,6 +1319,7 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
     This method is used to iterate over an ``--image-seeds`` uri in the case that the image source
     mentioned is to be used for img2img / inpaint operations, and handles this syntax:
 
+        * ``--image-seeds "img2img.png"``
         * ``--image-seeds "img2img.png;mask.png"``
         * ``--image-seeds "img2img.png;mask.png;512x512"``
 
@@ -1287,12 +1329,16 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
         * ``--image-seeds "img2img.png;control=control1.png, control2.png;resize=512x512"``
         * ``--image-seeds "img2img.png;mask=mask.png;control=control1.png, control2.png"``
         * ``--image-seeds "img2img.png;mask=mask.png;control=control1.png, control2.png;resize=512x512"``
-
+        * ``--image-seeds "img2img.png;mask=mask.png;control=control1.png;frame-start=2"``
+        * ``--image-seeds "img2img.png;mask=mask.png;control=control1.png;frame-start=2;frame-end=5"``
 
     Deep Floyd img2img and inpainting mode are handled via a tertiary syntax:
 
         * ``--image-seeds "img2img.png;floyd=stage1-image.png"``
         * ``--image-seeds "img2img.png;mask=mask.png;floyd=stage2-image.png"``
+
+    Note that all keyword arguments mentioned above can be used together, with exception
+    of "control" and "floyd" which are mutually exclusive arguments.
 
     One or more :py:class:`.ImageSeed` objects may be yielded depending on whether an animation is being read.
 
@@ -1356,6 +1402,12 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
 
     if parse_result.resize_resolution is not None:
         resize_resolution = parse_result.resize_resolution
+
+    if parse_result.frame_start is not None:
+        frame_start = parse_result.frame_start
+
+    if parse_result.frame_end is not None:
+        frame_end = parse_result.frame_end
 
     with MultiAnimationReader(specs=reader_specs,
                               resize_resolution=resize_resolution,
@@ -1426,6 +1478,11 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
 
         * ``--image-seeds "control1.png"``
         * ``--image-seeds "control1.png, control2.png"``
+        * ``--image-seeds "control1.png, control2.png;512x512"``
+        * ``--image-seeds "control1.png, control2.png;resize=512x512"``
+        * ``--image-seeds "control1.png, control2.png;frame-start=2"``
+        * ``--image-seeds "control1.png, control2.png;frame-start=2;frame-end=10"``
+        * ``--image-seeds "control1.png, control2.png;resize=512x512;frame-start=2;frame-end=10"``
 
     The image or images read will be available from the :py:attr:`.ImageSeed.control_images` attribute.
 
@@ -1453,14 +1510,22 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
             raise ValueError('frame_start must be less than or equal to frame_end')
 
     if isinstance(uri, ImageSeedParseResult):
-        uri = uri.seed_path
+        parse_result = uri
+    else:
+        parse_result = parse_image_seed_uri(uri)
+
+    if not parse_result.is_single_spec:
+        raise ImageSeedError(
+            f'Control guidance only image seed uri "{uri}" should not define '
+            f'any other image source arguments such as "mask" or "control" or "floyd", '
+            f'only a single specification is needed.')
 
     reader_specs = []
 
     if not isinstance(preprocessor, list):
         preprocessor = [preprocessor]
 
-    control_guidance_image_paths = uri.split(',')
+    control_guidance_image_paths = parse_result.seed_path.split(',')
 
     _validate_control_image_preprocessor_count(
         preprocessors=preprocessor,
@@ -1472,6 +1537,15 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
             preprocessor[idx] if idx < len(preprocessor) else None)
         for idx, p in enumerate(control_guidance_image_paths)
     ]
+
+    if parse_result.resize_resolution is not None:
+        resize_resolution = parse_result.resize_resolution
+
+    if parse_result.frame_start is not None:
+        frame_start = parse_result.frame_start
+
+    if parse_result.frame_end is not None:
+        frame_end = parse_result.frame_end
 
     with MultiAnimationReader(specs=reader_specs,
                               resize_resolution=resize_resolution,
