@@ -1177,7 +1177,7 @@ For example here are some possible definitions:
     * ``--image-seeds "seed.gif;mask=mask.gif;floyd=stage1.gif;frame-start=3;frame-end=10"``
 
 Specifying a frame slice locally in an image seed overrides the global frame
-slice setting defined by ``--frame-start`` and ``--frame-end``, and is specific only
+slice setting defined by ``--frame-start`` or ``--frame-end``, and is specific only
 to that image seed, other image seed definitions will not be affected.
 
 Perhaps you only want to run diffusion on the first frame of an animated input in
