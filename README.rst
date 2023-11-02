@@ -1795,7 +1795,7 @@ The **mask** argument is optional and used to request inpainting, ``resize=WIDTH
 select a per ``--image-seeds`` resize dimension for all image sources involved in that particular
 specification.
 
-ControlNet guidance images may actually be animations such as MP4's, GIF's etc. Frames can be
+ControlNet guidance images may actually be animations such as MP4s, GIFs etc. Frames can be
 taken from multiple videos simultaneously. Any possible combination of image/video parameters can be used.
 The animation with least amount of frames in the entire specification determines the frame count, and
 any static images present are duplicated across the entire animation. The first animation present
