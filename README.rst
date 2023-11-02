@@ -1069,8 +1069,8 @@ This also works when `Specifying Control Nets`_ and guidance images for control 
 Here are some possible definitions:
 
     * ``--image-seeds "my-image-seed.png;512x512"`` (img2img)
-    * ``--image-seeds "my-image-seed.png;resize=512x512"`` (img2img)
     * ``--image-seeds "my-image-seed.png;my-mask-image.png;512x512"`` (inpainting)
+    * ``--image-seeds "my-image-seed.png;resize=512x512"`` (img2img)
     * ``--image-seeds "my-image-seed.png;mask=my-mask-image.png;resize=512x512"`` (inpainting)
 
 The alternate syntax with named arguments is for disambiguation when `Specifying Control Nets`_, or
@@ -1093,9 +1093,8 @@ and ``aspect=true`` enables it.
 
 Some possible definitions:
 
-    * ``--image-seeds "my-image-seed.png;resize=512x512;aspect=false"``
-    * ``--image-seeds "my-image-seed.png;my-mask-image.png;512x512;aspect=false"``
-    * ``--image-seeds "my-image-seed.png;mask=my-mask-image.png;resize=512x512;aspect=false"``
+    * ``--image-seeds "my-image-seed.png;resize=512x512;aspect=false"`` (img2img)
+    * ``--image-seeds "my-image-seed.png;mask=my-mask-image.png;resize=512x512;aspect=false"`` (inpainting)
 
 
 .. code-block:: bash
