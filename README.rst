@@ -1169,12 +1169,12 @@ other than the main image must be specified using keyword arguments.
 
 For example here are some possible definitions:
 
-    * ``--image-seeds "animated.gif;frame-start=3;frame-end=10"``
-    * ``--image-seeds "animated.gif;mask=animated-mask.gif;frame-start=3;frame-end=10``
-    * ``--image-seeds "animated.gif;control=animated-control-guidance.gif;frame-start=3;frame-end=10``
-    * ``--image-seeds "animated.gif;mask=animated-mask.gif;control=animated-control-guidance.gif;frame-start=3;frame-end=10``
-    * ``--image-seeds "animated.gif;floyd=floyd-stage1.gif;frame-start=3;frame-end=10"``
-    * ``--image-seeds "animated.gif;mask=animated-mask.gif;floyd=floyd-stage1.gif;frame-start=3;frame-end=10"``
+    * ``--image-seeds "seed.gif;frame-start=3;frame-end=10"``
+    * ``--image-seeds "seed.gif;mask=mask.gif;frame-start=3;frame-end=10``
+    * ``--image-seeds "seed.gif;control=control-guidance.gif;frame-start=3;frame-end=10``
+    * ``--image-seeds "seed.gif;mask=mask.gif;control=control-guidance.gif;frame-start=3;frame-end=10``
+    * ``--image-seeds "seed.gif;floyd=stage1.gif;frame-start=3;frame-end=10"``
+    * ``--image-seeds "seed.gif;mask=mask.gif;floyd=stage1.gif;frame-start=3;frame-end=10"``
 
 Specifying a frame slice locally in an image seed overrides the global frame
 slice setting defined by ``--frame-start`` and ``--frame-end``, and is specific only
