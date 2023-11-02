@@ -991,11 +991,13 @@ The alternate syntax is for disambiguation when preforming img2img or inpainting
 or other operations where keyword arguments might be necessary for disambiguation such as per image seed `Animation Slicing`_,
 and the specification of the image from a previous Deep Floyd stage using the **floyd** argument.
 
-Mask images can be downloaded from URL's just like image seeds, however for this example the syntax specifies a file on disk for brevity.
+Mask images can be downloaded from URL's just like any other resource mentioned in an ``--image-seeds`` definition,
+however for this example files on disk are used for brevity.
 
-`my-image-seed.png <https://raw.githubusercontent.com/Teriks/dgenerate/master/examples/media/dog-on-bench.png>`_
+You can download them here:
 
-`my-mask-image.png <https://raw.githubusercontent.com/Teriks/dgenerate/master/examples/media/dog-on-bench-mask.png>`_
+ * `my-image-seed.png <https://raw.githubusercontent.com/Teriks/dgenerate/master/examples/media/dog-on-bench.png>`_
+ * `my-mask-image.png <https://raw.githubusercontent.com/Teriks/dgenerate/master/examples/media/dog-on-bench-mask.png>`_
 
 The command below generates a cat sitting on a bench with the images from the links above, the mask image masks out
 areas over the dog in the original image, causing the dog to be replaced with an AI generated cat.
