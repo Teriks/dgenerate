@@ -78,15 +78,17 @@ class ImagePreprocessorMixin:
             return processed
         return image
 
-    def preprocess_image(self, image: PIL.Image.Image, resize_to: _types.OptionalSize):
+    def preprocess_image(self, image: PIL.Image.Image, resize_to: _types.OptionalSize, aspect_correct: bool = True):
         """
         Preform image preprocessing on an image, including the requested resizing step.
 
         Invokes the assigned image preprocessor pre and post resizing with appropriate
         arguments and correct resource management.
 
+
         :param image: image to process
         :param resize_to: image will be resized to this dimension by this method.
+        :param aspect_correct: Should the resize operation be aspect correct?
 
         :return: the processed image, processed by the
             preprocessor assigned in the constructor.
@@ -95,7 +97,8 @@ class ImagePreprocessorMixin:
         # This is the actual size it will end
         # up being resized to by resize_image
         calculate_new_size = _d_image.resize_image_calc(old_size=image.size,
-                                                        new_size=resize_to)
+                                                        new_size=resize_to,
+                                                        aspect_correct=aspect_correct)
 
         pre_processed = self._preprocess_pre_resize(image,
                                                     calculate_new_size)
@@ -106,7 +109,9 @@ class ImagePreprocessorMixin:
         if resize_to is None:
             image = pre_processed
         else:
-            image = _d_image.resize_image(pre_processed, resize_to)
+            image = _d_image.resize_image(img=pre_processed,
+                                          size=resize_to,
+                                          aspect_correct=aspect_correct)
 
         if image is not pre_processed:
             pre_processed.close()

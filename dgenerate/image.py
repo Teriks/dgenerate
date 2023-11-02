@@ -25,22 +25,30 @@ import dgenerate.types as _types
 
 
 def resize_image_calc(old_size: _types.Size,
-                      new_size: _types.OptionalSize):
+                      new_size: _types.OptionalSize,
+                      aspect_correct: bool = True):
     """
-    Calculate the new aspect correct dimensions for a requested resize of an image, aligned by 8 pixels.
+    Calculate the new dimensions for a requested resize of an image, align by 8 pixels.
 
     :param old_size: The old image size
     :param new_size: The new image size
-    :return: Aspect correct size for resize
+
+    :param aspect_correct: preserve aspect ratio?
+
+    :return: calculated new size
     """
     if new_size is None or old_size == new_size:
         return old_size
 
-    width = new_size[0]
-    w_percent = (width / float(old_size[0]))
-    hsize = int((float(old_size[1]) * float(w_percent)))
-
-    return width - width % 8, hsize - hsize % 8
+    if aspect_correct:
+        width = new_size[0]
+        w_percent = (width / float(old_size[0]))
+        hsize = int((float(old_size[1]) * float(w_percent)))
+        return width - width % 8, hsize - hsize % 8
+    else:
+        width = new_size[0]
+        height = new_size[1]
+        return width - width % 8, height - height % 8
 
 
 def is_aligned_by_8(x, y) -> bool:
@@ -81,17 +89,21 @@ def copy_img(img: PIL.Image.Image):
 
 
 def resize_image(img: PIL.Image.Image,
-                 size: _types.OptionalSize):
+                 size: _types.OptionalSize,
+                 aspect_correct: bool = True):
     """
-    Resize a :py:class:`PIL.Image.Image` and return a copy, resize is aspect
-    correct and aligned to 8 pixels. The filename attribute is preserved.
+    Resize a :py:class:`PIL.Image.Image` and return a copy, resize is aligned to 8 pixels.
+
+    The filename attribute is preserved.
 
     :param img: the image
     :param size: the new size for the image
+    :param aspect_correct: preserve aspect ratio?
     :return: the resized image
     """
     new_size = resize_image_calc(old_size=img.size,
-                                 new_size=size)
+                                 new_size=size,
+                                 aspect_correct=aspect_correct)
 
     if img.size == new_size:
         # probably less costly
