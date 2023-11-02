@@ -1810,9 +1810,9 @@ The animation with least amount of frames in the entire specification determines
 any static images present are duplicated across the entire animation. The first animation present
 in an image seed specification always determines the output FPS of the animation.
 
-Arguments pertaining to the loading of each ControlNet model may be specified in the same
-way as when using ``--vae`` with the addition of a ``scale`` argument and ``from_torch`` argument
-when using flax.
+Arguments pertaining to the loading of each ControlNet model specified with ``--control-nets`` may be
+declared in the same way as when using ``--vae`` with the addition of a ``scale`` argument and ``from_torch``
+argument when using flax ``--model-type`` values.
 
 Available arguments when using torch ``--model-type`` values are: ``scale``, ``start``, ``end``, ``revision``, ``variant``, ``subfolder``, ``dtype``
 
