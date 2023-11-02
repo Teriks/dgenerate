@@ -986,9 +986,10 @@ seed individually.
 
     # In addition this image will be generated using 3 different image seed strengths.
 
-    # Adjust output size to 512x512 and output generated images to 'astronaut' folder, if the image seed
-    # is not a 1:1 aspect ratio the width will be fixed to the requested width and the height of the output image
-    # calculated to maintain aspect ratio.
+    # Adjust output size to 512x512 and output generated images to 'astronaut' folder, the image seed
+    # will be resized to that dimension with aspect ratio respected by default, the width is fixed and
+    # the height will be calculated, this behavior can be changed globally with the --no-aspect option
+    # if desired or locally by specifying "img2img-seed;aspect=false" as your image seed
 
     # If you do not adjust the output size of the generated image, the size of the input image seed will be used.
 
