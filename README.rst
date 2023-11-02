@@ -981,7 +981,7 @@ in with generated content.
 
 For using inpainting on animated image seeds, jump to: `Inpainting Animations`_
 
-The following syntax's are possible:
+Some possible definitions for inpainting are:
 
     * ``--image-seeds "my-image-seed.png;my-mask-image.png"``
     * ``--image-seeds "my-image-seed.png;mask=my-mask-image.png"``
