@@ -1777,13 +1777,15 @@ Control images for the Control Nets can be provided using ``--image-seeds``
 
 When using ``--control-nets`` specifying control images via ``--image-seeds`` can be accomplished in these ways:
 
-    * ``--image-seeds "my-control-image.png"``
-    * ``--image-seeds "my-img2img-seed.png;mask=my-inpaint-mask.png;control=my-control-image.png"``
+    * ``--image-seeds "my-control-image.png"`` (txt2img)
+    * ``--image-seeds "my-img2img-seed.png;control=my-control-image.png"`` (img2img)
+    * ``--image-seeds "my-img2img-seed.png;mask=my-inpaint-mask.png;control=my-control-image.png"`` (inpainting)
 
 Multiple control image sources can be specified in these ways when using multiple control nets:
 
-    * ``--image-seeds "my-control-image.png, my-control-image-2.png"``
-    * ``--image-seeds "my-img2img-seed.png;mask=mask.png;control=my-control-image.png, my-control-image-2.png"``
+    * ``--image-seeds "my-control-image.png, my-control-image-2.png"`` (txt2img)
+    * ``--image-seeds "my-img2img-seed.png;control=my-control-image.png, my-control-image-2.png"`` (img2img)
+    * ``--image-seeds "my-img2img-seed.png;mask=mask.png;control=my-control-image.png, my-control-image-2.png"`` (inpainting)
 
 
 It is considered a syntax error if you specify a non-equal amount of control guidance
