@@ -1098,6 +1098,7 @@ Some possible definitions:
 
 
 The following example preforms img2img generation, followed by inpainting generation using 2 image seed definitions.
+The involved images are resized using the basic syntax with no keyword arguments present in the image seeds.
 
 .. code-block:: bash
 
