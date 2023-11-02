@@ -8,7 +8,7 @@ runwayml/stable-diffusion-v1-5
 --guidance-scale 8
 --prompts "Black and white ((charcoal)) art of (rick astley) dancing; color, colors"
 --seeds 85214917063096
---image-seeds "../../media/rickroll-roll.gif;frame-start=3;frame-end=6"
+--image-seeds "../../media/rickroll-roll.gif"
 --control-nets lllyasviel/sd-controlnet-canny
 --control-image-preprocessors "canny;threshold-algo=median;output-file=astley/astley-canny.png"
 --animation-format gif

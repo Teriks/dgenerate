@@ -1044,7 +1044,7 @@ class MultiAnimationReader:
         """
         Current frame index while reading.
         """
-        return self._frame_index
+        return self._frame_index - self._frame_start
 
     @property
     def frame_end(self) -> int:
