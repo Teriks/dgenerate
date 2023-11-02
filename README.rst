@@ -1160,7 +1160,9 @@ Animation Slicing
 
 Animated inputs can be sliced by a frame range either globally using
 ``--frame-start`` and ``--frame-end`` or locally using the named argument
-syntax for ``--image-seeds``, for instance: ``--image-seeds "animated.gif;frame-start=3;frame-end=10"``.
+syntax for ``--image-seeds``, for example:
+
+    * ``--image-seeds "animated.gif;frame-start=3;frame-end=10"``.
 
 When using animation slicing at the ``--image-seed`` level, all image input definitions
 other than the main image must be specified using keyword arguments.
