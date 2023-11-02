@@ -642,8 +642,8 @@ def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
         else:
             result.resize_resolution = dimensions
 
-    frame_start = parse_result.args('frame-start', None)
-    frame_end = parse_result.args('frame-end', None)
+    frame_start = parse_result.args.get('frame-start', None)
+    frame_end = parse_result.args.get('frame-end', None)
 
     if frame_start is not None:
         try:
