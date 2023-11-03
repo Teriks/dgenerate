@@ -920,7 +920,7 @@ Negative Prompt
 In order to specify a negative prompt, each prompt argument is split
 into two parts separated by ``;``
 
-The prompt text occuring after ``;`` is the negative influence prompt.
+The prompt text occurring after ``;`` is the negative influence prompt.
 
 To attempt to avoid rendering of a saddle on the horse being ridden, you
 could for example add the negative prompt "saddle" or "wearing a saddle"
