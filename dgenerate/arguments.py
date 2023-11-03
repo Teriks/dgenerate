@@ -946,7 +946,7 @@ actions.append(
                         those control images with the syntax: (--control-image-preprocessors "processes-img1" + "processes-img2"), 
                         this syntax also supports chaining of preprocessors, for example: (--control-image-preprocessors "first-process-img1"
                          "second-process-img1" + "process-img2"). The amount of specified preprocessors must not exceed the amount of
-                        specified control images, or you will received syntax error message. Images which do not have a preprocessor
+                        specified control images, or you will receive a syntax error message. Images which do not have a preprocessor
                         defined for them will not be preprocessed, and the plus character can be used to indicate an image is not to be 
                         preprocessed and instead skipped over when that image is a leading element, for example 
                         (--control-image-preprocessors + "process-second") would indicate that the first control guidance 
