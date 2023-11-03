@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import ast
 import os
 import typing
 
@@ -34,6 +35,32 @@ class MemoryConstraintSyntaxError(Exception):
     if an expression returns a non-boolean value
     """
     pass
+
+
+def memory_constraint_syntax_check(expression):
+    """
+    Syntax check an expression given to :py:meth:`memory_constraints`
+
+    :param expression: the expression string
+    :raises: :py:exc:`MemoryConstraintSyntaxError` on syntax errors.
+    """
+
+    if len(expression) > 128:
+        raise MemoryConstraintSyntaxError(f'Given expression "{expression[:24]} ..." is too long.')
+    try:
+        tree = ast.parse(expression)
+        if tree.body:
+            if not isinstance(tree.body[0], ast.Expr):
+                raise MemoryConstraintSyntaxError(
+                    f'Expression "{expression}" is invalid. '
+                    f'Only simple expressions accepted, no control statements, etc.')
+            if not isinstance(tree.body[0].value, (ast.BoolOp, ast.Compare)):
+                raise MemoryConstraintSyntaxError(
+                    f'Expression "{expression}" is invalid. '
+                    'Only expressions returning boolean values accepted.')
+    except SyntaxError as e:
+        raise MemoryConstraintSyntaxError(
+            f'Syntax error in expression "{expression}": {e}')
 
 
 def memory_constraints(expressions: typing.Optional[typing.Union[str, list]],
@@ -65,6 +92,8 @@ def memory_constraints(expressions: typing.Optional[typing.Union[str, list]],
         * ``used_percent > 25`` (when the process has used more than 25 percent of virtual memory available to it)
         * ``available < gb(2)`` (when the available memory on the system is less than 2GB)
 
+    Expressions may not be longer than 128 characters. However multiple expressions may be provided.
+
     :raise: :py:exc:`ValueError` if extra_vars overwrites a reserved variable name
 
     :raise: :py:exc:`.MemoryConstraintSyntaxError` on syntax errors or if the return value
@@ -86,6 +115,9 @@ def memory_constraints(expressions: typing.Optional[typing.Union[str, list]],
 
     if isinstance(expressions, str):
         expressions = [expressions]
+
+    for expr in expressions:
+        memory_constraint_syntax_check(expr)
 
     if pid is None:
         pid = os.getpid()

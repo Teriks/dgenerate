@@ -27,6 +27,7 @@ import diffusers.schedulers
 
 import dgenerate
 import dgenerate.mediaoutput as _mediaoutput
+import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.prompt as _prompt
@@ -403,8 +404,7 @@ actions.append(
                         of large images with lower memory overhead. The VAE will split the input tensor
                         in slices to compute decoding in several steps. This is useful to save some memory,
                         especially when --batch-size is greater than 1. Note that if you are using --control-nets
-                        you may still run into memory issues generating large images, or with --batch-size 
-                        greater than 1."""))
+                        you may still run into memory issues generating large images."""))
 
 actions.append(
     parser.add_argument('--loras', '--lora', action='store', default=None, metavar="LORA_URI", dest='lora_uris',
@@ -1028,7 +1028,10 @@ actions.append(
 
 
 def _type_expression(arg):
-    pass
+    try:
+        _memory.memory_constraint_syntax_check(arg)
+    except _memory.MemoryConstraintSyntaxError as e:
+        raise argparse.ArgumentTypeError(f'Syntax error: {e}')
 
 
 actions.append(
@@ -1036,28 +1039,32 @@ actions.append(
                         default=None,
                         type=_type_expression,
                         metavar="EXPR",
-                        help="""See: [https://dgenerate.readthedocs.io/en/latest/dgenerate_submodules.html#dgenerate.pipelinewrapper.CACHE_MEMORY_CONSTRAINTS]"""))
+                        help=f'See: [https://dgenerate.readthedocs.io/en/{dgenerate.__version__}/'
+                             f'dgenerate_submodules.html#dgenerate.pipelinewrapper.CACHE_MEMORY_CONSTRAINTS]'))
 
 actions.append(
     parser.add_argument('--pipeline-cache-memory-constraints', action='store', nargs='+',
                         default=None,
                         type=_type_expression,
                         metavar="EXPR",
-                        help="""See: [https://dgenerate.readthedocs.io/en/latest/dgenerate_submodules.html#dgenerate.pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS]"""))
+                        help=f'See: [https://dgenerate.readthedocs.io/en/{dgenerate.__version__}/'
+                             f'dgenerate_submodules.html#dgenerate.pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS]'))
 
 actions.append(
     parser.add_argument('--vae-cache-memory-constraints', action='store', nargs='+',
                         default=None,
                         type=_type_expression,
                         metavar="EXPR",
-                        help="""See: [https://dgenerate.readthedocs.io/en/latest/dgenerate_submodules.html#dgenerate.pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS]"""))
+                        help=f'See: [https://dgenerate.readthedocs.io/en/{dgenerate.__version__}/'
+                             f'dgenerate_submodules.html#dgenerate.pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS]'))
 
 actions.append(
     parser.add_argument('--control-net-cache-memory-constraints', action='store', nargs='+',
                         default=None,
                         type=_type_expression,
                         metavar="EXPR",
-                        help="""See: [https://dgenerate.readthedocs.io/en/latest/dgenerate_submodules.html#dgenerate.pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS]"""))
+                        help=f'See: [https://dgenerate.readthedocs.io/en/{dgenerate.__version__}/'
+                             f'dgenerate_submodules.html#dgenerate.pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS]'))
 
 
 class DgenerateUsageError(Exception):
