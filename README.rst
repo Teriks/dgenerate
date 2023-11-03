@@ -194,13 +194,12 @@ dgenerate help output
                             compute decoding and encoding in several steps. This is useful for saving a large
                             amount of memory and to allow processing larger images. Note that if you are
                             using --control-nets you may still run into memory issues generating large
-                            images, or with --batch-size greater than 1.
+                            images, or with batch size greater than 1.
       --vae-slicing         Enable VAE slicing (torch* models only). Assists in the generation of large
                             images with lower memory overhead. The VAE will split the input tensor in slices
                             to compute decoding in several steps. This is useful to save some memory,
                             especially when --batch-size is greater than 1. Note that if you are using
-                            --control-nets you may still run into memory issues generating large images, or
-                            with --batch-size greater than 1.
+                            --control-nets you may still run into memory issues generating large images.
       --loras LORA_URI, --lora LORA_URI
                             Specify a LoRA model using a URI (flax not supported). This should be a
                             huggingface repository slug, path to model file on disk (for example, a .pt,
