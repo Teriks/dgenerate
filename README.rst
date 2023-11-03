@@ -59,13 +59,10 @@ dgenerate help output
 
 .. code-block::
 
-    usage: dgenerate [-h] [-v] [--version] [--plugin-modules PATH [PATH ...]] [--offline-mode]
-                     [--templates-help] [--model-type MODEL_TYPE] [--revision BRANCH] [--variant VARIANT]
-                     [--subfolder SUBFOLDER] [--auth-token TOKEN] [--batch-size INTEGER]
-                     [--batch-grid-size SIZE] [--vae VAE_URI] [--vae-tiling] [--vae-slicing]
-                     [--loras LORA_URI]
-                     [--textual-inversions TEXTUAL_INVERSION_URI [TEXTUAL_INVERSION_URI ...]]
-                     [--control-nets CONTROL_NET_URI [CONTROL_NET_URI ...]] [--scheduler SCHEDULER_NAME]
+    usage: dgenerate [-h] [-v] [--version] [-pm PATH [PATH ...]] [-ofm] [-th] [-mt MODEL_TYPE] [-rev BRANCH]
+                     [-var VARIANT] [-sbf SUBFOLDER] [-atk TOKEN] [-bs INTEGER] [-bgs SIZE] [-vae VAE_URI]
+                     [-vt] [-vs] [-lra LORA_URI] [-ti URI [URI ...]]
+                     [-cn CONTROL_NET_URI [CONTROL_NET_URI ...]] [-sch SCHEDULER_NAME]
                      [--sdxl-refiner MODEL_URI] [--sdxl-refiner-scheduler SCHEDULER_NAME]
                      [--sdxl-second-prompts PROMPT [PROMPT ...]] [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-crops-coords-top-left COORD [COORD ...]] [--sdxl-original-size SIZE [SIZE ...]]
@@ -85,18 +82,14 @@ dgenerate help output
                      [--sdxl-refiner-negative-target-sizes SIZE [SIZE ...]]
                      [--sdxl-refiner-negative-crops-coords-top-left COORD [COORD ...]]
                      [-hnf FLOAT [FLOAT ...]] [-ri INT [INT ...]] [-rg FLOAT [FLOAT ...]]
-                     [-rgr FLOAT [FLOAT ...]] [--safety-checker] [-d DEVICE] [-t DTYPE] [-s SIZE] [-na]
-                     [-o PATH] [-op PREFIX] [-ox] [-oc] [-om] [-p PROMPT [PROMPT ...]] [-se SEED [SEED ...]]
-                     [-sei] [-gse COUNT] [-af FORMAT] [-fs FRAME_NUMBER] [-fe FRAME_NUMBER]
-                     [-is SEED [SEED ...]] [--seed-image-preprocessors PREPROCESSOR [PREPROCESSOR ...]]
-                     [--mask-image-preprocessors PREPROCESSOR [PREPROCESSOR ...]]
-                     [--control-image-preprocessors PREPROCESSOR [PREPROCESSOR ...]]
-                     [--image-preprocessor-help [PREPROCESSOR ...]] [-iss FLOAT [FLOAT ...] | -uns INTEGER
-                     [INTEGER ...]] [-gs FLOAT [FLOAT ...]] [-igs FLOAT [FLOAT ...]] [-gr FLOAT [FLOAT ...]]
-                     [-ifs INTEGER [INTEGER ...]] [--cache-memory-constraints EXPR [EXPR ...]]
-                     [--pipeline-cache-memory-constraints EXPR [EXPR ...]]
-                     [--vae-cache-memory-constraints EXPR [EXPR ...]]
-                     [--control-net-cache-memory-constraints EXPR [EXPR ...]]
+                     [-rgr FLOAT [FLOAT ...]] [-sc] [-d DEVICE] [-t DTYPE] [-s SIZE] [-na] [-o PATH]
+                     [-op PREFIX] [-ox] [-oc] [-om] [-p PROMPT [PROMPT ...]] [-se SEED [SEED ...]] [-sei]
+                     [-gse COUNT] [-af FORMAT] [-fs FRAME_NUMBER] [-fe FRAME_NUMBER] [-is SEED [SEED ...]]
+                     [-sip PREPROCESSOR [PREPROCESSOR ...]] [-mip PREPROCESSOR [PREPROCESSOR ...]]
+                     [-cip PREPROCESSOR [PREPROCESSOR ...]] [-iph [PREPROCESSOR ...]] [-iss FLOAT [FLOAT ...]
+                     | -uns INTEGER [INTEGER ...]] [-gs FLOAT [FLOAT ...]] [-igs FLOAT [FLOAT ...]]
+                     [-gr FLOAT [FLOAT ...]] [-ifs INTEGER [INTEGER ...]] [-mc EXPR [EXPR ...]]
+                     [-pmc EXPR [EXPR ...]] [-vmc EXPR [EXPR ...]] [-cmc EXPR [EXPR ...]]
                      model_path
 
     Stable diffusion batch image generation tool with support for video / gif / webp animation transcoding.
@@ -110,32 +103,37 @@ dgenerate help output
       -v, --verbose         Output information useful for debugging, such as pipeline call and model load
                             parameters.
       --version             Show dgenerate's version and exit
-      --plugin-modules PATH [PATH ...]
+      -pm PATH [PATH ...], --plugin-modules PATH [PATH ...]
                             Specify one or more plugin module folder paths (folder containing __init__.py) or
                             python .py file paths to load as plugins. Plugin modules can currently only
                             implement image preprocessors.
-      --offline-mode        Whether dgenerate should try to download huggingface models that do not exist in
+      -ofm, --offline-mode  Whether dgenerate should try to download huggingface models that do not exist in
                             the disk cache, or only use what is available in the cache. Referencing a model
                             on huggingface that has not been cached because it was not previously downloaded
                             will result in a failure when using this option.
-      --templates-help      Print a list of template variables available after a dgenerate invocation during
+      -th, --templates-help
+                            Print a list of template variables available after a dgenerate invocation during
                             batch processing from STDIN. When used as a command option, their values are not
                             presented, just their names and types.
-      --model-type MODEL_TYPE
+      -mt MODEL_TYPE, --model-type MODEL_TYPE
                             Use when loading different model types. Currently supported: torch, torch-
                             pix2pix, torch-sdxl, torch-sdxl-pix2pix, torch-upscaler-x2, torch-upscaler-x4,
                             torch-if, torch-ifs, or torch-ifs-img2img. (default: torch)
-      --revision BRANCH     The model revision to use when loading from a huggingface repository, (The git
+      -rev BRANCH, --revision BRANCH
+                            The model revision to use when loading from a huggingface repository, (The git
                             branch / tag, default is "main")
-      --variant VARIANT     If specified when loading from a huggingface repository or folder, load weights
+      -var VARIANT, --variant VARIANT
+                            If specified when loading from a huggingface repository or folder, load weights
                             from "variant" filename, e.g. "pytorch_model.<variant>.safetensors". Defaults to
                             automatic selection. This option is ignored if using flax.
-      --subfolder SUBFOLDER
+      -sbf SUBFOLDER, --subfolder SUBFOLDER
                             Main model subfolder. If specified when loading from a huggingface repository or
                             folder, load weights from the specified subfolder.
-      --auth-token TOKEN    Huggingface auth token. Required to download restricted repositories that have
+      -atk TOKEN, --auth-token TOKEN
+                            Huggingface auth token. Required to download restricted repositories that have
                             access permissions granted to your huggingface account.
-      --batch-size INTEGER  The number of image variations to produce per set of individual diffusion
+      -bs INTEGER, --batch-size INTEGER
+                            The number of image variations to produce per set of individual diffusion
                             parameters in one rendering step simultaneously on a single GPU. When using flax,
                             batch size is controlled by the environmental variable CUDA_VISIBLE_DEVICES which
                             is a comma seperated list of GPU device numbers (as listed by nvidia-smi). Usage
@@ -148,14 +146,15 @@ dgenerate help output
                             rendering each image in the batch will still be written to the output directory
                             along side the produced animation as either suffixed files or image grids
                             depending on the options you choose. (Torch Default: 1)
-      --batch-grid-size SIZE
+      -bgs SIZE, --batch-grid-size SIZE
                             Produce a single image containing a grid of images with the number of
                             COLUMNSxROWS given to this argument when --batch-size is greater than 1, or when
                             using flax with multiple GPUs visible (via the environmental variable
                             CUDA_VISIBLE_DEVICES). If not specified with a --batch-size greater than 1,
                             images will be written individually with an image number suffix (image_N) in the
                             filename signifying which image in the batch they are.
-      --vae VAE_URI         Specify a VAE using a URI. When using torch models the URI syntax is:
+      -vae VAE_URI, --vae VAE_URI
+                            Specify a VAE using a URI. When using torch models the URI syntax is:
                             "AutoEncoderClass;model=(huggingface repository slug/blob link or file/folder
                             path)". Examples: "AutoencoderKL;model=vae.pt",
                             "AsymmetricAutoencoderKL;model=huggingface/vae",
@@ -189,18 +188,18 @@ dgenerate help output
                             syntax: --vae "AutoencoderKL;https://huggingface.co/UserName/repository-
                             name/blob/main/vae_model.safetensors", the revision argument may be used with
                             this syntax.
-      --vae-tiling          Enable VAE tiling (torch models only). Assists in the generation of large images
+      -vt, --vae-tiling     Enable VAE tiling (torch models only). Assists in the generation of large images
                             with lower memory overhead. The VAE will split the input tensor into tiles to
                             compute decoding and encoding in several steps. This is useful for saving a large
                             amount of memory and to allow processing larger images. Note that if you are
                             using --control-nets you may still run into memory issues generating large
-                            images, or with batch size greater than 1.
-      --vae-slicing         Enable VAE slicing (torch* models only). Assists in the generation of large
+                            images, or with --batch-size greater than 1.
+      -vs, --vae-slicing    Enable VAE slicing (torch* models only). Assists in the generation of large
                             images with lower memory overhead. The VAE will split the input tensor in slices
                             to compute decoding in several steps. This is useful to save some memory,
                             especially when --batch-size is greater than 1. Note that if you are using
                             --control-nets you may still run into memory issues generating large images.
-      --loras LORA_URI, --lora LORA_URI
+      -lra LORA_URI, --loras LORA_URI, --lora LORA_URI
                             Specify a LoRA model using a URI (flax not supported). This should be a
                             huggingface repository slug, path to model file on disk (for example, a .pt,
                             .pth, .bin, .ckpt, or .safetensors file), or model folder containing model files.
@@ -220,7 +219,7 @@ dgenerate help output
                             "my_lora.safetensors", or with a scale "my_lora.safetensors;scale=1.0", all other
                             loading arguments are unused in this case and may produce an error message if
                             used.
-      --textual-inversions TEXTUAL_INVERSION_URI [TEXTUAL_INVERSION_URI ...]
+      -ti URI [URI ...], --textual-inversions URI [URI ...]
                             Specify one or more Textual Inversion models using URIs (flax and SDXL not
                             supported). This should be a huggingface repository slug, path to model file on
                             disk (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model
@@ -240,7 +239,7 @@ dgenerate help output
                             directly from disk, the simplest way is: --textual-inversions
                             "my_ti_model.safetensors", all other loading arguments are unused in this case
                             and may produce an error message if used.
-      --control-nets CONTROL_NET_URI [CONTROL_NET_URI ...]
+      -cn CONTROL_NET_URI [CONTROL_NET_URI ...], --control-nets CONTROL_NET_URI [CONTROL_NET_URI ...]
                             Specify one or more ControlNet models using URIs. This should be a huggingface
                             repository slug / blob link, path to model file on disk (for example, a .pt,
                             .pth, .bin, .ckpt, or .safetensors file), or model folder containing model files.
@@ -281,7 +280,7 @@ dgenerate help output
                             syntax: --control-nets "https://huggingface.co/UserName/repository-
                             name/blob/main/controlnet.safetensors", the revision argument may be used with
                             this syntax.
-      --scheduler SCHEDULER_NAME
+      -sch SCHEDULER_NAME, --scheduler SCHEDULER_NAME
                             Specify a scheduler (sampler) by name. Passing "help" to this argument will print
                             the compatible schedulers for a model without generating any images. Torch
                             schedulers: (DDIMScheduler, DDPMScheduler, PNDMScheduler, LMSDiscreteScheduler,
@@ -321,10 +320,10 @@ dgenerate help output
                             exactsame way as --scheduler including the "help" option. Defaults to the value
                             of --scheduler.
       --sdxl-second-prompts PROMPT [PROMPT ...]
-                            List of secondary prompts to try using SDXL's secondary text encoder. By default
-                            the model is passed the primary prompt for this value, this option allows you to
-                            choose a different prompt. The negative prompt component can be specified with
-                            the same syntax as --prompts
+                            One or more secondary prompts to try using SDXL's secondary text encoder. By
+                            default the model is passed the primary prompt for this value, this option allows
+                            you to choose a different prompt. The negative prompt component can be specified
+                            with the same syntax as --prompts
       --sdxl-aesthetic-scores FLOAT [FLOAT ...]
                             One or more Stable Diffusion XL (torch-sdxl) "aesthetic-score" micro-conditioning
                             parameters. Used to simulate an aesthetic score of the generated image by
@@ -379,13 +378,13 @@ dgenerate help output
                             [https://huggingface.co/papers/2307.01952]. For more information, refer to this
                             issue thread: https://github.com/huggingface/diffusers/issues/4208.
       --sdxl-refiner-prompts PROMPT [PROMPT ...]
-                            List of prompts to try with the SDXL refiner model, by default the refiner model
-                            gets the primary prompt, this argument overrides that with a prompt of your
+                            One or more prompts to try with the SDXL refiner model, by default the refiner
+                            model gets the primary prompt, this argument overrides that with a prompt of your
                             choosing. The negative prompt component can be specified with the same syntax as
                             --prompts
       --sdxl-refiner-second-prompts PROMPT [PROMPT ...]
-                            List of prompts to try with the SDXL refiner models secondary text encoder, by
-                            default the refiner model gets the primary prompt passed to its second text
+                            One or more prompts to try with the SDXL refiner models secondary text encoder,
+                            by default the refiner model gets the primary prompt passed to its second text
                             encoder, this argument overrides that with a prompt of your choosing. The
                             negative prompt component can be specified with the same syntax as --prompts
       --sdxl-refiner-aesthetic-scores FLOAT [FLOAT ...]
@@ -405,14 +404,14 @@ dgenerate help output
       --sdxl-refiner-negative-crops-coords-top-left COORD [COORD ...]
                             See: --sdxl-negative-crops-coords-top-left, applied to SDXL refiner pass.
       -hnf FLOAT [FLOAT ...], --sdxl-high-noise-fractions FLOAT [FLOAT ...]
-                            High noise fraction for Stable Diffusion XL (torch-sdxl), this fraction of
-                            inference steps will be processed by the base model, while the rest will be
-                            processed by the refiner model. Multiple values to this argument will result in
-                            additional generation steps for each value. In certain situations when the
-                            mixture of denoisers algorithm is not supported, such as when using --control-
-                            nets and inpainting with SDXL, the inverse proportion of this value IE: (1.0 -
-                            high-noise-fraction) becomes the --image-seed-strength input to the SDXL refiner.
-                            (default: [0.8])
+                            One or more high-noise-fraction values for Stable Diffusion XL (torch-sdxl), this
+                            fraction of inference steps will be processed by the base model, while the rest
+                            will be processed by the refiner model. Multiple values to this argument will
+                            result in additional generation steps for each value. In certain situations when
+                            the mixture of denoisers algorithm is not supported, such as when using
+                            --control-nets and inpainting with SDXL, the inverse proportion of this value IE:
+                            (1.0 - high-noise-fraction) becomes the --image-seed-strength input to the SDXL
+                            refiner. (default: [0.8])
       -ri INT [INT ...], --sdxl-refiner-inference-steps INT [INT ...]
                             One or more inference steps values for the SDXL refiner when in use. Override the
                             number of inference steps used by the SDXL refiner, which defaults to the value
@@ -425,10 +424,10 @@ dgenerate help output
                             One or more guidance rescale values for the SDXL refiner when in use. Override
                             the guidance rescale value used by the SDXL refiner, which defaults to the value
                             taken from --guidance-rescales.
-      --safety-checker      Enable safety checker loading, this is off by default. When turned on images with
+      -sc, --safety-checker
+                            Enable safety checker loading, this is off by default. When turned on images with
                             NSFW content detected may result in solid black output. Some pretrained models
-                            have settings indicating a safety checker is not to be loaded, in that case this
-                            option has no effect.
+                            have no safety checker model present, in that case this option has no effect.
       -d DEVICE, --device DEVICE
                             cuda / cpu. (default: cuda). Use: cuda:0, cuda:1, cuda:2, etc. to specify a
                             specific GPU. This argument is ignored when using flax, for flax use the
@@ -482,15 +481,15 @@ dgenerate help output
                             ImageMagick like so: "magick identify -format "%[Property:DgenerateConfig]
                             generated_file.png".
       -p PROMPT [PROMPT ...], --prompts PROMPT [PROMPT ...]
-                            List of prompts to try, an image group is generated for each prompt, prompt data
-                            is split by ; (semi-colon). The first value is the positive text influence,
+                            One or more prompts to try, an image group is generated for each prompt, prompt
+                            data is split by ; (semi-colon). The first value is the positive text influence,
                             things you want to see. The Second value is negative influence IE. things you
                             don't want to see. Example: --prompts "shrek flying a tesla over detroit; clouds,
                             rain, missiles". (default: [(empty string)])
       -se SEED [SEED ...], --seeds SEED [SEED ...]
-                            List of seeds to try, define fixed seeds to achieve deterministic output. This
-                            argument may not be used when --gse/--gen-seeds is used. (default: [randint(0,
-                            99999999999999)])
+                            One or more seeds to try, define fixed seeds to achieve deterministic output.
+                            This argument may not be used when --gse/--gen-seeds is used. (default:
+                            [randint(0, 99999999999999)])
       -sei, --seeds-to-images
                             When this option is enabled, each provided --seeds value or value generated by
                             --gen-seeds is used for the corresponding image input given by --image-seeds. If
@@ -510,20 +509,20 @@ dgenerate help output
                             Ending frame slice point for animated files, the specified frame will be
                             included.
       -is SEED [SEED ...], --image-seeds SEED [SEED ...]
-                            List of image seeds to try when processing image seeds, these may be URLs or file
-                            paths. Videos / GIFs / WEBP files will result in frames being rendered as well as
-                            an animated output file being generated if more than one frame is available in
-                            the input file. Inpainting for static images can be achieved by specifying a
-                            black and white mask image in each image seed string using a semicolon as the
+                            One or more image seed URIs to process, these may consist of URLs or file paths.
+                            Videos / GIFs / WEBP files will result in frames being rendered as well as an
+                            animated output file being generated if more than one frame is available in the
+                            input file. Inpainting for static images can be achieved by specifying a black
+                            and white mask image in each image seed string using a semicolon as the
                             separating character, like so: "my-seed-image.png;my-image-mask.png", white areas
                             of the mask indicate where generated content is to be placed in your seed image.
                             Output dimensions specific to the image seed can be specified by placing the
                             dimension at the end of the string following a semicolon like so: "my-seed-
-                            image.png;512x512" or "my-seed-image.png;my-image-mask.png;512x512". When
-                            using --control-nets, a singular image specification is interpreted as the
-                            control guidance image, and you can specify multiple control image sources by
-                            separating them with commas in the case where multiple ControlNets are specified,
-                            IE: (--image-seeds "control-image1.png, control-image2.png") OR (--image-seeds
+                            image.png;512x512" or "my-seed-image.png;my-image-mask.png;512x512". When using
+                            --control-nets, a singular image specification is interpreted as the control
+                            guidance image, and you can specify multiple control image sources by separating
+                            them with commas in the case where multiple ControlNets are specified, IE:
+                            (--image-seeds "control-image1.png, control-image2.png") OR (--image-seeds
                             "seed.png;control=control-image1.png, control-image2.png"). Using --control-nets
                             with img2img or inpainting can be accomplished with the syntax: "my-seed-
                             image.png;mask=my-image-mask.png;control=my-control-image.png;resize=512x512".
@@ -541,17 +540,17 @@ dgenerate help output
                             ifs*. When keyword arguments are present, all applicable images such as "mask",
                             "control", etc. must also be defined with keyword arguments instead of with the
                             short syntax.
-      --seed-image-preprocessors PREPROCESSOR [PREPROCESSOR ...]
+      -sip PREPROCESSOR [PREPROCESSOR ...], --seed-image-preprocessors PREPROCESSOR [PREPROCESSOR ...]
                             Specify one or more image preprocessor actions to preform on the primary image
                             specified by --image-seeds. For example: --seed-image-preprocessors "flip"
                             "mirror" "grayscale". To obtain more information about what image preprocessors
                             are available and how to use them, see: --image-preprocessor-help.
-      --mask-image-preprocessors PREPROCESSOR [PREPROCESSOR ...]
+      -mip PREPROCESSOR [PREPROCESSOR ...], --mask-image-preprocessors PREPROCESSOR [PREPROCESSOR ...]
                             Specify one or more image preprocessor actions to preform on the inpaint mask
                             image specified by --image-seeds. For example: --mask-image-preprocessors
                             "invert". To obtain more information about what image preprocessors are available
                             and how to use them, see: --image-preprocessor-help.
-      --control-image-preprocessors PREPROCESSOR [PREPROCESSOR ...]
+      -cip PREPROCESSOR [PREPROCESSOR ...], --control-image-preprocessors PREPROCESSOR [PREPROCESSOR ...]
                             Specify one or more image preprocessor actions to preform on the control image
                             specified by --image-seeds, this option is meant to be used with --control-nets.
                             Example: --control-image-preprocessors "canny;lower=50;upper=100". The delimiter
@@ -572,34 +571,38 @@ dgenerate help output
                             image is not to be processed, only the second. To obtain more information about
                             what image preprocessors are available and how to use them, see: --image-
                             preprocessor-help.
-      --image-preprocessor-help [PREPROCESSOR ...]
+      -iph [PREPROCESSOR ...], --image-preprocessor-help [PREPROCESSOR ...]
                             Use this option alone (or with --plugin-modules) and no model specification in
                             order to list available image preprocessor module names. Specifying one or more
                             module names after this option will cause usage documentation for the specified
                             modules to be printed.
       -iss FLOAT [FLOAT ...], --image-seed-strengths FLOAT [FLOAT ...]
-                            List of image seed strengths to try. Closer to 0 means high usage of the seed
-                            image (less noise convolution), 1 effectively means no usage (high noise
-                            convolution). Low values will produce something closer or more relevant to the
-                            input image, high values will give the AI more creative freedom. (default: [0.8])
+                            One or more image strength values to try when using --image-seeds for img2img or
+                            inpaint mode. Closer to 0 means high usage of the seed image (less noise
+                            convolution), 1 effectively means no usage (high noise convolution). Low values
+                            will produce something closer or more relevant to the input image, high values
+                            will give the AI more creative freedom. (default: [0.8])
       -uns INTEGER [INTEGER ...], --upscaler-noise-levels INTEGER [INTEGER ...]
-                            List of upscaler noise levels to try when using the super resolution upscaler
-                            (torch-upscaler-x4). Specifying this option for --model-type torch-upscaler-x2
-                            will produce an error message. The higher this value the more noise is added to
-                            the image before upscaling (similar to --image-seed-strength). (default: [20])
+                            One or more upscaler noise level values to try when using the super resolution
+                            upscaler --model-type torch-upscaler-x4. Specifying this option for --model-type
+                            torch-upscaler-x2 will produce an error message. The higher this value the more
+                            noise is added to the image before upscaling (similar to --image-seed-strength).
+                            (default: [20])
       -gs FLOAT [FLOAT ...], --guidance-scales FLOAT [FLOAT ...]
-                            List of guidance scales to try. Guidance scale effects how much your text prompt
-                            is considered. Low values draw more data from images unrelated to text prompt.
-                            (default: [5])
+                            One or more guidance scale values to try. Guidance scale effects how much your
+                            text prompt is considered. Low values draw more data from images unrelated to
+                            text prompt. (default: [5])
       -igs FLOAT [FLOAT ...], --image-guidance-scales FLOAT [FLOAT ...]
-                            Push the generated image towards the initial image when using --model-type
-                            *-pix2pix models. Use in conjunction with --image-seeds, inpainting (masks) and
-                            --control-nets are not supported. Image guidance scale is enabled by setting
-                            image-guidance-scale > 1. Higher image guidance scale encourages generated images
-                            that are closely linked to the source image, usually at the expense of lower
-                            image quality. Requires a value of at least 1. (default: [1.5])
+                            One or more image guidance scale values to try. This can push the generated image
+                            towards the initial image when using --model-type *-pix2pix models, it is
+                            unsupported for other model types. Use in conjunction with --image-seeds,
+                            inpainting (masks) and --control-nets are not supported. Image guidance scale is
+                            enabled by setting image-guidance-scale > 1. Higher image guidance scale
+                            encourages generated images that are closely linked to the source image, usually
+                            at the expense of lower image quality. Requires a value of at least 1. (default:
+                            [1.5])
       -gr FLOAT [FLOAT ...], --guidance-rescales FLOAT [FLOAT ...]
-                            List of guidance rescale factors to try. Proposed by [Common Diffusion Noise
+                            One or more guidance rescale factors to try. Proposed by [Common Diffusion Noise
                             Schedules and Sample Steps are Flawed](https://arxiv.org/pdf/2305.08891.pdf)
                             "guidance_scale" is defined as "φ" in equation 16. of [Common Diffusion Noise
                             Schedules and Sample Steps are Flawed] (https://arxiv.org/pdf/2305.08891.pdf).
@@ -611,23 +614,42 @@ dgenerate help output
                             is supported for --model-type "torch-sdxl-pix2pix" but not --model-type "torch-
                             pix2pix". (default: [0.0])
       -ifs INTEGER [INTEGER ...], --inference-steps INTEGER [INTEGER ...]
-                            Lists of inference steps values to try. The amount of inference (de-noising)
+                            One or more inference steps values to try. The amount of inference (de-noising)
                             steps effects image clarity to a degree, higher values bring the image closer to
                             what the AI is targeting for the content of the image. Values between 30-40
                             produce good results, higher values may improve image quality and or change image
                             content. (default: [30])
-      --cache-memory-constraints EXPR [EXPR ...]
-                            See: [https://dgenerate.readthedocs.io/en/latest/dgenerate_submodules.html#dgener
-                            ate.pipelinewrapper.CACHE_MEMORY_CONSTRAINTS]
-      --pipeline-cache-memory-constraints EXPR [EXPR ...]
-                            See: [https://dgenerate.readthedocs.io/en/latest/dgenerate_submodules.html#dgener
-                            ate.pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS]
-      --vae-cache-memory-constraints EXPR [EXPR ...]
-                            See: [https://dgenerate.readthedocs.io/en/latest/dgenerate_submodules.html#dgener
-                            ate.pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS]
-      --control-net-cache-memory-constraints EXPR [EXPR ...]
-                            See: [https://dgenerate.readthedocs.io/en/latest/dgenerate_submodules.html#dgener
-                            ate.pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS]
+      -mc EXPR [EXPR ...], --cache-memory-constraints EXPR [EXPR ...]
+                            Cache constraint expressions describing when to clear all model caches
+                            automatically (DiffusionPipeline, VAE, and ControlNet) considering current memory
+                            usage. If any of these constraint expressions are met all models cached in memory
+                            will be cleared. Example, and default value: "used_percent > 70" For Syntax See:
+                            [https://dgenerate.readthedocs.io/en/2.0.0/dgenerate_submodules.html#dgenerate.pi
+                            pelinewrapper.CACHE_MEMORY_CONSTRAINTS]
+      -pmc EXPR [EXPR ...], --pipeline-cache-memory-constraints EXPR [EXPR ...]
+                            Cache constraint expressions describing when to automatically clear the in memory
+                            DiffusionPipeline cache considering current memory usage, and estimated memory
+                            usage of new models that are about to enter memory. If any of these constraint
+                            expressions are met all DiffusionPipeline objects cached in memory will be
+                            cleared. Example, and default value: "pipeline_size > (available * 0.75)" For
+                            Syntax See: [https://dgenerate.readthedocs.io/en/2.0.0/dgenerate_submodules.html#
+                            dgenerate.pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS]
+      -vmc EXPR [EXPR ...], --vae-cache-memory-constraints EXPR [EXPR ...]
+                            Cache constraint expressions describing when to automatically clear the in memory
+                            VAE cache considering current memory usage, and estimated memory usage of new VAE
+                            models that are about to enter memory. If any of these constraint expressions are
+                            met all VAE models cached in memory will be cleared. Example, and default value:
+                            "vae_size > (available * 0.75)" For Syntax See: [https://dgenerate.readthedocs.io
+                            /en/2.0.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.VAE_CACHE_MEMORY_CO
+                            NSTRAINTS]
+      -cmc EXPR [EXPR ...], --control-net-cache-memory-constraints EXPR [EXPR ...]
+                            Cache constraint expressions describing when to automatically clear the in memory
+                            ControlNet cache considering current memory usage, and estimated memory usage of
+                            new ControlNet models that are about to enter memory. If any of these constraint
+                            expressions are met all ControlNet models cached in memory will be cleared.
+                            Example, and default value: "control_net_size > (available * 0.75)" For Syntax
+                            See: [https://dgenerate.readthedocs.io/en/2.0.0/dgenerate_submodules.html#dgenera
+                            te.pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS]
 
 
 
