@@ -907,7 +907,13 @@ actions.append(
                         argument. --image-seeds is capable of reading from multiple animated files at once or any 
                         combination of animated files and images, the animated file with the least amount of frames 
                         dictates how many frames are generated and static images are duplicated over the total amount
-                        of frames.
+                        of frames. The keyword argument "aspect" can be used to determine resizing behavior when
+                        the global argument --output-size or the local keyword argument "resize" is specified, 
+                        it is a boolean argument indicating whether aspect ratio of the input image should be 
+                        respected or ignored.  The keyword argument "floyd" can be used to specify images from
+                        a previous deep floyd stage when using --model-type torch-ifs*. When keyword arguments 
+                        are present, all applicable images such as "mask", "control", etc. must also be defined
+                        with keyword arguments instead of with the short syntax.
                         """))
 
 image_seed_noise_opts = parser.add_mutually_exclusive_group()
@@ -972,9 +978,9 @@ actions.append(
                                        type=_type_upscaler_noise_levels,
                                        help=f"""
                                        List of upscaler noise levels to try when using the super resolution upscaler 
-                                       (torch-upscaler-x4). These values will be ignored when using (torch-upscaler-x2).
-                                       The higher this value the more noise is added to the image before upscaling 
-                                       (similar to --image-seed-strength). (default: [20])"""))
+                                       (torch-upscaler-x4). Specifying this option for --model-type torch-upscaler-x2
+                                       will produce an error message. The higher this value the more noise is added 
+                                       to the image before upscaling (similar to --image-seed-strength). (default: [20])"""))
 
 actions.append(
     parser.add_argument('-gs', '--guidance-scales', action='store', nargs='+',
