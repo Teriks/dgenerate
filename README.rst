@@ -1114,22 +1114,24 @@ The involved images are resized using the basic syntax with no keyword arguments
 Animated Output
 ===============
 
-**dgenerate** supports many video formats through the use of PyAV, as well as GIF & WebP.
+**dgenerate** supports many video formats through the use of PyAV (ffmpeg), as well as GIF & WebP.
+
+See ``--help`` for information about all formats supported for the ``--animation-format`` option.
 
 When an animated image seed is given, animated output will be produced in the format of your choosing.
 
 In addition, every frame will be written to the output folder as a uniquely named image.
 
-Use a GIF of a man riding a horse to create an animation of an astronaut riding a horse.
-
-Output to an MP4.  See ``--help`` for information about formats supported by ``--animation-format``
-
 If the animation is not 1:1 aspect ratio, the width will be fixed to the width of the
 requested output size, and the height calculated to match the aspect ratio of the animation.
+Unless ``--no-aspect`` or the ``--image-seeds`` keyword argument ``aspect=false`` are specified,
+in which case the video will be resized to the requested dimension exactly.
 
 If you do not set an output size, the size of the input animation will be used.
 
 .. code-block:: bash
+
+    # Use a GIF of a man riding a horse to create an animation of an astronaut riding a horse.
 
     dgenerate stabilityai/stable-diffusion-2-1 \
     --prompts "an astronaut riding a horse" \
@@ -1462,11 +1464,11 @@ The syntax for ``--vae`` is ``AutoEncoderClass;model=(huggingface repository slu
 Named arguments when loading a VAE are seperated by the ``;`` character and are not positional,
 meaning they can be defined in any order.
 
-Loading arguments available when specifying
-a Torch VAE are: ``model``, ``revision``, ``variant``, ``subfolder``, and ``dtype``
+Loading arguments available when specifying a VAE for torch ``--model-type`` values
+are: ``model``, ``revision``, ``variant``, ``subfolder``, and ``dtype``
 
-Loading arguments available when specifying
-a Flax VAE are ``model``, ``revision``, ``subfolder``, ``dtype``
+Loading arguments available when specifying VAE for flax ``--model-type`` values
+are: ``model``, ``revision``, ``subfolder``, ``dtype``
 
 The only named arguments compatible with loading a .safetensors or other model file
 directly off disk is ``model``, ``dtype``, and ``revision``
@@ -1521,7 +1523,7 @@ of the specified huggingface repository.
 
 If you wish to specify a weights variant IE: load ``pytorch_model.<variant>.safetensors``, from a huggingface
 repository that has variants of the same model, use the named argument ``variant``.  This usage is only
-valid when loading VAE's if ``--model-type`` is either ``torch`` or ``torch-sdxl``.  Attempting
+valid when loading VAEs if ``--model-type`` is either ``torch`` or ``torch-sdxl``.  Attempting
 to use it with FlaxAutoencoderKL with produce an error message. By default this value is the same as
 ``--variant`` when that option is specified for the main model.
 
@@ -1824,7 +1826,7 @@ or other file from a path on disk the available arguments are ``scale``, ``start
 ``from_torch`` can be used with flax for loading pytorch models from .pt or other files designed for torch from a repo or file/folder on disk.
 
 
-The ``scale`` argument indicates the effect scale of the control net model.
+The ``scale`` argument indicates the affect scale of the control net model.
 
 
 For torch, the ``start`` argument indicates at what fraction of the total inference steps
@@ -2603,7 +2605,9 @@ The ``\templates_help`` output from the above example is:
 
 
 Here are examples of other available directives such as ``\set`` and ``\print`` as
-well as some basic Jinja2 templating usage.
+well as some basic Jinja2 templating usage. This example also covers the usage
+and purpose of ``\save_modules`` for saving and reusing pipeline modules such
+as VAEs etc. outside of relying on the caching system.
 
 
 .. code-block:: bash
