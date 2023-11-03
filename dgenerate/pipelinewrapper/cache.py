@@ -83,7 +83,7 @@ def control_net_cache_size() -> int:
     return _CONTROL_NET_CACHE_SIZE
 
 
-CACHE_MEMORY_CONSTRAINTS: typing.List[str] = ['used_percent > 90']
+CACHE_MEMORY_CONSTRAINTS: typing.List[str] = ['used_percent > 70']
 """
 Cache constraint expressions for when to clear all model caches (DiffusionPipeline, VAE, and ControlNet), 
 syntax provided via :py:meth:`dgenerate.memory.memory_constraints`
