@@ -894,7 +894,6 @@ actions.append(
                         image. Output dimensions specific to the image seed can be specified by placing the
                         dimension at the end of the string following a semicolon like so:
                         "my-seed-image.png;512x512" or "my-seed-image.png;my-image-mask.png;512x512".
-                        Inpainting masks can be downloaded for you from a URL or be a path to a file on disk.
                         When using --control-nets, a singular image specification is interpreted as the control
                         guidance image, and you can specify multiple control image sources by separating them with
                         commas in the case where multiple ControlNets are specified, IE: 
