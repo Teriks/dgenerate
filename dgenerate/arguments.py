@@ -270,14 +270,14 @@ actions.append(
                         help="Show dgenerate's version and exit"))
 
 actions.append(
-    parser.add_argument('--plugin-modules', action='store', default=[], nargs="+", dest='plugin_module_paths',
+    parser.add_argument('-pm', '--plugin-modules', action='store', default=[], nargs="+", dest='plugin_module_paths',
                         metavar="PATH",
                         help="""Specify one or more plugin module folder paths (folder containing __init__.py) or 
                         python .py file paths to load as plugins. Plugin modules can currently only implement 
                         image preprocessors."""))
 
 actions.append(
-    parser.add_argument('--offline-mode', action='store_true', default=False,
+    parser.add_argument('-ofm', '--offline-mode', action='store_true', default=False,
                         help="""Whether dgenerate should try to download huggingface models that do not 
                         exist in the disk cache, or only use what is available in the cache. Referencing 
                         a model on huggingface that has not been cached because it was not previously 
@@ -285,40 +285,40 @@ actions.append(
 
 # This argument is handled in dgenerate.invoker.invoke_dgenerate
 actions.append(
-    parser.add_argument('--templates-help', action='store_true', dest=None,
+    parser.add_argument('-th', '--templates-help', action='store_true', dest=None,
                         help="""Print a list of template variables available after a dgenerate invocation 
                         during batch processing from STDIN. When used as a command option, their values
                         are not presented, just their names and types."""))
 
 actions.append(
-    parser.add_argument('--model-type', action='store', default='torch', type=_model_type,
+    parser.add_argument('-mt', '--model-type', action='store', default='torch', type=_model_type,
                         help=f"""Use when loading different model types. 
                          Currently supported: {_SUPPORTED_MODEL_TYPES_PRETTY}. (default: torch)"""))
 
 actions.append(
-    parser.add_argument('--revision', action='store', default="main", metavar="BRANCH",
+    parser.add_argument('-rev', '--revision', action='store', default="main", metavar="BRANCH",
                         help="""The model revision to use when loading from a huggingface repository,
                          (The git branch / tag, default is "main")"""))
 
 actions.append(
-    parser.add_argument('--variant', action='store', default=None,
+    parser.add_argument('-var', '--variant', action='store', default=None,
                         help="""If specified when loading from a huggingface repository or folder, load weights
                         from "variant" filename, e.g. "pytorch_model.<variant>.safetensors".
                         Defaults to automatic selection. This option is ignored if using flax."""))
 
 actions.append(
-    parser.add_argument('--subfolder', action='store', default=None,
+    parser.add_argument('-sbf', '--subfolder', action='store', default=None,
                         help="""Main model subfolder.
                         If specified when loading from a huggingface repository or folder,
                         load weights from the specified subfolder."""))
 
 actions.append(
-    parser.add_argument('--auth-token', action='store', default=None, metavar="TOKEN",
+    parser.add_argument('-atk', '--auth-token', action='store', default=None, metavar="TOKEN",
                         help="""Huggingface auth token.
                         Required to download restricted repositories that have access permissions
                         granted to your huggingface account."""))
 actions.append(
-    parser.add_argument('--batch-size', action='store', default=None, metavar="INTEGER", type=_type_batch_size,
+    parser.add_argument('-bs', '--batch-size', action='store', default=None, metavar="INTEGER", type=_type_batch_size,
                         help="""The number of image variations to produce per set of individual diffusion parameters
                         in one rendering step simultaneously on a single GPU. When using flax, batch size
                         is controlled by the environmental variable CUDA_VISIBLE_DEVICES which is a comma 
@@ -334,7 +334,7 @@ actions.append(
                         (Torch Default: 1)"""))
 
 actions.append(
-    parser.add_argument('--batch-grid-size', action='store', default=None, metavar="SIZE", type=_type_size,
+    parser.add_argument('-bgs', '--batch-grid-size', action='store', default=None, metavar="SIZE", type=_type_size,
                         help="""Produce a single image containing a grid of images with the number of COLUMNSxROWS 
                         given to this argument when --batch-size is greater than 1, or when using flax with multiple 
                         GPUs visible (via the environmental variable CUDA_VISIBLE_DEVICES). If not specified with a
@@ -342,7 +342,7 @@ actions.append(
                         (image_N) in the filename signifying which image in the batch they are."""))
 
 actions.append(
-    parser.add_argument('--vae', action='store', default=None, metavar="VAE_URI", dest='vae_uri',
+    parser.add_argument('-vae', '--vae', action='store', default=None, metavar="VAE_URI", dest='vae_uri',
                         help=
                         f"""Specify a VAE using a URI. When using torch models the URI syntax is: 
                         "AutoEncoderClass;model=(huggingface repository slug/blob link or file/folder path)".
@@ -390,7 +390,7 @@ actions.append(
                         """))
 
 actions.append(
-    parser.add_argument('--vae-tiling', action='store_true', default=False,
+    parser.add_argument('-vt', '--vae-tiling', action='store_true', default=False,
                         help="""Enable VAE tiling (torch models only). Assists in the generation of
                         large images with lower memory overhead. The VAE will split the input tensor 
                         into tiles to compute decoding and encoding in several steps. This is 
@@ -399,7 +399,7 @@ actions.append(
                         issues generating large images, or with --batch-size greater than 1."""))
 
 actions.append(
-    parser.add_argument('--vae-slicing', action='store_true', default=False,
+    parser.add_argument('-vs', '--vae-slicing', action='store_true', default=False,
                         help="""Enable VAE slicing (torch* models only). Assists in the generation 
                         of large images with lower memory overhead. The VAE will split the input tensor
                         in slices to compute decoding in several steps. This is useful to save some memory,
@@ -407,7 +407,7 @@ actions.append(
                         you may still run into memory issues generating large images."""))
 
 actions.append(
-    parser.add_argument('--loras', '--lora', action='store', default=None, metavar="LORA_URI", dest='lora_uris',
+    parser.add_argument('-lra', '--loras', '--lora', action='store', default=None, metavar="LORA_URI", dest='lora_uris',
                         help=
                         """Specify a LoRA model using a URI (flax not supported). This should be a
                         huggingface repository slug, path to model file on disk (for example, a .pt, .pth, .bin,
@@ -437,8 +437,8 @@ actions.append(
                         all other loading arguments are unused in this case and may produce an error message if used."""))
 
 actions.append(
-    parser.add_argument('--textual-inversions', nargs='+', action='store', default=None,
-                        metavar="TEXTUAL_INVERSION_URI",
+    parser.add_argument('-ti', '--textual-inversions', nargs='+', action='store', default=None,
+                        metavar="URI",
                         dest='textual_inversion_uris',
                         help=
                         """Specify one or more Textual Inversion models using URIs (flax and SDXL not supported). 
@@ -468,7 +468,7 @@ actions.append(
                         are unused in this case and may produce an error message if used."""))
 
 actions.append(
-    parser.add_argument('--control-nets', nargs='+', action='store', default=None, metavar="CONTROL_NET_URI",
+    parser.add_argument('-cn', '--control-nets', nargs='+', action='store', default=None, metavar="CONTROL_NET_URI",
                         dest='control_net_uris',
                         help=
                         f"""Specify one or more ControlNet models using URIs. This should be a
@@ -528,7 +528,7 @@ _flax_scheduler_help_part = \
         if _pipelinewrapper.have_jax_flax() else ''
 
 actions.append(
-    parser.add_argument('--scheduler', action='store', default=None, metavar="SCHEDULER_NAME",
+    parser.add_argument('-sch', '--scheduler', action='store', default=None, metavar="SCHEDULER_NAME",
                         help=
                         f'Specify a scheduler (sampler) by name. Passing "help" to this argument '
                         f'will print the compatible schedulers for a model without generating any images. '
@@ -586,7 +586,7 @@ actions.append(
     parser.add_argument('--sdxl-second-prompts', nargs='+', action='store', metavar="PROMPT",
                         default=None,
                         type=_type_prompts,
-                        help="""List of secondary prompts to try using SDXL's secondary text encoder. 
+                        help="""One or more secondary prompts to try using SDXL's secondary text encoder. 
                         By default the model is passed the primary prompt for this value, this option
                         allows you to choose a different prompt. The negative prompt component can be
                         specified with the same syntax as --prompts"""))
@@ -667,7 +667,7 @@ actions.append(
                         metavar="PROMPT",
                         default=None,
                         type=_type_prompts,
-                        help="""List of prompts to try with the SDXL refiner model, 
+                        help="""One or more prompts to try with the SDXL refiner model, 
                         by default the refiner model gets the primary prompt, this argument 
                         overrides that with a prompt of your choosing. The negative prompt 
                         component can be specified with the same syntax as --prompts"""))
@@ -677,7 +677,7 @@ actions.append(
                         metavar="PROMPT",
                         default=None,
                         type=_type_prompts,
-                        help="""List of prompts to try with the SDXL refiner models secondary 
+                        help="""One or more prompts to try with the SDXL refiner models secondary 
                         text encoder, by default the refiner model gets the primary prompt passed
                         to its second text encoder, this argument overrides that with a prompt 
                         of your choosing. The negative prompt component can be specified with the 
@@ -727,12 +727,12 @@ actions.append(
     parser.add_argument('-hnf', '--sdxl-high-noise-fractions', action='store', nargs='+', default=None,
                         metavar="FLOAT",
                         type=_type_sdxl_high_noise_fractions,
-                        help="""High noise fraction for Stable Diffusion XL (torch-sdxl), this fraction of inference steps
-                        will be processed by the base model, while the rest will be processed by the refiner model.
-                        Multiple values to this argument will result in additional generation steps for each value.
-                        In certain situations when the mixture of denoisers algorithm is not supported,
-                        such as when using --control-nets and inpainting with SDXL, the inverse proportion
-                        of this value IE: (1.0 - high-noise-fraction) becomes the --image-seed-strength 
+                        help="""One or more high-noise-fraction values for Stable Diffusion XL (torch-sdxl), 
+                        this fraction of inference steps will be processed by the base model, while the rest 
+                        will be processed by the refiner model. Multiple values to this argument will result in 
+                        additional generation steps for each value. In certain situations when the mixture of denoisers 
+                        algorithm is not supported, such as when using --control-nets and inpainting with SDXL, the inverse 
+                        proportion of this value IE: (1.0 - high-noise-fraction) becomes the --image-seed-strength 
                         input to the SDXL refiner. (default: [0.8])"""))
 
 actions.append(
@@ -759,11 +759,11 @@ actions.append(
                         which defaults to the value taken from --guidance-rescales."""))
 
 actions.append(
-    parser.add_argument('--safety-checker', action='store_true', default=False,
+    parser.add_argument('-sc', '--safety-checker', action='store_true', default=False,
                         help="""Enable safety checker loading, this is off by default.
                         When turned on images with NSFW content detected may result in solid black output.
-                        Some pretrained models have settings indicating a safety checker is not to be loaded,
-                        in that case this option has no effect."""))
+                        Some pretrained models have no safety checker model present, in that case this 
+                        option has no effect."""))
 
 actions.append(
     parser.add_argument('-d', '--device', action='store', default='cuda', type=_type_device,
@@ -837,7 +837,7 @@ actions.append(
     parser.add_argument('-p', '--prompts', nargs='+', action='store', metavar="PROMPT",
                         default=[_prompt.Prompt()],
                         type=_type_prompts,
-                        help="""List of prompts to try, an image group is generated for each prompt,
+                        help="""One or more prompts to try, an image group is generated for each prompt,
                         prompt data is split by ; (semi-colon). The first value is the positive
                         text influence, things you want to see. The Second value is negative
                         influence IE. things you don't want to see.
@@ -848,7 +848,7 @@ seed_options = parser.add_mutually_exclusive_group()
 
 actions.append(
     seed_options.add_argument('-se', '--seeds', nargs='+', action='store', metavar="SEED", type=_type_seeds,
-                              help="""List of seeds to try, define fixed seeds to achieve deterministic output.
+                              help="""One or more seeds to try, define fixed seeds to achieve deterministic output.
                               This argument may not be used when --gse/--gen-seeds is used.
                               (default: [randint(0, 99999999999999)])"""))
 
@@ -884,16 +884,15 @@ actions.append(
 
 actions.append(
     parser.add_argument('-is', '--image-seeds', action='store', nargs='+', default=[], metavar="SEED",
-                        help="""List of image seeds to try when processing image seeds, these may
-                        be URLs or file paths. Videos / GIFs / WEBP files will result in frames
-                        being rendered as well as an animated output file being generated if more
-                        than one frame is available in the input file. Inpainting for static images can be
-                        achieved by specifying a black and white mask image in each image seed string using
-                        a semicolon as the separating character, like so: "my-seed-image.png;my-image-mask.png",
-                        white areas of the mask indicate where generated content is to be placed in your seed
-                        image. Output dimensions specific to the image seed can be specified by placing the
-                        dimension at the end of the string following a semicolon like so:
-                        "my-seed-image.png;512x512" or "my-seed-image.png;my-image-mask.png;512x512".
+                        help="""One or more image seed URIs to process, these may consist of URLs or file paths. 
+                        Videos / GIFs / WEBP files will result in frames being rendered as well as an animated 
+                        output file being generated if more than one frame is available in the input file. 
+                        Inpainting for static images can be achieved by specifying a black and white mask image in each 
+                        image seed string using a semicolon as the separating character, like so: 
+                        "my-seed-image.png;my-image-mask.png", white areas of the mask indicate where 
+                        generated content is to be placed in your seed image. Output dimensions specific to the 
+                        image seed can be specified by placing the dimension at the end of the string following a 
+                        semicolon like so: "my-seed-image.png;512x512" or "my-seed-image.png;my-image-mask.png;512x512".
                         When using --control-nets, a singular image specification is interpreted as the control
                         guidance image, and you can specify multiple control image sources by separating them with
                         commas in the case where multiple ControlNets are specified, IE: 
@@ -918,7 +917,8 @@ actions.append(
 image_seed_noise_opts = parser.add_mutually_exclusive_group()
 
 actions.append(
-    parser.add_argument('--seed-image-preprocessors', action='store', nargs='+', default=None, metavar="PREPROCESSOR",
+    parser.add_argument('-sip', '--seed-image-preprocessors', action='store', nargs='+', default=None,
+                        metavar="PREPROCESSOR",
                         help="""Specify one or more image preprocessor actions to preform on the primary
                         image specified by --image-seeds. For example: --seed-image-preprocessors "flip" "mirror" "grayscale".
                         To obtain more information about what image preprocessors are available and how to use them, 
@@ -926,7 +926,8 @@ actions.append(
                         """))
 
 actions.append(
-    parser.add_argument('--mask-image-preprocessors', action='store', nargs='+', default=None, metavar="PREPROCESSOR",
+    parser.add_argument('-mip', '--mask-image-preprocessors', action='store', nargs='+', default=None,
+                        metavar="PREPROCESSOR",
                         help="""Specify one or more image preprocessor actions to preform on the inpaint mask
                         image specified by --image-seeds. For example: --mask-image-preprocessors "invert".
                         To obtain more information about what image preprocessors are available and how to use them, 
@@ -934,7 +935,7 @@ actions.append(
                         """))
 
 actions.append(
-    parser.add_argument('--control-image-preprocessors', action='store', nargs='+', default=None,
+    parser.add_argument('-cip', '--control-image-preprocessors', action='store', nargs='+', default=None,
                         metavar="PREPROCESSOR",
                         help="""Specify one or more image preprocessor actions to preform on the control
                         image specified by --image-seeds, this option is meant to be used with --control-nets. 
@@ -955,7 +956,8 @@ actions.append(
 
 # This argument is handled in dgenerate.invoker.invoke_dgenerate
 actions.append(
-    parser.add_argument('--image-preprocessor-help', action='store', nargs='*', default=None, metavar="PREPROCESSOR",
+    parser.add_argument('-iph', '--image-preprocessor-help', action='store', nargs='*', default=None,
+                        metavar="PREPROCESSOR",
                         dest=None,
                         help="""Use this option alone (or with --plugin-modules) and no model 
                         specification in order to list available image preprocessor module names. 
@@ -966,18 +968,18 @@ actions.append(
     image_seed_noise_opts.add_argument('-iss', '--image-seed-strengths', action='store', nargs='+', default=None,
                                        metavar="FLOAT",
                                        type=_type_image_seed_strengths,
-                                       help=f"""List of image seed strengths to try. Closer to 0 means high usage of the seed image
-                                       (less noise convolution), 1 effectively means no usage (high noise convolution).
-                                       Low values will produce something closer or more relevant to the input image, high
-                                       values will give the AI more creative freedom. (default: [0.8])"""))
+                                       help=f"""One or more image strength values to try when using --image-seeds for 
+                                       img2img or inpaint mode. Closer to 0 means high usage of the seed image (less noise convolution), 
+                                       1 effectively means no usage (high noise convolution). Low values will produce something closer 
+                                       or more relevant to the input image, high values will give the AI more creative freedom. (default: [0.8])"""))
 
 actions.append(
     image_seed_noise_opts.add_argument('-uns', '--upscaler-noise-levels', action='store', nargs='+', default=None,
                                        metavar="INTEGER",
                                        type=_type_upscaler_noise_levels,
                                        help=f"""
-                                       List of upscaler noise levels to try when using the super resolution upscaler 
-                                       (torch-upscaler-x4). Specifying this option for --model-type torch-upscaler-x2
+                                       One or more upscaler noise level values to try when using the super resolution upscaler 
+                                       --model-type torch-upscaler-x4. Specifying this option for --model-type torch-upscaler-x2
                                        will produce an error message. The higher this value the more noise is added 
                                        to the image before upscaling (similar to --image-seed-strength). (default: [20])"""))
 
@@ -986,7 +988,7 @@ actions.append(
                         default=[_pipelinewrapper.DEFAULT_GUIDANCE_SCALE],
                         metavar="FLOAT",
                         type=_type_guidance_scale,
-                        help="""List of guidance scales to try. Guidance scale effects how much your
+                        help="""One or more guidance scale values to try. Guidance scale effects how much your
                         text prompt is considered. Low values draw more data from images unrelated
                         to text prompt. (default: [5])"""))
 
@@ -994,17 +996,18 @@ actions.append(
     parser.add_argument('-igs', '--image-guidance-scales', action='store', nargs='+', default=None,
                         metavar="FLOAT",
                         type=_type_image_guidance_scale,
-                        help="""Push the generated image towards the initial image when using --model-type *-pix2pix models.
-                        Use in conjunction with --image-seeds, inpainting (masks) and --control-nets are not supported.
-                        Image guidance scale is enabled by setting image-guidance-scale > 1. Higher image guidance scale
-                        encourages generated images that are closely linked to the source image, usually at the expense
-                        of lower image quality. Requires a value of at least 1. (default: [1.5])"""))
+                        help="""One or more image guidance scale values to try. This can push the generated image towards the
+                        initial image when using --model-type *-pix2pix models, it is unsupported for other model types. 
+                        Use in conjunction with --image-seeds, inpainting (masks) and --control-nets are not supported. 
+                        Image guidance scale is enabled by setting image-guidance-scale > 1. Higher image guidance scale 
+                        encourages generated images that are closely linked to the source image, usually at the expense of 
+                        lower image quality. Requires a value of at least 1. (default: [1.5])"""))
 
 actions.append(
     parser.add_argument('-gr', '--guidance-rescales', action='store', nargs='+', default=[],
                         metavar="FLOAT",
                         type=_type_guidance_scale,
-                        help="""List of guidance rescale factors to try. Proposed by [Common Diffusion Noise Schedules and 
+                        help="""One or more guidance rescale factors to try. Proposed by [Common Diffusion Noise Schedules and 
                         Sample Steps are Flawed](https://arxiv.org/pdf/2305.08891.pdf) "guidance_scale" is defined 
                         as "φ" in equation 16. of [Common Diffusion Noise Schedules and Sample Steps are Flawed]
                         (https://arxiv.org/pdf/2305.08891.pdf). Guidance rescale factor should fix overexposure 
@@ -1020,7 +1023,7 @@ actions.append(
                         default=[_pipelinewrapper.DEFAULT_INFERENCE_STEPS],
                         type=_type_inference_steps,
                         metavar="INTEGER",
-                        help="""Lists of inference steps values to try. The amount of inference (de-noising) steps
+                        help="""One or more inference steps values to try. The amount of inference (de-noising) steps
                         effects image clarity to a degree, higher values bring the image closer to what
                         the AI is targeting for the content of the image. Values between 30-40
                         produce good results, higher values may improve image quality and or
@@ -1035,35 +1038,54 @@ def _type_expression(arg):
 
 
 actions.append(
-    parser.add_argument('--cache-memory-constraints', action='store', nargs='+',
+    parser.add_argument('-mc', '--cache-memory-constraints', action='store', nargs='+',
                         default=None,
                         type=_type_expression,
                         metavar="EXPR",
-                        help=f'See: [https://dgenerate.readthedocs.io/en/{dgenerate.__version__}/'
+                        help=f"""Cache constraint expressions describing when to clear all model caches
+                                automatically (DiffusionPipeline, VAE, and ControlNet) considering current memory
+                                usage. If any of these constraint expressions are met all models cached in memory will be cleared. 
+                                Example, and default value: {' '.join(_textprocessing.quote_spaces(_pipelinewrapper.CACHE_MEMORY_CONSTRAINTS))}"""
+                             f' For Syntax See: [https://dgenerate.readthedocs.io/en/{dgenerate.__version__}/'
                              f'dgenerate_submodules.html#dgenerate.pipelinewrapper.CACHE_MEMORY_CONSTRAINTS]'))
 
 actions.append(
-    parser.add_argument('--pipeline-cache-memory-constraints', action='store', nargs='+',
+    parser.add_argument('-pmc', '--pipeline-cache-memory-constraints', action='store', nargs='+',
                         default=None,
                         type=_type_expression,
                         metavar="EXPR",
-                        help=f'See: [https://dgenerate.readthedocs.io/en/{dgenerate.__version__}/'
+                        help=f"""Cache constraint expressions describing when to automatically clear the in memory 
+                                DiffusionPipeline cache considering current memory usage, and estimated memory usage of 
+                                new models that are about to enter memory. If any of these constraint expressions are 
+                                met all DiffusionPipeline objects cached in memory will be cleared. Example, and default 
+                                value: {' '.join(_textprocessing.quote_spaces(_pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS))}"""
+                             f' For Syntax See: [https://dgenerate.readthedocs.io/en/{dgenerate.__version__}/'
                              f'dgenerate_submodules.html#dgenerate.pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS]'))
 
 actions.append(
-    parser.add_argument('--vae-cache-memory-constraints', action='store', nargs='+',
+    parser.add_argument('-vmc', '--vae-cache-memory-constraints', action='store', nargs='+',
                         default=None,
                         type=_type_expression,
                         metavar="EXPR",
-                        help=f'See: [https://dgenerate.readthedocs.io/en/{dgenerate.__version__}/'
+                        help=f"""Cache constraint expressions describing when to automatically clear the in memory VAE
+                                cache considering current memory usage, and estimated memory usage of new VAE models that 
+                                are about to enter memory. If any of these constraint expressions are met all VAE 
+                                models cached in memory will be cleared. Example, and default 
+                                value: {' '.join(_textprocessing.quote_spaces(_pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS))}"""
+                             f' For Syntax See: [https://dgenerate.readthedocs.io/en/{dgenerate.__version__}/'
                              f'dgenerate_submodules.html#dgenerate.pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS]'))
 
 actions.append(
-    parser.add_argument('--control-net-cache-memory-constraints', action='store', nargs='+',
+    parser.add_argument('-cmc', '--control-net-cache-memory-constraints', action='store', nargs='+',
                         default=None,
                         type=_type_expression,
                         metavar="EXPR",
-                        help=f'See: [https://dgenerate.readthedocs.io/en/{dgenerate.__version__}/'
+                        help=f"""Cache constraint expressions describing when to automatically clear the in memory ControlNet
+                                cache considering current memory usage, and estimated memory usage of new ControlNet models that 
+                                are about to enter memory. If any of these constraint expressions are met all ControlNet
+                                models cached in memory will be cleared. Example, and default 
+                                value: {' '.join(_textprocessing.quote_spaces(_pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS))}"""
+                             f' For Syntax See: [https://dgenerate.readthedocs.io/en/{dgenerate.__version__}/'
                              f'dgenerate_submodules.html#dgenerate.pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS]'))
 
 
