@@ -420,6 +420,12 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
             return shlex.split(str(string_or_iterable))
         return [shlex.split(str(s)) for s in string_or_iterable]
 
+    def last(iterable):
+        if isinstance(iterable, list):
+            return iterable[-1]
+        *_, last_item = iterable
+        return last_item
+
     template_variables = {
         'saved_modules': dict(),
         'glob': glob
@@ -430,7 +436,7 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
         'quote': quote,
         'format_prompt': format_prompt,
         'format_size': _textprocessing.format_size,
-        'last': lambda a: a[-1] if a else None
+        'last': last
     }
 
     def save_modules_directive(args):
