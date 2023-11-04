@@ -54,6 +54,11 @@ class VideoWriter(AnimationWriter):
     """
 
     def __init__(self, filename, fps: typing.Union[float, int]):
+        """
+        :param filename: Filename to write to.
+        :param fps: Frame rate, in frames per second.
+        """
+
         super().__init__()
         self.filename = filename
         self.fps = round(fps)
@@ -96,6 +101,10 @@ class AnimatedImageWriter(AnimationWriter):
     """
 
     def __init__(self, filename: str, duration: float):
+        """
+        :param filename: Filename to write to.
+        :param duration: Frame duration, (duration of a single frame) in milliseconds.
+        """
         super().__init__()
         self.collected_frames = []
         self.filename = filename
