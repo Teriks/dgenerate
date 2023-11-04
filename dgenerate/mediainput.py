@@ -1111,7 +1111,7 @@ class MultiAnimationReader:
     images read from the individual readers are the same size and you must handle that condition.
     """
 
-    readers: typing.List[AnimationReader]
+    _readers: typing.List[AnimationReader]
     _file_streams: typing.List[typing.BinaryIO]
     _total_frames: int = 0
     _frame_start: int = 0
@@ -1177,7 +1177,7 @@ class MultiAnimationReader:
             if frame_start > frame_end:
                 raise ValueError('frame_start must be less than or equal to frame_end')
 
-        self.readers = []
+        self._readers = []
         self._file_streams = []
 
         self._frame_start = frame_start
@@ -1188,7 +1188,7 @@ class MultiAnimationReader:
         for spec in specs:
             mimetype, file_stream = path_opener(spec.path)
 
-            self.readers.append(
+            self._readers.append(
                 create_animation_reader(
                     mimetype=mimetype,
                     file_source=spec.path,
@@ -1199,7 +1199,7 @@ class MultiAnimationReader:
             )
             self._file_streams.append(file_stream)
 
-        non_images = [r for r in self.readers if not isinstance(r, MockImageAnimationReader)]
+        non_images = [r for r in self._readers if not isinstance(r, MockImageAnimationReader)]
 
         if non_images:
             self._total_frames = min(
@@ -1210,7 +1210,7 @@ class MultiAnimationReader:
             self._anim_fps = non_images[0].anim_fps
             self._anim_frame_duration = non_images[0].anim_frame_duration
 
-            for r in self.readers:
+            for r in self._readers:
                 if isinstance(r, MockImageAnimationReader):
                     r.total_frames = self.total_frames
         else:
@@ -1220,7 +1220,7 @@ class MultiAnimationReader:
         if self._frame_index == -1:
             # First call, skip up to frame start
             for idx in range(0, self._frame_start):
-                for r in self.readers:
+                for r in self._readers:
                     if isinstance(r, _preprocessors.ImagePreprocessorMixin):
                         old_val = r.preprocess_enabled
                         r.preprocess_enabled = False
@@ -1243,7 +1243,7 @@ class MultiAnimationReader:
         if self._frame_index == self._frame_end:
             raise StopIteration
 
-        read = [r.__next__() for r in self.readers]
+        read = [r.__next__() for r in self._readers]
 
         self._frame_index += 1
 
@@ -1256,7 +1256,7 @@ class MultiAnimationReader:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        for r in self.readers:
+        for r in self._readers:
             r.__exit__(exc_type, exc_val, exc_tb)
         for file_stream in self._file_streams:
             file_stream.close()

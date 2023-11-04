@@ -39,9 +39,23 @@ class PipelineTypes(enum.Enum):
     """
     Represents possible diffusers pipeline types.
     """
+
     TXT2IMG = 1
+    """
+    Text to image mode. Prompt only generation.
+    """
+
     IMG2IMG = 2
+    """
+    Image to image mode. 
+    Generation seeded / controlled with an image in some fashion.
+    """
+
     INPAINT = 3
+    """
+    Inpainting mode. 
+    Generation seeded / controlled with an image and a mask in some fashion.
+    """
 
 
 def get_pipeline_type_enum(id_str: typing.Union[PipelineTypes, str, None]) -> PipelineTypes:
@@ -79,9 +93,15 @@ class DataTypes(enum.Enum):
     """
     Represents model precision
     """
+
     AUTO = 0
+    """Auto selection."""
+
     FLOAT16 = 1
+    """16 bit floating point."""
+
     FLOAT32 = 2
+    """32 bit floating point."""
 
 
 def supported_data_type_strings():
@@ -133,16 +153,38 @@ class ModelTypes(enum.Enum):
     """
     Enum representation of ``--model-type``
     """
+
     TORCH = 0
+    """Stable Diffusion, such as SD 1.0 - 2.x"""
+
     TORCH_PIX2PIX = 1
+    """Stable Diffusion pix2pix prompt guided editing."""
+
     TORCH_SDXL = 2
+    """Stable Diffusion XL"""
+
     TORCH_IF = 3
+    """Deep Floyd IF stage 1"""
+
     TORCH_IFS = 4
+    """Deep Floyd IF superscaler (stage 2)"""
+
     TORCH_IFS_IMG2IMG = 5
+    """Deep Floyd IF superscaler (stage 2) image to image / variation mode."""
+
     TORCH_SDXL_PIX2PIX = 6
+    """Stable Diffusion XL pix2pix prompt guided editing."""
+
     TORCH_UPSCALER_X2 = 7
+    """Stable Diffusion X2 upscaler"""
+
     TORCH_UPSCALER_X4 = 8
+    """Stable Diffusion X4 upscaler"""
+
     FLAX = 9
+    """
+    Stable Diffusion, such as SD 1.0 - 2.x, with Flax / Jax parallelization.
+    """
 
 
 def supported_model_type_strings():
