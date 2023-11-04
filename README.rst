@@ -2280,11 +2280,11 @@ and it is not entirely impossible to run your system out of memory if you are no
 Environmental variables will be expanded in the provided input to **STDIN** when using this feature,
 you may use Unix style notation for environmental variables even on Windows.
 
-There is also information about the previous execution of dgenerate that is available to use
+There is also information about the previous file output of dgenerate that is available to use
 via Jinja2 templating which can be passed to ``--image-seeds``, these include:
 
-* ``{{ last_images }}`` (A list of un-quoted filenames)
-* ``{{ last_animations }}`` (A list of un-quoted filenames)
+* ``{{ last_images }}`` (An iterable of un-quoted filenames)
+* ``{{ last_animations }}`` (An iterable of un-quoted filenames)
 
 There are templates for prompts, containing the previous prompt values:
 
@@ -2612,14 +2612,15 @@ The ``\templates_help`` output from the above example is:
             Type: <class 'bool'>
             Value: False
         Name: "last_images"
-            Type: typing.List[str]
-            Value: ['/home/dgenerate/output/s_78670947807228_g_5_i_30_step_1.png']
+            Type: typing.Iterable[str]
         Name: "last_animations"
-            Type: typing.List[str]
-            Value: []
+            Type: typing.Iterable[str]
         Name: "saved_modules"
             Type: typing.Dict[str, typing.Dict[str, typing.Any]]
             Value: {}
+        Name: "glob"
+            Type: <class 'module'>
+            Value: <module 'glob'>
 
 
     ==============================================================================
@@ -2646,7 +2647,6 @@ as VAEs etc. outside of relying on the caching system.
     \set my_prompt "my very very very very very very very \
                     very very very very very very very very \
                     long long long long long prompt"
-
 
     # You can print to the console with templating using the \print directive
     # for debugging purposes
@@ -2801,6 +2801,34 @@ as VAEs etc. outside of relying on the caching system.
     # some library usage scenarios
 
     \clear_modules stage_1_modules
+
+
+The entirety of pythons builtin ``glob`` module is also accessible during templating, you
+can glob directories using functions from the glob module like so:
+
+.. code-block::
+
+    # The most basic usage is full expansion of every file
+
+    \set myfiles {{ quote(glob.glob('my_images/*.png')) }}
+
+    \print {{ myfiles }}
+
+    # If you have a LOT of files, you may want to
+    # process them using an iterator like so
+
+    {% for file in glob.iglob('my_images/*.png') %} \
+    \print {{ quote(file) }} !END \
+    {% endfor %}
+
+    # Simple inline usage
+
+    stabilityai/stable-diffusion-2-1
+    --variant fp16
+    --dtype float16
+    --prompt "In the style of picaso"
+    --image-seeds {{ quote(glob.glob('my_images/*.png')) }}
+
 
 
 To utilize configuration files on Linux, pipe them into the command or use redirection:

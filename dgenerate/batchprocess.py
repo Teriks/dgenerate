@@ -18,12 +18,12 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-
+import glob
 import io
 import os
 import re
 import shlex
+import types
 import typing
 
 import jinja2
@@ -405,22 +405,25 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
             return shlex.quote(f"{pos}; {neg}")
         return shlex.quote(pos)
 
-    def format_prompt(prompt_or_list):
-        if isinstance(prompt_or_list, _prompt.Prompt):
-            return _format_prompt(prompt_or_list)
-        return ' '.join(_format_prompt(p) for p in prompt_or_list)
+    def format_prompt(string_or_iterable):
+        if isinstance(string_or_iterable, _prompt.Prompt):
+            return _format_prompt(string_or_iterable)
+        return ' '.join(_format_prompt(p) for p in string_or_iterable)
 
-    def quote(string_or_list):
-        if isinstance(string_or_list, list):
-            return ' '.join(shlex.quote(str(s)) for s in string_or_list)
-        return shlex.quote(str(string_or_list))
+    def quote(string_or_iterable):
+        if isinstance(string_or_iterable, str):
+            return shlex.quote(str(string_or_iterable))
+        return ' '.join(shlex.quote(str(s)) for s in string_or_iterable)
 
-    def unquote(string_or_list):
-        if isinstance(string_or_list, list):
-            return [shlex.split(str(s)) for s in string_or_list]
-        return shlex.split(str(string_or_list))
+    def unquote(string_or_iterable):
+        if isinstance(string_or_iterable, str):
+            return shlex.split(str(string_or_iterable))
+        return [shlex.split(str(s)) for s in string_or_iterable]
 
-    template_variables = {'saved_modules': dict()}
+    template_variables = {
+        'saved_modules': dict(),
+        'glob': glob
+    }
 
     funcs = {
         'unquote': unquote,
@@ -477,6 +480,7 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
         values = render_loop.generate_template_variables_with_types()
         values['saved_modules'] = (typing.Dict[str, typing.Dict[str, typing.Any]],
                                    template_variables.get('saved_modules'))
+        values['glob'] = (types.ModuleType, "<module 'glob'>")
 
         header = None
         if len(args) > 0:
