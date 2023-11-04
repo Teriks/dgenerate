@@ -143,7 +143,7 @@ def fetch_model_files_with_size(repo_id: str,
                                 local_files_only: bool = False,
                                 flax: bool = False,
                                 sentencepiece: bool = False,
-                                watermarker: bool = False):
+                                watermarker: bool = False) -> typing.Iterable[typing.Tuple[str, int]]:
     """
     Attempt to fetch model files with their size that are relevant for the type of model being loaded.
 
@@ -168,7 +168,7 @@ def fetch_model_files_with_size(repo_id: str,
     :param sentencepiece: Forcibly include tokenizer/spiece.model for models with a unet?
     :param watermarker: Forcibly include watermarker/diffusion_pytorch_model.bin for models with a unet?
 
-    :return: generator over (filename, file size bytes)
+    :return: an iterable over (filename, file size bytes)
     """
 
     __args_debug = locals()
@@ -382,7 +382,7 @@ def estimate_model_memory_use(repo_id: str,
                               sentencepiece: bool = False,
                               watermarker: bool = False,
                               use_auth_token: typing.Optional[str] = None,
-                              local_files_only: bool = False):
+                              local_files_only: bool = False) -> int:
     """
     Attempt to estimate the CPU side memory consumption of a model before it is loaded into memory.
 
@@ -405,7 +405,7 @@ def estimate_model_memory_use(repo_id: str,
     :param watermarker: Forcibly include watermarker/diffusion_pytorch_model.bin for models with a unet?
     :param use_auth_token: optional huggingface auth token
     :param local_files_only: should we only look for files cached on disk and never hit the API?
-    :return: generator over (filename, file size bytes)
+    :return: estimated size in bytes
     """
     __debug_args = locals()
 

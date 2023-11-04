@@ -21,7 +21,9 @@
 import datetime
 import os
 import pathlib
+import tempfile
 import time
+import typing
 
 import PIL.Image
 import PIL.PngImagePlugin
@@ -173,8 +175,8 @@ class RenderLoop:
         self._generation_step = -1
         self._frame_time_sum = 0
         self._last_frame_time = 0
-        self._written_images = []
-        self._written_animations = []
+        self._written_images: typing.Optional[typing.TextIO] = None
+        self._written_animations: typing.Optional[typing.TextIO] = None
         self._pipeline_wrapper = None
 
         self.config = \
@@ -186,18 +188,27 @@ class RenderLoop:
         self.image_generated_callbacks = []
 
     @property
-    def written_images(self):
+    def written_images(self) -> typing.Iterable[str]:
         """
-        List of image filenames written by the last run
+        Iterator over image filenames written by the last run
         """
-        return self._written_images
+        pos = self._written_images.tell()
+        self._written_images.seek(0)
+        for line in self._written_images:
+            yield line.rstrip('\n')
+        self._written_images.seek(pos)
 
     @property
-    def written_animations(self):
+    def written_animations(self) -> typing.Iterable[str]:
         """
-        List of animation filenames written by the last run
+        Iterator over animation filenames written by the last run
         """
-        return self._written_animations
+
+        pos = self._written_animations.tell()
+        self._written_animations.seek(0)
+        for line in self._written_animations:
+            yield line.rstrip('\n')
+        self._written_animations.seek(pos)
 
     def generate_template_variables_with_types(self) -> typing.Dict[str, typing.Tuple[typing.Type, typing.Any]]:
         """
@@ -210,8 +221,8 @@ class RenderLoop:
             variable_prefix='last_')
 
         template_variables.update({
-            'last_images': (_types.Paths, self.written_images),
-            'last_animations': (_types.Paths, self.written_animations),
+            'last_images': (typing.Iterable[str], self.written_images),
+            'last_animations': (typing.Iterable[str], self.written_animations),
         })
 
         return template_variables
@@ -486,7 +497,7 @@ class RenderLoop:
                           underline=is_last_image)
 
         # Append to written images for the current run
-        self._written_images.append(os.path.abspath(image_filename))
+        self._written_images.write(os.path.abspath(image_filename) + '\n')
 
     def _write_generation_result(self,
                                  filename_components: typing.List[str],
@@ -638,8 +649,15 @@ class RenderLoop:
 
         self._ensure_output_path()
 
-        self._written_images = []
-        self._written_animations = []
+        if self._written_images is not None:
+            self._written_images.close()
+
+        if self._written_animations is not None:
+            self._written_animations.close()
+
+        self._written_images = tempfile.TemporaryFile('w+t')
+        self._written_animations = tempfile.TemporaryFile('w+t')
+
         self._generation_step = -1
         self._frame_time_sum = 0
         self._last_frame_time = 0
@@ -827,9 +845,9 @@ class RenderLoop:
                           set_extra_wrapper_args:
                           typing.Callable[[_pipelinewrapper.DiffusionArguments, _mediainput.ImageSeed], None],
                           arg_iterator:
-                          typing.Generator[_pipelinewrapper.DiffusionArguments, None, None],
+                          typing.Iterable[_pipelinewrapper.DiffusionArguments],
                           image_seed_iterator:
-                          typing.Callable[[], typing.Generator[_mediainput.ImageSeed, None, None]],
+                          typing.Callable[[], typing.Iterable[_mediainput.ImageSeed]],
                           fps: typing.Union[int, float]):
 
         animation_format_lower = self.config.animation_format.lower()
@@ -905,7 +923,7 @@ class RenderLoop:
                                         _messages.log(animation_filenames_message, underline=True)
 
                                     for filename in anim_writer.filenames:
-                                        self._written_animations.append(os.path.abspath(filename))
+                                        self._written_animations.write(os.path.abspath(filename) + '\n')
 
                             self._write_animation_frame(diffusion_args, image_seed, generation_result)
 
