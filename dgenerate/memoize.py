@@ -137,6 +137,8 @@ def simple_cache_hit_debug(title: str, cache_key: str, cache_hit: typing.Any):
     """
     Basic cache hit debug message for :py:meth:`.memoize` decorator **on_hit** parameter.
 
+    Messages are printed using :py:meth:`dgenerate.messages.debug_log`
+
     Example:
         ``on_hit=lambda key, hit: simple_cache_hit_debug("My Object", key, hit)``
 
@@ -156,6 +158,8 @@ def simple_cache_hit_debug(title: str, cache_key: str, cache_hit: typing.Any):
 def simple_cache_miss_debug(title: str, cache_key: str, new: typing.Any):
     """
     Basic cache hit debug message for :py:meth:`.memoize` decorator **on_create** parameter.
+
+    Messages are printed using :py:meth:`dgenerate.messages.debug_log`
 
     Example:
         ``on_create=lambda key, hit: simple_cache_miss_debug("My Object", key, hit)``
