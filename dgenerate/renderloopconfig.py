@@ -268,7 +268,8 @@ class RenderLoopConfig(_types.SetFromMixin):
     upscaler_noise_levels: _types.OptionalIntegers = None
     """
     Optional list of integer upscaler noise levels, this corresponds to the ``--upscaler-noise-levels`` argument
-    of the dgenerate command line tool that is used with upscaler model types.
+    of the dgenerate command line tool that is used for the :py:attr:`dgenerate.pipelinewrapper.ModelTypes.TORCH_UPSCALER_X4`
+    model type only.
     """
 
     guidance_rescales: _types.OptionalFloats = None
