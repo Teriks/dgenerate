@@ -2675,6 +2675,10 @@ as VAEs etc. outside of relying on the caching system.
 
     \print {{ quote(last(last_images)) }}
 
+    # you can also get the first image easily with the function "first"
+
+    \print {{ quote{first(last_images)) }}
+
 
     # if you want to append a mask image file name
 
