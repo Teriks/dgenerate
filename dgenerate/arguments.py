@@ -1140,7 +1140,8 @@ def parse_args(args: typing.Sequence[str],
 
     :raise: :py:class:`.DgenerateUsageError`
 
-    :return: :py:class:`.DgenerateArguments`  or possibly None if ``throw=False``
+    :return: :py:class:`.DgenerateArguments`. If ``throw=False`` then
+        ``None`` will be returned on errors.
     """
 
     try:
