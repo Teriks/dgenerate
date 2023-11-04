@@ -87,13 +87,44 @@ class BatchProcessor:
     """
 
     invoker: typing.Callable[[list], int]
+    """
+    Invoker function, responsible for executing lines recognized as shell commands.
+    """
+
     name: _types.Name
+    """
+    Name of this batch processor, currently used in the hash bang version check directive and messages.
+    """
+
     version: _types.Version
+    """
+    Version tuple for the version check hash bang directive.
+    """
+
     template_variable_generator: typing.Callable[[], dict]
+    """
+    Function that generates template variables after an invocation occurs.
+    """
+
     template_variables: typing.Dict[str, typing.Any]
+    """
+    Live template variables.
+    """
+
     template_functions: typing.Dict[str, typing.Callable[[typing.Any], typing.Any]]
+    """
+    Functions available when templating is occurring.
+    """
+
     directives: typing.Dict[str, typing.Callable[[list], None]]
+    """
+    Batch process directive handlers by name.
+    """
+
     injected_args: typing.List[str]
+    """
+    Shell arguments to inject at the end of every invocation.
+    """
 
     def __init__(self,
                  invoker: typing.Callable[[list], int],
