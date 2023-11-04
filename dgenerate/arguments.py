@@ -474,7 +474,7 @@ actions.append(
                         f"""Specify one or more ControlNet models using URIs. This should be a
                         huggingface repository slug / blob link, path to model file on disk 
                         (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model 
-                        folder containing model files. Currently all ControlNot models will 
+                        folder containing model files. Currently all ControlNet models will 
                         receive the same guidance image, in the future this will probably change.
                         
                         Optional arguments can be provided after the ControlNet model specification, for torch
