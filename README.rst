@@ -2272,7 +2272,7 @@ regarding runtime caching behavior of a pipelines and other models can be observ
 
 When loading multiple different models be aware that they will all be retained in memory for
 the duration of program execution, unless all models are flushed using the ``\clear_model_cache`` or
-individually using one of: ''\clear_pipeline_cache``, ``\clear_vae_cache``, or ``\clear_control_net_cache``.
+individually using one of: ``\clear_pipeline_cache``, ``\clear_vae_cache``, or ``\clear_control_net_cache``.
 dgenerate uses heuristics to clear the in memory cache automatically when needed, including a size estimation
 of models before they enter system memory, however by default it will use system memory very aggressively
 and it is not entirely impossible to run your system out of memory if you are not careful.
