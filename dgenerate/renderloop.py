@@ -336,6 +336,9 @@ class RenderLoop:
             render_loop_opts.append(('--control-image-preprocessors',
                                      self.config.control_image_preprocessors))
 
+        if self.config.no_aspect:
+            render_loop_opts.append(('--no-aspect',))
+
         return render_loop_opts
 
     def _setup_batch_size_config_opts(self,
