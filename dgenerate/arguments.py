@@ -553,9 +553,8 @@ actions.append(
                         when loading from huggingface repository, (The git branch / tag, default is "main").
                         
                         The "variant" argument specifies the SDXL refiner model variant and defaults to the value of 
-                        --variant, when "variant" is specified when loading from a huggingface repository or folder,
+                        --variant. When "variant" is specified when loading from a huggingface repository or folder,
                         weights will be loaded from "variant" filename, e.g. "pytorch_model.<variant>.safetensors.
-                        "variant" defaults to automatic selection.
                         
                         The "subfolder" argument specifies the SDXL refiner model subfolder, if specified 
                         when loading from a huggingface repository or folder, weights from the specified subfolder.
