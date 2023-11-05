@@ -22,7 +22,7 @@
 import sys
 
 try:
-    from . import main
+    from dgenerate import main
 
     main()
 except KeyboardInterrupt:
