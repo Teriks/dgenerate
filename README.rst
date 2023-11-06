@@ -12,13 +12,18 @@ using Stable Diffusion and related techniques / models.
 **dgenerate** can generate multiple images or animated outputs using multiple combinations of diffusion
 input parameters in batch, so that the differences in generated output can be compared / curated easily.
 
-Animated output can be produced by processing every frame of a video, gif, webp through stable diffusion as
-an image seed with a given prompt and generation parameters.
+Simple txt2img generation without image inputs is supported, as well as img2img and inpainting, and ControlNets.
 
-Video of any runtime can be processed without memory constraints related to the video size.
+Animated output can be produced by processing every frame of a Video, GIF, WebP, or APNG through various implementations
+of diffusion in img2img or inpainting mode, as well as with ControlNets and control guidance images, in any combination thereof.
+MP4 (h264) video can be written without memory constraints related to frame count. GIF and WebP can be written
+WITH memory constraints, IE: all frames exist in memory at once before being written.
+
+Video input of any runtime can be processed without memory constraints related to the video size.
 Many video formats are supported through the use of PyAV (ffmpeg).
 
-GIF, APNG (extension must be .apng), and WebP, can also be processed with memory constraints, IE: all frames exist in memory at once.
+Animated image input such as GIF, APNG (extension must be .apng), and WebP, can also be processed WITH
+memory constraints, IE: all frames exist in memory at once after an animated image is read.
 
 PNG, JPEG, JPEG-2000, TGA (Targa), BMP, and PSD (Photoshop) are supported for static image inputs.
 
