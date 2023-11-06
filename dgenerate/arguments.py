@@ -1045,7 +1045,7 @@ actions.append(
                                 automatically (DiffusionPipeline, VAE, and ControlNet) considering current memory
                                 usage. If any of these constraint expressions are met all models cached in memory will be cleared. 
                                 Example, and default value: {' '.join(_textprocessing.quote_spaces(_pipelinewrapper.CACHE_MEMORY_CONSTRAINTS))}"""
-                             f' For Syntax See: [https://dgenerate.readthedocs.io/en/{dgenerate.__version__}/'
+                             f' For Syntax See: [https://dgenerate.readthedocs.io/en/v{dgenerate.__version__}/'
                              f'dgenerate_submodules.html#dgenerate.pipelinewrapper.CACHE_MEMORY_CONSTRAINTS]'))
 
 actions.append(
@@ -1058,7 +1058,7 @@ actions.append(
                                 new models that are about to enter memory. If any of these constraint expressions are 
                                 met all DiffusionPipeline objects cached in memory will be cleared. Example, and default 
                                 value: {' '.join(_textprocessing.quote_spaces(_pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS))}"""
-                             f' For Syntax See: [https://dgenerate.readthedocs.io/en/{dgenerate.__version__}/'
+                             f' For Syntax See: [https://dgenerate.readthedocs.io/en/v{dgenerate.__version__}/'
                              f'dgenerate_submodules.html#dgenerate.pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS]'))
 
 actions.append(
@@ -1071,7 +1071,7 @@ actions.append(
                                 are about to enter memory. If any of these constraint expressions are met all VAE 
                                 models cached in memory will be cleared. Example, and default 
                                 value: {' '.join(_textprocessing.quote_spaces(_pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS))}"""
-                             f' For Syntax See: [https://dgenerate.readthedocs.io/en/{dgenerate.__version__}/'
+                             f' For Syntax See: [https://dgenerate.readthedocs.io/en/v{dgenerate.__version__}/'
                              f'dgenerate_submodules.html#dgenerate.pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS]'))
 
 actions.append(
@@ -1084,7 +1084,7 @@ actions.append(
                                 are about to enter memory. If any of these constraint expressions are met all ControlNet
                                 models cached in memory will be cleared. Example, and default 
                                 value: {' '.join(_textprocessing.quote_spaces(_pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS))}"""
-                             f' For Syntax See: [https://dgenerate.readthedocs.io/en/{dgenerate.__version__}/'
+                             f' For Syntax See: [https://dgenerate.readthedocs.io/en/v{dgenerate.__version__}/'
                              f'dgenerate_submodules.html#dgenerate.pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS]'))
 
 

@@ -1,7 +1,5 @@
 #! /usr/bin/env python3
 
-import io
-import os
 # Copyright (c) 2023, Teriks
 #
 # dgenerate is distributed under the following BSD 3-Clause License
@@ -22,15 +20,24 @@ import os
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import io
+import os
 import re
 import sys
 from ast import literal_eval
-
 from setuptools import setup, find_packages
 
 setup_path = os.path.dirname(os.path.abspath(__file__))
 
-with io.open(os.path.join(setup_path, 'dgenerate/__init__.py')) as _f:
+poetry_lockfile_path = \
+    os.environ.get('DGENERATE_POETRY_LOCKFILE_PATH',
+                   os.path.join(setup_path, 'poetry', 'poetry.lock')).strip('"').strip("'")
+
+poetry_pyproject_path = \
+    os.environ.get('DGENERATE_POETRY_PYPROJECT_PATH',
+                   os.path.join(setup_path, 'poetry', 'pyproject.toml')).strip('"').strip("'")
+
+with io.open(os.path.join(setup_path, 'dgenerate', '__init__.py')) as _f:
     VERSION = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', _f.read(), re.MULTILINE).group(1)
 
 if not VERSION:
@@ -45,7 +52,7 @@ if not README:
 
 def poetry_lockfile_deps():
     poetry_lock_packages = re.compile(r"\[\[package\]\].*?optional = .*?python-versions.*?\n", re.MULTILINE | re.DOTALL)
-    with open(os.path.join(setup_path, 'poetry/poetry.lock')) as f:
+    with open(poetry_lockfile_path) as f:
         for match in poetry_lock_packages.findall(f.read()):
             vals = match.strip().split('\n')[1:]
             d = dict()
@@ -71,7 +78,7 @@ def get_poetry_lockfile_as_pip_requires(optionals=False, exclude=None):
 def poetry_pyproject_deps(exclude=None, include_optional=False):
     exclude = set() if exclude is None else exclude
     start = False
-    with open(os.path.join(setup_path, 'poetry/pyproject.toml')) as f:
+    with open(poetry_pyproject_path) as f:
         for line in f:
             line = line.strip()
 
@@ -214,8 +221,6 @@ if __name__ != 'setup_as_library':
                               get_poetry_pyproject_as_pip_requires(
                                   exclude=exclude.union({'python'})).items()]
 
-    print(pyproject_requirements)
-
     if 'READTHEDOCS' in os.environ:
         for idx, requires in enumerate(pyproject_requirements):
             # no cuda
@@ -232,8 +237,8 @@ if __name__ != 'setup_as_library':
           version=VERSION,
           packages=find_packages(),
           license='BSD 3-Clause',
-          description='Stable diffusion batch image generation tool with support for '
-                      'video / gif / webp animation transcoding.',
+          description='dgenerate is a command line tool and library for generating images '
+                      'and animation sequences using Stable Diffusion and related techniques / models.',
           long_description=README,
           include_package_data=True,
           install_requires=pyproject_requirements,
@@ -251,10 +256,19 @@ if __name__ != 'setup_as_library':
               ]
           },
           classifiers=[
-              'Development Status :: 2 - Pre-Alpha',
               'License :: OSI Approved :: BSD License',
               'Intended Audience :: Other Audience',
+              'Intended Audience :: Science/Research',
+              'Intended Audience :: Developers',
               'Natural Language :: English',
-              'Operating System :: OS Independent',
+              'Operating System :: Microsoft :: Windows',
+              'Operating System :: POSIX :: Linux',
+              'Environment :: Console',
+              'Environment :: GPU :: NVIDIA CUDA',
               'Topic :: Utilities',
+              'Topic :: Artistic Software',
+              'Topic :: Multimedia :: Graphics',
+              'Topic :: Multimedia :: Video',
+              'Topic :: Scientific/Engineering :: Artificial Intelligence',
+              'Topic :: Scientific/Engineering :: Image Processing',
           ])
