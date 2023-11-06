@@ -2658,9 +2658,9 @@ The ``\templates_help`` output from the above example is:
             Type: <class 'bool'>
             Value: False
         Name: "last_images"
-            Type: typing.Iterable[str]
+            Type: typing.Iterator[str]
         Name: "last_animations"
-            Type: typing.Iterable[str]
+            Type: typing.Iterator[str]
         Name: "saved_modules"
             Type: typing.Dict[str, typing.Dict[str, typing.Any]]
             Value: {}
