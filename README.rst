@@ -1,5 +1,5 @@
 .. |Documentation Status| image:: https://readthedocs.org/projects/dgenerate/badge/?version=latest
-   :target: http://dgenerate.readthedocs.io/en/latest/?badge=latest
+   :target: http://dgenerate.readthedocs.io/en/v2.0.0/?badge=v2.0.0
 
 Overview
 ========
@@ -29,7 +29,7 @@ PNG, JPEG, JPEG-2000, TGA (Targa), BMP, and PSD (Photoshop) are supported for st
 
 This software requires an Nvidia GPU supporting CUDA 11.8+, CPU rendering is possible but extraordinarily slow.
 
-For library documentation visit `readthedocs <http://dgenerate.readthedocs.io/en/v2.0.0/?badge=v2.0.0>`_.
+For library documentation visit `readthedocs <http://dgenerate.readthedocs.io/en/v2.0.0/>`_.
 
 ----
 
