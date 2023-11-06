@@ -2147,7 +2147,7 @@ folder of the examples folder.
 
 The source code for the built in `canny <https://github.com/Teriks/dgenerate/blob/v2.0.0/dgenerate/preprocessors/canny.py>`_ preprocessor,
 the `openpose <https://github.com/Teriks/dgenerate/blob/v2.0.0/dgenerate/preprocessors/openpose.py>`_ preprocessor, and the simple
-`pillow image operations <https://github.com/Teriks/dgenerate/blob/v2.0.0/dgenerate/preprocessors/pil_imageops.py>`_ preprocessors can also
+`pillow image operations <https://github.com/Teriks/dgenerate/blob/v2.0.0/dgenerate/preprocessors/imageops.py>`_ preprocessors can also
 be of reference as they are written as internal image preprocessor plugins.
 
 
