@@ -32,7 +32,7 @@ config.sdxl_refiner_uri = 'stabilityai/stable-diffusion-xl-refiner-1.0'
 # config.sdxl_high_noise_fractions = [0.8]
 
 
-config.prompts = [Prompt().parse('an astronaut walking on the moon; fake')]
+config.prompts = [Prompt.parse('an astronaut walking on the moon; fake')]
 
 config.output_path = ''
 config.device = 'cuda'

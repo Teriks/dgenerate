@@ -611,7 +611,7 @@ class DiffusionPipelineWrapper:
         self._sdxl_refiner_uri = sdxl_refiner_uri
         if sdxl_refiner_uri is not None:
             # up front validation of this URI is optimal
-            self._parsed_sdxl_refiner_uri = _uris.parse_sdxl_refiner_uri(sdxl_refiner_uri)
+            self._parsed_sdxl_refiner_uri = _uris.SDXLRefinerUri.parse(sdxl_refiner_uri)
 
         if lora_uris:
             if model_type == 'flax':
@@ -620,7 +620,7 @@ class DiffusionPipelineWrapper:
             if not isinstance(lora_uris, str):
                 raise NotImplementedError('Using multiple LoRA models is currently not supported.')
 
-            self._lora_scale = _uris.parse_lora_uri(lora_uris).scale
+            self._lora_scale = _uris.LoRAUri.parse(lora_uris).scale
 
     @staticmethod
     def _pipeline_to(pipeline, device):

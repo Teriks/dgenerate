@@ -33,7 +33,7 @@ class Prompt:
         """
         :param positive: positive prompt component
         :param negative: negative prompt component
-        :param delimiter: delimiter for stringification and parsing
+        :param delimiter: delimiter for stringification
         """
         self.positive = positive
         self.negative = negative
@@ -50,11 +50,13 @@ class Prompt:
     def __repr__(self):
         return f"'{str(self)}'"
 
-    def parse(self, value: str):
+    @staticmethod
+    def parse(value: str, delimiter=';') -> 'Prompt':
         """
-        Parse the positive and negative prompt from a string and set the positive and negative attributes.
+        Parse the positive and negative prompt from a string and return a prompt object.
 
         :param value: the string
+        :param delimiter: The prompt delimiter character
 
         :raise: :py:class:`ValueError` if value is None
 
@@ -63,14 +65,17 @@ class Prompt:
         if value is None:
             raise ValueError('Input string may not be None.')
 
-        parse = value.split(self.delimiter, 1)
+        parse = value.split(delimiter, 1)
         if len(parse) == 1:
-            self.positive = parse[0].strip()
-            self.negative = None
+            positive = parse[0].strip()
+            negative = None
         elif len(parse) == 2:
-            self.positive = parse[0].strip()
-            self.negative = parse[1].strip()
+            positive = parse[0].strip()
+            negative = parse[1].strip()
         else:
-            self.positive = None
-            self.negative = None
-        return self
+            positive = None
+            negative = None
+
+        return Prompt(positive=positive,
+                      negative=negative,
+                      delimiter=delimiter)

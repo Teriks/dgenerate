@@ -215,53 +215,53 @@ class FlaxControlNetUri:
 
         return new_net
 
+    @staticmethod
+    def parse(uri: _types.Uri) -> 'FlaxControlNetUri':
+        """
+        Parse a ``--model-type`` flax* ``--control-nets`` uri specification and return an object representing its constituents
 
-def parse_flax_control_net_uri(uri: _types.Uri) -> FlaxControlNetUri:
-    """
-    Parse a ``--model-type`` flax* ``--control-nets`` uri specification and return an object representing its constituents
+        :param uri: string with ``--control-nets`` uri syntax
 
-    :param uri: string with ``--control-nets`` uri syntax
+        :raise: :py:class:`.InvalidControlNetUriError`
 
-    :raise: :py:class:`.InvalidControlNetUriError`
+        :return: :py:class:`.FlaxControlNetPath`
+        """
+        try:
+            r = _flax_control_net_uri_parser.parse_concept_uri(uri)
 
-    :return: :py:class:`.FlaxControlNetPath`
-    """
-    try:
-        r = _flax_control_net_uri_parser.parse_concept_uri(uri)
+            dtype = r.args.get('dtype')
+            scale = r.args.get('scale', 1.0)
+            from_torch = r.args.get('from_torch')
 
-        dtype = r.args.get('dtype')
-        scale = r.args.get('scale', 1.0)
-        from_torch = r.args.get('from_torch')
+            if from_torch is not None:
+                try:
+                    from_torch = _types.parse_bool(from_torch)
+                except ValueError:
+                    raise InvalidControlNetUriError(
+                        f'Flax ControlNet from_torch must be undefined or boolean (true or false), received: {from_torch}')
 
-        if from_torch is not None:
+            supported_dtypes = _enums.supported_data_type_strings()
+            if dtype is not None and dtype not in supported_dtypes:
+                raise InvalidControlNetUriError(
+                    f'Flax ControlNet "dtype" must be {", ".join(supported_dtypes)}, '
+                    f'or left undefined, received: {dtype}')
+
             try:
-                from_torch = _types.parse_bool(from_torch)
+                scale = float(scale)
             except ValueError:
                 raise InvalidControlNetUriError(
-                    f'Flax ControlNet from_torch must be undefined or boolean (true or false), received: {from_torch}')
+                    f'Flax ControlNet scale must be a floating point number, received {scale}')
 
-        supported_dtypes = _enums.supported_data_type_strings()
-        if dtype is not None and dtype not in supported_dtypes:
-            raise InvalidControlNetUriError(
-                f'Flax ControlNet "dtype" must be {", ".join(supported_dtypes)}, '
-                f'or left undefined, received: {dtype}')
+            return FlaxControlNetUri(
+                model=r.concept,
+                revision=r.args.get('revision', None),
+                subfolder=r.args.get('subfolder', None),
+                scale=scale,
+                dtype=dtype,
+                from_torch=from_torch)
 
-        try:
-            scale = float(scale)
-        except ValueError:
-            raise InvalidControlNetUriError(
-                f'Flax ControlNet scale must be a floating point number, received {scale}')
-
-        return FlaxControlNetUri(
-            model=r.concept,
-            revision=r.args.get('revision', None),
-            subfolder=r.args.get('subfolder', None),
-            scale=scale,
-            dtype=dtype,
-            from_torch=from_torch)
-
-    except _textprocessing.ConceptPathParseError as e:
-        raise InvalidControlNetUriError(e)
+        except _textprocessing.ConceptPathParseError as e:
+            raise InvalidControlNetUriError(e)
 
 
 class TorchControlNetUri:
@@ -412,65 +412,65 @@ class TorchControlNetUri:
 
         return new_net
 
+    @staticmethod
+    def parse(uri: _types.Uri) -> 'TorchControlNetUri':
+        """
+        Parse a ``--model-type`` torch* ``--control-nets`` uri specification and return an object representing its constituents
 
-def parse_torch_control_net_uri(uri: _types.Uri) -> TorchControlNetUri:
-    """
-    Parse a ``--model-type`` torch* ``--control-nets`` uri specification and return an object representing its constituents
+        :param uri: string with ``--control-nets`` uri syntax
 
-    :param uri: string with ``--control-nets`` uri syntax
+        :raise: :py:class:`.InvalidControlNetUriError`
 
-    :raise: :py:class:`.InvalidControlNetUriError`
-
-    :return: :py:class:`.TorchControlNetPath`
-    """
-    try:
-        r = _torch_control_net_uri_parser.parse_concept_uri(uri)
-
-        dtype = r.args.get('dtype')
-        scale = r.args.get('scale', 1.0)
-        start = r.args.get('start', 0.0)
-        end = r.args.get('end', 1.0)
-
-        supported_dtypes = _enums.supported_data_type_strings()
-        if dtype is not None and dtype not in supported_dtypes:
-            raise InvalidControlNetUriError(
-                f'Torch ControlNet "dtype" must be {", ".join(supported_dtypes)}, '
-                f'or left undefined, received: {dtype}')
-
+        :return: :py:class:`.TorchControlNetPath`
+        """
         try:
-            scale = float(scale)
-        except ValueError:
-            raise InvalidControlNetUriError(
-                f'Torch ControlNet "scale" must be a floating point number, received: {scale}')
+            r = _torch_control_net_uri_parser.parse_concept_uri(uri)
 
-        try:
-            start = float(start)
-        except ValueError:
-            raise InvalidControlNetUriError(
-                f'Torch ControlNet "start" must be a floating point number, received: {start}')
+            dtype = r.args.get('dtype')
+            scale = r.args.get('scale', 1.0)
+            start = r.args.get('start', 0.0)
+            end = r.args.get('end', 1.0)
 
-        try:
-            end = float(end)
-        except ValueError:
-            raise InvalidControlNetUriError(
-                f'Torch ControlNet "end" must be a floating point number, received: {end}')
+            supported_dtypes = _enums.supported_data_type_strings()
+            if dtype is not None and dtype not in supported_dtypes:
+                raise InvalidControlNetUriError(
+                    f'Torch ControlNet "dtype" must be {", ".join(supported_dtypes)}, '
+                    f'or left undefined, received: {dtype}')
 
-        if start > end:
-            raise InvalidControlNetUriError(
-                f'Torch ControlNet "start" must be less than or equal to "end".')
+            try:
+                scale = float(scale)
+            except ValueError:
+                raise InvalidControlNetUriError(
+                    f'Torch ControlNet "scale" must be a floating point number, received: {scale}')
 
-        return TorchControlNetUri(
-            model=r.concept,
-            revision=r.args.get('revision', None),
-            variant=r.args.get('variant', None),
-            subfolder=r.args.get('subfolder', None),
-            dtype=dtype,
-            scale=scale,
-            start=start,
-            end=end)
+            try:
+                start = float(start)
+            except ValueError:
+                raise InvalidControlNetUriError(
+                    f'Torch ControlNet "start" must be a floating point number, received: {start}')
 
-    except _textprocessing.ConceptPathParseError as e:
-        raise InvalidControlNetUriError(e)
+            try:
+                end = float(end)
+            except ValueError:
+                raise InvalidControlNetUriError(
+                    f'Torch ControlNet "end" must be a floating point number, received: {end}')
+
+            if start > end:
+                raise InvalidControlNetUriError(
+                    f'Torch ControlNet "start" must be less than or equal to "end".')
+
+            return TorchControlNetUri(
+                model=r.concept,
+                revision=r.args.get('revision', None),
+                variant=r.args.get('variant', None),
+                subfolder=r.args.get('subfolder', None),
+                dtype=dtype,
+                scale=scale,
+                start=start,
+                end=end)
+
+        except _textprocessing.ConceptPathParseError as e:
+            raise InvalidControlNetUriError(e)
 
 
 class SDXLRefinerUri:
@@ -515,36 +515,36 @@ class SDXLRefinerUri:
         self.dtype = _enums.get_data_type_enum(dtype) if dtype else None
         self.subfolder = subfolder
 
+    @staticmethod
+    def parse(uri: _types.Uri) -> 'SDXLRefinerUri':
+        """
+        Parse an ``--sdxl-refiner`` uri and return an object representing its constituents
 
-def parse_sdxl_refiner_uri(uri: _types.Uri) -> SDXLRefinerUri:
-    """
-    Parse an ``--sdxl-refiner`` uri and return an object representing its constituents
+        :param uri: string with ``--sdxl-refiner`` uri syntax
 
-    :param uri: string with ``--sdxl-refiner`` uri syntax
+        :raise: :py:class:`.InvalidSDXLRefinerUriError`
 
-    :raise: :py:class:`.InvalidSDXLRefinerUriError`
+        :return: :py:class:`.SDXLRefinerPath`
+        """
+        try:
+            r = _sdxl_refiner_uri_parser.parse_concept_uri(uri)
 
-    :return: :py:class:`.SDXLRefinerPath`
-    """
-    try:
-        r = _sdxl_refiner_uri_parser.parse_concept_uri(uri)
+            supported_dtypes = _enums.supported_data_type_strings()
 
-        supported_dtypes = _enums.supported_data_type_strings()
+            dtype = r.args.get('dtype', None)
+            if dtype is not None and dtype not in supported_dtypes:
+                raise InvalidSDXLRefinerUriError(
+                    f'Torch SDXL refiner "dtype" must be {", ".join(supported_dtypes)}, '
+                    f'or left undefined, received: {dtype}')
 
-        dtype = r.args.get('dtype', None)
-        if dtype is not None and dtype not in supported_dtypes:
-            raise InvalidSDXLRefinerUriError(
-                f'Torch SDXL refiner "dtype" must be {", ".join(supported_dtypes)}, '
-                f'or left undefined, received: {dtype}')
-
-        return SDXLRefinerUri(
-            model=r.concept,
-            revision=r.args.get('revision', None),
-            variant=r.args.get('variant', None),
-            dtype=dtype,
-            subfolder=r.args.get('subfolder', None))
-    except _textprocessing.ConceptPathParseError as e:
-        raise InvalidSDXLRefinerUriError(e)
+            return SDXLRefinerUri(
+                model=r.concept,
+                revision=r.args.get('revision', None),
+                variant=r.args.get('variant', None),
+                dtype=dtype,
+                subfolder=r.args.get('subfolder', None))
+        except _textprocessing.ConceptPathParseError as e:
+            raise InvalidSDXLRefinerUriError(e)
 
 
 class TorchVAEUri:
@@ -707,40 +707,40 @@ class TorchVAEUri:
 
         return vae
 
+    @staticmethod
+    def parse(uri: _types.Uri) -> 'TorchVAEUri':
+        """
+        Parse a ``--model-type`` torch* ``--vae`` uri and return an object representing its constituents
 
-def parse_torch_vae_uri(uri: _types.Uri) -> TorchVAEUri:
-    """
-    Parse a ``--model-type`` torch* ``--vae`` uri and return an object representing its constituents
+        :param uri: string with ``--vae`` uri syntax
 
-    :param uri: string with ``--vae`` uri syntax
+        :raise: :py:class:`.InvalidVaeUriError`
 
-    :raise: :py:class:`.InvalidVaeUriError`
+        :return: :py:class:`.TorchVAEPath`
+        """
+        try:
+            r = _torch_vae_uri_parser.parse_concept_uri(uri)
 
-    :return: :py:class:`.TorchVAEPath`
-    """
-    try:
-        r = _torch_vae_uri_parser.parse_concept_uri(uri)
+            model = r.args.get('model')
+            if model is None:
+                raise InvalidVaeUriError('model argument for torch VAE specification must be defined.')
 
-        model = r.args.get('model')
-        if model is None:
-            raise InvalidVaeUriError('model argument for torch VAE specification must be defined.')
+            dtype = r.args.get('dtype')
 
-        dtype = r.args.get('dtype')
+            supported_dtypes = _enums.supported_data_type_strings()
+            if dtype is not None and dtype not in supported_dtypes:
+                raise InvalidVaeUriError(
+                    f'Torch VAE "dtype" must be {", ".join(supported_dtypes)}, '
+                    f'or left undefined, received: {dtype}')
 
-        supported_dtypes = _enums.supported_data_type_strings()
-        if dtype is not None and dtype not in supported_dtypes:
-            raise InvalidVaeUriError(
-                f'Torch VAE "dtype" must be {", ".join(supported_dtypes)}, '
-                f'or left undefined, received: {dtype}')
-
-        return TorchVAEUri(encoder=r.concept,
-                           model=model,
-                           revision=r.args.get('revision', None),
-                           variant=r.args.get('variant', None),
-                           dtype=dtype,
-                           subfolder=r.args.get('subfolder', None))
-    except _textprocessing.ConceptPathParseError as e:
-        raise InvalidVaeUriError(e)
+            return TorchVAEUri(encoder=r.concept,
+                               model=model,
+                               revision=r.args.get('revision', None),
+                               variant=r.args.get('variant', None),
+                               dtype=dtype,
+                               subfolder=r.args.get('subfolder', None))
+        except _textprocessing.ConceptPathParseError as e:
+            raise InvalidVaeUriError(e)
 
 
 class FlaxVAEUri:
@@ -880,39 +880,39 @@ class FlaxVAEUri:
 
         return vae
 
+    @staticmethod
+    def parse(uri: _types.Uri) -> 'FlaxVAEUri':
+        """
+        Parse a ``--model-type`` flax* ``--vae`` uri and return an object representing its constituents
 
-def parse_flax_vae_uri(uri: _types.Uri) -> FlaxVAEUri:
-    """
-    Parse a ``--model-type`` flax* ``--vae`` uri and return an object representing its constituents
+        :param uri: string with ``--vae`` uri syntax
 
-    :param uri: string with ``--vae`` uri syntax
+        :raise: :py:class:`.InvalidVaeUriError`
 
-    :raise: :py:class:`.InvalidVaeUriError`
+        :return: :py:class:`.FlaxVAEPath`
+        """
+        try:
+            r = _flax_vae_uri_parser.parse_concept_uri(uri)
 
-    :return: :py:class:`.FlaxVAEPath`
-    """
-    try:
-        r = _flax_vae_uri_parser.parse_concept_uri(uri)
+            model = r.args.get('model')
+            if model is None:
+                raise InvalidVaeUriError('model argument for flax VAE specification must be defined.')
 
-        model = r.args.get('model')
-        if model is None:
-            raise InvalidVaeUriError('model argument for flax VAE specification must be defined.')
+            dtype = r.args.get('dtype')
 
-        dtype = r.args.get('dtype')
+            supported_dtypes = _enums.supported_data_type_strings()
+            if dtype is not None and dtype not in supported_dtypes:
+                raise InvalidVaeUriError(
+                    f'Flax VAE "dtype" must be {", ".join(supported_dtypes)}, '
+                    f'or left undefined, received: {dtype}')
 
-        supported_dtypes = _enums.supported_data_type_strings()
-        if dtype is not None and dtype not in supported_dtypes:
-            raise InvalidVaeUriError(
-                f'Flax VAE "dtype" must be {", ".join(supported_dtypes)}, '
-                f'or left undefined, received: {dtype}')
-
-        return FlaxVAEUri(encoder=r.concept,
-                          model=model,
-                          revision=r.args.get('revision', None),
-                          dtype=_enums.get_flax_dtype(dtype),
-                          subfolder=r.args.get('subfolder', None))
-    except _textprocessing.ConceptPathParseError as e:
-        raise InvalidVaeUriError(e)
+            return FlaxVAEUri(encoder=r.concept,
+                              model=model,
+                              revision=r.args.get('revision', None),
+                              dtype=_enums.get_flax_dtype(dtype),
+                              subfolder=r.args.get('subfolder', None))
+        except _textprocessing.ConceptPathParseError as e:
+            raise InvalidVaeUriError(e)
 
 
 class LoRAUri:
@@ -1018,27 +1018,27 @@ class LoRAUri:
                                        **extra_args)
             _messages.debug_log(f'Added LoRA: "{self}" to pipeline: "{pipeline.__class__.__name__}"')
 
+    @staticmethod
+    def parse(uri: _types.Uri) -> 'LoRAUri':
+        """
+        Parse a ``--lora`` uri and return an object representing its constituents
 
-def parse_lora_uri(uri: _types.Uri) -> LoRAUri:
-    """
-    Parse a ``--lora`` uri and return an object representing its constituents
+        :param uri: string with ``--lora`` uri syntax
 
-    :param uri: string with ``--lora`` uri syntax
+        :raise: :py:class:`.InvalidLoRAUriError`
 
-    :raise: :py:class:`.InvalidLoRAUriError`
+        :return: :py:class:`.LoRAPath`
+        """
+        try:
+            r = _lora_uri_parser.parse_concept_uri(uri)
 
-    :return: :py:class:`.LoRAPath`
-    """
-    try:
-        r = _lora_uri_parser.parse_concept_uri(uri)
-
-        return LoRAUri(model=r.concept,
-                       scale=float(r.args.get('scale', 1.0)),
-                       weight_name=r.args.get('weight-name', None),
-                       revision=r.args.get('revision', None),
-                       subfolder=r.args.get('subfolder', None))
-    except _textprocessing.ConceptPathParseError as e:
-        raise InvalidLoRAUriError(e)
+            return LoRAUri(model=r.concept,
+                           scale=float(r.args.get('scale', 1.0)),
+                           weight_name=r.args.get('weight-name', None),
+                           revision=r.args.get('revision', None),
+                           subfolder=r.args.get('subfolder', None))
+        except _textprocessing.ConceptPathParseError as e:
+            raise InvalidLoRAUriError(e)
 
 
 class TextualInversionUri:
@@ -1108,26 +1108,26 @@ class TextualInversionUri:
                                             **extra_args)
             _messages.debug_log(f'Added Textual Inversion: "{self}" to pipeline: "{pipeline.__class__.__name__}"')
 
+    @staticmethod
+    def parse(uri: _types.Uri) -> 'TextualInversionUri':
+        """
+        Parse a ``--textual-inversions`` uri and return an object representing its constituents
 
-def parse_textual_inversion_uri(uri: _types.Uri) -> TextualInversionUri:
-    """
-    Parse a ``--textual-inversions`` uri and return an object representing its constituents
+        :param uri: string with ``--textual-inversions`` uri syntax
 
-    :param uri: string with ``--textual-inversions`` uri syntax
+        :raise: :py:class:`.InvalidTextualInversionUriError`
 
-    :raise: :py:class:`.InvalidTextualInversionUriError`
+        :return: :py:class:`.TextualInversionPath`
+        """
+        try:
+            r = _textual_inversion_uri_parser.parse_concept_uri(uri)
 
-    :return: :py:class:`.TextualInversionPath`
-    """
-    try:
-        r = _textual_inversion_uri_parser.parse_concept_uri(uri)
-
-        return TextualInversionUri(model=r.concept,
-                                   weight_name=r.args.get('weight-name', None),
-                                   revision=r.args.get('revision', None),
-                                   subfolder=r.args.get('subfolder', None))
-    except _textprocessing.ConceptPathParseError as e:
-        raise InvalidTextualInversionUriError(e)
+            return TextualInversionUri(model=r.concept,
+                                       weight_name=r.args.get('weight-name', None),
+                                       revision=r.args.get('revision', None),
+                                       subfolder=r.args.get('subfolder', None))
+        except _textprocessing.ConceptPathParseError as e:
+            raise InvalidTextualInversionUriError(e)
 
 
 __all__ = _types.module_all()

@@ -109,7 +109,7 @@ def resize_image(img: PIL.Image.Image,
         # probably less costly
         return copy_img(img)
 
-    r = img.resize(new_size, PIL.Image.LANCZOS)
+    r = img.resize(new_size, PIL.Image.Resampling.LANCZOS)
 
     if hasattr(img, 'filename'):
         r.filename = img.filename

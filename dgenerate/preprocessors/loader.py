@@ -121,7 +121,7 @@ class Loader:
     def get_available_classes(self) -> typing.List[typing.Type[_preprocessor.ImagePreprocessor]]:
         """
         Return a list of all :py:class:`dgenerate.preprocessors.ImagePreprocessor` implementations
-        visble to this loader.
+        visible to this loader.
 
         :return: list of :py:class:`dgenerate.preprocessors.ImagePreprocessor`
         """

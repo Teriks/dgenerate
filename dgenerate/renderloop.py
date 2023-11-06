@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import datetime
+import itertools
 import os
 import pathlib
 import tempfile
@@ -36,7 +37,14 @@ import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.preprocessors as _preprocessors
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-from dgenerate.renderloopconfig import *
+# noinspection PyUnresolvedReferences
+from dgenerate.renderloopconfig import \
+    RenderLoopConfig, \
+    RenderLoopConfigError, \
+    CONTROL_IMAGE_PREPROCESSOR_SEP, \
+    iterate_diffusion_args, \
+    iterate_attribute_combinations, \
+    gen_seeds
 
 
 class ImageGeneratedCallbackArgument:
@@ -188,7 +196,7 @@ class RenderLoop:
         self.image_generated_callbacks = []
 
     @property
-    def written_images(self) -> typing.Iterable[str]:
+    def written_images(self) -> typing.Iterator[str]:
         """
         Iterator over image filenames written by the last run
         """
@@ -199,7 +207,7 @@ class RenderLoop:
         self._written_images.seek(pos)
 
     @property
-    def written_animations(self) -> typing.Iterable[str]:
+    def written_animations(self) -> typing.Iterator[str]:
         """
         Iterator over animation filenames written by the last run
         """
@@ -221,8 +229,8 @@ class RenderLoop:
             variable_prefix='last_')
 
         template_variables.update({
-            'last_images': (typing.Iterable[str], self.written_images),
-            'last_animations': (typing.Iterable[str], self.written_animations),
+            'last_images': (typing.Iterator[str], self.written_images),
+            'last_animations': (typing.Iterator[str], self.written_animations),
         })
 
         return template_variables
@@ -845,9 +853,9 @@ class RenderLoop:
                           set_extra_wrapper_args:
                           typing.Callable[[_pipelinewrapper.DiffusionArguments, _mediainput.ImageSeed], None],
                           arg_iterator:
-                          typing.Iterable[_pipelinewrapper.DiffusionArguments],
+                          typing.Iterator[_pipelinewrapper.DiffusionArguments],
                           image_seed_iterator:
-                          typing.Callable[[], typing.Iterable[_mediainput.ImageSeed]],
+                          typing.Callable[[], typing.Iterator[_mediainput.ImageSeed]],
                           fps: typing.Union[int, float]):
 
         animation_format_lower = self.config.animation_format.lower()

@@ -38,14 +38,14 @@ when specifying preprocessors for multiple control guidance images
 
 def iterate_attribute_combinations(
         attribute_defs: typing.List[typing.Tuple[str, typing.List]],
-        my_class: typing.Type) -> typing.Iterable:
+        my_class: typing.Type) -> typing.Iterator:
     """
     Iterate over every combination of attributes in a given class using a list of tuples mapping
     attribute names to a list of possible values.
 
     :param attribute_defs: list of tuple (attribute_name, [list of values])
     :param my_class: Construct this class and assign attribute values to it
-    :return: an iterable over instances of the type mentioned in the my_class argument
+    :return: an iterator over instances of the type mentioned in the my_class argument
     """
 
     def assign(ctx, dir_attr, name, val):
@@ -97,7 +97,7 @@ def iterate_diffusion_args(prompt: _types.OptionalPrompts,
                            guidance_scale: _types.OptionalFloats,
                            image_guidance_scale: _types.OptionalFloats,
                            guidance_rescale: _types.OptionalFloats,
-                           inference_steps: _types.OptionalIntegers) -> typing.Iterable[_pipelinewrapper.DiffusionArguments]:
+                           inference_steps: _types.OptionalIntegers) -> typing.Iterator[_pipelinewrapper.DiffusionArguments]:
     """
     Iterate over every combination of possible attribute values of :py:class:`dgenerate.pipelinewrapper.DiffusionArguments` given a list of
     values for each attribute.
@@ -133,7 +133,7 @@ def iterate_diffusion_args(prompt: _types.OptionalPrompts,
     :param image_guidance_scale: list of floats or None
     :param guidance_rescale: list of floats or None
     :param inference_steps: list of integers or None
-    :return: an iterable over :py:class:`dgenerate.pipelinewrapper.DiffusionArguments` objects
+    :return: an iterator over :py:class:`dgenerate.pipelinewrapper.DiffusionArguments` objects
     """
 
     def _list_or_list_of_none(val):
@@ -1021,13 +1021,13 @@ class RenderLoopConfig(_types.SetFromMixin):
                 len(self.guidance_scales) *
                 len(self.inference_steps))
 
-    def iterate_diffusion_args(self, **overrides) -> typing.Iterable[_pipelinewrapper.DiffusionArguments]:
+    def iterate_diffusion_args(self, **overrides) -> typing.Iterator[_pipelinewrapper.DiffusionArguments]:
         """
         Iterate over :py:class:`dgenerate.pipelinewrapper.DiffusionArguments` argument objects using
         every combination of argument values provided for that object by this configuration.
 
         :param overrides: use key word arguments to override specific attributes of this object with a new list value.
-        :return: an iterable over :py:class:`dgenerate.pipelinewrapper.DiffusionArguments`
+        :return: an iterator over :py:class:`dgenerate.pipelinewrapper.DiffusionArguments`
         """
 
         def ov(n, v):

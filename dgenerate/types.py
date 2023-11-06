@@ -45,6 +45,7 @@ OptionalPaths = typing.Optional[Paths]
 
 Uris = typing.List[str]
 OptionalUris = typing.Optional[Uris]
+OptionalUriOrUris = typing.Union[str, Uris, None]
 
 Names = typing.List[Name]
 OptionalNames = typing.Optional[Names]
@@ -284,12 +285,12 @@ class SetFromMixin:
 
 
 def get_accepted_args_with_defaults(func) -> \
-        typing.Iterable[typing.Union[typing.Tuple[str], typing.Tuple[str, typing.Any]]]:
+        typing.Iterator[typing.Union[typing.Tuple[str], typing.Tuple[str, typing.Any]]]:
     """
     Get the argument signature of a simple function with any default values present.
 
     :param func: the function
-    :return: an iterable over tuples of length 1 or 2,
+    :return: an iterator over tuples of length 1 or 2,
         length 2 indicates a default argument value is present. (name,) or (name, value)
     """
 
@@ -308,12 +309,12 @@ def get_accepted_args_with_defaults(func) -> \
             default_idx += 1
 
 
-def get_default_args(func) -> typing.Iterable[typing.Tuple[str, typing.Any]]:
+def get_default_args(func) -> typing.Iterator[typing.Tuple[str, typing.Any]]:
     """
     Get a list of default arguments from a simple function with their default values.
 
     :param func: the function
-    :return: iterable over tuples of length 2 (name, value)
+    :return: iterator over tuples of length 2 (name, value)
     """
     for arg in get_accepted_args_with_defaults(func):
         if len(arg) > 1:
