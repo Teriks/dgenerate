@@ -15,16 +15,18 @@ input parameters in batch, so that the differences in generated output can be co
 Animated output can be produced by processing every frame of a video, gif, webp through stable diffusion as
 an image seed with a given prompt and generation parameters.
 
-Video of infinite runtime can be processed without memory constraints.
+Video of any runtime can be processed without memory constraints related to the video size.
+Many video formats are supported through the use of PyAV (ffmpeg).
 
-GIF's and WebP can also be processed, with memory constraints.
+GIFs, APNG, and WebP can also be processed, with memory constraints (all frames exist in memory at once).
+
+PNG, JPEG, BMP, and PSD are supported for static image inputs.
 
 This software requires an Nvidia GPU supporting CUDA 11.8+, CPU rendering is possible but extraordinarily slow.
 
+For library documentation visit `readthedocs <http://dgenerate.readthedocs.io/en/v2.0.0/?badge=v2.0.0>`_.
+
 ----
-
-This readme mostly covers command line usage, for library documentation visit `readthedocs <http://dgenerate.readthedocs.io/en/latest/?badge=latest>`_.
-
 
 * How to install
     * `Windows Install`_
