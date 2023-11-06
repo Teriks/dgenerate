@@ -856,13 +856,14 @@ def fetch_media_data_stream(uri: str) -> typing.Tuple[str, typing.BinaryIO]:
     else:
         mime_type = mimetypes.guess_type(uri)[0]
 
-        if mime_type is None and uri.endswith('.webp'):
-            # webp missing from mimetypes library
-            mime_type = "image/webp"
+        if mime_type is None:
+            if uri.endswith('.webp'):
+                # webp missing from mimetypes library
+                mime_type = "image/webp"
 
-        if mime_type is None and uri.endswith('.apng'):
-            # apng missing from mimetypes library
-            mime_type = "image/apng"
+            if uri.endswith('.apng'):
+                # apng missing from mimetypes library
+                mime_type = "image/apng"
 
         if not mime_type_is_supported(mime_type):
             raise UnknownMimetypeError(
