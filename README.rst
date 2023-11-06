@@ -20,7 +20,7 @@ Many video formats are supported through the use of PyAV (ffmpeg).
 
 GIFs, APNG, and WebP can also be processed, with memory constraints (all frames exist in memory at once).
 
-PNG, JPEG, BMP, and PSD are supported for static image inputs.
+PNG, JPEG, JPEG-2000, TGA (Targa), BMP, and PSD (Photoshop) are supported for static image inputs.
 
 This software requires an Nvidia GPU supporting CUDA 11.8+, CPU rendering is possible but extraordinarily slow.
 

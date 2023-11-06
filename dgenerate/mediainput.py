@@ -833,6 +833,17 @@ class UnknownMimetypeError(Exception):
     pass
 
 
+_MIME_TYPES_GUESS_EXTRA = {
+    '.webp': 'image/webp',
+    '.apng': 'image/apng',
+    '.tga': 'image/tga',
+    '.jp2': 'image/jp2',
+    '.j2k': 'image/j2k',
+    '.jpx': 'image/jpx',
+    '.psd': 'image/psd'
+}
+
+
 # noinspection HttpUrlsUsage
 def fetch_media_data_stream(uri: str) -> typing.Tuple[str, typing.BinaryIO]:
     """
@@ -857,13 +868,12 @@ def fetch_media_data_stream(uri: str) -> typing.Tuple[str, typing.BinaryIO]:
         mime_type = mimetypes.guess_type(uri)[0]
 
         if mime_type is None:
-            if uri.endswith('.webp'):
-                # webp missing from mimetypes library
-                mime_type = "image/webp"
+            # Check for accepted formats that the mimetypes
+            # stdlib does not know about by default
 
-            if uri.endswith('.apng'):
-                # apng missing from mimetypes library
-                mime_type = "image/apng"
+            _, ext = os.path.splitext(uri)
+            if ext is not None:
+                mime_type = _MIME_TYPES_GUESS_EXTRA.get(ext)
 
         if not mime_type_is_supported(mime_type):
             raise UnknownMimetypeError(
@@ -877,7 +887,33 @@ def get_supported_animated_image_mimetypes() -> typing.List[str]:
 
 
 def get_supported_static_image_mimetypes() -> typing.List[str]:
-    return ['image/png', 'image/jpeg', 'image/bmp', 'image/psd']
+    return ['image/png',
+            'application/png',
+            'application/x-png',
+            'image/jpeg',
+            'image/jpg',
+            'application/jpg',
+            'application/x-jpg',
+            'image/jp2',
+            'image/jpx',
+            'image/j2k',
+            'image/jpeg2000',
+            'image/jpeg2000-image',
+            'image/x-jpeg2000-image',
+            'image/bmp',
+            'image/x-bitmap',
+            'image/x-bmp',
+            'application/bmp',
+            'application/x-bmp',
+            'image/x-targa',
+            'image/x-tga',
+            'image/targa',
+            'image/tga',
+            'image/vnd.adobe.photoshop',
+            'application/x-photoshop',
+            'application/photoshop',
+            'application/psd',
+            'image/psd']
 
 
 def get_supported_image_mimetypes() -> typing.List[str]:
