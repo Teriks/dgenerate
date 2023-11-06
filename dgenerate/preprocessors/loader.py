@@ -203,7 +203,7 @@ class Loader:
             typing.Union[_preprocessor.ImagePreprocessor, _preprocessorchain.ImagePreprocessorChain, None]:
         """
         Load an image preprocessor or multiple image preprocessors. They are loaded by URI, which
-        is their name and any module arguments, for example: "canny;lower=50;upper=100"
+        is their name and any module arguments, for example: ``canny;lower=50;upper=100``
 
         Specifying multiple preprocessors with a list will create an image preprocessor chain object.
 
