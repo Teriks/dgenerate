@@ -18,7 +18,7 @@ an image seed with a given prompt and generation parameters.
 Video of any runtime can be processed without memory constraints related to the video size.
 Many video formats are supported through the use of PyAV (ffmpeg).
 
-GIFs, APNG (extension must be .apng), and WebP, can also be processed with memory constraints, IE: all frames exist in memory at once.
+GIF, APNG (extension must be .apng), and WebP, can also be processed with memory constraints, IE: all frames exist in memory at once.
 
 PNG, JPEG, JPEG-2000, TGA (Targa), BMP, and PSD (Photoshop) are supported for static image inputs.
 
