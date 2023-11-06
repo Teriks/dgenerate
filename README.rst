@@ -57,7 +57,7 @@ This readme mostly covers command line usage, for library documentation visit `r
 dgenerate help output
 ---------------------
 
-.. code-block::
+.. code-block:: txt
 
     usage: dgenerate [-h] [-v] [--version] [-pm PATH [PATH ...]] [-ofm] [-th] [-mt MODEL_TYPE]
                      [-rev BRANCH] [-var VARIANT] [-sbf SUBFOLDER] [-atk TOKEN] [-bs INTEGER]
