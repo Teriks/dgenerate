@@ -1,5 +1,5 @@
-.. |Documentation Status| image:: https://readthedocs.org/projects/dgenerate/badge/?version=latest
-   :target: http://dgenerate.readthedocs.io/en/v2.0.0/?badge=v2.0.0
+.. |Documentation Status| image:: https://readthedocs.org/projects/dgenerate/badge/?version=v2.0.0
+   :target: http://dgenerate.readthedocs.io/en/v2.0.0/
 
 Overview
 ========
