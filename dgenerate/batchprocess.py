@@ -313,15 +313,15 @@ class BatchProcessor:
     def _run_file(self, stream: typing.TextIO):
         continuation = ''
 
-        def run_continuation(line, line_idx):
+        def run_continuation(cur_line, cur_line_idx):
             nonlocal continuation
-            completed_continuation = (continuation + ' ' + line).lstrip()
+            completed_continuation = (continuation + ' ' + cur_line).lstrip()
 
-            if self._directive_handlers(line_idx, completed_continuation):
+            if self._directive_handlers(cur_line_idx, completed_continuation):
                 continuation = ''
                 return
 
-            self._lex_and_run_invocation(line_idx, completed_continuation)
+            self._lex_and_run_invocation(cur_line_idx, completed_continuation)
 
             continuation = ''
 

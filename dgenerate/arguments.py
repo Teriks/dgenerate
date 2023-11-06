@@ -68,7 +68,7 @@ def _type_dtype(dtype):
 
 def _type_prompts(prompt):
     try:
-        return _prompt.Prompt().parse(prompt)
+        return _prompt.Prompt.parse(prompt)
     except ValueError as e:
         raise argparse.ArgumentTypeError(
             f'Prompt parse error: {e}')

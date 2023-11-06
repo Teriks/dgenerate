@@ -115,14 +115,7 @@ from .uris import \
     InvalidTextualInversionUriError, \
     InvalidVaeUriError, \
     TorchControlNetUri, \
-    TorchVAEUri, \
-    parse_textual_inversion_uri, \
-    parse_torch_vae_uri, \
-    parse_flax_vae_uri, \
-    parse_torch_control_net_uri, \
-    parse_lora_uri, \
-    parse_flax_control_net_uri, \
-    parse_sdxl_refiner_uri
+    TorchVAEUri
 
 from .util import \
     InvalidDeviceOrdinalException, \

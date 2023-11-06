@@ -143,7 +143,7 @@ def fetch_model_files_with_size(repo_id: str,
                                 local_files_only: bool = False,
                                 flax: bool = False,
                                 sentencepiece: bool = False,
-                                watermarker: bool = False) -> typing.Iterable[typing.Tuple[str, int]]:
+                                watermarker: bool = False) -> typing.Iterator[typing.Tuple[str, int]]:
     """
     Attempt to fetch model files with their size that are relevant for the type of model being loaded.
 
@@ -168,7 +168,7 @@ def fetch_model_files_with_size(repo_id: str,
     :param sentencepiece: Forcibly include tokenizer/spiece.model for models with a unet?
     :param watermarker: Forcibly include watermarker/diffusion_pytorch_model.bin for models with a unet?
 
-    :return: an iterable over (filename, file size bytes)
+    :return: an iterator over (filename, file size bytes)
     """
 
     __args_debug = locals()

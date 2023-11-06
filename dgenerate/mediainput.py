@@ -1390,9 +1390,9 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
                        seed_image_preprocessor: typing.Optional[_preprocessors.ImagePreprocessor] = None,
                        mask_image_preprocessor: typing.Optional[_preprocessors.ImagePreprocessor] = None,
                        control_image_preprocessor: ControlPreprocessorSpec = None) -> \
-        typing.Iterable[ImageSeed]:
+        typing.Iterator[ImageSeed]:
     """
-    Parse and load images/videos in an ``--image-seeds`` uri and return an iterable that
+    Parse and load images/videos in an ``--image-seeds`` uri and return an iterator that
     produces :py:class:`.ImageSeed` objects while progressively reading those files.
 
     This method is used to iterate over an ``--image-seeds`` uri in the case that the image source
@@ -1447,7 +1447,7 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
     :raise: :py:exc:`ValueError` if there are more **control_image_preprocessor** values than
         there are control guidance image sources in the URI.
 
-    :return: an iterable over :py:class:`.ImageSeed` objects
+    :return: an iterator over :py:class:`.ImageSeed` objects
     """
 
     if frame_end is not None:
@@ -1565,9 +1565,9 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
                           resize_resolution: _types.OptionalSize = None,
                           aspect_correct: bool = True,
                           preprocessor: ControlPreprocessorSpec = None) -> \
-        typing.Iterable[ImageSeed]:
+        typing.Iterator[ImageSeed]:
     """
-    Parse and load a control image/video in an ``--image-seeds`` uri and return an iterable that
+    Parse and load a control image/video in an ``--image-seeds`` uri and return an iterator that
     produces :py:class:`.ImageSeed` objects while progressively reading that file.
 
     One or more :py:class:`.ImageSeed` objects may be yielded depending on whether an animation is being read.
@@ -1610,7 +1610,7 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
     :raise: :py:exc:`ValueError` if there are more **preprocessor** values than
         there are control guidance image sources in the URI.
 
-    :return: an iterable over :py:class:`.ImageSeed` objects
+    :return: an iterator over :py:class:`.ImageSeed` objects
     """
 
     if frame_end is not None:
