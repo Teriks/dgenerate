@@ -54,8 +54,8 @@ This readme mostly covers command line usage, for library documentation visit `r
     * `Batch Processing Argument Injection`_
     * `File Cache Control`_
 
-dgenerate help output
----------------------
+Help Output
+-----------
 
 .. code-block:: text
 
