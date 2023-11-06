@@ -57,7 +57,7 @@ This readme mostly covers command line usage, for library documentation visit `r
 dgenerate help output
 ---------------------
 
-.. code-block:: txt
+.. code-block:: text
 
     usage: dgenerate [-h] [-v] [--version] [-pm PATH [PATH ...]] [-ofm] [-th] [-mt MODEL_TYPE]
                      [-rev BRANCH] [-var VARIANT] [-sbf SUBFOLDER] [-atk TOKEN] [-bs INTEGER]
@@ -2361,7 +2361,7 @@ of ``\``, at least on the last line before whitespace and comments start.
 
 The following is a config file example that covers very basic syntax concepts:
 
-.. code-block::
+.. code-block:: jinja
 
     #! dgenerate 2.0.0
 
@@ -2436,7 +2436,7 @@ a dgenerate invocation in a config file for debugging purposes. You can specify 
 more template variable names as arguments to ``\templates_help`` to receive help for only
 the mentioned variable names.
 
-.. code-block:: bash
+.. code-block:: jinja
 
     #! dgenerate 2.0.0
 
@@ -2678,7 +2678,7 @@ and purpose of ``\save_modules`` for saving and reusing pipeline modules such
 as VAEs etc. outside of relying on the caching system.
 
 
-.. code-block:: bash
+.. code-block:: jinja
 
     #! dgenerate 2.0.0
 
@@ -2856,7 +2856,7 @@ as VAEs etc. outside of relying on the caching system.
 The entirety of pythons builtin ``glob`` module is also accessible during templating, you
 can glob directories using functions from the glob module like so:
 
-.. code-block::
+.. code-block:: jinja
 
     # The most basic usage is full expansion of every file
 
