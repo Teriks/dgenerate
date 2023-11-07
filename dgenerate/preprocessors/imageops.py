@@ -78,7 +78,7 @@ class MirrorFlipPreprocess(_preprocessor.ImagePreprocessor):
 
 class SimpleColorPreprocess(_preprocessor.ImagePreprocessor):
     """
-    Implements the "grayscale" and "flip" PIL.ImageOps operations
+    Implements the "grayscale" and "invert" PIL.ImageOps operations
     as an image preprocessor.
     """
 
