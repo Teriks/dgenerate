@@ -21,6 +21,7 @@
 import typing
 
 import diffusers
+import huggingface_hub
 
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
@@ -443,7 +444,12 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
 
     :return: :py:class:`.TorchPipelineCreationResult`
     """
-    return _create_torch_diffusion_pipeline(**locals())
+    __locals = locals()
+    try:
+        return _create_torch_diffusion_pipeline(**__locals)
+    except (huggingface_hub.utils.HFValidationError,
+            huggingface_hub.utils.HfHubHTTPError) as e:
+        raise _hfutil.ModelNotFoundError(e)
 
 
 class TorchPipelineFactory:
@@ -903,7 +909,12 @@ def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
 
     :return: :py:class:`.FlaxPipelineCreationResult`
     """
-    return _create_flax_diffusion_pipeline(**locals())
+    __locals = locals()
+    try:
+        return _create_flax_diffusion_pipeline(**__locals)
+    except (huggingface_hub.utils.HFValidationError,
+            huggingface_hub.utils.HfHubHTTPError) as e:
+        raise _hfutil.ModelNotFoundError(e)
 
 
 class FlaxPipelineFactory:
