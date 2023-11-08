@@ -49,6 +49,7 @@ def invoke_dgenerate(
              :py:class:`dgenerate.pipelinewrapper.InvalidModelUriError`
              :py:class:`dgenerate.pipelinewrapper.InvalidSchedulerName`
              :py:class:`dgenerate.pipelinewrapper.OutOfMemoryError`
+             :py:class:`dgenerate.pipelinewrapper.ModelNotFoundError`
              :py:class:`NotImplementedError`
              :py:class:`EnvironmentError`
 
