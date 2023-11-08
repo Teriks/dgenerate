@@ -45,7 +45,8 @@ try:
         ModelTypes, \
         DataTypes, \
         DiffusionArguments, \
-        OutOfMemoryError
+        OutOfMemoryError, \
+        ModelNotFoundError
 
     from dgenerate.prompt import Prompt
     from dgenerate.batchprocess import BatchProcessError, create_config_runner
