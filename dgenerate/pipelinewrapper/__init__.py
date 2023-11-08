@@ -129,7 +129,7 @@ from .wrapper import \
     OutOfMemoryError
 
 
-from.hfutil import ModelNotFoundError
+from .hfutil import ModelNotFoundError
 
 
 os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
