@@ -414,6 +414,13 @@ class DiffusionArguments(_types.SetFromMixin):
     at the expense of slower inference.
     """
 
+    clip_skip: _types.OptionalInteger = None
+    """
+    Number of layers to be skipped from CLIP while computing the prompt embeddings. A value of 1 means that
+    the output of the pre-final layer will be used for computing the prompt embeddings. Only supported for 
+    ``model_type`` values ``torch`` and ``torch-sdxl``, including with ``control_net_uris`` defined.
+    """
+
     def get_pipeline_wrapper_kwargs(self):
         """
         Get the arguments dictionary needed to call :py:class:`.DiffusionPipelineWrapper`
@@ -1526,6 +1533,11 @@ class DiffusionPipelineWrapper:
                                              pipeline_args, user_args,
                                              'guidance_rescale', 'guidance_rescale',
                                              '--guidance-rescales')
+
+        self._set_non_universal_pipeline_arg(self._pipeline,
+                                             pipeline_args, user_args,
+                                             'clip_skip', 'clip_skip',
+                                             '--clip-skips')
 
         self._set_non_universal_pipeline_arg(self._pipeline,
                                              pipeline_args, user_args,
