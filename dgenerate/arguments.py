@@ -74,6 +74,17 @@ def _type_prompts(prompt):
             f'Prompt parse error: {e}')
 
 
+def _type_clip_skip(val):
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+
+    if val < 0:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 0')
+    return val
+
+
 def _type_inference_steps(val):
     try:
         val = int(val)
@@ -844,6 +855,16 @@ actions.append(
                         influence IE. things you don't want to see.
                         Example: --prompts "shrek flying a tesla over detroit; clouds, rain, missiles".
                         (default: [(empty string)])"""))
+
+
+actions.append(
+    parser.add_argument('-cs', '--clip-skips', nargs='+', action='store', metavar="INTEGER",
+                        default=None,
+                        type=_type_clip_skip,
+                        help="""One or more clip skip values to try. Clip skip is the number of layers to be skipped from CLIP 
+                        while computing the prompt embeddings, it must be a value greater than or equal to zero. A value of 1 means 
+                        that the output of the pre-final layer will be used for computing the prompt embeddings. This is only 
+                        supported for --model-type values "torch" and "torch-sdxl", including with --control-nets."""))
 
 seed_options = parser.add_mutually_exclusive_group()
 

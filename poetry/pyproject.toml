@@ -8,9 +8,9 @@ license = "BSD 3-Clause"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
-diffusers = "^0.21.2"
-transformers = "^4.31.0"
-accelerate = "^0.22.0"
+diffusers = "^0.22.3"
+transformers = "^4.35.0"
+accelerate = "^0.24.1"
 pytorch-lightning = "^2.0.7"
 omegaconf = "^2.3.0"
 requests = "^2.31.0"

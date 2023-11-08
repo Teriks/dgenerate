@@ -67,73 +67,41 @@ def iterate_attribute_combinations(
         yield ctx_out
 
 
-def iterate_diffusion_args(prompt: _types.OptionalPrompts,
-                           sdxl_second_prompt: _types.OptionalPrompts,
-                           sdxl_refiner_prompt: _types.OptionalPrompts,
-                           sdxl_refiner_second_prompt: _types.OptionalPrompts,
-                           seed: _types.OptionalIntegers,
-                           image_seed_strength: _types.OptionalFloats,
-                           upscaler_noise_level: _types.OptionalIntegers,
-                           sdxl_high_noise_fraction: _types.OptionalFloats,
-                           sdxl_refiner_inference_steps: _types.OptionalIntegers,
-                           sdxl_refiner_guidance_scale: _types.OptionalFloats,
-                           sdxl_refiner_guidance_rescale: _types.OptionalFloats,
-                           sdxl_aesthetic_score: _types.OptionalFloats,
-                           sdxl_original_size: _types.OptionalSizes,
-                           sdxl_target_size: _types.OptionalSizes,
-                           sdxl_crops_coords_top_left: _types.OptionalCoordinateList,
-                           sdxl_negative_aesthetic_score: _types.OptionalFloats,
-                           sdxl_negative_original_size: _types.OptionalSizes,
-                           sdxl_negative_target_size: _types.OptionalSizes,
-                           sdxl_negative_crops_coords_top_left: _types.OptionalCoordinateList,
-                           sdxl_refiner_aesthetic_score: _types.OptionalFloats,
-                           sdxl_refiner_original_size: _types.OptionalSizes,
-                           sdxl_refiner_target_size: _types.OptionalSizes,
-                           sdxl_refiner_crops_coords_top_left: _types.OptionalCoordinateList,
-                           sdxl_refiner_negative_aesthetic_score: _types.OptionalFloats,
-                           sdxl_refiner_negative_original_size: _types.OptionalSizes,
-                           sdxl_refiner_negative_target_size: _types.OptionalSizes,
-                           sdxl_refiner_negative_crops_coords_top_left: _types.OptionalCoordinateList,
-                           guidance_scale: _types.OptionalFloats,
-                           image_guidance_scale: _types.OptionalFloats,
-                           guidance_rescale: _types.OptionalFloats,
-                           inference_steps: _types.OptionalIntegers) -> typing.Iterator[_pipelinewrapper.DiffusionArguments]:
+def _iterate_diffusion_args(prompt: _types.OptionalPrompts,
+                            sdxl_second_prompt: _types.OptionalPrompts,
+                            sdxl_refiner_prompt: _types.OptionalPrompts,
+                            sdxl_refiner_second_prompt: _types.OptionalPrompts,
+                            clip_skip: _types.OptionalIntegers,
+                            seed: _types.OptionalIntegers,
+                            image_seed_strength: _types.OptionalFloats,
+                            upscaler_noise_level: _types.OptionalIntegers,
+                            sdxl_high_noise_fraction: _types.OptionalFloats,
+                            sdxl_refiner_inference_steps: _types.OptionalIntegers,
+                            sdxl_refiner_guidance_scale: _types.OptionalFloats,
+                            sdxl_refiner_guidance_rescale: _types.OptionalFloats,
+                            sdxl_aesthetic_score: _types.OptionalFloats,
+                            sdxl_original_size: _types.OptionalSizes,
+                            sdxl_target_size: _types.OptionalSizes,
+                            sdxl_crops_coords_top_left: _types.OptionalCoordinateList,
+                            sdxl_negative_aesthetic_score: _types.OptionalFloats,
+                            sdxl_negative_original_size: _types.OptionalSizes,
+                            sdxl_negative_target_size: _types.OptionalSizes,
+                            sdxl_negative_crops_coords_top_left: _types.OptionalCoordinateList,
+                            sdxl_refiner_aesthetic_score: _types.OptionalFloats,
+                            sdxl_refiner_original_size: _types.OptionalSizes,
+                            sdxl_refiner_target_size: _types.OptionalSizes,
+                            sdxl_refiner_crops_coords_top_left: _types.OptionalCoordinateList,
+                            sdxl_refiner_negative_aesthetic_score: _types.OptionalFloats,
+                            sdxl_refiner_negative_original_size: _types.OptionalSizes,
+                            sdxl_refiner_negative_target_size: _types.OptionalSizes,
+                            sdxl_refiner_negative_crops_coords_top_left: _types.OptionalCoordinateList,
+                            guidance_scale: _types.OptionalFloats,
+                            image_guidance_scale: _types.OptionalFloats,
+                            guidance_rescale: _types.OptionalFloats,
+                            inference_steps: _types.OptionalIntegers) -> typing.Iterator[_pipelinewrapper.DiffusionArguments]:
     """
-    Iterate over every combination of possible attribute values of :py:class:`dgenerate.pipelinewrapper.DiffusionArguments` given a list of
-    values for each attribute.
-
-    :param prompt: list of :py:class:`dgenerate.prompt.Prompt` or None
-    :param sdxl_second_prompt: : list of :py:class:`dgenerate.prompt.Prompt` or None
-    :param sdxl_refiner_prompt: : list of :py:class:`dgenerate.prompt.Prompt` or None
-    :param sdxl_refiner_second_prompt: : list of :py:class:`dgenerate.prompt.Prompt` or None
-    :param seed: list of integers or None
-    :param image_seed_strength: list of floats or None
-    :param upscaler_noise_level: list of integers or None
-    :param sdxl_high_noise_fraction: list of floats or None
-    :param sdxl_refiner_inference_steps: list of integers or None
-    :param sdxl_refiner_guidance_scale: list of floats or None
-    :param sdxl_refiner_guidance_rescale: list of floats or None
-    :param sdxl_aesthetic_score: list of floats or None
-    :param sdxl_original_size: list of tuple(x, y) or None
-    :param sdxl_target_size: list of tuple(x, y) or None
-    :param sdxl_crops_coords_top_left: list of tuple(x, y) or None
-    :param sdxl_negative_aesthetic_score: list of floats or None
-    :param sdxl_negative_original_size: list of tuple(x, y) or None
-    :param sdxl_negative_target_size: list of tuple(x, y) or None
-    :param sdxl_negative_crops_coords_top_left: list of tuple(x, y) or None
-    :param sdxl_refiner_aesthetic_score: list of floats or None
-    :param sdxl_refiner_original_size: list of tuple(x, y) or None
-    :param sdxl_refiner_target_size: list of tuple(x, y) or None
-    :param sdxl_refiner_crops_coords_top_left: list of tuple(x, y) or None
-    :param sdxl_refiner_negative_aesthetic_score: list of floats or None
-    :param sdxl_refiner_negative_original_size: list of tuple(x, y) or None
-    :param sdxl_refiner_negative_target_size: list of tuple(x, y) or None
-    :param sdxl_refiner_negative_crops_coords_top_left: list of tuple(x, y) or None
-    :param guidance_scale: list of floats or None
-    :param image_guidance_scale: list of floats or None
-    :param guidance_rescale: list of floats or None
-    :param inference_steps: list of integers or None
-    :return: an iterator over :py:class:`dgenerate.pipelinewrapper.DiffusionArguments` objects
+    Iterate over every combination of possible attribute values of :py:class:`dgenerate.pipelinewrapper.DiffusionArguments` given a
+    list of values for each attribute.
     """
 
     def _list_or_list_of_none(val):
@@ -141,7 +109,7 @@ def iterate_diffusion_args(prompt: _types.OptionalPrompts,
 
     args = locals()
     defs = []
-    for arg_name in inspect.getfullargspec(iterate_diffusion_args).args:
+    for arg_name in inspect.getfullargspec(_iterate_diffusion_args).args:
         defs.append((arg_name, _list_or_list_of_none(args[arg_name])))
 
     yield from iterate_attribute_combinations(defs, _pipelinewrapper.DiffusionArguments)
@@ -245,6 +213,14 @@ class RenderLoopConfig(_types.SetFromMixin):
     """
     List of inference steps values, this corresponds to the ``--inference-steps`` argument of the
     dgenerate command line tool.
+    """
+
+    clip_skips: _types.OptionalIntegers = None
+    """
+    List of clip skip values. Clip skip is the number of layers to be skipped from CLIP while computing the 
+    prompt embeddings. A value of 1 means that the output of the pre-final layer will be used for computing 
+    the prompt embeddings. Only supported for ``model_type`` values ``torch`` and ``torch-sdxl``, including with 
+    ``control_net_uris`` defined.
     """
 
     image_seeds: _types.OptionalUris = None
@@ -733,6 +709,11 @@ class RenderLoopConfig(_types.SetFromMixin):
         elif not _pipelinewrapper.model_type_is_flax(self.model_type):
             self.batch_size = 1
 
+        if self.clip_skips and not (self.model_type == _pipelinewrapper.ModelTypes.TORCH or
+                                    self.model_type == _pipelinewrapper.ModelTypes.TORCH_SDXL):
+            raise RenderLoopConfigError(f'you cannot specify {a_namer("clip_skips")} for '
+                                        f'{a_namer("model_type")} values other than "torch" or "torch-sdxl"')
+
         if self.output_size is None and not self.image_seeds:
             if _pipelinewrapper.model_type_is_sdxl(self.model_type):
                 self.output_size = (_pipelinewrapper.DEFAULT_SDXL_OUTPUT_WIDTH,
@@ -748,7 +729,7 @@ class RenderLoopConfig(_types.SetFromMixin):
             if _pipelinewrapper.model_type_is_floyd_ifs(self.model_type):
                 raise RenderLoopConfigError(
                     f'you cannot specify Deep Floyd IF super-resolution '
-                    f'({a_namer("model_type")} "{self.model_type})" without {a_namer("image_seeds")}.'
+                    f'({a_namer("model_type")} "{self.model_type})" without {a_namer("image_seeds")}'
                 )
 
             if _pipelinewrapper.model_type_is_upscaler(self.model_type):
@@ -1042,7 +1023,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 return overrides[n]
             return v
 
-        yield from iterate_diffusion_args(
+        yield from _iterate_diffusion_args(
             prompt=ov('prompt', self.prompts),
             sdxl_second_prompt=ov('sdxl_second_prompt',
                                   self.sdxl_second_prompts),
@@ -1050,6 +1031,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                                    self.sdxl_refiner_prompts),
             sdxl_refiner_second_prompt=ov('sdxl_refiner_second_prompt',
                                           self.sdxl_refiner_second_prompts),
+            clip_skip=ov('clip_skip', self.clip_skips),
             seed=ov('seed', self.seeds),
             image_seed_strength=ov('image_seed_strength', self.image_seed_strengths),
             guidance_scale=ov('guidance_scale', self.guidance_scales),
