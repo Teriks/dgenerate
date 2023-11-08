@@ -611,6 +611,10 @@ class RenderLoop:
     def run(self):
         """
         Run the diffusion loop, this calls :py:meth:`.RenderLoopConfig.check` prior to running.
+
+        :raise: py:exc:`dgenerate.ModelNotFoundError`
+        :raise: py:exc:`dgenerate.OutOfMemoryError`
+
         """
         try:
             self._run()

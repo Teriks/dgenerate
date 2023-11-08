@@ -4,7 +4,7 @@
            UpgradeCode="CAA6E951-8C80-44A9-81CF-1F545DAA534C"
            Language="1033"
            Manufacturer="Teriks@github.com"
-           Name="dgenerate" Version="2.0.0">
+           Name="dgenerate" Version="2.1.0">
 
     <Package InstallerVersion="301" InstallPrivileges="elevated" InstallScope="perMachine" Compressed="yes" />
 
