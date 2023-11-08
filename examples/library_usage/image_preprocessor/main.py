@@ -91,6 +91,12 @@ def render_callback(arg: ImageGeneratedCallbackArgument):
     print(f'Reproduce With Config:\n{arg.config_string}')
     arg.image.save(arg.suggested_filename)
 
+    # if you wish to work with this image after the completion
+    # of render_loop.run you should copy it out with arg.image.copy()
+    # management of PIL.Image lifetime is very aggressive and the
+    # image object given in this callback will be disposed of
+    # when the callback is finished
+
 
 render_loop.disable_writes = True
 
