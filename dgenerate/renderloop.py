@@ -42,7 +42,6 @@ from dgenerate.renderloopconfig import \
     RenderLoopConfig, \
     RenderLoopConfigError, \
     CONTROL_IMAGE_PREPROCESSOR_SEP, \
-    _iterate_diffusion_args, \
     iterate_attribute_combinations, \
     gen_seeds
 
