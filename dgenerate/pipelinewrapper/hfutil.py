@@ -30,6 +30,11 @@ import dgenerate.messages as _messages
 import dgenerate.types as _types
 
 
+class ModelNotFoundError(Exception):
+    """Raised when a specified model can not be located either locally or remotely"""
+    pass
+
+
 class HFBlobLink:
     """
     Represents the constituents of a huggingface blob link.
@@ -133,6 +138,23 @@ def variant_match(filename: str, variant: typing.Optional[str] = None):
     return re.match(pattern, file_variant) is not None
 
 
+def _hf_try_to_load_from_cache(repo_id: str,
+                               filename: str,
+                               cache_dir: typing.Union[str, pathlib.Path, None] = None,
+                               revision: typing.Optional[str] = None,
+                               repo_type: typing.Optional[str] = None):
+    try:
+        return huggingface_hub.try_to_load_from_cache(
+            repo_id=repo_id,
+            filename=filename,
+            cache_dir=cache_dir,
+            revision=revision,
+            repo_type=repo_type
+        )
+    except huggingface_hub.utils.HFValidationError as e:
+        raise ModelNotFoundError(e)
+
+
 def fetch_model_files_with_size(repo_id: str,
                                 revision: typing.Optional[str] = 'main',
                                 variant: typing.Optional[str] = None,
@@ -228,14 +250,14 @@ def fetch_model_files_with_size(repo_id: str,
 
     def find_diffuser_weights(search_dir):
         if flax:
-            found = huggingface_hub.try_to_load_from_cache(
+            found = _hf_try_to_load_from_cache(
                 repo_id=repo_id,
                 revision=revision,
                 filename=os.path.join(search_dir,
                                       f'diffusion_flax_model{variant_part}msgpack')
             )
         else:
-            found = huggingface_hub.try_to_load_from_cache(
+            found = _hf_try_to_load_from_cache(
                 repo_id=repo_id,
                 revision=revision,
                 filename=os.path.join(search_dir,
@@ -243,7 +265,7 @@ def fetch_model_files_with_size(repo_id: str,
             )
 
             if not isinstance(found, str):
-                found = huggingface_hub.try_to_load_from_cache(
+                found = _hf_try_to_load_from_cache(
                     repo_id=repo_id,
                     revision=revision,
                     filename=os.path.join(search_dir,
@@ -267,7 +289,7 @@ def fetch_model_files_with_size(repo_id: str,
 
         lora_search_dir = subfolder if subfolder else ''
 
-        lora = huggingface_hub.try_to_load_from_cache(
+        lora = _hf_try_to_load_from_cache(
             repo_id=repo_id,
             revision=revision,
             filename=os.path.join(lora_search_dir,
@@ -275,7 +297,7 @@ def fetch_model_files_with_size(repo_id: str,
         )
 
         if not isinstance(lora, str):
-            lora = huggingface_hub.try_to_load_from_cache(
+            lora = _hf_try_to_load_from_cache(
                 repo_id=repo_id,
                 revision=revision,
                 filename=os.path.join(lora_search_dir, f'pytorch_lora_weights{variant_part}bin')
@@ -297,7 +319,7 @@ def fetch_model_files_with_size(repo_id: str,
                 other_name = other_search_name if not subfolder \
                     else os.path.join(subfolder, other_search_name)
 
-                other = huggingface_hub.try_to_load_from_cache(
+                other = _hf_try_to_load_from_cache(
                     repo_id=repo_id,
                     revision=revision,
                     filename=other_name
@@ -338,9 +360,13 @@ def fetch_model_files_with_size(repo_id: str,
 
             api = huggingface_hub.HfApi(token=use_auth_token)
 
-            info_entries = list(api.list_files_info(repo_id,
-                                                    revision=revision,
-                                                    paths=subfolder))
+            try:
+                info_entries = list(api.list_files_info(repo_id,
+                                                        revision=revision,
+                                                        paths=subfolder))
+            except (huggingface_hub.utils.HFValidationError,
+                    huggingface_hub.utils.HfHubHTTPError) as e:
+                raise ModelNotFoundError(e)
 
             def detect_unet(path):
                 try:

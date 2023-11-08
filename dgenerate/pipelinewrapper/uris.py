@@ -165,7 +165,11 @@ class FlaxControlNetUri:
 
         :return: tuple (:py:class:`diffusers.FlaxControlNetModel`, flax_control_net_params)
         """
-        return self._load(dtype_fallback, use_auth_token, local_files_only)
+        try:
+            return self._load(dtype_fallback, use_auth_token, local_files_only)
+        except (huggingface_hub.utils.HFValidationError,
+                huggingface_hub.utils.HfHubHTTPError) as e:
+            raise _hfutil.ModelNotFoundError(e)
 
     @_memoize(_cache._FLAX_CONTROL_NET_CACHE,
               exceptions={'local_files_only'},
@@ -345,8 +349,11 @@ class TorchControlNetUri:
 
         :return: :py:class:`diffusers.ControlNetModel`
         """
-
-        return self._load(dtype_fallback, use_auth_token, local_files_only)
+        try:
+            return self._load(dtype_fallback, use_auth_token, local_files_only)
+        except (huggingface_hub.utils.HFValidationError,
+                huggingface_hub.utils.HfHubHTTPError) as e:
+            raise _hfutil.ModelNotFoundError(e)
 
     @_memoize(_cache._TORCH_CONTROL_NET_CACHE,
               exceptions={'local_files_only'},
@@ -614,7 +621,11 @@ class TorchVAEUri:
         :return: :py:class:`diffusers.AutoencoderKL`, :py:class:`diffusers.AsymmetricAutoencoderKL`,
           or :py:class:`diffusers.AutoencoderTiny`
         """
-        return self._load(dtype_fallback, use_auth_token, local_files_only)
+        try:
+            return self._load(dtype_fallback, use_auth_token, local_files_only)
+        except (huggingface_hub.utils.HFValidationError,
+                huggingface_hub.utils.HfHubHTTPError) as e:
+            raise _hfutil.ModelNotFoundError(e)
 
     @_memoize(_cache._TORCH_VAE_CACHE,
               exceptions={'local_files_only'},
@@ -799,7 +810,11 @@ class FlaxVAEUri:
             when the model path is a huggingface slug or blob link
         :return: tuple (:py:class:`diffusers.FlaxAutoencoderKL`, flax_vae_params)
         """
-        return self._load(dtype_fallback, use_auth_token, local_files_only)
+        try:
+            return self._load(dtype_fallback, use_auth_token, local_files_only)
+        except (huggingface_hub.utils.HFValidationError,
+                huggingface_hub.utils.HfHubHTTPError) as e:
+            raise _hfutil.ModelNotFoundError(e)
 
     @_memoize(_cache._FLAX_VAE_CACHE,
               exceptions={'local_files_only'},
@@ -975,6 +990,18 @@ class LoRAUri:
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug
         """
+        try:
+            self._load_on_pipeline(pipeline=pipeline,
+                                   use_auth_token=use_auth_token,
+                                   local_files_only=local_files_only)
+        except (huggingface_hub.utils.HFValidationError,
+                huggingface_hub.utils.HfHubHTTPError) as e:
+            raise _hfutil.ModelNotFoundError(e)
+
+    def _load_on_pipeline(self,
+                          pipeline: diffusers.DiffusionPipeline,
+                          use_auth_token: _types.OptionalString = None,
+                          local_files_only=False):
 
         extra_args = {k: v for k, v in locals().items() if k not in {'self', 'pipeline'}}
 
@@ -1094,6 +1121,18 @@ class TextualInversionUri:
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug
         """
+        try:
+            self._load_on_pipeline(pipeline=pipeline,
+                                   use_auth_token=use_auth_token,
+                                   local_files_only=local_files_only)
+        except (huggingface_hub.utils.HFValidationError,
+                huggingface_hub.utils.HfHubHTTPError) as e:
+            raise _hfutil.ModelNotFoundError(e)
+
+    def _load_on_pipeline(self,
+                          pipeline: diffusers.DiffusionPipeline,
+                          use_auth_token: _types.OptionalString = None,
+                          local_files_only=False):
 
         extra_args = {k: v for k, v in locals().items() if k not in {'self', 'pipeline'}}
 

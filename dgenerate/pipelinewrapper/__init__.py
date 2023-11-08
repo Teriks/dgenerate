@@ -21,6 +21,7 @@
 
 
 import dgenerate.types as _types
+import os
 
 from .cache import \
     CACHE_MEMORY_CONSTRAINTS, \
@@ -127,7 +128,9 @@ from .wrapper import \
     DiffusionArguments, \
     OutOfMemoryError
 
-import os
+
+from.hfutil import ModelNotFoundError
+
 
 os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
 os.environ['XLA_PYTHON_CLIENT_ALLOCATOR'] = 'platform'
