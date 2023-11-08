@@ -105,6 +105,7 @@ def invoke_dgenerate(
     except (_arguments.DgenerateUsageError,
             _mediainput.ImageSeedError,
             _mediainput.UnknownMimetypeError,
+            _pipelinewrapper.ModelNotFoundError,
             _pipelinewrapper.InvalidModelUriError,
             _pipelinewrapper.InvalidSchedulerName,
             _pipelinewrapper.OutOfMemoryError,
