@@ -435,6 +435,12 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     :param model_cpu_offload: This pipeline has model_cpu_offloading enabled?
     :param sequential_cpu_offload: This pipeline has sequential_cpu_offloading enabled?
     :param local_files_only: Only look in the huggingface cache and do not connect to download models?
+
+    :raise: :py:exc:`dgenerate.pipelinewrapper.ModelNotFoundError`
+    :raise: :py:exc:`dgenerate.pipelinewrapper.InvalidModelUriError`
+    :raise: :py:exc:`dgenerate.pipelinewrapper.InvalidSchedulerName`
+    :raise: :py:exc:`NotImplementedError`
+
     :return: :py:class:`.TorchPipelineCreationResult`
     """
     return _create_torch_diffusion_pipeline(**locals())
@@ -473,6 +479,14 @@ class TorchPipelineFactory:
         self._vae_slicing = vae_slicing
 
     def __call__(self) -> TorchPipelineCreationResult:
+        """
+        :raise: :py:exc:`dgenerate.pipelinewrapper.ModelNotFoundError`
+        :raise: :py:exc:`dgenerate.pipelinewrapper.InvalidModelUriError`
+        :raise: :py:exc:`dgenerate.pipelinewrapper.InvalidSchedulerName`
+        :raise: :py:exc:`NotImplementedError`
+
+        :return: :py:class:`.TorchPipelineCreationResult`
+        """
         r = create_torch_diffusion_pipeline(**self._args)
         set_vae_slicing_tiling(r.pipeline,
                                vae_tiling=self._vae_tiling,
@@ -881,6 +895,12 @@ def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     :param auth_token: Optional huggingface API token for accessing repositories that are restricted to your account
     :param extra_modules: Extra module arguments to pass directly into :py:meth:`diffusers.FlaxDiffusionPipeline.from_pretrained`
     :param local_files_only: Only look in the huggingface cache and do not connect to download models?
+
+    :raise: :py:exc:`dgenerate.pipelinewrapper.ModelNotFoundError`
+    :raise: :py:exc:`dgenerate.pipelinewrapper.InvalidModelUriError`
+    :raise: :py:exc:`dgenerate.pipelinewrapper.InvalidSchedulerName`
+    :raise: :py:exc:`NotImplementedError`
+
     :return: :py:class:`.FlaxPipelineCreationResult`
     """
     return _create_flax_diffusion_pipeline(**locals())
@@ -908,6 +928,14 @@ class FlaxPipelineFactory:
         self._args = {k: v for k, v in locals().items() if k not in {'self'}}
 
     def __call__(self) -> FlaxPipelineCreationResult:
+        """
+        :raise: :py:exc:`dgenerate.pipelinewrapper.ModelNotFoundError`
+        :raise: :py:exc:`dgenerate.pipelinewrapper.InvalidModelUriError`
+        :raise: :py:exc:`dgenerate.pipelinewrapper.InvalidSchedulerName`
+        :raise: :py:exc:`NotImplementedError`
+
+        :return: :py:class:`.FlaxPipelineCreationResult`
+        """
         return create_flax_diffusion_pipeline(**self._args)
 
 
