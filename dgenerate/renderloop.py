@@ -612,8 +612,8 @@ class RenderLoop:
         """
         Run the diffusion loop, this calls :py:meth:`.RenderLoopConfig.check` prior to running.
 
-        :raise: :py:exc:`dgenerate.pipelinewrapper.ModelNotFoundError`
-        :raise: :py:exc:`dgenerate.pipelinewrapper.OutOfMemoryError`
+        :raises: :py:exc:`dgenerate.pipelinewrapper.ModelNotFoundError`
+                 :py:exc:`dgenerate.pipelinewrapper.OutOfMemoryError`
 
         """
         try:
