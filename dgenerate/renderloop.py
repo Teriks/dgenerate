@@ -297,15 +297,18 @@ class RenderLoop:
         """
         return self._generation_step
 
-    def _join_output_filename(self, components, ext):
+    def _join_output_filename(self, components, ext, with_output_path=True):
 
         prefix = self.config.output_prefix + '_' if \
             self.config.output_prefix is not None else ''
 
         components = (str(s).replace('.', '-') for s in components)
 
-        return os.path.join(self.config.output_path,
-                            f'{prefix}' + '_'.join(components)) + '.' + ext.lstrip('.')
+        name = f'{prefix}' + '_'.join(components) + '.' + ext.lstrip('.')
+        if with_output_path:
+            return os.path.join(self.config.output_path, name)
+        return name
+
 
     @staticmethod
     def _gen_filename_components_base(diffusion_args: _pipelinewrapper.DiffusionArguments):
@@ -449,7 +452,8 @@ class RenderLoop:
             argument.generation_step = self.generation_step
             argument.image = image
             argument.batch_index = batch_index
-            argument.suggested_filename = self._join_output_filename(filename_components, ext='png')
+            argument.suggested_filename = self._join_output_filename(
+                filename_components, ext='png', with_output_path=False)
             argument.config_string = config_txt
             argument.command_string = \
                 self._gen_dgenerate_command(diffusion_args,

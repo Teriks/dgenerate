@@ -34,7 +34,6 @@ config.sdxl_refiner_uri = 'stabilityai/stable-diffusion-xl-refiner-1.0'
 
 config.prompts = [Prompt.parse('an astronaut walking on the moon; fake')]
 
-config.output_path = ''
 config.device = 'cuda'
 
 config.model_type = ModelTypes.TORCH_SDXL
