@@ -1687,13 +1687,12 @@ files = [
 
 [[package]]
 name = "nvidia-cudnn-cu11"
-version = "8.9.4.25"
+version = "8.9.6.50"
 description = "cuDNN runtime libraries"
 optional = false
 python-versions = ">=3"
 files = [
-    {file = "nvidia_cudnn_cu11-8.9.4.25-py3-none-manylinux1_x86_64.whl", hash = "sha256:bfad1a2e90eeb6e7314afad39e9d731344cfc3220233ece6c04c35e321dedd4a"},
-    {file = "nvidia_cudnn_cu11-8.9.4.25-py3-none-win_amd64.whl", hash = "sha256:c39cf14efb0ae7b4bf7396fba19a13d1c7f035e913fec254b163c3edcfb65fc5"},
+    {file = "nvidia_cudnn_cu11-8.9.6.50-py3-none-manylinux1_x86_64.whl", hash = "sha256:319a8f7ca3d65139f1b69998595c7076ae0e4271a325e5dfde50a3ca31f55584"},
 ]
 
 [package.dependencies]
@@ -3173,4 +3172,4 @@ flax = ["flax", "jax"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.13"
-content-hash = "81e1a7160bf628a71647f2d928bd24290b2c18edc9aaa30c16b1ac0fce4b6031"
+content-hash = "1966aaddfcce0e04388d69452f27d9a9a93eb7dea459d417aa8f4557bbe3037a"
