@@ -872,7 +872,12 @@ class RenderLoopConfig(_types.SetFromMixin):
         """
 
         a_namer = attribute_namer
-        parsed = _mediainput.parse_image_seed_uri(uri)
+
+        try:
+            parsed = _mediainput.parse_image_seed_uri(uri)
+        except _mediainput.ImageSeedError as e:
+            raise RenderLoopConfigError(e)
+
         self.parsed_image_seeds.append(parsed)
 
         mask_part = 'mask=my-mask.png;' if parsed.mask_path else ''

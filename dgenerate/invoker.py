@@ -71,9 +71,15 @@ def invoke_dgenerate(
 
     arguments = None
     constraint_lists = []
+
     try:
         arguments = _arguments.parse_args(args)
+    except _arguments.DgenerateUsageError as e:
+        if throw:
+            raise e
+        return 1
 
+    try:
         if arguments.cache_memory_constraints:
             constraint_lists.append(_pipelinewrapper.CACHE_MEMORY_CONSTRAINTS)
             _pipelinewrapper.CACHE_MEMORY_CONSTRAINTS = arguments.cache_memory_constraints
@@ -103,8 +109,7 @@ def invoke_dgenerate(
 
         render_loop.run()
 
-    except (_arguments.DgenerateUsageError,
-            _mediainput.ImageSeedError,
+    except (_mediainput.ImageSeedError,
             _mediainput.UnknownMimetypeError,
             _pipelinewrapper.ModelNotFoundError,
             _pipelinewrapper.InvalidModelUriError,
@@ -116,6 +121,7 @@ def invoke_dgenerate(
             EnvironmentError) as e:
 
         _messages.log(f'Error: {e}', level=_messages.ERROR)
+
         if throw:
             raise e
         return 1

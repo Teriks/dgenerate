@@ -92,9 +92,9 @@ Help Output
                      [--sdxl-refiner-negative-crops-coords-top-left COORD [COORD ...]]
                      [-hnf FLOAT [FLOAT ...]] [-ri INT [INT ...]] [-rg FLOAT [FLOAT ...]]
                      [-rgr FLOAT [FLOAT ...]] [-sc] [-d DEVICE] [-t DTYPE] [-s SIZE] [-na] [-o PATH]
-                     [-op PREFIX] [-ox] [-oc] [-om] [-p PROMPT [PROMPT ...]] [-se SEED [SEED ...]]
-                     [-sei] [-gse COUNT] [-af FORMAT] [-fs FRAME_NUMBER] [-fe FRAME_NUMBER]
-                     [-is SEED [SEED ...]] [-sip PREPROCESSOR [PREPROCESSOR ...]]
+                     [-op PREFIX] [-ox] [-oc] [-om] [-p PROMPT [PROMPT ...]] [-cs INTEGER [INTEGER ...]]
+                     [-se SEED [SEED ...]] [-sei] [-gse COUNT] [-af FORMAT] [-fs FRAME_NUMBER]
+                     [-fe FRAME_NUMBER] [-is SEED [SEED ...]] [-sip PREPROCESSOR [PREPROCESSOR ...]]
                      [-mip PREPROCESSOR [PREPROCESSOR ...]] [-cip PREPROCESSOR [PREPROCESSOR ...]]
                      [-iph [PREPROCESSOR ...]] [-iss FLOAT [FLOAT ...] | -uns INTEGER [INTEGER ...]]
                      [-gs FLOAT [FLOAT ...]] [-igs FLOAT [FLOAT ...]] [-gr FLOAT [FLOAT ...]]
@@ -518,6 +518,13 @@ Help Output
                             influence, things you want to see. The Second value is negative influence
                             IE. things you don't want to see. Example: --prompts "shrek flying a tesla
                             over detroit; clouds, rain, missiles". (default: [(empty string)])
+      -cs INTEGER [INTEGER ...], --clip-skips INTEGER [INTEGER ...]
+                            One or more clip skip values to try. Clip skip is the number of layers to be
+                            skipped from CLIP while computing the prompt embeddings, it must be a value
+                            greater than or equal to zero. A value of 1 means that the output of the
+                            pre-final layer will be used for computing the prompt embeddings. This is
+                            only supported for --model-type values "torch" and "torch-sdxl", including
+                            with --control-nets.
       -se SEED [SEED ...], --seeds SEED [SEED ...]
                             One or more seeds to try, define fixed seeds to achieve deterministic
                             output. This argument may not be used when --gse/--gen-seeds is used.
@@ -663,7 +670,7 @@ Help Output
                             automatically (DiffusionPipeline, VAE, and ControlNet) considering current
                             memory usage. If any of these constraint expressions are met all models
                             cached in memory will be cleared. Example, and default value: "used_percent
-                            > 70" For Syntax See: [https://dgenerate.readthedocs.io/en/v2.0.0/dgenerate_
+                            > 70" For Syntax See: [https://dgenerate.readthedocs.io/en/v2.1.0/dgenerate_
                             submodules.html#dgenerate.pipelinewrapper.CACHE_MEMORY_CONSTRAINTS]
       -pmc EXPR [EXPR ...], --pipeline-cache-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the in
@@ -672,7 +679,7 @@ Help Output
                             of these constraint expressions are met all DiffusionPipeline objects cached
                             in memory will be cleared. Example, and default value: "pipeline_size >
                             (available * 0.75)" For Syntax See: [https://dgenerate.readthedocs.io/en/v2.
-                            0.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.PIPELINE_CACHE_MEMOR
+                            1.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.PIPELINE_CACHE_MEMOR
                             Y_CONSTRAINTS]
       -vmc EXPR [EXPR ...], --vae-cache-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the in
@@ -680,7 +687,7 @@ Help Output
                             usage of new VAE models that are about to enter memory. If any of these
                             constraint expressions are met all VAE models cached in memory will be
                             cleared. Example, and default value: "vae_size > (available * 0.75)" For
-                            Syntax See: [https://dgenerate.readthedocs.io/en/v2.0.0/dgenerate_submodules
+                            Syntax See: [https://dgenerate.readthedocs.io/en/v2.1.0/dgenerate_submodules
                             .html#dgenerate.pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS]
       -cmc EXPR [EXPR ...], --control-net-cache-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the in
@@ -689,8 +696,9 @@ Help Output
                             of these constraint expressions are met all ControlNet models cached in
                             memory will be cleared. Example, and default value: "control_net_size >
                             (available * 0.75)" For Syntax See: [https://dgenerate.readthedocs.io/en/v2.
-                            0.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.CONTROL_NET_CACHE_ME
+                            1.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.CONTROL_NET_CACHE_ME
                             MORY_CONSTRAINTS]
+
 
 
 Windows Install
