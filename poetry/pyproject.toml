@@ -1,18 +1,10 @@
 [tool.poetry]
 name = "dgenerate"
 version = "0.0.0"
-description = "Stable diffusion batch image generation tool with support for video / gif / webp animation transcoding."
+description = "Stable diffusion batch image generation tool."
 authors = ["Teriks <Teriks@users.noreply.github.com>"]
 readme = "README.rst"
 license = "BSD 3-Clause"
-classifiers = [
-    'Development Status :: 2 - Pre-Alpha',
-    'License :: OSI Approved :: BSD License',
-    'Intended Audience :: Other Audience',
-    'Natural Language :: English',
-    'Operating System :: OS Independent',
-    'Topic :: Utilities',
-]
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
