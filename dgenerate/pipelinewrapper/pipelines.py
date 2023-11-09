@@ -1000,6 +1000,7 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     controlnet_override = extra_modules and 'controlnet' in extra_modules
     safety_checker_override = extra_modules and 'safety_checker' in extra_modules
     scheduler_override = extra_modules and 'scheduler' in extra_modules
+    feature_extractor_override = extra_modules and 'feature_extractor' in extra_modules
 
     estimated_memory_usage = estimate_pipeline_memory_use(
         pipeline_type=pipeline_type,
@@ -1068,13 +1069,30 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     if not safety_checker and not safety_checker_override:
         creation_kwargs['safety_checker'] = None
 
-    pipeline, params = pipeline_class.from_pretrained(model_path,
-                                                      revision=revision,
-                                                      dtype=flax_dtype,
-                                                      subfolder=subfolder,
-                                                      use_auth_token=auth_token,
-                                                      local_files_only=local_files_only,
-                                                      **creation_kwargs)
+    try:
+        pipeline, params = pipeline_class.from_pretrained(model_path,
+                                                          revision=revision,
+                                                          dtype=flax_dtype,
+                                                          subfolder=subfolder,
+                                                          use_auth_token=auth_token,
+                                                          local_files_only=local_files_only,
+                                                          **creation_kwargs)
+    except ValueError as e:
+        if 'feature_extractor' not in str(e):
+            raise e
+
+        # odd diffusers bug
+
+        if not feature_extractor_override:
+            creation_kwargs['feature_extractor'] = None
+
+        pipeline, params = pipeline_class.from_pretrained(model_path,
+                                                          revision=revision,
+                                                          dtype=flax_dtype,
+                                                          subfolder=subfolder,
+                                                          use_auth_token=auth_token,
+                                                          local_files_only=local_files_only,
+                                                          **creation_kwargs)
 
     if vae_params is not None:
         params['vae'] = vae_params
