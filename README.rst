@@ -871,7 +871,7 @@ Install dgenerate
     # Or with flax
 
     pip3 install dgenerate[flax]==2.1.0 --extra-index-url https://download.pytorch.org/whl/cu118/ \
-    -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html"
+    -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 
 It is recommended to install dgenerate with pipx if you are just intending
