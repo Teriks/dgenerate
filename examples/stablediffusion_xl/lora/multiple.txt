@@ -7,7 +7,7 @@ stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
 --loras goofyai/SDXL-Lora-Collection;weight-name=leonardo_illustration.safetensors;scale=0.5 goofyai/SDXL-Lora-Collection;weight-name=steampunk_xl-off.safetensors;scale=0.5
 --inference-steps 40
 --guidance-scales 8
---gen-seeds 10
+--gen-seeds 2
 --output-size 1024
 --output-path multiple
 --prompts "Steampunk sketch of a horse by Leonardo da Vinci; wrong, anatomically incorrect, extra limbs"
