@@ -214,7 +214,7 @@ def parse_bool(string_or_bool: typing.Union[str, bool]):
 
     Additionally, values that are already bool are passed through.
 
-    :raises: :py:exc:`ValueError` on parse failure.
+    :raises ValueError: on parse failure.
 
     :param string_or_bool: the string, or a bool value
     :return: python boolean type equivalent

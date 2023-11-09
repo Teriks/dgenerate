@@ -58,7 +58,7 @@ class Prompt:
         :param value: the string
         :param delimiter: The prompt delimiter character
 
-        :raise: :py:class:`ValueError` if value is None
+        :raise ValueError: if value is None
 
         :return: :py:class:`.Prompt` (returns self)
         """

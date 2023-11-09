@@ -310,7 +310,7 @@ class PipelineCreationResult:
         If the module is not present or a recognized name, a :py:exc:`ValueError`
         will be thrown describing the module that is not part of the pipeline.
 
-        :raises: :py:exc:`ValueError`
+        :raise ValueError:
 
         :param names: module names, such as ``vae``, ``text_encoder``
         :return: dictionary
@@ -437,10 +437,10 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     :param sequential_cpu_offload: This pipeline has sequential_cpu_offloading enabled?
     :param local_files_only: Only look in the huggingface cache and do not connect to download models?
 
-    :raises: :py:exc:`dgenerate.pipelinewrapper.ModelNotFoundError`
-             :py:exc:`dgenerate.pipelinewrapper.InvalidModelUriError`
-             :py:exc:`dgenerate.pipelinewrapper.InvalidSchedulerName`
-             :py:exc:`NotImplementedError`
+    :raises ModelNotFoundError:
+    :raises InvalidModelUriError:
+    :raises InvalidSchedulerName:
+    :raises NotImplementedError:
 
     :return: :py:class:`.TorchPipelineCreationResult`
     """
@@ -486,10 +486,10 @@ class TorchPipelineFactory:
 
     def __call__(self) -> TorchPipelineCreationResult:
         """
-        :raises: :py:exc:`dgenerate.pipelinewrapper.ModelNotFoundError`
-                 :py:exc:`dgenerate.pipelinewrapper.InvalidModelUriError`
-                 :py:exc:`dgenerate.pipelinewrapper.InvalidSchedulerName`
-                 :py:exc:`NotImplementedError`
+        :raises ModelNotFoundError:
+        :raises InvalidModelUriError:
+        :raises InvalidSchedulerName:
+        :raises NotImplementedError:
 
         :return: :py:class:`.TorchPipelineCreationResult`
         """
@@ -899,10 +899,10 @@ def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     :param extra_modules: Extra module arguments to pass directly into :py:meth:`diffusers.FlaxDiffusionPipeline.from_pretrained`
     :param local_files_only: Only look in the huggingface cache and do not connect to download models?
 
-    :raises: :py:exc:`dgenerate.pipelinewrapper.ModelNotFoundError`
-             :py:exc:`dgenerate.pipelinewrapper.InvalidModelUriError`
-             :py:exc:`dgenerate.pipelinewrapper.InvalidSchedulerName`
-             :py:exc:`NotImplementedError`
+    :raises ModelNotFoundError:
+    :raises InvalidModelUriError:
+    :raises InvalidSchedulerName:
+    :raises NotImplementedError:
 
     :return: :py:class:`.FlaxPipelineCreationResult`
     """
@@ -937,10 +937,10 @@ class FlaxPipelineFactory:
 
     def __call__(self) -> FlaxPipelineCreationResult:
         """
-        :raises: :py:exc:`dgenerate.pipelinewrapper.ModelNotFoundError`
-                 :py:exc:`dgenerate.pipelinewrapper.InvalidModelUriError`
-                 :py:exc:`dgenerate.pipelinewrapper.InvalidSchedulerName`
-                 :py:exc:`NotImplementedError`
+        :raises ModelNotFoundError:
+        :raises InvalidModelUriError:
+        :raises InvalidSchedulerName:
+        :raises NotImplementedError:
 
         :return: :py:class:`.FlaxPipelineCreationResult`
         """

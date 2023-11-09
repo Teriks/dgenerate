@@ -42,17 +42,18 @@ def invoke_dgenerate(
         if None is provided one will be created.
     :param throw: Whether to throw exceptions or handle them.
 
-    :raises: :py:class:`dgenerate.arguments.DgenerateUsageError`
-             :py:class:`dgenerate.mediainput.ImageSeedError`
-             :py:class:`dgenerate.mediainput.UnknownMimetypeError`
-             :py:class:`dgenerate.preprocessors.ImagePreprocessorArgumentError`
-             :py:class:`dgenerate.preprocessors.ImagePreprocessorNotFoundError`
-             :py:class:`dgenerate.pipelinewrapper.InvalidModelUriError`
-             :py:class:`dgenerate.pipelinewrapper.InvalidSchedulerName`
-             :py:class:`dgenerate.pipelinewrapper.OutOfMemoryError`
-             :py:class:`dgenerate.pipelinewrapper.ModelNotFoundError`
-             :py:class:`NotImplementedError`
-             :py:class:`EnvironmentError`
+
+    :raises dgenerate.arguments.DgenerateUsageError:
+    :raises dgenerate.mediainput.ImageSeedError:
+    :raises dgenerate.mediainput.UnknownMimetypeError:
+    :raises dgenerate.preprocessors.ImagePreprocessorArgumentError:
+    :raises dgenerate.preprocessors.ImagePreprocessorNotFoundError:
+    :raises dgenerate.pipelinewrapper.InvalidModelUriError:
+    :raises dgenerate.pipelinewrapper.InvalidSchedulerName:
+    :raises dgenerate.pipelinewrapper.OutOfMemoryError:
+    :raises dgenerate.pipelinewrapper.ModelNotFoundError:
+    :raises NotImplementedError:
+    :raises EnvironmentError:
 
 
     :return: integer return-code, anything other than 0 is failure

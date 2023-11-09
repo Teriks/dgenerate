@@ -42,7 +42,7 @@ def memory_constraint_syntax_check(expression):
     Syntax check an expression given to :py:meth:`memory_constraints`
 
     :param expression: the expression string
-    :raises: :py:exc:`MemoryConstraintSyntaxError` on syntax errors.
+    :raises MemoryConstraintSyntaxError: on syntax errors.
     """
 
     if len(expression) > 128:
@@ -94,9 +94,9 @@ def memory_constraints(expressions: typing.Optional[typing.Union[str, list]],
 
     Expressions may not be longer than 128 characters. However multiple expressions may be provided.
 
-    :raise: :py:exc:`ValueError` if extra_vars overwrites a reserved variable name
+    :raise ValueError: if extra_vars overwrites a reserved variable name
 
-    :raise: :py:exc:`.MemoryConstraintSyntaxError` on syntax errors or if the return value
+    :raise MemoryConstraintSyntaxError: on syntax errors or if the return value
         of an expression is not a boolean value.
 
     :param expressions: a string containing an expression or a list of expressions,

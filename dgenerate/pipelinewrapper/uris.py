@@ -226,7 +226,7 @@ class FlaxControlNetUri:
 
         :param uri: string with ``--control-nets`` uri syntax
 
-        :raise: :py:class:`.InvalidControlNetUriError`
+        :raise InvalidControlNetUriError:
 
         :return: :py:class:`.FlaxControlNetPath`
         """
@@ -426,7 +426,7 @@ class TorchControlNetUri:
 
         :param uri: string with ``--control-nets`` uri syntax
 
-        :raise: :py:class:`.InvalidControlNetUriError`
+        :raise InvalidControlNetUriError:
 
         :return: :py:class:`.TorchControlNetPath`
         """
@@ -529,7 +529,7 @@ class SDXLRefinerUri:
 
         :param uri: string with ``--sdxl-refiner`` uri syntax
 
-        :raise: :py:class:`.InvalidSDXLRefinerUriError`
+        :raise InvalidSDXLRefinerUriError:
 
         :return: :py:class:`.SDXLRefinerPath`
         """
@@ -725,7 +725,7 @@ class TorchVAEUri:
 
         :param uri: string with ``--vae`` uri syntax
 
-        :raise: :py:class:`.InvalidVaeUriError`
+        :raise InvalidVaeUriError:
 
         :return: :py:class:`.TorchVAEPath`
         """
@@ -902,7 +902,7 @@ class FlaxVAEUri:
 
         :param uri: string with ``--vae`` uri syntax
 
-        :raise: :py:class:`.InvalidVaeUriError`
+        :raise InvalidVaeUriError:
 
         :return: :py:class:`.FlaxVAEPath`
         """
@@ -1055,7 +1055,7 @@ class LoRAUri:
 
         :param uri: string with ``--loras`` uri syntax
 
-        :raise: :py:class:`.InvalidLoRAUriError`
+        :raise InvalidLoRAUriError:
 
         :return: :py:class:`.LoRAPath`
         """
@@ -1157,7 +1157,7 @@ class TextualInversionUri:
 
         :param uri: string with ``--textual-inversions`` uri syntax
 
-        :raise: :py:class:`.InvalidTextualInversionUriError`
+        :raise InvalidTextualInversionUriError:
 
         :return: :py:class:`.TextualInversionPath`
         """

@@ -353,7 +353,7 @@ class BatchProcessor:
         """
         Process a batch processing script from a file stream
 
-        :raise: :py:class:`.BatchProcessError`
+        :raise BatchProcessError:
 
         :param stream: A filestream in text read mode
         """
@@ -366,7 +366,7 @@ class BatchProcessor:
         """
         Process a batch processing script from a string
 
-        :raise: :py:class:`.BatchProcessError`
+        :raise BatchProcessError:
 
         :param string: a string containing the script
         """

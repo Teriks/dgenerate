@@ -72,7 +72,7 @@ class ConceptUriParser:
 
     def __init__(self, concept_name: _types.Name, known_args: typing.Sequence[str] = None):
         """
-        :raises: :py:exc:`ValueError` if duplicate argument names are specified.
+        :raises ValueError: if duplicate argument names are specified.
 
         :param concept_name: Concept name, used in error messages
         :param known_args: valid arguments for the parser, must be unique
@@ -93,7 +93,7 @@ class ConceptUriParser:
 
         :param uri: the string
 
-        :raise: :py:class:`.ConceptPathParseError`
+        :raise ConceptPathParseError:
 
         :return: :py:class:`.ConceptPath`
         """

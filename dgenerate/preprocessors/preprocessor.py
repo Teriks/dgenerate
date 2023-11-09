@@ -206,10 +206,10 @@ class ImagePreprocessor:
     def get_int_arg(name: str, value: typing.Union[str, int, typing.Dict]) -> int:
         """
         Convert an argument value from a string to an integer.
-        Throw :py:class:`._exceptions.ImagePreprocessorArgumentError` if there
+        Throw :py:exc:`.ImagePreprocessorArgumentError` if there
         is an error parsing the value.
 
-        :raises: :py:class:`._exceptions.ImagePreprocessorArgumentError`
+        :raises ImagePreprocessorArgumentError:
 
         :param name: the argument name for descriptive purposes,
             and/or for specifying the dictionary key when *value*
@@ -231,10 +231,10 @@ class ImagePreprocessor:
     def get_float_arg(name: str, value: typing.Union[str, float, typing.Dict]) -> float:
         """
         Convert an argument value from a string to a float.
-        Throw :py:class:`._exceptions.ImagePreprocessorArgumentError` if there
+        Throw :py:exc:`.ImagePreprocessorArgumentError` if there
         is an error parsing the value.
 
-        :raises: :py:class:`._exceptions.ImagePreprocessorArgumentError`
+        :raises ImagePreprocessorArgumentError:
 
         :param name: the argument name for descriptive purposes,
             and/or for specifying the dictionary key when *value*
@@ -257,10 +257,10 @@ class ImagePreprocessor:
     def get_bool_arg(name: str, value: typing.Union[str, bool, typing.Dict]) -> bool:
         """
         Convert an argument value from a string to a boolean value.
-        Throw :py:class:`._exceptions.ImagePreprocessorArgumentError` if there
+        Throw :py:exc:`.ImagePreprocessorArgumentError` if there
         is an error parsing the value.
 
-        :raises: :py:class:`._exceptions.ImagePreprocessorArgumentError`
+        :raises ImagePreprocessorArgumentError:
 
         :param name: the argument name for descriptive purposes,
             and/or for specifying the dictionary key when *value*
