@@ -2943,8 +2943,11 @@ directory ``~/.cache/dgenerate/web``, on Windows this equates to ``%HOME%\.cache
 
 You can control where image seed files are cached with the environmental variable ``DGENERATE_WEB_CACHE``.
 
-This directory is automatically cleared when dgenerate exits under any circumstance aside from a
-complete interpreter crash.
+This directory is automatically cleared when all instances of dgenerate have finished running.
+
+If you start multiple dgenerate processes simultaneously they will share the cache while
+running in a manner that is multiprocess safe, the last running instance of dgenerate will
+clean out the cache.
 
 Files downloaded from huggingface by the diffusers/huggingface_hub library will be cached under
 ``~/.cache/huggingface/``, on Windows this equates to ``%HOME%\.cache\huggingface\``.
