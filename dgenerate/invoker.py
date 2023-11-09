@@ -42,7 +42,8 @@ def invoke_dgenerate(
         if None is provided one will be created.
     :param throw: Whether to throw exceptions or handle them.
 
-    :raises: :py:class:`dgenerate.mediainput.ImageSeedError`
+    :raises: :py:class:`dgenerate.arguments.DgenerateUsageError`
+             :py:class:`dgenerate.mediainput.ImageSeedError`
              :py:class:`dgenerate.mediainput.UnknownMimetypeError`
              :py:class:`dgenerate.preprocessors.ImagePreprocessorArgumentError`
              :py:class:`dgenerate.preprocessors.ImagePreprocessorNotFoundError`
