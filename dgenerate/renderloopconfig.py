@@ -407,8 +407,8 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     lora_uris: _types.OptionalUris = None
     """
-    Optional user specified LoRA URIs, this corresponds to the ``--lora/--loras`` argument of the dgenerate 
-    command line tool. Currently only one lora is supported, providing more than one will cause an error.
+    Optional user specified LoRA URIs, this corresponds to the ``--lora/--loras`` argument 
+    of the dgenerate command line tool.
     """
 
     textual_inversion_uris: _types.OptionalUris = None
@@ -563,8 +563,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     offline_mode: bool = False
     """
     Avoid ever connecting to the huggingface API? this can be used if all your models are cached or
-    if you are only ever using models that exist on disk. This is currently broken for LoRA 
-    specifications due to a bug in the huggingface diffusers library. Corresponds to the
+    if you are only ever using models that exist on disk. Corresponds to the
     ``--offline-mode`` argument of the dgenerate command line tool.
     """
 

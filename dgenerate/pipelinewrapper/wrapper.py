@@ -601,7 +601,6 @@ class DiffusionPipelineWrapper:
         self._scheduler = scheduler
         self._sdxl_refiner_scheduler = sdxl_refiner_scheduler
         self._lora_uris = lora_uris
-        self._lora_scale = None
         self._textual_inversion_uris = textual_inversion_uris
         self._control_net_uris = control_net_uris
         self._parsed_control_net_uris = []
@@ -623,11 +622,6 @@ class DiffusionPipelineWrapper:
         if lora_uris:
             if model_type == 'flax':
                 raise NotImplementedError('LoRA loading is not implemented for flax.')
-
-            if not isinstance(lora_uris, str):
-                raise NotImplementedError('Using multiple LoRA models is currently not supported.')
-
-            self._lora_scale = _uris.LoRAUri.parse(lora_uris).scale
 
     @staticmethod
     def _pipeline_to(pipeline, device):
@@ -820,7 +814,7 @@ class DiffusionPipelineWrapper:
     @property
     def lora_uris(self) -> _types.OptionalUris:
         """
-        List of supplied --lora uri strings or None
+        List of supplied --loras uri strings or None
         """
         return [self._lora_uris] if \
             isinstance(self._lora_uris, str) else self._lora_uris
@@ -917,7 +911,7 @@ class DiffusionPipelineWrapper:
             opts.append(('--sdxl-refiner', self._sdxl_refiner_uri))
 
         if self._lora_uris:
-            opts.append(('--lora', self._lora_uris))
+            opts.append(('--loras', self._lora_uris))
 
         if self._textual_inversion_uris:
             opts.append(('--textual-inversions', self._textual_inversion_uris))
@@ -1271,9 +1265,6 @@ class DiffusionPipelineWrapper:
             else:
                 args['height'] = _types.default(user_args.height, _constants.DEFAULT_OUTPUT_HEIGHT)
                 args['width'] = _types.default(user_args.width, _constants.DEFAULT_OUTPUT_WIDTH)
-
-        if self._lora_scale is not None:
-            args['cross_attention_kwargs'] = {'scale': self._lora_scale}
 
         return args
 
