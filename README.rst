@@ -1672,7 +1672,7 @@ when ``--batch-size`` is greater than 1.
 Specifying LoRAs
 ================
 
-To specify one or more LoRA models using ``--lora/--loras``
+It is possible to specify one or more LoRA models using ``--lora/--loras``
 
 When multiple specifications are given, all mentioned models will be fused into
 the main model at a given scale.
