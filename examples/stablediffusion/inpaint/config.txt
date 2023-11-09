@@ -1,4 +1,4 @@
-#! dgenerate 2.0.0
+#! dgenerate 2.1.0
 
 stabilityai/stable-diffusion-2-inpainting 
 --inference-steps 30

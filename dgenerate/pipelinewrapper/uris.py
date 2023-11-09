@@ -86,7 +86,7 @@ class InvalidControlNetUriError(InvalidModelUriError):
 
 class InvalidLoRAUriError(InvalidModelUriError):
     """
-    Error in ``--lora`` uri
+    Error in ``--loras`` uri
     """
     pass
 
@@ -932,7 +932,7 @@ class FlaxVAEUri:
 
 class LoRAUri:
     """
-    Representation of ``--lora`` uri
+    Representation of a ``--loras`` uri
     """
 
     model: str
@@ -1043,14 +1043,17 @@ class LoRAUri:
                                        subfolder=self.subfolder,
                                        weight_name=self.weight_name,
                                        **extra_args)
+
+            pipeline.fuse_lora(lora_scale=self.scale)
+
             _messages.debug_log(f'Added LoRA: "{self}" to pipeline: "{pipeline.__class__.__name__}"')
 
     @staticmethod
     def parse(uri: _types.Uri) -> 'LoRAUri':
         """
-        Parse a ``--lora`` uri and return an object representing its constituents
+        Parse a ``--loras`` uri and return an object representing its constituents
 
-        :param uri: string with ``--lora`` uri syntax
+        :param uri: string with ``--loras`` uri syntax
 
         :raise: :py:class:`.InvalidLoRAUriError`
 

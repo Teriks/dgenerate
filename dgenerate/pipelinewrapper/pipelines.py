@@ -159,7 +159,7 @@ def estimate_pipeline_memory_use(
     :param variant: model file variant desired, for example "fp16"
     :param subfolder: huggingface repo subfolder if using a huggingface slug
     :param vae_uri: optional user specified ``--vae`` URI that will be loaded on to the pipeline
-    :param lora_uris: optional user specified ``--lora`` URIs that will be loaded on to the pipeline
+    :param lora_uris: optional user specified ``--loras`` URIs that will be loaded on to the pipeline
     :param textual_inversion_uris: optional user specified ``--textual-inversion`` URIs that will be loaded on to the pipeline
     :param safety_checker: consider the safety checker? dgenerate usually loads the safety checker and then retroactively
         disables it if needed, so it usually considers the size of the safety checker model.
@@ -423,7 +423,7 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     :param subfolder: huggingface repo subfolder if applicable
     :param dtype: Optional py:class:`dgenerate.pipelinewrapper.DataTypes` enum value
     :param vae_uri: Optional ``--vae`` URI string for specifying a specific VAE
-    :param lora_uris: Optional ``--lora`` URI strings for specifying LoRA weights, currently only one LoRA at a time is supported
+    :param lora_uris: Optional ``--loras`` URI strings for specifying LoRA weights
     :param textual_inversion_uris: Optional ``--textual-inversions`` URI strings for specifying Textual Inversion weights
     :param control_net_uris: Optional ``--control-nets`` URI strings for specifying ControlNet models
     :param scheduler: Optional scheduler (sampler) class name, unqualified, or "help" to print supported values
@@ -654,14 +654,11 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
             textual_inversion_uris = [textual_inversion_uris]
 
     if lora_uris:
-        if not isinstance(lora_uris, str):
-            raise NotImplementedError('Using multiple LoRA models is currently not supported.')
-
         if _enums.model_type_is_upscaler(model_type):
             raise NotImplementedError(
                 'LoRA models cannot be used with upscaler models.')
-
-        lora_uris = [lora_uris]
+        if isinstance(lora_uris, str):
+            lora_uris = [lora_uris]
 
     # ControlNet and VAE loading
 

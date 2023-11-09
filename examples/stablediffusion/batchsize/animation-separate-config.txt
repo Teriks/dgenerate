@@ -1,4 +1,4 @@
-#! dgenerate 2.0.0
+#! dgenerate 2.1.0
 
 # Generate 4 images simultaneously on the GPU, write to 4 different animations
 

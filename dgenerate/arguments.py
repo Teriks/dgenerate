@@ -418,15 +418,15 @@ actions.append(
                         you may still run into memory issues generating large images."""))
 
 actions.append(
-    parser.add_argument('-lra', '--loras', '--lora', action='store', default=None, metavar="LORA_URI", dest='lora_uris',
+    parser.add_argument('-lra', '--loras', '--lora', nargs='+', action='store', default=None, metavar="LORA_URI", dest='lora_uris',
                         help=
-                        """Specify a LoRA model using a URI (flax not supported). This should be a
+                        """Specify one or more LoRA models using URIs (flax not supported). These should be a
                         huggingface repository slug, path to model file on disk (for example, a .pt, .pth, .bin,
                         .ckpt, or .safetensors file), or model folder containing model files.
                         
                         huggingface blob links are not supported, see "subfolder" and "weight-name" below instead.
                         
-                        Optional arguments can be provided after the LoRA model specification, 
+                        Optional arguments can be provided after a LoRA model specification, 
                         these include: "scale", "revision", "subfolder", and "weight-name".
                         
                         They can be specified as so in any order, they are not positional:
@@ -453,7 +453,7 @@ actions.append(
                         dest='textual_inversion_uris',
                         help=
                         """Specify one or more Textual Inversion models using URIs (flax and SDXL not supported). 
-                        This should be a huggingface repository slug, path to model file on disk 
+                        These should be a huggingface repository slug, path to model file on disk 
                         (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model folder 
                         containing model files. 
                         
