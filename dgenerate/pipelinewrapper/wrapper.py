@@ -90,7 +90,7 @@ class PipelineWrapperResult:
         """
         Render an image grid from the images in this result.
 
-        :raise: :py:exc:`.ValueError` if no images are present on this object.
+        :raise ValueError: if no images are present on this object.
             This is impossible if this object was produced by :py:class:`.DiffusionPipelineWrapper`.
 
         :param cols_rows: columns and rows (WxH) desired as a tuple
@@ -1725,7 +1725,7 @@ class DiffusionPipelineWrapper:
         pipeline currently created, which will be the case if an image was
         never generated yet, :py:exc:`RuntimeError` will be raised.
 
-        :raises: :py:exc:`RuntimeError`
+        :raises RuntimeError:
 
         :return: :py:class:`dgenerate.pipelinewrapper.PipelineCreationResult`
         """
@@ -1743,7 +1743,7 @@ class DiffusionPipelineWrapper:
         case if an image was never generated yet or a refiner model was not
         specified, :py:exc:`RuntimeError` will be raised.
 
-        :raises: :py:exc:`RuntimeError`
+        :raises RuntimeError:
 
         :return: :py:class:`dgenerate.pipelinewrapper.PipelineCreationResult`
         """
@@ -1910,10 +1910,10 @@ class DiffusionPipelineWrapper:
             any keyword arguments given here will override values derived from the
             :py:class:`.DiffusionArguments` object given to the *args* parameter.
 
-        :raises: :py:class:`.InvalidModelUriError`
-            :py:class:`.InvalidSchedulerName`
-            :py:class:`.OutOfMemoryError`
-            :py:class:`NotImplementedError`
+        :raises InvalidModelUriError:
+        :raises InvalidSchedulerName:
+        :raises OutOfMemoryError:
+        :raises NotImplementedError:
 
         :return: :py:class:`.PipelineWrapperResult`
         """

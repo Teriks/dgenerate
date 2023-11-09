@@ -600,6 +600,8 @@ def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
     """
     Parse an ``--image-seeds`` uri into its constituents
 
+    :raises ImageSeedError: on parse errors
+
     :param uri: ``--image-seeds`` uri
     :return: :py:class:`.ImageSeedParseResult`
     """
@@ -854,7 +856,7 @@ def fetch_media_data_stream(uri: str) -> typing.Tuple[str, typing.BinaryIO]:
 
     :param uri: Local file path or URL
 
-    :raises: :py:exc:`.UnknownMimetypeError`
+    :raises UnknownMimetypeError:
 
     :rtype: (mime-type string, BinaryIO)
     """
@@ -1485,7 +1487,7 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
         preprocessor value will have their preprocessor set to ``None``, specifying extra preprocessors
         as compared to control guidance image sources will cause :py:exc:`ValueError` to be raised.
 
-    :raise: :py:exc:`ValueError` if there are more **control_image_preprocessor** values than
+    :raise ValueError: if there are more **control_image_preprocessor** values than
         there are control guidance image sources in the URI.
 
     :return: an iterator over :py:class:`.ImageSeed` objects
@@ -1648,7 +1650,7 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
         set to ``None``, specifying extra preprocessors as compared to control guidance image sources will
         cause :py:exc:`ValueError` to be raised.
 
-    :raise: :py:exc:`ValueError` if there are more **preprocessor** values than
+    :raise ValueError: if there are more **preprocessor** values than
         there are control guidance image sources in the URI.
 
     :return: an iterator over :py:class:`.ImageSeed` objects

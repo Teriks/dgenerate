@@ -154,8 +154,8 @@ class Loader:
         Get a :py:class:`dgenerate.preprocessors.ImagePreprocessor` implementation from the loader
         using one of the implementations defined :py:attr:`dgenerate.preprocessors.ImagePreprocessor.NAMES`
 
-        :raises: :py:exc:`RuntimeError` if more than one class was found using the provided name.
-                 :py:exc:`dgenerate.preprocessor.ImagePreprocessorNotFoundError` if the name could not be found.
+        :raises RuntimeError: if more than one class was found using the provided name.
+        :raises ImagePreprocessorNotFoundError: if the name could not be found.
 
         :param preprocessor_name: the name to search for
         :return: :py:class:`dgenerate.preprocessors.ImagePreprocessor`
@@ -190,8 +190,8 @@ class Loader:
         """
         Get the formatted help string for a specific preprocessor by name.
 
-        :raises: :py:exc:`RuntimeError` if more than one class was found using the provided name.
-                 :py:exc:`dgenerate.preprocessor.ImagePreprocessorNotFoundError` if the name could not be found.
+        :raises RuntimeError: if more than one class was found using the provided name.
+        :raises ImagePreprocessorNotFoundError: if the name could not be found.
 
         :param preprocessor_name: the preprocessor name to search for
         :return: formatted help string
@@ -207,15 +207,15 @@ class Loader:
 
         Specifying multiple preprocessors with a list will create an image preprocessor chain object.
 
-        :raises: :py:exc:`RuntimeError` if more than one class was found using the provided name mentioned in the URI.
-                 :py:exc:`dgenerate.preprocessor.ImagePreprocessorNotFoundError` if the name mentioned in the URI could not be found.
-                 :py:exc:`dgenerate.preprocessor.ImagePreprocessorArgumentError` if the URI contained invalid arguments.
+        :raises RuntimeError: if more than one class was found using the provided name mentioned in the URI.
+        :raises ImagePreprocessorNotFoundError: if the name mentioned in the URI could not be found.
+        :raises ImagePreprocessorArgumentError: if the URI contained invalid arguments.
 
 
         :param uri: Preprocessor URI or list of URIs
         :param device: Request a specific rendering device, default is CPU
-        :return: :py:class:`dgenerate.preprocessor.ImagePreprocessor` or
-            :py:class:`dgenerate.preprocessor.ImagePreprocessorChain`
+        :return: :py:class:`dgenerate.preprocessors.ImagePreprocessor` or
+            :py:class:`dgenerate.preprocessors.ImagePreprocessorChain`
         """
 
         if uri is None:

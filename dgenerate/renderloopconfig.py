@@ -593,7 +593,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         Check the configuration for type and logical usage errors, set
         defaults for certain values when needed and not specified.
 
-        :raises: :py:class:`.RenderLoopConfigError` on errors
+        :raises RenderLoopConfigError: on errors
 
         :param attribute_namer: Callable for naming attributes mentioned in exception messages
         """
