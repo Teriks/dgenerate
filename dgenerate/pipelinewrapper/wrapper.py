@@ -888,14 +888,20 @@ class DiffusionPipelineWrapper:
         if args.prompt is not None:
             opts.append(('--prompts', args.prompt))
 
+        if args.clip_skip is not None:
+            opts.append(('--clip-skips', args.clip_skip))
+
         if args.sdxl_second_prompt is not None:
-            opts.append(('--sdxl-second-prompt', args.sdxl_second_prompt))
+            opts.append(('--sdxl-second-prompts', args.sdxl_second_prompt))
 
         if args.sdxl_refiner_prompt is not None:
-            opts.append(('--sdxl-refiner-prompt', args.sdxl_refiner_prompt))
+            opts.append(('--sdxl-refiner-prompts', args.sdxl_refiner_prompt))
+
+        if args.sdxl_refiner_clip_skip is not None:
+            opts.append(('--sdxl-refiner-clip-skips', args.sdxl_refiner_clip_skip))
 
         if args.sdxl_refiner_second_prompt is not None:
-            opts.append(('--sdxl-refiner-second-prompt', args.sdxl_refiner_second_prompt))
+            opts.append(('--sdxl-refiner-second-prompts', args.sdxl_refiner_second_prompt))
 
         if self._revision is not None:
             opts.append(('--revision', self._revision))

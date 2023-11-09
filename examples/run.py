@@ -16,18 +16,22 @@ _skip_animations = False
 _skip_library = False
 _short_animations = False
 
-if 'skip_animations' in args:
+if '--subprocess-only' in args:
+    _batchprocess = None
+    args.remove('--subprocess-only')
+
+if '--skip-animations' in args:
     _skip_animations = True
-    args.remove('skip_animations')
+    args.remove('--skip-animations')
 
-if 'skip_library' in args:
+if '--skip-library' in args:
     _skip_library = True
-    args.remove('skip_library')
+    args.remove('--skip-library')
 
-if 'short_animations' in args:
+if '--short-animations' in args:
     _skip_animations = False
     _short_animations = True
-    args.remove('short_animations')
+    args.remove('--short-animations')
 
 if len(args) > 0:
     first_arg = args[0]
