@@ -72,6 +72,7 @@ def _iterate_diffusion_args(prompt: _types.OptionalPrompts,
                             sdxl_refiner_prompt: _types.OptionalPrompts,
                             sdxl_refiner_second_prompt: _types.OptionalPrompts,
                             clip_skip: _types.OptionalIntegers,
+                            sdxl_refiner_clip_skip: _types.OptionalIntegers,
                             seed: _types.OptionalIntegers,
                             image_seed_strength: _types.OptionalFloats,
                             upscaler_noise_level: _types.OptionalIntegers,
@@ -221,6 +222,12 @@ class RenderLoopConfig(_types.SetFromMixin):
     prompt embeddings. A value of 1 means that the output of the pre-final layer will be used for computing 
     the prompt embeddings. Only supported for ``model_type`` values ``torch`` and ``torch-sdxl``, including with 
     ``control_net_uris`` defined.
+    """
+
+    sdxl_refiner_clip_skips: _types.OptionalIntegers = None
+    """
+    Clip skip override values for the SDXL refiner, which normally defaults to the clip skip 
+    value for the main model when it is defined.
     """
 
     image_seeds: _types.OptionalUris = None
@@ -1036,6 +1043,7 @@ class RenderLoopConfig(_types.SetFromMixin):
             sdxl_refiner_second_prompt=ov('sdxl_refiner_second_prompt',
                                           self.sdxl_refiner_second_prompts),
             clip_skip=ov('clip_skip', self.clip_skips),
+            sdxl_refiner_clip_skip=ov('sdxl_refiner_clip_skip', self.sdxl_refiner_clip_skips),
             seed=ov('seed', self.seeds),
             image_seed_strength=ov('image_seed_strength', self.image_seed_strengths),
             guidance_scale=ov('guidance_scale', self.guidance_scales),
