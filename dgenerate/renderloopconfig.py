@@ -18,7 +18,6 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import inspect
 import itertools
 import random
 import typing
@@ -67,39 +66,7 @@ def iterate_attribute_combinations(
         yield ctx_out
 
 
-def _iterate_diffusion_args(prompt: _types.OptionalPrompts,
-                            sdxl_second_prompt: _types.OptionalPrompts,
-                            sdxl_refiner_prompt: _types.OptionalPrompts,
-                            sdxl_refiner_second_prompt: _types.OptionalPrompts,
-                            clip_skip: _types.OptionalIntegers,
-                            sdxl_refiner_clip_skip: _types.OptionalIntegers,
-                            seed: _types.OptionalIntegers,
-                            image_seed_strength: _types.OptionalFloats,
-                            upscaler_noise_level: _types.OptionalIntegers,
-                            sdxl_high_noise_fraction: _types.OptionalFloats,
-                            sdxl_refiner_inference_steps: _types.OptionalIntegers,
-                            sdxl_refiner_guidance_scale: _types.OptionalFloats,
-                            sdxl_refiner_guidance_rescale: _types.OptionalFloats,
-                            sdxl_aesthetic_score: _types.OptionalFloats,
-                            sdxl_original_size: _types.OptionalSizes,
-                            sdxl_target_size: _types.OptionalSizes,
-                            sdxl_crops_coords_top_left: _types.OptionalCoordinateList,
-                            sdxl_negative_aesthetic_score: _types.OptionalFloats,
-                            sdxl_negative_original_size: _types.OptionalSizes,
-                            sdxl_negative_target_size: _types.OptionalSizes,
-                            sdxl_negative_crops_coords_top_left: _types.OptionalCoordinateList,
-                            sdxl_refiner_aesthetic_score: _types.OptionalFloats,
-                            sdxl_refiner_original_size: _types.OptionalSizes,
-                            sdxl_refiner_target_size: _types.OptionalSizes,
-                            sdxl_refiner_crops_coords_top_left: _types.OptionalCoordinateList,
-                            sdxl_refiner_negative_aesthetic_score: _types.OptionalFloats,
-                            sdxl_refiner_negative_original_size: _types.OptionalSizes,
-                            sdxl_refiner_negative_target_size: _types.OptionalSizes,
-                            sdxl_refiner_negative_crops_coords_top_left: _types.OptionalCoordinateList,
-                            guidance_scale: _types.OptionalFloats,
-                            image_guidance_scale: _types.OptionalFloats,
-                            guidance_rescale: _types.OptionalFloats,
-                            inference_steps: _types.OptionalIntegers) -> typing.Iterator[_pipelinewrapper.DiffusionArguments]:
+def _iterate_diffusion_args(**kwargs) -> typing.Iterator[_pipelinewrapper.DiffusionArguments]:
     """
     Iterate over every combination of possible attribute values of :py:class:`dgenerate.pipelinewrapper.DiffusionArguments` given a
     list of values for each attribute.
@@ -108,12 +75,9 @@ def _iterate_diffusion_args(prompt: _types.OptionalPrompts,
     def _list_or_list_of_none(val):
         return val if val else [None]
 
-    args = locals()
-    defs = []
-    for arg_name in inspect.getfullargspec(_iterate_diffusion_args).args:
-        defs.append((arg_name, _list_or_list_of_none(args[arg_name])))
-
-    yield from iterate_attribute_combinations(defs, _pipelinewrapper.DiffusionArguments)
+    yield from iterate_attribute_combinations(
+        [(arg_name, _list_or_list_of_none(value)) for arg_name, value in kwargs.items()],
+        _pipelinewrapper.DiffusionArguments)
 
 
 def gen_seeds(n):
