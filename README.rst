@@ -80,6 +80,7 @@ Help Output
                      [--sdxl-negative-target-sizes SIZE [SIZE ...]]
                      [--sdxl-negative-crops-coords-top-left COORD [COORD ...]]
                      [--sdxl-refiner-prompts PROMPT [PROMPT ...]]
+                     [--sdxl-refiner-clip-skips INTEGER [INTEGER ...]]
                      [--sdxl-refiner-second-prompts PROMPT [PROMPT ...]]
                      [--sdxl-refiner-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-refiner-crops-coords-top-left COORD [COORD ...]]
@@ -391,6 +392,9 @@ Help Output
                             model gets the primary prompt, this argument overrides that with a prompt of your
                             choosing. The negative prompt component can be specified with the same syntax as
                             --prompts
+      --sdxl-refiner-clip-skips INTEGER [INTEGER ...]
+                            Clip skip override values for the SDXL refiner, which normally uses the clip skip
+                            value for the main model when it is defined by --clip-skips.
       --sdxl-refiner-second-prompts PROMPT [PROMPT ...]
                             One or more prompts to try with the SDXL refiner models secondary text encoder,
                             by default the refiner model gets the primary prompt passed to its second text

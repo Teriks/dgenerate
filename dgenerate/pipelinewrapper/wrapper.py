@@ -421,6 +421,12 @@ class DiffusionArguments(_types.SetFromMixin):
     ``model_type`` values ``torch`` and ``torch-sdxl``, including with ``control_net_uris`` defined.
     """
 
+    sdxl_refiner_clip_skip: _types.OptionalInteger = None
+    """
+    Clip skip override value for the SDXL refiner, which normally defaults to that of 
+    :py:attr:`.DiffusionArguments.clip_skip` when it is defined.
+    """
+
     def get_pipeline_wrapper_kwargs(self):
         """
         Get the arguments dictionary needed to call :py:class:`.DiffusionPipelineWrapper`
@@ -513,6 +519,8 @@ class DiffusionArguments(_types.SetFromMixin):
         inputs = [f'Seed: {self.seed}']
 
         descriptions = [
+            (self.clip_skip, "Clip Skip:"),
+            (self.sdxl_refiner_clip_skip, "SDXL Refiner Clip Skip:"),
             (self.image_seed_strength, "Image Seed Strength:"),
             (self.upscaler_noise_level, "Upscaler Noise Level:"),
             (self.sdxl_high_noise_fraction, "SDXL High Noise Fraction:"),
@@ -1663,17 +1671,17 @@ class DiffusionPipelineWrapper:
                                              'guidance_rescale', 'sdxl_refiner_guidance_rescale',
                                              '--sdxl-refiner-guidance-rescales')
 
-        sdxl_refiner_inference_steps = user_args.sdxl_refiner_inference_steps
-        if sdxl_refiner_inference_steps is not None:
-            pipeline_args['num_inference_steps'] = sdxl_refiner_inference_steps
+        if user_args.sdxl_refiner_inference_steps is not None:
+            pipeline_args['num_inference_steps'] = user_args.sdxl_refiner_inference_steps
 
-        sdxl_refiner_guidance_scale = user_args.sdxl_refiner_guidance_scale
-        if sdxl_refiner_guidance_scale is not None:
-            pipeline_args['guidance_scale'] = sdxl_refiner_guidance_scale
+        if user_args.sdxl_refiner_guidance_scale is not None:
+            pipeline_args['guidance_scale'] = user_args.sdxl_refiner_guidance_scale
 
-        sdxl_refiner_guidance_rescale = user_args.sdxl_refiner_guidance_rescale
-        if sdxl_refiner_guidance_rescale is not None:
-            pipeline_args['guidance_rescale'] = sdxl_refiner_guidance_rescale
+        if user_args.sdxl_refiner_guidance_rescale is not None:
+            pipeline_args['guidance_rescale'] = user_args.sdxl_refiner_guidance_rescale
+
+        if user_args.sdxl_refiner_clip_skip is not None:
+            pipeline_args['clip_skip'] = user_args.sdxl_refiner_clip_skip
 
         if sd_edit:
             strength = float(decimal.Decimal('1.0') - decimal.Decimal(str(high_noise_fraction)))
