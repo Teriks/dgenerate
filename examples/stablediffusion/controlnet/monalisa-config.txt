@@ -1,4 +1,4 @@
-#! dgenerate 2.0.0
+#! dgenerate 2.1.0
 
 # Use the built in mirror and canny preprocessor action to process
 # the image for you before using it for generation. This mirrors
