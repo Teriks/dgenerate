@@ -393,8 +393,8 @@ Help Output
                             choosing. The negative prompt component can be specified with the same syntax as
                             --prompts
       --sdxl-refiner-clip-skips INTEGER [INTEGER ...]
-                            Clip skip override values for the SDXL refiner, which normally uses the clip skip
-                            value for the main model when it is defined by --clip-skips.
+                            One or more clip skip override values to try for the SDXL refiner, which normally
+                            uses the clip skip value for the main model when it is defined by --clip-skips.
       --sdxl-refiner-second-prompts PROMPT [PROMPT ...]
                             One or more prompts to try with the SDXL refiner models secondary text encoder,
                             by default the refiner model gets the primary prompt passed to its second text
@@ -672,6 +672,7 @@ Help Output
                             Example, and default value: "control_net_size > (available * 0.75)" For Syntax
                             See: [https://dgenerate.readthedocs.io/en/v2.1.0/dgenerate_submodules.html#dgener
                             ate.pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS]
+
 
 
 Windows Install

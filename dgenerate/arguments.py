@@ -686,8 +686,9 @@ actions.append(
     parser.add_argument('--sdxl-refiner-clip-skips', nargs='+', action='store', metavar="INTEGER",
                         default=None,
                         type=_type_clip_skip,
-                        help="""Clip skip override values for the SDXL refiner, which normally 
-                        uses the clip skip value for the main model when it is defined by --clip-skips."""))
+                        help="""One or more clip skip override values to try for the SDXL refiner, 
+                        which normally uses the clip skip value for the main model when it is 
+                        defined by --clip-skips."""))
 
 actions.append(
     parser.add_argument('--sdxl-refiner-second-prompts', nargs='+', action='store',
