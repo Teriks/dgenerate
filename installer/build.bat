@@ -19,6 +19,8 @@ popd
 
 pyinstaller dgenerate.spec --clean
 
+call venv\Scripts\deactivate.bat
+
 set PATH=%PATH%;C:\Program Files (x86)\WiX Toolset v3.11\bin
 
 heat dir dist\dgenerate -o DgenerateComponents.wxs -scom -frag -srd -sreg -gg -cg DgenerateComponents -dr INSTALLFOLDER
