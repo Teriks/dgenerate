@@ -1189,6 +1189,33 @@ lint = ["pre-commit (>=3.3)"]
 test = ["pytest (>=7.4)", "pytest-cov (>=4.1)"]
 
 [[package]]
+name = "lightning-fabric"
+version = "2.1.1"
+description = ""
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "lightning-fabric-2.1.1.tar.gz", hash = "sha256:e47793aca805c61a95f4a807e6263e20c94bb07bd0ed38857c12f36e2cd314af"},
+    {file = "lightning_fabric-2.1.1-py3-none-any.whl", hash = "sha256:7d1eb4f24d79ddd9a5c8c699364e5fee0279804adfef7d49b3662e3ef2803da4"},
+]
+
+[package.dependencies]
+fsspec = {version = ">2021.06.0", extras = ["http"]}
+lightning-utilities = ">=0.8.0"
+numpy = ">=1.17.2"
+packaging = ">=20.0"
+torch = ">=1.12.0"
+typing-extensions = ">=4.0.0"
+
+[package.extras]
+all = ["deepspeed (>=0.8.2,<=0.9.3)", "lightning-utilities (>=0.8.0)", "torchmetrics (>=0.10.0)", "torchvision (>=0.13.0)"]
+deepspeed = ["deepspeed (>=0.8.2,<=0.9.3)"]
+dev = ["click (==8.1.7)", "coverage (==7.3.1)", "deepspeed (>=0.8.2,<=0.9.3)", "lightning-utilities (>=0.8.0)", "pytest (==7.4.0)", "pytest-cov (==4.1.0)", "pytest-random-order (==1.1.0)", "pytest-rerunfailures (==12.0)", "pytest-timeout (==2.1.0)", "tensorboardX (>=2.2)", "torchmetrics (>=0.10.0)", "torchmetrics (>=0.7.0)", "torchvision (>=0.13.0)"]
+examples = ["lightning-utilities (>=0.8.0)", "torchmetrics (>=0.10.0)", "torchvision (>=0.13.0)"]
+strategies = ["deepspeed (>=0.8.2,<=0.9.3)"]
+test = ["click (==8.1.7)", "coverage (==7.3.1)", "pytest (==7.4.0)", "pytest-cov (==4.1.0)", "pytest-random-order (==1.1.0)", "pytest-rerunfailures (==12.0)", "pytest-timeout (==2.1.0)", "tensorboardX (>=2.2)", "torchmetrics (>=0.7.0)"]
+
+[[package]]
 name = "lightning-utilities"
 version = "0.9.0"
 description = "PyTorch Lightning Sample project."
@@ -3172,4 +3199,4 @@ flax = ["flax", "jax"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.13"
-content-hash = "d9bb94a29755a6a66b150201098c0c8ea22fd5f7858c38ba5deeba912982c820"
+content-hash = "96639d6d295019f7569b8caf2b629199a42dedef800c4d7390140d171e68ac15"
