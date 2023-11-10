@@ -1,4 +1,4 @@
-#! dgenerate 2.1.0
+#! dgenerate 2.1.1
 
 # The image produced with this model will be
 # two times the --output-size dimension IE: 512x512 in this case

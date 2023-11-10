@@ -1,4 +1,4 @@
-#! dgenerate 2.1.0
+#! dgenerate 2.1.1
 
 stabilityai/stable-diffusion-2
 --inference-steps 30

@@ -20,10 +20,10 @@ with open('Product.wix', 'r') as f:
 
 block_cipher = None
 
-exclude = {'triton', 'cmake', 'lit', 'opencv-python', 'opencv-contrib-python', 'controlnet-aux'}
-# cv2 hook automatic, controlnet-aux has a package name to folder mismatch
+exclude = {'triton', 'cmake', 'lit', 'opencv-python', 'opencv-contrib-python', 'controlnet-aux', 'pytorch-lightning'}
+# cv2 hook automatic, controlnet-aux & pytorch-lightning has a package name to folder mismatch
 
-requires_extra_data = ['skimage', 'controlnet_aux']
+requires_extra_data = ['skimage', 'controlnet_aux', 'pytorch_lightning']
 datas = []
 binaries = []
 module_collection_mode = {}

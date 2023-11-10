@@ -1,4 +1,4 @@
-#! dgenerate 2.1.0
+#! dgenerate 2.1.1
 
 # Generate 4 images simultaneously on the GPU and create a 2x2 grid for each frame of the animation
 # The kitten gif is 498x286, meaning the resized images will not be square
