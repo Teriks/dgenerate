@@ -20,24 +20,42 @@ with open('Product.wix', 'r') as f:
 
 block_cipher = None
 
-exclude = {'triton', 'cmake', 'lit', 'opencv-python', 'opencv-contrib-python', 'controlnet-aux', 'pytorch-lightning'}
-# cv2 hook automatic, controlnet-aux & pytorch-lightning has a package name to folder mismatch
+exclude_from_forced_collection = {'triton', 'cmake', 'lit', 'opencv-python', 'opencv-contrib-python'}
+# the cv2 hook works properly, other mentioned deps just are not needed
 
-requires_extra_data = ['skimage', 'controlnet_aux', 'pytorch_lightning']
+requires_extra_data_forced = [
+    'skimage',
+    'fontTools',
+    'antlr4',
+    'bs4',
+    'PIL',
+    'dateutil',
+    'win32',
+    'win32com',
+    'win32comext',
+    'win32ctypes']
+# these packages have names that do not align with their folder name
+# or are needed
+
 datas = []
 binaries = []
 module_collection_mode = {}
 
 required_package_names = \
-    list(setup.get_poetry_lockfile_as_pip_requires(exclude=exclude).keys()) + requires_extra_data
+    list(setup.get_poetry_lockfile_as_pip_requires(exclude=exclude_from_forced_collection).keys()) + requires_extra_data_forced
 
 for package_name in required_package_names:
 
-    if package_name not in requires_extra_data:
+    if package_name not in requires_extra_data_forced:
         try:
             datas += copy_metadata(package_name)
         except PackageNotFoundError:
             print(f'copy_metadata failed for {package_name}')
+
+    if '-' in package_name:
+        # collect data files cannot find this by the
+        # actual package name
+        package_name = package_name.replace('-', '_')
 
     print(f'Data Collection For: {package_name}')
     module_collection_mode[package_name] = 'pyz+py'
@@ -51,6 +69,7 @@ for package_name in required_package_names:
                                           '**/*.cuh',
                                           '**/*.h'])
     binaries += collect_dynamic_libs(package_name, search_patterns=['*.dll', '*.pyd'])
+
 
 a = Analysis(
     ['../dgenerate/dgenerate.py'],
