@@ -1,12 +1,26 @@
 pushd "%~dp0"
 
-set PATH=%PATH%;C:\Program Files (x86)\WiX Toolset v3.11\bin
+rmdir venv /s /q
 rmdir build /s /q
 rmdir dist /s /q
 rmdir wixobj /s /q
 del /s DgenerateComponents.wxs
 
+python -m venv venv
+call venv\Scripts\activate.bat
+
+pushd ".."
+
+set DGENERATE_FORCE_LOCKFILE_REQUIRES=1
+
+pip install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu118/
+
+popd
+
 pyinstaller dgenerate.spec --clean
+
+set PATH=%PATH%;C:\Program Files (x86)\WiX Toolset v3.11\bin
+
 heat dir dist\dgenerate -o DgenerateComponents.wxs -scom -frag -srd -sreg -gg -cg DgenerateComponents -dr INSTALLFOLDER
 candle Product.wix DgenerateComponents.wxs -arch x64 -out wixobj\ -ext WixUIExtension
 light -b dist\dgenerate wixobj\Product.wixobj wixobj\DgenerateComponents.wixobj -out wixobj\dgenerate.msi -ext WixUIExtension

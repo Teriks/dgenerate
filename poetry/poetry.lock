@@ -1634,7 +1634,7 @@ files = [
 name = "nvidia-cublas-cu11"
 version = "11.11.3.6"
 description = "CUBLAS native runtime libraries"
-optional = false
+optional = true
 python-versions = ">=3"
 files = [
     {file = "nvidia_cublas_cu11-11.11.3.6-py3-none-manylinux1_x86_64.whl", hash = "sha256:39fb40e8f486dd8a2ddb8fdeefe1d5b28f5b99df01c87ab3676f057a74a5a6f3"},
@@ -1667,7 +1667,7 @@ files = [
 name = "nvidia-cuda-nvrtc-cu11"
 version = "11.8.89"
 description = "NVRTC native runtime libraries"
-optional = false
+optional = true
 python-versions = ">=3"
 files = [
     {file = "nvidia_cuda_nvrtc_cu11-11.8.89-py3-none-manylinux1_x86_64.whl", hash = "sha256:1f27d67b0f72902e9065ae568b4f6268dfe49ba3ed269c9a3da99bb86d1d2008"},
@@ -1689,7 +1689,7 @@ files = [
 name = "nvidia-cudnn-cu11"
 version = "8.9.6.50"
 description = "cuDNN runtime libraries"
-optional = false
+optional = true
 python-versions = ">=3"
 files = [
     {file = "nvidia_cudnn_cu11-8.9.6.50-py3-none-manylinux1_x86_64.whl", hash = "sha256:319a8f7ca3d65139f1b69998595c7076ae0e4271a325e5dfde50a3ca31f55584"},
@@ -2589,24 +2589,24 @@ mpmath = ">=0.19"
 
 [[package]]
 name = "tensorstore"
-version = "0.1.47"
+version = "0.1.48"
 description = "Read and write large, multi-dimensional arrays"
 optional = true
 python-versions = ">=3.9"
 files = [
-    {file = "tensorstore-0.1.47-cp310-cp310-macosx_10_14_x86_64.whl", hash = "sha256:1e03526d3b1580bbae5380e7d0584f3155d400ff2cf41b05daa5cd64de091b20"},
-    {file = "tensorstore-0.1.47-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:471e395c568d5250f13adbe0d0504b0a0a31c54ea0ef2c1eef0bf33416f60258"},
-    {file = "tensorstore-0.1.47-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:59d5836bb9c718a90a6eb3b224789c9c7b6711d587ee934d85e523bf7dea747b"},
-    {file = "tensorstore-0.1.47-cp310-cp310-win_amd64.whl", hash = "sha256:a92d7f38da523705b1b2112ee401747e6863b1b468b86b196498f74a69611844"},
-    {file = "tensorstore-0.1.47-cp311-cp311-macosx_10_14_x86_64.whl", hash = "sha256:0a83f5f61a093d0305b22806dadc0a6dc7d76bb7f54a993289488c04d70cae74"},
-    {file = "tensorstore-0.1.47-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:6b0c718636f096a4bd7ecba1d3c77d536e7e22d5f9910a58928312efa4192bdc"},
-    {file = "tensorstore-0.1.47-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d1c7f5b06a901bd971641e22e1a652021def05ddd9964a5cb9b042cdde66899e"},
-    {file = "tensorstore-0.1.47-cp311-cp311-win_amd64.whl", hash = "sha256:58b276f94130afc7cc457f5dd999a9c950805cc2452b5596b601976b747cb207"},
-    {file = "tensorstore-0.1.47-cp39-cp39-macosx_10_14_x86_64.whl", hash = "sha256:8f5b8ef58d6c9290b068404e6f86998b0aa9a069ccb6f191f18ae2be6ff83919"},
-    {file = "tensorstore-0.1.47-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:fe89552f24e78137c2b98b750b29433fee4fd3c84c1074c6cb5504adbf8761ee"},
-    {file = "tensorstore-0.1.47-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c50fcf83ec2e586b0f1df2bb9cfd36182222a79df486c80ab957f4c94656b5db"},
-    {file = "tensorstore-0.1.47-cp39-cp39-win_amd64.whl", hash = "sha256:16ba3522b18a7141c0255065f88003646f07f7554b481fdf1bc50d2de0aba256"},
-    {file = "tensorstore-0.1.47.tar.gz", hash = "sha256:734c8bdf63ced1d0d45ef008da4f4b54cebcedcac1a20cf255d5cf7679abd3ee"},
+    {file = "tensorstore-0.1.48-cp310-cp310-macosx_10_14_x86_64.whl", hash = "sha256:7dfc12ed0681cb6cdfa0cf6d77debfd9ae7a6ebd0c1dffd0aed833b263c4f0fc"},
+    {file = "tensorstore-0.1.48-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:586acf91bf28803b9a086a9381988b9ac788c01dabb3dfae24fb32e223660b9b"},
+    {file = "tensorstore-0.1.48-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:4533b5e302cba6cfaa97c53a3da0cceb67a918ca4d1a4f18212d14782201b99a"},
+    {file = "tensorstore-0.1.48-cp310-cp310-win_amd64.whl", hash = "sha256:c76f38f71045c3b4594f49ea040a38399db5936471fbbdedef524c07c204294e"},
+    {file = "tensorstore-0.1.48-cp311-cp311-macosx_10_14_x86_64.whl", hash = "sha256:5fe92b3af8afa1f385357ae21d55beaf432a212103dbec8460be65e24cde0abc"},
+    {file = "tensorstore-0.1.48-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:accb376b0c2fea352e6c96b2644b1719bfcd13e9dc38434aa5ec263ed656b29c"},
+    {file = "tensorstore-0.1.48-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:71fd49927789a4aeaf27a49efa37b58deb90a77d692818e5933475131d9d2d58"},
+    {file = "tensorstore-0.1.48-cp311-cp311-win_amd64.whl", hash = "sha256:3ad7719d9ef2ceda0a914045b4b16df7ea34a796c1c554873efcd5f111dbf571"},
+    {file = "tensorstore-0.1.48-cp39-cp39-macosx_10_14_x86_64.whl", hash = "sha256:e0314fb0af93a695a33b5d02b4a90e5fb2a664561ec40799a8f1de28760ce833"},
+    {file = "tensorstore-0.1.48-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:2ec05e9b5616b1661380dbe7dcd6c17ccf909be0da80b4350e2806ef05803fe0"},
+    {file = "tensorstore-0.1.48-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:6f4e658b4159596a2fd54f20432593b6b76eb2bbcbcceb55e490562da82429ca"},
+    {file = "tensorstore-0.1.48-cp39-cp39-win_amd64.whl", hash = "sha256:e9e4ef3334b18f6ffc39d479e42118f6f66bb99eee8f920f0a97a71f9cf0f092"},
+    {file = "tensorstore-0.1.48.tar.gz", hash = "sha256:cf07a75aaa84098cf7b4d673485a326cde1695101225a04bc7b557fcc3c2cbb7"},
 ]
 
 [package.dependencies]
@@ -3172,4 +3172,4 @@ flax = ["flax", "jax"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.13"
-content-hash = "1966aaddfcce0e04388d69452f27d9a9a93eb7dea459d417aa8f4557bbe3037a"
+content-hash = "d9bb94a29755a6a66b150201098c0c8ea22fd5f7858c38ba5deeba912982c820"

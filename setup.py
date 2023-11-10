@@ -37,6 +37,9 @@ poetry_pyproject_path = \
     os.environ.get('DGENERATE_POETRY_PYPROJECT_PATH',
                    os.path.join(setup_path, 'poetry', 'pyproject.toml')).strip('"').strip("'")
 
+force_lockfile_requires = \
+    os.environ.get('DGENERATE_FORCE_LOCKFILE_REQUIRES')
+
 with io.open(os.path.join(setup_path, 'dgenerate', '__init__.py')) as _f:
     VERSION = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', _f.read(), re.MULTILINE).group(1)
 
@@ -217,9 +220,13 @@ if __name__ != 'setup_as_library':
 
     exclude = {'triton'} if 'linux' not in sys.platform else set()
 
-    pyproject_requirements = [name + spec for name, spec in
-                              get_poetry_pyproject_as_pip_requires(
-                                  exclude=exclude.union({'python'})).items()]
+    if force_lockfile_requires:
+        pyproject_requirements = [name + spec for name, spec in
+                                  get_poetry_lockfile_as_pip_requires(exclude=exclude).items()]
+    else:
+        pyproject_requirements = [name + spec for name, spec in
+                                  get_poetry_pyproject_as_pip_requires(
+                                      exclude=exclude.union({'python'})).items()]
 
     if 'READTHEDOCS' in os.environ:
         for idx, requires in enumerate(pyproject_requirements):
