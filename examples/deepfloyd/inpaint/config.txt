@@ -1,4 +1,4 @@
-#! dgenerate 2.1.1
+#! dgenerate 2.2.0
 
 \set image_to_vary ../../media/dog-on-bench.png
 \set mask_image ../../media/dog-on-bench-mask.png

@@ -1,5 +1,5 @@
-.. |Documentation Status| image:: https://readthedocs.org/projects/dgenerate/badge/?version=v2.1.1
-   :target: http://dgenerate.readthedocs.io/en/v2.1.1/
+.. |Documentation Status| image:: https://readthedocs.org/projects/dgenerate/badge/?version=v2.2.0
+   :target: http://dgenerate.readthedocs.io/en/v2.2.0/
 
 Overview
 ========
@@ -29,7 +29,7 @@ PNG, JPEG, JPEG-2000, TGA (Targa), BMP, and PSD (Photoshop) are supported for st
 
 This software requires an Nvidia GPU supporting CUDA 11.8+, CPU rendering is possible but extraordinarily slow.
 
-For library documentation visit `readthedocs <http://dgenerate.readthedocs.io/en/v2.1.1/>`_.
+For library documentation visit `readthedocs <http://dgenerate.readthedocs.io/en/v2.2.0/>`_.
 
 ----
 
@@ -646,7 +646,7 @@ Help Output
                             automatically (DiffusionPipeline, VAE, and ControlNet) considering current memory
                             usage. If any of these constraint expressions are met all models cached in memory
                             will be cleared. Example, and default value: "used_percent > 70" For Syntax See:
-                            [https://dgenerate.readthedocs.io/en/v2.1.1/dgenerate_submodules.html#dgenerate.p
+                            [https://dgenerate.readthedocs.io/en/v2.2.0/dgenerate_submodules.html#dgenerate.p
                             ipelinewrapper.CACHE_MEMORY_CONSTRAINTS]
       -pmc EXPR [EXPR ...], --pipeline-cache-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the in memory
@@ -654,7 +654,7 @@ Help Output
                             usage of new models that are about to enter memory. If any of these constraint
                             expressions are met all DiffusionPipeline objects cached in memory will be
                             cleared. Example, and default value: "pipeline_size > (available * 0.75)" For
-                            Syntax See: [https://dgenerate.readthedocs.io/en/v2.1.1/dgenerate_submodules.html
+                            Syntax See: [https://dgenerate.readthedocs.io/en/v2.2.0/dgenerate_submodules.html
                             #dgenerate.pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS]
       -vmc EXPR [EXPR ...], --vae-cache-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the in memory
@@ -662,7 +662,7 @@ Help Output
                             models that are about to enter memory. If any of these constraint expressions are
                             met all VAE models cached in memory will be cleared. Example, and default value:
                             "vae_size > (available * 0.75)" For Syntax See: [https://dgenerate.readthedocs.io
-                            /en/v2.1.1/dgenerate_submodules.html#dgenerate.pipelinewrapper.VAE_CACHE_MEMORY_C
+                            /en/v2.2.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.VAE_CACHE_MEMORY_C
                             ONSTRAINTS]
       -cmc EXPR [EXPR ...], --control-net-cache-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the in memory
@@ -670,7 +670,7 @@ Help Output
                             new ControlNet models that are about to enter memory. If any of these constraint
                             expressions are met all ControlNet models cached in memory will be cleared.
                             Example, and default value: "control_net_size > (available * 0.75)" For Syntax
-                            See: [https://dgenerate.readthedocs.io/en/v2.1.1/dgenerate_submodules.html#dgener
+                            See: [https://dgenerate.readthedocs.io/en/v2.2.0/dgenerate_submodules.html#dgener
                             ate.pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS]
 
 
@@ -731,12 +731,12 @@ Install dgenerate:
 
     # If you want a specific version
 
-    pipx install dgenerate==2.1.1 ^
+    pipx install dgenerate==2.2.0 ^
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/"
 
     # You can install without pipx into your own environment like so
 
-    pip install dgenerate==2.1.1 --extra-index-url https://download.pytorch.org/whl/cu118/
+    pip install dgenerate==2.2.0 --extra-index-url https://download.pytorch.org/whl/cu118/
 
 
 It is recommended to install dgenerate with pipx if you are just intending
@@ -855,22 +855,22 @@ Install dgenerate
 
     # If you want a specific version
 
-    pipx install dgenerate==2.1.1 \
+    pipx install dgenerate==2.2.0 \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/"
 
     # Specific version with flax/jax support
 
-    pipx install dgenerate[flax]==2.1.1 \
+    pipx install dgenerate[flax]==2.2.0 \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/ \
     -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html"
 
     # You can install without pipx into your own environment like so
 
-    pip3 install dgenerate==2.1.1 --extra-index-url https://download.pytorch.org/whl/cu118/
+    pip3 install dgenerate==2.2.0 --extra-index-url https://download.pytorch.org/whl/cu118/
 
     # Or with flax
 
-    pip3 install dgenerate[flax]==2.1.1 --extra-index-url https://download.pytorch.org/whl/cu118/ \
+    pip3 install dgenerate[flax]==2.2.0 --extra-index-url https://download.pytorch.org/whl/cu118/ \
     -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 
@@ -1096,8 +1096,8 @@ however for this example files on disk are used for brevity.
 
 You can download them here:
 
- * `my-image-seed.png <https://raw.githubusercontent.com/Teriks/dgenerate/v2.1.1/examples/media/dog-on-bench.png>`_
- * `my-mask-image.png <https://raw.githubusercontent.com/Teriks/dgenerate/v2.1.1/examples/media/dog-on-bench-mask.png>`_
+ * `my-image-seed.png <https://raw.githubusercontent.com/Teriks/dgenerate/v2.2.0/examples/media/dog-on-bench.png>`_
+ * `my-mask-image.png <https://raw.githubusercontent.com/Teriks/dgenerate/v2.2.0/examples/media/dog-on-bench-mask.png>`_
 
 The command below generates a cat sitting on a bench with the images from the links above, the mask image masks out
 areas over the dog in the original image, causing the dog to be replaced with an AI generated cat.
@@ -1903,7 +1903,7 @@ at which the control net model stops applying guidance. It defaults to 1.0, mean
 stop at the last inference step.
 
 
-These examples use: `vermeer_canny_edged.png <https://raw.githubusercontent.com/Teriks/dgenerate/v2.1.1/examples/media/vermeer_canny_edged.png>`_
+These examples use: `vermeer_canny_edged.png <https://raw.githubusercontent.com/Teriks/dgenerate/v2.2.0/examples/media/vermeer_canny_edged.png>`_
 
 
 .. code-block:: bash
@@ -2033,7 +2033,7 @@ Each of these options can receive one or more specifications for image preproces
 For example images can be preprocessed with the canny edge detection algorithm or OpenPose (rigging generation)
 before being used for generation with a model + a ControlNet.
 
-This image of a `horse <https://raw.githubusercontent.com/Teriks/dgenerate/v2.1.1/examples/media/horse2.jpeg>`_
+This image of a `horse <https://raw.githubusercontent.com/Teriks/dgenerate/v2.2.0/examples/media/horse2.jpeg>`_
 is used in the example below with a ControlNet that is trained to generate images from canny edge detected input.
 
 .. code-block:: bash
@@ -2143,12 +2143,12 @@ You simply specify one or more module directories on disk, or paths to python fi
 Currently the only supported functionality of plugin modules is to add image preprocessors.
 
 A code example as well as a command line usage example for image preprocessor plugins can be found
-in the `"plugins/image_preprocessor" <https://github.com/Teriks/dgenerate/tree/v2.1.1/examples/plugins/image_preprocessor>`_
+in the `"plugins/image_preprocessor" <https://github.com/Teriks/dgenerate/tree/v2.2.0/examples/plugins/image_preprocessor>`_
 folder of the examples folder.
 
-The source code for the built in `canny <https://github.com/Teriks/dgenerate/blob/v2.1.1/dgenerate/preprocessors/canny.py>`_ preprocessor,
-the `openpose <https://github.com/Teriks/dgenerate/blob/v2.1.1/dgenerate/preprocessors/openpose.py>`_ preprocessor, and the simple
-`pillow image operations <https://github.com/Teriks/dgenerate/blob/v2.1.1/dgenerate/preprocessors/imageops.py>`_ preprocessors can also
+The source code for the built in `canny <https://github.com/Teriks/dgenerate/blob/v2.2.0/dgenerate/preprocessors/canny.py>`_ preprocessor,
+the `openpose <https://github.com/Teriks/dgenerate/blob/v2.2.0/dgenerate/preprocessors/openpose.py>`_ preprocessor, and the simple
+`pillow image operations <https://github.com/Teriks/dgenerate/blob/v2.2.0/dgenerate/preprocessors/imageops.py>`_ preprocessors can also
 be of reference as they are written as internal image preprocessor plugins.
 
 
@@ -2158,7 +2158,7 @@ Upscaling with Upscaler Models
 
 Stable diffusion image upscaling models can be used via the model types ``torch-upscaler-x2`` and ``torch-upscaler-x4``.
 
-The image used in the example below is this `low resolution cat <https://raw.githubusercontent.com/Teriks/dgenerate/v2.1.1/examples/media/low_res_cat.png>`_
+The image used in the example below is this `low resolution cat <https://raw.githubusercontent.com/Teriks/dgenerate/v2.2.0/examples/media/low_res_cat.png>`_
 
 .. code-block:: bash
 
@@ -2358,7 +2358,7 @@ The following is a config file example that covers very basic syntax concepts:
 
 .. code-block:: jinja
 
-    #! dgenerate 2.1.1
+    #! dgenerate 2.2.0
 
     # If a hash-bang version is provided in the format above
     # a warning will be produced if the version you are running
@@ -2433,7 +2433,7 @@ the mentioned variable names.
 
 .. code-block:: jinja
 
-    #! dgenerate 2.1.1
+    #! dgenerate 2.2.0
 
     # Invocation will proceed as normal
 
@@ -2675,7 +2675,7 @@ as VAEs etc. outside of relying on the caching system.
 
 .. code-block:: jinja
 
-    #! dgenerate 2.1.1
+    #! dgenerate 2.2.0
 
     # You can define your own template variables with the \set directive
 
