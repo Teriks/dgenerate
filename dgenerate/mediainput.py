@@ -430,6 +430,114 @@ def _exif_orient(image):
     return PIL.ImageOps.exif_transpose(image)
 
 
+def get_supported_animated_image_mimetypes() -> typing.List[str]:
+    return ['image/gif', 'image/webp', 'image/apng']
+
+
+def get_supported_static_image_mimetypes() -> typing.List[str]:
+    return ['image/png',
+            'application/png',
+            'application/x-png',
+            'image/jpeg',
+            'image/jpg',
+            'application/jpg',
+            'application/x-jpg',
+            'image/jp2',
+            'image/jpx',
+            'image/j2k',
+            'image/jpeg2000',
+            'image/jpeg2000-image',
+            'image/x-jpeg2000-image',
+            'image/bmp',
+            'image/x-bitmap',
+            'image/x-bmp',
+            'application/bmp',
+            'application/x-bmp',
+            'image/x-targa',
+            'image/x-tga',
+            'image/targa',
+            'image/tga',
+            'image/vnd.adobe.photoshop',
+            'application/x-photoshop',
+            'application/photoshop',
+            'application/psd',
+            'image/psd']
+
+
+def get_supported_image_mimetypes() -> typing.List[str]:
+    """
+    Get all supported ``--image-seeds`` image mimetypes, including animated image mimetypes
+
+    :return: list of strings
+    """
+    return get_supported_static_image_mimetypes() + get_supported_animated_image_mimetypes()
+
+
+def get_supported_video_mimetypes() -> typing.List[str]:
+    """
+    Get all supported ``--image-seeds`` video mimetypes, may contain a wildcard
+
+    :return: list of strings
+    """
+    return ['video/*']
+
+
+def get_supported_mimetypes() -> typing.List[str]:
+    """
+    Get all supported ``--image-seeds`` mimetypes, video mimetype may contain a wildcard.
+
+    :return: list of strings
+    """
+    return get_supported_image_mimetypes() + get_supported_video_mimetypes()
+
+
+def mimetype_is_animated_image(mimetype: str) -> bool:
+    """
+    Check if a mimetype is one that dgenerate considers an animated image
+
+    :param mimetype: The mimetype string
+    :return: bool
+    """
+    return mimetype in get_supported_animated_image_mimetypes()
+
+
+def mimetype_is_static_image(mimetype: str) -> bool:
+    """
+    Check if a mimetype is one that dgenerate considers a static image
+
+    :param mimetype: The mimetype string
+    :return: bool
+    """
+    return mimetype in get_supported_static_image_mimetypes()
+
+
+def mimetype_is_video(mimetype: str) -> bool:
+    """
+    Check if a mimetype is a video mimetype supported by dgenerate
+
+    :param mimetype: The mimetype string
+
+    :return: bool
+    """
+    if mimetype is None:
+        return False
+    return mimetype.startswith('video')
+
+
+# noinspection PyPep8
+def mimetype_is_supported(mimetype: str) -> bool:
+    """
+    Check if dgenerate supports a given input mimetype
+
+    :param mimetype: The mimetype string
+
+    :return: bool
+    """
+    return mimetype_is_static_image(mimetype) or \
+           mimetype_is_animated_image(mimetype) or \
+           mimetype_is_video(mimetype)
+
+
 class ImageSeedParseResult:
     """
     The result of parsing an ``--image-seeds`` uri
@@ -797,8 +905,36 @@ def _wipe_web_cache_directory():
 atexit.register(_wipe_web_cache_directory)
 
 
-def _generate_web_cache_file(url, mime_acceptable_desc):
+def create_web_cache_file(url,
+                          mime_acceptable_desc: str = _textprocessing.oxford_comma(
+                              get_supported_mimetypes(), conjunction='or'),
+                          mimetype_is_supported: typing.Optional[typing.Callable[[str], bool]] = mimetype_is_supported) \
+        -> typing.Tuple[str, str]:
+    """
+    Download a file from a url and add it to dgenerates temporary web cache that is
+    available to all concurrent dgenerate processes.
+
+    If the file exists in the cache already, return information for the existing file.
+
+    :param url: The url
+
+    :param mime_acceptable_desc: a string describing what mimetype values are acceptable which is used
+        when :py:exc:`.UnknownMimetypeError` is raised.
+
+    :param mimetype_is_supported: a function that test if a mimetype string is supported, if you
+        supply the value ``None`` all mimetypes are considered supported.
+
+    :raise UnknownMimetypeError: if a mimetype is considered not supported
+
+    :return: tuple(mimetype_str, filepath)
+    """
+
     cache_dir = get_web_cache_directory()
+
+    def _mimetype_is_supported(mimetype):
+        if mimetype_is_supported is not None:
+            return mimetype_is_supported(mimetype)
+        return True
 
     with _get_web_cache_db() as db:
         cursor = db.cursor()
@@ -814,7 +950,7 @@ def _generate_web_cache_file(url, mime_acceptable_desc):
         req = requests.get(url, headers=headers, stream=True)
         mime_type = req.headers['content-type']
 
-        if not mime_type_is_supported(mime_type):
+        if not _mimetype_is_supported(mime_type):
             raise UnknownMimetypeError(
                 f'Unknown mimetype "{mime_type}" for file "{url}". '
                 f'Expected: {mime_acceptable_desc}')
@@ -861,12 +997,13 @@ def fetch_media_data_stream(uri: str) -> typing.Tuple[str, typing.BinaryIO]:
     :rtype: (mime-type string, BinaryIO)
     """
 
-    mime_acceptable_desc = _textprocessing.oxford_comma(get_supported_mimetypes(), conjunction='or')
-
     if uri.startswith('http://') or uri.startswith('https://'):
-        mime_type, filename = _generate_web_cache_file(uri, mime_acceptable_desc)
+        mime_type, filename = create_web_cache_file(uri)
         return mime_type, open(filename, mode='rb')
     else:
+        mime_acceptable_desc = _textprocessing.oxford_comma(
+            get_supported_mimetypes(), conjunction='or')
+
         mime_type = mimetypes.guess_type(uri)[0]
 
         if mime_type is None:
@@ -877,119 +1014,11 @@ def fetch_media_data_stream(uri: str) -> typing.Tuple[str, typing.BinaryIO]:
             if ext is not None:
                 mime_type = _MIME_TYPES_GUESS_EXTRA.get(ext)
 
-        if not mime_type_is_supported(mime_type):
+        if not mimetype_is_supported(mime_type):
             raise UnknownMimetypeError(
                 f'Unknown mimetype "{mime_type}" for file "{uri}". Expected: {mime_acceptable_desc}')
 
     return mime_type, open(uri, 'rb')
-
-
-def get_supported_animated_image_mimetypes() -> typing.List[str]:
-    return ['image/gif', 'image/webp', 'image/apng']
-
-
-def get_supported_static_image_mimetypes() -> typing.List[str]:
-    return ['image/png',
-            'application/png',
-            'application/x-png',
-            'image/jpeg',
-            'image/jpg',
-            'application/jpg',
-            'application/x-jpg',
-            'image/jp2',
-            'image/jpx',
-            'image/j2k',
-            'image/jpeg2000',
-            'image/jpeg2000-image',
-            'image/x-jpeg2000-image',
-            'image/bmp',
-            'image/x-bitmap',
-            'image/x-bmp',
-            'application/bmp',
-            'application/x-bmp',
-            'image/x-targa',
-            'image/x-tga',
-            'image/targa',
-            'image/tga',
-            'image/vnd.adobe.photoshop',
-            'application/x-photoshop',
-            'application/photoshop',
-            'application/psd',
-            'image/psd']
-
-
-def get_supported_image_mimetypes() -> typing.List[str]:
-    """
-    Get all supported ``--image-seeds`` image mimetypes, including animated image mimetypes
-
-    :return: list of strings
-    """
-    return get_supported_static_image_mimetypes() + get_supported_animated_image_mimetypes()
-
-
-def get_supported_video_mimetypes() -> typing.List[str]:
-    """
-    Get all supported ``--image-seeds`` video mimetypes, may contain a wildcard
-
-    :return: list of strings
-    """
-    return ['video/*']
-
-
-def get_supported_mimetypes() -> typing.List[str]:
-    """
-    Get all supported ``--image-seeds`` mimetypes, video mimetype may contain a wildcard.
-
-    :return: list of strings
-    """
-    return get_supported_image_mimetypes() + get_supported_video_mimetypes()
-
-
-def mimetype_is_animated_image(mimetype: str) -> bool:
-    """
-    Check if a mimetype is one that dgenerate considers an animated image
-
-    :param mimetype: The mimetype string
-    :return: bool
-    """
-    return mimetype in get_supported_animated_image_mimetypes()
-
-
-def mimetype_is_static_image(mimetype: str) -> bool:
-    """
-    Check if a mimetype is one that dgenerate considers a static image
-
-    :param mimetype: The mimetype string
-    :return: bool
-    """
-    return mimetype in get_supported_static_image_mimetypes()
-
-
-def mimetype_is_video(mimetype: str) -> bool:
-    """
-    Check if a mimetype is a video mimetype supported by dgenerate
-
-    :param mimetype: The mimetype string
-
-    :return: bool
-    """
-    if mimetype is None:
-        return False
-    return mimetype.startswith('video')
-
-
-# noinspection PyPep8
-def mime_type_is_supported(mimetype: str) -> bool:
-    """
-    Check if dgenerate supports a given input mimetype
-
-    :param mimetype: The mimetype string
-
-    :return: bool
-    """
-    return mimetype_is_static_image(mimetype) or \
-           mimetype_is_animated_image(mimetype) or \
-           mimetype_is_video(mimetype)
 
 
 def create_image(

@@ -1,8 +1,11 @@
 #! dgenerate 2.2.0
 
+\set upscaler_model https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth
+
 stabilityai/stable-diffusion-2
 --inference-steps 40
 --guidance-scales 8
 --output-size 1024
 --gen-seeds 2
 --prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork"
+--postprocessors "upscaler;model={{ upscaler_model }}"
