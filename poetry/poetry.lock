@@ -545,13 +545,13 @@ tests = ["pytest", "pytest-cov", "pytest-xdist"]
 
 [[package]]
 name = "diffusers"
-version = "0.22.3"
+version = "0.23.0"
 description = "State-of-the-art diffusion in PyTorch and JAX."
 optional = false
 python-versions = ">=3.8.0"
 files = [
-    {file = "diffusers-0.22.3-py3-none-any.whl", hash = "sha256:fdaf3a4c9c728f7d90796e0e5826286db7c7a2dce0e37c66870aee4cc10a2d75"},
-    {file = "diffusers-0.22.3.tar.gz", hash = "sha256:47a20e16649899eb302af76e9103536708d57c3acaf7d3ab68e4140af67a17cd"},
+    {file = "diffusers-0.23.0-py3-none-any.whl", hash = "sha256:4011e7a29681489e55496350c47ffb940fcfa52771306ae713a5810bf37d6813"},
+    {file = "diffusers-0.23.0.tar.gz", hash = "sha256:51310bcdd48ab59dcb6dde904a0c2bb2430c835c6e046e9e36f60a42e03e90d4"},
 ]
 
 [package.dependencies]
@@ -3199,4 +3199,4 @@ flax = ["flax", "jax"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.13"
-content-hash = "96639d6d295019f7569b8caf2b629199a42dedef800c4d7390140d171e68ac15"
+content-hash = "aadba2284593edda6404e4ba0327401d8d5a11178c97b84afd9b8d81cedb52cc"
