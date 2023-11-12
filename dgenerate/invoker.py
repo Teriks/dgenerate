@@ -25,6 +25,7 @@ import dgenerate.mediainput as _mediainput
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.preprocessors as _preprocessors
+import dgenerate.postprocessors as _postprocessors
 import dgenerate.renderloop as _renderloop
 
 
@@ -65,6 +66,12 @@ def invoke_dgenerate(
         try:
             return _preprocessors.image_preprocessor_help(args, throw=throw)
         except _preprocessors.PreprocessorHelpUsageError as e:
+            raise _arguments.DgenerateUsageError(e)
+
+    if '--postprocessor-help' in args:
+        try:
+            return _postprocessors.postprocessor_help(args, throw=throw)
+        except _postprocessors.PostprocessorHelpUsageError as e:
             raise _arguments.DgenerateUsageError(e)
 
     if '--templates-help' in args:

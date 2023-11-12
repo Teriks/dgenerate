@@ -531,6 +531,11 @@ class RenderLoopConfig(_types.SetFromMixin):
     IE: it is a token.
     """
 
+    postprocessors: _types.OptionalUris = None
+    """
+    Corresponds to the ``--postprocessors`` argument of the dgenerate command line tool verbatim.
+    """
+
     offline_mode: bool = False
     """
     Avoid ever connecting to the huggingface API? this can be used if all your models are cached or

@@ -27,15 +27,13 @@ from dgenerate import messages as _messages
 from .exceptions import \
     ImagePostprocessorNotFoundError, \
     ImagePostprocessorArgumentError
-
 from .loader import Loader
 from .postprocessor import ImagePostprocessor
 from .postprocessorchain import ImagePostprocessorChain
-
 from .upscaler import Upscaler
 
 _help_parser = argparse.ArgumentParser(prog='dgenerate', exit_on_error=False)
-_help_parser.add_argument('--image-postprocessor-help', nargs='*', default=[], type=str)
+_help_parser.add_argument('--postprocessor-help', nargs='*', default=[], type=str)
 _help_parser.add_argument('--plugin-modules', nargs='+', default=[], type=str)
 
 
@@ -46,7 +44,7 @@ class PostprocessorHelpUsageError(Exception):
     pass
 
 
-def image_postprocessor_help(args: typing.Sequence[str], throw: bool = False):
+def postprocessor_help(args: typing.Sequence[str], throw: bool = False):
     """
     Implements ``--image-postprocessor-help`` command line option
 
@@ -66,7 +64,7 @@ def image_postprocessor_help(args: typing.Sequence[str], throw: bool = False):
             raise PostprocessorHelpUsageError(e)
         return 1
 
-    names = parse_result.image_postprocessor_help
+    names = parse_result.postprocessor_help
 
     module_loader = Loader()
     module_loader.load_plugin_modules(parse_result.plugin_modules)
@@ -74,7 +72,7 @@ def image_postprocessor_help(args: typing.Sequence[str], throw: bool = False):
     if len(names) == 0:
         available = ('\n' + ' ' * 4).join(_textprocessing.quote(name) for name in module_loader.get_all_names())
         _messages.log(
-            f'Available image postprocessors:\n\n{" " * 4}{available}')
+            f'Available postprocessors:\n\n{" " * 4}{available}')
         return 0
 
     help_strs = []
@@ -82,7 +80,7 @@ def image_postprocessor_help(args: typing.Sequence[str], throw: bool = False):
         try:
             help_strs.append(module_loader.get_help(name))
         except ImagePostprocessorNotFoundError:
-            _messages.log(f'An image postprocessor with the name of "{name}" could not be found!',
+            _messages.log(f'A postprocessor with the name of "{name}" could not be found!',
                           level=_messages.ERROR)
             return 1
 
