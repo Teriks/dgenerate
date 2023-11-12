@@ -237,7 +237,7 @@ dgenerate.plugin module
 
 
 dgenerate.postprocessors module
-------------------------------
+-------------------------------
 
 .. automodule:: dgenerate.postprocessors
    :members:
