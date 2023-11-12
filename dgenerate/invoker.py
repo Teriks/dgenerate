@@ -110,6 +110,9 @@ def invoke_dgenerate(
         render_loop.preprocessor_loader. \
             load_plugin_modules(arguments.plugin_module_paths)
 
+        render_loop.postprocessor_loader. \
+            load_plugin_modules(arguments.plugin_module_paths)
+
         if arguments.verbose:
             _messages.LEVEL = _messages.DEBUG
         else:

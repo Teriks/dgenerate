@@ -41,10 +41,10 @@ class ImagePostprocessor(_plugin.InvokablePlugin):
     def get_int_arg(name: str, value: typing.Union[str, int, typing.Dict]) -> int:
         """
         Convert an argument value from a string to an integer.
-        Throw :py:exc:`.ImagePreprocessorArgumentError` if there
+        Throw :py:exc:`.ImagePostprocessorArgumentError` if there
         is an error parsing the value.
 
-        :raises ImagePreprocessorArgumentError:
+        :raises ImagePostprocessorArgumentError:
 
         :param name: the argument name for descriptive purposes,
             and/or for specifying the dictionary key when *value*
