@@ -40,8 +40,8 @@ from .preprocessorchain import ImagePreprocessorChain
 from .preprocessormixin import ImagePreprocessorMixin
 
 _help_parser = argparse.ArgumentParser(prog='dgenerate', exit_on_error=False)
-_help_parser.add_argument('--image-preprocessor-help', nargs='*', default=[], type=str)
-_help_parser.add_argument('--plugin-modules', nargs='+', default=[], type=str)
+_help_parser.add_argument('-iph', '--image-preprocessor-help', metavar='PREPROCESSOR', nargs='*', default=[], type=str)
+_help_parser.add_argument('-pm', '--plugin-modules', metavar='PATH', nargs='+', default=[], type=str)
 
 
 class PreprocessorHelpUsageError(Exception):
