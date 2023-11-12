@@ -33,8 +33,8 @@ from .postprocessorchain import ImagePostprocessorChain
 from .upscaler import Upscaler
 
 _help_parser = argparse.ArgumentParser(prog='dgenerate', exit_on_error=False)
-_help_parser.add_argument('--postprocessor-help', nargs='*', default=[], type=str)
-_help_parser.add_argument('--plugin-modules', nargs='+', default=[], type=str)
+_help_parser.add_argument('-pph', '--postprocessor-help', metavar='POSTPROCESSOR', nargs='*', default=[], type=str)
+_help_parser.add_argument('-pm', '--plugin-modules', metavar='PATH', nargs='+', default=[], type=str)
 
 
 class PostprocessorHelpUsageError(Exception):

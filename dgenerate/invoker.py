@@ -62,13 +62,13 @@ def invoke_dgenerate(
     if render_loop is None:
         render_loop = _renderloop.RenderLoop()
 
-    if '--image-preprocessor-help' in args:
+    if '-iph' in args or '--image-preprocessor-help' in args:
         try:
             return _preprocessors.image_preprocessor_help(args, throw=throw)
         except _preprocessors.PreprocessorHelpUsageError as e:
             raise _arguments.DgenerateUsageError(e)
 
-    if '--postprocessor-help' in args:
+    if '-pph' in args or '--postprocessor-help' in args:
         try:
             return _postprocessors.postprocessor_help(args, throw=throw)
         except _postprocessors.PostprocessorHelpUsageError as e:
