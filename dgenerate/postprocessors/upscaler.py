@@ -6,7 +6,15 @@ import dgenerate.postprocessors.postprocessor as _postprocessor
 
 class Upscaler(_postprocessor.ImagePostprocessor):
     """
-    Implements tiled upscaling with chainner compatible upscaler models.
+    Implements tiled upscaling with chaiNNer compatible upscaler models.
+
+    The "model" argument should be a path to a chaiNNer compatible upscaler model,
+    such as a model downloaded from https://openmodeldb.info/.  You must download the
+    model yourself, it must be a file on disk.
+
+    The "tile" argument indicates the tile size for tiled upscaling, and defaults to 512.
+
+    The "overlap" argument indicates the overlap amount of each tile in pixels, and defaults to 32.
     """
 
     NAMES = ['upscaler']

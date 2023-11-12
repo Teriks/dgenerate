@@ -28,6 +28,7 @@ warnings.filterwarnings('ignore', module='controlnet_aux')
 warnings.filterwarnings('ignore', module='diffusers')
 warnings.filterwarnings('ignore', module='transformers')
 warnings.filterwarnings('ignore', module='huggingface_hub')
+warnings.filterwarnings('ignore', module='torch')
 
 try:
     import diffusers

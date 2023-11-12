@@ -34,6 +34,7 @@ import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
+import dgenerate.postprocessors as _postprocessors
 import dgenerate.preprocessors as _preprocessors
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
@@ -169,14 +170,19 @@ class RenderLoop:
 
         return self._pipeline_wrapper
 
-    def __init__(self, config=None, preprocessor_loader=None):
+    def __init__(self, config=None, preprocessor_loader=None, postprocessor_loader=None):
         """
         :param config: :py:class:`.RenderLoopConfig` or :py:class:`dgenerate.arguments.DgenerateArguments`.
             If None is provided, a :py:class:`.RenderLoopConfig` instance will be created and
             assigned to :py:attr:`.RenderLoop.config`.
+
         :param preprocessor_loader: :py:class:`dgenerate.preprocessors.loader.Loader`.
             If None is provided, an instance will be created and assigned to
             :py:attr:`.RenderLoop.preprocessor_loader`.
+
+        :param postprocessor_loader: :py:class:`dgenerate.postprocessors.loader.Loader`.
+            If None is provided, an instance will be created and assigned to
+            :py:attr:`.RenderLoop.postprocessor_loader`.
         """
 
         self._generation_step = -1
@@ -191,6 +197,9 @@ class RenderLoop:
 
         self.preprocessor_loader = \
             _preprocessors.Loader() if preprocessor_loader is None else preprocessor_loader
+
+        self.postprocessor_loader = \
+            _postprocessors.Loader() if postprocessor_loader is None else postprocessor_loader
 
         self.image_generated_callbacks = []
 
@@ -307,7 +316,6 @@ class RenderLoop:
         if with_output_path:
             return os.path.join(self.config.output_path, name)
         return name
-
 
     @staticmethod
     def _gen_filename_components_base(diffusion_args: _pipelinewrapper.DiffusionArguments):
@@ -516,6 +524,8 @@ class RenderLoop:
                                  generation_result: _pipelinewrapper.PipelineWrapperResult,
                                  image_seed: typing.Optional[_mediainput.ImageSeed] = None):
 
+        self._run_postprocess(generation_result)
+
         if self.config.batch_grid_size is None:
 
             for batch_idx, image in enumerate(generation_result.images):
@@ -673,6 +683,8 @@ class RenderLoop:
         self._written_images = tempfile.TemporaryFile('w+t')
         self._written_animations = tempfile.TemporaryFile('w+t')
 
+        self._init_postprocessor(self.config.postprocessors)
+
         self._generation_step = -1
         self._frame_time_sum = 0
         self._last_frame_time = 0
@@ -706,6 +718,17 @@ class RenderLoop:
                                       height=self.config.output_size[1],
                                       batch_size=self.config.batch_size) as generation_result:
                     self._write_prompt_only_image(diffusion_args, generation_result)
+
+    def _init_postprocessor(self, postprocessors):
+        self._postprocessor = self.postprocessor_loader.load(postprocessors, self.config.device)
+
+    def _run_postprocess(self, generation_result: _pipelinewrapper.PipelineWrapperResult):
+        if self._postprocessor is not None:
+            for idx, image in enumerate(generation_result.images):
+                img = _postprocessors.ImagePostprocessor.call_process(self._postprocessor, image)
+                if img is not image:
+                    image.close()
+                generation_result.images[idx] = img
 
     def _load_preprocessors(self, preprocessors):
         return self.preprocessor_loader.load(preprocessors, self.config.device)

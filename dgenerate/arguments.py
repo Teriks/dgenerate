@@ -418,7 +418,8 @@ actions.append(
                         you may still run into memory issues generating large images."""))
 
 actions.append(
-    parser.add_argument('-lra', '--loras', '--lora', nargs='+', action='store', default=None, metavar="LORA_URI", dest='lora_uris',
+    parser.add_argument('-lra', '--loras', '--lora', nargs='+', action='store', default=None, metavar="LORA_URI",
+                        dest='lora_uris',
                         help=
                         """Specify one or more LoRA models using URIs (flax not supported). These should be a
                         huggingface repository slug, path to model file on disk (for example, a .pt, .pth, .bin,
@@ -864,7 +865,6 @@ actions.append(
                         Example: --prompts "shrek flying a tesla over detroit; clouds, rain, missiles".
                         (default: [(empty string)])"""))
 
-
 actions.append(
     parser.add_argument('-cs', '--clip-skips', nargs='+', action='store', metavar="INTEGER",
                         default=None,
@@ -991,6 +991,24 @@ actions.append(
                         dest=None,
                         help="""Use this option alone (or with --plugin-modules) and no model 
                         specification in order to list available image preprocessor module names. 
+                        Specifying one or more module names after this option will cause usage 
+                        documentation for the specified modules to be printed."""))
+
+actions.append(
+    parser.add_argument('-pp', '--postprocessors', action='store', nargs='+', default=None,
+                        metavar="POSTPROCESSOR",
+                        help="""Specify one or more postprocessor actions to preform on generated 
+                        output before it is saved. For example: --postprocessors "upcaler;model=4x_ESRGAN.pth".
+                        To obtain more information about what postprocessors are available and how to use them, 
+                        see: --postprocessor-help."""))
+
+# This argument is handled in dgenerate.invoker.invoke_dgenerate
+actions.append(
+    parser.add_argument('-pph', '--postprocessor-help', action='store', nargs='*', default=None,
+                        metavar="POSTPROCESSOR",
+                        dest=None,
+                        help="""Use this option alone (or with --plugin-modules) and no model 
+                        specification in order to list available image postprocessor module names. 
                         Specifying one or more module names after this option will cause usage 
                         documentation for the specified modules to be printed."""))
 

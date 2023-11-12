@@ -22,6 +22,7 @@ import typing
 
 import PIL.Image
 
+import dgenerate.image as _image
 import dgenerate.plugin as _plugin
 import dgenerate.postprocessors.exceptions as _exceptions
 import dgenerate.types as _types
@@ -143,4 +144,6 @@ class ImagePostprocessor(_plugin.InvokablePlugin):
         :return: processed image, may be the same image or a copy.
         """
 
-        return postprocessor.process(image)
+        img = postprocessor.process(image)
+        img.filename = _image.get_filename(image)
+        return img
