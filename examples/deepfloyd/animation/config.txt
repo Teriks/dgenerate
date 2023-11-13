@@ -1,4 +1,4 @@
-#! dgenerate 2.2.0
+#! dgenerate 3.0.0
 
 \set image_to_vary ../../media/rickroll-roll.gif
 

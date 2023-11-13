@@ -725,9 +725,8 @@ class RenderLoop:
     def _run_postprocess(self, generation_result: _pipelinewrapper.PipelineWrapperResult):
         if self._postprocessor is not None:
             for idx, image in enumerate(generation_result.images):
-                img = _postprocessors.ImagePostprocessor.call_process(self._postprocessor, image)
-                if img is not image:
-                    image.close()
+                img = self._postprocessor.process(image)
+
                 generation_result.images[idx] = img
 
     def _load_preprocessors(self, preprocessors):

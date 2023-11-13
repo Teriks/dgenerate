@@ -151,7 +151,7 @@ class CannyEdgeDetectPreprocess(_preprocessor.ImagePreprocessor):
 
         return PIL.Image.fromarray(cv2.cvtColor(edges, convert_back))
 
-    def pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
+    def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         """
         Pre resize, canny edge detection may or may not occur here depending
         on the boolean value of the preprocessor argument "pre-resize"
@@ -164,7 +164,7 @@ class CannyEdgeDetectPreprocess(_preprocessor.ImagePreprocessor):
             return self._process(image)
         return image
 
-    def post_resize(self, image: PIL.Image.Image):
+    def impl_post_resize(self, image: PIL.Image.Image):
         """
         Post resize, canny edge detection may or may not occur here depending
         on the boolean value of the preprocessor argument "pre-resize"

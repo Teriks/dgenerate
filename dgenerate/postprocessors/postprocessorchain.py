@@ -67,7 +67,7 @@ class ImagePostprocessorChain(_postprocessor.ImagePostprocessor):
         """
         self._postprocessors.append(postprocessor)
 
-    def process(self, image: PIL.Image.Image):
+    def impl_process(self, image: PIL.Image.Image):
         """
         Invoke process on all postprocessors in this postprocessor chain in turn.
 
@@ -84,7 +84,7 @@ class ImagePostprocessorChain(_postprocessor.ImagePostprocessor):
         if self._postprocessors:
             p_image = image
             for postprocessor in self._postprocessors:
-                new_img = _postprocessor.ImagePostprocessor.call_process(postprocessor, p_image)
+                new_img = postprocessor.process(p_image)
                 if new_img is not p_image:
                     p_image.close()
                 p_image = new_img

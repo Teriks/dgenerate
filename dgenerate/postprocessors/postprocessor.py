@@ -127,23 +127,28 @@ class ImagePostprocessor(_plugin.InvokablePlugin):
         """
         return self.__device
 
-    def process(self, image: PIL.Image.Image) -> PIL.Image.Image:
+    def impl_process(self, image: PIL.Image.Image) -> PIL.Image.Image:
+        """
+        Implementation of process that does nothing. Inheritor must implement.
+
+        :param image: input image
+        :return: output image
+        """
         return image
 
-    @staticmethod
-    def call_process(postprocessor,
-                     image: PIL.Image.Image) -> PIL.Image.Image:
+    def process(self, image: PIL.Image.Image) -> PIL.Image.Image:
         """
-        Invoke a postprocessors :py:meth:`.ImagePostprocessor.process` method.
+        Invoke a postprocessors :py:meth:`.ImagePostprocessor.impl_process` method.
 
         This is the only appropriate way to invoke a postprocessor manually.
 
-        :param postprocessor: :py:class:`.ImagePostprocessor` implementation instance
         :param image: the image to pass
 
         :return: processed image, may be the same image or a copy.
         """
 
-        img = postprocessor.process(image)
+        img = self.impl_process(image)
+
         img.filename = _image.get_filename(image)
+
         return img
