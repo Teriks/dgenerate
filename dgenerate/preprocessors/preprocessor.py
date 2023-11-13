@@ -268,7 +268,7 @@ class ImagePreprocessor(_plugin.InvokablePlugin):
         return image
 
     def __str__(self):
-        return self.__class__.__name__
+        return f'{self.__class__.__name__}(called_by_name="{self.called_by_name}")'
 
     def __repr__(self):
         return str(self)
