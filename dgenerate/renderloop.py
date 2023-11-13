@@ -367,6 +367,13 @@ class RenderLoop(_postprocessors.ImagePostprocessorMixin):
             render_loop_opts.append(('--control-image-preprocessors',
                                      self.config.control_image_preprocessors))
 
+        if self.config.postprocessors:
+            render_loop_opts.append(('--postprocessors',
+                                     self.config.postprocessors))
+
+        if self.config.seeds_to_images:
+            render_loop_opts.append(('--seeds-to-images',))
+
         if self.config.no_aspect:
             render_loop_opts.append(('--no-aspect',))
 
@@ -725,6 +732,7 @@ class RenderLoop(_postprocessors.ImagePostprocessorMixin):
         else:
             self._postprocessor = _postprocessors.ImagePostprocessorMixin(
                 self.postprocessor_loader.load(postprocessors, self.config.device))
+            _messages.debug_log('Loaded Postprocessor:', self._postprocessor)
 
     def _run_postprocess(self, generation_result: _pipelinewrapper.PipelineWrapperResult):
         if self._postprocessor is not None:
