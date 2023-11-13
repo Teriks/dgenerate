@@ -49,5 +49,3 @@ class Upscaler(_postprocessor.ImagePostprocessor):
     def impl_process(self, image: PIL.Image.Image) -> PIL.Image.Image:
         return chainner.upscale(self._model, image, self._tile, self._overlap, self.device)
 
-    def __str__(self):
-        return f'{self.__class__.__name__}(function="{self.called_by_name}")'

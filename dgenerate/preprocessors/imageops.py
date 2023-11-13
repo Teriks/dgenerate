@@ -52,9 +52,6 @@ class MirrorFlipPreprocess(_preprocessor.ImagePreprocessor):
         elif self.called_by_name == 'mirror':
             self._func = PIL.ImageOps.mirror
 
-    def __str__(self):
-        return f'{self.__class__.__name__}(function="{self.called_by_name}")'
-
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         """
         Mirrors or flips the image depending on what name was used to invoke this
@@ -100,9 +97,6 @@ class SimpleColorPreprocess(_preprocessor.ImagePreprocessor):
             self._func = PIL.ImageOps.grayscale
         elif self.called_by_name == 'invert':
             self._func = PIL.ImageOps.invert
-
-    def __str__(self):
-        return f'{self.__class__.__name__}(function="{self.called_by_name}")'
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         """

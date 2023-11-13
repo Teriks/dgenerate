@@ -152,3 +152,9 @@ class ImagePostprocessor(_plugin.InvokablePlugin):
         img.filename = _image.get_filename(image)
 
         return img
+
+    def __str__(self):
+        return f'{self.__class__.__name__}(called_by_name="{self.called_by_name}")'
+
+    def __repr__(self):
+        return str(self)
