@@ -1294,12 +1294,12 @@ class MultiAnimationReader:
             for idx in range(0, self._frame_start):
                 for r in self._readers:
                     if isinstance(r, _preprocessors.ImagePreprocessorMixin):
-                        old_val = r.preprocess_enabled
-                        r.preprocess_enabled = False
+                        old_val = r.image_preprocessor_enabled
+                        r.image_preprocessor_enabled = False
                         try:
                             r.__next__().close()
                         finally:
-                            r.preprocess_enabled = old_val
+                            r.image_preprocessor_enabled = old_val
                     else:
                         r.__next__().close()
 
