@@ -25,20 +25,28 @@ import dgenerate.image as _image
 import dgenerate.messages as _messages
 import dgenerate.preprocessors.preprocessor as _preprocessor
 import dgenerate.types as _types
+import typing
 
 
 class ImagePreprocessorMixin:
     """
-    Mixin functionality for objects that do image preprocessing such as
-    implementors of :py:class:`dgenerate.mediainput.AnimationReader`
+    Mixin functionality for objects that do image preprocessing such as implementors
+    of :py:class:`dgenerate.mediainput.AnimationReader`
+
+    This object can also be instantiated and used alone.
     """
 
-    preprocessor_enabled: bool
+    image_preprocessor_enabled: bool
     """
     Enable or disable image preprocessing.
     """
 
-    def __init__(self, preprocessor: _preprocessor.ImagePreprocessor, *args, **kwargs):
+    image_preprocessor: typing.Optional[_preprocessor.ImagePreprocessor] = None
+    """
+    Current image preprocessor.
+    """
+
+    def __init__(self, preprocessor: typing.Optional[_preprocessor.ImagePreprocessor] = None, *args, **kwargs):
         """
         :param preprocessor: the preprocessor implementation that will be doing
             the image preprocessing.
@@ -47,34 +55,34 @@ class ImagePreprocessorMixin:
         :param kwargs: mixin forwarded kwargs
         """
         super().__init__(*args, **kwargs)
-        self._preprocessor = preprocessor
-        self.preprocess_enabled: bool = True
+        self.image_preprocessor = preprocessor
+        self.image_preprocessor_enabled: bool = True
 
     def _preprocess_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
-        if self._preprocessor is not None and self.preprocess_enabled:
+        if self.image_preprocessor is not None and self.image_preprocessor_enabled:
             filename = _image.get_filename(image)
 
             _messages.debug_log('Starting Image Preprocess - '
-                                f'{self._preprocessor}.pre_resize('
+                                f'{self.image_preprocessor}.pre_resize('
                                 f'image="{filename}", resize_resolution={resize_resolution})')
 
-            processed = self._preprocessor.pre_resize(image, resize_resolution)
+            processed = self.image_preprocessor.pre_resize(image, resize_resolution)
 
-            _messages.debug_log(f'Finished Image Preprocess - {self._preprocessor}.pre_resize')
+            _messages.debug_log(f'Finished Image Preprocess - {self.image_preprocessor}.pre_resize')
             return processed
         return image
 
     def _preprocess_post_resize(self, image: PIL.Image.Image):
-        if self._preprocessor is not None and self.preprocess_enabled:
+        if self.image_preprocessor is not None and self.image_preprocessor_enabled:
             filename = _image.get_filename(image)
 
             _messages.debug_log('Starting Image Preprocess - '
-                                f'{self._preprocessor}.post_resize('
+                                f'{self.image_preprocessor}.post_resize('
                                 f'image="{filename}")')
 
-            processed = self._preprocessor.post_resize(image)
+            processed = self.image_preprocessor.post_resize(image)
 
-            _messages.debug_log(f'Finished Image Preprocess - {self._preprocessor}.post_resize')
+            _messages.debug_log(f'Finished Image Preprocess - {self.image_preprocessor}.post_resize')
             return processed
         return image
 
@@ -85,6 +93,7 @@ class ImagePreprocessorMixin:
         Invokes the assigned image preprocessor pre and post resizing with appropriate
         arguments and correct resource management.
 
+        If no preprocessor is assigned or the preprocessor is disabled, this is a no-op.
 
         :param image: image to process
         :param resize_to: image will be resized to this dimension by this method.
@@ -93,6 +102,9 @@ class ImagePreprocessorMixin:
         :return: the processed image, processed by the
             preprocessor assigned in the constructor.
         """
+
+        if self.image_preprocessor is None or not self.image_preprocessor_enabled:
+            return image
 
         # This is the actual size it will end
         # up being resized to by resize_image

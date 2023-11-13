@@ -30,6 +30,7 @@ from .exceptions import \
 from .loader import Loader
 from .postprocessor import ImagePostprocessor
 from .postprocessorchain import ImagePostprocessorChain
+from .postprocessormixin import ImagePostprocessorMixin
 from .upscaler import Upscaler
 
 _help_parser = argparse.ArgumentParser(prog='dgenerate', exit_on_error=False)

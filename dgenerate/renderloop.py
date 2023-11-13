@@ -123,7 +123,7 @@ ImageGeneratedCallbacks = typing.List[
     typing.Callable[[ImageGeneratedCallbackArgument], None]]
 
 
-class RenderLoop:
+class RenderLoop(_postprocessors.ImagePostprocessorMixin):
     """
     Render loop which implements the bulk of dgenerates rendering capability.
 
@@ -184,6 +184,8 @@ class RenderLoop:
             If None is provided, an instance will be created and assigned to
             :py:attr:`.RenderLoop.postprocessor_loader`.
         """
+
+        self._postprocessor = _postprocessors.ImagePostprocessorMixin()
 
         self._generation_step = -1
         self._frame_time_sum = 0
@@ -523,9 +525,6 @@ class RenderLoop:
                                  diffusion_args: _pipelinewrapper.DiffusionArguments,
                                  generation_result: _pipelinewrapper.PipelineWrapperResult,
                                  image_seed: typing.Optional[_mediainput.ImageSeed] = None):
-
-        self._run_postprocess(generation_result)
-
         if self.config.batch_grid_size is None:
 
             for batch_idx, image in enumerate(generation_result.images):
@@ -717,18 +716,20 @@ class RenderLoop:
                                       width=self.config.output_size[0],
                                       height=self.config.output_size[1],
                                       batch_size=self.config.batch_size) as generation_result:
+                    self._run_postprocess(generation_result)
                     self._write_prompt_only_image(diffusion_args, generation_result)
 
     def _init_postprocessor(self, postprocessors):
         if postprocessors is None:
-            return None
-        self._postprocessor = self.postprocessor_loader.load(postprocessors, self.config.device)
+            self._postprocessor = None
+        else:
+            self._postprocessor = _postprocessors.ImagePostprocessorMixin(
+                self.postprocessor_loader.load(postprocessors, self.config.device))
 
     def _run_postprocess(self, generation_result: _pipelinewrapper.PipelineWrapperResult):
         if self._postprocessor is not None:
             for idx, image in enumerate(generation_result.images):
-                img = self._postprocessor.process(image)
-
+                img = self._postprocessor.postprocess_image(image)
                 generation_result.images[idx] = img
 
     def _load_preprocessors(self, preprocessors):
@@ -867,7 +868,7 @@ class RenderLoop:
 
                         with image_seed, pipeline_wrapper(diffusion_arguments,
                                                           batch_size=self.config.batch_size) as generation_result:
-
+                            self._run_postprocess(generation_result)
                             self._write_image_seed_gen_image(diffusion_arguments, image_seed, generation_result)
 
     def _gen_animation_filename(self,
@@ -930,7 +931,7 @@ class RenderLoop:
 
                         with pipeline_wrapper(diffusion_args,
                                               batch_size=self.config.batch_size) as generation_result:
-
+                            self._run_postprocess(generation_result)
                             self._ensure_output_path()
 
                             if generation_result.image_count > 1 and self.config.batch_grid_size is not None:
