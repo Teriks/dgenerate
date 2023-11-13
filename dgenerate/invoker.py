@@ -129,6 +129,8 @@ def invoke_dgenerate(
             _pipelinewrapper.OutOfMemoryError,
             _preprocessors.ImagePreprocessorArgumentError,
             _preprocessors.ImagePreprocessorNotFoundError,
+            _postprocessors.ImagePostprocessorArgumentError,
+            _postprocessors.ImagePostprocessorNotFoundError,
             NotImplementedError,
             EnvironmentError) as e:
 
