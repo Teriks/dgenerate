@@ -61,7 +61,7 @@ class ImagePostprocessorMixin:
             filename = _image.get_filename(image)
 
             _messages.debug_log('Starting Image Postprocess - '
-                                f'{self.image_postprocessor}.pre_resize(image="{filename}")')
+                                f'{self.image_postprocessor}.process(image="{filename}")')
 
             processed = self.image_postprocessor.process(image)
 
