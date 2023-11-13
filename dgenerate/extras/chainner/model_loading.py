@@ -1,7 +1,7 @@
 import safetensors
 import torch
 
-import dgenerate.chainner.checkpoint_pickle as checkpoint_pickle
+import dgenerate.extras.chainner.checkpoint_pickle as checkpoint_pickle
 import dgenerate.messages
 from .architecture.DAT import DAT
 from .architecture.HAT import HAT
@@ -20,7 +20,7 @@ from .architecture.face.restoreformer_arch import RestoreFormer
 from .types import PyTorchModel
 
 
-class UnsupportedModel(Exception):
+class UnsupportedModelError(Exception):
     """chaiNNer model is not of a supported type."""
     pass
 
@@ -97,7 +97,7 @@ def _load_state_dict(state_dict) -> PyTorchModel:
             model = ESRGAN(state_dict)
         except:
             # pylint: disable=raise-missing-from
-            raise UnsupportedModel
+            raise UnsupportedModelError
     return model
 
 

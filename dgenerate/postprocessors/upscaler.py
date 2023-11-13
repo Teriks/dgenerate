@@ -1,8 +1,8 @@
 import PIL.Image
 
-import dgenerate.chainner
 import dgenerate.mediainput
 import dgenerate.postprocessors.postprocessor as _postprocessor
+from dgenerate.extras import chainner
 
 
 class Upscaler(_postprocessor.ImagePostprocessor):
@@ -34,18 +34,20 @@ class Upscaler(_postprocessor.ImagePostprocessor):
     def __init__(self, model, tile=512, overlap=32, **kwargs):
         super().__init__(**kwargs)
 
-        if model.startswith('http') or model.startswith('https'):
-
-            self._model = dgenerate.chainner.load_model(
-                dgenerate.mediainput.create_web_cache_file(model, mimetype_is_supported=None)[1])
-        else:
-            self._model = dgenerate.chainner.load_model(model)
+        try:
+            if model.startswith('http') or model.startswith('https'):
+                self._model = chainner.load_model(
+                    dgenerate.mediainput.create_web_cache_file(model, mimetype_is_supported=None)[1])
+            else:
+                self._model = chainner.load_model(model)
+        except chainner.UnsupportedModelError:
+            self.argument_error('Unsupported model file format.')
 
         self._tile = self.get_int_arg('tile', tile)
         self._overlap = self.get_int_arg('overlap', overlap)
 
     def process(self, image: PIL.Image.Image) -> PIL.Image.Image:
-        return dgenerate.chainner.upscale(self._model, image, self._tile, self._overlap, self.device)
+        return chainner.upscale(self._model, image, self._tile, self._overlap, self.device)
 
     def __str__(self):
         return f'{self.__class__.__name__}(function="{self.called_by_name}")'
