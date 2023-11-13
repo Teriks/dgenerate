@@ -1,4 +1,4 @@
-#! dgenerate 2.2.0
+#! dgenerate 3.0.0
 
 # Write the variations as seperate files to the output directory with the suffix _image_N
 

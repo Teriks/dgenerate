@@ -58,7 +58,7 @@ class ImagePreprocessorMixin:
                                 f'{self._preprocessor}.pre_resize('
                                 f'image="{filename}", resize_resolution={resize_resolution})')
 
-            processed = _preprocessor.ImagePreprocessor.call_pre_resize(self._preprocessor, image, resize_resolution)
+            processed = self._preprocessor.pre_resize(image, resize_resolution)
 
             _messages.debug_log(f'Finished Image Preprocess - {self._preprocessor}.pre_resize')
             return processed
@@ -72,7 +72,7 @@ class ImagePreprocessorMixin:
                                 f'{self._preprocessor}.post_resize('
                                 f'image="{filename}")')
 
-            processed = _preprocessor.ImagePreprocessor.call_post_resize(self._preprocessor, image)
+            processed = self._preprocessor.post_resize(image)
 
             _messages.debug_log(f'Finished Image Preprocess - {self._preprocessor}.post_resize')
             return processed

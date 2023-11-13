@@ -46,7 +46,7 @@ class Upscaler(_postprocessor.ImagePostprocessor):
         self._tile = self.get_int_arg('tile', tile)
         self._overlap = self.get_int_arg('overlap', overlap)
 
-    def process(self, image: PIL.Image.Image) -> PIL.Image.Image:
+    def impl_process(self, image: PIL.Image.Image) -> PIL.Image.Image:
         return chainner.upscale(self._model, image, self._tile, self._overlap, self.device)
 
     def __str__(self):

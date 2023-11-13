@@ -153,18 +153,17 @@ class ImagePreprocessor(_plugin.InvokablePlugin):
             image.save(filename)
             _messages.debug_log(f'{debug_header}: "{filename}"')
 
-    @staticmethod
-    def call_pre_resize(preprocessor,
-                        image: PIL.Image.Image,
-                        resize_resolution: _types.OptionalSize) -> PIL.Image.Image:
+    def pre_resize(self,
+                   image: PIL.Image.Image,
+                   resize_resolution: _types.OptionalSize = None) -> PIL.Image.Image:
         """
-        Invoke a preprocessors :py:meth:`.ImagePreprocessor.pre_resize` method.
+        Invoke a preprocessors :py:meth:`.ImagePreprocessor.impl_pre_resize` method.
 
         Implements important behaviors depending on if the image was modified.
 
         This is the only appropriate way to invoke a preprocessor manually.
 
-        :param preprocessor: :py:class:`.ImagePreprocessor` implementation instance
+        :param self: :py:class:`.ImagePreprocessor` implementation instance
         :param image: the image to pass
         :param resize_resolution: the size that the image is going to be resized
             to after this step, or None if it is not being resized.
@@ -174,9 +173,9 @@ class ImagePreprocessor(_plugin.InvokablePlugin):
 
         img_copy = image.copy()
 
-        processed = preprocessor.pre_resize(image, resize_resolution)
+        processed = self.impl_pre_resize(image, resize_resolution)
         if processed is not image:
-            preprocessor.__save_debug_image(
+            self.__save_debug_image(
                 processed,
                 'Wrote Preprocessor Debug Image (because copied)')
 
@@ -192,23 +191,22 @@ class ImagePreprocessor(_plugin.InvokablePlugin):
 
         if not identical:
             # Write the debug output if it was modified in place
-            preprocessor.__save_debug_image(
+            self.__save_debug_image(
                 processed,
                 'Wrote Preprocessor Debug Image (because modified)')
 
         return processed
 
-    @staticmethod
-    def call_post_resize(preprocessor,
-                         image: PIL.Image.Image) -> PIL.Image.Image:
+    def post_resize(self,
+                    image: PIL.Image.Image) -> PIL.Image.Image:
         """
-        Invoke a preprocessors :py:meth:`.ImagePreprocessor.post_resize` method.
+        Invoke a preprocessors :py:meth:`.ImagePreprocessor.impl_post_resize` method.
 
         Implements important behaviors depending on if the image was modified.
 
         This is the only appropriate way to invoke a preprocessor manually.
 
-        :param preprocessor: :py:class:`.ImagePreprocessor` implementation instance
+        :param self: :py:class:`.ImagePreprocessor` implementation instance
         :param image: the image to pass
 
         :return: processed image, may be the same image or a copy.
@@ -216,9 +214,9 @@ class ImagePreprocessor(_plugin.InvokablePlugin):
 
         img_copy = image.copy()
 
-        processed = preprocessor.post_resize(image)
+        processed = self.impl_post_resize(image)
         if processed is not image:
-            preprocessor.__save_debug_image(
+            self.__save_debug_image(
                 processed,
                 'Wrote Preprocessor Debug Image (because copied)')
 
@@ -234,13 +232,13 @@ class ImagePreprocessor(_plugin.InvokablePlugin):
 
         if not identical:
             # Write the debug output if it was modified in place
-            preprocessor.__save_debug_image(
+            self.__save_debug_image(
                 processed,
                 'Wrote Preprocessor Debug Image (because modified)')
 
         return processed
 
-    def pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
+    def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         """
         Implementation of pre_resize that does nothing. Inheritor must implement.
 
@@ -257,7 +255,7 @@ class ImagePreprocessor(_plugin.InvokablePlugin):
         """
         return image
 
-    def post_resize(self, image: PIL.Image.Image):
+    def impl_post_resize(self, image: PIL.Image.Image):
         """
         Implementation of post_resize that does nothing. Inheritor must implement.
 

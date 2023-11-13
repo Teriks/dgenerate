@@ -55,7 +55,7 @@ class MirrorFlipPreprocess(_preprocessor.ImagePreprocessor):
     def __str__(self):
         return f'{self.__class__.__name__}(function="{self.called_by_name}")'
 
-    def pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
+    def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         """
         Mirrors or flips the image depending on what name was used to invoke this
         preprocessor implementation.
@@ -66,7 +66,7 @@ class MirrorFlipPreprocess(_preprocessor.ImagePreprocessor):
         """
         return self._func(image)
 
-    def post_resize(self, image: PIL.Image.Image):
+    def impl_post_resize(self, image: PIL.Image.Image):
         """
         Post resize, for this preprocessor nothing happens post-resize.
 
@@ -104,7 +104,7 @@ class SimpleColorPreprocess(_preprocessor.ImagePreprocessor):
     def __str__(self):
         return f'{self.__class__.__name__}(function="{self.called_by_name}")'
 
-    def pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
+    def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         """
         Pre resize, for this preprocessor nothing happens pre-resize.
 
@@ -114,7 +114,7 @@ class SimpleColorPreprocess(_preprocessor.ImagePreprocessor):
         """
         return image
 
-    def post_resize(self, image: PIL.Image.Image):
+    def impl_post_resize(self, image: PIL.Image.Image):
         """
         Invert or grayscale the image depending on which name was used to invoke this preprocessor.
 
@@ -146,7 +146,7 @@ class PosterizePreprocess(_preprocessor.ImagePreprocessor):
             self.argument_error(
                 f'Argument "bits" must be an integer value from 1 to 8, received {self._bits}.')
 
-    def pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
+    def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         """
         Posterize operation is preformed by this method.
 
@@ -156,7 +156,7 @@ class PosterizePreprocess(_preprocessor.ImagePreprocessor):
         """
         return PIL.ImageOps.posterize(image, self._bits)
 
-    def post_resize(self, image: PIL.Image.Image):
+    def impl_post_resize(self, image: PIL.Image.Image):
         """
         Post resize, for this preprocessor nothing happens post-resize.
 
@@ -188,7 +188,7 @@ class SolarizePreprocess(_preprocessor.ImagePreprocessor):
             self.argument_error(
                 f'Argument "threshold" must be an integer value from 0 to 255, received {self._threshold}.')
 
-    def pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
+    def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         """
         Solarize operation is preformed by this method.
 
@@ -198,7 +198,7 @@ class SolarizePreprocess(_preprocessor.ImagePreprocessor):
         """
         return PIL.ImageOps.solarize(image, self._threshold)
 
-    def post_resize(self, image: PIL.Image.Image):
+    def impl_post_resize(self, image: PIL.Image.Image):
         """
         Post resize, for this preprocessor nothing happens post-resize.
 

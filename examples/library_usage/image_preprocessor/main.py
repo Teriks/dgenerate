@@ -32,10 +32,10 @@ class MyPreprocessor(ImagePreprocessor):
                  **kwargs):
         super().__init__(**kwargs)
 
-    def pre_resize(self, image: PIL.Image.Image, resize_resolution: typing.Union[None, tuple]):
+    def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: typing.Union[None, tuple]):
         return PIL.ImageOps.invert(image)
 
-    def post_resize(self, image: PIL.Image.Image):
+    def impl_post_resize(self, image: PIL.Image.Image):
         return image
 
 
