@@ -49,6 +49,8 @@ def invoke_dgenerate(
     :raises dgenerate.mediainput.UnknownMimetypeError:
     :raises dgenerate.preprocessors.ImagePreprocessorArgumentError:
     :raises dgenerate.preprocessors.ImagePreprocessorNotFoundError:
+    :raises dgenerate.postprocessors.ImagePostprocessorArgumentError:
+    :raises dgenerate.postprocessors.ImagePostprocessorNotFoundError:
     :raises dgenerate.pipelinewrapper.InvalidModelUriError:
     :raises dgenerate.pipelinewrapper.InvalidSchedulerName:
     :raises dgenerate.pipelinewrapper.OutOfMemoryError:
