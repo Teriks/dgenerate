@@ -720,6 +720,8 @@ class RenderLoop:
                     self._write_prompt_only_image(diffusion_args, generation_result)
 
     def _init_postprocessor(self, postprocessors):
+        if postprocessors is None:
+            return None
         self._postprocessor = self.postprocessor_loader.load(postprocessors, self.config.device)
 
     def _run_postprocess(self, generation_result: _pipelinewrapper.PipelineWrapperResult):
