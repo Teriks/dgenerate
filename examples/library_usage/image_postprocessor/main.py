@@ -21,7 +21,7 @@ from dgenerate.postprocessors import ImagePostprocessor
 class MyPostprocessor(ImagePostprocessor):
     # A more indepth example for how to implement these
     # can be found in the examples/writing_plugins/image_postprocessor folder
-    # This is a very minimal implementation that just mirrors the image
+    # This is a very minimal implementation that just inverts the image
     # after it gets generated
 
     NAMES = ['foo']
@@ -31,7 +31,7 @@ class MyPostprocessor(ImagePostprocessor):
         super().__init__(**kwargs)
 
     def impl_process(self, image: PIL.Image.Image):
-        return PIL.ImageOps.mirror(image)
+        return PIL.ImageOps.invert(image)
 
 
 config = RenderLoopConfig()
