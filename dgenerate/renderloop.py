@@ -898,7 +898,7 @@ class RenderLoop(_postprocessors.ImagePostprocessorMixin):
                           typing.Callable[[], typing.Iterator[_mediainput.ImageSeed]],
                           fps: typing.Union[int, float]):
 
-        animation_format_lower = self.config.animation_format.lower()
+        animation_format_lower = self.config.animation_format.strip().lower()
         first_diffusion_args = next(arg_iterator)
 
         base_filename = \
