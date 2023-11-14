@@ -26,14 +26,26 @@ import dgenerate.types as _types
 
 
 class BatchProcessorDirectivePluginNotFoundError(Exception):
+    """
+    Thrown when :py:class:`.DirectiveLoader` cannot find any :py:class:`dgenerate.batchprocess.BatchProcessorDirective`
+    implementation for a specified name.
+    """
     pass
 
 
 class BatchProcessorDirectivePluginArgumentError(Exception):
+    """
+    Thrown when a :py:class:`dgenerate.batchprocess.BatchProcessorDirective` plugin is
+    not instantiated with correct arguments.
+    """
     pass
 
 
-class Loader(_plugin.PluginLoader):
+class DirectiveLoader(_plugin.PluginLoader):
+    """
+    Loads :py:class:`dgenerate.batchprocess.BatchProcessorDirective` plugins.
+    """
+
     def __init__(self):
         """"""
 

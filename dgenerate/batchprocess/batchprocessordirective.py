@@ -21,6 +21,7 @@
 import typing
 
 import dgenerate.batchprocess.batchprocessor as _batchprocessor
+import dgenerate.batchprocess.directiveloader as _directiveloader
 import dgenerate.plugin as _plugin
 import dgenerate.renderloop as _renderloop
 import dgenerate.types as _types
@@ -36,17 +37,26 @@ class BatchProcessorDirective(_plugin.InvokablePlugin):
                  render_loop: _renderloop.RenderLoop = None,
                  **kwargs):
         super().__init__(called_by_name=called_by_name,
-                         argument_error_type=ValueError,
+                         argument_error_type=_directiveloader.BatchProcessorDirectivePluginArgumentError,
                          **kwargs)
         self.__render_loop = render_loop
         self.__batch_processor = batch_processor
 
     @property
     def render_loop(self):
+        """
+        Provides access to the currently instantiated :py:class:`dgenerate.renderloop.RenderLoop` object.
+
+        This object will have been used for any previous invocation of dgenerate in a config file.
+        """
         return self.__render_loop
 
     @property
-    def batch_processor(self):
+    def batch_processor(self) -> _batchprocessor.BatchProcessor:
+        """
+        Provides access to the currently instantiated :py:class:`dgenerate.batchprocess.BatchProcessor` object
+        running the config file that this directive is being invoked in.
+        """
         return self.__batch_processor
 
     def __call__(self, args: typing.List[str]):
