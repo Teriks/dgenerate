@@ -289,16 +289,19 @@ def load_modules(paths: _types.OptionalPaths) -> typing.List[types.ModuleType]:
     """
     r = []
     for plugin_path in paths:
-        name, ext = os.path.splitext(os.path.basename(plugin_path))
-        if name in LOADED_PLUGIN_MODULES:
-            mod = LOADED_PLUGIN_MODULES[name]
-        elif ext:
-            mod = SourceFileLoader(name, plugin_path).load_module()
-        else:
-            mod = SourceFileLoader(name,
-                                   os.path.join(plugin_path, '__init__.py')).load_module()
+        plugin_path, ext = os.path.splitext(os.path.abspath(plugin_path))
 
-        LOADED_PLUGIN_MODULES[name] = mod
+        if not ext:
+            plugin_path = os.path.join(plugin_path, '__init__.py')
+        else:
+            plugin_path += ext
+
+        if plugin_path in LOADED_PLUGIN_MODULES:
+            mod = LOADED_PLUGIN_MODULES[plugin_path]
+        else:
+            mod = SourceFileLoader(plugin_path, plugin_path).load_module()
+            LOADED_PLUGIN_MODULES[plugin_path] = mod
+
         r.append(mod)
     return r
 
@@ -334,7 +337,7 @@ class PluginLoader:
         self.__base_class = base_class
 
     def add_class(self, cls: typing.Type[InvokablePlugin]):
-        """
+        """p
         Add an implementation class to this loader.
 
         :param cls: the class
