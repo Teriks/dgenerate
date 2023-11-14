@@ -211,6 +211,8 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
                                                     batch_processor=runner)
             except _directiveloader.BatchProcessorDirectivePluginNotFoundError:
                 return None
+        else:
+            return impl
 
     def invoker(args):
         try:
