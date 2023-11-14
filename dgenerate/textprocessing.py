@@ -111,7 +111,7 @@ class ConceptUriParser:
                 raise ConceptPathParseError(f'Error parsing path arguments for '
                                             f'{self.concept_name} concept "{concept}", missing value '
                                             f'assignment for argument {vals[0]}.')
-            name = vals[0].strip().lower()
+            name = vals[0].strip()
             if self.known_args is not None and name not in self.known_args:
                 raise ConceptPathParseError(
                     f'Unknown path argument "{name}" for {self.concept_name} concept "{concept}", '

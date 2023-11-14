@@ -34,89 +34,10 @@ class ImagePostprocessor(_plugin.InvokablePlugin):
     """
 
     def __init__(self, called_by_name, device: str = 'cpu', **kwargs):
-        super().__init__(called_by_name, **kwargs)
+        super().__init__(called_by_name=called_by_name,
+                         argument_error_type=_exceptions.ImagePostprocessorArgumentError,
+                         **kwargs)
         self.__device = device
-
-    @staticmethod
-    def get_int_arg(name: str, value: typing.Union[str, int, typing.Dict]) -> int:
-        """
-        Convert an argument value from a string to an integer.
-        Throw :py:exc:`.ImagePostprocessorArgumentError` if there
-        is an error parsing the value.
-
-        :raises ImagePostprocessorArgumentError:
-
-        :param name: the argument name for descriptive purposes,
-            and/or for specifying the dictionary key when *value*
-            is a dictionary.
-
-        :param value: an integer value as a string, or optionally a
-            dictionary to get the value from using the argument *name*.
-
-        :return: int
-        """
-        if isinstance(value, dict):
-            value = value.get(name)
-        try:
-            return int(value)
-        except ValueError:
-            raise _exceptions.ImagePostprocessorArgumentError(f'Argument "{name}" must be an integer value.')
-
-    @staticmethod
-    def get_float_arg(name: str, value: typing.Union[str, float, typing.Dict]) -> float:
-        """
-        Convert an argument value from a string to a float.
-        Throw :py:exc:`.ImagePostprocessorArgumentError` if there
-        is an error parsing the value.
-
-        :raises ImagePostprocessorArgumentError:
-
-        :param name: the argument name for descriptive purposes,
-            and/or for specifying the dictionary key when *value*
-            is a dictionary.
-
-        :param value: a float value as a string, or optionally a
-            dictionary to get the value from using the argument *name*.
-
-        :return: float
-        """
-
-        if isinstance(value, dict):
-            value = value.get(name)
-        try:
-            return float(value)
-        except ValueError:
-            raise _exceptions.ImagePostprocessorArgumentError(f'Argument "{name}" must be a floating point value.')
-
-    @staticmethod
-    def get_bool_arg(name: str, value: typing.Union[str, bool, typing.Dict]) -> bool:
-        """
-        Convert an argument value from a string to a boolean value.
-        Throw :py:exc:`.ImagePostprocessorArgumentError` if there
-        is an error parsing the value.
-
-        :raises ImagePostprocessorArgumentError:
-
-        :param name: the argument name for descriptive purposes,
-            and/or for specifying the dictionary key when *value*
-            is a dictionary.
-
-        :param value: a boolean value as a string, or optionally a
-            dictionary to get the value from using the argument *name*.
-
-        :return: bool
-        """
-
-        if isinstance(value, dict):
-            value = value.get(name)
-        try:
-            return _types.parse_bool(value)
-        except ValueError:
-            raise _exceptions.ImagePostprocessorArgumentError(
-                f'Argument "{name}" must be a boolean value.')
-
-    def argument_error(self, msg: str):
-        raise _exceptions.ImagePostprocessorArgumentError(msg)
 
     @property
     def device(self) -> str:
@@ -142,12 +63,21 @@ class ImagePostprocessor(_plugin.InvokablePlugin):
 
         This is the only appropriate way to invoke a postprocessor manually.
 
+        The original image will be closed if the implementation returns a new image
+        instead of modifying it in place, you should not count on the original image
+        being open and usable once this function completes though it is safe to
+        use the input image in a ``with`` context, if you need to retain a
+        copy, pass a copy.
+
         :param image: the image to pass
 
         :return: processed image, may be the same image or a copy.
         """
 
         img = self.impl_process(image)
+
+        if img is not image:
+            image.close()
 
         img.filename = _image.get_filename(image)
 

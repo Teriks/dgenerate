@@ -64,6 +64,7 @@ class ImagePostprocessorMixin:
                                 f'{self.image_postprocessor}.process(image="{filename}")')
 
             processed = self.image_postprocessor.process(image)
+            processed.filename = filename
 
             _messages.debug_log(f'Finished Image Postprocess - {self.image_postprocessor}.process')
             return processed
@@ -76,6 +77,12 @@ class ImagePostprocessorMixin:
         Invokes the assigned image postprocessor.
 
         If no postprocessor is assigned or the postprocessor is disabled, this is a no-op.
+
+        The original image will be closed if the postprocessor returns a new image
+        instead of modifying it in place, you should not count on the original image
+        being open and usable once this function completes with a postprocessor assigned
+        and the postprocessor enabled, though it is safe to use the input image in a ``with``
+        context, if you need to retain a copy, pass a copy.
 
         :param image: image to process
 
