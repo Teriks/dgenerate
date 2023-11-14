@@ -78,6 +78,12 @@ class BatchProcessError(Exception):
 class BatchProcessor:
     """
     Implements dgenerates batch processing scripts in a generified manner.
+
+    This is the bare-bones implementation of the shell with nothing
+    implemented for you except the ``\\print`` and ``\\set`` directives.
+
+    If you wish to create this object to run a dgenerate configuration, use
+    :py:func:`dgenerate.batchprocess.create_config_runner`
     """
 
     invoker: typing.Callable[[list], int]
