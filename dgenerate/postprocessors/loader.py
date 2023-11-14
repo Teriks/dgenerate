@@ -29,6 +29,10 @@ import dgenerate.types as _types
 
 class Loader(_plugin.PluginLoader):
     def __init__(self):
+        """"""
+
+        # The empty string above disables sphinx inherited doc
+
         super().__init__(base_class=_postprocessor.ImagePostprocessor,
                          description='postprocessor',
                          reserved_args=[('device',)],
