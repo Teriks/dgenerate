@@ -9,10 +9,16 @@ import dgenerate.postprocessors
 
 loader = dgenerate.postprocessors.Loader()
 
+# print out usage help for the upscaler plugin
+
+print(loader.get_help('upscaler'))
+
+
 # Use the original Real-ESRGAN x4 upscaler model from the creators Repo
 
 upscaler = loader.load(
     'upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth', device='cuda')
+
 
 with PIL.Image.open('../../media/earth.jpg') as img:
 
