@@ -908,7 +908,7 @@ class RenderLoop(_postprocessors.ImagePostprocessorMixin):
 
         next_frame_terminates_anim = False
 
-        if self.disable_writes:
+        if self.disable_writes or animation_format_lower == 'frames':
             # The interface can be used as a mock object
             anim_writer = _mediaoutput.AnimationWriter()
         else:

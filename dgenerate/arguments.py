@@ -899,7 +899,8 @@ actions.append(
     parser.add_argument('-af', '--animation-format', action='store', default='mp4', type=_type_animation_format,
                         metavar="FORMAT",
                         help=f"""Output format when generating an animation from an input video / gif / webp etc.
-                        Value must be one of: {_SUPPORTED_ANIMATION_OUTPUT_FORMATS_PRETTY}.
+                        Value must be one of: {_SUPPORTED_ANIMATION_OUTPUT_FORMATS_PRETTY}. You may also specify "frames"
+                        to indicate that only frames should be output and no coalesced animation file should be rendered.
                         (default: mp4)"""))
 
 actions.append(
