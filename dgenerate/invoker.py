@@ -24,6 +24,7 @@ import dgenerate.arguments as _arguments
 import dgenerate.mediainput as _mediainput
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
+import dgenerate.plugin as _plugin
 import dgenerate.preprocessors as _preprocessors
 import dgenerate.postprocessors as _postprocessors
 import dgenerate.renderloop as _renderloop
@@ -109,11 +110,10 @@ def invoke_dgenerate(
 
         render_loop.config = arguments
 
-        render_loop.preprocessor_loader. \
-            load_plugin_modules(arguments.plugin_module_paths)
+        plugin_modules = _plugin.load_modules(arguments.plugin_module_paths)
 
-        render_loop.postprocessor_loader. \
-            load_plugin_modules(arguments.plugin_module_paths)
+        render_loop.preprocessor_loader.search_modules.update(plugin_modules)
+        render_loop.postprocessor_loader.search_modules.update(plugin_modules)
 
         if arguments.verbose:
             _messages.LEVEL = _messages.DEBUG
