@@ -1,0 +1,10 @@
+#! dgenerate 3.0.0
+
+\import_directives demo_plugin
+
+
+\my_directive Hello World!
+
+\my_directive_1 Implementation One
+
+\my_directive_2 Implementation Two
