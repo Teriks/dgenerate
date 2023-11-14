@@ -439,7 +439,9 @@ class PluginLoader:
 
         args_dict['called_by_name'] = call_by_name
 
-        for arg in plugin_class.get_required_args(call_by_name):
+        for arg in itertools.chain(plugin_class.get_required_args(call_by_name),
+                                   (i[0] for i in self.__reserved_args if len(i) == 1)):
+
             if _textprocessing.dashdown(arg) not in args_dict:
                 raise self.__argument_error_type(
                     f'Missing required argument "{arg}" for {self.__description} "{call_by_name}".')

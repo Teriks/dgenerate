@@ -18,22 +18,16 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import glob
+
 import io
 import os
 import re
 import shlex
-import types
 import typing
 
 import jinja2
 
-import dgenerate
-import dgenerate.invoker as _invoker
 import dgenerate.messages as _messages
-import dgenerate.pipelinewrapper as _pipelinewrapper
-import dgenerate.prompt as _prompt
-import dgenerate.renderloop as _renderloop
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 
@@ -134,7 +128,7 @@ class BatchProcessor:
                  template_variables: typing.Optional[typing.Dict[str, typing.Any]] = None,
                  template_functions: typing.Optional[
                      typing.Dict[str, typing.Callable[[typing.Any], typing.Any]]] = None,
-                 directives: typing.Optional[typing.Dict[str, typing.Callable[[list], None]]] = None,
+                 directive_lookup: typing.Optional[typing.Callable[[str], typing.Callable[[list], None]]] = None,
                  injected_args: typing.Optional[typing.List[str]] = None):
         """
         :param invoker: A function for invoking lines recognized as shell commands, should return a return code.
@@ -145,8 +139,11 @@ class BatchProcessor:
         :param template_variables: Live template variables, the initial environment, this dictionary will be
             modified during runtime.
         :param template_functions: Functions available to Jinja2
-        :param directives: batch processing directive handlers, for: *\\\\directives*. This is a dictionary
-            of names to functions which accept a single parameter, a list of directive arguments.
+        :param directive_lookup: A function that looks up a callable directive implementation by its name.
+            A directive being a function that accepts a list containing string arguments (shlex.parse) and
+            returns nothing. If the directive could not be found, this function should return ``None``.
+            Any exception raised by a directive implementation will be rethrown as :py:exc:'.BatchProcessError'.
+            Example: ``lambda name: my_directives.get(name)``
         :param injected_args: Arguments to be injected at the end of user specified arguments for every shell invocation
         """
 
@@ -160,7 +157,7 @@ class BatchProcessor:
         self.template_variables = template_variables if template_variables else dict()
         self.template_functions = template_functions if template_functions else dict()
 
-        self.directives = directives if directives else dict()
+        self.directive_lookup = directive_lookup if directive_lookup is not None else lambda n: None
 
         self.injected_args = injected_args if injected_args else []
 
@@ -267,7 +264,7 @@ class BatchProcessor:
             directive_args = line.split(' ', 1)
 
             directive = directive_args[0].lstrip('\\')
-            impl = self.directives.get(directive)
+            impl = self.directive_lookup(directive)
             if impl is None:
                 raise BatchProcessError(f'Unknown directive "\\{directive}".')
             directive_args = directive_args[1:]
@@ -373,166 +370,4 @@ class BatchProcessor:
         self.run_file(io.StringIO(string))
 
 
-def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = None,
-                         render_loop: typing.Optional[_renderloop.RenderLoop] = None,
-                         version: typing.Union[_types.Version, str] = dgenerate.__version__,
-                         throw: bool = False):
-    """
-    Create a :py:class:`.BatchProcessor` that can run dgenerate batch processing configs from a string or file.
-
-    :param injected_args: dgenerate command line arguments in the form of a list, see: shlex module, or sys.argv.
-        These arguments will be injected at the end of every dgenerate invocation in the config file.
-    :param render_loop: RenderLoop instance, if None is provided one will be created.
-    :param version: Config version for ``#! dgenerate x.x.x`` version checks, defaults to ``dgenerate.__version__``
-    :param throw: Whether to throw exceptions from :py:func:`dgenerate.invoker.invoke_dgenerate` or handle them,
-        if you set this to True exceptions will propagate out of dgenerate invocations instead of a
-        :py:exc:`.BatchProcessError` being raised, a line number where the error occurred can be obtained
-        using :py:attr:`.BatchProcessor.current_line`.
-    :return: integer return-code, anything other than 0 is failure
-    """
-
-    if render_loop is None:
-        render_loop = _renderloop.RenderLoop()
-
-    def _format_prompt(prompt):
-        pos = prompt.positive
-        neg = prompt.negative
-
-        if pos is None:
-            raise BatchProcessError('Attempt to format a prompt with no positive prompt value.')
-
-        if pos and neg:
-            return shlex.quote(f"{pos}; {neg}")
-        return shlex.quote(pos)
-
-    def format_prompt(string_or_iterable):
-        if isinstance(string_or_iterable, _prompt.Prompt):
-            return _format_prompt(string_or_iterable)
-        return ' '.join(_format_prompt(p) for p in string_or_iterable)
-
-    def quote(string_or_iterable):
-        if isinstance(string_or_iterable, str):
-            return shlex.quote(str(string_or_iterable))
-        return ' '.join(shlex.quote(str(s)) for s in string_or_iterable)
-
-    def unquote(string_or_iterable):
-        if isinstance(string_or_iterable, str):
-            return shlex.split(str(string_or_iterable))
-        return [shlex.split(str(s)) for s in string_or_iterable]
-
-    def last(list_or_iterable):
-        if isinstance(list_or_iterable, list):
-            return list_or_iterable[-1]
-        *_, last_item = list_or_iterable
-        return last_item
-
-    def first(iterable):
-        return next(iter(iterable))
-
-    template_variables = {
-        'saved_modules': dict(),
-        'glob': glob
-    }
-
-    funcs = {
-        'unquote': unquote,
-        'quote': quote,
-        'format_prompt': format_prompt,
-        'format_size': _textprocessing.format_size,
-        'last': last,
-        'first': first
-    }
-
-    def save_modules_directive(args):
-        saved_modules = template_variables.get('saved_modules')
-
-        if len(args) < 2:
-            raise BatchProcessError(
-                '\\save_modules directive must have at least 2 arguments, '
-                'a variable name and one or more module names.')
-
-        creation_result = render_loop.pipeline_wrapper.recall_main_pipeline()
-        saved_modules[args[0]] = creation_result.get_pipeline_modules(args[1:])
-
-    def use_modules_directive(args):
-        saved_modules = template_variables.get('saved_modules')
-
-        if not saved_modules:
-            raise BatchProcessError(
-                'no modules are currently saved that can be referenced.')
-
-        saved_name = args[0]
-        render_loop.model_extra_modules = saved_modules[saved_name]
-
-    def clear_modules_directive(args):
-        saved_modules = template_variables.get('saved_modules')
-
-        if len(args) > 0:
-            for arg in args:
-                del saved_modules[arg]
-        else:
-            saved_modules.clear()
-
-    def gen_seeds_directive(args):
-        if len(args) == 2:
-            try:
-                template_variables[args[0]] = \
-                    [str(s) for s in _renderloop.gen_seeds(int(args[1]))]
-            except ValueError:
-                raise BatchProcessError(
-                    'The second argument of \\gen_seeds must be an integer value.')
-        else:
-            raise BatchProcessError(
-                '\\gen_seeds directive takes 2 arguments, template variable '
-                'name (to store value at), and number of seeds to generate.')
-
-    def templates_help_directive(args):
-        values = render_loop.generate_template_variables_with_types()
-        values['saved_modules'] = (typing.Dict[str, typing.Dict[str, typing.Any]],
-                                   template_variables.get('saved_modules'))
-        values['glob'] = (types.ModuleType, "<module 'glob'>")
-
-        header = None
-        if len(args) > 0:
-            values = {k: v for k, v in values.items() if k in args}
-
-            if len(values) > 1:
-                header = "Template variables are"
-            else:
-                header = 'Template variable is'
-
-        _messages.log(
-            render_loop.generate_template_variables_help(values=values,
-                                                         header=header,
-                                                         show_values=True) + '\n',
-            underline=True)
-
-    directives = {
-        'templates_help': templates_help_directive,
-        'clear_model_cache': lambda args: _pipelinewrapper.clear_model_cache(),
-        'clear_pipeline_cache': lambda args: _pipelinewrapper.clear_pipeline_cache(),
-        'clear_vae_cache': lambda args: _pipelinewrapper.clear_vae_cache(),
-        'clear_control_net_cache': lambda args: _pipelinewrapper.clear_control_net_cache(),
-        'save_modules': save_modules_directive,
-        'use_modules': use_modules_directive,
-        'clear_modules': clear_modules_directive,
-        'gen_seeds': gen_seeds_directive,
-    }
-
-    def invoker(args):
-        try:
-            return _invoker.invoke_dgenerate(args, render_loop=render_loop, throw=throw)
-        finally:
-            render_loop.model_extra_modules = None
-
-    runner = BatchProcessor(
-        invoker=invoker,
-        template_variable_generator=lambda: render_loop.generate_template_variables(),
-        name='dgenerate',
-        version=version,
-        template_variables=template_variables,
-        template_functions=funcs,
-        injected_args=injected_args if injected_args else [],
-        directives=directives)
-
-    return runner
+__all__ = _types.module_all()
