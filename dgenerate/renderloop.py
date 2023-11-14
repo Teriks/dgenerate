@@ -250,7 +250,7 @@ class RenderLoop(_postprocessors.ImagePostprocessorMixin):
         Generate a dictionary from the render loop that describes its current / last used configuration.
 
         This is consumed by the :py:class:`dgenerate.batchprocess.BatchProcessor`
-        that is created by :py:meth:`dgenerate.batchprocess.create_config_runner` for
+        that is created by :py:func:`dgenerate.batchprocess.create_config_runner` for
         use in Jinja2 templating.
 
         :return: a dictionary of attribute names to values
@@ -266,7 +266,7 @@ class RenderLoop(_postprocessors.ImagePostprocessorMixin):
         Generate a help string describing available template variables, their types, and values
         for use in batch processing.
 
-        This is used to implement ``--templates-help`` in :py:meth:`dgenerate.invoker.invoke_dgenerate`
+        This is used to implement ``--templates-help`` in :py:func:`dgenerate.invoker.invoke_dgenerate`
 
 
 

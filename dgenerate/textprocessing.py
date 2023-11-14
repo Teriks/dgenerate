@@ -288,7 +288,7 @@ def wrap_paragraphs(text: str,
     :param width: Wrap with in characters
     :param break_long_words: break on long words? default False
     :param break_on_hyphens: break on hyphens? default False
-    :param fill_args: extra keyword arguments to :py:meth:`textwrap.fill` if desired
+    :param fill_args: extra keyword arguments to :py:func:`textwrap.fill` if desired
     :return: text wrapped string
     """
     paragraphs = []
@@ -330,7 +330,7 @@ def wrap(text: str,
     :param subsequent_indent: subsequent indent string
     :param break_long_words: Break on long words?
     :param break_on_hyphens: Break on hyphens?
-    :param fill_args: extra keyword arguments to :py:meth:`textwrap.fill` if desired
+    :param fill_args: extra keyword arguments to :py:func:`textwrap.fill` if desired
     :return: text wrapped string
     """
     return textwrap.fill(

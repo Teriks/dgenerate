@@ -164,8 +164,8 @@ def estimate_pipeline_memory_use(
     :param safety_checker: consider the safety checker? dgenerate usually loads the safety checker and then retroactively
         disables it if needed, so it usually considers the size of the safety checker model.
     :param auth_token: optional huggingface auth token to access restricted repositories that your account has access to.
-    :param extra_args: ``extra_args`` as to be passed to :py:meth:`.create_torch_diffusion_pipeline`
-        or :py:meth:`.create_flax_diffusion_pipeline`
+    :param extra_args: ``extra_args`` as to be passed to :py:func:`.create_torch_diffusion_pipeline`
+        or :py:func:`.create_flax_diffusion_pipeline`
     :param local_files_only: Only ever attempt to look in the local huggingface cache? if ``False`` the huggingface
         API will be contacted when necessary.
     :return: size estimate in bytes.
@@ -454,7 +454,7 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
 
 class TorchPipelineFactory:
     """
-    Combines :py:meth:`.create_torch_diffusion_pipeline` and :py:meth:`.set_vae_slicing_tiling` into a factory
+    Combines :py:func:`.create_torch_diffusion_pipeline` and :py:func:`.set_vae_slicing_tiling` into a factory
     that can recreate the same Torch pipeline over again, possibly from cache.
     """
 
@@ -916,7 +916,7 @@ def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
 
 class FlaxPipelineFactory:
     """
-    Turns :py:meth:`.create_flax_diffusion_pipeline` into a factory
+    Turns :py:func:`.create_flax_diffusion_pipeline` into a factory
     that can recreate the same Flax pipeline over again, possibly from cache.
     """
 

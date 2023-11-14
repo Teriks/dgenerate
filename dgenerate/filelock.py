@@ -31,7 +31,7 @@ PathMaker = typing.Callable[[typing.Optional[str], typing.Optional[int]], typing
 
 def suffix_path_maker(filenames, suffix):
     """
-    To be used with :py:meth:`.touch_avoid_duplicate`, a pathmaker implementation that
+    To be used with :py:func:`.touch_avoid_duplicate`, a pathmaker implementation that
     appends a suffix and a number to a filename or list of files when a duplicate is detected for
     any of them in the directory.
 

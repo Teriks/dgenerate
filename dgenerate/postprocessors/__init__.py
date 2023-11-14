@@ -40,14 +40,14 @@ _help_parser.add_argument('-pm', '--plugin-modules', metavar='PATH', nargs='+', 
 
 class PostprocessorHelpUsageError(Exception):
     """
-    Raised on argument parse errors in :py:meth:`.image_postprocessor_help`
+    Raised on argument parse errors in :py:func:`.postprocessor_help`
     """
     pass
 
 
 def postprocessor_help(args: typing.Sequence[str], throw: bool = False):
     """
-    Implements ``--image-postprocessor-help`` command line option
+    Implements ``--postprocessor-help`` command line option
 
     :param args: arguments (postprocessor names, or empty list)
     :param throw: Should we throw exceptions or handle them?
