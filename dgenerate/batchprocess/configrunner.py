@@ -38,6 +38,7 @@ import dgenerate.types as _types
 
 def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = None,
                          render_loop: typing.Optional[_renderloop.RenderLoop] = None,
+                         directive_loader: _directiveloader.DirectiveLoader = None,
                          version: typing.Union[_types.Version, str] = dgenerate.__version__,
                          throw: bool = False):
     """
@@ -184,7 +185,9 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
         'gen_seeds': gen_seeds_directive,
     }
 
-    directive_plugin_loader = _directiveloader.DirectiveLoader()
+    directive_plugin_loader = \
+        _directiveloader.DirectiveLoader() if \
+            directive_loader is None else directive_loader
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-pm', '--plugin-modules', action='store', default=[], nargs="+")
