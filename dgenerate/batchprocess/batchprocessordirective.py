@@ -60,6 +60,10 @@ class BatchProcessorDirective(_plugin.InvokablePlugin):
         return self.__batch_processor
 
     def __call__(self, args: typing.List[str]):
+        """
+        Implements the directive, inheritor should implement this method.
+        :param args: directive arguments via :py:func:`shlex.parse`
+        """
         pass
 
 
