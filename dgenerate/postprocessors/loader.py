@@ -35,7 +35,7 @@ class Loader(_plugin.PluginLoader):
 
         super().__init__(base_class=_postprocessor.ImagePostprocessor,
                          description='postprocessor',
-                         reserved_args=[('device',)],
+                         reserved_args=[('device', 'cpu')],
                          argument_error_type=_exceptions.ImagePostprocessorArgumentError,
                          not_found_error_type=_exceptions.ImagePostprocessorNotFoundError)
 

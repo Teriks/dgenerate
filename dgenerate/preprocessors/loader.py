@@ -34,7 +34,7 @@ class Loader(_plugin.PluginLoader):
         # The empty string above disables sphinx inherited doc
         super().__init__(base_class=_preprocessor.ImagePreprocessor,
                          description='image preprocessor',
-                         reserved_args=[('output-file',), ('output-overwrite', False), ('device',)],
+                         reserved_args=[('output-file', None), ('output-overwrite', False), ('device', 'cpu')],
                          argument_error_type=_exceptions.ImagePreprocessorArgumentError,
                          not_found_error_type=_exceptions.ImagePreprocessorNotFoundError)
 
