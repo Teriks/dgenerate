@@ -22,7 +22,7 @@ from dgenerate.preprocessors import ImagePreprocessor
 
 class MyPreprocessor(ImagePreprocessor):
     # A more indepth example for how to implement these
-    # can be found in the examples/plugins/image_preprocessor folder
+    # can be found in the examples/writing_plugins/image_preprocessor folder
     # This is a very minimal implementation that just inverts the image
     # before it gets resized
 

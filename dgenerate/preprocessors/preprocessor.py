@@ -20,16 +20,15 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import itertools
 import os
-import typing
 
 import PIL.Image
 
 import dgenerate.filelock as _filelock
 import dgenerate.image as _image
 import dgenerate.messages as _messages
+import dgenerate.plugin as _plugin
 import dgenerate.preprocessors.exceptions as _exceptions
 import dgenerate.types as _types
-import dgenerate.plugin as _plugin
 
 
 class ImagePreprocessor(_plugin.InvokablePlugin):
@@ -37,94 +36,15 @@ class ImagePreprocessor(_plugin.InvokablePlugin):
     Abstract base class for image preprocessor implementations.
     """
 
-    @staticmethod
-    def get_int_arg(name: str, value: typing.Union[str, int, typing.Dict]) -> int:
-        """
-        Convert an argument value from a string to an integer.
-        Throw :py:exc:`.ImagePreprocessorArgumentError` if there
-        is an error parsing the value.
-
-        :raises ImagePreprocessorArgumentError:
-
-        :param name: the argument name for descriptive purposes,
-            and/or for specifying the dictionary key when *value*
-            is a dictionary.
-
-        :param value: an integer value as a string, or optionally a
-            dictionary to get the value from using the argument *name*.
-
-        :return: int
-        """
-        if isinstance(value, dict):
-            value = value.get(name)
-        try:
-            return int(value)
-        except ValueError:
-            raise _exceptions.ImagePreprocessorArgumentError(f'Argument "{name}" must be an integer value.')
-
-    @staticmethod
-    def get_float_arg(name: str, value: typing.Union[str, float, typing.Dict]) -> float:
-        """
-        Convert an argument value from a string to a float.
-        Throw :py:exc:`.ImagePreprocessorArgumentError` if there
-        is an error parsing the value.
-
-        :raises ImagePreprocessorArgumentError:
-
-        :param name: the argument name for descriptive purposes,
-            and/or for specifying the dictionary key when *value*
-            is a dictionary.
-
-        :param value: a float value as a string, or optionally a
-            dictionary to get the value from using the argument *name*.
-
-        :return: float
-        """
-
-        if isinstance(value, dict):
-            value = value.get(name)
-        try:
-            return float(value)
-        except ValueError:
-            raise _exceptions.ImagePreprocessorArgumentError(f'Argument "{name}" must be a floating point value.')
-
-    @staticmethod
-    def get_bool_arg(name: str, value: typing.Union[str, bool, typing.Dict]) -> bool:
-        """
-        Convert an argument value from a string to a boolean value.
-        Throw :py:exc:`.ImagePreprocessorArgumentError` if there
-        is an error parsing the value.
-
-        :raises ImagePreprocessorArgumentError:
-
-        :param name: the argument name for descriptive purposes,
-            and/or for specifying the dictionary key when *value*
-            is a dictionary.
-
-        :param value: a boolean value as a string, or optionally a
-            dictionary to get the value from using the argument *name*.
-
-        :return: bool
-        """
-
-        if isinstance(value, dict):
-            value = value.get(name)
-        try:
-            return _types.parse_bool(value)
-        except ValueError:
-            raise _exceptions.ImagePreprocessorArgumentError(
-                f'Argument "{name}" must be a boolean value.')
-
-    def argument_error(self, msg: str):
-        raise _exceptions.ImagePreprocessorArgumentError(msg)
-
     def __init__(self,
                  called_by_name: str,
                  device: str = 'cpu',
                  output_file: _types.OptionalPath = None,
                  output_overwrite: bool = False, **kwargs):
 
-        super().__init__(called_by_name, **kwargs)
+        super().__init__(called_by_name=called_by_name,
+                         argument_error_type=_exceptions.ImagePreprocessorArgumentError,
+                         **kwargs)
 
         self.__output_file = output_file
         self.__output_overwrite = output_overwrite
@@ -163,6 +83,12 @@ class ImagePreprocessor(_plugin.InvokablePlugin):
 
         This is the only appropriate way to invoke a preprocessor manually.
 
+        The original image will be closed if the implementation returns a new image
+        instead of modifying it in place, you should not count on the original image
+        being open and usable once this function completes though it is safe to
+        use the input image in a ``with`` context, if you need to retain a
+        copy, pass a copy.
+
         :param self: :py:class:`.ImagePreprocessor` implementation instance
         :param image: the image to pass
         :param resize_resolution: the size that the image is going to be resized
@@ -175,6 +101,8 @@ class ImagePreprocessor(_plugin.InvokablePlugin):
 
         processed = self.impl_pre_resize(image, resize_resolution)
         if processed is not image:
+            image.close()
+
             self.__save_debug_image(
                 processed,
                 'Wrote Preprocessor Debug Image (because copied)')
@@ -206,6 +134,12 @@ class ImagePreprocessor(_plugin.InvokablePlugin):
 
         This is the only appropriate way to invoke a preprocessor manually.
 
+        The original image will be closed if the implementation returns a new image
+        instead of modifying it in place, you should not count on the original image
+        being open and usable once this function completes though it is safe to
+        use the input image in a ``with`` context, if you need to retain a
+        copy, pass a copy.
+
         :param self: :py:class:`.ImagePreprocessor` implementation instance
         :param image: the image to pass
 
@@ -216,6 +150,8 @@ class ImagePreprocessor(_plugin.InvokablePlugin):
 
         processed = self.impl_post_resize(image)
         if processed is not image:
+            image.close()
+
             self.__save_debug_image(
                 processed,
                 'Wrote Preprocessor Debug Image (because copied)')

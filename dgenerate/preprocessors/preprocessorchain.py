@@ -74,7 +74,7 @@ class ImagePreprocessorChain(_preprocessor.ImagePreprocessor):
         Every subsequent invocation receives the last preprocessed image as its argument.
 
         This method should not be invoked directly, use the class method
-        :py:meth:`dgenerate.preprocessors.preprocessor.ImagePreprocessor.call_pre_resize` to invoke it.
+        :py:meth:`dgenerate.preprocessors.preprocessor.ImagePreprocessor.pre_resize` to invoke it.
 
         :param image: initial image to preprocess
         :param resize_resolution: the size which the image will be resized to after this
@@ -88,10 +88,7 @@ class ImagePreprocessorChain(_preprocessor.ImagePreprocessor):
         if self._preprocessors:
             p_image = image
             for preprocessor in self._preprocessors:
-                new_img = preprocessor.pre_resize(p_image, resize_resolution)
-                if new_img is not p_image:
-                    p_image.close()
-                p_image = new_img
+                p_image = preprocessor.pre_resize(p_image, resize_resolution)
             return p_image
         else:
             return image
@@ -103,7 +100,7 @@ class ImagePreprocessorChain(_preprocessor.ImagePreprocessor):
         Every subsequent invocation receives the last preprocessed image as its argument.
 
         This method should not be invoked directly, use the class method
-        :py:meth:`dgenerate.preprocessors.preprocessor.ImagePreprocessor.call_post_resize` to invoke it.
+        :py:meth:`dgenerate.preprocessors.preprocessor.ImagePreprocessor.post_resize` to invoke it.
 
         :param image: initial image to preprocess
         :return: the processed image, possibly affected by every preprocessor in the chain
@@ -112,10 +109,7 @@ class ImagePreprocessorChain(_preprocessor.ImagePreprocessor):
         if self._preprocessors:
             p_image = image
             for preprocessor in self._preprocessors:
-                new_img = preprocessor.post_resize(p_image)
-                if new_img is not p_image:
-                    p_image.close()
-                p_image = new_img
+                p_image = preprocessor.post_resize(p_image)
             return p_image
         else:
             return image

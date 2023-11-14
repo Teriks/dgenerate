@@ -74,7 +74,7 @@ class ImagePostprocessorChain(_postprocessor.ImagePostprocessor):
         Every subsequent invocation receives the last processed image as its argument.
 
         This method should not be invoked directly, use the class method
-        :py:meth:`dgenerate.postprocessors.postprocessor.ImagePostprocessor.call_process` to invoke it.
+        :py:meth:`dgenerate.postprocessors.postprocessor.ImagePostprocessor.process` to invoke it.
 
         :param image: initial image to process
 
@@ -84,10 +84,7 @@ class ImagePostprocessorChain(_postprocessor.ImagePostprocessor):
         if self._postprocessors:
             p_image = image
             for postprocessor in self._postprocessors:
-                new_img = postprocessor.process(p_image)
-                if new_img is not p_image:
-                    p_image.close()
-                p_image = new_img
+                p_image = postprocessor.process(p_image)
             return p_image
         else:
             return image

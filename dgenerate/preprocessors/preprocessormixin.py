@@ -18,6 +18,8 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import typing
+
 import PIL.Image
 
 import dgenerate.image as _d_image
@@ -25,7 +27,6 @@ import dgenerate.image as _image
 import dgenerate.messages as _messages
 import dgenerate.preprocessors.preprocessor as _preprocessor
 import dgenerate.types as _types
-import typing
 
 
 class ImagePreprocessorMixin:
@@ -95,6 +96,12 @@ class ImagePreprocessorMixin:
 
         If no preprocessor is assigned or the preprocessor is disabled, this is a no-op.
 
+        The original image will be closed if the preprocessor returns a new image
+        instead of modifying it in place, you should not count on the original image
+        being open and usable once this function completes with a preprocessor assigned
+        and the preprocessor enabled, though it is safe to use the input image in a ``with``
+        context, if you need to retain a copy, pass a copy.
+
         :param image: image to process
         :param resize_to: image will be resized to this dimension by this method.
         :param aspect_correct: Should the resize operation be aspect correct?
@@ -115,9 +122,6 @@ class ImagePreprocessorMixin:
         pre_processed = self._preprocess_pre_resize(image,
                                                     calculate_new_size)
 
-        if pre_processed is not image:
-            image.close()
-
         if resize_to is None:
             image = pre_processed
         else:
@@ -128,11 +132,7 @@ class ImagePreprocessorMixin:
         if image is not pre_processed:
             pre_processed.close()
 
-        pre_processed = self._preprocess_post_resize(image)
-        if pre_processed is not image:
-            image.close()
-
-        return pre_processed
+        return self._preprocess_post_resize(image)
 
 
 __all__ = _types.module_all()

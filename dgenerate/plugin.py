@@ -18,7 +18,10 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import inspect
+import itertools
 import os
+import sys
 import types
 import typing
 from importlib.machinery import SourceFileLoader
@@ -31,6 +34,79 @@ LOADED_PLUGIN_MODULES: typing.Dict[str, types.ModuleType] = {}
 
 
 class InvokablePlugin:
+
+    def __init__(self, called_by_name: str, argument_error_type: typing.Type[Exception] = ValueError, **kwargs):
+        self.__called_by_name = called_by_name
+        self.__argument_error_type = argument_error_type
+
+    def get_int_arg(self, name: str, value: typing.Union[str, int, typing.Dict]) -> int:
+        """
+        Convert an argument value from a string to an integer.
+        Throw ``argument_error_type`` if there is an error parsing the value.
+
+        :param name: the argument name for descriptive purposes,
+            and/or for specifying the dictionary key when *value*
+            is a dictionary.
+
+        :param value: an integer value as a string, or optionally a
+            dictionary to get the value from using the argument *name*.
+
+        :return: int
+        """
+        if isinstance(value, dict):
+            value = value.get(name)
+        try:
+            return int(value)
+        except ValueError:
+            raise self.__argument_error_type(f'Argument "{name}" must be an integer value.')
+
+    def get_float_arg(self, name: str, value: typing.Union[str, float, typing.Dict]) -> float:
+        """
+        Convert an argument value from a string to a float.
+        Throw ``argument_error_type`` if there is an error parsing the value.
+
+        :param name: the argument name for descriptive purposes,
+            and/or for specifying the dictionary key when *value*
+            is a dictionary.
+
+        :param value: a float value as a string, or optionally a
+            dictionary to get the value from using the argument *name*.
+
+        :return: float
+        """
+
+        if isinstance(value, dict):
+            value = value.get(name)
+        try:
+            return float(value)
+        except ValueError:
+            raise self.__argument_error_type(f'Argument "{name}" must be a floating point value.')
+
+    def get_bool_arg(self, name: str, value: typing.Union[str, bool, typing.Dict]) -> bool:
+        """
+        Convert an argument value from a string to a boolean value.
+        Throw ``argument_error_type`` if there is an error parsing the value.
+
+        :param name: the argument name for descriptive purposes,
+            and/or for specifying the dictionary key when *value*
+            is a dictionary.
+
+        :param value: a boolean value as a string, or optionally a
+            dictionary to get the value from using the argument *name*.
+
+        :return: bool
+        """
+
+        if isinstance(value, dict):
+            value = value.get(name)
+        try:
+            return _types.parse_bool(value)
+        except ValueError:
+            raise self.__argument_error_type(
+                f'Argument "{name}" must be a boolean value.')
+
+    def argument_error(self, msg: str):
+        raise self.__argument_error_type(msg)
 
     @classmethod
     def get_names(cls) -> typing.List[str]:
@@ -202,9 +278,6 @@ class InvokablePlugin:
         """
         return self.__called_by_name
 
-    def __init__(self, called_by_name: str, **kwargs):
-        self.__called_by_name = called_by_name
-
 
 def load_modules(paths: _types.OptionalPaths) -> typing.List[types.ModuleType]:
     """
@@ -228,3 +301,215 @@ def load_modules(paths: _types.OptionalPaths) -> typing.List[types.ModuleType]:
         LOADED_PLUGIN_MODULES[name] = mod
         r.append(mod)
     return r
+
+
+PluginArgumentsDef = typing.Optional[typing.List[typing.Union[typing.Tuple[str], typing.Tuple[str, typing.Any]]]]
+
+
+class PluginLoader:
+    search_modules: typing.Set[types.ModuleType]
+    """Additional module objects for this loader to search."""
+
+    search_module_strings: typing.Set[str]
+    """Module names in sys.modules to search."""
+
+    extra_classes: typing.Set[typing.Type]
+    """Additional directly defined implementation classes."""
+
+    def __init__(self,
+                 base_class=InvokablePlugin,
+                 description: str = "plugin",
+                 reserved_args: PluginArgumentsDef = None,
+                 argument_error_type: typing.Type[Exception] = ValueError,
+                 not_found_error_type: typing.Type[Exception] = RuntimeError):
+
+        self.search_modules = set()
+        self.extra_classes = set()
+        self.search_module_strings = set()
+
+        self.__reserved_args = reserved_args if reserved_args else []
+        self.__argument_error_type = argument_error_type
+        self.__not_found_error_type = not_found_error_type
+        self.__description = description
+        self.__base_class = base_class
+
+    def add_class(self, cls: typing.Type[InvokablePlugin]):
+        """
+        Add an implementation class to this loader.
+
+        :param cls: the class
+        """
+        self.extra_classes.add(cls)
+
+    def add_search_module_string(self, string: str):
+        """
+        Add a module string (in sys.modules) that will be searched for implementations.
+
+        :param string: the module string
+        """
+        self.search_module_strings.add(string)
+
+    def add_search_module(self, module: types.ModuleType):
+        """
+        Directly add a module object that will be searched for implementations.
+
+        :param module: the module object
+        """
+        self.search_modules.add(module)
+
+    def load_plugin_modules(self, paths: _types.Paths):
+        """
+        Add to search modules, modules that will be loaded from disk.
+
+        Either python files, or module directory containing __init__.py
+
+        It can be a mix of these.
+
+        :param paths: python files or module directories
+        """
+        self.search_modules.update(load_modules(paths))
+
+    def _load(self, path, **kwargs):
+        call_by_name = path.split(';', 1)[0].strip()
+
+        plugin_class = self.get_class_by_name(call_by_name)
+
+        parser_accepted_args = plugin_class.get_accepted_args(call_by_name)
+
+        if 'called-by-name' in parser_accepted_args:
+            raise RuntimeError(f'called-by-name is a reserved {self.__description} module argument, '
+                               'chose another argument name for your module.')
+
+        for module_arg in self.__reserved_args:
+            if module_arg[0] in parser_accepted_args:
+                raise RuntimeError(f'{module_arg} is a reserved {self.__description} module argument, '
+                                   'chose another argument name for your module.')
+
+            parser_accepted_args.append(module_arg[0])
+
+        arg_parser = _textprocessing.ConceptUriParser(
+            self.__description, parser_accepted_args)
+
+        try:
+            parsed_args = arg_parser.parse_concept_uri(path).args
+        except _textprocessing.ConceptPathParseError as e:
+            raise self.__argument_error_type(str(e))
+
+        args_dict = {}
+
+        for arg in plugin_class.get_default_args(call_by_name):
+            args_dict[_textprocessing.dashdown(arg[0])] = arg[1]
+
+        for k, v in parsed_args.items():
+            args_dict[_textprocessing.dashdown(k)] = v
+
+        args_dict.update(kwargs)
+
+        for name_default in self.__reserved_args:
+            if len(name_default) == 2:
+                name, default = name_default
+                args_dict[name] = parsed_args.get(name, default)
+            elif len(name_default) == 1:
+                name = name_default[0]
+                args_dict[name] = parsed_args.get(name)
+            else:
+                raise ValueError('plugin_reserved_args must be tuples of length 1 or 2')
+
+        args_dict['called_by_name'] = call_by_name
+
+        for arg in plugin_class.get_required_args(call_by_name):
+            if _textprocessing.dashdown(arg) not in args_dict:
+                raise self.__argument_error_type(
+                    f'Missing required argument "{arg}" for {self.__description} "{call_by_name}".')
+
+        try:
+            return plugin_class(**args_dict)
+        except self.__argument_error_type as e:
+            raise self.__argument_error_type(
+                f'Invalid argument given to {self.__description} "{call_by_name}": {e}')
+
+    def get_available_classes(self) -> typing.List[typing.Type[InvokablePlugin]]:
+        """
+        Get classes seen by this plugin loader.
+
+        :return: list of classes (types)
+        """
+
+        found_classes = []
+        for mod in itertools.chain([sys.modules[s] for s in self.search_module_strings], self.search_modules):
+            def _excluded(cls):
+                if not inspect.isclass(cls):
+                    return True
+
+                if cls is self.__base_class:
+                    return True
+
+                if not issubclass(cls, self.__base_class):
+                    return True
+
+                if hasattr(cls, 'HIDDEN'):
+                    return cls.HIDDEN
+                else:
+                    return False
+
+            found_classes += [value for value in
+                              itertools.chain(_types.get_public_members(mod).values(), self.extra_classes)
+                              if not _excluded(value)]
+
+        return found_classes
+
+    def get_class_by_name(self, plugin_name) -> typing.Type[InvokablePlugin]:
+        """
+        Get a plugin class by one of its invokable names.
+
+        IE: one of the names listed in its ``NAMES`` static attribute.
+
+        :param plugin_name: a name associated with a plugin class
+        :return: class (type)
+        """
+
+        classes = [cls for cls in self.get_available_classes() if
+                   plugin_name in cls.get_names()]
+
+        if len(classes) > 1:
+            raise RuntimeError(
+                f'Found more than one {self.__description} with the name: {plugin_name}')
+
+        if not classes:
+            raise self.__not_found_error_type(
+                f'Found no {self.__description} with the name: {plugin_name}')
+
+        return classes[0]
+
+    def get_all_names(self) -> _types.Names:
+        """
+        Get all plugin invokable names that this loader can see.
+
+        :return: list of names (strings)
+        """
+        names = []
+        for cls in self.get_available_classes():
+            names += cls.get_names()
+        return names
+
+    def get_help(self, plugin_name: _types.Name) -> str:
+        """
+        Get a formatted help string for a plugin by one of its invokable names.
+
+        :param plugin_name: a name associated with the plugin class
+        :return: formatted string
+        """
+        return self.get_class_by_name(plugin_name).get_help(plugin_name)
+
+    def load(self, uri: _types.Uri, **kwargs) -> InvokablePlugin:
+        """
+        Load an invokable plugin using a URI string containing its arguments.
+
+        :param uri: The URI string
+        :param kwargs: default argument values, will be override by arguments specified in the URI
+        :return: plugin instance
+        """
+
+        if uri is None:
+            raise ValueError('uri must not be None')
+        return self._load(uri, **kwargs)
