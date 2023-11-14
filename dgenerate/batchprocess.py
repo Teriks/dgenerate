@@ -384,7 +384,7 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
         These arguments will be injected at the end of every dgenerate invocation in the config file.
     :param render_loop: RenderLoop instance, if None is provided one will be created.
     :param version: Config version for ``#! dgenerate x.x.x`` version checks, defaults to ``dgenerate.__version__``
-    :param throw: Whether to throw exceptions from :py:meth:`dgenerate.invoker.invoke_dgenerate` or handle them,
+    :param throw: Whether to throw exceptions from :py:func:`dgenerate.invoker.invoke_dgenerate` or handle them,
         if you set this to True exceptions will propagate out of dgenerate invocations instead of a
         :py:exc:`.BatchProcessError` being raised, a line number where the error occurred can be obtained
         using :py:attr:`.BatchProcessor.current_line`.

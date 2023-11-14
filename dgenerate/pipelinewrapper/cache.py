@@ -86,19 +86,19 @@ def control_net_cache_size() -> int:
 CACHE_MEMORY_CONSTRAINTS: typing.List[str] = ['used_percent > 70']
 """
 Cache constraint expressions for when to clear all model caches (DiffusionPipeline, VAE, and ControlNet), 
-syntax provided via :py:meth:`dgenerate.memory.memory_constraints`
+syntax provided via :py:func:`dgenerate.memory.memory_constraints`
 
-If any of these constraints are met, a call to :py:meth:`.enforce_cache_constraints` will call
-:py:meth:`.clear_model_cache` and force a garbage collection.
+If any of these constraints are met, a call to :py:func:`.enforce_cache_constraints` will call
+:py:func:`.clear_model_cache` and force a garbage collection.
 """
 
 PIPELINE_CACHE_MEMORY_CONSTRAINTS: typing.List[str] = ['pipeline_size > (available * 0.75)']
 """
 Cache constraint expressions for when to clear the DiffusionPipeline cache, 
-syntax provided via :py:meth:`dgenerate.memory.memory_constraints`
+syntax provided via :py:func:`dgenerate.memory.memory_constraints`
 
-If any of these constraints are met, a call to :py:meth:`.enforce_pipeline_cache_constraints` will call
-:py:meth:`.clear_pipeline_cache` and force a garbage collection.
+If any of these constraints are met, a call to :py:func:`.enforce_pipeline_cache_constraints` will call
+:py:func:`.clear_pipeline_cache` and force a garbage collection.
 
 Extra variables include: *cache_size* (the current estimated cache size in bytes), 
 and *pipeline_size* (the estimated size of the new pipeline before it is brought into memory, in bytes)
@@ -107,10 +107,10 @@ and *pipeline_size* (the estimated size of the new pipeline before it is brought
 CONTROL_NET_CACHE_MEMORY_CONSTRAINTS: typing.List[str] = ['control_net_size > (available * 0.75)']
 """
 Cache constraint expressions for when to clear the ControlNet cache, 
-syntax provided via :py:meth:`dgenerate.memory.memory_constraints`
+syntax provided via :py:func:`dgenerate.memory.memory_constraints`
 
-If any of these constraints are met, a call to :py:meth:`.enforce_control_net_cache_constraints` will call
-:py:meth:`.clear_control_net_cache` and force a garbage collection.
+If any of these constraints are met, a call to :py:func:`.enforce_control_net_cache_constraints` will call
+:py:func:`.clear_control_net_cache` and force a garbage collection.
 
 Extra variables include: *cache_size* (the current estimated cache size in bytes), 
 and *control_net_size* (the estimated size of the new ControlNet before it is brought into memory, in bytes)
@@ -119,10 +119,10 @@ and *control_net_size* (the estimated size of the new ControlNet before it is br
 VAE_CACHE_MEMORY_CONSTRAINTS: typing.List[str] = ['vae_size > (available * 0.75)']
 """
 Cache constraint expressions for when to clear VAE cache, 
-syntax provided via :py:meth:`dgenerate.memory.memory_constraints`
+syntax provided via :py:func:`dgenerate.memory.memory_constraints`
 
-If any of these constraints are met, a call to :py:meth:`.enforce_vae_cache_constraints` will call
-:py:meth:`.clear_vae_cache` and force a garbage collection.
+If any of these constraints are met, a call to :py:func:`.enforce_vae_cache_constraints` will call
+:py:func:`.clear_vae_cache` and force a garbage collection.
 
 Extra variables include: *cache_size* (the current estimated cache size in bytes), 
 and *vae_size* (the estimated size of the new VAE before it is brought into memory, in bytes)
@@ -133,7 +133,7 @@ def clear_pipeline_cache(collect=True):
     """
     Clear DiffusionPipeline cache and then garbage collect.
 
-    :param collect: Call :py:meth:`gc.collect` ?
+    :param collect: Call :py:func:`gc.collect` ?
     """
     global _TORCH_PIPELINE_CACHE, \
         _FLAX_PIPELINE_CACHE, \
@@ -154,7 +154,7 @@ def clear_control_net_cache(collect=True):
     """
     Clear ControlNet cache and then garbage collect.
 
-    :param collect: Call :py:meth:`gc.collect` ?
+    :param collect: Call :py:func:`gc.collect` ?
     """
     global _TORCH_CONTROL_NET_CACHE, \
         _FLAX_CONTROL_NET_CACHE, \
@@ -176,7 +176,7 @@ def clear_vae_cache(collect=True):
     """
     Clear VAE cache and then garbage collect.
 
-    :param collect: Call :py:meth:`gc.collect` ?
+    :param collect: Call :py:func:`gc.collect` ?
     """
     global _TORCH_VAE_CACHE, \
         _FLAX_VAE_CACHE, \
@@ -198,7 +198,7 @@ def clear_model_cache(collect=True):
     """
     Clear all in memory model caches and garbage collect.
 
-    :param collect: Call :py:meth:`gc.collect` ?
+    :param collect: Call :py:func:`gc.collect` ?
 
     """
     global _TORCH_PIPELINE_CACHE, \
@@ -233,7 +233,7 @@ def enforce_cache_constraints(collect=True):
     """
     Enforce :py:attr:`dgenerate.pipelinewrapper.CACHE_MEMORY_CONSTRAINTS` and clear caches accordingly
 
-    :param collect: Call :py:meth:`gc.collect` after a cache clear ?
+    :param collect: Call :py:func:`gc.collect` after a cache clear ?
     :return: Whether any caches were cleared due to constraint expressions.
     """
 
@@ -261,7 +261,7 @@ def enforce_pipeline_cache_constraints(new_pipeline_size, collect=True):
     :py:class:`diffusers.DiffusionPipeline` cache if needed.
 
     :param new_pipeline_size: estimated size in bytes of any new pipeline that is about to enter memory
-    :param collect: Call :py:meth:`gc.collect` after a cache clear ?
+    :param collect: Call :py:func:`gc.collect` after a cache clear ?
     :return: Whether the cache was cleared due to constraint expressions.
     """
 
@@ -291,7 +291,7 @@ def enforce_vae_cache_constraints(new_vae_size, collect=True):
     VAE cache if needed.
 
     :param new_vae_size: estimated size in bytes of any new vae that is about to enter memory
-    :param collect: Call :py:meth:`gc.collect` after a cache clear ?
+    :param collect: Call :py:func:`gc.collect` after a cache clear ?
     :return: Whether the cache was cleared due to constraint expressions.
     """
 
@@ -322,7 +322,7 @@ def enforce_control_net_cache_constraints(new_control_net_size, collect=True):
     ControlNet cache if needed.
 
     :param new_control_net_size: estimated size in bytes of any new control net that is about to enter memory
-    :param collect: Call :py:meth:`gc.collect` after a cache clear ?
+    :param collect: Call :py:func:`gc.collect` after a cache clear ?
     :return: Whether the cache was cleared due to constraint expressions.
     """
 
@@ -352,10 +352,10 @@ def uri_hash_with_parser(parser):
     Create a hash function from a particular URI parser function that hashes a URI string.
 
     The URI is parsed and then the object that results from parsing is hashed with
-    :py:meth:`dgenerate.memoize.struct_hasher`.
+    :py:func:`dgenerate.memoize.struct_hasher`.
 
     :param parser: The URI parser function
-    :return: a hash function compatible with :py:meth:`dgenerate.memoize.memoize`
+    :return: a hash function compatible with :py:func:`dgenerate.memoize.memoize`
     """
 
     def hasher(path):
@@ -372,7 +372,7 @@ def uri_list_hash_with_parser(parser):
     Create a hash function from a particular URI parser function that hashes a list of URIs.
 
     :param parser: The URI parser function
-    :return: a hash function compatible with :py:meth:`dgenerate.memoize.memoize`
+    :return: a hash function compatible with :py:func:`dgenerate.memoize.memoize`
     """
 
     def hasher(paths):

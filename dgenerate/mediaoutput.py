@@ -145,7 +145,7 @@ def create_animation_writer(animation_format: str, out_filename: str, fps: typin
     """
     Create an animation writer of a given format.
 
-    :param animation_format: The animation format, see :py:meth:`.supported_animation_writer_formats`
+    :param animation_format: The animation format, see :py:func:`.supported_animation_writer_formats`
     :param out_filename: the output file name
     :param fps: FPS
     :return: :py:class:`.AnimationWriter`
@@ -167,7 +167,7 @@ class MultiAnimationWriter(AnimationWriter):
                  typing.Union[float, int],
                  allow_overwrites=False):
         """
-        :param animation_format: One of :py:meth:`.supported_animation_writer_formats`
+        :param animation_format: One of :py:func:`.supported_animation_writer_formats`
         :param filename: The desired filename, if multiple images are written a 
             suffix _animation_N will be appended for each file
         :param fps: Frames per second

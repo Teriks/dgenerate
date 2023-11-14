@@ -46,7 +46,7 @@ _help_parser.add_argument('-pm', '--plugin-modules', metavar='PATH', nargs='+', 
 
 class PreprocessorHelpUsageError(Exception):
     """
-    Raised on argument parse errors in :py:meth:`.image_preprocessor_help`
+    Raised on argument parse errors in :py:func:`.image_preprocessor_help`
     """
     pass
 

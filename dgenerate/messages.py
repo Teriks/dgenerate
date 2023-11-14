@@ -42,7 +42,7 @@ _MESSAGE_FILE = sys.stdout
 AUTO_FLUSH_MESSAGES = True
 """
 Whether to auto flush the output stream when printing to ``stdout`` 
-or the output file assigned with :py:meth:`.set_message_file`.
+or the output file assigned with :py:func:`.set_message_file`.
 
 Errors are printed to ``stderr`` which is unbuffered by default.
 """

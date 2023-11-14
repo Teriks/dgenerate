@@ -31,7 +31,7 @@ import dgenerate.types as _types
 
 class MemoryConstraintSyntaxError(Exception):
     """
-    Thrown by :py:meth:`.memory_constraints` on syntax errors or
+    Thrown by :py:func:`.memory_constraints` on syntax errors or
     if an expression returns a non-boolean value
     """
     pass
@@ -39,7 +39,7 @@ class MemoryConstraintSyntaxError(Exception):
 
 def memory_constraint_syntax_check(expression):
     """
-    Syntax check an expression given to :py:meth:`memory_constraints`
+    Syntax check an expression given to :py:func:`memory_constraints`
 
     :param expression: the expression string
     :raises MemoryConstraintSyntaxError: on syntax errors.
@@ -296,11 +296,11 @@ def memory_use_debug_string(pid=None):
         "Used Memory: 465.25MB, Available Memory: 50.94GB, Used Percent: 0.91%, Total Memory: 68.64GB, Used Total Percent: 0.68%"
 
     Where:
-        * Used Memory = :py:meth:`.get_used_memory`
-        * Available Memory = :py:meth:`.get_available_memory`
-        * Used Percent = :py:meth:`.get_used_memory_percent`
-        * Total Memory = :py:meth:`.get_total_memory`
-        * Used Percent Total = :py:meth:`.get_used_total_memory_percent`
+        * Used Memory = :py:func:`.get_used_memory`
+        * Available Memory = :py:func:`.get_available_memory`
+        * Used Percent = :py:func:`.get_used_memory_percent`
+        * Total Memory = :py:func:`.get_total_memory`
+        * Used Percent Total = :py:func:`.get_used_total_memory_percent`
 
 
     :param pid: PID of the process to describe, defaults to the current process.

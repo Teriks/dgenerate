@@ -491,7 +491,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     animation_format: _types.Name = 'mp4'
     """
-    Format for any rendered animations, see: :py:meth:`dgenerate.mediaoutput.supported_animation_writer_formats()`
+    Format for any rendered animations, see: :py:func:`dgenerate.mediaoutput.supported_animation_writer_formats()`
     This corresponds to the ``--animation-format`` argument of the dgenerate command line tool.
     """
 

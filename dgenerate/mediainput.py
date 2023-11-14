@@ -1078,7 +1078,7 @@ def create_animation_reader(mimetype: str,
     :py:class:`.VideoReader` or :py:class:`.AnimatedImageReader` will be returned for Video
     files and Animated Images respectively.
 
-    :param mimetype: one of :py:meth:`.get_supported_mimetypes`
+    :param mimetype: one of :py:func:`.get_supported_mimetypes`
 
     :param file: the binary file stream
 

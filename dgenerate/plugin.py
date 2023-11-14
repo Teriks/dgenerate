@@ -36,6 +36,14 @@ LOADED_PLUGIN_MODULES: typing.Dict[str, types.ModuleType] = {}
 class InvokablePlugin:
 
     def __init__(self, called_by_name: str, argument_error_type: typing.Type[Exception] = ValueError, **kwargs):
+        """
+        :param called_by_name: The name the plugin was invoked by (loaded by), will be passed by the loader.
+        :param argument_error_type: This exception type will be raised by ``get_*_arg`` and friends when
+            an argument is of an invalid format (they are passed as strings).  It should match the ``argument_error_type``
+            given to the :py:class:`.PluginLoader` implementation being used to load the inheritor of this class.
+        :param kwargs: Additional arguments that may arise when using an ``ARGS`` static signature definition
+            with multiple ``NAMES`` in your implementation.
+        """
         self.__called_by_name = called_by_name
         self.__argument_error_type = argument_error_type
 
@@ -325,6 +333,17 @@ class PluginLoader:
                  reserved_args: PluginArgumentsDef = None,
                  argument_error_type: typing.Type[Exception] = ValueError,
                  not_found_error_type: typing.Type[Exception] = RuntimeError):
+        """
+        :param base_class: Base class of plugins, will be used for searching modules.
+        :param description: Short plugin description / name, used in exception messages.
+        :param reserved_args: Constructor arguments that are used by the plugin class which cannot be
+            redefined by implementors of the plugin class. This is used mostly to validate a plugins
+            ``ARGS`` static signature definition when the plugin can be called by multiple ``NAMES``
+        :param argument_error_type: This exception type will be raised when the plugin is loaded
+            with invalid URI arguments.
+        :param not_found_error_type: This exception type will be raised when a plugin could
+            not be located by a name specified in a loading URI.
+        """
 
         self.search_modules = set()
         self.extra_classes = set()
