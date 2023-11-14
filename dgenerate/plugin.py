@@ -336,9 +336,10 @@ class PluginLoader:
         """
         :param base_class: Base class of plugins, will be used for searching modules.
         :param description: Short plugin description / name, used in exception messages.
-        :param reserved_args: Constructor arguments that are used by the plugin class which cannot be
-            redefined by implementors of the plugin class. This is used mostly to validate a plugins
-            ``ARGS`` static signature definition when the plugin can be called by multiple ``NAMES``
+        :param reserved_args: Constructor arguments that are used by the plugin class which
+            cannot be redefined by implementors of the plugin class. This should be a list of tuples,
+            (arg-name, default-value), or (arg-name, ) for arguments that do not have a default
+            and must be provided.
         :param argument_error_type: This exception type will be raised when the plugin is loaded
             with invalid URI arguments.
         :param not_found_error_type: This exception type will be raised when a plugin could
