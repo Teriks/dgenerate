@@ -25,6 +25,7 @@ from .batchprocessor import BatchProcessor, BatchProcessError
 from .configrunner import create_config_runner
 from .batchprocessordirective import BatchProcessorDirective
 from .postprocessdirective import PostprocessDirective
+from .preprocessdirective import PreprocessDirective
 from .directiveloader import DirectiveLoader, \
     BatchProcessorDirectivePluginNotFoundError, \
     BatchProcessorDirectivePluginArgumentError

@@ -53,7 +53,7 @@ class DirectiveLoader(_plugin.PluginLoader):
 
         super().__init__(base_class=_batchprocessordirective.BatchProcessorDirective,
                          description='directive',
-                         reserved_args=[('render-loop',), ('batch-processor',)],
+                         reserved_args=[('render-loop',), ('batch-processor',), ('injected-plugin-modules',)],
                          argument_error_type=BatchProcessorDirectivePluginArgumentError,
                          not_found_error_type=BatchProcessorDirectivePluginNotFoundError)
 

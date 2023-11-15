@@ -192,9 +192,12 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
     parser = argparse.ArgumentParser()
     parser.add_argument('-pm', '--plugin-modules', action='store', default=[], nargs="+")
 
+    injected_plugin_modules = []
+
     if injected_args:
         parsed, parsed_unknown = parser.parse_known_args(injected_args)
         if parsed.plugin_modules:
+            injected_plugin_modules = parsed.plugin_modules
             directive_plugin_loader.load_plugin_modules(parsed.plugin_modules)
 
     runner = None
@@ -211,7 +214,8 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
             try:
                 return directive_plugin_loader.load(name,
                                                     render_loop=render_loop,
-                                                    batch_processor=runner)
+                                                    batch_processor=runner,
+                                                    injected_plugin_modules=injected_plugin_modules)
             except _directiveloader.BatchProcessorDirectivePluginNotFoundError:
                 return None
         else:
