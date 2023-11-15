@@ -35,12 +35,17 @@ class BatchProcessorDirective(_plugin.InvokablePlugin):
     def __init__(self, called_by_name,
                  batch_processor: _batchprocessor.BatchProcessor = None,
                  render_loop: _renderloop.RenderLoop = None,
+                 injected_plugin_modules: typing.Optional[typing.List[str]] = None,
                  **kwargs):
         super().__init__(called_by_name=called_by_name,
                          argument_error_type=_directiveloader.BatchProcessorDirectivePluginArgumentError,
                          **kwargs)
-        self.__render_loop = render_loop
         self.__batch_processor = batch_processor
+        self.__render_loop = render_loop
+
+        self.__injected_plugin_modules = \
+            injected_plugin_modules if \
+                injected_plugin_modules is not None else []
 
     @property
     def render_loop(self):
@@ -58,6 +63,15 @@ class BatchProcessorDirective(_plugin.InvokablePlugin):
         running the config file that this directive is being invoked in.
         """
         return self.__batch_processor
+
+    @property
+    def injected_plugin_modules(self) -> typing.List[str]:
+        """
+        List of plugin module paths if they were injected into the batch process by ``-pm/--plugin-modules``
+        :return: a list of strings, may be empty but not ``None``
+        """
+
+        return self.__injected_plugin_modules
 
     def __call__(self, args: typing.List[str]):
         """

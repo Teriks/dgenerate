@@ -24,31 +24,36 @@ import typing
 import PIL.Image
 
 import dgenerate.batchprocess.batchprocessordirective as _batchprocessordirective
-import dgenerate.postprocessors
+import dgenerate.preprocessors
 
-_parser = argparse.ArgumentParser(r'\postprocess', exit_on_error=False)
+_parser = argparse.ArgumentParser(r'\preprocess', exit_on_error=False)
 
 _parser.add_argument('file')
-_parser.add_argument('-pp', '--postprocessors', nargs='+')
+_parser.add_argument('-pp', '--preprocessors', nargs='+')
 _parser.add_argument('-o', '--output-file', default=None)
+_parser.add_argument('-r', '--resize', default=None, type=dgenerate.arguments._type_size)
+_parser.add_argument('-a', '--no-aspect', action='store_true')
 
 
-class PostprocessDirective(_batchprocessordirective.BatchProcessorDirective):
-    NAMES = ['postprocess']
+class PreprocessDirective(_batchprocessordirective.BatchProcessorDirective):
+    NAMES = ['preprocess']
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
     def __call__(self, args: typing.List[str]):
         parsed = _parser.parse_args(args)
-        loader = dgenerate.postprocessors.Loader()
+        loader = dgenerate.preprocessors.Loader()
 
         loader.load_plugin_modules(self.injected_plugin_modules)
 
-        processor = dgenerate.postprocessors.ImagePostprocessorMixin(loader.load(parsed.postprocessors))
+        processor = dgenerate.preprocessors.ImagePreprocessorMixin(loader.load(parsed.preprocessors))
 
         with PIL.Image.open(parsed.file) as img:
-            img = processor.postprocess_image(img)
+            img = processor.preprocess_image(
+                img,
+                resize_to=parsed.resize,
+                aspect_correct=not parsed.no_aspect)
             if parsed.output_file:
                 img.save(parsed.output_file)
             else:
