@@ -116,9 +116,11 @@ class BatchProcessor:
     Functions available when templating is occurring.
     """
 
-    directives: typing.Dict[str, typing.Callable[[list], None]]
+    directive_lookup: typing.Callable[[str], typing.Optional[typing.Callable[[list], None]]]
     """
-    Batch process directive handlers by name.
+    Batch process directive handler lookup function.
+    
+    Should return a callable(list) or ``None`` if the directive handler is not found.
     """
 
     injected_args: typing.List[str]
@@ -134,7 +136,7 @@ class BatchProcessor:
                  template_variables: typing.Optional[typing.Dict[str, typing.Any]] = None,
                  template_functions: typing.Optional[
                      typing.Dict[str, typing.Callable[[typing.Any], typing.Any]]] = None,
-                 directive_lookup: typing.Optional[typing.Callable[[str], typing.Callable[[list], None]]] = None,
+                 directive_lookup: typing.Optional[typing.Callable[[str], typing.Optional[typing.Callable[[list], None]]]] = None,
                  injected_args: typing.Optional[typing.List[str]] = None):
         """
         :param invoker: A function for invoking lines recognized as shell commands, should return a return code.
