@@ -43,7 +43,7 @@ def resize_image_calc(old_size: _types.Size,
     :return: calculated new size
     """
 
-    if align < 1:
+    if align is not None and align < 1:
         raise ValueError('align value may not be less than 1.')
 
     if new_size is None:
