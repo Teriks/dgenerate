@@ -26,7 +26,7 @@ with PIL.Image.open('../../media/man-fighting-pose.jpg') as img:
     # call here, because it is not going to be modified in place
     # by this processor implementation and dgenerate will make
     # a copy and dispose the original.
-    out_image = canny.process(img, resize_to=None)
+    out_image = canny.process(img)
 
     # if you want to retain a copy, always pass a copy, management
     # of image object lifetime is aggressive. in this instance it
@@ -42,6 +42,21 @@ print(loader.get_help('openpose'))
 openpose = loader.load('openpose', device=args.device)
 
 with PIL.Image.open('../../media/man-fighting-pose.jpg') as img:
-    out_image = openpose.process(img, resize_to=None)
+    out_image = openpose.process(img)
 
     out_image.save('openpose-man-fighting-pose.png')
+
+
+# You can upscale using chaiNNer compatible models using
+# the upscaler implementation
+
+
+# print out the upscaler processor plugin help for reference
+print(loader.get_help('upscaler'))
+
+upscaler = loader.load('upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth', device=args.device)
+
+with PIL.Image.open('../../media/earth.jpg') as img:
+    out_image = upscaler.process(img)
+
+    out_image.save('upscaled-earth.png')
