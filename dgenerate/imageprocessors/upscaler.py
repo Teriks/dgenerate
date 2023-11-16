@@ -47,7 +47,8 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
 
     The "overlap" argument can be used to specify the overlap amount of each tile in pixels, and defaults to 32.
 
-    The "pre-resize" argument can be used to specify if the process should occur before dgenerate resizes the image.
+    The "pre-resize" argument is a boolean value determining if the processing should take place before or
+    after the image is resized by dgenerate.
 
     Example: "upscaler;model=my-model.pth;tile=256;overlap=16"
     """
