@@ -901,7 +901,10 @@ class RenderLoop:
 
         next_frame_terminates_anim = False
 
-        if self.disable_writes or self.config.animation_format == 'frames':
+        not_writing_animation_file = \
+            self.disable_writes or self.config.animation_format == 'frames'
+
+        if not_writing_animation_file:
             # The interface can be used as a mock object
             anim_writer = _mediaoutput.AnimationWriter()
         else:
@@ -944,7 +947,7 @@ class RenderLoop:
                             if image_seed.frame_index == 0:
                                 # Preform on first frame write
 
-                                if not self.disable_writes:
+                                if not not_writing_animation_file:
 
                                     animation_filenames_message = \
                                         '\n'.join(f'Beginning Writes To Animation: "{f}"'
