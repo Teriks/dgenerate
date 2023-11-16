@@ -110,23 +110,20 @@ class AnimatedImageWriter(AnimationWriter):
         self.filename = filename
         self.duration = duration
 
-    def _cleanup(self):
-        for i in self.collected_frames:
-            i.close()
-        self.collected_frames.clear()
-
     def end(self, new_file: str = None):
 
         if self.collected_frames:
             self.collected_frames[0].save(self.filename, save_all=True, append_images=self.collected_frames[1:],
                                           optimize=False, duration=self.duration, loop=0)
-            self._cleanup()
+            for i in self.collected_frames:
+                i.close()
+            self.collected_frames.clear()
 
         if new_file:
             self.filename = new_file
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self._cleanup()
+        self.end()
 
     def write(self, img: PIL.Image.Image):
         self.collected_frames.append(img.copy())
@@ -141,16 +138,29 @@ def supported_animation_writer_formats():
     return ['mp4', 'gif', 'webp']
 
 
+class UnknownAnimationFormatError(Exception):
+    """
+    Raised by :py:func`.create_animation_writer` when an unknown animation format is provided.
+    """
+
+
 def create_animation_writer(animation_format: str, out_filename: str, fps: typing.Union[float, int]):
     """
     Create an animation writer of a given format.
+
+    :raise UnknownAnimationFormatError: if the provided ``animation_format`` is unknown.
 
     :param animation_format: The animation format, see :py:func:`.supported_animation_writer_formats`
     :param out_filename: the output file name
     :param fps: FPS
     :return: :py:class:`.AnimationWriter`
     """
-    return VideoWriter(out_filename, fps) if animation_format.strip().lower() == 'mp4' \
+    animation_format = animation_format.strip().lower()
+
+    if animation_format not in supported_animation_writer_formats():
+        raise UnknownAnimationFormatError(f'Animation format "{animation_format}" is not a known format.')
+
+    return VideoWriter(out_filename, fps) if animation_format == 'mp4' \
         else AnimatedImageWriter(out_filename, 1000 / fps)
 
 
