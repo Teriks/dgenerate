@@ -1150,7 +1150,10 @@ When an animated image seed is given, animated output will be produced in the fo
 In addition, every frame will be written to the output folder as a uniquely named image.
 
 By specifying ``--animation-format frames`` you can tell dgenerate that you just need
-the frame images and not to produce any coalesced animation file for you.
+the frame images and not to produce any coalesced animation file for you. You may also
+specify ``--no-frames`` to indicate that you only want an animation file to be produced
+and no intermediate frames, though using this option with ``--animation-format frames``
+is considered an error.
 
 If the animation is not 1:1 aspect ratio, the width will be fixed to the width of the
 requested output size, and the height calculated to match the aspect ratio of the animation.
