@@ -431,6 +431,16 @@ def _exif_orient(image):
     return PIL.ImageOps.exif_transpose(image)
 
 
+def is_downloadable_url(string) -> bool:
+    """
+    Does a string represent a URL that can be downloaded from by :py:mod:`dgenerate.mediainput`?
+
+    :param string: the string
+    :return: ``True`` or ``False``
+    """
+    return string.startswith('http://') or string.startswith('https://')
+
+
 def get_supported_animated_image_mimetypes() -> typing.List[str]:
     return ['image/gif', 'image/webp', 'image/apng']
 
@@ -672,7 +682,7 @@ def _parse_image_seed_uri_legacy(uri: str) -> ImageSeedParseResult:
 
     for part in first_parts:
         part = part.strip()
-        if not (part.startswith('http://') or part.startswith('https://') or os.path.exists(part)):
+        if not (is_downloadable_url(part) or os.path.exists(part)):
             if len(first_parts) > 1:
                 raise ImageSeedError(f'Control image file "{part}" does not exist.')
             else:
@@ -684,7 +694,7 @@ def _parse_image_seed_uri_legacy(uri: str) -> ImageSeedParseResult:
                 'Missing inpaint mask image or output size specification, '
                 'check image seed syntax, stray semicolon?')
 
-        if part.startswith('http://') or part.startswith('https://'):
+        if is_downloadable_url(part):
             result.mask_path = part
         elif os.path.exists(part):
             result.mask_path = part
@@ -752,7 +762,7 @@ def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
 
     # noinspection HttpUrlsUsage
     def _ensure_exists(path, title):
-        if not (path.startswith('http://') or path.startswith('https://') or os.path.exists(path)):
+        if not (is_downloadable_url(path) or os.path.exists(path)):
             raise ImageSeedError(f'{title} file "{path}" does not exist.')
 
     seed_path = parse_result.concept
@@ -998,7 +1008,7 @@ def fetch_media_data_stream(uri: str) -> typing.Tuple[str, typing.BinaryIO]:
     :return: (mime-type string, BinaryIO)
     """
 
-    if uri.startswith('http://') or uri.startswith('https://'):
+    if is_downloadable_url(uri):
         mime_type, filename = create_web_cache_file(uri)
         return mime_type, open(filename, mode='rb')
     else:
