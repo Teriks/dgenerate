@@ -72,7 +72,6 @@ def invoke_dgenerate(
         _messages.log(render_loop.generate_template_variables_help(show_values=False) + '\n', underline=True)
         return 0
 
-    arguments = None
     constraint_lists = []
 
     try:

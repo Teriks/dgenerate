@@ -310,7 +310,7 @@ Help Output
                             name/blob/main/refiner_model.safetensors", the revision argument may be used with this
                             syntax.
       --sdxl-refiner-scheduler SCHEDULER_NAME
-                            Specify a scheduler (sampler) by name for the SDXL refiner pass. Operates the exactsame
+                            Specify a scheduler (sampler) by name for the SDXL refiner pass. Operates the exact same
                             way as --scheduler including the "help" option. Defaults to the value of --scheduler.
       --sdxl-second-prompts PROMPT [PROMPT ...]
                             One or more secondary prompts to try using SDXL's secondary text encoder. By default
