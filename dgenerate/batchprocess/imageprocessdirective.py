@@ -18,16 +18,43 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import argparse
+import typing
 
-class ImagePreprocessorArgumentError(Exception):
-    """
-    Raised when an image preprocessor receives invalid arguments.
-    """
-    pass
+import PIL.Image
+
+import dgenerate.batchprocess.batchprocessordirective as _batchprocessordirective
+import dgenerate.imageprocessors
+
+_parser = argparse.ArgumentParser(r'\image_process', exit_on_error=False)
+
+_parser.add_argument('file')
+_parser.add_argument('-p', '--processors', nargs='+', help='One or more preprocessor URIs.')
+_parser.add_argument('-o', '--output-file', default=None)
+_parser.add_argument('-r', '--resize', default=None, type=dgenerate.arguments._type_size)
+_parser.add_argument('-a', '--no-aspect', action='store_true')
 
 
-class ImagePreprocessorNotFoundError(Exception):
-    """
-    Raised when a reference to an unknown image preprocessor name is made.
-    """
-    pass
+class ImageProcessDirective(_batchprocessordirective.BatchProcessorDirective):
+    NAMES = ['image_process']
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def __call__(self, args: typing.List[str]):
+        parsed = _parser.parse_args(args)
+        loader = dgenerate.imageprocessors.Loader()
+
+        loader.load_plugin_modules(self.injected_plugin_modules)
+
+        processor = loader.load(parsed.processors)
+
+        with PIL.Image.open(parsed.file) as img:
+            img = processor.process(
+                img,
+                resize_to=parsed.resize,
+                aspect_correct=not parsed.no_aspect)
+            if parsed.output_file:
+                img.save(parsed.output_file)
+            else:
+                img.save(parsed.file)

@@ -554,7 +554,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
         if model_type == _enums.ModelTypes.TORCH_UPSCALER_X2:
             if lora_uris or textual_inversion_uris:
                 raise NotImplementedError(
-                    '--model-type torch-upscaler-x2 is not compatible with --lora or --textual-inversions.')
+                    '--model-type torch-upscaler-x2 is not compatible with --loras or --textual-inversions.')
 
         pipeline_class = (diffusers.StableDiffusionUpscalePipeline if model_type == _enums.ModelTypes.TORCH_UPSCALER_X4
                           else diffusers.StableDiffusionLatentUpscalePipeline)

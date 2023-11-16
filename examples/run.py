@@ -105,6 +105,6 @@ for config in configs:
         elif _batchprocess is not None and not _skip_library:
             # library is installed
             try:
-                subprocess.run([sys.executable] + [config], stdin=f, cwd=dirname, check=True)
+                subprocess.run([sys.executable] + [config] + args, stdin=f, cwd=dirname, check=True)
             except KeyboardInterrupt:
                 sys.exit(1)

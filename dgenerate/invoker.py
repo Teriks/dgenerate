@@ -25,8 +25,7 @@ import dgenerate.mediainput as _mediainput
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.plugin as _plugin
-import dgenerate.preprocessors as _preprocessors
-import dgenerate.postprocessors as _postprocessors
+import dgenerate.imageprocessors as _imageprocessors
 import dgenerate.renderloop as _renderloop
 
 
@@ -48,10 +47,8 @@ def invoke_dgenerate(
     :raises dgenerate.arguments.DgenerateUsageError:
     :raises dgenerate.mediainput.ImageSeedError:
     :raises dgenerate.mediainput.UnknownMimetypeError:
-    :raises dgenerate.preprocessors.ImagePreprocessorArgumentError:
-    :raises dgenerate.preprocessors.ImagePreprocessorNotFoundError:
-    :raises dgenerate.postprocessors.ImagePostprocessorArgumentError:
-    :raises dgenerate.postprocessors.ImagePostprocessorNotFoundError:
+    :raises dgenerate.imageprocessors.ImageProcessorArgumentError:
+    :raises dgenerate.imageprocessors.ImageProcessorNotFoundError:
     :raises dgenerate.pipelinewrapper.InvalidModelUriError:
     :raises dgenerate.pipelinewrapper.InvalidSchedulerName:
     :raises dgenerate.pipelinewrapper.OutOfMemoryError:
@@ -65,16 +62,10 @@ def invoke_dgenerate(
     if render_loop is None:
         render_loop = _renderloop.RenderLoop()
 
-    if '-iph' in args or '--image-preprocessor-help' in args:
+    if '-iph' in args or '--image-processor-help' in args:
         try:
-            return _preprocessors.image_preprocessor_help(args, throw=throw)
-        except _preprocessors.PreprocessorHelpUsageError as e:
-            raise _arguments.DgenerateUsageError(e)
-
-    if '-pph' in args or '--postprocessor-help' in args:
-        try:
-            return _postprocessors.postprocessor_help(args, throw=throw)
-        except _postprocessors.PostprocessorHelpUsageError as e:
+            return _imageprocessors.image_processor_help(args, throw=throw)
+        except _imageprocessors.ImageProcessorHelpUsageError as e:
             raise _arguments.DgenerateUsageError(e)
 
     if '--templates-help' in args:
@@ -112,8 +103,7 @@ def invoke_dgenerate(
 
         plugin_modules = _plugin.load_modules(arguments.plugin_module_paths)
 
-        render_loop.preprocessor_loader.search_modules.update(plugin_modules)
-        render_loop.postprocessor_loader.search_modules.update(plugin_modules)
+        render_loop.image_processor_loader.search_modules.update(plugin_modules)
 
         if arguments.verbose:
             _messages.LEVEL = _messages.DEBUG
@@ -129,10 +119,8 @@ def invoke_dgenerate(
             _pipelinewrapper.InvalidModelUriError,
             _pipelinewrapper.InvalidSchedulerName,
             _pipelinewrapper.OutOfMemoryError,
-            _preprocessors.ImagePreprocessorArgumentError,
-            _preprocessors.ImagePreprocessorNotFoundError,
-            _postprocessors.ImagePostprocessorArgumentError,
-            _postprocessors.ImagePostprocessorNotFoundError,
+            _imageprocessors.ImageProcessorArgumentError,
+            _imageprocessors.ImageProcessorNotFoundError,
             NotImplementedError,
             EnvironmentError) as e:
 

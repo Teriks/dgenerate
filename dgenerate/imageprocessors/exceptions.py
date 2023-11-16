@@ -18,38 +18,16 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import argparse
-import typing
 
-import PIL.Image
-
-import dgenerate.batchprocess.batchprocessordirective as _batchprocessordirective
-import dgenerate.postprocessors
-
-_parser = argparse.ArgumentParser(r'\postprocess', exit_on_error=False)
-
-_parser.add_argument('file')
-_parser.add_argument('-pp', '--postprocessors', nargs='+')
-_parser.add_argument('-o', '--output-file', default=None)
+class ImageProcessorArgumentError(Exception):
+    """
+    Raised when an image processor receives invalid arguments.
+    """
+    pass
 
 
-class PostprocessDirective(_batchprocessordirective.BatchProcessorDirective):
-    NAMES = ['postprocess']
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-    def __call__(self, args: typing.List[str]):
-        parsed = _parser.parse_args(args)
-        loader = dgenerate.postprocessors.Loader()
-
-        loader.load_plugin_modules(self.injected_plugin_modules)
-
-        processor = dgenerate.postprocessors.ImagePostprocessorMixin(loader.load(parsed.postprocessors))
-
-        with PIL.Image.open(parsed.file) as img:
-            img = processor.postprocess_image(img)
-            if parsed.output_file:
-                img.save(parsed.output_file)
-            else:
-                img.save(parsed.file)
+class ImageProcessorNotFoundError(Exception):
+    """
+    Raised when a reference to an unknown image processor name is made.
+    """
+    pass

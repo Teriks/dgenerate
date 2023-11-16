@@ -2,11 +2,11 @@ import typing
 
 import PIL.Image
 
-import dgenerate.preprocessors
+import dgenerate.imageprocessors
 
 
-class FooBarPreprocessor(dgenerate.preprocessors.ImagePreprocessor):
-    """My --image-preprocessor-help documentation, arguments are described automatically"""
+class FooBarImageProcessor(dgenerate.imageprocessors.ImageProcessor):
+    """My --image-processor-help documentation, arguments are described automatically"""
 
     # This static property defines what names this module can be invoked by
     NAMES = ['foobar']
@@ -24,7 +24,7 @@ class FooBarPreprocessor(dgenerate.preprocessors.ImagePreprocessor):
         super().__init__(**kwargs)
 
         # These helper functions can help you validate arguments of int, float, and bool types
-        # they will produce a "dgenerate.preprocessors.ImagePreprocessorArgumentError"
+        # they will produce a "dgenerate.imageprocessors.ImageProcessorArgumentError"
         # if the string is not in the correct format for the requested type.
         # You can throw that exception yourself or call "self.argument_error('my message')" anywhere
         # in "__init__" if you are doing custom argument validation, it will be handle
@@ -40,7 +40,7 @@ class FooBarPreprocessor(dgenerate.preprocessors.ImagePreprocessor):
         # "resize_resolution" is the resolution that the image is going to be resized to
         # or None if no resizing is going to occur
 
-        # If you do not do any preprocessing in this step, return the image as is
+        # If you do not do any processing in this step, return the image as is
 
         # If you do modify the image, it is acceptable to modify it in place, or
         # to return a copy of it
@@ -58,11 +58,11 @@ class FooBarPreprocessor(dgenerate.preprocessors.ImagePreprocessor):
         # This step runs after dgenerate is done resizing the image to its final size,
         # after which it will be passed into a diffusion pipeline
 
-        # If have an image preprocessing step that produced an image that
+        # If have an image processing step that produced an image that
         # should not be upscaled or downscaled for quality reasons (probably most of the time),
         # this is the place you should do your processing
 
-        # If you do not do any preprocessing in this step, return the image as is
+        # If you do not do any processing in this step, return the image as is
 
         # If you do modify the image, it is acceptable to modify it in place, or
         # to return a copy of it
@@ -71,11 +71,11 @@ class FooBarPreprocessor(dgenerate.preprocessors.ImagePreprocessor):
         return image
 
 
-# Below is an example of a preprocessor module that can be invoked
-# by multiple names and handle multiple preprocessing tasks within
+# Below is an example of a processor module that can be invoked
+# by multiple names and handle multiple processing tasks within
 # the same class
 
-class BooFabPreprocessor(dgenerate.preprocessors.ImagePreprocessor):
+class BooFabImageProcessor(dgenerate.imageprocessors.ImageProcessor):
 
     # This static property defines what names this module can be invoked by
     NAMES = ['boo', 'fab']
@@ -91,14 +91,14 @@ class BooFabPreprocessor(dgenerate.preprocessors.ImagePreprocessor):
     }
 
     # Defining the static method "help" allows you to provide a help string
-    # for each invokable name, for --image-preprocessor-help "boo" and --image-preprocessor-help "foo"
+    # for each invokable name, for --image-processor-help "boo" and --image-processor-help "foo"
     # the name this option is used with is passed to "called_by_name"
     @staticmethod
     def help(called_by_name):
         if called_by_name == 'boo':
-            return 'My --image-preprocessor-help "boo" documentation'
+            return 'My --image-processor-help "boo" documentation'
         if called_by_name == 'fab':
-            return 'My --image-preprocessor-help "fab" documentation'
+            return 'My --image-processor-help "fab" documentation'
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

@@ -1,9 +1,6 @@
 from typing import Union
 
 from .architecture.DAT import DAT
-from .architecture.face.codeformer import CodeFormer
-from .architecture.face.gfpganv1_clean_arch import GFPGANv1Clean
-from .architecture.face.restoreformer_arch import RestoreFormer
 from .architecture.HAT import HAT
 from .architecture.LaMa import LaMa
 from .architecture.OmniSR.OmniSR import OmniSR
@@ -14,6 +11,9 @@ from .architecture.SRVGG import SRVGGNetCompact as RealESRGANv2
 from .architecture.SwiftSRGAN import Generator as SwiftSRGAN
 from .architecture.Swin2SR import Swin2SR
 from .architecture.SwinIR import SwinIR
+from .architecture.face.codeformer import CodeFormer
+from .architecture.face.gfpganv1_clean_arch import GFPGANv1Clean
+from .architecture.face.restoreformer_arch import RestoreFormer
 
 PyTorchSRModels = (
     RealESRGANv2,

@@ -1,20 +1,20 @@
 #! dgenerate 3.0.0
 
-# Run the FooBarPreprocessor plugin
+# Run the FooBarImageProcessor plugin
 
 "runwayml/stable-diffusion-v1-5" \
 --plugin-modules demo_plugin \
 --prompts "hello world" \
 --image-seeds "../../media/earth.jpg" \
 --vae-slicing \
---seed-image-preprocessors foobar;my-argument=1;output-file=output/foobar-debug.png
+--seed-image-processors foobar;my-argument=1;output-file=output/foobar-debug.png
 
 
-# Run the BooFabPreprocessor plugin
+# Run the BooFabImageProcessor plugin
 
 "runwayml/stable-diffusion-v1-5" \
 --plugin-modules demo_plugin \
 --prompts "hello world" \
 --vae-slicing \
 --image-seeds "../../media/earth.jpg" \
---seed-image-preprocessors boo;my-argument=1 fab;my-argument=2
+--seed-image-processors boo;my-argument=1 fab;my-argument=2

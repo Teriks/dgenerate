@@ -25,11 +25,11 @@ import numpy
 import numpy as np
 
 import dgenerate.messages as _messages
-import dgenerate.preprocessors.preprocessor as _preprocessor
 import dgenerate.types as _types
+from dgenerate.imageprocessors import imageprocessor as _imageprocessor
 
 
-class CannyEdgeDetectPreprocess(_preprocessor.ImagePreprocessor):
+class CannyEdgeDetectProcessor(_imageprocessor.ImageProcessor):
     """
     Process the input image with the Canny edge detection algorithm for use with a ControlNet.
     The "lower" argument indicates the lower threshold value for the algorithm, and the "upper"
@@ -154,10 +154,10 @@ class CannyEdgeDetectPreprocess(_preprocessor.ImagePreprocessor):
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         """
         Pre resize, canny edge detection may or may not occur here depending
-        on the boolean value of the preprocessor argument "pre-resize"
+        on the boolean value of the processor argument "pre-resize"
 
         :param image: image to process
-        :param resize_resolution: purely informational, is unused by this preprocessor
+        :param resize_resolution: purely informational, is unused by this processor
         :return: possibly a canny edge detected image, or the input image
         """
         if self._pre_resize:
@@ -167,7 +167,7 @@ class CannyEdgeDetectPreprocess(_preprocessor.ImagePreprocessor):
     def impl_post_resize(self, image: PIL.Image.Image):
         """
         Post resize, canny edge detection may or may not occur here depending
-        on the boolean value of the preprocessor argument "pre-resize"
+        on the boolean value of the processor argument "pre-resize"
 
         :param image: image to process
         :return: possibly a canny edge detected image, or the input image

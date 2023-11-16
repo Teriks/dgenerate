@@ -1,0 +1,3 @@
+#! dgenerate 3.0.0
+
+\image_process "../media/earth.jpg" -o earth-upscaled.jpg --processors upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth

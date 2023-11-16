@@ -18,79 +18,70 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import PIL.Image
-
-import dgenerate.image as _image
-import dgenerate.messages as _messages
-import dgenerate.postprocessors.postprocessor as _postprocessor
-import dgenerate.types as _types
 import typing
 
+import PIL.Image
 
-class ImagePostprocessorMixin:
+import dgenerate.imageprocessors.imageprocessor as _imageprocessor
+import dgenerate.types as _types
+
+
+class ImageProcessorMixin:
     """
-    Mixin functionality for objects that do image postprocessing such as :py:class:`dgenerate.renderloop.RenderLoop`
+    Mixin functionality for objects that can do image processing such as
+    implementors of :py:class:`dgenerate.mediainput.AnimationReader`
 
     This object can also be instantiated and used alone.
     """
 
-    image_postprocessor_enabled: bool
+    image_processor_enabled: bool
     """
-    Enable or disable image postprocessing.
-    """
-
-    image_postprocessor: typing.Optional[_postprocessor.ImagePostprocessor] = None
-    """
-    Current image postprocessor.
+    Enable or disable image processing.
     """
 
-    def __init__(self, postprocessor: typing.Optional[_postprocessor.ImagePostprocessor] = None, *args, **kwargs):
+    image_processor: typing.Optional[_imageprocessor.ImageProcessor] = None
+    """
+    Current image processor.
+    """
+
+    def __init__(self, image_processor: typing.Optional[_imageprocessor.ImageProcessor] = None, *args, **kwargs):
         """
-        :param postprocessor: the postprocessor implementation that will be doing
-            the image postprocessing.
+        :param processor: the processor implementation that will be doing
+            the image processing.
 
         :param args: mixin forwarded args
         :param kwargs: mixin forwarded kwargs
         """
         super().__init__(*args, **kwargs)
-        self.image_postprocessor = postprocessor
-        self.image_postprocessor_enabled: bool = True
+        self.image_processor = image_processor
+        self.image_processor_enabled: bool = True
 
-    def _postprocess(self, image: PIL.Image.Image):
-        if self.image_postprocessor is not None and self.image_postprocessor_enabled:
-            filename = _image.get_filename(image)
-
-            _messages.debug_log('Starting Image Postprocess - '
-                                f'{self.image_postprocessor}.process(image="{filename}")')
-
-            processed = self.image_postprocessor.process(image)
-            processed.filename = filename
-
-            _messages.debug_log(f'Finished Image Postprocess - {self.image_postprocessor}.process')
-            return processed
-        return image
-
-    def postprocess_image(self, image: PIL.Image.Image):
+    def process_image(self, image: PIL.Image.Image, resize_to: _types.OptionalSize = None, aspect_correct: bool = True):
         """
-        Preform image postprocessing on an image.
+        Preform image processing on an image, including the requested resizing step.
 
-        Invokes the assigned image postprocessor.
+        Invokes the assigned image processor on an image.
 
-        If no postprocessor is assigned or the postprocessor is disabled, this is a no-op.
+        If no processor is assigned or the processor is disabled, this is a no-op.
 
-        The original image will be closed if the postprocessor returns a new image
+        The original image will be closed if the processor returns a new image
         instead of modifying it in place, you should not count on the original image
-        being open and usable once this function completes with a postprocessor assigned
-        and the postprocessor enabled, though it is safe to use the input image in a ``with``
+        being open and usable once this function completes with a processor assigned
+        and the processor enabled, though it is safe to use the input image in a ``with``
         context, if you need to retain a copy, pass a copy.
 
         :param image: image to process
+        :param resize_to: image will be resized to this dimension by this method.
+        :param aspect_correct: Should the resize operation be aspect correct?
 
         :return: the processed image, processed by the
-            current :py:attr:`.PostProcessorMixin.image_postprocessor`.
+            processor assigned in the constructor.
         """
 
-        return self._postprocess(image)
+        if self.image_processor is None or not self.image_processor_enabled:
+            return image
+
+        return self.image_processor.process(image, resize_to=resize_to, aspect_correct=aspect_correct)
 
 
 __all__ = _types.module_all()
