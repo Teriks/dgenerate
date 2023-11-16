@@ -166,7 +166,7 @@ class VideoReader(_imageprocessors.ImageProcessorMixin, AnimationReader):
     """
     Implementation :py:class:`.AnimationReader` that reads Video files with PyAV.
 
-    All frame images from this animation reader will be aligned by 8 pixels.
+    All frame images from this animation reader will be aligned by 8 pixels by default.
     """
 
     def __init__(self,
@@ -174,6 +174,7 @@ class VideoReader(_imageprocessors.ImageProcessorMixin, AnimationReader):
                  file_source: str,
                  resize_resolution: _types.OptionalSize = None,
                  aspect_correct: bool = True,
+                 align: typing.Optional[int] = 8,
                  image_processor: _imageprocessors.ImageProcessor = None):
         """
         :param file: a file path or binary file stream
@@ -185,10 +186,15 @@ class VideoReader(_imageprocessors.ImageProcessorMixin, AnimationReader):
             reading from a byte stream.:py:class:`PIL.Image.Image` objects produced by
             the reader will have this value set to their *filename* attribute.
 
-        :param resize_resolution: Progressively resize each frame to this resolution while
-            reading. The provided resolution will be aligned by 8 pixels.
+        :param resize_resolution: Progressively resize each frame to this
+            resolution while reading. The provided resolution will be aligned
+            by ``align`` if it is not ``None``.
 
         :param aspect_correct: Should resize operations be aspect correct?
+
+        :param align: Align by this amount of pixels, if the input file is not aligned
+            to this amount of pixels, it will be aligned by resizing. Passing ``None``
+            or ``1`` disables alignment.
 
         :param image_processor: optionally process every frame with this image processor
         """
@@ -203,22 +209,17 @@ class VideoReader(_imageprocessors.ImageProcessorMixin, AnimationReader):
                     'Cannot determine the format of a video file lacking a file extension.')
             self._container = av.open(file, format=ext.lstrip('.').lower())
 
-        self._resize_resolution = resize_resolution
         self._aspect_correct = aspect_correct
+        self._align = align
 
-        if self._resize_resolution is None:
-            width = int(self._container.streams.video[0].width)
-            height = int(self._container.streams.video[0].height)
-            if not _image.is_aligned_by_8(width, height):
-                width, height = _image.resize_image_calc(old_size=(width, height),
-                                                         new_size=_image.align_by_8(width, height),
-                                                         aspect_correct=aspect_correct)
-                self._resize_resolution = (width, height)
-        else:
-            width, height = _image.resize_image_calc(old_size=(int(self._container.streams.video[0].width),
-                                                               int(self._container.streams.video[0].height)),
-                                                     new_size=self._resize_resolution,
-                                                     aspect_correct=aspect_correct)
+        width = int(self._container.streams.video[0].width)
+        height = int(self._container.streams.video[0].height)
+
+        width, height = _image.resize_image_calc(old_size=(width, height),
+                                                 new_size=resize_resolution,
+                                                 aspect_correct=aspect_correct,
+                                                 align=align)
+        self._resize_resolution = (width, height)
 
         anim_fps = int(self._container.streams.video[0].average_rate)
         anim_frame_duration = 1000 / anim_fps
@@ -245,14 +246,15 @@ class VideoReader(_imageprocessors.ImageProcessorMixin, AnimationReader):
         rgb_image.filename = self._file_source
         return self.process_image(image=rgb_image,
                                   resize_resolution=self._resize_resolution,
-                                  aspect_correct=self._aspect_correct)
+                                  aspect_correct=self._aspect_correct,
+                                  align=self._align)
 
 
 class AnimatedImageReader(_imageprocessors.ImageProcessorMixin, AnimationReader):
     """
     Implementation of :py:class:`.AnimationReader` that reads animated image formats using Pillow.
 
-    All frames from this animation reader will be aligned by 8 pixels.
+    All frames from this animation reader will be aligned by 8 pixels by default.
     """
 
     def __init__(self,
@@ -260,6 +262,7 @@ class AnimatedImageReader(_imageprocessors.ImageProcessorMixin, AnimationReader)
                  file_source: str,
                  resize_resolution: _types.OptionalSize = None,
                  aspect_correct: bool = True,
+                 align: typing.Optional[int] = 8,
                  image_processor: _imageprocessors.ImageProcessor = None):
         """
         :param file: a file path or binary file stream
@@ -272,9 +275,13 @@ class AnimatedImageReader(_imageprocessors.ImageProcessorMixin, AnimationReader)
 
         :param resize_resolution: Progressively resize each frame to this
             resolution while reading. The provided resolution will be aligned
-            by 8 pixels.
+            by ``align`` if it is not ``None``.
 
         :param aspect_correct: Should resize operations be aspect correct?
+
+        :param align: Align by this amount of pixels, if the input file is not aligned
+            to this amount of pixels, it will be aligned by resizing. Passing ``None``
+            or ``1`` disables alignment.
 
         :param image_processor: optionally process every frame with this image processor
         """
@@ -282,8 +289,8 @@ class AnimatedImageReader(_imageprocessors.ImageProcessorMixin, AnimationReader)
         self._file_source = file_source
 
         self._iter = PIL.ImageSequence.Iterator(self._img)
-        self._resize_resolution = resize_resolution
         self._aspect_correct = aspect_correct
+        self._align = align
 
         total_frames = self._img.n_frames
 
@@ -295,18 +302,11 @@ class AnimatedImageReader(_imageprocessors.ImageProcessorMixin, AnimationReader)
 
         anim_fps = 1000 / anim_frame_duration
 
-        if self._resize_resolution is None:
-            width = self._img.size[0]
-            height = self._img.size[1]
-            if not _image.is_aligned_by_8(width, height):
-                width, height = _image.resize_image_calc(old_size=(width, height),
-                                                         new_size=_image.align_by_8(width, height),
-                                                         aspect_correct=aspect_correct)
-                self._resize_resolution = (width, height)
-        else:
-            width, height = _image.resize_image_calc(old_size=self._img.size,
-                                                     new_size=self._resize_resolution,
-                                                     aspect_correct=aspect_correct)
+        width, height = _image.resize_image_calc(old_size=self._img.size,
+                                                 new_size=resize_resolution,
+                                                 aspect_correct=aspect_correct,
+                                                 align=align)
+        self._resize_resolution = (width, height)
 
         super().__init__(width=width,
                          height=height,
@@ -324,7 +324,8 @@ class AnimatedImageReader(_imageprocessors.ImageProcessorMixin, AnimationReader)
             rgb_image.filename = self._file_source
             return self.process_image(image=rgb_image,
                                       resize_resolution=self._resize_resolution,
-                                      aspect_correct=self._aspect_correct)
+                                      aspect_correct=self._aspect_correct,
+                                      align=self._align)
 
 
 class MockImageAnimationReader(_imageprocessors.ImageProcessorMixin, AnimationReader):
@@ -332,13 +333,14 @@ class MockImageAnimationReader(_imageprocessors.ImageProcessorMixin, AnimationRe
     Implementation of :py:class:`.AnimationReader` that repeats a single PIL image
     as many times as desired in order to mock/emulate an animation.
 
-    All frame images from this animation reader will be aligned by 8 pixels.
+    All frame images from this animation reader will be aligned by 8 pixels by default.
     """
 
     def __init__(self,
                  img: PIL.Image.Image,
                  resize_resolution: _types.OptionalSize = None,
                  aspect_correct: bool = True,
+                 align: typing.Optional[int] = 8,
                  image_repetitions: int = 1,
                  image_processor: _imageprocessors.ImageProcessor = None):
         """
@@ -348,9 +350,14 @@ class MockImageAnimationReader(_imageprocessors.ImageProcessorMixin, AnimationRe
 
         :param resize_resolution: the source image will be resized to this dimension with
             a maintained aspect ratio. This occurs once upon construction, a copy is then yielded
-            for each frame that is read. The provided resolution will be aligned by 8 pixels.
+            for each frame that is read. The provided resolution will be aligned by ``align`` if
+             it is not ``None``.
 
         :param aspect_correct: Should resize operations be aspect correct?
+
+        :param align: Align by this amount of pixels, if the input file is not aligned
+            to this amount of pixels, it will be aligned by resizing. Passing ``None``
+            or ``1`` disables alignment.
 
         :param image_repetitions: number of frames that this mock reader provides
             using a copy of the source image.
@@ -359,25 +366,18 @@ class MockImageAnimationReader(_imageprocessors.ImageProcessorMixin, AnimationRe
         """
         self._img = _image.copy_img(img)
         self._idx = 0
-        self._resize_resolution = resize_resolution
         self._aspect_correct = aspect_correct
+        self._align = align
 
         total_frames = image_repetitions
         anim_fps = 30
         anim_frame_duration = 1000 / anim_fps
 
-        if self._resize_resolution is None:
-            width = self._img.size[0]
-            height = self._img.size[1]
-            if not _image.is_aligned_by_8(width, height):
-                width, height = _image.resize_image_calc(old_size=(width, height),
-                                                         new_size=_image.align_by_8(width, height),
-                                                         aspect_correct=aspect_correct)
-                self._resize_resolution = (width, height)
-        else:
-            width, height = _image.resize_image_calc(old_size=self._img.size,
-                                                     new_size=self._resize_resolution,
-                                                     aspect_correct=aspect_correct)
+        width, height = _image.resize_image_calc(old_size=self._img.size,
+                                                 new_size=resize_resolution,
+                                                 aspect_correct=aspect_correct,
+                                                 align=align)
+        self._resize_resolution = (width, height)
 
         super().__init__(width=width,
                          height=height,
@@ -390,7 +390,8 @@ class MockImageAnimationReader(_imageprocessors.ImageProcessorMixin, AnimationRe
 
         self._img = self.process_image(image=self._img,
                                        resize_resolution=self._resize_resolution,
-                                       aspect_correct=self._aspect_correct)
+                                       aspect_correct=self._aspect_correct,
+                                       align=self._align)
 
     @property
     def total_frames(self) -> int:
@@ -994,7 +995,7 @@ def fetch_media_data_stream(uri: str) -> typing.Tuple[str, typing.BinaryIO]:
 
     :raises UnknownMimetypeError:
 
-    :rtype: (mime-type string, BinaryIO)
+    :return: (mime-type string, BinaryIO)
     """
 
     if uri.startswith('http://') or uri.startswith('https://'):
@@ -1025,16 +1026,19 @@ def create_image(
         path_or_file: typing.Union[typing.BinaryIO, str],
         file_source: str,
         resize_resolution: _types.OptionalSize = None,
-        aspect_correct: bool = True) -> PIL.Image.Image:
+        aspect_correct: bool = True,
+        align: typing.Optional[int] = 8) -> PIL.Image.Image:
     """
     Create an RGB format PIL image from a file path or binary file stream.
     The image is oriented according to any EXIF directives. Image is aligned
-    to 8 pixels in every case.
+    to ``align`` in every case, specifying ``None`` or ``1`` for ``align``
+    disables alignment.
 
     :param path_or_file: file path or binary IO object
     :param file_source: :py:attr:`PIL.Image.Image.filename` is set to this value
     :param resize_resolution: Optional resize resolution
     :param aspect_correct: preserve aspect ratio when resize_resolution is specified?
+    :param align: Align the image by this amount of pixels, ``None`` or ``1`` indicates no alignment.
     :return: :py:class:`PIL.Image.Image`
     """
 
@@ -1047,9 +1051,9 @@ def create_image(
         with PIL.Image.open(file) as img, _image.to_rgb(img) as rgb_img:
             e_img = _exif_orient(rgb_img)
             e_img.filename = file_source
-            if not _image.is_aligned_by_8(e_img.width, e_img.height):
+            if not _image.is_aligned(e_img.size, align=align):
                 with e_img:
-                    resized = _image.resize_image(e_img, _image.align_by_8(e_img.width, e_img.height))
+                    resized = _image.resize_image(e_img, size=None, align=align)
                     return resized
             else:
                 return e_img
@@ -1058,7 +1062,8 @@ def create_image(
             o_img.filename = file_source
             resized = _image.resize_image(img=o_img,
                                           size=resize_resolution,
-                                          aspect_correct=aspect_correct)
+                                          aspect_correct=aspect_correct,
+                                          align=align)
             return resized
 
 
@@ -1067,6 +1072,7 @@ def create_animation_reader(mimetype: str,
                             file: typing.BinaryIO,
                             resize_resolution: _types.OptionalSize = None,
                             aspect_correct: bool = True,
+                            align: typing.Optional[int] = 8,
                             image_processor: typing.Optional[_imageprocessors.ImageProcessor] = None,
                             ) -> AnimationReader:
     """
@@ -1089,7 +1095,11 @@ def create_animation_reader(mimetype: str,
 
     :param resize_resolution: Progressively resize each frame to this
         resolution while reading. The provided resolution will be aligned
-        by 8 pixels.
+        by ``align`` pixels.
+
+    :param align: Align by this amount of pixels, if the input file is not aligned
+        to this amount of pixels, it will be aligned by resizing. Passing ``None``
+        or ``1`` disables alignment.
 
     :param aspect_correct: Should resize operations be aspect correct?
 
@@ -1103,22 +1113,26 @@ def create_animation_reader(mimetype: str,
                                    file_source=file_source,
                                    resize_resolution=resize_resolution,
                                    aspect_correct=aspect_correct,
+                                   align=align,
                                    image_processor=image_processor)
     elif mimetype_is_video(mimetype):
         return VideoReader(file=file,
                            file_source=file_source,
                            resize_resolution=resize_resolution,
                            aspect_correct=aspect_correct,
+                           align=align,
                            image_processor=image_processor)
     elif mimetype_is_static_image(mimetype):
         with create_image(path_or_file=file,
                           file_source=file_source,
                           resize_resolution=resize_resolution,
-                          aspect_correct=aspect_correct) as img:
+                          aspect_correct=aspect_correct,
+                          align=align) as img:
             return MockImageAnimationReader(img=img,
                                             resize_resolution=resize_resolution,
                                             aspect_correct=aspect_correct,
-                                            image_processor=image_processor)
+                                            image_processor=image_processor,
+                                            align=align)
     else:
         supported = _textprocessing.oxford_comma(get_supported_mimetypes(), conjunction='or')
         raise UnknownMimetypeError(

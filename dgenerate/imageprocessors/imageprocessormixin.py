@@ -56,7 +56,11 @@ class ImageProcessorMixin:
         self.image_processor = image_processor
         self.image_processor_enabled: bool = True
 
-    def process_image(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize = None, aspect_correct: bool = True):
+    def process_image(self,
+                      image: PIL.Image.Image,
+                      resize_resolution: _types.OptionalSize = None,
+                      aspect_correct: bool = True,
+                      align: typing.Optional[int] = 8):
         """
         Preform image processing on an image, including the requested resizing step.
 
@@ -74,6 +78,10 @@ class ImageProcessorMixin:
         :param resize_resolution: image will be resized to this dimension by this method.
         :param aspect_correct: Should the resize operation be aspect correct?
 
+        :param align: Align by this amount of pixels, if the input image is not aligned
+            to this amount of pixels, it will be aligned by resizing. Passing ``None``
+            or ``1`` disables alignment.
+
         :return: the processed image, processed by the
             processor assigned in the constructor.
         """
@@ -81,7 +89,10 @@ class ImageProcessorMixin:
         if self.image_processor is None or not self.image_processor_enabled:
             return image
 
-        return self.image_processor.process(image, resize_resolution=resize_resolution, aspect_correct=aspect_correct)
+        return self.image_processor.process(image,
+                                            resize_resolution=resize_resolution,
+                                            aspect_correct=aspect_correct,
+                                            align=align)
 
 
 __all__ = _types.module_all()

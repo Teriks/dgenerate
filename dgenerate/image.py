@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import typing
 
 import PIL.Image
 
@@ -26,51 +27,83 @@ import dgenerate.types as _types
 
 def resize_image_calc(old_size: _types.Size,
                       new_size: _types.OptionalSize,
-                      aspect_correct: bool = True):
+                      aspect_correct: bool = True,
+                      align: typing.Optional[int] = 8):
     """
-    Calculate the new dimensions for a requested resize of an image, align by 8 pixels.
+    Calculate the new dimensions for a requested resize of an image..
+
 
     :param old_size: The old image size
     :param new_size: The new image size
 
     :param aspect_correct: preserve aspect ratio?
 
+    :param align: Ensure returned size is aligned to this value.
+
     :return: calculated new size
     """
-    if new_size is None or old_size == new_size:
+
+    if align < 1:
+        raise ValueError('align value may not be less than 1.')
+
+    if new_size is None:
+        if align is not None:
+            return align_by(old_size, align=align)
+        return old_size
+
+    if align is not None:
+        new_size = align_by(new_size, align=align)
+
+    if old_size == new_size:
         return old_size
 
     if aspect_correct:
         width = new_size[0]
         w_percent = (width / float(old_size[0]))
         hsize = int((float(old_size[1]) * float(w_percent)))
-        return width - width % 8, hsize - hsize % 8
+        if align is not None:
+            return width, hsize - hsize % align
+        return width, hsize
     else:
-        width = new_size[0]
-        height = new_size[1]
-        return width - width % 8, height - height % 8
+        return new_size
 
 
-def is_aligned_by_8(x, y) -> bool:
+def is_aligned(iterable, align) -> bool:
     """
-    Check if x and y are aligned by 8
+    Check if all elements are aligned by a specific value.
 
-    :param x: x
-    :param y: y
+    :param iterable: Elements to test
+    :param align: The alignment value, ``None`` indicates no alignment.
+
     :return: bool
     """
-    return x % 8 == 0 and y % 8 == 0
+
+    if align is None:
+        return True
+
+    if align < 1:
+        raise ValueError('align value may not be less than 1.')
+
+    return all(i % align == 0 for i in iterable)
 
 
-def align_by_8(x, y) -> _types.Size:
+def align_by(iterable, align) -> tuple:
     """
-    Align x and y by 8 and return a tuple
+    Align all elements by a value and return a tuple
 
-    :param x: x
-    :param y: y
-    :return: tuple(x, y)
+    :param iterable: Elements to align
+    :param align: The alignment value, ``None`` indicates no alignment.
+
+    :return: tuple(...)
     """
-    return x - x % 8, y - y % 8
+
+    if align is None:
+        align = 1
+
+    if align < 1:
+        raise ValueError('align value may not be less than 1.')
+
+    return tuple(i - i % align for i in iterable)
 
 
 def copy_img(img: PIL.Image.Image):
@@ -90,21 +123,26 @@ def copy_img(img: PIL.Image.Image):
 
 def resize_image(img: PIL.Image.Image,
                  size: _types.OptionalSize,
-                 aspect_correct: bool = True):
+                 aspect_correct: bool = True,
+                 align: typing.Optional[int] = 8):
     """
-    Resize a :py:class:`PIL.Image.Image` and return a copy, resize is aligned to 8 pixels.
+    Resize a :py:class:`PIL.Image.Image` and return a copy.
+
+    The new image dimension will always be forcefully aligned by ``align``,
+    specifying ``None`` or ``1`` indicates no alignment.
 
     The filename attribute is preserved.
 
-    :param img: the image
-    :param size: the new size for the image
+    :param img: the image to resize
+    :param size: requested new size for the image, may be ``None``.
     :param aspect_correct: preserve aspect ratio?
+    :param align: Force alignment by this amount of pixels.
     :return: the resized image
     """
     new_size = resize_image_calc(old_size=img.size,
                                  new_size=size,
-                                 aspect_correct=aspect_correct)
-
+                                 aspect_correct=aspect_correct,
+                                 align=align)
     if img.size == new_size:
         # probably less costly
         return copy_img(img)

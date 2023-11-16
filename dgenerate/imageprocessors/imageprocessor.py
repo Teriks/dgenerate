@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import itertools
 import os
+import typing
 
 import PIL.Image
 
@@ -201,7 +202,8 @@ class ImageProcessor(_plugin.InvokablePlugin):
     def process(self,
                 image: PIL.Image.Image,
                 resize_resolution: dgenerate.types.OptionalSize = None,
-                aspect_correct: bool = True):
+                aspect_correct: bool = True,
+                align: typing.Optional[int] = 8):
         """
         Preform image processing on an image, including the requested resizing step.
 
@@ -217,6 +219,9 @@ class ImageProcessor(_plugin.InvokablePlugin):
         :param image: image to process
         :param resize_resolution: image will be resized to this dimension by this method.
         :param aspect_correct: Should the resize operation be aspect correct?
+        :param align: Align by this amount of pixels, if the input image is not aligned
+            to this amount of pixels, it will be aligned by resizing. Passing ``None``
+            or ``1`` disables alignment.
 
         :return: the processed image
         """
@@ -225,7 +230,8 @@ class ImageProcessor(_plugin.InvokablePlugin):
         # up being resized to by resize_image
         calculate_new_size = _image.resize_image_calc(old_size=image.size,
                                                       new_size=resize_resolution,
-                                                      aspect_correct=aspect_correct)
+                                                      aspect_correct=aspect_correct,
+                                                      align=align)
 
         pre_processed = self._process_pre_resize(image,
                                                  calculate_new_size)
@@ -235,7 +241,8 @@ class ImageProcessor(_plugin.InvokablePlugin):
         else:
             image = _image.resize_image(img=pre_processed,
                                         size=resize_resolution,
-                                        aspect_correct=aspect_correct)
+                                        aspect_correct=aspect_correct,
+                                        align=align)
 
         if image is not pre_processed:
             pre_processed.close()

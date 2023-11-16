@@ -58,12 +58,12 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
         super().__init__(**kwargs)
 
         # prevent circular import
-        from dgenerate.mediainput import create_web_cache_file as _create_web_cache_file
+        from dgenerate.mediainput import create_web_cache_file
 
         try:
             if model.startswith('http') or model.startswith('https'):
                 self._model = chainner.load_model(
-                    _create_web_cache_file(model, mimetype_is_supported=None)[1])
+                    create_web_cache_file(model, mimetype_is_supported=None)[1])
             else:
                 self._model = chainner.load_model(model)
         except chainner.UnsupportedModelError:
