@@ -191,7 +191,7 @@ def _type_gen_seeds(val):
 
 def _type_animation_format(val):
     val = val.lower()
-    if val not in _mediaoutput.supported_animation_writer_formats():
+    if val not in _mediaoutput.supported_animation_writer_formats() + ['frames']:
         raise argparse.ArgumentTypeError(
             f'Must be {_SUPPORTED_ANIMATION_OUTPUT_FORMATS_PRETTY}. Unknown value: {val}')
     return val
