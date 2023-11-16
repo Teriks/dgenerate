@@ -904,6 +904,11 @@ actions.append(
                         (default: mp4)"""))
 
 actions.append(
+    parser.add_argument('-nf', '--no-frames', action='store_true',
+                        help=f"""Do not write frame images individually when rendering an animation, 
+                        only write the animation file. This option is incompatible with --animation-format frames."""))
+
+actions.append(
     parser.add_argument('-fs', '--frame-start', action='store', default=0, type=_type_frame_start,
                         metavar="FRAME_NUMBER",
                         help='Starting frame slice point for animated files, the specified frame will be included.'))
@@ -949,7 +954,7 @@ image_seed_noise_opts = parser.add_mutually_exclusive_group()
 
 actions.append(
     parser.add_argument('-sip', '--seed-image-processors', action='store', nargs='+', default=None,
-                        metavar="PROCESSOR",
+                        metavar="PROCESSOR_URI",
                         help="""Specify one or more image processor actions to preform on the primary
                         image specified by --image-seeds. For example: --seed-image-processors "flip" "mirror" "grayscale".
                         To obtain more information about what image processors are available and how to use them, 
@@ -958,7 +963,7 @@ actions.append(
 
 actions.append(
     parser.add_argument('-mip', '--mask-image-processors', action='store', nargs='+', default=None,
-                        metavar="PROCESSOR",
+                        metavar="PROCESSOR_URI",
                         help="""Specify one or more image processor actions to preform on the inpaint mask
                         image specified by --image-seeds. For example: --mask-image-processors "invert".
                         To obtain more information about what image processors are available and how to use them, 
@@ -967,7 +972,7 @@ actions.append(
 
 actions.append(
     parser.add_argument('-cip', '--control-image-processors', action='store', nargs='+', default=None,
-                        metavar="PROCESSOR",
+                        metavar="PROCESSOR_URI",
                         help="""Specify one or more image processor actions to preform on the control
                         image specified by --image-seeds, this option is meant to be used with --control-nets. 
                         Example: --control-image-processors "canny;lower=50;upper=100". The delimiter "+" can be 
@@ -988,7 +993,7 @@ actions.append(
 # This argument is handled in dgenerate.invoker.invoke_dgenerate
 actions.append(
     parser.add_argument('-iph', '--image-processor-help', action='store', nargs='*', default=None,
-                        metavar="PROCESSOR",
+                        metavar="PROCESSOR_NAME",
                         dest=None,
                         help="""Use this option alone (or with --plugin-modules) and no model 
                         specification in order to list available image processor module names. 
@@ -997,7 +1002,7 @@ actions.append(
 
 actions.append(
     parser.add_argument('-pp', '--post-processors', action='store', nargs='+', default=None,
-                        metavar="PROCESSOR",
+                        metavar="PROCESSOR_URI",
                         help="""Specify one or more image processor actions to preform on generated 
                         output before it is saved. For example: --post-processors "upcaler;model=4x_ESRGAN.pth".
                         To obtain more information about what processors are available and how to use them, 

@@ -37,13 +37,13 @@ when specifying processors for multiple control guidance images
 
 def iterate_attribute_combinations(
         attribute_defs: typing.List[typing.Tuple[str, typing.List]],
-        my_class: typing.Type) -> typing.Iterator:
+        return_type: typing.Type) -> typing.Iterator:
     """
     Iterate over every combination of attributes in a given class using a list of tuples mapping
     attribute names to a list of possible values.
 
     :param attribute_defs: list of tuple (attribute_name, [list of values])
-    :param my_class: Construct this class and assign attribute values to it
+    :param return_type: Construct this type and assign attribute values to it
     :return: an iterator over instances of the type mentioned in the my_class argument
     """
 
@@ -55,7 +55,7 @@ def iterate_attribute_combinations(
                 raise RuntimeError(f'{ctx.__class__.__name__} missing attribute "{name}"')
 
     for combination in itertools.product(*[d[1] for d in attribute_defs]):
-        ctx_out = my_class()
+        ctx_out = return_type()
         dir_attributes = set(_types.get_public_attributes(ctx_out).keys())
         for idx, d in enumerate(attribute_defs):
             attr = d[0]
@@ -491,8 +491,17 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     animation_format: _types.Name = 'mp4'
     """
-    Format for any rendered animations, see: :py:func:`dgenerate.mediaoutput.supported_animation_writer_formats()`
+    Format for any rendered animations, see: :py:func:`dgenerate.mediaoutput.supported_animation_writer_formats()`.
+    This value may also be set to 'frames' to indicate that only individual frames should be output and no animation file coalesced.
     This corresponds to the ``--animation-format`` argument of the dgenerate command line tool.
+    """
+
+    no_frames: bool = False
+    """
+    Should individual frames not be output when rendering an animation? defaults to False.
+    This corresponds to the ``--no-frames`` argument of the dgenerate command line tool.
+    Using this option when :py:attr:`RenderLoopConfig.animation_format` is equal to 'frames` will
+    cause a :py:exc:`RenderLoopConfigError` be raised.
     """
 
     frame_start: _types.Integer = 0
@@ -675,6 +684,12 @@ class RenderLoopConfig(_types.SetFromMixin):
         if self.frame_end is not None and self.frame_start > self.frame_end:
             raise RenderLoopConfigError(
                 f'{a_namer("frame_start")} must be less than or equal to {a_namer("frame_end")}')
+
+        self.animation_format = self.animation_format.strip().lower()
+
+        if self.animation_format == 'frames' and self.no_frames:
+            raise RenderLoopConfigError(
+                f'Cannot specify {a_namer("no_frames")} when {a_namer("animation_format")} is set to "frames"')
 
         if self.batch_size is not None:
             if _pipelinewrapper.model_type_is_flax(self.model_type):
