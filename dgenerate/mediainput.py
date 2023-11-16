@@ -244,7 +244,7 @@ class VideoReader(_imageprocessors.ImageProcessorMixin, AnimationReader):
         rgb_image = next(self._iter).to_image()
         rgb_image.filename = self._file_source
         return self.process_image(image=rgb_image,
-                                  resize_to=self._resize_resolution,
+                                  resize_resolution=self._resize_resolution,
                                   aspect_correct=self._aspect_correct)
 
 
@@ -323,7 +323,7 @@ class AnimatedImageReader(_imageprocessors.ImageProcessorMixin, AnimationReader)
             rgb_image = _image.to_rgb(img)
             rgb_image.filename = self._file_source
             return self.process_image(image=rgb_image,
-                                      resize_to=self._resize_resolution,
+                                      resize_resolution=self._resize_resolution,
                                       aspect_correct=self._aspect_correct)
 
 
@@ -389,7 +389,7 @@ class MockImageAnimationReader(_imageprocessors.ImageProcessorMixin, AnimationRe
         # Only need to process once
 
         self._img = self.process_image(image=self._img,
-                                       resize_to=self._resize_resolution,
+                                       resize_resolution=self._resize_resolution,
                                        aspect_correct=self._aspect_correct)
 
     @property

@@ -19,9 +19,6 @@ print(loader.get_help('canny'))
 canny = loader.load('canny;lower=50;upper=100', device=args.device)
 
 with PIL.Image.open('../../media/man-fighting-pose.jpg') as img:
-    # The default value of resize_to is None but it
-    # is specified for clarity here
-
     # please note that img will most likely be closed by this
     # call here, because it is not going to be modified in place
     # by this processor implementation and dgenerate will make
