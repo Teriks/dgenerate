@@ -22,94 +22,94 @@ import typing
 
 import PIL.Image
 
-import dgenerate.preprocessors.preprocessor as _preprocessor
+import dgenerate.imageprocessors.imageprocessor as _imageprocessor
 import dgenerate.types as _types
 
 
-class ImagePreprocessorChain(_preprocessor.ImagePreprocessor):
+class ImageProcessorChain(_imageprocessor.ImageProcessor):
     """
-    Implements chainable image preprocessors.
+    Implements chainable image image processors.
 
-    Chains preprocessing steps together in a sequence.
+    Chains processing steps together in a sequence.
     """
 
     HIDDEN = True
 
-    def __init__(self, preprocessors: typing.Optional[typing.Iterable[_preprocessor.ImagePreprocessor]] = None):
+    def __init__(self, image_processors: typing.Optional[typing.Iterable[_imageprocessor.ImageProcessor]] = None):
         """
-        :param preprocessors: optional initial preprocessors to fill the chain, accepts an iterable
+        :param image_processors: optional initial image processors to fill the chain, accepts an iterable
         """
         super().__init__(called_by_name='chain')
 
-        if preprocessors is None:
-            self._preprocessors = []
+        if image_processors is None:
+            self._image_processors = []
         else:
-            self._preprocessors = list(preprocessors)
+            self._image_processors = list(image_processors)
 
-    def _preprocessor_names(self):
-        for preprocessor in self._preprocessors:
-            yield str(preprocessor)
+    def _imageprocessor_names(self):
+        for imageprocessor in self._image_processors:
+            yield str(imageprocessor)
 
     def __str__(self):
-        if not self._preprocessors:
+        if not self._image_processors:
             return f'{self.__class__.__name__}([])'
         else:
-            return f'{self.__class__.__name__}([{", ".join(self._preprocessor_names())}])'
+            return f'{self.__class__.__name__}([{", ".join(self._imageprocessor_names())}])'
 
     def __repr__(self):
         return str(self)
 
-    def add_processor(self, preprocessor: _preprocessor.ImagePreprocessor):
+    def add_processor(self, image_processor: _imageprocessor.ImageProcessor):
         """
-        Add a preprocessor implementation to the chain.
+        Add a imageprocessor implementation to the chain.
 
-        :param preprocessor: :py:class:`dgenerate.preprocessors.preprocessor.ImagePreprocessor`
+        :param image_processor: :py:class:`dgenerate.imageprocessors.imageprocessor.ImageProcessor`
         """
-        self._preprocessors.append(preprocessor)
+        self._image_processors.append(image_processor)
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         """
-        Invoke pre_resize on all preprocessors in this preprocessor chain in turn.
+        Invoke pre_resize on all image processors in this imageprocessor chain in turn.
 
-        Every subsequent invocation receives the last preprocessed image as its argument.
+        Every subsequent invocation receives the last processed image as its argument.
 
         This method should not be invoked directly, use the class method
-        :py:meth:`dgenerate.preprocessors.preprocessor.ImagePreprocessor.pre_resize` to invoke it.
+        :py:meth:`dgenerate.imageprocessors.imageprocessor.ImageProcessor.pre_resize` to invoke it.
 
-        :param image: initial image to preprocess
+        :param image: initial image to process
         :param resize_resolution: the size which the image will be resized to after this
-            step, this is only information for the preprocessors and the image will not be
-            resized by this method. Image preprocessors should never resize images as it is
+            step, this is only information for the image processors and the image will not be
+            resized by this method. Image processors should never resize images as it is
             the responsibility of dgenerate to do that for the user.
 
-        :return: the processed image, possibly affected by every preprocessor in the chain
+        :return: the processed image, possibly affected by every image processor in the chain
         """
 
-        if self._preprocessors:
+        if self._image_processors:
             p_image = image
-            for preprocessor in self._preprocessors:
-                p_image = preprocessor.pre_resize(p_image, resize_resolution)
+            for imageprocessor in self._image_processors:
+                p_image = imageprocessor.pre_resize(p_image, resize_resolution)
             return p_image
         else:
             return image
 
     def impl_post_resize(self, image: PIL.Image.Image):
         """
-        Invoke post_resize on all preprocessors in this preprocessor chain in turn.
+        Invoke post_resize on all image processors in this image processor chain in turn.
 
-        Every subsequent invocation receives the last preprocessed image as its argument.
+        Every subsequent invocation receives the last processed image as its argument.
 
         This method should not be invoked directly, use the class method
-        :py:meth:`dgenerate.preprocessors.preprocessor.ImagePreprocessor.post_resize` to invoke it.
+        :py:meth:`dgenerate.imageprocessors.imageprocessor.ImageProcessor.post_resize` to invoke it.
 
-        :param image: initial image to preprocess
-        :return: the processed image, possibly affected by every preprocessor in the chain
+        :param image: initial image to process
+        :return: the processed image, possibly affected by every imageprocessor in the chain
         """
 
-        if self._preprocessors:
+        if self._image_processors:
             p_image = image
-            for preprocessor in self._preprocessors:
-                p_image = preprocessor.post_resize(p_image)
+            for imageprocessor in self._image_processors:
+                p_image = imageprocessor.post_resize(p_image)
             return p_image
         else:
             return image

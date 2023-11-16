@@ -24,8 +24,7 @@ import dgenerate.types as _types
 from .batchprocessor import BatchProcessor, BatchProcessError
 from .configrunner import create_config_runner
 from .batchprocessordirective import BatchProcessorDirective
-from .postprocessdirective import PostprocessDirective
-from .preprocessdirective import PreprocessDirective
+from .imageprocessdirective import ImageProcessDirective
 from .directiveloader import DirectiveLoader, \
     BatchProcessorDirectivePluginNotFoundError, \
     BatchProcessorDirectivePluginArgumentError

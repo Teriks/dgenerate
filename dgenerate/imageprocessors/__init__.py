@@ -24,42 +24,43 @@ import typing
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate import messages as _messages
-from .canny import CannyEdgeDetectPreprocess
+from .canny import CannyEdgeDetectProcessor
 from .exceptions import \
-    ImagePreprocessorNotFoundError, \
-    ImagePreprocessorArgumentError
+    ImageProcessorNotFoundError, \
+    ImageProcessorArgumentError
 from .imageops import \
-    PosterizePreprocess, \
-    SolarizePreprocess, \
-    MirrorFlipPreprocess, \
-    SimpleColorPreprocess
+    PosterizeProcessor, \
+    SolarizeProcessor, \
+    MirrorFlipProcessor, \
+    SimpleColorProcessor
+from .imageprocessor import ImageProcessor
+from .imageprocessorchain import ImageProcessorChain
+from .imageprocessormixin import ImageProcessorMixin
 from .loader import Loader
-from .openpose import OpenPosePreprocess
-from .preprocessor import ImagePreprocessor
-from .preprocessorchain import ImagePreprocessorChain
-from .preprocessormixin import ImagePreprocessorMixin
+from .openpose import OpenPoseProcessor
+from .upscaler import UpscalerProcessor
 
 _help_parser = argparse.ArgumentParser(prog='dgenerate', exit_on_error=False)
-_help_parser.add_argument('-iph', '--image-preprocessor-help', metavar='PREPROCESSOR', nargs='*', default=[], type=str)
+_help_parser.add_argument('-iph', '--image-processor-help', metavar='PROCESSOR', nargs='*', default=[], type=str)
 _help_parser.add_argument('-pm', '--plugin-modules', metavar='PATH', nargs='+', default=[], type=str)
 
 
-class PreprocessorHelpUsageError(Exception):
+class ImageProcessorHelpUsageError(Exception):
     """
-    Raised on argument parse errors in :py:func:`.image_preprocessor_help`
+    Raised on argument parse errors in :py:func:`.image_processor_help`
     """
     pass
 
 
-def image_preprocessor_help(args: typing.Sequence[str], throw: bool = False):
+def image_processor_help(args: typing.Sequence[str], throw: bool = False):
     """
-    Implements ``--image-preprocessor-help`` command line option
+    Implements ``--image-processor-help`` command line option
 
-    :param args: arguments (preprocessor names, or empty list)
+    :param args: arguments (processor names, or empty list)
     :param throw: Should we throw exceptions or handle them?
 
-    :raises PreprocessorHelpUsageError:
-    :raises ImagePreprocessorNotFoundError:
+    :raises ImageProcessorHelpUsageError:
+    :raises ImageProcessorNotFoundError:
 
     :return: return-code, anything other than 0 is failure
     """
@@ -68,10 +69,10 @@ def image_preprocessor_help(args: typing.Sequence[str], throw: bool = False):
     except (argparse.ArgumentError, argparse.ArgumentTypeError) as e:
         _messages.log(f'dgenerate: error: {e}', level=_messages.ERROR)
         if throw:
-            raise PreprocessorHelpUsageError(e)
+            raise ImageProcessorHelpUsageError(e)
         return 1
 
-    names = parse_result.image_preprocessor_help
+    names = parse_result.image_processor_help
 
     module_loader = Loader()
     module_loader.load_plugin_modules(parse_result.plugin_modules)
@@ -79,15 +80,15 @@ def image_preprocessor_help(args: typing.Sequence[str], throw: bool = False):
     if len(names) == 0:
         available = ('\n' + ' ' * 4).join(_textprocessing.quote(name) for name in module_loader.get_all_names())
         _messages.log(
-            f'Available image preprocessors:\n\n{" " * 4}{available}')
+            f'Available image processors:\n\n{" " * 4}{available}')
         return 0
 
     help_strs = []
     for name in names:
         try:
             help_strs.append(module_loader.get_help(name))
-        except ImagePreprocessorNotFoundError:
-            _messages.log(f'An image preprocessor with the name of "{name}" could not be found!',
+        except ImageProcessorNotFoundError:
+            _messages.log(f'An image processor with the name of "{name}" could not be found!',
                           level=_messages.ERROR)
             return 1
 

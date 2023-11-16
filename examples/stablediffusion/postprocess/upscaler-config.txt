@@ -9,4 +9,4 @@ stabilityai/stable-diffusion-2
 --gen-seeds 2
 --output-path upscaler
 --prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork"
---postprocessors "upscaler;model={{ upscaler_model }}"
+--post-processors "upscaler;model={{ upscaler_model }}"

@@ -2,7 +2,6 @@
 
 \import_directives demo_plugin
 
-
 \my_directive Hello World!
 
 \my_directive_1 Implementation One

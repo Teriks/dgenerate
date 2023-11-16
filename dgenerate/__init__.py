@@ -56,7 +56,7 @@ try:
     from dgenerate.pipelinewrapper import ModelTypes, DiffusionArguments
     from dgenerate.mediainput import ImageSeedError, UnknownMimetypeError, ImageSeed
 
-    from dgenerate.preprocessors import ImagePreprocessorArgumentError, ImagePreprocessorNotFoundError
+    from dgenerate.imageprocessors import ImageProcessorArgumentError, ImageProcessorNotFoundError
     import dgenerate.messages
     import dgenerate.types
 

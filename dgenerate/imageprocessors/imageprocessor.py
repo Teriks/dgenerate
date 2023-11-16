@@ -25,25 +25,25 @@ import PIL.Image
 
 import dgenerate.filelock as _filelock
 import dgenerate.image as _image
+import dgenerate.imageprocessors.exceptions as _exceptions
 import dgenerate.messages as _messages
 import dgenerate.plugin as _plugin
-import dgenerate.preprocessors.exceptions as _exceptions
-import dgenerate.types as _types
+import dgenerate.types
 
 
-class ImagePreprocessor(_plugin.InvokablePlugin):
+class ImageProcessor(_plugin.InvokablePlugin):
     """
-    Abstract base class for image preprocessor implementations.
+    Abstract base class for image processor implementations.
     """
 
     def __init__(self,
                  called_by_name: str,
                  device: str = 'cpu',
-                 output_file: _types.OptionalPath = None,
+                 output_file: dgenerate.types.OptionalPath = None,
                  output_overwrite: bool = False, **kwargs):
 
         super().__init__(called_by_name=called_by_name,
-                         argument_error_type=_exceptions.ImagePreprocessorArgumentError,
+                         argument_error_type=_exceptions.ImageProcessorArgumentError,
                          **kwargs)
 
         self.__output_file = output_file
@@ -53,7 +53,7 @@ class ImagePreprocessor(_plugin.InvokablePlugin):
     @property
     def device(self) -> str:
         """
-        The rendering device requested for this preprocessor.
+        The rendering device requested for this processor.
 
         :return: device string, for example "cuda", "cuda:N", or "cpu"
         """
@@ -75,13 +75,13 @@ class ImagePreprocessor(_plugin.InvokablePlugin):
 
     def pre_resize(self,
                    image: PIL.Image.Image,
-                   resize_resolution: _types.OptionalSize = None) -> PIL.Image.Image:
+                   resize_resolution: dgenerate.types.OptionalSize = None) -> PIL.Image.Image:
         """
-        Invoke a preprocessors :py:meth:`.ImagePreprocessor.impl_pre_resize` method.
+        Invoke a processors :py:meth:`.ImageProcessor.impl_pre_resize` method.
 
         Implements important behaviors depending on if the image was modified.
 
-        This is the only appropriate way to invoke a preprocessor manually.
+        This is the only appropriate way to invoke a processor manually.
 
         The original image will be closed if the implementation returns a new image
         instead of modifying it in place, you should not count on the original image
@@ -89,7 +89,7 @@ class ImagePreprocessor(_plugin.InvokablePlugin):
         use the input image in a ``with`` context, if you need to retain a
         copy, pass a copy.
 
-        :param self: :py:class:`.ImagePreprocessor` implementation instance
+        :param self: :py:class:`.ImageProcessor` implementation instance
         :param image: the image to pass
         :param resize_resolution: the size that the image is going to be resized
             to after this step, or None if it is not being resized.
@@ -105,7 +105,7 @@ class ImagePreprocessor(_plugin.InvokablePlugin):
 
             self.__save_debug_image(
                 processed,
-                'Wrote Preprocessor Debug Image (because copied)')
+                'Wrote Processor Debug Image (because copied)')
 
             processed.filename = _image.get_filename(image)
             return processed
@@ -121,18 +121,18 @@ class ImagePreprocessor(_plugin.InvokablePlugin):
             # Write the debug output if it was modified in place
             self.__save_debug_image(
                 processed,
-                'Wrote Preprocessor Debug Image (because modified)')
+                'Wrote Processor Debug Image (because modified)')
 
         return processed
 
     def post_resize(self,
                     image: PIL.Image.Image) -> PIL.Image.Image:
         """
-        Invoke a preprocessors :py:meth:`.ImagePreprocessor.impl_post_resize` method.
+        Invoke a processors :py:meth:`.ImageProcessor.impl_post_resize` method.
 
         Implements important behaviors depending on if the image was modified.
 
-        This is the only appropriate way to invoke a preprocessor manually.
+        This is the only appropriate way to invoke a processor manually.
 
         The original image will be closed if the implementation returns a new image
         instead of modifying it in place, you should not count on the original image
@@ -140,7 +140,7 @@ class ImagePreprocessor(_plugin.InvokablePlugin):
         use the input image in a ``with`` context, if you need to retain a
         copy, pass a copy.
 
-        :param self: :py:class:`.ImagePreprocessor` implementation instance
+        :param self: :py:class:`.ImageProcessor` implementation instance
         :param image: the image to pass
 
         :return: processed image, may be the same image or a copy.
@@ -154,7 +154,7 @@ class ImagePreprocessor(_plugin.InvokablePlugin):
 
             self.__save_debug_image(
                 processed,
-                'Wrote Preprocessor Debug Image (because copied)')
+                'Wrote Processor Debug Image (because copied)')
 
             processed.filename = _image.get_filename(image)
             return processed
@@ -170,16 +170,84 @@ class ImagePreprocessor(_plugin.InvokablePlugin):
             # Write the debug output if it was modified in place
             self.__save_debug_image(
                 processed,
-                'Wrote Preprocessor Debug Image (because modified)')
+                'Wrote Processor Debug Image (because modified)')
 
         return processed
 
-    def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
+    def _process_pre_resize(self, image: PIL.Image.Image, resize_resolution: dgenerate.types.OptionalSize):
+        filename = _image.get_filename(image)
+
+        _messages.debug_log('Starting Image Process - '
+                            f'{self}.pre_resize('
+                            f'image="{filename}", resize_resolution={resize_resolution})')
+
+        processed = self.pre_resize(image, resize_resolution)
+
+        _messages.debug_log(f'Finished Image Process - {self}.pre_resize')
+        return processed
+
+    def _process_post_resize(self, image: PIL.Image.Image):
+        filename = _image.get_filename(image)
+
+        _messages.debug_log('Starting Image Process - '
+                            f'{self}.post_resize('
+                            f'image="{filename}")')
+
+        processed = self.post_resize(image)
+
+        _messages.debug_log(f'Finished Image Process - {self}.post_resize')
+        return processed
+
+    def process(self,
+                image: PIL.Image.Image,
+                resize_to: dgenerate.types.OptionalSize = None,
+                aspect_correct: bool = True):
+        """
+        Preform image processing on an image, including the requested resizing step.
+
+        Invokes the image processor pre and post resizing with
+        appropriate arguments and correct resource management.
+
+        The original image will be closed if the implementation returns a new image
+        instead of modifying it in place, you should not count on the original image
+        being open and usable once this function completes though it is safe to
+        use the input image in a ``with`` context, if you need to retain a
+        copy, pass a copy.
+
+        :param image: image to process
+        :param resize_to: image will be resized to this dimension by this method.
+        :param aspect_correct: Should the resize operation be aspect correct?
+
+        :return: the processed image
+        """
+
+        # This is the actual size it will end
+        # up being resized to by resize_image
+        calculate_new_size = _image.resize_image_calc(old_size=image.size,
+                                                      new_size=resize_to,
+                                                      aspect_correct=aspect_correct)
+
+        pre_processed = self._process_pre_resize(image,
+                                                 calculate_new_size)
+
+        if resize_to is None:
+            image = pre_processed
+        else:
+            image = _image.resize_image(img=pre_processed,
+                                        size=resize_to,
+                                        aspect_correct=aspect_correct)
+
+        if image is not pre_processed:
+            pre_processed.close()
+
+        return self._process_post_resize(image)
+
+    def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: dgenerate.types.OptionalSize):
         """
         Implementation of pre_resize that does nothing. Inheritor must implement.
 
         This method should not be invoked directly, use the class method
-        :py:meth:`.ImagePreprocessor.call_pre_resize` to invoke it.
+        :py:meth:`.ImageProcessor.call_pre_resize` to invoke it.
 
         :param image: image to process
         :param resize_resolution: image will be resized to this resolution
@@ -196,7 +264,7 @@ class ImagePreprocessor(_plugin.InvokablePlugin):
         Implementation of post_resize that does nothing. Inheritor must implement.
 
         This method should not be invoked directly, use the class method
-        :py:meth:`.ImagePreprocessor.call_post_resize` to invoke it.
+        :py:meth:`.ImageProcessor.call_post_resize` to invoke it.
 
         :param image: image to process
         :return: the processed image
@@ -210,4 +278,4 @@ class ImagePreprocessor(_plugin.InvokablePlugin):
         return str(self)
 
 
-__all__ = _types.module_all()
+__all__ = dgenerate.types.module_all()

@@ -1,7 +1,7 @@
 #! dgenerate 3.0.0
 
 CompVis/stable-diffusion-v1-4 
---lora sayakpaul/sd-model-finetuned-lora-t4
+--loras sayakpaul/sd-model-finetuned-lora-t4
 --inference-steps 40
 --guidance-scales 8
 --gen-seeds 2

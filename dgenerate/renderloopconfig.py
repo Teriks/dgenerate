@@ -28,10 +28,10 @@ import dgenerate.prompt as _prompt
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 
-CONTROL_IMAGE_PREPROCESSOR_SEP = '+'
+CONTROL_IMAGE_PROCESSOR_SEP = '+'
 """
-The character that is used to separate control image preprocessor chains
-when specifying preprocessors for multiple control guidance images
+The character that is used to separate control image processor chains
+when specifying processors for multiple control guidance images
 """
 
 
@@ -378,7 +378,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     lora_uris: _types.OptionalUris = None
     """
-    Optional user specified LoRA URIs, this corresponds to the ``--lora/--loras`` argument 
+    Optional user specified LoRA URIs, this corresponds to the ``--loras`` argument 
     of the dgenerate command line tool.
     """
 
@@ -514,26 +514,26 @@ class RenderLoopConfig(_types.SetFromMixin):
     This corresponds to the ``--auth-token`` argument of the dgenerate command line tool.
     """
 
-    seed_image_preprocessors: _types.OptionalUris = None
+    seed_image_processors: _types.OptionalUris = None
     """
-    Corresponds to the ``--seed-image-preprocessors`` argument of the dgenerate command line tool verbatim.
-    """
-
-    mask_image_preprocessors: _types.OptionalUris = None
-    """
-    Corresponds to the ``--mask-image-preprocessors`` argument of the dgenerate command line tool verbatim.
+    Corresponds to the ``--seed-image-processors`` argument of the dgenerate command line tool verbatim.
     """
 
-    control_image_preprocessors: _types.OptionalUris = None
+    mask_image_processors: _types.OptionalUris = None
     """
-    Corresponds to the ``--control-image-preprocessors`` argument of the dgenerate command line tool verbatim,
+    Corresponds to the ``--mask-image-processors`` argument of the dgenerate command line tool verbatim.
+    """
+
+    control_image_processors: _types.OptionalUris = None
+    """
+    Corresponds to the ``--control-image-processors`` argument of the dgenerate command line tool verbatim,
     including the grouping syntax using the "+" symbol, the plus symbol should be used as its own list element,
     IE: it is a token.
     """
 
-    postprocessors: _types.OptionalUris = None
+    post_processors: _types.OptionalUris = None
     """
-    Corresponds to the ``--postprocessors`` argument of the dgenerate command line tool verbatim.
+    Corresponds to the ``--post-processors`` argument of the dgenerate command line tool verbatim.
     """
 
     offline_mode: bool = False
@@ -762,17 +762,17 @@ class RenderLoopConfig(_types.SetFromMixin):
         elif not self.image_guidance_scales:
             self.image_guidance_scales = [_pipelinewrapper.DEFAULT_IMAGE_GUIDANCE_SCALE]
 
-        if self.control_image_preprocessors:
+        if self.control_image_processors:
             if not self.image_seeds:
                 raise RenderLoopConfigError(
-                    f'you cannot specify {a_namer("control_image_preprocessors")} '
+                    f'you cannot specify {a_namer("control_image_processors")} '
                     f'without {a_namer("image_seeds")}.')
 
         if not self.image_seeds:
             invalid_self = []
-            for preprocessor_self in attr_that_end_with('preprocessors'):
+            for processor_self in attr_that_end_with('image_processors'):
                 invalid_self.append(
-                    f'you cannot specify {a_namer(preprocessor_self)} '
+                    f'you cannot specify {a_namer(processor_self)} '
                     f'without {a_namer("image_seeds")}.')
             if invalid_self:
                 raise RenderLoopConfigError('\n'.join(invalid_self))
@@ -877,15 +877,15 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'amount of ControlNet models must be equal.'
                 )
 
-            if self.control_image_preprocessors:
-                control_preprocessor_chain_count = \
-                    (sum(1 for p in self.control_image_preprocessors if p == CONTROL_IMAGE_PREPROCESSOR_SEP) + 1)
+            if self.control_image_processors:
+                control_processor_chain_count = \
+                    (sum(1 for p in self.control_image_processors if p == CONTROL_IMAGE_PROCESSOR_SEP) + 1)
 
-                if control_preprocessor_chain_count > num_control_images:
+                if control_processor_chain_count > num_control_images:
                     raise RenderLoopConfigError(
                         f'Your {a_namer("image_seeds")} specification "{uri}" defines {num_control_images} '
-                        f'control guidance image sources, and you have specified {control_preprocessor_chain_count} '
-                        f'{a_namer("control_image_preprocessors")} actions / action chains. The amount of preprocessors '
+                        f'control guidance image sources, and you have specified {control_processor_chain_count} '
+                        f'{a_namer("control_image_processors")} actions / action chains. The amount of processors '
                         f'must not exceed the amount of control guidance images.'
                     )
 

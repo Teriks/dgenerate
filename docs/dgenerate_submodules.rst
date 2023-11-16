@@ -236,20 +236,10 @@ dgenerate.plugin module
    :special-members: __call__, __init__
 
 
-dgenerate.postprocessors module
--------------------------------
+dgenerate.imageprocessors module
+--------------------------------
 
-.. automodule:: dgenerate.postprocessors
-   :members:
-   :undoc-members:
-   :show-inheritance:
-   :special-members: __call__, __init__
-
-
-dgenerate.preprocessors module
-------------------------------
-
-.. automodule:: dgenerate.preprocessors
+.. automodule:: dgenerate.imageprocessors
    :members:
    :undoc-members:
    :show-inheritance:

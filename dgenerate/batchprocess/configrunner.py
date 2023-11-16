@@ -195,7 +195,7 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
     injected_plugin_modules = []
 
     if injected_args:
-        parsed, parsed_unknown = parser.parse_known_args(injected_args)
+        parsed, _ = parser.parse_known_args(injected_args)
         if parsed.plugin_modules:
             injected_plugin_modules = parsed.plugin_modules
             directive_plugin_loader.load_plugin_modules(parsed.plugin_modules)

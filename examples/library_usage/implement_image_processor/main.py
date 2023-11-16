@@ -1,3 +1,4 @@
+import argparse
 import typing
 
 import PIL.Image
@@ -8,10 +9,15 @@ from dgenerate import \
     RenderLoopConfig, \
     ImageGeneratedCallbackArgument, \
     Prompt
-from dgenerate.preprocessors import ImagePreprocessor
+from dgenerate.imageprocessors import ImageProcessor
 
 
-# You can add image preprocessors either explicitly
+arg_parser = argparse.ArgumentParser(exit_on_error=False)
+arg_parser.add_argument('-d', '--device', default='cuda')
+args, _ = arg_parser.parse_known_args()
+
+
+# You can add image processors either explicitly
 # through a class implementation you register or by
 # loading them out of a module or python file
 
@@ -20,9 +26,9 @@ from dgenerate.preprocessors import ImagePreprocessor
 # file in comments
 
 
-class MyPreprocessor(ImagePreprocessor):
+class MyProcessor(ImageProcessor):
     # A more indepth example for how to implement these
-    # can be found in the examples/writing_plugins/image_preprocessor folder
+    # can be found in the examples/writing_plugins/image_processor folder
     # This is a very minimal implementation that just inverts the image
     # before it gets resized
 
@@ -45,17 +51,18 @@ config.model_path = 'stabilityai/stable-diffusion-2'
 config.inference_steps = [40]
 config.guidance_scales = [5]
 config.prompts = [Prompt.parse('a strange alien planet, view from orbit')]
-config.device = 'cuda'
 
-# We need an image seed definition to use a preprocessor
+config.device = args.device
+
+# We need an image seed definition to use a processor
 # This uses the exact same syntax as --image-seeds from the
 # command line usage.
 config.image_seeds = ['../../media/earth.jpg']
 
-# Request to use the preprocessor above by name on our singular image seed,
-# (added to the render loop below) ability to access preprocessors implemented
-# by dgenerate is automatic, see: dgenerate --image-preprocessor-help
-config.seed_image_preprocessors = ['foo']
+# Request to use the processor above by name on our singular image seed,
+# (added to the render loop below) ability to access processors implemented
+# by dgenerate is automatic, see: dgenerate --image-processor-help
+config.seed_image_processors = ['foo']
 
 # below is the default value for --image-seed-strengths
 
@@ -68,19 +75,19 @@ config.seed_image_preprocessors = ['foo']
 
 render_loop = RenderLoop(config=config)
 
-# Add our preprocessor class
-render_loop.preprocessor_loader.add_class(MyPreprocessor)
+# Add our processor class
+render_loop.image_processor_loader.add_class(MyProcessor)
 
 
-# Find preprocessor classes in a module and add them, this module
+# Find processor classes in a module and add them, this module
 # enters dgenerates plugin cache
 
-# render_loop.preprocessor_loader.load_plugin_modules(['my_python_module'])
+# render_loop.image_processor_loader.load_plugin_modules(['my_python_module'])
 
-# Find preprocessor classes in a file and add them, this file enters
+# Find processor classes in a file and add them, this file enters
 # dgenerates plugin cache
 
-# render_loop.preprocessor_loader.load_plugin_modules(['my_python_file.py'])
+# render_loop.image_processor_loader.load_plugin_modules(['my_python_file.py'])
 
 def render_callback(arg: ImageGeneratedCallbackArgument):
     print('Filename:', arg.suggested_filename)

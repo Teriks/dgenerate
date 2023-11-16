@@ -22,14 +22,14 @@
 import PIL.Image
 import PIL.ImageOps
 
-import dgenerate.preprocessors.preprocessor as _preprocessor
+import dgenerate.imageprocessors.imageprocessor as _imageprocessor
 import dgenerate.types as _types
 
 
-class MirrorFlipPreprocess(_preprocessor.ImagePreprocessor):
+class MirrorFlipProcessor(_imageprocessor.ImageProcessor):
     """
     Implements the "mirror" and "flip" PIL.ImageOps operations
-    as an image preprocessor
+    as an image imageprocessor
     """
 
     NAMES = ['mirror', 'flip']
@@ -55,17 +55,17 @@ class MirrorFlipPreprocess(_preprocessor.ImagePreprocessor):
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         """
         Mirrors or flips the image depending on what name was used to invoke this
-        preprocessor implementation.
+        imageprocessor implementation.
 
         :param image: image to process
-        :param resize_resolution: purely informational, is unused by this preprocessor
+        :param resize_resolution: purely informational, is unused by this imageprocessor
         :return: the mirrored or flipped image.
         """
         return self._func(image)
 
     def impl_post_resize(self, image: PIL.Image.Image):
         """
-        Post resize, for this preprocessor nothing happens post-resize.
+        Post resize, for this imageprocessor nothing happens post-resize.
 
         :param image: image to process
         :return: the same image
@@ -73,10 +73,10 @@ class MirrorFlipPreprocess(_preprocessor.ImagePreprocessor):
         return image
 
 
-class SimpleColorPreprocess(_preprocessor.ImagePreprocessor):
+class SimpleColorProcessor(_imageprocessor.ImageProcessor):
     """
     Implements the "grayscale" and "invert" PIL.ImageOps operations
-    as an image preprocessor.
+    as an image imageprocessor.
     """
 
     NAMES = ['grayscale', 'invert']
@@ -100,17 +100,17 @@ class SimpleColorPreprocess(_preprocessor.ImagePreprocessor):
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         """
-        Pre resize, for this preprocessor nothing happens pre-resize.
+        Pre resize, for this imageprocessor nothing happens pre-resize.
 
         :param image: image to process
-        :param resize_resolution: purely informational, is unused by this preprocessor
+        :param resize_resolution: purely informational, is unused by this imageprocessor
         :return: the same image
         """
         return image
 
     def impl_post_resize(self, image: PIL.Image.Image):
         """
-        Invert or grayscale the image depending on which name was used to invoke this preprocessor.
+        Invert or grayscale the image depending on which name was used to invoke this imageprocessor.
 
         :param image: image to process
         :return: the inverted or grayscale image
@@ -118,7 +118,7 @@ class SimpleColorPreprocess(_preprocessor.ImagePreprocessor):
         return self._func(image)
 
 
-class PosterizePreprocess(_preprocessor.ImagePreprocessor):
+class PosterizeProcessor(_imageprocessor.ImageProcessor):
     """
     Posterize the input image with PIL.ImageOps.posterize.
 
@@ -145,14 +145,14 @@ class PosterizePreprocess(_preprocessor.ImagePreprocessor):
         Posterize operation is preformed by this method.
 
         :param image: image to process
-        :param resize_resolution: purely informational, is unused by this preprocessor
+        :param resize_resolution: purely informational, is unused by this imageprocessor
         :return: the posterized image
         """
         return PIL.ImageOps.posterize(image, self._bits)
 
     def impl_post_resize(self, image: PIL.Image.Image):
         """
-        Post resize, for this preprocessor nothing happens post-resize.
+        Post resize, for this imageprocessor nothing happens post-resize.
 
         :param image: image to process
         :return: the same image
@@ -160,7 +160,7 @@ class PosterizePreprocess(_preprocessor.ImagePreprocessor):
         return image
 
 
-class SolarizePreprocess(_preprocessor.ImagePreprocessor):
+class SolarizeProcessor(_imageprocessor.ImageProcessor):
     """
     Solarize the input image with PIL.ImageOps.solarize.
 
@@ -187,14 +187,14 @@ class SolarizePreprocess(_preprocessor.ImagePreprocessor):
         Solarize operation is preformed by this method.
 
         :param image: image to process
-        :param resize_resolution: purely informational, is unused by this preprocessor
+        :param resize_resolution: purely informational, is unused by this imageprocessor
         :return: the solarized image
         """
         return PIL.ImageOps.solarize(image, self._threshold)
 
     def impl_post_resize(self, image: PIL.Image.Image):
         """
-        Post resize, for this preprocessor nothing happens post-resize.
+        Post resize, for this imageprocessor nothing happens post-resize.
 
         :param image: image to process
         :return: the same image

@@ -1,8 +1,14 @@
+import argparse
+
 from dgenerate import \
     RenderLoop, \
     RenderLoopConfig, \
     ImageGeneratedCallbackArgument, \
     Prompt
+
+arg_parser = argparse.ArgumentParser(exit_on_error=False)
+arg_parser.add_argument('-d', '--device', default='cuda')
+args, _ = arg_parser.parse_known_args()
 
 config = RenderLoopConfig()
 
@@ -10,7 +16,7 @@ config.model_path = 'stabilityai/stable-diffusion-2'
 config.inference_steps = [40]
 config.guidance_scales = [5]
 config.prompts = [Prompt.parse('an astronaut walking on the moon; fake')]
-config.device = 'cuda'
+config.device = args.device
 
 # One seed will be randomly generated for you if none are specified
 

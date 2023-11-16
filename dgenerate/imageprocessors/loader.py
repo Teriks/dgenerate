@@ -20,10 +20,10 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import typing
 
+import dgenerate.imageprocessors.exceptions as _exceptions
+import dgenerate.imageprocessors.imageprocessor as _imageprocessor
+import dgenerate.imageprocessors.imageprocessorchain as _imageprocessorchain
 import dgenerate.plugin as _plugin
-import dgenerate.postprocessors.exceptions as _exceptions
-import dgenerate.postprocessors.postprocessor as _postprocessor
-import dgenerate.postprocessors.postprocessorchain as _postprocessorchain
 import dgenerate.types as _types
 
 
@@ -32,32 +32,32 @@ class Loader(_plugin.PluginLoader):
         """"""
 
         # The empty string above disables sphinx inherited doc
+        super().__init__(base_class=_imageprocessor.ImageProcessor,
+                         description='image processor',
+                         reserved_args=[('output-file', None), ('output-overwrite', False), ('device', 'cpu')],
+                         argument_error_type=_exceptions.ImageProcessorArgumentError,
+                         not_found_error_type=_exceptions.ImageProcessorNotFoundError)
 
-        super().__init__(base_class=_postprocessor.ImagePostprocessor,
-                         description='postprocessor',
-                         reserved_args=[('device', 'cpu')],
-                         argument_error_type=_exceptions.ImagePostprocessorArgumentError,
-                         not_found_error_type=_exceptions.ImagePostprocessorNotFoundError)
+        self.add_search_module_string('dgenerate.imageprocessors')
 
-        self.add_search_module_string('dgenerate.postprocessors')
-
-    def load(self, uri: typing.Union[_types.Uri, typing.Iterable[_types.Uri]], device: str = 'cpu') -> \
-            typing.Union[_postprocessor.ImagePostprocessor, _postprocessorchain.ImagePostprocessorChain, None]:
+    def load(self, uri: typing.Union[_types.Uri, typing.Iterable[_types.Uri]], device: str = 'cpu', **kwargs) -> \
+            typing.Union[_imageprocessor.ImageProcessor, _imageprocessorchain.ImageProcessorChain, None]:
         """
-        Load an image postprocessor or multiple image postprocessors. They are loaded by URI, which
-        is their name and any module arguments, for example: ``upscaler;model=esrgan_x4.pth;tile=512``
+        Load an image processor or multiple image processors. They are loaded by URI, which
+        is their name and any module arguments, for example: ``canny;lower=50;upper=100``
 
-        Specifying multiple postprocessors with a list will create an image postprocessor chain object.
+        Specifying multiple processors with a list will create an image processor chain object.
 
         :raises RuntimeError: if more than one class was found using the provided name mentioned in the URI.
-        :raises ImagePostprocessorNotFoundError: if the name mentioned in the URI could not be found.
-        :raises ImagePostprocessorArgumentError: if the URI contained invalid arguments.
+        :raises ImageProcessorNotFoundError: if the name mentioned in the URI could not be found.
+        :raises ImageProcessorArgumentError: if the URI contained invalid arguments.
 
 
-        :param uri: Postprocessor URI or list of URIs
+        :param uri: Processor URI or list of URIs
         :param device: Request a specific rendering device, default is CPU
-        :return: :py:class:`dgenerate.postprocessors.ImagePostprocessor` or
-            :py:class:`dgenerate.postprocessors.ImagePostprocessorChain`
+        :param kwargs: Default argument values, will be overriden by arguments specified in the URI
+        :return: :py:class:`dgenerate.imageprocessors.ImageProcessor` or
+            :py:class:`dgenerate.imageprocessors.ImageProcessorChain`
         """
         s = super()
 
@@ -65,7 +65,8 @@ class Loader(_plugin.PluginLoader):
             raise ValueError('uri must not be None')
 
         if isinstance(uri, str):
-            return typing.cast(_postprocessor.ImagePostprocessor, s.load(uri, device=device))
+            return typing.cast(
+                _imageprocessor.ImageProcessor, s.load(uri, device=device, **kwargs))
 
         paths = list(uri)
 
@@ -73,10 +74,12 @@ class Loader(_plugin.PluginLoader):
             return None
 
         if len(paths) == 1:
-            return typing.cast(_postprocessor.ImagePostprocessor, s.load(paths[0], device=device))
+            return typing.cast(
+                _imageprocessor.ImageProcessor, s.load(paths[0], device=device, **kwargs))
 
-        return _postprocessorchain.ImagePostprocessorChain(
-            typing.cast(_postprocessor.ImagePostprocessor, s.load(i, device=device)) for i in paths)
+        return _imageprocessorchain.ImageProcessorChain(
+            typing.cast(
+                _imageprocessor.ImageProcessor, s.load(i, device=device, **kwargs)) for i in paths)
 
 
 __all__ = _types.module_all()

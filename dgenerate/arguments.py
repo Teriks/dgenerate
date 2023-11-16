@@ -285,7 +285,7 @@ actions.append(
                         metavar="PATH",
                         help="""Specify one or more plugin module folder paths (folder containing __init__.py) or 
                         python .py file paths to load as plugins. Plugin modules can currently only implement 
-                        image preprocessors."""))
+                        image processors."""))
 
 actions.append(
     parser.add_argument('-ofm', '--offline-mode', action='store_true', default=False,
@@ -418,7 +418,7 @@ actions.append(
                         you may still run into memory issues generating large images."""))
 
 actions.append(
-    parser.add_argument('-lra', '--loras', '--lora', nargs='+', action='store', default=None, metavar="LORA_URI",
+    parser.add_argument('-lra', '--loras', nargs='+', action='store', default=None, metavar="LORA_URI",
                         dest='lora_uris',
                         help=
                         """Specify one or more LoRA models using URIs (flax not supported). These should be a
@@ -445,7 +445,7 @@ actions.append(
                         loading from a huggingface repository or folder on disk. 
                         
                         If you wish to load a weights file directly from disk, the simplest
-                        way is: --lora "my_lora.safetensors",  or with a scale "my_lora.safetensors;scale=1.0", 
+                        way is: --loras "my_lora.safetensors",  or with a scale "my_lora.safetensors;scale=1.0", 
                         all other loading arguments are unused in this case and may produce an error message if used."""))
 
 actions.append(
@@ -948,70 +948,61 @@ actions.append(
 image_seed_noise_opts = parser.add_mutually_exclusive_group()
 
 actions.append(
-    parser.add_argument('-sip', '--seed-image-preprocessors', action='store', nargs='+', default=None,
-                        metavar="PREPROCESSOR",
-                        help="""Specify one or more image preprocessor actions to preform on the primary
-                        image specified by --image-seeds. For example: --seed-image-preprocessors "flip" "mirror" "grayscale".
-                        To obtain more information about what image preprocessors are available and how to use them, 
-                        see: --image-preprocessor-help.
+    parser.add_argument('-sip', '--seed-image-processors', action='store', nargs='+', default=None,
+                        metavar="PROCESSOR",
+                        help="""Specify one or more image processor actions to preform on the primary
+                        image specified by --image-seeds. For example: --seed-image-processors "flip" "mirror" "grayscale".
+                        To obtain more information about what image processors are available and how to use them, 
+                        see: --image-processor-help.
                         """))
 
 actions.append(
-    parser.add_argument('-mip', '--mask-image-preprocessors', action='store', nargs='+', default=None,
-                        metavar="PREPROCESSOR",
-                        help="""Specify one or more image preprocessor actions to preform on the inpaint mask
-                        image specified by --image-seeds. For example: --mask-image-preprocessors "invert".
-                        To obtain more information about what image preprocessors are available and how to use them, 
-                        see: --image-preprocessor-help.
+    parser.add_argument('-mip', '--mask-image-processors', action='store', nargs='+', default=None,
+                        metavar="PROCESSOR",
+                        help="""Specify one or more image processor actions to preform on the inpaint mask
+                        image specified by --image-seeds. For example: --mask-image-processors "invert".
+                        To obtain more information about what image processors are available and how to use them, 
+                        see: --image-processor-help.
                         """))
 
 actions.append(
-    parser.add_argument('-cip', '--control-image-preprocessors', action='store', nargs='+', default=None,
-                        metavar="PREPROCESSOR",
-                        help="""Specify one or more image preprocessor actions to preform on the control
+    parser.add_argument('-cip', '--control-image-processors', action='store', nargs='+', default=None,
+                        metavar="PROCESSOR",
+                        help="""Specify one or more image processor actions to preform on the control
                         image specified by --image-seeds, this option is meant to be used with --control-nets. 
-                        Example: --control-image-preprocessors "canny;lower=50;upper=100". The delimiter "+" can be 
-                        used to specify a different preprocessor group for each image when using multiple control images with --control-nets. 
+                        Example: --control-image-processors "canny;lower=50;upper=100". The delimiter "+" can be 
+                        used to specify a different processor group for each image when using multiple control images with --control-nets. 
                         For example if you have --image-seeds "img1.png, img2.png" or --image-seeds "...;control=img1.png, img2.png" 
-                        specified and multiple ControlNet models specified with --control-nets, you can specify preprocessors for 
-                        those control images with the syntax: (--control-image-preprocessors "processes-img1" + "processes-img2"), 
-                        this syntax also supports chaining of preprocessors, for example: (--control-image-preprocessors "first-process-img1"
-                         "second-process-img1" + "process-img2"). The amount of specified preprocessors must not exceed the amount of
-                        specified control images, or you will receive a syntax error message. Images which do not have a preprocessor
-                        defined for them will not be preprocessed, and the plus character can be used to indicate an image is not to be 
-                        preprocessed and instead skipped over when that image is a leading element, for example 
-                        (--control-image-preprocessors + "process-second") would indicate that the first control guidance 
-                        image is not to be processed, only the second. To obtain more information about what image preprocessors 
-                        are available and how to use them, see: --image-preprocessor-help.
+                        specified and multiple ControlNet models specified with --control-nets, you can specify processors for 
+                        those control images with the syntax: (--control-image-processors "processes-img1" + "processes-img2"), 
+                        this syntax also supports chaining of processors, for example: (--control-image-processors "first-process-img1"
+                         "second-process-img1" + "process-img2"). The amount of specified processors must not exceed the amount of
+                        specified control images, or you will receive a syntax error message. Images which do not have a processor
+                        defined for them will not be processed, and the plus character can be used to indicate an image is not to be 
+                        processed and instead skipped over when that image is a leading element, for example 
+                        (--control-image-processors + "process-second") would indicate that the first control guidance 
+                        image is not to be processed, only the second. To obtain more information about what image processors 
+                        are available and how to use them, see: --image-processor-help.
                         """))
 
 # This argument is handled in dgenerate.invoker.invoke_dgenerate
 actions.append(
-    parser.add_argument('-iph', '--image-preprocessor-help', action='store', nargs='*', default=None,
-                        metavar="PREPROCESSOR",
+    parser.add_argument('-iph', '--image-processor-help', action='store', nargs='*', default=None,
+                        metavar="PROCESSOR",
                         dest=None,
                         help="""Use this option alone (or with --plugin-modules) and no model 
-                        specification in order to list available image preprocessor module names. 
+                        specification in order to list available image processor module names. 
                         Specifying one or more module names after this option will cause usage 
                         documentation for the specified modules to be printed."""))
 
 actions.append(
-    parser.add_argument('-pp', '--postprocessors', action='store', nargs='+', default=None,
-                        metavar="POSTPROCESSOR",
-                        help="""Specify one or more postprocessor actions to preform on generated 
-                        output before it is saved. For example: --postprocessors "upcaler;model=4x_ESRGAN.pth".
-                        To obtain more information about what postprocessors are available and how to use them, 
-                        see: --postprocessor-help."""))
+    parser.add_argument('-pp', '--post-processors', action='store', nargs='+', default=None,
+                        metavar="PROCESSOR",
+                        help="""Specify one or more image processor actions to preform on generated 
+                        output before it is saved. For example: --post-processors "upcaler;model=4x_ESRGAN.pth".
+                        To obtain more information about what processors are available and how to use them, 
+                        see: --image-processor-help."""))
 
-# This argument is handled in dgenerate.invoker.invoke_dgenerate
-actions.append(
-    parser.add_argument('-pph', '--postprocessor-help', action='store', nargs='*', default=None,
-                        metavar="POSTPROCESSOR",
-                        dest=None,
-                        help="""Use this option alone (or with --plugin-modules) and no model 
-                        specification in order to list available image postprocessor module names. 
-                        Specifying one or more module names after this option will cause usage 
-                        documentation for the specified modules to be printed."""))
 
 actions.append(
     image_seed_noise_opts.add_argument('-iss', '--image-seed-strengths', action='store', nargs='+', default=None,

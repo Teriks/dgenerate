@@ -45,7 +45,6 @@ def _tiled_scale(samples, function, tile_x=64, tile_y=64, overlap=8, upscale_amo
 
 
 def upscale(upscale_model, image, tile=512, overlap=32, device='cuda'):
-
     image = torch.from_numpy(np.array(image).astype(np.float32) / 255.0)[None,]
 
     upscale_model.to(device)

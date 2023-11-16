@@ -26,11 +26,11 @@ import controlnet_aux.util as _cna_util
 import cv2
 import numpy
 
+import dgenerate.imageprocessors.imageprocessor as _imageprocessor
 import dgenerate.types as _types
-from dgenerate.preprocessors.preprocessor import ImagePreprocessor
 
 
-class OpenPosePreprocess(ImagePreprocessor):
+class OpenPoseProcessor(_imageprocessor.ImageProcessor):
     """
     Generate an OpenPose rigging from the input image (of a human/humanoid) for use with a ControlNet.
     "include-body" is a boolean value indicating if a body rigging should be generated.
@@ -99,11 +99,11 @@ class OpenPosePreprocess(ImagePreprocessor):
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         """
         Pre resize, OpenPose rig generation may or may not occur here depending
-        on the boolean value of the preprocessor argument "pre-resize"
+        on the boolean value of the processor argument "pre-resize"
 
 
         :param image: image to process
-        :param resize_resolution: purely informational, is unused by this preprocessor
+        :param resize_resolution: purely informational, is unused by this processor
         :return: possibly an OpenPose rig image, or the input image
         """
         if self._pre_resize:
@@ -113,7 +113,7 @@ class OpenPosePreprocess(ImagePreprocessor):
     def impl_post_resize(self, image: PIL.Image.Image):
         """
         Post resize, OpenPose rig generation may or may not occur here depending
-        on the boolean value of the preprocessor argument "pre-resize"
+        on the boolean value of the processor argument "pre-resize"
 
         :param image: image to process
         :return: possibly an OpenPose rig image, or the input image

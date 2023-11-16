@@ -37,8 +37,8 @@ import requests
 
 import dgenerate.filelock as _filelock
 import dgenerate.image as _image
+import dgenerate.imageprocessors as _imageprocessors
 import dgenerate.messages as _messages
-import dgenerate.preprocessors as _preprocessors
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 
@@ -162,7 +162,7 @@ class AnimationReader:
         raise StopIteration
 
 
-class VideoReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
+class VideoReader(_imageprocessors.ImageProcessorMixin, AnimationReader):
     """
     Implementation :py:class:`.AnimationReader` that reads Video files with PyAV.
 
@@ -174,7 +174,7 @@ class VideoReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
                  file_source: str,
                  resize_resolution: _types.OptionalSize = None,
                  aspect_correct: bool = True,
-                 preprocessor: _preprocessors.ImagePreprocessor = None):
+                 image_processor: _imageprocessors.ImageProcessor = None):
         """
         :param file: a file path or binary file stream
 
@@ -190,7 +190,7 @@ class VideoReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
 
         :param aspect_correct: Should resize operations be aspect correct?
 
-        :param preprocessor: optionally preprocess every frame with this image preprocessor
+        :param image_processor: optionally process every frame with this image processor
         """
         self._filename = file
         self._file_source = file_source
@@ -235,7 +235,7 @@ class VideoReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
                          anim_fps=anim_fps,
                          anim_frame_duration=anim_frame_duration,
                          total_frames=total_frames,
-                         preprocessor=preprocessor)
+                         image_processor=image_processor)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._container.close()
@@ -243,12 +243,12 @@ class VideoReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
     def __next__(self):
         rgb_image = next(self._iter).to_image()
         rgb_image.filename = self._file_source
-        return self.preprocess_image(image=rgb_image,
-                                     resize_to=self._resize_resolution,
-                                     aspect_correct=self._aspect_correct)
+        return self.process_image(image=rgb_image,
+                                  resize_to=self._resize_resolution,
+                                  aspect_correct=self._aspect_correct)
 
 
-class AnimatedImageReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
+class AnimatedImageReader(_imageprocessors.ImageProcessorMixin, AnimationReader):
     """
     Implementation of :py:class:`.AnimationReader` that reads animated image formats using Pillow.
 
@@ -260,7 +260,7 @@ class AnimatedImageReader(_preprocessors.ImagePreprocessorMixin, AnimationReader
                  file_source: str,
                  resize_resolution: _types.OptionalSize = None,
                  aspect_correct: bool = True,
-                 preprocessor: _preprocessors.ImagePreprocessor = None):
+                 image_processor: _imageprocessors.ImageProcessor = None):
         """
         :param file: a file path or binary file stream
 
@@ -276,7 +276,7 @@ class AnimatedImageReader(_preprocessors.ImagePreprocessorMixin, AnimationReader
 
         :param aspect_correct: Should resize operations be aspect correct?
 
-        :param preprocessor: optionally preprocess every frame with this image preprocessor
+        :param image_processor: optionally process every frame with this image processor
         """
         self._img = PIL.Image.open(file)
         self._file_source = file_source
@@ -313,7 +313,7 @@ class AnimatedImageReader(_preprocessors.ImagePreprocessorMixin, AnimationReader
                          anim_fps=anim_fps,
                          anim_frame_duration=anim_frame_duration,
                          total_frames=total_frames,
-                         preprocessor=preprocessor)
+                         image_processor=image_processor)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._img.close()
@@ -322,12 +322,12 @@ class AnimatedImageReader(_preprocessors.ImagePreprocessorMixin, AnimationReader
         with next(self._iter) as img:
             rgb_image = _image.to_rgb(img)
             rgb_image.filename = self._file_source
-            return self.preprocess_image(image=rgb_image,
-                                         resize_to=self._resize_resolution,
-                                         aspect_correct=self._aspect_correct)
+            return self.process_image(image=rgb_image,
+                                      resize_to=self._resize_resolution,
+                                      aspect_correct=self._aspect_correct)
 
 
-class MockImageAnimationReader(_preprocessors.ImagePreprocessorMixin, AnimationReader):
+class MockImageAnimationReader(_imageprocessors.ImageProcessorMixin, AnimationReader):
     """
     Implementation of :py:class:`.AnimationReader` that repeats a single PIL image
     as many times as desired in order to mock/emulate an animation.
@@ -340,7 +340,7 @@ class MockImageAnimationReader(_preprocessors.ImagePreprocessorMixin, AnimationR
                  resize_resolution: _types.OptionalSize = None,
                  aspect_correct: bool = True,
                  image_repetitions: int = 1,
-                 preprocessor: _preprocessors.ImagePreprocessor = None):
+                 image_processor: _imageprocessors.ImageProcessor = None):
         """
         :param img: source image to copy for each frame, the image is immediately copied
             once upon construction of the mock reader, and then once per frame thereafter.
@@ -354,8 +354,8 @@ class MockImageAnimationReader(_preprocessors.ImagePreprocessorMixin, AnimationR
 
         :param image_repetitions: number of frames that this mock reader provides
             using a copy of the source image.
-        :param preprocessor: optionally preprocess the initial image with
-            this image preprocessor, this occurs once.
+        :param image_processor: optionally process the initial image with
+            this image processor, this occurs once.
         """
         self._img = _image.copy_img(img)
         self._idx = 0
@@ -384,13 +384,13 @@ class MockImageAnimationReader(_preprocessors.ImagePreprocessorMixin, AnimationR
                          anim_fps=anim_fps,
                          anim_frame_duration=anim_frame_duration,
                          total_frames=total_frames,
-                         preprocessor=preprocessor)
+                         image_processor=image_processor)
 
-        # Only need to preprocess once
+        # Only need to process once
 
-        self._img = self.preprocess_image(image=self._img,
-                                          resize_to=self._resize_resolution,
-                                          aspect_correct=self._aspect_correct)
+        self._img = self.process_image(image=self._img,
+                                       resize_to=self._resize_resolution,
+                                       aspect_correct=self._aspect_correct)
 
     @property
     def total_frames(self) -> int:
@@ -1067,7 +1067,7 @@ def create_animation_reader(mimetype: str,
                             file: typing.BinaryIO,
                             resize_resolution: _types.OptionalSize = None,
                             aspect_correct: bool = True,
-                            preprocessor: typing.Optional[_preprocessors.ImagePreprocessor] = None,
+                            image_processor: typing.Optional[_imageprocessors.ImageProcessor] = None,
                             ) -> AnimationReader:
     """
     Create an animation reader object from mimetype specification and binary file stream.
@@ -1093,7 +1093,7 @@ def create_animation_reader(mimetype: str,
 
     :param aspect_correct: Should resize operations be aspect correct?
 
-    :param preprocessor: optionally preprocess every frame with this image preprocessor
+    :param image_processor: optionally process every frame with this image processor
 
     :return: :py:class:`.AnimationReader`
     """
@@ -1103,13 +1103,13 @@ def create_animation_reader(mimetype: str,
                                    file_source=file_source,
                                    resize_resolution=resize_resolution,
                                    aspect_correct=aspect_correct,
-                                   preprocessor=preprocessor)
+                                   image_processor=image_processor)
     elif mimetype_is_video(mimetype):
         return VideoReader(file=file,
                            file_source=file_source,
                            resize_resolution=resize_resolution,
                            aspect_correct=aspect_correct,
-                           preprocessor=preprocessor)
+                           image_processor=image_processor)
     elif mimetype_is_static_image(mimetype):
         with create_image(path_or_file=file,
                           file_source=file_source,
@@ -1118,7 +1118,7 @@ def create_animation_reader(mimetype: str,
             return MockImageAnimationReader(img=img,
                                             resize_resolution=resize_resolution,
                                             aspect_correct=aspect_correct,
-                                            preprocessor=preprocessor)
+                                            image_processor=image_processor)
     else:
         supported = _textprocessing.oxford_comma(get_supported_mimetypes(), conjunction='or')
         raise UnknownMimetypeError(
@@ -1135,9 +1135,9 @@ class AnimationReaderSpec:
     File path (or HTTP/HTTPS URL with default **path_opener**)
     """
 
-    preprocessor: typing.Optional[_preprocessors.ImagePreprocessor] = None
+    image_processor: typing.Optional[_imageprocessors.ImageProcessor] = None
     """
-    Optional image preprocessor associated with the file
+    Optional image image processor associated with the file
     """
 
     aspect_correct: bool = True
@@ -1151,20 +1151,20 @@ class AnimationReaderSpec:
     """
 
     def __init__(self, path: str,
-                 preprocessor: typing.Optional[_preprocessors.ImagePreprocessor] = None,
+                 image_processor: typing.Optional[_imageprocessors.ImageProcessor] = None,
                  resize_resolution: _types.OptionalSize = None,
                  aspect_correct: bool = True):
         """
         :param path: File path or URL
         :param resize_resolution: Resize resolution
         :param aspect_correct: Aspect correct resize enabled?
-        :param preprocessor: Optional image preprocessor associated with the file
+        :param image_processor: Optional image image processor associated with the file
         """
 
         self.aspect_correct = aspect_correct
         self.resize_resolution = resize_resolution
         self.path = path
-        self.preprocessor = preprocessor
+        self.image_processor = image_processor
 
 
 class MultiAnimationReader:
@@ -1267,7 +1267,7 @@ class MultiAnimationReader:
                     file=file_stream,
                     resize_resolution=spec.resize_resolution,
                     aspect_correct=spec.aspect_correct,
-                    preprocessor=spec.preprocessor)
+                    image_processor=spec.image_processor)
             )
             self._file_streams.append(file_stream)
 
@@ -1293,13 +1293,13 @@ class MultiAnimationReader:
             # First call, skip up to frame start
             for idx in range(0, self._frame_start):
                 for r in self._readers:
-                    if isinstance(r, _preprocessors.ImagePreprocessorMixin):
-                        old_val = r.image_preprocessor_enabled
-                        r.image_preprocessor_enabled = False
+                    if isinstance(r, _imageprocessors.ImageProcessorMixin):
+                        old_val = r.image_processor_enabled
+                        r.image_processor_enabled = False
                         try:
                             r.__next__().close()
                         finally:
-                            r.image_preprocessor_enabled = old_val
+                            r.image_processor_enabled = old_val
                     else:
                         r.__next__().close()
 
@@ -1441,16 +1441,16 @@ def _flatten(xs):
             yield x
 
 
-ControlPreprocessorSpec = typing.Union[_preprocessors.ImagePreprocessor,
-                                       typing.List[_preprocessors.ImagePreprocessor], None]
+ControlProcessorSpec = typing.Union[_imageprocessors.ImageProcessor,
+                                    typing.List[_imageprocessors.ImageProcessor], None]
 
 
-def _validate_control_image_preprocessor_count(preprocessors, guidance_images):
-    num_preprocessors = len(preprocessors)
+def _validate_control_image_processor_count(processors, guidance_images):
+    num_processors = len(processors)
     num_guidance_images = len(guidance_images)
-    if num_preprocessors > num_guidance_images:
-        raise ValueError('Too many control image preprocessors specified, '
-                         f'there are {num_preprocessors} preprocessors and '
+    if num_processors > num_guidance_images:
+        raise ValueError('Too many control image processors specified, '
+                         f'there are {num_processors} processors and '
                          f'{num_guidance_images} control guidance image sources.')
 
 
@@ -1459,9 +1459,9 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
                        frame_end: _types.OptionalInteger = None,
                        resize_resolution: _types.OptionalSize = None,
                        aspect_correct: bool = True,
-                       seed_image_preprocessor: typing.Optional[_preprocessors.ImagePreprocessor] = None,
-                       mask_image_preprocessor: typing.Optional[_preprocessors.ImagePreprocessor] = None,
-                       control_image_preprocessor: ControlPreprocessorSpec = None) -> \
+                       seed_image_processor: typing.Optional[_imageprocessors.ImageProcessor] = None,
+                       mask_image_processor: typing.Optional[_imageprocessors.ImageProcessor] = None,
+                       control_image_processor: ControlProcessorSpec = None) -> \
         typing.Iterator[ImageSeed]:
     """
     Parse and load images/videos in an ``--image-seeds`` uri and return an iterator that
@@ -1505,18 +1505,18 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
         The URI syntax for image seeds allows for overriding this value with the **aspect**
         keyword argument.
 
-    :param seed_image_preprocessor: optional :py:class:`dgenerate.preprocessors.ImagePreprocessor`
-    :param mask_image_preprocessor: optional :py:class:`dgenerate.preprocessors.ImagePreprocessor`
+    :param seed_image_processor: optional :py:class:`dgenerate.imageprocessors.ImageProcessor`
+    :param mask_image_processor: optional :py:class:`dgenerate.imageprocessors.ImageProcessor`
 
-    :param control_image_preprocessor: optional :py:class:`dgenerate.preprocessors.ImagePreprocessor` or list of them.
-        A list is used to specify preprocessors for individual images in a multi guidance image specification
+    :param control_image_processor: optional :py:class:`dgenerate.imageprocessors.ImageProcessor` or list of them.
+        A list is used to specify processors for individual images in a multi guidance image specification
         such as uri = "img2img.png;control=img1.png, img2.png".  In the case that a multi guidance image
-        specification is used and only one preprocessor is given, that preprocessor will be used on only the
+        specification is used and only one processor is given, that processor will be used on only the
         first image / video in the specification. Images in a guidance specification with no corresponding
-        preprocessor value will have their preprocessor set to ``None``, specifying extra preprocessors
+        processor value will have their processor set to ``None``, specifying extra processors
         as compared to control guidance image sources will cause :py:exc:`ValueError` to be raised.
 
-    :raise ValueError: if there are more **control_image_preprocessor** values than
+    :raise ValueError: if there are more **control_image_processor** values than
         there are control guidance image sources in the URI.
 
     :return: an iterator over :py:class:`.ImageSeed` objects
@@ -1539,7 +1539,7 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
 
     reader_specs = [
         AnimationReaderSpec(path=parse_result.seed_path,
-                            preprocessor=seed_image_preprocessor,
+                            image_processor=seed_image_processor,
                             resize_resolution=resize_resolution,
                             aspect_correct=aspect_correct)
     ]
@@ -1547,31 +1547,31 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
     if parse_result.mask_path is not None:
         reader_specs.append(AnimationReaderSpec(
             path=parse_result.mask_path,
-            preprocessor=mask_image_preprocessor,
+            image_processor=mask_image_processor,
             resize_resolution=resize_resolution,
             aspect_correct=aspect_correct))
 
     if parse_result.control_path is not None:
-        if not isinstance(control_image_preprocessor, list):
-            control_image_preprocessor = [control_image_preprocessor]
+        if not isinstance(control_image_processor, list):
+            control_image_processor = [control_image_processor]
 
         control_guidance_image_paths = parse_result.get_control_image_paths()
 
-        _validate_control_image_preprocessor_count(
-            preprocessors=control_image_preprocessor,
+        _validate_control_image_processor_count(
+            processors=control_image_processor,
             guidance_images=control_guidance_image_paths)
 
         reader_specs += [
             AnimationReaderSpec(
                 path=p.strip(),
-                preprocessor=control_image_preprocessor[idx] if idx < len(control_image_preprocessor) else None,
+                image_processor=control_image_processor[idx] if idx < len(control_image_processor) else None,
                 resize_resolution=resize_resolution,
                 aspect_correct=aspect_correct)
             for idx, p in enumerate(control_guidance_image_paths)
         ]
 
     if parse_result.floyd_path is not None:
-        # There should never be a reason to preprocess floyd stage output
+        # There should never be a reason to process floyd stage output
         # also do not resize it
         reader_specs.append(AnimationReaderSpec(
             path=parse_result.floyd_path,
@@ -1636,7 +1636,7 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
                           frame_end: _types.OptionalInteger = None,
                           resize_resolution: _types.OptionalSize = None,
                           aspect_correct: bool = True,
-                          preprocessor: ControlPreprocessorSpec = None) -> \
+                          image_processor: ControlProcessorSpec = None) -> \
         typing.Iterator[ImageSeed]:
     """
     Parse and load a control image/video in an ``--image-seeds`` uri and return an iterator that
@@ -1671,15 +1671,15 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
         The URI syntax for image seeds allows for overriding this value with the **aspect**
         keyword argument.
 
-    :param preprocessor: optional :py:class:`dgenerate.preprocessors.ImagePreprocessor` or list of them.
-        A list is used to specify preprocessors for individual images in a multi guidance image specification
+    :param image_processor: optional :py:class:`dgenerate.imageprocessors.ImageProcessor` or list of them.
+        A list is used to specify processors for individual images in a multi guidance image specification
         such as uri = "img1.png, img2.png".  In the case that a multi guidance image specification is used and only
-        one preprocessor is given, that preprocessor will be used on only the first image / video in the specification.
-        Images in a guidance specification with no corresponding preprocessor value will have their preprocessor
-        set to ``None``, specifying extra preprocessors as compared to control guidance image sources will
+        one processor is given, that processor will be used on only the first image / video in the specification.
+        Images in a guidance specification with no corresponding processor value will have their processor
+        set to ``None``, specifying extra processors as compared to control guidance image sources will
         cause :py:exc:`ValueError` to be raised.
 
-    :raise ValueError: if there are more **preprocessor** values than
+    :raise ValueError: if there are more **image_processor** values than
         there are control guidance image sources in the URI.
 
     :return: an iterator over :py:class:`.ImageSeed` objects
@@ -1708,19 +1708,19 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
 
     reader_specs = []
 
-    if not isinstance(preprocessor, list):
-        preprocessor = [preprocessor]
+    if not isinstance(image_processor, list):
+        image_processor = [image_processor]
 
     control_guidance_image_paths = parse_result.seed_path.split(',')
 
-    _validate_control_image_preprocessor_count(
-        preprocessors=preprocessor,
+    _validate_control_image_processor_count(
+        processors=image_processor,
         guidance_images=control_guidance_image_paths)
 
     reader_specs += [
         AnimationReaderSpec(
             path=p.strip(),
-            preprocessor=preprocessor[idx] if idx < len(preprocessor) else None,
+            image_processor=image_processor[idx] if idx < len(image_processor) else None,
             resize_resolution=resize_resolution,
             aspect_correct=aspect_correct)
         for idx, p in enumerate(control_guidance_image_paths)

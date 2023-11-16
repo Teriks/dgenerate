@@ -30,19 +30,18 @@ import PIL.Image
 import PIL.PngImagePlugin
 
 import dgenerate.filelock as _filelock
+import dgenerate.imageprocessors as _imageprocessors
 import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
-import dgenerate.postprocessors as _postprocessors
-import dgenerate.preprocessors as _preprocessors
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 # noinspection PyUnresolvedReferences
 from dgenerate.renderloopconfig import \
     RenderLoopConfig, \
     RenderLoopConfigError, \
-    CONTROL_IMAGE_PREPROCESSOR_SEP, \
+    CONTROL_IMAGE_PROCESSOR_SEP, \
     iterate_attribute_combinations, \
     gen_seeds
 
@@ -123,7 +122,7 @@ ImageGeneratedCallbacks = typing.List[
     typing.Callable[[ImageGeneratedCallbackArgument], None]]
 
 
-class RenderLoop(_postprocessors.ImagePostprocessorMixin):
+class RenderLoop:
     """
     Render loop which implements the bulk of dgenerates rendering capability.
 
@@ -170,22 +169,16 @@ class RenderLoop(_postprocessors.ImagePostprocessorMixin):
 
         return self._pipeline_wrapper
 
-    def __init__(self, config=None, preprocessor_loader=None, postprocessor_loader=None):
+    def __init__(self, config=None, image_processor_loader=None):
         """
         :param config: :py:class:`.RenderLoopConfig` or :py:class:`dgenerate.arguments.DgenerateArguments`.
             If None is provided, a :py:class:`.RenderLoopConfig` instance will be created and
             assigned to :py:attr:`.RenderLoop.config`.
 
-        :param preprocessor_loader: :py:class:`dgenerate.preprocessors.loader.Loader`.
+        :param image_processor_loader: :py:class:`dgenerate.imageprocessors.loader.Loader`.
             If None is provided, an instance will be created and assigned to
-            :py:attr:`.RenderLoop.preprocessor_loader`.
-
-        :param postprocessor_loader: :py:class:`dgenerate.postprocessors.loader.Loader`.
-            If None is provided, an instance will be created and assigned to
-            :py:attr:`.RenderLoop.postprocessor_loader`.
+            :py:attr:`.RenderLoop.image_processor_loader`.
         """
-
-        self._postprocessor = _postprocessors.ImagePostprocessorMixin()
 
         self._generation_step = -1
         self._frame_time_sum = 0
@@ -197,11 +190,10 @@ class RenderLoop(_postprocessors.ImagePostprocessorMixin):
         self.config = \
             RenderLoopConfig() if config is None else config
 
-        self.preprocessor_loader = \
-            _preprocessors.Loader() if preprocessor_loader is None else preprocessor_loader
+        self.image_processor_loader = \
+            _imageprocessors.Loader() if image_processor_loader is None else image_processor_loader
 
-        self.postprocessor_loader = \
-            _postprocessors.Loader() if postprocessor_loader is None else postprocessor_loader
+        self._post_processor = None
 
         self.image_generated_callbacks = []
 
@@ -355,21 +347,21 @@ class RenderLoop(_postprocessors.ImagePostprocessorMixin):
     def _get_base_extra_config_opts(self):
         render_loop_opts = []
 
-        if self.config.seed_image_preprocessors:
-            render_loop_opts.append(('--seed-image-preprocessors',
-                                     self.config.seed_image_preprocessors))
+        if self.config.seed_image_processors:
+            render_loop_opts.append(('--seed-image-processors',
+                                     self.config.seed_image_processors))
 
-        if self.config.mask_image_preprocessors:
-            render_loop_opts.append(('--mask-image-preprocessors',
-                                     self.config.mask_image_preprocessors))
+        if self.config.mask_image_processors:
+            render_loop_opts.append(('--mask-image-processors',
+                                     self.config.mask_image_processors))
 
-        if self.config.control_image_preprocessors:
-            render_loop_opts.append(('--control-image-preprocessors',
-                                     self.config.control_image_preprocessors))
+        if self.config.control_image_processors:
+            render_loop_opts.append(('--control-image-processors',
+                                     self.config.control_image_processors))
 
-        if self.config.postprocessors:
-            render_loop_opts.append(('--postprocessors',
-                                     self.config.postprocessors))
+        if self.config.post_processors:
+            render_loop_opts.append(('--post-processors',
+                                     self.config.post_processors))
 
         if self.config.seeds_to_images:
             render_loop_opts.append(('--seeds-to-images',))
@@ -689,7 +681,7 @@ class RenderLoop(_postprocessors.ImagePostprocessorMixin):
         self._written_images = tempfile.TemporaryFile('w+t')
         self._written_animations = tempfile.TemporaryFile('w+t')
 
-        self._init_postprocessor(self.config.postprocessors)
+        self._init_post_processor()
 
         self._generation_step = -1
         self._frame_time_sum = 0
@@ -726,57 +718,56 @@ class RenderLoop(_postprocessors.ImagePostprocessorMixin):
                     self._run_postprocess(generation_result)
                     self._write_prompt_only_image(diffusion_args, generation_result)
 
-    def _init_postprocessor(self, postprocessors):
-        if postprocessors is None:
-            self._postprocessor = None
+    def _init_post_processor(self):
+        if self.config.post_processors is None:
+            self._post_processor = None
         else:
-            self._postprocessor = _postprocessors.ImagePostprocessorMixin(
-                self.postprocessor_loader.load(postprocessors, self.config.device))
-            _messages.debug_log('Loaded Postprocessor:', self._postprocessor)
+            self._post_processor = self._load_image_processors(self.config.post_processors)
+            _messages.debug_log('Loaded Post Processor:', self._post_processor)
 
     def _run_postprocess(self, generation_result: _pipelinewrapper.PipelineWrapperResult):
-        if self._postprocessor is not None:
+        if self._post_processor is not None:
             for idx, image in enumerate(generation_result.images):
-                img = self._postprocessor.postprocess_image(image)
+                img = self._post_processor.process(image)
                 generation_result.images[idx] = img
 
-    def _load_preprocessors(self, preprocessors):
-        return self.preprocessor_loader.load(preprocessors, self.config.device)
+    def _load_image_processors(self, processors):
+        return self.image_processor_loader.load(processors, device=self.config.device)
 
-    def _load_seed_preprocessors(self):
-        if not self.config.seed_image_preprocessors:
+    def _load_seed_image_processors(self):
+        if not self.config.seed_image_processors:
             return None
 
-        r = self._load_preprocessors(self.config.seed_image_preprocessors)
-        _messages.debug_log('Loaded Seed Image Preprocessor:', r)
+        r = self._load_image_processors(self.config.seed_image_processors)
+        _messages.debug_log('Loaded Seed Image Processor:', r)
         return r
 
-    def _load_mask_preprocessors(self):
-        if not self.config.mask_image_preprocessors:
+    def _load_mask_image_processors(self):
+        if not self.config.mask_image_processors:
             return None
 
-        r = self._load_preprocessors(self.config.mask_image_preprocessors)
-        _messages.debug_log('Loaded Mask Image Preprocessor:', r)
+        r = self._load_image_processors(self.config.mask_image_processors)
+        _messages.debug_log('Loaded Mask Image Processor:', r)
         return r
 
-    def _load_control_preprocessors(self):
-        if not self.config.control_image_preprocessors:
+    def _load_control_image_processors(self):
+        if not self.config.control_image_processors:
             return None
 
-        preprocessors = [[]]
+        processors = [[]]
 
-        for preprocessor in self.config.control_image_preprocessors:
-            if preprocessor != CONTROL_IMAGE_PREPROCESSOR_SEP:
-                preprocessors[-1].append(preprocessor)
+        for processor in self.config.control_image_processors:
+            if processor != CONTROL_IMAGE_PROCESSOR_SEP:
+                processors[-1].append(processor)
             else:
-                preprocessors.append([])
+                processors.append([])
 
-        if len(preprocessors) == 1:
-            r = self._load_preprocessors(preprocessors[0])
+        if len(processors) == 1:
+            r = self._load_image_processors(processors[0])
         else:
-            r = [self._load_preprocessors(p) for p in preprocessors]
+            r = [self._load_image_processors(p) for p in processors]
 
-        _messages.debug_log('Loaded Control Image Preprocessor(s): ', r)
+        _messages.debug_log('Loaded Control Image Processor(s): ', r)
 
         return r
 
@@ -818,7 +809,7 @@ class RenderLoop(_postprocessors.ImagePostprocessorMixin):
                         frame_end=self.config.frame_end,
                         resize_resolution=self.config.output_size,
                         aspect_correct=not self.config.no_aspect,
-                        preprocessor=self._load_control_preprocessors())
+                        image_processor=self._load_control_image_processors())
 
             else:
                 def image_seed_iterator():
@@ -828,9 +819,9 @@ class RenderLoop(_postprocessors.ImagePostprocessorMixin):
                         frame_end=self.config.frame_end,
                         resize_resolution=self.config.output_size,
                         aspect_correct=not self.config.no_aspect,
-                        seed_image_preprocessor=self._load_seed_preprocessors(),
-                        mask_image_preprocessor=self._load_mask_preprocessors(),
-                        control_image_preprocessor=self._load_control_preprocessors())
+                        seed_image_processor=self._load_seed_image_processors(),
+                        mask_image_processor=self._load_mask_image_processors(),
+                        control_image_processor=self._load_control_image_processors())
 
             if seed_info.is_animation:
 
