@@ -52,7 +52,7 @@ class ImageProcessDirective(_batchprocessordirective.BatchProcessorDirective):
         with PIL.Image.open(parsed.file) as img:
             img = processor.process(
                 img,
-                resize_to=parsed.resize,
+                resize_resolution=parsed.resize,
                 aspect_correct=not parsed.no_aspect)
             if parsed.output_file:
                 img.save(parsed.output_file)

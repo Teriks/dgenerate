@@ -200,7 +200,7 @@ class ImageProcessor(_plugin.InvokablePlugin):
 
     def process(self,
                 image: PIL.Image.Image,
-                resize_to: dgenerate.types.OptionalSize = None,
+                resize_resolution: dgenerate.types.OptionalSize = None,
                 aspect_correct: bool = True):
         """
         Preform image processing on an image, including the requested resizing step.
@@ -215,7 +215,7 @@ class ImageProcessor(_plugin.InvokablePlugin):
         copy, pass a copy.
 
         :param image: image to process
-        :param resize_to: image will be resized to this dimension by this method.
+        :param resize_resolution: image will be resized to this dimension by this method.
         :param aspect_correct: Should the resize operation be aspect correct?
 
         :return: the processed image
@@ -224,17 +224,17 @@ class ImageProcessor(_plugin.InvokablePlugin):
         # This is the actual size it will end
         # up being resized to by resize_image
         calculate_new_size = _image.resize_image_calc(old_size=image.size,
-                                                      new_size=resize_to,
+                                                      new_size=resize_resolution,
                                                       aspect_correct=aspect_correct)
 
         pre_processed = self._process_pre_resize(image,
                                                  calculate_new_size)
 
-        if resize_to is None:
+        if resize_resolution is None:
             image = pre_processed
         else:
             image = _image.resize_image(img=pre_processed,
-                                        size=resize_to,
+                                        size=resize_resolution,
                                         aspect_correct=aspect_correct)
 
         if image is not pre_processed:
