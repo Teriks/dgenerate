@@ -25,7 +25,7 @@ python run.py stablediffusion/basic
 python run.py stablediffusion/animations/kitten-config.txt
 
 
-# Pass arguments to dgenerate, run all examples with debuging output
+# Pass arguments to dgenerate, run all examples with debugging output
 
 python run.py -v
 

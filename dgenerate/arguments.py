@@ -587,8 +587,8 @@ actions.append(
 
 actions.append(
     parser.add_argument('--sdxl-refiner-scheduler', action='store', default=None, metavar="SCHEDULER_NAME",
-                        help='Specify a scheduler (sampler) by name for the SDXL refiner pass. Operates the exact'
-                             'same way as --scheduler including the "help" option. Defaults to the value of --scheduler.'))
+                        help="""Specify a scheduler (sampler) by name for the SDXL refiner pass. Operates the exact
+                             same way as --scheduler including the "help" option. Defaults to the value of --scheduler."""))
 
 # SDXL Main pipeline
 
