@@ -553,6 +553,9 @@ class RenderLoop:
                                diffusion_args: _pipelinewrapper.DiffusionArguments,
                                image_seed_obj: _mediainput.ImageSeed,
                                generation_result: _pipelinewrapper.PipelineWrapperResult):
+        if self.config.no_frames:
+            return
+
         filename_components = [*self._gen_filename_components_base(diffusion_args),
                                'frame',
                                image_seed_obj.frame_index + 1,
@@ -889,22 +892,21 @@ class RenderLoop:
                           typing.Callable[[], typing.Iterator[_mediainput.ImageSeed]],
                           fps: typing.Union[int, float]):
 
-        animation_format_lower = self.config.animation_format.strip().lower()
         first_diffusion_args = next(arg_iterator)
 
         base_filename = \
             self._gen_animation_filename(
                 first_diffusion_args, self._generation_step + 1,
-                ext=animation_format_lower)
+                ext=self.config.animation_format)
 
         next_frame_terminates_anim = False
 
-        if self.disable_writes or animation_format_lower == 'frames':
+        if self.disable_writes or self.config.animation_format == 'frames':
             # The interface can be used as a mock object
             anim_writer = _mediaoutput.AnimationWriter()
         else:
             anim_writer = _mediaoutput.MultiAnimationWriter(
-                animation_format=animation_format_lower,
+                animation_format=self.config.animation_format,
                 filename=base_filename,
                 fps=fps, allow_overwrites=self.config.output_overwrite)
 
@@ -919,7 +921,7 @@ class RenderLoop:
                     anim_writer.end(
                         new_file=self._gen_animation_filename(
                             diffusion_args, self._generation_step,
-                            ext=animation_format_lower))
+                            ext=self.config.animation_format))
 
                 for image_seed in image_seed_iterator():
                     with image_seed:

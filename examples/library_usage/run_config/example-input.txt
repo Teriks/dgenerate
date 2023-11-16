@@ -1,0 +1,3 @@
+#! dgenerate 3.0.0
+
+\print Hello World!

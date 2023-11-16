@@ -89,10 +89,11 @@ Help Output
                      [--sdxl-refiner-negative-crops-coords-top-left COORD [COORD ...]] [-hnf FLOAT [FLOAT ...]]
                      [-ri INT [INT ...]] [-rg FLOAT [FLOAT ...]] [-rgr FLOAT [FLOAT ...]] [-sc] [-d DEVICE]
                      [-t DTYPE] [-s SIZE] [-na] [-o PATH] [-op PREFIX] [-ox] [-oc] [-om] [-p PROMPT [PROMPT ...]]
-                     [-cs INTEGER [INTEGER ...]] [-se SEED [SEED ...]] [-sei] [-gse COUNT] [-af FORMAT]
-                     [-fs FRAME_NUMBER] [-fe FRAME_NUMBER] [-is SEED [SEED ...]] [-sip PROCESSOR [PROCESSOR ...]]
-                     [-mip PROCESSOR [PROCESSOR ...]] [-cip PROCESSOR [PROCESSOR ...]] [-iph [PROCESSOR ...]]
-                     [-pp PROCESSOR [PROCESSOR ...]] [-iss FLOAT [FLOAT ...] | -uns INTEGER [INTEGER ...]]
+                     [-cs INTEGER [INTEGER ...]] [-se SEED [SEED ...]] [-sei] [-gse COUNT] [-af FORMAT] [-nf]
+                     [-fs FRAME_NUMBER] [-fe FRAME_NUMBER] [-is SEED [SEED ...]]
+                     [-sip PROCESSOR_URI [PROCESSOR_URI ...]] [-mip PROCESSOR_URI [PROCESSOR_URI ...]]
+                     [-cip PROCESSOR_URI [PROCESSOR_URI ...]] [-iph [PROCESSOR_NAME ...]]
+                     [-pp PROCESSOR_URI [PROCESSOR_URI ...]] [-iss FLOAT [FLOAT ...] | -uns INTEGER [INTEGER ...]]
                      [-gs FLOAT [FLOAT ...]] [-igs FLOAT [FLOAT ...]] [-gr FLOAT [FLOAT ...]]
                      [-ifs INTEGER [INTEGER ...]] [-mc EXPR [EXPR ...]] [-pmc EXPR [EXPR ...]]
                      [-vmc EXPR [EXPR ...]] [-cmc EXPR [EXPR ...]]
@@ -310,8 +311,9 @@ Help Output
                             name/blob/main/refiner_model.safetensors", the revision argument may be used with this
                             syntax.
       --sdxl-refiner-scheduler SCHEDULER_NAME
-                            Specify a scheduler (sampler) by name for the SDXL refiner pass. Operates the exact same
-                            way as --scheduler including the "help" option. Defaults to the value of --scheduler.
+                            Specify a scheduler (sampler) by name for the SDXL refiner pass. Operates the exact
+                            same way as --scheduler including the "help" option. Defaults to the value of
+                            --scheduler.
       --sdxl-second-prompts PROMPT [PROMPT ...]
                             One or more secondary prompts to try using SDXL's secondary text encoder. By default
                             the model is passed the primary prompt for this value, this option allows you to choose
@@ -499,6 +501,8 @@ Help Output
                             must be one of: mp4, gif, or webp. You may also specify "frames" to indicate that only
                             frames should be output and no coalesced animation file should be rendered. (default:
                             mp4)
+      -nf, --no-frames      Do not write frame images individually when rendering an animation, only write the
+                            animation file. This option is incompatible with --animation-format frames.
       -fs FRAME_NUMBER, --frame-start FRAME_NUMBER
                             Starting frame slice point for animated files, the specified frame will be included.
       -fe FRAME_NUMBER, --frame-end FRAME_NUMBER
@@ -532,17 +536,17 @@ Help Output
                             deep floyd stage when using --model-type torch-ifs*. When keyword arguments are
                             present, all applicable images such as "mask", "control", etc. must also be defined
                             with keyword arguments instead of with the short syntax.
-      -sip PROCESSOR [PROCESSOR ...], --seed-image-processors PROCESSOR [PROCESSOR ...]
+      -sip PROCESSOR_URI [PROCESSOR_URI ...], --seed-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
                             Specify one or more image processor actions to preform on the primary image specified
                             by --image-seeds. For example: --seed-image-processors "flip" "mirror" "grayscale". To
                             obtain more information about what image processors are available and how to use them,
                             see: --image-processor-help.
-      -mip PROCESSOR [PROCESSOR ...], --mask-image-processors PROCESSOR [PROCESSOR ...]
+      -mip PROCESSOR_URI [PROCESSOR_URI ...], --mask-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
                             Specify one or more image processor actions to preform on the inpaint mask image
                             specified by --image-seeds. For example: --mask-image-processors "invert". To obtain
                             more information about what image processors are available and how to use them, see:
                             --image-processor-help.
-      -cip PROCESSOR [PROCESSOR ...], --control-image-processors PROCESSOR [PROCESSOR ...]
+      -cip PROCESSOR_URI [PROCESSOR_URI ...], --control-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
                             Specify one or more image processor actions to preform on the control image specified
                             by --image-seeds, this option is meant to be used with --control-nets. Example:
                             --control-image-processors "canny;lower=50;upper=100". The delimiter "+" can be used to
@@ -561,11 +565,11 @@ Help Output
                             guidance image is not to be processed, only the second. To obtain more information
                             about what image processors are available and how to use them, see: --image-processor-
                             help.
-      -iph [PROCESSOR ...], --image-processor-help [PROCESSOR ...]
+      -iph [PROCESSOR_NAME ...], --image-processor-help [PROCESSOR_NAME ...]
                             Use this option alone (or with --plugin-modules) and no model specification in order to
                             list available image processor module names. Specifying one or more module names after
                             this option will cause usage documentation for the specified modules to be printed.
-      -pp PROCESSOR [PROCESSOR ...], --post-processors PROCESSOR [PROCESSOR ...]
+      -pp PROCESSOR_URI [PROCESSOR_URI ...], --post-processors PROCESSOR_URI [PROCESSOR_URI ...]
                             Specify one or more image processor actions to preform on generated output before it is
                             saved. For example: --post-processors "upcaler;model=4x_ESRGAN.pth". To obtain more
                             information about what processors are available and how to use them, see: --image-
@@ -639,7 +643,6 @@ Help Output
                             and default value: "control_net_size > (available * 0.75)" For Syntax See: [https://dge
                             nerate.readthedocs.io/en/v3.0.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.CON
                             TROL_NET_CACHE_MEMORY_CONSTRAINTS]
-
 
 
 
@@ -2424,8 +2427,8 @@ The ``\templates_help`` output from the above example is:
 
         Name: "last_model_path"
             Type: typing.Optional[str]
-            Value: stabilityai/stable-diffusion-2-1
-        Name: "last_model_subfolder"
+            Value: stabilityai/stable-diffusion-2
+        Name: "last_subfolder"
             Type: typing.Optional[str]
             Value: None
         Name: "last_sdxl_refiner_uri"
@@ -2451,15 +2454,27 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: typing.List[int]
-            Value: [78670947807228]
+            Value: [88900252172963]
+        Name: "last_seeds_to_images"
+            Type: <class 'bool'>
+            Value: False
         Name: "last_guidance_scales"
             Type: typing.List[float]
             Value: [5]
         Name: "last_inference_steps"
             Type: typing.List[int]
             Value: [30]
+        Name: "last_clip_skips"
+            Type: typing.Optional[typing.List[int]]
+            Value: []
+        Name: "last_sdxl_refiner_clip_skips"
+            Type: typing.Optional[typing.List[int]]
+            Value: []
         Name: "last_image_seeds"
             Type: typing.Optional[typing.List[str]]
+            Value: []
+        Name: "last_parsed_image_seeds"
+            Type: typing.Optional[typing.List[dgenerate.mediainput.ImageSeedParseResult]]
             Value: []
         Name: "last_image_seed_strengths"
             Type: typing.Optional[typing.List[float]]
@@ -2578,6 +2593,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_output_size"
             Type: typing.Optional[typing.Tuple[int, int]]
             Value: (512, 512)
+        Name: "last_no_aspect"
+            Type: <class 'bool'>
+            Value: False
         Name: "last_output_path"
             Type: <class 'str'>
             Value: output
@@ -2596,6 +2614,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_animation_format"
             Type: <class 'str'>
             Value: mp4
+        Name: "last_no_frames"
+            Type: <class 'bool'>
+            Value: False
         Name: "last_frame_start"
             Type: <class 'int'>
             Value: 0
@@ -2614,6 +2635,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_control_image_processors"
             Type: typing.Optional[typing.List[str]]
             Value: []
+        Name: "last_post_processors"
+            Type: typing.Optional[typing.List[str]]
+            Value: []
         Name: "last_offline_mode"
             Type: <class 'bool'>
             Value: False
@@ -2623,10 +2647,24 @@ The ``\templates_help`` output from the above example is:
         Name: "last_verbose"
             Type: <class 'bool'>
             Value: False
+        Name: "last_cache_memory_constraints"
+            Type: typing.Optional[typing.List[str]]
+            Value: []
+        Name: "last_pipeline_cache_memory_constraints"
+            Type: typing.Optional[typing.List[str]]
+            Value: []
+        Name: "last_vae_cache_memory_constraints"
+            Type: typing.Optional[typing.List[str]]
+            Value: []
+        Name: "last_control_net_cache_memory_constraints"
+            Type: typing.Optional[typing.List[str]]
+            Value: []
         Name: "last_images"
             Type: typing.Iterator[str]
+            Value: <generator object RenderLoop.written_images at 0x000001AF6A24BCA0>
         Name: "last_animations"
             Type: typing.Iterator[str]
+            Value: <generator object RenderLoop.written_animations at 0x000001AF6AADD7E0>
         Name: "saved_modules"
             Type: typing.Dict[str, typing.Dict[str, typing.Any]]
             Value: {}
@@ -2634,8 +2672,8 @@ The ``\templates_help`` output from the above example is:
             Type: <class 'module'>
             Value: <module 'glob'>
 
+    =====================================================================================
 
-    ==============================================================================
 
 
 Here are examples of other available directives such as ``\set`` and ``\print`` as

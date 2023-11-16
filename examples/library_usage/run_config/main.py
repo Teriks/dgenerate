@@ -1,0 +1,27 @@
+import dgenerate.batchprocess
+
+# it is fairly straight forward to run a dgenerate configuration from either a string or a file
+
+
+config = r"""
+#! dgenerate 3.0.0
+
+stabilityai/stable-diffusion-2 --prompts "a man walking on the moon without a space suit"
+
+# Print all set template variables
+
+\templates_help
+"""
+
+runner = dgenerate.batchprocess.create_config_runner()
+
+# Run the config from the string above
+runner.run_string(config)
+
+
+# the example input file is not named 'config.txt' because the example runner
+# would pick it up and run it if it were named that :)
+
+with open('example-input.txt', mode='rt') as input_file:
+    # run file wants a TextIO object so you need to use mode='t'
+    runner.run_file(input_file)

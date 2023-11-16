@@ -46,7 +46,7 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
 
 
     :param injected_args: dgenerate command line arguments in the form of a list, see: shlex module, or sys.argv.
-        These arguments will be injected at the end of every dgenerate invocation in the config file.
+        These arguments will be injected at the end of every dgenerate invocation in the config.
     :param render_loop: RenderLoop instance, if None is provided one will be created.
     :param directive_loader: Batch processor directive plugin loader, if one is not provided one will be created.
     :param version: Config version for ``#! dgenerate x.x.x`` version checks, defaults to ``dgenerate.__version__``
