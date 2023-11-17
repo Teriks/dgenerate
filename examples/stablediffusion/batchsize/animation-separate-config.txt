@@ -4,9 +4,9 @@
 
 Yntec/3DRendering
 --inference-steps 60
---guidance-scale 8
+--guidance-scales 8
 --prompts "3D rendering of a cat, high quality, animal; human, photo, real, bad quality"
---image-seed-strength 0.3
+--image-seed-strengths 0.3
 --seeds 12345678
 --image-seeds "../../media/kitten.gif"
 --batch-size 4

@@ -414,10 +414,15 @@ class PluginLoader:
         parser_accepted_args = plugin_class.get_accepted_args(call_by_name)
 
         if 'called-by-name' in parser_accepted_args:
+            # inheritors of base_class can't define this
+
             raise RuntimeError(f'called-by-name is a reserved {self.__description} module argument, '
                                'chose another argument name for your module.')
 
         for module_arg in self.__reserved_args:
+            # reserved args always go into **kwargs
+            # inheritors of base_class
+
             if module_arg[0] in parser_accepted_args:
                 raise RuntimeError(f'{module_arg} is a reserved {self.__description} module argument, '
                                    'chose another argument name for your module.')
@@ -435,23 +440,35 @@ class PluginLoader:
         args_dict = {}
 
         for arg in plugin_class.get_default_args(call_by_name):
+            # defaults specified by the implementation class
             args_dict[_textprocessing.dashdown(arg[0])] = arg[1]
 
-        for k, v in parsed_args.items():
-            args_dict[_textprocessing.dashdown(k)] = v
-
-        args_dict.update(kwargs)
-
         for name_default in self.__reserved_args:
+            # defaults specified by the loader
+            snake_case = _textprocessing.dashdown(name_default[0])
             if len(name_default) == 2:
                 name, default = name_default
-                args_dict[name] = parsed_args.get(name, default)
+                args_dict[snake_case] = parsed_args.get(name, default)
             elif len(name_default) == 1:
                 name = name_default[0]
-                args_dict[name] = parsed_args.get(name)
+                if name in parsed_args:
+                    args_dict[snake_case] = parsed_args.get(name)
+                elif snake_case not in kwargs:
+                    # Nothing provided this reserved argument value
+                    raise self.__argument_error_type(
+                                        f'Missing required argument "{name}" for {self.__description} '
+                                        f'"{call_by_name}".')
             else:
                 raise ValueError('plugin_reserved_args must be tuples of length 1 or 2')
 
+        # plugin invoker/load user arguments
+        args_dict.update(kwargs)
+
+        for k, v in parsed_args.items():
+            # URI overrides everything
+            args_dict[_textprocessing.dashdown(k)] = v
+
+        # Automagic argument
         args_dict['called_by_name'] = call_by_name
 
         for arg in itertools.chain(plugin_class.get_required_args(call_by_name),
