@@ -287,10 +287,19 @@ class InvokablePlugin:
         return self.__called_by_name
 
 
+class ModuleFileNotFoundError(FileNotFoundError):
+    """
+    Raised by :py:func:`.load_modules` if a module could not be found on disk.
+    """
+    pass
+
+
 def load_modules(paths: _types.OptionalPaths) -> typing.List[types.ModuleType]:
     """
     Load python modules from a folder or directly from a .py file.
     Cache them so that repeat requests for loading return an already loaded module.
+
+    :raises FileNotFoundError: If a module path could not be found on disk.
 
     :param paths: list of folder/file paths
     :return: list of :py:class:`types.ModuleType`
@@ -307,7 +316,10 @@ def load_modules(paths: _types.OptionalPaths) -> typing.List[types.ModuleType]:
         if plugin_path in LOADED_PLUGIN_MODULES:
             mod = LOADED_PLUGIN_MODULES[plugin_path]
         else:
-            mod = SourceFileLoader(plugin_path, plugin_path).load_module()
+            try:
+                mod = SourceFileLoader(plugin_path, plugin_path).load_module()
+            except FileNotFoundError as e:
+                raise ModuleFileNotFoundError(e)
             LOADED_PLUGIN_MODULES[plugin_path] = mod
 
         r.append(mod)
@@ -387,6 +399,8 @@ class PluginLoader:
         Either python files, or module directory containing __init__.py
 
         It can be a mix of these.
+
+        :raises dgenerate.plugin.ModuleFileNotFoundError: If a module could not be found on disk.
 
         :param paths: python files or module directories
         """

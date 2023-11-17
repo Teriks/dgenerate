@@ -40,9 +40,12 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
                          render_loop: typing.Optional[_renderloop.RenderLoop] = None,
                          plugin_loader: _batchprocesspluginloader.BatchProcessPluginLoader = None,
                          version: typing.Union[_types.Version, str] = dgenerate.__version__,
-                         throw: bool = False):
+                         throw: bool = False) -> _batchprocessor.BatchProcessor:
     """
     Create a :py:class:`.BatchProcessor` that can run dgenerate batch processing configs from a string or file.
+
+    :raises dgenerate.plugin.ModuleFileNotFoundError: If a module path parsed from
+        -pm/--plugin-modules in ``injected_args`` could not be found on disk.
 
 
     :param injected_args: dgenerate command line arguments in the form of a list, see: shlex module, or sys.argv.
@@ -50,10 +53,10 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
     :param render_loop: RenderLoop instance, if None is provided one will be created.
     :param plugin_loader: Batch processor plugin loader, if one is not provided one will be created.
     :param version: Config version for ``#! dgenerate x.x.x`` version checks, defaults to ``dgenerate.__version__``
-    :param throw: Whether to throw exceptions from :py:func:`dgenerate.invoker.invoke_dgenerate` or handle them,
-        if you set this to True exceptions will propagate out of dgenerate invocations instead of a
-        :py:exc:`.BatchProcessError` being raised, a line number where the error occurred can be obtained
-        using :py:attr:`.BatchProcessor.current_line`.
+    :param throw: Whether to throw exceptions from :py:func:`dgenerate.invoker.invoke_dgenerate` or handle them.
+        If you set this to ``True`` exceptions will propagate out of dgenerate invocations instead of a
+        :py:exc:`dgenerate.batchprocess.BatchProcessError` being raised by the created :py:class:`dgenerate.batchprocess.BatchProcessor`.
+        A line number where the error occurred can be obtained using :py:attr:`dgenerate.batchprocess.BatchProcessor.current_line`.
     :return: integer return-code, anything other than 0 is failure
     """
 

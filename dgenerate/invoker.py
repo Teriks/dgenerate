@@ -54,6 +54,7 @@ def invoke_dgenerate(
     :raises dgenerate.pipelinewrapper.InvalidSchedulerName:
     :raises dgenerate.pipelinewrapper.OutOfMemoryError:
     :raises dgenerate.pipelinewrapper.ModelNotFoundError:
+    :raises dgenerate.plugin.ModuleFileNotFoundError:
     :raises NotImplementedError:
     :raises EnvironmentError:
 
@@ -124,9 +125,7 @@ def invoke_dgenerate(
 
         render_loop.config = arguments
 
-        plugin_modules = _plugin.load_modules(arguments.plugin_module_paths)
-
-        render_loop.image_processor_loader.search_modules.update(plugin_modules)
+        render_loop.image_processor_loader.load_plugin_modules(arguments.plugin_module_paths)
 
         if arguments.verbose:
             _messages.push_level(_messages.DEBUG)
@@ -144,6 +143,7 @@ def invoke_dgenerate(
             _pipelinewrapper.OutOfMemoryError,
             _imageprocessors.ImageProcessorArgumentError,
             _imageprocessors.ImageProcessorNotFoundError,
+            _plugin.ModuleFileNotFoundError,
             NotImplementedError,
             EnvironmentError) as e:
 
