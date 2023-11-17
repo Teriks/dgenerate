@@ -21,13 +21,13 @@
 import typing
 
 import dgenerate.batchprocess.batchprocessor as _batchprocessor
-import dgenerate.batchprocess.batchprocessorpluginloader as _batchprocessorpluginloader
+import dgenerate.batchprocess.batchprocesspluginloader as _batchprocessorpluginloader
 import dgenerate.plugin as _plugin
 import dgenerate.renderloop as _renderloop
 import dgenerate.types as _types
 
 
-class BatchProcessorPlugin(_plugin.InvokablePlugin):
+class BatchProcessPlugin(_plugin.InvokablePlugin):
     """
     Abstract base class for batch processor directive implementations.
     """
@@ -38,7 +38,7 @@ class BatchProcessorPlugin(_plugin.InvokablePlugin):
                  plugin_module_paths: typing.Optional[typing.List[str]] = None,
                  **kwargs):
         super().__init__(called_by_name=called_by_name,
-                         argument_error_type=_batchprocessorpluginloader.BatchProcessorPluginArgumentError,
+                         argument_error_type=_batchprocessorpluginloader.BatchProcessPluginArgumentError,
                          **kwargs)
         self.__batch_processor = batch_processor
         self.__render_loop = render_loop
