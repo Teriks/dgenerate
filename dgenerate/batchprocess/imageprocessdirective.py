@@ -88,9 +88,9 @@ write_types.add_argument('-na', '--no-animation', action='store_true',
 class ImageProcessDirective(_batchprocessordirective.BatchProcessorDirective):
     NAMES = ['image_process']
 
-    def __init__(self, arg_error_exits=False, **kwargs):
+    def __init__(self, allow_exit=False, **kwargs):
         super().__init__(**kwargs)
-        self._arg_error_exits = self.get_bool_arg('arg_error_exits', arg_error_exits)
+        self._allow_exit = self.get_bool_arg('allow_exit', allow_exit)
 
     def _process_reader(self, reader: _mediainput.AnimationReader, out_filename):
 
@@ -177,7 +177,7 @@ class ImageProcessDirective(_batchprocessordirective.BatchProcessorDirective):
             self._parsed_args = _parser.parse_args(args)
         except SystemExit as e:
             _messages.log()  # newline
-            if self._arg_error_exits:
+            if self._allow_exit:
                 raise e
             return
 
