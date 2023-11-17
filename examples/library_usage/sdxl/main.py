@@ -10,9 +10,7 @@ from dgenerate import \
 import dgenerate.arguments
 
 # We can use this to parse and validate any --device argument that gets passed
-args = dgenerate.arguments.parse_known_args(throw=False)
-if args is None:
-    exit(1)
+device = dgenerate.arguments.parse_device()
 
 
 config = RenderLoopConfig()
@@ -43,7 +41,7 @@ config.sdxl_refiner_uri = 'stabilityai/stable-diffusion-xl-refiner-1.0'
 
 config.prompts = [Prompt.parse('an astronaut walking on the moon; fake')]
 
-config.device = args.device
+config.device = device
 
 config.model_type = ModelTypes.TORCH_SDXL
 

@@ -63,43 +63,36 @@ def invoke_dgenerate(
     if render_loop is None:
         render_loop = _renderloop.RenderLoop()
 
-    try:
-        partial_arguments = _arguments.parse_known_args(args)
-    except _arguments.DgenerateUsageError as e:
-        if throw:
-            raise e
-        return 1
-
-    if partial_arguments.image_processor_help is not None:
+    if _arguments.parse_image_processor_help(args) is not None:
         try:
             return _imageprocessors.image_processor_help(
-                names=partial_arguments.image_processor_help,
-                plugin_module_paths=partial_arguments.plugin_module_paths)
+                names=_arguments.parse_image_processor_help(args),
+                plugin_module_paths=_arguments.parse_plugin_modules(args))
         except _imageprocessors.ImageProcessorHelpUsageError as e:
             if throw:
                 raise _arguments.DgenerateUsageError(e)
             return 1
 
-    if partial_arguments.sub_command_help is not None:
+    if _arguments.parse_sub_command_help(args) is not None:
         try:
             return _subcommands.sub_command_help(
-                names=partial_arguments.sub_command_help,
-                plugin_module_paths=partial_arguments.plugin_module_paths)
+                names=_arguments.parse_sub_command_help(args),
+                plugin_module_paths=_arguments.parse_plugin_modules(args))
         except _subcommands.SubCommandHelpUsageError as e:
             if throw:
                 raise _arguments.DgenerateUsageError(e)
             return 1
 
-    if partial_arguments.sub_command is not None:
+    if _arguments.parse_sub_command(args) is not None:
         subcommand_args = _subcommands.remove_sub_command_arg(list(args))
         try:
-            return _subcommands.SubCommandLoader().load(partial_arguments.sub_command)(subcommand_args)
+            return _subcommands.SubCommandLoader().load(_arguments.parse_sub_command(args))(subcommand_args)
         except _subcommands.SubCommandNotFoundError as e:
             if throw:
                 raise _arguments.DgenerateUsageError(e)
             return 1
 
-    if partial_arguments.templates_help:
+    if _arguments.parse_templates_help(args):
         _messages.log(render_loop.generate_template_variables_help(show_values=False) + '\n', underline=True)
         return 0
 

@@ -52,7 +52,7 @@ try:
     from dgenerate.prompt import Prompt
     from dgenerate.batchprocess import BatchProcessError, create_config_runner
     from dgenerate.invoker import invoke_dgenerate
-    from dgenerate.arguments import parse_args, DgenerateUsageError
+    from dgenerate.arguments import parse_args, DgenerateUsageError, DgenerateArguments
     from dgenerate.pipelinewrapper import ModelTypes, DiffusionArguments
     from dgenerate.mediainput import ImageSeedError, UnknownMimetypeError, ImageSeed
 
@@ -73,12 +73,20 @@ def main():
     """
     try:
         render_loop = RenderLoop()
+        render_loop.config = DgenerateArguments()
+        # ^ this is necessary for --templates-help to
+        # render all the correct values
+
         if not sys.stdin.isatty():
             # Not a terminal, batch process STDIN
             try:
                 create_config_runner(render_loop=render_loop,
                                      version=__version__,
                                      injected_args=sys.argv[1:]).run_file(sys.stdin)
+            except FileNotFoundError as e:
+                # missing plugin file parsed by create_config_runner
+                dgenerate.messages.log(f'Config Error: {e}', level=dgenerate.messages.ERROR)
+                sys.exit(1)
             except BatchProcessError as e:
                 dgenerate.messages.log(f'Config Error: {e}', level=dgenerate.messages.ERROR)
                 sys.exit(1)
