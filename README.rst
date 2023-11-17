@@ -403,7 +403,7 @@ Help Output
                             additional generation steps for each value. In certain situations when the mixture of
                             denoisers algorithm is not supported, such as when using --control-nets and inpainting
                             with SDXL, the inverse proportion of this value IE: (1.0 - high-noise-fraction) becomes
-                            the --image-seed-strength input to the SDXL refiner. (default: [0.8])
+                            the --image-seed-strengths input to the SDXL refiner. (default: [0.8])
       -ri INT [INT ...], --sdxl-refiner-inference-steps INT [INT ...]
                             One or more inference steps values for the SDXL refiner when in use. Override the
                             number of inference steps used by the SDXL refiner, which defaults to the value taken
@@ -584,7 +584,7 @@ Help Output
                             One or more upscaler noise level values to try when using the super resolution upscaler
                             --model-type torch-upscaler-x4. Specifying this option for --model-type torch-
                             upscaler-x2 will produce an error message. The higher this value the more noise is
-                            added to the image before upscaling (similar to --image-seed-strength). (default: [20])
+                            added to the image before upscaling (similar to --image-seed-strengths). (default: [20])
       -gs FLOAT [FLOAT ...], --guidance-scales FLOAT [FLOAT ...]
                             One or more guidance scale values to try. Guidance scale effects how much your text
                             prompt is considered. Low values draw more data from images unrelated to text prompt.
@@ -934,7 +934,7 @@ recommended to prevent out of memory conditions on the average GPU :)
     --sdxl-high-noise-fractions 0.6 0.7 0.8 \
     --gen-seeds 5 \
     --inference-steps 50 \
-    --guidance-scale 12 \
+    --guidance-scales 12 \
     --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
     --prompts "real photo of an astronaut riding a horse on the moon" \
     --variant fp16 --dtype float16 \
@@ -1079,7 +1079,7 @@ areas over the dog in the original image, causing the dog to be replaced with an
     --image-seeds "my-image-seed.png;my-mask-image.png" \
     --prompts "Face of a yellow cat, high resolution, sitting on a park bench" \
     --image-seed-strengths 0.8 \
-    --guidance-scale 10 \
+    --guidance-scales 10 \
     --inference-steps 100
 
 
@@ -1134,7 +1134,7 @@ The involved images are resized using the basic syntax with no keyword arguments
     --image-seeds "my-image-seed.png;1024" "my-image-seed.png;my-mask-image.png;512x512" \
     --prompts "Face of a yellow cat, high resolution, sitting on a park bench" \
     --image-seed-strengths 0.8 \
-    --guidance-scale 10 \
+    --guidance-scales 10 \
     --inference-steps 100
 
 

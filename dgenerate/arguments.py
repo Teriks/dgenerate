@@ -767,7 +767,7 @@ actions.append(
                         will be processed by the refiner model. Multiple values to this argument will result in 
                         additional generation steps for each value. In certain situations when the mixture of denoisers 
                         algorithm is not supported, such as when using --control-nets and inpainting with SDXL, the inverse 
-                        proportion of this value IE: (1.0 - high-noise-fraction) becomes the --image-seed-strength 
+                        proportion of this value IE: (1.0 - high-noise-fraction) becomes the --image-seed-strengths 
                         input to the SDXL refiner. (default: [0.8])"""))
 
 actions.append(
@@ -1041,7 +1041,7 @@ actions.append(
                                        One or more upscaler noise level values to try when using the super resolution upscaler 
                                        --model-type torch-upscaler-x4. Specifying this option for --model-type torch-upscaler-x2
                                        will produce an error message. The higher this value the more noise is added 
-                                       to the image before upscaling (similar to --image-seed-strength). (default: [20])"""))
+                                       to the image before upscaling (similar to --image-seed-strengths). (default: [20])"""))
 
 actions.append(
     parser.add_argument('-gs', '--guidance-scales', action='store', nargs='+',

@@ -5,7 +5,7 @@
 
 runwayml/stable-diffusion-v1-5
 --inference-steps 30
---guidance-scale 8
+--guidance-scales 8
 --prompts "Black and white ((charcoal)) art of (rick astley) dancing; color, colors"
 --seeds 85214917063096
 --image-seeds "../../media/rickroll-roll.gif"
