@@ -37,7 +37,7 @@ class SubCommandLoader(_plugin.PluginLoader):
         # The empty string above disables sphinx inherited doc
 
         super().__init__(base_class=_subcommand.SubCommand,
-                         description='subcommand',
+                         description='sub-command',
                          reserved_args=[],
                          argument_error_type=_exceptions.SubCommandArgumentError,
                          not_found_error_type=_exceptions.SubCommandNotFoundError)

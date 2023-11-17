@@ -91,6 +91,8 @@ def invoke_dgenerate(
         try:
             return _subcommands.SubCommandLoader().load(_arguments.parse_sub_command(args))(subcommand_args)
         except _subcommands.SubCommandNotFoundError as e:
+            if log_error:
+                _messages.log(f'dgenerate: error: {e}', level=_messages.ERROR)
             if throw:
                 raise _arguments.DgenerateUsageError(e)
             return 1
@@ -150,7 +152,7 @@ def invoke_dgenerate(
             EnvironmentError) as e:
 
         if log_error:
-            _messages.log(f'Error: {e}', level=_messages.ERROR)
+            _messages.log(f'dgenerate: error: {e}', level=_messages.ERROR)
 
         if throw:
             raise e
