@@ -37,12 +37,18 @@ class SubCommandHelpUsageError(Exception):
 
 
 def remove_sub_command_arg(args: typing.List[str]):
+    """
+    Returns a list of arguments with --scm/--sub-command and its singular argument removed.
+
+    :param args: command line arguments
+    :return: modified copy of the args list.
+    """
     if '--sub-command' in args:
         index = args.index('--sub-command')
-        return args[:index] + args[index+2:]
+        return args[:index] + args[index + 2:]
     if '-scm' in args:
         index = args.index('-scm')
-        return args[:index] + args[index+2:]
+        return args[:index] + args[index + 2:]
 
 
 def sub_command_help(names: _types.Names, plugin_module_paths: _types.Paths):
