@@ -35,7 +35,8 @@ import dgenerate.messages as _messages
 _parser = argparse.ArgumentParser(
     r'\image_process',
     description='This directive allows you to use dgenerate image processors directly on files of your choosing.',
-    exit_on_error=False)
+    exit_on_error=False,
+    allow_abbrev=False)
 
 
 def _type_align(val):
