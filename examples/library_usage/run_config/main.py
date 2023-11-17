@@ -1,3 +1,5 @@
+import sys
+
 import dgenerate.batchprocess
 
 # it is fairly straight forward to run a dgenerate configuration from either a string or a file
@@ -13,11 +15,15 @@ stabilityai/stable-diffusion-2 --prompts "a man walking on the moon without a sp
 \templates_help
 """
 
-runner = dgenerate.batchprocess.create_config_runner()
+# inject any provided user arguments into the configuration, such as -v/--verbose or
+# -d/--device for instance
+
+# using -v/--verbose with a config running enables debugging output globally
+# while the config is running.
+runner = dgenerate.batchprocess.create_config_runner(injected_args=sys.argv[1:])
 
 # Run the config from the string above
 runner.run_string(config)
-
 
 # the example input file is not named 'config.txt' because the example runner
 # would pick it up and run it if it were named that :)

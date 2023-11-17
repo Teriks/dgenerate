@@ -1,22 +1,35 @@
 #! dgenerate 3.0.0
 
-# Get arguments help
+# Get arguments help and continue, this does not cause dgenerate to exit
 
-\image_process --help
+#\image_process --help
 
 # Naive resizing with aspect correction
+# Disable alignment so the image is resized to an exact size
 
-\image_process "../../media/earth.jpg" -o earth-resized.jpg --resize 1467 --align 1
+#\image_process "../../media/earth.jpg" -o earth-resized.jpg --resize 1467 --align 1
 
-# Use dgenerate image processors singularly, or as a chain
-# Upscaler operates post resize by default unless you use the "pre-resize=true" URI argument,
-# so here dgenerate resizes the image down to 196x196 pixels (no alignment, LANCZOS) and then
-# upscales using an ESRGAN X4 upscaling model resulting in an image that is 784x784
 
-\image_process "../../media/earth.jpg" -o earth-reupscaled.jpg --resize 196 --align 1 --processors upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth
+# Use dgenerate image processors singularly, or as a chain exactly how you would when using
+# dgenerates --image-seed-processor and related commands, such as --post-processor
+
+# The "upscaler" image processor operates post-resize by default unless you use the "pre-resize=true" URI argument.
+# So below, dgenerate resizes the image down to 196x196 pixels (no alignment, LANCZOS)
+# and then upscales it using an ESRGAN X4 upscaling model, resulting in an image output that is 784x784
+
+\image_process "../../media/earth.jpg" \
+--output earth-reupscaled.jpg
+--resize 196
+--align 1
+--processors upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth
 
 
 # Process animations, frames will be output to the "kitten" directory as well unless --no-frames is specified
 # You can specify --no-animation if you only want the frame images
 
-\image_process "../../media/kitten.gif" -o "kitten\kitten.gif" --processors upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth
+# The name of the generated frames will be based off the --output-file name, _frame_(idx) will be appended
+# if you want to change the format of the frame images, use --image-format with an image file extension
+
+#\image_process "../../media/kitten.gif"
+#--output "kitten\kitten.gif"
+#--processors upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth

@@ -21,12 +21,13 @@
 import typing
 
 import dgenerate.arguments as _arguments
+import dgenerate.imageprocessors as _imageprocessors
 import dgenerate.mediainput as _mediainput
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.plugin as _plugin
-import dgenerate.imageprocessors as _imageprocessors
 import dgenerate.renderloop as _renderloop
+import dgenerate.subcommands as _subcommands
 
 
 def invoke_dgenerate(
@@ -62,13 +63,43 @@ def invoke_dgenerate(
     if render_loop is None:
         render_loop = _renderloop.RenderLoop()
 
-    if '-iph' in args or '--image-processor-help' in args:
-        try:
-            return _imageprocessors.image_processor_help(args, throw=throw)
-        except _imageprocessors.ImageProcessorHelpUsageError as e:
-            raise _arguments.DgenerateUsageError(e)
+    try:
+        partial_arguments = _arguments.parse_known_args(args)
+    except _arguments.DgenerateUsageError as e:
+        if throw:
+            raise e
+        return 1
 
-    if '--templates-help' in args:
+    if partial_arguments.image_processor_help is not None:
+        try:
+            return _imageprocessors.image_processor_help(
+                names=partial_arguments.image_processor_help,
+                plugin_module_paths=partial_arguments.plugin_module_paths)
+        except _imageprocessors.ImageProcessorHelpUsageError as e:
+            if throw:
+                raise _arguments.DgenerateUsageError(e)
+            return 1
+
+    if partial_arguments.sub_command_help is not None:
+        try:
+            return _subcommands.sub_command_help(
+                names=partial_arguments.sub_command_help,
+                plugin_module_paths=partial_arguments.plugin_module_paths)
+        except _subcommands.SubCommandHelpUsageError as e:
+            if throw:
+                raise _arguments.DgenerateUsageError(e)
+            return 1
+
+    if partial_arguments.sub_command is not None:
+        subcommand_args = _subcommands.remove_sub_command_arg(list(args))
+        try:
+            return _subcommands.SubCommandLoader().load(partial_arguments.sub_command)(subcommand_args)
+        except _subcommands.SubCommandNotFoundError as e:
+            if throw:
+                raise _arguments.DgenerateUsageError(e)
+            return 1
+
+    if partial_arguments.templates_help:
         _messages.log(render_loop.generate_template_variables_help(show_values=False) + '\n', underline=True)
         return 0
 
@@ -105,10 +136,10 @@ def invoke_dgenerate(
         render_loop.image_processor_loader.search_modules.update(plugin_modules)
 
         if arguments.verbose:
-            _messages.LEVEL = _messages.DEBUG
+            _messages.push_level(_messages.DEBUG)
         else:
             # enable setting and unsetting in batch processing
-            _messages.LEVEL = _messages.INFO
+            _messages.push_level(_messages.INFO)
 
         render_loop.run()
 
@@ -129,6 +160,8 @@ def invoke_dgenerate(
             raise e
         return 1
     finally:
+        _messages.pop_level()
+
         if arguments is not None:
             if arguments.control_net_cache_memory_constraints:
                 _pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()

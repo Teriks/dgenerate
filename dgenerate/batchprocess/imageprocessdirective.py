@@ -26,6 +26,7 @@ import time
 import typing
 
 import dgenerate.batchprocess.batchprocessordirective as _batchprocessordirective
+import dgenerate.filelock as _filelock
 import dgenerate.imageprocessors
 import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
@@ -52,18 +53,21 @@ _parser.add_argument('file',
                      help='Input file path, may be a static image or animated file supported by dgenerate. URLs will be downloaded.')
 
 _parser.add_argument('-p', '--processors', nargs='+',
-                     help='One or more preprocessor URIs.')
+                     help='One or more image processor URIs.')
 
 _parser.add_argument('-o', '--output', default=None,
                      help='Output file, directories will be created for you. '
                           'If you do not specify an output file, the input file will be modified if it exists on disk. '
                           'Failure to specify an output file with a URL as input is an error.')
 
+_parser.add_argument('-if', '--frame-format', default='png',
+                     help='Image format for animation frames.')
+
 _parser.add_argument('-ox', '--output-overwrite', action='store_true',
-                     help='Indicate that it is okay to overwrite files, instead of appending a duplicate number.')
+                     help='Indicate that it is okay to overwrite files, instead of appending a duplicate suffix.')
 
 _parser.add_argument('-r', '--resize', default=None, type=dgenerate.arguments._type_size,
-                     help='Preform naive image resizing.')
+                     help='Preform naive image resizing (LANCZOS).')
 
 _parser.add_argument('-a', '--no-aspect', action='store_true',
                      help='Make --resize ignore aspect ratio.')
@@ -84,8 +88,9 @@ write_types.add_argument('-na', '--no-animation', action='store_true',
 class ImageProcessDirective(_batchprocessordirective.BatchProcessorDirective):
     NAMES = ['image_process']
 
-    def __init__(self, **kwargs):
+    def __init__(self, arg_error_exits=False, **kwargs):
         super().__init__(**kwargs)
+        self._arg_error_exits = self.get_bool_arg('arg_error_exits', arg_error_exits)
 
     def _process_reader(self, reader: _mediainput.AnimationReader, out_filename):
 
@@ -97,17 +102,32 @@ class ImageProcessDirective(_batchprocessordirective.BatchProcessorDirective):
 
         _messages.log(fr'\image_process Processing "{self._parsed_args.file}"',
                       underline=True)
+
         if reader.total_frames == 1:
+
+            if not self._parsed_args.output_overwrite:
+                out_filename = _filelock.touch_avoid_duplicate(
+                    out_directory if out_directory else '.',
+                    path_maker=_filelock.suffix_path_maker(out_filename, '_duplicate_'))
+
             next(reader).save(out_filename)
+
             _messages.log(fr'\image_process Wrote File "{out_filename}"',
                           underline=True)
         else:
             out_filename_base, ext = os.path.splitext(out_filename)
 
+            if not self._parsed_args.output_overwrite:
+                out_anim_name = _filelock.touch_avoid_duplicate(
+                    out_directory if out_directory else '.',
+                    path_maker=_filelock.suffix_path_maker(out_filename, '_duplicate_'))
+            else:
+                out_anim_name = out_filename
+
             if not self._parsed_args.no_animation:
                 anim_writer = _mediaoutput.create_animation_writer(
                     animation_format=ext.lstrip('.'),
-                    out_filename=out_filename,
+                    out_filename=out_anim_name,
                     fps=reader.anim_fps)
             else:
                 # mock
@@ -136,7 +156,12 @@ class ImageProcessDirective(_batchprocessordirective.BatchProcessorDirective):
                         writer.write(frame)
 
                     if not self._parsed_args.no_frames:
-                        frame_name = out_filename_base + f'_frame_{frame_idx + 1}.png'
+                        frame_name = out_filename_base + f'_frame_{frame_idx + 1}.{self._parsed_args.frame_format}'
+
+                        if not self._parsed_args.output_overwrite:
+                            frame_name = _filelock.touch_avoid_duplicate(
+                                out_directory if out_directory else '.',
+                                path_maker=_filelock.suffix_path_maker(frame_name, '_duplicate_'))
 
                         frame.save(frame_name)
 
@@ -150,8 +175,10 @@ class ImageProcessDirective(_batchprocessordirective.BatchProcessorDirective):
     def __call__(self, args: typing.List[str]):
         try:
             self._parsed_args = _parser.parse_args(args)
-        except SystemExit:
+        except SystemExit as e:
             _messages.log()  # newline
+            if self._arg_error_exits:
+                raise e
             return
 
         out_filename = self._parsed_args.output if self._parsed_args.output else self._parsed_args.file
@@ -159,7 +186,7 @@ class ImageProcessDirective(_batchprocessordirective.BatchProcessorDirective):
         if out_filename.startswith('http') or out_filename.startswith('https'):
             self.argument_error('--output cannot be a URL, please specify --output manually.')
 
-        loader = dgenerate.imageprocessors.Loader()
+        loader = dgenerate.imageprocessors.ImageProcessorLoader()
 
         loader.load_plugin_modules(self.injected_plugin_modules)
 

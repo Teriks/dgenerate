@@ -58,15 +58,8 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
     def __init__(self, model, tile=512, overlap=32, pre_resize=False, **kwargs):
         super().__init__(**kwargs)
 
-        # prevent circular import
-        from dgenerate.mediainput import create_web_cache_file
-
         try:
-            if model.startswith('http') or model.startswith('https'):
-                self._model = chainner.load_model(
-                    create_web_cache_file(model, mimetype_is_supported=None)[1])
-            else:
-                self._model = chainner.load_model(model)
+            self._model = chainner.load_model(model)
         except chainner.UnsupportedModelError:
             self.argument_error('Unsupported model file format.')
 

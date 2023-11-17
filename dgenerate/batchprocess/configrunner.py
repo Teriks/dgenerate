@@ -18,7 +18,6 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import argparse
 import glob
 import shlex
 import types
@@ -34,6 +33,7 @@ import dgenerate.prompt as _prompt
 import dgenerate.renderloop as _renderloop
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+import dgenerate.arguments as _arguments
 
 
 def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = None,
@@ -189,16 +189,21 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
         _directiveloader.DirectiveLoader() if \
             directive_loader is None else directive_loader
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-pm', '--plugin-modules', action='store', default=[], nargs="+")
-
     injected_plugin_modules = []
 
     if injected_args:
-        parsed, _ = parser.parse_known_args(injected_args)
-        if parsed.plugin_modules:
-            injected_plugin_modules = parsed.plugin_modules
-            directive_plugin_loader.load_plugin_modules(parsed.plugin_modules)
+
+        parsed = _arguments.parse_known_args(
+            injected_args,
+            log_error=False,
+            throw=False)
+
+        # The created object will throw a BatchProcessError when we try to
+        # run a file if the injected arguments are incorrect, which is a
+        # better behavior than throwing here
+        if parsed is not None and parsed.plugin_module_paths:
+            injected_plugin_modules = parsed.plugin_module_paths
+            directive_plugin_loader.load_plugin_modules(parsed.plugin_module_paths)
 
     runner = None
 

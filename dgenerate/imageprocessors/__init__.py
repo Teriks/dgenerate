@@ -18,8 +18,8 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import argparse
 import typing
+
 
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
@@ -36,13 +36,9 @@ from .imageops import \
 from .imageprocessor import ImageProcessor
 from .imageprocessorchain import ImageProcessorChain
 from .imageprocessormixin import ImageProcessorMixin
-from .loader import Loader
+from .imageprocessorloader import ImageProcessorLoader
 from .openpose import OpenPoseProcessor
 from .upscaler import UpscalerProcessor
-
-_help_parser = argparse.ArgumentParser(prog='dgenerate', exit_on_error=False)
-_help_parser.add_argument('-iph', '--image-processor-help', metavar='PROCESSOR', nargs='*', default=[], type=str)
-_help_parser.add_argument('-pm', '--plugin-modules', metavar='PATH', nargs='+', default=[], type=str)
 
 
 class ImageProcessorHelpUsageError(Exception):
@@ -52,30 +48,22 @@ class ImageProcessorHelpUsageError(Exception):
     pass
 
 
-def image_processor_help(args: typing.Sequence[str], throw: bool = False):
+def image_processor_help(names: _types.Names, plugin_module_paths: _types.Paths):
     """
     Implements ``--image-processor-help`` command line option
 
-    :param args: arguments (processor names, or empty list)
-    :param throw: Should we throw exceptions or handle them?
+
+    :param names: arguments (processor names, or empty list)
+    :param plugin_module_paths: plugin module paths to search
 
     :raises ImageProcessorHelpUsageError:
     :raises ImageProcessorNotFoundError:
 
     :return: return-code, anything other than 0 is failure
     """
-    try:
-        parse_result = _help_parser.parse_args(args)
-    except (argparse.ArgumentError, argparse.ArgumentTypeError) as e:
-        _messages.log(f'dgenerate: error: {e}', level=_messages.ERROR)
-        if throw:
-            raise ImageProcessorHelpUsageError(e)
-        return 1
 
-    names = parse_result.image_processor_help
-
-    module_loader = Loader()
-    module_loader.load_plugin_modules(parse_result.plugin_modules)
+    module_loader = ImageProcessorLoader()
+    module_loader.load_plugin_modules(plugin_module_paths)
 
     if len(names) == 0:
         available = ('\n' + ' ' * 4).join(_textprocessing.quote(name) for name in module_loader.get_all_names())

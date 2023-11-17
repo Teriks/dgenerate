@@ -30,7 +30,7 @@ import jinja2
 import dgenerate.messages as _messages
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-
+import dgenerate.arguments as _arguments
 
 class PeekReader:
     """
@@ -136,7 +136,8 @@ class BatchProcessor:
                  template_variables: typing.Optional[typing.Dict[str, typing.Any]] = None,
                  template_functions: typing.Optional[
                      typing.Dict[str, typing.Callable[[typing.Any], typing.Any]]] = None,
-                 directive_lookup: typing.Optional[typing.Callable[[str], typing.Optional[typing.Callable[[list], None]]]] = None,
+                 directive_lookup: typing.Optional[
+                     typing.Callable[[str], typing.Optional[typing.Callable[[list], None]]]] = None,
                  injected_args: typing.Optional[typing.List[str]] = None):
         """
         :param invoker: A function for invoking lines recognized as shell commands, should return a return code.
@@ -362,10 +363,24 @@ class BatchProcessor:
 
         :param stream: A filestream in text read mode
         """
+
         try:
+            parsed = _arguments.parse_known_args(
+                self.injected_args,
+                log_error=False)
+        except _arguments.DgenerateUsageError as e:
+            raise BatchProcessError(f'Error parsing injected arguments: {e}')
+
+        if parsed.verbose:
+            _messages.push_level(_messages.DEBUG)
+
+        try:
+
             self._run_file(stream)
         except BatchProcessError as e:
             raise BatchProcessError(f'Error on line {self.current_line}: {e}')
+        finally:
+            _messages.pop_level()
 
     def run_string(self, string: str):
         """

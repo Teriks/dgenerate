@@ -49,6 +49,32 @@ Errors are printed to ``stderr`` which is unbuffered by default.
 
 _handlers = []
 
+_level_stack = []
+
+
+def push_level(level):
+    """
+    Set :py:attr:`LEVEL` and save the previous value to a stack.
+
+    :param level: one of :py:attr:`.INFO`, :py:attr:`.WARNING`, :py:attr:`.ERROR`, , :py:attr:`.DEBUG`
+    """
+    global LEVEL
+    _level_stack.append(LEVEL)
+    LEVEL = level
+
+
+def pop_level():
+    """
+    Pop ``LEVEL`` value last saved by :py:func:`.push_level` and assign it to :py:attr:`.LEVEL`.
+
+    If no previous level was saved, no-op.
+    """
+
+    global LEVEL, _level_stack
+
+    if _level_stack:
+        LEVEL = _level_stack.pop()
+
 
 def set_error_file(file: typing.TextIO):
     """

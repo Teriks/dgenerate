@@ -27,7 +27,11 @@ import dgenerate.plugin as _plugin
 import dgenerate.types as _types
 
 
-class Loader(_plugin.PluginLoader):
+class ImageProcessorLoader(_plugin.PluginLoader):
+    """
+    Loads :py:class:`dgenerate.imageprocessor.ImageProcessor` plugins.
+    """
+
     def __init__(self):
         """"""
 

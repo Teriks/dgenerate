@@ -33,6 +33,7 @@ import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.prompt as _prompt
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+import sys
 
 _SUPPORTED_MODEL_TYPES_PRETTY = \
     _textprocessing.oxford_comma(_pipelinewrapper.supported_model_type_strings(), 'or')
@@ -286,6 +287,21 @@ actions.append(
                         help="""Specify one or more plugin module folder paths (folder containing __init__.py) or 
                         python .py file paths to load as plugins. Plugin modules can currently only implement 
                         image processors."""))
+
+actions.append(
+    parser.add_argument('-scm', '--sub-command', action='store', default=None,
+                        metavar="SUB_COMMAND",
+                        help="""Specify the name a sub-command to invoke. dgenerate exposes some extra image processing
+                        functionality through the use of sub-commands. Sub commands essentially replace the entire set
+                        of accepted arguments with those of a sub-command which implements additional functionality.
+                        See --sub-command-help for a list of sub-commands and help."""))
+
+actions.append(
+    parser.add_argument('-scmh', '--sub-command-help', action='store', nargs='*', default=None,
+                        metavar="SUB_COMMAND",
+                        help="""List available sub-commands, providing sub-command names will 
+                                produce their documentation. Calling a subcommand with "--sub-command name --help" 
+                                will produce argument help output for that subcommand."""))
 
 actions.append(
     parser.add_argument('-ofm', '--offline-mode', action='store_true', default=False,
@@ -1008,7 +1024,6 @@ actions.append(
                         To obtain more information about what processors are available and how to use them, 
                         see: --image-processor-help."""))
 
-
 actions.append(
     image_seed_noise_opts.add_argument('-iss', '--image-seed-strengths', action='store', nargs='+', default=None,
                                        metavar="FLOAT",
@@ -1150,10 +1165,15 @@ class DgenerateArguments(dgenerate.RenderLoopConfig):
     pipeline_cache_memory_constraints: typing.Optional[typing.List[str]] = None
     vae_cache_memory_constraints: typing.Optional[typing.List[str]] = None
     control_net_cache_memory_constraints: typing.Optional[typing.List[str]] = None
+    image_processor_help: typing.Optional[typing.List[str]] = None
+    sub_command_help: typing.Optional[typing.List[str]] = None
+    sub_command: typing.Optional[str] = None
+    templates_help: bool = False
 
     def __init__(self):
         super().__init__()
         self.plugin_module_paths = []
+
 
 
 _attr_name_to_option = {a.dest: a.option_strings[-1] if a.option_strings else a.dest for a in actions}
@@ -1175,14 +1195,71 @@ def _parse_args(args=None) -> DgenerateArguments:
     return args
 
 
-def parse_args(args: typing.Sequence[str],
-               throw: bool = True) -> typing.Union[DgenerateArguments, None]:
+def _parse_known_args(args=None) -> DgenerateArguments:
+    args = typing.cast(DgenerateArguments,
+                       parser.parse_known_args(args, namespace=DgenerateArguments())[0])
+    return args
+
+
+def parse_known_args(args: typing.Optional[typing.Sequence[str]] = None,
+                     throw: bool = True,
+                     log_error: bool = True,
+                     ignore_model: bool = True,
+                     ignore_help: bool = True) -> typing.Union[DgenerateArguments, None]:
     """
-    Parse dgenerates command line arguments and return a configuration object.
+    Parse only known arguments off the command line.
+
+    Ignores dgenerates only required argument 'module_path' by default.
+
+
+    :py:meth:`DgenerateArguments.check()` is not called by this function,
+    no logical validation is preformed, only argument parsing.
 
     :param args: arguments list, as in args taken from sys.argv, or in that format
     :param throw: throw :py:exc:`.DgenerateUsageError` on error? defaults to True
+    :param log_error: Write a description message to stderr if an error occurs?
+    :param ignore_model: Ignore dgenerates only required argument, fill it with the value 'none'
+    :param ignore_help: Do not allow --help to be passed and proc help being printed.
 
+    :raise DgenerateUsageError: on argument error (simple type validation only)
+
+    :return: :py:class:`.DgenerateArguments`. If ``throw=False`` then
+        ``None`` will be returned on errors.
+    """
+
+    if args is None:
+        args = list(sys.argv[1:])
+    else:
+        args = list(args)
+
+    if ignore_help:
+        if '--help' in args:
+            args.remove('--help')
+
+    try:
+        if ignore_model:
+            return _parse_known_args(['none'] + list(args))
+        else:
+            return _parse_known_args(args)
+    except (argparse.ArgumentTypeError, argparse.ArgumentError) as e:
+        if log_error:
+            pass
+            _messages.log(f'dgenerate: error: {e}', level=_messages.ERROR)
+        if throw:
+            raise DgenerateUsageError(e)
+        return None
+
+
+def parse_args(args: typing.Optional[typing.Sequence[str]] = None,
+               throw: bool = True,
+               log_error: bool = True) -> typing.Union[DgenerateArguments, None]:
+    """
+    Parse dgenerates command line arguments and return a configuration object.
+
+
+    :param args: arguments list, as in args taken from sys.argv, or in that format
+    :param throw: throw :py:exc:`.DgenerateUsageError` on error? defaults to True
+    :param log_error: Write a description message to stderr if an error occurs?
     :raise DgenerateUsageError:
 
     :return: :py:class:`.DgenerateArguments`. If ``throw=False`` then
@@ -1192,7 +1269,9 @@ def parse_args(args: typing.Sequence[str],
     try:
         return _parse_args(args)
     except (dgenerate.RenderLoopConfigError, argparse.ArgumentTypeError, argparse.ArgumentError) as e:
-        _messages.log(f'dgenerate: error: {e}', level=_messages.ERROR)
+        if log_error:
+            pass
+            _messages.log(f'dgenerate: error: {e}', level=_messages.ERROR)
         if throw:
             raise DgenerateUsageError(e)
         return None

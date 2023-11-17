@@ -169,13 +169,14 @@ class RenderLoop:
 
         return self._pipeline_wrapper
 
-    def __init__(self, config=None, image_processor_loader=None):
+    def __init__(self, config: typing.Optional[RenderLoopConfig] = None,
+                 image_processor_loader: typing.Optional[_imageprocessors.ImageProcessorLoader] = None):
         """
         :param config: :py:class:`.RenderLoopConfig` or :py:class:`dgenerate.arguments.DgenerateArguments`.
             If None is provided, a :py:class:`.RenderLoopConfig` instance will be created and
             assigned to :py:attr:`.RenderLoop.config`.
 
-        :param image_processor_loader: :py:class:`dgenerate.imageprocessors.loader.Loader`.
+        :param image_processor_loader: :py:class:`dgenerate.imageprocessors.loader.ImageProcessorLoader`.
             If None is provided, an instance will be created and assigned to
             :py:attr:`.RenderLoop.image_processor_loader`.
         """
@@ -191,7 +192,8 @@ class RenderLoop:
             RenderLoopConfig() if config is None else config
 
         self.image_processor_loader = \
-            _imageprocessors.Loader() if image_processor_loader is None else image_processor_loader
+            _imageprocessors.ImageProcessorLoader() if \
+                image_processor_loader is None else image_processor_loader
 
         self._post_processor = None
 
