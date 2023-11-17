@@ -1,9 +1,9 @@
 import typing
 
-import dgenerate.batchprocess.batchprocessorplugin as _batchprocessorplugin
+import dgenerate.batchprocess.batchprocessplugin as _batchprocessplugin
 
 
-class MyDirective(_batchprocessorplugin.BatchProcessorPlugin):
+class MyDirective(_batchprocessplugin.BatchProcessPlugin):
     NAMES = ['my_directive']
 
     def __init__(self, **kwargs):
@@ -33,7 +33,7 @@ class MyDirective(_batchprocessorplugin.BatchProcessorPlugin):
         return None
 
 
-class MyMultiDirective(_batchprocessorplugin.BatchProcessorPlugin):
+class MyMultiDirective(_batchprocessplugin.BatchProcessPlugin):
     NAMES = ['my_multi_directive']
 
     def __init__(self, **kwargs):

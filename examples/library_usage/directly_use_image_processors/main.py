@@ -49,7 +49,7 @@ with PIL.Image.open('../../media/man-fighting-pose.jpg') as img:
 # print out the upscaler processor plugin help for reference
 print(loader.get_help('upscaler'))
 
-upscaler = loader.load('upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth', device=args.device)
+upscaler = loader.load('upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth', device=device)
 
 with PIL.Image.open('../../media/earth.jpg') as img:
     out_image = upscaler.process(img)

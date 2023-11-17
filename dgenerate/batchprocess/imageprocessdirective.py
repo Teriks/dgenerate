@@ -25,7 +25,7 @@ import pathlib
 import time
 import typing
 
-import dgenerate.batchprocess.batchprocessorplugin as _batchprocessorplugin
+import dgenerate.batchprocess.batchprocessplugin as _batchprocessplugin
 import dgenerate.filelock as _filelock
 import dgenerate.imageprocessors
 import dgenerate.mediainput as _mediainput
@@ -87,7 +87,7 @@ write_types.add_argument('-na', '--no-animation', action='store_true',
                          help='Do not write an animation file, only frames. Cannot be used with --no-frames.')
 
 
-class ImageProcessDirective(_batchprocessorplugin.BatchProcessorPlugin):
+class ImageProcessDirective(_batchprocessplugin.BatchProcessPlugin):
     NAMES = ['image_process']
 
     def __init__(self, allow_exit=False, **kwargs):

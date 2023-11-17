@@ -23,7 +23,7 @@ class ImageProcessSubCommand(_subcommand.SubCommand):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._directive = \
-            dgenerate.batchprocess.BatchProcessorPluginLoader().load(
+            dgenerate.batchprocess.BatchProcessPluginLoader().load(
                 'image_process',
                 render_loop=None,
                 batch_processor=None,

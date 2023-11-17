@@ -26,7 +26,7 @@ import typing
 import dgenerate
 import dgenerate.arguments as _arguments
 import dgenerate.batchprocess.batchprocessor as _batchprocessor
-import dgenerate.batchprocess.batchprocessorpluginloader as _batchprocessorpluginloader
+import dgenerate.batchprocess.batchprocesspluginloader as _batchprocesspluginloader
 import dgenerate.invoker as _invoker
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
@@ -38,7 +38,7 @@ import dgenerate.types as _types
 
 def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = None,
                          render_loop: typing.Optional[_renderloop.RenderLoop] = None,
-                         plugin_loader: _batchprocessorpluginloader.BatchProcessorPluginLoader = None,
+                         plugin_loader: _batchprocesspluginloader.BatchProcessPluginLoader = None,
                          version: typing.Union[_types.Version, str] = dgenerate.__version__,
                          throw: bool = False):
     """
@@ -186,7 +186,7 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
     }
 
     plugin_loader = \
-        _batchprocessorpluginloader.BatchProcessorPluginLoader() if \
+        _batchprocesspluginloader.BatchProcessPluginLoader() if \
             plugin_loader is None else plugin_loader
 
     plugin_module_paths = []

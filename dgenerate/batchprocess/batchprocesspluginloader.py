@@ -20,30 +20,30 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import typing
 
-import dgenerate.batchprocess.batchprocessorplugin as _batchprocessorplugin
+import dgenerate.batchprocess.batchprocessplugin as _batchprocessplugin
 import dgenerate.plugin as _plugin
 import dgenerate.types as _types
 
 
-class BatchProcessorPluginNotFoundError(Exception):
+class BatchProcessPluginNotFoundError(Exception):
     """
-    Thrown when :py:class:`.BatchProcessorPluginLoader` cannot find any :py:class:`dgenerate.batchprocess.BatchProcessorPlugin`
+    Thrown when :py:class:`.BatchProcessPluginLoader` cannot find any :py:class:`dgenerate.batchprocess.BatchProcessPlugin`
     implementation for a specified name.
     """
     pass
 
 
-class BatchProcessorPluginArgumentError(Exception):
+class BatchProcessPluginArgumentError(Exception):
     """
-    Thrown when a :py:class:`dgenerate.batchprocess.BatchProcessorPlugin` plugin is
+    Thrown when a :py:class:`dgenerate.batchprocess.BatchProcessPlugin` plugin is
     not instantiated with correct arguments.
     """
     pass
 
 
-class BatchProcessorPluginLoader(_plugin.PluginLoader):
+class BatchProcessPluginLoader(_plugin.PluginLoader):
     """
-    Loads :py:class:`dgenerate.batchprocess.BatchProcessorPlugin` plugins.
+    Loads :py:class:`dgenerate.batchprocess.BatchProcessPlugin` plugins.
     """
 
     def __init__(self):
@@ -51,16 +51,16 @@ class BatchProcessorPluginLoader(_plugin.PluginLoader):
 
         # The empty string above disables sphinx inherited doc
 
-        super().__init__(base_class=_batchprocessorplugin.BatchProcessorPlugin,
+        super().__init__(base_class=_batchprocessplugin.BatchProcessPlugin,
                          description='directive',
                          reserved_args=[('render-loop',), ('batch-processor',), ('plugin-module-paths',)],
-                         argument_error_type=BatchProcessorPluginArgumentError,
-                         not_found_error_type=BatchProcessorPluginNotFoundError)
+                         argument_error_type=BatchProcessPluginArgumentError,
+                         not_found_error_type=BatchProcessPluginNotFoundError)
 
         self.add_search_module_string('dgenerate.batchprocess')
 
-    def load(self, uri: _types.Uri, **kwargs) -> _batchprocessorplugin.BatchProcessorPlugin:
-        return typing.cast(_batchprocessorplugin.BatchProcessorPlugin, super().load(uri, **kwargs))
+    def load(self, uri: _types.Uri, **kwargs) -> _batchprocessplugin.BatchProcessPlugin:
+        return typing.cast(_batchprocessplugin.BatchProcessPlugin, super().load(uri, **kwargs))
 
 
 __all__ = _types.module_all()
