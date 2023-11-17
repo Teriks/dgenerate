@@ -36,5 +36,5 @@ class SubCommand(_plugin.InvokablePlugin):
                          argument_error_type=_exceptions.SubCommandArgumentError,
                          **kwargs)
 
-    def __call__(self, argv: typing.List[str]):
-        pass
+    def __call__(self, argv: typing.List[str]) -> int:
+        return 0
