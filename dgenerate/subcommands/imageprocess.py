@@ -13,8 +13,11 @@ class ImageProcessSubCommand(_subcommand.SubCommand):
                                                                         render_loop=None,
                                                                         batch_processor=None,
                                                                         injected_plugin_modules=None,
-                                                                        arg_error_exits=True)
+                                                                        allow_exit=True)
 
     def __call__(self, argv: typing.List[str]) -> int:
-        self._directive(argv)
+        try:
+            self._directive(argv)
+        except SystemExit as e:
+            return e.code
         return 0
