@@ -6,9 +6,9 @@ from dgenerate import \
     ImageGeneratedCallbackArgument, \
     Prompt
 
-arg_parser = argparse.ArgumentParser(exit_on_error=False)
-arg_parser.add_argument('-d', '--device', default='cuda')
-args, _ = arg_parser.parse_known_args()
+import dgenerate.arguments
+
+args = dgenerate.arguments.parse_known_args()
 
 config = RenderLoopConfig()
 

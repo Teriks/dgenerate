@@ -1,5 +1,3 @@
-import argparse
-
 from dgenerate import \
     RenderLoop, \
     RenderLoopConfig, \
@@ -9,9 +7,12 @@ from dgenerate import \
     DataTypes
 
 
-arg_parser = argparse.ArgumentParser(exit_on_error=False)
-arg_parser.add_argument('-d', '--device', default='cuda')
-args, _ = arg_parser.parse_known_args()
+import dgenerate.arguments
+
+# We can use this to parse and validate any --device argument that gets passed
+args = dgenerate.arguments.parse_known_args(throw=False)
+if args is None:
+    exit(1)
 
 
 config = RenderLoopConfig()

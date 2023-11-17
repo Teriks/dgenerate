@@ -387,11 +387,9 @@ class MockImageAnimationReader(_imageprocessors.ImageProcessorMixin, AnimationRe
                          image_processor=image_processor)
 
         # Only need to process once
+        self._processed_flag = False
 
-        self._img = self.process_image(image=self._img,
-                                       resize_resolution=self._resize_resolution,
-                                       aspect_correct=self._aspect_correct,
-                                       align=self._align)
+
 
     @property
     def total_frames(self) -> int:
@@ -413,6 +411,18 @@ class MockImageAnimationReader(_imageprocessors.ImageProcessorMixin, AnimationRe
         self._img.close()
 
     def __next__(self) -> PIL.Image.Image:
+
+        if not self._processed_flag:
+            # All the other readers behave in a way where processing
+            # happens on read, this needs to be here as to not mess up
+            # the order of debugging/message output from image processors.
+            # processing only needs to occur once.
+            self._img = self.process_image(image=self._img,
+                                           resize_resolution=self._resize_resolution,
+                                           aspect_correct=self._aspect_correct,
+                                           align=self._align)
+            self._processed_flag = True
+
         if self._idx < self.total_frames:
             self._idx += 1
             return _image.copy_img(self._img)

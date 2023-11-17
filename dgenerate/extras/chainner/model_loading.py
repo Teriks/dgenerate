@@ -2,7 +2,9 @@ import safetensors
 import torch
 
 import dgenerate.extras.chainner.checkpoint_pickle as checkpoint_pickle
-import dgenerate.messages
+import dgenerate.mediainput as _mediainput
+import dgenerate.messages as _messages
+import dgenerate.types as _types
 from .architecture.DAT import DAT
 from .architecture.HAT import HAT
 from .architecture.LaMa import LaMa
@@ -109,17 +111,17 @@ def _load_torch_file(ckpt, safe_load=False, device=None):
     else:
         if safe_load:
             if 'weights_only' not in torch.load.__code__.co_varnames:
-                dgenerate.messages.log(
+                _messages.log(
                     "torch.load doesn't support weights_only on this pytorch version, loading unsafely.",
-                    level=dgenerate.messages.WARNING)
+                    level=_messages.WARNING)
                 safe_load = False
         if safe_load:
             pl_sd = torch.load(ckpt, map_location=device, weights_only=True)
         else:
             pl_sd = torch.load(ckpt, map_location=device, pickle_module=checkpoint_pickle)
         if "global_step" in pl_sd:
-            dgenerate.messages.debug_log(f'dgenerate.extras.chainner._load_torch_file(): '
-                                         f'Global Step: {pl_sd["global_step"]}')
+            _messages.debug_log(f'dgenerate.extras.chainner._load_torch_file(): '
+                                f'Global Step: {pl_sd["global_step"]}')
         if "state_dict" in pl_sd:
             sd = pl_sd["state_dict"]
         else:
@@ -142,8 +144,25 @@ def _state_dict_prefix_replace(state_dict, replace_prefix, filter_keys=False):
 
 
 def load_model(model_path) -> PyTorchModel:
-    sd = _load_torch_file(model_path, safe_load=True)
-    if "module.layers.0.residual_group.blocks.0.norm1.weight" in sd:
-        sd = _state_dict_prefix_replace(sd, {"module.": ""})
-    out = _load_state_dict(sd).eval()
-    return out
+    """
+    Load an upscaler model from a file path or URL.
+
+    :param model_path: path
+    :return: model
+    """
+    if _mediainput.is_downloadable_url(model_path):
+        # Any mimetype
+        _, model_path = _mediainput.create_web_cache_file(
+            model_path, mimetype_is_supported=None)
+
+    state_dict = _load_torch_file(model_path, safe_load=True)
+
+    if "module.layers.0.residual_group.blocks.0.norm1.weight" in state_dict:
+        state_dict = _state_dict_prefix_replace(state_dict, {"module.": ""})
+
+    model = _load_state_dict(state_dict)
+
+    _messages.debug_log(
+        f'{_types.fullname(load_model)}("{model_path}") -> {model.__class__.__name__}')
+
+    return model.eval()

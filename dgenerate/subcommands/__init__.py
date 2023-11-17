@@ -20,63 +20,60 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import typing
 
-
+import dgenerate.messages as _messages
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-from dgenerate import messages as _messages
-from .canny import CannyEdgeDetectProcessor
-from .exceptions import \
-    ImageProcessorNotFoundError, \
-    ImageProcessorArgumentError
-from .imageops import \
-    PosterizeProcessor, \
-    SolarizeProcessor, \
-    MirrorFlipProcessor, \
-    SimpleColorProcessor
-from .imageprocessor import ImageProcessor
-from .imageprocessorchain import ImageProcessorChain
-from .imageprocessormixin import ImageProcessorMixin
-from .imageprocessorloader import ImageProcessorLoader
-from .openpose import OpenPoseProcessor
-from .upscaler import UpscalerProcessor
+from .exceptions import SubCommandArgumentError, SubCommandNotFoundError
+from .imageprocess import ImageProcessSubCommand
+from .subcommand import SubCommand
+from .subcommandloader import SubCommandLoader
 
 
-class ImageProcessorHelpUsageError(Exception):
+class SubCommandHelpUsageError(Exception):
     """
-    Raised on argument parse errors in :py:func:`.image_processor_help`
+    Raised on argument parse errors in :py:func:`.sub_command_help`
     """
     pass
 
 
-def image_processor_help(names: _types.Names, plugin_module_paths: _types.Paths):
+def remove_sub_command_arg(args: typing.List[str]):
+    if '--sub-command' in args:
+        index = args.index('--sub-command')
+        return args[:index] + args[index+2:]
+    if '-scm' in args:
+        index = args.index('-scm')
+        return args[:index] + args[index+2:]
+
+
+def sub_command_help(names: _types.Names, plugin_module_paths: _types.Paths):
     """
-    Implements ``--image-processor-help`` command line option
+    Implements ``--sub-command-help`` command line option
 
 
     :param names: arguments (processor names, or empty list)
     :param plugin_module_paths: plugin module paths to search
 
-    :raises ImageProcessorHelpUsageError:
-    :raises ImageProcessorNotFoundError:
+    :raises SubCommandHelpUsageError:
+    :raises SubCommandNotFoundError:
 
     :return: return-code, anything other than 0 is failure
     """
 
-    module_loader = ImageProcessorLoader()
+    module_loader = SubCommandLoader()
     module_loader.load_plugin_modules(plugin_module_paths)
 
     if len(names) == 0:
         available = ('\n' + ' ' * 4).join(_textprocessing.quote(name) for name in module_loader.get_all_names())
         _messages.log(
-            f'Available image processors:\n\n{" " * 4}{available}')
+            f'Available sub-commands:\n\n{" " * 4}{available}')
         return 0
 
     help_strs = []
     for name in names:
         try:
             help_strs.append(module_loader.get_help(name))
-        except ImageProcessorNotFoundError:
-            _messages.log(f'An image processor with the name of "{name}" could not be found!',
+        except SubCommandNotFoundError:
+            _messages.log(f'A sub-command with the name of "{name}" could not be found!',
                           level=_messages.ERROR)
             return 1
 

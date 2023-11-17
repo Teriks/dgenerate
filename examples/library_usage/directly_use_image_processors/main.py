@@ -1,17 +1,17 @@
-import argparse
-
 import PIL.Image
 
-from dgenerate.imageprocessors import Loader
+from dgenerate.imageprocessors import ImageProcessorLoader
 
-arg_parser = argparse.ArgumentParser(exit_on_error=False)
-arg_parser.add_argument('-d', '--device', default='cuda')
-args, _ = arg_parser.parse_known_args()
+import dgenerate.arguments
 
+# We can use this to parse and validate any --device argument that gets passed
+args = dgenerate.arguments.parse_known_args(throw=False)
+if args is None:
+    exit(1)
 
 # Any image processor plugin implemented by dgenerate can be reused easily
 
-loader = Loader()
+loader = ImageProcessorLoader()
 
 # we can print out the canny edge detect processor plugin help for reference
 print(loader.get_help('canny'))
