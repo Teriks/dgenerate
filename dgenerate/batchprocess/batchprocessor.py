@@ -27,10 +27,11 @@ import typing
 
 import jinja2
 
+import dgenerate.arguments as _arguments
 import dgenerate.messages as _messages
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-import dgenerate.arguments as _arguments
+
 
 class PeekReader:
     """
