@@ -15,9 +15,7 @@ from dgenerate.imageprocessors import ImageProcessor
 import dgenerate.arguments
 
 # We can use this to parse and validate any --device argument that gets passed
-args = dgenerate.arguments.parse_known_args(throw=False)
-if args is None:
-    exit(1)
+device = dgenerate.arguments.parse_device()
 
 
 # You can add image processors either explicitly
@@ -55,7 +53,7 @@ config.inference_steps = [40]
 config.guidance_scales = [5]
 config.prompts = [Prompt.parse('a strange alien planet, view from orbit')]
 
-config.device = args.device
+config.device = device
 
 # We need an image seed definition to use a processor
 # This uses the exact same syntax as --image-seeds from the

@@ -171,7 +171,7 @@ class InvokablePlugin:
         if arg_descriptors:
             args_part = f'\n{" " * 4}arguments:\n{" " * 8}{(chr(10) + " " * 8).join(arg_descriptors)}\n'
         else:
-            args_part = ''
+            args_part = '\n'
 
         if help_str:
             wrap = \

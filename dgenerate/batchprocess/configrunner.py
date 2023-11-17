@@ -24,8 +24,9 @@ import types
 import typing
 
 import dgenerate
+import dgenerate.arguments as _arguments
 import dgenerate.batchprocess.batchprocessor as _batchprocessor
-import dgenerate.batchprocess.directiveloader as _directiveloader
+import dgenerate.batchprocess.batchprocessorpluginloader as _batchprocessorpluginloader
 import dgenerate.invoker as _invoker
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
@@ -33,12 +34,11 @@ import dgenerate.prompt as _prompt
 import dgenerate.renderloop as _renderloop
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-import dgenerate.arguments as _arguments
 
 
 def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = None,
                          render_loop: typing.Optional[_renderloop.RenderLoop] = None,
-                         directive_loader: _directiveloader.DirectiveLoader = None,
+                         plugin_loader: _batchprocessorpluginloader.BatchProcessorPluginLoader = None,
                          version: typing.Union[_types.Version, str] = dgenerate.__version__,
                          throw: bool = False):
     """
@@ -48,7 +48,7 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
     :param injected_args: dgenerate command line arguments in the form of a list, see: shlex module, or sys.argv.
         These arguments will be injected at the end of every dgenerate invocation in the config.
     :param render_loop: RenderLoop instance, if None is provided one will be created.
-    :param directive_loader: Batch processor directive plugin loader, if one is not provided one will be created.
+    :param plugin_loader: Batch processor plugin loader, if one is not provided one will be created.
     :param version: Config version for ``#! dgenerate x.x.x`` version checks, defaults to ``dgenerate.__version__``
     :param throw: Whether to throw exceptions from :py:func:`dgenerate.invoker.invoke_dgenerate` or handle them,
         if you set this to True exceptions will propagate out of dgenerate invocations instead of a
@@ -185,11 +185,11 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
         'gen_seeds': gen_seeds_directive,
     }
 
-    directive_plugin_loader = \
-        _directiveloader.DirectiveLoader() if \
-            directive_loader is None else directive_loader
+    plugin_loader = \
+        _batchprocessorpluginloader.BatchProcessorPluginLoader() if \
+            plugin_loader is None else plugin_loader
 
-    injected_plugin_modules = []
+    plugin_module_paths = []
 
     if injected_args:
 
@@ -202,27 +202,54 @@ def create_config_runner(injected_args: typing.Optional[typing.Sequence[str]] = 
         # run a file if the injected arguments are incorrect, which is a
         # better behavior than throwing here
         if parsed is not None and parsed.plugin_module_paths:
-            injected_plugin_modules = parsed.plugin_module_paths
-            directive_plugin_loader.load_plugin_modules(parsed.plugin_module_paths)
+            plugin_module_paths = parsed.plugin_module_paths
+            plugin_loader.load_plugin_modules(parsed.plugin_module_paths)
 
     runner = None
 
-    def import_directives(plugin_paths):
-        directive_plugin_loader.load_plugin_modules(plugin_paths)
+    loaded_plugin_classes = set()
+    loaded_plugins = []
+
+    for plugin_class in plugin_loader.get_available_classes():
+        loaded_plugin_classes.add(plugin_class)
+        loaded_plugins.append(
+            plugin_loader.load(plugin_class.get_names()[0],
+                               batch_processor=runner,
+                               render_loop=render_loop,
+                               plugin_module_paths=plugin_module_paths)
+        )
+
+    def import_plugins(plugin_paths):
+        plugin_loader.load_plugin_modules(plugin_paths)
+        for cls in plugin_loader.get_available_classes():
+            if cls not in loaded_plugin_classes:
+                loaded_plugins.append(
+                    plugin_loader.load(cls.get_names()[0],
+                                       batch_processor=runner,
+                                       render_loop=render_loop,
+                                       plugin_module_paths=plugin_module_paths))
+                loaded_plugin_classes.add(cls)
 
     def directive_lookup(name):
-        if name == 'import_directives':
-            return import_directives
+        if name == 'import_plugins':
+            return import_plugins
 
         impl = directives.get(name)
         if impl is None:
-            try:
-                return directive_plugin_loader.load(name,
-                                                    render_loop=render_loop,
-                                                    batch_processor=runner,
-                                                    injected_plugin_modules=injected_plugin_modules)
-            except _directiveloader.BatchProcessorDirectivePluginNotFoundError:
-                return None
+            implementations = []
+            for plugin in loaded_plugins:
+                impl = plugin.directive_lookup(name)
+                if impl is not None:
+                    implementations.append(impl)
+
+            if len(implementations) > 1:
+                raise RuntimeError(
+                    f'Multiple BatchProcessorPlugins implement the batch processing directive \\{name}.')
+
+            if implementations:
+                return implementations[0]
+
+            return None
         else:
             return impl
 

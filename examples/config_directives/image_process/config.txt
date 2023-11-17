@@ -2,12 +2,12 @@
 
 # Get arguments help and continue, this does not cause dgenerate to exit
 
-#\image_process --help
+\image_process --help
 
 # Naive resizing with aspect correction
 # Disable alignment so the image is resized to an exact size
 
-#\image_process "../../media/earth.jpg" -o earth-resized.jpg --resize 1467 --align 1
+\image_process "../../media/earth.jpg" -o earth-resized.jpg --resize 1467 --align 1
 
 
 # Use dgenerate image processors singularly, or as a chain exactly how you would when using
@@ -30,6 +30,6 @@
 # The name of the generated frames will be based off the --output-file name, _frame_(idx) will be appended
 # if you want to change the format of the frame images, use --image-format with an image file extension
 
-#\image_process "../../media/kitten.gif"
-#--output "kitten\kitten.gif"
-#--processors upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth
+\image_process "../../media/kitten.gif"
+--output "kitten\kitten.gif"
+--processors upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth

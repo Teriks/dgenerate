@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
+import sys
 import typing
 from argparse import Action
 
@@ -33,7 +34,6 @@ import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.prompt as _prompt
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-import sys
 
 _SUPPORTED_MODEL_TYPES_PRETTY = \
     _textprocessing.oxford_comma(_pipelinewrapper.supported_model_type_strings(), 'or')
@@ -1165,15 +1165,10 @@ class DgenerateArguments(dgenerate.RenderLoopConfig):
     pipeline_cache_memory_constraints: typing.Optional[typing.List[str]] = None
     vae_cache_memory_constraints: typing.Optional[typing.List[str]] = None
     control_net_cache_memory_constraints: typing.Optional[typing.List[str]] = None
-    image_processor_help: typing.Optional[typing.List[str]] = None
-    sub_command_help: typing.Optional[typing.List[str]] = None
-    sub_command: typing.Optional[str] = None
-    templates_help: bool = False
 
     def __init__(self):
         super().__init__()
         self.plugin_module_paths = []
-
 
 
 _attr_name_to_option = {a.dest: a.option_strings[-1] if a.option_strings else a.dest for a in actions}
@@ -1199,6 +1194,80 @@ def _parse_known_args(args=None) -> DgenerateArguments:
     args = typing.cast(DgenerateArguments,
                        parser.parse_known_args(args, namespace=DgenerateArguments())[0])
     return args
+
+
+def parse_templates_help(args: typing.Optional[typing.Sequence[str]] = None):
+    """
+    Retrieve the -th/--templates-help argument value
+    :param args: command line arguments
+    """
+    parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
+    parser.add_argument('-th', '--templates-help', action='store_true')
+    parsed, _ = parser.parse_known_args(args)
+    return parsed.templates_help
+
+
+def parse_plugin_modules(args: typing.Optional[typing.Sequence[str]] = None):
+    """
+    Retrieve the -pm/--plugin-modules argument value
+    :param args: command line arguments
+    """
+    parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
+    parser.add_argument('-pm', '--plugin-modules', action='store', default=[], nargs="+")
+    parsed, _ = parser.parse_known_args(args)
+    return parsed.plugin_modules
+
+
+def parse_image_processor_help(args: typing.Optional[typing.Sequence[str]] = None):
+    """
+    Retrieve the -iph/--image-processor-help argument value
+    :param args: command line arguments
+    :return:
+    """
+
+    parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
+    parser.add_argument('-iph', '--image-processor-help', action='store', nargs='*', default=None)
+    parsed, _ = parser.parse_known_args(args)
+    return parsed.image_processor_help
+
+
+def parse_sub_command(args: typing.Optional[typing.Sequence[str]] = None):
+    """
+    Retrieve the -scm/--sub-command argument value
+    :param args: command line arguments
+    :return:
+    """
+
+    parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
+    parser.add_argument('-scm', '--sub-command', action='store', default=None)
+    parsed, _ = parser.parse_known_args(args)
+    return parsed.sub_command
+
+
+def parse_sub_command_help(args: typing.Optional[typing.Sequence[str]] = None):
+    """
+    Retrieve the -scmh/--sub-command-help argument value
+    :param args: command line arguments
+    :return:
+    """
+
+    parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
+    parser.add_argument('-scmh', '--sub-command-help', action='store', nargs='*', default=None)
+    parsed, _ = parser.parse_known_args(args)
+    return parsed.sub_command_help
+
+
+def parse_device(args: typing.Optional[typing.Sequence[str]] = None):
+    """
+    Retrieve the -d/--device argument value
+    :param args: command line arguments
+    :return:
+    """
+
+    parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
+    parser.add_argument('-d', '--device', type=_type_device)
+    parsed, _ = parser.parse_known_args(args)
+    return parsed.device
 
 
 def parse_known_args(args: typing.Optional[typing.Sequence[str]] = None,

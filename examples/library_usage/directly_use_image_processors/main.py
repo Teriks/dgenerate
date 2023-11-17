@@ -5,9 +5,7 @@ from dgenerate.imageprocessors import ImageProcessorLoader
 import dgenerate.arguments
 
 # We can use this to parse and validate any --device argument that gets passed
-args = dgenerate.arguments.parse_known_args(throw=False)
-if args is None:
-    exit(1)
+device = dgenerate.arguments.parse_device()
 
 # Any image processor plugin implemented by dgenerate can be reused easily
 
@@ -16,7 +14,7 @@ loader = ImageProcessorLoader()
 # we can print out the canny edge detect processor plugin help for reference
 print(loader.get_help('canny'))
 
-canny = loader.load('canny;lower=50;upper=100', device=args.device)
+canny = loader.load('canny;lower=50;upper=100', device=device)
 
 with PIL.Image.open('../../media/man-fighting-pose.jpg') as img:
     # please note that img will most likely be closed by this
@@ -36,7 +34,7 @@ with PIL.Image.open('../../media/man-fighting-pose.jpg') as img:
 # print out the openpose processor plugin help for reference
 print(loader.get_help('openpose'))
 
-openpose = loader.load('openpose', device=args.device)
+openpose = loader.load('openpose', device=device)
 
 with PIL.Image.open('../../media/man-fighting-pose.jpg') as img:
     out_image = openpose.process(img)

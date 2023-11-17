@@ -21,13 +21,13 @@
 import typing
 
 import dgenerate.batchprocess.batchprocessor as _batchprocessor
-import dgenerate.batchprocess.directiveloader as _directiveloader
+import dgenerate.batchprocess.batchprocessorpluginloader as _batchprocessorpluginloader
 import dgenerate.plugin as _plugin
 import dgenerate.renderloop as _renderloop
 import dgenerate.types as _types
 
 
-class BatchProcessorDirective(_plugin.InvokablePlugin):
+class BatchProcessorPlugin(_plugin.InvokablePlugin):
     """
     Abstract base class for batch processor directive implementations.
     """
@@ -35,17 +35,17 @@ class BatchProcessorDirective(_plugin.InvokablePlugin):
     def __init__(self, called_by_name,
                  batch_processor: _batchprocessor.BatchProcessor = None,
                  render_loop: _renderloop.RenderLoop = None,
-                 injected_plugin_modules: typing.Optional[typing.List[str]] = None,
+                 plugin_module_paths: typing.Optional[typing.List[str]] = None,
                  **kwargs):
         super().__init__(called_by_name=called_by_name,
-                         argument_error_type=_directiveloader.BatchProcessorDirectivePluginArgumentError,
+                         argument_error_type=_batchprocessorpluginloader.BatchProcessorPluginArgumentError,
                          **kwargs)
         self.__batch_processor = batch_processor
         self.__render_loop = render_loop
 
-        self.__injected_plugin_modules = \
-            injected_plugin_modules if \
-                injected_plugin_modules is not None else []
+        self.__plugin_module_paths = \
+            plugin_module_paths if \
+                plugin_module_paths is not None else []
 
     @property
     def render_loop(self):
@@ -65,13 +65,24 @@ class BatchProcessorDirective(_plugin.InvokablePlugin):
         return self.__batch_processor
 
     @property
-    def injected_plugin_modules(self) -> typing.List[str]:
+    def plugin_module_paths(self) -> typing.List[str]:
         """
         List of plugin module paths if they were injected into the batch process by ``-pm/--plugin-modules``
         :return: a list of strings, may be empty but not ``None``
         """
 
-        return self.__injected_plugin_modules
+        return self.__plugin_module_paths
+
+    def directive_lookup(self, name) -> typing.Optional[typing.Callable[[typing.List[str]], None]]:
+        """
+        Return an implementation of a directive by name.
+
+        If ``None`` is returned, this plugin does not implement that directive.
+
+        :param name: directive name.
+        :return: directive implementation or ``None``
+        """
+        return None
 
     def __call__(self, args: typing.List[str]):
         """

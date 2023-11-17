@@ -25,7 +25,7 @@ import pathlib
 import time
 import typing
 
-import dgenerate.batchprocess.batchprocessordirective as _batchprocessordirective
+import dgenerate.batchprocess.batchprocessorplugin as _batchprocessorplugin
 import dgenerate.filelock as _filelock
 import dgenerate.imageprocessors
 import dgenerate.mediainput as _mediainput
@@ -86,7 +86,7 @@ write_types.add_argument('-na', '--no-animation', action='store_true',
                          help='Do not write an animation file, only frames. Cannot be used with --no-frames.')
 
 
-class ImageProcessDirective(_batchprocessordirective.BatchProcessorDirective):
+class ImageProcessDirective(_batchprocessorplugin.BatchProcessorPlugin):
     NAMES = ['image_process']
 
     def __init__(self, allow_exit=False, **kwargs):
@@ -173,7 +173,12 @@ class ImageProcessDirective(_batchprocessordirective.BatchProcessorDirective):
                 _messages.log(fr'\image_process Wrote File "{out_filename}"',
                               underline=True)
 
-    def __call__(self, args: typing.List[str]):
+    def directive_lookup(self, name) -> typing.Optional[typing.Callable[[typing.List[str]], None]]:
+        if name == 'image_process':
+            return lambda args: self._image_process(args)
+        return None
+
+    def _image_process(self, args: typing.List[str]):
         try:
             self._parsed_args = _parser.parse_args(args)
         except SystemExit as e:
@@ -189,7 +194,7 @@ class ImageProcessDirective(_batchprocessordirective.BatchProcessorDirective):
 
         loader = dgenerate.imageprocessors.ImageProcessorLoader()
 
-        loader.load_plugin_modules(self.injected_plugin_modules)
+        loader.load_plugin_modules(self.plugin_module_paths)
 
         if self._parsed_args.processors:
             processor = loader.load(self._parsed_args.processors)

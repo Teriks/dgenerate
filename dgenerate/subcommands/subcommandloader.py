@@ -28,7 +28,7 @@ import dgenerate.types as _types
 
 class SubCommandLoader(_plugin.PluginLoader):
     """
-    Loads :py:class:`dgenerate.batchprocess.BatchProcessorDirective` plugins.
+    Loads :py:class:`dgenerate.batchprocess.BatchProcessorPlugin` plugins.
     """
 
     def __init__(self):
