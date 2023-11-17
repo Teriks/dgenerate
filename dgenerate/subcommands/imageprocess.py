@@ -15,5 +15,6 @@ class ImageProcessSubCommand(_subcommand.SubCommand):
                                                                         injected_plugin_modules=None,
                                                                         arg_error_exits=True)
 
-    def __call__(self, argv: typing.List[str]):
+    def __call__(self, argv: typing.List[str]) -> int:
         self._directive(argv)
+        return 0
