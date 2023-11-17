@@ -1286,7 +1286,7 @@ def parse_known_args(args: typing.Optional[typing.Sequence[str]] = None,
 
     :param args: arguments list, as in args taken from sys.argv, or in that format
     :param throw: throw :py:exc:`.DgenerateUsageError` on error? defaults to True
-    :param log_error: Write a description message to stderr if an error occurs?
+    :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
     :param ignore_model: Ignore dgenerates only required argument, fill it with the value 'none'
     :param ignore_help: Do not allow --help to be passed and proc help being printed.
 
@@ -1328,7 +1328,7 @@ def parse_args(args: typing.Optional[typing.Sequence[str]] = None,
 
     :param args: arguments list, as in args taken from sys.argv, or in that format
     :param throw: throw :py:exc:`.DgenerateUsageError` on error? defaults to True
-    :param log_error: Write a description message to stderr if an error occurs?
+    :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
     :raise DgenerateUsageError:
 
     :return: :py:class:`.DgenerateArguments`. If ``throw=False`` then
@@ -1339,7 +1339,6 @@ def parse_args(args: typing.Optional[typing.Sequence[str]] = None,
         return _parse_args(args)
     except (dgenerate.RenderLoopConfigError, argparse.ArgumentTypeError, argparse.ArgumentError) as e:
         if log_error:
-            pass
             _messages.log(f'dgenerate: error: {e}', level=_messages.ERROR)
         if throw:
             raise DgenerateUsageError(e)

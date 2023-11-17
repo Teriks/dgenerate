@@ -33,17 +33,19 @@ import dgenerate.subcommands as _subcommands
 def invoke_dgenerate(
         args: typing.Sequence[str],
         render_loop: typing.Optional[_renderloop.RenderLoop] = None,
-        throw: bool = False):
+        throw: bool = False,
+        log_error: bool = True):
     """
     Invoke dgenerate using its command line arguments and return a return code.
 
     dgenerate is invoked in the current process, this method does not spawn a subprocess.
 
+
     :param args: dgenerate command line arguments in the form of a list, see: shlex module, or sys.argv
     :param render_loop: :py:class:`dgenerate.renderloop.RenderLoop` instance,
         if None is provided one will be created.
     :param throw: Whether to throw exceptions or handle them.
-
+    :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
 
     :raises dgenerate.arguments.DgenerateUsageError:
     :raises dgenerate.mediainput.ImageSeedError:
@@ -100,7 +102,7 @@ def invoke_dgenerate(
     constraint_lists = []
 
     try:
-        arguments = _arguments.parse_args(args)
+        arguments = _arguments.parse_args(args, log_error=log_error)
     except _arguments.DgenerateUsageError as e:
         if throw:
             raise e
@@ -147,7 +149,8 @@ def invoke_dgenerate(
             NotImplementedError,
             EnvironmentError) as e:
 
-        _messages.log(f'Error: {e}', level=_messages.ERROR)
+        if log_error:
+            _messages.log(f'Error: {e}', level=_messages.ERROR)
 
         if throw:
             raise e
