@@ -78,6 +78,9 @@ _parser.add_argument('-al', '--align', default=8, type=_type_align,
                      help='Align images / videos to this value in pixels, default is 8. '
                           'Specifying 1 will disable resolution alignment.')
 
+_parser.add_argument('-d', '--device', default='cuda', type=dgenerate.arguments._type_device,
+                     help='Processing device, for example "cuda", "cuda:1".')
+
 write_types = _parser.add_mutually_exclusive_group()
 
 write_types.add_argument('-nf', '--no-frames', action='store_true',
@@ -198,7 +201,7 @@ class ImageProcessDirective(_batchprocessplugin.BatchProcessPlugin):
         loader.load_plugin_modules(self.plugin_module_paths)
 
         if self._parsed_args.processors:
-            processor = loader.load(self._parsed_args.processors)
+            processor = loader.load(self._parsed_args.processors, device=self._parsed_args.device)
         else:
             processor = None
 
