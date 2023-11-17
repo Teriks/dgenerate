@@ -45,7 +45,7 @@ _SUPPORTED_DATA_TYPES_PRETTY = \
     _textprocessing.oxford_comma(_pipelinewrapper.supported_data_type_strings(), 'or')
 
 parser = argparse.ArgumentParser(
-    prog='dgenerate', exit_on_error=False,
+    prog='dgenerate', exit_on_error=False, allow_abbrev=False,
     description="""Stable diffusion batch image generation tool with 
                 support for video / gif / webp animation transcoding.""")
 
