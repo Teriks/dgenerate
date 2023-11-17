@@ -69,7 +69,7 @@ stabilityai/stable-diffusion-x4-upscaler
 --seeds {{ last_seeds | join(' ') }}
 --seeds-to-images
 --image-seeds {{ quote(last_images) }}
---upscaler-noise-level 100
+--upscaler-noise-levels 100
 --output-prefix stage3
 
 # Notice that --safety-checker is not used on the invocation above,

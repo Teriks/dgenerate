@@ -59,6 +59,7 @@ try:
     from dgenerate.imageprocessors import ImageProcessorArgumentError, ImageProcessorNotFoundError
     import dgenerate.messages
     import dgenerate.types
+    import dgenerate.plugin
 
     transformers.logging.set_verbosity(transformers.logging.CRITICAL)
     diffusers.logging.set_verbosity(diffusers.logging.CRITICAL)
@@ -83,7 +84,7 @@ def main():
                 create_config_runner(render_loop=render_loop,
                                      version=__version__,
                                      injected_args=sys.argv[1:]).run_file(sys.stdin)
-            except FileNotFoundError as e:
+            except dgenerate.plugin.ModuleFileNotFoundError as e:
                 # missing plugin file parsed by create_config_runner
                 dgenerate.messages.log(f'Config Error: {e}', level=dgenerate.messages.ERROR)
                 sys.exit(1)
