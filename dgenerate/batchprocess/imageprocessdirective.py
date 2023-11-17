@@ -51,7 +51,8 @@ def _type_align(val):
 
 
 _parser.add_argument('file',
-                     help='Input file path, may be a static image or animated file supported by dgenerate. URLs will be downloaded.')
+                     help='Input file path, may be a static image or animated file supported by dgenerate. '
+                          'URLs will be downloaded.')
 
 _parser.add_argument('-p', '--processors', nargs='+',
                      help='One or more image processor URIs.')
