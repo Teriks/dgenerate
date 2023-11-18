@@ -9,6 +9,10 @@
 
 \image_process "../../media/earth.jpg" -o earth-resized.jpg --resize 1467 --align 1
 
+# last_images is assigned by this directive
+
+\print {{ quote(last_images) }}
+
 
 # Use dgenerate image processors singularly, or as a chain exactly how you would when using
 # dgenerates --image-seed-processor and related commands, such as --post-processor
@@ -33,3 +37,12 @@
 \image_process "../../media/kitten.gif"
 --output "kitten\kitten.gif"
 --processors upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth
+
+
+# last_images contains the frames
+
+\print {{ quote(last_images) }}
+
+# last_animations contains the animation
+
+\print {{ quote(last_animations) }}

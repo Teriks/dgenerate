@@ -39,7 +39,7 @@ class ImageProcessorChain(_imageprocessor.ImageProcessor):
         """
         :param image_processors: optional initial image processors to fill the chain, accepts an iterable
         """
-        super().__init__(called_by_name='chain')
+        super().__init__(loaded_by_name='chain')
 
         if image_processors is None:
             self._image_processors = []

@@ -66,31 +66,37 @@ def invoke_dgenerate(
     if render_loop is None:
         render_loop = _renderloop.RenderLoop()
 
-    if _arguments.parse_image_processor_help(args) is not None:
+    plugin_module_paths = _arguments.parse_plugin_modules(args)
+    image_processor_help = _arguments.parse_image_processor_help(args)
+
+    if image_processor_help is not None:
         try:
             return _imageprocessors.image_processor_help(
-                names=_arguments.parse_image_processor_help(args),
-                plugin_module_paths=_arguments.parse_plugin_modules(args))
+                names=image_processor_help,
+                plugin_module_paths=plugin_module_paths)
         except _imageprocessors.ImageProcessorHelpUsageError as e:
             if throw:
                 raise _arguments.DgenerateUsageError(e)
             return 1
 
-    if _arguments.parse_sub_command_help(args) is not None:
+    sub_command_help = _arguments.parse_sub_command_help(args)
+    if sub_command_help is not None:
         try:
             return _subcommands.sub_command_help(
-                names=_arguments.parse_sub_command_help(args),
-                plugin_module_paths=_arguments.parse_plugin_modules(args))
+                names=sub_command_help,
+                plugin_module_paths=plugin_module_paths)
         except _subcommands.SubCommandHelpUsageError as e:
             if throw:
                 raise _arguments.DgenerateUsageError(e)
             return 1
 
-    if _arguments.parse_sub_command(args) is not None:
+    sub_command_name = _arguments.parse_sub_command(args)
+    if sub_command_name is not None:
         subcommand_args = _subcommands.remove_sub_command_arg(list(args))
         try:
-            return _subcommands.SubCommandLoader().load(_arguments.parse_sub_command(args))(subcommand_args)
-        except _subcommands.SubCommandNotFoundError as e:
+            return _subcommands.SubCommandLoader().load(sub_command_name, args=subcommand_args)()
+        except (_subcommands.SubCommandNotFoundError,
+                _subcommands.SubCommandArgumentError) as e:
             if log_error:
                 _messages.log(f'dgenerate: error: {e}', level=_messages.ERROR)
             if throw:
@@ -128,7 +134,6 @@ def invoke_dgenerate(
             _pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS = arguments.control_net_cache_memory_constraints
 
         render_loop.config = arguments
-
         render_loop.image_processor_loader.load_plugin_modules(arguments.plugin_module_paths)
 
         if arguments.verbose:
@@ -147,7 +152,6 @@ def invoke_dgenerate(
             _pipelinewrapper.OutOfMemoryError,
             _imageprocessors.ImageProcessorArgumentError,
             _imageprocessors.ImageProcessorNotFoundError,
-            _plugin.ModuleFileNotFoundError,
             NotImplementedError,
             EnvironmentError) as e:
 

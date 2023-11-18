@@ -22,12 +22,12 @@
 import dgenerate.types as _types
 
 from .batchprocessor import BatchProcessor, BatchProcessError
-from .configrunner import create_config_runner
-from .batchprocessplugin import BatchProcessPlugin
+from .configrunner import ConfigRunner
+from .configrunnerplugin import ConfigRunnerPlugin
 from .imageprocessdirective import ImageProcessDirective
-from .batchprocesspluginloader import BatchProcessPluginLoader, \
-    BatchProcessPluginNotFoundError, \
-    BatchProcessPluginArgumentError
+from .configrunnerpluginloader import ConfigRunnerPluginLoader, \
+    ConfigRunnerPluginNotFoundError, \
+    ConfigRunnerPluginArgumentError
 
 
 __all__ = _types.module_all()

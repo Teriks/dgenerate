@@ -1,7 +1,5 @@
 import typing
-
 import PIL.Image
-
 import dgenerate.imageprocessors
 
 
@@ -92,35 +90,35 @@ class BooFabImageProcessor(dgenerate.imageprocessors.ImageProcessor):
 
     # Defining the static method "help" allows you to provide a help string
     # for each invokable name, for --image-processor-help "boo" and --image-processor-help "foo"
-    # the name this option is used with is passed to "called_by_name"
+    # the name this option is used with is passed to "loaded_by_name"
     @staticmethod
-    def help(called_by_name):
-        if called_by_name == 'boo':
+    def help(loaded_by_name):
+        if loaded_by_name == 'boo':
             return 'My --image-processor-help "boo" documentation'
-        if called_by_name == 'fab':
+        if loaded_by_name == 'fab':
             return 'My --image-processor-help "fab" documentation'
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        # "self.called_by_name" contains the name string
+        # "self.loaded_by_name" contains the name string
         # that this module is being invoked by, we can do something
         # different in the module depending on what name is used
         # to invoke it
 
-        if self.called_by_name == 'boo':
+        if self.loaded_by_name == 'boo':
             self._my_argument = self.get_int_arg('my_argument', kwargs['my_argument'])
             self._my_argument_2 = self.get_bool_arg('my_argument_2', kwargs)
             self._my_argument_3 = self.get_float_arg('my_argument_3', kwargs)
-        if self.called_by_name == 'fab':
+        if self.loaded_by_name == 'fab':
             self._my_argument = self.get_int_arg('my_argument', kwargs['my_argument'])
             self._my_argument_2 = self.get_float_arg('my_argument_2', kwargs)
             self._my_argument_3 = self.get_bool_arg('my_argument_3', kwargs)
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: typing.Union[None, tuple]):
-        print(f'{self.called_by_name}:', self._my_argument, self._my_argument_2, self._my_argument_3)
+        print(f'{self.loaded_by_name}:', self._my_argument, self._my_argument_2, self._my_argument_3)
         return image
 
     def impl_post_resize(self, image: PIL.Image.Image):
-        print(f'{self.called_by_name}:', self._my_argument, self._my_argument_2, self._my_argument_3)
+        print(f'{self.loaded_by_name}:', self._my_argument, self._my_argument_2, self._my_argument_3)
         return image

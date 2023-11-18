@@ -35,10 +35,10 @@ class MirrorFlipProcessor(_imageprocessor.ImageProcessor):
     NAMES = ['mirror', 'flip']
 
     @staticmethod
-    def help(called_by_name):
-        if called_by_name == 'mirror':
+    def help(loaded_by_name):
+        if loaded_by_name == 'mirror':
             return 'Mirror the input image horizontally.'
-        if called_by_name == 'flip':
+        if loaded_by_name == 'flip':
             return 'Flip the input image vertically.'
 
     def __init__(self, **kwargs):
@@ -47,9 +47,9 @@ class MirrorFlipProcessor(_imageprocessor.ImageProcessor):
         """
         super().__init__(**kwargs)
 
-        if self.called_by_name == 'flip':
+        if self.loaded_by_name == 'flip':
             self._func = PIL.ImageOps.flip
-        elif self.called_by_name == 'mirror':
+        elif self.loaded_by_name == 'mirror':
             self._func = PIL.ImageOps.mirror
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
@@ -82,10 +82,10 @@ class SimpleColorProcessor(_imageprocessor.ImageProcessor):
     NAMES = ['grayscale', 'invert']
 
     @staticmethod
-    def help(called_by_name):
-        if called_by_name == 'grayscale':
+    def help(loaded_by_name):
+        if loaded_by_name == 'grayscale':
             return 'Convert the input image to grayscale.'
-        if called_by_name == 'invert':
+        if loaded_by_name == 'invert':
             return 'Invert the colors of the input image.'
 
     def __init__(self, **kwargs):
@@ -93,9 +93,9 @@ class SimpleColorProcessor(_imageprocessor.ImageProcessor):
         :param kwargs: forwarded to base class
         """
         super().__init__(**kwargs)
-        if self.called_by_name == 'grayscale':
+        if self.loaded_by_name == 'grayscale':
             self._func = PIL.ImageOps.grayscale
-        elif self.called_by_name == 'invert':
+        elif self.loaded_by_name == 'invert':
             self._func = PIL.ImageOps.invert
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):

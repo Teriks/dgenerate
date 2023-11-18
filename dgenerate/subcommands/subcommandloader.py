@@ -28,7 +28,7 @@ import dgenerate.types as _types
 
 class SubCommandLoader(_plugin.PluginLoader):
     """
-    Loads :py:class:`dgenerate.batchprocess.BatchProcessPlugin` plugins.
+    Loads :py:class:`dgenerate.batchprocess.ConfigRunnerPlugin` plugins.
     """
 
     def __init__(self):
@@ -38,7 +38,7 @@ class SubCommandLoader(_plugin.PluginLoader):
 
         super().__init__(base_class=_subcommand.SubCommand,
                          description='sub-command',
-                         reserved_args=[],
+                         reserved_args=[('args',)],
                          argument_error_type=_exceptions.SubCommandArgumentError,
                          not_found_error_type=_exceptions.SubCommandNotFoundError)
 
