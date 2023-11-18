@@ -20,14 +20,12 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import dgenerate.types as _types
-
 from .batchprocessor import BatchProcessor, BatchProcessError
 from .configrunner import ConfigRunner
 from .configrunnerplugin import ConfigRunnerPlugin
-from .imageprocessdirective import ImageProcessDirective
 from .configrunnerpluginloader import ConfigRunnerPluginLoader, \
     ConfigRunnerPluginNotFoundError, \
     ConfigRunnerPluginArgumentError
-
+from .imageprocessdirective import ImageProcessDirective
 
 __all__ = _types.module_all()

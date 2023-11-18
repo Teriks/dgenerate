@@ -60,7 +60,6 @@ class ConfigRunnerPlugin(_plugin.Plugin):
 
             self.batch_processor.directives[name] = implementation
 
-
     @property
     def render_loop(self) -> typing.Optional[_renderloop.RenderLoop]:
         """
