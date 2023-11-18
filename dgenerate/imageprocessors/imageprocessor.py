@@ -32,18 +32,18 @@ import dgenerate.plugin as _plugin
 import dgenerate.types
 
 
-class ImageProcessor(_plugin.InvokablePlugin):
+class ImageProcessor(_plugin.Plugin):
     """
     Abstract base class for image processor implementations.
     """
 
     def __init__(self,
-                 called_by_name: str,
+                 loaded_by_name: str,
                  device: str = 'cpu',
                  output_file: dgenerate.types.OptionalPath = None,
                  output_overwrite: bool = False, **kwargs):
 
-        super().__init__(called_by_name=called_by_name,
+        super().__init__(loaded_by_name=loaded_by_name,
                          argument_error_type=_exceptions.ImageProcessorArgumentError,
                          **kwargs)
 
@@ -279,7 +279,7 @@ class ImageProcessor(_plugin.InvokablePlugin):
         return image
 
     def __str__(self):
-        return f'{self.__class__.__name__}(called_by_name="{self.called_by_name}")'
+        return f'{self.__class__.__name__}(loaded_by_name="{self.loaded_by_name}")'
 
     def __repr__(self):
         return str(self)

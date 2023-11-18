@@ -94,7 +94,7 @@ for config in configs:
                     os.chdir(dirname)
                     content = f.read()
                     try:
-                        _batchprocess.create_config_runner(args + extra_args).run_string(content)
+                        _batchprocess.ConfigRunner(args + extra_args).run_string(content)
                     except _batchprocess.BatchProcessError as e:
                         log(e)
                         sys.exit(1)

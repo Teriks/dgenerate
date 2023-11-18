@@ -21,25 +21,28 @@
 import typing
 
 import dgenerate.batchprocess.batchprocessor as _batchprocessor
-import dgenerate.batchprocess.batchprocesspluginloader as _batchprocessorpluginloader
+import dgenerate.batchprocess.configrunnerpluginloader as _configrunnerpluginloader
 import dgenerate.plugin as _plugin
 import dgenerate.renderloop as _renderloop
 import dgenerate.types as _types
 
 
-class BatchProcessPlugin(_plugin.InvokablePlugin):
+class ConfigRunnerPlugin(_plugin.Plugin):
     """
-    Abstract base class for batch processor directive implementations.
+    Abstract base class for config runner plugin implementations.
     """
 
-    def __init__(self, called_by_name,
-                 batch_processor: _batchprocessor.BatchProcessor = None,
-                 render_loop: _renderloop.RenderLoop = None,
+    def __init__(self,
+                 loaded_by_name,
+                 batch_processor: typing.Optional[_batchprocessor.BatchProcessor] = None,
+                 render_loop: typing.Optional[_renderloop.RenderLoop] = None,
                  plugin_module_paths: typing.Optional[typing.List[str]] = None,
                  **kwargs):
-        super().__init__(called_by_name=called_by_name,
-                         argument_error_type=_batchprocessorpluginloader.BatchProcessPluginArgumentError,
+
+        super().__init__(loaded_by_name=loaded_by_name,
+                         argument_error_type=_configrunnerpluginloader.ConfigRunnerPluginArgumentError,
                          **kwargs)
+
         self.__batch_processor = batch_processor
         self.__render_loop = render_loop
 
@@ -47,8 +50,19 @@ class BatchProcessPlugin(_plugin.InvokablePlugin):
             plugin_module_paths if \
                 plugin_module_paths is not None else []
 
+    def register_directive(self, name, implementation: typing.Callable[[typing.List[str]], None]):
+        if self.batch_processor is not None:
+
+            if name in self.batch_processor.directives:
+                raise RuntimeError(
+                    f'directive name "{name}" cannot be registered by plugin '
+                    f'"{self.loaded_by_name}" because that directive name already exists.')
+
+            self.batch_processor.directives[name] = implementation
+
+
     @property
-    def render_loop(self):
+    def render_loop(self) -> typing.Optional[_renderloop.RenderLoop]:
         """
         Provides access to the currently instantiated :py:class:`dgenerate.renderloop.RenderLoop` object.
 
@@ -57,7 +71,7 @@ class BatchProcessPlugin(_plugin.InvokablePlugin):
         return self.__render_loop
 
     @property
-    def batch_processor(self) -> _batchprocessor.BatchProcessor:
+    def batch_processor(self) -> typing.Optional[_batchprocessor.BatchProcessor]:
         """
         Provides access to the currently instantiated :py:class:`dgenerate.batchprocess.BatchProcessor` object
         running the config file that this directive is being invoked in.
@@ -72,24 +86,6 @@ class BatchProcessPlugin(_plugin.InvokablePlugin):
         """
 
         return self.__plugin_module_paths
-
-    def directive_lookup(self, name) -> typing.Optional[typing.Callable[[typing.List[str]], None]]:
-        """
-        Return an implementation of a directive by name.
-
-        If ``None`` is returned, this plugin does not implement that directive.
-
-        :param name: directive name.
-        :return: directive implementation or ``None``
-        """
-        return None
-
-    def __call__(self, args: typing.List[str]):
-        """
-        Implements the directive, inheritor should implement this method.
-        :param args: directive arguments via :py:func:`shlex.parse`
-        """
-        pass
 
 
 __all__ = _types.module_all()

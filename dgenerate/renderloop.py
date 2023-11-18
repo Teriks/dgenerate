@@ -204,6 +204,9 @@ class RenderLoop:
         """
         Iterator over image filenames written by the last run
         """
+        if self._written_images is None:
+            return
+
         pos = self._written_images.tell()
         self._written_images.seek(0)
         for line in self._written_images:
@@ -215,6 +218,8 @@ class RenderLoop:
         """
         Iterator over animation filenames written by the last run
         """
+        if self._written_animations is None:
+            return
 
         pos = self._written_animations.tell()
         self._written_animations.seek(0)
@@ -244,7 +249,7 @@ class RenderLoop:
         Generate a dictionary from the render loop that describes its current / last used configuration.
 
         This is consumed by the :py:class:`dgenerate.batchprocess.BatchProcessor`
-        that is created by :py:func:`dgenerate.batchprocess.create_config_runner` for
+        that is created by :py:class:`dgenerate.batchprocess.ConfigRunner` for
         use in Jinja2 templating.
 
         :return: a dictionary of attribute names to values

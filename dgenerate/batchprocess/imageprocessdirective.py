@@ -22,21 +22,16 @@ import argparse
 import datetime
 import os.path
 import pathlib
+import tempfile
 import time
 import typing
 
-import dgenerate.batchprocess.batchprocessplugin as _batchprocessplugin
+import dgenerate.batchprocess.configrunnerplugin as _configrunnerplugin
 import dgenerate.filelock as _filelock
 import dgenerate.imageprocessors
 import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.messages as _messages
-
-_parser = argparse.ArgumentParser(
-    r'\image_process',
-    description='This directive allows you to use dgenerate image processors directly on files of your choosing.',
-    exit_on_error=False,
-    allow_abbrev=False)
 
 
 def _type_align(val):
@@ -50,62 +45,140 @@ def _type_align(val):
     return val
 
 
-_parser.add_argument('file',
-                     help='Input file path, may be a static image or animated file supported by dgenerate. '
-                          'URLs will be downloaded.')
+def _create_arg_parser(prog, description):
+    if description is None:
+        description = 'This directive allows you to use dgenerate image processors directly on files of your choosing.'
 
-_parser.add_argument('-p', '--processors', nargs='+',
-                     help='One or more image processor URIs.')
+    parser = argparse.ArgumentParser(
+        prog,
+        description=description,
+        exit_on_error=False,
+        allow_abbrev=False)
 
-_parser.add_argument('-o', '--output', default=None,
-                     help='Output file, directories will be created for you. '
-                          'If you do not specify an output file, the input file will be modified if it exists on disk. '
-                          'Failure to specify an output file with a URL as input is an error.')
+    parser.add_argument(
+        'files', nargs='+',
+        help='Input file paths, may be a static images or animated files supported by dgenerate. '
+             'URLs will be downloaded.')
 
-_parser.add_argument('-if', '--frame-format', default='png',
-                     help='Image format for animation frames.')
+    parser.add_argument(
+        '-p', '--processors', nargs='+',
+        help='One or more image processor URIs.')
 
-_parser.add_argument('-ox', '--output-overwrite', action='store_true',
-                     help='Indicate that it is okay to overwrite files, instead of appending a duplicate suffix.')
+    parser.add_argument(
+        '-o', '--output', nargs='+', default=None,
+        help="""Output files, directories will be created for you.
+        If you do not specify output files, the output file will be placed next to the input file with the added 
+        suffix '_processed_N', unless --output-overwrite is specified, in which case it will be overwritten. If you 
+        specify multiple input files and output files, you must specify an output file for every input file. 
+        Failure to specify an output file with a URL as an input is considered an error.""")
 
-_parser.add_argument('-r', '--resize', default=None, type=dgenerate.arguments._type_size,
-                     help='Preform naive image resizing (LANCZOS).')
+    parser.add_argument(
+        '-if', '--frame-format', default='png',
+        help='Image format for animation frames.')
 
-_parser.add_argument('-a', '--no-aspect', action='store_true',
-                     help='Make --resize ignore aspect ratio.')
+    parser.add_argument(
+        '-ox', '--output-overwrite', action='store_true',
+        help='Indicate that it is okay to overwrite files, instead of appending a duplicate suffix.')
 
-_parser.add_argument('-al', '--align', default=8, type=_type_align,
-                     help='Align images / videos to this value in pixels, default is 8. '
-                          'Specifying 1 will disable resolution alignment.')
+    parser.add_argument(
+        '-r', '--resize', default=None, type=dgenerate.arguments._type_size,
+        help='Preform naive image resizing (LANCZOS).')
 
-_parser.add_argument('-d', '--device', default='cuda', type=dgenerate.arguments._type_device,
-                     help='Processing device, for example "cuda", "cuda:1".')
+    parser.add_argument(
+        '-a', '--no-aspect', action='store_true',
+        help='Make --resize ignore aspect ratio.')
 
-write_types = _parser.add_mutually_exclusive_group()
+    parser.add_argument(
+        '-al', '--align', default=8, type=_type_align,
+        help="""Align images / videos to this value in pixels, default is 8.
+            Specifying 1 will disable resolution alignment.""")
 
-write_types.add_argument('-nf', '--no-frames', action='store_true',
-                         help='Do not write frames, only an animation file. Cannot be used with --no-animation.')
+    parser.add_argument(
+        '-d', '--device', default='cuda', type=dgenerate.arguments._type_device,
+        help='Processing device, for example "cuda", "cuda:1".')
 
-write_types.add_argument('-na', '--no-animation', action='store_true',
-                         help='Do not write an animation file, only frames. Cannot be used with --no-frames.')
+    write_types = parser.add_mutually_exclusive_group()
+
+    write_types.add_argument(
+        '-nf', '--no-frames', action='store_true',
+        help='Do not write frames, only an animation file. Cannot be used with --no-animation.')
+
+    write_types.add_argument(
+        '-na', '--no-animation', action='store_true',
+        help='Do not write an animation file, only frames. Cannot be used with --no-frames.')
+
+    return parser
 
 
-class ImageProcessDirective(_batchprocessplugin.BatchProcessPlugin):
+class ImageProcessDirective(_configrunnerplugin.ConfigRunnerPlugin):
     NAMES = ['image_process']
 
-    def __init__(self, allow_exit=False, **kwargs):
-        super().__init__(**kwargs)
-        self._allow_exit = self.get_bool_arg('allow_exit', allow_exit)
+    def __init__(self,
+                 allow_exit=False,
+                 message_header='\\image_process:',
+                 help_name='\\image_process',
+                 help_desc=None,
+                 **kwargs):
 
-    def _process_reader(self, reader: _mediainput.AnimationReader, out_filename):
+        super().__init__(**kwargs)
+
+        self._allow_exit = self.get_bool_arg('allow_exit', allow_exit)
+        self._message_header = message_header
+
+        self._arg_parser = _create_arg_parser(help_name, help_desc)
+        self._parsed_args = None
+
+        self._written_animations = None
+        self._written_images = None
+
+        self.register_directive('image_process',
+                                lambda args: self.image_process(args))
+
+    @property
+    def written_images(self) -> typing.Iterator[str]:
+        """
+        Iterator over image filenames written by the last run
+        """
+        if self._written_images is None:
+            return
+
+        pos = self._written_images.tell()
+        self._written_images.seek(0)
+        for line in self._written_images:
+            yield line.rstrip('\n')
+        self._written_images.seek(pos)
+
+    @property
+    def written_animations(self) -> typing.Iterator[str]:
+        """
+        Iterator over animation filenames written by the last run
+        """
+        if self._written_animations is None:
+            return
+
+        pos = self._written_animations.tell()
+        self._written_animations.seek(0)
+        for line in self._written_animations:
+            yield line.rstrip('\n')
+        self._written_animations.seek(pos)
+
+    def _record_save_image(self, filename):
+        self._written_images.write(os.path.abspath(filename) + '\n')
+
+    def _record_save_animation(self, filename):
+        self._written_animations.write(os.path.abspath(filename) + '\n')
+
+    def _process_reader(self, file, reader: _mediainput.AnimationReader, out_filename):
 
         out_directory = os.path.dirname(out_filename)
+
+        duplicate_output_suffix = '_duplicate_' if file != out_filename else '_processed_'
 
         if out_directory:
             pathlib.Path(out_directory).mkdir(
                 parents=True, exist_ok=True)
 
-        _messages.log(fr'\image_process Processing "{self._parsed_args.file}"',
+        _messages.log(fr'{self._message_header} Processing "{file}"',
                       underline=True)
 
         if reader.total_frames == 1:
@@ -113,11 +186,12 @@ class ImageProcessDirective(_batchprocessplugin.BatchProcessPlugin):
             if not self._parsed_args.output_overwrite:
                 out_filename = _filelock.touch_avoid_duplicate(
                     out_directory if out_directory else '.',
-                    path_maker=_filelock.suffix_path_maker(out_filename, '_duplicate_'))
+                    path_maker=_filelock.suffix_path_maker(out_filename, duplicate_output_suffix))
 
             next(reader).save(out_filename)
+            self._record_save_image(out_filename)
 
-            _messages.log(fr'\image_process Wrote File "{out_filename}"',
+            _messages.log(fr'{self._message_header} Wrote Image "{out_filename}"',
                           underline=True)
         else:
             out_filename_base, ext = os.path.splitext(out_filename)
@@ -125,7 +199,7 @@ class ImageProcessDirective(_batchprocessplugin.BatchProcessPlugin):
             if not self._parsed_args.output_overwrite:
                 out_anim_name = _filelock.touch_avoid_duplicate(
                     out_directory if out_directory else '.',
-                    path_maker=_filelock.suffix_path_maker(out_filename, '_duplicate_'))
+                    path_maker=_filelock.suffix_path_maker(out_filename, duplicate_output_suffix))
             else:
                 out_anim_name = out_filename
 
@@ -152,7 +226,7 @@ class ImageProcessDirective(_batchprocessplugin.BatchProcessPlugin):
                     self._last_frame_time = time.time()
 
                     _messages.log(
-                        fr'\image_process Processing Frame {frame_idx + 1}/{reader.total_frames}, Completion ETA: {eta}')
+                        fr'{self._message_header} Processing Frame {frame_idx + 1}/{reader.total_frames}, Completion ETA: {eta}')
 
                     # Processing happens here
                     frame = next(reader)
@@ -163,36 +237,25 @@ class ImageProcessDirective(_batchprocessplugin.BatchProcessPlugin):
                     if not self._parsed_args.no_frames:
                         frame_name = out_filename_base + f'_frame_{frame_idx + 1}.{self._parsed_args.frame_format}'
 
+                        # frames do not get the _processed_ suffix in any case
+
                         if not self._parsed_args.output_overwrite:
                             frame_name = _filelock.touch_avoid_duplicate(
                                 out_directory if out_directory else '.',
                                 path_maker=_filelock.suffix_path_maker(frame_name, '_duplicate_'))
 
                         frame.save(frame_name)
+                        self._record_save_image(frame_name)
 
-                        _messages.log(fr'\image_process Wrote Frame "{frame_name}"')
+                        _messages.log(fr'{self._message_header} Wrote Frame "{frame_name}"')
 
                     frame_idx += 1
 
-                _messages.log(fr'\image_process Wrote File "{out_filename}"',
+                self._record_save_animation(out_filename)
+                _messages.log(fr'{self._message_header} Wrote File "{out_filename}"',
                               underline=True)
 
-    def directive_lookup(self, name) -> typing.Optional[typing.Callable[[typing.List[str]], None]]:
-        if name == 'image_process':
-            return lambda args: self._image_process(args)
-        return None
-
-    def _image_process(self, args: typing.List[str]):
-        try:
-            self._parsed_args = _parser.parse_args(args)
-        except SystemExit as e:
-            _messages.log()  # newline
-            if self._allow_exit:
-                raise e
-            return
-
-        out_filename = self._parsed_args.output if self._parsed_args.output else self._parsed_args.file
-
+    def _process_file(self, file, out_filename):
         if out_filename.startswith('http') or out_filename.startswith('https'):
             self.argument_error('--output cannot be a URL, please specify --output manually.')
 
@@ -205,20 +268,53 @@ class ImageProcessDirective(_batchprocessplugin.BatchProcessPlugin):
         else:
             processor = None
 
-        stream_def = _mediainput.fetch_media_data_stream(self._parsed_args.file)
+        stream_def = _mediainput.fetch_media_data_stream(file)
 
         with stream_def[1], _mediainput.create_animation_reader(
                 mimetype=stream_def[0],
                 file=stream_def[1],
-                file_source=self._parsed_args.file,
+                file_source=file,
                 resize_resolution=self._parsed_args.resize,
                 aspect_correct=not self._parsed_args.no_aspect,
                 align=self._parsed_args.align,
                 image_processor=processor) as reader:
+
             self._last_frame_time = 0
             self._frame_time_sum = 0
 
             try:
-                self._process_reader(reader, out_filename)
+                self._process_reader(file, reader, out_filename)
             except dgenerate.mediaoutput.UnknownAnimationFormatError as e:
-                self.argument_error(fr'\image_process error: {e}')
+                self.argument_error(fr'{self._message_header} error: {e}')
+
+    def image_process(self, args: typing.List[str]):
+        try:
+            self._parsed_args = self._arg_parser.parse_args(args)
+        except SystemExit as e:
+            _messages.log()  # newline
+            if self._allow_exit:
+                raise e
+            return
+
+        if self._written_images is not None:
+            self._written_images.close()
+
+        if self._written_animations is not None:
+            self._written_animations.close()
+
+        self._written_images = tempfile.TemporaryFile('w+t')
+        self._written_animations = tempfile.TemporaryFile('w+t')
+
+        if self._parsed_args.output:
+            if len(self._parsed_args.files) != len(self._parsed_args.output):
+                self.argument_error('Mismatched number of file inputs and outputs.')
+
+        try:
+            for idx, file in enumerate(self._parsed_args.files):
+                self._process_file(file,
+                                   self._parsed_args.output[idx] if self._parsed_args.output else file)
+        except FileNotFoundError as e:
+            self.argument_error(str(e))
+
+        self.batch_processor.template_variables['last_images'] = self.written_images
+        self.batch_processor.template_variables['last_animations'] = self.written_animations

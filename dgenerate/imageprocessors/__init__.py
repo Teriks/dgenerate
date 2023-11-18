@@ -20,7 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import typing
 
-
+import dgenerate.plugin as _plugin
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate import messages as _messages
@@ -63,7 +63,11 @@ def image_processor_help(names: _types.Names, plugin_module_paths: _types.Paths)
     """
 
     module_loader = ImageProcessorLoader()
-    module_loader.load_plugin_modules(plugin_module_paths)
+
+    try:
+        module_loader.load_plugin_modules(plugin_module_paths)
+    except _plugin.ModuleFileNotFoundError as e:
+        raise ImageProcessorHelpUsageError(e)
 
     if len(names) == 0:
         available = ('\n' + ' ' * 4).join(_textprocessing.quote(name) for name in module_loader.get_all_names())

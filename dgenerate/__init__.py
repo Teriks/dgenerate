@@ -50,7 +50,7 @@ try:
         ModelNotFoundError
 
     from dgenerate.prompt import Prompt
-    from dgenerate.batchprocess import BatchProcessError, create_config_runner
+    from dgenerate.batchprocess import BatchProcessError, ConfigRunner
     from dgenerate.invoker import invoke_dgenerate
     from dgenerate.arguments import parse_args, DgenerateUsageError, DgenerateArguments
     from dgenerate.pipelinewrapper import ModelTypes, DiffusionArguments
@@ -81,11 +81,11 @@ def main():
         if not sys.stdin.isatty():
             # Not a terminal, batch process STDIN
             try:
-                create_config_runner(render_loop=render_loop,
-                                     version=__version__,
-                                     injected_args=sys.argv[1:]).run_file(sys.stdin)
+                ConfigRunner(render_loop=render_loop,
+                             version=__version__,
+                             injected_args=sys.argv[1:]).run_file(sys.stdin)
             except dgenerate.plugin.ModuleFileNotFoundError as e:
-                # missing plugin file parsed by create_config_runner
+                # missing plugin file parsed by ConfigRunner out of injected args
                 dgenerate.messages.log(f'dgenerate: error: {e}', level=dgenerate.messages.ERROR)
                 sys.exit(1)
             except BatchProcessError as e:

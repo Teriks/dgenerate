@@ -20,7 +20,7 @@ stabilityai/stable-diffusion-2 --prompts "a man walking on the moon without a sp
 
 # using -v/--verbose with a config running enables debugging output globally
 # while the config is running.
-runner = dgenerate.batchprocess.create_config_runner(injected_args=sys.argv[1:])
+runner = dgenerate.batchprocess.ConfigRunner(injected_args=sys.argv[1:])
 
 # Run the config from the string above
 runner.run_string(config)

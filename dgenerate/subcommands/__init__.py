@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import typing
 
+import dgenerate.plugin as _plugin
 import dgenerate.messages as _messages
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
@@ -43,12 +44,17 @@ def remove_sub_command_arg(args: typing.List[str]):
     :param args: command line arguments
     :return: modified copy of the args list.
     """
-    if '--sub-command' in args:
-        index = args.index('--sub-command')
-        return args[:index] + args[index + 2:]
-    if '-scm' in args:
-        index = args.index('-scm')
-        return args[:index] + args[index + 2:]
+    opt_l = '--sub-command'
+    opt_s = '-scm'
+
+    opts = (opt_l, opt_s)
+
+    while any(opt in args for opt in opts):
+        for opt in opts:
+            if opt in args:
+                index = args.index(opt)
+                args = args[:index] + args[index + 2:]
+    return args
 
 
 def sub_command_help(names: _types.Names, plugin_module_paths: _types.Paths):
@@ -66,7 +72,11 @@ def sub_command_help(names: _types.Names, plugin_module_paths: _types.Paths):
     """
 
     module_loader = SubCommandLoader()
-    module_loader.load_plugin_modules(plugin_module_paths)
+
+    try:
+        module_loader.load_plugin_modules(plugin_module_paths)
+    except _plugin.ModuleFileNotFoundError as e:
+        raise SubCommandHelpUsageError(e)
 
     if len(names) == 0:
         available = ('\n' + ' ' * 4).join(_textprocessing.quote(name) for name in module_loader.get_all_names())

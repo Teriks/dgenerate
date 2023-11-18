@@ -84,7 +84,7 @@ class BatchProcessor:
     implemented for you except the ``\\print`` and ``\\set`` directives.
 
     If you wish to create this object to run a dgenerate configuration, use
-    :py:func:`dgenerate.batchprocess.create_config_runner`
+    :py:class:`dgenerate.batchprocess.ConfigRunner`
     """
 
     invoker: typing.Callable[[list], int]
@@ -117,11 +117,11 @@ class BatchProcessor:
     Functions available when templating is occurring.
     """
 
-    directive_lookup: typing.Callable[[str], typing.Optional[typing.Callable[[list], None]]]
+    directives: typing.Dict[str, typing.Optional[typing.Callable[[list], None]]]
     """
-    Batch process directive handler lookup function.
+    Batch process directives.
     
-    Should return a callable(list) or ``None`` if the directive handler is not found.
+    Dictionary of callable(list).
     """
 
     injected_args: typing.List[str]
@@ -137,8 +137,7 @@ class BatchProcessor:
                  template_variables: typing.Optional[typing.Dict[str, typing.Any]] = None,
                  template_functions: typing.Optional[
                      typing.Dict[str, typing.Callable[[typing.Any], typing.Any]]] = None,
-                 directive_lookup: typing.Optional[
-                     typing.Callable[[str], typing.Optional[typing.Callable[[list], None]]]] = None,
+                 directives: typing.Dict[str, typing.Optional[typing.Callable[[list], None]]] = None,
                  injected_args: typing.Optional[typing.List[str]] = None):
         """
         :param invoker: A function for invoking lines recognized as shell commands, should return a return code.
@@ -149,14 +148,12 @@ class BatchProcessor:
         :param template_variables: Live template variables, the initial environment, this dictionary will be
             modified during runtime.
         :param template_functions: Functions available to Jinja2
-        :param directive_lookup: A function that looks up a callable directive implementation by its name.
-            A directive being a function that accepts a list containing string arguments (shlex.parse) and
-            returns nothing. If the directive could not be found, this function should return ``None``.
-            Any exception raised by a directive implementation will be rethrown as :py:exc:'.BatchProcessError'.
-            Example: ``lambda name: my_directives.get(name)``
+        :param directives: batch processing directive handlers, for: *\\\\directives*. This is a dictionary
+            of names to functions which accept a single parameter, a list of directive arguments.
         :param injected_args: Arguments to be injected at the end of user specified arguments for every shell invocation
         """
 
+        self._template_functions = None
         self.invoker = invoker
         self.name = name
 
@@ -167,7 +164,7 @@ class BatchProcessor:
         self.template_variables = template_variables if template_variables else dict()
         self.template_functions = template_functions if template_functions else dict()
 
-        self.directive_lookup = directive_lookup if directive_lookup is not None else lambda n: None
+        self.directives = directives if directives else dict()
 
         self.injected_args = injected_args if injected_args else []
 
@@ -187,11 +184,6 @@ class BatchProcessor:
                     f'version tuple expected to contain three components: (major, minor, patch). received: {self.version}')
 
         self.expand_vars = os.path.expandvars
-        self._jinja_env = jinja2.Environment()
-
-        for name, func in self.template_functions.items():
-            self._jinja_env.globals[name] = func
-            self._jinja_env.filters[name] = func
 
     @property
     def current_line(self) -> int:
@@ -207,9 +199,16 @@ class BatchProcessor:
         :param string: the string containing the Jinja2 template.
         :return: rendered string
         """
+
+        jinja_env = jinja2.Environment()
+
+        for name, func in self.template_functions.items():
+            jinja_env.globals[name] = func
+            jinja_env.filters[name] = func
+
         try:
             return self.expand_vars(
-                self._jinja_env.from_string(string).
+                jinja_env.from_string(string).
                 render(**self.template_variables))
         except jinja2.TemplateSyntaxError as e:
             raise BatchProcessError(f'Template Syntax Error: {e}')
@@ -245,8 +244,8 @@ class BatchProcessor:
         if name in self.template_functions:
             raise BatchProcessError(
                 f'Cannot define template variable "{name}" on line {self.current_line}, '
-                f'reserved variable name.')
-        self._jinja_env.globals[name] = value
+                f'as that name is taken by a template function.')
+        self.template_variables[name] = value
 
     def _directive_handlers(self, line_idx, line):
         if line.startswith('\\set'):
@@ -274,7 +273,7 @@ class BatchProcessor:
             directive_args = line.split(' ', 1)
 
             directive = directive_args[0].lstrip('\\')
-            impl = self.directive_lookup(directive)
+            impl = self.directives.get(directive)
             if impl is None:
                 raise BatchProcessError(f'Unknown directive "\\{directive}".')
             directive_args = directive_args[1:]

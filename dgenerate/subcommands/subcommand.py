@@ -24,17 +24,23 @@ import dgenerate.plugin as _plugin
 import dgenerate.subcommands.exceptions as _exceptions
 
 
-class SubCommand(_plugin.InvokablePlugin):
+class SubCommand(_plugin.Plugin):
     """
     Abstract base class for sub-command implementations.
     """
 
     def __init__(self,
-                 called_by_name: str,
+                 loaded_by_name: str,
+                 args: typing.List[str],
                  **kwargs):
-        super().__init__(called_by_name=called_by_name,
+        super().__init__(loaded_by_name=loaded_by_name,
                          argument_error_type=_exceptions.SubCommandArgumentError,
                          **kwargs)
+        self.__args = list(args)
 
-    def __call__(self, argv: typing.List[str]) -> int:
+    @property
+    def args(self):
+        return self.__args
+
+    def __call__(self) -> int:
         return 0
