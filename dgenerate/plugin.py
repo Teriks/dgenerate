@@ -142,7 +142,7 @@ class Plugin:
 
         :param loaded_by_name: The name used to load the plugin.
             Help may vary depending on how many names the plugin
-            implementation handles and what invoking it by a certain
+            implementation handles and what loading it by a certain
             name does.
 
         :return: Formatted help string
@@ -191,7 +191,7 @@ class Plugin:
         Get a list of accepted argument names for a plugin class.
 
         :param loaded_by_name: The name used to load the plugin.
-            Arguments may vary depending on what name was used to invoke the plugin.
+            Arguments may vary depending on what name was used to load the plugin.
 
         :return: list of argument names
         """
@@ -204,7 +204,7 @@ class Plugin:
         Get a list of required arguments for this plugin class.
 
         :param loaded_by_name: The name used to load the plugin.
-            Required arguments may vary by name used to invoke.
+            Required arguments may vary by name used to load.
 
         :return: list of argument names
         """
@@ -217,7 +217,7 @@ class Plugin:
         Get the names and values of arguments for this plugin that possess default values.
 
         :param loaded_by_name: The name used to load the plugin.
-            Default arguments may vary by name used to invoke.
+            Default arguments may vary by name used to load.
 
         :return: list of arguments with default value: (name, value)
         """
@@ -232,7 +232,7 @@ class Plugin:
         is present in the signature.
 
         :param loaded_by_name: The name used to load the plugin.
-            Argument signature may vary by name used to invoke.
+            Argument signature may vary by name used to load.
 
         :return: mixed list of tuples, of length 1 or 2, depending on if
             the argument has a default value. IE: (name,) or (name, default_value).
@@ -497,7 +497,7 @@ class PluginLoader:
             else:
                 raise ValueError('plugin reserved_args must be tuples of length 1 or 2')
 
-        # plugin invoker/load user arguments
+        # plugin load user arguments
         args_dict.update(kwargs)
 
         for k, v in parsed_args.items():
@@ -553,7 +553,7 @@ class PluginLoader:
 
     def get_all_names(self) -> _types.Names:
         """
-        Get all plugin invokable names that this loader can see.
+        Get all plugin names that this loader can see.
 
         :return: list of names (strings)
         """
@@ -562,7 +562,7 @@ class PluginLoader:
 
     def get_help(self, plugin_name: _types.Name) -> str:
         """
-        Get a formatted help string for a plugin by one of its invokable names.
+        Get a formatted help string for a plugin by one of its loadable names.
 
         :param plugin_name: a name associated with the plugin class
         :return: formatted string
