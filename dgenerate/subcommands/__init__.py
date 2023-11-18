@@ -20,8 +20,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import typing
 
-import dgenerate.plugin as _plugin
 import dgenerate.messages as _messages
+import dgenerate.plugin as _plugin
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from .exceptions import SubCommandArgumentError, SubCommandNotFoundError

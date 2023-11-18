@@ -1,6 +1,7 @@
 import dgenerate.batchprocess
-import dgenerate.subcommands.subcommand as _subcommand
 import dgenerate.subcommands.exceptions as _exceptions
+import dgenerate.subcommands.subcommand as _subcommand
+
 
 class ImageProcessSubCommand(_subcommand.SubCommand):
     """
