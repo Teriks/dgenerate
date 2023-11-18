@@ -248,9 +248,7 @@ class RenderLoop:
         """
         Generate a dictionary from the render loop that describes its current / last used configuration.
 
-        This is consumed by the :py:class:`dgenerate.batchprocess.BatchProcessor`
-        that is created by :py:class:`dgenerate.batchprocess.ConfigRunner` for
-        use in Jinja2 templating.
+        This is consumed by :py:class:`dgenerate.batchprocess.ConfigRunner` for use in Jinja2 templating.
 
         :return: a dictionary of attribute names to values
         """
