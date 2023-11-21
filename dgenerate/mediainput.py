@@ -1603,7 +1603,7 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
 
     if isinstance(parse_result.seed_path, list):
         raise ValueError(
-            'Main seed path cannot contain multiple elements, use '
+            'seed_path cannot contain multiple elements, use '
             f'{_types.fullname(iterate_control_image)} for that.')
 
     if parse_result.resize_resolution is not None:
