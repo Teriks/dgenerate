@@ -21,7 +21,9 @@ class FooBarImageProcessor(dgenerate.imageprocessors.ImageProcessor):
     # hint typing.Optional[...] is supported to indicate that an argument is optional,
     # when a value is passed to an optional argument that value will be validated against the
     # specified optional type, if you do not provide a default None value in the constructor
-    # (which you should), dgenerate will pass None for you.
+    # (which you should), dgenerate will pass None for you. The type hints (list, dict, set) are
+    # are supported as type hints, and they will be parsed into their respective types when
+    # defined in the URI with their python literal syntax, this is also supported for optionals
     def __init__(self,
                  my_argument: str,
                  my_argument_2: bool = False,
