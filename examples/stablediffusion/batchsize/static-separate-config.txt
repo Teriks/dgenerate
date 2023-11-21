@@ -1,6 +1,6 @@
 #! dgenerate 3.0.0
 
-# Write the variations as seperate files to the output directory with the suffix _image_N
+# Write the variations as separate files to the output directory with the suffix _image_N
 
 stabilityai/stable-diffusion-2
 --inference-steps 40
