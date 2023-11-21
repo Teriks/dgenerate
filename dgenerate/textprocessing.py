@@ -36,7 +36,7 @@ class ConceptPathParseError(Exception):
 
 class ConceptUri:
     """
-    Represents a parsed concept path.
+    Represents a parsed concept URI.
     """
 
     concept: str
@@ -251,7 +251,7 @@ def unquote(string: str, escapes_in_quoted=True, escapes_in_unquoted=False) -> s
 
 class ConceptUriParser:
     """
-    Parser for dgenerate concept paths with arguments, IE: concept;arg1="a";arg2="b"
+    Parser for dgenerate concept paths with arguments, IE: ``concept;arg1="a";arg2="b"``
 
     Used for ``--vae``, ``--loras`` etc. as well as image processor plugin module arguments.
     """
