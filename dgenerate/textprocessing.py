@@ -121,7 +121,6 @@ def tokenized_split(string,
         return TokenizedSplitSyntaxError(f'{msg}: \'{string[:idx]}[ERROR HERE>]{string[idx:]}\'')
 
     for idx, c in enumerate(string):
-
         if state == _States.STRING:
             # inside of a quoted string
             if c == '\\':
@@ -226,6 +225,10 @@ def tokenized_split(string,
                 state = _States.STRING
             elif c == seperator:
                 # encountered a seperator
+                # the last element needs to be right stripped
+                # because spaces are allowed inside a text token
+                # and there is no way to differentiate 'inside' and
+                # 'outside' until there occurs a seperator
                 parts[-1] = parts[-1].rstrip()
                 parts.append('')
                 state = _States.AWAIT_TEXT
@@ -244,6 +247,10 @@ def tokenized_split(string,
                 raise syntax_error('Cannot intermix quoted strings and text tokens', idx)
             elif c == seperator:
                 # encountered a seperator
+                # the last element needs to be right stripped
+                # because spaces are allowed inside a text token
+                # and there is no way to differentiate 'inside' and
+                # 'outside' until there occurs a seperator
                 parts[-1] = parts[-1].rstrip()
                 parts.append('')
                 state = _States.AWAIT_TEXT
@@ -255,6 +262,8 @@ def tokenized_split(string,
         raise syntax_error(f'un-terminated string: \'{cur_string}\'', len(string))
 
     if state == _States.TEXT_TOKEN_STRICT or state == _States.TEXT_TOKEN:
+        # if we end on a text token, right strip the text token, as it is
+        # considered 'outside' the token, and spaces are only allowed 'inside'
         parts[-1] = parts[-1].rstrip()
 
     return parts
