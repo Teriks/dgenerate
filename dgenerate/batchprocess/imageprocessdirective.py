@@ -312,6 +312,8 @@ class ImageProcessDirective(_configrunnerplugin.ConfigRunnerPlugin):
 
         try:
             self._parsed_args = self._arg_parser.parse_args(args)
+        except argparse.ArgumentError as e:
+            self.argument_error(str(e))
         except SystemExit as e:
             _messages.log()  # newline
             if self._allow_exit:
