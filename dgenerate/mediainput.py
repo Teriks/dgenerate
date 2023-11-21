@@ -695,7 +695,6 @@ def _parse_image_seed_uri_legacy(uri: str) -> ImageSeedParseResult:
             first_parts = _textprocessing.tokenized_split(
                 first, ',',
                 strict=True,
-                escapes_in_unquoted=True,
                 escapes_in_quoted=True)
 
         except _textprocessing.TokenizedSplitSyntaxError as e:

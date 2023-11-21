@@ -368,12 +368,11 @@ class ConceptUriParser:
                     vals = tokenized_split(vals[1], ',',
                                            remove_quotes=True,
                                            strict=True,
-                                           escapes_in_quoted=True,
-                                           escapes_in_unquoted=True)
+                                           escapes_in_quoted=True)
 
                     args[name] = vals if len(vals) > 1 else vals[0]
                 else:
-                    args[name] = unquote(vals[1], escapes_in_unquoted=True)
+                    args[name] = unquote(vals[1])
 
             except (TokenizedSplitSyntaxError, UnquoteSyntaxError) as e:
                 raise ConceptPathParseError(f'Syntax error parsing argument "{name}" for '
