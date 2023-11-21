@@ -155,7 +155,7 @@ Help Output
                             The number of image variations to produce per set of individual diffusion parameters
                             in one rendering step simultaneously on a single GPU. When using flax, batch size is
                             controlled by the environmental variable CUDA_VISIBLE_DEVICES which is a comma
-                            seperated list of GPU device numbers (as listed by nvidia-smi). Usage of this
+                            separated list of GPU device numbers (as listed by nvidia-smi). Usage of this
                             argument with --model-type flax* will cause an error, diffusion with flax will
                             generate an image on every GPU that is visible to CUDA and this is currently
                             unchangeable. When generating animations with a --batch-size greater than one, a
@@ -1087,7 +1087,7 @@ Some possible definitions for inpainting are:
     * ``--image-seeds "my-image-seed.png;my-mask-image.png"``
     * ``--image-seeds "my-image-seed.png;mask=my-mask-image.png"``
 
-The format is your image seed and mask image seperated by ``;``, optionally **mask** can be named argument.
+The format is your image seed and mask image separated by ``;``, optionally **mask** can be named argument.
 The alternate syntax is for disambiguation when preforming img2img or inpainting operations while `Specifying Control Nets`_
 or other operations where keyword arguments might be necessary for disambiguation such as per image seed `Animation Slicing`_,
 and the specification of the image from a previous Deep Floyd stage using the **floyd** argument.
@@ -1524,7 +1524,7 @@ To specify a VAE directly use ``--vae``.
 
 The syntax for ``--vae`` is ``AutoEncoderClass;model=(huggingface repository slug/blob link or file/folder path)``
 
-Named arguments when loading a VAE are seperated by the ``;`` character and are not positional,
+Named arguments when loading a VAE are separated by the ``;`` character and are not positional,
 meaning they can be defined in any order.
 
 Loading arguments available when specifying a VAE for torch ``--model-type`` values
@@ -1700,7 +1700,7 @@ then using the named argument ``scale``
 
 When a scale is not specified, 1.0 is assumed.
 
-Named arguments when loading a LoRA are seperated by the ``;`` character and are
+Named arguments when loading a LoRA are separated by the ``;`` character and are
 not positional, meaning they can be defined in any order.
 
 Loading arguments available when specifying a LoRA are: ``scale``, ``revision``, ``subfolder``, and ``weight-name``
@@ -2769,7 +2769,7 @@ as VAEs etc. outside of relying on the caching system.
 
 
     # Print a list of properly quoted filenames produced by the last
-    # invocation seperated by spaces if there is multiple, this could
+    # invocation separated by spaces if there is multiple, this could
     # also be passed to --image-seeds
 
     \print {{ quote(last_images) | join(' ') }}

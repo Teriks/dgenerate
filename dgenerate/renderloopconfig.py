@@ -925,7 +925,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'Cannot use {a_namer("image_seed_strengths")} with a control guidance image '
                     f'specification "{uri}". IE: when {a_namer("control_net_uris")} is specified and '
                     f'your {a_namer("image_seeds")} specification has a single source or comma '
-                    f'seperated list of sources.')
+                    f'separated list of sources.')
 
         if is_control_guidance_spec and self.upscaler_noise_levels:
             # upscaler noise level should already be handled but handle it again just incase
@@ -939,7 +939,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'Cannot use {a_namer("upscaler_noise_levels")} with a control guidance image '
                     f'specification "{uri}". IE: when {a_namer("control_net_uris")} is specified and '
                     f'your {a_namer("image_seeds")} specification has a single source or comma '
-                    f'seperated list of sources.')
+                    f'separated list of sources.')
 
         if self.model_type == _pipelinewrapper.ModelTypes.TORCH_IFS_IMG2IMG or \
                 (parsed.mask_path and _pipelinewrapper.model_type_is_floyd_ifs(self.model_type)):

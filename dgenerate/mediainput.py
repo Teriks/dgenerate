@@ -1730,7 +1730,7 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
 
     One or more :py:class:`.ImageSeed` objects may be yielded depending on whether an animation is being read.
 
-    This can consist of a single resource path or a list of comma seperated image and
+    This can consist of a single resource path or a list of comma separated image and
     video resource paths, which may be files on disk or remote files (http / https).
 
     This method is to be used when it is known that there is only a controlnet guidance resource
@@ -1920,7 +1920,7 @@ def get_control_image_info(uri: typing.Union[_types.Path, ImageSeedParseResult],
     Get an informational object from a dgenerate ``--image-seeds`` uri that is known to be a
     control image/video specification.
 
-    This can consist of a single resource path or a list of comma seperated image and
+    This can consist of a single resource path or a list of comma separated image and
     video resource paths, which may be files on disk or remote files (http / https).
 
     This method is to be used when it is known that there is only a control image/video specification in the path,
