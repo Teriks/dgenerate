@@ -74,9 +74,9 @@ def tokenized_split(string,
     Split a string by a seperator and discard whitespace around tokens, avoid
     splitting within single or double quoted strings. Empty fields may be used.
 
-    Quotes can be escaped with a backslash, the whole escape sequence will be preserved in the output.
-
-
+    Quotes can be always be escaped with a backslash to avoid the creation of a
+    string type token. The backslash will remain in the output if ``escapes_in_unquoted``
+    or ``escapes_in_quoted`` are ``False`` and the escape occurs in the relevant context.
 
     :raise TokenizedSplitSyntaxError: on syntax errors.
 
