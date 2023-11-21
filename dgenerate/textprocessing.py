@@ -102,7 +102,6 @@ def tokenized_split(string,
 
     state = _States.AWAIT_TEXT
     parts = []
-    cur_string_start_idx = 0
     cur_string = ''
     cur_quote = ''
 
