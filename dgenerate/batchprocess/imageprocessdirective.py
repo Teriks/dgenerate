@@ -120,7 +120,7 @@ class ImageProcessDirective(_configrunnerplugin.ConfigRunnerPlugin):
                  help_desc: typing.Optional[str] = None,
                  **kwargs):
         """
-        :param allow_exit: Parsing arguments can result in an exit() call?
+        :param allow_exit: Parsing arguments can result in an ``exit()`` call?
         :param message_header: Header string for informational output.
         :param help_name: Name in ``--help`` output.
         :param help_desc: Override argument parser ``description`` value.
