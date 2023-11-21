@@ -39,10 +39,10 @@
 --processors upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth
 
 
-# last_images contains the frames
+# last_images contains the frame file paths
 
 \print {{ quote(last_images) }}
 
-# last_animations contains the animation
+# last_animations contains the animation file paths
 
 \print {{ quote(last_animations) }}
