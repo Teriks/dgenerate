@@ -20,7 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import typing
 
-import dgenerate.batchprocess.batchprocessor as _batchprocessor
+import dgenerate.batchprocess.configrunner as _configrunner
 import dgenerate.batchprocess.configrunnerpluginloader as _configrunnerpluginloader
 import dgenerate.plugin as _plugin
 import dgenerate.renderloop as _renderloop
@@ -34,7 +34,7 @@ class ConfigRunnerPlugin(_plugin.Plugin):
 
     def __init__(self,
                  loaded_by_name: str,
-                 batch_processor: typing.Optional[_batchprocessor.BatchProcessor] = None,
+                 config_runner: typing.Optional[_configrunner.ConfigRunner] = None,
                  render_loop: typing.Optional[_renderloop.RenderLoop] = None,
                  plugin_module_paths: typing.Optional[typing.List[str]] = None,
                  **kwargs):
@@ -43,7 +43,7 @@ class ConfigRunnerPlugin(_plugin.Plugin):
                          argument_error_type=_configrunnerpluginloader.ConfigRunnerPluginArgumentError,
                          **kwargs)
 
-        self.__batch_processor = batch_processor
+        self.__config_runner = config_runner
         self.__render_loop = render_loop
 
         self.__plugin_module_paths = \
@@ -51,22 +51,39 @@ class ConfigRunnerPlugin(_plugin.Plugin):
                 plugin_module_paths is not None else []
 
     def set_template_variable(self, name, value):
-        if self.batch_processor is not None:
-            self.batch_processor.template_variables[name] = value
+        """
+        Safely set a template variable on the :py:class:`dgenerate.batchprocess.ConfigRunner` instance.
+
+        :param name: variable name
+        :param value: variable value
+        """
+        if self.config_runner is not None:
+            self.config_runner.template_variables[name] = value
 
     def update_template_variables(self, values):
-        if self.batch_processor is not None:
-            self.batch_processor.template_variables.update(values)
+        """
+        Safely update multiple template variable values on the :py:class:`dgenerate.batchprocess.ConfigRunner` instance.
+
+        :param values: variable values, dictionary of names to values
+        """
+        if self.config_runner is not None:
+            self.config_runner.template_variables.update(values)
 
     def register_directive(self, name, implementation: typing.Callable[[typing.List[str]], None]):
-        if self.batch_processor is not None:
+        """
+        Safely register a config directive implementation on the :py:class:`dgenerate.batchprocess.ConfigRunner` instance.
 
-            if name in self.batch_processor.directives:
+        :param name: directive name
+        :param implementation: implementation callable
+        """
+        if self.config_runner is not None:
+
+            if name in self.config_runner.directives:
                 raise RuntimeError(
                     f'directive name "{name}" cannot be registered by plugin '
                     f'"{self.loaded_by_name}" because that directive name already exists.')
 
-            self.batch_processor.directives[name] = implementation
+            self.config_runner.directives[name] = implementation
 
     @property
     def render_loop(self) -> typing.Optional[_renderloop.RenderLoop]:
@@ -78,12 +95,12 @@ class ConfigRunnerPlugin(_plugin.Plugin):
         return self.__render_loop
 
     @property
-    def batch_processor(self) -> typing.Optional[_batchprocessor.BatchProcessor]:
+    def config_runner(self) -> typing.Optional[_configrunner.ConfigRunner]:
         """
-        Provides access to the currently instantiated :py:class:`dgenerate.batchprocess.BatchProcessor` object
+        Provides access to the currently instantiated :py:class:`dgenerate.batchprocess.ConfigRunner` object
         running the config file that this directive is being invoked in.
         """
-        return self.__batch_processor
+        return self.__config_runner
 
     @property
     def plugin_module_paths(self) -> typing.List[str]:

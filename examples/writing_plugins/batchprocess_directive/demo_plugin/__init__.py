@@ -16,10 +16,10 @@ class MyDirective(_configrunnerplugin.ConfigRunnerPlugin):
         # happened yet.
         print(self.render_loop)
 
-        # access to the BatchProcessor object running the config, you could add
+        # access to the ConfigRunner object running the config, you could add
         # template variables / functions etc if desired. Or preform templating
         # operations on strings / files, and many other things.
-        print(self.batch_processor)
+        print(self.config_runner)
 
         # print the arguments to the directive, which are parsed using shlex
         # and are similar to arguments from sys.argv, you could even use
