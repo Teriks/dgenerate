@@ -320,7 +320,7 @@ class ImageProcessDirective(_configrunnerplugin.ConfigRunnerPlugin):
 
         if self._parsed_args.frame_end is not None and \
                 self._parsed_args.frame_start > self._parsed_args.frame_end:
-            self.argument_error(f'--frame-start must be less than or equal to --frame_end')
+            self.argument_error('--frame-start must be less than or equal to --frame_end')
 
         if self._written_images is not None:
             self._written_images.close()
