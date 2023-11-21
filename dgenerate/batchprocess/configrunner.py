@@ -50,11 +50,14 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         """
 
         :raises dgenerate.plugin.ModuleFileNotFoundError: If a module path parsed from
-            -pm/--plugin-modules in ``injected_args`` could not be found on disk.
+            ``-pm/--plugin-modules`` in ``injected_args`` could not be found on disk.
 
 
         :param injected_args: dgenerate command line arguments in the form of a list, see: shlex module, or sys.argv.
-            These arguments will be injected at the end of every dgenerate invocation in the config.
+            These arguments will be injected at the end of every dgenerate invocation in the config. ``-pm/--plugin-modules``
+            are parsed from ``injected_args`` and added to ``plugin_loader``. If ``-v/--verbose`` is present in ``injected_args``
+            debugging output will be enabled globally while the config runs, and not just for invocations.
+
         :param render_loop: RenderLoop instance, if None is provided one will be created.
         :param plugin_loader: Batch processor plugin loader, if one is not provided one will be created.
         :param version: Config version for ``#! dgenerate x.x.x`` version checks, defaults to ``dgenerate.__version__``

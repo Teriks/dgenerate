@@ -1281,8 +1281,8 @@ def parse_known_args(args: typing.Optional[typing.Sequence[str]] = None,
     Ignores dgenerates only required argument 'module_path' by default.
 
 
-    :py:meth:`DgenerateArguments.check()` is not called by this function,
-    no logical validation is preformed, only argument parsing.
+    No logical validation is preformed, :py:meth:`DgenerateArguments.check()` is not called by this function,
+    only argument parsing and simple type validation is preformed by this function.
 
     :param args: arguments list, as in args taken from sys.argv, or in that format
     :param throw: throw :py:exc:`.DgenerateUsageError` on error? defaults to True
