@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import ast
+import enum
 import shutil
 import textwrap
 import typing
@@ -53,6 +54,197 @@ class ConceptUri:
         return f"{self.concept}: {self.args}"
 
 
+class TokenizedSplitSyntaxError(Exception):
+    """
+    Raised by :py:func:`tokenized_split` on syntax errors.
+    """
+    pass
+
+
+def tokenized_split(string,
+                    seperator,
+                    remove_quotes=False,
+                    strict=False,
+                    escapes_in_unquoted=False,
+                    escapes_in_quoted=False):
+    """
+    Split a string by a seperator and discard whitespace around tokens, avoid
+    splitting within single or double quoted strings. Empty fields may be used.
+
+    Quotes can be escaped with a backslash, the whole escape sequence will be preserved in the output.
+
+
+
+    :raise TokenizedSplitSyntaxError: on syntax errors.
+
+    :param string: the string
+    :param seperator: seperator
+    :param remove_quotes: remove quotes from quoted string tokens?
+    :param strict: Text tokens cannot be intermixed with quoted strings? disallow IE: "text'string'text"
+    :param escapes_in_unquoted: evaluate escape sequences in text tokens (unquoted strings)?
+        The slash is retained by default when escaping quotes, this disables that, and also enables handling of the escapes `n, r, t, b, and f`.
+        IE given seperator = `;`: ``\"token\"; "a b"`` -> ``['"token"', 'a b']``, instead of ``\"token\"; "a b"``-> ``['\"token\"', 'a b']``
+    :param escapes_in_quoted: evaluate escape sequences in quoted string tokens?
+        The slash is retained by default when escaping quotes, this disables that, and also enables handling of the escapes `n, r, t, b, and f`.
+        IE given seperator = `;`: ``\"token\"; "a b"`` -> ``['"token"', 'a b']``, instead of ``\"token\"; "a b"``-> ``['\"token\"', 'a b']``
+        the slash is retained by default. IE given seperator = `;`: ``token; "a \" b"`` -> ``['token', 'a " b']``, instead of
+        ``token; "a \" b"``-> ``['token', 'a \" b']``
+    :return: fields
+    """
+
+    class _States(enum.Enum):
+        AWAIT_TEXT = 0
+        TEXT_TOKEN = 1
+        ESCAPE_TEXT = 2
+        STRING = 3
+        STRING_ESCAPE = 4
+        SEP_REQUIRED = 5
+
+    state = _States.AWAIT_TEXT
+    parts = []
+    cur_string_start_idx = 0
+    cur_string = ''
+    cur_quote = ''
+
+    QUOTE_CHARS = {'"', "'"}
+    RECOGNIZED_ESCAPE_CODES = {'n', 'r', 't', 'b', 'f'}
+
+    def append_text(t):
+        if parts:
+            parts[-1] += t
+        else:
+            parts.append(t)
+
+    def syntax_error(msg, idx):
+        return TokenizedSplitSyntaxError(f'{msg}: \'{string[:idx]}[ERROR HERE>]{string[idx:]}\'')
+
+    for idx, c in enumerate(string):
+
+        if state == _States.STRING:
+            if c == '\\':
+                state = _States.STRING_ESCAPE
+                if not escapes_in_quoted:
+                    cur_string += c
+            elif c == cur_quote:
+                append_text(cur_string + (c if not remove_quotes else ''))
+                cur_string = ''
+                # Strict mode requires a seperator after a quoted string token
+                state = _States.SEP_REQUIRED if strict else _States.AWAIT_TEXT
+            else:
+                cur_string += c
+        elif state == _States.ESCAPE_TEXT:
+            state = _States.TEXT_TOKEN if strict else _States.AWAIT_TEXT
+            if c in QUOTE_CHARS:
+                append_text(c)
+            elif c in RECOGNIZED_ESCAPE_CODES:
+                if escapes_in_unquoted:
+                    append_text(fr'\{c}'.encode('utf-8').decode('unicode_escape'))
+                else:
+                    append_text(c)
+            else:
+                if escapes_in_unquoted:
+                    append_text(fr'\{c}')
+                else:
+                    append_text(c)
+        elif state == _States.STRING_ESCAPE:
+            state = _States.STRING
+            if c in QUOTE_CHARS:
+                cur_string += c
+            elif c in RECOGNIZED_ESCAPE_CODES:
+                if escapes_in_quoted:
+                    cur_string += fr'\{c}'.encode('utf-8').decode('unicode_escape')
+                else:
+                    cur_string += c
+            else:
+                if escapes_in_quoted:
+                    cur_string += fr'\{c}'
+                else:
+                    cur_string += c
+        elif state == _States.SEP_REQUIRED:
+            # This state is only reached in strict mode
+            if c == seperator:
+                state = _States.AWAIT_TEXT
+                parts.append('')
+            elif not c.isspace():
+                raise syntax_error('Missing separator after string', idx)
+        elif state == _States.AWAIT_TEXT:
+            if c == '\\':
+                state = _States.ESCAPE_TEXT
+                if not escapes_in_unquoted:
+                    append_text(c)
+            elif c in QUOTE_CHARS:
+                cur_quote = c
+                cur_string += (c if not remove_quotes else '')
+                state = _States.STRING
+                cur_string_start_idx = idx
+            elif not strict or not c.isspace():
+                if c == seperator:
+                    if not parts:
+                        parts += ['', '']
+                    else:
+                        parts.append('')
+                else:
+                    # Only change state in strict mode
+                    state = _States.TEXT_TOKEN if strict else _States.AWAIT_TEXT
+                    append_text(c)
+        elif state == _States.TEXT_TOKEN:
+            # This state is only reached in strict mode
+            if c == '\\':
+                state = _States.ESCAPE_TEXT
+                if not escapes_in_unquoted:
+                    append_text(c)
+            elif c in QUOTE_CHARS:
+                raise syntax_error('Cannot intermix quoted strings and text tokens', idx)
+            else:
+                if c == seperator:
+                    parts[-1] = parts[-1].rstrip()
+                    parts.append('')
+                    state = _States.AWAIT_TEXT
+                else:
+                    append_text(c)
+
+    if state == _States.STRING:
+        raise syntax_error(f'un-terminated string: \'{cur_string}\'', len(string))
+
+    if state == _States.TEXT_TOKEN:
+        parts[-1] = parts[-1].rstrip()
+
+    return parts
+
+
+class UnquoteSyntaxError(Exception):
+    pass
+
+
+def unquote(string: str, escapes_in_quoted=True, escapes_in_unquoted=False) -> str:
+    """
+    Remove quotes from a string, including single quotes.
+
+    Unquoted strings will have leading an trailing whitespace striped.
+
+    Quoted strings will have leading and trailing whitespace striped up to where the quotes were.
+
+    :param escapes_in_unquoted: Render escape sequences in strings that are unquoted?
+    :param escapes_in_quoted: Render escape sequences in strings that are quoted?
+    :param string: the string
+    :return: The un-quoted string
+    """
+    try:
+        val = tokenized_split(string,
+                              escapes_in_quoted=escapes_in_quoted,
+                              escapes_in_unquoted=escapes_in_unquoted,
+                              strict=True,
+                              remove_quotes=True,
+                              seperator=None)
+        if val:
+            return val[0]
+        return ''
+    except TokenizedSplitSyntaxError as e:
+        if 'Missing separator' in str(e):
+            raise UnquoteSyntaxError(str(e).replace('Missing separator', 'Extraneous text'))
+        raise UnquoteSyntaxError(e)
+
+
 class ConceptUriParser:
     """
     Parser for dgenerate concept paths with arguments, IE: concept;arg1="a";arg2="b"
@@ -70,7 +262,31 @@ class ConceptUriParser:
     Unique recognized keyword arguments
     """
 
-    def __init__(self, concept_name: _types.Name, known_args: typing.Sequence[str] = None):
+    args_raw: typing.Union[None, bool, typing.Set[str]]
+    """
+    ``True`` indicates all argument values are returned without any unquoting or processing into lists.
+    
+    ``None`` or ``False`` indicates no argument values skip processing.
+    
+    Assigning a set containing argument names indicates only the specified 
+    arguments skip processing (unquoting or splitting).
+    """
+
+    args_multiple: typing.Union[None, bool, typing.Set[str]]
+    """
+    ``True`` indicates all arguments can accept a comma seperated list.
+    
+    ``None`` or ``False`` indicates no arguments can accept a comma seperated list.
+    
+    Assigning a set containing argument names indicates only the specified 
+    arguments can accept a comma seperated list.
+    """
+
+    def __init__(self,
+                 concept_name: _types.Name,
+                 known_args: typing.Sequence[str],
+                 args_multiple: typing.Union[None, bool, typing.Sequence[str]] = None,
+                 args_raw: typing.Union[None, bool, typing.Sequence[str]] = None):
         """
         :raises ValueError: if duplicate argument names are specified.
 
@@ -81,10 +297,30 @@ class ConceptUriParser:
         check = set()
         for arg in known_args:
             if arg in check:
-                raise ValueError(f'duplicate argument specification {arg}')
+                raise ValueError(f'duplicate known_args specification {arg}')
             check.add(arg)
-
         self.known_args = check
+
+        if args_multiple is not None and not isinstance(args_multiple, bool):
+            check = set()
+            for arg in args_multiple:
+                if arg in check:
+                    raise ValueError(f'duplicate args_multiple specification {arg}')
+                check.add(arg)
+            self.args_multiple = check
+        else:
+            self.args_multiple = None
+
+        if args_raw is not None and not isinstance(args_raw, bool):
+            check = set()
+            for arg in args_raw:
+                if arg in check:
+                    raise ValueError(f'duplicate args_raw specification {arg}')
+                check.add(arg)
+            self.args_raw = check
+        else:
+            self.args_raw = None
+
         self.concept_name = concept_name
 
     def parse_concept_uri(self, uri: _types.Uri):
@@ -98,33 +334,51 @@ class ConceptUriParser:
         :return: :py:class:`.ConceptPath`
         """
         args = dict()
-        parts = uri.split(';')
+
+        try:
+            parts = tokenized_split(uri, ';')
+        except TokenizedSplitSyntaxError as e:
+            raise ConceptPathParseError(f'Error parsing {self.concept_name} URI "{uri}": {e}')
+
         parts = iter(parts)
         concept = parts.__next__()
         for i in parts:
             vals = i.split('=', 1)
-            if not vals:
+            if not vals or not vals[0]:
                 raise ConceptPathParseError(f'Error parsing path arguments for '
                                             f'{self.concept_name} concept "{concept}", Empty argument space, '
                                             f'stray semicolon?')
-            if len(vals) == 1:
-                raise ConceptPathParseError(f'Error parsing path arguments for '
-                                            f'{self.concept_name} concept "{concept}", missing value '
-                                            f'assignment for argument {vals[0]}.')
             name = vals[0].strip()
             if self.known_args is not None and name not in self.known_args:
                 raise ConceptPathParseError(
                     f'Unknown path argument "{name}" for {self.concept_name} concept "{concept}", '
                     f'valid arguments: {", ".join(sorted(self.known_args))}')
 
+            if len(vals) == 1:
+                raise ConceptPathParseError(f'Error parsing path arguments for '
+                                            f'{self.concept_name} concept "{concept}", missing value '
+                                            f'assignment for argument {vals[0]}.')
+
             if name in args:
                 raise ConceptPathParseError(
                     f'Duplicate argument "{name}" provided for {self.concept_name} concept "{concept}".')
 
             try:
-                args[name] = unquote(vals[1])
-            except SyntaxError as e:
-                raise ConceptPathParseError(f'Syntax Error parsing argument {name} for '
+                if self.args_raw is True or (self.args_raw is not None and name in self.args_raw):
+                    args[name] = vals[1]
+                elif self.args_multiple is True or (self.args_multiple is not None and name in self.args_multiple):
+                    vals = tokenized_split(vals[1], ',',
+                                           remove_quotes=True,
+                                           strict=True,
+                                           escapes_in_quoted=True,
+                                           escapes_in_unquoted=True)
+
+                    args[name] = vals if len(vals) > 1 else vals[0]
+                else:
+                    args[name] = unquote(vals[1], escapes_in_unquoted=True)
+
+            except (TokenizedSplitSyntaxError, UnquoteSyntaxError) as e:
+                raise ConceptPathParseError(f'Syntax error parsing argument "{name}" for '
                                             f'{self.concept_name} concept "{concept}": {e}')
         return ConceptUri(concept, args)
 
@@ -194,27 +448,6 @@ def is_quoted(string: str) -> bool:
     :return: ``True`` or ``False``
     """
     return (string.startswith('"') and string.endswith('"')) or (string.startswith("'") and string.endswith("'"))
-
-
-def unquote(string: str) -> str:
-    """
-    Remove quotes from a string, including single quotes.
-
-    :param string: the string
-    :return: The un-quoted string
-    """
-    string = string.strip(' ')
-    if string.startswith('"'):
-        if not string.endswith('"'):
-            raise ValueError('Missing ending ["] quote.')
-        return str(ast.literal_eval('r' + string))
-    if string.startswith("'"):
-        if not string.endswith("'"):
-            raise ValueError('Missing ending [\'] quote.')
-        return str(ast.literal_eval('r' + string))
-    else:
-        # Is an unquoted string
-        return str(string.strip(' '))
 
 
 def dashdown(string: str) -> str:

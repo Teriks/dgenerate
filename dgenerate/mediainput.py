@@ -389,8 +389,6 @@ class MockImageAnimationReader(_imageprocessors.ImageProcessorMixin, AnimationRe
         # Only need to process once
         self._processed_flag = False
 
-
-
     @property
     def total_frames(self) -> int:
         """
@@ -564,11 +562,11 @@ class ImageSeedParseResult:
     The result of parsing an ``--image-seeds`` uri
     """
 
-    seed_path: _types.Path
+    seed_path: typing.Union[_types.Path, typing.List[_types.Path]]
     """
     The seed path, contains an image path that will be used for img2img operations
-    or the base image in inpaint operations. Or a controlnet guidance path, or a comma
-    seperated list of controlnet guidance paths. A path being a file path, or an HTTP/HTTPS URL.
+    or the base image in inpaint operations. Or a controlnet guidance path, or a list of controlnet guidance paths. 
+    A path being a file path, or an HTTP/HTTPS URL.
     """
 
     mask_path: _types.OptionalPath = None
@@ -576,9 +574,9 @@ class ImageSeedParseResult:
     Optional path to an inpaint mask, may be an HTTP/HTTPS URL or file path.
     """
 
-    control_path: _types.OptionalPath = None
+    control_path: typing.Union[_types.Path, typing.List[_types.Path], None] = None
     """
-    Optional controlnet guidance path, or comma seperated list of controlnet guidance paths. 
+    Optional controlnet guidance path, or a list of controlnet guidance paths. 
     This field is only used when the secondary syntax of ``--image-seeds`` is encountered.
     
     In parses such as:
@@ -639,19 +637,18 @@ class ImageSeedParseResult:
 
     def get_control_image_paths(self) -> typing.Optional[typing.List[str]]:
         """
-        Split :py:attr:`.ImageSeed.seed_path` by ',' if :py:attr:`.ImageSeed.is_single_spec` is True and return the result.
+        Return :py:attr:`.ImageSeed.seed_path` if :py:attr:`.ImageSeed.is_single_spec` is ``True``.
 
-        If the image seed is not a single specification, split :py:attr:`.ImageSeed.control_path` and return the result.
+        If the image seed is not a single specification, return :py:attr:`.ImageSeed.control_path`.
 
         If :py:attr:`.ImageSeed.control_path` is not set and the image seed is not a single specification, return ``None``.
 
         :return: list of resource paths, or None
         """
-
         if self.is_single_spec:
-            return self.seed_path.split(',')
+            return self.seed_path if isinstance(self.seed_path, list) else [self.seed_path]
         elif self.control_path:
-            return self.control_path.split(',')
+            return self.control_path if isinstance(self.control_path, list) else [self.control_path]
         else:
             return None
 
@@ -682,23 +679,41 @@ class ImageSeedParseResult:
 
 # noinspection HttpUrlsUsage
 def _parse_image_seed_uri_legacy(uri: str) -> ImageSeedParseResult:
-    parts = (x.strip() for x in uri.split(';'))
+    try:
+        parts = _textprocessing.tokenized_split(uri, ';', remove_quotes=True)
+        parts_iter = iter(parts)
+    except _textprocessing.TokenizedSplitSyntaxError as e:
+        raise ImageSeedError(f'Parsing error in image seed URI "{uri}": {e}')
+
     result = ImageSeedParseResult()
 
-    first = next(parts)
+    first = next(parts_iter)
     result.seed_path = first
 
-    first_parts = first.split(',')
+    if len(parts) == 1:
+        try:
+            first_parts = _textprocessing.tokenized_split(
+                first, ',',
+                strict=True,
+                escapes_in_unquoted=True,
+                escapes_in_quoted=True)
+
+        except _textprocessing.TokenizedSplitSyntaxError as e:
+            raise ImageSeedError(f'Parsing error in image seed URI "{uri}": {e}')
+    else:
+        first_parts = [first]
 
     for part in first_parts:
-        part = part.strip()
         if not (is_downloadable_url(part) or os.path.exists(part)):
             if len(first_parts) > 1:
                 raise ImageSeedError(f'Control image file "{part}" does not exist.')
             else:
                 raise ImageSeedError(f'Image seed file "{part}" does not exist.')
 
-    for part in parts:
+    if len(first_parts) > 1:
+        result.seed_path = first_parts
+
+    for part in parts_iter:
         if part == '':
             raise ImageSeedError(
                 'Missing inpaint mask image or output size specification, '
@@ -710,13 +725,7 @@ def _parse_image_seed_uri_legacy(uri: str) -> ImageSeedParseResult:
             result.mask_path = part
         else:
             try:
-                dimensions = tuple(int(s.strip()) for s in part.split('x'))
-                for idx, d in enumerate(dimensions):
-                    if d % 8 != 0:
-                        raise ImageSeedError(
-                            f'Image seed resize {["width", "height"][idx]} dimension {d} is not divisible by 8.')
-
-                result.resize_resolution = dimensions
+                result.resize_resolution = tuple(int(s.strip()) for s in part.split('x'))
             except ValueError:
                 raise ImageSeedError(f'Inpaint mask file "{part}" does not exist.')
 
@@ -743,13 +752,15 @@ def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
                     'frame-start',
                     'frame-end']
 
-    parts = uri.split(';')
+    try:
+        parts = _textprocessing.tokenized_split(uri, ';')
+    except _textprocessing.TokenizedSplitSyntaxError as e:
+        raise ImageSeedError(f'Image seed URI parsing error: {e}')
 
     non_legacy: bool = len(parts) > 3
 
     if not non_legacy:
         for i in parts:
-            i = i.strip()
             for kwarg in keyword_args:
                 if re.match(f'{kwarg}\\s*=', i) is not None:
                     non_legacy = True
@@ -763,7 +774,9 @@ def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
 
     result = ImageSeedParseResult()
 
-    seed_parser = _textprocessing.ConceptUriParser('Image Seed', keyword_args)
+    seed_parser = _textprocessing.ConceptUriParser('Image Seed',
+                                                   known_args=keyword_args,
+                                                   args_multiple=['control'])
 
     try:
         parse_result = seed_parser.parse_concept_uri(uri)
@@ -786,19 +799,24 @@ def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
 
     control_path = parse_result.args.get('control', None)
     if control_path is not None:
+        if isinstance(control_path, list):
+            for f in control_path:
+                _ensure_exists(f, 'Control image')
+        else:
+            _ensure_exists(control_path, 'Control image')
+
         result.control_path = control_path
-        for p in control_path.split(','):
-            p = p.strip()
-            _ensure_exists(p, 'Control image')
 
     floyd_path = parse_result.args.get('floyd', None)
     if floyd_path is not None:
+        _ensure_exists(floyd_path, 'Floyd image')
         if control_path is not None:
             raise ImageSeedError(
                 'The image seed "control" argument cannot be used with the "floyd" argument.')
         result.floyd_path = floyd_path
 
     resize = parse_result.args.get('resize', None)
+
     if resize is not None:
         dimensions = tuple(int(s.strip()) for s in resize.split('x'))
         for idx, d in enumerate(dimensions):
@@ -882,7 +900,7 @@ def _get_web_cache_db():
                 'CREATE TABLE IF NOT EXISTS users (pid INTEGER, UNIQUE(pid))')
             db.execute(
                 'CREATE TABLE IF NOT EXISTS files '
-                '(id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT UNIQUE, mime_type TEXT)')
+                '(id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT_TOKEN UNIQUE, mime_type TEXT_TOKEN)')
             db.execute(
                 'INSERT OR IGNORE INTO users(pid) VALUES(?)', [os.getpid()])
             yield db
@@ -1179,6 +1197,11 @@ class AnimationReaderSpec:
     Aspect correct resize enabled?
     """
 
+    align: typing.Optional[int] = 8
+    """
+    Images which are read are aligned to this amount of pixels, ``None`` or ``1`` will disable alignment.
+    """
+
     resize_resolution: _types.OptionalSize = None
     """
     Optional resize resolution.
@@ -1187,18 +1210,24 @@ class AnimationReaderSpec:
     def __init__(self, path: str,
                  image_processor: typing.Optional[_imageprocessors.ImageProcessor] = None,
                  resize_resolution: _types.OptionalSize = None,
-                 aspect_correct: bool = True):
+                 aspect_correct: bool = True,
+                 align: typing.Optional[int] = 8):
         """
         :param path: File path or URL
         :param resize_resolution: Resize resolution
         :param aspect_correct: Aspect correct resize enabled?
+        :param align: Images which are read are aligned to this amount of pixels, ``None`` or ``1`` will disable alignment.
         :param image_processor: Optional image image processor associated with the file
         """
+
+        if align is not None and align < 1:
+            raise ValueError('align argument may not be less than 1.')
 
         self.aspect_correct = aspect_correct
         self.resize_resolution = resize_resolution
         self.path = path
         self.image_processor = image_processor
+        self.align = align
 
 
 class MultiAnimationReader:
@@ -1301,6 +1330,7 @@ class MultiAnimationReader:
                     file=file_stream,
                     resize_resolution=spec.resize_resolution,
                     aspect_correct=spec.aspect_correct,
+                    align=spec.align,
                     image_processor=spec.image_processor)
             )
             self._file_streams.append(file_stream)
@@ -1493,6 +1523,7 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
                        frame_end: _types.OptionalInteger = None,
                        resize_resolution: _types.OptionalSize = None,
                        aspect_correct: bool = True,
+                       align: typing.Optional[int] = 8,
                        seed_image_processor: typing.Optional[_imageprocessors.ImageProcessor] = None,
                        mask_image_processor: typing.Optional[_imageprocessors.ImageProcessor] = None,
                        control_image_processor: ControlProcessorSpec = None) -> \
@@ -1539,6 +1570,8 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
         The URI syntax for image seeds allows for overriding this value with the **aspect**
         keyword argument.
 
+    :param align: Images which are read are aligned to this amount of pixels, ``None`` or ``1`` will disable alignment.
+
     :param seed_image_processor: optional :py:class:`dgenerate.imageprocessors.ImageProcessor`
     :param mask_image_processor: optional :py:class:`dgenerate.imageprocessors.ImageProcessor`
 
@@ -1560,10 +1593,18 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
         if frame_start > frame_end:
             raise ValueError('frame_start must be less than or equal to frame_end')
 
+    if align is not None and align < 1:
+        raise ValueError('align argument may not be less than 1.')
+
     if isinstance(uri, ImageSeedParseResult):
         parse_result = uri
     else:
         parse_result = parse_image_seed_uri(uri)
+
+    if isinstance(parse_result.seed_path, list):
+        raise ValueError(
+            'Main seed path cannot contain multiple elements, use '
+            f'{_types.fullname(iterate_control_image)} for that.')
 
     if parse_result.resize_resolution is not None:
         resize_resolution = parse_result.resize_resolution
@@ -1575,7 +1616,8 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
         AnimationReaderSpec(path=parse_result.seed_path,
                             image_processor=seed_image_processor,
                             resize_resolution=resize_resolution,
-                            aspect_correct=aspect_correct)
+                            aspect_correct=aspect_correct,
+                            align=align)
     ]
 
     if parse_result.mask_path is not None:
@@ -1583,7 +1625,8 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
             path=parse_result.mask_path,
             image_processor=mask_image_processor,
             resize_resolution=resize_resolution,
-            aspect_correct=aspect_correct))
+            aspect_correct=aspect_correct,
+            align=align))
 
     if parse_result.control_path is not None:
         if not isinstance(control_image_processor, list):
@@ -1600,7 +1643,8 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
                 path=p.strip(),
                 image_processor=control_image_processor[idx] if idx < len(control_image_processor) else None,
                 resize_resolution=resize_resolution,
-                aspect_correct=aspect_correct)
+                aspect_correct=aspect_correct,
+                align=align)
             for idx, p in enumerate(control_guidance_image_paths)
         ]
 
@@ -1609,7 +1653,8 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
         # also do not resize it
         reader_specs.append(AnimationReaderSpec(
             path=parse_result.floyd_path,
-            resize_resolution=None))
+            resize_resolution=None,
+            align=None))
 
     if parse_result.frame_start is not None:
         frame_start = parse_result.frame_start
@@ -1670,6 +1715,7 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
                           frame_end: _types.OptionalInteger = None,
                           resize_resolution: _types.OptionalSize = None,
                           aspect_correct: bool = True,
+                          align: typing.Optional[int] = 8,
                           image_processor: ControlProcessorSpec = None) -> \
         typing.Iterator[ImageSeed]:
     """
@@ -1705,6 +1751,8 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
         The URI syntax for image seeds allows for overriding this value with the **aspect**
         keyword argument.
 
+    :param align: Images which are read are aligned to this amount of pixels, ``None`` or ``1`` will disable alignment.
+
     :param image_processor: optional :py:class:`dgenerate.imageprocessors.ImageProcessor` or list of them.
         A list is used to specify processors for individual images in a multi guidance image specification
         such as uri = "img1.png, img2.png".  In the case that a multi guidance image specification is used and only
@@ -1722,6 +1770,9 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
     if frame_end is not None:
         if frame_start > frame_end:
             raise ValueError('frame_start must be less than or equal to frame_end')
+
+    if align is not None and align < 1:
+        raise ValueError('align argument may not be less than 1.')
 
     if isinstance(uri, ImageSeedParseResult):
         parse_result = uri
@@ -1745,7 +1796,7 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
     if not isinstance(image_processor, list):
         image_processor = [image_processor]
 
-    control_guidance_image_paths = parse_result.seed_path.split(',')
+    control_guidance_image_paths = parse_result.get_control_image_paths()
 
     _validate_control_image_processor_count(
         processors=image_processor,
@@ -1756,7 +1807,8 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
             path=p.strip(),
             image_processor=image_processor[idx] if idx < len(image_processor) else None,
             resize_resolution=resize_resolution,
-            aspect_correct=aspect_correct)
+            aspect_correct=aspect_correct,
+            align=align)
         for idx, p in enumerate(control_guidance_image_paths)
     ]
 

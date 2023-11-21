@@ -33,7 +33,7 @@ class ConfigRunnerPlugin(_plugin.Plugin):
     """
 
     def __init__(self,
-                 loaded_by_name,
+                 loaded_by_name: str,
                  batch_processor: typing.Optional[_batchprocessor.BatchProcessor] = None,
                  render_loop: typing.Optional[_renderloop.RenderLoop] = None,
                  plugin_module_paths: typing.Optional[typing.List[str]] = None,
@@ -49,6 +49,14 @@ class ConfigRunnerPlugin(_plugin.Plugin):
         self.__plugin_module_paths = \
             plugin_module_paths if \
                 plugin_module_paths is not None else []
+
+    def set_template_variable(self, name, value):
+        if self.batch_processor is not None:
+            self.batch_processor.template_variables[name] = value
+
+    def update_template_variables(self, values):
+        if self.batch_processor is not None:
+            self.batch_processor.template_variables.update(values)
 
     def register_directive(self, name, implementation: typing.Callable[[typing.List[str]], None]):
         if self.batch_processor is not None:

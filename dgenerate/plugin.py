@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import ast
 import inspect
 import itertools
 import os
@@ -33,6 +34,86 @@ LOADED_PLUGIN_MODULES: typing.Dict[str, types.ModuleType] = {}
 """Plugin module in memory cache"""
 
 
+class PluginArg:
+    def __init__(self, name: str, type: typing.Type = typing.Any, **kwargs):
+        self.name = name
+        self.have_default = 'default' in kwargs
+        self.default = kwargs['default'] if self.have_default else None
+        self.type = type
+
+    @property
+    def is_hinted_optional(self):
+        return _types.is_optional(self.type)
+
+    @property
+    def hinted_optional_type(self):
+        return _types.get_type_of_optional(self.type)
+
+    @property
+    def base_type(self):
+        if self.is_hinted_optional:
+            return _types.get_type(self.hinted_optional_type)
+        else:
+            return _types.get_type(self.type)
+
+    def name_dashup(self) -> 'PluginArg':
+        r = PluginArg(_textprocessing.dashup(self.name))
+        r.have_default = self.have_default
+        r.default = self.default
+        r.type = r.type
+        return r
+
+    def name_dashdown(self) -> 'PluginArg':
+        r = PluginArg(_textprocessing.dashdown(self.name))
+        r.have_default = self.have_default
+        r.default = self.default
+        r.type = r.type
+        return r
+
+    def type_string(self):
+        if not _types.is_typing_hint(self.type):
+            return self.type.__name__
+        return str(self.type).replace('typing.', '')
+
+    def parse_by_type(self, value: typing.Union[str, typing.Any]):
+        if not isinstance(value, str):
+            return value
+
+        base_type = self.base_type
+        try:
+            if not _types.is_typing_hint(base_type) or base_type is typing.Any:
+                if base_type is bool:
+                    return _types.parse_bool(value)
+                if any(base_type is t for t in (list, dict, set, typing.Any)):
+                    try:
+                        evaled = ast.literal_eval(value)
+                    except ValueError:
+                        if base_type is typing.Any:
+                            return value
+                        raise
+
+                    if base_type is not typing.Any and not isinstance(evaled, base_type):
+                        if not self.is_hinted_optional or evaled is not None:
+                            raise ValueError(
+                                f'Literal type "{evaled.__class__.__name__}" '
+                                f'does not match plugin argument "{self.name}" type '
+                                f'hint "{self.type_string()}".')
+                    return evaled
+                return base_type(value)
+            return value
+        except SyntaxError as e:
+            if base_type is typing.Any:
+                return value
+            offset = e.offset - 1 if e.offset > 0 else 0
+            raise ValueError(f'Syntax Error: {e.text[:offset]}[ERROR HERE>]{e.text[offset:]}')
+
+    def __str__(self):
+        return f'{self.__class__.__name__}(name="{self.name}", type={self.type}, default={repr(self.default)})'
+
+    def __repr__(self):
+        return str(self)
+
+
 class Plugin:
 
     def __init__(self, loaded_by_name: str, argument_error_type: typing.Type[Exception] = ValueError, **kwargs):
@@ -46,72 +127,6 @@ class Plugin:
         """
         self.__loaded_by_name = loaded_by_name
         self.__argument_error_type = argument_error_type
-
-    def get_int_arg(self, name: str, value: typing.Union[str, int, typing.Dict]) -> int:
-        """
-        Convert an argument value from a string to an integer.
-        Throw ``argument_error_type`` if there is an error parsing the value.
-
-        :param name: the argument name for descriptive purposes,
-            and/or for specifying the dictionary key when *value*
-            is a dictionary.
-
-        :param value: an integer value as a string, or optionally a
-            dictionary to get the value from using the argument *name*.
-
-        :return: int
-        """
-        if isinstance(value, dict):
-            value = value.get(name)
-        try:
-            return int(value)
-        except ValueError:
-            raise self.__argument_error_type(f'Argument "{name}" must be an integer value.')
-
-    def get_float_arg(self, name: str, value: typing.Union[str, float, typing.Dict]) -> float:
-        """
-        Convert an argument value from a string to a float.
-        Throw ``argument_error_type`` if there is an error parsing the value.
-
-        :param name: the argument name for descriptive purposes,
-            and/or for specifying the dictionary key when *value*
-            is a dictionary.
-
-        :param value: a float value as a string, or optionally a
-            dictionary to get the value from using the argument *name*.
-
-        :return: float
-        """
-
-        if isinstance(value, dict):
-            value = value.get(name)
-        try:
-            return float(value)
-        except ValueError:
-            raise self.__argument_error_type(f'Argument "{name}" must be a floating point value.')
-
-    def get_bool_arg(self, name: str, value: typing.Union[str, bool, typing.Dict]) -> bool:
-        """
-        Convert an argument value from a string to a boolean value.
-        Throw ``argument_error_type`` if there is an error parsing the value.
-
-        :param name: the argument name for descriptive purposes,
-            and/or for specifying the dictionary key when *value*
-            is a dictionary.
-
-        :param value: a boolean value as a string, or optionally a
-            dictionary to get the value from using the argument *name*.
-
-        :return: bool
-        """
-
-        if isinstance(value, dict):
-            value = value.get(name)
-        try:
-            return _types.parse_bool(value)
-        except ValueError:
-            raise self.__argument_error_type(
-                f'Argument "{name}" must be a boolean value.')
 
     def argument_error(self, msg: str):
         raise self.__argument_error_type(msg)
@@ -156,17 +171,18 @@ class Plugin:
         elif cls.__doc__:
             help_str = _textprocessing.justify_left(cls.__doc__).strip()
 
-        args_with_defaults = cls.get_accepted_args_with_defaults(loaded_by_name)
+        args_with_defaults = cls.get_accepted_args(loaded_by_name)
         arg_descriptors = []
 
         for arg in args_with_defaults:
-            if len(arg) == 1:
-                arg_descriptors.append(arg[0])
+
+            if not arg.have_default:
+                arg_descriptors.append(arg.name + ': ' + arg.type_string())
             else:
-                default_value = arg[1]
+                default_value = arg.default
                 if isinstance(default_value, str):
                     default_value = _textprocessing.quote(default_value)
-                arg_descriptors.append(f'{arg[0]}={default_value}')
+                arg_descriptors.append(f'{arg.name}: {arg.type_string()} = {default_value}')
 
         if arg_descriptors:
             args_part = f'\n{" " * 4}arguments:\n{" " * 8}{(chr(10) + " " * 8).join(arg_descriptors)}\n'
@@ -186,20 +202,7 @@ class Plugin:
             return loaded_by_name + f':{args_part}'
 
     @classmethod
-    def get_accepted_args(cls, loaded_by_name: str) -> typing.List[str]:
-        """
-        Get a list of accepted argument names for a plugin class.
-
-        :param loaded_by_name: The name used to load the plugin.
-            Arguments may vary depending on what name was used to load the plugin.
-
-        :return: list of argument names
-        """
-        return [a[0] for a in
-                cls.get_accepted_args_with_defaults(loaded_by_name)]
-
-    @classmethod
-    def get_required_args(cls, loaded_by_name: str) -> typing.List[str]:
+    def get_required_args(cls, loaded_by_name: str) -> typing.List[PluginArg]:
         """
         Get a list of required arguments for this plugin class.
 
@@ -208,11 +211,11 @@ class Plugin:
 
         :return: list of argument names
         """
-        return [a[0] for a in
-                cls.get_accepted_args_with_defaults(loaded_by_name) if len(a) == 1]
+        return [a for a in
+                cls.get_accepted_args(loaded_by_name) if not a.have_default]
 
     @classmethod
-    def get_default_args(cls, loaded_by_name: str) -> typing.List[typing.Tuple[str, typing.Any]]:
+    def get_default_args(cls, loaded_by_name: str) -> typing.List[PluginArg]:
         """
         Get the names and values of arguments for this plugin that possess default values.
 
@@ -222,10 +225,10 @@ class Plugin:
         :return: list of arguments with default value: (name, value)
         """
         return [a for a in
-                cls.get_accepted_args_with_defaults(loaded_by_name) if len(a) == 2]
+                cls.get_accepted_args(loaded_by_name) if a.have_default]
 
     @classmethod
-    def get_accepted_args_with_defaults(cls, loaded_by_name) -> typing.List[typing.Tuple[str, typing.Any]]:
+    def get_accepted_args(cls, loaded_by_name) -> typing.List[PluginArg]:
         """
         Retrieve the argument signature of a plugin implementation. As a list of tuples
         which are: (name,) or (name, default_value) depending on if a default value for the argument
@@ -252,28 +255,36 @@ class Plugin:
 
             fixed_args = []
             for arg in args_with_defaults:
-                if not isinstance(arg, tuple):
-                    if not isinstance(arg, str):
-                        raise RuntimeError(
-                            f'{cls.__name__}.ARGS["{loaded_by_name}"] '
-                            f'contained a non tuple or str value: {arg}')
-                    fixed_args.append((_textprocessing.dashup(arg),))
-                elif len(arg) == 1:
-                    fixed_args.append((_textprocessing.dashup(arg[0]),))
-                else:
-                    fixed_args.append((_textprocessing.dashup(arg[0]), arg[1]))
-
+                if not isinstance(arg, PluginArg):
+                    raise RuntimeError(
+                        f'{cls.__name__}.ARGS["{loaded_by_name}"] '
+                        f'contained a non PluginArg value: {arg}')
+                fixed_args.append(arg.name_dashup())
             return [] if fixed_args is None else fixed_args
 
         args_with_defaults = []
 
         spec = _types.get_accepted_args_with_defaults(cls.__init__)
+        hints = typing.get_type_hints(cls.__init__)
 
         for arg in spec:
+            name = arg[0]
+
+            hint = hints.get(name)
+            extra = {}
+
+            if hint is not None:
+                extra['type'] = hint
+
             if len(arg) == 1:
-                args_with_defaults.append((_textprocessing.dashup(arg[0]),))
+                args_with_defaults.append(
+                    PluginArg(_textprocessing.dashup(name),
+                              **extra))
             else:
-                args_with_defaults.append((_textprocessing.dashup(arg[0]), arg[1]))
+                args_with_defaults.append(
+                    PluginArg(_textprocessing.dashup(name),
+                              default=arg[1],
+                              **extra))
 
         return args_with_defaults
 
@@ -326,7 +337,7 @@ def load_modules(paths: _types.OptionalPaths) -> typing.List[types.ModuleType]:
     return r
 
 
-PluginArgumentsDef = typing.Optional[typing.List[typing.Union[typing.Tuple[str], typing.Tuple[str, typing.Any]]]]
+PluginArgumentsDef = typing.Optional[typing.List[PluginArg]]
 
 
 class PluginLoader:
@@ -447,7 +458,10 @@ class PluginLoader:
 
         plugin_class = self.get_class_by_name(call_by_name)
 
-        parser_accepted_args = plugin_class.get_accepted_args(call_by_name)
+        parser_accepted_args = [a.name for a in plugin_class.get_accepted_args(call_by_name)]
+
+        parser_raw_args = [a.name for a in plugin_class.get_accepted_args(call_by_name)
+                           if a.base_type not in (int, str, float, bool)]
 
         if 'loaded-by-name' in parser_accepted_args:
             # inheritors of base_class can't define this
@@ -459,14 +473,16 @@ class PluginLoader:
             # reserved args always go into **kwargs
             # inheritors of base_class
 
-            if module_arg[0] in parser_accepted_args:
+            if module_arg.name in parser_accepted_args:
                 raise RuntimeError(f'"{module_arg}" is a reserved {self.__description} module argument, '
                                    'chose another argument name for your module.')
 
-            parser_accepted_args.append(module_arg[0])
+            parser_accepted_args.append(module_arg.name)
 
         arg_parser = _textprocessing.ConceptUriParser(
-            self.__description, parser_accepted_args)
+            self.__description,
+            known_args=parser_accepted_args,
+            args_raw=parser_raw_args)
 
         try:
             parsed_args = arg_parser.parse_concept_uri(path).args
@@ -477,42 +493,59 @@ class PluginLoader:
 
         for arg in plugin_class.get_default_args(call_by_name):
             # defaults specified by the implementation class
-            args_dict[_textprocessing.dashdown(arg[0])] = arg[1]
+            args_dict[_textprocessing.dashdown(arg.name)] = arg.default
 
-        for name_default in self.__reserved_args:
+        for reserved_arg in self.__reserved_args:
             # defaults specified by the loader
-            snake_case = _textprocessing.dashdown(name_default[0])
-            if len(name_default) == 2:
-                name, default = name_default
-                args_dict[snake_case] = parsed_args.get(name, default)
-            elif len(name_default) == 1:
-                name = name_default[0]
-                if name in parsed_args:
-                    args_dict[snake_case] = parsed_args.get(name)
-                elif snake_case not in kwargs:
-                    # Nothing provided this reserved argument value
-                    raise self.__argument_error_type(
-                        f'Missing required argument "{name}" for {self.__description} '
-                        f'"{call_by_name}".')
-            else:
-                raise ValueError('plugin reserved_args must be tuples of length 1 or 2')
+            snake_case = _textprocessing.dashdown(reserved_arg.name)
+
+            try:
+                if reserved_arg.have_default:
+                    args_dict[snake_case] = reserved_arg.parse_by_type(
+                        parsed_args.get(reserved_arg.name, reserved_arg.default))
+                else:
+                    if reserved_arg.name in parsed_args:
+                        args_dict[snake_case] = reserved_arg.parse_by_type(
+                            parsed_args.get(reserved_arg.name))
+                    elif snake_case not in kwargs:
+                        # Nothing provided this reserved argument value
+                        if reserved_arg.is_hinted_optional:
+                            args_dict[snake_case] = None
+                        else:
+                            raise self.__argument_error_type(
+                                f'Missing required argument "{reserved_arg.name}" for {self.__description} '
+                                f'"{call_by_name}".')
+            except ValueError as e:
+                raise self.__argument_error_type(
+                    f'Argument "{reserved_arg.name}" must match type: "{reserved_arg.type_string()}". Failure cause: {e}')
 
         # plugin load user arguments
         args_dict.update(kwargs)
 
+        accepted_args = {_textprocessing.dashup(n.name): n for n in
+                         itertools.chain(plugin_class.get_accepted_args(loaded_by_name=call_by_name),
+                                         self.__reserved_args)}
+
         for k, v in parsed_args.items():
             # URI overrides everything
-            args_dict[_textprocessing.dashdown(k)] = v
+            arg = accepted_args[k]
+            try:
+                args_dict[_textprocessing.dashdown(k)] = arg.parse_by_type(v)
+            except ValueError as e:
+                raise self.__argument_error_type(
+                    f'Argument "{k}" must match type: "{arg.type_string()}". Failure cause: {e}')
 
         # Automagic argument
         args_dict['loaded_by_name'] = call_by_name
 
-        for arg in itertools.chain(plugin_class.get_required_args(call_by_name),
-                                   (i[0] for i in self.__reserved_args if len(i) == 1)):
-
-            if _textprocessing.dashdown(arg) not in args_dict:
-                raise self.__argument_error_type(
-                    f'Missing required argument "{arg}" for {self.__description} "{call_by_name}".')
+        for arg_name, plugin_arg in ((k, v) for k, v in accepted_args.items() if not v.have_default):
+            snake_case = _textprocessing.dashdown(arg_name)
+            if snake_case not in args_dict:
+                if plugin_arg.is_hinted_optional:
+                    args_dict[snake_case] = None
+                else:
+                    raise self.__argument_error_type(
+                        f'Missing required argument "{arg_name}" for {self.__description} "{call_by_name}".')
 
         try:
             return plugin_class(**args_dict)

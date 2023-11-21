@@ -23,6 +23,7 @@ import typing
 import dgenerate.batchprocess.configrunnerplugin as _configrunnerplugin
 import dgenerate.plugin as _plugin
 import dgenerate.types as _types
+from dgenerate.plugin import PluginArg as _Pa
 
 
 class ConfigRunnerPluginNotFoundError(Exception):
@@ -53,7 +54,7 @@ class ConfigRunnerPluginLoader(_plugin.PluginLoader):
 
         super().__init__(base_class=_configrunnerplugin.ConfigRunnerPlugin,
                          description='directive',
-                         reserved_args=[('render-loop',), ('batch-processor',), ('plugin-module-paths',)],
+                         reserved_args=[_Pa('render-loop'), _Pa('batch-processor'), _Pa('plugin-module-paths')],
                          argument_error_type=ConfigRunnerPluginArgumentError,
                          not_found_error_type=ConfigRunnerPluginNotFoundError)
 

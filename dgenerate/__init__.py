@@ -83,7 +83,7 @@ def main():
             try:
                 ConfigRunner(render_loop=render_loop,
                              version=__version__,
-                             injected_args=sys.argv[1:]).run_file(sys.stdin)
+                             injected_args=sys.argv[1:], throw=True).run_file(sys.stdin)
             except dgenerate.plugin.ModuleFileNotFoundError as e:
                 # missing plugin file parsed by ConfigRunner out of injected args
                 dgenerate.messages.log(f'dgenerate: error: {e}', level=dgenerate.messages.ERROR)

@@ -24,6 +24,7 @@ import dgenerate.plugin as _plugin
 import dgenerate.subcommands.exceptions as _exceptions
 import dgenerate.subcommands.subcommand as _subcommand
 import dgenerate.types as _types
+from dgenerate.plugin import PluginArg as _Pa
 
 
 class SubCommandLoader(_plugin.PluginLoader):
@@ -38,7 +39,7 @@ class SubCommandLoader(_plugin.PluginLoader):
 
         super().__init__(base_class=_subcommand.SubCommand,
                          description='sub-command',
-                         reserved_args=[('args',)],
+                         reserved_args=[_Pa('args', type=list)],
                          argument_error_type=_exceptions.SubCommandArgumentError,
                          not_found_error_type=_exceptions.SubCommandNotFoundError)
 

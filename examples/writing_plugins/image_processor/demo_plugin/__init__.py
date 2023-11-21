@@ -1,6 +1,9 @@
 import typing
+
 import PIL.Image
+
 import dgenerate.imageprocessors
+from dgenerate.plugin import PluginArg as _Pa
 
 
 class FooBarImageProcessor(dgenerate.imageprocessors.ImageProcessor):
@@ -11,26 +14,19 @@ class FooBarImageProcessor(dgenerate.imageprocessors.ImageProcessor):
 
     # All argument names will have _ replaced with - on the command line.
     # Argument signature correctness (missing arguments, unknown arguments) etc.
-    # is verified by dgenerate, you are responsible for parsing and making sure your
-    # arguments are in the right format IE, int, float, bool, etc. they are actually
-    # passed into "__init__" as a string
+    # is verified by dgenerate, adding type hints will cause the argument values
+    # to be coerced into that type when parsed from a URI, arguments without type
+    # hints will be passed as strings when parsed from a URI
     def __init__(self,
                  my_argument,
-                 my_argument_2=False,
-                 my_argument_3=1.0,
+                 my_argument_2: bool = False,
+                 my_argument_3: float = 1.0,
                  **kwargs):
         super().__init__(**kwargs)
 
-        # These helper functions can help you validate arguments of int, float, and bool types
-        # they will produce a "dgenerate.imageprocessors.ImageProcessorArgumentError"
-        # if the string is not in the correct format for the requested type.
-        # You can throw that exception yourself or call "self.argument_error('my message')" anywhere
-        # in "__init__" if you are doing custom argument validation, it will be handle
-        # correctly and printed for the user on the command line
-
-        self._my_argument = self.get_int_arg('my_argument', my_argument)
-        self._my_argument_2 = self.get_bool_arg('my_argument_2', my_argument_2)
-        self._my_argument_3 = self.get_float_arg('my_argument_3', my_argument_3)
+        self._my_argument = my_argument
+        self._my_argument_2 = my_argument_2
+        self._my_argument_3 = my_argument_3
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: typing.Union[None, tuple]):
 
@@ -74,7 +70,6 @@ class FooBarImageProcessor(dgenerate.imageprocessors.ImageProcessor):
 # the same class
 
 class BooFabImageProcessor(dgenerate.imageprocessors.ImageProcessor):
-
     # This static property defines what names this module can be invoked by
     NAMES = ['boo', 'fab']
 
@@ -82,10 +77,13 @@ class BooFabImageProcessor(dgenerate.imageprocessors.ImageProcessor):
     # This static property can be used to define the argument signature
     # for each of the invokable names above
     ARGS = {
-        # required arguments are specified as a string,
-        # arguments with default values are specified as a tuple
-        'boo': ['my_argument', ('my_argument_2', False), ('my_argument_3', 1.0)],
-        'fab': ['my_argument', ('my_argument_2', 2.0), ('my_argument_3', False)]
+        'boo': [_Pa('my_argument'),
+                _Pa('my_argument_2', type=bool, default=False),
+                _Pa('my_argument_3', type=float, default=1.0)],
+
+        'fab': [_Pa('my_argument'),
+                _Pa('my_argument_2', type=float, default=2.0),
+                _Pa('my_argument_3', type=bool, default=False)]
     }
 
     # Defining the static method "help" allows you to provide a help string
@@ -107,13 +105,14 @@ class BooFabImageProcessor(dgenerate.imageprocessors.ImageProcessor):
         # to invoke it
 
         if self.loaded_by_name == 'boo':
-            self._my_argument = self.get_int_arg('my_argument', kwargs['my_argument'])
-            self._my_argument_2 = self.get_bool_arg('my_argument_2', kwargs)
-            self._my_argument_3 = self.get_float_arg('my_argument_3', kwargs)
+            self._my_argument = kwargs['my_argument']
+            self._my_argument_2 = kwargs['my_argument_2']
+            self._my_argument_3 = kwargs['my_argument_3']
+
         if self.loaded_by_name == 'fab':
-            self._my_argument = self.get_int_arg('my_argument', kwargs['my_argument'])
-            self._my_argument_2 = self.get_float_arg('my_argument_2', kwargs)
-            self._my_argument_3 = self.get_bool_arg('my_argument_3', kwargs)
+            self._my_argument = kwargs['my_argument']
+            self._my_argument_2 = kwargs['my_argument_2']
+            self._my_argument_3 = kwargs['my_argument_3']
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: typing.Union[None, tuple]):
         print(f'{self.loaded_by_name}:', self._my_argument, self._my_argument_2, self._my_argument_3)
