@@ -231,7 +231,7 @@ class FlaxControlNetUri:
         :return: :py:class:`.FlaxControlNetPath`
         """
         try:
-            r = _flax_control_net_uri_parser.parse_concept_uri(uri)
+            r = _flax_control_net_uri_parser.parse(uri)
 
             dtype = r.args.get('dtype')
             scale = r.args.get('scale', 1.0)
@@ -431,7 +431,7 @@ class TorchControlNetUri:
         :return: :py:class:`.TorchControlNetPath`
         """
         try:
-            r = _torch_control_net_uri_parser.parse_concept_uri(uri)
+            r = _torch_control_net_uri_parser.parse(uri)
 
             dtype = r.args.get('dtype')
             scale = r.args.get('scale', 1.0)
@@ -534,7 +534,7 @@ class SDXLRefinerUri:
         :return: :py:class:`.SDXLRefinerPath`
         """
         try:
-            r = _sdxl_refiner_uri_parser.parse_concept_uri(uri)
+            r = _sdxl_refiner_uri_parser.parse(uri)
 
             supported_dtypes = _enums.supported_data_type_strings()
 
@@ -730,7 +730,7 @@ class TorchVAEUri:
         :return: :py:class:`.TorchVAEPath`
         """
         try:
-            r = _torch_vae_uri_parser.parse_concept_uri(uri)
+            r = _torch_vae_uri_parser.parse(uri)
 
             model = r.args.get('model')
             if model is None:
@@ -907,7 +907,7 @@ class FlaxVAEUri:
         :return: :py:class:`.FlaxVAEPath`
         """
         try:
-            r = _flax_vae_uri_parser.parse_concept_uri(uri)
+            r = _flax_vae_uri_parser.parse(uri)
 
             model = r.args.get('model')
             if model is None:
@@ -1060,7 +1060,7 @@ class LoRAUri:
         :return: :py:class:`.LoRAPath`
         """
         try:
-            r = _lora_uri_parser.parse_concept_uri(uri)
+            r = _lora_uri_parser.parse(uri)
 
             return LoRAUri(model=r.concept,
                            scale=float(r.args.get('scale', 1.0)),
@@ -1162,7 +1162,7 @@ class TextualInversionUri:
         :return: :py:class:`.TextualInversionPath`
         """
         try:
-            r = _textual_inversion_uri_parser.parse_concept_uri(uri)
+            r = _textual_inversion_uri_parser.parse(uri)
 
             return TextualInversionUri(model=r.concept,
                                        weight_name=r.args.get('weight-name', None),
