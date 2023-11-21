@@ -175,7 +175,6 @@ def tokenized_split(string,
                 cur_quote = c
                 cur_string += (c if not remove_quotes else '')
                 state = _States.STRING
-                cur_string_start_idx = idx
             elif not strict or not c.isspace():
                 if c == seperator:
                     if not parts:
