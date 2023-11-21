@@ -25,6 +25,7 @@ import dgenerate.imageprocessors.imageprocessor as _imageprocessor
 import dgenerate.imageprocessors.imageprocessorchain as _imageprocessorchain
 import dgenerate.plugin as _plugin
 import dgenerate.types as _types
+from dgenerate.plugin import PluginArg as _Pa
 
 
 class ImageProcessorLoader(_plugin.PluginLoader):
@@ -38,7 +39,9 @@ class ImageProcessorLoader(_plugin.PluginLoader):
         # The empty string above disables sphinx inherited doc
         super().__init__(base_class=_imageprocessor.ImageProcessor,
                          description='image processor',
-                         reserved_args=[('output-file', None), ('output-overwrite', False), ('device', 'cpu')],
+                         reserved_args=[_Pa('output-file', type=str, default=None),
+                                        _Pa('output-overwrite', type=bool, default=False),
+                                        _Pa('device', type=str, default='cpu')],
                          argument_error_type=_exceptions.ImageProcessorArgumentError,
                          not_found_error_type=_exceptions.ImageProcessorNotFoundError)
 

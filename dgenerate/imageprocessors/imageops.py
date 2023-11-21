@@ -127,14 +127,14 @@ class PosterizeProcessor(_imageprocessor.ImageProcessor):
 
     NAMES = ['posterize']
 
-    def __init__(self, bits, **kwargs):
+    def __init__(self, bits: int, **kwargs):
         """
         :param bits: required argument, integer value from 1 to 8
         :param kwargs: forwarded to base class
         """
         super().__init__(**kwargs)
 
-        self._bits = self.get_int_arg('bits', bits)
+        self._bits = bits
 
         if self._bits < 1 or self._bits > 8:
             self.argument_error(
@@ -169,14 +169,14 @@ class SolarizeProcessor(_imageprocessor.ImageProcessor):
 
     NAMES = ['solarize']
 
-    def __init__(self, threshold=128, **kwargs):
+    def __init__(self, threshold: int = 128, **kwargs):
         """
         :param threshold: integer value from 0 to 255, default is 128
         :param kwargs: forwarded to base class
         """
         super().__init__(**kwargs)
 
-        self._threshold = self.get_int_arg('threshold', threshold)
+        self._threshold = threshold
 
         if self._threshold < 0 or self._threshold > 255:
             self.argument_error(

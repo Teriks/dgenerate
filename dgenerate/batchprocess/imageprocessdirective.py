@@ -114,15 +114,15 @@ class ImageProcessDirective(_configrunnerplugin.ConfigRunnerPlugin):
     NAMES = ['image_process']
 
     def __init__(self,
-                 allow_exit=False,
-                 message_header='\\image_process:',
-                 help_name='\\image_process',
-                 help_desc=None,
+                 allow_exit: bool = False,
+                 message_header: str = '\\image_process:',
+                 help_name: str = '\\image_process',
+                 help_desc: typing.Optional[str] = None,
                  **kwargs):
 
         super().__init__(**kwargs)
 
-        self._allow_exit = self.get_bool_arg('allow_exit', allow_exit)
+        self._allow_exit = allow_exit
         self._message_header = message_header
 
         self._arg_parser = _create_arg_parser(help_name, help_desc)
@@ -316,5 +316,5 @@ class ImageProcessDirective(_configrunnerplugin.ConfigRunnerPlugin):
         except FileNotFoundError as e:
             self.argument_error(str(e))
 
-        self.batch_processor.template_variables['last_images'] = self.written_images
-        self.batch_processor.template_variables['last_animations'] = self.written_animations
+        self.set_template_variable('last_images', self.written_images)
+        self.set_template_variable('last_animations', self.written_animations)

@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import typing
 
 import PIL.Image
 import cv2
@@ -52,15 +53,15 @@ class CannyEdgeDetectProcessor(_imageprocessor.ImageProcessor):
 
     # noinspection PyPep8Naming
     def __init__(self,
-                 lower=50,
-                 upper=100,
-                 aperture_size=3,
-                 L2_gradient=False,
-                 blur=False,
-                 gray=False,
-                 threshold_algo=None,
-                 sigma=0.33,
-                 pre_resize=False, **kwargs):
+                 lower: int = 50,
+                 upper: int = 100,
+                 aperture_size: int = 3,
+                 L2_gradient: bool = False,
+                 blur: bool = False,
+                 gray: bool = False,
+                 threshold_algo: typing.Optional[str] = None,
+                 sigma: float = 0.33,
+                 pre_resize: bool = False, **kwargs):
         """
         :param lower: lower threshold for canny edge detection
         :param upper: upper threshold for canny edge detection
@@ -77,8 +78,6 @@ class CannyEdgeDetectProcessor(_imageprocessor.ImageProcessor):
         """
         super().__init__(**kwargs)
 
-        # The module loader will pass the values from the command line as strings
-
         if threshold_algo is not None:
             if threshold_algo not in {'otsu', 'triangle', 'median'}:
                 self.argument_error(
@@ -86,20 +85,20 @@ class CannyEdgeDetectProcessor(_imageprocessor.ImageProcessor):
 
         self._threshold_algo = threshold_algo
 
-        self._sigma = self.get_float_arg('sigma', sigma)
-        self._blur = self.get_bool_arg('blur', blur)
-        self._gray = self.get_bool_arg('gray', gray)
-        self._lower = self.get_int_arg('lower', lower)
-        self._upper = self.get_int_arg('upper', upper)
-        self._aperture_size = self.get_int_arg('aperture_size', aperture_size)
+        self._sigma = sigma
+        self._blur = blur
+        self._gray = gray
+        self._lower = lower
+        self._upper = upper
+        self._aperture_size = aperture_size
 
         if (self._aperture_size % 2 == 0 or
                 self._aperture_size < 3 or self._aperture_size > 7):
             self.argument_error(
                 f'Argument "aperture_size" should be an odd number between 3 and 7, received {self._aperture_size}.')
 
-        self._L2_gradient = self.get_bool_arg('L2_gradient', L2_gradient)
-        self._pre_resize = self.get_bool_arg('pre_resize', pre_resize)
+        self._L2_gradient = L2_gradient
+        self._pre_resize = pre_resize
 
     def _get_range(self, threshold):
         return int(max(0, (1 - self._sigma) * threshold)), int(min(255, (1 + self._sigma) * threshold))

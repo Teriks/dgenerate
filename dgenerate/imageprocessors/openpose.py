@@ -43,10 +43,10 @@ class OpenPoseProcessor(_imageprocessor.ImageProcessor):
     NAMES = ['openpose']
 
     def __init__(self,
-                 include_body=True,
-                 include_hand=False,
-                 include_face=False,
-                 pre_resize=False, **kwargs):
+                 include_body: bool = True,
+                 include_hand: bool = False,
+                 include_face: bool = False,
+                 pre_resize: bool = False, **kwargs):
         """
 
         :param include_body: generate a body rig?
@@ -60,10 +60,10 @@ class OpenPoseProcessor(_imageprocessor.ImageProcessor):
 
         self._openpose = _cna.OpenposeDetector.from_pretrained('lllyasviel/Annotators')
         self._openpose.to(self.device)
-        self._include_body = self.get_bool_arg("include-body", include_body)
-        self._include_hand = self.get_bool_arg("include-hand", include_hand)
-        self._include_face = self.get_bool_arg("include-face", include_face)
-        self._pre_resize = self.get_bool_arg("pre-resize", pre_resize)
+        self._include_body = include_body
+        self._include_hand = include_hand
+        self._include_face = include_face
+        self._pre_resize = pre_resize
 
     def __str__(self):
         args = [

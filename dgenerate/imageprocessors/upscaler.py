@@ -55,7 +55,7 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
 
     NAMES = ['upscaler']
 
-    def __init__(self, model, tile=512, overlap=32, pre_resize=False, **kwargs):
+    def __init__(self, model: str, tile: int = 512, overlap: int = 32, pre_resize: bool = False, **kwargs):
         super().__init__(**kwargs)
 
         try:
@@ -63,9 +63,9 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
         except chainner.UnsupportedModelError:
             self.argument_error('Unsupported model file format.')
 
-        self._tile = self.get_int_arg('tile', tile)
-        self._overlap = self.get_int_arg('overlap', overlap)
-        self._pre_resize = self.get_bool_arg("pre-resize", pre_resize)
+        self._tile = tile
+        self._overlap = overlap
+        self._pre_resize = pre_resize
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize) -> PIL.Image.Image:
         if self._pre_resize:

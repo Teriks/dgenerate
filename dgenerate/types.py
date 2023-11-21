@@ -207,6 +207,10 @@ def get_type_of_optional(hinted_type):
                 return o
     return None
 
+def is_typing_hint(obj):
+    if obj is None:
+        return False
+    return obj.__module__ == 'typing'
 
 def parse_bool(string_or_bool: typing.Union[str, bool]):
     """

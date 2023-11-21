@@ -875,7 +875,15 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         if self.control_net_uris:
             control_image_paths = parsed.get_control_image_paths()
-            num_control_images = len(control_image_paths)
+            num_control_images = len(control_image_paths) if control_image_paths is not None else 0
+
+            if not parsed.is_single_spec and parsed.control_path is None:
+                raise RenderLoopConfigError(
+                    f'You must specify a control image with the control argument '
+                    f'IE: "my-seed.png;control=my-control.png" in your '
+                    f'{a_namer("image_seeds")} "{uri}" when using {a_namer("control_net_uris")} '
+                    f'in order to use inpainting. If you want to use the control image alone '
+                    f'without a mask, use {a_namer("image_seeds")} "{parsed.seed_path}".')
 
             if control_image_paths is None:
                 raise RenderLoopConfigError(
@@ -932,14 +940,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'specification "{uri}". IE: when {a_namer("control_net_uris")} is specified and '
                     f'your {a_namer("image_seeds")} specification has a single source or comma '
                     f'seperated list of sources.')
-
-        if self.control_net_uris and not parsed.is_single_spec and parsed.control_path is None:
-            raise RenderLoopConfigError(
-                f'You must specify a control image with the control argument '
-                f'IE: "my-seed.png;control=my-control.png" in your '
-                f'{a_namer("image_seeds")} "{uri}" when using {a_namer("control_net_uris")} '
-                f'in order to use inpainting. If you want to use the control image alone '
-                f'without a mask, use {a_namer("image_seeds")} "{parsed.seed_path}".')
 
         if self.model_type == _pipelinewrapper.ModelTypes.TORCH_IFS_IMG2IMG or \
                 (parsed.mask_path and _pipelinewrapper.model_type_is_floyd_ifs(self.model_type)):

@@ -70,7 +70,6 @@ class ImageProcessor(_plugin.Plugin):
                 filename = self.__gen_filename()
             else:
                 filename = self.__output_file
-
             image.save(filename)
             _messages.debug_log(f'{debug_header}: "{filename}"')
 
