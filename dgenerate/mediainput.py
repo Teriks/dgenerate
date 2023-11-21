@@ -1007,6 +1007,9 @@ def create_web_cache_file(url,
 
 
 class UnknownMimetypeError(Exception):
+    """
+    Raised when an unsupported mimetype is encountered
+    """
     pass
 
 
@@ -1031,7 +1034,7 @@ def fetch_media_data_stream(uri: str) -> typing.Tuple[str, typing.BinaryIO]:
 
     :param uri: Local file path or URL
 
-    :raises UnknownMimetypeError:
+    :raise UnknownMimetypeError: If a remote file serves an unsupported mimetype value
 
     :return: (mime-type string, BinaryIO)
     """
@@ -1121,6 +1124,8 @@ def create_animation_reader(mimetype: str,
 
     :py:class:`.VideoReader` or :py:class:`.AnimatedImageReader` will be returned for Video
     files and Animated Images respectively.
+
+    :raise UnknownMimetypeError: on unknown ``mimetype`` value
 
     :param mimetype: one of :py:func:`.get_supported_mimetypes`
 

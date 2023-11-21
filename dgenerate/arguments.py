@@ -1150,6 +1150,9 @@ actions.append(
 
 
 class DgenerateUsageError(Exception):
+    """
+    Raised by :py:func:`.parse_args` and :py:func:`.parse_known_args` on argument usage errors.
+    """
     pass
 
 
