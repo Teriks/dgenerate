@@ -20,7 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import typing
 
-import dgenerate.batchprocess.configrunner as _configrunner
+import dgenerate
 import dgenerate.batchprocess.configrunnerpluginloader as _configrunnerpluginloader
 import dgenerate.plugin as _plugin
 import dgenerate.renderloop as _renderloop
@@ -34,7 +34,7 @@ class ConfigRunnerPlugin(_plugin.Plugin):
 
     def __init__(self,
                  loaded_by_name: str,
-                 config_runner: typing.Optional[_configrunner.ConfigRunner] = None,
+                 config_runner: typing.Optional['dgenerate.batchprocess.ConfigRunner'] = None,
                  render_loop: typing.Optional[_renderloop.RenderLoop] = None,
                  plugin_module_paths: typing.Optional[typing.List[str]] = None,
                  **kwargs):
@@ -95,7 +95,7 @@ class ConfigRunnerPlugin(_plugin.Plugin):
         return self.__render_loop
 
     @property
-    def config_runner(self) -> typing.Optional[_configrunner.ConfigRunner]:
+    def config_runner(self) -> typing.Optional['dgenerate.batchprocess.ConfigRunner']:
         """
         Provides access to the currently instantiated :py:class:`dgenerate.batchprocess.ConfigRunner` object
         running the config file that this directive is being invoked in.
