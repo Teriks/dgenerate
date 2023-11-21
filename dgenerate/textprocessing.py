@@ -71,7 +71,7 @@ def tokenized_split(string,
                     escapes_in_unquoted=False,
                     escapes_in_quoted=False):
     """
-    Split a string by a seperator and discard whitespace around tokens, avoid
+    Split a string by a separator and discard whitespace around tokens, avoid
     splitting within single or double quoted strings. Empty fields may be used.
 
     Quotes can be always be escaped with a backslash to avoid the creation of a
@@ -81,15 +81,15 @@ def tokenized_split(string,
     :raise TokenizedSplitSyntaxError: on syntax errors.
 
     :param string: the string
-    :param separator: seperator
+    :param separator: separator
     :param remove_quotes: remove quotes from quoted string tokens?
     :param strict: Text tokens cannot be intermixed with quoted strings? disallow IE: ``"text'string'text"``
     :param escapes_in_unquoted: evaluate escape sequences in text tokens (unquoted strings)?
         The slash is retained by default when escaping quotes, this disables that, and also enables handling of the escapes ``n, r, t, b, f, and \\``.
-        IE: given ``seperator =";"`` parse ``\\"token\\"; "a b"`` -> ``['"token"', 'a b']``, instead of ``\\"token\\"; "a b"``-> ``['\\"token\\"', 'a b']``
+        IE: given ``separator =";"`` parse ``\\"token\\"; "a b"`` -> ``['"token"', 'a b']``, instead of ``\\"token\\"; "a b"``-> ``['\\"token\\"', 'a b']``
     :param escapes_in_quoted: evaluate escape sequences in quoted string tokens?
         The slash is retained by default when escaping quotes, this disables that, and also enables handling of the escapes ``n, r, t, b, f, and \\``.
-        IE given ``seperator = ";"`` parse ``token; "a \\" b"`` -> ``['token', 'a " b']``, instead of ``token; "a \\" b"``-> ``['token', 'a \\" b']``
+        IE given ``separator = ";"`` parse ``token; "a \\" b"`` -> ``['token', 'a " b']``, instead of ``token; "a \\" b"``-> ``['token', 'a \\" b']``
 
     :return: parsed fields
     """
@@ -355,9 +355,9 @@ class ConceptUriParser:
     ``None`` or ``False`` indicates no arguments can accept a comma separated list.
     
     Assigning a set containing argument names indicates only the specified 
-    arguments can accept a comma seperated list.
+    arguments can accept a comma separated list.
     
-    When an argument is parsed as a comma seperated list, its value/type
+    When an argument is parsed as a comma separated list, its value/type
     in :py:attr:`ConceptUri.args` will be that of a list.
     """
 

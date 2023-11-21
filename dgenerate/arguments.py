@@ -349,7 +349,7 @@ actions.append(
                         help="""The number of image variations to produce per set of individual diffusion parameters
                         in one rendering step simultaneously on a single GPU. When using flax, batch size
                         is controlled by the environmental variable CUDA_VISIBLE_DEVICES which is a comma 
-                        seperated list of GPU device numbers (as listed by nvidia-smi). Usage of this 
+                        separated list of GPU device numbers (as listed by nvidia-smi). Usage of this 
                         argument with --model-type flax* will cause an error, diffusion with flax will 
                         generate an image on every GPU that is visible to CUDA and this is currently 
                         unchangeable. When generating animations with a --batch-size greater than one,
