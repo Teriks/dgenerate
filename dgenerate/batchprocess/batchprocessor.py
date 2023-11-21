@@ -150,7 +150,9 @@ class BatchProcessor:
         :param template_functions: Functions available to Jinja2
         :param directives: batch processing directive handlers, for: *\\\\directives*. This is a dictionary
             of names to functions which accept a single parameter, a list of directive arguments.
-        :param injected_args: Arguments to be injected at the end of user specified arguments for every shell invocation
+        :param injected_args: Arguments to be injected at the end of user specified arguments for every shell invocation.
+            If ``-v/--verbose`` is present in ``injected_args`` debugging output will be enabled globally while the config
+            runs, and not just for invocations.
         """
 
         self._template_functions = None
@@ -365,9 +367,8 @@ class BatchProcessor:
         """
 
         try:
-            parsed = _arguments.parse_known_args(
-                self.injected_args,
-                log_error=False)
+            parsed = _arguments.parse_known_args(self.injected_args,
+                                                 log_error=False)
         except _arguments.DgenerateUsageError as e:
             raise BatchProcessError(f'Error parsing injected arguments: {e}')
 
@@ -375,7 +376,6 @@ class BatchProcessor:
             _messages.push_level(_messages.DEBUG)
 
         try:
-
             self._run_file(stream)
         except BatchProcessError as e:
             raise BatchProcessError(f'Error on line {self.current_line}: {e}')
