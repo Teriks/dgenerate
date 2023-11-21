@@ -225,6 +225,8 @@ class VideoReader(_imageprocessors.ImageProcessorMixin, AnimationReader):
         anim_frame_duration = 1000 / anim_fps
         total_frames = self._container.streams.video[0].frames
 
+        self._container.streams.video[0].thread_type = "AUTO"
+
         if total_frames <= 0:
             # webm decode bug?
             total_frames = sum(1 for _ in self._container.decode(video=0))
@@ -1188,7 +1190,7 @@ class AnimationReaderSpec:
 
     path: str
     """
-    File path (or HTTP/HTTPS URL with default **path_opener**)
+    File path (or HTTP/HTTPS URL with default ``path_opener``)
     """
 
     image_processor: typing.Optional[_imageprocessors.ImageProcessor] = None

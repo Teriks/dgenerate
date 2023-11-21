@@ -97,6 +97,16 @@ def _create_arg_parser(prog, description):
         '-d', '--device', default='cuda', type=dgenerate.arguments._type_device,
         help='Processing device, for example "cuda", "cuda:1".')
 
+    parser.add_argument('-fs', '--frame-start', default=0, type=dgenerate.arguments._type_frame_start,
+                        metavar="FRAME_NUMBER",
+                        help="""Starting frame slice point for animated files (zero-indexed), the specified
+                         frame will be included.  (default: 0)""")
+
+    parser.add_argument('-fe', '--frame-end', default=None, type=dgenerate.arguments._type_frame_end,
+                        metavar="FRAME_NUMBER",
+                        help="""Ending frame slice point for animated files (zero-indexed), the specified 
+                        frame will be included.""")
+
     write_types = parser.add_mutually_exclusive_group()
 
     write_types.add_argument(
@@ -176,7 +186,7 @@ class ImageProcessDirective(_configrunnerplugin.ConfigRunnerPlugin):
     def _record_save_animation(self, filename):
         self._written_animations.write(os.path.abspath(filename) + '\n')
 
-    def _process_reader(self, file, reader: _mediainput.AnimationReader, out_filename):
+    def _process_reader(self, file, reader: _mediainput.MultiAnimationReader, out_filename):
 
         out_directory = os.path.dirname(out_filename)
 
@@ -196,7 +206,7 @@ class ImageProcessDirective(_configrunnerplugin.ConfigRunnerPlugin):
                     out_directory if out_directory else '.',
                     path_maker=_filelock.suffix_path_maker(out_filename, duplicate_output_suffix))
 
-            next(reader).save(out_filename)
+            next(reader)[0].save(out_filename)
             self._record_save_image(out_filename)
 
             _messages.log(fr'{self._message_header} Wrote Image "{out_filename}"',
@@ -237,7 +247,7 @@ class ImageProcessDirective(_configrunnerplugin.ConfigRunnerPlugin):
                         fr'{self._message_header} Processing Frame {frame_idx + 1}/{reader.total_frames}, Completion ETA: {eta}')
 
                     # Processing happens here
-                    frame = next(reader)
+                    frame = next(reader)[0]
 
                     if not self._parsed_args.no_animation:
                         writer.write(frame)
@@ -276,16 +286,14 @@ class ImageProcessDirective(_configrunnerplugin.ConfigRunnerPlugin):
         else:
             processor = None
 
-        stream_def = _mediainput.fetch_media_data_stream(file)
-
-        with stream_def[1], _mediainput.create_animation_reader(
-                mimetype=stream_def[0],
-                file=stream_def[1],
-                file_source=file,
-                resize_resolution=self._parsed_args.resize,
-                aspect_correct=not self._parsed_args.no_aspect,
-                align=self._parsed_args.align,
-                image_processor=processor) as reader:
+        with _mediainput.MultiAnimationReader([
+            _mediainput.AnimationReaderSpec(path=file,
+                                            image_processor=processor,
+                                            resize_resolution=self._parsed_args.resize,
+                                            aspect_correct=not self._parsed_args.no_aspect,
+                                            align=self._parsed_args.align)],
+                frame_start=self._parsed_args.frame_start,
+                frame_end=self._parsed_args.frame_end) as reader:
 
             self._last_frame_time = 0
             self._frame_time_sum = 0
@@ -309,6 +317,10 @@ class ImageProcessDirective(_configrunnerplugin.ConfigRunnerPlugin):
             if self._allow_exit:
                 raise e
             return
+
+        if self._parsed_args.frame_end is not None and \
+                self._parsed_args.frame_start > self._parsed_args.frame_end:
+            self.argument_error(f'--frame-start must be less than or equal to --frame_end')
 
         if self._written_images is not None:
             self._written_images.close()

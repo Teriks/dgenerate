@@ -925,14 +925,16 @@ actions.append(
                         only write the animation file. This option is incompatible with --animation-format frames."""))
 
 actions.append(
-    parser.add_argument('-fs', '--frame-start', action='store', default=0, type=_type_frame_start,
+    parser.add_argument('-fs', '--frame-start', default=0, type=_type_frame_start,
                         metavar="FRAME_NUMBER",
-                        help='Starting frame slice point for animated files, the specified frame will be included.'))
+                        help="""Starting frame slice point for animated files (zero-indexed), the specified frame 
+                        will be included. (default: 0)"""))
 
 actions.append(
-    parser.add_argument('-fe', '--frame-end', action='store', default=None, type=_type_frame_end,
+    parser.add_argument('-fe', '--frame-end', default=None, type=_type_frame_end,
                         metavar="FRAME_NUMBER",
-                        help='Ending frame slice point for animated files, the specified frame will be included.'))
+                        help="""Ending frame slice point for animated files (zero-indexed), the specified frame 
+                        will be included."""))
 
 actions.append(
     parser.add_argument('-is', '--image-seeds', action='store', nargs='+', default=[], metavar="SEED",
