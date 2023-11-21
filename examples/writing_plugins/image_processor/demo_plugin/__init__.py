@@ -15,18 +15,25 @@ class FooBarImageProcessor(dgenerate.imageprocessors.ImageProcessor):
     # All argument names will have _ replaced with - on the command line.
     # Argument signature correctness (missing arguments, unknown arguments) etc.
     # is verified by dgenerate, adding type hints will cause the argument values
-    # to be coerced into that type when parsed from a URI, arguments without type
-    # hints will be passed as strings when parsed from a URI
+    # to be parsed into that type automatically with validation when parsed from a URI,
+    # arguments without type hints will be parsed as python literals unless they are
+    # unquoted strings in which case they will be passed straight through. The type
+    # hint typing.Optional[...] is supported to indicate that an argument is optional,
+    # when a value is passed to an optional argument that value will be validated against the
+    # specified optional type, if you do not provide a default None value in the constructor
+    # (which you should), dgenerate will pass None for you.
     def __init__(self,
-                 my_argument,
+                 my_argument: str,
                  my_argument_2: bool = False,
                  my_argument_3: float = 1.0,
+                 my_argument_4: typing.Optional[float] = None,
                  **kwargs):
         super().__init__(**kwargs)
 
         self._my_argument = my_argument
         self._my_argument_2 = my_argument_2
         self._my_argument_3 = my_argument_3
+        self._my_argument_4 = my_argument_4
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: typing.Union[None, tuple]):
 
