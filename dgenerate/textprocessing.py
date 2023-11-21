@@ -106,7 +106,7 @@ def tokenized_split(string,
     cur_quote = ''
 
     QUOTE_CHARS = {'"', "'"}
-    RECOGNIZED_ESCAPE_CODES = {'n', 'r', 't', 'b', 'f'}
+    RECOGNIZED_ESCAPE_CODES = {'n', 'r', 't', 'b', 'f', '\\'}
 
     def append_text(t):
         if parts:
