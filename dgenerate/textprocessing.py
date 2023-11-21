@@ -28,6 +28,9 @@ import dgenerate.types as _types
 
 
 class ConceptPathParseError(Exception):
+    """
+    Raised by :py:meth:`.ConceptUriParser.parse` on parsing errors.
+    """
     pass
 
 
@@ -211,6 +214,9 @@ def tokenized_split(string,
 
 
 class UnquoteSyntaxError(Exception):
+    """
+    Raised by :py:func:`.unquote` on parsing errors.
+    """
     pass
 
 
@@ -321,7 +327,7 @@ class ConceptUriParser:
 
         self.concept_name = concept_name
 
-    def parse_concept_uri(self, uri: _types.Uri):
+    def parse(self, uri: _types.Uri):
         """
         Parse a string.
 
@@ -425,16 +431,20 @@ def underline(string: str, underline_char: str = '=') -> str:
     return string + '\n' + (underline_char * min(len(max(string.split('\n'), key=len)), long_text_wrap_width()))
 
 
-def quote(string: str) -> str:
+def quote(string: str, char='"') -> str:
     """
-    Wrap a string in double quotes.
+    Wrap a string with a quote character.
+
+    Double quotes by default.
 
     This is not equivalent to shell quoting.
 
+
     :param string: the string
-    :return: The quoted string
+    :param char: the quote character to use
+    :return: the quoted string
     """
-    return f'"{string}"'
+    return f'{char}{string}{char}'
 
 
 def is_quoted(string: str) -> bool:

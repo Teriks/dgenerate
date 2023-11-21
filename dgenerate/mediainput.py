@@ -778,7 +778,7 @@ def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
                                                    args_multiple=['control'])
 
     try:
-        parse_result = seed_parser.parse_concept_uri(uri)
+        parse_result = seed_parser.parse(uri)
     except _textprocessing.ConceptPathParseError as e:
         raise ImageSeedError(e)
 
