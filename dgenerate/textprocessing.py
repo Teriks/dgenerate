@@ -97,10 +97,11 @@ def tokenized_split(string,
     class _States(enum.Enum):
         AWAIT_TEXT = 0
         TEXT_TOKEN = 1
-        ESCAPE_TEXT = 2
-        STRING = 3
-        STRING_ESCAPE = 4
-        SEP_REQUIRED = 5
+        TEXT_TOKEN_STRICT = 2
+        ESCAPE_TEXT = 3
+        STRING = 4
+        STRING_ESCAPE = 5
+        SEP_REQUIRED = 6
 
     state = _States.AWAIT_TEXT
     parts = []
@@ -122,47 +123,66 @@ def tokenized_split(string,
     for idx, c in enumerate(string):
 
         if state == _States.STRING:
+            # inside of a quoted string
             if c == '\\':
+                # encountered an escape sequence start
                 state = _States.STRING_ESCAPE
                 if not escapes_in_quoted:
                     cur_string += c
             elif c == cur_quote:
+                # encountered the terminator quote
                 append_text(cur_string + (c if not remove_quotes else ''))
                 cur_string = ''
                 # Strict mode requires a seperator after a quoted string token
-                state = _States.SEP_REQUIRED if strict else _States.AWAIT_TEXT
+                state = _States.SEP_REQUIRED if strict else _States.TEXT_TOKEN
             else:
+                # append to current string
                 cur_string += c
         elif state == _States.ESCAPE_TEXT:
-            state = _States.TEXT_TOKEN if strict else _States.AWAIT_TEXT
+            # after encountering an escape sequence start inside of a text token
+
+            state = _States.TEXT_TOKEN_STRICT if strict else _States.TEXT_TOKEN
+            # return to the appropriate state
+
             if c in QUOTE_CHARS:
+                # this is an escaped quotation character
                 append_text(c)
             elif c in RECOGNIZED_ESCAPE_CODES:
+                # this is a character that translates into utf-8 escape code
+                # that we have decided to support
                 if escapes_in_unquoted:
                     append_text(fr'\{c}'.encode('utf-8').decode('unicode_escape'))
                 else:
                     append_text(c)
+            elif escapes_in_unquoted:
+                # unknown escape code case 1
+                append_text(fr'\{c}')
             else:
-                if escapes_in_unquoted:
-                    append_text(fr'\{c}')
-                else:
-                    append_text(c)
+                # unknown escape code case 2
+                append_text(c)
         elif state == _States.STRING_ESCAPE:
+            # after encountering an escape sequence start inside of a quoted string
             state = _States.STRING
+            # return to string state
             if c in QUOTE_CHARS:
+                # this is an escaped quotation character
                 cur_string += c
             elif c in RECOGNIZED_ESCAPE_CODES:
+                # this is a character that translates into utf-8 escape code
+                # that we have decided to support
                 if escapes_in_quoted:
                     cur_string += fr'\{c}'.encode('utf-8').decode('unicode_escape')
                 else:
                     cur_string += c
+            elif escapes_in_quoted:
+                # unknown escape code case 1
+                cur_string += fr'\{c}'
             else:
-                if escapes_in_quoted:
-                    cur_string += fr'\{c}'
-                else:
-                    cur_string += c
+                # unknown escape code case 2
+                cur_string += c
         elif state == _States.SEP_REQUIRED:
             # This state is only reached in strict mode
+            # where separators are required after a string token
             if c == seperator:
                 state = _States.AWAIT_TEXT
                 parts.append('')
@@ -170,43 +190,71 @@ def tokenized_split(string,
                 raise syntax_error('Missing separator after string', idx)
         elif state == _States.AWAIT_TEXT:
             if c == '\\':
+                # started an escape sequence
                 state = _States.ESCAPE_TEXT
                 if not escapes_in_unquoted:
                     append_text(c)
             elif c in QUOTE_CHARS:
+                # started a string token
                 cur_quote = c
                 cur_string += (c if not remove_quotes else '')
                 state = _States.STRING
-            elif not strict or not c.isspace():
-                if c == seperator:
-                    if not parts:
-                        parts += ['', '']
-                    else:
-                        parts.append('')
+            elif c.isspace():
+                # ignore space until token starts
+                pass
+            elif c == seperator:
+                # started the string with a seperator
+                if not parts:
+                    parts += ['', '']
                 else:
-                    # Only change state in strict mode
-                    state = _States.TEXT_TOKEN if strict else _States.AWAIT_TEXT
-                    append_text(c)
+                    parts.append('')
+            else:
+                # started a text token
+                state = _States.TEXT_TOKEN_STRICT if strict else _States.TEXT_TOKEN
+                append_text(c)
         elif state == _States.TEXT_TOKEN:
-            # This state is only reached in strict mode
+            # this is the non strict mode parsing state inside a text token
             if c == '\\':
+                # started an escape sequence in a text token
                 state = _States.ESCAPE_TEXT
                 if not escapes_in_unquoted:
                     append_text(c)
             elif c in QUOTE_CHARS:
-                raise syntax_error('Cannot intermix quoted strings and text tokens', idx)
+                # started a string token intermixed with a text token
+                cur_quote = c
+                cur_string += (c if not remove_quotes else '')
+                state = _States.STRING
+            elif c == seperator:
+                # encountered a seperator
+                parts[-1] = parts[-1].rstrip()
+                parts.append('')
+                state = _States.AWAIT_TEXT
             else:
-                if c == seperator:
-                    parts[-1] = parts[-1].rstrip()
-                    parts.append('')
-                    state = _States.AWAIT_TEXT
-                else:
+                # append text token character
+                append_text(c)
+        elif state == _States.TEXT_TOKEN_STRICT:
+            # This state is only reached in strict mode
+            if c == '\\':
+                # encountered an escape sequence in a text token
+                state = _States.ESCAPE_TEXT
+                if not escapes_in_unquoted:
                     append_text(c)
+            elif c in QUOTE_CHARS:
+                # cannot have a string intermixed with a text token in strict mode
+                raise syntax_error('Cannot intermix quoted strings and text tokens', idx)
+            elif c == seperator:
+                # encountered a seperator
+                parts[-1] = parts[-1].rstrip()
+                parts.append('')
+                state = _States.AWAIT_TEXT
+            else:
+                # append text token character
+                append_text(c)
 
     if state == _States.STRING:
         raise syntax_error(f'un-terminated string: \'{cur_string}\'', len(string))
 
-    if state == _States.TEXT_TOKEN:
+    if state == _States.TEXT_TOKEN_STRICT or state == _States.TEXT_TOKEN:
         parts[-1] = parts[-1].rstrip()
 
     return parts

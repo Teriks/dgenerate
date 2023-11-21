@@ -901,7 +901,7 @@ def _get_web_cache_db():
                 'CREATE TABLE IF NOT EXISTS users (pid INTEGER, UNIQUE(pid))')
             db.execute(
                 'CREATE TABLE IF NOT EXISTS files '
-                '(id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT_TOKEN UNIQUE, mime_type TEXT_TOKEN)')
+                '(id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT_TOKEN_STRICT UNIQUE, mime_type TEXT_TOKEN_STRICT)')
             db.execute(
                 'INSERT OR IGNORE INTO users(pid) VALUES(?)', [os.getpid()])
             yield db
