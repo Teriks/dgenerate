@@ -278,12 +278,15 @@ class ConceptUriParser:
 
     args_multiple: typing.Union[None, bool, typing.Set[str]]
     """
-    ``True`` indicates all arguments can accept a comma seperated list.
+    ``True`` indicates all arguments can accept a comma separated list.
     
-    ``None`` or ``False`` indicates no arguments can accept a comma seperated list.
+    ``None`` or ``False`` indicates no arguments can accept a comma separated list.
     
     Assigning a set containing argument names indicates only the specified 
     arguments can accept a comma seperated list.
+    
+    When an argument is parsed as a comma seperated list, its value/type
+    in :py:attr:`ConceptUri.args` will be that of a list.
     """
 
     def __init__(self,
@@ -327,7 +330,7 @@ class ConceptUriParser:
 
         self.concept_name = concept_name
 
-    def parse(self, uri: _types.Uri):
+    def parse(self, uri: _types.Uri) -> ConceptUri:
         """
         Parse a string.
 
