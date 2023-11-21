@@ -86,10 +86,10 @@ def tokenized_split(string,
     :param strict: Text tokens cannot be intermixed with quoted strings? disallow IE: ``"text'string'text"``
     :param escapes_in_unquoted: evaluate escape sequences in text tokens (unquoted strings)?
         The slash is retained by default when escaping quotes, this disables that, and also enables handling of the escapes ``n, r, t, b, f, and \\``.
-        IE given seperator = `;`: ``\"token\"; "a b"`` -> ``['"token"', 'a b']``, instead of ``\"token\"; "a b"``-> ``['\"token\"', 'a b']``
+        IE: given ``seperator =";"``: ``\"token\"; "a b"`` -> ``['"token"', 'a b']``, instead of ``\"token\"; "a b"``-> ``['\"token\"', 'a b']``
     :param escapes_in_quoted: evaluate escape sequences in quoted string tokens?
         The slash is retained by default when escaping quotes, this disables that, and also enables handling of the escapes ``n, r, t, b, f, and \\``.
-        IE given seperator = `;`: ``\"token\"; "a b"`` -> ``['"token"', 'a b']``, instead of ``\"token\"; "a b"``-> ``['\"token\"', 'a b']``
+        IE: given ``seperator =";"``: ``\"token\"; "a b"`` -> ``['"token"', 'a b']``, instead of ``\"token\"; "a b"``-> ``['\"token\"', 'a b']``
         the slash is retained by default. IE given seperator = `;`: ``token; "a \" b"`` -> ``['token', 'a " b']``, instead of
         ``token; "a \" b"``-> ``['token', 'a \" b']``
     :return: fields
