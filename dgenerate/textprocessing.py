@@ -65,7 +65,7 @@ class TokenizedSplitSyntaxError(Exception):
 
 
 def tokenized_split(string,
-                    seperator,
+                    separator,
                     remove_quotes=False,
                     strict=False,
                     escapes_in_unquoted=False,
@@ -81,7 +81,7 @@ def tokenized_split(string,
     :raise TokenizedSplitSyntaxError: on syntax errors.
 
     :param string: the string
-    :param seperator: seperator
+    :param separator: seperator
     :param remove_quotes: remove quotes from quoted string tokens?
     :param strict: Text tokens cannot be intermixed with quoted strings? disallow IE: ``"text'string'text"``
     :param escapes_in_unquoted: evaluate escape sequences in text tokens (unquoted strings)?
@@ -144,7 +144,7 @@ def tokenized_split(string,
                 # encountered the terminator quote
                 append_text(cur_string + (c if not remove_quotes else ''))
                 cur_string = ''
-                # Strict mode requires a seperator after a quoted string token
+                # Strict mode requires a separator after a quoted string token
                 state = _States.SEP_REQUIRED if strict else _States.TEXT_TOKEN
             else:
                 # append to current string
@@ -194,7 +194,7 @@ def tokenized_split(string,
         elif state == _States.SEP_REQUIRED:
             # This state is only reached in strict mode
             # where separators are required after a string token
-            if c == seperator:
+            if c == separator:
                 state = _States.AWAIT_TEXT
                 parts.append('')
             elif not c.isspace():
@@ -213,8 +213,8 @@ def tokenized_split(string,
             elif c.isspace():
                 # ignore space until token starts
                 pass
-            elif c == seperator:
-                # started the string with a seperator
+            elif c == separator:
+                # started the string with a separator
                 if not parts:
                     parts += ['', '']
                 else:
@@ -235,13 +235,13 @@ def tokenized_split(string,
                 cur_quote = c
                 cur_string += (c if not remove_quotes else '')
                 state = _States.STRING
-            elif c == seperator:
-                # encountered a seperator
+            elif c == separator:
+                # encountered a separator
                 # the last element needs to be right stripped
                 # because spaces are allowed inside a text token
                 # and there is no way to differentiate 'inside' and
                 # 'outside' without lookahead, or until there occurs
-                # a seperator
+                # a separator
                 parts[-1] = parts[-1].rstrip()
                 parts.append('')
                 state = _States.AWAIT_TEXT
@@ -258,13 +258,13 @@ def tokenized_split(string,
             elif c in QUOTE_CHARS:
                 # cannot have a string intermixed with a text token in strict mode
                 raise syntax_error('Cannot intermix quoted strings and text tokens', idx)
-            elif c == seperator:
-                # encountered a seperator
+            elif c == separator:
+                # encountered a separator
                 # the last element needs to be right stripped
                 # because spaces are allowed inside a text token
                 # and there is no way to differentiate 'inside' and
                 # 'outside' without lookahead, or until there occurs
-                # a seperator
+                # a separator
                 parts[-1] = parts[-1].rstrip()
                 parts.append('')
                 state = _States.AWAIT_TEXT
@@ -311,7 +311,7 @@ def unquote(string: str, escapes_in_quoted=True, escapes_in_unquoted=False) -> s
                               escapes_in_unquoted=escapes_in_unquoted,
                               strict=True,
                               remove_quotes=True,
-                              seperator=None)
+                              separator=None)
         if val:
             return val[0]
         return ''
