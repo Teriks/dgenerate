@@ -90,7 +90,7 @@ def tokenized_split(string,
     :param escapes_in_quoted: evaluate escape sequences in quoted string tokens?
         The slash is retained by default when escaping quotes, this disables that, and also enables handling of the escapes ``n, r, t, b, f, and \\``.
         IE given ``seperator = ";"`` parse ``token; "a \\" b"`` -> ``['token', 'a " b']``, instead of ``token; "a \\" b"``-> ``['token', 'a \\" b']``
-        
+
     :return: parsed fields
     """
 
@@ -223,9 +223,9 @@ def unquote(string: str, escapes_in_quoted=True, escapes_in_unquoted=False) -> s
     """
     Remove quotes from a string, including single quotes.
 
-    Unquoted strings will have leading an trailing whitespace striped.
+    Unquoted strings will have leading an trailing whitespace stripped.
 
-    Quoted strings will have leading and trailing whitespace striped up to where the quotes were.
+    Quoted strings will have leading and trailing whitespace stripped up to where the quotes were.
 
     :param escapes_in_unquoted: Render escape sequences in strings that are unquoted?
     :param escapes_in_quoted: Render escape sequences in strings that are quoted?
