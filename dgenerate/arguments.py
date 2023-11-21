@@ -1291,7 +1291,7 @@ def parse_known_args(args: typing.Optional[typing.Sequence[str]] = None,
     :param throw: throw :py:exc:`.DgenerateUsageError` on error? defaults to True
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
     :param ignore_model: Ignore dgenerates only required argument, fill it with the value 'none'
-    :param ignore_help: Do not allow --help to be passed and proc help being printed.
+    :param ignore_help: Do not allow ``--help`` to be passed and proc help being printed.
 
     :raise DgenerateUsageError: on argument error (simple type validation only)
 
