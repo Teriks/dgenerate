@@ -225,7 +225,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         for plugin_class in self.plugin_loader.get_available_classes():
             loaded_plugins.append(
                 self.plugin_loader.load(plugin_class.get_names()[0],
-                                        batch_processor=self,
+                                        config_runner=self,
                                         render_loop=self.render_loop,
                                         plugin_module_paths=plugin_module_paths)
             )
@@ -235,7 +235,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             for cls in classes:
                 loaded_plugins.append(
                     self.plugin_loader.load(cls.get_names()[0],
-                                            batch_processor=self,
+                                            config_runner=self,
                                             render_loop=self.render_loop,
                                             plugin_module_paths=plugin_module_paths))
 

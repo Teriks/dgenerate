@@ -119,6 +119,14 @@ class ImageProcessDirective(_configrunnerplugin.ConfigRunnerPlugin):
                  help_name: str = '\\image_process',
                  help_desc: typing.Optional[str] = None,
                  **kwargs):
+        """
+        :param allow_exit: Parsing arguments can result in an exit() call?
+        :param message_header: Header string for informational output.
+        :param help_name: Name in ``--help`` output.
+        :param help_desc: Override argument parser ``description`` value.
+
+        :param kwargs: plugin base class arguments
+        """
 
         super().__init__(**kwargs)
 
@@ -288,6 +296,12 @@ class ImageProcessDirective(_configrunnerplugin.ConfigRunnerPlugin):
                 self.argument_error(fr'{self._message_header} error: {e}')
 
     def image_process(self, args: typing.List[str]):
+        """
+        Runs the ``\\image_process`` directive.
+
+        :param args: command line arguments
+        """
+
         try:
             self._parsed_args = self._arg_parser.parse_args(args)
         except SystemExit as e:
