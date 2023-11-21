@@ -1268,7 +1268,7 @@ def parse_sub_command_help(args: typing.Optional[typing.Sequence[str]] = None):
 def parse_device(args: typing.Optional[typing.Sequence[str]] = None):
     """
     Retrieve the ``-d/--device`` argument value
-    
+
     :param args: command line arguments
     :return:
     """
