@@ -104,20 +104,32 @@ def tokenized_split(string,
         SEP_REQUIRED = 6
 
     state = _States.AWAIT_TEXT
+
+    # tokens out
     parts = []
+
+    # quoted string token accumulator
     cur_string = ''
+
+    # the quote character that initiated
+    # the current string token being accumulated
     cur_quote = ''
 
+    # accepted quote characters
     QUOTE_CHARS = {'"', "'"}
+
+    # recognized escape codes
     RECOGNIZED_ESCAPE_CODES = {'n', 'r', 't', 'b', 'f', '\\'}
 
     def append_text(t):
+        # append text to the last token
         if parts:
             parts[-1] += t
         else:
             parts.append(t)
 
     def syntax_error(msg, idx):
+        # create syntax error
         return TokenizedSplitSyntaxError(f'{msg}: \'{string[:idx]}[ERROR HERE>]{string[idx:]}\'')
 
     for idx, c in enumerate(string):
@@ -228,7 +240,8 @@ def tokenized_split(string,
                 # the last element needs to be right stripped
                 # because spaces are allowed inside a text token
                 # and there is no way to differentiate 'inside' and
-                # 'outside' until there occurs a seperator
+                # 'outside' without lookahead, or until there occurs
+                # a seperator
                 parts[-1] = parts[-1].rstrip()
                 parts.append('')
                 state = _States.AWAIT_TEXT
@@ -250,7 +263,8 @@ def tokenized_split(string,
                 # the last element needs to be right stripped
                 # because spaces are allowed inside a text token
                 # and there is no way to differentiate 'inside' and
-                # 'outside' until there occurs a seperator
+                # 'outside' without lookahead, or until there occurs
+                # a seperator
                 parts[-1] = parts[-1].rstrip()
                 parts.append('')
                 state = _States.AWAIT_TEXT
@@ -259,11 +273,13 @@ def tokenized_split(string,
                 append_text(c)
 
     if state == _States.STRING:
+        # state machine ended inside a quoted string
         raise syntax_error(f'un-terminated string: \'{cur_string}\'', len(string))
 
     if state == _States.TEXT_TOKEN_STRICT or state == _States.TEXT_TOKEN:
         # if we end on a text token, right strip the text token, as it is
         # considered 'outside' the token, and spaces are only allowed 'inside'
+        # and this is ambiguous without lookahead
         parts[-1] = parts[-1].rstrip()
 
     return parts
