@@ -270,10 +270,10 @@ class ConceptUriParser:
     """
     ``True`` indicates all argument values are returned without any unquoting or processing into lists.
     
-    ``None`` or ``False`` indicates no argument values skip processing.
+    ``None`` or ``False`` indicates no argument values skip extended processing.
     
     Assigning a set containing argument names indicates only the specified 
-    arguments skip processing (unquoting or splitting).
+    arguments skip extended processing (unquoting or splitting).
     """
 
     args_multiple: typing.Union[None, bool, typing.Set[str]]
