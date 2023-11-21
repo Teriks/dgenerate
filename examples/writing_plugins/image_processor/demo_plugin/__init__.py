@@ -16,9 +16,9 @@ class FooBarImageProcessor(dgenerate.imageprocessors.ImageProcessor):
     # Argument signature correctness (missing arguments, unknown arguments) etc.
     # is verified by dgenerate, adding type hints will cause the argument values
     # to be parsed into that type automatically with validation when parsed from a URI,
-    # arguments without type hints will be parsed as python literals unless they are
-    # unquoted strings in which case they will be passed straight through. The type
-    # hint typing.Optional[...] is supported to indicate that an argument is optional,
+    # arguments without type hints will be parsed as python literals unless they cannot
+    # be parsed into a python literal, in which case they will be passed straight through as a raw string.
+    # The type hint typing.Optional[...] is supported to indicate that an argument is optional,
     # when a value is passed to an optional argument that value will be validated against the
     # specified optional type, if you do not provide a default None value in the constructor
     # (which you should), dgenerate will pass None for you. The type hints (list, dict, set) are
