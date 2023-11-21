@@ -1202,6 +1202,7 @@ def _parse_known_args(args=None) -> DgenerateArguments:
 def parse_templates_help(args: typing.Optional[typing.Sequence[str]] = None):
     """
     Retrieve the ``-th/--templates-help`` argument value
+
     :param args: command line arguments
     """
     parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
@@ -1213,6 +1214,7 @@ def parse_templates_help(args: typing.Optional[typing.Sequence[str]] = None):
 def parse_plugin_modules(args: typing.Optional[typing.Sequence[str]] = None):
     """
     Retrieve the ``-pm/--plugin-modules`` argument value
+
     :param args: command line arguments
     """
     parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
@@ -1224,6 +1226,7 @@ def parse_plugin_modules(args: typing.Optional[typing.Sequence[str]] = None):
 def parse_image_processor_help(args: typing.Optional[typing.Sequence[str]] = None):
     """
     Retrieve the ``-iph/--image-processor-help`` argument value
+
     :param args: command line arguments
     :return:
     """
@@ -1237,6 +1240,7 @@ def parse_image_processor_help(args: typing.Optional[typing.Sequence[str]] = Non
 def parse_sub_command(args: typing.Optional[typing.Sequence[str]] = None):
     """
     Retrieve the ``-scm/--sub-command`` argument value
+
     :param args: command line arguments
     :return:
     """
@@ -1250,6 +1254,7 @@ def parse_sub_command(args: typing.Optional[typing.Sequence[str]] = None):
 def parse_sub_command_help(args: typing.Optional[typing.Sequence[str]] = None):
     """
     Retrieve the ``-scmh/--sub-command-help`` argument value
+
     :param args: command line arguments
     :return:
     """
@@ -1263,6 +1268,7 @@ def parse_sub_command_help(args: typing.Optional[typing.Sequence[str]] = None):
 def parse_device(args: typing.Optional[typing.Sequence[str]] = None):
     """
     Retrieve the ``-d/--device`` argument value
+    
     :param args: command line arguments
     :return:
     """
