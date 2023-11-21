@@ -65,7 +65,6 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             If you set this to ``True`` exceptions will propagate out of dgenerate invocations instead of a
             :py:exc:`dgenerate.batchprocess.BatchProcessError` being raised by the created :py:class:`dgenerate.batchprocess.BatchProcessor`.
             A line number where the error occurred can be obtained using :py:attr:`dgenerate.batchprocess.BatchProcessor.current_line`.
-        :return: integer return-code, anything other than 0 is failure
         """
 
         def invoker(args):
