@@ -1,4 +1,3 @@
-import argparse
 import typing
 
 import PIL.Image
