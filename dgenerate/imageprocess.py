@@ -522,6 +522,22 @@ def invoke_image_process(
         help_exits: bool = False,
         help_name: str = 'image-process',
         help_desc: typing.Optional[str] = None):
+    """
+    Invoke dgenerate using its command line arguments and return a return code.
+
+    dgenerate is invoked in the current process, this method does not spawn a subprocess.
+
+    :param args: image-process command line arguments in the form of a list, see: shlex module, or sys.argv
+    :param render_loop: :py:class:`.ImageProcessRenderLoop` instance,
+        if None is provided one will be created.
+    :param throw: Whether to throw known exceptions or handle them.
+    :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
+    :param help_exits: ``--help`` raises ``SystemExit`` ?
+    :param help_name: name used in the ``--help`` output
+    :param help_desc: description used in the ``--help`` output, if ``None`` is provided a default value will be used.
+    
+    :return: integer return-code, anything other than 0 is failure
+    """
     try:
         try:
             parsed = parse_args(args, help_name=help_name, help_desc=help_desc, help_exits=True)

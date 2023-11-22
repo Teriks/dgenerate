@@ -43,7 +43,7 @@ def invoke_dgenerate(
     :param args: dgenerate command line arguments in the form of a list, see: shlex module, or sys.argv
     :param render_loop: :py:class:`dgenerate.renderloop.RenderLoop` instance,
         if None is provided one will be created.
-    :param throw: Whether to throw exceptions or handle them.
+    :param throw: Whether to throw known exceptions or handle them.
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
     :param help_exits: ``--help`` raises ``SystemExit`` ?
 
