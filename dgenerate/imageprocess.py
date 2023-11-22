@@ -535,7 +535,12 @@ def invoke_image_process(
         render_loop.config = parsed
 
         render_loop.run()
-    except Exception as e:
+    except (ImageProcessUsageError,
+            _imageprocessors.ImageProcessorArgumentError,
+            _imageprocessors.ImageProcessorNotFoundError,
+            _mediainput.FrameStartOutOfBounds,
+            NotImplementedError,
+            EnvironmentError) as e:
         if log_error:
             _messages.log(f'{help_name}: error: {e}', level=_messages.ERROR)
         if throw:
