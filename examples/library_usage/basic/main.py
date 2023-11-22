@@ -6,7 +6,7 @@ from dgenerate import \
 
 import dgenerate.arguments
 
-device = dgenerate.arguments.parse_device()
+device, _ = dgenerate.arguments.parse_device()
 
 config = RenderLoopConfig()
 

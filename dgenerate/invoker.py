@@ -66,8 +66,8 @@ def invoke_dgenerate(
     if render_loop is None:
         render_loop = _renderloop.RenderLoop()
 
-    plugin_module_paths = _arguments.parse_plugin_modules(args)
-    image_processor_help = _arguments.parse_image_processor_help(args)
+    plugin_module_paths, plugin_module_paths_rest = _arguments.parse_plugin_modules(args)
+    image_processor_help, _ = _arguments.parse_image_processor_help(args)
 
     if image_processor_help is not None:
         try:
@@ -79,7 +79,7 @@ def invoke_dgenerate(
                 raise _arguments.DgenerateUsageError(e)
             return 1
 
-    sub_command_help = _arguments.parse_sub_command_help(args)
+    sub_command_help, _ = _arguments.parse_sub_command_help(args)
     if sub_command_help is not None:
         try:
             return _subcommands.sub_command_help(
@@ -90,11 +90,12 @@ def invoke_dgenerate(
                 raise _arguments.DgenerateUsageError(e)
             return 1
 
-    sub_command_name = _arguments.parse_sub_command(args)
+    sub_command_name, sub_command_name_rest = _arguments.parse_sub_command(plugin_module_paths_rest)
     if sub_command_name is not None:
-        subcommand_args = _subcommands.remove_sub_command_arg(list(args))
         try:
-            return _subcommands.SubCommandLoader().load(sub_command_name, args=subcommand_args)()
+            return _subcommands.SubCommandLoader().load(uri=sub_command_name,
+                                                        plugin_module_paths=plugin_module_paths,
+                                                        args=sub_command_name_rest)()
         except (_subcommands.SubCommandNotFoundError,
                 _subcommands.SubCommandArgumentError) as e:
             if log_error:
@@ -103,7 +104,7 @@ def invoke_dgenerate(
                 raise _arguments.DgenerateUsageError(e)
             return 1
 
-    if _arguments.parse_templates_help(args):
+    if _arguments.parse_templates_help(args)[0]:
         _messages.log(render_loop.generate_template_variables_help(show_values=False) + '\n', underline=True)
         return 0
 

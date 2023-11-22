@@ -5,7 +5,7 @@ from dgenerate.imageprocessors import ImageProcessorLoader
 import dgenerate.arguments
 
 # We can use this to parse and validate any --device argument that gets passed
-device = dgenerate.arguments.parse_device()
+device, _ =  dgenerate.arguments.parse_device()
 
 # Any image processor plugin implemented by dgenerate can be reused easily
 

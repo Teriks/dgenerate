@@ -14,7 +14,7 @@ from dgenerate.imageprocessors import ImageProcessor
 import dgenerate.arguments
 
 # We can use this to parse and validate any --device argument that gets passed
-device = dgenerate.arguments.parse_device()
+device, _ =  dgenerate.arguments.parse_device()
 
 
 # You can add image processors either explicitly
