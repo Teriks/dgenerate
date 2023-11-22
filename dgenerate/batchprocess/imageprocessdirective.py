@@ -43,9 +43,12 @@ class ImageProcessDirective(_configrunnerplugin.ConfigRunnerPlugin):
         render_loop.image_processor_loader.load_plugin_modules(self.plugin_module_paths)
 
         try:
-            _imageprocess.invoke_image_process(args, render_loop=render_loop, help_exits=True)
+            return_code = _imageprocess.invoke_image_process(args, render_loop=render_loop, help_exits=True)
         except SystemExit:
             # --help
+            return
+
+        if return_code != 0:
             return
 
         self.set_template_variable('last_images', render_loop.written_images)

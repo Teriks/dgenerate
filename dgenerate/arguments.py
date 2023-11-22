@@ -1195,90 +1195,97 @@ def _parse_args(args=None) -> DgenerateArguments:
     return args
 
 
-def _parse_known_args(args=None) -> DgenerateArguments:
-    args = typing.cast(DgenerateArguments,
-                       parser.parse_known_args(args, namespace=DgenerateArguments())[0])
-    return args
+def _parse_known_args(args=None) -> typing.Tuple[DgenerateArguments, typing.List[str]]:
+    known, unknown = parser.parse_known_args(args, namespace=DgenerateArguments())
+    args = typing.cast(DgenerateArguments, unknown[0])
+    return args, unknown
 
 
-def parse_templates_help(args: typing.Optional[typing.Sequence[str]] = None):
+def parse_templates_help(args: typing.Optional[typing.Sequence[str]] = None) -> typing.Tuple[str, typing.List[str]]:
     """
     Retrieve the ``-th/--templates-help`` argument value
 
     :param args: command line arguments
+    :return: (value, unknown_args_list)
     """
     parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
     parser.add_argument('-th', '--templates-help', action='store_true')
-    parsed, _ = parser.parse_known_args(args)
-    return parsed.templates_help
+    parsed, unknown = parser.parse_known_args(args)
+
+    return parsed.templates_help, unknown
 
 
-def parse_plugin_modules(args: typing.Optional[typing.Sequence[str]] = None):
+def parse_plugin_modules(args: typing.Optional[typing.Sequence[str]] = None) -> typing.Tuple[typing.List[str], typing.List[str]]:
     """
     Retrieve the ``-pm/--plugin-modules`` argument value
 
     :param args: command line arguments
+    :return: (values, unknown_args_list)
     """
     parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
     parser.add_argument('-pm', '--plugin-modules', action='store', default=[], nargs="+")
-    parsed, _ = parser.parse_known_args(args)
-    return parsed.plugin_modules
+    parsed, unknown = parser.parse_known_args(args)
+
+    return parsed.plugin_modules, unknown
 
 
-def parse_image_processor_help(args: typing.Optional[typing.Sequence[str]] = None):
+def parse_image_processor_help(args: typing.Optional[typing.Sequence[str]] = None) -> typing.Tuple[typing.List[str], typing.List[str]]:
     """
     Retrieve the ``-iph/--image-processor-help`` argument value
 
     :param args: command line arguments
-    :return:
+    :return: (values, unknown_args_list)
     """
 
     parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
     parser.add_argument('-iph', '--image-processor-help', action='store', nargs='*', default=None)
-    parsed, _ = parser.parse_known_args(args)
-    return parsed.image_processor_help
+    parsed, unknown = parser.parse_known_args(args)
+
+    return parsed.plugin_modules.image_processor_help, unknown
 
 
-def parse_sub_command(args: typing.Optional[typing.Sequence[str]] = None):
+def parse_sub_command(args: typing.Optional[typing.Sequence[str]] = None) -> typing.Tuple[str, typing.List[str]]:
     """
     Retrieve the ``-scm/--sub-command`` argument value
 
     :param args: command line arguments
-    :return:
+    :return: (value, unknown_args_list)
     """
 
     parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
     parser.add_argument('-scm', '--sub-command', action='store', default=None)
-    parsed, _ = parser.parse_known_args(args)
-    return parsed.sub_command
+    parsed, unknown = parser.parse_known_args(args)
+
+    return parsed.sub_command, unknown
 
 
-def parse_sub_command_help(args: typing.Optional[typing.Sequence[str]] = None):
+def parse_sub_command_help(args: typing.Optional[typing.Sequence[str]] = None) -> typing.Tuple[typing.List[str], typing.List[str]]:
     """
     Retrieve the ``-scmh/--sub-command-help`` argument value
 
     :param args: command line arguments
-    :return:
+    :return: (values, unknown_args_list)
     """
 
     parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
     parser.add_argument('-scmh', '--sub-command-help', action='store', nargs='*', default=None)
-    parsed, _ = parser.parse_known_args(args)
-    return parsed.sub_command_help
+    parsed, unknown = parser.parse_known_args(args)
+
+    return parsed.sub_command_help, unknown
 
 
-def parse_device(args: typing.Optional[typing.Sequence[str]] = None):
+def parse_device(args: typing.Optional[typing.Sequence[str]] = None) -> typing.Tuple[str, typing.List[str]]:
     """
     Retrieve the ``-d/--device`` argument value
 
     :param args: command line arguments
-    :return:
+    :return: (value, unknown_args_list)
     """
 
     parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
     parser.add_argument('-d', '--device', type=_type_device)
-    parsed, _ = parser.parse_known_args(args)
-    return parsed.device
+    parsed, unknown = parser.parse_known_args(args)
+    return parsed.device, unknown
 
 
 def parse_known_args(args: typing.Optional[typing.Sequence[str]] = None,
@@ -1286,7 +1293,7 @@ def parse_known_args(args: typing.Optional[typing.Sequence[str]] = None,
                      log_error: bool = True,
                      ignore_model: bool = True,
                      ignore_help: bool = True,
-                     help_exits: bool = False) -> typing.Union[DgenerateArguments, None]:
+                     help_exits: bool = False) -> typing.Tuple[DgenerateArguments, typing.List[str]]:
     """
     Parse only known arguments off the command line.
 
@@ -1306,8 +1313,8 @@ def parse_known_args(args: typing.Optional[typing.Sequence[str]] = None,
 
     :raise DgenerateUsageError: on argument error (simple type validation only)
 
-    :return: :py:class:`.DgenerateArguments`. If ``throw=False`` then
-        ``None`` will be returned on errors.
+    :return: (:py:class:`.DgenerateArguments`, unknown_args_list).
+        If ``throw=False`` then ``None`` will be returned on errors.
     """
 
     if args is None:
@@ -1321,9 +1328,14 @@ def parse_known_args(args: typing.Optional[typing.Sequence[str]] = None,
 
     try:
         if ignore_model:
-            return _parse_known_args(['none'] + list(args))
+            args, unknown = _parse_known_args(['none'] + list(args))
         else:
-            return _parse_known_args(args)
+            args, unknown = _parse_known_args(args)
+
+        if return_unknown:
+            return args, unknown
+        return args
+
     except SystemExit:
         if help_exits:
             raise

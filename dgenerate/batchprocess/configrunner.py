@@ -219,7 +219,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         plugin_module_paths = []
 
         if injected_args:
-            plugin_module_paths = _arguments.parse_plugin_modules(injected_args)
+            plugin_module_paths, _ = _arguments.parse_plugin_modules(injected_args)
             self.plugin_loader.load_plugin_modules(plugin_module_paths)
 
         loaded_plugins = []

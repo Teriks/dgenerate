@@ -31,12 +31,18 @@ class SubCommand(_plugin.Plugin):
 
     def __init__(self,
                  loaded_by_name: str,
+                 plugin_module_paths: typing.List[str],
                  args: typing.List[str],
                  **kwargs):
         super().__init__(loaded_by_name=loaded_by_name,
                          argument_error_type=_exceptions.SubCommandArgumentError,
                          **kwargs)
         self.__args = list(args)
+        self.__plugin_module_paths = list(plugin_module_paths)
+
+    @property
+    def plugin_module_paths(self):
+        return self.__plugin_module_paths
 
     @property
     def args(self):

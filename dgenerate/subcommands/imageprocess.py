@@ -43,4 +43,6 @@ class ImageProcessSubCommand(_subcommand.SubCommand):
         super().__init__(**kwargs)
 
     def __call__(self) -> int:
-        return _imageprocess.invoke_image_process(self.args)
+        render_loop = _imageprocess.ImageProcessRenderLoop()
+        render_loop.image_processor_loader.load_plugin_modules(self.plugin_module_paths)
+        return _imageprocess.invoke_image_process(self.args, render_loop=render_loop)
