@@ -1332,9 +1332,7 @@ def parse_known_args(args: typing.Optional[typing.Sequence[str]] = None,
         else:
             args, unknown = _parse_known_args(args)
 
-        if return_unknown:
-            return args, unknown
-        return args
+        return args, unknown
 
     except SystemExit:
         if help_exits:
