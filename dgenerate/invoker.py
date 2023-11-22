@@ -50,6 +50,7 @@ def invoke_dgenerate(
     :raises dgenerate.arguments.DgenerateUsageError:
     :raises dgenerate.mediainput.ImageSeedError:
     :raises dgenerate.mediainput.UnknownMimetypeError:
+    :raises dgenerate.mediainput.FrameStartOutOfBounds:
     :raises dgenerate.imageprocessors.ImageProcessorArgumentError:
     :raises dgenerate.imageprocessors.ImageProcessorNotFoundError:
     :raises dgenerate.pipelinewrapper.InvalidModelUriError:
