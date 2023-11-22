@@ -124,6 +124,15 @@ class BatchProcessor:
     Dictionary of callable(list).
     """
 
+    directive_exceptions: bool = False
+    """
+    Will non-exiting exceptions that occur inside of a directive be allowed to propagate?
+    
+    They are eaten and rethrown as :py:class:`BatchProcessError` by default.
+    
+    Setting this to ``True`` allows them to propagate out for debugging purposes.
+    """
+
     injected_args: typing.List[str]
     """
     Shell arguments to inject at the end of every invocation.
@@ -285,6 +294,8 @@ class BatchProcessor:
                 else:
                     impl([])
             except Exception as e:
+                if self.directive_exceptions:
+                    raise e
                 raise BatchProcessError(e)
             return True
         return False
@@ -367,8 +378,7 @@ class BatchProcessor:
         """
 
         try:
-            parsed = _arguments.parse_known_args(self.injected_args,
-                                                 log_error=False)
+            parsed = _arguments.parse_known_args(self.injected_args, log_error=False)
         except _arguments.DgenerateUsageError as e:
             raise BatchProcessError(f'Error parsing injected arguments: {e}')
 

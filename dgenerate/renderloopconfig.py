@@ -615,45 +615,12 @@ class RenderLoopConfig(_types.SetFromMixin):
         def a_namer(attr_name):
             if attribute_namer:
                 return attribute_namer(attr_name)
-            return f'RenderLoopConfig.{attr_name}'
+            return f'{self.__name__}.{attr_name}'
 
-        def _has_len(name, value):
-            try:
-                len(value)
-                return True
-            except TypeError:
-                raise RenderLoopConfigError(
-                    f'{a_namer(name)} must be able to be used with len(), value was: {value}')
-
-        def _is_optional_two_tuple(name, value):
-            if value is not None and not (isinstance(value, tuple) and len(value) == 2):
-                raise RenderLoopConfigError(
-                    f'{a_namer(name)} must be None or a tuple of length 2, value was: {value}')
-
-        def _is_optional(value_type, name, value):
-            if value is not None and not isinstance(value, value_type):
-                raise RenderLoopConfigError(
-                    f'{a_namer(name)} must be None or type {value_type.__name__}, value was: {value}')
-
-        def _is(value_type, name, value):
-            if not isinstance(value, value_type):
-                raise RenderLoopConfigError(
-                    f'{a_namer(name)} must be type {value_type.__name__}, value was: {value}')
-
-        # Detect incorrect types
-        for attr, hint in typing.get_type_hints(self).items():
-            v = getattr(self, attr)
-            if _types.is_optional(hint):
-                if _types.is_type_or_optional(hint, typing.Tuple[int, int]):
-                    _is_optional_two_tuple(attr, v)
-                else:
-                    _is_optional(_types.get_type_of_optional(hint), attr, v)
-            else:
-                if _types.is_type(hint, list):
-                    _has_len(attr, v)
-                if not _types.is_type(hint, typing.Literal):
-                    # Cant handle literals, like dtype
-                    _is(_types.get_type(hint), attr, v)
+        try:
+            _types.type_check_struct(self, attribute_namer)
+        except ValueError as e:
+            raise RenderLoopConfigError(e)
 
         # Detect logically incorrect config and set certain defaults
         supported_dtypes = _pipelinewrapper.supported_data_type_strings()

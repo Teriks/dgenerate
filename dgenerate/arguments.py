@@ -1285,7 +1285,8 @@ def parse_known_args(args: typing.Optional[typing.Sequence[str]] = None,
                      throw: bool = True,
                      log_error: bool = True,
                      ignore_model: bool = True,
-                     ignore_help: bool = True) -> typing.Union[DgenerateArguments, None]:
+                     ignore_help: bool = True,
+                     help_exits: bool = False) -> typing.Union[DgenerateArguments, None]:
     """
     Parse only known arguments off the command line.
 
@@ -1295,11 +1296,13 @@ def parse_known_args(args: typing.Optional[typing.Sequence[str]] = None,
     No logical validation is preformed, :py:meth:`DgenerateArguments.check()` is not called by this function,
     only argument parsing and simple type validation is preformed by this function.
 
+
     :param args: arguments list, as in args taken from sys.argv, or in that format
     :param throw: throw :py:exc:`.DgenerateUsageError` on error? defaults to True
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
     :param ignore_model: Ignore dgenerates only required argument, fill it with the value 'none'
     :param ignore_help: Do not allow ``--help`` to be passed and proc help being printed.
+    :param help_exits: ``--help`` raises ``SystemExit`` ?
 
     :raise DgenerateUsageError: on argument error (simple type validation only)
 
@@ -1321,6 +1324,9 @@ def parse_known_args(args: typing.Optional[typing.Sequence[str]] = None,
             return _parse_known_args(['none'] + list(args))
         else:
             return _parse_known_args(args)
+    except SystemExit:
+        if help_exits:
+            raise
     except (argparse.ArgumentTypeError, argparse.ArgumentError) as e:
         if log_error:
             pass
@@ -1332,14 +1338,17 @@ def parse_known_args(args: typing.Optional[typing.Sequence[str]] = None,
 
 def parse_args(args: typing.Optional[typing.Sequence[str]] = None,
                throw: bool = True,
-               log_error: bool = True) -> typing.Union[DgenerateArguments, None]:
+               log_error: bool = True,
+               help_exits: bool = False) -> typing.Union[DgenerateArguments, None]:
     """
     Parse dgenerates command line arguments and return a configuration object.
+
 
 
     :param args: arguments list, as in args taken from sys.argv, or in that format
     :param throw: throw :py:exc:`.DgenerateUsageError` on error? defaults to True
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
+    :param help_exits: ``--help`` raises ``SystemExit`` ?
     :raise DgenerateUsageError:
 
     :return: :py:class:`.DgenerateArguments`. If ``throw=False`` then
@@ -1348,6 +1357,9 @@ def parse_args(args: typing.Optional[typing.Sequence[str]] = None,
 
     try:
         return _parse_args(args)
+    except SystemExit:
+        if help_exits:
+            raise
     except (dgenerate.RenderLoopConfigError, argparse.ArgumentTypeError, argparse.ArgumentError) as e:
         if log_error:
             _messages.log(f'dgenerate: error: {e}', level=_messages.ERROR)

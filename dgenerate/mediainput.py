@@ -1025,6 +1025,28 @@ _MIME_TYPES_GUESS_EXTRA = {
 }
 
 
+def guess_mimetype(filename) -> typing.Optional[str]:
+    """
+    Guess the mimetype of a filename.
+
+    The filename does not need to exist on disk.
+
+    :param filename: the file name
+    :return: mimetype string or ``None``
+    """
+    mime_type = mimetypes.guess_type(filename)[0]
+
+    if mime_type is None:
+        # Check for accepted formats that the mimetypes
+        # stdlib does not know about by default
+
+        _, ext = os.path.splitext(filename)
+        if ext is not None:
+            mime_type = _MIME_TYPES_GUESS_EXTRA.get(ext)
+
+    return mime_type
+
+
 # noinspection HttpUrlsUsage
 def fetch_media_data_stream(uri: str) -> typing.Tuple[str, typing.BinaryIO]:
     """
@@ -1047,15 +1069,7 @@ def fetch_media_data_stream(uri: str) -> typing.Tuple[str, typing.BinaryIO]:
         mime_acceptable_desc = _textprocessing.oxford_comma(
             get_supported_mimetypes(), conjunction='or')
 
-        mime_type = mimetypes.guess_type(uri)[0]
-
-        if mime_type is None:
-            # Check for accepted formats that the mimetypes
-            # stdlib does not know about by default
-
-            _, ext = os.path.splitext(uri)
-            if ext is not None:
-                mime_type = _MIME_TYPES_GUESS_EXTRA.get(ext)
+        mime_type = guess_mimetype(uri)
 
         if not mimetype_is_supported(mime_type):
             raise UnknownMimetypeError(
@@ -1236,6 +1250,14 @@ class AnimationReaderSpec:
         self.align = align
 
 
+class FrameStartOutOfBounds(ValueError):
+    """
+    Raised by :py:class:`.MultiAnimationReader` when the provided ``frame_start``
+    frame slicing value is calculated to be out of bounds.
+    """
+    pass
+
+
 class MultiAnimationReader:
     """
     Zips together multiple automatically created :py:class:`.AnimationReader` implementations and
@@ -1307,6 +1329,10 @@ class MultiAnimationReader:
                  frame_end: _types.OptionalInteger = None,
                  path_opener: typing.Callable[[str], typing.BinaryIO] = fetch_media_data_stream):
         """
+
+        :raise ValueError: if ``frame_start`` > ``frame_end``
+        :raise FrameStartOutOfBounds: if ``frame_start`` > ``total_frames - 1``
+
         :param specs: list of :py:class:`.AnimationReaderSpec`
         :param frame_start: inclusive frame slice start frame
         :param frame_end: inclusive frame slice end frame
@@ -1357,6 +1383,12 @@ class MultiAnimationReader:
                     r.total_frames = self.total_frames
         else:
             self._total_frames = 1
+
+        if self.frame_start > self.total_frames - 1:
+            raise FrameStartOutOfBounds(
+                f'Frame slice start value {self.frame_start} is out of bounds, '
+                f'total frame count is {self.total_frames}. Value must be less '
+                f'than ({self.total_frames} minus 1).')
 
     def __next__(self):
         if self._frame_index == -1:
