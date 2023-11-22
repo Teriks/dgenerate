@@ -1197,7 +1197,7 @@ def _parse_args(args=None) -> DgenerateArguments:
 
 def _parse_known_args(args=None) -> typing.Tuple[DgenerateArguments, typing.List[str]]:
     known, unknown = parser.parse_known_args(args, namespace=DgenerateArguments())
-    args = typing.cast(DgenerateArguments, unknown[0])
+    args = typing.cast(DgenerateArguments, known)
     return args, unknown
 
 
