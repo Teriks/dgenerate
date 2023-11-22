@@ -1241,7 +1241,7 @@ def parse_image_processor_help(args: typing.Optional[typing.Sequence[str]] = Non
     parser.add_argument('-iph', '--image-processor-help', action='store', nargs='*', default=None)
     parsed, unknown = parser.parse_known_args(args)
 
-    return parsed.plugin_modules.image_processor_help, unknown
+    return parsed.image_processor_help, unknown
 
 
 def parse_sub_command(args: typing.Optional[typing.Sequence[str]] = None) -> typing.Tuple[str, typing.List[str]]:
