@@ -23,6 +23,7 @@ import types
 import typing
 
 import dgenerate.prompt as _prompt
+import dgenerate.textprocessing
 
 Uri = str
 Path = str
@@ -74,7 +75,6 @@ Prompts = typing.List[_prompt.Prompt]
 OptionalPrompts = typing.Optional[Prompts]
 OptionalString = typing.Optional[str]
 
-
 OptionalBoolean = typing.Optional[bool]
 
 
@@ -84,7 +84,7 @@ def class_and_id_string(obj) -> str:
 
     IE: `<ClassName: id_integer>`
 
-    :param obj: the object
+    :param obj: the obj
     :return: formatted string
     """
     return f'<{obj.__class__.__name__}: {str(id(obj))}>'
@@ -92,9 +92,9 @@ def class_and_id_string(obj) -> str:
 
 def get_public_attributes(obj) -> typing.Dict[str, typing.Any]:
     """
-    Get the public attributes (excluding functions) and their values from an object.
+    Get the public attributes (excluding functions) and their values from an obj.
 
-    :param obj: the object
+    :param obj: the obj
     :return: dict of attribute names to values
     """
     return {k: getattr(obj, k) for k in dir(obj)
@@ -103,9 +103,9 @@ def get_public_attributes(obj) -> typing.Dict[str, typing.Any]:
 
 def get_public_members(obj) -> typing.Dict[str, typing.Any]:
     """
-    Get the public members (including functions) and their values from an object.
+    Get the public members (including functions) and their values from an obj.
 
-    :param obj: the object
+    :param obj: the obj
     :return: dict of attribute names to values
     """
     return {k: getattr(obj, k) for k in dir(obj)
@@ -188,10 +188,11 @@ def is_optional(hinted_type):
     return False
 
 
-def get_type_of_optional(hinted_type):
+def get_type_of_optional(hinted_type: typing.Type, get_origin=True):
     """
     Get the first possible type for an optional type hint
 
+    :param get_origin: Should the returned type be the origin type?
     :param hinted_type: The hinted type to extract from
     :return: the type, or None
     """
@@ -204,13 +205,15 @@ def get_type_of_optional(hinted_type):
                 o = typing.get_origin(a)
                 if o is None:
                     return a
-                return o
+                return o if get_origin else a
     return None
+
 
 def is_typing_hint(obj):
     if obj is None:
         return False
     return obj.__module__ == 'typing'
+
 
 def parse_bool(string_or_bool: typing.Union[str, bool]):
     """
@@ -235,9 +238,9 @@ def parse_bool(string_or_bool: typing.Union[str, bool]):
 
 def fullname(obj):
     """
-    Get the fully qualified name of an object or function
+    Get the fully qualified name of an obj or function
 
-    :param obj: The object
+    :param obj: The obj
     :return: Fully qualified name
     """
     if inspect.isfunction(obj):
@@ -255,8 +258,8 @@ def fullname(obj):
 
 class SetFromMixin:
     """
-    Allows an object ot have its attributes set from a dictionary
-    or attributes taken from another object with an overlapping set
+    Allows an obj ot have its attributes set from a dictionary
+    or attributes taken from another obj with an overlapping set
     of attribute names.
     """
 
@@ -264,12 +267,12 @@ class SetFromMixin:
                  obj: typing.Union[typing.Any, dict],
                  missing_value_throws: bool = True):
         """
-        Set the attributes in this configuration object from a dictionary or another object
+        Set the attributes in this configuration obj from a dictionary or another obj
         possessing keys / attributes of the same name.
 
-        :param obj: The object, or dictionary
+        :param obj: The obj, or dictionary
         :param missing_value_throws: whether to throw :py:class:`ValueError` if obj is missing
-            an attribute that exist in this object
+            an attribute that exist in this obj
         :return: self
         """
 
@@ -282,7 +285,7 @@ class SetFromMixin:
             if not callable(v):
                 if k not in source:
                     if missing_value_throws:
-                        raise ValueError(f'Source object does not define: "{k}"')
+                        raise ValueError(f'Source obj does not define: "{k}"')
                 else:
                     setattr(self, k, source.get(k))
         return self
@@ -349,3 +352,78 @@ def module_all():
         if not name.startswith('_') and not isinstance(value, types.ModuleType):
             all_names.append(name)
     return all_names
+
+
+def type_check_struct(obj,
+                      attribute_namer: typing.Optional[typing.Callable[[str], str]] = None):
+    """
+    Preform some basic type checks on a struct like objects attributes using their type hints.
+
+    :raise ValueError: on type checking failure
+
+    :param obj: the object
+    :param attribute_namer: function which names attributes an alternate name
+    """
+
+    def a_namer(attr_name):
+        if attribute_namer:
+            return attribute_namer(attr_name)
+        return f'{obj.__class__.__name__}.{attr_name}'
+
+    def _is_optional_tuple(name, value, type_hint):
+        optional_type = [i for i in typing.get_args(type_hint) if is_type(i, tuple)][0]
+        arg_len = len(typing.get_args(optional_type))
+        if arg_len > 0:
+            if value is not None and not (isinstance(value, tuple) and len(value) == arg_len):
+                raise ValueError(
+                    f'{a_namer(name)} must be None or a tuple of length {arg_len}, value was: {value}')
+
+    def _is_tuple(name, value, type_hint):
+        arg_len = len(typing.get_args(type_hint))
+        if arg_len > 0:
+            if not (isinstance(value, tuple) and len(value) == arg_len):
+                raise ValueError(
+                    f'{a_namer(name)} must be a tuple of length {arg_len}, value was: {value}')
+
+    def _is_optional(value_type, name, value):
+        if value is not None and not isinstance(value, value_type):
+            raise ValueError(
+                f'{a_namer(name)} must be None or type {value_type.__name__}, value was: {value}')
+
+    def _is_optional_literal(name, value, type_hint):
+        optional_type = [i for i in typing.get_args(type_hint) if is_type(i, typing.Literal)][0]
+        args = typing.get_args(optional_type)
+        if value is not None and value not in args:
+            raise ValueError(
+                f'{a_namer(name)} must be None or one of these literal values: '
+                f'{dgenerate.textprocessing.oxford_comma(args, "or")}')
+
+    def _is_literal(name, value, type_hint):
+        args = typing.get_args(type_hint)
+        if value not in args:
+            raise ValueError(
+                f'{a_namer(name)} must be one of these literal values: '
+                f'{dgenerate.textprocessing.oxford_comma(args, "or")}')
+
+    def _is(value_type, name, value):
+        if not isinstance(value, value_type):
+            raise ValueError(
+                f'{a_namer(name)} must be type {value_type.__name__}, value was: {value}')
+
+    # Detect some incorrect types
+    for attr, hint in typing.get_type_hints(obj).items():
+        v = getattr(obj, attr)
+        if is_optional(hint):
+            if is_type_or_optional(hint, tuple):
+                _is_optional_tuple(attr, v, hint)
+            elif is_type_or_optional(hint, typing.Literal):
+                _is_optional_literal(attr, v, hint)
+            else:
+                _is_optional(get_type_of_optional(hint), attr, v)
+        else:
+            if is_type(hint, tuple):
+                _is_tuple(attr, v, hint)
+            elif is_type(hint, typing.Literal):
+                _is_literal(attr, v, hint)
+            else:
+                _is(get_type(hint), attr, v)

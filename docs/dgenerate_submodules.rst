@@ -47,6 +47,15 @@ dgenerate.image module
    :show-inheritance:
    :special-members: __call__, __init__
 
+dgenerate.imageprocess module
+-----------------------------
+
+.. automodule:: dgenerate.imageprocess
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :special-members: __call__, __init__
+
 dgenerate.invoker module
 ------------------------
 

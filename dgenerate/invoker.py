@@ -25,7 +25,6 @@ import dgenerate.imageprocessors as _imageprocessors
 import dgenerate.mediainput as _mediainput
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
-import dgenerate.plugin as _plugin
 import dgenerate.renderloop as _renderloop
 import dgenerate.subcommands as _subcommands
 
@@ -34,18 +33,19 @@ def invoke_dgenerate(
         args: typing.Sequence[str],
         render_loop: typing.Optional[_renderloop.RenderLoop] = None,
         throw: bool = False,
-        log_error: bool = True):
+        log_error: bool = True,
+        help_exits: bool = False):
     """
     Invoke dgenerate using its command line arguments and return a return code.
 
     dgenerate is invoked in the current process, this method does not spawn a subprocess.
-
 
     :param args: dgenerate command line arguments in the form of a list, see: shlex module, or sys.argv
     :param render_loop: :py:class:`dgenerate.renderloop.RenderLoop` instance,
         if None is provided one will be created.
     :param throw: Whether to throw exceptions or handle them.
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
+    :param help_exits: ``--help`` raises ``SystemExit`` ?
 
     :raises dgenerate.arguments.DgenerateUsageError:
     :raises dgenerate.mediainput.ImageSeedError:
@@ -110,7 +110,11 @@ def invoke_dgenerate(
     constraint_lists = []
 
     try:
-        arguments = _arguments.parse_args(args, log_error=log_error)
+        arguments = _arguments.parse_args(args, log_error=log_error, help_exits=True)
+    except SystemExit:
+        if help_exits:
+            raise
+        return 0
     except _arguments.DgenerateUsageError as e:
         if throw:
             raise e
@@ -146,6 +150,7 @@ def invoke_dgenerate(
 
     except (_mediainput.ImageSeedError,
             _mediainput.UnknownMimetypeError,
+            _mediainput.FrameStartOutOfBounds,
             _pipelinewrapper.ModelNotFoundError,
             _pipelinewrapper.InvalidModelUriError,
             _pipelinewrapper.InvalidSchedulerName,

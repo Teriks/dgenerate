@@ -6,7 +6,7 @@ from dgenerate import \
 
 import dgenerate.arguments
 
-args = dgenerate.arguments.parse_known_args()
+device = dgenerate.arguments.parse_device()
 
 config = RenderLoopConfig()
 
@@ -14,7 +14,7 @@ config.model_path = 'stabilityai/stable-diffusion-2'
 config.inference_steps = [40]
 config.guidance_scales = [5]
 config.prompts = [Prompt.parse('an astronaut walking on the moon; fake')]
-config.device = args.device
+config.device = device
 
 # One seed will be randomly generated for you if none are specified
 

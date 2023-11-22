@@ -47,7 +47,7 @@ class PluginArg:
 
     @property
     def hinted_optional_type(self):
-        return _types.get_type_of_optional(self.type)
+        return _types.get_type_of_optional(self.type, get_origin=False)
 
     @property
     def base_type(self):

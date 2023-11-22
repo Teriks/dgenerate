@@ -1,5 +1,25 @@
-import dgenerate.batchprocess
-import dgenerate.subcommands.exceptions as _exceptions
+# Copyright (c) 2023, Teriks
+#
+# dgenerate is distributed under the following BSD 3-Clause License
+#
+# Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in
+#    the documentation and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived
+#    from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+# ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+import dgenerate.imageprocess as _imageprocess
 import dgenerate.subcommands.subcommand as _subcommand
 
 
@@ -21,22 +41,6 @@ class ImageProcessSubCommand(_subcommand.SubCommand):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._directive = \
-            dgenerate.batchprocess.ImageProcessDirective(
-                loaded_by_name='image_process',
-                message_header='image-process:',
-                help_name='image-process',
-                help_desc='This sub-command allows you to use dgenerate image processors directly on files of your choosing.',
-                render_loop=None,
-                batch_processor=None,
-                plugin_module_paths=None,
-                allow_exit=True)
 
     def __call__(self) -> int:
-        try:
-            self._directive.image_process(self.args)
-        except dgenerate.batchprocess.ConfigRunnerPluginArgumentError as e:
-            raise _exceptions.SubCommandArgumentError(e)
-        except SystemExit as e:
-            return e.code
-        return 0
+        return _imageprocess.invoke_image_process(self.args)
