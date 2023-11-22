@@ -535,7 +535,14 @@ def invoke_image_process(
     :param help_exits: ``--help`` raises ``SystemExit`` ?
     :param help_name: name used in the ``--help`` output
     :param help_desc: description used in the ``--help`` output, if ``None`` is provided a default value will be used.
-    
+
+    :raises ImageProcessUsageError:
+    :raises dgenerate.imageprocessors.ImageProcessorArgumentError:
+    :raises dgenerate.imageprocessors.ImageProcessorNotFoundError:
+    :raises dgenerate.mediainput.FrameStartOutOfBounds:
+    :raises NotImplementedError:
+    :raises EnvironmentError:
+
     :return: integer return-code, anything other than 0 is failure
     """
     try:
