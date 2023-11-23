@@ -67,7 +67,13 @@ def _create_arg_parser(prog, description):
 
     actions.append(parser.add_argument(
         '-p', '--processors', nargs='+',
-        help='One or more image processor URIs.'))
+        help='One or more image processor URIs, specifying multiple will chain them together.'))
+
+    actions.append(
+        parser.add_argument('-pm', '--plugin-modules', action='store', default=[], nargs="+", dest='plugin_module_paths',
+                            metavar="PATH",
+                            help="""Specify one or more plugin module folder paths (folder containing __init__.py) or 
+                            python .py file paths to load as plugins. Plugin modules can implement image processors."""))
 
     actions.append(parser.add_argument(
         '-o', '--output', nargs='+', default=None,
@@ -289,8 +295,11 @@ class ImageProcessArgs(ImageProcessConfig):
     Configuration object for :py:class:`.ImageProcessRenderLoop`
     """
 
+    plugin_module_paths: _types.Paths
+
     def __init__(self):
         super().__init__()
+        self.plugin_module_paths = []
 
 
 class ImageProcessUsageError(Exception):
@@ -591,6 +600,8 @@ def invoke_image_process(
 
         render_loop = ImageProcessRenderLoop() if render_loop is None else render_loop
         render_loop.config = parsed
+
+        render_loop.image_processor_loader.load_plugin_modules(parsed.plugin_module_paths)
 
         render_loop.run()
     except (ImageProcessUsageError,
