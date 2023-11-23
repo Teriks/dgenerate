@@ -61,7 +61,7 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
         try:
             self._model = chainner.load_model(model)
         except chainner.UnsupportedModelError:
-            self.argument_error('Unsupported model file format.')
+            raise self.argument_error('Unsupported model file format.')
 
         self._tile = tile
         self._overlap = overlap

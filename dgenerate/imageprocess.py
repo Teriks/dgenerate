@@ -570,3 +570,6 @@ def invoke_image_process(
             raise
         return 1
     return 0
+
+
+__all__ = _types.module_all()

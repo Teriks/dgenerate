@@ -129,7 +129,16 @@ class Plugin:
         self.__argument_error_type = argument_error_type
 
     def argument_error(self, msg: str):
-        raise self.__argument_error_type(msg)
+        """
+        Return an constructed exception that is suitable for raising
+        as an argument error for this plugin.
+
+        Example: ``raise self.argument_error('oops!')``
+
+        :param msg: exception message
+        :return: the exception object, you must ``raise`` it.
+        """
+        return self.__argument_error_type(msg)
 
     @classmethod
     def get_names(cls) -> typing.List[str]:
@@ -145,7 +154,7 @@ class Plugin:
             else:
                 return cls.NAMES
         else:
-            return [cls.__name__]
+            return [_types.fullname(cls)]
 
     @classmethod
     def get_help(cls, loaded_by_name: str) -> str:

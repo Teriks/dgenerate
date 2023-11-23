@@ -25,8 +25,6 @@ import dgenerate.imageprocess as _imageprocess
 
 
 class ImageProcessDirective(_configrunnerplugin.ConfigRunnerPlugin):
-    NAMES = ['image_process']
-
     def __init__(self, **kwargs):
         """
         :param kwargs: plugin base class arguments
@@ -34,10 +32,9 @@ class ImageProcessDirective(_configrunnerplugin.ConfigRunnerPlugin):
 
         super().__init__(**kwargs)
 
-        self.register_directive('image_process',
-                                lambda args: self._directive(args))
+        self.register_directive('image_process', self._directive)
 
-    def _directive(self, args):
+    def _directive(self, args) -> int:
 
         render_loop = _imageprocess.ImageProcessRenderLoop()
         render_loop.image_processor_loader.load_plugin_modules(self.plugin_module_paths)
@@ -46,10 +43,10 @@ class ImageProcessDirective(_configrunnerplugin.ConfigRunnerPlugin):
             return_code = _imageprocess.invoke_image_process(args, render_loop=render_loop, help_exits=True)
         except SystemExit:
             # --help
-            return
+            return 0
 
-        if return_code != 0:
-            return
+        if return_code == 0:
+            self.set_template_variable('last_images', render_loop.written_images)
+            self.set_template_variable('last_animations', render_loop.written_animations)
 
-        self.set_template_variable('last_images', render_loop.written_images)
-        self.set_template_variable('last_animations', render_loop.written_animations)
+        return return_code

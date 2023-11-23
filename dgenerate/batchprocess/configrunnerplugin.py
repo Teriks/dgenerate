@@ -47,7 +47,7 @@ class ConfigRunnerPlugin(_plugin.Plugin):
         self.__render_loop = render_loop
 
         self.__plugin_module_paths = \
-            plugin_module_paths if \
+            list(plugin_module_paths) if \
                 plugin_module_paths is not None else []
 
     def set_template_variable(self, name, value):
@@ -69,9 +69,15 @@ class ConfigRunnerPlugin(_plugin.Plugin):
         if self.config_runner is not None:
             self.config_runner.template_variables.update(values)
 
-    def register_directive(self, name, implementation: typing.Callable[[typing.List[str]], None]):
+    def register_directive(self, name, implementation: typing.Callable[[typing.List[str]], int]):
         """
         Safely register a config directive implementation on the :py:class:`dgenerate.batchprocess.ConfigRunner` instance.
+
+        Your directive should return a return code, 0 for success and anything else for failure.
+
+        Returning non zero will cause :py:class:`BatchProcessError` to be raised from the runner, halting execution of the config.
+
+        Any non-exiting exception will be eaten and rethrown as :py:class:`BatchProcessError`, also halting execution of the config.
 
         :param name: directive name
         :param implementation: implementation callable
