@@ -42,8 +42,14 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
     """
 
     @property
-    def plugin_module_paths(self):
-        return set(self._plugin_module_paths)
+    def plugin_module_paths(self) -> typing.FrozenSet[str]:
+        """
+        Set of plugin module paths if they were injected into the config runner by ``-pm/--plugin-modules``
+        or used in a ``\\import_plugins`` statement in a config.
+
+        :return: a set of paths, may be empty but not ``None``
+        """
+        return frozenset(self._plugin_module_paths)
 
     def __init__(self,
                  injected_args: typing.Optional[typing.Sequence[str]] = None,
