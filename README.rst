@@ -2439,7 +2439,7 @@ Upscaling with chaiNNer Compatible Upscaler Models
 
 `chaiNNer <https://github.com/chaiNNer-org/chaiNNer>`_ compatible upscaler models from https://openmodeldb.info/
 and elsewhere can be utilized for tiled upscaling using dgenerates ``upscaler`` image processor and the
-``--post-processor`` option.
+``--post-processors`` option.
 
 The ``upscaler`` image processor can make use of URLs or files on disk.
 
@@ -2459,7 +2459,7 @@ The ``upscaler`` image processor respects the ``--device`` option of dgenerate, 
     --guidance-scales 8 \
     --output-size 1024 \
     --prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork" \
-    --post-processor upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth
+    --post-processors upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth
 
 
 In addition to this the ``\image_process`` config directive, or ``--sub-command image-process`` can be used to upscale
