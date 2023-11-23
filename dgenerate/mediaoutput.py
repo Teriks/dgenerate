@@ -135,7 +135,24 @@ def supported_animation_writer_formats():
 
     :return: list of file extensions.
     """
-    return ['mp4', 'gif', 'webp']
+    PIL.Image.init()
+
+    return ['mp4'] + [ext for ext in (ext.lstrip('.') for ext, format
+                                      in PIL.Image.EXTENSION.items() if format in PIL.Image.SAVE_ALL) if
+                      ext in {'gif', 'webp', 'apng', 'png'}]
+
+
+def supported_static_image_formats():
+    """
+    What file extensions does PIL/Pillow support for output of at least one frame?
+
+    File extensions are returned without a period.
+
+    :return: list of file extensions
+    """
+    PIL.Image.init()
+
+    return [ext.lstrip('.') for ext, format in PIL.Image.EXTENSION.items() if format in PIL.Image.SAVE]
 
 
 class UnknownAnimationFormatError(Exception):

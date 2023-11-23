@@ -1215,7 +1215,8 @@ def parse_templates_help(args: typing.Optional[typing.Sequence[str]] = None) -> 
     return parsed.templates_help, unknown
 
 
-def parse_plugin_modules(args: typing.Optional[typing.Sequence[str]] = None) -> typing.Tuple[typing.List[str], typing.List[str]]:
+def parse_plugin_modules(args: typing.Optional[typing.Sequence[str]] = None) -> typing.Tuple[
+    typing.List[str], typing.List[str]]:
     """
     Retrieve the ``-pm/--plugin-modules`` argument value
 
@@ -1229,7 +1230,8 @@ def parse_plugin_modules(args: typing.Optional[typing.Sequence[str]] = None) -> 
     return parsed.plugin_modules, unknown
 
 
-def parse_image_processor_help(args: typing.Optional[typing.Sequence[str]] = None) -> typing.Tuple[typing.List[str], typing.List[str]]:
+def parse_image_processor_help(args: typing.Optional[typing.Sequence[str]] = None) -> typing.Tuple[
+    typing.List[str], typing.List[str]]:
     """
     Retrieve the ``-iph/--image-processor-help`` argument value
 
@@ -1259,7 +1261,8 @@ def parse_sub_command(args: typing.Optional[typing.Sequence[str]] = None) -> typ
     return parsed.sub_command, unknown
 
 
-def parse_sub_command_help(args: typing.Optional[typing.Sequence[str]] = None) -> typing.Tuple[typing.List[str], typing.List[str]]:
+def parse_sub_command_help(args: typing.Optional[typing.Sequence[str]] = None) -> typing.Tuple[
+    typing.List[str], typing.List[str]]:
     """
     Retrieve the ``-scmh/--sub-command-help`` argument value
 
@@ -1286,6 +1289,20 @@ def parse_device(args: typing.Optional[typing.Sequence[str]] = None) -> typing.T
     parser.add_argument('-d', '--device', type=_type_device)
     parsed, unknown = parser.parse_known_args(args)
     return parsed.device, unknown
+
+
+def parse_verbose(args: typing.Optional[typing.Sequence[str]] = None) -> typing.Tuple[bool, typing.List[str]]:
+    """
+    Retrieve the ``-v/--verbose`` argument value
+
+    :param args: command line arguments
+    :return: (value, unknown_args_list)
+    """
+
+    parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
+    parser.add_argument('-v', '--verbose', action='store_true')
+    parsed, unknown = parser.parse_known_args(args)
+    return parsed.verbose, unknown
 
 
 def parse_known_args(args: typing.Optional[typing.Sequence[str]] = None,
