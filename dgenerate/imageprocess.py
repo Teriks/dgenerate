@@ -27,8 +27,8 @@ import tempfile
 import time
 import typing
 
+import dgenerate.arguments as _arguments
 import dgenerate.filelock as _filelock
-import dgenerate.imageprocessors
 import dgenerate.imageprocessors as _imageprocessors
 import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
@@ -45,13 +45,6 @@ def _type_align(val):
 
     if val < 1:
         raise argparse.ArgumentTypeError('Must be greater than or equal to 1')
-    return val
-
-
-def _type_frame_format(val):
-    if val not in _mediaoutput.supported_static_image_formats():
-        raise argparse.ArgumentTypeError(
-            f'Must be one of {_textprocessing.oxford_comma(_mediaoutput.supported_static_image_formats(), "or")}')
     return val
 
 
@@ -87,7 +80,7 @@ def _create_arg_parser(prog, description):
         for image output are equal to those listed under --frame-format."""))
 
     actions.append(parser.add_argument(
-        '-ff', '--frame-format', default='png', type=_type_frame_format,
+        '-ff', '--frame-format', default='png', type=_arguments._type_image_format,
         help=f'Image format for animation frames. '
              f'Must be one of: {_textprocessing.oxford_comma(_mediaoutput.supported_static_image_formats(), "or")}.'))
 
@@ -96,7 +89,7 @@ def _create_arg_parser(prog, description):
         help='Indicate that it is okay to overwrite files, instead of appending a duplicate suffix.'))
 
     actions.append(parser.add_argument(
-        '-r', '--resize', default=None, type=dgenerate.arguments._type_size,
+        '-r', '--resize', default=None, type=_arguments._type_size,
         help='Preform naive image resizing (LANCZOS).'))
 
     actions.append(parser.add_argument(
@@ -109,15 +102,15 @@ def _create_arg_parser(prog, description):
             Specifying 1 will disable resolution alignment."""))
 
     actions.append(parser.add_argument(
-        '-d', '--device', default='cuda', type=dgenerate.arguments._type_device,
+        '-d', '--device', default='cuda', type=_arguments._type_device,
         help='Processing device, for example "cuda", "cuda:1".'))
 
-    actions.append(parser.add_argument('-fs', '--frame-start', default=0, type=dgenerate.arguments._type_frame_start,
+    actions.append(parser.add_argument('-fs', '--frame-start', default=0, type=_arguments._type_frame_start,
                                        metavar="FRAME_NUMBER",
                                        help="""Starting frame slice point for animated files (zero-indexed), the specified
                          frame will be included.  (default: 0)"""))
 
-    actions.append(parser.add_argument('-fe', '--frame-end', default=None, type=dgenerate.arguments._type_frame_end,
+    actions.append(parser.add_argument('-fe', '--frame-end', default=None, type=_arguments._type_frame_end,
                                        metavar="FRAME_NUMBER",
                                        help="""Ending frame slice point for animated files (zero-indexed), the specified 
                         frame will be included."""))

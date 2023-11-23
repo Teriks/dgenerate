@@ -23,6 +23,7 @@ import random
 import typing
 
 import dgenerate.mediainput as _mediainput
+import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.prompt as _prompt
 import dgenerate.textprocessing as _textprocessing
@@ -496,6 +497,15 @@ class RenderLoopConfig(_types.SetFromMixin):
     This corresponds to the ``--animation-format`` argument of the dgenerate command line tool.
     """
 
+    image_format: _types.Name = 'png'
+    """
+    Format for any images that are written including animation frames.
+    
+    Anything other than "png" is not compatible with ``output_metadata=True`` and a
+    :py:exc:`.RenderLoopConfigError` will be raised upon running the render loop if 
+    ``output_metadata=True`` and this value is not "png"
+    """
+
     no_frames: bool = False
     """
     Should individual frames not be output when rendering an animation? defaults to False.
@@ -653,6 +663,17 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'{a_namer("frame_start")} must be less than or equal to {a_namer("frame_end")}')
 
         self.animation_format = self.animation_format.strip().lower()
+        self.image_format = self.image_format.strip().lower()
+
+        if self.animation_format not in _mediaoutput.supported_animation_writer_formats():
+            raise RenderLoopConfigError(
+                f'Unsupported {a_namer("image_format")} value "{self.image_format }". Must be one of '
+                f'{_textprocessing.oxford_comma(_mediaoutput.supported_animation_writer_formats(), "or")}')
+
+        if self.image_format != "png" and self.output_metadata:
+            raise RenderLoopConfigError(
+                f'{a_namer("image_format")} value "{self.image_format }" is '
+                f'unsupported when {a_namer("output_metadata")} is enabled.')
 
         if self.animation_format == 'frames' and self.no_frames:
             raise RenderLoopConfigError(
