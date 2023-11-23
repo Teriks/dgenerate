@@ -59,7 +59,7 @@ For library documentation visit `readthedocs <http://dgenerate.readthedocs.io/en
     * `Specifying Generation Batch Size`_
     * `Image Processors`_
     * `Upscaling with Diffusion Upscaler Models`_
-    * `Dgenerate Sub Commands (image-process)`_
+    * `Sub Commands (image-process)`_
     * `Upscaling with chaiNNer Compatible Upscaler Models`_
     * `Batch Processing From STDIN`_
     * `Batch Processing Argument Injection`_
@@ -244,8 +244,8 @@ Help Output
                             "huggingface/lora;scale=1.0;revision=main;subfolder=repo_subfolder;weight-
                             name=lora.safetensors". The "scale" argument indicates the scale factor of
                             the LoRA. The "revision" argument specifies the model revision to use for the
-                            VAE when loading from huggingface repository, (The git branch / tag, default
-                            is "main"). The "subfolder" argument specifies the VAE model subfolder, if
+                            LoRA when loading from huggingface repository, (The git branch / tag, default
+                            is "main"). The "subfolder" argument specifies the LoRA model subfolder, if
                             specified when loading from a huggingface repository or folder, weights from
                             the specified subfolder. The "weight-name" argument indicates the name of the
                             weights file to be loaded when loading from a huggingface repository or
@@ -2337,8 +2337,8 @@ The image used in the example below is this `low resolution cat <https://raw.git
     --upscaler-noise-levels 20
 
 
-Dgenerate Sub Commands (image-process)
-======================================
+Sub Commands (image-process)
+============================
 
 dgenerate implements additional functionality through the option ``--sub-command``.
 
