@@ -2288,11 +2288,11 @@ dgenerate implements additional functionality through the option ``--sub-command
 For a list of available sub-commands use ``--sub-command-help``, which by default
 will list available sub-command names.
 
+For additional information on a specific sub-command use ``--sub-command-help NAME``
+
 All sub-commands respect the ``--plugin-modules`` and ``--verbose`` arguments
 even if their help output does not specify them, these arguments are handled
 by dgenerate and not the sub-command.
-
-For additional information on a specific sub-command use ``--sub-command-help NAME``
 
 currently the only implemented sub-command is ``image-process``, which you can
 read the help output of using ``dgenerate --sub-command image-process --help``
