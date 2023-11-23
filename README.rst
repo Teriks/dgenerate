@@ -1726,7 +1726,7 @@ when ``--batch-size`` is greater than 1.
 
     dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
     --variant fp16 --dtype float16 \
-    --vae AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix \
+    --vae "AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix" \
     --vae-tiling \
     --vae-slicing \
     --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
@@ -1778,7 +1778,7 @@ If you want to select the repository revision, such as ``main`` etc, use the nam
 
     dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
     --variant fp16 --dtype float16 \
-    --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0;revision=main \
+    --sdxl-refiner "stabilityai/stable-diffusion-xl-refiner-1.0;revision=main" \
     --sdxl-high-noise-fractions 0.8 \
     --inference-steps 40 \
     --guidance-scales 8 \
@@ -1794,7 +1794,7 @@ value is the same as ``--variant`` unless you override it.
 
     dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
     --variant fp16 --dtype float16 \
-    --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0;variant=fp16 \
+    --sdxl-refiner "stabilityai/stable-diffusion-xl-refiner-1.0;variant=fp16" \
     --sdxl-high-noise-fractions 0.8 \
     --inference-steps 40 \
     --guidance-scales 8 \
@@ -1811,7 +1811,7 @@ If your weights file exists in a subfolder of the repository, use the named argu
 
     dgenerate huggingface/sdxl_model --model-type torch-sdxl \
     --variant fp16 --dtype float16 \
-    --sdxl-refiner huggingface/sdxl_refiner;subfolder=repo_subfolder
+    --sdxl-refiner "huggingface/sdxl_refiner;subfolder=repo_subfolder"
 
 
 If you want to select the model precision, use the named argument ``dtype``. By
@@ -1822,7 +1822,7 @@ values are the same as ``--dtype``, IE: 'float32', 'float16', 'auto'
 
     dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
     --variant fp16 --dtype float16 \
-    --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0;dtype=float16 \
+    --sdxl-refiner "stabilityai/stable-diffusion-xl-refiner-1.0;dtype=float16" \
     --sdxl-high-noise-fractions 0.8 \
     --inference-steps 40 \
     --guidance-scales 8 \
@@ -1960,7 +1960,7 @@ or other file from a path on disk they should not be used.
     # as an argument
 
     dgenerate Duskfallcrew/isometric-dreams-sd-1-5  \
-    --textual-inversions Duskfallcrew/IsometricDreams_TextualInversions;weight-name=Isometric_Dreams-1000.pt \
+    --textual-inversions "Duskfallcrew/IsometricDreams_TextualInversions;weight-name=Isometric_Dreams-1000.pt" \
     --scheduler KDPM2DiscreteScheduler \
     --inference-steps 30 \
     --guidance-scales 7 \
@@ -2080,7 +2080,7 @@ These examples use: `vermeer_canny_edged.png <https://raw.githubusercontent.com/
     --inference-steps 40 \
     --guidance-scales 8 \
     --prompts "Painting, Girl with a pearl earing by Leonardo Da Vinci, masterpiece; low quality, low resolution, blank eyeballs" \
-    --control-nets lllyasviel/sd-controlnet-canny;scale=0.5 \
+    --control-nets "lllyasviel/sd-controlnet-canny;scale=0.5" \
     --image-seeds "vermeer_canny_edged.png"
 
 
@@ -2090,7 +2090,7 @@ These examples use: `vermeer_canny_edged.png <https://raw.githubusercontent.com/
     --inference-steps 40 \
     --guidance-scales 8 \
     --prompts "Painting, Girl with a pearl earing by Leonardo Da Vinci, masterpiece; low quality, low resolution, blank eyeballs" \
-    --control-nets lllyasviel/sd-controlnet-canny;scale=0.5 \
+    --control-nets "lllyasviel/sd-controlnet-canny;scale=0.5" \
     --image-seeds "my-image-seed.png;control=vermeer_canny_edged.png"
 
 
@@ -2100,7 +2100,7 @@ These examples use: `vermeer_canny_edged.png <https://raw.githubusercontent.com/
     --inference-steps 40 \
     --guidance-scales 8 \
     --prompts "Painting, Girl with a pearl earing by Leonardo Da Vinci, masterpiece; low quality, low resolution, blank eyeballs" \
-    --control-nets lllyasviel/sd-controlnet-canny;scale=0.5 \
+    --control-nets "lllyasviel/sd-controlnet-canny;scale=0.5" \
     --image-seeds "my-image-seed.png;mask=my-inpaint-mask.png;control=vermeer_canny_edged.png"
 
     # Flax example
@@ -2111,19 +2111,19 @@ These examples use: `vermeer_canny_edged.png <https://raw.githubusercontent.com/
     --inference-steps 40 \
     --guidance-scales 8 \
     --prompts "Painting, Girl with a pearl earing by Leonardo Da Vinci, masterpiece; low quality, low resolution, blank eyeballs" \
-    --control-nets lllyasviel/sd-controlnet-canny;scale=0.5;from_torch=true \
+    --control-nets "lllyasviel/sd-controlnet-canny;scale=0.5;from_torch=true" \
     --image-seeds "vermeer_canny_edged.png"
 
     # SDXL example
 
     dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
     --variant fp16 --dtype float16 \
-    --vae AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix \
+    --vae "AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix" \
     --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
     --inference-steps 30 \
     --guidance-scales 8 \
     --prompts "Taylor Swift, high quality, masterpiece, high resolution; low quality, bad quality, sketches" \
-    --control-nets diffusers/controlnet-canny-sdxl-1.0;scale=0.5 \
+    --control-nets "diffusers/controlnet-canny-sdxl-1.0;scale=0.5" \
     --image-seeds "vermeer_canny_edged.png" \
     --output-size 1024
 
@@ -2241,12 +2241,12 @@ is used in the example below with a ControlNet that is trained to generate image
 
     dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
     --variant fp16 --dtype float16 \
-    --vae AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix \
+    --vae "AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix" \
     --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
     --inference-steps 30 \
     --guidance-scales 8 \
     --prompts "Majestic unicorn, high quality, masterpiece, high resolution; low quality, bad quality, sketches" \
-    --control-nets diffusers/controlnet-canny-sdxl-1.0;scale=0.5 \
+    --control-nets "diffusers/controlnet-canny-sdxl-1.0;scale=0.5" \
     --image-seeds "horse.jpeg" \
     --control-image-processors "canny;lower=50;upper=100" \
     --gen-seeds 2 \
@@ -2489,13 +2489,13 @@ A few usage examples with processors:
     # create a video rigged with OpenPose, frames will be rendered to the directory "output" as well.
 
     dgenerate --sub-command image-process my-video.mp4 \
-    -o output/rigged-video.mp4 --processors openpose;include-hand=true;include-face=true
+    -o output/rigged-video.mp4 --processors "openpose;include-hand=true;include-face=true"
 
     # Canny edge detected video, also using processor chaining to mirror the frames
     # before they are edge detected
 
     dgenerate --sub-command image-process my-video.mp4 \
-    -o output/canny-video.mp4 --processors mirror canny;blur=true;threshold-algo=otsu
+    -o output/canny-video.mp4 --processors mirror "canny;blur=true;threshold-algo=otsu"
 
 
 Upscaling with chaiNNer Compatible Upscaler Models
@@ -2523,7 +2523,7 @@ The ``upscaler`` image processor respects the ``--device`` option of dgenerate, 
     --guidance-scales 8 \
     --output-size 1024 \
     --prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork" \
-    --post-processors upscaler;model=https://github.com/JingyunLiang/SwinIR/releases/download/v0.0/001_classicalSR_DIV2K_s48w8_SwinIR-M_x4.pth
+    --post-processors "upscaler;model=https://github.com/JingyunLiang/SwinIR/releases/download/v0.0/001_classicalSR_DIV2K_s48w8_SwinIR-M_x4.pth"
 
 
 In addition to this the ``\image_process`` config directive, or ``--sub-command image-process`` can be used to upscale
@@ -2543,7 +2543,7 @@ will work with any named image processor implemented by dgenerate.
 
     dgenerate --sub-command image-process my-file.png \
     --output output/my-file-upscaled.png \
-    --processors upscaler;model=https://github.com/JingyunLiang/SwinIR/releases/download/v0.0/001_classicalSR_DIV2K_s48w8_SwinIR-M_x4.pth
+    --processors "upscaler;model=https://github.com/JingyunLiang/SwinIR/releases/download/v0.0/001_classicalSR_DIV2K_s48w8_SwinIR-M_x4.pth"
 
 
 Batch Processing From STDIN
@@ -3188,7 +3188,7 @@ The dgenerate sub-command ``image-process`` is has a directive implementation.
 
     \image_process {{ myfiles }} \
     --output upscaled/ \
-    --processors upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth
+    --processors "upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth"
 
 
     # the last_images template variable will be set, last_animations is also usable if
