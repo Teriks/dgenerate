@@ -238,12 +238,12 @@ def parse_bool(string_or_bool: typing.Union[str, bool]):
 
 def fullname(obj):
     """
-    Get the fully qualified name of an obj or function
+    Get the fully qualified name of an obj or function or type/class
 
     :param obj: The obj
     :return: Fully qualified name
     """
-    if inspect.isfunction(obj):
+    if inspect.isfunction(obj) or inspect.isclass(obj):
         mod = inspect.getmodule(obj)
         if mod is not None:
             return mod.__name__ + '.' + obj.__qualname__

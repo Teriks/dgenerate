@@ -2,12 +2,10 @@ import dgenerate.batchprocess.configrunnerplugin as _configrunnerplugin
 
 
 class MyDirective(_configrunnerplugin.ConfigRunnerPlugin):
-    NAMES = ['my_directive']
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self.register_directive('my_directive', lambda args: self.directive(args))
+        self.register_directive('my_directive', self.directive)
 
     def directive(self, args):
         # Access to the render loop object containing information about
@@ -27,18 +25,34 @@ class MyDirective(_configrunnerplugin.ConfigRunnerPlugin):
         # a shell command here
         print(args)
 
+        # you can raise custom argument errors with self.argument_error
+
+        # raise self.argument_error('My argument error message')
+
+        return 0
+
+        # Return code 0 indicates that the directive executed successfully
+        # anything other than 0 halts execution with a message reporting
+        # the return code, any error logging should be handled by you
+
+        # Unhandled unknown non SystemExit exceptions will also halt execution and be
+        # rethrown as a BatchProcessError from the config runner without a stack trace
+        # unless -v/--verbose is enable. The exception message will be printed
+        # to the console alone, unless -v/--verbose is specified
+        # (injected into the config from the command line).
+
 
 class MyMultiDirective(_configrunnerplugin.ConfigRunnerPlugin):
-    NAMES = ['my_multi_directive']
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self.register_directive('my_directive_1', lambda args: self.my_directive_1(args))
-        self.register_directive('my_directive_2', lambda args: self.my_directive_2(args))
+        self.register_directive('my_directive_1', self.my_directive_1)
+        self.register_directive('my_directive_2', self.my_directive_2)
 
-    def my_directive_1(self, args):
+    def my_directive_1(self, args) -> int:
         print('my_directive_1:', args)
+        return 0
 
     def my_directive_2(self, args):
         print('my_directive_2:', args)
+        return 0

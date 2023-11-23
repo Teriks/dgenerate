@@ -137,7 +137,7 @@ class PosterizeProcessor(_imageprocessor.ImageProcessor):
         self._bits = bits
 
         if self._bits < 1 or self._bits > 8:
-            self.argument_error(
+            raise self.argument_error(
                 f'Argument "bits" must be an integer value from 1 to 8, received {self._bits}.')
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
@@ -179,7 +179,7 @@ class SolarizeProcessor(_imageprocessor.ImageProcessor):
         self._threshold = threshold
 
         if self._threshold < 0 or self._threshold > 255:
-            self.argument_error(
+            raise self.argument_error(
                 f'Argument "threshold" must be an integer value from 0 to 255, received {self._threshold}.')
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):

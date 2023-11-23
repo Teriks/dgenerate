@@ -37,6 +37,10 @@ class FooBarImageProcessor(dgenerate.imageprocessors.ImageProcessor):
         self._my_argument_3 = my_argument_3
         self._my_argument_4 = my_argument_4
 
+        # you can raise custom argument errors with self.argument_error
+
+        # raise self.argument_error('My argument error message')
+
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: typing.Union[None, tuple]):
 
         # This step runs before dgenerate resizes an image to the value of --output-size

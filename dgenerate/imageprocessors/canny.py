@@ -80,7 +80,7 @@ class CannyEdgeDetectProcessor(_imageprocessor.ImageProcessor):
 
         if threshold_algo is not None:
             if threshold_algo not in {'otsu', 'triangle', 'median'}:
-                self.argument_error(
+                raise self.argument_error(
                     'Argument "threshold_algo" must be undefined or one of: otsu, triangle, manual')
 
         self._threshold_algo = threshold_algo
@@ -94,7 +94,7 @@ class CannyEdgeDetectProcessor(_imageprocessor.ImageProcessor):
 
         if (self._aperture_size % 2 == 0 or
                 self._aperture_size < 3 or self._aperture_size > 7):
-            self.argument_error(
+            raise self.argument_error(
                 f'Argument "aperture_size" should be an odd number between 3 and 7, received {self._aperture_size}.')
 
         self._L2_gradient = L2_gradient

@@ -69,15 +69,18 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         def invoker(args):
             try:
-                return _invoker.invoke_dgenerate(args,
-                                                 render_loop=self.render_loop,
-                                                 throw=throw)
+                return_code = \
+                    _invoker.invoke_dgenerate(args,
+                                              render_loop=self.render_loop,
+                                              throw=throw)
+                if return_code == 0:
+                    self.template_variables.update(self.render_loop.generate_template_variables())
+                return return_code
             finally:
                 self.render_loop.model_extra_modules = None
 
         super().__init__(
             invoker=invoker,
-            template_variable_generator=lambda: self.render_loop.generate_template_variables(),
             name='dgenerate',
             version=version,
             injected_args=injected_args if injected_args else [])
@@ -136,112 +139,120 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'first': first
         }
 
-        def save_modules_directive(args):
-            saved_modules = self.template_variables.get('saved_modules')
+        def return_zero(func):
+            def wrap(args):
+                func()
+                return 0
 
-            if len(args) < 2:
-                raise _batchprocessor.BatchProcessError(
-                    '\\save_modules directive must have at least 2 arguments, '
-                    'a variable name and one or more module names.')
-
-            creation_result = render_loop.pipeline_wrapper.recall_main_pipeline()
-            saved_modules[args[0]] = creation_result.get_pipeline_modules(args[1:])
-
-        def use_modules_directive(args):
-            saved_modules = self.template_variables.get('saved_modules')
-
-            if not saved_modules:
-                raise _batchprocessor.BatchProcessError(
-                    'no modules are currently saved that can be referenced.')
-
-            saved_name = args[0]
-            render_loop.model_extra_modules = saved_modules[saved_name]
-
-        def clear_modules_directive(args):
-            saved_modules = self.template_variables.get('saved_modules')
-
-            if len(args) > 0:
-                for arg in args:
-                    del saved_modules[arg]
-            else:
-                saved_modules.clear()
-
-        def gen_seeds_directive(args):
-            if len(args) == 2:
-                try:
-                    self.template_variables[args[0]] = \
-                        [str(s) for s in _renderloop.gen_seeds(int(args[1]))]
-                except ValueError:
-                    raise _batchprocessor.BatchProcessError(
-                        'The second argument of \\gen_seeds must be an integer value.')
-            else:
-                raise _batchprocessor.BatchProcessError(
-                    '\\gen_seeds directive takes 2 arguments, template variable '
-                    'name (to store value at), and number of seeds to generate.')
-
-        def templates_help_directive(args):
-            values = render_loop.generate_template_variables_with_types()
-            values['saved_modules'] = (typing.Dict[str, typing.Dict[str, typing.Any]],
-                                       self.template_variables.get('saved_modules'))
-            values['glob'] = (types.ModuleType, "<module 'glob'>")
-
-            header = None
-            if len(args) > 0:
-                values = {k: v for k, v in values.items() if k in args}
-
-                if len(values) > 1:
-                    header = "Template variables are"
-                else:
-                    header = 'Template variable is'
-
-            _messages.log(
-                render_loop.generate_template_variables_help(values=values,
-                                                             header=header,
-                                                             show_values=True) + '\n',
-                underline=True)
+            return wrap
 
         self.directives = {
-            'templates_help': templates_help_directive,
-            'clear_model_cache': lambda args: _pipelinewrapper.clear_model_cache(),
-            'clear_pipeline_cache': lambda args: _pipelinewrapper.clear_pipeline_cache(),
-            'clear_vae_cache': lambda args: _pipelinewrapper.clear_vae_cache(),
-            'clear_control_net_cache': lambda args: _pipelinewrapper.clear_control_net_cache(),
-            'save_modules': save_modules_directive,
-            'use_modules': use_modules_directive,
-            'clear_modules': clear_modules_directive,
-            'gen_seeds': gen_seeds_directive,
+            'templates_help': self._templates_help_directive,
+            'clear_model_cache': return_zero(_pipelinewrapper.clear_model_cache),
+            'clear_pipeline_cache': return_zero(_pipelinewrapper.clear_pipeline_cache),
+            'clear_vae_cache': return_zero(_pipelinewrapper.clear_vae_cache),
+            'clear_control_net_cache': return_zero(_pipelinewrapper.clear_control_net_cache),
+            'save_modules': self._save_modules_directive,
+            'use_modules': self._use_modules_directive,
+            'clear_modules': self._clear_modules_directive,
+            'gen_seeds': self._gen_seeds_directive,
         }
 
         self.plugin_loader = \
             _configrunnerpluginloader.ConfigRunnerPluginLoader() if \
                 plugin_loader is None else plugin_loader
 
-        plugin_module_paths = []
+        self._plugin_module_paths = []
 
         if injected_args:
             plugin_module_paths, _ = _arguments.parse_plugin_modules(injected_args)
             self.plugin_loader.load_plugin_modules(plugin_module_paths)
 
-        loaded_plugins = []
-
         for plugin_class in self.plugin_loader.get_available_classes():
-            loaded_plugins.append(
-                self.plugin_loader.load(plugin_class.get_names()[0],
-                                        config_runner=self,
-                                        render_loop=self.render_loop,
-                                        plugin_module_paths=plugin_module_paths)
-            )
+            self.plugin_loader.load(plugin_class.get_names()[0],
+                                    config_runner=self,
+                                    render_loop=self.render_loop,
+                                    plugin_module_paths=self._plugin_module_paths)
 
-        def import_plugins(plugin_paths):
-            classes = self.plugin_loader.load_plugin_modules(plugin_paths)
-            for cls in classes:
-                loaded_plugins.append(
-                    self.plugin_loader.load(cls.get_names()[0],
-                                            config_runner=self,
-                                            render_loop=self.render_loop,
-                                            plugin_module_paths=plugin_module_paths))
+        self.directives['import_plugins'] = self._import_plugins
 
-        self.directives['import_plugins'] = import_plugins
+    def _import_plugins(self, plugin_paths):
+        classes = self.plugin_loader.load_plugin_modules(plugin_paths)
+        for cls in classes:
+            self.plugin_loader.load(cls.get_names()[0],
+                                    config_runner=self,
+                                    render_loop=self.render_loop,
+                                    plugin_module_paths=self._plugin_module_paths)
+        return 0
+
+    def _save_modules_directive(self, args):
+        saved_modules = self.template_variables.get('saved_modules')
+
+        if len(args) < 2:
+            raise _batchprocessor.BatchProcessError(
+                '\\save_modules directive must have at least 2 arguments, '
+                'a variable name and one or more module names.')
+
+        creation_result = self.render_loop.pipeline_wrapper.recall_main_pipeline()
+        saved_modules[args[0]] = creation_result.get_pipeline_modules(args[1:])
+        return 0
+
+    def _use_modules_directive(self, args):
+        saved_modules = self.template_variables.get('saved_modules')
+
+        if not saved_modules:
+            raise _batchprocessor.BatchProcessError(
+                'no modules are currently saved that can be referenced.')
+
+        saved_name = args[0]
+        self.render_loop.model_extra_modules = saved_modules[saved_name]
+        return 0
+
+    def _clear_modules_directive(self, args):
+        saved_modules = self.template_variables.get('saved_modules')
+
+        if len(args) > 0:
+            for arg in args:
+                del saved_modules[arg]
+        else:
+            saved_modules.clear()
+        return 0
+
+    def _gen_seeds_directive(self, args):
+        if len(args) == 2:
+            try:
+                self.template_variables[args[0]] = \
+                    [str(s) for s in _renderloop.gen_seeds(int(args[1]))]
+            except ValueError:
+                raise _batchprocessor.BatchProcessError(
+                    'The second argument of \\gen_seeds must be an integer value.')
+        else:
+            raise _batchprocessor.BatchProcessError(
+                '\\gen_seeds directive takes 2 arguments, template variable '
+                'name (to store value at), and number of seeds to generate.')
+        return 0
+
+    def _templates_help_directive(self, args):
+        values = self.render_loop.generate_template_variables_with_types()
+        values['saved_modules'] = (typing.Dict[str, typing.Dict[str, typing.Any]],
+                                   self.template_variables.get('saved_modules'))
+        values['glob'] = (types.ModuleType, "<module 'glob'>")
+
+        header = None
+        if len(args) > 0:
+            values = {k: v for k, v in values.items() if k in args}
+
+            if len(values) > 1:
+                header = "Template variables are"
+            else:
+                header = 'Template variable is'
+
+        _messages.log(
+            self.render_loop.generate_template_variables_help(values=values,
+                                                              header=header,
+                                                              show_values=True) + '\n',
+            underline=True)
+        return 0
 
 
 __all__ = _types.module_all()

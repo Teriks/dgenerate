@@ -102,11 +102,6 @@ class BatchProcessor:
     Version tuple for the version check hash bang directive.
     """
 
-    template_variable_generator: typing.Callable[[], dict]
-    """
-    Function that generates template variables after an invocation occurs.
-    """
-
     template_variables: typing.Dict[str, typing.Any]
     """
     Live template variables.
@@ -117,20 +112,13 @@ class BatchProcessor:
     Functions available when templating is occurring.
     """
 
-    directives: typing.Dict[str, typing.Optional[typing.Callable[[list], None]]]
+    directives: typing.Dict[str, typing.Optional[typing.Callable[[list], int]]]
     """
-    Batch process directives.
+    Batch process directives, shell commands starting with a backslash.
     
-    Dictionary of callable(list).
-    """
-
-    directive_exceptions: bool = False
-    """
-    Will non-exiting exceptions that occur inside of a directive be allowed to propagate?
+    Dictionary of callable(list) -> int.
     
-    They are eaten and rethrown as :py:class:`BatchProcessError` by default.
-    
-    Setting this to ``True`` allows them to propagate out for debugging purposes.
+    The function should return a return code, 0 for success, anything else for failure.
     """
 
     injected_args: typing.List[str]
@@ -142,7 +130,6 @@ class BatchProcessor:
                  invoker: typing.Callable[[list], int],
                  name: _types.Name,
                  version: typing.Union[_types.Version, str],
-                 template_variable_generator: typing.Optional[typing.Callable[[], dict]] = None,
                  template_variables: typing.Optional[typing.Dict[str, typing.Any]] = None,
                  template_functions: typing.Optional[
                      typing.Dict[str, typing.Callable[[typing.Any], typing.Any]]] = None,
@@ -150,32 +137,31 @@ class BatchProcessor:
                  injected_args: typing.Optional[typing.List[str]] = None):
         """
         :param invoker: A function for invoking lines recognized as shell commands, should return a return code.
-        :param template_variable_generator: A function that generates template variables for templating after an
-            invocation, should return a dictionary.
         :param name: The name of this batch processor, currently used in the version check directive and messages
         :param version: Version for version check hash bang directive.
         :param template_variables: Live template variables, the initial environment, this dictionary will be
             modified during runtime.
         :param template_functions: Functions available to Jinja2
         :param directives: batch processing directive handlers, for: *\\\\directives*. This is a dictionary
-            of names to functions which accept a single parameter, a list of directive arguments.
+            of names to functions which accept a single parameter, a list of directive arguments, and return
+            a return code.
         :param injected_args: Arguments to be injected at the end of user specified arguments for every shell invocation.
             If ``-v/--verbose`` is present in ``injected_args`` debugging output will be enabled globally while the config
-            runs, and not just for invocations.
+            runs, and not just for invocations. Passing ``-v/--verbose`` also disables handling of unhandled non
+            :py:exc:`SystemExit` exceptions raised by config directive implementations, a stack trace will be
+            printed when these exceptions are encountered.
         """
 
         self._template_functions = None
         self.invoker = invoker
         self.name = name
 
-        self.template_variable_generator = \
-            template_variable_generator if \
-                template_variable_generator else lambda: dict()
-
         self.template_variables = template_variables if template_variables else dict()
         self.template_functions = template_functions if template_functions else dict()
 
         self.directives = directives if directives else dict()
+
+        self._directive_exceptions = False
 
         self.injected_args = injected_args if injected_args else []
 
@@ -290,11 +276,14 @@ class BatchProcessor:
             directive_args = directive_args[1:]
             try:
                 if directive_args:
-                    impl(shlex.split(directive_args[0]))
+                    return_code = impl(shlex.split(directive_args[0]))
                 else:
-                    impl([])
+                    return_code = impl([])
+                if return_code != 0:
+                    raise BatchProcessError(
+                        f'Directive error return code: {return_code}')
             except Exception as e:
-                if self.directive_exceptions:
+                if self._directive_exceptions:
                     raise e
                 raise BatchProcessError(e)
             return True
@@ -326,8 +315,6 @@ class BatchProcessor:
         if return_code != 0:
             raise BatchProcessError(
                 f'Invocation error return code: {return_code}')
-
-        self.template_variables.update(self.template_variable_generator())
 
     def _run_file(self, stream: typing.TextIO):
         continuation = ''
@@ -382,8 +369,10 @@ class BatchProcessor:
         except _arguments.DgenerateUsageError as e:
             raise BatchProcessError(f'Error parsing injected arguments: {e}')
 
+        directive_exceptions_last = self._directive_exceptions
         if parsed.verbose:
             _messages.push_level(_messages.DEBUG)
+            self._directive_exceptions = True
 
         try:
             self._run_file(stream)
@@ -391,6 +380,7 @@ class BatchProcessor:
             raise BatchProcessError(f'Error on line {self.current_line}: {e}')
         finally:
             _messages.pop_level()
+            self._directive_exceptions = directive_exceptions_last
 
     def run_string(self, string: str):
         """
