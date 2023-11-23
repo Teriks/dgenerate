@@ -2426,13 +2426,16 @@ Overview of specifying ``image-process`` inputs and outputs
 
 .. code-block:: bash
 
-    # overview of specifying outputs, image-process can do simple operations
+    # Overview of specifying outputs, image-process can do simple operations
     # like resizing images and forcing image alignment with --align, without the 
     # need to specify any other processing operations with --processors. Running
     # image-process on an image with no other arguments simply aligns it to 8 pixels,
     # given the defaults for its command line arguments
 
-    # More than just .pngs
+    # More file formats than .png are supported for static image output, all
+    # extensions mentioned in the image-process --help documentation for --frame-format
+    # are supported, the supported formats are identical to that mentioned in the --image-format
+    # option help section of dgenerates --help output
 
     # my_file.png -> my_file_processed_1.png
 
