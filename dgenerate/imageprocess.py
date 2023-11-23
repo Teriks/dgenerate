@@ -541,7 +541,7 @@ class ImageProcessRenderLoop:
 
         if self.config.output and len(self.config.output) == 1 and self.config.output[0][-1] in '/\\':
             for idx, file in enumerate(self.config.files):
-                base, ext = os.path.splitext(file)
+                base, ext = os.path.splitext(os.path.basename(file))
                 output_file = os.path.join(self.config.output[0], base + f'_processed_{idx + 1}{ext}')
                 self._process_file(file, output_file)
         else:
@@ -552,7 +552,7 @@ class ImageProcessRenderLoop:
                     base, ext = os.path.splitext(output_file)
                     output_file = base + f'_processed_{idx + 1}{ext}'
                 elif output_file[-1] in '/\\':
-                    base, ext = os.path.splitext(file)
+                    base, ext = os.path.splitext(os.path.basename(file))
                     output_file = os.path.join(output_file, base + f'_processed_{idx + 1}{ext}')
                 self._process_file(file, output_file)
 
