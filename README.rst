@@ -2959,6 +2959,9 @@ as VAEs etc. outside of relying on the caching system.
     # invocation separated by spaces if there is multiple, this could
     # also be passed to --image-seeds
 
+    # in the case that you have generated an animated output with frame
+    # output enabled, this will contain paths to the frames
+
     \print {{ quote(last_images) | join(' ') }}
 
 
@@ -3124,8 +3127,9 @@ The dgenerate sub-command ``image-process`` is has a directive implementation.
     --processors upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth
 
 
-    # the last_images template variable will be set, last_animations is also usable if animations were written.
-    # last_images will contain frame paths if an animation is written.
+    # the last_images template variable will be set, last_animations is also usable if
+    # animations were written. In the case that you have generated an animated output with frame
+    # output enabled, this will contain paths to the frames
 
     \print {{ quote(last_images) }}
 
