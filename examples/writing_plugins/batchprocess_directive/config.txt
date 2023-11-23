@@ -1,5 +1,14 @@
 #! dgenerate 3.0.0
 
+# the import_plugins directive can receive multiple plugin paths as arguments
+# it only imports implementations of config plugins, which can in turn implement
+# directives and affect template variables and things related to the config language itself,
+# it does not affect what image processor implementations are available to dgenerate or the
+# \image_process directive, it is specifically for importing modules that may contain config plugins,
+# during config execution, these modules can also be passed to --plugin-modules when running a config
+# IE: dgenerate --plugin-modules demo_plugin < config.txt, and the config plugin implementations will be
+# loaded, as well as any image processor implementations that exist in the plugin module, etc.
+
 \import_plugins demo_plugin
 
 \my_directive Hello World!
