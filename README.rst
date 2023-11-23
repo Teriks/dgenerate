@@ -3125,6 +3125,8 @@ The dgenerate sub-command ``image-process`` is has a directive implementation.
 
 
     # the last_images template variable will be set, last_animations is also usable if animations were written.
+    # last_images will contain frame paths if an animation is written.
+
     \print {{ quote(last_images) }}
 
 
