@@ -33,6 +33,7 @@ import dgenerate.imageprocessors as _imageprocessors
 import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.messages as _messages
+import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 
 
@@ -44,6 +45,13 @@ def _type_align(val):
 
     if val < 1:
         raise argparse.ArgumentTypeError('Must be greater than or equal to 1')
+    return val
+
+
+def _type_frame_format(val):
+    if val not in _mediaoutput.supported_static_image_formats():
+        raise argparse.ArgumentTypeError(
+            f'Must be one of {_textprocessing.oxford_comma(_mediaoutput.supported_static_image_formats(), "or")}')
     return val
 
 
@@ -71,14 +79,17 @@ def _create_arg_parser(prog, description):
     actions.append(parser.add_argument(
         '-o', '--output', nargs='+', default=None,
         help="""Output files, directories will be created for you.
-        If you do not specify output files, the output file will be placed next to the input file with the added 
-        suffix '_processed_N', unless --output-overwrite is specified, in which case it will be overwritten. If you 
-        specify multiple input files and output files, you must specify an output file for every input file. 
-        Failure to specify an output file with a URL as an input is considered an error."""))
+        If you do not specify output files, the output file will be placed next to the input file with the 
+        added suffix '_processed_N' unless --output-overwrite is specified, in that case it will be overwritten. 
+        If you specify multiple input files and output files, you must specify an output file for every input file, 
+        or a directory (indicated with a trailing directory seperator character, for example "my_dir/" or "my_dir\"). 
+        Failure to specify an output file with a URL as an input is considered an error. Supported file extensions 
+        for image output are equal to those listed under --frame-format."""))
 
     actions.append(parser.add_argument(
-        '-ff', '--frame-format', default='png',
-        help='Image format for animation frames.'))
+        '-ff', '--frame-format', default='png', type=_type_frame_format,
+        help=f'Image format for animation frames. '
+             f'Must be one of: {_textprocessing.oxford_comma(_mediaoutput.supported_static_image_formats(), "or")}.'))
 
     actions.append(parser.add_argument(
         '-ox', '--output-overwrite', action='store_true',
@@ -227,8 +238,10 @@ class ImageProcessConfig(_types.SetFromMixin):
                 f'{a_namer("frame_start")} must be less than or equal to {a_namer("frame_end")}')
 
         if self.output:
-            if len(self.files) != len(self.output):
-                raise ImageProcessConfigError('Mismatched number of file inputs and outputs.')
+            if len(self.files) != len(self.output) and not (len(self.output) == 1 and self.output[0][-1] in '/\\'):
+                raise ImageProcessConfigError(
+                    'Mismatched number of file inputs and outputs, and output '
+                    'is not single a directory (indicated by a trailing slash).')
 
         for idx, file in enumerate(self.files):
             if not os.path.exists(file):
@@ -244,23 +257,38 @@ class ImageProcessConfig(_types.SetFromMixin):
             if not _mediainput.mimetype_is_supported(input_mime_type):
                 raise ImageProcessConfigError(f'File input "{file}" is of unsupported mimetype "{input_mime_type}".')
 
-            if self.output:
+            if self.output and len(self.output) == len(self.files):
                 output_name = self.output[idx]
-                if not _mediainput.mimetype_is_static_image(input_mime_type):
-                    _, output_ext = os.path.splitext(output_name)
-                    output_ext = output_ext.lstrip('.')
 
+                if output_name[-1] in '/\\':
+                    # directory specification, input dictates the output format
+                    continue
+
+                _, output_ext = os.path.splitext(output_name)
+                output_ext = output_ext.lstrip('.')
+
+                if not _mediainput.mimetype_is_static_image(input_mime_type):
                     if output_ext not in _mediaoutput.supported_animation_writer_formats():
                         raise ImageProcessConfigError(
                             f'Animated file output "{output_name}" specifies '
                             f'unsupported animation format "{output_ext}".')
+                else:
+                    if output_ext not in _mediaoutput.supported_static_image_formats():
+                        raise ImageProcessConfigError(
+                            f'Image file output "{output_name}" specifies '
+                            f'unsupported image format "{output_ext}".')
 
-            elif not _mediainput.mimetype_is_static_image(input_mime_type):
+            else:
                 _, output_ext = os.path.splitext(file)
                 output_ext = output_ext.lstrip('.')
-                if output_ext not in _mediaoutput.supported_animation_writer_formats():
-                    raise ImageProcessConfigError(
-                        f'Animated file input "{file}" specifies unsupported animation output format "{output_ext}".')
+                if not _mediainput.mimetype_is_static_image(input_mime_type):
+                    if output_ext not in _mediaoutput.supported_animation_writer_formats():
+                        raise ImageProcessConfigError(
+                            f'Animated file input "{file}" specifies unsupported animation output format "{output_ext}".')
+                else:
+                    if output_ext not in _mediaoutput.supported_static_image_formats():
+                        raise ImageProcessConfigError(
+                            f'Image file input "{file}" specifies unsupported image output format "{output_ext}".')
 
 
 class ImageProcessArgs(ImageProcessConfig):
@@ -391,7 +419,7 @@ class ImageProcessRenderLoop:
     def _process_reader(self, file, reader: _mediainput.MultiAnimationReader, out_filename):
         out_directory = os.path.dirname(out_filename)
 
-        duplicate_output_suffix = '_duplicate_' if file != out_filename else '_processed_'
+        duplicate_output_suffix = '_duplicate_'
 
         if out_directory:
             pathlib.Path(out_directory).mkdir(
@@ -461,7 +489,7 @@ class ImageProcessRenderLoop:
                         if not self.config.output_overwrite:
                             frame_name = _filelock.touch_avoid_duplicate(
                                 out_directory if out_directory else '.',
-                                path_maker=_filelock.suffix_path_maker(frame_name, '_duplicate_'))
+                                path_maker=_filelock.suffix_path_maker(frame_name, duplicate_output_suffix))
 
                         frame.save(frame_name)
                         self._record_save_image(frame_name)
@@ -509,9 +537,22 @@ class ImageProcessRenderLoop:
         self._written_images = tempfile.TemporaryFile('w+t')
         self._written_animations = tempfile.TemporaryFile('w+t')
 
-        for idx, file in enumerate(self.config.files):
-            self._process_file(file,
-                               self.config.output[idx] if self.config.output else file)
+        if self.config.output and len(self.config.output) == 1 and self.config.output[0][-1] in '/\\':
+            for idx, file in enumerate(self.config.files):
+                base, ext = os.path.splitext(file)
+                output_file = os.path.join(self.config.output[0], base + f'_processed_{idx + 1}{ext}')
+                self._process_file(file, output_file)
+        else:
+            for idx, file in enumerate(self.config.files):
+                output_file = self.config.output[idx] if self.config.output else file
+
+                if file == output_file and not self.config.output_overwrite:
+                    base, ext = os.path.splitext(output_file)
+                    output_file = base + f'_processed_{idx + 1}{ext}'
+                elif output_file[-1] in '/\\':
+                    base, ext = os.path.splitext(file)
+                    output_file = os.path.join(output_file, base + f'_processed_{idx + 1}{ext}')
+                self._process_file(file, output_file)
 
 
 def invoke_image_process(
@@ -545,6 +586,7 @@ def invoke_image_process(
 
     :return: integer return-code, anything other than 0 is failure
     """
+
     try:
         try:
             parsed = parse_args(args, help_name=help_name, help_desc=help_desc, help_exits=True)

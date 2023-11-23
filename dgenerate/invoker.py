@@ -93,10 +93,16 @@ def invoke_dgenerate(
 
     sub_command_name, sub_command_name_rest = _arguments.parse_sub_command(plugin_module_paths_rest)
     if sub_command_name is not None:
+        verbose, verbose_rest = _arguments.parse_verbose(sub_command_name_rest)
+
+        if verbose:
+            _messages.push_level(_messages.DEBUG)
+        else:
+            _messages.push_level(_messages.INFO)
         try:
             return _subcommands.SubCommandLoader().load(uri=sub_command_name,
                                                         plugin_module_paths=plugin_module_paths,
-                                                        args=sub_command_name_rest)()
+                                                        args=verbose_rest)()
         except (_subcommands.SubCommandNotFoundError,
                 _subcommands.SubCommandArgumentError) as e:
             if log_error:
@@ -104,6 +110,8 @@ def invoke_dgenerate(
             if throw:
                 raise _arguments.DgenerateUsageError(e)
             return 1
+        finally:
+            _messages.pop_level()
 
     if _arguments.parse_templates_help(args)[0]:
         _messages.log(render_loop.generate_template_variables_help(show_values=False) + '\n', underline=True)

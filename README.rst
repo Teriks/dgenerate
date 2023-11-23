@@ -16,8 +16,8 @@ Simple txt2img generation without image inputs is supported, as well as img2img 
 
 Animated output can be produced by processing every frame of a Video, GIF, WebP, or APNG through various implementations
 of diffusion in img2img or inpainting mode, as well as with ControlNets and control guidance images, in any combination thereof.
-MP4 (h264) video can be written without memory constraints related to frame count. GIF and WebP can be written
-WITH memory constraints, IE: all frames exist in memory at once before being written.
+MP4 (h264) video can be written without memory constraints related to frame count. GIF, WebP, and PNG/APNG can be
+written WITH memory constraints, IE: all frames exist in memory at once before being written.
 
 Video input of any runtime can be processed without memory constraints related to the video size.
 Many video formats are supported through the use of PyAV (ffmpeg).
@@ -52,14 +52,18 @@ For library documentation visit `readthedocs <http://dgenerate.readthedocs.io/en
     * `Specifying a Scheduler (sampler)`_
     * `Specifying a VAE`_
     * `VAE Tiling and Slicing`_
+    * `Specifying an SDXL Refiner`_
     * `Specifying LoRAs`_
     * `Specifying Textual Inversions`_
     * `Specifying Control Nets`_
     * `Specifying Generation Batch Size`_
     * `Image Processors`_
-    * `Writing Plugins`_
+    * `Upscaling with Diffusion Upscaler Models`_
+    * `Dgenerate Sub Commands (image-process)`_
+    * `Upscaling with chaiNNer Compatible Upscaler Models`_
     * `Batch Processing From STDIN`_
     * `Batch Processing Argument Injection`_
+    * `Writing Plugins`_
     * `File Cache Control`_
 
 Help Output
@@ -1681,6 +1685,108 @@ when ``--batch-size`` is greater than 1.
     --prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork"
 
 
+Specifying an SDXL Refiner
+==========================
+
+When the main model is an SDXL model and ``--model-type torch-sdxl`` is specified,
+you may specify a refiner model with ``--sdxl-refiner-path``.
+
+You can provide paths to a huggingface repo/blob link, folder on disk, or a model file
+on disk such as a .pt, .pth, .bin, .ckpt, or .safetensors file.
+
+This argument is parsed in much the same way as the argument ``--vae``, except the
+model is the first value specified.
+
+Loading arguments available when specifying a refiner are: ``revision``, ``variant``, ``subfolder``, and ``dtype``
+
+The only named argument compatible with loading a .safetensors or other file directly off disk is ``dtype``
+
+The other named arguments are available when loading from a huggingface repo/blob link,
+or folder that may or may not be a local git repository on disk.
+
+.. code-block:: bash
+
+    # Basic usage of SDXL with a refiner
+
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    --variant fp16 --dtype float16 \
+    --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
+    --sdxl-high-noise-fractions 0.8 \
+    --inference-steps 40 \
+    --guidance-scales 8 \
+    --output-size 1024 \
+    --prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork"
+
+
+
+If you want to select the repository revision, such as ``main`` etc, use the named argument ``revision``
+
+.. code-block:: bash
+
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    --variant fp16 --dtype float16 \
+    --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0;revision=main \
+    --sdxl-high-noise-fractions 0.8 \
+    --inference-steps 40 \
+    --guidance-scales 8 \
+    --output-size 1024 \
+    --prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork"
+
+
+If you wish to specify a weights variant IE: load ``pytorch_model.<variant>.safetensors``, from a huggingface
+repository that has variants of the same model, use the named argument ``variant``. By default this
+value is the same as ``--variant`` unless you override it.
+
+.. code-block:: bash
+
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    --variant fp16 --dtype float16 \
+    --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0;variant=fp16 \
+    --sdxl-high-noise-fractions 0.8 \
+    --inference-steps 40 \
+    --guidance-scales 8 \
+    --output-size 1024 \
+    --prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork"
+
+
+If your weights file exists in a subfolder of the repository, use the named argument ``subfolder``
+
+.. code-block:: bash
+
+    # This is a non working example as I do not know of a repo with an SDXL refiner
+    # in a subfolder :) this is only a syntax example
+
+    dgenerate huggingface/sdxl_model --model-type torch-sdxl \
+    --variant fp16 --dtype float16 \
+    --sdxl-refiner huggingface/sdxl_refiner;subfolder=repo_subfolder
+
+
+If you want to select the model precision, use the named argument ``dtype``. By
+default this value is the same as ``--dtype`` unless you override it. Accepted
+values are the same as ``--dtype``, IE: 'float32', 'float16', 'auto'
+
+.. code-block:: bash
+
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    --variant fp16 --dtype float16 \
+    --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0;dtype=float16 \
+    --sdxl-high-noise-fractions 0.8 \
+    --inference-steps 40 \
+    --guidance-scales 8 \
+    --output-size 1024 \
+    --prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork"
+
+
+If you are loading a .safetensors or other file from a path on disk, simply do:
+
+.. code-block:: bash
+
+    # This is only a syntax example
+
+    dgenerate huggingface/sdxl_model --model-type torch-sdxl \
+    --sdxl-refiner my_refinermodel.safetensors
+
+
 Specifying LoRAs
 ================
 
@@ -2138,30 +2244,12 @@ occurs on if any. It defaults to the value of ``--device`` and has the same synt
 ordinals, for instance if you have multiple GPUs you may specify ``device=cuda:1`` to run image processing
 on your second GPU, etc.
 
-Custom image processor modules can also be loaded through the ``--plugin-modules`` option as discussed in the next section.
-
-Writing Plugins
-===============
-
-dgenerate has the capability of loading in additional functionality through the use of the ``--plugin-modules`` option.
-
-You simply specify one or more module directories on disk, or paths to python files, using this argument.
-
-Currently the only supported functionality of plugin modules is to add image processors.
-
-A code example as well as a command line usage example for image processor plugins can be found
-in the `"writing_plugins/image_processor" <https://github.com/Teriks/dgenerate/tree/v3.0.0/examples/writing_plugins/image_processor>`_
-folder of the examples folder.
-
-The source code for the built in `canny <https://github.com/Teriks/dgenerate/blob/v3.0.0/dgenerate/imageprocessors/canny.py>`_ processor,
-the `openpose <https://github.com/Teriks/dgenerate/blob/v3.0.0/dgenerate/imageprocessors/openpose.py>`_ processor, and the simple
-`pillow image operations <https://github.com/Teriks/dgenerate/blob/v3.0.0/dgenerate/imageprocessors/imageops.py>`_ processors can also
-be of reference as they are written as internal image processor plugins.
+Custom image processor modules can also be loaded through the ``--plugin-modules`` option as discussed in the `Writing Plugins`_ section.
 
 
 
-Upscaling with Upscaler Models
-==============================
+Upscaling with Diffusion Upscaler Models
+========================================
 
 Stable diffusion image upscaling models can be used via the model types ``torch-upscaler-x2`` and ``torch-upscaler-x4``.
 
@@ -2192,28 +2280,169 @@ The image used in the example below is this `low resolution cat <https://raw.git
     --upscaler-noise-levels 20
 
 
-Specifying an SDXL Refiner
-==========================
+Dgenerate Sub Commands (image-process)
+======================================
 
-When the main model is an SDXL model and ``--model-type torch-sdxl`` is specified,
-you may specify a refiner model with ``--sdxl-refiner-path``.
+dgenerate implements additional functionality through the option ``--sub-command``.
 
-You can provide paths to a huggingface repo/blob link, folder on disk, or a model file
-on disk such as a .pt, .pth, .bin, .ckpt, or .safetensors file.
+For a list of available sub-commands use ``--sub-command-help``, which by default
+will list available sub-command names.
 
-This argument is parsed in much the same way as the argument ``--vae``, except the
-model is the first value specified.
+All sub-commands respect the ``--plugin-modules`` and ``--verbose`` arguments
+even if their help output does not specify them, these arguments are handled
+by dgenerate and not the sub-command.
 
-Loading arguments available when specifying a refiner are: ``revision``, ``variant``, ``subfolder``, and ``dtype``
+For additional information on a specific sub-command use ``--sub-command-help NAME``
 
-The only named argument compatible with loading a .safetensors or other file directly off disk is ``dtype``
+currently the only implemented sub-command is ``image-process``, which you can
+read the help output of using ``dgenerate --sub-command image-process --help``
 
-The other named arguments are available when loading from a huggingface repo/blob link,
-or folder that may or may not be a local git repository on disk.
+The ``image-process`` sub-command can be used to run image processors implemented
+by dgenerate on any file of your choosing including animated images and videos.
+
+It has a similar but slightly different design/usage to the main dgenerate
+command itself.
+
+It can be used to run canny edge detection, openpose, etc. on any image or
+video/animated file that you want.
+
+The help output of ``image-process`` is as follows:
+
+
+.. code-block:: text
+
+    usage: image-process [-h] [-p PROCESSORS [PROCESSORS ...]] [-o OUTPUT [OUTPUT ...]] [-ff FRAME_FORMAT] [-ox]
+                         [-r RESIZE] [-na] [-al ALIGN] [-d DEVICE] [-fs FRAME_NUMBER] [-fe FRAME_NUMBER]
+                         [-nf | -naf]
+                         files [files ...]
+
+    This command allows you to use dgenerate image processors directly on files of your choosing.
+
+    positional arguments:
+      files                 Input file paths, may be a static images or animated files supported by dgenerate. URLs
+                            will be downloaded.
+
+    options:
+      -h, --help            show this help message and exit
+      -p PROCESSORS [PROCESSORS ...], --processors PROCESSORS [PROCESSORS ...]
+                            One or more image processor URIs.
+      -o OUTPUT [OUTPUT ...], --output OUTPUT [OUTPUT ...]
+                            Output files, directories will be created for you. If you do not specify output files,
+                            the output file will be placed next to the input file with the added suffix
+                            '_processed_N' unless --output-overwrite is specified, in that case it will be
+                            overwritten. If you specify multiple input files and output files, you must specify an
+                            output file for every input file, or a directory (indicated with a trailing directory
+                            seperator character, for example "my_dir/" or "my_dir"). Failure to specify an output
+                            file with a URL as an input is considered an error. Supported file extensions for image
+                            output are equal to those listed under --frame-format.
+      -ff FRAME_FORMAT, --frame-format FRAME_FORMAT
+                            Image format for animation frames. Must be one of: png, apng, blp, bmp, dib, bufr, pcx,
+                            dds, ps, eps, gif, grib, h5, hdf, jp2, j2k, jpc, jpf, jpx, j2c, icns, ico, im, jfif,
+                            jpe, jpg, jpeg, tif, tiff, mpo, msp, palm, pdf, pbm, pgm, ppm, pnm, bw, rgb, rgba, sgi,
+                            tga, icb, vda, vst, webp, wmf, emf, or xbm.
+      -ox, --output-overwrite
+                            Indicate that it is okay to overwrite files, instead of appending a duplicate suffix.
+      -r RESIZE, --resize RESIZE
+                            Preform naive image resizing (LANCZOS).
+      -na, --no-aspect      Make --resize ignore aspect ratio.
+      -al ALIGN, --align ALIGN
+                            Align images / videos to this value in pixels, default is 8. Specifying 1 will disable
+                            resolution alignment.
+      -d DEVICE, --device DEVICE
+                            Processing device, for example "cuda", "cuda:1".
+      -fs FRAME_NUMBER, --frame-start FRAME_NUMBER
+                            Starting frame slice point for animated files (zero-indexed), the specified frame will
+                            be included. (default: 0)
+      -fe FRAME_NUMBER, --frame-end FRAME_NUMBER
+                            Ending frame slice point for animated files (zero-indexed), the specified frame will be
+                            included.
+      -nf, --no-frames      Do not write frames, only an animation file. Cannot be used with --no-animation-file.
+      -naf, --no-animation-file
+                            Do not write an animation file, only frames. Cannot be used with --no-frames.
+
+
+Overview of specifying ``image-process`` inputs and outputs
 
 .. code-block:: bash
 
-    # Basic usage of SDXL with a refiner
+    # overview of specifying outputs, image-process can do simple operations
+    # like resizing images and forcing image alignment with --align, without the 
+    # need to specify any other processing operations with --processors. Running
+    # image-process on an image with no other arguments simply aligns it to 8 pixels,
+    # given the defaults for its command line arguments
+
+    # More than just .pngs
+
+    # my_file.png -> my_file_processed_1.png
+
+    dgenerate --sub-command image-process my_file.png --resize 512x512
+
+    # my_file.png -> my_file.png (overwrite)
+
+    dgenerate --sub-command image-process my_file.png --resize 512x512 --output-overwrite
+
+    # my_file.png -> my_file.png (overwrite)
+
+    dgenerate --sub-command image-process my_file.png -o my_file.png --resize 512x512 --output-overwrite
+
+    # my_file.png -> my_dir/my_file_processed_1.png
+
+    dgenerate --sub-command image-process my_file.png -o my_dir/ --resize 512x512 --no-aspect
+
+    # my_file_1.png -> my_dir/my_file_1_processed_1.png
+    # my_file_2.png -> my_dir/my_file_2_processed_2.png
+
+    dgenerate --sub-command image-process my_file_1.png my_file_2.png -o my_dir/ --resize 512x512
+
+    # my_file_1.png -> my_dir_1/my_file_1_processed_1.png
+    # my_file_2.png -> my_dir_2/my_file_2_processed_2.png
+
+    dgenerate --sub-command image-process my_file_1.png my_file_2.png \
+    -o my_dir_1/ my_dir_2/ --resize 512x512
+
+    # my_file_1.png -> my_dir_1/renamed.png
+    # my_file_2.png -> my_dir_2/my_file_2_processed_2.png
+
+    dgenerate --sub-command image-process my_file_1.png my_file_2.png \
+    -o my_dir_1/renamed.png my_dir_2/ --resize 512x512
+
+
+A few usage examples with processors:
+
+.. code-block:: bash
+
+    # image-process can support any input format that dgenerate itself supports
+    # including videos and animated files. It also supports all output formats
+    # supported by dgenerate for writing videos/animated files, and images.
+
+    # create a video rigged with OpenPose, frames will be rendered to the directory "output" as well.
+
+    dgenerate --sub-command image-process my-video.mp4 \
+    -o output/rigged-video.mp4 --processors openpose;include-hand=true;include-face=true
+
+    # Canny edge detected video, also using processor chaining to mirror the frames
+    # before they are edge detected
+
+    dgenerate --sub-command image-process my-video.mp4 \
+    -o output/canny-video.mp4 --processors mirror canny;blur=true;threshold-algo=otsu
+
+
+Upscaling with chaiNNer Compatible Upscaler Models
+==================================================
+
+`chaiNNer <https://github.com/chaiNNer-org/chaiNNer>`_ compatible upscaler models from https://openmodeldb.info/
+and elsewhere can be utilized for tiled upscaling using dgenerates ``upscaler`` image processor and the
+``--post-processor`` option.
+
+The ``upscaler`` image processor can make use of URLs or files on disk.
+
+In this example we reference a link to the REAL-ESRGAN general purpose 4x upscaler from the creators github release.
+
+This uses the upscaler to upscale the output image by 4x producing an image that is 4096x4096
+
+The ``upscaler`` image processor respects the ``--device`` option of dgenerate, and is CUDA accelerated by default.
+
+.. code-block:: bash
 
     dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
     --variant fp16 --dtype float16 \
@@ -2222,77 +2451,28 @@ or folder that may or may not be a local git repository on disk.
     --inference-steps 40 \
     --guidance-scales 8 \
     --output-size 1024 \
-    --prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork"
+    --prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork" \
+    --post-processor upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth
 
 
+In addition to this the ``\image_process`` config directive, or ``--sub-command image-process`` can be used to upscale
+any file that you want including animated images and videos. It is worth noting that the sub-command and directive
+will work with any named image processor implemented by dgenerate.
 
-If you want to select the repository revision, such as ``main`` etc, use the named argument ``revision``
 
 .. code-block:: bash
 
-    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
-    --variant fp16 --dtype float16 \
-    --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0;revision=main \
-    --sdxl-high-noise-fractions 0.8 \
-    --inference-steps 40 \
-    --guidance-scales 8 \
-    --output-size 1024 \
-    --prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork"
+    # print the help output of the sub command "image-process"
+    # the image-process subcommand can process multiple files and do
+    # and several other things, it is worth reading :)
 
+    dgenerate --sub-command image-process --help
 
-If you wish to specify a weights variant IE: load ``pytorch_model.<variant>.safetensors``, from a huggingface
-repository that has variants of the same model, use the named argument ``variant``. By default this
-value is the same as ``--variant`` unless you override it.
+    # any directory mentioned in the output spec is created automatically
 
-.. code-block:: bash
-
-    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
-    --variant fp16 --dtype float16 \
-    --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0;variant=fp16 \
-    --sdxl-high-noise-fractions 0.8 \
-    --inference-steps 40 \
-    --guidance-scales 8 \
-    --output-size 1024 \
-    --prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork"
-
-
-If your weights file exists in a subfolder of the repository, use the named argument ``subfolder``
-
-.. code-block:: bash
-
-    # This is a non working example as I do not know of a repo with an SDXL refiner
-    # in a subfolder :) this is only a syntax example
-
-    dgenerate huggingface/sdxl_model --model-type torch-sdxl \
-    --variant fp16 --dtype float16 \
-    --sdxl-refiner huggingface/sdxl_refiner;subfolder=repo_subfolder
-
-
-If you want to select the model precision, use the named argument ``dtype``. By
-default this value is the same as ``--dtype`` unless you override it. Accepted
-values are the same as ``--dtype``, IE: 'float32', 'float16', 'auto'
-
-.. code-block:: bash
-
-    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
-    --variant fp16 --dtype float16 \
-    --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0;dtype=float16 \
-    --sdxl-high-noise-fractions 0.8 \
-    --inference-steps 40 \
-    --guidance-scales 8 \
-    --output-size 1024 \
-    --prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork"
-
-
-If you are loading a .safetensors or other file from a path on disk, simply do:
-
-.. code-block:: bash
-
-    # This is only a syntax example
-
-    dgenerate huggingface/sdxl_model --model-type torch-sdxl \
-    --sdxl-refiner my_refinermodel.safetensors
-
+    dgenerate --sub-command image-process my-file.png \
+    --output output/my-file-upscaled.png \
+    --processors upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth
 
 
 Batch Processing From STDIN
@@ -2917,6 +3097,29 @@ can glob directories using functions from the glob module like so:
     --image-seeds {{ quote(glob.glob('my_images/*.png')) }}
 
 
+The dgenerate sub-command ``image-process`` is has a directive implementation.
+
+
+.. code-block:: jinja
+
+    # print the help message of --sub-command image-process, this does
+    # not cause the config to exit
+
+    \image_process --help
+
+    \set myfiles {{ quote(glob.glob('my_images/*.png')) }}
+
+    # this will create the directory "upscaled"
+    # the files will be named "upscaled/FILENAME_processed_1.png" "upscaled/FILENAME_processed_2.png" ...
+
+    \image_process {{ myfiles }} \
+    --output upscaled/ \
+    --processors upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth
+
+
+    # the last_images template variable will be set, last_animations is also usable if animations were written.
+    \print {{ quote(last_images) }}
+
 
 To utilize configuration files on Linux, pipe them into the command or use redirection:
 
@@ -2942,7 +3145,6 @@ On Windows Powershell:
 .. code-block:: powershell
 
     Get-Content my-arguments.txt | dgenerate
-
 
 
 Batch Processing Argument Injection
@@ -2976,6 +3178,34 @@ On Windows Powershell:
     Get-Content my-animations-config.txt | dgenerate --frame-start 0 --frame-end 10
 
 
+Writing Plugins
+===============
+
+dgenerate has the capability of loading in additional functionality through the use of the ``--plugin-modules`` option.
+
+You simply specify one or more module directories on disk, or paths to python files, using this argument.
+
+dgenerate supports implementing image processors and config directives through plugins.
+
+A code example as well as a usage example for image processor plugins can be found
+in the `"writing_plugins/image_processor" <https://github.com/Teriks/dgenerate/tree/v3.0.0/examples/writing_plugins/image_processor>`_
+folder of the examples folder.
+
+The source code for the built in `canny <https://github.com/Teriks/dgenerate/blob/v3.0.0/dgenerate/imageprocessors/canny.py>`_ processor,
+the `openpose <https://github.com/Teriks/dgenerate/blob/v3.0.0/dgenerate/imageprocessors/openpose.py>`_ processor, and the simple
+`pillow image operations <https://github.com/Teriks/dgenerate/blob/v3.0.0/dgenerate/imageprocessors/imageops.py>`_ processors can also
+be of reference as they are written as internal image processor plugins.
+
+An example for writing config directives can be found in the
+`"writing_plugins/config_directive" <https://github.com/Teriks/dgenerate/tree/v3.0.0/examples/writing_plugins/image_processor>`_ folder
+of the examples folder.
+
+Currently the only internal directive that is implemented as a plugin is the ``\image_process`` directive,
+who's source file `can be located here <https://github.com/Teriks/dgenerate/blob/v3.0.0/dgenerate/batchprocessor/imageprocessdirective.py>`_,
+the source file for this directive is terse as most of ``\image_process`` is implemented as reusable code as mentioned below.
+
+The behavior of ``\image_process`` which is also used for ``--sub-command image-process`` is
+`is implemented here <https://github.com/Teriks/dgenerate/blob/v3.0.0/dgenerate/imageprocess.py>`_.
 
 File Cache Control
 ==================
