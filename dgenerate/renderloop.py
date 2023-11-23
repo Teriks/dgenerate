@@ -369,6 +369,10 @@ class RenderLoop:
             render_loop_opts.append(('--post-processors',
                                      self.config.post_processors))
 
+        if self.image_processor_loader.plugin_module_paths:
+            render_loop_opts.append(('--plugin-modules',
+                                     self.image_processor_loader.plugin_module_paths))
+
         if self.config.seeds_to_images:
             render_loop_opts.append(('--seeds-to-images',))
 

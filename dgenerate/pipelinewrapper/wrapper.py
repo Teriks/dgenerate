@@ -1062,9 +1062,15 @@ class DiffusionPipelineWrapper:
     def _set_opt_value_syntax(val):
         if isinstance(val, tuple):
             return _textprocessing.format_size(val)
-        if isinstance(val, list):
-            return ' '.join(DiffusionPipelineWrapper._set_opt_value_syntax(v) for v in val)
-        return shlex.quote(str(val))
+        if isinstance(val, str):
+            return shlex.quote(str(val))
+
+        try:
+            val_iter = iter(val)
+        except TypeError:
+            return shlex.quote(str(val))
+
+        return ' '.join(DiffusionPipelineWrapper._set_opt_value_syntax(v) for v in val_iter)
 
     @staticmethod
     def _format_option_pair(val):

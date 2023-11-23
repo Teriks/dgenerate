@@ -378,6 +378,15 @@ class PluginLoader:
         self.__description = description
         self.__base_class = base_class
 
+    @property
+    def plugin_module_paths(self):
+        """
+        Every module path ever seen by :py:meth:`PluginLoader.load_plugin_modules`.
+
+        :return: frozen set
+        """
+        return frozenset(self.__plugin_module_paths)
+
     def add_class(self, cls: typing.Type[Plugin]):
         """p
         Add an implementation class to this loader.
