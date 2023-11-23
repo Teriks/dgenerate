@@ -125,7 +125,7 @@ Help Output
       -pm PATH [PATH ...], --plugin-modules PATH [PATH ...]
                             Specify one or more plugin module folder paths (folder containing
                             __init__.py) or python .py file paths to load as plugins. Plugin modules can
-                            currently only implement image processors.
+                            currently implement image processors and config directives.
       -scm SUB_COMMAND, --sub-command SUB_COMMAND
                             Specify the name a sub-command to invoke. dgenerate exposes some extra image
                             processing functionality through the use of sub-commands. Sub commands
@@ -2369,9 +2369,9 @@ The help output of ``image-process`` is as follows:
 
 .. code-block:: text
 
-    usage: image-process [-h] [-p PROCESSORS [PROCESSORS ...]] [-o OUTPUT [OUTPUT ...]]
-                         [-ff FRAME_FORMAT] [-ox] [-r RESIZE] [-na] [-al ALIGN] [-d DEVICE]
-                         [-fs FRAME_NUMBER] [-fe FRAME_NUMBER] [-nf | -naf]
+    usage: image-process [-h] [-p PROCESSORS [PROCESSORS ...]] [-pm PATH [PATH ...]]
+                         [-o OUTPUT [OUTPUT ...]] [-ff FRAME_FORMAT] [-ox] [-r RESIZE] [-na] [-al ALIGN]
+                         [-d DEVICE] [-fs FRAME_NUMBER] [-fe FRAME_NUMBER] [-nf | -naf]
                          files [files ...]
 
     This command allows you to use dgenerate image processors directly on files of your choosing.
@@ -2383,26 +2383,31 @@ The help output of ``image-process`` is as follows:
     options:
       -h, --help            show this help message and exit
       -p PROCESSORS [PROCESSORS ...], --processors PROCESSORS [PROCESSORS ...]
-                            One or more image processor URIs.
+                            One or more image processor URIs, specifying multiple will chain them
+                            together.
+      -pm PATH [PATH ...], --plugin-modules PATH [PATH ...]
+                            Specify one or more plugin module folder paths (folder containing
+                            __init__.py) or python .py file paths to load as plugins. Plugin modules can
+                            implement image processors.
       -o OUTPUT [OUTPUT ...], --output OUTPUT [OUTPUT ...]
                             Output files, directories will be created for you. If you do not specify
-                            output files, the output file will be placed next to the input file with
-                            the added suffix '_processed_N' unless --output-overwrite is specified, in
-                            that case it will be overwritten. If you specify multiple input files and
-                            output files, you must specify an output file for every input file, or a
-                            directory (indicated with a trailing directory seperator character, for
-                            example "my_dir/" or "my_dir"). Failure to specify an output file with a
-                            URL as an input is considered an error. Supported file extensions for image
-                            output are equal to those listed under --frame-format.
+                            output files, the output file will be placed next to the input file with the
+                            added suffix '_processed_N' unless --output-overwrite is specified, in that
+                            case it will be overwritten. If you specify multiple input files and output
+                            files, you must specify an output file for every input file, or a directory
+                            (indicated with a trailing directory seperator character, for example
+                            "my_dir/" or "my_dir"). Failure to specify an output file with a URL as an
+                            input is considered an error. Supported file extensions for image output are
+                            equal to those listed under --frame-format.
       -ff FRAME_FORMAT, --frame-format FRAME_FORMAT
-                            Image format for animation frames. Must be one of: png, apng, blp, bmp,
-                            dib, bufr, pcx, dds, ps, eps, gif, grib, h5, hdf, jp2, j2k, jpc, jpf, jpx,
-                            j2c, icns, ico, im, jfif, jpe, jpg, jpeg, tif, tiff, mpo, msp, palm, pdf,
-                            pbm, pgm, ppm, pnm, bw, rgb, rgba, sgi, tga, icb, vda, vst, webp, wmf, emf,
-                            or xbm.
+                            Image format for animation frames. Must be one of: png, apng, blp, bmp, dib,
+                            bufr, pcx, dds, ps, eps, gif, grib, h5, hdf, jp2, j2k, jpc, jpf, jpx, j2c,
+                            icns, ico, im, jfif, jpe, jpg, jpeg, tif, tiff, mpo, msp, palm, pdf, pbm,
+                            pgm, ppm, pnm, bw, rgb, rgba, sgi, tga, icb, vda, vst, webp, wmf, emf, or
+                            xbm.
       -ox, --output-overwrite
-                            Indicate that it is okay to overwrite files, instead of appending a
-                            duplicate suffix.
+                            Indicate that it is okay to overwrite files, instead of appending a duplicate
+                            suffix.
       -r RESIZE, --resize RESIZE
                             Preform naive image resizing (LANCZOS).
       -na, --no-aspect      Make --resize ignore aspect ratio.
@@ -2420,8 +2425,7 @@ The help output of ``image-process`` is as follows:
       -nf, --no-frames      Do not write frames, only an animation file. Cannot be used with --no-
                             animation-file.
       -naf, --no-animation-file
-                            Do not write an animation file, only frames. Cannot be used with --no-
-                            frames.
+                            Do not write an animation file, only frames. Cannot be used with --no-frames.
 
 
 
