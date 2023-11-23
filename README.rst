@@ -2148,8 +2148,8 @@ multiple processing actions will be chained together one after another.
 Using the option ``--image-processor-help`` with no arguments will yield a list of available image processor names.
 
 Specifying one or more specific processors for example: ``--image-processor-help canny openpose`` will yield
-documentation pertaining to those processor modules. This includes accepted arguments for the processor module
-and a description of the module.
+documentation pertaining to those processor modules. This includes accepted arguments and their types for the
+processor module and a description of what the module does.
 
 Custom image processor modules can also be loaded through the ``--plugin-modules`` option as discussed
 in the `Writing Plugins`_ section.
