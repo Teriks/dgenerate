@@ -15,3 +15,19 @@ config.processors = [
 render_loop = dgenerate.imageprocess.ImageProcessRenderLoop(config=config)
 
 render_loop.run()
+
+# we can load a custom processor plugin just for fun, this time from disk
+
+# Load the plugin example folder from the current directory
+
+render_loop.image_processor_loader.load_plugin_modules(['plugin_example'])
+
+# custom processor name
+
+config.processors = ['foo']
+
+config.output = ['foo-processed.png']
+
+# run again
+
+render_loop.run()

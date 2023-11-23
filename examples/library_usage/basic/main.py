@@ -1,10 +1,9 @@
+import dgenerate.arguments
 from dgenerate import \
     RenderLoop, \
     RenderLoopConfig, \
     ImageGeneratedCallbackArgument, \
     Prompt
-
-import dgenerate.arguments
 
 device, _ = dgenerate.arguments.parse_device()
 
