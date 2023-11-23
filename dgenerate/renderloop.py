@@ -467,7 +467,7 @@ class RenderLoop:
             argument.image = image
             argument.batch_index = batch_index
             argument.suggested_filename = self._join_output_filename(
-                filename_components, ext='png', with_output_path=False)
+                filename_components, ext=self.config.image_format, with_output_path=False)
             argument.config_string = config_txt
             argument.command_string = \
                 self._gen_dgenerate_command(diffusion_args,
@@ -488,14 +488,15 @@ class RenderLoop:
                 _filelock.touch_avoid_duplicate(
                     self.config.output_path,
                     path_maker=_filelock.suffix_path_maker(
-                        [self._join_output_filename(filename_components, ext='png'),
+                        [self._join_output_filename(filename_components, ext=self.config.image_format),
                          self._join_output_filename(filename_components, ext='txt')],
                         suffix='_duplicate_'))
         else:
             image_filename = _filelock.touch_avoid_duplicate(
                 self.config.output_path,
                 path_maker=_filelock.suffix_path_maker(
-                    self._join_output_filename(filename_components, ext='png'),
+                    self._join_output_filename(filename_components,
+                                               ext=self.config.image_format),
                     suffix='_duplicate_'))
 
         # Write out to the empty files

@@ -41,13 +41,16 @@ _SUPPORTED_MODEL_TYPES_PRETTY = \
 _SUPPORTED_ANIMATION_OUTPUT_FORMATS_PRETTY = \
     _textprocessing.oxford_comma(_mediaoutput.supported_animation_writer_formats(), 'or')
 
+_SUPPORTED_STATIC_IMAGE_OUTPUT_FORMATS_PRETTY = \
+    _textprocessing.oxford_comma(_mediaoutput.supported_static_image_formats(), 'or')
+
 _SUPPORTED_DATA_TYPES_PRETTY = \
     _textprocessing.oxford_comma(_pipelinewrapper.supported_data_type_strings(), 'or')
 
 parser = argparse.ArgumentParser(
     prog='dgenerate', exit_on_error=False, allow_abbrev=False,
-    description="""Stable diffusion batch image generation tool with 
-                support for video / gif / webp animation transcoding.""")
+    description="""Batch image generation and manipulation tool supporting Stable Diffusion 
+    and related techniques / algorithms, with support for video and animated image processing.""")
 
 
 def _model_type(val):
@@ -195,6 +198,13 @@ def _type_animation_format(val):
     if val not in _mediaoutput.supported_animation_writer_formats() + ['frames']:
         raise argparse.ArgumentTypeError(
             f'Must be {_SUPPORTED_ANIMATION_OUTPUT_FORMATS_PRETTY}. Unknown value: {val}')
+    return val
+
+
+def _type_image_format(val):
+    if val not in _mediaoutput.supported_static_image_formats():
+        raise argparse.ArgumentTypeError(
+            f'Must be one of {_textprocessing.oxford_comma(_mediaoutput.supported_static_image_formats(), "or")}')
     return val
 
 
@@ -918,6 +928,12 @@ actions.append(
                         Value must be one of: {_SUPPORTED_ANIMATION_OUTPUT_FORMATS_PRETTY}. You may also specify "frames"
                         to indicate that only frames should be output and no coalesced animation file should be rendered.
                         (default: mp4)"""))
+
+actions.append(
+    parser.add_argument('-if', '--image-format', action='store', default='png', type=_type_image_format,
+                        metavar="FORMAT",
+                        help=f"""Output format when writing static images. Any selection other than "png" is not 
+                        compatible with --output-metadata. Value must be one of: {_SUPPORTED_STATIC_IMAGE_OUTPUT_FORMATS_PRETTY}. (default: png)"""))
 
 actions.append(
     parser.add_argument('-nf', '--no-frames', action='store_true',
