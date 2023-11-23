@@ -2539,7 +2539,7 @@ will work with any named image processor implemented by dgenerate.
 
     dgenerate --sub-command image-process my-file.png \
     --output output/my-file-upscaled.png \
-    --processors upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth
+    --processors upscaler;model=https://github.com/JingyunLiang/SwinIR/releases/download/v0.0/001_classicalSR_DIV2K_s48w8_SwinIR-M_x4.pth
 
 
 Batch Processing From STDIN
