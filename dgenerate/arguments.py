@@ -461,10 +461,10 @@ actions.append(
                         
                         The "scale" argument indicates the scale factor of the LoRA.
                         
-                        The "revision" argument specifies the model revision to use for the VAE when loading from 
+                        The "revision" argument specifies the model revision to use for the LoRA when loading from 
                         huggingface repository, (The git branch / tag, default is "main").
                         
-                        The "subfolder" argument specifies the VAE model subfolder, if specified when loading from a 
+                        The "subfolder" argument specifies the LoRA model subfolder, if specified when loading from a 
                         huggingface repository or folder, weights from the specified subfolder.
                         
                         The "weight-name" argument indicates the name of the weights file to be loaded when 
