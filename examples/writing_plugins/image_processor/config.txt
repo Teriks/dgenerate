@@ -18,3 +18,13 @@
 --vae-slicing \
 --image-seeds "../../media/earth.jpg" \
 --seed-image-processors boo;my-argument=1 fab;my-argument=2
+
+
+# Run the FooBarImageProcessor plugin
+
+\image_process "../../media/beach.jpg" --output output/ --processors foobar;my-argument=1;output-file=output/foobar-debug.png
+
+
+# Run the BooFabImageProcessor plugin
+
+\image_process "../../media/beach.jpg" --output output/ --processors foobar;my-argument=1;output-file=output/foobar-debug.png
