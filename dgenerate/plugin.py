@@ -401,7 +401,7 @@ class PluginLoader:
         Add a module string (in sys.modules) that will be searched for implementations.
 
         :param string: the module string
-        :return: list of classes that were discovered
+        :return: list of classes that were newly discovered
         """
         classes = self._load_classes([sys.modules[string]])
         for cls in classes:
@@ -413,7 +413,7 @@ class PluginLoader:
         Directly add a module object that will be searched for implementations.
 
         :param module: the module object
-        :return: list of classes that were discovered
+        :return: list of classes that were newly discovered
         """
         classes = self._load_classes([module])
         for cls in classes:
@@ -431,7 +431,7 @@ class PluginLoader:
         :raises dgenerate.plugin.ModuleFileNotFoundError: If a module could not be found on disk.
 
         :param paths: python files or module directories
-        :return: list of classes that were discovered
+        :return: list of classes that were newly discovered
         """
 
         classes = self._load_classes(load_modules(
@@ -449,6 +449,9 @@ class PluginLoader:
 
         for mod in modules:
             def _excluded(cls):
+                if cls in self.__classes:
+                    return True
+
                 if not inspect.isclass(cls):
                     return True
 

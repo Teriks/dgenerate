@@ -183,8 +183,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
     def _import_plugins(self, plugin_paths):
         self._plugin_module_paths.update(plugin_paths)
         self.render_loop.image_processor_loader.load_plugin_modules(plugin_paths)
-        classes = self.plugin_loader.load_plugin_modules(plugin_paths)
-        for cls in classes:
+        new_classes = self.plugin_loader.load_plugin_modules(plugin_paths)
+        for cls in new_classes:
             self.plugin_loader.load(cls.get_names()[0],
                                     config_runner=self,
                                     render_loop=self.render_loop)
