@@ -2,8 +2,14 @@
 
 # Run the FooBarImageProcessor plugin
 
+# we can \import_plugins to import plugins globally to the config,
+# they will be used by dgenerate invocations, and directives that
+# make use of the plugins within
+
+\import_plugins demo_plugin
+
+
 "runwayml/stable-diffusion-v1-5" \
---plugin-modules demo_plugin \
 --prompts "hello world" \
 --image-seeds "../../media/earth.jpg" \
 --vae-slicing \
@@ -13,7 +19,6 @@
 # Run the BooFabImageProcessor plugin
 
 "runwayml/stable-diffusion-v1-5" \
---plugin-modules demo_plugin \
 --prompts "hello world" \
 --vae-slicing \
 --image-seeds "../../media/earth.jpg" \
@@ -22,9 +27,9 @@
 
 # Run the FooBarImageProcessor plugin
 
-\image_process "../../media/beach.jpg" --output output/ --plugin-modules demo_plugin --processors foobar;my-argument=1;output-file=output/foobar-debug.png
+\image_process "../../media/beach.jpg" --output output/ --processors foobar;my-argument=1;output-file=output/foobar-debug.png
 
 
 # Run the BooFabImageProcessor plugin
 
-\image_process "../../media/beach.jpg" --output output/ --plugin-modules demo_plugin --processors boo;my-argument=1 fab;my-argument=2
+\image_process "../../media/beach.jpg" --output output/ --processors boo;my-argument=1 fab;my-argument=2

@@ -314,7 +314,7 @@ class ModuleFileNotFoundError(FileNotFoundError):
     pass
 
 
-def load_modules(paths: _types.OptionalPaths) -> typing.List[types.ModuleType]:
+def load_modules(paths: typing.Iterable[str]) -> typing.List[types.ModuleType]:
     """
     Load python modules from a folder or directly from a .py file.
     Cache them so that repeat requests for loading return an already loaded module.
@@ -368,8 +368,9 @@ class PluginLoader:
         :param not_found_error_type: This exception type will be raised when a plugin could
             not be located by a name specified in a loading URI.
         """
-        self._classes = set()
-        self._classes_by_name = dict()
+        self.__classes = set()
+        self.__classes_by_name = dict()
+        self.__plugin_module_paths = set()
 
         self.__reserved_args = reserved_args if reserved_args else []
         self.__argument_error_type = argument_error_type
@@ -383,17 +384,17 @@ class PluginLoader:
 
         :param cls: the class
         """
-        if cls in self._classes:
+        if cls in self.__classes:
             # no-op
             return
 
         for name in cls.get_names():
-            if name in self._classes_by_name:
+            if name in self.__classes_by_name:
                 raise RuntimeError(
                     f'plugin class using the name {name} already exists.')
-            self._classes_by_name[name] = cls
+            self.__classes_by_name[name] = cls
 
-        self._classes.add(cls)
+        self.__classes.add(cls)
 
     def add_search_module_string(self, string: str) -> typing.List[typing.Type[Plugin]]:
         """
@@ -419,7 +420,7 @@ class PluginLoader:
             self.add_class(cls)
         return classes
 
-    def load_plugin_modules(self, paths: _types.Paths) -> typing.List[typing.Type[Plugin]]:
+    def load_plugin_modules(self, paths: typing.Iterable[str]) -> typing.List[typing.Type[Plugin]]:
         """
         Modules that will be loaded from disk and searched for implementations.
 
@@ -432,14 +433,18 @@ class PluginLoader:
         :param paths: python files or module directories
         :return: list of classes that were discovered
         """
-        classes = self._load_classes(load_modules(paths))
+
+        classes = self._load_classes(load_modules(
+            [path for path in paths if path not in self.__plugin_module_paths]))
+
+        self.__plugin_module_paths.update(paths)
 
         for cls in classes:
             self.add_class(cls)
 
         return classes
 
-    def _load_classes(self, modules: typing.Sequence[types.ModuleType]):
+    def _load_classes(self, modules: typing.Iterable[types.ModuleType]):
         found_classes = set()
 
         for mod in modules:
@@ -573,7 +578,7 @@ class PluginLoader:
         :return: list of classes (types)
         """
 
-        return list(self._classes)
+        return list(self.__classes)
 
     def get_class_by_name(self, plugin_name: _types.Name) -> typing.Type[Plugin]:
         """
@@ -585,7 +590,7 @@ class PluginLoader:
         :return: class (type)
         """
 
-        cls = self._classes_by_name.get(plugin_name)
+        cls = self.__classes_by_name.get(plugin_name)
 
         if cls is None:
             raise self.__not_found_error_type(
@@ -600,7 +605,7 @@ class PluginLoader:
         :return: list of names (strings)
         """
 
-        return list(self._classes_by_name.keys())
+        return list(self.__classes_by_name.keys())
 
     def get_help(self, plugin_name: _types.Name) -> str:
         """
