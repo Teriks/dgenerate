@@ -152,7 +152,7 @@ def supported_static_image_formats():
     """
     PIL.Image.init()
 
-    return [ext.lstrip('.') for ext, format in PIL.Image.EXTENSION.items() if format in PIL.Image.SAVE]
+    return [ext.lstrip('.') for ext, fmt in PIL.Image.EXTENSION.items() if fmt in PIL.Image.SAVE]
 
 
 class UnknownAnimationFormatError(Exception):
