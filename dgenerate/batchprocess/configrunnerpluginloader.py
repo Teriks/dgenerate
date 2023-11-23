@@ -54,7 +54,7 @@ class ConfigRunnerPluginLoader(_plugin.PluginLoader):
 
         super().__init__(base_class=_configrunnerplugin.ConfigRunnerPlugin,
                          description='directive',
-                         reserved_args=[_Pa('render-loop'), _Pa('config-runner'), _Pa('plugin-module-paths')],
+                         reserved_args=[_Pa('render-loop'), _Pa('config-runner')],
                          argument_error_type=ConfigRunnerPluginArgumentError,
                          not_found_error_type=ConfigRunnerPluginNotFoundError)
 

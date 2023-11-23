@@ -41,6 +41,10 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
     A :py:class:`.BatchProcessor` that can run dgenerate batch processing configs from a string or file.
     """
 
+    @property
+    def plugin_module_paths(self):
+        return set(self._plugin_module_paths)
+
     def __init__(self,
                  injected_args: typing.Optional[typing.Sequence[str]] = None,
                  render_loop: typing.Optional[_renderloop.RenderLoop] = None,
@@ -162,27 +166,29 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             _configrunnerpluginloader.ConfigRunnerPluginLoader() if \
                 plugin_loader is None else plugin_loader
 
-        self._plugin_module_paths = []
+        self._plugin_module_paths = set()
 
         if injected_args:
-            plugin_module_paths, _ = _arguments.parse_plugin_modules(injected_args)
-            self.plugin_loader.load_plugin_modules(plugin_module_paths)
+            self._plugin_module_paths.update(_arguments.parse_plugin_modules(injected_args)[0])
+            self.plugin_loader.load_plugin_modules(self._plugin_module_paths)
+            self.render_loop.image_processor_loader.load_plugin_modules(self._plugin_module_paths)
 
         for plugin_class in self.plugin_loader.get_available_classes():
             self.plugin_loader.load(plugin_class.get_names()[0],
                                     config_runner=self,
-                                    render_loop=self.render_loop,
-                                    plugin_module_paths=self._plugin_module_paths)
+                                    render_loop=self.render_loop)
 
         self.directives['import_plugins'] = self._import_plugins
 
     def _import_plugins(self, plugin_paths):
+        self._plugin_module_paths.update(plugin_paths)
+        self.render_loop.image_processor_loader.load_plugin_modules(plugin_paths)
         classes = self.plugin_loader.load_plugin_modules(plugin_paths)
         for cls in classes:
             self.plugin_loader.load(cls.get_names()[0],
                                     config_runner=self,
-                                    render_loop=self.render_loop,
-                                    plugin_module_paths=self._plugin_module_paths)
+                                    render_loop=self.render_loop)
+
         return 0
 
     def _save_modules_directive(self, args):

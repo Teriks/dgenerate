@@ -36,8 +36,8 @@ class ImageProcessDirective(_configrunnerplugin.ConfigRunnerPlugin):
 
     def _directive(self, args) -> int:
 
-        render_loop = _imageprocess.ImageProcessRenderLoop()
-        render_loop.image_processor_loader.load_plugin_modules(self.plugin_module_paths)
+        render_loop = _imageprocess.ImageProcessRenderLoop(
+            image_processor_loader=self.render_loop.image_processor_loader)
 
         try:
             return_code = _imageprocess.invoke_image_process(args, render_loop=render_loop, help_exits=True)

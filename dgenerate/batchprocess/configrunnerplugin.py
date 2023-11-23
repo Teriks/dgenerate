@@ -36,7 +36,6 @@ class ConfigRunnerPlugin(_plugin.Plugin):
                  loaded_by_name: str,
                  config_runner: typing.Optional['dgenerate.batchprocess.ConfigRunner'] = None,
                  render_loop: typing.Optional[_renderloop.RenderLoop] = None,
-                 plugin_module_paths: typing.Optional[typing.List[str]] = None,
                  **kwargs):
 
         super().__init__(loaded_by_name=loaded_by_name,
@@ -45,10 +44,6 @@ class ConfigRunnerPlugin(_plugin.Plugin):
 
         self.__config_runner = config_runner
         self.__render_loop = render_loop
-
-        self.__plugin_module_paths = \
-            list(plugin_module_paths) if \
-                plugin_module_paths is not None else []
 
     def set_template_variable(self, name, value):
         """
@@ -109,13 +104,16 @@ class ConfigRunnerPlugin(_plugin.Plugin):
         return self.__config_runner
 
     @property
-    def plugin_module_paths(self) -> typing.List[str]:
+    def plugin_module_paths(self) -> typing.Set[str]:
         """
-        List of plugin module paths if they were injected into the batch process by ``-pm/--plugin-modules``
-        :return: a list of strings, may be empty but not ``None``
-        """
+        Set of plugin module paths if they were injected into the batch process by ``-pm/--plugin-modules``
+        or used in a ``\\import_plugins`` statement in a config.
 
-        return self.__plugin_module_paths
+        :return: a set of paths, may be empty but not ``None``
+        """
+        if self.config_runner is not None:
+            return self.config_runner.plugin_module_paths
+        return set()
 
 
 __all__ = _types.module_all()
