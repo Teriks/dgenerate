@@ -2139,11 +2139,39 @@ Image Processors
 
 Images provided through ``--image-seeds`` can be processed before being used for image generation
 through the use of the arguments ``--seed-image-processors``, ``--mask-image-processors``, and
-``--control-image-processors``.
+``--control-image-processors``. In addition, dgenerates output can be post processed with the
+used of the ``--post-processors`` argument, which is useful for using the ``upscaler`` processor.
 
-Each of these options can receive one or more specifications for image processing actions.
+Each of these options can receive one or more specifications for image processing actions,
+multiple processing actions will be chained together one after another.
 
-For example images can be processed with the canny edge detection algorithm or OpenPose (rigging generation)
+Using the option ``--image-processor-help`` with no arguments will yield a list of available image processor names.
+
+Specifying one or more specific processors for example: ``--image-processor-help canny openpose`` will yield
+documentation pertaining to those processor modules. This includes accepted arguments for the processor module
+and a description of the module.
+
+Custom image processor modules can also be loaded through the ``--plugin-modules`` option as discussed
+in the `Writing Plugins`_ section.
+
+All processors posses the arguments: ``output-file``, ``output-overwrite``, and ``device``
+
+The ``output-file`` argument can be used to write the processed image to a specific file, if multiple
+processing steps occur such as when rendering an animation or multiple generation steps, a numbered suffix
+will be appended to this filename. Note that an output file will only be produced in the case that the
+processor actually modifies an input image in some way. This can be useful for debugging an image that
+is being fed into diffusion or a ControlNet.
+
+The ``output-overwrite`` is a boolean argument can be used to tell the processor that you do not want numbered
+suffixes to be generated for ``output-file`` and to simply overwrite it.
+
+The ``device`` argument can be used to override what device any hardware accelerated image processing
+occurs on if any. It defaults to the value of ``--device`` and has the same syntax for specifying device
+ordinals, for instance if you have multiple GPUs you may specify ``device=cuda:1`` to run image processing
+on your second GPU, etc. Not all image processors respect this argument as some image processing is only
+ever CPU based.
+
+For an example, images can be processed with the canny edge detection algorithm or OpenPose (rigging generation)
 before being used for generation with a model + a ControlNet.
 
 This image of a `horse <https://raw.githubusercontent.com/Teriks/dgenerate/v3.0.0/examples/media/horse2.jpeg>`_
@@ -2202,7 +2230,7 @@ In the case that you would only like the second image affected:
     * ``--control-image-processors + "affect-image2"``
 
 
-The plus symbol effectively creates a Null processor as the first entry in the example above.
+The plus symbol effectively creates a NULL processor as the first entry in the example above.
 
 When multiple guidance images are present, it is a syntax error to specify more processor chains
 than control guidance images.  Specifying less processor chains simply means that the trailing
@@ -2219,33 +2247,6 @@ for example the specification:
 
 The two + (plus symbol) arguments indicate that the first two images mentioned in the control image
 specification in ``--image-seeds`` are not to be processed by any processor.
-
-
-Using the option ``--image-processor-help`` with no arguments will yield a list of available image processor names.
-
-You can also use ``--plugin-modules`` with his argument to include plugin modules into the processor module search path.
-
-Specifying one or more specific processors for example: ``--image-processor-help canny openpose`` will yield
-documentation pertaining to those processor modules. This includes accepted arguments for the processor module
-and a description of the module.
-
-All processors posses the arguments: ``output-file``, ``output-overwrite``, and ``device``
-
-The ``output-file`` argument can be used to write the processed image to a specific file, if multiple
-processing steps occur such as when rendering an animation or multiple generation steps, a numbered suffix
-will be appended to this filename. Note that an output file will only be produced in the case that the
-processor actually modifies an input image in some way.
-
-The ``output-overwrite`` is a boolean argument can be used to tell the processor that you do not want numbered
-suffixes to be generated for ``output-file`` and to simply overwrite it.
-
-The ``device`` argument can be used to override what device any hardware accelerated image processing
-occurs on if any. It defaults to the value of ``--device`` and has the same syntax for specifying device
-ordinals, for instance if you have multiple GPUs you may specify ``device=cuda:1`` to run image processing
-on your second GPU, etc.
-
-Custom image processor modules can also be loaded through the ``--plugin-modules`` option as discussed in the `Writing Plugins`_ section.
-
 
 
 Upscaling with Diffusion Upscaler Models
