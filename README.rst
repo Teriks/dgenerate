@@ -2194,6 +2194,9 @@ Images provided through ``--image-seeds`` can be processed before being used for
 through the use of the arguments ``--seed-image-processors``, ``--mask-image-processors``, and
 ``--control-image-processors``. In addition, dgenerates output can be post processed with the
 used of the ``--post-processors`` argument, which is useful for using the ``upscaler`` processor.
+An important note about ``--post-processors`` is that post processing occurs before any image grid
+rendering preformed when ``--batch-grid-size`` is specified with a ``--batch-size`` greater than one,
+meaning that the output images are processed with your processor before being put into a grid.
 
 Each of these options can receive one or more specifications for image processing actions,
 multiple processing actions will be chained together one after another.
@@ -2500,9 +2503,9 @@ and elsewhere can be utilized for tiled upscaling using dgenerates ``upscaler`` 
 
 The ``upscaler`` image processor can make use of URLs or files on disk.
 
-In this example we reference a link to the REAL-ESRGAN general purpose 4x upscaler from the creators github release.
+In this example we reference a link to the SwinIR x4 upscaler from the creators github release.
 
-This uses the upscaler to upscale the output image by 4x producing an image that is 4096x4096
+This uses the upscaler to upscale the output image by x4 producing an image that is 4096x4096
 
 The ``upscaler`` image processor respects the ``--device`` option of dgenerate, and is CUDA accelerated by default.
 
@@ -2516,7 +2519,7 @@ The ``upscaler`` image processor respects the ``--device`` option of dgenerate, 
     --guidance-scales 8 \
     --output-size 1024 \
     --prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork" \
-    --post-processors upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth
+    --post-processors upscaler;model=https://github.com/JingyunLiang/SwinIR/releases/download/v0.0/001_classicalSR_DIV2K_s48w8_SwinIR-M_x4.pth
 
 
 In addition to this the ``\image_process`` config directive, or ``--sub-command image-process`` can be used to upscale
