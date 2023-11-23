@@ -3,6 +3,7 @@ import typing
 import PIL.Image
 import PIL.ImageOps
 
+import dgenerate.arguments
 from dgenerate import \
     RenderLoop, \
     RenderLoopConfig, \
@@ -10,11 +11,8 @@ from dgenerate import \
     Prompt
 from dgenerate.imageprocessors import ImageProcessor
 
-
-import dgenerate.arguments
-
 # We can use this to parse and validate any --device argument that gets passed
-device, _ =  dgenerate.arguments.parse_device()
+device, _ = dgenerate.arguments.parse_device()
 
 
 # You can add image processors either explicitly
@@ -38,7 +36,7 @@ class MyProcessor(ImageProcessor):
                  **kwargs):
         super().__init__(**kwargs)
 
-    def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: typing.Union[None, tuple]):
+    def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: typing.Optional[typing.Tuple[int, int]]):
         return PIL.ImageOps.invert(image)
 
     def impl_post_resize(self, image: PIL.Image.Image):

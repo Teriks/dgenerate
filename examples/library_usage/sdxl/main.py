@@ -1,3 +1,4 @@
+import dgenerate.arguments
 from dgenerate import \
     RenderLoop, \
     RenderLoopConfig, \
@@ -6,12 +7,8 @@ from dgenerate import \
     ModelTypes, \
     DataTypes
 
-
-import dgenerate.arguments
-
 # We can use this to parse and validate any --device argument that gets passed
 device, _ = dgenerate.arguments.parse_device()
-
 
 config = RenderLoopConfig()
 
