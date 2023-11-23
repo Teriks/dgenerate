@@ -71,7 +71,8 @@ class ImageGeneratedCallbackArgument:
     suggested_filename: str = None
     """
     A suggested filename for saving this image as. This filename will be unique
-    to the render loop run / configuration.
+    to the render loop run / configuration. This filename will not contain
+    :py:attr:`RenderLoopConfig.output_path`, it is the suggested filename by itself.
     """
 
     diffusion_args: _pipelinewrapper.DiffusionArguments = None
