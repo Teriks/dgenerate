@@ -40,7 +40,7 @@ class CannyEdgeDetectProcessor(_imageprocessor.ImageProcessor):
 
     If "blur" is true, apply a 3x3 gaussian blur before processing. If "gray" is true, convert the image to the cv2
     "GRAY" format before processing, which does not happen automatically unless you are using a "threshold_algo" value,
-    OpenCV is capable of edge detection on colored images, however you  may find better results by converting to its
+    OpenCV is capable of edge detection on colored images, however you may find better results by converting to its
     internal grayscale format before processing, or you may not, it depends.
 
     If "threshold_algo" is one of ("otsu", "triangle", "median") try to calculate the lower and upper threshold
