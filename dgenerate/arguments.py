@@ -295,8 +295,8 @@ actions.append(
     parser.add_argument('-pm', '--plugin-modules', action='store', default=[], nargs="+", dest='plugin_module_paths',
                         metavar="PATH",
                         help="""Specify one or more plugin module folder paths (folder containing __init__.py) or 
-                        python .py file paths to load as plugins. Plugin modules can currently only implement 
-                        image processors."""))
+                        python .py file paths to load as plugins. Plugin modules can currently implement 
+                        image processors and config directives."""))
 
 actions.append(
     parser.add_argument('-scm', '--sub-command', action='store', default=None,
