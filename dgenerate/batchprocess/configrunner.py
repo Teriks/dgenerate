@@ -68,7 +68,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             are parsed from ``injected_args`` and added to ``plugin_loader``. If ``-v/--verbose`` is present in ``injected_args``
             debugging output will be enabled globally while the config runs, and not just for invocations.
 
-        :param render_loop: RenderLoop instance, if None is provided one will be created.
+        :param render_loop: RenderLoop instance, if ``None`` is provided one will be created.
         :param plugin_loader: Batch processor plugin loader, if one is not provided one will be created.
         :param version: Config version for ``#! dgenerate x.x.x`` version checks, defaults to ``dgenerate.__version__``
         :param throw: Whether to throw exceptions from :py:func:`dgenerate.invoker.invoke_dgenerate` or handle them.

@@ -194,7 +194,7 @@ def get_type_of_optional(hinted_type: typing.Type, get_origin=True):
 
     :param get_origin: Should the returned type be the origin type?
     :param hinted_type: The hinted type to extract from
-    :return: the type, or None
+    :return: the type, or ``None``
     """
 
     origin = typing.get_origin(hinted_type)
