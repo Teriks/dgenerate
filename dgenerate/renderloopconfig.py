@@ -510,7 +510,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     """
     Should individual frames not be output when rendering an animation? defaults to False.
     This corresponds to the ``--no-frames`` argument of the dgenerate command line tool.
-    Using this option when :py:attr:`RenderLoopConfig.animation_format` is equal to 'frames` will
+    Using this option when :py:attr:`RenderLoopConfig.animation_format` is equal to ``"frames"`` will
     cause a :py:exc:`RenderLoopConfigError` be raised.
     """
 
