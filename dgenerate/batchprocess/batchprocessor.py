@@ -102,17 +102,17 @@ class BatchProcessor:
     Version tuple for the version check hash bang directive.
     """
 
-    template_variables: typing.Dict[str, typing.Any]
+    template_variables: dict[str, typing.Any]
     """
     Live template variables.
     """
 
-    template_functions: typing.Dict[str, typing.Callable[[typing.Any], typing.Any]]
+    template_functions: dict[str, typing.Callable[[typing.Any], typing.Any]]
     """
     Functions available when templating is occurring.
     """
 
-    directives: typing.Dict[str, typing.Optional[typing.Callable[[list], int]]]
+    directives: dict[str, typing.Optional[typing.Callable[[list], int]]]
     """
     Batch process directives, shell commands starting with a backslash.
     
@@ -121,7 +121,7 @@ class BatchProcessor:
     The function should return a return code, 0 for success, anything else for failure.
     """
 
-    injected_args: typing.List[str]
+    injected_args: list[str]
     """
     Shell arguments to inject at the end of every invocation.
     """
@@ -130,11 +130,11 @@ class BatchProcessor:
                  invoker: typing.Callable[[list], int],
                  name: _types.Name,
                  version: typing.Union[_types.Version, str],
-                 template_variables: typing.Optional[typing.Dict[str, typing.Any]] = None,
+                 template_variables: typing.Optional[dict[str, typing.Any]] = None,
                  template_functions: typing.Optional[
-                     typing.Dict[str, typing.Callable[[typing.Any], typing.Any]]] = None,
-                 directives: typing.Dict[str, typing.Optional[typing.Callable[[list], None]]] = None,
-                 injected_args: typing.Optional[typing.List[str]] = None):
+                     dict[str, typing.Callable[[typing.Any], typing.Any]]] = None,
+                 directives: dict[str, typing.Optional[typing.Callable[[list], None]]] = None,
+                 injected_args: typing.Optional[list[str]] = None):
         """
         :param invoker: A function for invoking lines recognized as shell commands, should return a return code.
         :param name: The name of this batch processor, currently used in the version check directive and messages
@@ -172,10 +172,10 @@ class BatchProcessor:
             if len(ver_parts) != 3:
                 raise ValueError(
                     f'version expected to be a version string in the format major.minor.patch. received: "{version}"')
-            self.version: typing.Tuple[int, int, int] = \
+            self.version: tuple[int, int, int] = \
                 (int(ver_parts[0]), int(ver_parts[1]), int(ver_parts[2]))
         else:
-            self.version: typing.Tuple[int, int, int] = tuple(version)
+            self.version: tuple[int, int, int] = tuple(version)
             if len(self.version) != 3:
                 raise ValueError(
                     f'version tuple expected to contain three components: (major, minor, patch). received: {self.version}')

@@ -165,7 +165,7 @@ def fetch_model_files_with_size(repo_id: str,
                                 local_files_only: bool = False,
                                 flax: bool = False,
                                 sentencepiece: bool = False,
-                                watermarker: bool = False) -> typing.Iterator[typing.Tuple[str, int]]:
+                                watermarker: bool = False) -> typing.Iterator[tuple[str, int]]:
     """
     Attempt to fetch model files with their size that are relevant for the type of model being loaded.
 

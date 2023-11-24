@@ -354,17 +354,17 @@ class TorchPipelineCreationResult(PipelineCreationResult):
     Parsed VAE URI if one was present
     """
 
-    parsed_lora_uris: typing.List[_uris.LoRAUri]
+    parsed_lora_uris: list[_uris.LoRAUri]
     """
     Parsed LoRA URIs if any were present
     """
 
-    parsed_textual_inversion_uris: typing.List[_uris.TextualInversionUri]
+    parsed_textual_inversion_uris: list[_uris.TextualInversionUri]
     """
     Parsed Textual Inversion URIs if any were present
     """
 
-    parsed_control_net_uris: typing.List[_uris.TorchControlNetUri]
+    parsed_control_net_uris: list[_uris.TorchControlNetUri]
     """
     Parsed ControlNet URIs if any were present
     """
@@ -372,9 +372,9 @@ class TorchPipelineCreationResult(PipelineCreationResult):
     def __init__(self,
                  pipeline: diffusers.DiffusionPipeline,
                  parsed_vae_uri: typing.Optional[_uris.TorchVAEUri],
-                 parsed_lora_uris: typing.List[_uris.LoRAUri],
-                 parsed_textual_inversion_uris: typing.List[_uris.TextualInversionUri],
-                 parsed_control_net_uris: typing.List[_uris.TorchControlNetUri]):
+                 parsed_lora_uris: list[_uris.LoRAUri],
+                 parsed_textual_inversion_uris: list[_uris.TextualInversionUri],
+                 parsed_control_net_uris: list[_uris.TorchControlNetUri]):
         super().__init__(pipeline)
 
         self.parsed_vae_uri = parsed_vae_uri
@@ -408,7 +408,7 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                                     safety_checker: bool = False,
                                     auth_token: _types.OptionalString = None,
                                     device: str = 'cuda',
-                                    extra_modules: typing.Optional[typing.Dict[str, typing.Any]] = None,
+                                    extra_modules: typing.Optional[dict[str, typing.Any]] = None,
                                     model_cpu_offload: bool = False,
                                     sequential_cpu_offload: bool = False,
                                     local_files_only: bool = False) -> TorchPipelineCreationResult:
@@ -474,7 +474,7 @@ class TorchPipelineFactory:
                  safety_checker: bool = False,
                  auth_token: _types.OptionalString = None,
                  device: str = 'cuda',
-                 extra_modules: typing.Optional[typing.Dict[str, typing.Any]] = None,
+                 extra_modules: typing.Optional[dict[str, typing.Any]] = None,
                  model_cpu_offload: bool = False,
                  sequential_cpu_offload: bool = False,
                  local_files_only: bool = False,
@@ -530,7 +530,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                                      safety_checker: bool = False,
                                      auth_token: _types.OptionalString = None,
                                      device: str = 'cuda',
-                                     extra_modules: typing.Optional[typing.Dict[str, typing.Any]] = None,
+                                     extra_modules: typing.Optional[dict[str, typing.Any]] = None,
                                      model_cpu_offload: bool = False,
                                      sequential_cpu_offload: bool = False,
                                      local_files_only: bool = False) -> TorchPipelineCreationResult:
@@ -817,7 +817,7 @@ class FlaxPipelineCreationResult(PipelineCreationResult):
         """
         return super().pipeline
 
-    flax_params: typing.Dict[str, typing.Any]
+    flax_params: dict[str, typing.Any]
     """
     Flax specific Pipeline params object
     """
@@ -827,28 +827,28 @@ class FlaxPipelineCreationResult(PipelineCreationResult):
     Parsed VAE URI if one was present
     """
 
-    flax_vae_params: typing.Optional[typing.Dict[str, typing.Any]]
+    flax_vae_params: typing.Optional[dict[str, typing.Any]]
     """
     Flax specific VAE params object
     """
 
-    parsed_control_net_uris: typing.List[_uris.FlaxControlNetUri]
+    parsed_control_net_uris: list[_uris.FlaxControlNetUri]
     """
     Parsed ControlNet URIs if any were present
     """
 
-    flax_control_net_params: typing.Optional[typing.Dict[str, typing.Any]]
+    flax_control_net_params: typing.Optional[dict[str, typing.Any]]
     """
     Flax specific ControlNet params object
     """
 
     def __init__(self,
                  pipeline: diffusers.FlaxDiffusionPipeline,
-                 flax_params: typing.Dict[str, typing.Any],
+                 flax_params: dict[str, typing.Any],
                  parsed_vae_uri: typing.Optional[_uris.FlaxVAEUri],
-                 flax_vae_params: typing.Optional[typing.Dict[str, typing.Any]],
-                 parsed_control_net_uris: typing.List[_uris.FlaxControlNetUri],
-                 flax_control_net_params: typing.Optional[typing.Dict[str, typing.Any]]):
+                 flax_vae_params: typing.Optional[dict[str, typing.Any]],
+                 parsed_control_net_uris: list[_uris.FlaxControlNetUri],
+                 flax_control_net_params: typing.Optional[dict[str, typing.Any]]):
         super().__init__(pipeline)
 
         self.flax_params = flax_params
@@ -879,7 +879,7 @@ def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                                    scheduler: _types.OptionalString = None,
                                    safety_checker: bool = False,
                                    auth_token: _types.OptionalString = None,
-                                   extra_modules: typing.Optional[typing.Dict[str, typing.Any]] = None,
+                                   extra_modules: typing.Optional[dict[str, typing.Any]] = None,
                                    local_files_only: bool = False) -> FlaxPipelineCreationResult:
     """
     Create a :py:class:`diffusers.FlaxDiffusionPipeline` in dgenerates in memory cacheing system.
@@ -931,7 +931,7 @@ class FlaxPipelineFactory:
                  scheduler: _types.OptionalString = None,
                  safety_checker: bool = False,
                  auth_token: _types.OptionalString = None,
-                 extra_modules: typing.Optional[typing.Dict[str, typing.Any]] = None,
+                 extra_modules: typing.Optional[dict[str, typing.Any]] = None,
                  local_files_only: bool = False):
         self._args = {k: v for k, v in locals().items() if k not in {'self'}}
 
@@ -968,7 +968,7 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                                     scheduler: _types.OptionalString = None,
                                     safety_checker: bool = False,
                                     auth_token: _types.OptionalString = None,
-                                    extra_modules: typing.Optional[typing.Dict[str, typing.Any]] = None,
+                                    extra_modules: typing.Optional[dict[str, typing.Any]] = None,
                                     local_files_only: bool = False) -> FlaxPipelineCreationResult:
     if not _enums.model_type_is_flax(model_type):
         raise ValueError('model_type must be a FLAX ModelTypes enum value.')

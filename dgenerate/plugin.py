@@ -30,7 +30,7 @@ from importlib.machinery import SourceFileLoader
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 
-LOADED_PLUGIN_MODULES: typing.Dict[str, types.ModuleType] = {}
+LOADED_PLUGIN_MODULES: dict[str, types.ModuleType] = {}
 """Plugin module in memory cache"""
 
 
@@ -141,7 +141,7 @@ class Plugin:
         return self.__argument_error_type(msg)
 
     @classmethod
-    def get_names(cls) -> typing.List[str]:
+    def get_names(cls) -> list[str]:
         """
         Get the names that this class can be loaded by.
 
@@ -211,7 +211,7 @@ class Plugin:
             return loaded_by_name + f':{args_part}'
 
     @classmethod
-    def get_required_args(cls, loaded_by_name: str) -> typing.List[PluginArg]:
+    def get_required_args(cls, loaded_by_name: str) -> list[PluginArg]:
         """
         Get a list of required arguments for this plugin class.
 
@@ -224,7 +224,7 @@ class Plugin:
                 cls.get_accepted_args(loaded_by_name) if not a.have_default]
 
     @classmethod
-    def get_default_args(cls, loaded_by_name: str) -> typing.List[PluginArg]:
+    def get_default_args(cls, loaded_by_name: str) -> list[PluginArg]:
         """
         Get the names and values of arguments for this plugin that possess default values.
 
@@ -237,7 +237,7 @@ class Plugin:
                 cls.get_accepted_args(loaded_by_name) if a.have_default]
 
     @classmethod
-    def get_accepted_args(cls, loaded_by_name) -> typing.List[PluginArg]:
+    def get_accepted_args(cls, loaded_by_name) -> list[PluginArg]:
         """
         Retrieve the argument signature of a plugin implementation. As a list of tuples
         which are: (name,) or (name, default_value) depending on if a default value for the argument
@@ -314,7 +314,7 @@ class ModuleFileNotFoundError(FileNotFoundError):
     pass
 
 
-def load_modules(paths: typing.Iterable[str]) -> typing.List[types.ModuleType]:
+def load_modules(paths: typing.Iterable[str]) -> list[types.ModuleType]:
     """
     Load python modules from a folder or directly from a .py file.
     Cache them so that repeat requests for loading return an already loaded module.
@@ -346,7 +346,7 @@ def load_modules(paths: typing.Iterable[str]) -> typing.List[types.ModuleType]:
     return r
 
 
-PluginArgumentsDef = typing.Optional[typing.List[PluginArg]]
+PluginArgumentsDef = typing.Optional[list[PluginArg]]
 
 
 class PluginLoader:
@@ -405,7 +405,7 @@ class PluginLoader:
 
         self.__classes.add(cls)
 
-    def add_search_module_string(self, string: str) -> typing.List[typing.Type[Plugin]]:
+    def add_search_module_string(self, string: str) -> list[typing.Type[Plugin]]:
         """
         Add a module string (in sys.modules) that will be searched for implementations.
 
@@ -417,7 +417,7 @@ class PluginLoader:
             self.add_class(cls)
         return classes
 
-    def add_search_module(self, module: types.ModuleType) -> typing.List[typing.Type[Plugin]]:
+    def add_search_module(self, module: types.ModuleType) -> list[typing.Type[Plugin]]:
         """
         Directly add a module object that will be searched for implementations.
 
@@ -429,7 +429,7 @@ class PluginLoader:
             self.add_class(cls)
         return classes
 
-    def load_plugin_modules(self, paths: typing.Iterable[str]) -> typing.List[typing.Type[Plugin]]:
+    def load_plugin_modules(self, paths: typing.Iterable[str]) -> list[typing.Type[Plugin]]:
         """
         Modules that will be loaded from disk and searched for implementations.
 
@@ -583,7 +583,7 @@ class PluginLoader:
             raise self.__argument_error_type(
                 f'Invalid argument given to {self.__description} "{call_by_name}": {e}')
 
-    def get_available_classes(self) -> typing.List[typing.Type[Plugin]]:
+    def get_available_classes(self) -> list[typing.Type[Plugin]]:
         """
         Get classes seen by this plugin loader.
 

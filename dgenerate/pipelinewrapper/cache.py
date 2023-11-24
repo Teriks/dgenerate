@@ -83,7 +83,7 @@ def control_net_cache_size() -> int:
     return _CONTROL_NET_CACHE_SIZE
 
 
-CACHE_MEMORY_CONSTRAINTS: typing.List[str] = ['used_percent > 70']
+CACHE_MEMORY_CONSTRAINTS: list[str] = ['used_percent > 70']
 """
 Cache constraint expressions for when to clear all model caches (DiffusionPipeline, VAE, and ControlNet), 
 syntax provided via :py:func:`dgenerate.memory.memory_constraints`
@@ -92,7 +92,7 @@ If any of these constraints are met, a call to :py:func:`.enforce_cache_constrai
 :py:func:`.clear_model_cache` and force a garbage collection.
 """
 
-PIPELINE_CACHE_MEMORY_CONSTRAINTS: typing.List[str] = ['pipeline_size > (available * 0.75)']
+PIPELINE_CACHE_MEMORY_CONSTRAINTS: list[str] = ['pipeline_size > (available * 0.75)']
 """
 Cache constraint expressions for when to clear the DiffusionPipeline cache, 
 syntax provided via :py:func:`dgenerate.memory.memory_constraints`
@@ -104,7 +104,7 @@ Extra variables include: *cache_size* (the current estimated cache size in bytes
 and *pipeline_size* (the estimated size of the new pipeline before it is brought into memory, in bytes)
 """
 
-CONTROL_NET_CACHE_MEMORY_CONSTRAINTS: typing.List[str] = ['control_net_size > (available * 0.75)']
+CONTROL_NET_CACHE_MEMORY_CONSTRAINTS: list[str] = ['control_net_size > (available * 0.75)']
 """
 Cache constraint expressions for when to clear the ControlNet cache, 
 syntax provided via :py:func:`dgenerate.memory.memory_constraints`
@@ -116,7 +116,7 @@ Extra variables include: *cache_size* (the current estimated cache size in bytes
 and *control_net_size* (the estimated size of the new ControlNet before it is brought into memory, in bytes)
 """
 
-VAE_CACHE_MEMORY_CONSTRAINTS: typing.List[str] = ['vae_size > (available * 0.75)']
+VAE_CACHE_MEMORY_CONSTRAINTS: list[str] = ['vae_size > (available * 0.75)']
 """
 Cache constraint expressions for when to clear VAE cache, 
 syntax provided via :py:func:`dgenerate.memory.memory_constraints`

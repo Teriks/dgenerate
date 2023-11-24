@@ -31,8 +31,8 @@ class SubCommand(_plugin.Plugin):
 
     def __init__(self,
                  loaded_by_name: str,
-                 plugin_module_paths: typing.List[str],
-                 args: typing.List[str],
+                 plugin_module_paths: list[str],
+                 args: list[str],
                  **kwargs):
         super().__init__(loaded_by_name=loaded_by_name,
                          argument_error_type=_exceptions.SubCommandArgumentError,

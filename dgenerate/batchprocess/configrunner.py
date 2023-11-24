@@ -246,7 +246,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
     def _templates_help_directive(self, args):
         values = self.render_loop.generate_template_variables_with_types()
-        values['saved_modules'] = (typing.Dict[str, typing.Dict[str, typing.Any]],
+        values['saved_modules'] = (dict[str, dict[str, typing.Any]],
                                    self.template_variables.get('saved_modules'))
         values['glob'] = (types.ModuleType, "<module 'glob'>")
 

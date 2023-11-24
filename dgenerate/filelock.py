@@ -26,7 +26,7 @@ import typing
 
 import portalocker
 
-PathMaker = typing.Callable[[typing.Optional[str], typing.Optional[int]], typing.Union[str, typing.List[str]]]
+PathMaker = typing.Callable[[typing.Optional[str], typing.Optional[int]], typing.Union[str, list[str]]]
 
 
 def suffix_path_maker(filenames, suffix):

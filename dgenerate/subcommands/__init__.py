@@ -37,7 +37,7 @@ class SubCommandHelpUsageError(Exception):
     pass
 
 
-def remove_sub_command_arg(args: typing.List[str]):
+def remove_sub_command_arg(args: list[str]):
     """
     Returns a list of arguments with --scm/--sub-command and its singular argument removed.
 

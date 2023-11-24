@@ -44,12 +44,12 @@ class ConceptUri:
     The primary concept mentioned in the URI.
     """
 
-    args: typing.Dict[str, str]
+    args: dict[str, str]
     """
     Provided keyword arguments with their (string) values.
     """
 
-    def __init__(self, concept: str, args: typing.Dict[str, str]):
+    def __init__(self, concept: str, args: dict[str, str]):
         self.concept = concept
         self.args = args
 
@@ -333,12 +333,12 @@ class ConceptUriParser:
     Name / title string for this concept. Used in parse error exceptions.
     """
 
-    known_args: typing.Set[str]
+    known_args: set[str]
     """
     Unique recognized keyword arguments
     """
 
-    args_raw: typing.Union[None, bool, typing.Set[str]]
+    args_raw: typing.Union[None, bool, set[str]]
     """
     ``True`` indicates all argument values are returned without any unquoting or processing into lists.
     
@@ -348,7 +348,7 @@ class ConceptUriParser:
     arguments skip extended processing (unquoting or splitting).
     """
 
-    args_multiple: typing.Union[None, bool, typing.Set[str]]
+    args_multiple: typing.Union[None, bool, set[str]]
     """
     ``True`` indicates all arguments can accept a comma separated list.
     
@@ -678,7 +678,7 @@ def justify_left(string: str):
     return '\n'.join(line.strip() if not line.isspace() else line for line in string.split('\n'))
 
 
-def debug_format_args(args_dict: typing.Dict[str, typing.Any],
+def debug_format_args(args_dict: dict[str, typing.Any],
                       value_transformer: typing.Optional[typing.Callable[[str, typing.Any], str]] = None,
                       max_value_len: int = 256):
     """

@@ -111,7 +111,7 @@ def supported_data_type_strings():
     return ['auto', 'float16', 'float32']
 
 
-def supported_data_type_enums() -> typing.List[DataTypes]:
+def supported_data_type_enums() -> list[DataTypes]:
     """
     Return a list of supported :py:class:`.DataTypes` enum values
     """
@@ -207,7 +207,7 @@ def supported_model_type_strings():
         return base_set
 
 
-def supported_model_type_enums() -> typing.List[ModelTypes]:
+def supported_model_type_enums() -> list[ModelTypes]:
     """
     Return a list of supported :py:class:`.ModelTypes` enum values
     """

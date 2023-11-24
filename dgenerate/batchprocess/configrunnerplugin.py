@@ -64,7 +64,7 @@ class ConfigRunnerPlugin(_plugin.Plugin):
         if self.config_runner is not None:
             self.config_runner.template_variables.update(values)
 
-    def register_directive(self, name, implementation: typing.Callable[[typing.List[str]], int]):
+    def register_directive(self, name, implementation: typing.Callable[[list[str]], int]):
         """
         Safely register a config directive implementation on the :py:class:`dgenerate.batchprocess.ConfigRunner` instance.
 
