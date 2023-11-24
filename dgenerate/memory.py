@@ -100,7 +100,7 @@ def memory_constraints(expressions: typing.Optional[typing.Union[str, list]],
         of an expression is not a boolean value.
 
     :param expressions: a string containing an expression or a list of expressions,
-        If expressions is None or empty this function will return False.
+        If expressions is ``None`` or empty this function will return False.
     :param extra_vars: extra integer or float variables
     :param mode: the standard library function 'any' (equating to OR all expressions) or
         the standard library function 'all' (equating to AND all expressions). The default
