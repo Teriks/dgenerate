@@ -28,8 +28,8 @@ import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 
 
-def args_cache_key(args_dict: typing.Dict[str, typing.Any],
-                   custom_hashes: typing.Dict[str, typing.Callable[[typing.Any], str]] = None):
+def args_cache_key(args_dict: dict[str, typing.Any],
+                   custom_hashes: dict[str, typing.Callable[[typing.Any], str]] = None):
     """
     Generate a cache key for a functions arguments to use for memoization.
 
@@ -56,9 +56,9 @@ def args_cache_key(args_dict: typing.Dict[str, typing.Any],
         return ','.join(f'{k}={value_hash(v)}' for k, v in sorted(args_dict.items()))
 
 
-def memoize(cache: typing.Dict[str, typing.Any],
-            exceptions: typing.Set[str] = None,
-            hasher: typing.Callable[[typing.Dict[str, typing.Any]], str] = args_cache_key,
+def memoize(cache: dict[str, typing.Any],
+            exceptions: set[str] = None,
+            hasher: typing.Callable[[dict[str, typing.Any]], str] = args_cache_key,
             on_hit: typing.Callable[[str, typing.Any], None] = None,
             on_create: typing.Callable[[str, typing.Any], None] = None):
     """
@@ -178,7 +178,7 @@ def simple_cache_miss_debug(title: str, cache_key: str, new: typing.Any):
 
 
 def struct_hasher(obj: typing.Any,
-                  custom_hashes: typing.Dict[str, typing.Callable[[typing.Any], str]] = None) -> str:
+                  custom_hashes: dict[str, typing.Callable[[typing.Any], str]] = None) -> str:
     """
     Create a hash string from a simple objects public attributes.
 

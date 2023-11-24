@@ -451,11 +451,11 @@ def is_downloadable_url(string) -> bool:
     return string.startswith('http://') or string.startswith('https://')
 
 
-def get_supported_animated_image_mimetypes() -> typing.List[str]:
+def get_supported_animated_image_mimetypes() -> list[str]:
     return ['image/gif', 'image/webp', 'image/apng']
 
 
-def get_supported_static_image_mimetypes() -> typing.List[str]:
+def get_supported_static_image_mimetypes() -> list[str]:
     return ['image/png',
             'application/png',
             'application/x-png',
@@ -485,7 +485,7 @@ def get_supported_static_image_mimetypes() -> typing.List[str]:
             'image/psd']
 
 
-def get_supported_image_mimetypes() -> typing.List[str]:
+def get_supported_image_mimetypes() -> list[str]:
     """
     Get all supported ``--image-seeds`` image mimetypes, including animated image mimetypes
 
@@ -494,7 +494,7 @@ def get_supported_image_mimetypes() -> typing.List[str]:
     return get_supported_static_image_mimetypes() + get_supported_animated_image_mimetypes()
 
 
-def get_supported_video_mimetypes() -> typing.List[str]:
+def get_supported_video_mimetypes() -> list[str]:
     """
     Get all supported ``--image-seeds`` video mimetypes, may contain a wildcard
 
@@ -503,7 +503,7 @@ def get_supported_video_mimetypes() -> typing.List[str]:
     return ['video/*']
 
 
-def get_supported_mimetypes() -> typing.List[str]:
+def get_supported_mimetypes() -> list[str]:
     """
     Get all supported ``--image-seeds`` mimetypes, video mimetype may contain a wildcard.
 
@@ -564,7 +564,7 @@ class ImageSeedParseResult:
     The result of parsing an ``--image-seeds`` uri
     """
 
-    seed_path: typing.Union[_types.Path, typing.List[_types.Path]]
+    seed_path: typing.Union[_types.Path, list[_types.Path]]
     """
     The seed path, contains an image path that will be used for img2img operations
     or the base image in inpaint operations. Or a controlnet guidance path, or a list of controlnet guidance paths. 
@@ -576,7 +576,7 @@ class ImageSeedParseResult:
     Optional path to an inpaint mask, may be an HTTP/HTTPS URL or file path.
     """
 
-    control_path: typing.Union[_types.Path, typing.List[_types.Path], None] = None
+    control_path: typing.Union[_types.Path, list[_types.Path], None] = None
     """
     Optional controlnet guidance path, or a list of controlnet guidance paths. 
     This field is only used when the secondary syntax of ``--image-seeds`` is encountered.
@@ -637,7 +637,7 @@ class ImageSeedParseResult:
     Optional end frame specification for per-image seed slicing.
     """
 
-    def get_control_image_paths(self) -> typing.Optional[typing.List[str]]:
+    def get_control_image_paths(self) -> typing.Optional[list[str]]:
         """
         Return :py:attr:`.ImageSeed.seed_path` if :py:attr:`.ImageSeed.is_single_spec` is ``True``.
 
@@ -949,7 +949,7 @@ def create_web_cache_file(url,
                           mime_acceptable_desc: str = _textprocessing.oxford_comma(
                               get_supported_mimetypes(), conjunction='or'),
                           mimetype_is_supported: typing.Optional[typing.Callable[[str], bool]] = mimetype_is_supported) \
-        -> typing.Tuple[str, str]:
+        -> tuple[str, str]:
     """
     Download a file from a url and add it to dgenerates temporary web cache that is
     available to all concurrent dgenerate processes.
@@ -1048,7 +1048,7 @@ def guess_mimetype(filename) -> typing.Optional[str]:
 
 
 # noinspection HttpUrlsUsage
-def fetch_media_data_stream(uri: str) -> typing.Tuple[str, typing.BinaryIO]:
+def fetch_media_data_stream(uri: str) -> tuple[str, typing.BinaryIO]:
     """
     Get an open stream to a local file, or file at an HTTP or HTTPS URL, with caching for web files.
 
@@ -1274,8 +1274,8 @@ class MultiAnimationReader:
     images read from the individual readers are the same size and you must handle that condition.
     """
 
-    _readers: typing.List[AnimationReader]
-    _file_streams: typing.List[typing.BinaryIO]
+    _readers: list[AnimationReader]
+    _file_streams: list[typing.BinaryIO]
     _total_frames: int = 0
     _frame_start: int = 0
     _frame_end: _types.OptionalInteger = None
@@ -1324,7 +1324,7 @@ class MultiAnimationReader:
         return self._anim_frame_duration
 
     def __init__(self,
-                 specs: typing.List[AnimationReaderSpec],
+                 specs: list[AnimationReaderSpec],
                  frame_start: int = 0,
                  frame_end: _types.OptionalInteger = None,
                  path_opener: typing.Callable[[str], typing.BinaryIO] = fetch_media_data_stream):
@@ -1471,7 +1471,7 @@ class ImageSeed:
     An optional inpaint mask image, may be None
     """
 
-    control_images: typing.Optional[typing.List[PIL.Image.Image]]
+    control_images: typing.Optional[list[PIL.Image.Image]]
     """
     List of control guidance images, or None.
     """
@@ -1496,7 +1496,7 @@ class ImageSeed:
     def __init__(self,
                  image: typing.Optional[PIL.Image.Image] = None,
                  mask_image: typing.Optional[PIL.Image.Image] = None,
-                 control_images: typing.Optional[typing.List[PIL.Image.Image]] = None,
+                 control_images: typing.Optional[list[PIL.Image.Image]] = None,
                  floyd_image: typing.Optional[PIL.Image.Image] = None):
         self.image = image
         self.mask_image = mask_image
@@ -1544,7 +1544,7 @@ def _flatten(xs):
 
 
 ControlProcessorSpec = typing.Union[_imageprocessors.ImageProcessor,
-                                    typing.List[_imageprocessors.ImageProcessor], None]
+                                    list[_imageprocessors.ImageProcessor], None]
 
 
 def _validate_control_image_processor_count(processors, guidance_images):

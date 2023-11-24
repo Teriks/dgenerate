@@ -37,7 +37,7 @@ when specifying processors for multiple control guidance images
 
 
 def iterate_attribute_combinations(
-        attribute_defs: typing.List[typing.Tuple[str, typing.List]],
+        attribute_defs: list[tuple[str, list]],
         return_type: typing.Type) -> typing.Iterator:
     """
     Iterate over every combination of attributes in a given class using a list of tuples mapping
@@ -200,7 +200,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     List of ``--image-seeds`` URI strings.
     """
 
-    parsed_image_seeds: typing.Optional[typing.List[_mediainput.ImageSeedParseResult]] = None
+    parsed_image_seeds: typing.Optional[list[_mediainput.ImageSeedParseResult]] = None
     """
     The results of parsing URIs mentioned in :py:attr:`.RenderLoopConfig.image_seeds`, 
     will only be available if :py:meth:`.RenderLoopConfig.check` has been called.
@@ -569,7 +569,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         self.seeds = gen_seeds(1)
 
     def generate_template_variables_with_types(self, variable_prefix: typing.Optional[str] = None) \
-            -> typing.Dict[str, typing.Tuple[typing.Type, typing.Any]]:
+            -> dict[str, tuple[typing.Type, typing.Any]]:
         """
         Generate a dictionary from this configuration object that maps attribute names to a tuple
         containing (type_hint_type, value)
@@ -601,7 +601,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     def generate_template_variables(self,
                                     variable_prefix:
-                                    typing.Optional[str] = None) -> typing.Dict[str, typing.Any]:
+                                    typing.Optional[str] = None) -> dict[str, typing.Any]:
         """
         Generate a dictionary from this configuration object that is suitable 
         for using as Jinja2 environmental variables.

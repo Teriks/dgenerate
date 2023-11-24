@@ -119,7 +119,7 @@ class ImageGeneratedCallbackArgument:
     """
 
 
-ImageGeneratedCallbacks = typing.List[
+ImageGeneratedCallbacks = list[
     typing.Callable[[ImageGeneratedCallbackArgument], None]]
 
 
@@ -148,12 +148,12 @@ class RenderLoop:
     The callback has a single argument: :py:class:`.ImageGeneratedCallbackArgument`
     """
 
-    model_extra_modules: typing.Dict[str, typing.Any] = None
+    model_extra_modules: dict[str, typing.Any] = None
     """
     Extra raw diffusers modules to use in the creation of the main model pipeline.
     """
 
-    refiner_extra_modules: typing.Dict[str, typing.Any] = None
+    refiner_extra_modules: dict[str, typing.Any] = None
     """
     Extra raw diffusers modules to use in the creation of any refiner model pipeline.
     """
@@ -228,7 +228,7 @@ class RenderLoop:
             yield line.rstrip('\n')
         self._written_animations.seek(pos)
 
-    def generate_template_variables_with_types(self) -> typing.Dict[str, typing.Tuple[typing.Type, typing.Any]]:
+    def generate_template_variables_with_types(self) -> dict[str, tuple[typing.Type, typing.Any]]:
         """
         Generate a dictionary from the render loop that describes its current / last used configuration with type hints.
 
@@ -245,7 +245,7 @@ class RenderLoop:
 
         return template_variables
 
-    def generate_template_variables(self) -> typing.Dict[str, typing.Any]:
+    def generate_template_variables(self) -> dict[str, typing.Any]:
         """
         Generate a dictionary from the render loop that describes its current / last used configuration.
 
@@ -257,7 +257,7 @@ class RenderLoop:
 
     def generate_template_variables_help(self,
                                          values: typing.Optional[
-                                             typing.Dict[str, typing.Tuple[typing.Type, typing.Any]]] = None,
+                                             dict[str, tuple[typing.Type, typing.Any]]] = None,
                                          show_values: bool = True,
                                          header=None):
         """
@@ -383,9 +383,9 @@ class RenderLoop:
 
     def _setup_batch_size_config_opts(self,
                                       file_title: str,
-                                      extra_opts_out: typing.List[
-                                          typing.Union[typing.Tuple[str, typing.Any], typing.Tuple[str]]],
-                                      extra_comments_out: typing.List[str],
+                                      extra_opts_out: list[
+                                          typing.Union[tuple[str, typing.Any], tuple[str]]],
+                                      extra_comments_out: list[str],
                                       batch_index: int,
                                       generation_result: _pipelinewrapper.PipelineWrapperResult):
 
@@ -404,7 +404,7 @@ class RenderLoop:
     def _gen_dgenerate_config(self,
                               args: typing.Optional[_pipelinewrapper.DiffusionArguments] = None,
                               extra_opts: typing.Optional[
-                                  typing.List[typing.Union[typing.Tuple[str], typing.Tuple[str, typing.Any]]]] = None,
+                                  list[typing.Union[tuple[str], tuple[str, typing.Any]]]] = None,
                               extra_comments: typing.Optional[typing.Sequence[str]] = None,
                               **kwargs) -> str:
 
@@ -416,7 +416,7 @@ class RenderLoop:
     def _gen_dgenerate_command(self,
                                args: typing.Optional[_pipelinewrapper.DiffusionArguments] = None,
                                extra_opts: typing.Optional[
-                                   typing.List[typing.Union[typing.Tuple[str], typing.Tuple[str, typing.Any]]]] = None,
+                                   list[typing.Union[tuple[str], tuple[str, typing.Any]]]] = None,
                                extra_comments: typing.Optional[typing.Sequence[str]] = None,
                                **kwargs) -> str:
 
@@ -426,7 +426,7 @@ class RenderLoop:
                                                             extra_comments=extra_comments, **kwargs)
 
     def _write_image(self,
-                     filename_components: typing.List[str],
+                     filename_components: list[str],
                      image: PIL.Image.Image,
                      batch_index: int,
                      diffusion_args: _pipelinewrapper.DiffusionArguments,
@@ -531,7 +531,7 @@ class RenderLoop:
         self._written_images.write(os.path.abspath(image_filename) + '\n')
 
     def _write_generation_result(self,
-                                 filename_components: typing.List[str],
+                                 filename_components: list[str],
                                  diffusion_args: _pipelinewrapper.DiffusionArguments,
                                  generation_result: _pipelinewrapper.PipelineWrapperResult,
                                  image_seed: typing.Optional[_mediainput.ImageSeed] = None):

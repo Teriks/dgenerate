@@ -151,7 +151,7 @@ class FlaxControlNetUri:
     def load(self,
              dtype_fallback: _enums.DataTypes = _enums.DataTypes.AUTO,
              use_auth_token: _types.OptionalString = None,
-             local_files_only: bool = False) -> typing.Tuple[diffusers.FlaxControlNetModel, typing.Any]:
+             local_files_only: bool = False) -> tuple[diffusers.FlaxControlNetModel, typing.Any]:
         """
         Load a :py:class:`diffusers.FlaxControlNetModel` from this URI.
 
@@ -179,7 +179,7 @@ class FlaxControlNetUri:
     def _load(self,
               dtype_fallback: _enums.DataTypes = _enums.DataTypes.AUTO,
               use_auth_token: _types.OptionalString = None,
-              local_files_only: bool = False) -> typing.Tuple[diffusers.FlaxControlNetModel, typing.Any]:
+              local_files_only: bool = False) -> tuple[diffusers.FlaxControlNetModel, typing.Any]:
 
         single_file_load_path = _hfutil.is_single_file_model_load(self.model)
 
@@ -800,7 +800,7 @@ class FlaxVAEUri:
     def load(self,
              dtype_fallback: _enums.DataTypes = _enums.DataTypes.AUTO,
              use_auth_token: _types.OptionalString = None,
-             local_files_only=False) -> typing.Tuple[diffusers.FlaxAutoencoderKL, typing.Any]:
+             local_files_only=False) -> tuple[diffusers.FlaxAutoencoderKL, typing.Any]:
         """
         Load a :py:class:`diffusers.FlaxAutoencoderKL` VAE and its flax_params from this URI
 
@@ -824,7 +824,7 @@ class FlaxVAEUri:
     def _load(self,
               dtype_fallback: _enums.DataTypes = _enums.DataTypes.AUTO,
               use_auth_token: _types.OptionalString = None,
-              local_files_only=False) -> typing.Tuple[diffusers.FlaxAutoencoderKL, typing.Any]:
+              local_files_only=False) -> tuple[diffusers.FlaxAutoencoderKL, typing.Any]:
 
         if self.dtype is None:
             flax_dtype = _enums.get_flax_dtype(dtype_fallback)

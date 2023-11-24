@@ -64,7 +64,7 @@ def memory_constraint_syntax_check(expression):
 
 
 def memory_constraints(expressions: typing.Optional[typing.Union[str, list]],
-                       extra_vars: typing.Optional[typing.Dict[str, typing.Union[int, float]]] = None,
+                       extra_vars: typing.Optional[dict[str, typing.Union[int, float]]] = None,
                        mode=any,
                        pid: typing.Optional[int] = None) -> bool:
     """

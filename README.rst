@@ -2722,115 +2722,115 @@ The ``\templates_help`` output from the above example is:
             Type: typing.Optional[int]
             Value: 1
         Name: "last_batch_grid_size"
-            Type: typing.Optional[typing.Tuple[int, int]]
+            Type: typing.Optional[tuple[int, int]]
             Value: None
         Name: "last_prompts"
-            Type: typing.List[dgenerate.prompt.Prompt]
+            Type: list[dgenerate.prompt.Prompt]
             Value: ['a man walking on the moon without a space suit']
         Name: "last_sdxl_second_prompts"
-            Type: typing.Optional[typing.List[dgenerate.prompt.Prompt]]
+            Type: typing.Optional[list[dgenerate.prompt.Prompt]]
             Value: []
         Name: "last_sdxl_refiner_prompts"
-            Type: typing.Optional[typing.List[dgenerate.prompt.Prompt]]
+            Type: typing.Optional[list[dgenerate.prompt.Prompt]]
             Value: []
         Name: "last_sdxl_refiner_second_prompts"
-            Type: typing.Optional[typing.List[dgenerate.prompt.Prompt]]
+            Type: typing.Optional[list[dgenerate.prompt.Prompt]]
             Value: []
         Name: "last_seeds"
-            Type: typing.List[int]
+            Type: list[int]
             Value: [88900252172963]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
         Name: "last_guidance_scales"
-            Type: typing.List[float]
+            Type: list[float]
             Value: [5]
         Name: "last_inference_steps"
-            Type: typing.List[int]
+            Type: list[int]
             Value: [30]
         Name: "last_clip_skips"
-            Type: typing.Optional[typing.List[int]]
+            Type: typing.Optional[list[int]]
             Value: []
         Name: "last_sdxl_refiner_clip_skips"
-            Type: typing.Optional[typing.List[int]]
+            Type: typing.Optional[list[int]]
             Value: []
         Name: "last_image_seeds"
-            Type: typing.Optional[typing.List[str]]
+            Type: typing.Optional[list[str]]
             Value: []
         Name: "last_parsed_image_seeds"
-            Type: typing.Optional[typing.List[dgenerate.mediainput.ImageSeedParseResult]]
+            Type: typing.Optional[list[dgenerate.mediainput.ImageSeedParseResult]]
             Value: []
         Name: "last_image_seed_strengths"
-            Type: typing.Optional[typing.List[float]]
+            Type: typing.Optional[list[float]]
             Value: []
         Name: "last_upscaler_noise_levels"
-            Type: typing.Optional[typing.List[int]]
+            Type: typing.Optional[list[int]]
             Value: []
         Name: "last_guidance_rescales"
-            Type: typing.Optional[typing.List[float]]
+            Type: typing.Optional[list[float]]
             Value: []
         Name: "last_image_guidance_scales"
-            Type: typing.Optional[typing.List[float]]
+            Type: typing.Optional[list[float]]
             Value: []
         Name: "last_sdxl_high_noise_fractions"
-            Type: typing.Optional[typing.List[float]]
+            Type: typing.Optional[list[float]]
             Value: []
         Name: "last_sdxl_refiner_inference_steps"
-            Type: typing.Optional[typing.List[int]]
+            Type: typing.Optional[list[int]]
             Value: []
         Name: "last_sdxl_refiner_guidance_scales"
-            Type: typing.Optional[typing.List[float]]
+            Type: typing.Optional[list[float]]
             Value: []
         Name: "last_sdxl_refiner_guidance_rescales"
-            Type: typing.Optional[typing.List[float]]
+            Type: typing.Optional[list[float]]
             Value: []
         Name: "last_sdxl_aesthetic_scores"
-            Type: typing.Optional[typing.List[float]]
+            Type: typing.Optional[list[float]]
             Value: []
         Name: "last_sdxl_original_sizes"
-            Type: typing.Optional[typing.List[typing.Tuple[int, int]]]
+            Type: typing.Optional[list[tuple[int, int]]]
             Value: []
         Name: "last_sdxl_target_sizes"
-            Type: typing.Optional[typing.List[typing.Tuple[int, int]]]
+            Type: typing.Optional[list[tuple[int, int]]]
             Value: []
         Name: "last_sdxl_crops_coords_top_left"
-            Type: typing.Optional[typing.List[typing.Tuple[int, int]]]
+            Type: typing.Optional[list[tuple[int, int]]]
             Value: []
         Name: "last_sdxl_negative_aesthetic_scores"
-            Type: typing.Optional[typing.List[float]]
+            Type: typing.Optional[list[float]]
             Value: []
         Name: "last_sdxl_negative_original_sizes"
-            Type: typing.Optional[typing.List[typing.Tuple[int, int]]]
+            Type: typing.Optional[list[tuple[int, int]]]
             Value: []
         Name: "last_sdxl_negative_target_sizes"
-            Type: typing.Optional[typing.List[typing.Tuple[int, int]]]
+            Type: typing.Optional[list[tuple[int, int]]]
             Value: []
         Name: "last_sdxl_negative_crops_coords_top_left"
-            Type: typing.Optional[typing.List[typing.Tuple[int, int]]]
+            Type: typing.Optional[list[tuple[int, int]]]
             Value: []
         Name: "last_sdxl_refiner_aesthetic_scores"
-            Type: typing.Optional[typing.List[float]]
+            Type: typing.Optional[list[float]]
             Value: []
         Name: "last_sdxl_refiner_original_sizes"
-            Type: typing.Optional[typing.List[typing.Tuple[int, int]]]
+            Type: typing.Optional[list[tuple[int, int]]]
             Value: []
         Name: "last_sdxl_refiner_target_sizes"
-            Type: typing.Optional[typing.List[typing.Tuple[int, int]]]
+            Type: typing.Optional[list[tuple[int, int]]]
             Value: []
         Name: "last_sdxl_refiner_crops_coords_top_left"
-            Type: typing.Optional[typing.List[typing.Tuple[int, int]]]
+            Type: typing.Optional[list[tuple[int, int]]]
             Value: []
         Name: "last_sdxl_refiner_negative_aesthetic_scores"
-            Type: typing.Optional[typing.List[float]]
+            Type: typing.Optional[list[float]]
             Value: []
         Name: "last_sdxl_refiner_negative_original_sizes"
-            Type: typing.Optional[typing.List[typing.Tuple[int, int]]]
+            Type: typing.Optional[list[tuple[int, int]]]
             Value: []
         Name: "last_sdxl_refiner_negative_target_sizes"
-            Type: typing.Optional[typing.List[typing.Tuple[int, int]]]
+            Type: typing.Optional[list[tuple[int, int]]]
             Value: []
         Name: "last_sdxl_refiner_negative_crops_coords_top_left"
-            Type: typing.Optional[typing.List[typing.Tuple[int, int]]]
+            Type: typing.Optional[list[tuple[int, int]]]
             Value: []
         Name: "last_vae_uri"
             Type: typing.Optional[str]
@@ -2842,13 +2842,13 @@ The ``\templates_help`` output from the above example is:
             Type: <class 'bool'>
             Value: False
         Name: "last_lora_uris"
-            Type: typing.Optional[typing.List[str]]
+            Type: typing.Optional[list[str]]
             Value: []
         Name: "last_textual_inversion_uris"
-            Type: typing.Optional[typing.List[str]]
+            Type: typing.Optional[list[str]]
             Value: []
         Name: "last_control_net_uris"
-            Type: typing.Optional[typing.List[str]]
+            Type: typing.Optional[list[str]]
             Value: []
         Name: "last_scheduler"
             Type: typing.Optional[str]
@@ -2875,7 +2875,7 @@ The ``\templates_help`` output from the above example is:
             Type: typing.Optional[str]
             Value: None
         Name: "last_output_size"
-            Type: typing.Optional[typing.Tuple[int, int]]
+            Type: typing.Optional[tuple[int, int]]
             Value: (512, 512)
         Name: "last_no_aspect"
             Type: <class 'bool'>
@@ -2911,37 +2911,37 @@ The ``\templates_help`` output from the above example is:
             Type: typing.Optional[str]
             Value: None
         Name: "last_seed_image_processors"
-            Type: typing.Optional[typing.List[str]]
+            Type: typing.Optional[list[str]]
             Value: []
         Name: "last_mask_image_processors"
-            Type: typing.Optional[typing.List[str]]
+            Type: typing.Optional[list[str]]
             Value: []
         Name: "last_control_image_processors"
-            Type: typing.Optional[typing.List[str]]
+            Type: typing.Optional[list[str]]
             Value: []
         Name: "last_post_processors"
-            Type: typing.Optional[typing.List[str]]
+            Type: typing.Optional[list[str]]
             Value: []
         Name: "last_offline_mode"
             Type: <class 'bool'>
             Value: False
         Name: "last_plugin_module_paths"
-            Type: typing.List[str]
+            Type: list[str]
             Value: []
         Name: "last_verbose"
             Type: <class 'bool'>
             Value: False
         Name: "last_cache_memory_constraints"
-            Type: typing.Optional[typing.List[str]]
+            Type: typing.Optional[list[str]]
             Value: []
         Name: "last_pipeline_cache_memory_constraints"
-            Type: typing.Optional[typing.List[str]]
+            Type: typing.Optional[list[str]]
             Value: []
         Name: "last_vae_cache_memory_constraints"
-            Type: typing.Optional[typing.List[str]]
+            Type: typing.Optional[list[str]]
             Value: []
         Name: "last_control_net_cache_memory_constraints"
-            Type: typing.Optional[typing.List[str]]
+            Type: typing.Optional[list[str]]
             Value: []
         Name: "last_images"
             Type: typing.Iterator[str]
@@ -2950,7 +2950,7 @@ The ``\templates_help`` output from the above example is:
             Type: typing.Iterator[str]
             Value: <generator object RenderLoop.written_animations at 0x000001AF6AADD7E0>
         Name: "saved_modules"
-            Type: typing.Dict[str, typing.Dict[str, typing.Any]]
+            Type: dict[str, dict[str, typing.Any]]
             Value: {}
         Name: "glob"
             Type: <class 'module'>

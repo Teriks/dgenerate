@@ -66,7 +66,7 @@ class PipelineWrapperResult:
     """
     The result of calling :py:class:`.DiffusionPipelineWrapper`
     """
-    images: typing.Optional[typing.List[PIL.Image.Image]]
+    images: typing.Optional[list[PIL.Image.Image]]
 
     @property
     def image_count(self):
@@ -110,7 +110,7 @@ class PipelineWrapperResult:
             grid.paste(img, box=(i % cols * w, i // cols * h))
         return grid
 
-    def __init__(self, images: typing.Optional[typing.List[PIL.Image.Image]]):
+    def __init__(self, images: typing.Optional[list[PIL.Image.Image]]):
         self.images = images
         self.dgenerate_opts = list()
 
@@ -148,7 +148,7 @@ class DiffusionArguments(_types.SetFromMixin):
     All input images involved in a generation must match in dimension and be aligned by 8 pixels.
     """
 
-    control_images: typing.Optional[typing.List[PIL.Image.Image]] = None
+    control_images: typing.Optional[list[PIL.Image.Image]] = None
     """
     ControlNet guidance images to use if ``control_net_uris`` were given to the 
     constructor of :py:class:`.DiffusionPipelineWrapper`.
@@ -837,11 +837,11 @@ class DiffusionPipelineWrapper:
     def reconstruct_dgenerate_opts(self,
                                    args: typing.Optional[DiffusionArguments] = None,
                                    extra_opts: typing.Optional[
-                                       typing.List[
-                                           typing.Union[typing.Tuple[str], typing.Tuple[str, typing.Any]]]] = None,
+                                       list[
+                                           typing.Union[tuple[str], tuple[str, typing.Any]]]] = None,
                                    shell_quote=True,
                                    **kwargs) -> \
-            typing.List[typing.Union[typing.Tuple[str], typing.Tuple[str, typing.Any]]]:
+            list[typing.Union[tuple[str], tuple[str, typing.Any]]]:
         """
         Reconstruct dgenerates command line arguments from a particular set of pipeline wrapper call arguments.
 
@@ -1101,7 +1101,7 @@ class DiffusionPipelineWrapper:
     def gen_dgenerate_config(self,
                              args: typing.Optional[DiffusionArguments] = None,
                              extra_opts: typing.Optional[
-                                 typing.List[typing.Union[typing.Tuple[str], typing.Tuple[str, typing.Any]]]] = None,
+                                 list[typing.Union[tuple[str], tuple[str, typing.Any]]]] = None,
                              extra_comments: typing.Optional[typing.Sequence[str]] = None,
                              **kwargs):
         """
@@ -1150,7 +1150,7 @@ class DiffusionPipelineWrapper:
     def gen_dgenerate_command(self,
                               args: typing.Optional[DiffusionArguments] = None,
                               extra_opts: typing.Optional[
-                                  typing.List[typing.Union[typing.Tuple[str], typing.Tuple[str, typing.Any]]]] = None,
+                                  list[typing.Union[tuple[str], tuple[str, typing.Any]]]] = None,
                               **kwargs):
         """
         Generate a valid dgenerate command line invocation that reproduces this result.

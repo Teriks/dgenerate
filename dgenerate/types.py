@@ -29,26 +29,26 @@ Uri = str
 Path = str
 Name = str
 
-Size = typing.Tuple[int, int]
-Sizes = typing.List[Size]
+Size = tuple[int, int]
+Sizes = list[Size]
 
 OptionalSize = typing.Optional[Size]
 OptionalSizes = typing.Optional[Sizes]
 
-Coordinate = typing.Tuple[int, int]
+Coordinate = tuple[int, int]
 OptionalCoordinate = typing.Optional[Coordinate]
 
-CoordinateList = typing.List[Coordinate]
+CoordinateList = list[Coordinate]
 OptionalCoordinateList = typing.Optional[CoordinateList]
 
-Paths = typing.List[str]
+Paths = list[str]
 OptionalPaths = typing.Optional[Paths]
 
-Uris = typing.List[str]
+Uris = list[str]
 OptionalUris = typing.Optional[Uris]
 OptionalUriOrUris = typing.Union[str, Uris, None]
 
-Names = typing.List[Name]
+Names = list[Name]
 OptionalNames = typing.Optional[Names]
 
 OptionalUri = typing.Optional[Uri]
@@ -56,21 +56,21 @@ OptionalPath = typing.Optional[Path]
 OptionalName = typing.Optional[Name]
 
 Integer = int
-Integers = typing.List[int]
+Integers = list[int]
 
 OptionalInteger = typing.Optional[int]
 OptionalIntegers = typing.Optional[Integers]
 
 Float = float
-Floats = typing.List[float]
+Floats = list[float]
 
 OptionalFloat = typing.Optional[float]
 OptionalFloats = typing.Optional[Floats]
 
-Version = typing.Tuple[int, int, int]
+Version = tuple[int, int, int]
 
 OptionalPrompt = typing.Optional[_prompt.Prompt]
-Prompts = typing.List[_prompt.Prompt]
+Prompts = list[_prompt.Prompt]
 
 OptionalPrompts = typing.Optional[Prompts]
 OptionalString = typing.Optional[str]
@@ -90,7 +90,7 @@ def class_and_id_string(obj) -> str:
     return f'<{obj.__class__.__name__}: {str(id(obj))}>'
 
 
-def get_public_attributes(obj) -> typing.Dict[str, typing.Any]:
+def get_public_attributes(obj) -> dict[str, typing.Any]:
     """
     Get the public attributes (excluding functions) and their values from an obj.
 
@@ -101,7 +101,7 @@ def get_public_attributes(obj) -> typing.Dict[str, typing.Any]:
             if not k.startswith("_") and not callable(getattr(obj, k))}
 
 
-def get_public_members(obj) -> typing.Dict[str, typing.Any]:
+def get_public_members(obj) -> dict[str, typing.Any]:
     """
     Get the public members (including functions) and their values from an obj.
 
@@ -292,7 +292,7 @@ class SetFromMixin:
 
 
 def get_accepted_args_with_defaults(func) -> \
-        typing.Iterator[typing.Union[typing.Tuple[str], typing.Tuple[str, typing.Any]]]:
+        typing.Iterator[typing.Union[tuple[str], tuple[str, typing.Any]]]:
     """
     Get the argument signature of a simple function with any default values present.
 
@@ -316,7 +316,7 @@ def get_accepted_args_with_defaults(func) -> \
             default_idx += 1
 
 
-def get_default_args(func) -> typing.Iterator[typing.Tuple[str, typing.Any]]:
+def get_default_args(func) -> typing.Iterator[tuple[str, typing.Any]]:
     """
     Get a list of default arguments from a simple function with their default values.
 
