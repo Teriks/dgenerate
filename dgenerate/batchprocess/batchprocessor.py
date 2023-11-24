@@ -264,7 +264,7 @@ class BatchProcessor:
                     f'\\print directive received no arguments, '
                     f'syntax is: \\print value')
         if line.startswith('{'):
-            self.run_string(self.render_template(line.replace('!END', '\n')))
+            self.run_string(self.render_template(line))
             return True
         elif line.startswith('\\'):
             directive_args = line.split(' ', 1)
@@ -318,38 +318,63 @@ class BatchProcessor:
 
     def _run_file(self, stream: typing.TextIO):
         continuation = ''
+        top_level_template = False
 
         def run_continuation(cur_line, cur_line_idx):
-            nonlocal continuation
-            completed_continuation = (continuation + ' ' + cur_line).lstrip()
+            nonlocal continuation, top_level_template
+           
+            if not top_level_template:
+                completed_continuation = (continuation + ' ' + cur_line).strip()
+            else:
+                completed_continuation = (continuation + cur_line).strip()
+
+            top_level_template = False
+            continuation = ''
 
             if self._directive_handlers(cur_line_idx, completed_continuation):
-                continuation = ''
                 return
 
             self._lex_and_run_invocation(cur_line_idx, completed_continuation)
-
-            continuation = ''
 
         last_line = None
         line_idx = 0
 
         for line_idx, line_and_next in enumerate(PeekReader(stream)):
-            line, next_line = (s.strip() if s is not None else None
-                               for s in line_and_next)
+            line, next_line = line_and_next
+
+            line_rstrip = line.rstrip()
+            line_lstrip = line.lstrip()
+            line_strip = line_rstrip.lstrip()
+
+            last_line_lstrip = None if last_line is None else last_line.lstrip()
+            last_line_rstrip = None if last_line is None else last_line.rstrip()
+  
+            next_line_lstrip = None if next_line is None else next_line.lstrip()
 
             self._current_line = line_idx
 
-            if line == '':
-                if continuation and last_line \
-                        and last_line.startswith('-') and not last_line.endswith('\\'):
+            if line_strip == '':
+                if continuation and last_line is not None \
+                        and last_line_lstrip.startswith('-') \
+                        and not last_line_rstrip.endswith('\\'):
                     run_continuation('', line_idx)
-            elif line.startswith('#'):
+            elif line_lstrip.startswith('#'):
                 self._look_for_version_mismatch(line_idx, line)
-            elif line.endswith('\\') or next_line and next_line.startswith('-'):
-                continuation += ' ' + line.rstrip(' \\')
+            elif line_lstrip.startswith('{') and not top_level_template:
+                continuation += line
+                top_level_template = True
+            elif not top_level_template and line_strip.endswith('\\') \
+                    or next_line and next_line_lstrip.startswith('-'):
+                continuation += ' ' + line_strip.rstrip('\\')
+            elif top_level_template:
+                if line_rstrip.endswith('!END'):
+                    run_continuation(line_rstrip.removesuffix('!END'), line_idx)
+                    top_level_template = False
+                else:
+                    continuation += line
             else:
                 run_continuation(line, line_idx)
+
             last_line = line
 
         if continuation:
