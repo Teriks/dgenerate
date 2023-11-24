@@ -157,7 +157,7 @@ def supported_static_image_formats():
 
 class UnknownAnimationFormatError(Exception):
     """
-    Raised by :py:func`.create_animation_writer` when an unknown animation format is provided.
+    Raised by :py:func:`.create_animation_writer` when an unknown animation format is provided.
     """
 
 
