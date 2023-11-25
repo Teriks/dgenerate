@@ -2706,12 +2706,12 @@ The ``\templates_help`` output from the above example is:
 
 .. code-block::
 
-    Available post invocation template variables are:
-    =================================================
+    Config template variables are:
+    ==============================
 
         Name: "last_model_path"
             Type: typing.Optional[str]
-            Value: stabilityai/stable-diffusion-2
+            Value: None
         Name: "last_subfolder"
             Type: typing.Optional[str]
             Value: None
@@ -2720,13 +2720,13 @@ The ``\templates_help`` output from the above example is:
             Value: None
         Name: "last_batch_size"
             Type: typing.Optional[int]
-            Value: 1
+            Value: None
         Name: "last_batch_grid_size"
             Type: typing.Optional[tuple[int, int]]
             Value: None
         Name: "last_prompts"
             Type: list[dgenerate.prompt.Prompt]
-            Value: ['a man walking on the moon without a space suit']
+            Value: ['']
         Name: "last_sdxl_second_prompts"
             Type: typing.Optional[list[dgenerate.prompt.Prompt]]
             Value: []
@@ -2738,7 +2738,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: list[int]
-            Value: [88900252172963]
+            Value: [64347493204222]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -2876,7 +2876,7 @@ The ``\templates_help`` output from the above example is:
             Value: None
         Name: "last_output_size"
             Type: typing.Optional[tuple[int, int]]
-            Value: (512, 512)
+            Value: None
         Name: "last_no_aspect"
             Type: <class 'bool'>
             Value: False
@@ -2898,6 +2898,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_animation_format"
             Type: <class 'str'>
             Value: mp4
+        Name: "last_image_format"
+            Type: <class 'str'>
+            Value: png
         Name: "last_no_frames"
             Type: <class 'bool'>
             Value: False
@@ -2945,18 +2948,18 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_images"
             Type: typing.Iterator[str]
-            Value: <generator object RenderLoop.written_images at 0x000001AF6A24BCA0>
+            Value: <generator object RenderLoop.written_images at 0x0000028E8D1AF5A0>
         Name: "last_animations"
             Type: typing.Iterator[str]
-            Value: <generator object RenderLoop.written_animations at 0x000001AF6AADD7E0>
+            Value: <generator object RenderLoop.written_animations at 0x0000028E8D1AF3E0>
         Name: "saved_modules"
             Type: dict[str, dict[str, typing.Any]]
             Value: {}
         Name: "glob"
             Type: <class 'module'>
-            Value: <module 'glob'>
+            Value: <module 'glob' from '../glob.py'>
 
-    =====================================================================================
+    ======================================================================================
 
 
 

@@ -331,8 +331,6 @@ class BatchProcessor:
             top_level_template = False
             continuation = ''
 
-            print('FULL CONTINUATION:', completed_continuation)
-
             if self._directive_handlers(cur_line_idx, completed_continuation):
                 return
 

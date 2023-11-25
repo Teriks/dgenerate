@@ -568,50 +568,6 @@ class RenderLoopConfig(_types.SetFromMixin):
         self.prompts = [_prompt.Prompt()]
         self.seeds = gen_seeds(1)
 
-    def generate_template_variables_with_types(self, variable_prefix: typing.Optional[str] = None) \
-            -> dict[str, tuple[typing.Type, typing.Any]]:
-        """
-        Generate a dictionary from this configuration object that maps attribute names to a tuple
-        containing (type_hint_type, value)
-
-        :param variable_prefix: Prefix every variable name with this prefix if specified
-        :return: a dictionary of attribute names to tuple(type_hint_type, value)
-        """
-
-        template_variables = {}
-
-        if variable_prefix is None:
-            variable_prefix = ''
-
-        for attr, hint in typing.get_type_hints(self.__class__).items():
-            value = getattr(self, attr)
-            if variable_prefix:
-                prefix = variable_prefix if not attr.startswith(variable_prefix) else ''
-            else:
-                prefix = ''
-            gen_name = prefix + attr
-            if gen_name not in template_variables:
-                if _types.is_type_or_optional(hint, list):
-                    t_val = value if value is not None else []
-                    template_variables[gen_name] = (hint, t_val)
-                else:
-                    template_variables[gen_name] = (hint, value)
-
-        return template_variables
-
-    def generate_template_variables(self,
-                                    variable_prefix:
-                                    typing.Optional[str] = None) -> dict[str, typing.Any]:
-        """
-        Generate a dictionary from this configuration object that is suitable 
-        for using as Jinja2 environmental variables.
-        
-        :param variable_prefix: Prefix every variable name with this prefix if specified
-        :return: a dictionary of attribute names to values
-        """
-        return {k: v[1] for k, v in
-                self.generate_template_variables_with_types(variable_prefix=variable_prefix).items()}
-
     def check(self, attribute_namer: typing.Callable[[str], str] = None):
         """
         Check the configuration for type and logical usage errors, set

@@ -84,7 +84,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                                               render_loop=self.render_loop,
                                               throw=throw)
                 if return_code == 0:
-                    self.template_variables.update(self.render_loop.generate_template_variables())
+                    self.template_variables.update(self._generate_template_variables())
                 return return_code
             finally:
                 self.render_loop.model_extra_modules = None
@@ -149,6 +149,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'glob': glob
         }
 
+        self.template_variables = self._generate_template_variables()
+
         self.template_functions = {
             'unquote': unquote,
             'quote': quote,
@@ -193,9 +195,9 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                                     config_runner=self,
                                     render_loop=self.render_loop)
 
-        self.directives['import_plugins'] = self._import_plugins
+        self.directives['import_plugins'] = self._import_plugins_directive
 
-    def _import_plugins(self, plugin_paths):
+    def _import_plugins_directive(self, plugin_paths):
         self._plugin_module_paths.update(plugin_paths)
         self.render_loop.image_processor_loader.load_plugin_modules(plugin_paths)
         new_classes = self.plugin_loader.load_plugin_modules(plugin_paths)
@@ -253,26 +255,85 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                 'name (to store value at), and number of seeds to generate.')
         return 0
 
-    def _templates_help_directive(self, args):
-        values = self.render_loop.generate_template_variables_with_types()
-        values['saved_modules'] = (dict[str, dict[str, typing.Any]],
-                                   self.template_variables.get('saved_modules'))
-        values['glob'] = (types.ModuleType, "<module 'glob'>")
+    def _config_generate_template_variables_with_types(self, variable_prefix: typing.Optional[str] = None) \
+            -> dict[str, tuple[typing.Type, typing.Any]]:
 
-        header = None
-        if len(args) > 0:
-            values = {k: v for k, v in values.items() if k in args}
+        template_variables = {}
 
-            if len(values) > 1:
-                header = "Template variables are"
+        if variable_prefix is None:
+            variable_prefix = ''
+
+        for attr, hint in typing.get_type_hints(self.render_loop.config.__class__).items():
+            value = getattr(self.render_loop.config, attr)
+            if variable_prefix:
+                prefix = variable_prefix if not attr.startswith(variable_prefix) else ''
             else:
-                header = 'Template variable is'
+                prefix = ''
+            gen_name = prefix + attr
+            if gen_name not in template_variables:
+                if _types.is_type_or_optional(hint, list):
+                    t_val = value if value is not None else []
+                    template_variables[gen_name] = (hint, t_val)
+                else:
+                    template_variables[gen_name] = (hint, value)
 
-        _messages.log(
-            self.render_loop.generate_template_variables_help(values=values,
-                                                              header=header,
-                                                              show_values=True) + '\n',
-            underline=True)
+        return template_variables
+
+    def _generate_template_variables_with_types(self) -> dict[str, tuple[typing.Type, typing.Any]]:
+        template_variables = self._config_generate_template_variables_with_types(variable_prefix='last_')
+
+        template_variables.update({
+            'last_images': (typing.Iterator[str], self.render_loop.written_images),
+            'last_animations': (typing.Iterator[str], self.render_loop.written_animations),
+        })
+
+        template_variables['saved_modules'] = (dict[str, dict[str, typing.Any]],
+                                               self.template_variables.get('saved_modules'))
+
+        template_variables['glob'] = (types.ModuleType, self.template_variables.get('glob'))
+
+        return template_variables
+
+    def _generate_template_variables(self) -> dict[str, typing.Any]:
+        return {k: v[1] for k, v in self._generate_template_variables_with_types().items()}
+
+    def generate_template_variables_help(self,
+                                         variable_names: typing.Optional[typing.Collection[str]] = None,
+                                         show_values: bool = True):
+        """
+        Generate a help string describing available template variables, their types, and values for use in batch processing.
+
+        :type variable_names: Display help for specific variables, if ``None`` or ``[]`` is specified, display all.
+
+        :param show_values: Show the value of the template variable or just the name?
+
+        :return: a human-readable description of all template variables
+        """
+
+        values = self._generate_template_variables_with_types()
+        if variable_names is not None and len(variable_names) > 0:
+            values = {k: v for k, v in values.items() if k in variable_names}
+
+        if len(values) > 1:
+            header = 'Config template variables are'
+        else:
+            header = 'Config template variable is'
+
+        help_string = _textprocessing.underline(f'{header}:') + '\n\n'
+
+        def wrap(val):
+            return _textprocessing.wrap(
+                str(val),
+                width=_textprocessing.long_text_wrap_width(),
+                subsequent_indent=' ' * 17)
+
+        return help_string + '\n'.join(
+            ' ' * 4 + f'Name: {_textprocessing.quote(i[0])}\n{" " * 8}'
+                      f'Type: {i[1][0]}' + (f'\n{" " * 8}Value: {wrap(i[1][1])}' if show_values else '') for i in
+            values.items())
+
+    def _templates_help_directive(self, args):
+        _messages.log(self.generate_template_variables_help(args) + '\n', underline=True)
         return 0
 
 
