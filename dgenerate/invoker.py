@@ -114,8 +114,13 @@ def invoke_dgenerate(
         finally:
             _messages.pop_level()
 
-    if _arguments.parse_templates_help(args)[0]:
-        _messages.log(render_loop.generate_template_variables_help(show_values=False) + '\n', underline=True)
+    template_help_variable_names, _ = _arguments.parse_templates_help(args)
+    if template_help_variable_names is not None:
+        import dgenerate.batchprocess
+        _messages.log(
+            dgenerate.batchprocess.ConfigRunner().generate_template_variables_help(
+                template_help_variable_names,
+                show_values=False) + '\n', underline=True)
         return 0
 
     constraint_lists = []
