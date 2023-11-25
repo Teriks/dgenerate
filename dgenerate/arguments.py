@@ -340,7 +340,7 @@ actions.append(
 
 # This argument is handled in dgenerate.invoker.invoke_dgenerate
 actions.append(
-    parser.add_argument('-th', '--templates-help', nargs='*', dest=None, default=[], metavar='VARIABLE_NAME',
+    parser.add_argument('-th', '--templates-help', nargs='*', dest=None, default=None, metavar='VARIABLE_NAME',
                         help="""Print a list of template variables available in dgenerate configs 
                         during batch processing from STDIN. When used as a command option, their values
                         are not presented, just their names and types. Specifying names will list 
@@ -1244,7 +1244,7 @@ def parse_templates_help(args: typing.Optional[typing.Sequence[str]] = None) -> 
     :return: (value, unknown_args_list)
     """
     parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
-    parser.add_argument('-th', '--templates-help', nargs='*', default=[])
+    parser.add_argument('-th', '--templates-help', nargs='*', default=None)
     parsed, unknown = parser.parse_known_args(args)
 
     return parsed.templates_help, unknown
