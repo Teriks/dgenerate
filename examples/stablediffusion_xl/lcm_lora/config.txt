@@ -1,0 +1,12 @@
+#! dgenerate 3.0.0
+
+stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
+--variant fp16 --dtype float16
+--sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
+--sdxl-high-noise-fractions 0.8
+--loras latent-consistency/lcm-lora-sdxl
+--inference-steps 4
+--guidance-scales 1
+--gen-seeds 2
+--output-size 1024
+--prompts "close-up photography of old man standing in the rain at night, in a street lit by lamps, leica 35mm summilux"
