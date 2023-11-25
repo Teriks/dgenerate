@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import collections.abc
 import os
 import typing
 
@@ -217,8 +218,8 @@ class MultiAnimationWriter(AnimationWriter):
         else:
             return f'{base}{ext}'
 
-    def write(self, img: typing.Union[PIL.Image.Image, list[PIL.Image.Image]]):
-        if not isinstance(img, list):
+    def write(self, img: typing.Union[PIL.Image.Image, collections.abc.Iterable[PIL.Image.Image]]):
+        if not isinstance(img, collections.abc.Iterable):
             img = [img]
 
         if not self.writers:

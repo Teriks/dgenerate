@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import collections.abc
 import contextlib
 import os
 import pathlib
@@ -26,10 +27,11 @@ import typing
 
 import portalocker
 
-PathMaker = typing.Callable[[typing.Optional[str], typing.Optional[int]], typing.Union[str, list[str]]]
+PathMaker = typing.Callable[
+    [typing.Optional[str], typing.Optional[int]], typing.Union[str, collections.abc.Iterable[str]]]
 
 
-def suffix_path_maker(filenames, suffix):
+def suffix_path_maker(filenames: typing.Union[str, collections.abc.Iterable[str]], suffix: str) -> PathMaker:
     """
     To be used with :py:func:`.touch_avoid_duplicate`, a pathmaker implementation that
     appends a suffix and a number to a filename or list of files when a duplicate is detected for
@@ -77,7 +79,7 @@ def touch_avoid_duplicate(directory: str,
     :param path_maker: Callback that generates paths until a non-existent path is found,
         first argument is the base filename and the second is attempt number. On the first attempt
         to create the files both arguments will be none, in which case the callback should return
-        a single filename or list of filenames to touch with duplicate avoidance. Calls to the callback
+        a single filename or iterable of filenames to touch with duplicate avoidance. Calls to the callback
         thereafter will have non None values for both arguments and the callback should take the passed
         base filename and apply a suffix using the attempt number.
 
@@ -127,5 +129,5 @@ def temp_file_lock(path):
     finally:
         try:
             os.unlink(path)
-        except Exception:
+        except OSError:
             pass

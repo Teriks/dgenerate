@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import ast
+import collections.abc
 import inspect
 import itertools
 import os
@@ -35,7 +36,7 @@ LOADED_PLUGIN_MODULES: dict[str, types.ModuleType] = {}
 
 
 class PluginArg:
-    def __init__(self, name: str, type: typing.Type = typing.Any, **kwargs):
+    def __init__(self, name: str, type: type = typing.Any, **kwargs):
         self.name = name
         self.have_default = 'default' in kwargs
         self.default = kwargs['default'] if self.have_default else None
@@ -116,7 +117,7 @@ class PluginArg:
 
 class Plugin:
 
-    def __init__(self, loaded_by_name: str, argument_error_type: typing.Type[Exception] = ValueError, **kwargs):
+    def __init__(self, loaded_by_name: str, argument_error_type: type[Exception] = ValueError, **kwargs):
         """
         :param loaded_by_name: The name the plugin was loaded by, will be passed by the loader.
         :param argument_error_type: This exception type will be raised by ``get_*_arg`` and friends when
@@ -314,7 +315,7 @@ class ModuleFileNotFoundError(FileNotFoundError):
     pass
 
 
-def load_modules(paths: typing.Iterable[str]) -> list[types.ModuleType]:
+def load_modules(paths: collections.abc.Iterable[str]) -> list[types.ModuleType]:
     """
     Load python modules from a folder or directly from a .py file.
     Cache them so that repeat requests for loading return an already loaded module.
@@ -354,8 +355,8 @@ class PluginLoader:
                  base_class=Plugin,
                  description: str = "plugin",
                  reserved_args: PluginArgumentsDef = None,
-                 argument_error_type: typing.Type[Exception] = ValueError,
-                 not_found_error_type: typing.Type[Exception] = RuntimeError):
+                 argument_error_type: type[Exception] = ValueError,
+                 not_found_error_type: type[Exception] = RuntimeError):
         """
         :param base_class: Base class of plugins, will be used for searching modules.
         :param description: Short plugin description / name, used in exception messages.
@@ -379,7 +380,7 @@ class PluginLoader:
         self.__base_class = base_class
 
     @property
-    def plugin_module_paths(self):
+    def plugin_module_paths(self) -> frozenset[str]:
         """
         Every module path ever seen by :py:meth:`PluginLoader.load_plugin_modules`.
 
@@ -387,7 +388,7 @@ class PluginLoader:
         """
         return frozenset(self.__plugin_module_paths)
 
-    def add_class(self, cls: typing.Type[Plugin]):
+    def add_class(self, cls: type[Plugin]):
         """p
         Add an implementation class to this loader.
 
@@ -405,7 +406,7 @@ class PluginLoader:
 
         self.__classes.add(cls)
 
-    def add_search_module_string(self, string: str) -> list[typing.Type[Plugin]]:
+    def add_search_module_string(self, string: str) -> list[type[Plugin]]:
         """
         Add a module string (in sys.modules) that will be searched for implementations.
 
@@ -417,7 +418,7 @@ class PluginLoader:
             self.add_class(cls)
         return classes
 
-    def add_search_module(self, module: types.ModuleType) -> list[typing.Type[Plugin]]:
+    def add_search_module(self, module: types.ModuleType) -> list[type[Plugin]]:
         """
         Directly add a module object that will be searched for implementations.
 
@@ -429,7 +430,7 @@ class PluginLoader:
             self.add_class(cls)
         return classes
 
-    def load_plugin_modules(self, paths: typing.Iterable[str]) -> list[typing.Type[Plugin]]:
+    def load_plugin_modules(self, paths: collections.abc.Iterable[str]) -> list[type[Plugin]]:
         """
         Modules that will be loaded from disk and searched for implementations.
 
@@ -453,7 +454,7 @@ class PluginLoader:
 
         return classes
 
-    def _load_classes(self, modules: typing.Iterable[types.ModuleType]):
+    def _load_classes(self, modules: collections.abc.Iterable[types.ModuleType]):
         found_classes = set()
 
         for mod in modules:
@@ -583,7 +584,7 @@ class PluginLoader:
             raise self.__argument_error_type(
                 f'Invalid argument given to {self.__description} "{call_by_name}": {e}')
 
-    def get_available_classes(self) -> list[typing.Type[Plugin]]:
+    def get_available_classes(self) -> list[type[Plugin]]:
         """
         Get classes seen by this plugin loader.
 
@@ -592,7 +593,7 @@ class PluginLoader:
 
         return list(self.__classes)
 
-    def get_class_by_name(self, plugin_name: _types.Name) -> typing.Type[Plugin]:
+    def get_class_by_name(self, plugin_name: _types.Name) -> type[Plugin]:
         """
         Get a plugin class by one of its names.
 

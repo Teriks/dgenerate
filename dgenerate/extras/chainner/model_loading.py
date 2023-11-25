@@ -143,7 +143,7 @@ def _state_dict_prefix_replace(state_dict, replace_prefix, filter_keys=False):
     return out
 
 
-def load_model(model_path) -> PyTorchModel:
+def load_upscaler_model(model_path) -> PyTorchModel:
     """
     Load an upscaler model from a file path or URL.
 
@@ -163,6 +163,6 @@ def load_model(model_path) -> PyTorchModel:
     model = _load_state_dict(state_dict)
 
     _messages.debug_log(
-        f'{_types.fullname(load_model)}("{model_path}") -> {model.__class__.__name__}')
+        f'{_types.fullname(load_upscaler_model)}("{model_path}") -> {model.__class__.__name__}')
 
     return model.eval()

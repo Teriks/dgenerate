@@ -18,9 +18,13 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import collections.abc
 import inspect
+import itertools
 import types
 import typing
+
+import PIL.Image
 
 import dgenerate.prompt as _prompt
 import dgenerate.textprocessing
@@ -30,7 +34,7 @@ Path = str
 Name = str
 
 Size = tuple[int, int]
-Sizes = list[Size]
+Sizes = collections.abc.Sequence[Size]
 
 OptionalSize = typing.Optional[Size]
 OptionalSizes = typing.Optional[Sizes]
@@ -38,17 +42,16 @@ OptionalSizes = typing.Optional[Sizes]
 Coordinate = tuple[int, int]
 OptionalCoordinate = typing.Optional[Coordinate]
 
-CoordinateList = list[Coordinate]
-OptionalCoordinateList = typing.Optional[CoordinateList]
+Coordinates = collections.abc.Sequence[Coordinate]
+OptionalCoordinates = typing.Optional[Coordinates]
 
-Paths = list[str]
+Paths = collections.abc.Sequence[str]
 OptionalPaths = typing.Optional[Paths]
 
-Uris = list[str]
+Uris = collections.abc.Sequence[str]
 OptionalUris = typing.Optional[Uris]
-OptionalUriOrUris = typing.Union[str, Uris, None]
 
-Names = list[Name]
+Names = collections.abc.Sequence[Name]
 OptionalNames = typing.Optional[Names]
 
 OptionalUri = typing.Optional[Uri]
@@ -56,13 +59,13 @@ OptionalPath = typing.Optional[Path]
 OptionalName = typing.Optional[Name]
 
 Integer = int
-Integers = list[int]
+Integers = collections.abc.Sequence[int]
 
 OptionalInteger = typing.Optional[int]
 OptionalIntegers = typing.Optional[Integers]
 
 Float = float
-Floats = list[float]
+Floats = collections.abc.Sequence[float]
 
 OptionalFloat = typing.Optional[float]
 OptionalFloats = typing.Optional[Floats]
@@ -70,12 +73,45 @@ OptionalFloats = typing.Optional[Floats]
 Version = tuple[int, int, int]
 
 OptionalPrompt = typing.Optional[_prompt.Prompt]
-Prompts = list[_prompt.Prompt]
+Prompts = collections.abc.Sequence[_prompt.Prompt]
 
 OptionalPrompts = typing.Optional[Prompts]
 OptionalString = typing.Optional[str]
 
 OptionalBoolean = typing.Optional[bool]
+
+Images = collections.abc.Sequence[PIL.Image.Image]
+
+
+def iterate_attribute_combinations(
+        attribute_defs: collections.abc.Iterable[tuple[str, collections.abc.Iterable]],
+        return_type: type) -> collections.abc.Iterator:
+    """
+    Iterate over every combination of attributes in a given class using a list of tuples mapping
+    attribute names to a list of possible values.
+
+    :param attribute_defs: sequence of tuple (attribute_name, [sequence of values])
+    :param return_type: Construct this type and assign attribute values to it
+    :return: an iterator over instances of the type mentioned in the my_class argument
+    """
+
+    def assign(ctx, dir_attr, name, val):
+        if val is not None:
+            if name in dir_attr:
+                setattr(ctx, name, val)
+            else:
+                raise RuntimeError(f'{ctx.__class__.__name__} missing attribute "{name}"')
+
+    for combination in itertools.product(*[d[1] for d in attribute_defs]):
+        ctx_out = return_type()
+        dir_attributes = set(get_public_attributes(ctx_out).keys())
+        for idx, d in enumerate(attribute_defs):
+            attr = d[0]
+            if len(d) == 2:
+                assign(ctx_out, dir_attributes, attr, combination[idx])
+            else:
+                assign(ctx_out, dir_attributes, attr, d[2](ctx_out, attr, combination[idx]))
+        yield ctx_out
 
 
 def class_and_id_string(obj) -> str:
@@ -188,7 +224,7 @@ def is_optional(hinted_type):
     return False
 
 
-def get_type_of_optional(hinted_type: typing.Type, get_origin=True):
+def get_type_of_optional(hinted_type: type, get_origin=True):
     """
     Get the first possible type for an optional type hint
 
@@ -292,7 +328,7 @@ class SetFromMixin:
 
 
 def get_accepted_args_with_defaults(func) -> \
-        typing.Iterator[typing.Union[tuple[str], tuple[str, typing.Any]]]:
+        collections.abc.Iterator[typing.Union[tuple[str], tuple[str, typing.Any]]]:
     """
     Get the argument signature of a simple function with any default values present.
 
@@ -316,7 +352,7 @@ def get_accepted_args_with_defaults(func) -> \
             default_idx += 1
 
 
-def get_default_args(func) -> typing.Iterator[tuple[str, typing.Any]]:
+def get_default_args(func) -> collections.abc.Iterator[tuple[str, typing.Any]]:
     """
     Get a list of default arguments from a simple function with their default values.
 
@@ -388,7 +424,7 @@ def type_check_struct(obj,
     def _is_optional(value_type, name, value):
         if value is not None and not isinstance(value, value_type):
             raise ValueError(
-                f'{a_namer(name)} must be None or type {value_type.__name__}, value was: {value}')
+                f'{a_namer(name)} must be None or type {fullname(value_type)}, value was: {value}')
 
     def _is_optional_literal(name, value, type_hint):
         optional_type = [i for i in typing.get_args(type_hint) if is_type(i, typing.Literal)][0]
@@ -408,7 +444,7 @@ def type_check_struct(obj,
     def _is(value_type, name, value):
         if not isinstance(value, value_type):
             raise ValueError(
-                f'{a_namer(name)} must be type {value_type.__name__}, value was: {value}')
+                f'{a_namer(name)} must be type {fullname(value_type)}, value was: {value}')
 
     # Detect some incorrect types
     for attr, hint in typing.get_type_hints(obj).items():

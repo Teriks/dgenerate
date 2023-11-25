@@ -10,6 +10,9 @@ from dgenerate import \
 # We can use this to parse and validate any --device argument that gets passed
 device, _ = dgenerate.arguments.parse_device()
 
+if device is None:
+    device = 'cuda'
+
 config = RenderLoopConfig()
 
 config.model_path = 'stabilityai/stable-diffusion-xl-base-1.0'

@@ -14,6 +14,9 @@ from dgenerate.imageprocessors import ImageProcessor
 # We can use this to parse and validate any --device argument that gets passed
 device, _ = dgenerate.arguments.parse_device()
 
+if device is None:
+    device = 'cuda'
+
 
 # You can add image processors either explicitly
 # through a class implementation you register or by

@@ -68,7 +68,7 @@ def resize_image_calc(old_size: _types.Size,
         return new_size
 
 
-def is_aligned(iterable, align) -> bool:
+def is_aligned(iterable: typing.Iterable[int], align: int) -> bool:
     """
     Check if all elements are aligned by a specific value.
 
@@ -87,7 +87,7 @@ def is_aligned(iterable, align) -> bool:
     return all(i % align == 0 for i in iterable)
 
 
-def align_by(iterable, align) -> tuple:
+def align_by(iterable: typing.Iterable[int], align: int) -> tuple:
     """
     Align all elements by a value and return a tuple
 

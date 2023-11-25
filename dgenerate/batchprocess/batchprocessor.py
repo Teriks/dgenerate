@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import collections.abc
 import io
 import os
 import re
@@ -87,7 +88,7 @@ class BatchProcessor:
     :py:class:`dgenerate.batchprocess.ConfigRunner`
     """
 
-    invoker: typing.Callable[[list], int]
+    invoker: typing.Callable[[collections.abc.Sequence[str]], int]
     """
     Invoker function, responsible for executing lines recognized as shell commands.
     """
@@ -112,7 +113,7 @@ class BatchProcessor:
     Functions available when templating is occurring.
     """
 
-    directives: dict[str, typing.Optional[typing.Callable[[list], int]]]
+    directives: dict[str, typing.Optional[typing.Callable[[collections.abc.Sequence[str]], int]]]
     """
     Batch process directives, shell commands starting with a backslash.
     
@@ -121,20 +122,20 @@ class BatchProcessor:
     The function should return a return code, 0 for success, anything else for failure.
     """
 
-    injected_args: list[str]
+    injected_args: collections.abc.Sequence[str]
     """
     Shell arguments to inject at the end of every invocation.
     """
 
     def __init__(self,
-                 invoker: typing.Callable[[list], int],
+                 invoker: typing.Callable[[collections.abc.Sequence[str]], int],
                  name: _types.Name,
                  version: typing.Union[_types.Version, str],
                  template_variables: typing.Optional[dict[str, typing.Any]] = None,
                  template_functions: typing.Optional[
                      dict[str, typing.Callable[[typing.Any], typing.Any]]] = None,
                  directives: dict[str, typing.Optional[typing.Callable[[list], None]]] = None,
-                 injected_args: typing.Optional[list[str]] = None):
+                 injected_args: typing.Optional[collections.abc.Sequence[str]] = None):
         """
         :param invoker: A function for invoking lines recognized as shell commands, should return a return code.
         :param name: The name of this batch processor, currently used in the version check directive and messages
@@ -168,12 +169,7 @@ class BatchProcessor:
         self._current_line = 0
 
         if isinstance(version, str):
-            ver_parts = version.split('.')
-            if len(ver_parts) != 3:
-                raise ValueError(
-                    f'version expected to be a version string in the format major.minor.patch. received: "{version}"')
-            self.version: tuple[int, int, int] = \
-                (int(ver_parts[0]), int(ver_parts[1]), int(ver_parts[2]))
+            self.version = _textprocessing.parse_version(version)
         else:
             self.version: tuple[int, int, int] = tuple(version)
             if len(self.version) != 3:
@@ -244,7 +240,7 @@ class BatchProcessor:
                 f'as that name is taken by a template function.')
         self.template_variables[name] = value
 
-    def _directive_handlers(self, line_idx, line):
+    def _directive_handlers(self, line):
         if line.startswith('\\set'):
             directive_args = line.split(' ', 2)
             if len(directive_args) == 3:
@@ -289,10 +285,16 @@ class BatchProcessor:
             return True
         return False
 
-    def _lex_and_run_invocation(self, line_idx, invocation_string):
+    def _lex_and_run_invocation(self, invocation_string):
         raw_templated_string = self.render_template(invocation_string)
 
-        shell_lexed = shlex.split(raw_templated_string) + self.injected_args
+        try:
+            shell_lexed = shlex.split(raw_templated_string)
+        except ValueError as e:
+            raise BatchProcessError(e)
+
+        for arg in self.injected_args:
+            shell_lexed.append(arg)
 
         raw_injected_args = ' '.join(str(a) for a in self.injected_args)
 
@@ -320,7 +322,7 @@ class BatchProcessor:
         continuation = ''
         top_level_template = False
 
-        def run_continuation(cur_line, cur_line_idx):
+        def run_continuation(cur_line):
             nonlocal continuation, top_level_template
 
             if not top_level_template:
@@ -331,10 +333,10 @@ class BatchProcessor:
             top_level_template = False
             continuation = ''
 
-            if self._directive_handlers(cur_line_idx, completed_continuation):
+            if self._directive_handlers(completed_continuation):
                 return
 
-            self._lex_and_run_invocation(cur_line_idx, completed_continuation)
+            self._lex_and_run_invocation(completed_continuation)
 
         last_line = None
         line_idx = 0
@@ -350,7 +352,7 @@ class BatchProcessor:
                 if continuation and last_line is not None:
                     if last_line.lstrip().startswith('-') and \
                             not last_line.rstrip().endswith('\\'):
-                        run_continuation('', line_idx)
+                        run_continuation('')
             elif line_strip.startswith('#'):
                 self._look_for_version_mismatch(line_idx, line)
             elif line_strip.startswith('{') and not top_level_template:
@@ -362,17 +364,17 @@ class BatchProcessor:
             elif top_level_template:
                 line_rstrip = line.rstrip()
                 if line_rstrip.endswith('!END'):
-                    run_continuation(line_rstrip.removesuffix('!END'), line_idx)
+                    run_continuation(line_rstrip.removesuffix('!END'))
                     top_level_template = False
                 else:
                     continuation += line
             else:
-                run_continuation(line, line_idx)
+                run_continuation(line)
 
             last_line = line
 
         if continuation:
-            run_continuation('', line_idx)
+            run_continuation('')
 
     def run_file(self, stream: typing.TextIO):
         """

@@ -5,13 +5,16 @@ import numpy as np
 import torch
 from tqdm.auto import tqdm
 
+from .types import PyTorchModel
+
 
 def _get_tiled_scale_steps(width, height, tile_x, tile_y, overlap):
     return math.ceil((height / (tile_y - overlap))) * math.ceil((width / (tile_x - overlap)))
 
 
 @torch.inference_mode()
-def _tiled_scale(samples, function, tile_x=64, tile_y=64, overlap=8, upscale_amount=4, out_channels=3, pbar=None):
+def _tiled_scale(samples: torch.Tensor, upscale_model: PyTorchModel, tile_x=64, tile_y=64, overlap=8, upscale_amount=4,
+                 out_channels=3, pbar=None):
     output = torch.empty((samples.shape[0], out_channels, round(samples.shape[2] * upscale_amount),
                           round(samples.shape[3] * upscale_amount)), device="cpu")
     for b in range(samples.shape[0]):
@@ -26,7 +29,7 @@ def _tiled_scale(samples, function, tile_x=64, tile_y=64, overlap=8, upscale_amo
             for x in range(0, s.shape[3], tile_x - overlap):
                 s_in = s[:, :, y:y + tile_y, x:x + tile_x]
 
-                ps = function(s_in).cpu()
+                ps = upscale_model(s_in).cpu()
                 mask = torch.ones_like(ps)
                 feather = round(overlap * upscale_amount)
                 for t in range(feather):
@@ -44,7 +47,7 @@ def _tiled_scale(samples, function, tile_x=64, tile_y=64, overlap=8, upscale_amo
     return output
 
 
-def upscale(upscale_model, image, tile=512, overlap=32, device='cuda'):
+def upscale(upscale_model: PyTorchModel, image, tile=512, overlap=32, device='cuda'):
     image = torch.from_numpy(np.array(image).astype(np.float32) / 255.0)[None,]
 
     upscale_model.to(device)
@@ -65,7 +68,7 @@ def upscale(upscale_model, image, tile=512, overlap=32, device='cuda'):
             pbar = tqdm(total=steps)
 
             s = _tiled_scale(in_img,
-                             lambda a: upscale_model(a),
+                             upscale_model,
                              tile_x=tile,
                              tile_y=tile,
                              overlap=overlap,

@@ -18,7 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
+import collections.abc
 
 import dgenerate.batchprocess.configrunnerplugin as _configrunnerplugin
 import dgenerate.imageprocess as _imageprocess
@@ -34,7 +34,7 @@ class ImageProcessDirective(_configrunnerplugin.ConfigRunnerPlugin):
 
         self.register_directive('image_process', self._directive)
 
-    def _directive(self, args) -> int:
+    def _directive(self, args: collections.abc.Sequence[str]) -> int:
 
         render_loop = _imageprocess.ImageProcessRenderLoop(
             image_processor_loader=self.render_loop.image_processor_loader)

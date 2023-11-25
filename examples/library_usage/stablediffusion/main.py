@@ -7,6 +7,9 @@ from dgenerate import \
 
 device, _ = dgenerate.arguments.parse_device()
 
+if device is None:
+    device = 'cuda'
+
 config = RenderLoopConfig()
 
 config.model_path = 'stabilityai/stable-diffusion-2'

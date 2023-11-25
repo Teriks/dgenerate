@@ -379,9 +379,6 @@ def uri_list_hash_with_parser(parser):
         if not paths:
             return '[]'
 
-        if isinstance(paths, str):
-            return '[' + uri_hash_with_parser(parser)(paths) + ']'
-
         return '[' + ','.join(uri_hash_with_parser(parser)(path) for path in paths) + ']'
 
     return hasher

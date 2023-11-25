@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import collections.abc
 import typing
 
 import PIL.Image
@@ -35,7 +36,8 @@ class ImageProcessorChain(_imageprocessor.ImageProcessor):
 
     HIDDEN = True
 
-    def __init__(self, image_processors: typing.Optional[typing.Iterable[_imageprocessor.ImageProcessor]] = None):
+    def __init__(self,
+                 image_processors: typing.Optional[collections.abc.Iterable[_imageprocessor.ImageProcessor]] = None):
         """
         :param image_processors: optional initial image processors to fill the chain, accepts an iterable
         """

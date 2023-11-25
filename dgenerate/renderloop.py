@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import collections.abc
 import datetime
 import itertools
 import os
@@ -42,7 +43,6 @@ from dgenerate.renderloopconfig import \
     RenderLoopConfig, \
     RenderLoopConfigError, \
     CONTROL_IMAGE_PROCESSOR_SEP, \
-    iterate_attribute_combinations, \
     gen_seeds
 
 
@@ -119,7 +119,7 @@ class ImageGeneratedCallbackArgument:
     """
 
 
-ImageGeneratedCallbacks = list[
+ImageGeneratedCallbacks = collections.abc.MutableSequence[
     typing.Callable[[ImageGeneratedCallbackArgument], None]]
 
 
@@ -201,7 +201,7 @@ class RenderLoop:
         self.image_generated_callbacks = []
 
     @property
-    def written_images(self) -> typing.Iterator[str]:
+    def written_images(self) -> collections.abc.Iterator[str]:
         """
         Iterator over image filenames written by the last run
         """
@@ -215,7 +215,7 @@ class RenderLoop:
         self._written_images.seek(pos)
 
     @property
-    def written_animations(self) -> typing.Iterator[str]:
+    def written_animations(self) -> collections.abc.Iterator[str]:
         """
         Iterator over animation filenames written by the last run
         """
@@ -334,8 +334,8 @@ class RenderLoop:
     def _gen_dgenerate_config(self,
                               args: typing.Optional[_pipelinewrapper.DiffusionArguments] = None,
                               extra_opts: typing.Optional[
-                                  list[typing.Union[tuple[str], tuple[str, typing.Any]]]] = None,
-                              extra_comments: typing.Optional[typing.Sequence[str]] = None,
+                                  collections.abc.Sequence[typing.Union[tuple[str], tuple[str, typing.Any]]]] = None,
+                              extra_comments: typing.Optional[collections.abc.Iterable[str]] = None,
                               **kwargs) -> str:
 
         return self._pipeline_wrapper.gen_dgenerate_config(args,
@@ -346,8 +346,8 @@ class RenderLoop:
     def _gen_dgenerate_command(self,
                                args: typing.Optional[_pipelinewrapper.DiffusionArguments] = None,
                                extra_opts: typing.Optional[
-                                   list[typing.Union[tuple[str], tuple[str, typing.Any]]]] = None,
-                               extra_comments: typing.Optional[typing.Sequence[str]] = None,
+                                   collections.abc.Sequence[typing.Union[tuple[str], tuple[str, typing.Any]]]] = None,
+                               extra_comments: typing.Optional[collections.abc.Sequence[str]] = None,
                                **kwargs) -> str:
 
         return self._pipeline_wrapper.gen_dgenerate_command(args,
@@ -828,9 +828,9 @@ class RenderLoop:
                           set_extra_wrapper_args:
                           typing.Callable[[_pipelinewrapper.DiffusionArguments, _mediainput.ImageSeed], None],
                           arg_iterator:
-                          typing.Iterator[_pipelinewrapper.DiffusionArguments],
+                          collections.abc.Iterator[_pipelinewrapper.DiffusionArguments],
                           image_seed_iterator:
-                          typing.Callable[[], typing.Iterator[_mediainput.ImageSeed]],
+                          typing.Callable[[], collections.abc.Iterator[_mediainput.ImageSeed]],
                           fps: typing.Union[int, float]):
 
         first_diffusion_args = next(arg_iterator)

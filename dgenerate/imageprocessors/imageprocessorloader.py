@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import collections.abc
 import typing
 
 import dgenerate.imageprocessors.exceptions as _exceptions
@@ -47,7 +48,8 @@ class ImageProcessorLoader(_plugin.PluginLoader):
 
         self.add_search_module_string('dgenerate.imageprocessors')
 
-    def load(self, uri: typing.Union[_types.Uri, typing.Iterable[_types.Uri]], device: str = 'cpu', **kwargs) -> \
+    def load(self, uri: typing.Union[_types.Uri, collections.abc.Iterable[_types.Uri]], device: str = 'cpu',
+             **kwargs) -> \
             typing.Union[_imageprocessor.ImageProcessor, _imageprocessorchain.ImageProcessorChain, None]:
         """
         Load an image processor or multiple image processors. They are loaded by URI, which

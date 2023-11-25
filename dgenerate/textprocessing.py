@@ -18,8 +18,9 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import ast
+import collections.abc
 import enum
+import re
 import shutil
 import textwrap
 import typing
@@ -363,9 +364,9 @@ class ConceptUriParser:
 
     def __init__(self,
                  concept_name: _types.Name,
-                 known_args: typing.Sequence[str],
-                 args_multiple: typing.Union[None, bool, typing.Sequence[str]] = None,
-                 args_raw: typing.Union[None, bool, typing.Sequence[str]] = None):
+                 known_args: collections.abc.Iterable[str],
+                 args_multiple: typing.Union[None, bool, collections.abc.Iterable[str]] = None,
+                 args_raw: typing.Union[None, bool, collections.abc.Iterable[str]] = None):
         """
         :raises ValueError: if duplicate argument names are specified.
 
@@ -461,7 +462,7 @@ class ConceptUriParser:
         return ConceptUri(concept, args)
 
 
-def oxford_comma(elements: typing.Sequence[str], conjunction: str) -> str:
+def oxford_comma(elements: collections.abc.Sequence[str], conjunction: str) -> str:
     """
     Join a sequence of strings with commas, end with an oxford comma and conjunction if needed.
 
@@ -562,7 +563,8 @@ def contains_space(string: str) -> bool:
     return any(c.isspace() for c in string)
 
 
-def quote_spaces(value_or_struct: typing.Union[typing.Any, typing.Sequence[typing.Union[typing.Any, list, tuple]]]) -> \
+def quote_spaces(
+        value_or_struct: typing.Union[typing.Any, collections.abc.Iterable[typing.Union[typing.Any, list, tuple]]]) -> \
         typing.Union[list, tuple, typing.Any]:
     """
     Quote any str(value) containing spaces, or str(value)s containing spaces within a list, or list of lists/tuples.
@@ -658,7 +660,7 @@ def wrap(text: str,
         **fill_args)
 
 
-def format_size(size: typing.Iterable[int]):
+def format_size(size: collections.abc.Iterable[int]):
     """
     Join together an iterable of integers with the character x
 
@@ -676,6 +678,24 @@ def justify_left(string: str):
     :return: left justified text
     """
     return '\n'.join(line.strip() if not line.isspace() else line for line in string.split('\n'))
+
+
+def parse_version(string: str) -> _types.Version:
+    """
+    Parse a SemVer version string into a tuple of 3 integers
+
+    :param string: the version string
+
+    :return: tuple of three ints
+    """
+    ver_parts = string.split('.')
+    minor_re = re.compile(r'\d+')
+
+    if len(ver_parts) != 3 or not minor_re.match(ver_parts[2]):
+        raise ValueError(
+            f'version expected to be a version string in the format major.minor.patch. received: "{string}"')
+
+    return int(ver_parts[0]), int(ver_parts[1]), int(minor_re.match(ver_parts[2])[0])
 
 
 def debug_format_args(args_dict: dict[str, typing.Any],

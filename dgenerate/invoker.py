@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import collections.abc
 import typing
 
 import dgenerate.arguments as _arguments
@@ -30,7 +31,7 @@ import dgenerate.subcommands as _subcommands
 
 
 def invoke_dgenerate(
-        args: typing.Sequence[str],
+        args: collections.abc.Sequence[str],
         render_loop: typing.Optional[_renderloop.RenderLoop] = None,
         throw: bool = False,
         log_error: bool = True,
@@ -120,7 +121,7 @@ def invoke_dgenerate(
         _messages.log(
             dgenerate.batchprocess.ConfigRunner().generate_template_variables_help(
                 template_help_variable_names,
-                show_values=False) + '\n', underline=True)
+                show_values=False))
         return 0
 
     constraint_lists = []

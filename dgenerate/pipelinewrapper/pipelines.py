@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import collections.abc
 import typing
 
 import diffusers
@@ -138,16 +139,16 @@ def estimate_pipeline_memory_use(
         pipeline_type: _enums.PipelineTypes,
         model_path: str,
         model_type: _enums.ModelTypes,
-        revision='main',
-        variant=None,
-        subfolder=None,
-        vae_uri=None,
-        lora_uris=None,
-        textual_inversion_uris=None,
-        safety_checker=False,
-        auth_token=None,
-        extra_args=None,
-        local_files_only=False):
+        revision: _types.Name = 'main',
+        variant: _types.OptionalName = None,
+        subfolder: _types.OptionalPath = None,
+        vae_uri: _types.OptionalUri = None,
+        lora_uris: _types.OptionalUris = None,
+        textual_inversion_uris: _types.OptionalUris = None,
+        safety_checker: bool = False,
+        auth_token: str = None,
+        extra_args: dict[str, typing.Any] = None,
+        local_files_only: bool = False):
     """
     Estimate the CPU side memory use of a model.
 
@@ -190,9 +191,6 @@ def estimate_pipeline_memory_use(
     )
 
     if lora_uris:
-        if isinstance(lora_uris, str):
-            lora_uris = [lora_uris]
-
         for lora_uri in lora_uris:
             parsed = _uris.LoRAUri.parse(lora_uri)
 
@@ -207,9 +205,6 @@ def estimate_pipeline_memory_use(
             )
 
     if textual_inversion_uris:
-        if isinstance(textual_inversion_uris, str):
-            textual_inversion_uris = [textual_inversion_uris]
-
         for textual_inversion_uri in textual_inversion_uris:
             parsed = _uris.TextualInversionUri.parse(textual_inversion_uri)
 
@@ -289,7 +284,7 @@ class PipelineCreationResult:
     def pipeline(self):
         return self._pipeline
 
-    def get_pipeline_modules(self, names=typing.Iterable[str]):
+    def get_pipeline_modules(self, names=collections.abc.Iterable[str]):
         """
         Get associated pipeline module such as ``vae`` etc, in
         a dictionary mapped from name to module value.
@@ -354,17 +349,17 @@ class TorchPipelineCreationResult(PipelineCreationResult):
     Parsed VAE URI if one was present
     """
 
-    parsed_lora_uris: list[_uris.LoRAUri]
+    parsed_lora_uris: collections.abc.Sequence[_uris.LoRAUri]
     """
     Parsed LoRA URIs if any were present
     """
 
-    parsed_textual_inversion_uris: list[_uris.TextualInversionUri]
+    parsed_textual_inversion_uris: collections.abc.Sequence[_uris.TextualInversionUri]
     """
     Parsed Textual Inversion URIs if any were present
     """
 
-    parsed_control_net_uris: list[_uris.TorchControlNetUri]
+    parsed_control_net_uris: collections.abc.Sequence[_uris.TorchControlNetUri]
     """
     Parsed ControlNet URIs if any were present
     """
@@ -372,9 +367,9 @@ class TorchPipelineCreationResult(PipelineCreationResult):
     def __init__(self,
                  pipeline: diffusers.DiffusionPipeline,
                  parsed_vae_uri: typing.Optional[_uris.TorchVAEUri],
-                 parsed_lora_uris: list[_uris.LoRAUri],
-                 parsed_textual_inversion_uris: list[_uris.TextualInversionUri],
-                 parsed_control_net_uris: list[_uris.TorchControlNetUri]):
+                 parsed_lora_uris: collections.abc.Sequence[_uris.LoRAUri],
+                 parsed_textual_inversion_uris: collections.abc.Sequence[_uris.TextualInversionUri],
+                 parsed_control_net_uris: collections.abc.Sequence[_uris.TorchControlNetUri]):
         super().__init__(pipeline)
 
         self.parsed_vae_uri = parsed_vae_uri
@@ -401,9 +396,9 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                                     subfolder: _types.OptionalString = None,
                                     dtype: _enums.DataTypes = _enums.DataTypes.AUTO,
                                     vae_uri: _types.OptionalUri = None,
-                                    lora_uris: _types.OptionalUriOrUris = None,
-                                    textual_inversion_uris: _types.OptionalUriOrUris = None,
-                                    control_net_uris: _types.OptionalUriOrUris = None,
+                                    lora_uris: _types.OptionalUris = None,
+                                    textual_inversion_uris: _types.OptionalUris = None,
+                                    control_net_uris: _types.OptionalUris = None,
                                     scheduler: _types.OptionalString = None,
                                     safety_checker: bool = False,
                                     auth_token: _types.OptionalString = None,
@@ -467,9 +462,9 @@ class TorchPipelineFactory:
                  subfolder: _types.OptionalString = None,
                  dtype: _enums.DataTypes = _enums.DataTypes.AUTO,
                  vae_uri: _types.OptionalUri = None,
-                 lora_uris: _types.OptionalUriOrUris = None,
-                 textual_inversion_uris: _types.OptionalUriOrUris = None,
-                 control_net_uris: _types.OptionalUriOrUris = None,
+                 lora_uris: _types.OptionalUris = None,
+                 textual_inversion_uris: _types.OptionalUris = None,
+                 control_net_uris: _types.OptionalUris = None,
                  scheduler: _types.OptionalString = None,
                  safety_checker: bool = False,
                  auth_token: _types.OptionalString = None,
@@ -523,9 +518,9 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                                      subfolder: _types.OptionalString = None,
                                      dtype: _enums.DataTypes = _enums.DataTypes.AUTO,
                                      vae_uri: _types.OptionalUri = None,
-                                     lora_uris: _types.OptionalUriOrUris = None,
-                                     textual_inversion_uris: _types.OptionalUriOrUris = None,
-                                     control_net_uris: _types.OptionalUriOrUris = None,
+                                     lora_uris: _types.OptionalUris = None,
+                                     textual_inversion_uris: _types.OptionalUris = None,
+                                     control_net_uris: _types.OptionalUris = None,
                                      scheduler: _types.OptionalString = None,
                                      safety_checker: bool = False,
                                      auth_token: _types.OptionalString = None,
@@ -650,15 +645,10 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
             raise NotImplementedError(
                 '--model-type torch-upscaler-x2 cannot be used with textual inversion models.')
 
-        if isinstance(textual_inversion_uris, str):
-            textual_inversion_uris = [textual_inversion_uris]
-
     if lora_uris:
         if _enums.model_type_is_upscaler(model_type):
             raise NotImplementedError(
                 'LoRA models cannot be used with upscaler models.')
-        if isinstance(lora_uris, str):
-            lora_uris = [lora_uris]
 
     # ControlNet and VAE loading
 
@@ -832,7 +822,7 @@ class FlaxPipelineCreationResult(PipelineCreationResult):
     Flax specific VAE params object
     """
 
-    parsed_control_net_uris: list[_uris.FlaxControlNetUri]
+    parsed_control_net_uris: collections.abc.Sequence[_uris.FlaxControlNetUri]
     """
     Parsed ControlNet URIs if any were present
     """
@@ -847,7 +837,7 @@ class FlaxPipelineCreationResult(PipelineCreationResult):
                  flax_params: dict[str, typing.Any],
                  parsed_vae_uri: typing.Optional[_uris.FlaxVAEUri],
                  flax_vae_params: typing.Optional[dict[str, typing.Any]],
-                 parsed_control_net_uris: list[_uris.FlaxControlNetUri],
+                 parsed_control_net_uris: collections.abc.Sequence[_uris.FlaxControlNetUri],
                  flax_control_net_params: typing.Optional[dict[str, typing.Any]]):
         super().__init__(pipeline)
 
@@ -875,7 +865,7 @@ def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                                    subfolder: _types.OptionalString = None,
                                    dtype: _enums.DataTypes = _enums.DataTypes.AUTO,
                                    vae_uri: _types.OptionalUri = None,
-                                   control_net_uris: _types.OptionalUriOrUris = None,
+                                   control_net_uris: _types.OptionalUris = None,
                                    scheduler: _types.OptionalString = None,
                                    safety_checker: bool = False,
                                    auth_token: _types.OptionalString = None,
@@ -927,7 +917,7 @@ class FlaxPipelineFactory:
                  subfolder: _types.OptionalString = None,
                  dtype: _enums.DataTypes = _enums.DataTypes.AUTO,
                  vae_uri: _types.OptionalUri = None,
-                 control_net_uris: _types.OptionalUriOrUris = None,
+                 control_net_uris: _types.OptionalUris = None,
                  scheduler: _types.OptionalString = None,
                  safety_checker: bool = False,
                  auth_token: _types.OptionalString = None,
@@ -964,7 +954,7 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                                     subfolder: _types.OptionalString = None,
                                     dtype: _enums.DataTypes = _enums.DataTypes.AUTO,
                                     vae_uri: _types.OptionalUri = None,
-                                    control_net_uris: _types.OptionalUriOrUris = None,
+                                    control_net_uris: _types.OptionalUris = None,
                                     scheduler: _types.OptionalString = None,
                                     safety_checker: bool = False,
                                     auth_token: _types.OptionalString = None,

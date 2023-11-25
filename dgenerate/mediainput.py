@@ -564,10 +564,10 @@ class ImageSeedParseResult:
     The result of parsing an ``--image-seeds`` uri
     """
 
-    seed_path: typing.Union[_types.Path, list[_types.Path]]
+    seed_path: typing.Union[_types.Path, _types.Paths]
     """
     The seed path, contains an image path that will be used for img2img operations
-    or the base image in inpaint operations. Or a controlnet guidance path, or a list of controlnet guidance paths. 
+    or the base image in inpaint operations. Or a controlnet guidance path, or a sequence of controlnet guidance paths. 
     A path being a file path, or an HTTP/HTTPS URL.
     """
 
@@ -576,9 +576,9 @@ class ImageSeedParseResult:
     Optional path to an inpaint mask, may be an HTTP/HTTPS URL or file path.
     """
 
-    control_path: typing.Union[_types.Path, list[_types.Path], None] = None
+    control_path: typing.Union[_types.Path, _types.Paths, None] = None
     """
-    Optional controlnet guidance path, or a list of controlnet guidance paths. 
+    Optional controlnet guidance path, or a sequence of controlnet guidance paths. 
     This field is only used when the secondary syntax of ``--image-seeds`` is encountered.
     
     In parses such as:
@@ -637,7 +637,7 @@ class ImageSeedParseResult:
     Optional end frame specification for per-image seed slicing.
     """
 
-    def get_control_image_paths(self) -> typing.Optional[list[str]]:
+    def get_control_image_paths(self) -> typing.Optional[_types.Paths]:
         """
         Return :py:attr:`.ImageSeed.seed_path` if :py:attr:`.ImageSeed.is_single_spec` is ``True``.
 
@@ -661,7 +661,7 @@ class ImageSeedParseResult:
         within the **seed_path** attribute of this object?
 
         For instance could it be a single img2img image definition, or a controlnet guidance
-        image or list of controlnet guidance images?
+        image or sequence of controlnet guidance images?
 
         This requires that ``mask_path``, ``control_path``, and ``floyd_path`` are all undefined.
 
@@ -1471,9 +1471,9 @@ class ImageSeed:
     An optional inpaint mask image, may be None
     """
 
-    control_images: typing.Optional[list[PIL.Image.Image]]
+    control_images: typing.Optional[_types.Images]
     """
-    List of control guidance images, or None.
+    Control guidance images, or None.
     """
 
     floyd_image: typing.Optional[PIL.Image.Image]
@@ -1496,7 +1496,7 @@ class ImageSeed:
     def __init__(self,
                  image: typing.Optional[PIL.Image.Image] = None,
                  mask_image: typing.Optional[PIL.Image.Image] = None,
-                 control_images: typing.Optional[list[PIL.Image.Image]] = None,
+                 control_images: typing.Optional[_types.Images] = None,
                  floyd_image: typing.Optional[PIL.Image.Image] = None):
         self.image = image
         self.mask_image = mask_image
@@ -1544,7 +1544,7 @@ def _flatten(xs):
 
 
 ControlProcessorSpec = typing.Union[_imageprocessors.ImageProcessor,
-                                    list[_imageprocessors.ImageProcessor], None]
+                                    collections.abc.Sequence[_imageprocessors.ImageProcessor], None]
 
 
 def _validate_control_image_processor_count(processors, guidance_images):
@@ -1565,7 +1565,7 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
                        seed_image_processor: typing.Optional[_imageprocessors.ImageProcessor] = None,
                        mask_image_processor: typing.Optional[_imageprocessors.ImageProcessor] = None,
                        control_image_processor: ControlProcessorSpec = None) -> \
-        typing.Iterator[ImageSeed]:
+        collections.abc.Iterator[ImageSeed]:
     """
     Parse and load images/videos in an ``--image-seeds`` uri and return an iterator that
     produces :py:class:`.ImageSeed` objects while progressively reading those files.
@@ -1755,7 +1755,7 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
                           aspect_correct: bool = True,
                           align: typing.Optional[int] = 8,
                           image_processor: ControlProcessorSpec = None) -> \
-        typing.Iterator[ImageSeed]:
+        collections.abc.Iterator[ImageSeed]:
     """
     Parse and load a control image/video in an ``--image-seeds`` uri and return an iterator that
     produces :py:class:`.ImageSeed` objects while progressively reading that file.

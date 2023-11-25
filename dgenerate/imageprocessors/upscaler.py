@@ -59,7 +59,7 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
         super().__init__(**kwargs)
 
         try:
-            self._model = chainner.load_model(model)
+            self._model = chainner.load_upscaler_model(model)
         except chainner.UnsupportedModelError:
             raise self.argument_error('Unsupported model file format.')
 

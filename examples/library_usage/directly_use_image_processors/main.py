@@ -6,6 +6,10 @@ from dgenerate.imageprocessors import ImageProcessorLoader
 # We can use this to parse and validate any --device argument that gets passed
 device, _ = dgenerate.arguments.parse_device()
 
+if device is None:
+    device = 'cuda'
+
+
 # Any image processor plugin implemented by dgenerate can be reused easily
 
 loader = ImageProcessorLoader()
