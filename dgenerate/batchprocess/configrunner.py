@@ -256,13 +256,11 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                 'name (to store value at), and number of seeds to generate.')
         return 0
 
-    def _config_generate_template_variables_with_types(self, variable_prefix: typing.Optional[str] = None) \
-            -> dict[str, tuple[type, typing.Any]]:
+    def _config_generate_template_variables_with_types(self) -> dict[str, tuple[type, typing.Any]]:
 
         template_variables = {}
 
-        if variable_prefix is None:
-            variable_prefix = ''
+        variable_prefix = 'last_'
 
         for attr, hint in typing.get_type_hints(self.render_loop.config.__class__).items():
             value = getattr(self.render_loop.config, attr)
@@ -272,21 +270,24 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                 prefix = ''
             gen_name = prefix + attr
             if gen_name not in template_variables:
-                if _types.is_type_or_optional(hint, list):
+                if _types.is_type_or_optional(hint, collections.abc.Sequence):
                     t_val = value if value is not None else []
                     template_variables[gen_name] = (hint, t_val)
                 else:
                     template_variables[gen_name] = (hint, value)
 
-        return template_variables
-
-    def _generate_template_variables_with_types(self) -> dict[str, tuple[type, typing.Any]]:
-        template_variables = self._config_generate_template_variables_with_types(variable_prefix='last_')
-
         template_variables.update({
             'last_images': (collections.abc.Iterator[str], self.render_loop.written_images),
             'last_animations': (collections.abc.Iterator[str], self.render_loop.written_animations),
         })
+
+        return template_variables
+
+    def _generate_template_variables_with_types(self) -> dict[str, tuple[type, typing.Any]]:
+        template_variables = self._config_generate_template_variables_with_types()
+
+        for k, v in self.template_variables.items():
+            template_variables[k] = (v.__class__, v)
 
         template_variables['saved_modules'] = (dict[str, dict[str, typing.Any]],
                                                self.template_variables.get('saved_modules'))

@@ -1231,9 +1231,9 @@ class DgenerateArguments(dgenerate.RenderLoopConfig):
     """
 
 
-def __init__(self):
-    super().__init__()
-    self.plugin_module_paths = []
+    def __init__(self):
+        super().__init__()
+        self.plugin_module_paths = []
 
 
 _attr_name_to_option = {a.dest: a.option_strings[-1] if a.option_strings else a.dest for a in actions}
