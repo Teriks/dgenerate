@@ -53,6 +53,24 @@ parser = argparse.ArgumentParser(
     and related techniques / algorithms, with support for video and animated image processing.""")
 
 
+class DgenerateHelpException(Exception):
+    pass
+
+
+class _DgenerateUnknownArgumentException(Exception):
+    pass
+
+
+def _exit(status=0, message=None):
+    if status == 0:
+        # help
+        raise DgenerateHelpException('dgenerate --help used.')
+    raise _DgenerateUnknownArgumentException(message)
+
+
+parser.exit = _exit
+
+
 def _model_type(val):
     val = val.lower()
     if val not in _pipelinewrapper.supported_model_type_strings():
@@ -1326,7 +1344,7 @@ def parse_known_args(args: typing.Optional[typing.Sequence[str]] = None,
                      log_error: bool = True,
                      ignore_model: bool = True,
                      ignore_help: bool = True,
-                     help_exits: bool = False) -> tuple[DgenerateArguments, list[str]]:
+                     help_raises: bool = False) -> typing.Optional[tuple[DgenerateArguments, list[str]]]:
     """
     Parse only known arguments off the command line.
 
@@ -1342,9 +1360,10 @@ def parse_known_args(args: typing.Optional[typing.Sequence[str]] = None,
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
     :param ignore_model: Ignore dgenerates only required argument, fill it with the value 'none'
     :param ignore_help: Do not allow ``--help`` to be passed and proc help being printed.
-    :param help_exits: ``--help`` raises ``SystemExit`` ?
+    :param help_raises: ``--help`` raises :py:exc:`.DgenerateHelpException` ?
 
     :raise DgenerateUsageError: on argument error (simple type validation only)
+    :raises DgenerateHelpException:
 
     :return: (:py:class:`.DgenerateArguments`, unknown_args_list).
         If ``throw=False`` then ``None`` will be returned on errors.
@@ -1367,10 +1386,12 @@ def parse_known_args(args: typing.Optional[typing.Sequence[str]] = None,
 
         return args, unknown
 
-    except SystemExit:
-        if help_exits:
+    except DgenerateHelpException:
+        if help_raises:
             raise
-    except (argparse.ArgumentTypeError, argparse.ArgumentError) as e:
+    except (argparse.ArgumentTypeError,
+            argparse.ArgumentError,
+            _DgenerateUnknownArgumentException) as e:
         if log_error:
             pass
             _messages.log(f'dgenerate: error: {e}', level=_messages.ERROR)
@@ -1382,7 +1403,7 @@ def parse_known_args(args: typing.Optional[typing.Sequence[str]] = None,
 def parse_args(args: typing.Optional[typing.Sequence[str]] = None,
                throw: bool = True,
                log_error: bool = True,
-               help_exits: bool = False) -> typing.Union[DgenerateArguments, None]:
+               help_raises: bool = False) -> typing.Optional[DgenerateArguments]:
     """
     Parse dgenerates command line arguments and return a configuration object.
 
@@ -1391,8 +1412,10 @@ def parse_args(args: typing.Optional[typing.Sequence[str]] = None,
     :param args: arguments list, as in args taken from sys.argv, or in that format
     :param throw: throw :py:exc:`.DgenerateUsageError` on error? defaults to True
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
-    :param help_exits: ``--help`` raises ``SystemExit`` ?
+    :param help_raises: ``--help`` raises :py:exc:`.DgenerateHelpException` ?
+
     :raise DgenerateUsageError:
+    :raises DgenerateHelpException:
 
     :return: :py:class:`.DgenerateArguments`. If ``throw=False`` then
         ``None`` will be returned on errors.
@@ -1400,10 +1423,13 @@ def parse_args(args: typing.Optional[typing.Sequence[str]] = None,
 
     try:
         return _parse_args(args)
-    except SystemExit:
-        if help_exits:
+    except DgenerateHelpException:
+        if help_raises:
             raise
-    except (dgenerate.RenderLoopConfigError, argparse.ArgumentTypeError, argparse.ArgumentError) as e:
+    except (dgenerate.RenderLoopConfigError,
+            argparse.ArgumentTypeError,
+            argparse.ArgumentError,
+            _DgenerateUnknownArgumentException) as e:
         if log_error:
             _messages.log(f'dgenerate: error: {e}', level=_messages.ERROR)
         if throw:
