@@ -129,11 +129,20 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         def last(list_or_iterable):
             if isinstance(list_or_iterable, list):
                 return list_or_iterable[-1]
-            *_, last_item = list_or_iterable
+            try:
+                *_, last_item = list_or_iterable
+            except ValueError:
+                raise _batchprocessor.BatchProcessError(
+                    'Usage of template function "last" on an empty iterable.')
             return last_item
 
         def first(iterable):
-            return next(iter(iterable))
+            try:
+                v = next(iter(iterable))
+            except StopIteration:
+                raise _batchprocessor.BatchProcessError(
+                    'Usage of template function "first" on an empty iterable.')
+            return v
 
         self.template_variables = {
             'saved_modules': dict(),

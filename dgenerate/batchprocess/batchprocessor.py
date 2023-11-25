@@ -322,7 +322,7 @@ class BatchProcessor:
 
         def run_continuation(cur_line, cur_line_idx):
             nonlocal continuation, top_level_template
-           
+
             if not top_level_template:
                 completed_continuation = (continuation + ' ' + cur_line).strip()
             else:
@@ -330,6 +330,8 @@ class BatchProcessor:
 
             top_level_template = False
             continuation = ''
+
+            print('FULL CONTINUATION:', completed_continuation)
 
             if self._directive_handlers(cur_line_idx, completed_continuation):
                 return
@@ -342,31 +344,25 @@ class BatchProcessor:
         for line_idx, line_and_next in enumerate(PeekReader(stream)):
             line, next_line = line_and_next
 
-            line_rstrip = line.rstrip()
-            line_lstrip = line.lstrip()
-            line_strip = line_rstrip.lstrip()
-
-            last_line_lstrip = None if last_line is None else last_line.lstrip()
-            last_line_rstrip = None if last_line is None else last_line.rstrip()
-  
-            next_line_lstrip = None if next_line is None else next_line.lstrip()
+            line_strip = line.strip()
 
             self._current_line = line_idx
 
             if line_strip == '':
-                if continuation and last_line is not None \
-                        and last_line_lstrip.startswith('-') \
-                        and not last_line_rstrip.endswith('\\'):
-                    run_continuation('', line_idx)
-            elif line_lstrip.startswith('#'):
+                if continuation and last_line is not None:
+                    if last_line.lstrip().startswith('-') and \
+                            not last_line.rstrip().endswith('\\'):
+                        run_continuation('', line_idx)
+            elif line_strip.startswith('#'):
                 self._look_for_version_mismatch(line_idx, line)
-            elif line_lstrip.startswith('{') and not top_level_template:
+            elif line_strip.startswith('{') and not top_level_template:
                 continuation += line
                 top_level_template = True
-            elif not top_level_template and line_strip.endswith('\\') \
-                    or next_line and next_line_lstrip.startswith('-'):
+            elif not top_level_template and (line_strip.endswith('\\') or next_line
+                                             and next_line.lstrip().startswith('-')):
                 continuation += ' ' + line_strip.rstrip(' \\')
             elif top_level_template:
+                line_rstrip = line.rstrip()
                 if line_rstrip.endswith('!END'):
                     run_continuation(line_rstrip.removesuffix('!END'), line_idx)
                     top_level_template = False
