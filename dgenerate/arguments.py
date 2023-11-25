@@ -1237,7 +1237,7 @@ def _parse_known_args(args=None) -> tuple[DgenerateArguments, list[str]]:
     return args, unknown
 
 
-def parse_templates_help(args: typing.Optional[collections.abc.Sequence[str]] = None) -> tuple[str, list[str]]:
+def parse_templates_help(args: typing.Optional[collections.abc.Sequence[str]] = None) -> tuple[list[str], list[str]]:
     """
     Retrieve the ``-th/--templates-help`` argument value
 
