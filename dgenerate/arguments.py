@@ -1201,15 +1201,39 @@ class DgenerateArguments(dgenerate.RenderLoopConfig):
     """
 
     plugin_module_paths: _types.Paths
-    verbose: bool = False
-    cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
-    pipeline_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
-    vae_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
-    control_net_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
+    """
+    Plugin module paths ``-pm/--plugin-modules``
+    """
 
-    def __init__(self):
-        super().__init__()
-        self.plugin_module_paths = []
+    verbose: bool = False
+    """
+    Enable debug output? ``-v/--verbose``
+    """
+
+    cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
+    """
+    See: :py:attr:`dgenerate.pipelinewrapper.CACHE_MEMORY_CONSTRAINTS`
+    """
+
+    pipeline_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
+    """
+    See: :py:attr:`dgenerate.pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS`
+    """
+
+    vae_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
+    """
+    See: :py:attr:`dgenerate.pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS`
+    """
+
+    control_net_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
+    """
+    See: :py:attr:`dgenerate.pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS`
+    """
+
+
+def __init__(self):
+    super().__init__()
+    self.plugin_module_paths = []
 
 
 _attr_name_to_option = {a.dest: a.option_strings[-1] if a.option_strings else a.dest for a in actions}
