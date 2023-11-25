@@ -365,7 +365,7 @@ class BatchProcessor:
                 top_level_template = True
             elif not top_level_template and line_strip.endswith('\\') \
                     or next_line and next_line_lstrip.startswith('-'):
-                continuation += ' ' + line_strip.rstrip('\\')
+                continuation += ' ' + line_strip.rstrip(' \\')
             elif top_level_template:
                 if line_rstrip.endswith('!END'):
                     run_continuation(line_rstrip.removesuffix('!END'), line_idx)

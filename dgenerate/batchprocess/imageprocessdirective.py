@@ -40,8 +40,8 @@ class ImageProcessDirective(_configrunnerplugin.ConfigRunnerPlugin):
             image_processor_loader=self.render_loop.image_processor_loader)
 
         try:
-            return_code = _imageprocess.invoke_image_process(args, render_loop=render_loop, help_exits=True)
-        except SystemExit:
+            return_code = _imageprocess.invoke_image_process(args, render_loop=render_loop, help_raises=True)
+        except _imageprocess.ImageProcessHelpException:
             # --help
             return 0
 

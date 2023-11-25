@@ -45,9 +45,10 @@ def invoke_dgenerate(
         if ``None`` is provided one will be created.
     :param throw: Whether to throw known exceptions or handle them.
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
-    :param help_exits: ``--help`` raises ``SystemExit`` ?
+    :param help_exits: ``--help`` raises :py:exc:`dgenerate.arguments.DgenerateHelpException` ?
 
     :raises dgenerate.arguments.DgenerateUsageError:
+    :raises dgenerate.arguments.DgenerateHelpException:
     :raises dgenerate.mediainput.ImageSeedError:
     :raises dgenerate.mediainput.UnknownMimetypeError:
     :raises dgenerate.mediainput.FrameStartOutOfBounds:
@@ -120,8 +121,8 @@ def invoke_dgenerate(
     constraint_lists = []
 
     try:
-        arguments = _arguments.parse_args(args, log_error=log_error, help_exits=True)
-    except SystemExit:
+        arguments = _arguments.parse_args(args, log_error=log_error, help_raises=True)
+    except _arguments.DgenerateHelpException:
         if help_exits:
             raise
         return 0

@@ -48,6 +48,14 @@ def _type_align(val):
     return val
 
 
+class ImageProcessHelpException(Exception):
+    pass
+
+
+class _ImageProcessUnknownArgumentException(Exception):
+    pass
+
+
 def _create_arg_parser(prog, description):
     if description is None:
         description = 'This command allows you to use dgenerate image processors directly on files of your choosing.'
@@ -57,6 +65,14 @@ def _create_arg_parser(prog, description):
         description=description,
         exit_on_error=False,
         allow_abbrev=False)
+
+    def _exit(status=0, message=None):
+        if status == 0:
+            # help
+            raise ImageProcessHelpException('image-process --help used.')
+        raise _ImageProcessUnknownArgumentException(message)
+
+    parser.exit = _exit
 
     actions = []
 
@@ -70,7 +86,8 @@ def _create_arg_parser(prog, description):
         help='One or more image processor URIs, specifying multiple will chain them together.'))
 
     actions.append(
-        parser.add_argument('-pm', '--plugin-modules', action='store', default=[], nargs="+", dest='plugin_module_paths',
+        parser.add_argument('-pm', '--plugin-modules', action='store', default=[], nargs="+",
+                            dest='plugin_module_paths',
                             metavar="PATH",
                             help="""Specify one or more plugin module folder paths (folder containing __init__.py) or 
                             python .py file paths to load as plugins. Plugin modules can implement image processors."""))
@@ -324,15 +341,18 @@ def config_attribute_name_to_option(name):
 def parse_args(args: typing.Optional[typing.Sequence[str]] = None,
                help_name='image-process',
                help_desc=None,
-               help_exits=False) -> ImageProcessArgs:
+               help_raises=False) -> ImageProcessArgs:
     """
-    Parse and validate the arguments used for ``image-process``, which is a dgenerate sub-command as
-    well as config directive.
+    Parse and validate the arguments used for ``image-process``, which is a dgenerate
+    sub-command as well as config directive.
 
     :param args: command line arguments
     :param help_name: program name displayed in ``--help`` output.
     :param help_desc: program description displayed in ``--help`` output.
-    :param help_exits: ``--help`` raises ``SystemExit`` ?
+    :param help_raises: ``--help`` raises :py:exc:`.ImageProcessHelpException` ?
+
+    :raises ImageProcessHelpException:
+
     :return: parsed arguments object
     """
 
@@ -340,8 +360,8 @@ def parse_args(args: typing.Optional[typing.Sequence[str]] = None,
     parsed = None
     try:
         parsed = typing.cast(ImageProcessArgs, parser.parse_args(args, namespace=ImageProcessArgs()))
-    except SystemExit as e:
-        if help_exits:
+    except ImageProcessHelpException as e:
+        if help_raises:
             raise e
 
     if parsed is not None:
@@ -562,7 +582,7 @@ def invoke_image_process(
         render_loop: typing.Optional[ImageProcessRenderLoop] = None,
         throw: bool = False,
         log_error: bool = True,
-        help_exits: bool = False,
+        help_raises: bool = False,
         help_name: str = 'image-process',
         help_desc: typing.Optional[str] = None):
     """
@@ -575,11 +595,12 @@ def invoke_image_process(
         if None is provided one will be created.
     :param throw: Whether to throw known exceptions or handle them.
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
-    :param help_exits: ``--help`` raises ``SystemExit`` ?
+    :param help_raises: ``--help`` raises :py:exc:`.ImageProcessHelpException` ?
     :param help_name: name used in the ``--help`` output
     :param help_desc: description used in the ``--help`` output, if ``None`` is provided a default value will be used.
 
     :raises ImageProcessUsageError:
+    :raises ImageProcessHelpException:
     :raises dgenerate.imageprocessors.ImageProcessorArgumentError:
     :raises dgenerate.imageprocessors.ImageProcessorNotFoundError:
     :raises dgenerate.mediainput.FrameStartOutOfBounds:
@@ -591,10 +612,10 @@ def invoke_image_process(
 
     try:
         try:
-            parsed = parse_args(args, help_name=help_name, help_desc=help_desc, help_exits=True)
-        except SystemExit:
+            parsed = parse_args(args, help_name=help_name, help_desc=help_desc, help_raises=True)
+        except ImageProcessHelpException:
             # --help
-            if help_exits:
+            if help_raises:
                 raise
             return 0
 
