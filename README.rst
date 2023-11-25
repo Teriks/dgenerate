@@ -2947,10 +2947,10 @@ The ``\templates_help`` output from the above example is:
             Type: typing.Optional[list[str]]
             Value: []
         Name: "last_images"
-            Type: typing.Iterator[str]
+            Type: collections.abc.Iterator[str]
             Value: <generator object RenderLoop.written_images at 0x0000028E8D1AF5A0>
         Name: "last_animations"
-            Type: typing.Iterator[str]
+            Type: collections.abc.Iterator[str]
             Value: <generator object RenderLoop.written_animations at 0x0000028E8D1AF3E0>
         Name: "saved_modules"
             Type: dict[str, dict[str, typing.Any]]

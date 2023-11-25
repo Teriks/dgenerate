@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import collections.abc
 import decimal
 import inspect
 import shlex
@@ -66,7 +67,7 @@ class PipelineWrapperResult:
     """
     The result of calling :py:class:`.DiffusionPipelineWrapper`
     """
-    images: typing.Optional[list[PIL.Image.Image]]
+    images: typing.Optional[_types.Images]
 
     @property
     def image_count(self):
@@ -75,6 +76,9 @@ class PipelineWrapperResult:
 
         :return: int
         """
+        if self.images is None:
+            return 0
+
         return len(self.images)
 
     @property
@@ -110,7 +114,7 @@ class PipelineWrapperResult:
             grid.paste(img, box=(i % cols * w, i // cols * h))
         return grid
 
-    def __init__(self, images: typing.Optional[list[PIL.Image.Image]]):
+    def __init__(self, images: typing.Optional[_types.Images]):
         self.images = images
         self.dgenerate_opts = list()
 
@@ -148,7 +152,7 @@ class DiffusionArguments(_types.SetFromMixin):
     All input images involved in a generation must match in dimension and be aligned by 8 pixels.
     """
 
-    control_images: typing.Optional[list[PIL.Image.Image]] = None
+    control_images: typing.Optional[_types.Images] = None
     """
     ControlNet guidance images to use if ``control_net_uris`` were given to the 
     constructor of :py:class:`.DiffusionPipelineWrapper`.
@@ -579,9 +583,9 @@ class DiffusionPipelineWrapper:
                  vae_uri: _types.OptionalUri = None,
                  vae_tiling: bool = False,
                  vae_slicing: bool = False,
-                 lora_uris: typing.Union[str, _types.OptionalUris] = None,
-                 textual_inversion_uris: typing.Union[str, _types.OptionalUris] = None,
-                 control_net_uris: typing.Union[str, _types.OptionalUris] = None,
+                 lora_uris: _types.OptionalUris = None,
+                 textual_inversion_uris: _types.OptionalUris = None,
+                 control_net_uris: _types.OptionalUris = None,
                  scheduler: _types.OptionalName = None,
                  sdxl_refiner_uri: _types.OptionalUri = None,
                  sdxl_refiner_scheduler: _types.OptionalName = None,
@@ -715,18 +719,16 @@ class DiffusionPipelineWrapper:
     @property
     def textual_inversion_uris(self) -> _types.OptionalUris:
         """
-        List of supplied --textual-inversions uri strings or None
+        List of supplied --textual-inversions uri strings or an empty list
         """
-        return [self._textual_inversion_uris] if \
-            isinstance(self._textual_inversion_uris, str) else self._textual_inversion_uris
+        return list(self._textual_inversion_uris) if self._textual_inversion_uris else []
 
     @property
     def control_net_uris(self) -> _types.OptionalUris:
         """
-        List of supplied --control-nets uri strings or None
+        List of supplied --control-nets uri strings or an empty list
         """
-        return [self._control_net_uris] if \
-            isinstance(self._control_net_uris, str) else self._control_net_uris
+        return list(self._control_net_uris) if self._control_net_uris else []
 
     @property
     def device(self) -> _types.Name:
@@ -822,10 +824,9 @@ class DiffusionPipelineWrapper:
     @property
     def lora_uris(self) -> _types.OptionalUris:
         """
-        List of supplied --loras uri strings or None
+        List of supplied --loras uri strings or an empty list
         """
-        return [self._lora_uris] if \
-            isinstance(self._lora_uris, str) else self._lora_uris
+        return list(self._lora_uris) if self._lora_uris else []
 
     @property
     def auth_token(self) -> _types.OptionalString:
@@ -837,7 +838,7 @@ class DiffusionPipelineWrapper:
     def reconstruct_dgenerate_opts(self,
                                    args: typing.Optional[DiffusionArguments] = None,
                                    extra_opts: typing.Optional[
-                                       list[
+                                       collections.abc.Sequence[
                                            typing.Union[tuple[str], tuple[str, typing.Any]]]] = None,
                                    shell_quote=True,
                                    **kwargs) -> \
@@ -848,7 +849,7 @@ class DiffusionPipelineWrapper:
         :param args: :py:class:`.DiffusionArguments` object to take values from
 
         :param extra_opts: Extra option pairs to be added to the end of reconstructed options,
-            this should be a list of tuples of length 1 (switch only) or length 2 (switch with args)
+            this should be a sequence of tuples of length 1 (switch only) or length 2 (switch with args)
 
         :param shell_quote: Shell quote and format the argument values? or return them raw.
 
@@ -1037,8 +1038,9 @@ class DiffusionPipelineWrapper:
             opts.append(('--image-seeds',
                          ', '.join(_image.get_filename(c) for c in args.control_images)))
 
-        if extra_opts:
-            opts += extra_opts
+        if extra_opts is not None:
+            for opt in extra_opts:
+                opts.append(opt)
 
         if shell_quote:
             for idx, option in enumerate(opts):
@@ -1101,8 +1103,8 @@ class DiffusionPipelineWrapper:
     def gen_dgenerate_config(self,
                              args: typing.Optional[DiffusionArguments] = None,
                              extra_opts: typing.Optional[
-                                 list[typing.Union[tuple[str], tuple[str, typing.Any]]]] = None,
-                             extra_comments: typing.Optional[typing.Sequence[str]] = None,
+                                 collections.abc.Sequence[typing.Union[tuple[str], tuple[str, typing.Any]]]] = None,
+                             extra_comments: typing.Optional[collections.abc.Iterable[str]] = None,
                              **kwargs):
         """
         Generate a valid dgenerate config file with a single invocation that reproduces this result.
@@ -1111,7 +1113,7 @@ class DiffusionPipelineWrapper:
         :param extra_comments: Extra strings to use as comments after the initial
             version check directive
         :param extra_opts: Extra option pairs to be added to the end of reconstructed options
-            of the dgenerate invocation, this should be a list of tuples of length 1 (switch only)
+            of the dgenerate invocation, this should be a sequence of tuples of length 1 (switch only)
             or length 2 (switch with args)
         :param kwargs: pipeline wrapper keyword arguments, these will override values derived from
             any :py:class:`.DiffusionArguments` object given to the *args* argument. See:
@@ -1134,8 +1136,11 @@ class DiffusionPipelineWrapper:
                 config += '\n\n'
 
         opts = \
-            self.reconstruct_dgenerate_opts(args, **kwargs, shell_quote=False) + \
-            (extra_opts if extra_opts else [])
+            self.reconstruct_dgenerate_opts(args, **kwargs, shell_quote=False)
+
+        if extra_opts is not None:
+            for opt in extra_opts:
+                opts.append(opt)
 
         for opt in opts[:-1]:
             config += f'{self._format_option_pair(opt)} \\\n'
@@ -1150,14 +1155,14 @@ class DiffusionPipelineWrapper:
     def gen_dgenerate_command(self,
                               args: typing.Optional[DiffusionArguments] = None,
                               extra_opts: typing.Optional[
-                                  list[typing.Union[tuple[str], tuple[str, typing.Any]]]] = None,
+                                  collections.abc.Sequence[typing.Union[tuple[str], tuple[str, typing.Any]]]] = None,
                               **kwargs):
         """
         Generate a valid dgenerate command line invocation that reproduces this result.
 
         :param args: :py:class:`.DiffusionArguments` object to take values from
         :param extra_opts: Extra option pairs to be added to the end of reconstructed options
-            of the dgenerate invocation, this should be a list of tuples of length 1 (switch only)
+            of the dgenerate invocation, this should be a sequence of tuples of length 1 (switch only)
             or length 2 (switch with args)
         :param kwargs: pipeline wrapper keyword arguments, these will override values derived from
             any :py:class:`.DiffusionArguments` object given to the *args* argument. See:
@@ -1168,7 +1173,8 @@ class DiffusionPipelineWrapper:
         opt_string = \
             ' '.join(f"{self._format_option_pair(opt)}"
                      for opt in self.reconstruct_dgenerate_opts(args, **kwargs,
-                                                                shell_quote=False) + extra_opts)
+                                                                extra_opts=extra_opts,
+                                                                shell_quote=False))
 
         return f'dgenerate {opt_string}'
 

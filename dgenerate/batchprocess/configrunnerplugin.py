@@ -19,7 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import typing
-
+import collections.abc
 import dgenerate
 import dgenerate.batchprocess.configrunnerpluginloader as _configrunnerpluginloader
 import dgenerate.plugin as _plugin
@@ -64,7 +64,7 @@ class ConfigRunnerPlugin(_plugin.Plugin):
         if self.config_runner is not None:
             self.config_runner.template_variables.update(values)
 
-    def register_directive(self, name, implementation: typing.Callable[[list[str]], int]):
+    def register_directive(self, name, implementation: typing.Callable[[collections.abc.Sequence[str]], int]):
         """
         Safely register a config directive implementation on the :py:class:`dgenerate.batchprocess.ConfigRunner` instance.
 
@@ -104,7 +104,7 @@ class ConfigRunnerPlugin(_plugin.Plugin):
         return self.__config_runner
 
     @property
-    def plugin_module_paths(self) -> typing.FrozenSet[str]:
+    def plugin_module_paths(self) -> frozenset[str]:
         """
         Set of plugin module paths if they were injected into the config runner by ``-pm/--plugin-modules``
         or used in a ``\\import_plugins`` statement in a config.

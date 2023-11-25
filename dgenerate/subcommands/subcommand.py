@@ -18,7 +18,8 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import typing
+
+import collections.abc
 
 import dgenerate.plugin as _plugin
 import dgenerate.subcommands.exceptions as _exceptions
@@ -38,14 +39,14 @@ class SubCommand(_plugin.Plugin):
                          argument_error_type=_exceptions.SubCommandArgumentError,
                          **kwargs)
         self.__args = list(args)
-        self.__plugin_module_paths = list(plugin_module_paths)
+        self.__plugin_module_paths = frozenset(plugin_module_paths)
 
     @property
-    def plugin_module_paths(self):
+    def plugin_module_paths(self) -> frozenset[str]:
         return self.__plugin_module_paths
 
     @property
-    def args(self):
+    def args(self) -> collections.abc.Sequence:
         return self.__args
 
     def __call__(self) -> int:

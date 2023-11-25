@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import ast
+import collections.abc
 import os
 import typing
 
@@ -37,7 +38,7 @@ class MemoryConstraintSyntaxError(Exception):
     pass
 
 
-def memory_constraint_syntax_check(expression):
+def memory_constraint_syntax_check(expression: str):
     """
     Syntax check an expression given to :py:func:`memory_constraints`
 
@@ -63,7 +64,7 @@ def memory_constraint_syntax_check(expression):
             f'Syntax error in expression "{expression}": {e}')
 
 
-def memory_constraints(expressions: typing.Optional[typing.Union[str, list]],
+def memory_constraints(expressions: collections.abc.Iterable[str],
                        extra_vars: typing.Optional[dict[str, typing.Union[int, float]]] = None,
                        mode=any,
                        pid: typing.Optional[int] = None) -> bool:
@@ -99,8 +100,8 @@ def memory_constraints(expressions: typing.Optional[typing.Union[str, list]],
     :raise MemoryConstraintSyntaxError: on syntax errors or if the return value
         of an expression is not a boolean value.
 
-    :param expressions: a string containing an expression or a list of expressions,
-        If expressions is ``None`` or empty this function will return False.
+    :param expressions: a list of expressions, if expressions is ``None`` or empty this
+        function will return False.
     :param extra_vars: extra integer or float variables
     :param mode: the standard library function 'any' (equating to OR all expressions) or
         the standard library function 'all' (equating to AND all expressions). The default
@@ -112,9 +113,6 @@ def memory_constraints(expressions: typing.Optional[typing.Union[str, list]],
 
     if not expressions:
         return False
-
-    if isinstance(expressions, str):
-        expressions = [expressions]
 
     for expr in expressions:
         memory_constraint_syntax_check(expr)

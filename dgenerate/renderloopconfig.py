@@ -18,7 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import itertools
+import collections.abc
 import random
 import typing
 
@@ -36,52 +36,16 @@ when specifying processors for multiple control guidance images
 """
 
 
-def iterate_attribute_combinations(
-        attribute_defs: list[tuple[str, list]],
-        return_type: typing.Type) -> typing.Iterator:
-    """
-    Iterate over every combination of attributes in a given class using a list of tuples mapping
-    attribute names to a list of possible values.
-
-    :param attribute_defs: list of tuple (attribute_name, [list of values])
-    :param return_type: Construct this type and assign attribute values to it
-    :return: an iterator over instances of the type mentioned in the my_class argument
-    """
-
-    def assign(ctx, dir_attr, name, val):
-        if val is not None:
-            if name in dir_attr:
-                setattr(ctx, name, val)
-            else:
-                raise RuntimeError(f'{ctx.__class__.__name__} missing attribute "{name}"')
-
-    for combination in itertools.product(*[d[1] for d in attribute_defs]):
-        ctx_out = return_type()
-        dir_attributes = set(_types.get_public_attributes(ctx_out).keys())
-        for idx, d in enumerate(attribute_defs):
-            attr = d[0]
-            if len(d) == 2:
-                assign(ctx_out, dir_attributes, attr, combination[idx])
-            else:
-                assign(ctx_out, dir_attributes, attr, d[2](ctx_out, attr, combination[idx]))
-        yield ctx_out
-
-
-def _iterate_diffusion_args(**kwargs) -> typing.Iterator[_pipelinewrapper.DiffusionArguments]:
-    """
-    Iterate over every combination of possible attribute values of :py:class:`dgenerate.pipelinewrapper.DiffusionArguments` given a
-    list of values for each attribute.
-    """
-
+def _iterate_diffusion_args(**kwargs) -> collections.abc.Iterator[_pipelinewrapper.DiffusionArguments]:
     def _list_or_list_of_none(val):
         return val if val else [None]
 
-    yield from iterate_attribute_combinations(
+    yield from _types.iterate_attribute_combinations(
         [(arg_name, _list_or_list_of_none(value)) for arg_name, value in kwargs.items()],
         _pipelinewrapper.DiffusionArguments)
 
 
-def gen_seeds(n):
+def gen_seeds(n) -> list[int]:
     """
     Generate a list of N random seed integers
 
@@ -200,7 +164,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     List of ``--image-seeds`` URI strings.
     """
 
-    parsed_image_seeds: typing.Optional[list[_mediainput.ImageSeedParseResult]] = None
+    parsed_image_seeds: typing.Optional[collections.abc.Sequence[_mediainput.ImageSeedParseResult]] = None
     """
     The results of parsing URIs mentioned in :py:attr:`.RenderLoopConfig.image_seeds`, 
     will only be available if :py:meth:`.RenderLoopConfig.check` has been called.
@@ -275,7 +239,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     to the ``--sdxl-target-sizes`` argument of the dgenerate command line tool.
     """
 
-    sdxl_crops_coords_top_left: _types.OptionalCoordinateList = None
+    sdxl_crops_coords_top_left: _types.OptionalCoordinates = None
     """
     Optional list of SDXL top-left-crop-coords micro-conditioning parameters, this corresponds 
     to the ``--sdxl-crops-coords-top-left`` argument of the dgenerate command line tool.
@@ -302,7 +266,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     command line tool.
     """
 
-    sdxl_negative_crops_coords_top_left: _types.OptionalCoordinateList = None
+    sdxl_negative_crops_coords_top_left: _types.OptionalCoordinates = None
     """
     Optional list of negative influence SDXL top-left crop coords micro-conditioning parameters, 
     this corresponds to the ``--sdxl-negative-crops-coords-top-left`` argument of the dgenerate 
@@ -328,7 +292,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     corresponds to the ``--sdxl-refiner-target-sizes`` argument of the dgenerate command line tool.
     """
 
-    sdxl_refiner_crops_coords_top_left: _types.OptionalCoordinateList = None
+    sdxl_refiner_crops_coords_top_left: _types.OptionalCoordinates = None
     """
     Optional list of SDXL-refiner override top-left-crop-coords micro-conditioning parameters, this 
     corresponds to the ``--sdxl-refiner-crops-coords-top-left`` argument of the dgenerate command line tool.
@@ -355,7 +319,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     the dgenerate command line tool.
     """
 
-    sdxl_refiner_negative_crops_coords_top_left: _types.OptionalCoordinateList = None
+    sdxl_refiner_negative_crops_coords_top_left: _types.OptionalCoordinates = None
     """
     Optional list of negative influence SDXL-refiner top-left crop coords micro-conditioning parameters, 
     this corresponds to the ``--sdxl-refiner-negative-crops-coords-top-left`` argument of the dgenerate 
@@ -623,12 +587,12 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         if self.animation_format not in _mediaoutput.supported_animation_writer_formats():
             raise RenderLoopConfigError(
-                f'Unsupported {a_namer("image_format")} value "{self.image_format }". Must be one of '
+                f'Unsupported {a_namer("image_format")} value "{self.image_format}". Must be one of '
                 f'{_textprocessing.oxford_comma(_mediaoutput.supported_animation_writer_formats(), "or")}')
 
         if self.image_format != "png" and self.output_metadata:
             raise RenderLoopConfigError(
-                f'{a_namer("image_format")} value "{self.image_format }" is '
+                f'{a_namer("image_format")} value "{self.image_format}" is '
                 f'unsupported when {a_namer("output_metadata")} is enabled.')
 
         if self.animation_format == 'frames' and self.no_frames:
@@ -941,7 +905,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 len(self.guidance_scales) *
                 len(self.inference_steps))
 
-    def iterate_diffusion_args(self, **overrides) -> typing.Iterator[_pipelinewrapper.DiffusionArguments]:
+    def iterate_diffusion_args(self, **overrides) -> collections.abc.Iterator[_pipelinewrapper.DiffusionArguments]:
         """
         Iterate over :py:class:`dgenerate.pipelinewrapper.DiffusionArguments` argument objects using
         every combination of argument values provided for that object by this configuration.

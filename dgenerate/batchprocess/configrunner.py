@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import collections.abc
 import glob
 import shlex
 import types
@@ -42,7 +43,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
     """
 
     @property
-    def plugin_module_paths(self) -> typing.FrozenSet[str]:
+    def plugin_module_paths(self) -> frozenset[str]:
         """
         Set of plugin module paths if they were injected into the config runner by ``-pm/--plugin-modules``
         or used in a ``\\import_plugins`` statement in a config.
@@ -52,7 +53,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         return frozenset(self._plugin_module_paths)
 
     def __init__(self,
-                 injected_args: typing.Optional[typing.Sequence[str]] = None,
+                 injected_args: typing.Optional[collections.abc.Sequence[str]] = None,
                  render_loop: typing.Optional[_renderloop.RenderLoop] = None,
                  plugin_loader: _configrunnerpluginloader.ConfigRunnerPluginLoader = None,
                  version: typing.Union[_types.Version, str] = dgenerate.__version__,
@@ -197,7 +198,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         self.directives['import_plugins'] = self._import_plugins_directive
 
-    def _import_plugins_directive(self, plugin_paths):
+    def _import_plugins_directive(self, plugin_paths: collections.abc.Sequence[str]):
         self._plugin_module_paths.update(plugin_paths)
         self.render_loop.image_processor_loader.load_plugin_modules(plugin_paths)
         new_classes = self.plugin_loader.load_plugin_modules(plugin_paths)
@@ -208,7 +209,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         return 0
 
-    def _save_modules_directive(self, args):
+    def _save_modules_directive(self, args: collections.abc.Sequence[str]):
         saved_modules = self.template_variables.get('saved_modules')
 
         if len(args) < 2:
@@ -220,7 +221,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         saved_modules[args[0]] = creation_result.get_pipeline_modules(args[1:])
         return 0
 
-    def _use_modules_directive(self, args):
+    def _use_modules_directive(self, args: collections.abc.Sequence[str]):
         saved_modules = self.template_variables.get('saved_modules')
 
         if not saved_modules:
@@ -231,7 +232,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         self.render_loop.model_extra_modules = saved_modules[saved_name]
         return 0
 
-    def _clear_modules_directive(self, args):
+    def _clear_modules_directive(self, args: collections.abc.Sequence[str]):
         saved_modules = self.template_variables.get('saved_modules')
 
         if len(args) > 0:
@@ -241,7 +242,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             saved_modules.clear()
         return 0
 
-    def _gen_seeds_directive(self, args):
+    def _gen_seeds_directive(self, args: collections.abc.Sequence[str]):
         if len(args) == 2:
             try:
                 self.template_variables[args[0]] = \
@@ -256,7 +257,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         return 0
 
     def _config_generate_template_variables_with_types(self, variable_prefix: typing.Optional[str] = None) \
-            -> dict[str, tuple[typing.Type, typing.Any]]:
+            -> dict[str, tuple[type, typing.Any]]:
 
         template_variables = {}
 
@@ -279,12 +280,12 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         return template_variables
 
-    def _generate_template_variables_with_types(self) -> dict[str, tuple[typing.Type, typing.Any]]:
+    def _generate_template_variables_with_types(self) -> dict[str, tuple[type, typing.Any]]:
         template_variables = self._config_generate_template_variables_with_types(variable_prefix='last_')
 
         template_variables.update({
-            'last_images': (typing.Iterator[str], self.render_loop.written_images),
-            'last_animations': (typing.Iterator[str], self.render_loop.written_animations),
+            'last_images': (collections.abc.Iterator[str], self.render_loop.written_images),
+            'last_animations': (collections.abc.Iterator[str], self.render_loop.written_animations),
         })
 
         template_variables['saved_modules'] = (dict[str, dict[str, typing.Any]],
@@ -332,7 +333,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                       f'Type: {i[1][0]}' + (f'\n{" " * 8}Value: {wrap(i[1][1])}' if show_values else '') for i in
             values.items())
 
-    def _templates_help_directive(self, args):
+    def _templates_help_directive(self, args: collections.abc.Sequence[str]):
         _messages.log(self.generate_template_variables_help(args) + '\n', underline=True)
         return 0
 

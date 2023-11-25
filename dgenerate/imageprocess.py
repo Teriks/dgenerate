@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
+import collections.abc
 import datetime
 import os.path
 import pathlib
@@ -338,7 +339,7 @@ def config_attribute_name_to_option(name):
     return {a.dest: a.option_strings[-1] if a.option_strings else a.dest for a in actions}[name]
 
 
-def parse_args(args: typing.Optional[typing.Sequence[str]] = None,
+def parse_args(args: typing.Optional[collections.abc.Sequence[str]] = None,
                help_name='image-process',
                help_desc=None,
                help_raises=False) -> ImageProcessArgs:
@@ -405,7 +406,7 @@ class ImageProcessRenderLoop:
         self._written_images = None
 
     @property
-    def written_images(self) -> typing.Iterator[str]:
+    def written_images(self) -> collections.abc.Iterator[str]:
         """
         Iterator over image filenames written by the last run
         """
@@ -419,7 +420,7 @@ class ImageProcessRenderLoop:
         self._written_images.seek(pos)
 
     @property
-    def written_animations(self) -> typing.Iterator[str]:
+    def written_animations(self) -> collections.abc.Iterator[str]:
         """
         Iterator over animation filenames written by the last run
         """
@@ -578,7 +579,7 @@ class ImageProcessRenderLoop:
 
 
 def invoke_image_process(
-        args: typing.Sequence[str],
+        args: collections.abc.Sequence[str],
         render_loop: typing.Optional[ImageProcessRenderLoop] = None,
         throw: bool = False,
         log_error: bool = True,

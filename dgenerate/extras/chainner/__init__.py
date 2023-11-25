@@ -1,2 +1,2 @@
-from .model_loading import load_model, UnsupportedModelError
+from .model_loading import load_upscaler_model, UnsupportedModelError
 from .upscale import upscale

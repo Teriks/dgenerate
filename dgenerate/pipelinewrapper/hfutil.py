@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import collections.abc
 import glob
 import os
 import pathlib
@@ -46,10 +47,10 @@ class HFBlobLink:
     weight_name: str
 
     def __init__(self,
-                 repo_id,
-                 revision,
-                 subfolder,
-                 weight_name):
+                 repo_id: str,
+                 revision: str,
+                 subfolder: str,
+                 weight_name: str):
         self.repo_id = repo_id
         self.revision = revision
         self.subfolder = subfolder
@@ -161,11 +162,11 @@ def fetch_model_files_with_size(repo_id: str,
                                 subfolder: typing.Optional[str] = None,
                                 weight_name: typing.Optional[str] = None,
                                 use_auth_token: typing.Optional[str] = None,
-                                extensions: typing.Optional[typing.Union[set, list]] = None,
+                                extensions: typing.Optional[collections.abc.Iterable] = None,
                                 local_files_only: bool = False,
                                 flax: bool = False,
                                 sentencepiece: bool = False,
-                                watermarker: bool = False) -> typing.Iterator[tuple[str, int]]:
+                                watermarker: bool = False) -> collections.abc.Iterator[tuple[str, int]]:
     """
     Attempt to fetch model files with their size that are relevant for the type of model being loaded.
 
@@ -181,7 +182,7 @@ def fetch_model_files_with_size(repo_id: str,
     :param subfolder: subfolder in the repo where the models exist
     :param weight_name: look for a specific model file name
     :param use_auth_token: optional huggingface auth token
-    :param extensions: if specified, only search for extensions in this set, or list
+    :param extensions: if specified, only search for extensions in this iterable
     :param local_files_only: utilize the huggingface API if necessary?
         if this is True, and it is necessary to fetch info from the API, this function
         will simply yield nothing

@@ -18,7 +18,6 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import typing
 
 import dgenerate.messages as _messages
 import dgenerate.plugin as _plugin
@@ -35,26 +34,6 @@ class SubCommandHelpUsageError(Exception):
     Raised on argument parse errors in :py:func:`.sub_command_help`
     """
     pass
-
-
-def remove_sub_command_arg(args: list[str]):
-    """
-    Returns a list of arguments with --scm/--sub-command and its singular argument removed.
-
-    :param args: command line arguments
-    :return: modified copy of the args list.
-    """
-    opt_l = '--sub-command'
-    opt_s = '-scm'
-
-    opts = (opt_l, opt_s)
-
-    while any(opt in args for opt in opts):
-        for opt in opts:
-            if opt in args:
-                index = args.index(opt)
-                args = args[:index] + args[index + 2:]
-    return args
 
 
 def sub_command_help(names: _types.Names, plugin_module_paths: _types.Paths):

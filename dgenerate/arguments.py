@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
+import collections.abc
 import sys
 import typing
 from argparse import Action
@@ -1201,10 +1202,10 @@ class DgenerateArguments(dgenerate.RenderLoopConfig):
 
     plugin_module_paths: _types.Paths
     verbose: bool = False
-    cache_memory_constraints: typing.Optional[list[str]] = None
-    pipeline_cache_memory_constraints: typing.Optional[list[str]] = None
-    vae_cache_memory_constraints: typing.Optional[list[str]] = None
-    control_net_cache_memory_constraints: typing.Optional[list[str]] = None
+    cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
+    pipeline_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
+    vae_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
+    control_net_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
 
     def __init__(self):
         super().__init__()
@@ -1236,7 +1237,7 @@ def _parse_known_args(args=None) -> tuple[DgenerateArguments, list[str]]:
     return args, unknown
 
 
-def parse_templates_help(args: typing.Optional[typing.Sequence[str]] = None) -> tuple[str, list[str]]:
+def parse_templates_help(args: typing.Optional[collections.abc.Sequence[str]] = None) -> tuple[str, list[str]]:
     """
     Retrieve the ``-th/--templates-help`` argument value
 
@@ -1250,7 +1251,7 @@ def parse_templates_help(args: typing.Optional[typing.Sequence[str]] = None) -> 
     return parsed.templates_help, unknown
 
 
-def parse_plugin_modules(args: typing.Optional[typing.Sequence[str]] = None) -> tuple[
+def parse_plugin_modules(args: typing.Optional[collections.abc.Sequence[str]] = None) -> tuple[
     list[str], list[str]]:
     """
     Retrieve the ``-pm/--plugin-modules`` argument value
@@ -1265,7 +1266,7 @@ def parse_plugin_modules(args: typing.Optional[typing.Sequence[str]] = None) -> 
     return parsed.plugin_modules, unknown
 
 
-def parse_image_processor_help(args: typing.Optional[typing.Sequence[str]] = None) -> tuple[
+def parse_image_processor_help(args: typing.Optional[collections.abc.Sequence[str]] = None) -> tuple[
     list[str], list[str]]:
     """
     Retrieve the ``-iph/--image-processor-help`` argument value
@@ -1281,7 +1282,7 @@ def parse_image_processor_help(args: typing.Optional[typing.Sequence[str]] = Non
     return parsed.image_processor_help, unknown
 
 
-def parse_sub_command(args: typing.Optional[typing.Sequence[str]] = None) -> tuple[str, list[str]]:
+def parse_sub_command(args: typing.Optional[collections.abc.Sequence[str]] = None) -> tuple[str, list[str]]:
     """
     Retrieve the ``-scm/--sub-command`` argument value
 
@@ -1296,7 +1297,7 @@ def parse_sub_command(args: typing.Optional[typing.Sequence[str]] = None) -> tup
     return parsed.sub_command, unknown
 
 
-def parse_sub_command_help(args: typing.Optional[typing.Sequence[str]] = None) -> tuple[
+def parse_sub_command_help(args: typing.Optional[collections.abc.Sequence[str]] = None) -> tuple[
     list[str], list[str]]:
     """
     Retrieve the ``-scmh/--sub-command-help`` argument value
@@ -1312,7 +1313,7 @@ def parse_sub_command_help(args: typing.Optional[typing.Sequence[str]] = None) -
     return parsed.sub_command_help, unknown
 
 
-def parse_device(args: typing.Optional[typing.Sequence[str]] = None) -> tuple[str, list[str]]:
+def parse_device(args: typing.Optional[collections.abc.Sequence[str]] = None) -> tuple[str, list[str]]:
     """
     Retrieve the ``-d/--device`` argument value
 
@@ -1326,7 +1327,7 @@ def parse_device(args: typing.Optional[typing.Sequence[str]] = None) -> tuple[st
     return parsed.device, unknown
 
 
-def parse_verbose(args: typing.Optional[typing.Sequence[str]] = None) -> tuple[bool, list[str]]:
+def parse_verbose(args: typing.Optional[collections.abc.Sequence[str]] = None) -> tuple[bool, list[str]]:
     """
     Retrieve the ``-v/--verbose`` argument value
 
@@ -1340,7 +1341,7 @@ def parse_verbose(args: typing.Optional[typing.Sequence[str]] = None) -> tuple[b
     return parsed.verbose, unknown
 
 
-def parse_known_args(args: typing.Optional[typing.Sequence[str]] = None,
+def parse_known_args(args: typing.Optional[collections.abc.Sequence[str]] = None,
                      throw: bool = True,
                      log_error: bool = True,
                      ignore_model: bool = True,
@@ -1401,7 +1402,7 @@ def parse_known_args(args: typing.Optional[typing.Sequence[str]] = None,
         return None
 
 
-def parse_args(args: typing.Optional[typing.Sequence[str]] = None,
+def parse_args(args: typing.Optional[collections.abc.Sequence[str]] = None,
                throw: bool = True,
                log_error: bool = True,
                help_raises: bool = False) -> typing.Optional[DgenerateArguments]:

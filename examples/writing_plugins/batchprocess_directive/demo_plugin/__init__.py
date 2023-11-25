@@ -1,3 +1,5 @@
+import collections.abc
+
 import dgenerate.batchprocess.configrunnerplugin as _configrunnerplugin
 
 
@@ -7,7 +9,7 @@ class MyDirective(_configrunnerplugin.ConfigRunnerPlugin):
 
         self.register_directive('my_directive', self.directive)
 
-    def directive(self, args):
+    def directive(self, args: collections.abc.Sequence[str]):
         # Access to the render loop object containing information about
         # previous invocations of dgenerate, this will always be assigned
         # even if an invocation of dgenerate in the configuration has not
@@ -49,10 +51,10 @@ class MyMultiDirective(_configrunnerplugin.ConfigRunnerPlugin):
         self.register_directive('my_directive_1', self.my_directive_1)
         self.register_directive('my_directive_2', self.my_directive_2)
 
-    def my_directive_1(self, args) -> int:
+    def my_directive_1(self, args: collections.abc.Sequence[str]) -> int:
         print('my_directive_1:', args)
         return 0
 
-    def my_directive_2(self, args):
+    def my_directive_2(self, args: collections.abc.Sequence[str]):
         print('my_directive_2:', args)
         return 0
