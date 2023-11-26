@@ -3320,7 +3320,7 @@ The dgenerate sub-command ``image-process`` is has a directive implementation.
     # the files will be named "upscaled/FILENAME_processed_1.png" "upscaled/FILENAME_processed_2.png" ...
 
     \image_process {{ myfiles }} \
-    --output upscaled/ \
+    --output upscaled/
     --processors "upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth"
 
 
