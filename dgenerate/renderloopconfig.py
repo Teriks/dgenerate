@@ -763,6 +763,11 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'{a_namer("textual_inversion_uris")} is not supported for '
                     f'flax, see: {a_namer("model_type")}.')
 
+            if self.vae_tiling or self.vae_slicing:
+                raise RenderLoopConfigError(
+                    f'{a_namer("vae_tiling")} and {a_namer("vae_slicing")} are not '
+                    f'supported for flax, see: {a_namer("model_type")}.')
+
         if self.scheduler == 'help' and self.sdxl_refiner_scheduler == 'help':
             raise RenderLoopConfigError(
                 'cannot list compatible schedulers for the main model and the SDXL refiner at '
