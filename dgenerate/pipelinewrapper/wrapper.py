@@ -196,7 +196,7 @@ class DiffusionArguments(_types.SetFromMixin):
     Invalid to use with FLAX ModeTypes.
     """
 
-    sdxl_refiner_edit: bool = False
+    sdxl_refiner_edit: _types.OptionalBoolean = None
     """
     Force the SDXL refiner to operate in edit mode instead of cooperative denoising mode.
     """
@@ -1396,10 +1396,11 @@ class DiffusionPipelineWrapper:
         for arg, val in _types.get_public_attributes(user_args).items():
             if arg.startswith('sdxl') and val is not None:
                 raise NotImplementedError(
-                    f'--{arg.replace("_", "-")}s may only be used with SDXL models.')
+                    f'{arg} may only be used with SDXL models.')
 
         if user_args.guidance_rescale is not None:
-            raise NotImplementedError('--guidance-rescales is not supported when using --model-type flax.')
+            raise NotImplementedError(
+                f'guidance_rescale is not supported when using flax.')
 
         prompt: _prompt.Prompt() = _types.default(user_args.prompt, _prompt.Prompt())
         positive_prompt = prompt.positive if prompt.positive else ''
@@ -1811,7 +1812,7 @@ class DiffusionPipelineWrapper:
                 raise NotImplementedError('Inpaint and Img2Img not supported for flax with ControlNet.')
 
             if self._vae_tiling or self._vae_slicing:
-                raise NotImplementedError('--vae-tiling/--vae-slicing not supported for flax.')
+                raise NotImplementedError('vae_tiling / vae_slicing not supported for flax.')
 
             self.recall_main_pipeline = _pipelines.FlaxPipelineFactory(
                 pipeline_type=pipeline_type,
@@ -1836,7 +1837,7 @@ class DiffusionPipelineWrapper:
         elif self._sdxl_refiner_uri is not None:
             if not _enums.model_type_is_sdxl(self._model_type):
                 raise NotImplementedError('Only Stable Diffusion XL models support refiners, '
-                                          'please use --model-type torch-sdxl if you are trying to load an sdxl model.')
+                                          'please use model_type "torch-sdxl" if you are trying to load an sdxl model.')
 
             if not _pipelines.scheduler_is_help(self._sdxl_refiner_scheduler):
                 # Don't load this up if were just going to be getting
