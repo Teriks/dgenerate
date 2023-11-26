@@ -2711,8 +2711,8 @@ of lines will also be ignored.
 
 You can create a multiline continuation using ``\`` to indicate that a line continues,
 if the next line starts with ``-`` it is considered part of a continuation as well even if ``\`` had
-not been used previously. Comments cannot be interspersed with invocation arguments without the use
-of ``\``, at least on the last line before whitespace and comments start.
+not been used previously. Comments cannot be interspersed with invocation or directive arguments
+without the use of ``\``, at least on the last line before whitespace and comments start.
 
 The following is a config file example that covers very basic syntax concepts:
 
