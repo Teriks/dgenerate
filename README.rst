@@ -3154,9 +3154,11 @@ as VAEs etc. outside of relying on the caching system.
     \print {% for image in last_images %}{{ quote(image) }} {% endfor %}
 
 
-    # For loops are possible with continuation
-    # however continuations will replace newlines
-    # and whitespace with a single space.
+    # For loops are possible with normal continuation
+    # when not using a heredoc template continuation (mentioned below),
+    # such as when the loop occurs in the body of a directive or a
+    # dgenerate invocation, however this sort of continuation usage will
+    # replace newlines and whitespace with a single space.
 
     # IE this template will be: "{% for image in last_images %} {{ quote(image) }} {% endfor %}"
 
