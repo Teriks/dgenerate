@@ -3175,9 +3175,11 @@ as VAEs etc. outside of relying on the caching system.
 
     # You can get only the positive or negative part if you want via the "positive"
     # and "negative" properties on a prompt object, these attributes are not
-    # quoted so you need to quote them one way or another
+    # quoted so you need to quote them one way or another, preferably using the
+    # dgenerate template function "quote" which will shell quote any special
+    # characters that the argument parser is not going to understand
 
-    stabilityai/stable-diffusion-2-1 --prompts "{{ last(last_prompts).positive }}"
+    stabilityai/stable-diffusion-2-1 --prompts {{ quote(last(last_prompts).positive) }}
 
     # "last_prompts" returns all the prompts used in the last invocation as a list
     # the "format_prompt" function can also work on a list
