@@ -2802,6 +2802,8 @@ a dgenerate invocation in a config file for debugging purposes. You can specify 
 more template variable names as arguments to ``\templates_help`` to receive help for only
 the mentioned variable names.
 
+Template variables set with the ``\set`` directive will also be mentioned in this output.
+
 .. code-block:: jinja
 
     #! dgenerate 3.0.0
