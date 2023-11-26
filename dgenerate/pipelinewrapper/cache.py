@@ -257,21 +257,27 @@ def clear_model_cache(collect=True):
         _FLAX_PIPELINE_CACHE, \
         _TORCH_CONTROL_NET_CACHE, \
         _FLAX_CONTROL_NET_CACHE, \
+        _TORCH_UNET_CACHE, \
+        _FLAX_UNET_CACHE, \
         _TORCH_VAE_CACHE, \
         _FLAX_VAE_CACHE, \
         _PIPELINE_CACHE_SIZE, \
         _CONTROL_NET_CACHE_SIZE, \
+        _UNET_CACHE_SIZE, \
         _VAE_CACHE_SIZE
 
     _TORCH_PIPELINE_CACHE.clear()
     _FLAX_PIPELINE_CACHE.clear()
     _TORCH_CONTROL_NET_CACHE.clear()
     _FLAX_CONTROL_NET_CACHE.clear()
+    _TORCH_UNET_CACHE.clear()
+    _FLAX_UNET_CACHE.clear()
     _TORCH_VAE_CACHE.clear()
     _FLAX_VAE_CACHE.clear()
 
     _PIPELINE_CACHE_SIZE = 0
     _CONTROL_NET_CACHE_SIZE = 0
+    _UNET_CACHE_SIZE = 0
     _VAE_CACHE_SIZE = 0
 
     if collect:
