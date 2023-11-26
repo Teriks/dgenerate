@@ -2726,6 +2726,11 @@ The following is a config file example that covers very basic syntax concepts:
 
     # Comments in the file will be ignored
 
+    # Each dgenerate invocation in the config begins with the path to a model,
+    # IE. the first argument when using dgenerate from the command line, the
+    # rest of the options that follow are the options to dgenerate that you
+    # would use on the command line
+
     # Guarantee unique file names are generated under the output directory by specifying unique seeds
 
     stabilityai/stable-diffusion-2-1 --prompts "an astronaut riding a horse" --seeds 41509644783027 --output-path output --inference-steps 30 --guidance-scales 10
@@ -2754,6 +2759,9 @@ The following is a config file example that covers very basic syntax concepts:
     # not end in \ or start with -
 
 
+    # Configuration directives provide extra functionality in a config, a directive
+    # invocation always starts with a backslash
+
     # A clear model cache directive can be used inbetween invocations if cached models that
     # are no longer needed in your generation pipeline start causing out of memory issues
 
@@ -2765,6 +2773,10 @@ The following is a config file example that covers very basic syntax concepts:
     # Clear specifically diffusion pipelines
 
     \clear_pipeline_cache
+
+    # Clear specifically user specified UNet models
+
+    \clear_unet_cache
 
     # Clear specifically user specified VAE models
 
