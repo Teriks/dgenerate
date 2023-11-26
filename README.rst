@@ -1803,7 +1803,7 @@ Specifying an SDXL Refiner
 ==========================
 
 When the main model is an SDXL model and ``--model-type torch-sdxl`` is specified,
-you may specify a refiner model with ``--sdxl-refiner-path``.
+you may specify a refiner model with ``--sdxl-refiner``.
 
 You can provide a path to a huggingface repo/blob link, folder on disk, or a model file
 on disk such as a .pt, .pth, .bin, .ckpt, or .safetensors file.
@@ -1900,6 +1900,18 @@ If you are loading a .safetensors or other file from a path on disk, simply do:
     dgenerate huggingface/sdxl_model --model-type torch-sdxl \
     --sdxl-refiner my_refinermodel.safetensors
 
+
+When preforming inpainting or when using `ControlNets <#specifying-control-nets>`_, the
+refiner will automatically operate in edit mode instead of cooperative denoising mode.
+Edit mode can be forced in other situations with the option ``--sdxl-refiner-edit``.
+
+Edit mode means that the refiner model is accepting the output of the main model
+generated at the full number of inference steps specified as an image instead of a latent,
+and acting on it with an image strength (image seed strength) determined by (1.0 - high-noise-fraction).
+
+This is similar to what happens when using dgenerate in img2img with a standalone model,
+technically it is just img2img, however refiner models are better at enhancing details
+from the main model in this use case.
 
 Specifying LoRAs
 ================
