@@ -606,7 +606,10 @@ def pipeline_off_cpu_update_cache_info(
     # value for garbage collection of the model cache that exists
     # in CPU side memory
 
-    global _PIPELINE_CACHE_SIZE, _VAE_CACHE_SIZE, _CONTROL_NET_CACHE_SIZE
+    global _PIPELINE_CACHE_SIZE, \
+        _UNET_CACHE_SIZE, \
+        _VAE_CACHE_SIZE, \
+        _CONTROL_NET_CACHE_SIZE
 
     _PIPELINE_CACHE_SIZE -= pipeline.DGENERATE_SIZE_ESTIMATE
 
@@ -614,6 +617,15 @@ def pipeline_off_cpu_update_cache_info(
                         f'Size = {pipeline.DGENERATE_SIZE_ESTIMATE} Bytes '
                         f'is leaving CPU side memory, {_types.fullname(pipeline_cache_size)}() '
                         f'is now {pipeline_cache_size()} Bytes')
+
+    if hasattr(pipeline, 'unet') and pipeline.unet is not None:
+        if hasattr(pipeline.unet, 'DGENERATE_SIZE_ESTIMATE'):
+            _UNET_CACHE_SIZE -= pipeline.unet.DGENERATE_SIZE_ESTIMATE
+
+            _messages.debug_log(f'{_types.class_and_id_string(pipeline.unet)} '
+                                f'Size = {pipeline.unet.DGENERATE_SIZE_ESTIMATE} Bytes '
+                                f'is leaving CPU side memory, {_types.fullname(unet_cache_size)}() '
+                                f'is now {unet_cache_size()} Bytes')
 
     if hasattr(pipeline, 'vae') and pipeline.vae is not None:
         if hasattr(pipeline.vae, 'DGENERATE_SIZE_ESTIMATE'):
