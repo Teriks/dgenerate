@@ -22,6 +22,7 @@ import collections.abc
 import typing
 
 import diffusers
+import diffusers.loaders
 import huggingface_hub
 
 import dgenerate.memoize as _d_memoize
@@ -113,7 +114,10 @@ def load_scheduler(pipeline: typing.Union[diffusers.DiffusionPipeline, diffusers
     if scheduler_name is None:
         return
 
-    compatibles = pipeline.scheduler.compatibles
+    compatibles = list(pipeline.scheduler.compatibles)
+
+    if isinstance(pipeline, diffusers.loaders.LoraLoaderMixin):
+        compatibles.append(diffusers.LCMScheduler)
 
     if isinstance(pipeline, diffusers.StableDiffusionLatentUpscalePipeline):
         # Seems to only work with this scheduler
@@ -126,7 +130,7 @@ def load_scheduler(pipeline: typing.Union[diffusers.DiffusionPipeline, diffusers
         raise SchedulerHelpException(help_string)
 
     for i in compatibles:
-        if i.__name__.endswith(scheduler_name):
+        if i.__name__ == scheduler_name:
             pipeline.scheduler = i.from_config(pipeline.scheduler.config)
             return
 

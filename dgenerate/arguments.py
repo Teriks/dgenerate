@@ -179,8 +179,8 @@ def _type_sdxl_high_noise_fractions(val):
     except ValueError:
         raise argparse.ArgumentTypeError('Must be a floating point number')
 
-    if val <= 0:
-        raise argparse.ArgumentTypeError('Must be greater than 0')
+    if val < 0:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 0')
     return val
 
 
@@ -635,6 +635,10 @@ actions.append(
     parser.add_argument('--sdxl-refiner-scheduler', action='store', default=None, metavar="SCHEDULER_NAME",
                         help="""Specify a scheduler (sampler) by name for the SDXL refiner pass. Operates the exact
                              same way as --scheduler including the "help" option. Defaults to the value of --scheduler."""))
+
+actions.append(
+    parser.add_argument('--sdxl-refiner-edit', action='store_true', default=False,
+                        help="""Force the SDXL refiner to operate in edit mode instead of cooperative denoising mode."""))
 
 # SDXL Main pipeline
 

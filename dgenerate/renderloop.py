@@ -648,19 +648,20 @@ class RenderLoop:
                 self.config.sdxl_high_noise_fractions if \
                     self.config.sdxl_refiner_uri is not None else None
 
-            for diffusion_args in self.config.iterate_diffusion_args(
+            for diffusion_arguments in self.config.iterate_diffusion_args(
                     sdxl_high_noise_fraction=sdxl_high_noise_fractions,
                     image_seed_strength=None,
                     upscaler_noise_level=None):
-                self._pre_generation_step(diffusion_args)
-                self._pre_generation(diffusion_args)
+                self._pre_generation_step(diffusion_arguments)
+                self._pre_generation(diffusion_arguments)
 
-                with pipeline_wrapper(diffusion_args,
+                with pipeline_wrapper(diffusion_arguments,
                                       width=self.config.output_size[0],
                                       height=self.config.output_size[1],
-                                      batch_size=self.config.batch_size) as generation_result:
+                                      batch_size=self.config.batch_size,
+                                      sdxl_refiner_edit=self.config.sdxl_refiner_edit) as generation_result:
                     self._run_postprocess(generation_result)
-                    self._write_prompt_only_image(diffusion_args, generation_result)
+                    self._write_prompt_only_image(diffusion_arguments, generation_result)
 
     def _init_post_processor(self):
         if self.config.post_processors is None:
@@ -810,7 +811,8 @@ class RenderLoop:
                             diffusion_arguments.floyd_image = image_seed.floyd_image
 
                         with image_seed, pipeline_wrapper(diffusion_arguments,
-                                                          batch_size=self.config.batch_size) as generation_result:
+                                                          batch_size=self.config.batch_size,
+                                                          sdxl_refiner_edit=self.config.sdxl_refiner_edit) as generation_result:
                             self._run_postprocess(generation_result)
                             self._write_image_seed_gen_image(diffusion_arguments, image_seed, generation_result)
 
@@ -875,7 +877,8 @@ class RenderLoop:
                         set_extra_wrapper_args(diffusion_args, image_seed)
 
                         with pipeline_wrapper(diffusion_args,
-                                              batch_size=self.config.batch_size) as generation_result:
+                                              batch_size=self.config.batch_size,
+                                              sdxl_refiner_edit=self.config.sdxl_refiner_edit) as generation_result:
                             self._run_postprocess(generation_result)
                             self._ensure_output_path()
 

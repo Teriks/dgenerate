@@ -121,7 +121,7 @@ def invoke_dgenerate(
         _messages.log(
             dgenerate.batchprocess.ConfigRunner().generate_template_variables_help(
                 template_help_variable_names,
-                show_values=False))
+                show_values=False) + '\n', underline=True)
         return 0
 
     constraint_lists = []

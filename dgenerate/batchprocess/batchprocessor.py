@@ -333,25 +333,37 @@ class BatchProcessor:
             top_level_template = False
             continuation = ''
 
+            print(completed_continuation)
+
             if self._directive_handlers(completed_continuation):
                 return
 
             self._lex_and_run_invocation(completed_continuation)
 
+        def remove_tail_comments(line):
+            try:
+                comment_start = line.index('#')
+                if comment_start == 0:
+                    return line
+                return line[:comment_start]
+            except ValueError:
+                return line
+
         last_line = None
-        line_idx = 0
 
         for line_idx, line_and_next in enumerate(PeekReader(stream)):
+            line: str
+            next_line: typing.Optional[str]
             line, next_line = line_and_next
 
-            line_strip = line.strip()
+            line_strip = remove_tail_comments(line.lstrip()).rstrip()
 
             self._current_line = line_idx
 
             if line_strip == '':
                 if continuation and last_line is not None:
-                    if last_line.lstrip().startswith('-') and \
-                            not last_line.rstrip().endswith('\\'):
+                    if last_line.startswith('-') and \
+                            not last_line.endswith('\\'):
                         run_continuation('')
             elif line_strip.startswith('#'):
                 self._look_for_version_mismatch(line_idx, line)
@@ -362,16 +374,16 @@ class BatchProcessor:
                                              and next_line.lstrip().startswith('-')):
                 continuation += ' ' + line_strip.rstrip(' \\')
             elif top_level_template:
-                line_rstrip = line.rstrip()
+                line_rstrip = remove_tail_comments(line.rstrip()).rstrip()
                 if line_rstrip.endswith('!END'):
                     run_continuation(line_rstrip.removesuffix('!END'))
                     top_level_template = False
                 else:
                     continuation += line
             else:
-                run_continuation(line)
+                run_continuation(line_strip)
 
-            last_line = line
+            last_line = line_strip
 
         if continuation:
             run_continuation('')
