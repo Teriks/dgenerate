@@ -1769,14 +1769,14 @@ The first component of the ``--unet`` URI is the model path itself.
 
 .. code-block:: bash
 
-    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
-    --variant fp16 --dtype float16
-    --unet latent-consistency/lcm-sdxl
-    --scheduler LCMScheduler
-    --inference-steps 4
-    --guidance-scales 8
-    --gen-seeds 2
-    --output-size 1024
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    --variant fp16 --dtype float16 \
+    --unet latent-consistency/lcm-sdxl \
+    --scheduler LCMScheduler \
+    --inference-steps 4 \
+    --guidance-scales 8 \
+    --gen-seeds 2 \
+    --output-size 1024 \
     --prompts "a close-up picture of an old man standing in the rain"
 
 
