@@ -427,7 +427,6 @@ actions.append(
                         the revision argument may be used with this syntax.
                         """))
 
-
 actions.append(
     parser.add_argument('-vae', '--vae', action='store', default=None, metavar="VAE_URI", dest='vae_uri',
                         help=
@@ -666,7 +665,7 @@ actions.append(
                              same way as --scheduler including the "help" option. Defaults to the value of --scheduler."""))
 
 actions.append(
-    parser.add_argument('--sdxl-refiner-edit', action='store_true', default=False,
+    parser.add_argument('--sdxl-refiner-edit', action='store_true', default=None,
                         help="""Force the SDXL refiner to operate in edit mode instead of cooperative denoising mode
                         as it would normally do for inpainting and ControlNet usage. The main model will preform
                         the full amount of inference steps requested by --inference-steps. The output of the main model
@@ -1210,7 +1209,6 @@ actions.append(
                              f' For Syntax See: [https://dgenerate.readthedocs.io/en/v{dgenerate.__version__}/'
                              f'dgenerate_submodules.html#dgenerate.pipelinewrapper.UNET_CACHE_MEMORY_CONSTRAINTS]'))
 
-
 actions.append(
     parser.add_argument('-vmc', '--vae-cache-memory-constraints', action='store', nargs='+',
                         default=None,
@@ -1285,7 +1283,6 @@ class DgenerateArguments(dgenerate.RenderLoopConfig):
     """
     See: :py:attr:`dgenerate.pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS`
     """
-
 
     def __init__(self):
         super().__init__()

@@ -86,7 +86,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     SDXL Refiner model URI, ``--sdxl-refiner`` argument of dgenerate command line tool.
     """
 
-    sdxl_refiner_edit: bool = False
+    sdxl_refiner_edit: _types.OptionalBoolean = None
     """
     Force the SDXL refiner to operate in edit mode instead of cooperative denoising mode.
     """
@@ -720,6 +720,11 @@ class RenderLoopConfig(_types.SetFromMixin):
 
             self.sdxl_high_noise_fractions = None
         else:
+            if self.textual_inversion_uris:
+                raise RenderLoopConfigError(
+                    f'{a_namer("textual_inversion_uris")} is not supported for '
+                    f'SDXL, see: {a_namer("model_type")}.')
+
             if not self.sdxl_refiner_uri:
                 invalid_self = []
                 for sdxl_self in attr_that_start_with('sdxl_refiner'):
@@ -737,6 +742,22 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'{a_namer("vae_tiling")}/{a_namer("vae_slicing")} not supported for '
                     f'non torch model type, see: {a_namer("model_type")}.')
 
+        if _pipelinewrapper.model_type_is_flax(self.model_type):
+            if self.lora_uris:
+                raise RenderLoopConfigError(
+                    f'{a_namer("loras")} is not supported for '
+                    f'flax, see: {a_namer("model_type")}.')
+
+            if self.guidance_rescales:
+                raise RenderLoopConfigError(
+                    f'{a_namer("guidance_rescales")} is not supported for '
+                    f'flax, see: {a_namer("model_type")}.')
+
+            if self.textual_inversion_uris:
+                raise RenderLoopConfigError(
+                    f'{a_namer("textual_inversion_uris")} is not supported for '
+                    f'flax, see: {a_namer("model_type")}.')
+
         if self.scheduler == 'help' and self.sdxl_refiner_scheduler == 'help':
             raise RenderLoopConfigError(
                 'cannot list compatible schedulers for the main model and the SDXL refiner at '
@@ -744,6 +765,11 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'and {a_namer("sdxl_refiner_scheduler")} simultaneously.')
 
         if self.image_seeds:
+            if _pipelinewrapper.model_type_is_flax(self.model_type) and self.control_net_uris:
+                raise RenderLoopConfigError(
+                    f'img2img and inpainting are not supported for flax when '
+                    f'{a_namer("control_net_uris")} is specified.')
+
             no_seed_strength = (_pipelinewrapper.model_type_is_upscaler(self.model_type) or
                                 _pipelinewrapper.model_type_is_pix2pix(self.model_type))
 
