@@ -1767,7 +1767,7 @@ This is useful in particular for using the latent consistency scheduler.
 
 The first component of the ``--unet`` URI is the model path itself.
 
-You can provide paths to a huggingface repo/blob link, folder on disk, or a model file
+You can provide a path to a huggingface repo/blob link, folder on disk, or a model file
 on disk such as a .pt, .pth, .bin, .ckpt, or .safetensors file.
 
 .. code-block:: bash
@@ -1805,7 +1805,7 @@ Specifying an SDXL Refiner
 When the main model is an SDXL model and ``--model-type torch-sdxl`` is specified,
 you may specify a refiner model with ``--sdxl-refiner-path``.
 
-You can provide paths to a huggingface repo/blob link, folder on disk, or a model file
+You can provide a path to a huggingface repo/blob link, folder on disk, or a model file
 on disk such as a .pt, .pth, .bin, .ckpt, or .safetensors file.
 
 This argument is parsed in much the same way as the argument ``--vae``, except the
