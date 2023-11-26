@@ -55,6 +55,12 @@ _lora_uri_parser = _textprocessing.ConceptUriParser('LoRA', ['scale', 'revision'
 _textual_inversion_uri_parser = _textprocessing.ConceptUriParser('Textual Inversion',
                                                                  ['revision', 'subfolder', 'weight-name'])
 
+_flax_unet_uri_parser = _textprocessing.ConceptUriParser('UNet',
+                                                         ['revision', 'subfolder', 'dtype'])
+
+_torch_unet_uri_parser = _textprocessing.ConceptUriParser('UNet',
+                                                          ['revision', 'variant', 'subfolder', 'dtype'])
+
 
 class InvalidModelUriError(Exception):
     """
@@ -73,6 +79,13 @@ class InvalidSDXLRefinerUriError(InvalidModelUriError):
 class InvalidVaeUriError(InvalidModelUriError):
     """
     Error in ``--vae`` uri
+    """
+    pass
+
+
+class InvalidUNetUriError(InvalidModelUriError):
+    """
+    Error in ``--unet`` uri
     """
     pass
 
@@ -754,6 +767,172 @@ class TorchVAEUri:
             raise InvalidVaeUriError(e)
 
 
+class TorchUNetUri:
+    """
+    Representation of ``--unet`` uri when ``--model-type`` torch*
+    """
+
+    model: str
+    """
+    Model path, huggingface slug, file path, or blob link
+    """
+
+    revision: _types.OptionalString
+    """
+    Model repo revision
+    """
+
+    variant: _types.OptionalString
+    """
+    Model repo revision
+    """
+
+    subfolder: _types.OptionalPath
+    """
+    Model repo subfolder
+    """
+
+    dtype: typing.Optional[_enums.DataTypes]
+    """
+    Model dtype (precision)
+    """
+
+    def __init__(self,
+                 model: str,
+                 revision: _types.OptionalString = None,
+                 variant: _types.OptionalString = None,
+                 subfolder: _types.OptionalString = None,
+                 dtype: typing.Union[_enums.DataTypes, str, None] = None):
+
+        self.model = model
+        self.revision = revision
+        self.variant = variant
+        self.dtype = _enums.get_data_type_enum(dtype) if dtype else None
+        self.subfolder = subfolder
+
+    def load(self,
+             variant_fallback: _types.OptionalString = None,
+             dtype_fallback: _enums.DataTypes = _enums.DataTypes.AUTO,
+             use_auth_token: _types.OptionalString = None,
+             local_files_only=False) -> diffusers.UNet2DConditionModel:
+        """
+        Load a UNet of type :py:class:`diffusers.UNet2DConditionModel`
+
+        :param variant_fallback: If the URI does not specify a variant, use this variant.
+        :param dtype_fallback: If the URI does not specify a dtype, use this dtype.
+        :param use_auth_token: optional huggingface auth token.
+        :param local_files_only: avoid downloading files and only look for cached files
+            when the model path is a huggingface slug or blob link
+        :return: :py:class:`diffusers.UNet2DConditionModel`
+        """
+        try:
+            return self._load(variant_fallback, dtype_fallback, use_auth_token, local_files_only)
+        except (huggingface_hub.utils.HFValidationError,
+                huggingface_hub.utils.HfHubHTTPError) as e:
+            raise _hfutil.ModelNotFoundError(e)
+
+    @_memoize(_cache._TORCH_UNET_CACHE,
+              exceptions={'local_files_only'},
+              hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _d_memoize.struct_hasher}),
+              on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Torch UNet", key, hit),
+              on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Torch UNet", key, new))
+    def _load(self,
+              variant_fallback: _types.OptionalString = None,
+              dtype_fallback: _enums.DataTypes = _enums.DataTypes.AUTO,
+              use_auth_token: _types.OptionalString = None,
+              local_files_only=False) -> diffusers.UNet2DConditionModel:
+
+        if self.dtype is None:
+            torch_dtype = _enums.get_torch_dtype(dtype_fallback)
+        else:
+            torch_dtype = _enums.get_torch_dtype(self.dtype)
+
+        if self.variant is None:
+            variant = variant_fallback
+
+        path = self.model
+
+        single_file_load_path = _hfutil.is_single_file_model_load(path)
+
+        if single_file_load_path:
+            if self.subfolder is not None:
+                raise NotImplementedError('Single file UNet loads do not support the subfolder option.')
+
+            estimated_memory_use = _hfutil.estimate_model_memory_use(
+                repo_id=path,
+                revision=self.revision,
+                local_files_only=local_files_only,
+                use_auth_token=use_auth_token
+            )
+
+            _cache.enforce_unet_cache_constraints(new_unet_size=estimated_memory_use)
+
+            unet = diffusers.UNet2DConditionModel.from_single_file(path,
+                                                                   revision=self.revision,
+                                                                   torch_dtype=torch_dtype,
+                                                                   local_files_only=local_files_only)
+
+        else:
+
+            estimated_memory_use = _hfutil.estimate_model_memory_use(
+                repo_id=path,
+                revision=self.revision,
+                variant=variant,
+                subfolder=self.subfolder,
+                local_files_only=local_files_only,
+                use_auth_token=use_auth_token
+            )
+
+            _cache.enforce_unet_cache_constraints(new_unet_size=estimated_memory_use)
+
+            unet = diffusers.UNet2DConditionModel.from_pretrained(path,
+                                                                  revision=self.revision,
+                                                                  variant=variant,
+                                                                  torch_dtype=torch_dtype,
+                                                                  subfolder=self.subfolder,
+                                                                  use_auth_token=use_auth_token,
+                                                                  local_files_only=local_files_only)
+
+        _messages.debug_log('Estimated Torch UNet Memory Use:',
+                            _memory.bytes_best_human_unit(estimated_memory_use))
+
+        _cache.unet_create_update_cache_info(unet=unet,
+                                             estimated_size=estimated_memory_use)
+
+        return unet
+
+    @staticmethod
+    def parse(uri: _types.Uri) -> 'TorchUNetUri':
+        """
+        Parse a ``--model-type`` torch* ``--unet`` uri and return an object representing its constituents
+
+        :param uri: string with ``--unet`` uri syntax
+
+        :raise InvalidUNetUriError:
+
+        :return: :py:class:`.TorchUNetPath`
+        """
+        try:
+            r = _torch_unet_uri_parser.parse(uri)
+
+            dtype = r.args.get('dtype')
+
+            supported_dtypes = _enums.supported_data_type_strings()
+            if dtype is not None and dtype not in supported_dtypes:
+                raise InvalidUNetUriError(
+                    f'Torch UNet "dtype" must be {", ".join(supported_dtypes)}, '
+                    f'or left undefined, received: {dtype}')
+
+            return TorchUNetUri(
+                model=r.concept,
+                revision=r.args.get('revision', None),
+                variant=r.args.get('variant', None),
+                dtype=dtype,
+                subfolder=r.args.get('subfolder', None))
+        except _textprocessing.ConceptPathParseError as e:
+            raise InvalidUNetUriError(e)
+
+
 class FlaxVAEUri:
     """
     Representation of ``--vae`` uri when ``--model-type`` flax*
@@ -904,7 +1083,7 @@ class FlaxVAEUri:
 
         :raise InvalidVaeUriError:
 
-        :return: :py:class:`.FlaxVAEPath`
+        :return: :py:class:`.FlaxVAEUri`
         """
         try:
             r = _flax_vae_uri_parser.parse(uri)
@@ -928,6 +1107,159 @@ class FlaxVAEUri:
                               subfolder=r.args.get('subfolder', None))
         except _textprocessing.ConceptPathParseError as e:
             raise InvalidVaeUriError(e)
+
+
+class FlaxUNetUri:
+    """
+    Representation of ``--unet`` uri when ``--model-type`` flax*
+    """
+
+    model: str
+    """
+    Model path, huggingface slug, file path, or blob link
+    """
+
+    revision: _types.OptionalString
+    """
+    Model repo revision
+    """
+
+    subfolder: _types.OptionalPath
+    """
+    Model repo subfolder
+    """
+
+    dtype: typing.Optional[_enums.DataTypes]
+    """
+    Model dtype (precision)
+    """
+
+    def __init__(self,
+                 model: str,
+                 revision: _types.OptionalString,
+                 subfolder: _types.OptionalPath,
+                 dtype: typing.Optional[_enums.DataTypes]):
+
+        self.model = model
+        self.revision = revision
+        self.dtype = dtype
+        self.subfolder = subfolder
+
+    def load(self,
+             dtype_fallback: _enums.DataTypes = _enums.DataTypes.AUTO,
+             use_auth_token: _types.OptionalString = None,
+             local_files_only=False) -> tuple[diffusers.FlaxUNet2DConditionModel, typing.Any]:
+        """
+        Load a :py:class:`diffusers.FlaxUNet2DConditionModel` UNet and its flax_params from this URI
+
+        :param dtype_fallback: If the URI does not specify a dtype, use this dtype.
+        :param use_auth_token: optional huggingface auth token.
+        :param local_files_only: avoid downloading files and only look for cached files
+            when the model path is a huggingface slug or blob link
+        :return: tuple (:py:class:`diffusers.FlaxUNet2DConditionModel`, flax_unet_params)
+        """
+        try:
+            return self._load(dtype_fallback, use_auth_token, local_files_only)
+        except (huggingface_hub.utils.HFValidationError,
+                huggingface_hub.utils.HfHubHTTPError) as e:
+            raise _hfutil.ModelNotFoundError(e)
+
+    @_memoize(_cache._FLAX_UNET_CACHE,
+              exceptions={'local_files_only'},
+              hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _d_memoize.struct_hasher}),
+              on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Flax UNet", key, hit[0]),
+              on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Flax UNet", key, new[0]))
+    def _load(self,
+              dtype_fallback: _enums.DataTypes = _enums.DataTypes.AUTO,
+              use_auth_token: _types.OptionalString = None,
+              local_files_only=False) -> tuple[diffusers.FlaxUNet2DConditionModel, typing.Any]:
+
+        if self.dtype is None:
+            flax_dtype = _enums.get_flax_dtype(dtype_fallback)
+        else:
+            flax_dtype = _enums.get_flax_dtype(self.dtype)
+
+        path = self.model
+
+        single_file_load_path = _hfutil.is_single_file_model_load(path)
+
+        if single_file_load_path:
+            # in the future this will be supported?
+            if self.subfolder is not None:
+                raise NotImplementedError('Single file UNet loads do not support the subfolder option.')
+
+            estimated_memory_use = _hfutil.estimate_model_memory_use(
+                repo_id=path,
+                revision=self.revision,
+                local_files_only=local_files_only,
+                use_auth_token=use_auth_token,
+                flax=True
+            )
+
+            _cache.enforce_unet_cache_constraints(new_unet_size=estimated_memory_use)
+
+            unet = diffusers.FlaxUNet2DConditionModel.from_single_file(path,
+                                                                       revision=self.revision,
+                                                                       dtype=flax_dtype,
+                                                                       use_auth_token=use_auth_token,
+                                                                       local_files_only=local_files_only)
+        else:
+
+            estimated_memory_use = _hfutil.estimate_model_memory_use(
+                repo_id=path,
+                revision=self.revision,
+                subfolder=self.subfolder,
+                local_files_only=local_files_only,
+                use_auth_token=use_auth_token,
+                flax=True
+            )
+
+            _cache.enforce_unet_cache_constraints(new_unet_size=estimated_memory_use)
+
+            unet = diffusers.FlaxUNet2DConditionModel.from_pretrained(path,
+                                                                      revision=self.revision,
+                                                                      dtype=flax_dtype,
+                                                                      subfolder=self.subfolder,
+                                                                      use_auth_token=use_auth_token,
+                                                                      local_files_only=local_files_only)
+
+        _messages.debug_log('Estimated Flax UNet Memory Use:',
+                            _memory.bytes_best_human_unit(estimated_memory_use))
+
+        _cache.unet_create_update_cache_info(unet=unet[0],
+                                             estimated_size=estimated_memory_use)
+
+        return unet
+
+    @staticmethod
+    def parse(uri: _types.Uri) -> 'FlaxUNetUri':
+        """
+        Parse a ``--model-type`` flax* ``--unet`` uri and return an object representing its constituents
+
+        :param uri: string with ``--unet`` uri syntax
+
+        :raise InvalidUNetUriError:
+
+        :return: :py:class:`.FlaxUNetUri`
+        """
+        try:
+            r = _flax_unet_uri_parser.parse(uri)
+
+            dtype = r.args.get('dtype')
+
+            supported_dtypes = _enums.supported_data_type_strings()
+            if dtype is not None and dtype not in supported_dtypes:
+                raise InvalidUNetUriError(
+                    f'Flax UNet "dtype" must be {", ".join(supported_dtypes)}, '
+                    f'or left undefined, received: {dtype}')
+
+            return FlaxUNetUri(
+                model=r.concept,
+                revision=r.args.get('revision', None),
+                dtype=_enums.get_flax_dtype(dtype),
+                subfolder=r.args.get('subfolder', None))
+        except _textprocessing.ConceptPathParseError as e:
+            raise InvalidUNetUriError(e)
 
 
 class LoRAUri:

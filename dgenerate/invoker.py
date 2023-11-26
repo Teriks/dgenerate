@@ -146,6 +146,10 @@ def invoke_dgenerate(
             constraint_lists.append(_pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS)
             _pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS = arguments.pipeline_cache_memory_constraints
 
+        if arguments.unet_cache_memory_constraints:
+            constraint_lists.append(_pipelinewrapper.UNET_CACHE_MEMORY_CONSTRAINTS)
+            _pipelinewrapper.UNET_CACHE_MEMORY_CONSTRAINTS = arguments.unet_cache_memory_constraints
+
         if arguments.vae_cache_memory_constraints:
             constraint_lists.append(_pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS)
             _pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS = arguments.vae_cache_memory_constraints
@@ -189,6 +193,9 @@ def invoke_dgenerate(
         if arguments is not None:
             if arguments.control_net_cache_memory_constraints:
                 _pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()
+
+            if arguments.unet_cache_memory_constraints:
+                _pipelinewrapper.UNET_CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()
 
             if arguments.vae_cache_memory_constraints:
                 _pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()

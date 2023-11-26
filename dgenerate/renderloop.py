@@ -585,6 +585,7 @@ class RenderLoop:
             revision=self.config.revision,
             variant=self.config.variant,
             subfolder=self.config.subfolder,
+            unet_uri=self.config.unet_uri,
             vae_uri=self.config.vae_uri,
             vae_tiling=self.config.vae_tiling,
             vae_slicing=self.config.vae_slicing,

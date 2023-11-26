@@ -152,6 +152,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         self.template_variables = self._generate_template_variables()
 
+        self.reserved_template_variables = set(self.template_variables.keys())
+
         self.template_functions = {
             'unquote': unquote,
             'quote': quote,
@@ -286,9 +288,6 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
     def _generate_template_variables_with_types(self) -> dict[str, tuple[type, typing.Any]]:
         template_variables = self._config_generate_template_variables_with_types()
 
-        for k, v in self.template_variables.items():
-            template_variables[k] = (v.__class__, v)
-
         template_variables['saved_modules'] = (dict[str, dict[str, typing.Any]],
                                                self.template_variables.get('saved_modules'))
 
@@ -313,6 +312,11 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         """
 
         values = self._generate_template_variables_with_types()
+
+        for k, v in self.template_variables.items():
+            if k not in values:
+                values[k] = (v.__class__, v)
+
         if variable_names is not None and len(variable_names) > 0:
             values = {k: v for k, v in values.items() if k in variable_names}
 

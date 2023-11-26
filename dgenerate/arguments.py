@@ -399,6 +399,36 @@ actions.append(
                         (image_N) in the filename signifying which image in the batch they are."""))
 
 actions.append(
+    parser.add_argument('-un', '--unet', action='store', default=None, metavar="UNET_URI", dest='unet_uri',
+                        help=
+                        f"""Specify a UNet using a URI.
+                        
+                        The "revision" argument specifies the model revision to use for the UNet when loading from 
+                        huggingface repository or blob link, (The git branch / tag, default is "main").
+                        
+                        The "variant" argument specifies the UNet model variant, it is only supported for torch type models
+                        it is not supported for flax. If "variant" is specified when loading from a huggingface repository or 
+                        folder, weights will be loaded from "variant" filename, e.g. "pytorch_model.<variant>.safetensors. 
+                        "variant" defaults to the value of --variant if it is not specified in the URI.
+                        
+                        The "subfolder" argument specifies the UNet model subfolder, if specified when loading from a 
+                        huggingface repository or folder, weights from the specified subfolder.
+                        
+                        The "dtype" argument specifies the UNet model precision, it defaults to the value of -t/--dtype
+                        and should be one of: {_SUPPORTED_DATA_TYPES_PRETTY}.
+                        
+                        If you wish to load a weights file directly from disk, the simplest
+                        way is: --unet "my_unet.safetensors", or with a dtype "my_unet.safetensors;dtype=float16". 
+                        All loading arguments except "dtype" and "revision" are unused in this case and may 
+                        produce an error message if used.
+                        
+                        If you wish to load a specific weight file from a huggingface repository, use the blob link
+                        loading syntax: --unet "https://huggingface.co/UserName/repository-name/blob/main/unet_model.safetensors",
+                        the revision argument may be used with this syntax.
+                        """))
+
+
+actions.append(
     parser.add_argument('-vae', '--vae', action='store', default=None, metavar="VAE_URI", dest='vae_uri',
                         help=
                         f"""Specify a VAE using a URI. When using torch models the URI syntax is: 
@@ -424,10 +454,10 @@ actions.append(
                         The "revision" argument specifies the model revision to use for the VAE when loading from 
                         huggingface repository or blob link, (The git branch / tag, default is "main").
                         
-                        The "variant" argument specifies the VAE model variant, if "variant" is specified when loading 
-                        from a huggingface repository or folder, weights will be loaded from "variant" filename, e.g. 
-                        "pytorch_model.<variant>.safetensors. "variant" defaults to automatic selection and is ignored if 
-                        using flax. "variant" in the case of --vae does not default to the value of --variant to prevent
+                        The "variant" argument specifies the VAE model variant, it is only supported for torch type models
+                        it is not supported for flax. If "variant" is specified when loading from a huggingface repository or 
+                        folder, weights will be loaded from "variant" filename, e.g. "pytorch_model.<variant>.safetensors. 
+                        "variant" in the case of --vae does not default to the value of --variant to prevent
                         failures during common use cases.
                         
                         The "subfolder" argument specifies the VAE model subfolder, if specified when loading from a 
@@ -437,9 +467,8 @@ actions.append(
                         and should be one of: {_SUPPORTED_DATA_TYPES_PRETTY}.
                         
                         If you wish to load a weights file directly from disk, the simplest
-                        way is: --vae "AutoencoderKL;my_vae.safetensors", or with a 
-                        dtype "AutoencoderKL;my_vae.safetensors;dtype=float16", all other loading arguments are unused 
-                        in this case and may produce an error message if used.
+                        way is: --vae "AutoencoderKL;my_vae.safetensors", or with a dtype "AutoencoderKL;my_vae.safetensors;dtype=float16". 
+                        All loading arguments except "dtype" and "revision" are unused in this case and may produce an error message if used.
                         
                         If you wish to load a specific weight file from a huggingface repository, use the blob link
                         loading syntax: --vae "AutoencoderKL;https://huggingface.co/UserName/repository-name/blob/main/vae_model.safetensors",
@@ -1165,6 +1194,20 @@ actions.append(
                              f'dgenerate_submodules.html#dgenerate.pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS]'))
 
 actions.append(
+    parser.add_argument('-umc', '--unet-cache-memory-constraints', action='store', nargs='+',
+                        default=None,
+                        type=_type_expression,
+                        metavar="EXPR",
+                        help=f"""Cache constraint expressions describing when to automatically clear the in memory UNet
+                                cache considering current memory usage, and estimated memory usage of new UNet models that 
+                                are about to enter memory. If any of these constraint expressions are met all UNet 
+                                models cached in memory will be cleared. Example, and default 
+                                value: {' '.join(_textprocessing.quote_spaces(_pipelinewrapper.UNET_CACHE_MEMORY_CONSTRAINTS))}"""
+                             f' For Syntax See: [https://dgenerate.readthedocs.io/en/v{dgenerate.__version__}/'
+                             f'dgenerate_submodules.html#dgenerate.pipelinewrapper.UNET_CACHE_MEMORY_CONSTRAINTS]'))
+
+
+actions.append(
     parser.add_argument('-vmc', '--vae-cache-memory-constraints', action='store', nargs='+',
                         default=None,
                         type=_type_expression,
@@ -1222,6 +1265,11 @@ class DgenerateArguments(dgenerate.RenderLoopConfig):
     pipeline_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
     """
     See: :py:attr:`dgenerate.pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS`
+    """
+
+    unet_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
+    """
+    See: :py:attr:`dgenerate.pipelinewrapper.UNET_CACHE_MEMORY_CONSTRAINTS`
     """
 
     vae_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None

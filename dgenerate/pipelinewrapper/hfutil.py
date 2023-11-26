@@ -401,6 +401,7 @@ def estimate_model_memory_use(repo_id: str,
                               subfolder: typing.Optional[str] = None,
                               weight_name: typing.Optional[str] = None,
                               safety_checker: bool = False,
+                              include_unet: bool = True,
                               include_vae: bool = True,
                               include_text_encoder: bool = True,
                               include_text_encoder_2: bool = True,
@@ -417,12 +418,14 @@ def estimate_model_memory_use(repo_id: str,
 
     This function also works on blob links, paths to folders, or singular files on disk.
 
+
     :param repo_id: huggingface repo_id, or path to folder or file on disk
     :param revision: repo revision, IE: branch
     :param variant: files variant, IE: fp16
     :param subfolder: subfolder in the repo where the models exist
     :param weight_name: look for a specific model file name
     :param safety_checker: include the safety checker model if it exists?
+    :param include_unet: include the unet model if it exists?
     :param include_vae: include the vae model if it exists?
     :param include_text_encoder: include the text encoder model if it exists?
     :param include_text_encoder_2: include the second text encoder model if it exists?
@@ -484,9 +487,10 @@ def estimate_model_memory_use(repo_id: str,
         size_sum = 0
         if 'unet' in directories:
 
-            important_directories = {
-                'unet'
-            }
+            important_directories = set()
+
+            if include_unet:
+                important_directories.add('unet')
 
             if not forced_only and include_vae:
                 important_directories.add('vae')
