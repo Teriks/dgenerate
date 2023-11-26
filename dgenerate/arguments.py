@@ -403,6 +403,8 @@ actions.append(
                         help=
                         f"""Specify a UNet using a URI.
                         
+                        Examples: "unet.safetensors", "huggingface/unet", "huggingface/unet;revision=main". 
+                        
                         The "revision" argument specifies the model revision to use for the UNet when loading from 
                         huggingface repository or blob link, (The git branch / tag, default is "main").
                         

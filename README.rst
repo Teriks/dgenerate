@@ -302,26 +302,24 @@ Help Output
                             Specify one or more ControlNet models using URIs. This should be a
                             huggingface repository slug / blob link, path to model file on disk (for
                             example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model folder
-                            containing model files. Currently all ControlNet models will receive the
-                            same guidance image, in the future this will probably change. Optional
-                            arguments can be provided after the ControlNet model specification, for
-                            torch these include: "scale", "start", "end", "revision", "variant",
-                            "subfolder", and "dtype". For flax: "scale", "revision", "subfolder",
-                            "dtype", "from_torch" (bool) They can be specified as so in any order, they
-                            are not positional: "huggingface/controlnet;scale=1.0;start=0.0;end=1.0;revi
-                            sion=main;variant=fp16;subfolder=repo_subfolder;dtype=float16". The "scale"
-                            argument specifies the scaling factor applied to the ControlNet model, the
-                            default value is 1.0. The "start" (only for --model-type "torch*") argument
-                            specifies at what fraction of the total inference steps to begin applying
-                            the ControlNet, defaults to 0.0, IE: the very beginning. The "end" (only for
+                            containing model files. Optional arguments can be provided after the
+                            ControlNet model specification, for torch these include: "scale", "start",
+                            "end", "revision", "variant", "subfolder", and "dtype". For flax: "scale",
+                            "revision", "subfolder", "dtype", "from_torch" (bool) They can be specified
+                            as so in any order, they are not positional: "huggingface/controlnet;scale=1
+                            .0;start=0.0;end=1.0;revision=main;variant=fp16;subfolder=repo_subfolder;dty
+                            pe=float16". The "scale" argument specifies the scaling factor applied to
+                            the ControlNet model, the default value is 1.0. The "start" (only for
                             --model-type "torch*") argument specifies at what fraction of the total
-                            inference steps to stop applying the ControlNet, defaults to 1.0, IE: the
-                            very end. The "revision" argument specifies the model revision to use for
-                            the ControlNet model when loading from huggingface repository, (The git
-                            branch / tag, default is "main"). The "variant" (only for --model-type
-                            "torch*") argument specifies the ControlNet model variant, if "variant" is
-                            specified when loading from a huggingface repository or folder, weights will
-                            be loaded from "variant" filename, e.g.
+                            inference steps to begin applying the ControlNet, defaults to 0.0, IE: the
+                            very beginning. The "end" (only for --model-type "torch*") argument
+                            specifies at what fraction of the total inference steps to stop applying the
+                            ControlNet, defaults to 1.0, IE: the very end. The "revision" argument
+                            specifies the model revision to use for the ControlNet model when loading
+                            from huggingface repository, (The git branch / tag, default is "main"). The
+                            "variant" (only for --model-type "torch*") argument specifies the ControlNet
+                            model variant, if "variant" is specified when loading from a huggingface
+                            repository or folder, weights will be loaded from "variant" filename, e.g.
                             "pytorch_model.<variant>.safetensors. "variant" defaults to automatic
                             selection and is ignored if using flax. "variant" in the case of --control-
                             nets does not default to the value of --variant to prevent failures during
@@ -772,6 +770,7 @@ Help Output
                             (available * 0.75)" For Syntax See: [https://dgenerate.readthedocs.io/en/v3.
                             0.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.CONTROL_NET_CACHE_ME
                             MORY_CONSTRAINTS]
+
 
 
 Windows Install
