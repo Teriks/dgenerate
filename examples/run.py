@@ -63,7 +63,7 @@ else:
 
 
 def log(*args):
-    print(*args, flush=False)
+    print(*args, flush=True)
 
 for config in configs:
     c = os.path.relpath(config, pwd)
