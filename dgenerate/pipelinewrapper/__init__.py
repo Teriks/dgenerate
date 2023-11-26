@@ -116,6 +116,7 @@ from .uris import \
     InvalidLoRAUriError, \
     InvalidSDXLRefinerUriError, \
     InvalidTextualInversionUriError, \
+    InvalidUNetUriError, \
     InvalidVaeUriError, \
     TorchControlNetUri, \
     TorchVAEUri, \
