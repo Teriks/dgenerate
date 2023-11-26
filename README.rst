@@ -2741,11 +2741,12 @@ The following is a config file example that covers very basic syntax concepts:
     # switches IE lines starting with '-'
 
     stabilityai/stable-diffusion-2-1 --prompts "a martian riding a horse"
-    --output-path unique_output_3
-    --inference-steps 30 \
+    --output-path unique_output_3  # there can be comments at the end of lines
+    --inference-steps 30 \         # this comment is also ignored
 
     # There can be comments or newlines within the continuation
-    # but you must provide \ to indicate that it is going to happen
+    # but you must provide \ on the previous line to indicate that
+    # it is going to happen
 
     --guidance-scales 10
 
