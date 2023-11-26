@@ -25,6 +25,7 @@ import os
 import re
 import sys
 from ast import literal_eval
+
 from setuptools import setup, find_packages
 
 setup_path = os.path.dirname(os.path.abspath(__file__))
@@ -244,8 +245,8 @@ if __name__ != 'setup_as_library':
           version=VERSION,
           packages=find_packages(),
           license='BSD 3-Clause',
-          description='dgenerate is a command line tool and library for generating images '
-                      'and animation sequences using Stable Diffusion and related techniques / models.',
+          description='Batch image generation and manipulation tool supporting Stable Diffusion and related techniques / '
+                      'algorithms, with support for video and animated image processing.',
           long_description=README,
           include_package_data=True,
           install_requires=pyproject_requirements,
