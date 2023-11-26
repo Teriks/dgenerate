@@ -2778,7 +2778,7 @@ The following is a config file example that covers very basic syntax concepts:
 
     \clear_unet_cache
 
-    # Clear specifically user specified VAE models
+    # Clear specifically user specified UNet models
 
     \clear_vae_cache
 
