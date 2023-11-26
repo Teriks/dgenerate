@@ -538,7 +538,10 @@ def pipeline_to_cpu_update_cache_info(
     # Update CPU side memory overhead estimates when
     # a pipeline gets casted back to the CPU
 
-    global _PIPELINE_CACHE_SIZE, _VAE_CACHE_SIZE, _CONTROL_NET_CACHE_SIZE
+    global _PIPELINE_CACHE_SIZE, \
+        _UNET_CACHE_SIZE, \
+        _VAE_CACHE_SIZE, \
+        _CONTROL_NET_CACHE_SIZE
 
     enforce_pipeline_cache_constraints(pipeline.DGENERATE_SIZE_ESTIMATE)
     _PIPELINE_CACHE_SIZE += pipeline.DGENERATE_SIZE_ESTIMATE
@@ -547,6 +550,17 @@ def pipeline_to_cpu_update_cache_info(
                         f'Size = {pipeline.DGENERATE_SIZE_ESTIMATE} Bytes '
                         f'is entering CPU side memory, {_types.fullname(pipeline_cache_size)}() '
                         f'is now {pipeline_cache_size()} Bytes')
+
+    if hasattr(pipeline, 'unet') and pipeline.unet is not None:
+        if hasattr(pipeline.unet, 'DGENERATE_SIZE_ESTIMATE'):
+            # UNET returning to CPU side memory
+            enforce_unet_cache_constraints(pipeline.unet.DGENERATE_SIZE_ESTIMATE)
+            _UNET_CACHE_SIZE += pipeline.unet.DGENERATE_SIZE_ESTIMATE
+
+            _messages.debug_log(f'{_types.class_and_id_string(pipeline.unet)} '
+                                f'Size = {pipeline.unet.DGENERATE_SIZE_ESTIMATE} Bytes '
+                                f'is entering CPU side memory, {_types.fullname(unet_cache_size)}() '
+                                f'is now {unet_cache_size()} Bytes')
 
     if hasattr(pipeline, 'vae') and pipeline.vae is not None:
         if hasattr(pipeline.vae, 'DGENERATE_SIZE_ESTIMATE'):
