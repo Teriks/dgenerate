@@ -569,7 +569,6 @@ class RenderLoopConfig(_types.SetFromMixin):
         def attr_that_end_with(s):
             return (a for a in dir(self) if a.endswith(s) and getattr(self, a))
 
-
         supported_dtypes = _pipelinewrapper.supported_data_type_strings()
         if self.dtype not in _pipelinewrapper.supported_data_type_enums():
             raise RenderLoopConfigError(
