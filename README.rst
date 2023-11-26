@@ -3234,6 +3234,7 @@ as VAEs etc. outside of relying on the caching system.
 
     # Possible Module Names:
 
+    # unet
     # vae
     # text_encoder
     # text_encoder_2
@@ -3243,7 +3244,7 @@ as VAEs etc. outside of relying on the caching system.
     # feature_extractor
     # controlnet
     # scheduler
-    # unet
+
 
     # To use the saved modules in the next invocation use  \use_modules
 
