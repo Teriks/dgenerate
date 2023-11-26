@@ -2657,7 +2657,7 @@ way allows for multiple invocations using different arguments, without needing t
 models multiple times, only the first time, or in the case of models the first time the model is encountered.
 
 When a model is loaded dgenerate caches it in memory with it's creation parameters, which includes among other things
-the pipeline mode (basic, img2img, inpaint), attached control nets, vae's, lora's and textual inversions.
+the pipeline mode (basic, img2img, inpaint), user specified control nets, unet, vae, lora's and textual inversions.
 If another invocation of the model occurs with creation parameters that are identical, it will be loaded out of cache.
 
 Diffusion Pipelines, VAE's, and ControlNet models are cached individually.
