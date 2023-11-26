@@ -3271,7 +3271,8 @@ as VAEs etc. outside of relying on the caching system.
     # you should clear out the saved modules if you no longer need them
     # and your config file is going to continue, or if the dgenerate
     # process is going to be kept alive for some reason such as in
-    # some library usage scenarios
+    # some library usage scenarios, or perhaps if you are using it
+    # like a server that reads from stdin :)
 
     \clear_modules stage_1_modules
 
