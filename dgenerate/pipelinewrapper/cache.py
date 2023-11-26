@@ -553,7 +553,7 @@ def pipeline_to_cpu_update_cache_info(
 
     if hasattr(pipeline, 'unet') and pipeline.unet is not None:
         if hasattr(pipeline.unet, 'DGENERATE_SIZE_ESTIMATE'):
-            # UNET returning to CPU side memory
+            # UNet returning to CPU side memory
             enforce_unet_cache_constraints(pipeline.unet.DGENERATE_SIZE_ESTIMATE)
             _UNET_CACHE_SIZE += pipeline.unet.DGENERATE_SIZE_ESTIMATE
 
