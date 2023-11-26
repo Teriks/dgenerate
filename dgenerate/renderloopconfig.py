@@ -563,11 +563,11 @@ class RenderLoopConfig(_types.SetFromMixin):
             raise RenderLoopConfigError(e)
 
         # Detect logically incorrect config and set certain defaults
-        def attr_that_start_with(s):
-            return (a for a in dir(self) if a.startswith(s) and getattr(self, a))
+        def non_null_attr_that_start_with(s):
+            return (a for a in dir(self) if a.startswith(s) and getattr(self, a) is not None)
 
-        def attr_that_end_with(s):
-            return (a for a in dir(self) if a.endswith(s) and getattr(self, a))
+        def non_null_attr_that_end_with(s):
+            return (a for a in dir(self) if a.endswith(s) and getattr(self, a) is not None)
 
         supported_dtypes = _pipelinewrapper.supported_data_type_strings()
         if self.dtype not in _pipelinewrapper.supported_data_type_enums():
@@ -729,7 +729,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         if not self.image_seeds:
             invalid_self = []
-            for processor_self in attr_that_end_with('image_processors'):
+            for processor_self in non_null_attr_that_end_with('image_processors'):
                 invalid_self.append(
                     f'you cannot specify {a_namer(processor_self)} '
                     f'without {a_namer("image_seeds")}.')
@@ -738,7 +738,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         if not _pipelinewrapper.model_type_is_sdxl(self.model_type):
             invalid_self = []
-            for sdxl_self in attr_that_start_with('sdxl'):
+            for sdxl_self in non_null_attr_that_start_with('sdxl'):
                 invalid_self.append(f'you cannot specify {a_namer(sdxl_self)} '
                                     f'for a non SDXL model type, see: {a_namer("model_type")}.')
             if invalid_self:
@@ -753,7 +753,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
             if not self.sdxl_refiner_uri:
                 invalid_self = []
-                for sdxl_self in attr_that_start_with('sdxl_refiner'):
+                for sdxl_self in non_null_attr_that_start_with('sdxl_refiner'):
                     invalid_self.append(f'you cannot specify {a_namer(sdxl_self)} '
                                         f'without {a_namer("sdxl_refiner_uri")}.')
                 if invalid_self:
@@ -775,11 +775,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'and {a_namer("sdxl_refiner_scheduler")} simultaneously.')
 
         if self.image_seeds:
-            if _pipelinewrapper.model_type_is_flax(self.model_type) and self.control_net_uris:
-                raise RenderLoopConfigError(
-                    f'img2img and inpainting are not supported for flax when '
-                    f'{a_namer("control_net_uris")} is specified.')
-
             no_seed_strength = (_pipelinewrapper.model_type_is_upscaler(self.model_type) or
                                 _pipelinewrapper.model_type_is_pix2pix(self.model_type))
 
@@ -794,20 +789,23 @@ class RenderLoopConfig(_types.SetFromMixin):
                     raise RenderLoopConfigError(
                         f'{a_namer("image_seed_strengths")} cannot be used with pix2pix or upscaler models.')
 
-            self.parsed_image_seeds = []
+            parsed_image_seeds = []
 
             for uri in self.image_seeds:
-                self._check_image_seed_uri(
-                    uri=uri,
-                    attribute_namer=attribute_namer,
-                    image_seed_strengths_default_set=image_seed_strengths_default_set,
-                    upscaler_noise_levels_default_set=upscaler_noise_levels_default_set)
+                parsed_image_seeds.append(
+                    self._check_image_seed_uri(
+                        uri=uri,
+                        attribute_namer=attribute_namer,
+                        image_seed_strengths_default_set=image_seed_strengths_default_set,
+                        upscaler_noise_levels_default_set=upscaler_noise_levels_default_set))
+
+            self.parsed_image_seeds = parsed_image_seeds
 
     def _check_image_seed_uri(self,
                               uri,
                               attribute_namer,
                               image_seed_strengths_default_set,
-                              upscaler_noise_levels_default_set):
+                              upscaler_noise_levels_default_set) -> _mediainput.ImageSeedParseResult:
         """
         :param uri: The URI
         :param attribute_namer: attribute namer
@@ -822,14 +820,17 @@ class RenderLoopConfig(_types.SetFromMixin):
         except _mediainput.ImageSeedError as e:
             raise RenderLoopConfigError(e)
 
-        self.parsed_image_seeds.append(parsed)
-
         mask_part = 'mask=my-mask.png;' if parsed.mask_path else ''
         # ^ Used for nice messages about image seed keyword argument misuse
 
         if self.control_net_uris:
             control_image_paths = parsed.get_control_image_paths()
             num_control_images = len(control_image_paths) if control_image_paths is not None else 0
+
+            if _pipelinewrapper.model_type_is_flax(self.model_type) and not parsed.is_single_spec:
+                raise RenderLoopConfigError(
+                    f'img2img and inpainting are not supported for flax when '
+                    f'{a_namer("control_net_uris")} is specified.')
 
             if not parsed.is_single_spec and parsed.control_path is None:
                 raise RenderLoopConfigError(
@@ -904,6 +905,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'IE: "my-seed.png;{mask_part}floyd=previous-stage-image.png" '
                     f'in your {a_namer("image_seeds")} "{uri}" to disambiguate this '
                     f'usage of Deep Floyd IF super-resolution.')
+
+        return parsed
 
     def calculate_generation_steps(self):
         """
