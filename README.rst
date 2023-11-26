@@ -1597,7 +1597,7 @@ Specifying a VAE
 
 To specify a VAE directly use ``--vae``.
 
-The syntax for ``--vae`` is ``AutoEncoderClass;model=(huggingface repository slug/blob link or file/folder path)``
+The URI syntax for ``--vae`` is ``AutoEncoderClass;model=(huggingface repository slug/blob link or file/folder path)``
 
 Named arguments when loading a VAE are separated by the ``;`` character and are not positional,
 meaning they can be defined in any order.
@@ -1760,9 +1760,12 @@ when ``--batch-size`` is greater than 1.
 Specifying a UNet
 =================
 
-An alternate UNet model can be specified with the ``--unet`` option in a similar fashion to ``--vae``.
+An alternate UNet model can be specified via a URI with the ``--unet`` option, in a
+similar fashion to ``--vae`` and other model arguments that accept URIs.
 
 This is useful in particular for using the latent consistency scheduler.
+
+The first component of the ``--unet`` URI is the model path itself.
 
 .. code-block:: bash
 
