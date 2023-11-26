@@ -2706,7 +2706,8 @@ Available custom jinja2 functions/filters are:
 
 The above can be used as either a function or filter IE: ``{{ "quote_me" | quote }}``
 
-Empty lines and comments starting with ``#`` will be ignored.
+Empty lines and comments starting with ``#`` will be ignored, comments that occur at the end
+of lines will also be ignored.
 
 You can create a multiline continuation using ``\`` to indicate that a line continues,
 if the next line starts with ``-`` it is considered part of a continuation as well even if ``\`` had
