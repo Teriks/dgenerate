@@ -563,6 +563,13 @@ class RenderLoopConfig(_types.SetFromMixin):
             raise RenderLoopConfigError(e)
 
         # Detect logically incorrect config and set certain defaults
+        def attr_that_start_with(s):
+            return (a for a in dir(self) if a.startswith(s) and getattr(self, a))
+
+        def attr_that_end_with(s):
+            return (a for a in dir(self) if a.endswith(s) and getattr(self, a))
+
+
         supported_dtypes = _pipelinewrapper.supported_data_type_strings()
         if self.dtype not in _pipelinewrapper.supported_data_type_enums():
             raise RenderLoopConfigError(
@@ -578,11 +585,31 @@ class RenderLoopConfig(_types.SetFromMixin):
             raise RenderLoopConfigError(
                 f'{a_namer("device")} must be "cuda" (optionally with a device ordinal "cuda:N") or "cpu"')
 
-        def attr_that_start_with(s):
-            return (a for a in dir(self) if a.startswith(s) and getattr(self, a))
+        if _pipelinewrapper.model_type_is_flax(self.model_type):
+            if not _pipelinewrapper.have_jax_flax():
+                raise RenderLoopConfigError(
+                    f'Cannot use {a_namer("model_type")} flax because '
+                    f'flax and jax are not installed.')
 
-        def attr_that_end_with(s):
-            return (a for a in dir(self) if a.endswith(s) and getattr(self, a))
+            if self.lora_uris:
+                raise RenderLoopConfigError(
+                    f'{a_namer("loras")} is not supported for '
+                    f'flax, see: {a_namer("model_type")}.')
+
+            if self.guidance_rescales:
+                raise RenderLoopConfigError(
+                    f'{a_namer("guidance_rescales")} is not supported for '
+                    f'flax, see: {a_namer("model_type")}.')
+
+            if self.textual_inversion_uris:
+                raise RenderLoopConfigError(
+                    f'{a_namer("textual_inversion_uris")} is not supported for '
+                    f'flax, see: {a_namer("model_type")}.')
+
+            if self.vae_tiling or self.vae_slicing:
+                raise RenderLoopConfigError(
+                    f'{a_namer("vae_tiling")} and {a_namer("vae_slicing")} are not '
+                    f'supported for flax, see: {a_namer("model_type")}.')
 
         if self.model_path is None:
             raise RenderLoopConfigError(
@@ -741,32 +768,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(
                     f'{a_namer("vae_tiling")}/{a_namer("vae_slicing")} not supported for '
                     f'non torch model type, see: {a_namer("model_type")}.')
-
-        if _pipelinewrapper.model_type_is_flax(self.model_type):
-            if not _pipelinewrapper.have_jax_flax():
-                raise RenderLoopConfigError(
-                    f'Cannot use {a_namer("model_type")} flax because '
-                    f'flax and jax are not installed.')
-
-            if self.lora_uris:
-                raise RenderLoopConfigError(
-                    f'{a_namer("loras")} is not supported for '
-                    f'flax, see: {a_namer("model_type")}.')
-
-            if self.guidance_rescales:
-                raise RenderLoopConfigError(
-                    f'{a_namer("guidance_rescales")} is not supported for '
-                    f'flax, see: {a_namer("model_type")}.')
-
-            if self.textual_inversion_uris:
-                raise RenderLoopConfigError(
-                    f'{a_namer("textual_inversion_uris")} is not supported for '
-                    f'flax, see: {a_namer("model_type")}.')
-
-            if self.vae_tiling or self.vae_slicing:
-                raise RenderLoopConfigError(
-                    f'{a_namer("vae_tiling")} and {a_namer("vae_slicing")} are not '
-                    f'supported for flax, see: {a_namer("model_type")}.')
 
         if self.scheduler == 'help' and self.sdxl_refiner_scheduler == 'help':
             raise RenderLoopConfigError(
