@@ -1905,9 +1905,13 @@ When preforming inpainting or when using `ControlNets <#specifying-control-nets>
 refiner will automatically operate in edit mode instead of cooperative denoising mode.
 Edit mode can be forced in other situations with the option ``--sdxl-refiner-edit``.
 
-Edit mode means that the refiner model is accepting the output of the main model
-generated at the full number of inference steps specified as an image instead of a latent,
-and acting on it with an image strength (image seed strength) determined by (1.0 - high-noise-fraction).
+Edit mode means that the refiner model is accepting the fully (or mostly) denoised output
+of the main model generated at the full number of inference steps specified, and acting
+on it with an image strength (image seed strength) determined by (1.0 - high-noise-fraction).
+
+The output latent from the main model is renoised with a certain amount of noise determined
+by the strength, a lower number means less noise and less modification of the latent output
+by the main model.
 
 This is similar to what happens when using dgenerate in img2img with a standalone model,
 technically it is just img2img, however refiner models are better at enhancing details

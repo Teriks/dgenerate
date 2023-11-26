@@ -667,7 +667,11 @@ actions.append(
 
 actions.append(
     parser.add_argument('--sdxl-refiner-edit', action='store_true', default=False,
-                        help="""Force the SDXL refiner to operate in edit mode instead of cooperative denoising mode."""))
+                        help="""Force the SDXL refiner to operate in edit mode instead of cooperative denoising mode
+                        as it would normally do for inpainting and ControlNet usage. The main model will preform
+                        the full amount of inference steps requested by --inference-steps. The output of the main model
+                        will be passed to the refiner model and processed with an image seed strength in img2img mode
+                        determined by (1.0 - high-noise-fraction)"""))
 
 # SDXL Main pipeline
 
