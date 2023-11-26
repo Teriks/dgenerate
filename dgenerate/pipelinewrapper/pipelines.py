@@ -299,6 +299,7 @@ class PipelineCreationResult:
 
         Possible Module Names:
 
+            * ``unet``
             * ``vae``
             * ``text_encoder``
             * ``text_encoder_2``
@@ -308,7 +309,7 @@ class PipelineCreationResult:
             * ``feature_extractor``
             * ``controlnet``
             * ``scheduler``
-            * ``unet``
+
 
         If the module is not present or a recognized name, a :py:exc:`ValueError`
         will be thrown describing the module that is not part of the pipeline.
@@ -322,6 +323,7 @@ class PipelineCreationResult:
         module_values = dict()
 
         acceptable_lookups = {
+            'unet',
             'vae',
             'text_encoder',
             'text_encoder_2',
@@ -330,8 +332,7 @@ class PipelineCreationResult:
             'safety_checker',
             'feature_extractor',
             'controlnet',
-            'scheduler',
-            'unet'
+            'scheduler'
         }
 
         for name in names:
