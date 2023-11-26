@@ -2,6 +2,7 @@
 
 wavymulder/collage-diffusion
 --loras latent-consistency/lcm-lora-sdv1-5
+--scheduler LCMScheduler
 --inference-steps 4
 --guidance-scales 1
 --gen-seeds 2
