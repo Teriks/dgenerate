@@ -1767,6 +1767,9 @@ This is useful in particular for using the latent consistency scheduler.
 
 The first component of the ``--unet`` URI is the model path itself.
 
+You can provide paths to a huggingface repo/blob link, folder on disk, or a model file
+on disk such as a .pt, .pth, .bin, .ckpt, or .safetensors file.
+
 .. code-block:: bash
 
     dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
