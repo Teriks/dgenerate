@@ -743,6 +743,11 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'non torch model type, see: {a_namer("model_type")}.')
 
         if _pipelinewrapper.model_type_is_flax(self.model_type):
+            if not _pipelinewrapper.have_jax_flax():
+                raise RenderLoopConfigError(
+                    f'Cannot use {a_namer("model_type")} flax because '
+                    f'flax and jax are not installed.')
+
             if self.lora_uris:
                 raise RenderLoopConfigError(
                     f'{a_namer("loras")} is not supported for '
