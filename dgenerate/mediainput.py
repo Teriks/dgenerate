@@ -992,7 +992,7 @@ def create_web_cache_file(url,
 
         if not _mimetype_is_supported(mime_type):
             raise UnknownMimetypeError(
-                f'Unknown mimetype "{mime_type}" for file "{url}". '
+                f'Unknown mimetype "{mime_type}" from URL "{url}". '
                 f'Expected: {mime_acceptable_desc}')
 
         cursor.execute(
@@ -1070,6 +1070,11 @@ def fetch_media_data_stream(uri: str) -> tuple[str, typing.BinaryIO]:
             get_supported_mimetypes(), conjunction='or')
 
         mime_type = guess_mimetype(uri)
+
+        if mime_type is None:
+            raise UnknownMimetypeError(
+                f'Mimetype could not be determined for file "{uri}". '
+                f'Expected: {mime_acceptable_desc}')
 
         if not mimetype_is_supported(mime_type):
             raise UnknownMimetypeError(
