@@ -1,0 +1,23 @@
+#! dgenerate 3.0.0
+
+# This config forces the refiner into edit mode
+
+stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
+--variant fp16 --dtype float16
+--loras latent-consistency/lcm-lora-sdxl
+--sdxl-refiner-edit
+--sdxl-high-noise-fractions 0.8 # HNF = 0.8
+--sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
+
+--sdxl-refiner-inference-steps 100  \ # This will result in 20 refiner steps in img2img mode, image seed strength of 0.2 (1.0 - HNF)
+
+--sdxl-refiner-scheduler UniPCMultistepScheduler \ # LCMScheduler will not work for the refiner
+                                                   # because the refiner does not use a LoRA
+
+--scheduler LCMScheduler # the main model uses the LCMScheduler
+--inference-steps 8 # The main model will preform this amount of inference steps in full, in edit mode
+--guidance-scales 1
+--gen-seeds 2
+--output-size 1024
+--output-path refiner_edit
+--prompts "close-up photography of old man standing in the rain at night, in a street lit by lamps, leica 35mm summilux"

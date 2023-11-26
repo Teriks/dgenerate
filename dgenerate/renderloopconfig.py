@@ -86,6 +86,11 @@ class RenderLoopConfig(_types.SetFromMixin):
     SDXL Refiner model URI, ``--sdxl-refiner`` argument of dgenerate command line tool.
     """
 
+    sdxl_refiner_edit: bool = False
+    """
+    Force the SDXL refiner to operate in edit mode instead of cooperative denoising mode.
+    """
+
     batch_size: _types.OptionalInteger = None
     """
     Image generation batch size, ``--batch-size`` argument of dgenerate command line tool.

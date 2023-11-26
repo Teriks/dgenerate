@@ -196,6 +196,11 @@ class DiffusionArguments(_types.SetFromMixin):
     Invalid to use with FLAX ModeTypes.
     """
 
+    sdxl_refiner_edit: bool = False
+    """
+    Force the SDXL refiner to operate in edit mode instead of cooperative denoising mode.
+    """
+
     sdxl_second_prompt: _types.OptionalPrompt = None
     """
     Secondary prompt for the SDXL main pipeline when a refiner URI is specified in the 
@@ -925,6 +930,9 @@ class DiffusionPipelineWrapper:
         if self._sdxl_refiner_uri is not None:
             opts.append(('--sdxl-refiner', self._sdxl_refiner_uri))
 
+        if args.sdxl_refiner_edit:
+            opts.append(('--sdxl-refiner-edit',))
+
         if self._lora_uris:
             opts.append(('--loras', self._lora_uris))
 
@@ -1592,8 +1600,10 @@ class DiffusionPipelineWrapper:
             pipeline_args.pop('height')
 
         has_control_net = hasattr(self._pipeline, 'controlnet')
-        sd_edit = has_control_net or isinstance(self._pipeline,
-                                                diffusers.StableDiffusionXLInpaintPipeline)
+
+        sd_edit = user_args.sdxl_refiner_edit or \
+                  has_control_net or \
+                  isinstance(self._pipeline, diffusers.StableDiffusionXLInpaintPipeline)
 
         if has_control_net:
             pipeline_args['controlnet_conditioning_scale'] = \
@@ -1884,6 +1894,11 @@ class DiffusionPipelineWrapper:
             offload = self._control_net_uris and self._model_type == _enums.ModelTypes.TORCH_SDXL
             offload = offload or _enums.model_type_is_floyd(self._model_type)
 
+            # really defeats the point, but there is some sort of memory
+            # management problem unfixed
+            cpu_offload = not offload and (self._scheduler == 'LCMScheduler'
+                                           and self._model_type == _enums.ModelTypes.TORCH_SDXL)
+
             self.recall_main_pipeline = _pipelines.TorchPipelineFactory(
                 pipeline_type=pipeline_type,
                 model_path=self._model_path,
@@ -1901,6 +1916,7 @@ class DiffusionPipelineWrapper:
                 auth_token=self._auth_token,
                 device=self._device,
                 sequential_cpu_offload=offload,
+                model_cpu_offload=cpu_offload,
                 local_files_only=self._local_files_only,
                 extra_modules=self._model_extra_modules,
                 vae_tiling=self._vae_tiling,
