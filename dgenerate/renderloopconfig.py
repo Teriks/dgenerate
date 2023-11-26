@@ -331,6 +331,11 @@ class RenderLoopConfig(_types.SetFromMixin):
     command line tool.
     """
 
+    unet_uri: _types.OptionalUri = None
+    """
+    Optional user specified UNet URI, this corresponds to the ``--unet`` argument of the dgenerate command line tool.
+    """
+
     vae_uri: _types.OptionalUri = None
     """
     Optional user specified VAE URI, this corresponds to the ``--vae`` argument of the dgenerate command line tool.

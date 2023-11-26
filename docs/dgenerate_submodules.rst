@@ -135,8 +135,21 @@ dgenerate.pipelinewrapper module
     If any of these constraints are met, a call to :py:func:`dgenerate.pipelinewrapper.enforce_pipeline_cache_constraints` will call
     :py:func:`dgenerate.pipelinewrapper.clear_pipeline_cache` and force a garbage collection.
 
-    Extra variables include: *cache_size* (the current estimated cache size in bytes),
-    and *pipeline_size* (the estimated size of the new pipeline before it is brought into memory, in bytes)
+    Extra variables include: ``cache_size`` (the current estimated cache size in bytes),
+    and ``pipeline_size`` (the estimated size of the new pipeline before it is brought into memory, in bytes)
+
+.. data:: UNET_CACHE_MEMORY_CONSTRAINTS
+    :annotation: = ['control_net_size > (available * 0.75)']
+
+    Cache constraint expressions for when to clear UNet cache, 
+    syntax provided via :py:func:`dgenerate.memory.memory_constraints`
+    
+    If any of these constraints are met, a call to :py:func:`.enforce_unet_cache_constraints` will call
+    :py:func:`.clear_unet_cache` and force a garbage collection.
+    
+    Extra variables include: ``cache_size`` (the current estimated cache size in bytes), 
+    and ``unet_size`` (the estimated size of the new UNet before it is brought into memory, in bytes)
+
 
 .. data:: VAE_CACHE_MEMORY_CONSTRAINTS
     :annotation: = ['control_net_size > (available * 0.75)']
@@ -147,8 +160,9 @@ dgenerate.pipelinewrapper module
     If any of these constraints are met, a call to :py:func:`dgenerate.pipelinewrapper.enforce_control_net_cache_constraints` will call
     :py:func:`dgenerate.pipelinewrapper.clear_control_net_cache` and force a garbage collection.
 
-    Extra variables include: *cache_size* (the current estimated cache size in bytes),
-    and *control_net_size* (the estimated size of the new ControlNet before it is brought into memory, in bytes)
+    Extra variables include: ``cache_size`` (the current estimated cache size in bytes),
+    and ``control_net_size`` (the estimated size of the new ControlNet before it is brought into memory, in bytes)
+
 
 .. data:: CONTROL_NET_CACHE_MEMORY_CONSTRAINTS
     :annotation: = ['vae_size > (available * 0.75)']
@@ -159,8 +173,8 @@ dgenerate.pipelinewrapper module
     If any of these constraints are met, a call to :py:func:`dgenerate.pipelinewrapper.enforce_vae_cache_constraints` will call
     :py:func:`dgenerate.pipelinewrapper.clear_vae_cache` and force a garbage collection.
 
-    Extra variables include: *cache_size* (the current estimated cache size in bytes),
-    and *vae_size* (the estimated size of the new VAE before it is brought into memory, in bytes)
+    Extra variables include: ``cache_size`` (the current estimated cache size in bytes),
+    and ``vae_size`` (the estimated size of the new VAE before it is brought into memory, in bytes)
 
 
 .. data:: DEFAULT_INFERENCE_STEPS = 30

@@ -108,6 +108,11 @@ class BatchProcessor:
     Live template variables.
     """
 
+    reserved_template_variables: set[str]
+    """
+    These template variables cannot be set with the ``\\set`` directive
+    """
+
     template_functions: dict[str, typing.Callable[[typing.Any], typing.Any]]
     """
     Functions available when templating is occurring.
@@ -132,6 +137,7 @@ class BatchProcessor:
                  name: _types.Name,
                  version: typing.Union[_types.Version, str],
                  template_variables: typing.Optional[dict[str, typing.Any]] = None,
+                 reserved_template_variables: typing.Optional[set[str]] = None,
                  template_functions: typing.Optional[
                      dict[str, typing.Callable[[typing.Any], typing.Any]]] = None,
                  directives: dict[str, typing.Optional[typing.Callable[[list], None]]] = None,
@@ -142,6 +148,7 @@ class BatchProcessor:
         :param version: Version for version check hash bang directive.
         :param template_variables: Live template variables, the initial environment, this dictionary will be
             modified during runtime.
+        :param reserved_template_variables: These template variable names cannot be set with the \\set directive.
         :param template_functions: Functions available to Jinja2
         :param directives: batch processing directive handlers, for: *\\\\directives*. This is a dictionary
             of names to functions which accept a single parameter, a list of directive arguments, and return
@@ -158,6 +165,8 @@ class BatchProcessor:
         self.name = name
 
         self.template_variables = template_variables if template_variables else dict()
+        self.reserved_template_variables = reserved_template_variables if reserved_template_variables else set()
+
         self.template_functions = template_functions if template_functions else dict()
 
         self.directives = directives if directives else dict()
@@ -238,6 +247,10 @@ class BatchProcessor:
             raise BatchProcessError(
                 f'Cannot define template variable "{name}" on line {self.current_line}, '
                 f'as that name is taken by a template function.')
+        if name in self.reserved_template_variables:
+            raise BatchProcessError(
+                f'Cannot define template variable "{name}" on line {self.current_line}, '
+                f'as that name is a reserved variable name.')
         self.template_variables[name] = value
 
     def _directive_handlers(self, line):
@@ -333,21 +346,22 @@ class BatchProcessor:
             top_level_template = False
             continuation = ''
 
-            print(completed_continuation)
-
             if self._directive_handlers(completed_continuation):
                 return
 
             self._lex_and_run_invocation(completed_continuation)
 
-        def remove_tail_comments(line):
+        def remove_tail_comments(string):
             try:
-                comment_start = line.index('#')
-                if comment_start == 0:
-                    return line
-                return line[:comment_start]
+                comment_start = string.index('#')
+                new_value = string[:comment_start]
+                if not new_value.strip():
+                    # do not remove if the comment is all
+                    # that exists on the line
+                    return string
+                return new_value
             except ValueError:
-                return line
+                return string
 
         last_line = None
 
@@ -356,7 +370,7 @@ class BatchProcessor:
             next_line: typing.Optional[str]
             line, next_line = line_and_next
 
-            line_strip = remove_tail_comments(line.lstrip()).rstrip()
+            line_strip = remove_tail_comments(line).strip()
 
             self._current_line = line_idx
 
@@ -374,7 +388,7 @@ class BatchProcessor:
                                              and next_line.lstrip().startswith('-')):
                 continuation += ' ' + line_strip.rstrip(' \\')
             elif top_level_template:
-                line_rstrip = remove_tail_comments(line.rstrip()).rstrip()
+                line_rstrip = remove_tail_comments(line).rstrip()
                 if line_rstrip.endswith('!END'):
                     run_continuation(line_rstrip.removesuffix('!END'))
                     top_level_template = False

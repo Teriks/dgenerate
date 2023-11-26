@@ -585,6 +585,7 @@ class DiffusionPipelineWrapper:
                  variant: _types.OptionalName = None,
                  subfolder: _types.OptionalName = None,
                  dtype: typing.Union[_enums.DataTypes, str] = _enums.DataTypes.AUTO,
+                 unet_uri: _types.OptionalUri = None,
                  vae_uri: _types.OptionalUri = None,
                  vae_tiling: bool = False,
                  vae_slicing: bool = False,
@@ -611,6 +612,7 @@ class DiffusionPipelineWrapper:
         self._variant = variant
         self._dtype = _enums.get_data_type_enum(dtype)
         self._device = device
+        self._unet_uri = unet_uri
         self._vae_uri = vae_uri
         self._vae_tiling = vae_tiling
         self._vae_slicing = vae_slicing
@@ -813,6 +815,13 @@ class DiffusionPipelineWrapper:
         return self._vae_uri
 
     @property
+    def unet_uri(self) -> _types.OptionalUri:
+        """
+        Selected --unet uri for the main model or None
+        """
+        return self._unet_uri
+
+    @property
     def vae_tiling(self) -> bool:
         """
         Current --vae-tiling status
@@ -917,6 +926,9 @@ class DiffusionPipelineWrapper:
 
         if self._subfolder is not None:
             opts.append(('--subfolder', self._subfolder))
+
+        if self._unet_uri is not None:
+            opts.append(('--unet', self._unet_uri))
 
         if self._vae_uri is not None:
             opts.append(('--vae', self._vae_uri))
@@ -1807,6 +1819,7 @@ class DiffusionPipelineWrapper:
                 model_type=self._model_type,
                 revision=self._revision,
                 dtype=self._dtype,
+                unet_uri=self._unet_uri,
                 vae_uri=self._vae_uri,
                 control_net_uris=self._control_net_uris,
                 scheduler=self._scheduler,
@@ -1836,6 +1849,7 @@ class DiffusionPipelineWrapper:
                     revision=self._revision,
                     variant=self._variant,
                     dtype=self._dtype,
+                    unet_uri=self._unet_uri,
                     vae_uri=self._vae_uri,
                     lora_uris=self._lora_uris,
                     control_net_uris=self._control_net_uris,
@@ -1907,6 +1921,7 @@ class DiffusionPipelineWrapper:
                 revision=self._revision,
                 variant=self._variant,
                 dtype=self._dtype,
+                unet_uri=self._unet_uri,
                 vae_uri=self._vae_uri,
                 lora_uris=self._lora_uris,
                 textual_inversion_uris=self._textual_inversion_uris,

@@ -52,8 +52,17 @@ _TORCH_VAE_CACHE = dict()
 _FLAX_VAE_CACHE = dict()
 """Global in memory cache for flax VAE models"""
 
+_TORCH_UNET_CACHE = dict()
+"""Global in memory cache for torch UNet models"""
+
+_FLAX_UNET_CACHE = dict()
+"""Global in memory cache for flax UNet models"""
+
 _VAE_CACHE_SIZE = 0
 """Estimated memory consumption in bytes of all VAE models cached in memory"""
+
+_UNET_CACHE_SIZE = 0
+"""Estimated memory consumption in bytes of all UNet models cached in memory"""
 
 
 def pipeline_cache_size() -> int:
@@ -72,6 +81,15 @@ def vae_cache_size() -> int:
     :return:  memory usage in bytes.
     """
     return _VAE_CACHE_SIZE
+
+
+def unet_cache_size() -> int:
+    """
+    Return the estimated memory usage in bytes of all user specified UNets currently cached in memory.
+
+    :return:  memory usage in bytes.
+    """
+    return _UNET_CACHE_SIZE
 
 
 def control_net_cache_size() -> int:
@@ -100,20 +118,20 @@ syntax provided via :py:func:`dgenerate.memory.memory_constraints`
 If any of these constraints are met, a call to :py:func:`.enforce_pipeline_cache_constraints` will call
 :py:func:`.clear_pipeline_cache` and force a garbage collection.
 
-Extra variables include: *cache_size* (the current estimated cache size in bytes), 
-and *pipeline_size* (the estimated size of the new pipeline before it is brought into memory, in bytes)
+Extra variables include: ``cache_size`` (the current estimated cache size in bytes), 
+and ``pipeline_size`` (the estimated size of the new pipeline before it is brought into memory, in bytes)
 """
 
-CONTROL_NET_CACHE_MEMORY_CONSTRAINTS: list[str] = ['control_net_size > (available * 0.75)']
+UNET_CACHE_MEMORY_CONSTRAINTS: list[str] = ['unet_size > (available * 0.75)']
 """
-Cache constraint expressions for when to clear the ControlNet cache, 
+Cache constraint expressions for when to clear UNet cache, 
 syntax provided via :py:func:`dgenerate.memory.memory_constraints`
 
-If any of these constraints are met, a call to :py:func:`.enforce_control_net_cache_constraints` will call
-:py:func:`.clear_control_net_cache` and force a garbage collection.
+If any of these constraints are met, a call to :py:func:`.enforce_unet_cache_constraints` will call
+:py:func:`.clear_unet_cache` and force a garbage collection.
 
-Extra variables include: *cache_size* (the current estimated cache size in bytes), 
-and *control_net_size* (the estimated size of the new ControlNet before it is brought into memory, in bytes)
+Extra variables include: ``cache_size`` (the current estimated cache size in bytes), 
+and ``unet_size`` (the estimated size of the new UNet before it is brought into memory, in bytes)
 """
 
 VAE_CACHE_MEMORY_CONSTRAINTS: list[str] = ['vae_size > (available * 0.75)']
@@ -124,8 +142,20 @@ syntax provided via :py:func:`dgenerate.memory.memory_constraints`
 If any of these constraints are met, a call to :py:func:`.enforce_vae_cache_constraints` will call
 :py:func:`.clear_vae_cache` and force a garbage collection.
 
-Extra variables include: *cache_size* (the current estimated cache size in bytes), 
-and *vae_size* (the estimated size of the new VAE before it is brought into memory, in bytes)
+Extra variables include: ``cache_size`` (the current estimated cache size in bytes), 
+and ``vae_size`` (the estimated size of the new VAE before it is brought into memory, in bytes)
+"""
+
+CONTROL_NET_CACHE_MEMORY_CONSTRAINTS: list[str] = ['control_net_size > (available * 0.75)']
+"""
+Cache constraint expressions for when to clear the ControlNet cache, 
+syntax provided via :py:func:`dgenerate.memory.memory_constraints`
+
+If any of these constraints are met, a call to :py:func:`.enforce_control_net_cache_constraints` will call
+:py:func:`.clear_control_net_cache` and force a garbage collection.
+
+Extra variables include: ``cache_size`` (the current estimated cache size in bytes), 
+and ``control_net_size`` (the estimated size of the new ControlNet before it is brought into memory, in bytes)
 """
 
 
@@ -190,6 +220,28 @@ def clear_vae_cache(collect=True):
     if collect:
         _messages.debug_log(
             f'{_types.fullname(clear_vae_cache)} calling gc.collect() by request')
+
+        gc.collect()
+
+
+def clear_unet_cache(collect=True):
+    """
+    Clear UNet cache and then garbage collect.
+
+    :param collect: Call :py:func:`gc.collect` ?
+    """
+    global _TORCH_UNET_CACHE, \
+        _FLAX_UNET_CACHE, \
+        _UNET_CACHE_SIZE
+
+    _TORCH_UNET_CACHE.clear()
+    _FLAX_UNET_CACHE.clear()
+
+    _UNET_CACHE_SIZE = 0
+
+    if collect:
+        _messages.debug_log(
+            f'{_types.fullname(clear_unet_cache)} calling gc.collect() by request')
 
         gc.collect()
 
@@ -316,6 +368,37 @@ def enforce_vae_cache_constraints(new_vae_size, collect=True):
     return False
 
 
+def enforce_unet_cache_constraints(new_unet_size, collect=True):
+    """
+    Enforce :py:attr:`dgenerate.pipelinewrapper.UNET_CACHE_MEMORY_CONSTRAINTS` and clear the
+    UNet cache if needed.
+
+    :param new_unet_size: estimated size in bytes of any new unet that is about to enter memory
+    :param collect: Call :py:func:`gc.collect` after a cache clear ?
+    :return: Whether the cache was cleared due to constraint expressions.
+    """
+
+    m_name = __name__
+
+    _messages.debug_log(f'Enforcing {m_name}.UNET_CACHE_MEMORY_CONSTRAINTS =',
+                        UNET_CACHE_MEMORY_CONSTRAINTS,
+                        f'(cache_size = {_memory.bytes_best_human_unit(unet_cache_size())},',
+                        f'unet_size = {_memory.bytes_best_human_unit(new_unet_size)})')
+
+    _messages.debug_log(_memory.memory_use_debug_string())
+
+    if _memory.memory_constraints(UNET_CACHE_MEMORY_CONSTRAINTS,
+                                  extra_vars={'cache_size': unet_cache_size(),
+                                              'unet_size': new_unet_size}):
+        _messages.debug_log(f'{m_name}.UNET_CACHE_MEMORY_CONSTRAINTS '
+                            f'{UNET_CACHE_MEMORY_CONSTRAINTS} met, '
+                            f'calling {_types.fullname(clear_unet_cache)}.')
+
+        clear_unet_cache(collect=collect)
+        return True
+    return False
+
+
 def enforce_control_net_cache_constraints(new_control_net_size, collect=True):
     """
     Enforce :py:attr:`dgenerate.pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS` and clear the
@@ -432,6 +515,22 @@ def vae_create_update_cache_info(vae, estimated_size: int):
 
     # Tag for internal use
     vae.DGENERATE_SIZE_ESTIMATE = estimated_size
+
+
+def unet_create_update_cache_info(unet, estimated_size: int):
+    """
+    Add additional information about the size of a newly created UNet model to the cache.
+
+    Tag the object with an internal tag.
+
+    :param unet: the UNet object
+    :param estimated_size: size bytes
+    """
+    global _UNET_CACHE_SIZE
+    _UNET_CACHE_SIZE += estimated_size
+
+    # Tag for internal use
+    unet.DGENERATE_SIZE_ESTIMATE = estimated_size
 
 
 def pipeline_to_cpu_update_cache_info(

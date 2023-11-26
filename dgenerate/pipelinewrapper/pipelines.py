@@ -146,6 +146,7 @@ def estimate_pipeline_memory_use(
         revision: _types.Name = 'main',
         variant: _types.OptionalName = None,
         subfolder: _types.OptionalPath = None,
+        unet_uri: _types.OptionalUri = None,
         vae_uri: _types.OptionalUri = None,
         lora_uris: _types.OptionalUris = None,
         textual_inversion_uris: _types.OptionalUris = None,
@@ -157,12 +158,14 @@ def estimate_pipeline_memory_use(
     Estimate the CPU side memory use of a model.
 
 
+
     :param pipeline_type: :py:class:`dgenerate.pipelinewrapper.PipelineTypes`
     :param model_path: huggingface slug, blob link, path to folder on disk, path to model file.
     :param model_type: :py:class:`dgenerate.pipelinewrapper.ModelTypes`
     :param revision: huggingface repo revision if using a huggingface slug
     :param variant: model file variant desired, for example "fp16"
     :param subfolder: huggingface repo subfolder if using a huggingface slug
+    :param unet_uri: optional user specified ``--unet`` URI that will be loaded on to the pipeline
     :param vae_uri: optional user specified ``--vae`` URI that will be loaded on to the pipeline
     :param lora_uris: optional user specified ``--loras`` URIs that will be loaded on to the pipeline
     :param textual_inversion_uris: optional user specified ``--textual-inversion`` URIs that will be loaded on to the pipeline
@@ -184,6 +187,7 @@ def estimate_pipeline_memory_use(
         revision=revision,
         variant=variant,
         subfolder=subfolder,
+        include_unet=not unet_uri or 'unet' not in extra_args,
         include_vae=not vae_uri or 'vae' not in extra_args,
         safety_checker=safety_checker and 'safety_checker' not in extra_args,
         include_text_encoder='text_encoder' not in extra_args,
@@ -348,6 +352,11 @@ class TorchPipelineCreationResult(PipelineCreationResult):
         """
         return super().pipeline
 
+    parsed_unet_uri: typing.Optional[_uris.TorchUNetUri]
+    """
+    Parsed UNet URI if one was present
+    """
+
     parsed_vae_uri: typing.Optional[_uris.TorchVAEUri]
     """
     Parsed VAE URI if one was present
@@ -370,12 +379,13 @@ class TorchPipelineCreationResult(PipelineCreationResult):
 
     def __init__(self,
                  pipeline: diffusers.DiffusionPipeline,
+                 parsed_unet_uri: typing.Optional[_uris.TorchUNetUri],
                  parsed_vae_uri: typing.Optional[_uris.TorchVAEUri],
                  parsed_lora_uris: collections.abc.Sequence[_uris.LoRAUri],
                  parsed_textual_inversion_uris: collections.abc.Sequence[_uris.TextualInversionUri],
                  parsed_control_net_uris: collections.abc.Sequence[_uris.TorchControlNetUri]):
         super().__init__(pipeline)
-
+        self.parsed_unet_uri = parsed_unet_uri
         self.parsed_vae_uri = parsed_vae_uri
         self.parsed_lora_uris = parsed_lora_uris
         self.parsed_textual_inversion_uris = parsed_textual_inversion_uris
@@ -399,6 +409,7 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                                     variant: _types.OptionalString = None,
                                     subfolder: _types.OptionalString = None,
                                     dtype: _enums.DataTypes = _enums.DataTypes.AUTO,
+                                    unet_uri: _types.OptionalUri = None,
                                     vae_uri: _types.OptionalUri = None,
                                     lora_uris: _types.OptionalUris = None,
                                     textual_inversion_uris: _types.OptionalUris = None,
@@ -414,6 +425,7 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     """
     Create a :py:class:`diffusers.DiffusionPipeline` in dgenerates in memory cacheing system.
 
+
     :param pipeline_type: py:class:`dgenerate.pipelinewrapper.PipelineTypes` enum value
     :param model_type:  py:class:`dgenerate.pipelinewrapper.ModelTypes` enum value
     :param model_path: huggingface slug, huggingface blob link, path to folder on disk, path to file on disk
@@ -421,6 +433,7 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     :param variant: model weights name variant, for example 'fp16'
     :param subfolder: huggingface repo subfolder if applicable
     :param dtype: Optional py:class:`dgenerate.pipelinewrapper.DataTypes` enum value
+    :param unet_uri: Optional ``--unet`` URI string for specifying a specific UNet
     :param vae_uri: Optional ``--vae`` URI string for specifying a specific VAE
     :param lora_uris: Optional ``--loras`` URI strings for specifying LoRA weights
     :param textual_inversion_uris: Optional ``--textual-inversions`` URI strings for specifying Textual Inversion weights
@@ -465,6 +478,7 @@ class TorchPipelineFactory:
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
                  dtype: _enums.DataTypes = _enums.DataTypes.AUTO,
+                 unet_uri: _types.OptionalUri = None,
                  vae_uri: _types.OptionalUri = None,
                  lora_uris: _types.OptionalUris = None,
                  textual_inversion_uris: _types.OptionalUris = None,
@@ -502,16 +516,18 @@ class TorchPipelineFactory:
 @_memoize(_cache._TORCH_PIPELINE_CACHE,
           exceptions={'local_files_only'},
           hasher=lambda args: _d_memoize.args_cache_key(args,
-                                                        {'vae_uri': _cache.uri_hash_with_parser(
-                                                            _uris.TorchVAEUri.parse),
-                                                            'lora_uris':
-                                                                _cache.uri_list_hash_with_parser(_uris.LoRAUri.parse),
-                                                            'textual_inversion_uris':
-                                                                _cache.uri_list_hash_with_parser(
-                                                                    _uris.TextualInversionUri.parse),
-                                                            'control_net_uris':
-                                                                _cache.uri_list_hash_with_parser(
-                                                                    _uris.TorchControlNetUri.parse)}),
+                                                        {'unet_uri': _cache.uri_hash_with_parser(
+                                                            _uris.TorchUNetUri.parse),
+                                                         'vae_uri': _cache.uri_hash_with_parser(
+                                                             _uris.TorchVAEUri.parse),
+                                                         'lora_uris':
+                                                             _cache.uri_list_hash_with_parser(_uris.LoRAUri.parse),
+                                                         'textual_inversion_uris':
+                                                             _cache.uri_list_hash_with_parser(
+                                                                 _uris.TextualInversionUri.parse),
+                                                         'control_net_uris':
+                                                             _cache.uri_list_hash_with_parser(
+                                                                 _uris.TorchControlNetUri.parse)}),
           on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Torch Pipeline", key, hit.pipeline),
           on_create=lambda key, new: _d_memoize.simple_cache_miss_debug('Torch Pipeline', key, new.pipeline))
 def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
@@ -521,6 +537,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                                      variant: _types.OptionalString = None,
                                      subfolder: _types.OptionalString = None,
                                      dtype: _enums.DataTypes = _enums.DataTypes.AUTO,
+                                     unet_uri: _types.OptionalUri = None,
                                      vae_uri: _types.OptionalUri = None,
                                      lora_uris: _types.OptionalUris = None,
                                      textual_inversion_uris: _types.OptionalUris = None,
@@ -614,6 +631,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
             # Should be impossible
             raise NotImplementedError('Pipeline type not implemented.')
 
+    unet_override = extra_modules and 'unet' in extra_modules
     vae_override = extra_modules and 'vae' in extra_modules
     controlnet_override = extra_modules and 'controlnet' in extra_modules
     safety_checker_override = extra_modules and 'safety_checker' in extra_modules
@@ -626,6 +644,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
         revision=revision,
         variant=variant,
         subfolder=subfolder,
+        unet_uri=unet_uri if not unet_override else None,
         vae_uri=vae_uri if not vae_override else None,
         lora_uris=lora_uris,
         textual_inversion_uris=textual_inversion_uris,
@@ -662,10 +681,11 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     torch_dtype = _enums.get_torch_dtype(dtype)
 
     parsed_control_net_uris = []
+    parsed_unet_uri = None
     parsed_vae_uri = None
 
     if not scheduler_is_help(scheduler):
-        # prevent waiting on VAE load just to get the scheduler
+        # prevent waiting on UNet/VAE load just to get the scheduler
         # help message for the main model
 
         if vae_uri is not None and not vae_override:
@@ -679,6 +699,19 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
 
             _messages.debug_log(lambda:
                                 f'Added Torch VAE: "{vae_uri}" to pipeline: "{pipeline_class.__name__}"')
+
+        if unet_uri is not None and not unet_override:
+            parsed_unet_uri = _uris.TorchUNetUri.parse(unet_uri)
+
+            creation_kwargs['unet'] = \
+                parsed_unet_uri.load(
+                    variant_fallback=variant,
+                    dtype_fallback=dtype,
+                    use_auth_token=auth_token,
+                    local_files_only=local_files_only)
+
+            _messages.debug_log(lambda:
+                                f'Added Torch UNet: "{unet_uri}" to pipeline: "{pipeline_class.__name__}"')
 
     if control_net_uris and not controlnet_override:
         if _enums.model_type_is_pix2pix(model_type):
@@ -796,6 +829,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
 
     return TorchPipelineCreationResult(
         pipeline=pipeline,
+        parsed_unet_uri=parsed_unet_uri,
         parsed_vae_uri=parsed_vae_uri,
         parsed_lora_uris=parsed_lora_uris,
         parsed_textual_inversion_uris=parsed_textual_inversion_uris,
@@ -814,6 +848,16 @@ class FlaxPipelineCreationResult(PipelineCreationResult):
     flax_params: dict[str, typing.Any]
     """
     Flax specific Pipeline params object
+    """
+
+    parsed_unet_uri: typing.Optional[_uris.FlaxUNetUri]
+    """
+    Parsed UNet URI if one was present
+    """
+
+    flax_unet_params: typing.Optional[dict[str, typing.Any]]
+    """
+    Flax specific UNet params object
     """
 
     parsed_vae_uri: typing.Optional[_uris.FlaxVAEUri]
@@ -839,6 +883,8 @@ class FlaxPipelineCreationResult(PipelineCreationResult):
     def __init__(self,
                  pipeline: diffusers.FlaxDiffusionPipeline,
                  flax_params: dict[str, typing.Any],
+                 parsed_unet_uri: typing.Optional[_uris.FlaxUNetUri],
+                 flax_unet_params: typing.Optional[dict[str, typing.Any]],
                  parsed_vae_uri: typing.Optional[_uris.FlaxVAEUri],
                  flax_vae_params: typing.Optional[dict[str, typing.Any]],
                  parsed_control_net_uris: collections.abc.Sequence[_uris.FlaxControlNetUri],
@@ -847,6 +893,8 @@ class FlaxPipelineCreationResult(PipelineCreationResult):
 
         self.flax_params = flax_params
         self.parsed_control_net_uris = parsed_control_net_uris
+        self.parsed_unet_uri = parsed_unet_uri
+        self.flax_unet_params = flax_unet_params
         self.parsed_vae_uri = parsed_vae_uri
         self.flax_vae_params = flax_vae_params
         self.flax_control_net_params = flax_control_net_params
@@ -868,6 +916,7 @@ def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                                    revision: _types.OptionalString = None,
                                    subfolder: _types.OptionalString = None,
                                    dtype: _enums.DataTypes = _enums.DataTypes.AUTO,
+                                   unet_uri: _types.OptionalUri = None,
                                    vae_uri: _types.OptionalUri = None,
                                    control_net_uris: _types.OptionalUris = None,
                                    scheduler: _types.OptionalString = None,
@@ -878,12 +927,14 @@ def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     """
     Create a :py:class:`diffusers.FlaxDiffusionPipeline` in dgenerates in memory cacheing system.
 
+
     :param pipeline_type: py:class:`dgenerate.pipelinewrapper.PipelineTypes` enum value
     :param model_path: huggingface slug, huggingface blob link, path to folder on disk, path to file on disk
     :param model_type: Currently only accepts :py:attr:`dgenerate.pipelinewrapper.ModelTypes.FLAX`
     :param revision: huggingface repo revision (branch)
     :param subfolder: huggingface repo subfolder if applicable
     :param dtype: Optional py:class:`dgenerate.pipelinewrapper.DataTypes` enum value
+    :param unet_uri: Optional Flax specific ``--unet`` URI string for specifying a specific UNet
     :param vae_uri: Optional Flax specific ``--vae`` URI string for specifying a specific VAE
     :param control_net_uris: Optional ``--control-nets`` URI strings for specifying ControlNet models
     :param scheduler: Optional scheduler (sampler) class name, unqualified, or "help" to print supported values
@@ -920,6 +971,7 @@ class FlaxPipelineFactory:
                  revision: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
                  dtype: _enums.DataTypes = _enums.DataTypes.AUTO,
+                 unet_uri: _types.OptionalUri = None,
                  vae_uri: _types.OptionalUri = None,
                  control_net_uris: _types.OptionalUris = None,
                  scheduler: _types.OptionalString = None,
@@ -944,11 +996,12 @@ class FlaxPipelineFactory:
 @_memoize(_cache._FLAX_PIPELINE_CACHE,
           exceptions={'local_files_only'},
           hasher=lambda args: _d_memoize.args_cache_key(args,
-                                                        {'vae_uri': _cache.uri_hash_with_parser(
-                                                            _uris.FlaxVAEUri.parse),
-                                                            'control_net_uris':
-                                                                _cache.uri_list_hash_with_parser(
-                                                                    _uris.FlaxControlNetUri.parse)}),
+                                                        {'unet_uri': _cache.uri_hash_with_parser(
+                                                            _uris.FlaxUNetUri.parse),
+                                                            'vae_uri': _cache.uri_hash_with_parser(
+                                                                _uris.FlaxVAEUri.parse),
+                                                            'control_net_uris': _cache.uri_list_hash_with_parser(
+                                                                _uris.FlaxControlNetUri.parse)}),
           on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Flax Pipeline", key, hit.pipeline),
           on_create=lambda key, new: _d_memoize.simple_cache_miss_debug('Flax Pipeline', key, new.pipeline))
 def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
@@ -957,6 +1010,7 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                                     revision: _types.OptionalString = None,
                                     subfolder: _types.OptionalString = None,
                                     dtype: _enums.DataTypes = _enums.DataTypes.AUTO,
+                                    unet_uri: _types.OptionalUri = None,
                                     vae_uri: _types.OptionalUri = None,
                                     control_net_uris: _types.OptionalUris = None,
                                     scheduler: _types.OptionalString = None,
@@ -990,6 +1044,7 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     else:
         raise NotImplementedError('Pipeline type not implemented.')
 
+    unet_override = extra_modules and 'unet' in extra_modules
     vae_override = extra_modules and 'vae' in extra_modules
     controlnet_override = extra_modules and 'controlnet' in extra_modules
     safety_checker_override = extra_modules and 'safety_checker' in extra_modules
@@ -1002,6 +1057,7 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
         model_path=model_path,
         revision=revision,
         subfolder=subfolder,
+        unet_uri=unet_uri if not unet_override else None,
         vae_uri=vae_uri if not vae_override else None,
         safety_checker=safety_checker and not safety_checker_override,
         auth_token=auth_token,
@@ -1017,6 +1073,7 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
         new_pipeline_size=estimated_memory_usage)
 
     creation_kwargs = {}
+    unet_params = None
     vae_params = None
     control_net_params = None
 
@@ -1024,9 +1081,10 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
 
     parsed_control_net_uris = []
     parsed_flax_vae_uri = None
+    parsed_flax_unet_uri = None
 
     if not scheduler_is_help(scheduler):
-        # prevent waiting on VAE load just get the scheduler
+        # prevent waiting on UNet/VAE load just get the scheduler
         # help message for the main model
 
         if vae_uri is not None and not vae_override:
@@ -1038,6 +1096,16 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                 local_files_only=local_files_only)
             _messages.debug_log(lambda:
                                 f'Added Flax VAE: "{vae_uri}" to pipeline: "{pipeline_class.__name__}"')
+
+        if unet_uri is not None and not unet_override:
+            parsed_flax_unet_uri = _uris.FlaxUNetUri.parse(unet_uri)
+
+            creation_kwargs['unet'], unet_params = parsed_flax_unet_uri.load(
+                dtype_fallback=dtype,
+                use_auth_token=auth_token,
+                local_files_only=local_files_only)
+            _messages.debug_log(lambda:
+                                f'Added Flax UNet: "{unet_uri}" to pipeline: "{pipeline_class.__name__}"')
 
     if control_net_uris and not controlnet_override:
         control_net_uri = control_net_uris[0]
@@ -1087,6 +1155,8 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                                                           use_auth_token=auth_token,
                                                           local_files_only=local_files_only,
                                                           **creation_kwargs)
+    if unet_params is not None:
+        params['unet'] = unet_params
 
     if vae_params is not None:
         params['vae'] = vae_params
@@ -1110,6 +1180,8 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     return FlaxPipelineCreationResult(
         pipeline=pipeline,
         flax_params=params,
+        parsed_unet_uri=parsed_flax_unet_uri,
+        flax_unet_params=unet_params,
         parsed_vae_uri=parsed_flax_vae_uri,
         flax_vae_params=vae_params,
         parsed_control_net_uris=parsed_control_net_uris,
