@@ -3224,7 +3224,8 @@ as VAEs etc. outside of relying on the caching system.
     # You can save modules from the main pipeline used in the last invocation
     # for later reuse using the \save_modules directive, the first argument
     # is a variable name and the rest of the arguments are diffusers pipeline
-    # module names to save to the variable name
+    # module names to save to the variable name, this is an advanced usage
+    # and requires some understanding of the diffusers library to utilize correctly
 
     stabilityai/stable-diffusion-2-1
     --variant fp16
