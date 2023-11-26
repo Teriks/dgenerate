@@ -188,17 +188,19 @@ Help Output
                             images will be written individually with an image number suffix (image_N) in
                             the filename signifying which image in the batch they are.
       -un UNET_URI, --unet UNET_URI
-                            Specify a UNet using a URI. The "revision" argument specifies the model
-                            revision to use for the UNet when loading from huggingface repository or
-                            blob link, (The git branch / tag, default is "main"). The "variant" argument
-                            specifies the UNet model variant, it is only supported for torch type models
-                            it is not supported for flax. If "variant" is specified when loading from a
-                            huggingface repository or folder, weights will be loaded from "variant"
-                            filename, e.g. "pytorch_model.<variant>.safetensors. "variant" defaults to
-                            the value of --variant if it is not specified in the URI. The "subfolder"
-                            argument specifies the UNet model subfolder, if specified when loading from
-                            a huggingface repository or folder, weights from the specified subfolder.
-                            The "dtype" argument specifies the UNet model precision, it defaults to the
+                            Specify a UNet using a URI. Examples: "unet.safetensors",
+                            "huggingface/unet", "huggingface/unet;revision=main". The "revision"
+                            argument specifies the model revision to use for the UNet when loading from
+                            huggingface repository or blob link, (The git branch / tag, default is
+                            "main"). The "variant" argument specifies the UNet model variant, it is only
+                            supported for torch type models it is not supported for flax. If "variant"
+                            is specified when loading from a huggingface repository or folder, weights
+                            will be loaded from "variant" filename, e.g.
+                            "pytorch_model.<variant>.safetensors. "variant" defaults to the value of
+                            --variant if it is not specified in the URI. The "subfolder" argument
+                            specifies the UNet model subfolder, if specified when loading from a
+                            huggingface repository or folder, weights from the specified subfolder. The
+                            "dtype" argument specifies the UNet model precision, it defaults to the
                             value of -t/--dtype and should be one of: auto, float16, or float32. If you
                             wish to load a weights file directly from disk, the simplest way is: --unet
                             "my_unet.safetensors", or with a dtype "my_unet.safetensors;dtype=float16".
@@ -350,29 +352,29 @@ Help Output
                             KDPM2AncestralDiscreteScheduler, DEISMultistepScheduler,
                             UniPCMultistepScheduler, DPMSolverSDEScheduler).
       --sdxl-refiner MODEL_URI
-                            Stable Diffusion XL (torch-sdxl) refiner model path using a URI. This should
-                            be a huggingface repository slug / blob link, path to model file on disk
-                            (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model
-                            folder containing model files. Optional arguments can be provided after the
-                            SDXL refiner model specification, these include: "revision", "variant",
-                            "subfolder", and "dtype". They can be specified as so in any order, they are
-                            not positional: "huggingface/refiner_model_xl;revision=main;variant=fp16;sub
-                            folder=repo_subfolder;dtype=float16". The "revision" argument specifies the
-                            model revision to use for the Textual Inversion model when loading from
-                            huggingface repository, (The git branch / tag, default is "main"). The
-                            "variant" argument specifies the SDXL refiner model variant and defaults to
-                            the value of --variant. When "variant" is specified when loading from a
-                            huggingface repository or folder, weights will be loaded from "variant"
-                            filename, e.g. "pytorch_model.<variant>.safetensors. The "subfolder"
-                            argument specifies the SDXL refiner model subfolder, if specified when
-                            loading from a huggingface repository or folder, weights from the specified
-                            subfolder. The "dtype" argument specifies the SDXL refiner model precision,
-                            it defaults to the value of -t/--dtype and should be one of: auto, float16,
-                            or float32. If you wish to load a weights file directly from disk, the
-                            simplest way is: --sdxl-refiner "my_sdxl_refiner.safetensors" or --sdxl-
-                            refiner "my_sdxl_refiner.safetensors;dtype=float16", all other loading
-                            arguments aside from "dtype" are unused in this case and may produce an
-                            error message if used. If you wish to load a specific weight file from a
+                            Specify a Stable Diffusion XL (torch-sdxl) refiner model path using a URI.
+                            This should be a huggingface repository slug / blob link, path to model file
+                            on disk (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or
+                            model folder containing model files. Optional arguments can be provided
+                            after the SDXL refiner model specification, these include: "revision",
+                            "variant", "subfolder", and "dtype". They can be specified as so in any
+                            order, they are not positional: "huggingface/refiner_model_xl;revision=main;
+                            variant=fp16;subfolder=repo_subfolder;dtype=float16". The "revision"
+                            argument specifies the model revision to use for the Textual Inversion model
+                            when loading from huggingface repository, (The git branch / tag, default is
+                            "main"). The "variant" argument specifies the SDXL refiner model variant and
+                            defaults to the value of --variant. When "variant" is specified when loading
+                            from a huggingface repository or folder, weights will be loaded from
+                            "variant" filename, e.g. "pytorch_model.<variant>.safetensors. The
+                            "subfolder" argument specifies the SDXL refiner model subfolder, if
+                            specified when loading from a huggingface repository or folder, weights from
+                            the specified subfolder. The "dtype" argument specifies the SDXL refiner
+                            model precision, it defaults to the value of -t/--dtype and should be one
+                            of: auto, float16, or float32. If you wish to load a weights file directly
+                            from disk, the simplest way is: --sdxl-refiner "my_sdxl_refiner.safetensors"
+                            or --sdxl-refiner "my_sdxl_refiner.safetensors;dtype=float16", all other
+                            loading arguments aside from "dtype" are unused in this case and may produce
+                            an error message if used. If you wish to load a specific weight file from a
                             huggingface repository, use the blob link loading syntax: --sdxl-refiner
                             "https://huggingface.co/UserName/repository-
                             name/blob/main/refiner_model.safetensors", the revision argument may be used

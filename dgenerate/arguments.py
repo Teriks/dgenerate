@@ -625,7 +625,7 @@ actions.append(
 actions.append(
     parser.add_argument('--sdxl-refiner', action='store', default=None, metavar="MODEL_URI",
                         dest='sdxl_refiner_uri',
-                        help=f"""Stable Diffusion XL (torch-sdxl) refiner model path using a URI. 
+                        help=f"""Specify a Stable Diffusion XL (torch-sdxl) refiner model path using a URI. 
                         This should be a huggingface repository slug / blob link, path to model file 
                         on disk (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model
                         folder containing model files. 
