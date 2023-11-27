@@ -272,6 +272,11 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                 '\\save_modules directive must have at least 2 arguments, '
                 'a variable name and one or more module names.')
 
+        if self.render_loop.pipeline_wrapper is None:
+            raise _batchprocessor.BatchProcessError(
+                '\\save_modules directive cannot be used until a '
+                'dgenerate invocation has occurred.')
+
         creation_result = self.render_loop.pipeline_wrapper.recall_main_pipeline()
         saved_modules[args[0]] = creation_result.get_pipeline_modules(args[1:])
         return 0
