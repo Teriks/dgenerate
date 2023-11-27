@@ -219,9 +219,9 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
     def _import_plugins_directive(self, plugin_paths: collections.abc.Sequence[str]):
         """
-        Imports plugins from within a config, this imports config directive plugins
-        as well as image processor plugins. This has an identical effect to the --plugin-modules argument.
-        You may specify multiple plugin module directories or python files containing plugin implementations.
+        Imports plugins from within a config, this imports config plugins as well as image processor plugins.
+        This has an identical effect to the --plugin-modules argument. You may specify multiple plugin
+        module directories or python files containing plugin implementations.
         """
 
         if len(plugin_paths) == 0:
