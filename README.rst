@@ -2644,10 +2644,13 @@ an in memory cache.
 
 Diffusion Pipelines, user specified UNets, VAEs, and ControlNet models are cached individually.
 
-VAE's and ControlNet model objects can be reused by diffusion pipelines (Main or Refiner models) in
-certain situations and this is taken advantage of by using in memory caching.
+UNets, VAEs and ControlNet model objects can be reused by diffusion pipelines in certain situations when
+specified explicitly and this is taken advantage of by using an in memory cache of these objects.
 
-A number of things affect cache hit or miss upon model invocation, extensive information
+In effect, creation of a pipeline is memoized, as well as the creation of its subcomponents when you
+have specified them explicitly with a URI.
+
+A number of things affect cache hit or miss upon a dgenerate invocation, extensive information
 regarding runtime caching behavior of a pipelines and other models can be observed using
 ``-v/--verbose``
 
