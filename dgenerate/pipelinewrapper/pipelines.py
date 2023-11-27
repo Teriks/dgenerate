@@ -124,9 +124,9 @@ def load_scheduler(pipeline: typing.Union[diffusers.DiffusionPipeline, diffusers
         compatibles = [c for c in compatibles if c.__name__ == 'EulerDiscreteScheduler']
 
     if scheduler_is_help(scheduler_name):
-        help_string = _textprocessing.underline(f'Compatible schedulers for "{model_path}" are:') + '\n\n'
+        help_string = f'Compatible schedulers for "{model_path}" are:' + '\n\n'
         help_string += '\n'.join((" " * 4) + _textprocessing.quote(i.__name__) for i in compatibles) + '\n'
-        _messages.log(help_string, underline=True)
+        _messages.log(help_string)
         raise SchedulerHelpException(help_string)
 
     for i in compatibles:
