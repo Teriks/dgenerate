@@ -128,6 +128,8 @@ def resize_image(img: PIL.Image.Image,
     """
     Resize a :py:class:`PIL.Image.Image` and return a copy.
 
+    This function always returns a copy even if the images size did not change.
+
     The new image dimension will always be forcefully aligned by ``align``,
     specifying ``None`` or ``1`` indicates no alignment.
 

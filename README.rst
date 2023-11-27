@@ -2764,7 +2764,7 @@ The following is a config file example that covers very basic syntax concepts:
 
     \clear_unet_cache
 
-    # Clear specifically user specified UNet models
+    # Clear specifically user specified VAE models
 
     \clear_vae_cache
 
@@ -3208,7 +3208,8 @@ the documentation for the specified directives.
     # where they are necessary as you would do in the top level of
     # a config file. The whole of the template continuation is
     # processed by Jinja, from { to !END, so only one !END is
-    # ever necessary when dealing with nested templates
+    # ever necessary after the external template when dealing
+    # with nested templates
 
     {% for image in last_images %}
         stabilityai/stable-diffusion-2-1

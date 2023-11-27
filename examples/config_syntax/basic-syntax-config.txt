@@ -60,7 +60,7 @@ stabilityai/stable-diffusion-2-1 --prompts "a martian riding a horse"
 
 \clear_unet_cache
 
-# Clear specifically user specified UNet models
+# Clear specifically user specified VAE models
 
 \clear_vae_cache
 
