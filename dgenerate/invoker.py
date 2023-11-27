@@ -142,14 +142,20 @@ def invoke_dgenerate(
 
         config_runner = dgenerate.batchprocess.ConfigRunner(**config_runner_args)
         if template_help_variable_names is not None:
-            _messages.log(
-                config_runner.generate_template_variables_help(
-                    template_help_variable_names,
-                    show_values=False) + '\n', underline=True)
+            try:
+                _messages.log(
+                    config_runner.generate_template_variables_help(
+                        template_help_variable_names,
+                        show_values=False) + '\n', underline=True)
+            except ValueError as e:
+                return rethrow_with_message(e)
         if directives_help_variable_names is not None:
-            _messages.log(
-                config_runner.generate_directives_help(
-                    directives_help_variable_names))
+            try:
+                _messages.log(
+                    config_runner.generate_directives_help(
+                        directives_help_variable_names))
+            except ValueError as e:
+                return rethrow_with_message(e)
         return 0
 
     constraint_lists = []

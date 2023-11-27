@@ -471,7 +471,7 @@ class ConceptUriParser:
         return ConceptUri(concept, args)
 
 
-def oxford_comma(elements: collections.abc.Sequence[str], conjunction: str) -> str:
+def oxford_comma(elements: collections.abc.Collection[str], conjunction: str) -> str:
     """
     Join a sequence of strings with commas, end with an oxford comma and conjunction if needed.
 
