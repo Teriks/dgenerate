@@ -409,7 +409,8 @@ class ConceptUriParser:
 
         :param uri: the string
 
-        :raise ConceptUriParseError:
+        :raise ConceptUriParseError: on parsing errors
+        :raise ValueError: if uri is ``None``
 
         :return: :py:class:`.ConceptPath`
         """
