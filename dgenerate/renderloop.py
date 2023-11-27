@@ -201,32 +201,40 @@ class RenderLoop:
         self.image_generated_callbacks = []
 
     @property
-    def written_images(self) -> collections.abc.Iterator[str]:
+    def written_images(self) -> collections.abc.Iterable[str]:
         """
-        Iterator over image filenames written by the last run
+        Iterable over image filenames written by the last run
         """
-        if self._written_images is None:
-            return
+        loop = self
 
-        pos = self._written_images.tell()
-        self._written_images.seek(0)
-        for line in self._written_images:
-            yield line.rstrip('\n')
-        self._written_images.seek(pos)
+        class Iterable:
+            def __iter__(self):
+                if loop._written_images is None:
+                    return
+
+                loop._written_images.seek(0)
+                for line in loop._written_images:
+                    yield line.rstrip('\n')
+
+        return Iterable()
 
     @property
-    def written_animations(self) -> collections.abc.Iterator[str]:
+    def written_animations(self) -> collections.abc.Iterable[str]:
         """
-        Iterator over animation filenames written by the last run
+        Iterable over animation filenames written by the last run
         """
-        if self._written_animations is None:
-            return
+        loop = self
 
-        pos = self._written_animations.tell()
-        self._written_animations.seek(0)
-        for line in self._written_animations:
-            yield line.rstrip('\n')
-        self._written_animations.seek(pos)
+        class Iterable:
+            def __iter__(self):
+                if loop._written_animations is None:
+                    return
+
+                loop._written_animations.seek(0)
+                for line in loop._written_animations:
+                    yield line.rstrip('\n')
+
+        return Iterable()
 
     @property
     def generation_step(self):

@@ -392,8 +392,9 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         directives.update({
             'set': 'Sets a template variable, accepts two arguments, the variable name and the value. '
                    'Attempting to set a reserved template variable such as those pre-defined by dgenerate '
-                   'will result in an error.',
-            'print': 'Prints all arguments to stdout.'
+                   'will result in an error. The second argument is accepted as a raw value, it is not shell '
+                   'parsed in any way, only striped of leading and trailing whitespace.',
+            'print': 'Prints all content to the right to stdout, no shell parsing of the argument occurs.'
         })
 
         if len(directive_names) == 0:
