@@ -213,7 +213,7 @@ class BatchProcessor:
                 jinja_env.from_string(string).
                 render(**self.template_variables))
         except jinja2.TemplateSyntaxError as e:
-            raise BatchProcessError(f'Template Syntax Error: {e}')
+            raise BatchProcessError(f'Template Syntax Error: {str(e).strip()}')
 
     def _look_for_version_mismatch(self, line_idx, line):
         versioning = re.match(r'#!\s+' + self.name + r'\s+([0-9]+\.[0-9]+\.[0-9]+)', line)
@@ -414,7 +414,7 @@ class BatchProcessor:
         try:
             parsed, _ = _arguments.parse_known_args(self.injected_args, log_error=False)
         except _arguments.DgenerateUsageError as e:
-            raise BatchProcessError(f'Error parsing injected arguments: {e}')
+            raise BatchProcessError(f'Error parsing injected arguments: {str(e).strip()}')
 
         directive_exceptions_last = self._directive_exceptions
         if parsed.verbose:
@@ -424,7 +424,7 @@ class BatchProcessor:
         try:
             self._run_file(stream)
         except BatchProcessError as e:
-            raise BatchProcessError(f'Error on line {self.current_line}: {e}')
+            raise BatchProcessError(f'Error on line {self.current_line}: {str(e).strip()}')
         finally:
             _messages.pop_level()
             self._directive_exceptions = directive_exceptions_last

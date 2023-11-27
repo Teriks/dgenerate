@@ -69,31 +69,49 @@ def invoke_dgenerate(
     if render_loop is None:
         render_loop = _renderloop.RenderLoop()
 
-    plugin_module_paths, plugin_module_paths_rest = _arguments.parse_plugin_modules(args)
+    def rethrow_with_message(e):
+        if log_error:
+            _messages.log(f'dgenerate: error: {str(e).strip()}',
+                          level=_messages.ERROR)
+        if throw:
+            raise _arguments.DgenerateUsageError(e)
+        return 1
+
+    try:
+        plugin_module_paths, plugin_module_paths_rest = _arguments.parse_plugin_modules(args)
+    except _arguments.DgenerateUsageError as e:
+        return rethrow_with_message(e)
+
     image_processor_help, _ = _arguments.parse_image_processor_help(args)
 
     if image_processor_help is not None:
         try:
             return _imageprocessors.image_processor_help(
                 names=image_processor_help,
-                plugin_module_paths=plugin_module_paths)
-        except _imageprocessors.ImageProcessorHelpUsageError as e:
-            if throw:
-                raise _arguments.DgenerateUsageError(e)
-            return 1
+                plugin_module_paths=plugin_module_paths,
+                log_error=False,
+                throw=True)
+        except (_imageprocessors.ImageProcessorHelpUsageError,
+                _imageprocessors.ImageProcessorNotFoundError) as e:
+            return rethrow_with_message(e)
 
     sub_command_help, _ = _arguments.parse_sub_command_help(args)
     if sub_command_help is not None:
         try:
             return _subcommands.sub_command_help(
                 names=sub_command_help,
-                plugin_module_paths=plugin_module_paths)
-        except _subcommands.SubCommandHelpUsageError as e:
-            if throw:
-                raise _arguments.DgenerateUsageError(e)
-            return 1
+                plugin_module_paths=plugin_module_paths,
+                log_error=False,
+                throw=True)
+        except (_subcommands.SubCommandHelpUsageError,
+                _subcommands.SubCommandNotFoundError) as e:
+            return rethrow_with_message(e)
 
-    sub_command_name, sub_command_name_rest = _arguments.parse_sub_command(plugin_module_paths_rest)
+    try:
+        sub_command_name, sub_command_name_rest = _arguments.parse_sub_command(plugin_module_paths_rest)
+    except _arguments.DgenerateUsageError as e:
+        return rethrow_with_message(e)
+
     if sub_command_name is not None:
         verbose, verbose_rest = _arguments.parse_verbose(sub_command_name_rest)
 
@@ -107,21 +125,31 @@ def invoke_dgenerate(
                                                         args=verbose_rest)()
         except (_subcommands.SubCommandNotFoundError,
                 _subcommands.SubCommandArgumentError) as e:
-            if log_error:
-                _messages.log(f'dgenerate: error: {e}', level=_messages.ERROR)
-            if throw:
-                raise _arguments.DgenerateUsageError(e)
-            return 1
+            return rethrow_with_message(e)
         finally:
             _messages.pop_level()
 
     template_help_variable_names, _ = _arguments.parse_templates_help(args)
-    if template_help_variable_names is not None:
+    directives_help_variable_names, _ = _arguments.parse_directives_help(args)
+
+    if template_help_variable_names is not None \
+            or directives_help_variable_names is not None:
         import dgenerate.batchprocess
-        _messages.log(
-            dgenerate.batchprocess.ConfigRunner().generate_template_variables_help(
-                template_help_variable_names,
-                show_values=False) + '\n', underline=True)
+
+        config_runner_args = dict()
+        if plugin_module_paths:
+            config_runner_args['injected_args'] = ['--plugin-modules'] + plugin_module_paths
+
+        config_runner = dgenerate.batchprocess.ConfigRunner(**config_runner_args)
+        if template_help_variable_names is not None:
+            _messages.log(
+                config_runner.generate_template_variables_help(
+                    template_help_variable_names,
+                    show_values=False) + '\n', underline=True)
+        if directives_help_variable_names is not None:
+            _messages.log(
+                config_runner.generate_directives_help(
+                    directives_help_variable_names))
         return 0
 
     constraint_lists = []
@@ -180,13 +208,7 @@ def invoke_dgenerate(
             _imageprocessors.ImageProcessorNotFoundError,
             NotImplementedError,
             EnvironmentError) as e:
-
-        if log_error:
-            _messages.log(f'dgenerate: error: {e}', level=_messages.ERROR)
-
-        if throw:
-            raise e
-        return 1
+        return rethrow_with_message(e)
     finally:
         _messages.pop_level()
 

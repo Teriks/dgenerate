@@ -15,6 +15,7 @@ args = sys.argv[1:]
 _skip_animations = False
 _skip_library = False
 _short_animations = False
+_skip_flax = False
 
 if '--subprocess-only' in args:
     _batchprocess = None
@@ -27,6 +28,10 @@ if '--skip-animations' in args:
 if '--skip-library' in args:
     _skip_library = True
     args.remove('--skip-library')
+
+if '--skip-flax' in args:
+    _skip_flax = True
+    args.remove('--skip-flax')
 
 if '--short-animations' in args:
     _skip_animations = False
@@ -65,6 +70,7 @@ else:
 def log(*args):
     print(*args, flush=True)
 
+
 for config in configs:
     c = os.path.relpath(config, pwd)
 
@@ -75,6 +81,9 @@ for config in configs:
     if 'flax' in c:
         if os.name == 'nt':
             log(f'SKIPPING FLAX ON WINDOWS: {config}')
+            continue
+        if _skip_flax:
+            log(f'SKIPPING FLAX: {config}')
             continue
 
     extra_args = []

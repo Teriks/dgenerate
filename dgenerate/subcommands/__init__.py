@@ -36,13 +36,18 @@ class SubCommandHelpUsageError(Exception):
     pass
 
 
-def sub_command_help(names: _types.Names, plugin_module_paths: _types.Paths):
+def sub_command_help(names: _types.Names,
+                     plugin_module_paths: _types.Paths,
+                     throw=False,
+                     log_error=True):
     """
     Implements ``--sub-command-help`` command line option
 
 
-    :param names: arguments (processor names, or empty list)
+    :param names: arguments (sub-command names, or empty list)
     :param plugin_module_paths: plugin module paths to search
+    :param throw: throw on error? or simply print to stderr and return a return code.
+    :param log_error: log errors to stderr?
 
     :raises SubCommandHelpUsageError:
     :raises SubCommandNotFoundError:
@@ -55,7 +60,13 @@ def sub_command_help(names: _types.Names, plugin_module_paths: _types.Paths):
     try:
         module_loader.load_plugin_modules(plugin_module_paths)
     except _plugin.ModuleFileNotFoundError as e:
-        raise SubCommandHelpUsageError(e)
+        if log_error:
+            _messages.log(
+                f'Plugin module could not be found: {str(e).strip()}',
+                level=_messages.ERROR)
+        if throw:
+            raise SubCommandHelpUsageError(e)
+        return 1
 
     if len(names) == 0:
         available = ('\n' + ' ' * 4).join(_textprocessing.quote(name) for name in module_loader.get_all_names())
@@ -68,8 +79,11 @@ def sub_command_help(names: _types.Names, plugin_module_paths: _types.Paths):
         try:
             help_strs.append(module_loader.get_help(name))
         except SubCommandNotFoundError:
-            _messages.log(f'A sub-command with the name of "{name}" could not be found!',
-                          level=_messages.ERROR)
+            if log_error:
+                _messages.log(f'An sub-command with the name of "{name}" could not be found.',
+                              level=_messages.ERROR)
+            if throw:
+                raise
             return 1
 
     for help_str in help_strs:

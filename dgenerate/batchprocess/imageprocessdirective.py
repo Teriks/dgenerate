@@ -35,12 +35,23 @@ class ImageProcessDirective(_configrunnerplugin.ConfigRunnerPlugin):
         self.register_directive('image_process', self._directive)
 
     def _directive(self, args: collections.abc.Sequence[str]) -> int:
+        """
+        Allows access to "dgenerate --sub-command image-process" through a config directive.
+
+        See: "dgenerate --sub-command image-process --help" for recognized arguments.
+        """
 
         render_loop = _imageprocess.ImageProcessRenderLoop(
             image_processor_loader=self.render_loop.image_processor_loader)
 
+        render_loop.message_header = '\\image_process'
+
         try:
-            return_code = _imageprocess.invoke_image_process(args, render_loop=render_loop, help_raises=True)
+            return_code = _imageprocess.invoke_image_process(
+                args,
+                render_loop=render_loop,
+                help_raises=True,
+                help_name='\\image_process')
         except _imageprocess.ImageProcessHelpException:
             # --help
             return 0

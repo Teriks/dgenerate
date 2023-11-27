@@ -47,13 +47,20 @@ class ImageProcessorHelpUsageError(Exception):
     pass
 
 
-def image_processor_help(names: _types.Names, plugin_module_paths: _types.Paths):
+def image_processor_help(names: _types.Names,
+                         plugin_module_paths: _types.Paths,
+                         throw=False,
+                         log_error=True):
     """
     Implements ``--image-processor-help`` command line option
 
 
+
+
     :param names: arguments (processor names, or empty list)
     :param plugin_module_paths: plugin module paths to search
+    :param throw: throw on error? or simply print to stderr and return a return code.
+    :param log_error: log errors to stderr?
 
     :raises ImageProcessorHelpUsageError:
     :raises ImageProcessorNotFoundError:
@@ -66,7 +73,13 @@ def image_processor_help(names: _types.Names, plugin_module_paths: _types.Paths)
     try:
         module_loader.load_plugin_modules(plugin_module_paths)
     except _plugin.ModuleFileNotFoundError as e:
-        raise ImageProcessorHelpUsageError(e)
+        if log_error:
+            _messages.log(
+                f'Plugin module could not be found: {str(e).strip()}',
+                level=_messages.ERROR)
+        if throw:
+            raise ImageProcessorHelpUsageError(e)
+        return 1
 
     if len(names) == 0:
         available = ('\n' + ' ' * 4).join(_textprocessing.quote(name) for name in module_loader.get_all_names())
@@ -79,8 +92,11 @@ def image_processor_help(names: _types.Names, plugin_module_paths: _types.Paths)
         try:
             help_strs.append(module_loader.get_help(name))
         except ImageProcessorNotFoundError:
-            _messages.log(f'An image processor with the name of "{name}" could not be found!',
-                          level=_messages.ERROR)
+            if log_error:
+                _messages.log(f'An image processor with the name of "{name}" could not be found.',
+                              level=_messages.ERROR)
+            if throw:
+                raise
             return 1
 
     for help_str in help_strs:

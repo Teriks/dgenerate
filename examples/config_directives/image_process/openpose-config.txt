@@ -1,0 +1,16 @@
+#! dgenerate 3.0.0
+
+# Get arguments help and continue, this does not cause dgenerate to exit
+
+\image_process --help
+
+
+# run openpose detection on the gif
+# generate a gif without rendering intermediate frames
+# do not align the resolution to 8 pixels
+
+\image_process "../../media/rickroll-roll.gif"
+-o rickroll-openpose.gif
+--processors openpose
+--align 1
+--no-frames

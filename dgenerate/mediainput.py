@@ -685,7 +685,7 @@ def _parse_image_seed_uri_legacy(uri: str) -> ImageSeedParseResult:
         parts = _textprocessing.tokenized_split(uri, ';', remove_quotes=True)
         parts_iter = iter(parts)
     except _textprocessing.TokenizedSplitSyntaxError as e:
-        raise ImageSeedError(f'Parsing error in image seed URI "{uri}": {e}')
+        raise ImageSeedError(f'Parsing error in image seed URI "{uri}": {str(e).strip()}')
 
     result = ImageSeedParseResult()
 
@@ -700,7 +700,7 @@ def _parse_image_seed_uri_legacy(uri: str) -> ImageSeedParseResult:
                 escapes_in_quoted=True)
 
         except _textprocessing.TokenizedSplitSyntaxError as e:
-            raise ImageSeedError(f'Parsing error in image seed URI "{uri}": {e}')
+            raise ImageSeedError(f'Parsing error in image seed URI "{uri}": {str(e).strip()}')
     else:
         first_parts = [first]
 
@@ -756,7 +756,7 @@ def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
     try:
         parts = _textprocessing.tokenized_split(uri, ';')
     except _textprocessing.TokenizedSplitSyntaxError as e:
-        raise ImageSeedError(f'Image seed URI parsing error: {e}')
+        raise ImageSeedError(f'Image seed URI parsing error: {str(e).strip()}')
 
     non_legacy: bool = len(parts) > 3
 
@@ -938,7 +938,7 @@ def _wipe_web_cache_directory():
                     os.unlink(file_path)
             except Exception as e:
                 _messages.log(
-                    f'Failed to delete cached web file "{file_path}", reason: {e}',
+                    f'Failed to delete cached web file "{file_path}", reason: {str(e).strip()}',
                     level=_messages.ERROR)
 
 

@@ -61,7 +61,7 @@ def memory_constraint_syntax_check(expression: str):
                     'Only expressions returning boolean values accepted.')
     except SyntaxError as e:
         raise MemoryConstraintSyntaxError(
-            f'Syntax error in expression "{expression}": {e}')
+            f'Syntax error in expression "{expression}": {str(e).strip()}')
 
 
 def memory_constraints(expressions: collections.abc.Iterable[str],

@@ -53,7 +53,7 @@ class ImageProcessHelpException(Exception):
     pass
 
 
-class _ImageProcessUnknownArgumentException(Exception):
+class _ImageProcessUnknownArgumentError(Exception):
     pass
 
 
@@ -71,7 +71,7 @@ def _create_arg_parser(prog, description):
         if status == 0:
             # help
             raise ImageProcessHelpException('image-process --help used.')
-        raise _ImageProcessUnknownArgumentException(message)
+        raise _ImageProcessUnknownArgumentError(message)
 
     parser.exit = _exit
 
@@ -342,7 +342,9 @@ def config_attribute_name_to_option(name):
 def parse_args(args: typing.Optional[collections.abc.Sequence[str]] = None,
                help_name='image-process',
                help_desc=None,
-               help_raises=False) -> ImageProcessArgs:
+               throw: bool = True,
+               log_error: bool = True,
+               help_raises: bool = False) -> typing.Optional[ImageProcessArgs]:
     """
     Parse and validate the arguments used for ``image-process``, which is a dgenerate
     sub-command as well as config directive.
@@ -350,8 +352,11 @@ def parse_args(args: typing.Optional[collections.abc.Sequence[str]] = None,
     :param args: command line arguments
     :param help_name: program name displayed in ``--help`` output.
     :param help_desc: program description displayed in ``--help`` output.
+    :param throw: throw :py:exc:`.ImageProcessUsageError` on error? defaults to True
+    :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
     :param help_raises: ``--help`` raises :py:exc:`.ImageProcessHelpException` ?
 
+    :raises ImageProcessUsageError:
     :raises ImageProcessHelpException:
 
     :return: parsed arguments object
@@ -361,16 +366,25 @@ def parse_args(args: typing.Optional[collections.abc.Sequence[str]] = None,
     parsed = None
     try:
         parsed = typing.cast(ImageProcessArgs, parser.parse_args(args, namespace=ImageProcessArgs()))
+        parsed.check()
     except ImageProcessHelpException as e:
         if help_raises:
             raise e
+    except (ImageProcessConfigError,
+            argparse.ArgumentTypeError,
+            argparse.ArgumentError,
+            _ImageProcessUnknownArgumentError) as e:
+        if log_error:
+            _messages.log(f'{help_name}: error: {str(e).strip()}', level=_messages.ERROR)
+        if throw:
+            raise ImageProcessUsageError(e)
+        return None
 
     if parsed is not None:
         try:
             parsed.check(config_attribute_name_to_option)
         except ImageProcessConfigError as e:
             raise ImageProcessUsageError(e)
-
     return parsed
 
 
@@ -448,7 +462,7 @@ class ImageProcessRenderLoop:
             pathlib.Path(out_directory).mkdir(
                 parents=True, exist_ok=True)
 
-        _messages.log(fr'{self.message_header} Processing "{file}"',
+        _messages.log(fr'{self.message_header}: Processing "{file}"',
                       underline=True)
 
         if reader.total_frames == 1:
@@ -461,7 +475,7 @@ class ImageProcessRenderLoop:
             next(reader)[0].save(out_filename)
             self._record_save_image(out_filename)
 
-            _messages.log(fr'{self.message_header} Wrote Image "{out_filename}"',
+            _messages.log(fr'{self.message_header}: Wrote Image "{out_filename}"',
                           underline=True)
         else:
             out_filename_base, ext = os.path.splitext(out_filename)
@@ -496,7 +510,7 @@ class ImageProcessRenderLoop:
                     self._last_frame_time = time.time()
 
                     _messages.log(
-                        fr'{self.message_header} Processing Frame {frame_idx + 1}/{reader.total_frames}, Completion ETA: {eta}')
+                        fr'{self.message_header}: Processing Frame {frame_idx + 1}/{reader.total_frames}, Completion ETA: {eta}')
 
                     # Processing happens here
                     frame = next(reader)[0]
@@ -517,12 +531,12 @@ class ImageProcessRenderLoop:
                         frame.save(frame_name)
                         self._record_save_image(frame_name)
 
-                        _messages.log(fr'{self.message_header} Wrote Frame "{frame_name}"')
+                        _messages.log(fr'{self.message_header}: Wrote Frame "{frame_name}"')
 
                     frame_idx += 1
 
                 self._record_save_animation(out_filename)
-                _messages.log(fr'{self.message_header} Wrote File "{out_filename}"',
+                _messages.log(fr'{self.message_header}: Wrote File "{out_anim_name}"',
                               underline=True)
 
     def _process_file(self, file, out_filename):
@@ -613,7 +627,12 @@ def invoke_image_process(
 
     try:
         try:
-            parsed = parse_args(args, help_name=help_name, help_desc=help_desc, help_raises=True)
+            parsed = parse_args(args,
+                                help_name=help_name,
+                                help_desc=help_desc,
+                                help_raises=True,
+                                log_error=False)
+
         except ImageProcessHelpException:
             # --help
             if help_raises:
@@ -633,7 +652,7 @@ def invoke_image_process(
             NotImplementedError,
             EnvironmentError) as e:
         if log_error:
-            _messages.log(f'{help_name}: error: {e}', level=_messages.ERROR)
+            _messages.log(f'{help_name}: error: {str(e).strip()}', level=_messages.ERROR)
         if throw:
             raise
         return 1

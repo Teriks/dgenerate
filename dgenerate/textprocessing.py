@@ -425,7 +425,8 @@ class ConceptUriParser:
         try:
             parts = tokenized_split(uri, ';')
         except TokenizedSplitSyntaxError as e:
-            raise ConceptUriParseError(f'Error parsing {self.concept_name} URI "{uri}": {e}')
+            raise ConceptUriParseError(
+                f'Error parsing {self.concept_name} URI "{uri}": {str(e).strip()}')
 
         parts = iter(parts)
         concept = parts.__next__()
@@ -464,8 +465,9 @@ class ConceptUriParser:
                     args[name] = unquote(vals[1])
 
             except (TokenizedSplitSyntaxError, UnquoteSyntaxError) as e:
-                raise ConceptUriParseError(f'Syntax error parsing argument "{name}" for '
-                                            f'{self.concept_name} concept "{concept}": {e}')
+                raise ConceptUriParseError(
+                    f'Syntax error parsing argument "{name}" for '
+                    f'{self.concept_name} concept "{concept}": {str(e).strip()}')
         return ConceptUri(concept, args)
 
 
