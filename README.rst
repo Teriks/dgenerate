@@ -2647,8 +2647,8 @@ Diffusion Pipelines, user specified UNets, VAEs, and ControlNet models are cache
 UNets, VAEs and ControlNet model objects can be reused by diffusion pipelines in certain situations when
 specified explicitly and this is taken advantage of by using an in memory cache of these objects.
 
-In effect, creation of a pipeline is memoized, as well as the creation of its subcomponents when you
-have specified them explicitly with a URI.
+In effect, creation of a pipeline is memoized, as well as the creation of any pipeline subcomponents
+when you have specified them explicitly with a URI.
 
 A number of things affect cache hit or miss upon a dgenerate invocation, extensive information
 regarding runtime caching behavior of a pipelines and other models can be observed using
