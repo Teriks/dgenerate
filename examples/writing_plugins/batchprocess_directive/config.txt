@@ -1,8 +1,5 @@
 #! dgenerate 3.0.0
 
-\templates_help
-
-
 # the import_plugins directive can receive multiple plugin paths as arguments
 
 \import_plugins demo_plugin
