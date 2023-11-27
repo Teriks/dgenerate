@@ -277,7 +277,7 @@ class FlaxControlNetUri:
                 dtype=dtype,
                 from_torch=from_torch)
 
-        except _textprocessing.ConceptPathParseError as e:
+        except _textprocessing.ConceptUriParseError as e:
             raise InvalidControlNetUriError(e)
 
 
@@ -489,7 +489,7 @@ class TorchControlNetUri:
                 start=start,
                 end=end)
 
-        except _textprocessing.ConceptPathParseError as e:
+        except _textprocessing.ConceptUriParseError as e:
             raise InvalidControlNetUriError(e)
 
 
@@ -563,7 +563,7 @@ class SDXLRefinerUri:
                 variant=r.args.get('variant', None),
                 dtype=dtype,
                 subfolder=r.args.get('subfolder', None))
-        except _textprocessing.ConceptPathParseError as e:
+        except _textprocessing.ConceptUriParseError as e:
             raise InvalidSDXLRefinerUriError(e)
 
 
@@ -763,7 +763,7 @@ class TorchVAEUri:
                                variant=r.args.get('variant', None),
                                dtype=dtype,
                                subfolder=r.args.get('subfolder', None))
-        except _textprocessing.ConceptPathParseError as e:
+        except _textprocessing.ConceptUriParseError as e:
             raise InvalidVaeUriError(e)
 
 
@@ -929,7 +929,7 @@ class TorchUNetUri:
                 variant=r.args.get('variant', None),
                 dtype=dtype,
                 subfolder=r.args.get('subfolder', None))
-        except _textprocessing.ConceptPathParseError as e:
+        except _textprocessing.ConceptUriParseError as e:
             raise InvalidUNetUriError(e)
 
 
@@ -1105,7 +1105,7 @@ class FlaxVAEUri:
                               revision=r.args.get('revision', None),
                               dtype=_enums.get_flax_dtype(dtype),
                               subfolder=r.args.get('subfolder', None))
-        except _textprocessing.ConceptPathParseError as e:
+        except _textprocessing.ConceptUriParseError as e:
             raise InvalidVaeUriError(e)
 
 
@@ -1258,7 +1258,7 @@ class FlaxUNetUri:
                 revision=r.args.get('revision', None),
                 dtype=_enums.get_flax_dtype(dtype),
                 subfolder=r.args.get('subfolder', None))
-        except _textprocessing.ConceptPathParseError as e:
+        except _textprocessing.ConceptUriParseError as e:
             raise InvalidUNetUriError(e)
 
 
@@ -1399,7 +1399,7 @@ class LoRAUri:
                            weight_name=r.args.get('weight-name', None),
                            revision=r.args.get('revision', None),
                            subfolder=r.args.get('subfolder', None))
-        except _textprocessing.ConceptPathParseError as e:
+        except _textprocessing.ConceptUriParseError as e:
             raise InvalidLoRAUriError(e)
 
 
@@ -1500,7 +1500,7 @@ class TextualInversionUri:
                                        weight_name=r.args.get('weight-name', None),
                                        revision=r.args.get('revision', None),
                                        subfolder=r.args.get('subfolder', None))
-        except _textprocessing.ConceptPathParseError as e:
+        except _textprocessing.ConceptUriParseError as e:
             raise InvalidTextualInversionUriError(e)
 
 

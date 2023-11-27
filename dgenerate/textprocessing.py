@@ -28,7 +28,7 @@ import typing
 import dgenerate.types as _types
 
 
-class ConceptPathParseError(Exception):
+class ConceptUriParseError(Exception):
     """
     Raised by :py:meth:`.ConceptUriParser.parse` on parsing errors.
     """
@@ -45,7 +45,7 @@ class ConceptUri:
     The primary concept mentioned in the URI.
     """
 
-    args: dict[str, str]
+    args: dict[str, typing.Union[str, list[str]]]
     """
     Provided keyword arguments with their (string) values.
     """
@@ -349,7 +349,7 @@ class ConceptUriParser:
     arguments skip extended processing (unquoting or splitting).
     """
 
-    args_multiple: typing.Union[None, bool, set[str]]
+    args_lists: typing.Union[None, bool, set[str]]
     """
     ``True`` indicates all arguments can accept a comma separated list.
     
@@ -365,7 +365,7 @@ class ConceptUriParser:
     def __init__(self,
                  concept_name: _types.Name,
                  known_args: collections.abc.Iterable[str],
-                 args_multiple: typing.Union[None, bool, collections.abc.Iterable[str]] = None,
+                 args_lists: typing.Union[None, bool, collections.abc.Iterable[str]] = None,
                  args_raw: typing.Union[None, bool, collections.abc.Iterable[str]] = None):
         """
         :raises ValueError: if duplicate argument names are specified.
@@ -381,15 +381,15 @@ class ConceptUriParser:
             check.add(arg)
         self.known_args = check
 
-        if args_multiple is not None and not isinstance(args_multiple, bool):
+        if args_lists is not None and not isinstance(args_lists, bool):
             check = set()
-            for arg in args_multiple:
+            for arg in args_lists:
                 if arg in check:
-                    raise ValueError(f'duplicate args_multiple specification {arg}')
+                    raise ValueError(f'duplicate args_lists specification {arg}')
                 check.add(arg)
-            self.args_multiple = check
+            self.args_lists = check
         else:
-            self.args_multiple = None
+            self.args_lists = None
 
         if args_raw is not None and not isinstance(args_raw, bool):
             check = set()
@@ -409,44 +409,50 @@ class ConceptUriParser:
 
         :param uri: the string
 
-        :raise ConceptPathParseError:
+        :raise ConceptUriParseError:
 
         :return: :py:class:`.ConceptPath`
         """
         args = dict()
 
+        if uri is None:
+            raise ValueError('uri must not be None')
+
+        if not uri.strip():
+            raise ConceptUriParseError(f'Error parsing {self.concept_name} URI, URI was empty.')
+
         try:
             parts = tokenized_split(uri, ';')
         except TokenizedSplitSyntaxError as e:
-            raise ConceptPathParseError(f'Error parsing {self.concept_name} URI "{uri}": {e}')
+            raise ConceptUriParseError(f'Error parsing {self.concept_name} URI "{uri}": {e}')
 
         parts = iter(parts)
         concept = parts.__next__()
         for i in parts:
             vals = i.split('=', 1)
             if not vals or not vals[0]:
-                raise ConceptPathParseError(f'Error parsing path arguments for '
-                                            f'{self.concept_name} concept "{concept}", Empty argument space, '
-                                            f'stray semicolon?')
+                raise ConceptUriParseError(f'Error parsing path arguments for '
+                                           f'{self.concept_name} concept "{concept}", Empty argument space, '
+                                           f'stray semicolon?')
             name = vals[0].strip()
             if self.known_args is not None and name not in self.known_args:
-                raise ConceptPathParseError(
+                raise ConceptUriParseError(
                     f'Unknown path argument "{name}" for {self.concept_name} concept "{concept}", '
                     f'valid arguments: {", ".join(sorted(self.known_args))}')
 
             if len(vals) == 1:
-                raise ConceptPathParseError(f'Error parsing path arguments for '
+                raise ConceptUriParseError(f'Error parsing path arguments for '
                                             f'{self.concept_name} concept "{concept}", missing value '
                                             f'assignment for argument {vals[0]}.')
 
             if name in args:
-                raise ConceptPathParseError(
+                raise ConceptUriParseError(
                     f'Duplicate argument "{name}" provided for {self.concept_name} concept "{concept}".')
 
             try:
                 if self.args_raw is True or (self.args_raw is not None and name in self.args_raw):
                     args[name] = vals[1]
-                elif self.args_multiple is True or (self.args_multiple is not None and name in self.args_multiple):
+                elif self.args_lists is True or (self.args_lists is not None and name in self.args_lists):
                     vals = tokenized_split(vals[1], ',',
                                            remove_quotes=True,
                                            strict=True,
@@ -457,7 +463,7 @@ class ConceptUriParser:
                     args[name] = unquote(vals[1])
 
             except (TokenizedSplitSyntaxError, UnquoteSyntaxError) as e:
-                raise ConceptPathParseError(f'Syntax error parsing argument "{name}" for '
+                raise ConceptUriParseError(f'Syntax error parsing argument "{name}" for '
                                             f'{self.concept_name} concept "{concept}": {e}')
         return ConceptUri(concept, args)
 
