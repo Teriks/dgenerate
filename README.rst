@@ -2806,7 +2806,6 @@ The ``\templates_help`` output from the above example is:
 
     Config template variables are:
 
-
         Name: "last_model_path"
             Type: typing.Optional[str]
             Value: None
@@ -2839,7 +2838,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [11524689193331]
+            Value: [95069831100230]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -3055,10 +3054,10 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_images"
             Type: collections.abc.Iterable[str]
-            Value: <generator object RenderLoop.written_images at 0x000001979611F300>
+            Value: <dgenerate.renderloop.RenderLoop.written_images.<locals>.Iterable object at 0x000001FBFE6096D0>
         Name: "last_animations"
             Type: collections.abc.Iterable[str]
-            Value: <generator object RenderLoop.written_animations at 0x000001979611FE60>
+            Value: <dgenerate.renderloop.RenderLoop.written_animations.<locals>.Iterable object at 0x000001FBFE609790>
         Name: "injected_args"
             Type: collections.abc.Sequence[str]
             Value: []
@@ -3068,6 +3067,7 @@ The ``\templates_help`` output from the above example is:
         Name: "glob"
             Type: <class 'module'>
             Value: <module 'glob' from 'glob.py'>
+
 
 
 Here are examples of other available directives such as ``\set`` and ``\print`` as

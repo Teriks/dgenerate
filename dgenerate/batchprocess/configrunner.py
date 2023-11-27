@@ -353,8 +353,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                     template_variables[gen_name] = (hint, value)
 
         template_variables.update({
-            'last_images': (collections.abc.Iterator[str], self.render_loop.written_images),
-            'last_animations': (collections.abc.Iterator[str], self.render_loop.written_animations),
+            'last_images': (collections.abc.Iterable[str], self.render_loop.written_images),
+            'last_animations': (collections.abc.Iterable[str], self.render_loop.written_animations),
         })
 
         return template_variables
