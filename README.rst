@@ -3054,10 +3054,10 @@ The ``\templates_help`` output from the above example is:
             Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
         Name: "last_images"
-            Type: collections.abc.Iterator[str]
+            Type: collections.abc.Iterable[str]
             Value: <generator object RenderLoop.written_images at 0x000001979611F300>
         Name: "last_animations"
-            Type: collections.abc.Iterator[str]
+            Type: collections.abc.Iterable[str]
             Value: <generator object RenderLoop.written_animations at 0x000001979611FE60>
         Name: "injected_args"
             Type: collections.abc.Sequence[str]
@@ -3141,7 +3141,7 @@ the documentation for the specified directives.
     # in the case that you have generated an animated output with frame
     # output enabled, this will contain paths to the frames
 
-    \print {{ quote(last_images) | join(' ') }}
+    \print {{ quote(last_images) }}
 
 
     # For loops are possible
@@ -3192,7 +3192,7 @@ the documentation for the specified directives.
     # within is preserved including newlines
 
     {% for image in last_images %}
-        stabilityai/stable-diffusion-2-1 --image-seeds {{ quote(image) }} --prompt {{ my_prompt }}
+        stabilityai/stable-diffusion-2-1 --image-seeds {{ quote(image) }} --prompts {{ my_prompt }}
     {% endfor %} !END
 
 
@@ -3207,13 +3207,13 @@ the documentation for the specified directives.
     {% for image in last_images %}
         stabilityai/stable-diffusion-2-1
         --image-seeds {{ quote(image) }}
-        --prompt {{ my_prompt }}
+        --prompts {{ my_prompt }}
     {% endfor %} !END
 
 
     # The above are both basically equivalent to this
 
-    stabilityai/stable-diffusion-2-1 --image-seeds {{ quote(last_images) | join(' ') }} --prompt {{ my_prompt }}
+    stabilityai/stable-diffusion-2-1 --image-seeds {{ quote(last_images) }} --prompts {{ my_prompt }}
 
 
     # You can save modules from the main pipeline used in the last invocation
@@ -3225,11 +3225,11 @@ the documentation for the specified directives.
     stabilityai/stable-diffusion-2-1
     --variant fp16
     --dtype float16
-    --prompt "an astronaut walking on the moon"
+    --prompts "an astronaut walking on the moon"
     --safety-checker
     --output-size 512
 
-    \save_modules stage_1_modules feature_extractor
+    \save_modules stage_1_modules feature_extractor safety_checker
 
     # that saves the feature_extractor module object in the pipeline above,
     # you can specify multiple module names to save if desired
