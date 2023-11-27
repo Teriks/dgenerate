@@ -1,6 +1,9 @@
 #! dgenerate 3.0.0
 
 # You can define your own template variables with the \set directive
+# the \set directive does not do any shell args parsing on its value
+# operand, meaning the quotes will be in the string that is assigned
+# to the variable my_prompt
 
 \set my_prompt "an astronaut riding a horse; bad quality"
 
