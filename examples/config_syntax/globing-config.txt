@@ -1,0 +1,22 @@
+#! dgenerate 3.0.0
+
+# The most basic usage is full expansion of every file
+
+\set myfiles {{ quote(glob.glob('../media/*.png')) }}
+
+\print {{ myfiles }}
+
+# If you have a LOT of files, you may want to
+# process them using an iterator like so
+
+{% for file in glob.iglob('../media/*.png') %}
+    \print {{ quote(file) }}
+{% endfor %} !END
+
+# Simple inline usage
+
+stabilityai/stable-diffusion-2-1
+--variant fp16
+--dtype float16
+--prompts "In the style of picaso"
+--image-seeds {{ quote(glob.glob('../media/*.png')) }}

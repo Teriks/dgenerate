@@ -3279,6 +3279,8 @@ can glob directories using functions from the glob module like so:
 
 .. code-block:: jinja
 
+    #! dgenerate 3.0.0
+
     # The most basic usage is full expansion of every file
 
     \set myfiles {{ quote(glob.glob('my_images/*.png')) }}
@@ -3297,7 +3299,7 @@ can glob directories using functions from the glob module like so:
     stabilityai/stable-diffusion-2-1
     --variant fp16
     --dtype float16
-    --prompt "In the style of picaso"
+    --prompts "In the style of picaso"
     --image-seeds {{ quote(glob.glob('my_images/*.png')) }}
 
 
@@ -3305,6 +3307,8 @@ The dgenerate sub-command ``image-process`` is has a directive implementation.
 
 
 .. code-block:: jinja
+
+    #! dgenerate 3.0.0
 
     # print the help message of --sub-command image-process, this does
     # not cause the config to exit
@@ -3332,6 +3336,8 @@ You can exit a config early if need be using the ``\exit`` directive
 
 
 .. code-block:: jinja
+
+    #! dgenerate 3.0.0
 
     # exit the process with return code 1, which indicates an error
 
