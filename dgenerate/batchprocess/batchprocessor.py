@@ -333,17 +333,19 @@ class BatchProcessor:
 
     def _run_file(self, stream: typing.TextIO):
         continuation = ''
-        top_level_template = False
+        template_continuation = False
+        normal_continuation = False
 
         def run_continuation(cur_line):
-            nonlocal continuation, top_level_template
+            nonlocal continuation, template_continuation, normal_continuation
 
-            if not top_level_template:
+            if not template_continuation:
                 completed_continuation = (continuation + ' ' + cur_line).strip()
             else:
                 completed_continuation = (continuation + cur_line).strip()
 
-            top_level_template = False
+            template_continuation = False
+            normal_continuation = False
             continuation = ''
 
             if self._directive_handlers(completed_continuation):
@@ -381,17 +383,17 @@ class BatchProcessor:
                         run_continuation('')
             elif line_strip.startswith('#'):
                 self._look_for_version_mismatch(line_idx, line)
-            elif line_strip.startswith('{') and not top_level_template:
+            elif line_strip.startswith('{') and not template_continuation and not normal_continuation:
                 continuation += line
-                top_level_template = True
-            elif not top_level_template and (line_strip.endswith('\\') or next_line
-                                             and next_line.lstrip().startswith('-')):
+                template_continuation = True
+            elif not template_continuation and (line_strip.endswith('\\') or next_line
+                                                and next_line.lstrip().startswith('-')):
                 continuation += ' ' + line_strip.rstrip(' \\')
-            elif top_level_template:
+                normal_continuation = True
+            elif template_continuation:
                 line_rstrip = remove_tail_comments(line).rstrip()
                 if line_rstrip.endswith('!END'):
                     run_continuation(line_rstrip.removesuffix('!END'))
-                    top_level_template = False
                 else:
                     continuation += line
             else:
