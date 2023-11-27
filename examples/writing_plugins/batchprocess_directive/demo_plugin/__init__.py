@@ -17,7 +17,7 @@ class MyDirective(_configrunnerplugin.ConfigRunnerPlugin):
 
         or
 
-        dgenerate --directives-help \my_directive
+        dgenerate --directives-help \\my_directive
 
 
         To list all directives:
