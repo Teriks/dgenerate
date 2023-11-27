@@ -87,7 +87,7 @@ def _create_arg_parser(prog, description):
         help='One or more image processor URIs, specifying multiple will chain them together.'))
 
     actions.append(
-        parser.add_argument('-pm', '--plugin-modules', action='store', default=[], nargs="+",
+        parser.add_argument('--plugin-modules', action='store', default=[], nargs="+",
                             dest='plugin_module_paths',
                             metavar="PATH",
                             help="""Specify one or more plugin module folder paths (folder containing __init__.py) or 

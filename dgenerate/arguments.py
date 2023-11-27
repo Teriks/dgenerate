@@ -311,7 +311,7 @@ actions.append(
                         help="Show dgenerate's version and exit"))
 
 actions.append(
-    parser.add_argument('-pm', '--plugin-modules', action='store', default=[], nargs="+", dest='plugin_module_paths',
+    parser.add_argument('--plugin-modules', action='store', default=[], nargs="+", dest='plugin_module_paths',
                         metavar="PATH",
                         help="""Specify one or more plugin module folder paths (folder containing __init__.py) or 
                         python .py file paths to load as plugins. Plugin modules can currently implement 
@@ -1260,7 +1260,7 @@ class DgenerateArguments(dgenerate.RenderLoopConfig):
 
     plugin_module_paths: _types.Paths
     """
-    Plugin module paths ``-pm/--plugin-modules``
+    Plugin module paths ``--plugin-modules``
     """
 
     verbose: bool = False
@@ -1356,7 +1356,7 @@ def parse_directives_help(
 def parse_plugin_modules(
         args: typing.Optional[collections.abc.Sequence[str]] = None) -> tuple[list[str], list[str]]:
     """
-    Retrieve the ``-pm/--plugin-modules`` argument value
+    Retrieve the ``--plugin-modules`` argument value
 
     :param args: command line arguments
 
@@ -1367,7 +1367,7 @@ def parse_plugin_modules(
 
     try:
         parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
-        parser.add_argument('-pm', '--plugin-modules', action='store', default=[], nargs="+")
+        parser.add_argument('--plugin-modules', action='store', default=[], nargs="+")
         parsed, unknown = parser.parse_known_args(args)
     except argparse.ArgumentError as e:
         raise DgenerateUsageError(e)
