@@ -151,6 +151,70 @@ class TestConceptUriParser(unittest.TestCase):
 
         self.assertEqual(prs.args.get('arg1'), 'i am not raw  ')
 
+    def test_escapes(self):
+        p = _tp.ConceptUriParser('test',
+                                 known_args=['arg1'])
+
+        # double quote
+
+        prs = p.parse(r'concept;arg1="I have a \n newline"')
+        self.assertEqual(prs.args.get('arg1'), 'I have a \n newline')
+
+        prs = p.parse(r'concept;arg1="I have a \r return"')
+        self.assertEqual(prs.args.get('arg1'), 'I have a \r return')
+
+        prs = p.parse(r'concept;arg1="I have a \t tab"')
+        self.assertEqual(prs.args.get('arg1'), 'I have a \t tab')
+
+        prs = p.parse(r'concept;arg1="I have a \b backspace"')
+        self.assertEqual(prs.args.get('arg1'), 'I have a \b backspace')
+
+        prs = p.parse(r'concept;arg1="I have a \f form feed"')
+        self.assertEqual(prs.args.get('arg1'), 'I have a \f form feed')
+
+        prs = p.parse(r'concept;arg1="I have a \\ slash"')
+        self.assertEqual(prs.args.get('arg1'), 'I have a \\ slash')
+
+        # single quote
+
+        prs = p.parse(r"concept;arg1='I have a \n newline'")
+        self.assertEqual(prs.args.get('arg1'), 'I have a \n newline')
+
+        prs = p.parse(r"concept;arg1='I have a \r return'")
+        self.assertEqual(prs.args.get('arg1'), 'I have a \r return')
+
+        prs = p.parse(r"concept;arg1='I have a \t tab'")
+        self.assertEqual(prs.args.get('arg1'), 'I have a \t tab')
+
+        prs = p.parse(r"concept;arg1='I have a \b backspace'")
+        self.assertEqual(prs.args.get('arg1'), 'I have a \b backspace')
+
+        prs = p.parse(r"concept;arg1='I have a \f form feed'")
+        self.assertEqual(prs.args.get('arg1'), 'I have a \f form feed')
+
+        prs = p.parse(r"concept;arg1='I have a \\ slash'")
+        self.assertEqual(prs.args.get('arg1'), 'I have a \\ slash')
+
+        # no quote, escapes are not expanded
+
+        prs = p.parse(r"concept;arg1=I dont have a \n newline")
+        self.assertEqual(prs.args.get('arg1'), r'I dont have a \n newline')
+
+        prs = p.parse(r"concept;arg1=I dont have a \r return")
+        self.assertEqual(prs.args.get('arg1'), r'I dont have a \r return')
+
+        prs = p.parse(r"concept;arg1=I dont have a \t tab")
+        self.assertEqual(prs.args.get('arg1'), r'I dont have a \t tab')
+
+        prs = p.parse(r"concept;arg1=I dont have a \b backspace")
+        self.assertEqual(prs.args.get('arg1'), r'I dont have a \b backspace')
+
+        prs = p.parse(r"concept;arg1=I dont have a \f form feed")
+        self.assertEqual(prs.args.get('arg1'), r'I dont have a \f form feed')
+
+        prs = p.parse(r"concept;arg1=I dont have a \\ slash")
+        self.assertEqual(prs.args.get('arg1'), r'I dont have a \\ slash')
+
     def test_list_args(self):
         p = _tp.ConceptUriParser('test',
                                  known_args=['arg1', 'arg2', 'arg3'],
