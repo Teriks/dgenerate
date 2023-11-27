@@ -72,7 +72,7 @@ Help Output
 
 .. code-block:: text
 
-    usage: dgenerate [-h] [-v] [--version] [-pm PATH [PATH ...]] [--sub-command SUB_COMMAND]
+    usage: dgenerate [-h] [-v] [--version] [--plugin-modules PATH [PATH ...]] [--sub-command SUB_COMMAND]
                      [--sub-command-help [SUB_COMMAND ...]] [-ofm] [--templates-help [VARIABLE_NAME ...]]
                      [--directives-help [DIRECTIVE_NAME ...]] [-mt MODEL_TYPE] [-rev BRANCH] [-var VARIANT]
                      [-sbf SUBFOLDER] [-atk TOKEN] [-bs INTEGER] [-bgs SIZE] [-un UNET_URI] [-vae VAE_URI]
@@ -123,7 +123,7 @@ Help Output
       -v, --verbose         Output information useful for debugging, such as pipeline call and model load
                             parameters.
       --version             Show dgenerate's version and exit
-      -pm PATH [PATH ...], --plugin-modules PATH [PATH ...]
+      --plugin-modules PATH [PATH ...]
                             Specify one or more plugin module folder paths (folder containing __init__.py)
                             or python .py file paths to load as plugins. Plugin modules can currently
                             implement image processors and config directives.
@@ -753,7 +753,6 @@ Help Output
                             cleared. Example, and default value: "control_net_size > (available * 0.75)" For
                             Syntax See: [https://dgenerate.readthedocs.io/en/v3.0.0/dgenerate_submodules.htm
                             l#dgenerate.pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS]
-
 
 
 Windows Install

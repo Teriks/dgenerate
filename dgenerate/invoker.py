@@ -131,8 +131,6 @@ def invoke_dgenerate(
 
     template_help_variable_names, _ = _arguments.parse_templates_help(args)
     directives_help_variable_names, _ = _arguments.parse_directives_help(args)
-    print(template_help_variable_names)
-    print(directives_help_variable_names)
 
     if template_help_variable_names is not None \
             or directives_help_variable_names is not None:

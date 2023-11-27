@@ -45,7 +45,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
     @property
     def plugin_module_paths(self) -> frozenset[str]:
         """
-        Set of plugin module paths if they were injected into the config runner by ``-pm/--plugin-modules``
+        Set of plugin module paths if they were injected into the config runner by ``--plugin-modules``
         or used in a ``\\import_plugins`` statement in a config.
 
         :return: a set of paths, may be empty but not ``None``
@@ -61,11 +61,11 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         """
 
         :raises dgenerate.plugin.ModuleFileNotFoundError: If a module path parsed from
-            ``-pm/--plugin-modules`` in ``injected_args`` could not be found on disk.
+            ``--plugin-modules`` in ``injected_args`` could not be found on disk.
 
 
         :param injected_args: dgenerate command line arguments in the form of a list, see: shlex module, or sys.argv.
-            These arguments will be injected at the end of every dgenerate invocation in the config. ``-pm/--plugin-modules``
+            These arguments will be injected at the end of every dgenerate invocation in the config. ``--plugin-modules``
             are parsed from ``injected_args`` and added to ``plugin_loader``. If ``-v/--verbose`` is present in ``injected_args``
             debugging output will be enabled globally while the config runs, and not just for invocations.
 
@@ -220,7 +220,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
     def _import_plugins_directive(self, plugin_paths: collections.abc.Sequence[str]):
         """
         Imports plugins from within a config, this imports config directive plugins
-        as well as image processor plugins. This has an identical effect to the -pm/--plugin-modules argument.
+        as well as image processor plugins. This has an identical effect to the --plugin-modules argument.
         You may specify multiple plugin module directories or python files containing plugin implementations.
         """
 

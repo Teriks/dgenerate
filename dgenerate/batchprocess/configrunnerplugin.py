@@ -120,7 +120,7 @@ class ConfigRunnerPlugin(_plugin.Plugin):
     @property
     def plugin_module_paths(self) -> frozenset[str]:
         """
-        Set of plugin module paths if they were injected into the config runner by ``-pm/--plugin-modules``
+        Set of plugin module paths if they were injected into the config runner by ``--plugin-modules``
         or used in a ``\\import_plugins`` statement in a config.
 
         :return: a set of paths, may be empty but not ``None``
