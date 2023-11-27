@@ -479,7 +479,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         else:
             header = 'Config template variable is'
 
-        help_string = _textprocessing.underline(f'{header}:') + '\n\n'
+        help_string = f'{header}:' + '\n\n'
 
         def wrap(val):
             return _textprocessing.wrap(
@@ -498,7 +498,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         This does not cause the config to exit.
         """
-        _messages.log(self.generate_template_variables_help(args) + '\n', underline=True)
+        _messages.log(self.generate_template_variables_help(args))
         return 0
 
 
