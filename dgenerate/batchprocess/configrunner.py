@@ -238,7 +238,6 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         return 0
 
-
     def _exit_directive(self, args: collections.abc.Sequence[str]):
         """
         Causes the dgenerate process to exit with a specific return code.
@@ -377,6 +376,16 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         return {k: v[1] for k, v in self._generate_template_variables_with_types().items()}
 
     def generate_directives_help(self, directive_names: typing.Optional[typing.Collection[str]] = None):
+        """
+        Generate the help string for ``--directives-help``
+
+
+        :type directive_names: Display help for specific directives, if ``None`` or ``[]`` is specified, display all.
+
+        :raise ValueError: if given directive names could not be found
+
+        :return: help string
+        """
 
         directives: dict[str, typing.Union[str, typing.Callable]] = self.directives.copy()
 
@@ -396,8 +405,19 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             help_string = ''
 
             directive_names = {n.lstrip('\\') for n in directive_names}
+
             if directive_names is not None and len(directive_names) > 0:
-                directives = {'\\' + k: v for k, v in directives.items() if k in directive_names}
+                found = dict()
+                not_found = []
+                for n in directive_names:
+                    if n not in directives:
+                        not_found.append(n)
+                        continue
+                    found[n] = directives[n]
+                if not_found:
+                    raise ValueError(
+                        f'No directives named: {_textprocessing.oxford_comma(not_found, "or")}')
+                directives = found
 
             def docs():
                 for name, impl in directives.items():
@@ -424,9 +444,13 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         """
         Generate a help string describing available template variables, their types, and values for use in batch processing.
 
+        This is used for ``--templates-help``
+
         :type variable_names: Display help for specific variables, if ``None`` or ``[]`` is specified, display all.
 
         :param show_values: Show the value of the template variable or just the name?
+
+        :raise ValueError: if given variable names could not be found
 
         :return: a human-readable description of all template variables
         """
@@ -438,7 +462,17 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                 values[k] = (v.__class__, v)
 
         if variable_names is not None and len(variable_names) > 0:
-            values = {k: v for k, v in values.items() if k in variable_names}
+            found = dict()
+            not_found = []
+            for n in variable_names:
+                if n not in values:
+                    not_found.append(n)
+                    continue
+                found[n] = values[n]
+            if not_found:
+                raise ValueError(
+                    f'No template variables named: {_textprocessing.oxford_comma(not_found, "or")}')
+            values = found
 
         if len(values) > 1:
             header = 'Config template variables are'
