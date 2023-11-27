@@ -18,8 +18,9 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import typing
 import collections.abc
+import typing
+
 import dgenerate
 import dgenerate.batchprocess.configrunnerpluginloader as _configrunnerpluginloader
 import dgenerate.plugin as _plugin
@@ -47,7 +48,7 @@ class ConfigRunnerPlugin(_plugin.Plugin):
 
     def set_template_variable(self, name, value):
         """
-        Safely set a template variable on the :py:class:`dgenerate.batchprocess.ConfigRunner` instance.
+        Set a template variable on the :py:class:`dgenerate.batchprocess.ConfigRunner` instance.
 
         :param name: variable name
         :param value: variable value
@@ -57,7 +58,7 @@ class ConfigRunnerPlugin(_plugin.Plugin):
 
     def update_template_variables(self, values):
         """
-        Safely update multiple template variable values on the :py:class:`dgenerate.batchprocess.ConfigRunner` instance.
+        Update multiple template variable values on the :py:class:`dgenerate.batchprocess.ConfigRunner` instance.
 
         :param values: variable values, dictionary of names to values
         """
@@ -66,7 +67,7 @@ class ConfigRunnerPlugin(_plugin.Plugin):
 
     def register_directive(self, name, implementation: typing.Callable[[collections.abc.Sequence[str]], int]):
         """
-        Safely register a config directive implementation on the :py:class:`dgenerate.batchprocess.ConfigRunner` instance.
+        Register a config directive implementation on the :py:class:`dgenerate.batchprocess.ConfigRunner` instance.
 
         Your directive should return a return code, 0 for success and anything else for failure.
 
@@ -85,6 +86,19 @@ class ConfigRunnerPlugin(_plugin.Plugin):
                     f'"{self.loaded_by_name}" because that directive name already exists.')
 
             self.config_runner.directives[name] = implementation
+
+    @property
+    def injected_args(self) -> collections.abc.Sequence[str]:
+        """
+        Return any arguments injected into the config from the command line.
+
+        If none were injected an empty sequence will be returned.
+
+        :return: command line arguments
+        """
+        if self.config_runner is not None:
+            return self.config_runner.injected_args
+        return []
 
     @property
     def render_loop(self) -> typing.Optional[_renderloop.RenderLoop]:

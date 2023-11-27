@@ -21,7 +21,7 @@
 # So below, dgenerate resizes the image down to 196x196 pixels (no alignment, LANCZOS)
 # and then upscales it using an ESRGAN X4 upscaling model, resulting in an image output that is 784x784
 
-\image_process "../../media/earth.jpg" \
+\image_process "../../media/earth.jpg"
 --output earth-reupscaled.jpg
 --resize 196
 --align 1

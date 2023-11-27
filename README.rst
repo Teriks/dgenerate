@@ -62,8 +62,8 @@ For library documentation visit `readthedocs <http://dgenerate.readthedocs.io/en
     * `Upscaling with Diffusion Upscaler Models`_
     * `Sub Commands (image-process)`_
     * `Upscaling with chaiNNer Compatible Upscaler Models`_
-    * `Batch Processing From STDIN`_
-    * `Batch Processing Argument Injection`_
+    * `Writing and Running Configs`_
+    * `Config Argument Injection`_
     * `Writing Plugins`_
     * `File Cache Control`_
 
@@ -73,10 +73,10 @@ Help Output
 .. code-block:: text
 
     usage: dgenerate [-h] [-v] [--version] [-pm PATH [PATH ...]] [-scm SUB_COMMAND]
-                     [-scmh [SUB_COMMAND ...]] [-ofm] [-th [VARIABLE_NAME ...]] [-mt MODEL_TYPE]
-                     [-rev BRANCH] [-var VARIANT] [-sbf SUBFOLDER] [-atk TOKEN] [-bs INTEGER]
-                     [-bgs SIZE] [-un UNET_URI] [-vae VAE_URI] [-vt] [-vs]
-                     [-lra LORA_URI [LORA_URI ...]] [-ti URI [URI ...]]
+                     [-scmh [SUB_COMMAND ...]] [-ofm] [-th [VARIABLE_NAME ...]]
+                     [-dh [DIRECTIVE_NAME ...]] [-mt MODEL_TYPE] [-rev BRANCH] [-var VARIANT]
+                     [-sbf SUBFOLDER] [-atk TOKEN] [-bs INTEGER] [-bgs SIZE] [-un UNET_URI]
+                     [-vae VAE_URI] [-vt] [-vs] [-lra LORA_URI [LORA_URI ...]] [-ti URI [URI ...]]
                      [-cn CONTROL_NET_URI [CONTROL_NET_URI ...]] [-sch SCHEDULER_NAME]
                      [--sdxl-refiner MODEL_URI] [--sdxl-refiner-scheduler SCHEDULER_NAME]
                      [--sdxl-refiner-edit] [--sdxl-second-prompts PROMPT [PROMPT ...]]
@@ -146,8 +146,13 @@ Help Output
       -th [VARIABLE_NAME ...], --templates-help [VARIABLE_NAME ...]
                             Print a list of template variables available in dgenerate configs during
                             batch processing from STDIN. When used as a command option, their values are
-                            not presented, just their names and types. Specifying names will list type
-                            information for that variable name.
+                            not presented, just their names and types. Specifying names will print type
+                            information for those variable names.
+      -dh [DIRECTIVE_NAME ...], --directives-help [DIRECTIVE_NAME ...]
+                            Print a list of directives available in dgenerate configs during batch
+                            processing from STDIN. Providing names will print documentation for the
+                            specified directive names. When used with --plugin-modules, directives
+                            implemented by the specified plugins will also be listed.
       -mt MODEL_TYPE, --model-type MODEL_TYPE
                             Use when loading different model types. Currently supported: torch, torch-
                             pix2pix, torch-sdxl, torch-sdxl-pix2pix, torch-upscaler-x2, torch-
@@ -2647,7 +2652,7 @@ will work with any named image processor implemented by dgenerate.
     --processors "upscaler;model=https://github.com/JingyunLiang/SwinIR/releases/download/v0.0/001_classicalSR_DIV2K_s48w8_SwinIR-M_x4.pth"
 
 
-Batch Processing From STDIN
+Writing and Running Configs
 ===========================
 
 Program configuration can be read from STDIN and processed in batch with model caching,
@@ -2836,6 +2841,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_sdxl_refiner_uri"
             Type: typing.Optional[str]
             Value: None
+        Name: "last_sdxl_refiner_edit"
+            Type: typing.Optional[bool]
+            Value: None
         Name: "last_batch_size"
             Type: typing.Optional[int]
             Value: None
@@ -2843,113 +2851,116 @@ The ``\templates_help`` output from the above example is:
             Type: typing.Optional[tuple[int, int]]
             Value: None
         Name: "last_prompts"
-            Type: list[dgenerate.prompt.Prompt]
+            Type: collections.abc.Sequence[dgenerate.prompt.Prompt]
             Value: ['']
         Name: "last_sdxl_second_prompts"
-            Type: typing.Optional[list[dgenerate.prompt.Prompt]]
+            Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
             Value: []
         Name: "last_sdxl_refiner_prompts"
-            Type: typing.Optional[list[dgenerate.prompt.Prompt]]
+            Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
             Value: []
         Name: "last_sdxl_refiner_second_prompts"
-            Type: typing.Optional[list[dgenerate.prompt.Prompt]]
+            Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
             Value: []
         Name: "last_seeds"
-            Type: list[int]
-            Value: [64347493204222]
+            Type: collections.abc.Sequence[int]
+            Value: [11524689193331]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
         Name: "last_guidance_scales"
-            Type: list[float]
+            Type: collections.abc.Sequence[float]
             Value: [5]
         Name: "last_inference_steps"
-            Type: list[int]
+            Type: collections.abc.Sequence[int]
             Value: [30]
         Name: "last_clip_skips"
-            Type: typing.Optional[list[int]]
+            Type: typing.Optional[collections.abc.Sequence[int]]
             Value: []
         Name: "last_sdxl_refiner_clip_skips"
-            Type: typing.Optional[list[int]]
+            Type: typing.Optional[collections.abc.Sequence[int]]
             Value: []
         Name: "last_image_seeds"
-            Type: typing.Optional[list[str]]
+            Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
         Name: "last_parsed_image_seeds"
-            Type: typing.Optional[list[dgenerate.mediainput.ImageSeedParseResult]]
+            Type: typing.Optional[collections.abc.Sequence[dgenerate.mediainput.ImageSeedParseResult]]
             Value: []
         Name: "last_image_seed_strengths"
-            Type: typing.Optional[list[float]]
+            Type: typing.Optional[collections.abc.Sequence[float]]
             Value: []
         Name: "last_upscaler_noise_levels"
-            Type: typing.Optional[list[int]]
+            Type: typing.Optional[collections.abc.Sequence[int]]
             Value: []
         Name: "last_guidance_rescales"
-            Type: typing.Optional[list[float]]
+            Type: typing.Optional[collections.abc.Sequence[float]]
             Value: []
         Name: "last_image_guidance_scales"
-            Type: typing.Optional[list[float]]
+            Type: typing.Optional[collections.abc.Sequence[float]]
             Value: []
         Name: "last_sdxl_high_noise_fractions"
-            Type: typing.Optional[list[float]]
+            Type: typing.Optional[collections.abc.Sequence[float]]
             Value: []
         Name: "last_sdxl_refiner_inference_steps"
-            Type: typing.Optional[list[int]]
+            Type: typing.Optional[collections.abc.Sequence[int]]
             Value: []
         Name: "last_sdxl_refiner_guidance_scales"
-            Type: typing.Optional[list[float]]
+            Type: typing.Optional[collections.abc.Sequence[float]]
             Value: []
         Name: "last_sdxl_refiner_guidance_rescales"
-            Type: typing.Optional[list[float]]
+            Type: typing.Optional[collections.abc.Sequence[float]]
             Value: []
         Name: "last_sdxl_aesthetic_scores"
-            Type: typing.Optional[list[float]]
+            Type: typing.Optional[collections.abc.Sequence[float]]
             Value: []
         Name: "last_sdxl_original_sizes"
-            Type: typing.Optional[list[tuple[int, int]]]
+            Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
             Value: []
         Name: "last_sdxl_target_sizes"
-            Type: typing.Optional[list[tuple[int, int]]]
+            Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
             Value: []
         Name: "last_sdxl_crops_coords_top_left"
-            Type: typing.Optional[list[tuple[int, int]]]
+            Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
             Value: []
         Name: "last_sdxl_negative_aesthetic_scores"
-            Type: typing.Optional[list[float]]
+            Type: typing.Optional[collections.abc.Sequence[float]]
             Value: []
         Name: "last_sdxl_negative_original_sizes"
-            Type: typing.Optional[list[tuple[int, int]]]
+            Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
             Value: []
         Name: "last_sdxl_negative_target_sizes"
-            Type: typing.Optional[list[tuple[int, int]]]
+            Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
             Value: []
         Name: "last_sdxl_negative_crops_coords_top_left"
-            Type: typing.Optional[list[tuple[int, int]]]
+            Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
             Value: []
         Name: "last_sdxl_refiner_aesthetic_scores"
-            Type: typing.Optional[list[float]]
+            Type: typing.Optional[collections.abc.Sequence[float]]
             Value: []
         Name: "last_sdxl_refiner_original_sizes"
-            Type: typing.Optional[list[tuple[int, int]]]
+            Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
             Value: []
         Name: "last_sdxl_refiner_target_sizes"
-            Type: typing.Optional[list[tuple[int, int]]]
+            Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
             Value: []
         Name: "last_sdxl_refiner_crops_coords_top_left"
-            Type: typing.Optional[list[tuple[int, int]]]
+            Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
             Value: []
         Name: "last_sdxl_refiner_negative_aesthetic_scores"
-            Type: typing.Optional[list[float]]
+            Type: typing.Optional[collections.abc.Sequence[float]]
             Value: []
         Name: "last_sdxl_refiner_negative_original_sizes"
-            Type: typing.Optional[list[tuple[int, int]]]
+            Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
             Value: []
         Name: "last_sdxl_refiner_negative_target_sizes"
-            Type: typing.Optional[list[tuple[int, int]]]
+            Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
             Value: []
         Name: "last_sdxl_refiner_negative_crops_coords_top_left"
-            Type: typing.Optional[list[tuple[int, int]]]
+            Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
             Value: []
+        Name: "last_unet_uri"
+            Type: typing.Optional[str]
+            Value: None
         Name: "last_vae_uri"
             Type: typing.Optional[str]
             Value: None
@@ -2960,13 +2971,13 @@ The ``\templates_help`` output from the above example is:
             Type: <class 'bool'>
             Value: False
         Name: "last_lora_uris"
-            Type: typing.Optional[list[str]]
+            Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
         Name: "last_textual_inversion_uris"
-            Type: typing.Optional[list[str]]
+            Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
         Name: "last_control_net_uris"
-            Type: typing.Optional[list[str]]
+            Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
         Name: "last_scheduler"
             Type: typing.Optional[str]
@@ -3032,50 +3043,56 @@ The ``\templates_help`` output from the above example is:
             Type: typing.Optional[str]
             Value: None
         Name: "last_seed_image_processors"
-            Type: typing.Optional[list[str]]
+            Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
         Name: "last_mask_image_processors"
-            Type: typing.Optional[list[str]]
+            Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
         Name: "last_control_image_processors"
-            Type: typing.Optional[list[str]]
+            Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
         Name: "last_post_processors"
-            Type: typing.Optional[list[str]]
+            Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
         Name: "last_offline_mode"
             Type: <class 'bool'>
             Value: False
         Name: "last_plugin_module_paths"
-            Type: list[str]
+            Type: collections.abc.Sequence[str]
             Value: []
         Name: "last_verbose"
             Type: <class 'bool'>
             Value: False
         Name: "last_cache_memory_constraints"
-            Type: typing.Optional[list[str]]
+            Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
         Name: "last_pipeline_cache_memory_constraints"
-            Type: typing.Optional[list[str]]
+            Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
+        Name: "last_unet_cache_memory_constraints"
+            Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
         Name: "last_vae_cache_memory_constraints"
-            Type: typing.Optional[list[str]]
+            Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
         Name: "last_control_net_cache_memory_constraints"
-            Type: typing.Optional[list[str]]
+            Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
         Name: "last_images"
             Type: collections.abc.Iterator[str]
-            Value: <generator object RenderLoop.written_images at 0x0000028E8D1AF5A0>
+            Value: <generator object RenderLoop.written_images at 0x000001979611F300>
         Name: "last_animations"
             Type: collections.abc.Iterator[str]
-            Value: <generator object RenderLoop.written_animations at 0x0000028E8D1AF3E0>
+            Value: <generator object RenderLoop.written_animations at 0x000001979611FE60>
+        Name: "injected_args"
+            Type: collections.abc.Sequence[str]
+            Value: []
         Name: "saved_modules"
             Type: dict[str, dict[str, typing.Any]]
             Value: {}
         Name: "glob"
             Type: <class 'module'>
-            Value: <module 'glob' from '../glob.py'>
+            Value: <module 'glob' from 'glob.py'>
 
     ======================================================================================
 
@@ -3085,6 +3102,11 @@ Here are examples of other available directives such as ``\set`` and ``\print`` 
 well as some basic Jinja2 templating usage. This example also covers the usage
 and purpose of ``\save_modules`` for saving and reusing pipeline modules such
 as VAEs etc. outside of relying on the caching system.
+
+You can see all available config directives with the command
+``dgenerate --directives-help``, providing this option with a name, or multiple
+names such as: ``dgenerate --directives-help \save_modules \use_modules`` will print
+the documentation for the specified directives.
 
 
 .. code-block:: jinja
@@ -3332,6 +3354,17 @@ The dgenerate sub-command ``image-process`` is has a directive implementation.
     \print {{ quote(last_images) }}
 
 
+You can exit a config early if need be using the ``\exit`` directive
+
+
+.. code-block:: jinja
+
+    # exit the process with return code 1, which indicates an error
+
+    \print "some error occurred"
+    \exit 1
+
+
 To utilize configuration files on Linux, pipe them into the command or use redirection:
 
 
@@ -3358,11 +3391,10 @@ On Windows Powershell:
     Get-Content my-arguments.txt | dgenerate
 
 
-Batch Processing Argument Injection
-===================================
+Config Argument Injection
+=========================
 
-
-You can inject arguments into every generation call of a batch processing
+You can inject arguments into every dgenerate invocation of a batch processing
 configuration by simply specifying them. The arguments will added to the end
 of the argument specification of every call.
 
@@ -3387,6 +3419,20 @@ On Windows Powershell:
 .. code-block:: powershell
 
     Get-Content my-animations-config.txt | dgenerate --frame-start 0 --frame-end 10
+
+
+If you need the arguments injected from the command line within the config
+for some other purpose use the ``injected_args`` template variable.
+
+.. code-block:: jinja
+
+    # these are the arguments that were injected by: dgenerate -args -here < config.txt
+    # these arguments automatically get added to the end of any dgenerate invocation
+    # and are type validated before the config starts running, but not logically
+    # validated for correctness other than args that are marked mutually exclusive by
+    # the argument parser
+
+    \print {{ quote(injected_args) }}
 
 
 Writing Plugins

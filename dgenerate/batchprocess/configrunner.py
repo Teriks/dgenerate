@@ -146,6 +146,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             return v
 
         self.template_variables = {
+            'injected_args': self.injected_args,
             'saved_modules': dict(),
             'glob': glob
         }
@@ -163,23 +164,39 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'first': first
         }
 
-        def return_zero(func):
+        def return_zero(func, help):
             def wrap(args):
                 func()
                 return 0
+
+            wrap.__doc__ = help
 
             return wrap
 
         self.directives = {
             'templates_help': self._templates_help_directive,
-            'clear_model_cache': return_zero(_pipelinewrapper.clear_model_cache),
-            'clear_pipeline_cache': return_zero(_pipelinewrapper.clear_pipeline_cache),
-            'clear_vae_cache': return_zero(_pipelinewrapper.clear_vae_cache),
-            'clear_control_net_cache': return_zero(_pipelinewrapper.clear_control_net_cache),
+            'clear_model_cache': return_zero(
+                _pipelinewrapper.clear_model_cache,
+                help='Clear all user specified models from the in memory cache.'),
+            'clear_pipeline_cache': return_zero(
+                _pipelinewrapper.clear_pipeline_cache,
+                help='Clear all diffusers pipelines from the in memory cache, '
+                     'this will not clear user specified VAEs, UNets, and ControlNet models, '
+                     'just pipeline objects which may or may not have automatically loaded those for you.'),
+            'clear_unet_cache': return_zero(
+                _pipelinewrapper.clear_unet_cache,
+                help='Clear all user specified UNet models from the in memory cache.'),
+            'clear_vae_cache': return_zero(
+                _pipelinewrapper.clear_vae_cache,
+                help='Clear all user specified VAE models from the in memory cache.'),
+            'clear_control_net_cache': return_zero(
+                _pipelinewrapper.clear_control_net_cache,
+                help='Clear all user specified ControlNet models from the in memory cache.'),
             'save_modules': self._save_modules_directive,
             'use_modules': self._use_modules_directive,
             'clear_modules': self._clear_modules_directive,
             'gen_seeds': self._gen_seeds_directive,
+            'exit': self._exit_directive
         }
 
         self.plugin_loader = \
@@ -201,6 +218,16 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         self.directives['import_plugins'] = self._import_plugins_directive
 
     def _import_plugins_directive(self, plugin_paths: collections.abc.Sequence[str]):
+        """
+        Imports plugins from within a config, this imports config directive plugins
+        as well as image processor plugins. This has an identical effect to the -pm/--plugin-modules argument.
+        You may specify multiple plugin module directories or python files containing plugin implementations.
+        """
+
+        if len(plugin_paths) == 0:
+            raise _batchprocessor.BatchProcessError(
+                '\\import_plugins must be used with at least one argument.')
+
         self._plugin_module_paths.update(plugin_paths)
         self.render_loop.image_processor_loader.load_plugin_modules(plugin_paths)
         new_classes = self.plugin_loader.load_plugin_modules(plugin_paths)
@@ -211,7 +238,34 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         return 0
 
+
+    def _exit_directive(self, args: collections.abc.Sequence[str]):
+        """
+        Causes the dgenerate process to exit with a specific return code.
+        This directive accepts one argument, the return code, which is optional
+        and 0 by default. It must be an integer value.
+        """
+        if (len(args)) == 0:
+            exit(0)
+
+        try:
+            return_code = int(args[0])
+        except ValueError:
+            raise _batchprocessor.BatchProcessError(
+                f'\\exit return code must be an integer value, received: {args[0]}')
+
+        exit(return_code)
+
     def _save_modules_directive(self, args: collections.abc.Sequence[str]):
+        """
+        Save a set of pipeline modules off the last diffusers pipeline used for the
+        main model of a dgenerate invocation. The first argument is a variable name
+        that the modules will be saved to, which can be reference later with \\use_modules.
+        The rest of the arguments are names of pipeline modules that you want to save to this
+        variable as a set of modules that are kept together, usable names are: unet, vae, text_encoder,
+        text_encoder_2, tokenizer, tokenizer_2, safety_checker, feature_extractor, controlnet,
+        scheduler, unet
+        """
         saved_modules = self.template_variables.get('saved_modules')
 
         if len(args) < 2:
@@ -224,17 +278,33 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         return 0
 
     def _use_modules_directive(self, args: collections.abc.Sequence[str]):
+        """
+        Use a set of pipeline modules saved with \\save_modules, accepts one argument,
+        the name that set of modules was saved to.
+        """
         saved_modules = self.template_variables.get('saved_modules')
 
         if not saved_modules:
             raise _batchprocessor.BatchProcessError(
-                'no modules are currently saved that can be referenced.')
+                '\\use_modules error, no modules are currently saved that can be referenced.')
+
+        if len(args) != 1:
+            raise _batchprocessor.BatchProcessError(
+                '\\use_modules accepts one argument and one argument only, '
+                'the name that the modules were previously saved to with \\save_modules'
+            )
 
         saved_name = args[0]
+
         self.render_loop.model_extra_modules = saved_modules[saved_name]
         return 0
 
     def _clear_modules_directive(self, args: collections.abc.Sequence[str]):
+        """
+        Clears a named set of pipeline modules saved with \\save_modules, accepts one argument, the name
+        that the set of modules was saved to. When no argument is provided, all modules ever
+        saved are cleared.
+        """
         saved_modules = self.template_variables.get('saved_modules')
 
         if len(args) > 0:
@@ -245,6 +315,11 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         return 0
 
     def _gen_seeds_directive(self, args: collections.abc.Sequence[str]):
+        """
+        Generate N random integer seeds and store them as a list to a template variable name.
+
+        The first argument is the variable name, the second argument is the number of seeds to generate.
+        """
         if len(args) == 2:
             try:
                 self.template_variables[args[0]] = \
@@ -288,6 +363,9 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
     def _generate_template_variables_with_types(self) -> dict[str, tuple[type, typing.Any]]:
         template_variables = self._config_generate_template_variables_with_types()
 
+        template_variables['injected_args'] = (collections.abc.Sequence[str],
+                                               self.template_variables.get('injected_args'))
+
         template_variables['saved_modules'] = (dict[str, dict[str, typing.Any]],
                                                self.template_variables.get('saved_modules'))
 
@@ -297,6 +375,48 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
     def _generate_template_variables(self) -> dict[str, typing.Any]:
         return {k: v[1] for k, v in self._generate_template_variables_with_types().items()}
+
+    def generate_directives_help(self, directive_names: typing.Optional[typing.Collection[str]] = None):
+
+        directives: dict[str, typing.Union[str, typing.Callable]] = self.directives.copy()
+
+        directives.update({
+            'set': 'Sets a template variable, accepts two arguments, the variable name and the value. '
+                   'Attempting to set a reserved template variable such as those pre-defined by dgenerate '
+                   'will result in an error.',
+            'print': 'Prints all arguments to stdout.'
+        })
+
+        if len(directive_names) == 0:
+
+            help_string = f'Available config directives:' + '\n\n'
+            help_string += '\n'.join((' ' * 4) + _textprocessing.quote('\\' + i) for i in directives.keys())
+
+        else:
+            help_string = ''
+
+            directive_names = {n.lstrip('\\') for n in directive_names}
+            if directive_names is not None and len(directive_names) > 0:
+                directives = {'\\' + k: v for k, v in directives.items() if k in directive_names}
+
+            def docs():
+                for name, impl in directives.items():
+                    if isinstance(impl, str):
+                        doc = impl
+                    else:
+                        doc = _textprocessing.justify_left(impl.__doc__).strip() \
+                            if impl.__doc__ is not None else 'No documentation provided.'
+                    doc = \
+                        _textprocessing.wrap_paragraphs(
+                            doc,
+                            initial_indent=' ' * 4,
+                            subsequent_indent=' ' * 4,
+                            width=_textprocessing.long_text_wrap_width())
+                    yield name + _textprocessing.underline(':\n\n' + doc + '\n')
+
+            help_string += '\n'.join(docs())
+
+        return help_string
 
     def generate_template_variables_help(self,
                                          variable_names: typing.Optional[typing.Collection[str]] = None,
@@ -339,6 +459,11 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             values.items())
 
     def _templates_help_directive(self, args: collections.abc.Sequence[str]):
+        """
+        Prints all template variables in the global scope, with their types and values.
+
+        This does not cause the config to exit.
+        """
         _messages.log(self.generate_template_variables_help(args) + '\n', underline=True)
         return 0
 

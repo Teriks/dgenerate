@@ -58,7 +58,7 @@ class DgenerateHelpException(Exception):
     pass
 
 
-class _DgenerateUnknownArgumentException(Exception):
+class _DgenerateUnknownArgumentError(Exception):
     pass
 
 
@@ -66,7 +66,7 @@ def _exit(status=0, message=None):
     if status == 0:
         # help
         raise DgenerateHelpException('dgenerate --help used.')
-    raise _DgenerateUnknownArgumentException(message)
+    raise _DgenerateUnknownArgumentError(message)
 
 
 parser.exit = _exit
@@ -94,7 +94,7 @@ def _type_prompts(prompt):
         return _prompt.Prompt.parse(prompt)
     except ValueError as e:
         raise argparse.ArgumentTypeError(
-            f'Prompt parse error: {e}')
+            f'Prompt parse error: {str(e).strip()}')
 
 
 def _type_clip_skip(val):
@@ -344,8 +344,16 @@ actions.append(
     parser.add_argument('-th', '--templates-help', nargs='*', dest=None, default=None, metavar='VARIABLE_NAME',
                         help="""Print a list of template variables available in dgenerate configs 
                         during batch processing from STDIN. When used as a command option, their values
-                        are not presented, just their names and types. Specifying names will list 
-                        type information for that variable name."""))
+                        are not presented, just their names and types. Specifying names will print 
+                        type information for those variable names."""))
+
+actions.append(
+    parser.add_argument('-dh', '--directives-help', nargs='*', dest=None, default=None, metavar='DIRECTIVE_NAME',
+                        help="""Print a list of directives available in dgenerate configs 
+                        during batch processing from STDIN. Providing names will print 
+                        documentation for the specified directive names. When used with 
+                        --plugin-modules, directives implemented by the specified plugins
+                         will also be listed."""))
 
 actions.append(
     parser.add_argument('-mt', '--model-type', action='store', default='torch', type=_model_type,
@@ -1169,7 +1177,7 @@ def _type_expression(arg):
     try:
         _memory.memory_constraint_syntax_check(arg)
     except _memory.MemoryConstraintSyntaxError as e:
-        raise argparse.ArgumentTypeError(f'Syntax error: {e}')
+        raise argparse.ArgumentTypeError(f'Syntax error: {str(e).strip()}')
 
 
 actions.append(
@@ -1330,17 +1338,39 @@ def parse_templates_help(
     return parsed.templates_help, unknown
 
 
+def parse_directives_help(
+        args: typing.Optional[collections.abc.Sequence[str]] = None) -> tuple[list[str], list[str]]:
+    """
+    Retrieve the ``-dh/--directives-help`` argument value
+
+    :param args: command line arguments
+    :return: (value, unknown_args_list)
+    """
+    parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
+    parser.add_argument('-dh', '--directives-help', nargs='*', default=None)
+    parsed, unknown = parser.parse_known_args(args)
+
+    return parsed.directives_help, unknown
+
+
 def parse_plugin_modules(
         args: typing.Optional[collections.abc.Sequence[str]] = None) -> tuple[list[str], list[str]]:
     """
     Retrieve the ``-pm/--plugin-modules`` argument value
 
     :param args: command line arguments
+
+    :raise DgenerateUsageError: If no argument values were provided.
+
     :return: (values, unknown_args_list)
     """
-    parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
-    parser.add_argument('-pm', '--plugin-modules', action='store', default=[], nargs="+")
-    parsed, unknown = parser.parse_known_args(args)
+
+    try:
+        parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
+        parser.add_argument('-pm', '--plugin-modules', action='store', default=[], nargs="+")
+        parsed, unknown = parser.parse_known_args(args)
+    except argparse.ArgumentError as e:
+        raise DgenerateUsageError(e)
 
     return parsed.plugin_modules, unknown
 
@@ -1367,12 +1397,18 @@ def parse_sub_command(
     Retrieve the ``-scm/--sub-command`` argument value
 
     :param args: command line arguments
+
+    :raise DgenerateUsageError: If no argument value was provided.
+
     :return: (value, unknown_args_list)
     """
 
-    parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
-    parser.add_argument('-scm', '--sub-command', action='store', default=None)
-    parsed, unknown = parser.parse_known_args(args)
+    try:
+        parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
+        parser.add_argument('-scm', '--sub-command', action='store', default=None)
+        parsed, unknown = parser.parse_known_args(args)
+    except argparse.ArgumentError as e:
+        raise DgenerateUsageError(e)
 
     return parsed.sub_command, unknown
 
@@ -1399,12 +1435,19 @@ def parse_device(
     Retrieve the ``-d/--device`` argument value
 
     :param args: command line arguments
+
+    :raise DgenerateUsageError: If no argument value was provided.
+
     :return: (value, unknown_args_list)
     """
 
-    parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
-    parser.add_argument('-d', '--device', type=_type_device)
-    parsed, unknown = parser.parse_known_args(args)
+    try:
+        parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
+        parser.add_argument('-d', '--device', type=_type_device)
+        parsed, unknown = parser.parse_known_args(args)
+    except argparse.ArgumentError as e:
+        raise DgenerateUsageError(e)
+
     return parsed.device, unknown
 
 
@@ -1475,10 +1518,10 @@ def parse_known_args(args: typing.Optional[collections.abc.Sequence[str]] = None
             raise
     except (argparse.ArgumentTypeError,
             argparse.ArgumentError,
-            _DgenerateUnknownArgumentException) as e:
+            _DgenerateUnknownArgumentError) as e:
         if log_error:
             pass
-            _messages.log(f'dgenerate: error: {e}', level=_messages.ERROR)
+            _messages.log(f'dgenerate: error: {str(e).strip()}', level=_messages.ERROR)
         if throw:
             raise DgenerateUsageError(e)
         return None
@@ -1513,9 +1556,9 @@ def parse_args(args: typing.Optional[collections.abc.Sequence[str]] = None,
     except (dgenerate.RenderLoopConfigError,
             argparse.ArgumentTypeError,
             argparse.ArgumentError,
-            _DgenerateUnknownArgumentException) as e:
+            _DgenerateUnknownArgumentError) as e:
         if log_error:
-            _messages.log(f'dgenerate: error: {e}', level=_messages.ERROR)
+            _messages.log(f'dgenerate: error: {str(e).strip()}', level=_messages.ERROR)
         if throw:
             raise DgenerateUsageError(e)
         return None

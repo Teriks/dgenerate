@@ -544,7 +544,8 @@ class PluginLoader:
                                 f'"{call_by_name}".')
             except ValueError as e:
                 raise self.__argument_error_type(
-                    f'Argument "{reserved_arg.name}" must match type: "{reserved_arg.type_string()}". Failure cause: {e}')
+                    f'Argument "{reserved_arg.name}" must match type: "{reserved_arg.type_string()}". '
+                    f'Failure cause: {str(e).strip()}')
 
         # plugin load user arguments
         args_dict.update(kwargs)
@@ -560,7 +561,8 @@ class PluginLoader:
                 args_dict[_textprocessing.dashdown(k)] = arg.parse_by_type(v)
             except ValueError as e:
                 raise self.__argument_error_type(
-                    f'Argument "{k}" must match type: "{arg.type_string()}". Failure cause: {e}')
+                    f'Argument "{k}" must match type: "{arg.type_string()}". '
+                    f'Failure cause: {str(e).strip()}')
 
         # Automagic argument
         args_dict['loaded_by_name'] = call_by_name
@@ -582,7 +584,8 @@ class PluginLoader:
                 raise self.__argument_error_type(msg)
         except self.__argument_error_type as e:
             raise self.__argument_error_type(
-                f'Invalid argument given to {self.__description} "{call_by_name}": {e}')
+                f'Invalid argument given to {self.__description} '
+                f'"{call_by_name}": {str(e).strip()}')
 
     def get_available_classes(self) -> list[type[Plugin]]:
         """

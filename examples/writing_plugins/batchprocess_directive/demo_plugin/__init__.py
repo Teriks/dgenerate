@@ -10,6 +10,22 @@ class MyDirective(_configrunnerplugin.ConfigRunnerPlugin):
         self.register_directive('my_directive', self.directive)
 
     def directive(self, args: collections.abc.Sequence[str]):
+        """
+        This documentation string can be displayed with:
+
+        dgenerate --directives-help my_directive
+
+        or
+
+        dgenerate --directives-help \my_directive
+
+
+        To list all directives:
+
+        dgenerate --directives-help
+        """
+
+
         # Access to the render loop object containing information about
         # previous invocations of dgenerate, this will always be assigned
         # even if an invocation of dgenerate in the configuration has not

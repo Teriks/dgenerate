@@ -86,10 +86,12 @@ def main():
                              injected_args=sys.argv[1:]).run_file(sys.stdin)
             except dgenerate.plugin.ModuleFileNotFoundError as e:
                 # missing plugin file parsed by ConfigRunner out of injected args
-                dgenerate.messages.log(f'dgenerate: error: {e}', level=dgenerate.messages.ERROR)
+                dgenerate.messages.log(f'dgenerate: error: {str(e).strip()}',
+                                       level=dgenerate.messages.ERROR)
                 sys.exit(1)
             except BatchProcessError as e:
-                dgenerate.messages.log(f'Config Error: {e}', level=dgenerate.messages.ERROR)
+                dgenerate.messages.log(f'Config Error: {str(e).strip()}',
+                                       level=dgenerate.messages.ERROR)
                 sys.exit(1)
         else:
             sys.exit(invoke_dgenerate(sys.argv[1:], render_loop=render_loop))
