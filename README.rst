@@ -2650,7 +2650,7 @@ specified explicitly and this is taken advantage of by using an in memory cache 
 In effect, creation of a pipeline is memoized, as well as the creation of any pipeline subcomponents
 when you have specified them explicitly with a URI.
 
-A number of things affect cache hit or miss upon a dgenerate invocation, extensive information
+A number of things effect cache hit or miss upon a dgenerate invocation, extensive information
 regarding runtime caching behavior of a pipelines and other models can be observed using
 ``-v/--verbose``
 
