@@ -132,6 +132,11 @@ class BatchProcessor:
     Shell arguments to inject at the end of every invocation.
     """
 
+    expand_vars: typing.Callable[[str], str]
+    """
+    A function for expanding environmental variables, defaults to :py:func:`os.path.expandvars`
+    """
+
     def __init__(self,
                  invoker: typing.Callable[[collections.abc.Sequence[str]], int],
                  name: _types.Name,
