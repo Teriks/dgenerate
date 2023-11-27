@@ -22,6 +22,7 @@ import typing
 
 import PIL.Image
 
+import dgenerate.image as _image
 import dgenerate.imageprocessors.imageprocessor as _imageprocessor
 import dgenerate.types as _types
 
@@ -32,16 +33,26 @@ class ImageProcessorMixin:
     implementors of :py:class:`dgenerate.mediainput.AnimationReader`
 
     This object can also be instantiated and used alone.
+
+    This object implements resizing functionality identical to an image
+    processor in the absense or disabled state of the image processor.
+
+    Which is used for among other things, frame slicing with an image
+    processor involved.
     """
 
     image_processor_enabled: bool
     """
-    Enable or disable image processing.
+    Enable or disable image processing. 
+    
+    Images will still be resized as needed/requested with this disabled.
     """
 
     image_processor: typing.Optional[_imageprocessor.ImageProcessor] = None
     """
     Current image processor.
+    
+    Images will still be resized as needed/requested if this is not assigned.
     """
 
     def __init__(self, image_processor: typing.Optional[_imageprocessor.ImageProcessor] = None, *args, **kwargs):
@@ -66,7 +77,8 @@ class ImageProcessorMixin:
 
         Invokes the assigned image processor on an image.
 
-        If no processor is assigned or the processor is disabled, this is a no-op.
+        If no processor is assigned or the processor is disabled, only necessary
+        resizing will be preformed based on the given arguments.
 
         The original image will be closed if the processor returns a new image
         instead of modifying it in place, you should not count on the original image
@@ -87,12 +99,31 @@ class ImageProcessorMixin:
         """
 
         if self.image_processor is None or not self.image_processor_enabled:
+            # still need to honor resizing requests when there
+            # is no processor assigned or the processor is disabled
+            if resize_resolution is not None:
+                calculate_new_size = _image.resize_image_calc(old_size=image.size,
+                                                              new_size=resize_resolution,
+                                                              aspect_correct=aspect_correct,
+                                                              align=align)
+                if calculate_new_size != image.size:
+                    with image:
+                        resized_image = _image.resize_image(img=image,
+                                                            size=resize_resolution,
+                                                            aspect_correct=aspect_correct,
+                                                            align=align)
+                    # return a copy of the image, resized
+                    return resized_image
+                # resize not necessary because it would result
+                # in a same sized image
+                return image
+            # no resize resolution given
             return image
-
-        return self.image_processor.process(image,
-                                            resize_resolution=resize_resolution,
-                                            aspect_correct=aspect_correct,
-                                            align=align)
+        else:
+            return self.image_processor.process(image,
+                                                resize_resolution=resize_resolution,
+                                                aspect_correct=aspect_correct,
+                                                align=align)
 
 
 __all__ = _types.module_all()

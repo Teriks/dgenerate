@@ -120,7 +120,8 @@ stabilityai/stable-diffusion-2-1 --prompts {{ format_prompt(last_prompts) }}
 # where they are necessary as you would do in the top level of
 # a config file. The whole of the template continuation is
 # processed by Jinja, from { to !END, so only one !END is
-# ever necessary when dealing with nested templates
+# ever necessary after the external template 
+# when dealing with nested templates
 
 {% for image in last_images %}
     stabilityai/stable-diffusion-2-1
