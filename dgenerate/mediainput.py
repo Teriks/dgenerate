@@ -1000,9 +1000,9 @@ def create_web_cache_file(url,
 
         path = os.path.join(cache_dir, f'web_{cursor.lastrowid}')
 
-    with open(path, mode='wb') as new_file:
-        new_file.write(req.content)
-        new_file.flush()
+        with open(path, mode='wb') as new_file:
+            new_file.write(req.content)
+            new_file.flush()
 
     return mime_type, path
 
