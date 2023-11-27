@@ -308,7 +308,11 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         if len(args) > 0:
             for arg in args:
-                del saved_modules[arg]
+                try:
+                    del saved_modules[arg]
+                except KeyError:
+                    raise _batchprocessor.BatchProcessError(
+                        f'No pipeline modules were saved to the variable name {arg}, that name could not be found.')
         else:
             saved_modules.clear()
         return 0
