@@ -513,7 +513,7 @@ class PluginLoader:
 
         try:
             parsed_args = arg_parser.parse(path).args
-        except _textprocessing.ConceptPathParseError as e:
+        except _textprocessing.ConceptUriParseError as e:
             raise self.__argument_error_type(str(e))
 
         args_dict = {}

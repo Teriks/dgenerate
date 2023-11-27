@@ -777,11 +777,11 @@ def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
 
     seed_parser = _textprocessing.ConceptUriParser('Image Seed',
                                                    known_args=keyword_args,
-                                                   args_multiple=['control'])
+                                                   args_lists=['control'])
 
     try:
         parse_result = seed_parser.parse(uri)
-    except _textprocessing.ConceptPathParseError as e:
+    except _textprocessing.ConceptUriParseError as e:
         raise ImageSeedError(e)
 
     # noinspection HttpUrlsUsage
