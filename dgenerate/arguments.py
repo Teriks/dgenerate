@@ -318,7 +318,7 @@ actions.append(
                         image processors and config directives."""))
 
 actions.append(
-    parser.add_argument('-scm', '--sub-command', action='store', default=None,
+    parser.add_argument('--sub-command', action='store', default=None,
                         metavar="SUB_COMMAND",
                         help="""Specify the name a sub-command to invoke. dgenerate exposes some extra image processing
                         functionality through the use of sub-commands. Sub commands essentially replace the entire set
@@ -326,7 +326,7 @@ actions.append(
                         See --sub-command-help for a list of sub-commands and help."""))
 
 actions.append(
-    parser.add_argument('-scmh', '--sub-command-help', action='store', nargs='*', default=None,
+    parser.add_argument('--sub-command-help', action='store', nargs='*', default=None,
                         metavar="SUB_COMMAND",
                         help="""List available sub-commands, providing sub-command names will 
                                 produce their documentation. Calling a subcommand with "--sub-command name --help" 
@@ -341,14 +341,14 @@ actions.append(
 
 # This argument is handled in dgenerate.invoker.invoke_dgenerate
 actions.append(
-    parser.add_argument('-th', '--templates-help', nargs='*', dest=None, default=None, metavar='VARIABLE_NAME',
+    parser.add_argument('--templates-help', nargs='*', dest=None, default=None, metavar='VARIABLE_NAME',
                         help="""Print a list of template variables available in dgenerate configs 
                         during batch processing from STDIN. When used as a command option, their values
                         are not presented, just their names and types. Specifying names will print 
                         type information for those variable names."""))
 
 actions.append(
-    parser.add_argument('-dh', '--directives-help', nargs='*', dest=None, default=None, metavar='DIRECTIVE_NAME',
+    parser.add_argument('--directives-help', nargs='*', dest=None, default=None, metavar='DIRECTIVE_NAME',
                         help="""Print a list of directives available in dgenerate configs 
                         during batch processing from STDIN. Providing names will print 
                         documentation for the specified directive names. When used with 
@@ -1091,7 +1091,7 @@ actions.append(
 
 # This argument is handled in dgenerate.invoker.invoke_dgenerate
 actions.append(
-    parser.add_argument('-iph', '--image-processor-help', action='store', nargs='*', default=None,
+    parser.add_argument('--image-processor-help', action='store', nargs='*', default=None,
                         metavar="PROCESSOR_NAME",
                         dest=None,
                         help="""Use this option alone (or with --plugin-modules) and no model 
@@ -1326,13 +1326,13 @@ def _parse_known_args(args=None) -> tuple[DgenerateArguments, list[str]]:
 def parse_templates_help(
         args: typing.Optional[collections.abc.Sequence[str]] = None) -> tuple[list[str], list[str]]:
     """
-    Retrieve the ``-th/--templates-help`` argument value
+    Retrieve the ``--templates-help`` argument value
 
     :param args: command line arguments
     :return: (value, unknown_args_list)
     """
     parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
-    parser.add_argument('-th', '--templates-help', nargs='*', default=None)
+    parser.add_argument('--templates-help', nargs='*', default=None)
     parsed, unknown = parser.parse_known_args(args)
 
     return parsed.templates_help, unknown
@@ -1341,13 +1341,13 @@ def parse_templates_help(
 def parse_directives_help(
         args: typing.Optional[collections.abc.Sequence[str]] = None) -> tuple[list[str], list[str]]:
     """
-    Retrieve the ``-dh/--directives-help`` argument value
+    Retrieve the ``--directives-help`` argument value
 
     :param args: command line arguments
     :return: (value, unknown_args_list)
     """
     parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
-    parser.add_argument('-dh', '--directives-help', nargs='*', default=None)
+    parser.add_argument('--directives-help', nargs='*', default=None)
     parsed, unknown = parser.parse_known_args(args)
 
     return parsed.directives_help, unknown
@@ -1378,14 +1378,14 @@ def parse_plugin_modules(
 def parse_image_processor_help(
         args: typing.Optional[collections.abc.Sequence[str]] = None) -> tuple[list[str], list[str]]:
     """
-    Retrieve the ``-iph/--image-processor-help`` argument value
+    Retrieve the ``--image-processor-help`` argument value
 
     :param args: command line arguments
     :return: (values, unknown_args_list)
     """
 
     parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
-    parser.add_argument('-iph', '--image-processor-help', action='store', nargs='*', default=None)
+    parser.add_argument('--image-processor-help', action='store', nargs='*', default=None)
     parsed, unknown = parser.parse_known_args(args)
 
     return parsed.image_processor_help, unknown
@@ -1394,7 +1394,7 @@ def parse_image_processor_help(
 def parse_sub_command(
         args: typing.Optional[collections.abc.Sequence[str]] = None) -> tuple[str, list[str]]:
     """
-    Retrieve the ``-scm/--sub-command`` argument value
+    Retrieve the ``--sub-command`` argument value
 
     :param args: command line arguments
 
@@ -1405,7 +1405,7 @@ def parse_sub_command(
 
     try:
         parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
-        parser.add_argument('-scm', '--sub-command', action='store', default=None)
+        parser.add_argument('--sub-command', action='store', default=None)
         parsed, unknown = parser.parse_known_args(args)
     except argparse.ArgumentError as e:
         raise DgenerateUsageError(e)
@@ -1416,14 +1416,14 @@ def parse_sub_command(
 def parse_sub_command_help(
         args: typing.Optional[collections.abc.Sequence[str]] = None) -> tuple[list[str], list[str]]:
     """
-    Retrieve the ``-scmh/--sub-command-help`` argument value
+    Retrieve the ``--sub-command-help`` argument value
 
     :param args: command line arguments
     :return: (values, unknown_args_list)
     """
 
     parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
-    parser.add_argument('-scmh', '--sub-command-help', action='store', nargs='*', default=None)
+    parser.add_argument('--sub-command-help', action='store', nargs='*', default=None)
     parsed, unknown = parser.parse_known_args(args)
 
     return parsed.sub_command_help, unknown
