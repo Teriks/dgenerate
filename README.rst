@@ -3229,6 +3229,7 @@ the documentation for the specified directives.
     --safety-checker
     --output-size 512
 
+
     \save_modules stage_1_modules feature_extractor safety_checker
 
     # that saves the feature_extractor module object in the pipeline above,
@@ -3262,6 +3263,7 @@ the documentation for the specified directives.
     --prompts {{ format_prompt(last_prompts) }}
     --image-seeds {{ quote(last_images) }}
     --vae-tiling
+
 
     # you should clear out the saved modules if you no longer need them
     # and your config file is going to continue, or if the dgenerate
