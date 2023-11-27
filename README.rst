@@ -2805,7 +2805,7 @@ The ``\templates_help`` output from the above example is:
 .. code-block::
 
     Config template variables are:
-    ==============================
+
 
         Name: "last_model_path"
             Type: typing.Optional[str]
@@ -3068,9 +3068,6 @@ The ``\templates_help`` output from the above example is:
         Name: "glob"
             Type: <class 'module'>
             Value: <module 'glob' from 'glob.py'>
-
-    ======================================================================================
-
 
 
 Here are examples of other available directives such as ``\set`` and ``\print`` as

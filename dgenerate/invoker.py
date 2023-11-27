@@ -146,7 +146,7 @@ def invoke_dgenerate(
                 _messages.log(
                     config_runner.generate_template_variables_help(
                         template_help_variable_names,
-                        show_values=False) + '\n', underline=True)
+                        show_values=False))
             except ValueError as e:
                 return rethrow_with_message(e)
         if directives_help_variable_names is not None:
