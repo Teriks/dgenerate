@@ -380,7 +380,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         Generate the help string for ``--directives-help``
 
 
-        :type directive_names: Display help for specific directives, if ``None`` or ``[]`` is specified, display all.
+        :param directive_names: Display help for specific directives, if ``None`` or ``[]`` is specified, display all.
 
         :raise ValueError: if given directive names could not be found
 
@@ -446,7 +446,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         This is used for ``--templates-help``
 
-        :type variable_names: Display help for specific variables, if ``None`` or ``[]`` is specified, display all.
+        :param variable_names: Display help for specific variables, if ``None`` or ``[]`` is specified, display all.
 
         :param show_values: Show the value of the template variable or just the name?
 
