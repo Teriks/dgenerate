@@ -1,0 +1,189 @@
+#! dgenerate 3.0.0
+
+# You can define your own template variables with the \set directive
+
+\set my_prompt "an astronaut riding a horse; bad quality"
+
+# If your variable is long you can use continuation, note that
+# continuation replaces newlines and surrounding whitespace
+# with a single space
+
+\set my_prompt "my very very very very very very very \
+                very very very very very very very very \
+                long long long long long prompt"
+
+# You can print to the console with templating using the \print directive
+# for debugging purposes
+
+\print {{ my_prompt }}
+
+
+# the \gen_seeds directive can be used to store a list of
+# random seed integers into a template variable.
+# (they are strings for convenience)
+
+\gen_seeds my_seeds 10
+
+\print {{ my_seeds | join(' ') }}
+
+
+# An invocation sets various template variables related to its
+# execution once it is finished running
+
+stabilityai/stable-diffusion-2-1 --prompts {{ my_prompt }} --gen-seeds 5
+
+
+# Print a quoted filename of the last image produced by the last invocation
+# This could potentially be passed to --image-seeds of the next invocation
+# If you wanted to run another pass over the last image that was produced
+
+\print {{ quote(last(last_images)) }}
+
+# you can also get the first image easily with the function "first"
+
+\print {{ quote(first(last_images)) }}
+
+
+# if you want to append a mask image file name
+
+\print "{{ last(last_images) }};my-mask.png"
+
+
+# Print a list of properly quoted filenames produced by the last
+# invocation separated by spaces if there is multiple, this could
+# also be passed to --image-seeds
+
+# in the case that you have generated an animated output with frame
+# output enabled, this will contain paths to the frames
+
+\print {{ quote(last_images) }}
+
+
+# For loops are possible
+
+\print {% for image in last_images %}{{ quote(image) }} {% endfor %}
+
+
+# For loops are possible with normal continuation
+# when not using a heredoc template continuation (mentioned below),
+# such as when the loop occurs in the body of a directive or a
+# dgenerate invocation, however this sort of continuation usage will
+# replace newlines and whitespace with a single space.
+
+# IE this template will be: "{% for image in last_images %} {{ quote(image) }} {% endfor %}"
+
+\print {% for image in last_images %} \
+        {{ quote(image) }} \
+       {% endfor %}
+
+
+# Access to the last prompt is available in a parsed representation
+# via "last_prompt", which can be formatted properly for reuse
+# by using the function "format_prompt"
+
+stabilityai/stable-diffusion-2-1 --prompts {{ format_prompt(last(last_prompts)) }}
+
+# You can get only the positive or negative part if you want via the "positive"
+# and "negative" properties on a prompt object, these attributes are not
+# quoted so you need to quote them one way or another, preferably using the
+# dgenerate template function "quote" which will shell quote any special
+# characters that the argument parser is not going to understand
+
+stabilityai/stable-diffusion-2-1 --prompts {{ quote(last(last_prompts).positive) }}
+
+# "last_prompts" returns all the prompts used in the last invocation as a list
+# the "format_prompt" function can also work on a list
+
+stabilityai/stable-diffusion-2-1 --prompts "prompt 1" "prompt 2" "prompt 3"
+
+stabilityai/stable-diffusion-2-1 --prompts {{ format_prompt(last_prompts) }}
+
+
+# Execute additional config with full templating.
+# The sequence !END is interpreted as the end of a
+# template continuation, a template continuation is
+# started when a line begins with the character {
+# and is effectively a heredoc, in that all whitespace
+# within is preserved including newlines
+
+{% for image in last_images %}
+    stabilityai/stable-diffusion-2-1 --image-seeds {{ quote(image) }} --prompts {{ my_prompt }}
+{% endfor %} !END
+
+
+# Multiple lines can be used with a template continuation
+# the inside of the template will be expanded to raw config
+# and then be ran, so make sure to use line continuations within
+# where they are necessary as you would do in the top level of
+# a config file. The whole of the template continuation is
+# processed by Jinja, from { to !END, so only one !END is
+# ever necessary when dealing with nested templates
+
+{% for image in last_images %}
+    stabilityai/stable-diffusion-2-1
+    --image-seeds {{ quote(image) }}
+    --prompts {{ my_prompt }}
+{% endfor %} !END
+
+
+# The above are both basically equivalent to this
+
+stabilityai/stable-diffusion-2-1 --image-seeds {{ quote(last_images) }} --prompts {{ my_prompt }}
+
+
+# You can save modules from the main pipeline used in the last invocation
+# for later reuse using the \save_modules directive, the first argument
+# is a variable name and the rest of the arguments are diffusers pipeline
+# module names to save to the variable name, this is an advanced usage
+# and requires some understanding of the diffusers library to utilize correctly
+
+stabilityai/stable-diffusion-2-1
+--variant fp16
+--dtype float16
+--prompts "an astronaut walking on the moon"
+--safety-checker
+--output-size 512
+
+
+\save_modules stage_1_modules feature_extractor safety_checker
+
+# that saves the feature_extractor module object in the pipeline above,
+# you can specify multiple module names to save if desired
+
+# Possible Module Names:
+
+# unet
+# vae
+# text_encoder
+# text_encoder_2
+# tokenizer
+# tokenizer_2
+# safety_checker
+# feature_extractor
+# controlnet
+# scheduler
+
+
+# To use the saved modules in the next invocation use  \use_modules
+
+\use_modules stage_1_modules
+
+# now the next invocation will use those modules instead of loading them from internal
+# in memory cache, disk, or huggingface
+
+stabilityai/stable-diffusion-x4-upscaler
+--variant fp16
+--dtype float16
+--model-type torch-upscaler-x4
+--prompts {{ format_prompt(last_prompts) }}
+--image-seeds {{ quote(last_images) }}
+--vae-tiling
+
+
+# you should clear out the saved modules if you no longer need them
+# and your config file is going to continue, or if the dgenerate
+# process is going to be kept alive for some reason such as in
+# some library usage scenarios, or perhaps if you are using it
+# like a server that reads from stdin :)
+
+\clear_modules stage_1_modules
