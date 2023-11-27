@@ -136,7 +136,22 @@ class TestConceptUriParser(unittest.TestCase):
         self.assertEqual(prs.concept, 'concept8')
         self.assertDictEqual(prs.args, {'arg1': '1;', 'arg2': 'false'})
 
-    def test_multiple_args(self):
+    def test_raw_args(self):
+        p = _tp.ConceptUriParser('test',
+                                 known_args=['arg1', 'arg2', 'arg3'],
+                                 args_raw=['arg2'])
+
+        prs = p.parse('concept1;arg2= "I am RAW" ;arg1= \'i am not raw  \'')
+
+        # the whole of the argument slot between ; and the next ; is a token,
+        # and tokens are striped so the value becomes right striped
+        # the assignment split simply splits by = and returns the right side
+        # as the value, raw
+        self.assertEqual(prs.args.get('arg2'), ' "I am RAW"')
+
+        self.assertEqual(prs.args.get('arg1'), 'i am not raw  ')
+
+    def test_list_args(self):
         p = _tp.ConceptUriParser('test',
                                  known_args=['arg1', 'arg2', 'arg3'],
                                  args_lists=['arg2'])
