@@ -1,0 +1,76 @@
+#! dgenerate 3.0.0
+
+# If a hash-bang version is provided in the format above
+# a warning will be produced if the version you are running
+# is not compatible (SemVer), this can be used anywhere in the
+# config file, a line number will be mentioned in the warning when the
+# version check fails
+
+# Comments in the file will be ignored
+
+# Each dgenerate invocation in the config begins with the path to a model,
+# IE. the first argument when using dgenerate from the command line, the
+# rest of the options that follow are the options to dgenerate that you
+# would use on the command line
+
+# Guarantee unique file names are generated under the output directory by specifying unique seeds
+
+stabilityai/stable-diffusion-2-1 --prompts "an astronaut riding a horse" --seeds 41509644783027 --output-path output --inference-steps 30 --guidance-scales 10
+stabilityai/stable-diffusion-2-1 --prompts "a cowboy riding a horse" --seeds 78553317097366 --output-path output --inference-steps 30 --guidance-scales 10
+stabilityai/stable-diffusion-2-1 --prompts "a martian riding a horse" --seeds 22797399276707 --output-path output --inference-steps 30 --guidance-scales 10
+
+# Guarantee that no file name collisions happen by specifying different output paths for each invocation
+
+stabilityai/stable-diffusion-2-1 --prompts "an astronaut riding a horse" --output-path unique_output_1  --inference-steps 30 --guidance-scales 10
+stabilityai/stable-diffusion-2-1 --prompts "a cowboy riding a horse" --output-path unique_output_2 --inference-steps 30 --guidance-scales 10
+
+# Multiline continuations are possible implicitly for argument
+# switches IE lines starting with '-'
+
+stabilityai/stable-diffusion-2-1 --prompts "a martian riding a horse"
+--output-path unique_output_3  # there can be comments at the end of lines
+--inference-steps 30 \         # this comment is also ignored
+
+# There can be comments or newlines within the continuation
+# but you must provide \ on the previous line to indicate that
+# it is going to happen
+
+--guidance-scales 10
+
+# The continuation ends (on the next line) when the last line does
+# not end in \ or start with -
+
+
+# Configuration directives provide extra functionality in a config, a directive
+# invocation always starts with a backslash
+
+# A clear model cache directive can be used inbetween invocations if cached models that
+# are no longer needed in your generation pipeline start causing out of memory issues
+
+\clear_model_cache
+
+# Additionally these other directives exist to clear user loaded models
+# out of dgenerates in memory cache individually
+
+# Clear specifically diffusion pipelines
+
+\clear_pipeline_cache
+
+# Clear specifically user specified UNet models
+
+\clear_unet_cache
+
+# Clear specifically user specified UNet models
+
+\clear_vae_cache
+
+# Clear specifically ControlNet models
+
+\clear_control_net_cache
+
+
+# This model was used before but will have to be fully instantiated from scratch again
+# after a cache flush which may take some time
+
+stabilityai/stable-diffusion-2-1 --prompts "a martian riding a horse"
+--output-path unique_output_4
