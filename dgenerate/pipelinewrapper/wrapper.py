@@ -1814,7 +1814,7 @@ class DiffusionPipelineWrapper:
             if self._vae_tiling or self._vae_slicing:
                 raise NotImplementedError('vae_tiling / vae_slicing not supported for flax.')
 
-            self.recall_main_pipeline = _pipelines.FlaxPipelineFactory(
+            self._recall_main_pipeline = _pipelines.FlaxPipelineFactory(
                 pipeline_type=pipeline_type,
                 model_path=self._model_path,
                 model_type=self._model_type,
@@ -1829,7 +1829,7 @@ class DiffusionPipelineWrapper:
                 local_files_only=self._local_files_only,
                 extra_modules=self._model_extra_modules)
 
-            creation_result = self.recall_main_pipeline()
+            creation_result = self._recall_main_pipeline()
             self._pipeline = creation_result.pipeline
             self._flax_params = creation_result.flax_params
             self._parsed_control_net_uris = creation_result.parsed_control_net_uris
@@ -1842,7 +1842,7 @@ class DiffusionPipelineWrapper:
             if not _pipelines.scheduler_is_help(self._sdxl_refiner_scheduler):
                 # Don't load this up if were just going to be getting
                 # information about compatible schedulers for the refiner
-                self.recall_main_pipeline = _pipelines.TorchPipelineFactory(
+                self._recall_main_pipeline = _pipelines.TorchPipelineFactory(
                     pipeline_type=pipeline_type,
                     model_path=self._model_path,
                     model_type=self._model_type,
@@ -1863,7 +1863,7 @@ class DiffusionPipelineWrapper:
                     vae_tiling=self._vae_tiling,
                     vae_slicing=self._vae_slicing)
 
-                creation_result = self.recall_main_pipeline()
+                creation_result = self._recall_main_pipeline()
                 self._pipeline = creation_result.pipeline
                 self._parsed_control_net_uris = creation_result.parsed_control_net_uris
 
@@ -1880,7 +1880,7 @@ class DiffusionPipelineWrapper:
             else:
                 refiner_extra_modules = self._refiner_extra_modules
 
-            self.recall_refiner_pipeline = _pipelines.TorchPipelineFactory(
+            self._recall_refiner_pipeline = _pipelines.TorchPipelineFactory(
                 pipeline_type=refiner_pipeline_type,
                 model_path=self._parsed_sdxl_refiner_uri.model,
                 model_type=_enums.ModelTypes.TORCH_SDXL,
@@ -1904,7 +1904,7 @@ class DiffusionPipelineWrapper:
                 vae_slicing=self._vae_slicing
             )
 
-            self._sdxl_refiner_pipeline = self.recall_refiner_pipeline().pipeline
+            self._sdxl_refiner_pipeline = self._recall_refiner_pipeline().pipeline
         else:
             offload = self._control_net_uris and self._model_type == _enums.ModelTypes.TORCH_SDXL
             offload = offload or _enums.model_type_is_floyd(self._model_type)
@@ -1914,7 +1914,7 @@ class DiffusionPipelineWrapper:
             cpu_offload = not offload and (self._scheduler == 'LCMScheduler'
                                            and self._model_type == _enums.ModelTypes.TORCH_SDXL)
 
-            self.recall_main_pipeline = _pipelines.TorchPipelineFactory(
+            self._recall_main_pipeline = _pipelines.TorchPipelineFactory(
                 pipeline_type=pipeline_type,
                 model_path=self._model_path,
                 model_type=self._model_type,
@@ -1938,7 +1938,7 @@ class DiffusionPipelineWrapper:
                 vae_tiling=self._vae_tiling,
                 vae_slicing=self._vae_slicing)
 
-            creation_result = self.recall_main_pipeline()
+            creation_result = self._recall_main_pipeline()
             self._pipeline = creation_result.pipeline
             self._parsed_control_net_uris = creation_result.parsed_control_net_uris
 
