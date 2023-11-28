@@ -26,6 +26,7 @@ import dgenerate.imageprocessors as _imageprocessors
 import dgenerate.mediainput as _mediainput
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
+import dgenerate.plugin as _plugin
 import dgenerate.renderloop as _renderloop
 import dgenerate.subcommands as _subcommands
 
@@ -91,8 +92,7 @@ def invoke_dgenerate(
                 plugin_module_paths=plugin_module_paths,
                 log_error=False,
                 throw=True)
-        except (_imageprocessors.ImageProcessorHelpUsageError,
-                _imageprocessors.ImageProcessorNotFoundError) as e:
+        except _imageprocessors.ImageProcessorHelpUsageError as e:
             return rethrow_with_message(e)
 
     sub_command_help, _ = _arguments.parse_sub_command_help(args)
@@ -103,8 +103,7 @@ def invoke_dgenerate(
                 plugin_module_paths=plugin_module_paths,
                 log_error=False,
                 throw=True)
-        except (_subcommands.SubCommandHelpUsageError,
-                _subcommands.SubCommandNotFoundError) as e:
+        except _subcommands.SubCommandHelpUsageError as e:
             return rethrow_with_message(e)
 
     try:
@@ -123,8 +122,8 @@ def invoke_dgenerate(
             return _subcommands.SubCommandLoader().load(uri=sub_command_name,
                                                         plugin_module_paths=plugin_module_paths,
                                                         args=verbose_rest)()
-        except (_subcommands.SubCommandNotFoundError,
-                _subcommands.SubCommandArgumentError) as e:
+        except (_plugin.PluginNotFoundError,
+                _plugin.PluginArgumentError) as e:
             return rethrow_with_message(e)
         finally:
             _messages.pop_level()
@@ -210,8 +209,8 @@ def invoke_dgenerate(
             _pipelinewrapper.InvalidModelUriError,
             _pipelinewrapper.InvalidSchedulerName,
             _pipelinewrapper.OutOfMemoryError,
-            _imageprocessors.ImageProcessorArgumentError,
-            _imageprocessors.ImageProcessorNotFoundError,
+            _plugin.PluginNotFoundError,
+            _plugin.PluginArgumentError,
             NotImplementedError,
             EnvironmentError) as e:
         return rethrow_with_message(e)

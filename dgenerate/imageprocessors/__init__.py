@@ -20,9 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import dgenerate.plugin as _plugin
-import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-from dgenerate import messages as _messages
 from .canny import CannyEdgeDetectProcessor
 from .exceptions import \
     ImageProcessorNotFoundError, \
@@ -63,45 +61,22 @@ def image_processor_help(names: _types.Names,
     :param log_error: log errors to stderr?
 
     :raises ImageProcessorHelpUsageError:
-    :raises ImageProcessorNotFoundError:
 
     :return: return-code, anything other than 0 is failure
     """
 
-    module_loader = ImageProcessorLoader()
-
     try:
-        module_loader.load_plugin_modules(plugin_module_paths)
-    except _plugin.ModuleFileNotFoundError as e:
-        if log_error:
-            _messages.log(
-                f'Plugin module could not be found: {str(e).strip()}',
-                level=_messages.ERROR)
+        return ImageProcessorLoader().loader_help(
+            names=names,
+            plugin_module_paths=plugin_module_paths,
+            title='image processor',
+            title_plural='image processors',
+            throw=True,
+            log_error=log_error)
+    except (ImageProcessorNotFoundError, _plugin.ModuleFileNotFoundError) as e:
         if throw:
-            raise ImageProcessorHelpUsageError(e)
+            raise ImageProcessorHelpUsageError(str(e).strip())
         return 1
-
-    if len(names) == 0:
-        available = ('\n' + ' ' * 4).join(_textprocessing.quote(name) for name in module_loader.get_all_names())
-        _messages.log(
-            f'Available image processors:\n\n{" " * 4}{available}')
-        return 0
-
-    help_strs = []
-    for name in names:
-        try:
-            help_strs.append(module_loader.get_help(name))
-        except ImageProcessorNotFoundError:
-            if log_error:
-                _messages.log(f'An image processor with the name of "{name}" could not be found.',
-                              level=_messages.ERROR)
-            if throw:
-                raise
-            return 1
-
-    for help_str in help_strs:
-        _messages.log(help_str + '\n', underline=True)
-    return 0
 
 
 __all__ = _types.module_all()

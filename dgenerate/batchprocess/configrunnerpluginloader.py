@@ -26,7 +26,7 @@ import dgenerate.types as _types
 from dgenerate.plugin import PluginArg as _Pa
 
 
-class ConfigRunnerPluginNotFoundError(Exception):
+class ConfigRunnerPluginNotFoundError(_plugin.PluginNotFoundError):
     """
     Thrown when :py:class:`.ConfigRunnerPluginLoader` cannot find any :py:class:`dgenerate.batchprocess.ConfigRunnerPlugin`
     implementation for a specified name.
@@ -34,7 +34,7 @@ class ConfigRunnerPluginNotFoundError(Exception):
     pass
 
 
-class ConfigRunnerPluginArgumentError(Exception):
+class ConfigRunnerPluginArgumentError(_plugin.PluginArgumentError):
     """
     Thrown when a :py:class:`dgenerate.batchprocess.ConfigRunnerPlugin` plugin is
     not instantiated with correct arguments.
