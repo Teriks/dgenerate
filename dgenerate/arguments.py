@@ -413,7 +413,7 @@ actions.append(
                         
                         Examples: "huggingface/unet", "huggingface/unet;revision=main", "unet_folder_on_disk". 
                         
-                        Single file loads are not supported for UNets.
+                        Blob links / single file loads are not supported for UNets.
                         
                         The "revision" argument specifies the model revision to use for the UNet when loading from 
                         huggingface repository or blob link, (The git branch / tag, default is "main").
@@ -432,10 +432,6 @@ actions.append(
                         If you wish to load weights directly from a path on disk, you must point this argument at the folder
                         they exist in, which should also contain the config.json file for the UNet. For example, a downloaded
                         repository folder from huggingface.
-                        
-                        If you wish to load a specific weight file from a huggingface repository, use the blob link
-                        loading syntax: --unet "https://huggingface.co/UserName/repository-name/blob/main/unet_model.safetensors",
-                        the "revision" argument may be used with this syntax.
                         """))
 
 actions.append(

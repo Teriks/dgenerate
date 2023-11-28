@@ -190,13 +190,13 @@ Help Output
                             which image in the batch they are.
       -un UNET_URI, --unet UNET_URI
                             Specify a UNet using a URI. Examples: "huggingface/unet",
-                            "huggingface/unet;revision=main", "unet_folder_on_disk". Single file loads are not
-                            supported for UNets. The "revision" argument specifies the model revision to use
-                            for the UNet when loading from huggingface repository or blob link, (The git
-                            branch / tag, default is "main"). The "variant" argument specifies the UNet model
-                            variant, it is only supported for torch type models it is not supported for flax.
-                            If "variant" is specified when loading from a huggingface repository or folder,
-                            weights will be loaded from "variant" filename, e.g.
+                            "huggingface/unet;revision=main", "unet_folder_on_disk". Blob links / single file
+                            loads are not supported for UNets. The "revision" argument specifies the model
+                            revision to use for the UNet when loading from huggingface repository or blob
+                            link, (The git branch / tag, default is "main"). The "variant" argument specifies
+                            the UNet model variant, it is only supported for torch type models it is not
+                            supported for flax. If "variant" is specified when loading from a huggingface
+                            repository or folder, weights will be loaded from "variant" filename, e.g.
                             "pytorch_model.<variant>.safetensors. "variant" defaults to the value of --variant
                             if it is not specified in the URI. The "subfolder" argument specifies the UNet
                             model subfolder, if specified when loading from a huggingface repository or
@@ -205,11 +205,7 @@ Help Output
                             auto, float16, or float32. If you wish to load weights directly from a path on
                             disk, you must point this argument at the folder they exist in, which should also
                             contain the config.json file for the UNet. For example, a downloaded repository
-                            folder from huggingface. If you wish to load a specific weight file from a
-                            huggingface repository, use the blob link loading syntax: --unet
-                            "https://huggingface.co/UserName/repository-
-                            name/blob/main/unet_model.safetensors", the "revision" argument may be used with
-                            this syntax.
+                            folder from huggingface.
       -vae VAE_URI, --vae VAE_URI
                             Specify a VAE using a URI. When using torch models the URI syntax is:
                             "AutoEncoderClass;model=(huggingface repository slug/blob link or file/folder
@@ -1761,8 +1757,7 @@ This is useful in particular for using the latent consistency scheduler.
 
 The first component of the ``--unet`` URI is the model path itself.
 
-You can provide a path to a huggingface repo/blob link, or a folder on disk
-(downloaded huggingface repository).
+You can provide a path to a huggingface repo, or a folder on disk (downloaded huggingface repository).
 
 .. code-block:: bash
 

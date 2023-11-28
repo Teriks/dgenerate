@@ -4,7 +4,7 @@
 
 stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
 --variant fp16 --dtype float16
---unet latent-consistency/lcm-sdxl
+--unet https://huggingface.co/latent-consistency/lcm-sdxl/blob/main/diffusion_pytorch_model.fp16.safetensors
 --scheduler LCMScheduler
 --inference-steps 4
 --guidance-scales 8
