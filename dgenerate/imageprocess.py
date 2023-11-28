@@ -50,6 +50,9 @@ def _type_align(val):
 
 
 class ImageProcessHelpException(Exception):
+    """
+    Raised by :py:func:`.parse_args` when ``--help`` is encountered and ``help_raises=True``
+    """
     pass
 
 

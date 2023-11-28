@@ -55,6 +55,10 @@ parser = argparse.ArgumentParser(
 
 
 class DgenerateHelpException(Exception):
+    """
+    Raised by :py:func:`.parse_args` and :py:func:`.parse_known_args`
+    when ``--help`` is encountered and ``help_raises=True``
+    """
     pass
 
 
@@ -1486,7 +1490,7 @@ def parse_known_args(args: typing.Optional[collections.abc.Sequence[str]] = None
     :param ignore_help: Do not allow ``--help`` to be passed and proc help being printed.
     :param help_raises: ``--help`` raises :py:exc:`.DgenerateHelpException` ?
 
-    :raise DgenerateUsageError: on argument error (simple type validation only)
+    :raises DgenerateUsageError: on argument error (simple type validation only)
     :raises DgenerateHelpException:
 
     :return: (:py:class:`.DgenerateArguments`, unknown_args_list).
