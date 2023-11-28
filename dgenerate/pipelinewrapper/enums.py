@@ -35,7 +35,7 @@ except ImportError:
     jnp = None
 
 
-class PipelineTypes(enum.Enum):
+class PipelineType(enum.Enum):
     """
     Represents possible diffusers pipeline types.
     """
@@ -58,38 +58,38 @@ class PipelineTypes(enum.Enum):
     """
 
 
-def get_pipeline_type_enum(id_str: typing.Union[PipelineTypes, str, None]) -> PipelineTypes:
+def get_pipeline_type_enum(id_str: typing.Union[PipelineType, str, None]) -> PipelineType:
     """
-    Get a :py:class:`.PipelineTypes` enum value from a string.
+    Get a :py:class:`.PipelineType` enum value from a string.
 
     :param id_str: one of: "txt2img", "img2img", or "inpaint"
-    :return: :py:class:`.PipelineTypes`
+    :return: :py:class:`.PipelineType`
     """
 
-    if isinstance(id_str, PipelineTypes):
+    if isinstance(id_str, PipelineType):
         return id_str
 
-    return {'txt2img': PipelineTypes.TXT2IMG,
-            'img2img': PipelineTypes.IMG2IMG,
-            'inpaint': PipelineTypes.INPAINT}[id_str.strip().lower()]
+    return {'txt2img': PipelineType.TXT2IMG,
+            'img2img': PipelineType.IMG2IMG,
+            'inpaint': PipelineType.INPAINT}[id_str.strip().lower()]
 
 
-def get_pipeline_type_string(pipeline_type_enum: PipelineTypes):
+def get_pipeline_type_string(pipeline_type_enum: PipelineType):
     """
-    Convert a :py:class:`.PipelineTypes` enum value to a string.
+    Convert a :py:class:`.PipelineType` enum value to a string.
 
-    :param pipeline_type_enum: :py:class:`.PipelineTypes` value
+    :param pipeline_type_enum: :py:class:`.PipelineType` value
 
     :return: one of: "txt2img", "img2img", or "inpaint"
     """
     pipeline_type = get_pipeline_type_enum(pipeline_type_enum)
 
-    return {PipelineTypes.TXT2IMG: 'txt2img',
-            PipelineTypes.IMG2IMG: 'img2img',
-            PipelineTypes.INPAINT: 'inpaint'}[pipeline_type]
+    return {PipelineType.TXT2IMG: 'txt2img',
+            PipelineType.IMG2IMG: 'img2img',
+            PipelineType.INPAINT: 'inpaint'}[pipeline_type]
 
 
-class DataTypes(enum.Enum):
+class DataType(enum.Enum):
     """
     Represents model precision
     """
@@ -111,45 +111,45 @@ def supported_data_type_strings():
     return ['auto', 'float16', 'float32']
 
 
-def supported_data_type_enums() -> list[DataTypes]:
+def supported_data_type_enums() -> list[DataType]:
     """
-    Return a list of supported :py:class:`.DataTypes` enum values
+    Return a list of supported :py:class:`.DataType` enum values
     """
     return [get_data_type_enum(i) for i in supported_data_type_strings()]
 
 
-def get_data_type_enum(id_str: typing.Union[DataTypes, str, None]) -> DataTypes:
+def get_data_type_enum(id_str: typing.Union[DataType, str, None]) -> DataType:
     """
-    Convert a ``--dtype`` string to its :py:class:`.DataTypes` enum value
+    Convert a ``--dtype`` string to its :py:class:`.DataType` enum value
 
     :param id_str: ``--dtype`` string
-    :return: :py:class:`.DataTypes`
+    :return: :py:class:`.DataType`
     """
 
-    if isinstance(id_str, DataTypes):
+    if isinstance(id_str, DataType):
         return id_str
 
-    return {'auto': DataTypes.AUTO,
-            'float16': DataTypes.FLOAT16,
-            'float32': DataTypes.FLOAT32}[id_str.strip().lower()]
+    return {'auto': DataType.AUTO,
+            'float16': DataType.FLOAT16,
+            'float32': DataType.FLOAT32}[id_str.strip().lower()]
 
 
-def get_data_type_string(data_type_enum: DataTypes) -> str:
+def get_data_type_string(data_type_enum: DataType) -> str:
     """
-    Convert a :py:class:`.DataTypes` enum value to its ``--dtype`` string
+    Convert a :py:class:`.DataType` enum value to its ``--dtype`` string
 
-    :param data_type_enum: :py:class:`.DataTypes` value
+    :param data_type_enum: :py:class:`.DataType` value
     :return: ``--dtype`` string
     """
 
     model_type = get_data_type_enum(data_type_enum)
 
-    return {DataTypes.AUTO: 'auto',
-            DataTypes.FLOAT16: 'float16',
-            DataTypes.FLOAT32: 'float32'}[model_type]
+    return {DataType.AUTO: 'auto',
+            DataType.FLOAT16: 'float16',
+            DataType.FLOAT32: 'float32'}[model_type]
 
 
-class ModelTypes(enum.Enum):
+class ModelType(enum.Enum):
     """
     Enum representation of ``--model-type``
     """
@@ -207,63 +207,63 @@ def supported_model_type_strings():
         return base_set
 
 
-def supported_model_type_enums() -> list[ModelTypes]:
+def supported_model_type_enums() -> list[ModelType]:
     """
-    Return a list of supported :py:class:`.ModelTypes` enum values
+    Return a list of supported :py:class:`.ModelType` enum values
     """
     return [get_model_type_enum(i) for i in supported_model_type_strings()]
 
 
-def get_model_type_enum(id_str: typing.Union[ModelTypes, str]) -> ModelTypes:
+def get_model_type_enum(id_str: typing.Union[ModelType, str]) -> ModelType:
     """
-    Convert a ``--model-type`` string to its :py:class:`.ModelTypes` enum value
+    Convert a ``--model-type`` string to its :py:class:`.ModelType` enum value
 
     :param id_str: ``--model-type`` string
-    :return: :py:class:`.ModelTypes`
+    :return: :py:class:`.ModelType`
     """
 
-    if isinstance(id_str, ModelTypes):
+    if isinstance(id_str, ModelType):
         return id_str
 
-    return {'torch': ModelTypes.TORCH,
-            'torch-pix2pix': ModelTypes.TORCH_PIX2PIX,
-            'torch-sdxl': ModelTypes.TORCH_SDXL,
-            'torch-if': ModelTypes.TORCH_IF,
-            'torch-ifs': ModelTypes.TORCH_IFS,
-            'torch-ifs-img2img': ModelTypes.TORCH_IFS_IMG2IMG,
-            'torch-sdxl-pix2pix': ModelTypes.TORCH_SDXL_PIX2PIX,
-            'torch-upscaler-x2': ModelTypes.TORCH_UPSCALER_X2,
-            'torch-upscaler-x4': ModelTypes.TORCH_UPSCALER_X4,
-            'flax': ModelTypes.FLAX}[id_str.strip().lower()]
+    return {'torch': ModelType.TORCH,
+            'torch-pix2pix': ModelType.TORCH_PIX2PIX,
+            'torch-sdxl': ModelType.TORCH_SDXL,
+            'torch-if': ModelType.TORCH_IF,
+            'torch-ifs': ModelType.TORCH_IFS,
+            'torch-ifs-img2img': ModelType.TORCH_IFS_IMG2IMG,
+            'torch-sdxl-pix2pix': ModelType.TORCH_SDXL_PIX2PIX,
+            'torch-upscaler-x2': ModelType.TORCH_UPSCALER_X2,
+            'torch-upscaler-x4': ModelType.TORCH_UPSCALER_X4,
+            'flax': ModelType.FLAX}[id_str.strip().lower()]
 
 
-def get_model_type_string(model_type_enum: ModelTypes) -> str:
+def get_model_type_string(model_type_enum: ModelType) -> str:
     """
-    Convert a :py:class:`.ModelTypes` enum value to its ``--model-type`` string
+    Convert a :py:class:`.ModelType` enum value to its ``--model-type`` string
 
-    :param model_type_enum: :py:class:`.ModelTypes` value
+    :param model_type_enum: :py:class:`.ModelType` value
     :return: ``--model-type`` string
     """
 
     model_type = get_model_type_enum(model_type_enum)
 
-    return {ModelTypes.TORCH: 'torch',
-            ModelTypes.TORCH_PIX2PIX: 'torch-pix2pix',
-            ModelTypes.TORCH_SDXL: 'torch-sdxl',
-            ModelTypes.TORCH_IF: 'torch-if',
-            ModelTypes.TORCH_IFS: 'torch-ifs',
-            ModelTypes.TORCH_IFS_IMG2IMG: 'torch-ifs-img2img',
-            ModelTypes.TORCH_SDXL_PIX2PIX: 'torch-sdxl-pix2pix',
-            ModelTypes.TORCH_UPSCALER_X2: 'torch-upscaler-x2',
-            ModelTypes.TORCH_UPSCALER_X4: 'torch-upscaler-x4',
-            ModelTypes.FLAX: 'flax'}[model_type]
+    return {ModelType.TORCH: 'torch',
+            ModelType.TORCH_PIX2PIX: 'torch-pix2pix',
+            ModelType.TORCH_SDXL: 'torch-sdxl',
+            ModelType.TORCH_IF: 'torch-if',
+            ModelType.TORCH_IFS: 'torch-ifs',
+            ModelType.TORCH_IFS_IMG2IMG: 'torch-ifs-img2img',
+            ModelType.TORCH_SDXL_PIX2PIX: 'torch-sdxl-pix2pix',
+            ModelType.TORCH_UPSCALER_X2: 'torch-upscaler-x2',
+            ModelType.TORCH_UPSCALER_X4: 'torch-upscaler-x4',
+            ModelType.FLAX: 'flax'}[model_type]
 
 
-def model_type_is_upscaler(model_type: typing.Union[ModelTypes, str]) -> bool:
+def model_type_is_upscaler(model_type: typing.Union[ModelType, str]) -> bool:
     """
-    Does a ``--model-type`` string or :py:class:`.ModelTypes` enum value represent an upscaler model?
+    Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an upscaler model?
 
-    :param model_type: ``--model-type`` string or :py:class:`.ModelTypes` enum value
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
     :return: bool
     """
     model_type = get_model_type_string(model_type)
@@ -271,11 +271,11 @@ def model_type_is_upscaler(model_type: typing.Union[ModelTypes, str]) -> bool:
     return 'upscaler' in model_type
 
 
-def model_type_is_sdxl(model_type: typing.Union[ModelTypes, str]) -> bool:
+def model_type_is_sdxl(model_type: typing.Union[ModelType, str]) -> bool:
     """
-    Does a ``--model-type`` string or :py:class:`.ModelTypes` enum value represent an SDXL model?
+    Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an SDXL model?
 
-    :param model_type: ``--model-type`` string or :py:class:`.ModelTypes` enum value
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
     :return: bool
     """
     model_type = get_model_type_string(model_type)
@@ -283,11 +283,11 @@ def model_type_is_sdxl(model_type: typing.Union[ModelTypes, str]) -> bool:
     return 'sdxl' in model_type
 
 
-def model_type_is_torch(model_type: typing.Union[ModelTypes, str]) -> bool:
+def model_type_is_torch(model_type: typing.Union[ModelType, str]) -> bool:
     """
-    Does a ``--model-type`` string or :py:class:`.ModelTypes` enum value represent an Torch model?
+    Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an Torch model?
 
-    :param model_type: ``--model-type`` string or :py:class:`.ModelTypes` enum value
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
     :return: bool
     """
     model_type = get_model_type_string(model_type)
@@ -295,11 +295,11 @@ def model_type_is_torch(model_type: typing.Union[ModelTypes, str]) -> bool:
     return 'torch' in model_type
 
 
-def model_type_is_flax(model_type: typing.Union[ModelTypes, str]) -> bool:
+def model_type_is_flax(model_type: typing.Union[ModelType, str]) -> bool:
     """
-    Does a ``--model-type`` string or :py:class:`.ModelTypes` enum value represent an Flax model?
+    Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an Flax model?
 
-    :param model_type: ``--model-type`` string or :py:class:`.ModelTypes` enum value
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
     :return: bool
     """
     model_type = get_model_type_string(model_type)
@@ -307,11 +307,11 @@ def model_type_is_flax(model_type: typing.Union[ModelTypes, str]) -> bool:
     return 'flax' in model_type
 
 
-def model_type_is_pix2pix(model_type: typing.Union[ModelTypes, str]) -> bool:
+def model_type_is_pix2pix(model_type: typing.Union[ModelType, str]) -> bool:
     """
-    Does a ``--model-type`` string or :py:class:`.ModelTypes` enum value represent an pix2pix type model?
+    Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an pix2pix type model?
 
-    :param model_type: ``--model-type`` string or :py:class:`.ModelTypes` enum value
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
     :return: bool
     """
     model_type = get_model_type_string(model_type)
@@ -319,42 +319,42 @@ def model_type_is_pix2pix(model_type: typing.Union[ModelTypes, str]) -> bool:
     return 'pix2pix' in model_type
 
 
-def model_type_is_floyd(model_type: typing.Union[ModelTypes, str]) -> bool:
+def model_type_is_floyd(model_type: typing.Union[ModelType, str]) -> bool:
     """
-    Does a ``--model-type`` string or :py:class:`.ModelTypes` enum value represent an floyd "if" of "ifs" type model?
+    Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an floyd "if" of "ifs" type model?
 
-    :param model_type: ``--model-type`` string or :py:class:`.ModelTypes` enum value
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
     :return: bool
     """
     model_type = get_model_type_enum(model_type)
 
-    return model_type == ModelTypes.TORCH_IF or \
-           model_type == ModelTypes.TORCH_IFS or \
-           model_type == ModelTypes.TORCH_IFS_IMG2IMG
+    return model_type == ModelType.TORCH_IF or \
+           model_type == ModelType.TORCH_IFS or \
+           model_type == ModelType.TORCH_IFS_IMG2IMG
 
 
-def model_type_is_floyd_if(model_type: typing.Union[ModelTypes, str]) -> bool:
+def model_type_is_floyd_if(model_type: typing.Union[ModelType, str]) -> bool:
     """
-    Does a ``--model-type`` string or :py:class:`.ModelTypes` enum value represent an floyd "if" type model?
+    Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an floyd "if" type model?
 
-    :param model_type: ``--model-type`` string or :py:class:`.ModelTypes` enum value
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
     :return: bool
     """
     model_type = get_model_type_enum(model_type)
 
-    return model_type == ModelTypes.TORCH_IF
+    return model_type == ModelType.TORCH_IF
 
 
-def model_type_is_floyd_ifs(model_type: typing.Union[ModelTypes, str]) -> bool:
+def model_type_is_floyd_ifs(model_type: typing.Union[ModelType, str]) -> bool:
     """
-    Does a ``--model-type`` string or :py:class:`.ModelTypes` enum value represent an floyd "ifs" type model?
+    Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an floyd "ifs" type model?
 
-    :param model_type: ``--model-type`` string or :py:class:`.ModelTypes` enum value
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
     :return: bool
     """
     model_type = get_model_type_enum(model_type)
 
-    return model_type == ModelTypes.TORCH_IFS or model_type == ModelTypes.TORCH_IFS_IMG2IMG
+    return model_type == ModelType.TORCH_IFS or model_type == ModelType.TORCH_IFS_IMG2IMG
 
 
 def have_jax_flax():
@@ -366,16 +366,16 @@ def have_jax_flax():
     return jax is not None
 
 
-def get_flax_dtype(dtype: typing.Union[DataTypes, str, typing.Any, None]):
+def get_flax_dtype(dtype: typing.Union[DataType, str, typing.Any, None]):
     """
-    Return a jax.numpy datatype from a :py:class:`.DataTypes` value, or a string,
+    Return a jax.numpy datatype from a :py:class:`.DataType` value, or a string,
     or a jax.numpy datatype itself.
 
     Passing None results in None being returned.
 
-    Passing 'auto' or :py:attr:`DataTypes.AUTO` results in None being returned.
+    Passing 'auto' or :py:attr:`DataType.AUTO` results in None being returned.
 
-    :param dtype: :py:class:`.DataTypes`, string, jax.numpy dtype, None
+    :param dtype: :py:class:`.DataType`, string, jax.numpy dtype, None
     :return: jax.numpy dtype
     """
 
@@ -385,7 +385,7 @@ def get_flax_dtype(dtype: typing.Union[DataTypes, str, typing.Any, None]):
     if isinstance(dtype, jnp.dtype):
         return dtype
 
-    if isinstance(dtype, DataTypes):
+    if isinstance(dtype, DataType):
         dtype = get_data_type_string(dtype)
 
     return {'float16': jnp.bfloat16,
@@ -394,16 +394,16 @@ def get_flax_dtype(dtype: typing.Union[DataTypes, str, typing.Any, None]):
             'auto': None}[dtype.lower()]
 
 
-def get_torch_dtype(dtype: typing.Union[DataTypes, torch.dtype, str, None]) -> typing.Union[torch.dtype, None]:
+def get_torch_dtype(dtype: typing.Union[DataType, torch.dtype, str, None]) -> typing.Union[torch.dtype, None]:
     """
-    Return a torch.dtype datatype from a :py:class:`.DataTypes` value, or a string,
+    Return a torch.dtype datatype from a :py:class:`.DataType` value, or a string,
     or a torch.dtype datatype itself.
 
     Passing None results in None being returned.
 
-    Passing 'auto' or :py:attr:`DataTypes.AUTO` results in None being returned.
+    Passing 'auto' or :py:attr:`DataType.AUTO` results in None being returned.
 
-    :param dtype: :py:class:`.DataTypes`, string, torch.dtype, None
+    :param dtype: :py:class:`.DataType`, string, torch.dtype, None
     :return: torch.dtype
     """
 
@@ -413,7 +413,7 @@ def get_torch_dtype(dtype: typing.Union[DataTypes, torch.dtype, str, None]) -> t
     if isinstance(dtype, torch.dtype):
         return dtype
 
-    if isinstance(dtype, DataTypes):
+    if isinstance(dtype, DataType):
         dtype = get_data_type_string(dtype)
 
     return {'float16': torch.float16,

@@ -131,7 +131,7 @@ class FlaxControlNetUri:
     Model repo subfolder
     """
 
-    dtype: typing.Optional[_enums.DataTypes]
+    dtype: typing.Optional[_enums.DataType]
     """
     Model dtype (precision)
     """
@@ -150,7 +150,7 @@ class FlaxControlNetUri:
                  model: str,
                  revision: _types.OptionalString = None,
                  subfolder: _types.OptionalPath = None,
-                 dtype: typing.Union[_enums.DataTypes, str, None] = None,
+                 dtype: typing.Union[_enums.DataType, str, None] = None,
                  scale: float = 1.0,
                  from_torch: bool = False):
 
@@ -162,7 +162,7 @@ class FlaxControlNetUri:
         self.from_torch = from_torch
 
     def load(self,
-             dtype_fallback: _enums.DataTypes = _enums.DataTypes.AUTO,
+             dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
              use_auth_token: _types.OptionalString = None,
              local_files_only: bool = False) -> tuple[diffusers.FlaxControlNetModel, typing.Any]:
         """
@@ -190,7 +190,7 @@ class FlaxControlNetUri:
               on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Flax ControlNet", key, hit[0]),
               on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Flax ControlNet", key, new[0]))
     def _load(self,
-              dtype_fallback: _enums.DataTypes = _enums.DataTypes.AUTO,
+              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
               use_auth_token: _types.OptionalString = None,
               local_files_only: bool = False) -> tuple[diffusers.FlaxControlNetModel, typing.Any]:
 
@@ -306,7 +306,7 @@ class TorchControlNetUri:
     Model repo subfolder
     """
 
-    dtype: typing.Optional[_enums.DataTypes]
+    dtype: typing.Optional[_enums.DataType]
     """
     Model dtype (precision)
     """
@@ -331,7 +331,7 @@ class TorchControlNetUri:
                  revision: _types.OptionalString,
                  variant: _types.OptionalString,
                  subfolder: _types.OptionalPath,
-                 dtype: typing.Union[_enums.DataTypes, str, None] = None,
+                 dtype: typing.Union[_enums.DataType, str, None] = None,
                  scale: float = 1.0,
                  start: float = 0.0,
                  end: float = 1.0):
@@ -346,7 +346,7 @@ class TorchControlNetUri:
         self.end = end
 
     def load(self,
-             dtype_fallback: _enums.DataTypes = _enums.DataTypes.AUTO,
+             dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
              use_auth_token: _types.OptionalString = None,
              local_files_only: bool = False) -> diffusers.ControlNetModel:
         """
@@ -374,7 +374,7 @@ class TorchControlNetUri:
               on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Torch ControlNet", key, hit),
               on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Torch ControlNet", key, new))
     def _load(self,
-              dtype_fallback: _enums.DataTypes = _enums.DataTypes.AUTO,
+              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
               use_auth_token: _types.OptionalString = None,
               local_files_only: bool = False) -> diffusers.ControlNetModel:
 
@@ -518,7 +518,7 @@ class SDXLRefinerUri:
     Model repo subfolder
     """
 
-    dtype: typing.Optional[_enums.DataTypes]
+    dtype: typing.Optional[_enums.DataType]
     """
     Model dtype (precision)
     """
@@ -528,7 +528,7 @@ class SDXLRefinerUri:
                  revision: _types.OptionalString = None,
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalPath = None,
-                 dtype: typing.Union[_enums.DataTypes, str, None] = None):
+                 dtype: typing.Union[_enums.DataType, str, None] = None):
         self.model = model
         self.revision = revision
         self.variant = variant
@@ -597,7 +597,7 @@ class TorchVAEUri:
     Model repo subfolder
     """
 
-    dtype: typing.Optional[_enums.DataTypes]
+    dtype: typing.Optional[_enums.DataType]
     """
     Model dtype (precision)
     """
@@ -608,7 +608,7 @@ class TorchVAEUri:
                  revision: _types.OptionalString = None,
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
-                 dtype: typing.Union[_enums.DataTypes, str, None] = None):
+                 dtype: typing.Union[_enums.DataType, str, None] = None):
 
         self.encoder = encoder
         self.model = model
@@ -618,7 +618,7 @@ class TorchVAEUri:
         self.subfolder = subfolder
 
     def load(self,
-             dtype_fallback: _enums.DataTypes = _enums.DataTypes.AUTO,
+             dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
              use_auth_token: _types.OptionalString = None,
              local_files_only=False) -> typing.Union[diffusers.AutoencoderKL,
                                                      diffusers.AsymmetricAutoencoderKL,
@@ -646,7 +646,7 @@ class TorchVAEUri:
               on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Torch VAE", key, hit),
               on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Torch VAE", key, new))
     def _load(self,
-              dtype_fallback: _enums.DataTypes = _enums.DataTypes.AUTO,
+              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
               use_auth_token: _types.OptionalString = None,
               local_files_only=False) -> typing.Union[diffusers.AutoencoderKL,
                                                       diffusers.AsymmetricAutoencoderKL,
@@ -792,7 +792,7 @@ class TorchUNetUri:
     Model repo subfolder
     """
 
-    dtype: typing.Optional[_enums.DataTypes]
+    dtype: typing.Optional[_enums.DataType]
     """
     Model dtype (precision)
     """
@@ -802,7 +802,7 @@ class TorchUNetUri:
                  revision: _types.OptionalString = None,
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
-                 dtype: typing.Union[_enums.DataTypes, str, None] = None):
+                 dtype: typing.Union[_enums.DataType, str, None] = None):
 
         self.model = model
         self.revision = revision
@@ -812,7 +812,7 @@ class TorchUNetUri:
 
     def load(self,
              variant_fallback: _types.OptionalString = None,
-             dtype_fallback: _enums.DataTypes = _enums.DataTypes.AUTO,
+             dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
              use_auth_token: _types.OptionalString = None,
              local_files_only=False) -> diffusers.UNet2DConditionModel:
         """
@@ -838,7 +838,7 @@ class TorchUNetUri:
               on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Torch UNet", key, new))
     def _load(self,
               variant_fallback: _types.OptionalString = None,
-              dtype_fallback: _enums.DataTypes = _enums.DataTypes.AUTO,
+              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
               use_auth_token: _types.OptionalString = None,
               local_files_only=False) -> diffusers.UNet2DConditionModel:
 
@@ -958,7 +958,7 @@ class FlaxVAEUri:
     Model repo subfolder
     """
 
-    dtype: typing.Optional[_enums.DataTypes]
+    dtype: typing.Optional[_enums.DataType]
     """
     Model dtype (precision)
     """
@@ -968,7 +968,7 @@ class FlaxVAEUri:
                  model: str,
                  revision: _types.OptionalString,
                  subfolder: _types.OptionalPath,
-                 dtype: typing.Optional[_enums.DataTypes]):
+                 dtype: typing.Optional[_enums.DataType]):
 
         self.encoder = encoder
         self.model = model
@@ -977,7 +977,7 @@ class FlaxVAEUri:
         self.subfolder = subfolder
 
     def load(self,
-             dtype_fallback: _enums.DataTypes = _enums.DataTypes.AUTO,
+             dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
              use_auth_token: _types.OptionalString = None,
              local_files_only=False) -> tuple[diffusers.FlaxAutoencoderKL, typing.Any]:
         """
@@ -1001,7 +1001,7 @@ class FlaxVAEUri:
               on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Flax VAE", key, hit[0]),
               on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Flax VAE", key, new[0]))
     def _load(self,
-              dtype_fallback: _enums.DataTypes = _enums.DataTypes.AUTO,
+              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
               use_auth_token: _types.OptionalString = None,
               local_files_only=False) -> tuple[diffusers.FlaxAutoencoderKL, typing.Any]:
 
@@ -1129,7 +1129,7 @@ class FlaxUNetUri:
     Model repo subfolder
     """
 
-    dtype: typing.Optional[_enums.DataTypes]
+    dtype: typing.Optional[_enums.DataType]
     """
     Model dtype (precision)
     """
@@ -1138,7 +1138,7 @@ class FlaxUNetUri:
                  model: str,
                  revision: _types.OptionalString,
                  subfolder: _types.OptionalPath,
-                 dtype: typing.Optional[_enums.DataTypes]):
+                 dtype: typing.Optional[_enums.DataType]):
 
         self.model = model
         self.revision = revision
@@ -1146,7 +1146,7 @@ class FlaxUNetUri:
         self.subfolder = subfolder
 
     def load(self,
-             dtype_fallback: _enums.DataTypes = _enums.DataTypes.AUTO,
+             dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
              use_auth_token: _types.OptionalString = None,
              local_files_only=False) -> tuple[diffusers.FlaxUNet2DConditionModel, typing.Any]:
         """
@@ -1170,7 +1170,7 @@ class FlaxUNetUri:
               on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Flax UNet", key, hit[0]),
               on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Flax UNet", key, new[0]))
     def _load(self,
-              dtype_fallback: _enums.DataTypes = _enums.DataTypes.AUTO,
+              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
               use_auth_token: _types.OptionalString = None,
               local_files_only=False) -> tuple[diffusers.FlaxUNet2DConditionModel, typing.Any]:
 

@@ -2966,14 +2966,14 @@ The ``\templates_help`` output from the above example is:
             Type: <class 'bool'>
             Value: False
         Name: "last_model_type"
-            Type: <enum 'ModelTypes'>
-            Value: ModelTypes.TORCH
+            Type: <enum 'ModelType'>
+            Value: ModelType.TORCH
         Name: "last_device"
             Type: <class 'str'>
             Value: cuda
         Name: "last_dtype"
-            Type: <enum 'DataTypes'>
-            Value: DataTypes.AUTO
+            Type: <enum 'DataType'>
+            Value: DataType.AUTO
         Name: "last_revision"
             Type: <class 'str'>
             Value: main

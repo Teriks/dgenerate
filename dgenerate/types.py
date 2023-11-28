@@ -390,6 +390,24 @@ def module_all():
     return all_names
 
 
+def partial_deep_copy_container(container: typing.Union[list, dict, set]):
+    """
+    Partially copy nested containers, handles lists, dicts, and sets.
+
+    :param container: top level container
+
+    :return: structure with all containers copied
+    """
+    if isinstance(container, list):
+        return [partial_deep_copy_container(v) for v in container]
+    elif isinstance(container, dict):
+        return {k: partial_deep_copy_container(v) for k, v in container.items()}
+    elif isinstance(container, set):
+        return {partial_deep_copy_container(v) for v in container}
+    else:
+        return container
+
+
 def type_check_struct(obj,
                       attribute_namer: typing.Optional[typing.Callable[[str], str]] = None):
     """

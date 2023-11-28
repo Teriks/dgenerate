@@ -43,8 +43,8 @@ try:
     from dgenerate.pipelinewrapper import \
         InvalidModelUriError, \
         InvalidSchedulerName, \
-        ModelTypes, \
-        DataTypes, \
+        ModelType, \
+        DataType, \
         DiffusionArguments, \
         OutOfMemoryError, \
         ModelNotFoundError
@@ -53,7 +53,7 @@ try:
     from dgenerate.batchprocess import BatchProcessError, ConfigRunner
     from dgenerate.invoker import invoke_dgenerate
     from dgenerate.arguments import parse_args, DgenerateUsageError, DgenerateArguments
-    from dgenerate.pipelinewrapper import ModelTypes, DiffusionArguments
+    from dgenerate.pipelinewrapper import ModelType, DiffusionArguments
     from dgenerate.mediainput import ImageSeedError, UnknownMimetypeError, ImageSeed
 
     from dgenerate.imageprocessors import ImageProcessorArgumentError, ImageProcessorNotFoundError

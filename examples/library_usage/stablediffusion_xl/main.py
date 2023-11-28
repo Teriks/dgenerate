@@ -4,8 +4,8 @@ from dgenerate import \
     RenderLoopConfig, \
     ImageGeneratedCallbackArgument, \
     Prompt, \
-    ModelTypes, \
-    DataTypes
+    ModelType, \
+    DataType
 
 # We can use this to parse and validate any --device argument that gets passed
 device, _ = dgenerate.arguments.parse_device()
@@ -43,10 +43,10 @@ config.prompts = [Prompt.parse('an astronaut walking on the moon; fake')]
 
 config.device = device
 
-config.model_type = ModelTypes.TORCH_SDXL
+config.model_type = ModelType.TORCH_SDXL
 
 # Lower GPU memory consumption with this data type
-config.dtype = DataTypes.FLOAT16
+config.dtype = DataType.FLOAT16
 
 # One seed will be randomly generated for you if none are specified
 
