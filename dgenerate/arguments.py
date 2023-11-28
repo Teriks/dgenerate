@@ -430,7 +430,7 @@ actions.append(
                         and should be one of: {_SUPPORTED_DATA_TYPES_PRETTY}.
                         
                         If you wish to load weights directly from a path on disk, you must point this argument at the folder
-                        it exists in, which should contain the config.json file for the UNet. For example, a downloaded
+                        they exist in, which should also contain the config.json file for the UNet. For example, a downloaded
                         repository folder from huggingface.
                         
                         If you wish to load a specific weight file from a huggingface repository, use the blob link

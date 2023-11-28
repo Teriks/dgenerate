@@ -203,7 +203,7 @@ Help Output
                             folder, weights from the specified subfolder. The "dtype" argument specifies the
                             UNet model precision, it defaults to the value of -t/--dtype and should be one of:
                             auto, float16, or float32. If you wish to load weights directly from a path on
-                            disk, you must point this argument at the folder it exists in, which should
+                            disk, you must point this argument at the folder they exist in, which should also
                             contain the config.json file for the UNet. For example, a downloaded repository
                             folder from huggingface. If you wish to load a specific weight file from a
                             huggingface repository, use the blob link loading syntax: --unet
