@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import collections.abc
 import enum
+import math
 import re
 import shutil
 import textwrap
@@ -444,8 +445,8 @@ class ConceptUriParser:
 
             if len(vals) == 1:
                 raise ConceptUriParseError(f'Error parsing path arguments for '
-                                            f'{self.concept_name} concept "{concept}", missing value '
-                                            f'assignment for argument {vals[0]}.')
+                                           f'{self.concept_name} concept "{concept}", missing value '
+                                           f'assignment for argument {vals[0]}.')
 
             if name in args:
                 raise ConceptUriParseError(
@@ -705,6 +706,52 @@ def parse_version(string: str) -> _types.Version:
             f'version expected to be a version string in the format major.minor.patch. received: "{string}"')
 
     return int(ver_parts[0]), int(ver_parts[1]), int(minor_re.match(ver_parts[2])[0])
+
+
+def parse_dimensions(string):
+    """
+    Parse a dimensions tuple from a string, integers seperated by the character 'x'
+
+    :param string: the string
+
+    :raises ValueError: On non integer dimension values.
+
+    :return: a tuple representing the dimensions
+    """
+    try:
+        return tuple(int(s.strip()) for s in string.lower().split('x'))
+    except ValueError:
+        raise ValueError('Dimensions must consist of integer values.')
+
+
+def parse_image_size(string):
+    """
+    Parse an image size tuple from a string, 2 integers seperated by the character 'x', or a single
+    integer specifying both dimensions.
+
+
+    :param string: the string
+
+    :raises ValueError: On non integer dimension values, or if more than 2 dimensions are provided,
+        or if the product of the dimensions is 0.
+
+    :return: a tuple representing the dimensions
+    """
+    dimensions = parse_dimensions(string)
+
+    if len(dimensions) > 2:
+        raise ValueError('An image size cannot possess over 2 dimensions.')
+
+    if len(dimensions) == 0:
+        raise ValueError('No image size dimension values were present.')
+
+    if math.prod(dimensions) == 0:
+        raise ValueError('The product of an image sizes dimensions cannot be 0.')
+
+    if len(dimensions) == 1:
+        return dimensions[0], dimensions[0]
+
+    return dimensions
 
 
 def debug_format_args(args_dict: dict[str, typing.Any],

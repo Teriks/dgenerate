@@ -2277,6 +2277,7 @@ Using the option ``--image-processor-help`` with no arguments will yield a list 
     #     "grayscale"
     #     "invert"
     #     "upscaler"
+    #     "sam"
     #     "posterize"
     #     "canny"
     #     "solarize"
