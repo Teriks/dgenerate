@@ -35,6 +35,7 @@ from .imageprocessorchain import ImageProcessorChain
 from .imageprocessorloader import ImageProcessorLoader
 from .imageprocessormixin import ImageProcessorMixin
 from .openpose import OpenPoseProcessor
+from .sam import SegmentAnythingProcessor
 from .upscaler import UpscalerProcessor
 
 

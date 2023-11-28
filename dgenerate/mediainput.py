@@ -726,12 +726,9 @@ def _parse_image_seed_uri_legacy(uri: str) -> ImageSeedParseResult:
             result.mask_path = part
         else:
             try:
-                result.resize_resolution = tuple(int(s.strip()) for s in part.split('x'))
+                result.resize_resolution = _textprocessing.parse_image_size(part)
             except ValueError:
                 raise ImageSeedError(f'Inpaint mask file "{part}" does not exist.')
-
-            if len(result.resize_resolution) == 1:
-                result.resize_resolution = (result.resize_resolution[0], result.resize_resolution[0])
     return result
 
 
@@ -819,16 +816,17 @@ def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
     resize = parse_result.args.get('resize', None)
 
     if resize is not None:
-        dimensions = tuple(int(s.strip()) for s in resize.split('x'))
+        try:
+            dimensions = _textprocessing.parse_image_size(resize)
+        except ValueError as e:
+            raise ImageSeedError(
+                f'Error parsing image seed resize dimension: {e}.')
         for idx, d in enumerate(dimensions):
             if d % 8 != 0:
                 raise ImageSeedError(
                     f'Image seed resize {["width", "height"][idx]} dimension {d} is not divisible by 8.')
 
-        if len(dimensions) == 1:
-            result.resize_resolution = (dimensions[0], dimensions[0])
-        else:
-            result.resize_resolution = dimensions
+        result.resize_resolution = dimensions
 
     aspect = parse_result.args.get('aspect', None)
 

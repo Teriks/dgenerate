@@ -137,20 +137,10 @@ def _type_guidance_scale(val):
 def _type_size(size):
     if size is None:
         return None
-
     try:
-        r = size.lower().split('x')
-        if len(r) < 2:
-            x, y = int(r[0]), int(r[0])
-        else:
-            x, y = int(r[0]), int(r[1])
-    except ValueError:
-        raise argparse.ArgumentTypeError('Dimensions must be integer values.')
-
-    if x * y < 1:
-        raise argparse.ArgumentTypeError('Dimensions must have a product of at least 1.')
-
-    return x, y
+        return _textprocessing.parse_image_size(size)
+    except ValueError as e:
+        raise argparse.ArgumentTypeError(str(e).strip())
 
 
 def _type_output_size(size):
