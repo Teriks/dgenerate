@@ -60,7 +60,7 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
                  detect_resolution: typing.Optional[str] = None,
                  detect_aspect: bool = True,
                  detect_align: int = 1,
-                 mobile_sam=False, **kwargs):
+                 mobile_sam: bool =False, **kwargs):
         super().__init__(**kwargs)
 
         if mobile_sam:
