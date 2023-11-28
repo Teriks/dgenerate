@@ -197,7 +197,7 @@ class FlaxControlNetUri:
         single_file_load_path = _hfutil.is_single_file_model_load(self.model)
 
         if single_file_load_path:
-            raise NotImplementedError('Flax --control-nets do not support single file loads from disk.')
+            raise NotImplementedError('Flax --control-nets do not support single file loads.')
         else:
 
             estimated_memory_usage = _hfutil.estimate_model_memory_use(
