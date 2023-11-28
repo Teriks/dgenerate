@@ -239,7 +239,7 @@ class DiffusionArguments(_types.SetFromMixin):
 
     upscaler_noise_level: _types.OptionalInteger = None
     """
-    Upscaler noise level for the :py:attr:`dgenerate.pipelinewrapper.ModelTypes.TORCH_UPSCALER_X4` model type only.
+    Upscaler noise level for the :py:attr:`dgenerate.pipelinewrapper.ModelType.TORCH_UPSCALER_X4` model type only.
     """
 
     sdxl_high_noise_fraction: _types.OptionalFloat = None
@@ -398,7 +398,7 @@ class DiffusionArguments(_types.SetFromMixin):
 
     image_guidance_scale: _types.OptionalFloat = None
     """
-    This value is only relevant for ``pix2pix`` :py:class:`dgenerate.pipelinewrapper.ModelTypes`.
+    This value is only relevant for ``pix2pix`` :py:class:`dgenerate.pipelinewrapper.ModelType`.
     
     Image guidance scale is to push the generated image towards the initial image :py:attr:`.DiffusionArguments.image`. 
     Image guidance scale is enabled by setting :py:attr:`.DiffusionArguments.image_guidance_scale` > 1. Higher image 
@@ -451,21 +451,21 @@ class DiffusionArguments(_types.SetFromMixin):
 
     def determine_pipeline_type(self):
         """
-        Determine the :py:attr:`dgenerate.pipelinewrapper.PipelineTypes` needed to utilize these arguments.
+        Determine the :py:attr:`dgenerate.pipelinewrapper.PipelineType` needed to utilize these arguments.
 
-        :return: :py:attr:`dgenerate.pipelinewrapper.PipelineTypes`
+        :return: :py:attr:`dgenerate.pipelinewrapper.PipelineType`
         """
 
         if self.image is not None and self.mask_image is not None:
             # Inpainting is handled by INPAINT type
-            return _enums.PipelineTypes.INPAINT
+            return _enums.PipelineType.INPAINT
 
         if self.image is not None:
             # Image only is handled by IMG2IMG type
-            return _enums.PipelineTypes.IMG2IMG
+            return _enums.PipelineType.IMG2IMG
 
         # All other situations handled by TXT2IMG type
-        return _enums.PipelineTypes.TXT2IMG
+        return _enums.PipelineType.TXT2IMG
 
     @staticmethod
     def _describe_prompt(prompt_format, prompt: _prompt.Prompt, pos_title, neg_title):
@@ -580,11 +580,11 @@ class DiffusionPipelineWrapper:
 
     def __init__(self,
                  model_path: _types.Path,
-                 model_type: typing.Union[_enums.ModelTypes, str] = _enums.ModelTypes.TORCH,
+                 model_type: typing.Union[_enums.ModelType, str] = _enums.ModelType.TORCH,
                  revision: _types.OptionalName = None,
                  variant: _types.OptionalName = None,
                  subfolder: _types.OptionalName = None,
-                 dtype: typing.Union[_enums.DataTypes, str] = _enums.DataTypes.AUTO,
+                 dtype: typing.Union[_enums.DataType, str] = _enums.DataType.AUTO,
                  unet_uri: _types.OptionalUri = None,
                  vae_uri: _types.OptionalUri = None,
                  vae_tiling: bool = False,
@@ -717,7 +717,7 @@ class DiffusionPipelineWrapper:
         return self._variant
 
     @property
-    def dtype(self) -> _enums.DataTypes:
+    def dtype(self) -> _enums.DataType:
         """
         Currently set dtype for the main model
         """
@@ -773,7 +773,7 @@ class DiffusionPipelineWrapper:
         return self._sdxl_refiner_uri
 
     @property
-    def model_type_enum(self) -> _enums.ModelTypes:
+    def model_type_enum(self) -> _enums.ModelType:
         """
         Currently set ``--model-type`` enum value
         """
@@ -787,7 +787,7 @@ class DiffusionPipelineWrapper:
         return _enums.get_model_type_string(self._model_type)
 
     @property
-    def dtype_enum(self) -> _enums.DataTypes:
+    def dtype_enum(self) -> _enums.DataType:
         """
         Currently set --dtype enum value
         """
@@ -1249,10 +1249,10 @@ class DiffusionPipelineWrapper:
 
             args['height'] = _types.default(user_args.height, control_images[0].height)
 
-            if self._pipeline_type == _enums.PipelineTypes.TXT2IMG:
+            if self._pipeline_type == _enums.PipelineType.TXT2IMG:
                 args['image'] = control_images
-            elif self._pipeline_type == _enums.PipelineTypes.IMG2IMG or \
-                    self._pipeline_type == _enums.PipelineTypes.INPAINT:
+            elif self._pipeline_type == _enums.PipelineType.IMG2IMG or \
+                    self._pipeline_type == _enums.PipelineType.INPAINT:
 
                 args['image'] = user_args.image
                 args['control_image'] = control_images
@@ -1266,11 +1266,11 @@ class DiffusionPipelineWrapper:
             image = user_args.image
 
             floyd_og_image_needed = \
-                self._pipeline_type == _enums.PipelineTypes.INPAINT and \
+                self._pipeline_type == _enums.PipelineType.INPAINT and \
                 _enums.model_type_is_floyd_ifs(self._model_type)
 
             floyd_og_image_needed |= \
-                self._model_type == _enums.ModelTypes.TORCH_IFS_IMG2IMG
+                self._model_type == _enums.ModelType.TORCH_IFS_IMG2IMG
 
             if floyd_og_image_needed:
                 if user_args.floyd_image is None:
@@ -1283,11 +1283,11 @@ class DiffusionPipelineWrapper:
                 args['image'] = image
 
             if _enums.model_type_is_upscaler(self._model_type):
-                if self._model_type == _enums.ModelTypes.TORCH_UPSCALER_X4:
+                if self._model_type == _enums.ModelType.TORCH_UPSCALER_X4:
                     args['noise_level'] = int(
                         _types.default(user_args.upscaler_noise_level, _constants.DEFAULT_X4_UPSCALER_NOISE_LEVEL))
             elif not _enums.model_type_is_pix2pix(self._model_type) and \
-                    self._model_type != _enums.ModelTypes.TORCH_IFS:
+                    self._model_type != _enums.ModelType.TORCH_IFS:
                 set_strength()
 
             mask_image = user_args.mask_image
@@ -1297,7 +1297,7 @@ class DiffusionPipelineWrapper:
                     args['width'] = image.size[0]
                     args['height'] = image.size[1]
 
-            if self._model_type == _enums.ModelTypes.TORCH_SDXL_PIX2PIX:
+            if self._model_type == _enums.ModelType.TORCH_SDXL_PIX2PIX:
                 # Required
                 args['width'] = image.size[0]
                 args['height'] = image.size[1]
@@ -1586,7 +1586,7 @@ class DiffusionPipelineWrapper:
 
         mock_batching = False
 
-        if self._model_type != _enums.ModelTypes.TORCH_UPSCALER_X2:
+        if self._model_type != _enums.ModelType.TORCH_UPSCALER_X2:
             # Upscaler does not take this argument, can only produce one image
             pipeline_args['num_images_per_prompt'] = batch_size
         else:
@@ -1801,14 +1801,14 @@ class DiffusionPipelineWrapper:
         if _enums.model_type_is_sdxl(self._model_type) and self._textual_inversion_uris:
             raise NotImplementedError('Textual inversion not supported for SDXL.')
 
-        if self._model_type == _enums.ModelTypes.FLAX:
+        if self._model_type == _enums.ModelType.FLAX:
             if not _enums.have_jax_flax():
                 raise NotImplementedError('flax and jax are not installed.')
 
             if self._textual_inversion_uris:
                 raise NotImplementedError('Textual inversion not supported for flax.')
 
-            if self._pipeline_type != _enums.PipelineTypes.TXT2IMG and self._control_net_uris:
+            if self._pipeline_type != _enums.PipelineType.TXT2IMG and self._control_net_uris:
                 raise NotImplementedError('Inpaint and Img2Img not supported for flax with ControlNet.')
 
             if self._vae_tiling or self._vae_slicing:
@@ -1867,7 +1867,7 @@ class DiffusionPipelineWrapper:
                 self._pipeline = creation_result.pipeline
                 self._parsed_control_net_uris = creation_result.parsed_control_net_uris
 
-            refiner_pipeline_type = _enums.PipelineTypes.IMG2IMG if pipeline_type is _enums.PipelineTypes.TXT2IMG else pipeline_type
+            refiner_pipeline_type = _enums.PipelineType.IMG2IMG if pipeline_type is _enums.PipelineType.TXT2IMG else pipeline_type
 
             if self._pipeline is not None:
 
@@ -1883,7 +1883,7 @@ class DiffusionPipelineWrapper:
             self._recall_refiner_pipeline = _pipelines.TorchPipelineFactory(
                 pipeline_type=refiner_pipeline_type,
                 model_path=self._parsed_sdxl_refiner_uri.model,
-                model_type=_enums.ModelTypes.TORCH_SDXL,
+                model_type=_enums.ModelType.TORCH_SDXL,
                 subfolder=self._parsed_sdxl_refiner_uri.subfolder,
                 revision=self._parsed_sdxl_refiner_uri.revision,
 
@@ -1906,13 +1906,13 @@ class DiffusionPipelineWrapper:
 
             self._sdxl_refiner_pipeline = self._recall_refiner_pipeline().pipeline
         else:
-            offload = self._control_net_uris and self._model_type == _enums.ModelTypes.TORCH_SDXL
+            offload = self._control_net_uris and self._model_type == _enums.ModelType.TORCH_SDXL
             offload = offload or _enums.model_type_is_floyd(self._model_type)
 
             # really defeats the point, but there is some sort of memory
             # management problem unfixed
             cpu_offload = not offload and (self._scheduler == 'LCMScheduler'
-                                           and self._model_type == _enums.ModelTypes.TORCH_SDXL)
+                                           and self._model_type == _enums.ModelType.TORCH_SDXL)
 
             self._recall_main_pipeline = _pipelines.TorchPipelineFactory(
                 pipeline_type=pipeline_type,
@@ -1985,7 +1985,7 @@ class DiffusionPipelineWrapper:
         pipeline_args = \
             self._pipeline_default_args(user_args=copy_args)
 
-        if self._model_type == _enums.ModelTypes.FLAX:
+        if self._model_type == _enums.ModelType.FLAX:
             try:
                 result = self._call_flax(pipeline_args=pipeline_args,
                                          user_args=copy_args)

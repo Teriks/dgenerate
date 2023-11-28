@@ -66,8 +66,8 @@ from .constants import \
     DEFAULT_SDXL_HIGH_NOISE_FRACTION, \
     DEFAULT_X4_UPSCALER_NOISE_LEVEL
 from .enums import \
-    ModelTypes, \
-    DataTypes, \
+    ModelType, \
+    DataType, \
     model_type_is_sdxl, \
     model_type_is_floyd_if, \
     model_type_is_pix2pix, \
@@ -75,7 +75,7 @@ from .enums import \
     model_type_is_floyd_ifs, \
     model_type_is_floyd, \
     model_type_is_flax, \
-    PipelineTypes, \
+    PipelineType, \
     get_model_type_enum, \
     get_flax_dtype, \
     get_torch_dtype, \

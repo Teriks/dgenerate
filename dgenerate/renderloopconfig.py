@@ -184,7 +184,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     upscaler_noise_levels: _types.OptionalIntegers = None
     """
     Optional list of integer upscaler noise levels, this corresponds to the ``--upscaler-noise-levels`` argument
-    of the dgenerate command line tool that is used for the :py:attr:`dgenerate.pipelinewrapper.ModelTypes.TORCH_UPSCALER_X4`
+    of the dgenerate command line tool that is used for the :py:attr:`dgenerate.pipelinewrapper.ModelType.TORCH_UPSCALER_X4`
     model type only.
     """
 
@@ -389,7 +389,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     Enable safety checker? ``--safety-checker``
     """
 
-    model_type: _pipelinewrapper.ModelTypes = _pipelinewrapper.ModelTypes.TORCH
+    model_type: _pipelinewrapper.ModelType = _pipelinewrapper.ModelType.TORCH
     """
     Corresponds to the ``--model-type`` argument of the dgenerate command line tool.
     """
@@ -401,7 +401,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     This corresponds to the ``--device`` argument of the dgenerate command line tool.
     """
 
-    dtype: _pipelinewrapper.DataTypes = _pipelinewrapper.DataTypes.AUTO
+    dtype: _pipelinewrapper.DataType = _pipelinewrapper.DataType.AUTO
     """
     Primary model data type specification, IE: integer precision. Default is auto selection.
     Lower precision datatypes result in less GPU memory usage.
@@ -643,8 +643,8 @@ class RenderLoopConfig(_types.SetFromMixin):
         elif not _pipelinewrapper.model_type_is_flax(self.model_type):
             self.batch_size = 1
 
-        if self.clip_skips and not (self.model_type == _pipelinewrapper.ModelTypes.TORCH or
-                                    self.model_type == _pipelinewrapper.ModelTypes.TORCH_SDXL):
+        if self.clip_skips and not (self.model_type == _pipelinewrapper.ModelType.TORCH or
+                                    self.model_type == _pipelinewrapper.ModelType.TORCH_SDXL):
             raise RenderLoopConfigError(f'you cannot specify {a_namer("clip_skips")} for '
                                         f'{a_namer("model_type")} values other than "torch" or "torch-sdxl"')
 
@@ -701,10 +701,10 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'{a_namer("control_net_uris")} is not compatible '
                 f'with upscaler models, see: {a_namer("model_type")}.')
         elif self.upscaler_noise_levels is None:
-            if self.model_type == _pipelinewrapper.ModelTypes.TORCH_UPSCALER_X4:
+            if self.model_type == _pipelinewrapper.ModelType.TORCH_UPSCALER_X4:
                 upscaler_noise_levels_default_set = True
                 self.upscaler_noise_levels = [_pipelinewrapper.DEFAULT_X4_UPSCALER_NOISE_LEVEL]
-        elif self.model_type != _pipelinewrapper.ModelTypes.TORCH_UPSCALER_X4:
+        elif self.model_type != _pipelinewrapper.ModelType.TORCH_UPSCALER_X4:
             raise RenderLoopConfigError(
                 f'you cannot specify {a_namer("upscaler_noise_levels")} for an upscaler '
                 f'model type that is not "torch-upscaler-x4", see: {a_namer("model_type")}.')
@@ -896,7 +896,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'your {a_namer("image_seeds")} specification has a single source or comma '
                     f'separated list of sources.')
 
-        if self.model_type == _pipelinewrapper.ModelTypes.TORCH_IFS_IMG2IMG or \
+        if self.model_type == _pipelinewrapper.ModelType.TORCH_IFS_IMG2IMG or \
                 (parsed.mask_path and _pipelinewrapper.model_type_is_floyd_ifs(self.model_type)):
 
             if not parsed.floyd_path:

@@ -140,9 +140,9 @@ def load_scheduler(pipeline: typing.Union[diffusers.DiffusionPipeline, diffusers
 
 
 def estimate_pipeline_memory_use(
-        pipeline_type: _enums.PipelineTypes,
+        pipeline_type: _enums.PipelineType,
         model_path: str,
-        model_type: _enums.ModelTypes,
+        model_type: _enums.ModelType,
         revision: _types.Name = 'main',
         variant: _types.OptionalName = None,
         subfolder: _types.OptionalPath = None,
@@ -159,9 +159,9 @@ def estimate_pipeline_memory_use(
 
 
 
-    :param pipeline_type: :py:class:`dgenerate.pipelinewrapper.PipelineTypes`
+    :param pipeline_type: :py:class:`dgenerate.pipelinewrapper.PipelineType`
     :param model_path: huggingface slug, blob link, path to folder on disk, path to model file.
-    :param model_type: :py:class:`dgenerate.pipelinewrapper.ModelTypes`
+    :param model_type: :py:class:`dgenerate.pipelinewrapper.ModelType`
     :param revision: huggingface repo revision if using a huggingface slug
     :param variant: model file variant desired, for example "fp16"
     :param subfolder: huggingface repo subfolder if using a huggingface slug
@@ -403,13 +403,13 @@ class TorchPipelineCreationResult(PipelineCreationResult):
         return self.pipeline(*args, **kwargs)
 
 
-def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
+def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                                     model_path: str,
-                                    model_type: _enums.ModelTypes = _enums.ModelTypes.TORCH,
+                                    model_type: _enums.ModelType = _enums.ModelType.TORCH,
                                     revision: _types.OptionalString = None,
                                     variant: _types.OptionalString = None,
                                     subfolder: _types.OptionalString = None,
-                                    dtype: _enums.DataTypes = _enums.DataTypes.AUTO,
+                                    dtype: _enums.DataType = _enums.DataType.AUTO,
                                     unet_uri: _types.OptionalUri = None,
                                     vae_uri: _types.OptionalUri = None,
                                     lora_uris: _types.OptionalUris = None,
@@ -427,13 +427,13 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     Create a :py:class:`diffusers.DiffusionPipeline` in dgenerates in memory cacheing system.
 
 
-    :param pipeline_type: py:class:`dgenerate.pipelinewrapper.PipelineTypes` enum value
-    :param model_type:  py:class:`dgenerate.pipelinewrapper.ModelTypes` enum value
+    :param pipeline_type: py:class:`dgenerate.pipelinewrapper.PipelineType` enum value
+    :param model_type:  py:class:`dgenerate.pipelinewrapper.ModelType` enum value
     :param model_path: huggingface slug, huggingface blob link, path to folder on disk, path to file on disk
     :param revision: huggingface repo revision (branch)
     :param variant: model weights name variant, for example 'fp16'
     :param subfolder: huggingface repo subfolder if applicable
-    :param dtype: Optional py:class:`dgenerate.pipelinewrapper.DataTypes` enum value
+    :param dtype: Optional py:class:`dgenerate.pipelinewrapper.DataType` enum value
     :param unet_uri: Optional ``--unet`` URI string for specifying a specific UNet
     :param vae_uri: Optional ``--vae`` URI string for specifying a specific VAE
     :param lora_uris: Optional ``--loras`` URI strings for specifying LoRA weights
@@ -472,13 +472,13 @@ class TorchPipelineFactory:
     """
 
     def __init__(self,
-                 pipeline_type: _enums.PipelineTypes,
+                 pipeline_type: _enums.PipelineType,
                  model_path: str,
-                 model_type: _enums.ModelTypes = _enums.ModelTypes.TORCH,
+                 model_type: _enums.ModelType = _enums.ModelType.TORCH,
                  revision: _types.OptionalString = None,
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
-                 dtype: _enums.DataTypes = _enums.DataTypes.AUTO,
+                 dtype: _enums.DataType = _enums.DataType.AUTO,
                  unet_uri: _types.OptionalUri = None,
                  vae_uri: _types.OptionalUri = None,
                  lora_uris: _types.OptionalUris = None,
@@ -494,7 +494,10 @@ class TorchPipelineFactory:
                  local_files_only: bool = False,
                  vae_tiling=False,
                  vae_slicing=False):
-        self._args = {k: v for k, v in locals().items() if k not in {'self', 'vae_tiling', 'vae_slicing'}}
+        self._args = {k: v for k, v in
+                      _types.partial_deep_copy_container(locals()).items()
+                      if k not in {'self', 'vae_tiling', 'vae_slicing'}}
+
         self._vae_tiling = vae_tiling
         self._vae_slicing = vae_slicing
 
@@ -514,30 +517,36 @@ class TorchPipelineFactory:
         return r
 
 
+def _torch_args_hasher(args):
+    custom_hashes = {
+        'unet_uri': _cache.uri_hash_with_parser(_uris.TorchUNetUri.parse),
+        'vae_uri': _cache.uri_hash_with_parser(_uris.TorchVAEUri.parse),
+        'lora_uris': _cache.uri_list_hash_with_parser(_uris.LoRAUri.parse),
+        'textual_inversion_uris': _cache.uri_list_hash_with_parser(_uris.TextualInversionUri.parse),
+        'control_net_uris': _cache.uri_list_hash_with_parser(_uris.TorchControlNetUri.parse)}
+    return _d_memoize.args_cache_key(args, custom_hashes=custom_hashes)
+
+
+def _torch_on_hit(key, hit):
+    _d_memoize.simple_cache_hit_debug("Torch Pipeline", key, hit.pipeline)
+
+
+def _torch_on_create(key, new):
+    _d_memoize.simple_cache_miss_debug('Torch Pipeline', key, new.pipeline)
+
+
 @_memoize(_cache._TORCH_PIPELINE_CACHE,
           exceptions={'local_files_only'},
-          hasher=lambda args: _d_memoize.args_cache_key(args,
-                                                        {'unet_uri': _cache.uri_hash_with_parser(
-                                                            _uris.TorchUNetUri.parse),
-                                                         'vae_uri': _cache.uri_hash_with_parser(
-                                                             _uris.TorchVAEUri.parse),
-                                                         'lora_uris':
-                                                             _cache.uri_list_hash_with_parser(_uris.LoRAUri.parse),
-                                                         'textual_inversion_uris':
-                                                             _cache.uri_list_hash_with_parser(
-                                                                 _uris.TextualInversionUri.parse),
-                                                         'control_net_uris':
-                                                             _cache.uri_list_hash_with_parser(
-                                                                 _uris.TorchControlNetUri.parse)}),
-          on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Torch Pipeline", key, hit.pipeline),
-          on_create=lambda key, new: _d_memoize.simple_cache_miss_debug('Torch Pipeline', key, new.pipeline))
-def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
+          hasher=_torch_args_hasher,
+          on_hit=_torch_on_hit,
+          on_create=_torch_on_create)
+def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                                      model_path: str,
-                                     model_type: _enums.ModelTypes = _enums.ModelTypes.TORCH,
+                                     model_type: _enums.ModelType = _enums.ModelType.TORCH,
                                      revision: _types.OptionalString = None,
                                      variant: _types.OptionalString = None,
                                      subfolder: _types.OptionalString = None,
-                                     dtype: _enums.DataTypes = _enums.DataTypes.AUTO,
+                                     dtype: _enums.DataType = _enums.DataType.AUTO,
                                      unet_uri: _types.OptionalUri = None,
                                      vae_uri: _types.OptionalUri = None,
                                      lora_uris: _types.OptionalUris = None,
@@ -552,7 +561,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                                      sequential_cpu_offload: bool = False,
                                      local_files_only: bool = False) -> TorchPipelineCreationResult:
     if not _enums.model_type_is_torch(model_type):
-        raise ValueError('model_type must be a TORCH ModelTypes enum value.')
+        raise ValueError('model_type must be a TORCH ModelType enum value.')
     # Pipeline class selection
 
     if _enums.model_type_is_floyd(model_type):
@@ -564,47 +573,47 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                 'Deep Floyd --model-type values are not compatible with --textual-inversions.')
 
     if _enums.model_type_is_upscaler(model_type):
-        if pipeline_type != _enums.PipelineTypes.IMG2IMG and not scheduler_is_help(scheduler):
+        if pipeline_type != _enums.PipelineType.IMG2IMG and not scheduler_is_help(scheduler):
             raise NotImplementedError(
                 'Upscaler models only work with img2img generation, IE: --image-seeds (with no image masks).')
 
-        if model_type == _enums.ModelTypes.TORCH_UPSCALER_X2:
+        if model_type == _enums.ModelType.TORCH_UPSCALER_X2:
             if lora_uris or textual_inversion_uris:
                 raise NotImplementedError(
                     '--model-type torch-upscaler-x2 is not compatible with --loras or --textual-inversions.')
 
-        pipeline_class = (diffusers.StableDiffusionUpscalePipeline if model_type == _enums.ModelTypes.TORCH_UPSCALER_X4
+        pipeline_class = (diffusers.StableDiffusionUpscalePipeline if model_type == _enums.ModelType.TORCH_UPSCALER_X4
                           else diffusers.StableDiffusionLatentUpscalePipeline)
     else:
         sdxl = _enums.model_type_is_sdxl(model_type)
         pix2pix = _enums.model_type_is_pix2pix(model_type)
 
-        if pipeline_type == _enums.PipelineTypes.TXT2IMG:
+        if pipeline_type == _enums.PipelineType.TXT2IMG:
             if pix2pix:
                 raise NotImplementedError(
                     'pix2pix models only work in img2img mode and cannot work without --image-seeds.')
 
-            if model_type == _enums.ModelTypes.TORCH_IF:
+            if model_type == _enums.ModelType.TORCH_IF:
                 pipeline_class = diffusers.IFPipeline
-            elif model_type == _enums.ModelTypes.TORCH_IFS:
+            elif model_type == _enums.ModelType.TORCH_IFS:
                 raise NotImplementedError(
                     'Deep Floyd IF super resolution (IFS) only works in img2img mode and cannot work without --image-seeds.')
             elif control_net_uris:
                 pipeline_class = diffusers.StableDiffusionXLControlNetPipeline if sdxl else diffusers.StableDiffusionControlNetPipeline
             else:
                 pipeline_class = diffusers.StableDiffusionXLPipeline if sdxl else diffusers.StableDiffusionPipeline
-        elif pipeline_type == _enums.PipelineTypes.IMG2IMG:
+        elif pipeline_type == _enums.PipelineType.IMG2IMG:
             if pix2pix:
                 if control_net_uris:
                     raise NotImplementedError(
                         'pix2pix models are not compatible with --control-nets.')
 
                 pipeline_class = diffusers.StableDiffusionXLInstructPix2PixPipeline if sdxl else diffusers.StableDiffusionInstructPix2PixPipeline
-            elif model_type == _enums.ModelTypes.TORCH_IF:
+            elif model_type == _enums.ModelType.TORCH_IF:
                 pipeline_class = diffusers.IFImg2ImgPipeline
-            elif model_type == _enums.ModelTypes.TORCH_IFS:
+            elif model_type == _enums.ModelType.TORCH_IFS:
                 pipeline_class = diffusers.IFSuperResolutionPipeline
-            elif model_type == _enums.ModelTypes.TORCH_IFS_IMG2IMG:
+            elif model_type == _enums.ModelType.TORCH_IFS_IMG2IMG:
                 pipeline_class = diffusers.IFImg2ImgSuperResolutionPipeline
             elif control_net_uris:
                 if sdxl:
@@ -613,13 +622,13 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                     pipeline_class = diffusers.StableDiffusionControlNetImg2ImgPipeline
             else:
                 pipeline_class = diffusers.StableDiffusionXLImg2ImgPipeline if sdxl else diffusers.StableDiffusionImg2ImgPipeline
-        elif pipeline_type == _enums.PipelineTypes.INPAINT:
+        elif pipeline_type == _enums.PipelineType.INPAINT:
             if pix2pix:
                 raise NotImplementedError(
                     'pix2pix models only work in img2img mode and cannot work in inpaint mode (with a mask).')
-            if model_type == _enums.ModelTypes.TORCH_IF:
+            if model_type == _enums.ModelType.TORCH_IF:
                 pipeline_class = diffusers.IFInpaintingPipeline
-            elif model_type == _enums.ModelTypes.TORCH_IFS:
+            elif model_type == _enums.ModelType.TORCH_IFS:
                 pipeline_class = diffusers.IFInpaintingSuperResolutionPipeline
             elif control_net_uris:
                 if sdxl:
@@ -665,7 +674,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     # Block invalid Textual Inversion and LoRA usage
 
     if textual_inversion_uris:
-        if model_type == _enums.ModelTypes.TORCH_UPSCALER_X2:
+        if model_type == _enums.ModelType.TORCH_UPSCALER_X2:
             raise NotImplementedError(
                 '--model-type torch-upscaler-x2 cannot be used with textual inversion models.')
 
@@ -911,12 +920,12 @@ class FlaxPipelineCreationResult(PipelineCreationResult):
         return self.pipeline(*args, **kwargs)
 
 
-def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
+def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                                    model_path: str,
-                                   model_type: _enums.ModelTypes = _enums.ModelTypes.FLAX,
+                                   model_type: _enums.ModelType = _enums.ModelType.FLAX,
                                    revision: _types.OptionalString = None,
                                    subfolder: _types.OptionalString = None,
-                                   dtype: _enums.DataTypes = _enums.DataTypes.AUTO,
+                                   dtype: _enums.DataType = _enums.DataType.AUTO,
                                    unet_uri: _types.OptionalUri = None,
                                    vae_uri: _types.OptionalUri = None,
                                    control_net_uris: _types.OptionalUris = None,
@@ -929,12 +938,12 @@ def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
     Create a :py:class:`diffusers.FlaxDiffusionPipeline` in dgenerates in memory cacheing system.
 
 
-    :param pipeline_type: py:class:`dgenerate.pipelinewrapper.PipelineTypes` enum value
+    :param pipeline_type: py:class:`dgenerate.pipelinewrapper.PipelineType` enum value
     :param model_path: huggingface slug, huggingface blob link, path to folder on disk, path to file on disk
-    :param model_type: Currently only accepts :py:attr:`dgenerate.pipelinewrapper.ModelTypes.FLAX`
+    :param model_type: Currently only accepts :py:attr:`dgenerate.pipelinewrapper.ModelType.FLAX`
     :param revision: huggingface repo revision (branch)
     :param subfolder: huggingface repo subfolder if applicable
-    :param dtype: Optional py:class:`dgenerate.pipelinewrapper.DataTypes` enum value
+    :param dtype: Optional py:class:`dgenerate.pipelinewrapper.DataType` enum value
     :param unet_uri: Optional Flax specific ``--unet`` URI string for specifying a specific UNet
     :param vae_uri: Optional Flax specific ``--vae`` URI string for specifying a specific VAE
     :param control_net_uris: Optional ``--control-nets`` URI strings for specifying ControlNet models
@@ -966,12 +975,12 @@ class FlaxPipelineFactory:
     that can recreate the same Flax pipeline over again, possibly from cache.
     """
 
-    def __init__(self, pipeline_type: _enums.PipelineTypes,
+    def __init__(self, pipeline_type: _enums.PipelineType,
                  model_path: str,
-                 model_type: _enums.ModelTypes = _enums.ModelTypes.FLAX,
+                 model_type: _enums.ModelType = _enums.ModelType.FLAX,
                  revision: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
-                 dtype: _enums.DataTypes = _enums.DataTypes.AUTO,
+                 dtype: _enums.DataType = _enums.DataType.AUTO,
                  unet_uri: _types.OptionalUri = None,
                  vae_uri: _types.OptionalUri = None,
                  control_net_uris: _types.OptionalUris = None,
@@ -980,7 +989,7 @@ class FlaxPipelineFactory:
                  auth_token: _types.OptionalString = None,
                  extra_modules: typing.Optional[dict[str, typing.Any]] = None,
                  local_files_only: bool = False):
-        self._args = {k: v for k, v in locals().items() if k not in {'self'}}
+        self._args = {k: v for k, v in _types.partial_deep_copy_container(locals()).items() if k not in {'self'}}
 
     def __call__(self) -> FlaxPipelineCreationResult:
         """
@@ -994,23 +1003,32 @@ class FlaxPipelineFactory:
         return create_flax_diffusion_pipeline(**self._args)
 
 
+def _flax_args_hasher(args):
+    custom_hashes = {'unet_uri': _cache.uri_hash_with_parser(_uris.FlaxUNetUri.parse),
+                     'vae_uri': _cache.uri_hash_with_parser(_uris.FlaxVAEUri.parse),
+                     'control_net_uris': _cache.uri_list_hash_with_parser(_uris.FlaxControlNetUri.parse)}
+    return _d_memoize.args_cache_key(args, custom_hashes=custom_hashes)
+
+
+def _flax_on_hit(key, hit):
+    _d_memoize.simple_cache_hit_debug("Flax Pipeline", key, hit.pipeline)
+
+
+def _flax_on_create(key, new):
+    _d_memoize.simple_cache_miss_debug('Flax Pipeline', key, new.pipeline)
+
+
 @_memoize(_cache._FLAX_PIPELINE_CACHE,
           exceptions={'local_files_only'},
-          hasher=lambda args: _d_memoize.args_cache_key(args,
-                                                        {'unet_uri': _cache.uri_hash_with_parser(
-                                                            _uris.FlaxUNetUri.parse),
-                                                            'vae_uri': _cache.uri_hash_with_parser(
-                                                                _uris.FlaxVAEUri.parse),
-                                                            'control_net_uris': _cache.uri_list_hash_with_parser(
-                                                                _uris.FlaxControlNetUri.parse)}),
-          on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Flax Pipeline", key, hit.pipeline),
-          on_create=lambda key, new: _d_memoize.simple_cache_miss_debug('Flax Pipeline', key, new.pipeline))
-def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
+          hasher=_flax_args_hasher,
+          on_hit=_flax_on_hit,
+          on_create=_flax_on_create)
+def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                                     model_path: str,
-                                    model_type: _enums.ModelTypes = _enums.ModelTypes.FLAX,
+                                    model_type: _enums.ModelType = _enums.ModelType.FLAX,
                                     revision: _types.OptionalString = None,
                                     subfolder: _types.OptionalString = None,
-                                    dtype: _enums.DataTypes = _enums.DataTypes.AUTO,
+                                    dtype: _enums.DataType = _enums.DataType.AUTO,
                                     unet_uri: _types.OptionalUri = None,
                                     vae_uri: _types.OptionalUri = None,
                                     control_net_uris: _types.OptionalUris = None,
@@ -1020,7 +1038,7 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
                                     extra_modules: typing.Optional[dict[str, typing.Any]] = None,
                                     local_files_only: bool = False) -> FlaxPipelineCreationResult:
     if not _enums.model_type_is_flax(model_type):
-        raise ValueError('model_type must be a FLAX ModelTypes enum value.')
+        raise ValueError('model_type must be a FLAX ModelType enum value.')
 
     has_control_nets = False
     if control_net_uris:
@@ -1029,16 +1047,16 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineTypes,
         if len(control_net_uris) == 1:
             has_control_nets = True
 
-    if pipeline_type == _enums.PipelineTypes.TXT2IMG:
+    if pipeline_type == _enums.PipelineType.TXT2IMG:
         if has_control_nets:
             pipeline_class = diffusers.FlaxStableDiffusionControlNetPipeline
         else:
             pipeline_class = diffusers.FlaxStableDiffusionPipeline
-    elif pipeline_type == _enums.PipelineTypes.IMG2IMG:
+    elif pipeline_type == _enums.PipelineType.IMG2IMG:
         if has_control_nets:
             raise NotImplementedError('Flax does not support img2img mode with --control-nets.')
         pipeline_class = diffusers.FlaxStableDiffusionImg2ImgPipeline
-    elif pipeline_type == _enums.PipelineTypes.INPAINT:
+    elif pipeline_type == _enums.PipelineType.INPAINT:
         if has_control_nets:
             raise NotImplementedError('Flax does not support inpaint mode with --control-nets.')
         pipeline_class = diffusers.FlaxStableDiffusionInpaintPipeline
