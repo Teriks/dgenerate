@@ -41,7 +41,7 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
     is run on it. It should be a single dimension for example: "detect_resolution=512" or the X/Y dimensions
     seperated by an "x" character, like so: "detect_resolution=1024x512". If you do not specify this argument,
     the detector runs on the input image at its full resolution. After processing the image will be resized
-    to whatever you have requested dgenerateitself to resize it to.
+    to whatever you have requested dgenerate itself to resize it to.
 
     The argument "detect_aspect" determines if the image resize requested by "detect_resolution" before
     detection runs is aspect correct, this defaults to true.
