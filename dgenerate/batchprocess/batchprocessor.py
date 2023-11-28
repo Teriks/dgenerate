@@ -71,8 +71,8 @@ class PeekReader:
 
 class BatchProcessError(Exception):
     """
-    Thrown on errors encountered within a batch processing script
-    including non-zero return codes from the invoker.
+    Thrown by :py:meth:`.BatchProcessor.run_file` and :py:meth:`.BatchProcessor.run_string`
+    when an error in a batch processing script is encountered.
     """
     pass
 
