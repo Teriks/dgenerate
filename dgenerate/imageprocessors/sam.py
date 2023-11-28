@@ -48,6 +48,10 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
 
     The argument "detect_align" determines the pixel alignment of the image resize requested by
     "detect_resolution", it defaults to 1 indicating no requested alignment.
+
+    The argument "mobile_sam" indicates that a variant of the sam detector with a smaller memory footprint
+    should be used: https://huggingface.co/dhkim2810/MobileSAM, by default the model used is the original
+    from here: https://huggingface.co/ybelkada/segment-anything
     """
 
     NAMES = ['sam']
@@ -55,10 +59,15 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
     def __init__(self,
                  detect_resolution: typing.Optional[str] = None,
                  detect_aspect: bool = True,
-                 detect_align: int = 1, **kwargs):
+                 detect_align: int = 1,
+                 mobile_sam=False, **kwargs):
         super().__init__(**kwargs)
 
-        self._sam = _cna.SamDetector.from_pretrained('ybelkada/segment-anything', subfolder='checkpoints')
+        if mobile_sam:
+            self._sam = _cna.SamDetector.from_pretrained("dhkim2810/MobileSAM", model_type="vit_t", filename="mobile_sam.pt")
+        else:
+            self._sam = _cna.SamDetector.from_pretrained('ybelkada/segment-anything', subfolder='checkpoints')
+
         self._detect_aspect = detect_aspect
         self._detect_align = detect_align
 
