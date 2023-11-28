@@ -95,7 +95,7 @@ def _create_arg_parser(prog, description):
 
     actions.append(parser.add_argument(
         '-o', '--output', nargs='+', default=None,
-        help="""Output files, directories will be created for you.
+        help="""Output files, parent directories mentioned in output paths will be created for you.
         If you do not specify output files, the output file will be placed next to the input file with the 
         added suffix '_processed_N' unless --output-overwrite is specified, in that case it will be overwritten. 
         If you specify multiple input files and output files, you must specify an output file for every input file, 

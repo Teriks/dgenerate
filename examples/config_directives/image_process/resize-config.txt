@@ -1,0 +1,28 @@
+#! dgenerate 3.0.0
+
+# image process can be used without any processor URIs to preform
+# simple resizing and pixel alignment on an image, --align is 8 by default
+# for 8 pixel alignment
+
+# The subject image in this example is 1279x719
+
+# resize to 1024x568
+
+\image_process "../../media/horse1.jpg"
+-o horse-resized-aligned-8.png
+--resize 1026
+--align 8
+
+# resize to 1024x1024
+
+\image_process "../../media/horse1.jpg"
+-o horse-resized-aligned-8-no-aspect.png
+--resize 1026
+--align 8
+--no-aspect
+
+# resize to 1272x712, force alignment
+
+\image_process "../../media/horse1.jpg"
+-o horse-aligned-8.png
+--align 8
