@@ -55,11 +55,11 @@ try:
     from dgenerate.arguments import parse_args, DgenerateUsageError, DgenerateArguments
     from dgenerate.pipelinewrapper import ModelType, DiffusionArguments
     from dgenerate.mediainput import ImageSeedError, UnknownMimetypeError, ImageSeed
-
     from dgenerate.imageprocessors import ImageProcessorArgumentError, ImageProcessorNotFoundError
+    from dgenerate.subcommands import SubCommandArgumentError, SubCommandNotFoundError
+    from dgenerate.plugin import ModuleFileNotFoundError, PluginNotFoundError, PluginArgumentError
     import dgenerate.messages
     import dgenerate.types
-    import dgenerate.plugin
 
     transformers.logging.set_verbosity(transformers.logging.CRITICAL)
     diffusers.logging.set_verbosity(diffusers.logging.CRITICAL)
@@ -84,7 +84,7 @@ def main():
                 ConfigRunner(render_loop=render_loop,
                              version=__version__,
                              injected_args=sys.argv[1:]).run_file(sys.stdin)
-            except dgenerate.plugin.ModuleFileNotFoundError as e:
+            except ModuleFileNotFoundError as e:
                 # missing plugin file parsed by ConfigRunner out of injected args
                 dgenerate.messages.log(f'dgenerate: error: {str(e).strip()}',
                                        level=dgenerate.messages.ERROR)
