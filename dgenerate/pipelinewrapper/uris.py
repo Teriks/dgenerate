@@ -849,6 +849,8 @@ class TorchUNetUri:
 
         if self.variant is None:
             variant = variant_fallback
+        else:
+            variant = self.variant
 
         path = self.model
 
