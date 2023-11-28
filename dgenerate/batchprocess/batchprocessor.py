@@ -181,6 +181,7 @@ class BatchProcessor:
         self.injected_args = injected_args if injected_args else []
 
         self._current_line = 0
+        self._running_template_continuation = False
 
         if isinstance(version, str):
             self.version = _textprocessing.parse_version(version)
@@ -278,7 +279,11 @@ class BatchProcessor:
                     f'\\print directive received no arguments, '
                     f'syntax is: \\print value')
         if line.startswith('{'):
-            self.run_string(self.render_template(line))
+            try:
+                self._running_template_continuation = True
+                self.run_string(self.render_template(line))
+            finally:
+                self._running_template_continuation = False
             return True
         elif line.startswith('\\'):
             directive_args = line.split(' ', 1)
@@ -379,7 +384,8 @@ class BatchProcessor:
 
             line_strip = remove_tail_comments(line).strip()
 
-            self._current_line = line_idx
+            if not self._running_template_continuation:
+                self._current_line = line_idx
 
             if line_strip == '':
                 if continuation and last_line is not None:
