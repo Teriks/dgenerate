@@ -95,13 +95,13 @@ def _create_arg_parser(prog, description):
 
     actions.append(parser.add_argument(
         '-o', '--output', nargs='+', default=None,
-        help="""Output files, parent directories mentioned in output paths will be created for you.
-        If you do not specify output files, the output file will be placed next to the input file with the 
-        added suffix '_processed_N' unless --output-overwrite is specified, in that case it will be overwritten. 
-        If you specify multiple input files and output files, you must specify an output file for every input file, 
-        or a directory (indicated with a trailing directory seperator character, for example "my_dir/" or "my_dir\"). 
-        Failure to specify an output file with a URL as an input is considered an error. Supported file extensions 
-        for image output are equal to those listed under --frame-format."""))
+        help="""Output files, parent directories mentioned in output paths will be created for you if
+        they do not exist. If you do not specify output files, the output file will be placed next to the 
+        input file with the added suffix '_processed_N' unless --output-overwrite is specified, in that case 
+        it will be overwritten. If you specify multiple input files and output files, you must specify an output
+        file for every input file, or a directory (indicated with a trailing directory seperator character, 
+        for example "my_dir/" or "my_dir\"). Failure to specify an output file with a URL as an input is 
+        considered an error. Supported file extensions for image output are equal to those listed under --frame-format."""))
 
     actions.append(parser.add_argument(
         '-ff', '--frame-format', default='png', type=_arguments._type_image_format,

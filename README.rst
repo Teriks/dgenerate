@@ -2451,15 +2451,15 @@ The help output of ``image-process`` is as follows:
                             python .py file paths to load as plugins. Plugin modules can implement image
                             processors.
       -o OUTPUT [OUTPUT ...], --output OUTPUT [OUTPUT ...]
-                            Output files, parent directories mentioned in output paths will be created for
-                            you. If you do not specify output files, the output file will be placed next to
-                            the input file with the added suffix '_processed_N' unless --output-overwrite is
-                            specified, in that case it will be overwritten. If you specify multiple input
-                            files and output files, you must specify an output file for every input file, or a
-                            directory (indicated with a trailing directory seperator character, for example
-                            "my_dir/" or "my_dir"). Failure to specify an output file with a URL as an input
-                            is considered an error. Supported file extensions for image output are equal to
-                            those listed under --frame-format.
+                            Output files, parent directories mentioned in output paths will be created for you
+                            if they do not exist. If you do not specify output files, the output file will be
+                            placed next to the input file with the added suffix '_processed_N' unless
+                            --output-overwrite is specified, in that case it will be overwritten. If you
+                            specify multiple input files and output files, you must specify an output file for
+                            every input file, or a directory (indicated with a trailing directory seperator
+                            character, for example "my_dir/" or "my_dir"). Failure to specify an output file
+                            with a URL as an input is considered an error. Supported file extensions for image
+                            output are equal to those listed under --frame-format.
       -ff FRAME_FORMAT, --frame-format FRAME_FORMAT
                             Image format for animation frames. Must be one of: png, apng, blp, bmp, dib, bufr,
                             pcx, dds, ps, eps, gif, grib, h5, hdf, jp2, j2k, jpc, jpf, jpx, j2c, icns, ico,
