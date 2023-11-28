@@ -7,12 +7,17 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('-d', '--device', default='cuda')
 parser.add_argument('-c', '--clean', default=False, action='store_true')
+parser.add_argument('-e', '--examples', default=False, action='store_true')
 
 args = parser.parse_args()
 
 runner = unittest.TextTestRunner()
 
 if runner.run(unittest.defaultTestLoader.discover("tests", pattern='*_test.py')).wasSuccessful():
+
+    if not args.examples:
+        exit(0)
+
     print('unit tests passed, running examples..')
 
     if args.clean:

@@ -19,9 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import dgenerate.messages as _messages
 import dgenerate.plugin as _plugin
-import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from .exceptions import SubCommandArgumentError, SubCommandNotFoundError
 from .imageprocess import ImageProcessSubCommand
@@ -50,45 +48,21 @@ def sub_command_help(names: _types.Names,
     :param log_error: log errors to stderr?
 
     :raises SubCommandHelpUsageError:
-    :raises SubCommandNotFoundError:
 
     :return: return-code, anything other than 0 is failure
     """
-
-    module_loader = SubCommandLoader()
-
     try:
-        module_loader.load_plugin_modules(plugin_module_paths)
-    except _plugin.ModuleFileNotFoundError as e:
-        if log_error:
-            _messages.log(
-                f'Plugin module could not be found: {str(e).strip()}',
-                level=_messages.ERROR)
+        return SubCommandLoader().loader_help(
+            names=names,
+            plugin_module_paths=plugin_module_paths,
+            title='sub-command',
+            title_plural='sub-commands',
+            throw=True,
+            log_error=log_error)
+    except (SubCommandNotFoundError, _plugin.ModuleFileNotFoundError) as e:
         if throw:
-            raise SubCommandHelpUsageError(e)
+            raise SubCommandHelpUsageError(str(e).strip())
         return 1
-
-    if len(names) == 0:
-        available = ('\n' + ' ' * 4).join(_textprocessing.quote(name) for name in module_loader.get_all_names())
-        _messages.log(
-            f'Available sub-commands:\n\n{" " * 4}{available}')
-        return 0
-
-    help_strs = []
-    for name in names:
-        try:
-            help_strs.append(module_loader.get_help(name))
-        except SubCommandNotFoundError:
-            if log_error:
-                _messages.log(f'An sub-command with the name of "{name}" could not be found.',
-                              level=_messages.ERROR)
-            if throw:
-                raise
-            return 1
-
-    for help_str in help_strs:
-        _messages.log(help_str + '\n', underline=True)
-    return 0
 
 
 __all__ = _types.module_all()

@@ -28,6 +28,7 @@ import types
 import typing
 from importlib.machinery import SourceFileLoader
 
+import dgenerate.messages as _messages
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 
@@ -115,9 +116,19 @@ class PluginArg:
         return str(self)
 
 
+class PluginArgumentError(Exception):
+    """
+    Raised when a plugin encounters an error in the arguments it is loaded by.
+
+    Or errors in arguments used for execution.
+    """
+    pass
+
+
 class Plugin:
 
-    def __init__(self, loaded_by_name: str, argument_error_type: type[Exception] = ValueError, **kwargs):
+    def __init__(self, loaded_by_name: str, argument_error_type: type[PluginArgumentError] = PluginArgumentError,
+                 **kwargs):
         """
         :param loaded_by_name: The name the plugin was loaded by, will be passed by the loader.
         :param argument_error_type: This exception type will be raised by ``get_*_arg`` and friends when
@@ -320,7 +331,7 @@ def load_modules(paths: collections.abc.Iterable[str]) -> list[types.ModuleType]
     Load python modules from a folder or directly from a .py file.
     Cache them so that repeat requests for loading return an already loaded module.
 
-    :raises FileNotFoundError: If a module path could not be found on disk.
+    :raises ModuleFileNotFoundError: If a module path could not be found on disk.
 
     :param paths: list of folder/file paths
     :return: list of :py:class:`types.ModuleType`
@@ -350,13 +361,20 @@ def load_modules(paths: collections.abc.Iterable[str]) -> list[types.ModuleType]
 PluginArgumentsDef = typing.Optional[list[PluginArg]]
 
 
+class PluginNotFoundError(Exception):
+    """
+    Raised when a plugin could not be located by a name.
+    """
+    pass
+
+
 class PluginLoader:
     def __init__(self,
                  base_class=Plugin,
                  description: str = "plugin",
                  reserved_args: PluginArgumentsDef = None,
-                 argument_error_type: type[Exception] = ValueError,
-                 not_found_error_type: type[Exception] = RuntimeError):
+                 argument_error_type: type[PluginArgumentError] = PluginArgumentError,
+                 not_found_error_type: type[PluginNotFoundError] = PluginNotFoundError):
         """
         :param base_class: Base class of plugins, will be used for searching modules.
         :param description: Short plugin description / name, used in exception messages.
@@ -389,12 +407,14 @@ class PluginLoader:
         return frozenset(self.__plugin_module_paths)
 
     def add_class(self, cls: type[Plugin]):
-        """p
+        """
         Add an implementation class to this loader.
+
+        :raises RuntimeError: If the added class specifies a name that already exists in this loader.
 
         :param cls: the class
         """
-        if cls in self.__classes:
+        if cls in self.__classes or (hasattr(cls, 'HIDDEN') and getattr(cls, 'HIDDEN')):
             # no-op
             return
 
@@ -423,8 +443,15 @@ class PluginLoader:
         Directly add a module object that will be searched for implementations.
 
         :param module: the module object
+
+        :raises ValueError: If ``module`` is not a python module object.
+
         :return: list of classes that were newly discovered
         """
+
+        if not isinstance(module, types.ModuleType):
+            raise ValueError('passed object in not a python module')
+
         classes = self._load_classes([module])
         for cls in classes:
             self.add_class(cls)
@@ -438,7 +465,7 @@ class PluginLoader:
 
         It can be a mix of these.
 
-        :raises dgenerate.plugin.ModuleFileNotFoundError: If a module could not be found on disk.
+        :raises ModuleFileNotFoundError: If a module could not be found on disk.
 
         :param paths: python files or module directories
         :return: list of classes that were newly discovered
@@ -480,8 +507,77 @@ class PluginLoader:
 
         return list(found_classes)
 
-    def _load(self, path, **kwargs):
-        call_by_name = path.split(';', 1)[0].strip()
+    def get_available_classes(self) -> list[type[Plugin]]:
+        """
+        Get classes seen by this plugin loader.
+
+        :return: list of classes (types)
+        """
+
+        return list(self.__classes)
+
+    def get_class_by_name(self, plugin_name: _types.Name) -> type[Plugin]:
+        """
+        Get a plugin class by one of its names.
+
+        IE: one of the names listed in its ``NAMES`` static attribute.
+
+        :param plugin_name: a name associated with a plugin class
+
+        :raises PluginNotFoundError: If the plugin name could not be found.
+
+        :return: class (type)
+        """
+
+        cls = self.__classes_by_name.get(plugin_name)
+
+        if cls is None:
+            raise self.__not_found_error_type(
+                f'Found no {self.__description} with the name: {plugin_name}')
+
+        return cls
+
+    def get_all_names(self) -> _types.Names:
+        """
+        Get all plugin names that this loader can see.
+
+        :return: list of names (strings)
+        """
+
+        return list(self.__classes_by_name.keys())
+
+    def get_help(self, plugin_name: _types.Name) -> str:
+        """
+        Get a formatted help string for a plugin by one of its loadable names.
+
+        :param plugin_name: a name associated with the plugin class
+
+        :raises PluginNotFoundError: If the plugin name could not be found.
+
+        :return: formatted string
+        """
+
+        return self.get_class_by_name(plugin_name).get_help(plugin_name)
+
+    def load(self, uri: _types.Uri, **kwargs) -> Plugin:
+        """
+        Load an plugin using a URI string containing its name and arguments.
+
+        :param uri: The URI string
+        :param kwargs: default argument values, will be override by arguments specified in the URI
+
+        :raises ValueError: If uri is ``None``
+        :raises RuntimeError: If a plugin is discovered to be using a reserved argument name upon loading it.
+        :raises PluginArgumentError: If there is an error in the loading arguments for the plugin.
+        :raises PluginNotFoundError: If the plugin name mentioned in the URI could not be found.
+
+        :return: plugin instance
+        """
+
+        if uri is None:
+            raise ValueError('uri must not be None')
+
+        call_by_name = uri.split(';', 1)[0].strip()
 
         plugin_class = self.get_class_by_name(call_by_name)
 
@@ -512,7 +608,7 @@ class PluginLoader:
             args_raw=parser_raw_args)
 
         try:
-            parsed_args = arg_parser.parse(path).args
+            parsed_args = arg_parser.parse(uri).args
         except _textprocessing.ConceptUriParseError as e:
             raise self.__argument_error_type(str(e))
 
@@ -587,61 +683,62 @@ class PluginLoader:
                 f'Invalid argument given to {self.__description} '
                 f'"{call_by_name}": {str(e).strip()}')
 
-    def get_available_classes(self) -> list[type[Plugin]]:
+    def loader_help(self,
+                    names: _types.Names,
+                    plugin_module_paths: _types.OptionalPaths = None,
+                    title='plugin',
+                    title_plural='plugins',
+                    throw=False,
+                    log_error=True):
         """
-        Get classes seen by this plugin loader.
+        Implements ``--sub-command-help`` and ``--image-processor-help``
+        command line options for example.
 
-        :return: list of classes (types)
-        """
 
-        return list(self.__classes)
+        :param names: arguments (sub-command names, or empty list)
+        :param plugin_module_paths: plugin module paths to search
+        :param title: plugin title, used in messages
+        :param title_plural: plural plugin title, used in messages
+        :param throw: throw on error?
+        :param log_error: log errors to stderr?
 
-    def get_class_by_name(self, plugin_name: _types.Name) -> type[Plugin]:
-        """
-        Get a plugin class by one of its names.
+        :raises PluginNotFoundError: ``names`` contained an unknown plugin name
+        :raises ModuleFileNotFoundError: ``plugin_module_paths`` contained a missing module
 
-        IE: one of the names listed in its ``NAMES`` static attribute.
-
-        :param plugin_name: a name associated with a plugin class
-        :return: class (type)
-        """
-
-        cls = self.__classes_by_name.get(plugin_name)
-
-        if cls is None:
-            raise self.__not_found_error_type(
-                f'Found no {self.__description} with the name: {plugin_name}')
-
-        return cls
-
-    def get_all_names(self) -> _types.Names:
-        """
-        Get all plugin names that this loader can see.
-
-        :return: list of names (strings)
+        :return: return-code, anything other than 0 is failure
         """
 
-        return list(self.__classes_by_name.keys())
+        if plugin_module_paths is not None:
+            try:
+                self.load_plugin_modules(plugin_module_paths)
+            except ModuleFileNotFoundError as e:
+                if log_error:
+                    _messages.log(
+                        f'Plugin module could not be found: {str(e).strip()}',
+                        level=_messages.ERROR)
+                if throw:
+                    raise
+                return 1
 
-    def get_help(self, plugin_name: _types.Name) -> str:
-        """
-        Get a formatted help string for a plugin by one of its loadable names.
+        if len(names) == 0:
+            available = ('\n' + ' ' * 4).join(_textprocessing.quote(name) for name in self.get_all_names())
+            _messages.log(
+                f'Available {title_plural}:\n\n{" " * 4}{available}')
+            return 0
 
-        :param plugin_name: a name associated with the plugin class
-        :return: formatted string
-        """
+        help_strs = []
+        for name in names:
+            try:
+                help_strs.append(self.get_help(name))
+            except PluginNotFoundError:
+                if log_error:
+                    _messages.log(
+                        f'An {title} with the name of "{name}" could not be found.',
+                        level=_messages.ERROR)
+                if throw:
+                    raise
+                return 1
 
-        return self.get_class_by_name(plugin_name).get_help(plugin_name)
-
-    def load(self, uri: _types.Uri, **kwargs) -> Plugin:
-        """
-        Load an plugin using a URI string containing its name and arguments.
-
-        :param uri: The URI string
-        :param kwargs: default argument values, will be override by arguments specified in the URI
-        :return: plugin instance
-        """
-
-        if uri is None:
-            raise ValueError('uri must not be None')
-        return self._load(uri, **kwargs)
+        for help_str in help_strs:
+            _messages.log(help_str + '\n', underline=True)
+        return 0

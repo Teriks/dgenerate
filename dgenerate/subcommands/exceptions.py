@@ -19,14 +19,17 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-class SubCommandArgumentError(Exception):
+import dgenerate.plugin as _plugin
+
+
+class SubCommandArgumentError(_plugin.PluginArgumentError):
     """
     Raised when a sub-command receives invalid arguments.
     """
     pass
 
 
-class SubCommandNotFoundError(Exception):
+class SubCommandNotFoundError(_plugin.PluginNotFoundError):
     """
     Raised when a reference to an unknown sub-command name is made.
     """
