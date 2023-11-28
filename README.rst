@@ -189,25 +189,26 @@ Help Output
                             individually with an image number suffix (image_N) in the filename signifying
                             which image in the batch they are.
       -un UNET_URI, --unet UNET_URI
-                            Specify a UNet using a URI. Examples: "unet.safetensors", "huggingface/unet",
-                            "huggingface/unet;revision=main". The "revision" argument specifies the model
-                            revision to use for the UNet when loading from huggingface repository or blob
-                            link, (The git branch / tag, default is "main"). The "variant" argument specifies
-                            the UNet model variant, it is only supported for torch type models it is not
-                            supported for flax. If "variant" is specified when loading from a huggingface
-                            repository or folder, weights will be loaded from "variant" filename, e.g.
+                            Specify a UNet using a URI. Examples: "huggingface/unet",
+                            "huggingface/unet;revision=main", "unet_folder_on_disk". Single file loads are not
+                            supported for UNets. The "revision" argument specifies the model revision to use
+                            for the UNet when loading from huggingface repository or blob link, (The git
+                            branch / tag, default is "main"). The "variant" argument specifies the UNet model
+                            variant, it is only supported for torch type models it is not supported for flax.
+                            If "variant" is specified when loading from a huggingface repository or folder,
+                            weights will be loaded from "variant" filename, e.g.
                             "pytorch_model.<variant>.safetensors. "variant" defaults to the value of --variant
                             if it is not specified in the URI. The "subfolder" argument specifies the UNet
                             model subfolder, if specified when loading from a huggingface repository or
                             folder, weights from the specified subfolder. The "dtype" argument specifies the
                             UNet model precision, it defaults to the value of -t/--dtype and should be one of:
-                            auto, float16, or float32. If you wish to load a weights file directly from disk,
-                            the simplest way is: --unet "my_unet.safetensors", or with a dtype
-                            "my_unet.safetensors;dtype=float16". All loading arguments except "dtype" and
-                            "revision" are unused in this case and may produce an error message if used. If
-                            you wish to load a specific weight file from a huggingface repository, use the
-                            blob link loading syntax: --unet "https://huggingface.co/UserName/repository-
-                            name/blob/main/unet_model.safetensors", the revision argument may be used with
+                            auto, float16, or float32. If you wish to load weights directly from a path on
+                            disk, you must point this argument at the folder it exists in, which should
+                            contain the config.json file for the UNet. For example, a downloaded repository
+                            folder from huggingface. If you wish to load a specific weight file from a
+                            huggingface repository, use the blob link loading syntax: --unet
+                            "https://huggingface.co/UserName/repository-
+                            name/blob/main/unet_model.safetensors", the "revision" argument may be used with
                             this syntax.
       -vae VAE_URI, --vae VAE_URI
                             Specify a VAE using a URI. When using torch models the URI syntax is:
@@ -242,8 +243,8 @@ Help Output
                             used. If you wish to load a specific weight file from a huggingface repository,
                             use the blob link loading syntax: --vae
                             "AutoencoderKL;https://huggingface.co/UserName/repository-
-                            name/blob/main/vae_model.safetensors", the revision argument may be used with this
-                            syntax.
+                            name/blob/main/vae_model.safetensors", the "revision" argument may be used with
+                            this syntax.
       -vt, --vae-tiling     Enable VAE tiling (torch models only). Assists in the generation of large images
                             with lower memory overhead. The VAE will split the input tensor into tiles to
                             compute decoding and encoding in several steps. This is useful for saving a large
@@ -332,7 +333,7 @@ Help Output
                             message if used ("from_torch" is available when using flax). If you wish to load a
                             specific weight file from a huggingface repository, use the blob link loading
                             syntax: --control-nets "https://huggingface.co/UserName/repository-
-                            name/blob/main/controlnet.safetensors", the revision argument may be used with
+                            name/blob/main/controlnet.safetensors", the "revision" argument may be used with
                             this syntax.
       -sch SCHEDULER_NAME, --scheduler SCHEDULER_NAME
                             Specify a scheduler (sampler) by name. Passing "help" to this argument will print
@@ -367,8 +368,8 @@ Help Output
                             you wish to load a specific weight file from a huggingface repository, use the
                             blob link loading syntax: --sdxl-refiner
                             "https://huggingface.co/UserName/repository-
-                            name/blob/main/refiner_model.safetensors", the revision argument may be used with
-                            this syntax.
+                            name/blob/main/refiner_model.safetensors", the "revision" argument may be used
+                            with this syntax.
       --sdxl-refiner-scheduler SCHEDULER_NAME
                             Specify a scheduler (sampler) by name for the SDXL refiner pass. Operates the
                             exact same way as --scheduler including the "help" option. Defaults to the value
@@ -741,6 +742,7 @@ Help Output
                             Example, and default value: "control_net_size > (available * 0.75)" For Syntax
                             See: [https://dgenerate.readthedocs.io/en/v3.0.0/dgenerate_submodules.html#dgenera
                             te.pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS]
+
 
 
 Windows Install
@@ -1759,8 +1761,8 @@ This is useful in particular for using the latent consistency scheduler.
 
 The first component of the ``--unet`` URI is the model path itself.
 
-You can provide a path to a huggingface repo/blob link, folder on disk, or a model file
-on disk such as a .pt, .pth, .bin, .ckpt, or .safetensors file.
+You can provide a path to a huggingface repo/blob link, or a folder on disk
+(downloaded huggingface repository).
 
 .. code-block:: bash
 
@@ -1778,17 +1780,13 @@ on disk such as a .pt, .pth, .bin, .ckpt, or .safetensors file.
 Loading arguments available when specifying a UNet for torch ``--model-type`` values
 are: ``revision``, ``variant``, ``subfolder``, and ``dtype``
 
-Loading arguments available when specifying UNet for flax ``--model-type`` values
-are: ``revision``, ``subfolder``, ``dtype``
-
-The only named arguments compatible with loading a .safetensors or other model file
-directly off disk are ``dtype``, and ``revision``
-
-The other named arguments are available when loading from a huggingface repository or folder
-that may or may not be a local git repository on disk.
 
 In the case of ``--unet`` the ``variant`` loading argument defaults to the value
 of ``--variant`` if you do not specify it in the URI.
+
+
+Loading arguments available when specifying UNet for flax ``--model-type`` values
+are: ``revision``, ``subfolder``, ``dtype``. variant is not used for flax.
 
 
 Specifying an SDXL Refiner

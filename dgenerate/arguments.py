@@ -411,7 +411,9 @@ actions.append(
                         help=
                         f"""Specify a UNet using a URI.
                         
-                        Examples: "unet.safetensors", "huggingface/unet", "huggingface/unet;revision=main". 
+                        Examples: "huggingface/unet", "huggingface/unet;revision=main", "unet_folder_on_disk". 
+                        
+                        Single file loads are not supported for UNets.
                         
                         The "revision" argument specifies the model revision to use for the UNet when loading from 
                         huggingface repository or blob link, (The git branch / tag, default is "main").
@@ -427,14 +429,13 @@ actions.append(
                         The "dtype" argument specifies the UNet model precision, it defaults to the value of -t/--dtype
                         and should be one of: {_SUPPORTED_DATA_TYPES_PRETTY}.
                         
-                        If you wish to load a weights file directly from disk, the simplest
-                        way is: --unet "my_unet.safetensors", or with a dtype "my_unet.safetensors;dtype=float16". 
-                        All loading arguments except "dtype" and "revision" are unused in this case and may 
-                        produce an error message if used.
+                        If you wish to load weights directly from a path on disk, you must point this argument at the folder
+                        it exists in, which should contain the config.json file for the UNet. For example, a downloaded
+                        repository folder from huggingface.
                         
                         If you wish to load a specific weight file from a huggingface repository, use the blob link
                         loading syntax: --unet "https://huggingface.co/UserName/repository-name/blob/main/unet_model.safetensors",
-                        the revision argument may be used with this syntax.
+                        the "revision" argument may be used with this syntax.
                         """))
 
 actions.append(
@@ -481,7 +482,7 @@ actions.append(
                         
                         If you wish to load a specific weight file from a huggingface repository, use the blob link
                         loading syntax: --vae "AutoencoderKL;https://huggingface.co/UserName/repository-name/blob/main/vae_model.safetensors",
-                        the revision argument may be used with this syntax.
+                        the "revision" argument may be used with this syntax.
                         """))
 
 actions.append(
@@ -615,7 +616,7 @@ actions.append(
                         If you wish to load a specific weight file from a huggingface repository, use the blob link
                         loading syntax: --control-nets 
                         "https://huggingface.co/UserName/repository-name/blob/main/controlnet.safetensors",
-                        the revision argument may be used with this syntax.
+                        the "revision" argument may be used with this syntax.
                         """))
 
 _flax_scheduler_help_part = \
@@ -665,7 +666,7 @@ actions.append(
                         If you wish to load a specific weight file from a huggingface repository, use the blob link
                         loading syntax: --sdxl-refiner 
                         "https://huggingface.co/UserName/repository-name/blob/main/refiner_model.safetensors",
-                        the revision argument may be used with this syntax.
+                        the "revision" argument may be used with this syntax.
                         """))
 
 actions.append(

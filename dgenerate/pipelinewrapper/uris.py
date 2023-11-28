@@ -857,23 +857,7 @@ class TorchUNetUri:
         single_file_load_path = _hfutil.is_single_file_model_load(path)
 
         if single_file_load_path:
-            if self.subfolder is not None:
-                raise NotImplementedError('Single file UNet loads do not support the subfolder option.')
-
-            estimated_memory_use = _hfutil.estimate_model_memory_use(
-                repo_id=path,
-                revision=self.revision,
-                local_files_only=local_files_only,
-                use_auth_token=use_auth_token
-            )
-
-            _cache.enforce_unet_cache_constraints(new_unet_size=estimated_memory_use)
-
-            unet = diffusers.UNet2DConditionModel.from_single_file(path,
-                                                                   revision=self.revision,
-                                                                   torch_dtype=torch_dtype,
-                                                                   local_files_only=local_files_only)
-
+            raise NotImplementedError('Loading a UNet from a single file is not supported.')
         else:
 
             estimated_memory_use = _hfutil.estimate_model_memory_use(
@@ -1186,25 +1170,7 @@ class FlaxUNetUri:
         single_file_load_path = _hfutil.is_single_file_model_load(path)
 
         if single_file_load_path:
-            # in the future this will be supported?
-            if self.subfolder is not None:
-                raise NotImplementedError('Single file UNet loads do not support the subfolder option.')
-
-            estimated_memory_use = _hfutil.estimate_model_memory_use(
-                repo_id=path,
-                revision=self.revision,
-                local_files_only=local_files_only,
-                use_auth_token=use_auth_token,
-                flax=True
-            )
-
-            _cache.enforce_unet_cache_constraints(new_unet_size=estimated_memory_use)
-
-            unet = diffusers.FlaxUNet2DConditionModel.from_single_file(path,
-                                                                       revision=self.revision,
-                                                                       dtype=flax_dtype,
-                                                                       use_auth_token=use_auth_token,
-                                                                       local_files_only=local_files_only)
+            raise NotImplementedError('Loading a UNet from a single file is not supported.')
         else:
 
             estimated_memory_use = _hfutil.estimate_model_memory_use(
