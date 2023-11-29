@@ -37,8 +37,9 @@ from .imageprocessormixin import ImageProcessorMixin
 from .openpose import OpenPoseProcessor
 from .sam import SegmentAnythingProcessor
 from .normal_bae import NormalBaeProcessor
+from .lineart import LineArtProcessor
 from .upscaler import UpscalerProcessor
-
+from .hed import HEDProcessor
 
 class ImageProcessorHelpUsageError(Exception):
     """
