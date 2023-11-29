@@ -145,7 +145,7 @@ class PidiNetProcessor(_imageprocessor.ImageProcessor):
 
         :param image: image to process
         :param resize_resolution: resize resolution
-        :return: possibly a lineart image, or the input image
+        :return: possibly an edge detected image, or the input image
         """
 
         if not self._pre_resize:
@@ -158,7 +158,7 @@ class PidiNetProcessor(_imageprocessor.ImageProcessor):
         Post resize.
 
         :param image: image
-        :return: possibly a lineart image, or the input image
+        :return: possibly an edge detected image, or the input image
         """
 
         if self._pre_resize:
