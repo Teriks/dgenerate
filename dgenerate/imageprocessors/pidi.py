@@ -34,9 +34,9 @@ import dgenerate.types as _types
 from dgenerate.imageprocessors import imageprocessor as _imageprocessor
 
 
-class LineArtAnimeProcessor(_imageprocessor.ImageProcessor):
+class PidiNetProcessor(_imageprocessor.ImageProcessor):
     """
-    Anime line art generator, generate anime line art from an image.
+    PidiNet edge detector.
 
     The argument "detect-resolution" is the resolution the image is resized to internal to the processor before
     detection is run on it. It should be a single dimension for example: "detect-resolution=512" or the X/Y dimensions
@@ -52,27 +52,36 @@ class LineArtAnimeProcessor(_imageprocessor.ImageProcessor):
     The argument "detect-align" determines the pixel alignment of the image resize requested by
     "detect-resolution", it defaults to 1 indicating no requested alignment.
 
+    The "apply-filter" argument enables possibly crisper edges.
+
+    The "safe" argument enables numerically safe / more precise stepping
+
     The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
     This defaults to False, meaning the image is processed after dgenerate is done resizing it.
     """
 
-    NAMES = ['lineart-anime']
+    NAMES = ['pidi']
 
     def __init__(self,
                  detect_resolution: typing.Optional[str] = None,
                  detect_aspect: bool = True,
                  detect_align: int = 1,
+                 apply_filter: bool = False,
+                 safe=False,
                  pre_resize: bool = False,
                  **kwargs):
 
         super().__init__(**kwargs)
 
-        self._lineart = _cna.LineartAnimeDetector.from_pretrained("lllyasviel/Annotators")
+        self._pidi = _cna.PidiNetDetector.from_pretrained("lllyasviel/Annotators")
 
-        self._lineart.to(self.device)
+        self._pidi.to(self.device)
+
         self._detect_aspect = detect_aspect
         self._detect_align = detect_align
         self._pre_resize = pre_resize
+        self._apply_filter = apply_filter
+        self._safe = safe
 
         if detect_resolution is not None:
             try:
@@ -87,6 +96,8 @@ class LineArtAnimeProcessor(_imageprocessor.ImageProcessor):
             ('detect_resolution', self._detect_resolution),
             ('detect_aspect', self._detect_aspect),
             ('detect_align', self._detect_align),
+            ('apply_filter', self._apply_filter),
+            ('safe', self._safe),
             ('pre-resize', self._pre_resize)
         ]
         return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
@@ -101,28 +112,25 @@ class LineArtAnimeProcessor(_imageprocessor.ImageProcessor):
                 aspect_correct=self._detect_aspect,
                 align=self._detect_align
             )
-
         image = resized
 
         input_image = np.array(image, dtype=np.uint8)
         input_image = _cna_util.HWC3(input_image)
 
-        H, W, C = input_image.shape
-        Hn = 256 * int(np.ceil(float(H) / 256.0))
-        Wn = 256 * int(np.ceil(float(W) / 256.0))
-        img = cv2.resize(input_image, (Wn, Hn), interpolation=cv2.INTER_CUBIC)
+        input_image = input_image[:, :, ::-1].copy()
         with torch.no_grad():
-            image_feed = torch.from_numpy(img).float().to(self.device)
-            image_feed = image_feed / 127.5 - 1.0
-            image_feed = einops.rearrange(image_feed, 'h w c -> 1 c h w')
+            image_pidi = torch.from_numpy(input_image).float().to(self.device)
+            image_pidi = image_pidi / 255.0
+            image_pidi = einops.rearrange(image_pidi, 'h w c -> 1 c h w')
+            edge = self._pidi.netNetwork(image_pidi)[-1]
+            edge = edge.cpu().numpy()
+            if self._apply_filter:
+                edge = edge > 0.5
+            if self._safe:
+                edge = _cna_util.safe_step(edge)
+            edge = (edge * 255.0).clip(0, 255).astype(np.uint8)
 
-            line = self._lineart.model(image_feed)[0, 0] * 127.5 + 127.5
-            line = line.cpu().numpy()
-
-            line = cv2.resize(line, (W, H), interpolation=cv2.INTER_CUBIC)
-            line = line.clip(0, 255).astype(np.uint8)
-
-        detected_map = _cna_util.HWC3(line)
+        detected_map = _cna_util.HWC3(edge[0, 0])
 
         if resize_resolution is not None:
             detected_map = cv2.resize(detected_map, resize_resolution, interpolation=cv2.INTER_LINEAR)

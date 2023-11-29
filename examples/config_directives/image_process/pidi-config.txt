@@ -1,15 +1,15 @@
 #! dgenerate 3.0.0
 
-# run the hed (edge) detector
+# run the pid net edge detector
 
 \image_process "../../media/horse2.jpeg"
--o horse2-hed.png
---processors hed
+-o horse2-pidi.png
+--processors pidi
 --align 1
 --no-frames
 
 \image_process "../../media/horse2.jpeg"
--o horse2-hed-scribble.png
---processors hed;scribble=True
+-o horse2-pidi-filter.png
+--processors pidi;apply-filter=True
 --align 1
 --no-frames
