@@ -7,5 +7,4 @@
 --resize 1024
 --processors lineart-anime
 --align 1
---no-frames
 

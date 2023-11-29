@@ -6,4 +6,3 @@
 -o horse2-midas-depth.png
 --processors midas
 --align 1
---no-frames

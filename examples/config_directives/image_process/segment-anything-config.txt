@@ -12,4 +12,3 @@
 -o horse2-segment.png
 --processors sam
 --align 1
---no-frames
