@@ -38,16 +38,19 @@ class NormalBaeProcessor(_imageprocessor.ImageProcessor):
     """
     Normal Bae Detector, generate a normal map from an image.
 
-    The argument "detect_resolution" is the resolution the image is resized to interal to the processor before
-    detection is run on it. It should be a single dimension for example: "detect_resolution=512" or the X/Y dimensions
-    seperated by an "x" character, like so: "detect_resolution=1024x512". If you do not specify this argument,
+    The argument "detect-resolution" is the resolution the image is resized to internal to the processor before
+    detection is run on it. It should be a single dimension for example: "detect-resolution=512" or the X/Y dimensions
+    seperated by an "x" character, like so: "detect-resolution=1024x512". If you do not specify this argument,
     the detector runs on the input image at its full resolution. After processing the image will be resized to
     whatever you have requested dgenerate resize it to via --output-size or --resize/--align in the case of the
     image-process sub-command, if you have not requested any resizing the output will be resized back to the original
     size of the input image.
 
-    The argument "detect_aspect" determines if the image resize requested by "detect_resolution" before
+    The argument "detect-aspect" determines if the image resize requested by "detect-resolution" before
     detection runs is aspect correct, this defaults to true.
+
+    The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
+    This defaults to False, meaning the image is processed after dgenerate is done resizing it.
     """
 
     NAMES = ['normal-bae']
@@ -55,6 +58,7 @@ class NormalBaeProcessor(_imageprocessor.ImageProcessor):
     def __init__(self,
                  detect_resolution: typing.Optional[str] = None,
                  detect_aspect: bool = True,
+                 pre_resize: bool = False,
                  **kwargs):
         super().__init__(**kwargs)
 
@@ -63,6 +67,7 @@ class NormalBaeProcessor(_imageprocessor.ImageProcessor):
         self._normal_bae.to(self.device)
 
         self._detect_aspect = detect_aspect
+        self._pre_resize = pre_resize
 
         if detect_resolution is not None:
             try:
@@ -76,34 +81,28 @@ class NormalBaeProcessor(_imageprocessor.ImageProcessor):
         args = [
             ('detect_resolution', self._detect_resolution),
             ('detect_aspect', self._detect_aspect),
+            ('pre-resize', self._pre_resize)
         ]
         return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
 
-    def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
-        """
-        Pre resize, Normal Bae detection occurs here.
-
-        :param image: image to process
-        :param resize_resolution: purely informational, is unused by this processor
-        :return: possibly a segment-anything image, or the input image
-        """
-
+    def _process(self, image, resize_resolution, return_to_original_size=False):
         original_size = image.size
 
         with image:
+            # must be aligned to 8 pixels, forcefully align
             resized = _image.resize_image(
                 image,
                 self._detect_resolution,
                 aspect_correct=self._detect_aspect,
                 align=8
             )
-            image = resized
+        image = resized
 
         input_image = np.array(image, dtype=np.uint8)
         input_image = _cna_util.HWC3(input_image)
 
-        assert input_image.ndim == 3
         image_normal = input_image
+
         with torch.no_grad():
             image_normal = torch.from_numpy(image_normal).float().to(self.device)
             image_normal = image_normal / 255.0
@@ -112,9 +111,6 @@ class NormalBaeProcessor(_imageprocessor.ImageProcessor):
 
             normal = self._normal_bae.model(image_normal)
             normal = normal[0][-1][:, :3]
-            # d = torch.sum(normal ** 2.0, dim=1, keepdim=True) ** 0.5
-            # d = torch.maximum(d, torch.ones_like(d) * 1e-5)
-            # normal /= d
             normal = ((normal + 1) * 0.5).clip(0, 1)
 
             normal = einops.rearrange(normal[0], 'c h w -> h w c').cpu().numpy()
@@ -123,20 +119,36 @@ class NormalBaeProcessor(_imageprocessor.ImageProcessor):
         detected_map = normal_image
         detected_map = _cna_util.HWC3(detected_map)
 
-        # this is similar to the sam detector resize logic
-
         if resize_resolution is not None:
             detected_map = cv2.resize(detected_map, resize_resolution, interpolation=cv2.INTER_LINEAR)
-        else:
+        elif self._detect_resolution is not None and return_to_original_size:
             detected_map = cv2.resize(detected_map, original_size, interpolation=cv2.INTER_LINEAR)
 
         return PIL.Image.fromarray(detected_map)
 
+    def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
+        """
+        Pre resize.
+
+        :param image: image to process
+        :param resize_resolution: resize resolution
+        :return: possibly a normal map image, or the input image
+        """
+
+        if not self._pre_resize:
+            return image
+
+        return self._process(image, resize_resolution, return_to_original_size=True)
+
     def impl_post_resize(self, image: PIL.Image.Image):
         """
-        Post resize, nothing happens here.
+        Post resize.
 
         :param image: image
-        :return: the input image
+        :return: possibly a normal map image, or the input image
         """
-        return image
+
+        if self._pre_resize:
+            return image
+
+        return self._process(image, None)
