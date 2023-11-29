@@ -43,6 +43,7 @@ from .normal_bae import NormalBaeProcessor
 from .openpose import OpenPoseProcessor
 from .sam import SegmentAnythingProcessor
 from .upscaler import UpscalerProcessor
+from .pidi import PidiNetProcessor
 
 
 class ImageProcessorHelpUsageError(Exception):

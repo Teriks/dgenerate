@@ -39,8 +39,8 @@ class LineArtProcessor(_imageprocessor.ImageProcessor):
     Line art generator, generate line art from an image.
 
     The argument "detect-resolution" is the resolution the image is resized to internal to the processor before
-    detection is run on it. It should be a single dimension for example: "detect_resolution=512" or the X/Y dimensions
-    seperated by an "x" character, like so: "detect_resolution=1024x512". If you do not specify this argument,
+    detection is run on it. It should be a single dimension for example: "detect-resolution=512" or the X/Y dimensions
+    seperated by an "x" character, like so: "detect-resolution=1024x512". If you do not specify this argument,
     the detector runs on the input image at its full resolution. After processing the image will be resized to
     whatever you have requested dgenerate resize it to via --output-size or --resize/--align in the case of the
     image-process sub-command, if you have not requested any resizing the output will be resized back to the original
@@ -50,7 +50,7 @@ class LineArtProcessor(_imageprocessor.ImageProcessor):
     detection runs is aspect correct, this defaults to true.
 
     The argument "detect-align" determines the pixel alignment of the image resize requested by
-    "detect_resolution", it defaults to 1 indicating no requested alignment.
+    "detect-resolution", it defaults to 1 indicating no requested alignment.
 
     The argument "course" determines whether to use the course model or the normal model.
 
