@@ -110,7 +110,8 @@ class LeresDepthProcessor(_imageprocessor.ImageProcessor):
                 aspect_correct=self._detect_aspect,
                 align=8
             )
-            image = resized
+
+        image = resized
 
         input_image = np.array(image, dtype=np.uint8)
         input_image = _cna_util.HWC3(input_image)
