@@ -37,6 +37,7 @@ from .imageprocessorloader import ImageProcessorLoader
 from .imageprocessormixin import ImageProcessorMixin
 from .lineart import LineArtProcessor
 from .midis import MidisDepthProcessor
+from .leres import LeresDepthProcessor
 from .normal_bae import NormalBaeProcessor
 from .openpose import OpenPoseProcessor
 from .sam import SegmentAnythingProcessor

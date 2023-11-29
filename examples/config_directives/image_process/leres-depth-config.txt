@@ -1,0 +1,16 @@
+#! dgenerate 3.0.0
+
+# run the LeReS depth detector
+
+\image_process "../../media/horse2.jpeg"
+-o horse2-leres-depth.png
+--processors leres
+--align 1
+--no-frames
+
+
+\image_process "../../media/horse2.jpeg"
+-o horse2-leres-depth.png
+--processors leres;boost=True
+--align 1
+--no-frames
