@@ -24,7 +24,6 @@ import PIL.Image
 import controlnet_aux as _cna
 import controlnet_aux.util as _cna_util
 import cv2
-import einops
 import numpy as np
 import torch
 
@@ -34,9 +33,10 @@ import dgenerate.types as _types
 from dgenerate.imageprocessors import imageprocessor as _imageprocessor
 
 
-class PidiNetProcessor(_imageprocessor.ImageProcessor):
+class MLSDProcessor(_imageprocessor.ImageProcessor):
     """
-    PidiNet edge detector.
+    Machine Learning Model for Detecting Wireframes.  Wireframe edge detector, this processor
+    overlays lines on to the edges of objects in an image.
 
     The argument "detect-resolution" is the resolution the image is resized to internal to the processor before
     detection is run on it. It should be a single dimension for example: "detect-resolution=512" or the X/Y dimensions
@@ -52,36 +52,36 @@ class PidiNetProcessor(_imageprocessor.ImageProcessor):
     The argument "detect-align" determines the pixel alignment of the image resize requested by
     "detect-resolution", it defaults to 1 indicating no requested alignment.
 
-    The "apply-filter" argument enables possibly crisper edges.
+    The "threshold-score" argument is the score threshold.
 
-    The "safe" argument enables numerically safe / more precise stepping
+    The "threshold-distance" argument is the distance threshold.
 
     The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
     This defaults to False, meaning the image is processed after dgenerate is done resizing it.
     """
 
-    NAMES = ['pidi']
+    NAMES = ['mlsd']
 
     def __init__(self,
                  detect_resolution: typing.Optional[str] = None,
                  detect_aspect: bool = True,
                  detect_align: int = 1,
-                 apply_filter: bool = False,
-                 safe=False,
+                 threshold_score: float = 0.1,
+                 threshold_distance: float = 0.1,
                  pre_resize: bool = False,
                  **kwargs):
 
         super().__init__(**kwargs)
 
-        self._pidi = _cna.PidiNetDetector.from_pretrained("lllyasviel/Annotators")
+        self._mlsd = _cna.MLSDdetector.from_pretrained("lllyasviel/Annotators")
 
-        self._pidi.to(self.device)
+        self._mlsd.to(self.device)
 
         self._detect_aspect = detect_aspect
         self._detect_align = detect_align
         self._pre_resize = pre_resize
-        self._apply_filter = apply_filter
-        self._safe = safe
+        self._threshold_score = threshold_score
+        self._threshold_distance = threshold_distance
 
         if detect_resolution is not None:
             try:
@@ -95,10 +95,9 @@ class PidiNetProcessor(_imageprocessor.ImageProcessor):
         args = [
             ('detect_resolution', self._detect_resolution),
             ('detect_aspect', self._detect_aspect),
-            ('detect_align', self._detect_align),
-            ('apply_filter', self._apply_filter),
-            ('safe', self._safe),
-            ('pre-resize', self._pre_resize)
+            ('threshold_score', self._threshold_score),
+            ('threshold_distance', self._threshold_distance),
+            ('pre_resize', self._pre_resize)
         ]
         return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
 
@@ -117,20 +116,22 @@ class PidiNetProcessor(_imageprocessor.ImageProcessor):
         input_image = np.array(image, dtype=np.uint8)
         input_image = _cna_util.HWC3(input_image)
 
-        input_image = input_image[:, :, ::-1].copy()
-        with torch.no_grad():
-            image_pidi = torch.from_numpy(input_image).float().to(self.device)
-            image_pidi = image_pidi / 255.0
-            image_pidi = einops.rearrange(image_pidi, 'h w c -> 1 c h w')
-            edge = self._pidi.netNetwork(image_pidi)[-1]
-            edge = edge.cpu().numpy()
-            if self._apply_filter:
-                edge = edge > 0.5
-            if self._safe:
-                edge = _cna_util.safe_step(edge)
-            edge = (edge * 255.0).clip(0, 255).astype(np.uint8)
+        img = input_image
+        img_output = np.zeros_like(img)
+        try:
+            with torch.no_grad():
+                lines = _cna.mlsd.pred_lines(
+                    img, self._mlsd.model,
+                    [img.shape[0], img.shape[1]],
+                    self._threshold_score,
+                    self._threshold_distance)
+                for line in lines:
+                    x_start, y_start, x_end, y_end = [int(val) for val in line]
+                    cv2.line(img_output, (x_start, y_start), (x_end, y_end), [255, 255, 255], 1)
+        except Exception as e:
+            pass
 
-        detected_map = _cna_util.HWC3(edge[0, 0])
+        detected_map = _cna_util.HWC3(img_output[:, :, 0])
 
         if resize_resolution is not None:
             detected_map = cv2.resize(detected_map, resize_resolution, interpolation=cv2.INTER_LINEAR)
@@ -145,7 +146,7 @@ class PidiNetProcessor(_imageprocessor.ImageProcessor):
 
         :param image: image to process
         :param resize_resolution: resize resolution
-        :return: possibly an edge detected image, or the input image
+        :return: possibly an wireframe detected image, or the input image
         """
 
         if not self._pre_resize:
@@ -158,7 +159,7 @@ class PidiNetProcessor(_imageprocessor.ImageProcessor):
         Post resize.
 
         :param image: image
-        :return: possibly an edge detected image, or the input image
+        :return: possibly an wireframe detected image, or the input image
         """
 
         if self._pre_resize:
