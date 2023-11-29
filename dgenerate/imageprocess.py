@@ -264,12 +264,16 @@ class ImageProcessConfig(_types.SetFromMixin):
                     'is not single a directory (indicated by a trailing slash).')
 
         for idx, file in enumerate(self.files):
-            if not os.path.exists(file):
-                raise ImageProcessConfigError(f'File input "{file}" does not exist.')
-            if not os.path.isfile(file):
-                raise ImageProcessConfigError(f'File input "{file}" is not a file.')
+            if not _mediainput.is_downloadable_url(file):
 
-            input_mime_type = _mediainput.guess_mimetype(file)
+                if not os.path.exists(file):
+                    raise ImageProcessConfigError(f'File input "{file}" does not exist.')
+                if not os.path.isfile(file):
+                    raise ImageProcessConfigError(f'File input "{file}" is not a file.')
+
+                input_mime_type = _mediainput.guess_mimetype(file)
+            else:
+                input_mime_type = _mediainput.request_mimetype(file)
 
             if input_mime_type is None:
                 raise ImageProcessConfigError(f'File type of "{file}" could not be determined.')

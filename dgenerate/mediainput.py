@@ -927,7 +927,7 @@ def _wipe_web_cache_directory():
             file_path = os.path.join(folder, filename)
             _, ext = os.path.splitext(filename)
             if ext:
-                # Do not delete the database
+                # Do not delete database related files
                 continue
 
             _messages.debug_log(f'Deleting File From Web Cache: "{file_path}"')
@@ -985,24 +985,52 @@ def create_web_cache_file(url,
 
         headers = {'User-Agent': fake_useragent.UserAgent().chrome}
 
-        req = requests.get(url, headers=headers, stream=True)
-        mime_type = req.headers['content-type']
+        with requests.get(url, headers=headers, stream=True) as req:
+            mime_type = req.headers['content-type']
 
-        if not _mimetype_is_supported(mime_type):
-            raise UnknownMimetypeError(
-                f'Unknown mimetype "{mime_type}" from URL "{url}". '
-                f'Expected: {mime_acceptable_desc}')
+            if not _mimetype_is_supported(mime_type):
+                raise UnknownMimetypeError(
+                    f'Unknown mimetype "{mime_type}" from URL "{url}". '
+                    f'Expected: {mime_acceptable_desc}')
 
-        cursor.execute(
-            'INSERT INTO files(mime_type, url) VALUES(?, ?)', [mime_type, url])
+            cursor.execute(
+                'INSERT INTO files(mime_type, url) VALUES(?, ?)', [mime_type, url])
 
-        path = os.path.join(cache_dir, f'web_{cursor.lastrowid}')
+            path = os.path.join(cache_dir, f'web_{cursor.lastrowid}')
 
-        with open(path, mode='wb') as new_file:
-            new_file.write(req.content)
-            new_file.flush()
+            with open(path, mode='wb') as new_file:
+                new_file.write(req.content)
+                new_file.flush()
 
     return mime_type, path
+
+
+def request_mimetype(url) -> str:
+    """
+    Request the mimetype of a file at a URL, if the file exist in the cache a known mimetype
+    is returned without connecting to the internet. Otherwise connect to the internet
+    to retrieve the mimetype, this action does not update the cache.
+
+    :param url: The url
+
+    :return: tuple(mimetype_str, filepath)
+    """
+
+    with _get_web_cache_db() as db:
+        cursor = db.cursor()
+
+        exists = cursor.execute(
+            'SELECT mime_type, id FROM files WHERE url = ?', [url]).fetchone()
+
+        if exists is not None:
+            return exists[0]
+
+        headers = {'User-Agent': fake_useragent.UserAgent().chrome}
+
+        with requests.get(url, headers=headers, stream=True) as req:
+            mime_type = req.headers['content-type']
+
+    return mime_type
 
 
 class UnknownMimetypeError(Exception):

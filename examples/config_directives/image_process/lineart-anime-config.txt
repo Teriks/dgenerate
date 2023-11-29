@@ -1,0 +1,11 @@
+#! dgenerate 3.0.0
+
+# run the lineart anime model
+
+\image_process 'https://upload.wikimedia.org/wikipedia/en/d/db/GutsBerserk.PNG'
+-o guts-lineart-anime.png
+--resize 1024
+--processors lineart-anime
+--align 1
+--no-frames
+
