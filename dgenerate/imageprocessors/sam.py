@@ -18,13 +18,14 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
+import os
 import typing
 
 import PIL.Image
 import controlnet_aux as _cna
 import controlnet_aux.util as _cna_util
 import cv2
+import huggingface_hub
 import numpy as np
 
 import dgenerate.image as _image
@@ -60,13 +61,13 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
                  detect_resolution: typing.Optional[str] = None,
                  detect_aspect: bool = True,
                  detect_align: int = 1,
-                 mobile_sam: bool =False, **kwargs):
+                 mobile_sam: bool = False, **kwargs):
         super().__init__(**kwargs)
 
         if mobile_sam:
-            self._sam = _cna.SamDetector.from_pretrained("dhkim2810/MobileSAM", model_type="vit_t", filename="mobile_sam.pt")
+            self._sam = self._from_pretrained("dhkim2810/MobileSAM", model_type="vit_t", filename="mobile_sam.pt")
         else:
-            self._sam = _cna.SamDetector.from_pretrained('ybelkada/segment-anything', subfolder='checkpoints')
+            self._sam = self._from_pretrained('ybelkada/segment-anything', subfolder='checkpoints')
 
         self._detect_aspect = detect_aspect
         self._detect_align = detect_align
@@ -78,6 +79,27 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
                 raise self.argument_error('Could not parse the "detect_resolution" argument as an image dimension.')
         else:
             self._detect_resolution = None
+
+    def _from_pretrained(self,
+                         pretrained_model_or_path,
+                         model_type="vit_h",
+                         filename="sam_vit_h_4b8939.pth",
+                         subfolder=None,
+                         cache_dir=None):
+
+        if os.path.isdir(pretrained_model_or_path):
+            model_path = os.path.join(pretrained_model_or_path, filename)
+        else:
+            model_path = huggingface_hub.hf_hub_download(
+                pretrained_model_or_path, filename, subfolder=subfolder,
+                cache_dir=cache_dir)
+
+        sam = _cna.segment_anything.build_sam.sam_model_registry[model_type](checkpoint=model_path)
+
+        sam.to(self.device)
+
+        mask_generator = _cna.segment_anything.SamAutomaticMaskGenerator(sam)
+        return _cna.SamDetector(mask_generator)
 
     def __str__(self):
         args = [
