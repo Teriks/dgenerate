@@ -36,6 +36,7 @@ from .imageprocessorloader import ImageProcessorLoader
 from .imageprocessormixin import ImageProcessorMixin
 from .openpose import OpenPoseProcessor
 from .sam import SegmentAnythingProcessor
+from .normal_bae import NormalBaeProcessor
 from .upscaler import UpscalerProcessor
 
 
