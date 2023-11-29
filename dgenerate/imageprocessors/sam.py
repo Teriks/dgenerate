@@ -36,7 +36,7 @@ from dgenerate.imageprocessors import imageprocessor as _imageprocessor
 
 class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
     """
-    Segment Anything Model.
+    Segment Anything Model, this processor attempts to creates cutouts for every distinct objects in an image.
 
     The argument "detect-resolution" is the resolution the image is resized to internal to the processor before
     detection is run on it. It should be a single dimension for example: "detect-resolution=512" or the X/Y dimensions

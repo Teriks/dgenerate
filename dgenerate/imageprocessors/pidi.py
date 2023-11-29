@@ -36,7 +36,7 @@ from dgenerate.imageprocessors import imageprocessor as _imageprocessor
 
 class PidiNetProcessor(_imageprocessor.ImageProcessor):
     """
-    PidiNet edge detector.
+    PidiNet (Pixel Difference Networks for Efficient Edge Detection) edge detector.
 
     The argument "detect-resolution" is the resolution the image is resized to internal to the processor before
     detection is run on it. It should be a single dimension for example: "detect-resolution=512" or the X/Y dimensions
