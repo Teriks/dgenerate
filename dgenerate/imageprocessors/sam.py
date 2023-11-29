@@ -64,6 +64,8 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
                  mobile_sam: bool = False, **kwargs):
         super().__init__(**kwargs)
 
+        self._mobile_sam = mobile_sam
+
         if mobile_sam:
             self._sam = self._from_pretrained("dhkim2810/MobileSAM", model_type="vit_t", filename="mobile_sam.pt")
         else:
@@ -106,6 +108,7 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
             ('detect_resolution', self._detect_resolution),
             ('detect_aspect', self._detect_aspect),
             ('detect_align', self._detect_align),
+            ('mobile_sam', self._mobile_sam)
         ]
         return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
 
