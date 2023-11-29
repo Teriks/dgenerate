@@ -1,0 +1,9 @@
+#! dgenerate 3.0.0
+
+# run the MiDaS depth detector
+
+\image_process "../../media/horse2.jpeg"
+-o horse2-midas-depth.png
+--processors midas
+--align 1
+--no-frames

@@ -25,6 +25,7 @@ from .canny import CannyEdgeDetectProcessor
 from .exceptions import \
     ImageProcessorNotFoundError, \
     ImageProcessorArgumentError
+from .hed import HEDDetectorProcessor
 from .imageops import \
     PosterizeProcessor, \
     SolarizeProcessor, \
@@ -34,12 +35,13 @@ from .imageprocessor import ImageProcessor
 from .imageprocessorchain import ImageProcessorChain
 from .imageprocessorloader import ImageProcessorLoader
 from .imageprocessormixin import ImageProcessorMixin
+from .lineart import LineArtProcessor
+from .midis import MidisDepthProcessor
+from .normal_bae import NormalBaeProcessor
 from .openpose import OpenPoseProcessor
 from .sam import SegmentAnythingProcessor
-from .normal_bae import NormalBaeProcessor
-from .lineart import LineArtProcessor
 from .upscaler import UpscalerProcessor
-from .hed import HEDProcessor
+
 
 class ImageProcessorHelpUsageError(Exception):
     """
