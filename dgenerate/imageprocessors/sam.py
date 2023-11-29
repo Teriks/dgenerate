@@ -120,6 +120,7 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
                 aspect_correct=self._detect_aspect,
                 align=self._detect_align
             )
+
         image = resized
 
         input_image = np.array(image, dtype=np.uint8)
