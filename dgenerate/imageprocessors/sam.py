@@ -38,21 +38,19 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
     """
     Segment Anything Model.
 
-    The argument "detect_resolution" is the resolution the image is resized to before segment detection
-    is run on it. It should be a single dimension for example: "detect_resolution=512" or the X/Y dimensions
+    The argument "detect_resolution" is the resolution the image is resized to interal to the processor before
+    detection is run on it. It should be a single dimension for example: "detect_resolution=512" or the X/Y dimensions
     seperated by an "x" character, like so: "detect_resolution=1024x512". If you do not specify this argument,
-    the detector runs on the input image at its full resolution. After processing the image will be resized
-    to whatever you have requested dgenerate itself to resize it to.
+    the detector runs on the input image at its full resolution. After processing the image will be resized to
+    whatever you have requested dgenerate resize it to via --output-size or --resize/--align in the case of the
+    image-process sub-command, if you have not requested any resizing the output will be resized back to the original
+    size of the input image.
 
     The argument "detect_aspect" determines if the image resize requested by "detect_resolution" before
     detection runs is aspect correct, this defaults to true.
 
     The argument "detect_align" determines the pixel alignment of the image resize requested by
     "detect_resolution", it defaults to 1 indicating no requested alignment.
-
-    The argument "mobile_sam" indicates that a variant of the sam detector with a smaller memory footprint
-    should be used: https://huggingface.co/dhkim2810/MobileSAM, by default the model used is the original
-    from here: https://huggingface.co/ybelkada/segment-anything
     """
 
     NAMES = ['sam']
@@ -61,15 +59,10 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
                  detect_resolution: typing.Optional[str] = None,
                  detect_aspect: bool = True,
                  detect_align: int = 1,
-                 mobile_sam: bool = False, **kwargs):
+                 **kwargs):
         super().__init__(**kwargs)
 
-        self._mobile_sam = mobile_sam
-
-        if mobile_sam:
-            self._sam = self._from_pretrained("dhkim2810/MobileSAM", model_type="vit_t", filename="mobile_sam.pt")
-        else:
-            self._sam = self._from_pretrained('ybelkada/segment-anything', subfolder='checkpoints')
+        self._sam = self._from_pretrained('ybelkada/segment-anything', subfolder='checkpoints')
 
         self._detect_aspect = detect_aspect
         self._detect_align = detect_align
@@ -107,15 +100,13 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
         args = [
             ('detect_resolution', self._detect_resolution),
             ('detect_aspect', self._detect_aspect),
-            ('detect_align', self._detect_align),
-            ('mobile_sam', self._mobile_sam)
+            ('detect_align', self._detect_align)
         ]
         return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         """
         Pre resize, segment-anything detection occurs here.
-
 
         :param image: image to process
         :param resize_resolution: purely informational, is unused by this processor
