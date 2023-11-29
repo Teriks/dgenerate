@@ -38,10 +38,13 @@ class NormalBaeProcessor(_imageprocessor.ImageProcessor):
     """
     Normal Bae Detector, generate a normal map from an image.
 
-    The argument "detect_resolution" is the resolution the image is resized to before detection is run on it.
-    It should be a single dimension for example: "detect_resolution=512" or the X/Y dimensions seperated by an "x" character,
-    like so: "detect_resolution=1024x512". If you do not specify this argument, the detector runs on the input image at its
-    full resolution. After processing the image will be resized to whatever you have requested dgenerate itself to resize it to.
+    The argument "detect_resolution" is the resolution the image is resized to interal to the processor before
+    detection is run on it. It should be a single dimension for example: "detect_resolution=512" or the X/Y dimensions
+    seperated by an "x" character, like so: "detect_resolution=1024x512". If you do not specify this argument,
+    the detector runs on the input image at its full resolution. After processing the image will be resized to
+    whatever you have requested dgenerate resize it to via --output-size or --resize/--align in the case of the
+    image-process sub-command, if you have not requested any resizing the output will be resized back to the original
+    size of the input image.
 
     The argument "detect_aspect" determines if the image resize requested by "detect_resolution" before
     detection runs is aspect correct, this defaults to true.
@@ -120,13 +123,11 @@ class NormalBaeProcessor(_imageprocessor.ImageProcessor):
         detected_map = normal_image
         detected_map = _cna_util.HWC3(detected_map)
 
+        # this is similar to the sam detector resize logic
+
         if resize_resolution is not None:
-            # resize it to what dgenerate requested, this happens automatically,
-            # but not with linear interpolation, so we will do it here, dgenerate will
-            # see that it is already at the requested size and not resize it any further
             detected_map = cv2.resize(detected_map, resize_resolution, interpolation=cv2.INTER_LINEAR)
         else:
-            # resize it to its original size
             detected_map = cv2.resize(detected_map, original_size, interpolation=cv2.INTER_LINEAR)
 
         return PIL.Image.fromarray(detected_map)

@@ -10,6 +10,6 @@
 
 \image_process "../../media/horse2.jpeg"
 -o horse2-segment.png
---processors sam;detect-resolution=512
+--processors sam
 --align 1
 --no-frames
