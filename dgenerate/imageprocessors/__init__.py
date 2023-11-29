@@ -25,7 +25,7 @@ from .canny import CannyEdgeDetectProcessor
 from .exceptions import \
     ImageProcessorNotFoundError, \
     ImageProcessorArgumentError
-from .hed import HEDDetectorProcessor
+from .hed import HEDProcessor
 from .imageops import \
     PosterizeProcessor, \
     SolarizeProcessor, \

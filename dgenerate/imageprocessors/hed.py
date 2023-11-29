@@ -34,7 +34,7 @@ import dgenerate.types as _types
 from dgenerate.imageprocessors import imageprocessor as _imageprocessor
 
 
-class HEDDetectorProcessor(_imageprocessor.ImageProcessor):
+class HEDProcessor(_imageprocessor.ImageProcessor):
     """
     HED detection (holistically-nested edge detection), this is an edge detection algorithm
     that can produced something akin to thick lineart.
