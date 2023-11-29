@@ -6,4 +6,3 @@
 -o dog-bench-msld.png
 --processors mlsd;threshold-score=0.2;threshold-distance=10
 --align 1
---no-frames

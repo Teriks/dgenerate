@@ -10,4 +10,4 @@
 \image_process "../../media/horse2.jpeg"
 -o horse2-normal-bae.png
 --processors normal-bae
---no-frames
+--align 1

@@ -6,10 +6,8 @@
 -o horse2-hed.png
 --processors hed
 --align 1
---no-frames
 
 \image_process "../../media/horse2.jpeg"
 -o horse2-hed-scribble.png
 --processors hed;scribble=True
 --align 1
---no-frames
