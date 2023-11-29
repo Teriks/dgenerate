@@ -1,0 +1,13 @@
+#! dgenerate 3.0.0
+
+# run the segment anything model
+
+# the image will be sized down to 512 (aspect correct, no alignment)
+# before the detection runs via "detect-resolution=512", and then be resized
+# back to whatever dgenerate requested for resizing, here there is no --resize
+# specified, meaning it gets sized back up to its original size
+
+\image_process "../../media/horse2.jpeg"
+-o horse2-normal-bae.png
+--processors normal-bae
+--no-frames
