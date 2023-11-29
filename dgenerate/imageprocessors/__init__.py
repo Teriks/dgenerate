@@ -36,6 +36,7 @@ from .imageprocessorchain import ImageProcessorChain
 from .imageprocessorloader import ImageProcessorLoader
 from .imageprocessormixin import ImageProcessorMixin
 from .lineart import LineArtProcessor
+from .linart_anime import LineArtAnimeProcessor
 from .midis import MidisDepthProcessor
 from .leres import LeresDepthProcessor
 from .normal_bae import NormalBaeProcessor

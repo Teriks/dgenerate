@@ -365,14 +365,19 @@ class BatchProcessor:
 
         def remove_tail_comments(string):
             try:
-                comment_start = string.index('#')
-                new_value = string[:comment_start]
+                parts = _textprocessing.tokenized_split(string, '#')
+
+                if not parts:
+                    return string
+
+                new_value = parts[0]
+
                 if not new_value.strip():
                     # do not remove if the comment is all
                     # that exists on the line
                     return string
                 return new_value
-            except ValueError:
+            except _textprocessing.TokenizedSplitSyntaxError:
                 return string
 
         last_line = None
