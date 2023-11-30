@@ -9,6 +9,6 @@
 
 
 \image_process "../../media/horse2.jpeg"
--o horse2-leres-depth.png
+-o horse2-leres-depth-boost.png
 --processors leres;boost=True
 --align 1

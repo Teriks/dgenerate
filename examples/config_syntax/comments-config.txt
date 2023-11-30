@@ -1,0 +1,80 @@
+# the ability to use tail comments requires a non trivial parse
+# that creates some penalty over the usage of the # character
+# in specific places
+
+
+# when the comment token (#) exists inside a complete string
+# and no unterminated string exists on the line, (or in actuality
+# the line is lexible into distinct string and text tokens), the
+# hashtag does not need to be escaped
+
+\set test_var "hello # world!" # this tail comment will be removed
+
+{% if test_var != '"hello # world!"' %}
+\print failed case 1 : {{ test_var }}
+\exit 1
+{% endif %} !END
+
+\print {{ test_var }}
+
+
+
+# when the comment token exists inside one complete string
+# but the line is not fully lexable because of an uncompleted string
+# you need to escape the character wherever it may be that you want
+# it to appear literally
+
+\set test_var "hello \# world!" "started a string but did not finish # this tail comment will be removed
+
+{% if test_var != '"hello # world!" "started a string but did not finish' %}
+\print failed case 2 : {{ test_var }}
+\exit 1
+{% endif %} !END
+
+\print {{ test_var }}
+
+
+
+# outside of a string, in plain text tokens \# needs to be escaped
+# if you do not want it to become a comment
+
+\set test_var hello \# world! # this tail comment will be removed
+
+{% if test_var != 'hello # world!' %}
+\print failed case 3 : {{ test_var }}
+\exit 1
+{% endif %} !END
+
+\print {{ test_var }}
+
+
+# sometimes you may want a string, or some other definition
+# like a command definition that is defined over multiple lines
+# with tail comments, in this case the # symbol needs to be escaped
+# if you want it to appear in your string due to case 2 above
+
+
+\set test_var "I want a literal hashtag here \# \ # and then a continuation and comment!
+               but I dont want my comment in my continuation!" # even more comments!
+
+
+{% if test_var != '"I want a literal hashtag here # but I dont want my comment in my continuation!"' %} # there can be comment here
+\print failed case 4 : {{ test_var }} # comment time :)
+\exit 1
+{% endif %} !END
+
+\print {{ test_var }}
+
+
+
+# a recursive descent is carried out to the right
+# multiple escapes are possible, even with trailing comments after
+
+\set test_var hello \# world!    \# theres a literal hashtag behind me preceded by some space # but I end with a comment
+
+{% if test_var != 'hello # world!    # theres a literal hashtag behind me preceded by some space' %}
+\print failed case 5 : {{ test_var }}
+\exit 1
+{% endif %} !END
+
+\print {{ test_var }}

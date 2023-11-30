@@ -71,7 +71,8 @@ def tokenized_split(string,
                     remove_quotes=False,
                     strict=False,
                     escapes_in_unquoted=False,
-                    escapes_in_quoted=False):
+                    escapes_in_quoted=False,
+                    escapable_separator=False):
     """
     Split a string by a separator and discard whitespace around tokens, avoid
     splitting within single or double quoted strings. Empty fields may be used.
@@ -79,6 +80,7 @@ def tokenized_split(string,
     Quotes can be always be escaped with a backslash to avoid the creation of a
     string type token. The backslash will remain in the output if ``escapes_in_unquoted``
     or ``escapes_in_quoted`` are ``False`` and the escape occurs in the relevant context.
+
 
     :raise TokenizedSplitSyntaxError: on syntax errors.
 
@@ -93,6 +95,7 @@ def tokenized_split(string,
         The slash is retained by default when escaping quotes, this disables that, and also enables handling of the escapes ``n, r, t, b, f, and \\``.
         IE given ``separator = ";"`` parse ``token; "a \\" b"`` -> ``['token', 'a " b']``, instead of ``token; "a \\" b"``-> ``['token', 'a \\" b']``
 
+    :param escapable_separator: The seperator character may be escaped with a backslash where it would otherwise cause a split?
     :return: parsed fields
     """
 
@@ -100,7 +103,7 @@ def tokenized_split(string,
         AWAIT_TEXT = 0
         TEXT_TOKEN = 1
         TEXT_TOKEN_STRICT = 2
-        ESCAPE_TEXT = 3
+        TEXT_ESCAPE = 3
         STRING = 4
         STRING_ESCAPE = 5
         SEP_REQUIRED = 6
@@ -151,8 +154,17 @@ def tokenized_split(string,
             else:
                 # append to current string
                 cur_string += c
-        elif state == _States.ESCAPE_TEXT:
+        elif state == _States.TEXT_ESCAPE:
             # after encountering an escape sequence start inside of a text token
+
+            if c == separator:
+                if not escapable_separator:
+                    if escapes_in_unquoted:
+                        append_text('\\')
+                    parts[-1] = parts[-1].rstrip()
+                    parts.append('')
+                    state = _States.AWAIT_TEXT
+                    continue
 
             state = _States.TEXT_TOKEN_STRICT if strict else _States.TEXT_TOKEN
             # return to the appropriate state
@@ -167,11 +179,14 @@ def tokenized_split(string,
                     append_text(fr'\{c}'.encode('utf-8').decode('unicode_escape'))
                 else:
                     append_text(c)
-            elif escapes_in_unquoted:
+            elif c == separator and escapable_separator:
                 # unknown escape code case 1
+                append_text(c)
+            elif escapes_in_unquoted:
+                # unknown escape code case 2
                 append_text(fr'\{c}')
             else:
-                # unknown escape code case 2
+                # unknown escape code case 3
                 append_text(c)
         elif state == _States.STRING_ESCAPE:
             # after encountering an escape sequence start inside of a quoted string
@@ -204,7 +219,7 @@ def tokenized_split(string,
         elif state == _States.AWAIT_TEXT:
             if c == '\\':
                 # started an escape sequence
-                state = _States.ESCAPE_TEXT
+                state = _States.TEXT_ESCAPE
                 if not escapes_in_unquoted:
                     append_text(c)
             elif c in QUOTE_CHARS:
@@ -229,9 +244,18 @@ def tokenized_split(string,
             # this is the non strict mode parsing state inside a text token
             if c == '\\':
                 # started an escape sequence in a text token
-                state = _States.ESCAPE_TEXT
-                if not escapes_in_unquoted:
+
+                state = _States.TEXT_ESCAPE
+
+                next_char_sep = (len(string) > idx+1 and string[idx+1] == separator)
+
+                if escapable_separator:
+                    if not next_char_sep:
+                        if not escapes_in_unquoted:
+                            append_text(c)
+                elif not escapes_in_unquoted:
                     append_text(c)
+
             elif c in QUOTE_CHARS:
                 # started a string token intermixed with a text token
                 cur_quote = c
@@ -254,9 +278,17 @@ def tokenized_split(string,
             # This state is only reached in strict mode
             if c == '\\':
                 # encountered an escape sequence in a text token
-                state = _States.ESCAPE_TEXT
-                if not escapes_in_unquoted:
+                state = _States.TEXT_ESCAPE
+
+                next_char_sep = (len(string) > idx+1 and string[idx+1] == separator)
+
+                if escapable_separator:
+                    if not next_char_sep:
+                        if not escapes_in_unquoted:
+                            append_text(c)
+                elif not escapes_in_unquoted:
                     append_text(c)
+
             elif c in QUOTE_CHARS:
                 # cannot have a string intermixed with a text token in strict mode
                 raise syntax_error('Cannot intermix quoted strings and text tokens', idx)
@@ -274,7 +306,7 @@ def tokenized_split(string,
                 # append text token character
                 append_text(c)
 
-    if state == _States.STRING:
+    if state == _States.STRING or state == _States.STRING_ESCAPE:
         # state machine ended inside a quoted string
         raise syntax_error(f'un-terminated string: \'{cur_string}\'', len(string))
 
@@ -283,6 +315,9 @@ def tokenized_split(string,
         # considered 'outside' the token, and spaces are only allowed 'inside'
         # and this is ambiguous without lookahead
         parts[-1] = parts[-1].rstrip()
+
+    if state == _States.TEXT_ESCAPE and escapes_in_unquoted:
+        raise syntax_error(f'un-finished escape sequence: \'{cur_string}\'', len(string))
 
     return parts
 

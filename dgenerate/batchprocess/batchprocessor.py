@@ -21,6 +21,7 @@
 
 import collections.abc
 import io
+import itertools
 import os
 import re
 import shlex
@@ -363,22 +364,62 @@ class BatchProcessor:
 
             self._lex_and_run_invocation(completed_continuation)
 
-        def remove_tail_comments(string):
+        def remove_tail_comments_unlexable(string):
             try:
-                parts = _textprocessing.tokenized_split(string, '#')
+                # find the start of a possible comment
+                comment_start = string.index('#')
+            except ValueError:
+                # no comments, all good
+                return string
+
+            if comment_start == 0:
+                # it starts the string, ignore
+                return string
+
+            segment = string[:comment_start]
+            if segment.endswith('\\'):
+                # found a comment token, but it was escaped
+
+                next_spaces = ''.join(itertools.takewhile(lambda x: x.isspace(), string[comment_start + 1:]))
+                # record all space characters after the #, they may be taken by the lexer if
+                # it can make sense of what came after #
+
+                lexed, result = remove_tail_comments(string[comment_start + 1:])
+                # recursive decent to the right starting after the # (operator lol) to solve the rest of the string
+
+                if next_spaces and lexed:
+                    # the spaces would have been consumed by lexing, add them back to the
+                    # left side of the string where the user intended them to be
+                    result = next_spaces + result
+
+                # return the left side minus the escape sequence + the comment # token, plus the evaluated right side
+                return segment.removesuffix('\\') + '#' + result
+
+            # unescaped comment start, return the segment to the left
+            return segment
+
+        def remove_tail_comments(string):
+            # this is a more difficult problem than I imagined.
+            try:
+                parts = _textprocessing.tokenized_split(string, '#', escapable_separator=True)
+                # attempt to split off the comment, this will error if there are unterminated strings
 
                 if not parts:
-                    return string
+                    # empty case, effectively un-lexed
+                    return False, string
 
                 new_value = parts[0]
 
                 if not new_value.strip():
-                    # do not remove if the comment is all
-                    # that exists on the line
-                    return string
-                return new_value
+                    # do not remove if the comment is all that exists on the line
+                    # that is handled elsewhere
+                    return False, string
+
+                # the left side was lexed and striped of leading and trailing whitespace
+                return True, new_value
             except _textprocessing.TokenizedSplitSyntaxError:
-                return string
+                # could not lex this because of unterminated string or other syntax error
+                return False, remove_tail_comments_unlexable(string)
 
         last_line = None
 
@@ -387,7 +428,7 @@ class BatchProcessor:
             next_line: typing.Optional[str]
             line, next_line = line_and_next
 
-            line_strip = remove_tail_comments(line).strip()
+            line_strip = remove_tail_comments(line)[1].strip()
 
             if not self._running_template_continuation:
                 self._current_line = line_idx
@@ -404,10 +445,10 @@ class BatchProcessor:
                 template_continuation = True
             elif not template_continuation and (line_strip.endswith('\\') or next_line
                                                 and next_line.lstrip().startswith('-')):
-                continuation += ' ' + line_strip.rstrip(' \\')
+                continuation += ' ' + line_strip.strip().removesuffix('\\').strip()
                 normal_continuation = True
             elif template_continuation:
-                line_rstrip = remove_tail_comments(line).rstrip()
+                line_rstrip = remove_tail_comments(line)[1].rstrip()
                 if line_rstrip.endswith('!END'):
                     run_continuation(line_rstrip.removesuffix('!END'))
                 else:
