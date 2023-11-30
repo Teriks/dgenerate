@@ -9,8 +9,8 @@ Overview
 **dgenerate** is a command line tool and library for generating images and animation sequences
 using Stable Diffusion and related techniques / models.
 
-**dgenerate** can generate multiple images or animated outputs using multiple combinations of diffusion
-input parameters in batch, so that the differences in generated output can be compared / curated easily.
+You can use dgenerate to generate multiple images or animated outputs using multiple combinations of
+diffusion input parameters in batch, so that the differences in generated output can be compared / curated easily.
 
 Simple txt2img generation without image inputs is supported, as well as img2img and inpainting, and ControlNets.
 
@@ -27,7 +27,13 @@ memory constraints, IE: all frames exist in memory at once after an animated ima
 
 PNG, JPEG, JPEG-2000, TGA (Targa), BMP, and PSD (Photoshop) are supported for static image inputs.
 
-This software requires an Nvidia GPU supporting CUDA 11.8+, CPU rendering is possible but extraordinarily slow.
+In addition to diffusion, dgenerate also supports the processing of any supported image, video, or
+animated image using any of its built in image processors, which include various edge detectors,
+depth detectors, segment generation, normal map generation, pose detection, non-diffusion based AI upscaling,
+and more.
+
+This software requires an Nvidia GPU supporting CUDA 11.8+, CPU rendering is possible for
+some operations but extraordinarily slow.
 
 For library documentation visit `readthedocs <http://dgenerate.readthedocs.io/en/v3.0.0/>`_.
 
