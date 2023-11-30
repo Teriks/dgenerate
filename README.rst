@@ -2752,8 +2752,7 @@ The following is a config file example that covers very basic syntax concepts:
     # not end in \ or start with -
 
     # the ability to use tail comments means that escaping of the # is sometimes
-    # necessary when you want it to appear literally, see:
-    # https://github.com/Teriks/dgenerate/blob/v3.0.0/examples/config_syntax/tail-comments-config.txt
+    # necessary when you want it to appear literally, see: examples/config_syntax/tail-comments-config.txt
     # for examples.
 
 
