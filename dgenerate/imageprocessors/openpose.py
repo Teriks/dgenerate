@@ -117,7 +117,7 @@ class OpenPoseProcessor(_imageprocessor.ImageProcessor):
         ]
         return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
 
-    def _process(self, image, return_to_original_size=False):
+    def _process(self, image, resize_resolution, return_to_original_size=False):
         original_size = image.size
 
         with image:
@@ -145,7 +145,9 @@ class OpenPoseProcessor(_imageprocessor.ImageProcessor):
 
         detected_map = _cna_util.HWC3(canvas)
 
-        if self._detect_resolution is not None and return_to_original_size:
+        if resize_resolution is not None:
+            detected_map = cv2.resize(detected_map, resize_resolution, interpolation=cv2.INTER_LINEAR)
+        elif self._detect_resolution is not None and return_to_original_size:
             detected_map = cv2.resize(detected_map, original_size, interpolation=cv2.INTER_LINEAR)
 
         return PIL.Image.fromarray(detected_map)
@@ -161,7 +163,7 @@ class OpenPoseProcessor(_imageprocessor.ImageProcessor):
         :return: possibly an OpenPose rig image, or the input image
         """
         if self._pre_resize:
-            return self._process(image, return_to_original_size=True)
+            return self._process(image, resize_resolution, return_to_original_size=True)
         return image
 
     def impl_post_resize(self, image: PIL.Image.Image):
@@ -173,7 +175,7 @@ class OpenPoseProcessor(_imageprocessor.ImageProcessor):
         :return: possibly an OpenPose rig image, or the input image
         """
         if not self._pre_resize:
-            return self._process(image)
+            return self._process(image, None)
         return image
 
 
