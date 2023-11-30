@@ -3,6 +3,6 @@
 # run the mlsd processor (Machine Learning Model for Detecting Wireframes)
 
 \image_process "../../media/dog-on-bench.png"
--o dog-bench-msld.png
+-o dog-bench-mlsd.png
 --processors mlsd;threshold-score=0.2;threshold-distance=10
 --align 1
