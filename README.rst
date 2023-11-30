@@ -2751,6 +2751,11 @@ The following is a config file example that covers very basic syntax concepts:
     # The continuation ends (on the next line) when the last line does
     # not end in \ or start with -
 
+    # the ability to use tail comments means that escaping of the # is sometimes
+    # necessary when you want it to appear literally, see:
+    # https://github.com/Teriks/dgenerate/blob/v3.0.0/examples/config_syntax/tail-comments-config.txt
+    # for examples.
+
 
     # Configuration directives provide extra functionality in a config, a directive
     # invocation always starts with a backslash
@@ -2785,6 +2790,7 @@ The following is a config file example that covers very basic syntax concepts:
 
     stabilityai/stable-diffusion-2-1 --prompts "a martian riding a horse"
     --output-path unique_output_4
+
 
 
 To receive information about Jinja2 template variables that are set after a dgenerate invocation.
