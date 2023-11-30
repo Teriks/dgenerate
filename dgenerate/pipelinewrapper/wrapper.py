@@ -1111,7 +1111,7 @@ class DiffusionPipelineWrapper:
 
                 if '\n' in prompt_text:
                     # need to escape the comment token
-                    prompt_text.replace('#', r'\#')
+                    prompt_text = prompt_text.replace('#', r'\#')
 
                 return f'{opt_name} {prompt_text}'
 
