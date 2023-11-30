@@ -38,6 +38,10 @@ class MLSDProcessor(_imageprocessor.ImageProcessor):
     Machine Learning Model for Detecting Wireframes.  Wireframe edge detector, this processor
     overlays lines on to the edges of objects in an image.
 
+    The "threshold-score" argument is the score threshold.
+
+    The "threshold-distance" argument is the distance threshold.
+
     The argument "detect-resolution" is the resolution the image is resized to internal to the processor before
     detection is run on it. It should be a single dimension for example: "detect-resolution=512" or the X/Y dimensions
     seperated by an "x" character, like so: "detect-resolution=1024x512". If you do not specify this argument,
@@ -52,10 +56,6 @@ class MLSDProcessor(_imageprocessor.ImageProcessor):
     The argument "detect-align" determines the pixel alignment of the image resize requested by
     "detect-resolution", it defaults to 1 indicating no requested alignment.
 
-    The "threshold-score" argument is the score threshold.
-
-    The "threshold-distance" argument is the distance threshold.
-
     The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
     This defaults to False, meaning the image is processed after dgenerate is done resizing it.
     """
@@ -63,19 +63,18 @@ class MLSDProcessor(_imageprocessor.ImageProcessor):
     NAMES = ['mlsd']
 
     def __init__(self,
+                 threshold_score: float = 0.1,
+                 threshold_distance: float = 0.1,
                  detect_resolution: typing.Optional[str] = None,
                  detect_aspect: bool = True,
                  detect_align: int = 1,
-                 threshold_score: float = 0.1,
-                 threshold_distance: float = 0.1,
                  pre_resize: bool = False,
                  **kwargs):
 
         super().__init__(**kwargs)
 
-        self._mlsd = _cna.MLSDdetector.from_pretrained("lllyasviel/Annotators")
-
-        self._mlsd.to(self.device)
+        if detect_align < 1:
+            raise self.argument_error('Argument "detect-align" may not be less than 1.')
 
         self._detect_aspect = detect_aspect
         self._detect_align = detect_align
@@ -87,16 +86,20 @@ class MLSDProcessor(_imageprocessor.ImageProcessor):
             try:
                 self._detect_resolution = _textprocessing.parse_image_size(detect_resolution)
             except ValueError:
-                raise self.argument_error('Could not parse the "detect_resolution" argument as an image dimension.')
+                raise self.argument_error('Could not parse the "detect-resolution" argument as an image dimension.')
         else:
             self._detect_resolution = None
 
+        self._mlsd = _cna.MLSDdetector.from_pretrained("lllyasviel/Annotators")
+        self._mlsd.to(self.device)
+
     def __str__(self):
         args = [
-            ('detect_resolution', self._detect_resolution),
-            ('detect_aspect', self._detect_aspect),
             ('threshold_score', self._threshold_score),
             ('threshold_distance', self._threshold_distance),
+            ('detect_resolution', self._detect_resolution),
+            ('detect_aspect', self._detect_aspect),
+            ('detect_align', self._detect_align),
             ('pre_resize', self._pre_resize)
         ]
         return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
@@ -147,23 +150,21 @@ class MLSDProcessor(_imageprocessor.ImageProcessor):
 
         :param image: image to process
         :param resize_resolution: resize resolution
-        :return: possibly an wireframe detected image, or the input image
+        :return: possibly a wireframe detected image, or the input image
         """
 
-        if not self._pre_resize:
-            return image
-
-        return self._process(image, resize_resolution, return_to_original_size=True)
+        if self._pre_resize:
+            return self._process(image, resize_resolution, return_to_original_size=True)
+        return image
 
     def impl_post_resize(self, image: PIL.Image.Image):
         """
         Post resize.
 
         :param image: image
-        :return: possibly an wireframe detected image, or the input image
+        :return: possibly a wireframe detected image, or the input image
         """
 
-        if self._pre_resize:
-            return image
-
-        return self._process(image, None)
+        if not self._pre_resize:
+            return self._process(image, None)
+        return image

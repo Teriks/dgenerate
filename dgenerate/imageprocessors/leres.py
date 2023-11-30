@@ -37,6 +37,12 @@ class LeresDepthProcessor(_imageprocessor.ImageProcessor):
     """
     LeReS depth detector.
 
+    The "threshold-near" argument is the near threshold, think the low threshold of canny.
+
+    The "threshold-far" argument is the far threshold, think the high threshold of canny.
+
+    The "boost" argument determines if monocular depth boost is used.
+
     The argument "detect-resolution" is the resolution the image is resized to internal to the processor before
     detection is run on it. It should be a single dimension for example: "detect-resolution=512" or the X/Y dimensions
     seperated by an "x" character, like so: "detect-resolution=1024x512". If you do not specify this argument,
@@ -48,12 +54,6 @@ class LeresDepthProcessor(_imageprocessor.ImageProcessor):
     The argument "detect-aspect" determines if the image resize requested by "detect-resolution" before
     detection runs is aspect correct, this defaults to true.
 
-    The "threshold-near" argument is the near threshold, think the low threshold of canny.
-
-    The "threshold-far" argument is the far threshold, think the high threshold of canny.
-
-    The "boost" argument determines if monocular depth boost is used.
-
     The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
     This defaults to False, meaning the image is processed after dgenerate is done resizing it.
     """
@@ -61,18 +61,14 @@ class LeresDepthProcessor(_imageprocessor.ImageProcessor):
     NAMES = ['leres']
 
     def __init__(self,
-                 detect_resolution: typing.Optional[str] = None,
-                 detect_aspect: bool = True,
                  threshold_near: int = 0,
                  threshold_far: int = 0,
                  boost: bool = False,
+                 detect_resolution: typing.Optional[str] = None,
+                 detect_aspect: bool = True,
                  pre_resize: bool = False,
                  **kwargs):
         super().__init__(**kwargs)
-
-        self._leres = _cna.LeresDetector.from_pretrained("lllyasviel/Annotators")
-
-        self._leres.to(self.device)
 
         self._detect_aspect = detect_aspect
         self._pre_resize = pre_resize
@@ -84,18 +80,21 @@ class LeresDepthProcessor(_imageprocessor.ImageProcessor):
             try:
                 self._detect_resolution = _textprocessing.parse_image_size(detect_resolution)
             except ValueError:
-                raise self.argument_error('Could not parse the "detect_resolution" argument as an image dimension.')
+                raise self.argument_error('Could not parse the "detect-resolution" argument as an image dimension.')
         else:
             self._detect_resolution = None
 
+        self._leres = _cna.LeresDetector.from_pretrained("lllyasviel/Annotators")
+        self._leres.to(self.device)
+
     def __str__(self):
         args = [
-            ('detect_resolution', self._detect_resolution),
-            ('detect_aspect', self._detect_aspect),
             ('threshold_near', self._threshold_near),
             ('threshold_far', self._threshold_far),
             ('boost', self._boost),
-            ('pre-resize', self._pre_resize)
+            ('detect_resolution', self._detect_resolution),
+            ('detect_aspect', self._detect_aspect),
+            ('pre_resize', self._pre_resize)
         ]
         return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
 
@@ -170,23 +169,21 @@ class LeresDepthProcessor(_imageprocessor.ImageProcessor):
 
         :param image: image to process
         :param resize_resolution: resize resolution
-        :return: possibly a MiDaS depth detected image, or the input image
+        :return: possibly a LeReS depth detected image, or the input image
         """
 
-        if not self._pre_resize:
-            return image
-
-        return self._process(image, resize_resolution, return_to_original_size=True)
+        if self._pre_resize:
+            return self._process(image, resize_resolution, return_to_original_size=True)
+        return image
 
     def impl_post_resize(self, image: PIL.Image.Image):
         """
         Post resize.
 
         :param image: image
-        :return: possibly a MiDaS depth detected image, or the input image
+        :return: possibly a LeReS depth detected image, or the input image
         """
 
-        if self._pre_resize:
-            return image
-
-        return self._process(image, None)
+        if not self._pre_resize:
+            return self._process(image, None)
+        return image

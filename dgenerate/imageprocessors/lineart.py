@@ -38,6 +38,8 @@ class LineArtProcessor(_imageprocessor.ImageProcessor):
     """
     Line art generator, generate line art from an image.
 
+    The argument "course" determines whether to use the course model or the normal model.
+
     The argument "detect-resolution" is the resolution the image is resized to internal to the processor before
     detection is run on it. It should be a single dimension for example: "detect-resolution=512" or the X/Y dimensions
     seperated by an "x" character, like so: "detect-resolution=1024x512". If you do not specify this argument,
@@ -52,8 +54,6 @@ class LineArtProcessor(_imageprocessor.ImageProcessor):
     The argument "detect-align" determines the pixel alignment of the image resize requested by
     "detect-resolution", it defaults to 1 indicating no requested alignment.
 
-    The argument "course" determines whether to use the course model or the normal model.
-
     The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
     This defaults to False, meaning the image is processed after dgenerate is done resizing it.
     """
@@ -61,18 +61,18 @@ class LineArtProcessor(_imageprocessor.ImageProcessor):
     NAMES = ['lineart']
 
     def __init__(self,
+                 course: bool = False,
                  detect_resolution: typing.Optional[str] = None,
                  detect_aspect: bool = True,
                  detect_align: int = 1,
-                 course: bool = False,
                  pre_resize: bool = False,
                  **kwargs):
 
         super().__init__(**kwargs)
 
-        self._lineart = _cna.LineartDetector.from_pretrained("lllyasviel/Annotators")
+        if detect_align < 1:
+            raise self.argument_error('Argument "detect-align" may not be less than 1.')
 
-        self._lineart.to(self.device)
         self._detect_aspect = detect_aspect
         self._detect_align = detect_align
         self._course = course
@@ -82,17 +82,20 @@ class LineArtProcessor(_imageprocessor.ImageProcessor):
             try:
                 self._detect_resolution = _textprocessing.parse_image_size(detect_resolution)
             except ValueError:
-                raise self.argument_error('Could not parse the "detect_resolution" argument as an image dimension.')
+                raise self.argument_error('Could not parse the "detect-resolution" argument as an image dimension.')
         else:
             self._detect_resolution = None
 
+        self._lineart = _cna.LineartDetector.from_pretrained("lllyasviel/Annotators")
+        self._lineart.to(self.device)
+
     def __str__(self):
         args = [
+            ('course', self._course),
             ('detect_resolution', self._detect_resolution),
             ('detect_aspect', self._detect_aspect),
             ('detect_align', self._detect_align),
-            ('course', self._course),
-            ('pre-resize', self._pre_resize)
+            ('pre_resize', self._pre_resize)
         ]
         return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
 
@@ -143,10 +146,9 @@ class LineArtProcessor(_imageprocessor.ImageProcessor):
         :return: possibly a lineart image, or the input image
         """
 
-        if not self._pre_resize:
-            return image
-
-        return self._process(image, resize_resolution, return_to_original_size=True)
+        if self._pre_resize:
+            return self._process(image, resize_resolution, return_to_original_size=True)
+        return image
 
     def impl_post_resize(self, image: PIL.Image.Image):
         """
@@ -156,7 +158,6 @@ class LineArtProcessor(_imageprocessor.ImageProcessor):
         :return: possibly a lineart image, or the input image
         """
 
-        if self._pre_resize:
-            return image
-
-        return self._process(image, None)
+        if not self._pre_resize:
+            return self._process(image, None)
+        return image

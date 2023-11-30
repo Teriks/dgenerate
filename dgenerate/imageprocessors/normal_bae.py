@@ -62,10 +62,6 @@ class NormalBaeProcessor(_imageprocessor.ImageProcessor):
                  **kwargs):
         super().__init__(**kwargs)
 
-        self._normal_bae = _cna.NormalBaeDetector.from_pretrained("lllyasviel/Annotators")
-
-        self._normal_bae.to(self.device)
-
         self._detect_aspect = detect_aspect
         self._pre_resize = pre_resize
 
@@ -73,15 +69,18 @@ class NormalBaeProcessor(_imageprocessor.ImageProcessor):
             try:
                 self._detect_resolution = _textprocessing.parse_image_size(detect_resolution)
             except ValueError:
-                raise self.argument_error('Could not parse the "detect_resolution" argument as an image dimension.')
+                raise self.argument_error('Could not parse the "detect-resolution" argument as an image dimension.')
         else:
             self._detect_resolution = None
+
+        self._normal_bae = _cna.NormalBaeDetector.from_pretrained("lllyasviel/Annotators")
+        self._normal_bae.to(self.device)
 
     def __str__(self):
         args = [
             ('detect_resolution', self._detect_resolution),
             ('detect_aspect', self._detect_aspect),
-            ('pre-resize', self._pre_resize)
+            ('pre_resize', self._pre_resize)
         ]
         return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
 
@@ -136,10 +135,9 @@ class NormalBaeProcessor(_imageprocessor.ImageProcessor):
         :return: possibly a normal map image, or the input image
         """
 
-        if not self._pre_resize:
-            return image
-
-        return self._process(image, resize_resolution, return_to_original_size=True)
+        if self._pre_resize:
+            return self._process(image, resize_resolution, return_to_original_size=True)
+        return image
 
     def impl_post_resize(self, image: PIL.Image.Image):
         """
@@ -149,7 +147,6 @@ class NormalBaeProcessor(_imageprocessor.ImageProcessor):
         :return: possibly a normal map image, or the input image
         """
 
-        if self._pre_resize:
-            return image
-
-        return self._process(image, None)
+        if not self._pre_resize:
+            return self._process(image, None)
+        return image

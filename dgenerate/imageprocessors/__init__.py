@@ -35,16 +35,16 @@ from .imageprocessor import ImageProcessor
 from .imageprocessorchain import ImageProcessorChain
 from .imageprocessorloader import ImageProcessorLoader
 from .imageprocessormixin import ImageProcessorMixin
-from .lineart import LineArtProcessor
-from .linart_anime import LineArtAnimeProcessor
-from .midis import MidisDepthProcessor
 from .leres import LeresDepthProcessor
+from .linart_anime import LineArtAnimeProcessor
+from .lineart import LineArtProcessor
+from .midis import MidisDepthProcessor
+from .mlsd import MLSDProcessor
 from .normal_bae import NormalBaeProcessor
 from .openpose import OpenPoseProcessor
+from .pidi import PidiNetProcessor
 from .sam import SegmentAnythingProcessor
 from .upscaler import UpscalerProcessor
-from .pidi import PidiNetProcessor
-from .mlsd import MLSDProcessor
 
 
 class ImageProcessorHelpUsageError(Exception):

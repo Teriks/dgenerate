@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import typing
 
 import PIL.Image
 import controlnet_aux as _cna
@@ -26,18 +27,38 @@ import controlnet_aux.util as _cna_util
 import cv2
 import numpy
 
+import dgenerate.image as _image
 import dgenerate.imageprocessors.imageprocessor as _imageprocessor
+import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 
 
 class OpenPoseProcessor(_imageprocessor.ImageProcessor):
     """
     Generate an OpenPose rigging from the input image (of a human/humanoid) for use with a ControlNet.
+
     "include-body" is a boolean value indicating if a body rigging should be generated.
+
     "include-hand" is a boolean value indicating if a detailed hand/finger rigging should be generated.
+
     "include-face" is a boolean value indicating if a detailed face rigging should be generated.
-    "pre-resize" is a boolean value determining if the processing should take place before or after the image
-    is resized by dgenerate.
+
+    The argument "detect-resolution" is the resolution the image is resized to internal to the processor before
+    detection is run on it. It should be a single dimension for example: "detect-resolution=512" or the X/Y dimensions
+    seperated by an "x" character, like so: "detect-resolution=1024x512". If you do not specify this argument,
+    the detector runs on the input image at its full resolution. After processing the image will be resized to
+    whatever you have requested dgenerate resize it to via --output-size or --resize/--align in the case of the
+    image-process sub-command, if you have not requested any resizing the output will be resized back to the original
+    size of the input image.
+
+    The argument "detect-aspect" determines if the image resize requested by "detect-resolution" before
+    detection runs is aspect correct, this defaults to true.
+
+    The argument "detect-align" determines the pixel alignment of the image resize requested by
+    "detect-resolution", it defaults to 1 indicating no requested alignment.
+
+    The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
+    This defaults to False, meaning the image is processed after dgenerate is done resizing it.
     """
 
     NAMES = ['openpose']
@@ -46,7 +67,11 @@ class OpenPoseProcessor(_imageprocessor.ImageProcessor):
                  include_body: bool = True,
                  include_hand: bool = False,
                  include_face: bool = False,
-                 pre_resize: bool = False, **kwargs):
+                 detect_resolution: typing.Optional[str] = None,
+                 detect_aspect: bool = True,
+                 detect_align: int = 1,
+                 pre_resize: bool = False,
+                 **kwargs):
         """
 
         :param include_body: generate a body rig?
@@ -58,23 +83,52 @@ class OpenPoseProcessor(_imageprocessor.ImageProcessor):
 
         super().__init__(**kwargs)
 
-        self._openpose = _cna.OpenposeDetector.from_pretrained('lllyasviel/Annotators')
-        self._openpose.to(self.device)
+        if detect_align < 1:
+            raise self.argument_error('Argument "detect-align" may not be less than 1.')
+
         self._include_body = include_body
         self._include_hand = include_hand
         self._include_face = include_face
         self._pre_resize = pre_resize
+        self._detect_align = detect_align
+        self._detect_aspect = detect_aspect
+
+        if detect_resolution is not None:
+            try:
+                self._detect_resolution = _textprocessing.parse_image_size(detect_resolution)
+            except ValueError:
+                raise self.argument_error('Could not parse the "detect-resolution" argument as an image dimension.')
+        else:
+            self._detect_resolution = None
+
+        self._openpose = _cna.OpenposeDetector.from_pretrained('lllyasviel/Annotators')
+        self._openpose.to(self.device)
 
     def __str__(self):
         args = [
             ('include_body', self._include_body),
             ('include_hand', self._include_hand),
             ('include_face', self._include_face),
+            ('include_face', self._include_face),
+            ('detect_resolution', self._detect_resolution),
+            ('detect_aspect', self._detect_aspect),
+            ('detect_align', self._detect_align),
             ('pre_resize', self._pre_resize)
         ]
         return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
 
-    def _process(self, image: PIL.Image.Image):
+    def _process(self, image, return_to_original_size=False):
+        original_size = image.size
+
+        with image:
+            resized = _image.resize_image(
+                image,
+                self._detect_resolution,
+                aspect_correct=self._detect_aspect,
+                align=self._detect_align
+            )
+
+        image = resized
 
         input_image = _cna_util.HWC3(numpy.array(image, dtype=numpy.uint8))
 
@@ -89,10 +143,10 @@ class OpenPoseProcessor(_imageprocessor.ImageProcessor):
                                            draw_hand=self._include_hand,
                                            draw_face=self._include_face)
 
-        detected_map = canvas
-        detected_map = _cna_util.HWC3(detected_map)
+        detected_map = _cna_util.HWC3(canvas)
 
-        detected_map = cv2.resize(detected_map, (width, height), interpolation=cv2.INTER_LINEAR)
+        if self._detect_resolution is not None and return_to_original_size:
+            detected_map = cv2.resize(detected_map, original_size, interpolation=cv2.INTER_LINEAR)
 
         return PIL.Image.fromarray(detected_map)
 
@@ -107,7 +161,7 @@ class OpenPoseProcessor(_imageprocessor.ImageProcessor):
         :return: possibly an OpenPose rig image, or the input image
         """
         if self._pre_resize:
-            return self._process(image)
+            return self._process(image, return_to_original_size=True)
         return image
 
     def impl_post_resize(self, image: PIL.Image.Image):
