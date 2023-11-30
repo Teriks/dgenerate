@@ -5,7 +5,7 @@
 
 # when the comment token (#) exists inside a complete string
 # and no unterminated string exists on the line, (or in actuality
-# the line is lexible into distinct string and text tokens), the
+# the line is fully lexible into distinct string and text tokens), the
 # hashtag does not need to be escaped
 
 \set test_var "hello # world!" # this tail comment will be removed
