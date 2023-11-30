@@ -11,28 +11,38 @@
 \set test_var "hello # world!" # this tail comment will be removed
 
 {% if test_var != '"hello # world!"' %}
-\print failed case 1 : {{ test_var }}
-\exit 1
+    \print FAILED CASE 1: {{ quote(test_var) }}
+    \exit 1
 {% endif %} !END
 
-\print {{ test_var }}
+\print RESULT CASE 1: {{ test_var }}
 
 
 
-# when the comment token exists inside one complete string
-# but the line is not fully lexable because of an uncompleted string
-# you need to escape the character wherever it may be that you want
-# it to appear literally
+# when the comment token exists inside an uncompleted string, such as
+# when you are preforming a continuation on a prompt, you must escape it
+# if you want it to appear literally. However, a quoted string always quotes
+# the comment token, so the first string in this case does not need an escape
 
-\set test_var "hello \# world!" "started a string but did not finish # this tail comment will be removed
+\set test_var "hello # world!" "I have \# an escaped comment token # this tail comment will be removed
 
-{% if test_var != '"hello # world!" "started a string but did not finish' %}
-\print failed case 2 : {{ test_var }}
-\exit 1
+{% if test_var != '"hello # world!" "I have # an escaped comment token' %}
+    # if test_var as a raw string contains an unquoted / unescaped # token, it
+    # will be considered a comment inside of a heredoc style config template when it
+    # is expanded, so you should quote it in some way if you want to see its
+    # true value via \print
+
+    \print FAILED CASE 2: {{ quote(test_var) }}
+    \exit 1
+
 {% endif %} !END
 
-\print {{ test_var }}
 
+# here quoting # is not needed, because \print itself is expanding the template
+# after topical lexing of comments, and parsing of continuations, the same is true
+# for the \set directive
+
+\print RESULT CASE 2: {{ test_var }}
 
 
 # outside of a string, in plain text tokens \# needs to be escaped
@@ -41,17 +51,18 @@
 \set test_var hello \# world! # this tail comment will be removed
 
 {% if test_var != 'hello # world!' %}
-\print failed case 3 : {{ test_var }}
-\exit 1
+    \print FAILED CASE 3: {{ quote(test_var) }}
+    \exit 1
 {% endif %} !END
 
-\print {{ test_var }}
+\print RESULT CASE 3: {{ test_var }}
 
 
 # sometimes you may want a string, or some other definition
 # like a command definition that is defined over multiple lines
 # with tail comments, in this case the # symbol needs to be escaped
-# if you want it to appear in your string due to case 2 above
+# in your multi line string if you want it to appear literally
+# due to case 2 above
 
 
 \set test_var "I want a literal hashtag here \# \ # and then a continuation and comment!
@@ -59,22 +70,33 @@
 
 
 {% if test_var != '"I want a literal hashtag here # but I dont want my comment in my continuation!"' %} # there can be comment here
-\print failed case 4 : {{ test_var }} # comment time :)
-\exit 1
+    \print FAILED CASE 4: {{ quote(test_var) }} # comment time :)
+    \exit 1
 {% endif %} !END
 
-\print {{ test_var }}
+\print RESULT CASE 4: {{ test_var }}
 
 
 
-# a recursive descent is carried out to the right
 # multiple escapes are possible, even with trailing comments after
 
 \set test_var hello \# world!    \# theres a literal hashtag behind me preceded by some space # but I end with a comment
 
 {% if test_var != 'hello # world!    # theres a literal hashtag behind me preceded by some space' %}
-\print failed case 5 : {{ test_var }}
-\exit 1
+    \print FAILED CASE 5: {{ quote(test_var) }}
+    \exit 1
 {% endif %} !END
 
-\print {{ test_var }}
+\print RESULT CASE 5: {{ test_var }}
+
+
+# escaped comment tokens in unterminated strings are replaced with just the comment token
+
+\set test_var "hello \# world! # I am now a comment
+
+{% if test_var != '"hello # world!' %}
+    \print FAILED CASE 6: {{ quote(test_var) }}
+    \exit 1
+{% endif %} !END
+
+\print RESULT CASE 6: {{ test_var }}

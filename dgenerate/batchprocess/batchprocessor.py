@@ -401,8 +401,10 @@ class BatchProcessor:
         def remove_tail_comments(string):
             # this is a more difficult problem than I imagined.
             try:
-                parts = _textprocessing.tokenized_split(string, '#', escapable_separator=True)
-                # attempt to split off the comment, this will error if there are unterminated strings
+                parts = _textprocessing.tokenized_split(string, '#',
+                                                        escapable_separator=True,
+                                                        allow_unterminated_strings=True)
+                # attempt to split off the comment
 
                 if not parts:
                     # empty case, effectively un-lexed
@@ -418,7 +420,9 @@ class BatchProcessor:
                 # the left side was lexed and striped of leading and trailing whitespace
                 return True, new_value
             except _textprocessing.TokenizedSplitSyntaxError:
-                # could not lex this because of unterminated string or other syntax error
+                # could not lex this because of a syntax error, since unterminated
+                # strings are understandable by the lexer given our options, this
+                # is an uncommon if not near impossible occurrence
                 return False, remove_tail_comments_unlexable(string)
 
         last_line = None
