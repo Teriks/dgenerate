@@ -25,7 +25,9 @@ import cv2
 import numpy
 import numpy as np
 
+import dgenerate.image as _image
 import dgenerate.messages as _messages
+import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.imageprocessors import imageprocessor as _imageprocessor
 
@@ -47,6 +49,23 @@ class CannyEdgeDetectProcessor(_imageprocessor.ImageProcessor):
     automatically using cv2.threshold or cv2.median in the case of "median". "sigma" scales the range of the automatic
     threshold calculation done when a value for "threshold_algo" is selected. "pre-resize" is a boolean value determining
     if the processing should take place before or after the image is resized by dgenerate.
+
+    The argument "detect-resolution" is the resolution the image is resized to internal to the processor before
+    detection is run on it. It should be a single dimension for example: "detect-resolution=512" or the X/Y dimensions
+    seperated by an "x" character, like so: "detect-resolution=1024x512". If you do not specify this argument,
+    the detector runs on the input image at its full resolution. After processing the image will be resized to
+    whatever you have requested dgenerate resize it to via --output-size or --resize/--align in the case of the
+    image-process sub-command, if you have not requested any resizing the output will be resized back to the original
+    size of the input image.
+
+    The argument "detect-aspect" determines if the image resize requested by "detect-resolution" before
+    detection runs is aspect correct, this defaults to true.
+
+    The argument "detect-align" determines the pixel alignment of the image resize requested by
+    "detect-resolution", it defaults to 1 indicating no requested alignment.
+
+    The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
+    This defaults to False, meaning the image is processed after dgenerate is done resizing it.
     """
 
     NAMES = ['canny']
@@ -61,7 +80,11 @@ class CannyEdgeDetectProcessor(_imageprocessor.ImageProcessor):
                  gray: bool = False,
                  threshold_algo: typing.Optional[str] = None,
                  sigma: float = 0.33,
-                 pre_resize: bool = False, **kwargs):
+                 detect_resolution: typing.Optional[str] = None,
+                 detect_aspect: bool = True,
+                 detect_align: int = 1,
+                 pre_resize: bool = False,
+                 **kwargs):
         """
         :param lower: lower threshold for canny edge detection
         :param upper: upper threshold for canny edge detection
@@ -78,6 +101,17 @@ class CannyEdgeDetectProcessor(_imageprocessor.ImageProcessor):
         """
         super().__init__(**kwargs)
 
+        if detect_align < 1:
+            raise self.argument_error('Argument "detect-align" may not be less than 1.')
+
+        if detect_resolution is not None:
+            try:
+                self._detect_resolution = _textprocessing.parse_image_size(detect_resolution)
+            except ValueError:
+                raise self.argument_error('Could not parse the "detect-resolution" argument as an image dimension.')
+        else:
+            self._detect_resolution = None
+
         if threshold_algo is not None:
             if threshold_algo not in {'otsu', 'triangle', 'median'}:
                 raise self.argument_error(
@@ -91,6 +125,8 @@ class CannyEdgeDetectProcessor(_imageprocessor.ImageProcessor):
         self._lower = lower
         self._upper = upper
         self._aperture_size = aperture_size
+        self._detect_aspect = detect_aspect
+        self._detect_align = detect_align
 
         if (self._aperture_size % 2 == 0 or
                 self._aperture_size < 3 or self._aperture_size > 7):
@@ -112,11 +148,22 @@ class CannyEdgeDetectProcessor(_imageprocessor.ImageProcessor):
             ('blur', self._blur),
             ('threshold_algo', self._threshold_algo),
             ('sigma', self._sigma),
-            ('pre_resize', self._pre_resize)
+            ('pre_resize', self._pre_resize),
         ]
         return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
 
-    def _process(self, image: PIL.Image.Image):
+    def _process(self, image, return_to_original_size=False):
+        original_size = image.size
+
+        with image:
+            resized = _image.resize_image(
+                image,
+                self._detect_resolution,
+                aspect_correct=self._detect_aspect,
+                align=self._detect_align
+            )
+
+        image = resized
 
         gray = self._threshold_algo is not None or self._gray
 
@@ -148,7 +195,12 @@ class CannyEdgeDetectProcessor(_imageprocessor.ImageProcessor):
                           apertureSize=self._aperture_size,
                           L2gradient=self._L2_gradient)
 
-        return PIL.Image.fromarray(cv2.cvtColor(edges, convert_back))
+        detected_map = cv2.cvtColor(edges, convert_back)
+
+        if self._detect_resolution is not None and return_to_original_size:
+            detected_map = cv2.resize(detected_map, original_size, interpolation=cv2.INTER_LINEAR)
+
+        return PIL.Image.fromarray(detected_map)
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         """
@@ -160,7 +212,7 @@ class CannyEdgeDetectProcessor(_imageprocessor.ImageProcessor):
         :return: possibly a canny edge detected image, or the input image
         """
         if self._pre_resize:
-            return self._process(image)
+            return self._process(image, return_to_original_size=True)
         return image
 
     def impl_post_resize(self, image: PIL.Image.Image):

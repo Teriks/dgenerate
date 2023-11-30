@@ -64,12 +64,11 @@ class LineArtAnimeProcessor(_imageprocessor.ImageProcessor):
                  detect_align: int = 1,
                  pre_resize: bool = False,
                  **kwargs):
-
         super().__init__(**kwargs)
 
-        self._lineart = _cna.LineartAnimeDetector.from_pretrained("lllyasviel/Annotators")
+        if detect_align < 1:
+            raise self.argument_error('Argument "detect-align" may not be less than 1.')
 
-        self._lineart.to(self.device)
         self._detect_aspect = detect_aspect
         self._detect_align = detect_align
         self._pre_resize = pre_resize
@@ -78,16 +77,19 @@ class LineArtAnimeProcessor(_imageprocessor.ImageProcessor):
             try:
                 self._detect_resolution = _textprocessing.parse_image_size(detect_resolution)
             except ValueError:
-                raise self.argument_error('Could not parse the "detect_resolution" argument as an image dimension.')
+                raise self.argument_error('Could not parse the "detect-resolution" argument as an image dimension.')
         else:
             self._detect_resolution = None
+
+        self._lineart = _cna.LineartAnimeDetector.from_pretrained("lllyasviel/Annotators")
+        self._lineart.to(self.device)
 
     def __str__(self):
         args = [
             ('detect_resolution', self._detect_resolution),
             ('detect_aspect', self._detect_aspect),
             ('detect_align', self._detect_align),
-            ('pre-resize', self._pre_resize)
+            ('pre_resize', self._pre_resize)
         ]
         return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
 
@@ -140,10 +142,9 @@ class LineArtAnimeProcessor(_imageprocessor.ImageProcessor):
         :return: possibly a lineart image, or the input image
         """
 
-        if not self._pre_resize:
-            return image
-
-        return self._process(image, resize_resolution, return_to_original_size=True)
+        if self._pre_resize:
+            return self._process(image, resize_resolution, return_to_original_size=True)
+        return image
 
     def impl_post_resize(self, image: PIL.Image.Image):
         """
@@ -153,7 +154,6 @@ class LineArtAnimeProcessor(_imageprocessor.ImageProcessor):
         :return: possibly a lineart image, or the input image
         """
 
-        if self._pre_resize:
-            return image
-
-        return self._process(image, None)
+        if not self._pre_resize:
+            return self._process(image, None)
+        return image

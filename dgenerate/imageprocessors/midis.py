@@ -63,10 +63,6 @@ class MidisDepthProcessor(_imageprocessor.ImageProcessor):
 
         super().__init__(**kwargs)
 
-        self._midas = _cna.MidasDetector.from_pretrained("lllyasviel/Annotators")
-
-        self._midas.to(self.device)
-
         self._detect_aspect = detect_aspect
         self._pre_resize = pre_resize
 
@@ -74,9 +70,12 @@ class MidisDepthProcessor(_imageprocessor.ImageProcessor):
             try:
                 self._detect_resolution = _textprocessing.parse_image_size(detect_resolution)
             except ValueError:
-                raise self.argument_error('Could not parse the "detect_resolution" argument as an image dimension.')
+                raise self.argument_error('Could not parse the "detect-resolution" argument as an image dimension.')
         else:
             self._detect_resolution = None
+
+        self._midas = _cna.MidasDetector.from_pretrained("lllyasviel/Annotators")
+        self._midas.to(self.device)
 
     def __str__(self):
         args = [
@@ -136,10 +135,9 @@ class MidisDepthProcessor(_imageprocessor.ImageProcessor):
         :return: possibly a MiDaS depth detected image, or the input image
         """
 
-        if not self._pre_resize:
-            return image
-
-        return self._process(image, resize_resolution, return_to_original_size=True)
+        if self._pre_resize:
+            return self._process(image, resize_resolution, return_to_original_size=True)
+        return image
 
     def impl_post_resize(self, image: PIL.Image.Image):
         """
@@ -149,7 +147,6 @@ class MidisDepthProcessor(_imageprocessor.ImageProcessor):
         :return: possibly a MiDaS depth detected image, or the input image
         """
 
-        if self._pre_resize:
-            return image
-
-        return self._process(image, None)
+        if not self._pre_resize:
+            return self._process(image, None)
+        return image

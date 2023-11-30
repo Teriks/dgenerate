@@ -66,7 +66,8 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
                  **kwargs):
         super().__init__(**kwargs)
 
-        self._sam = self._from_pretrained('ybelkada/segment-anything', subfolder='checkpoints')
+        if detect_align < 1:
+            raise self.argument_error('Argument "detect-align" may not be less than 1.')
 
         self._detect_aspect = detect_aspect
         self._detect_align = detect_align
@@ -76,9 +77,11 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
             try:
                 self._detect_resolution = _textprocessing.parse_image_size(detect_resolution)
             except ValueError:
-                raise self.argument_error('Could not parse the "detect_resolution" argument as an image dimension.')
+                raise self.argument_error('Could not parse the "detect-resolution" argument as an image dimension.')
         else:
             self._detect_resolution = None
+
+        self._sam = self._from_pretrained('ybelkada/segment-anything', subfolder='checkpoints')
 
     def _from_pretrained(self,
                          pretrained_model_or_path,
@@ -95,7 +98,6 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
                 cache_dir=cache_dir)
 
         sam = _cna.segment_anything.build_sam.sam_model_registry[model_type](checkpoint=model_path)
-
         sam.to(self.device)
 
         mask_generator = _cna.segment_anything.SamAutomaticMaskGenerator(sam)
@@ -106,7 +108,7 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
             ('detect_resolution', self._detect_resolution),
             ('detect_aspect', self._detect_aspect),
             ('detect_align', self._detect_align),
-            ('pre-resize', self._pre_resize)
+            ('pre_resize', self._pre_resize)
         ]
         return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
 
@@ -150,10 +152,9 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
         :return: possibly a segment-anything image, or the input image
         """
 
-        if not self._pre_resize:
-            return image
-
-        return self._process(image, resize_resolution, return_to_original_size=True)
+        if self._pre_resize:
+            return self._process(image, resize_resolution, return_to_original_size=True)
+        return image
 
     def impl_post_resize(self, image: PIL.Image.Image):
         """
@@ -163,7 +164,6 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
         :return: possibly a segment-anything image, or the input image
         """
 
-        if self._pre_resize:
-            return image
-
-        return self._process(image, None)
+        if not self._pre_resize:
+            return self._process(image, None)
+        return image
