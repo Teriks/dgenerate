@@ -1228,9 +1228,9 @@ def create_animation_reader(mimetype: str,
             f'Unknown mimetype "{mimetype}" for file "{file_source}". Expected: {supported}')
 
 
-class AnimationReaderSpec:
+class MediaReaderSpec:
     """
-    Used by :py:class:`.MultiAnimationReader` to define resource paths.
+    Used by :py:class:`.MultiMediaReader` to define resource paths.
     """
 
     path: str
@@ -1283,13 +1283,13 @@ class AnimationReaderSpec:
 
 class FrameStartOutOfBounds(ValueError):
     """
-    Raised by :py:class:`.MultiAnimationReader` when the provided ``frame_start``
+    Raised by :py:class:`.MultiMediaReader` when the provided ``frame_start``
     frame slicing value is calculated to be out of bounds.
     """
     pass
 
 
-class MultiAnimationReader:
+class MultiMediaReader:
     """
     Zips together multiple automatically created :py:class:`.AnimationReader` implementations and
     allows enumeration over their reads, which are collected into a list of a defined order.
@@ -1299,10 +1299,10 @@ class MultiAnimationReader:
     The animation with the lowest amount of frames determines the total amount of
     frames that can be read when animations are involved.
 
-    If all paths point to images, then :py:attr:`.MultiAnimationReader.total_frames` will be 1.
+    If all paths point to images, then :py:attr:`.MultiMediaReader.total_frames` will be 1.
 
-    All images read by this reader are aligned by 8 pixels, there is no guarantee that
-    images read from the individual readers are the same size and you must handle that condition.
+    There is no guarantee that images read from the individual readers are the same size
+    and you must handle that condition.
     """
 
     _readers: list[AnimationReader]
@@ -1311,6 +1311,30 @@ class MultiAnimationReader:
     _frame_start: int = 0
     _frame_end: _types.OptionalInteger = None
     _frame_index: int = -1
+
+    def width(self, idx) -> int:
+        """
+        Width dimension, (X dimension) of a specific reader index.
+
+        :return: width
+        """
+        return self._readers[idx].width
+
+    def size(self, idx) -> _types.Size:
+        """
+        returns (width, height) as a tuple of a specific reader index.
+
+        :return: (width, height)
+        """
+        return self._readers[idx].width, self._readers[idx].height
+
+    def height(self, idx) -> int:
+        """
+        Height dimension, (Y dimension) of a specific reader index.
+
+        :return: height
+        """
+        return self._readers[idx].height
 
     @property
     def frame_index(self) -> int:
@@ -1355,20 +1379,19 @@ class MultiAnimationReader:
         return self._anim_frame_duration
 
     def __init__(self,
-                 specs: list[AnimationReaderSpec],
+                 specs: list[MediaReaderSpec],
                  frame_start: int = 0,
                  frame_end: _types.OptionalInteger = None,
                  path_opener: typing.Callable[[str], typing.BinaryIO] = fetch_media_data_stream):
         """
-
         :raise ValueError: if ``frame_start`` > ``frame_end``
         :raise FrameStartOutOfBounds: if ``frame_start`` > ``total_frames - 1``
 
-        :param specs: list of :py:class:`.AnimationReaderSpec`
+        :param specs: list of :py:class:`.MediaReaderSpec`
         :param frame_start: inclusive frame slice start frame
         :param frame_end: inclusive frame slice end frame
         :param path_opener: opens a binary file stream from paths
-            mentioned by :py:class:`.AnimationReaderSpec`
+            mentioned by :py:class:`.MediaReaderSpec`
         """
 
         if frame_end is not None:
@@ -1441,7 +1464,7 @@ class MultiAnimationReader:
                     # which is checked for in the constructor
                     raise AssertionError(
                         'impossible iteration termination condition '
-                        'in MultiAnimationReader reader')
+                        'in MultiMediaReader reader')
 
                 self._frame_index += 1
 
@@ -1465,6 +1488,99 @@ class MultiAnimationReader:
             r.__exit__(exc_type, exc_val, exc_tb)
         for file_stream in self._file_streams:
             file_stream.close()
+
+
+class MediaReader(AnimationReader):
+    """
+    Thin wrapper around :py:class:`.MultiMediaReader` which simply reads
+    from a single file instead of multiple files simultaneously.
+
+    The interface provided by this object is that of :py:class:`.AnimationReader`
+
+    This object can read any media supported by dgenerate for input and
+    supports frame slicing animated media formats and image processors.
+
+    Static images are treated as an animation with a single frame.
+
+    With the default path opener, URLs will be downloaded,
+    dgenerates temporary web cache will be utilized.
+    """
+
+    @property
+    def frame_index(self) -> int:
+        """
+        Current frame index while reading.
+        """
+        return self._reader.frame_index
+
+    @property
+    def frame_end(self) -> int:
+        """
+        Frame slice end value (inclusive)
+        """
+        return self._reader.frame_end
+
+    @property
+    def frame_start(self) -> int:
+        """
+        Frame slice start value (inclusive)
+        """
+        return self._reader.frame_start
+
+    def __init__(self,
+                 path: str,
+                 image_processor: typing.Optional[_imageprocessors.ImageProcessor] = None,
+                 resize_resolution: _types.OptionalSize = None,
+                 aspect_correct: bool = True,
+                 align: typing.Optional[int] = 8,
+                 frame_start: int = 0,
+                 frame_end: _types.OptionalInteger = None,
+                 path_opener: typing.Callable[[str], typing.BinaryIO] = fetch_media_data_stream):
+        """
+
+        :raise ValueError: if ``frame_start`` > ``frame_end``
+        :raise FrameStartOutOfBounds: if ``frame_start`` > ``total_frames - 1``
+
+        :param path: File path or URL
+        :param resize_resolution: Resize resolution
+        :param aspect_correct: Aspect correct resize enabled?
+        :param align: Images which are read are aligned to this amount of pixels, ``None`` or ``1`` will disable alignment.
+        :param image_processor: Optional image image processor associated with the file
+        :param frame_start: inclusive frame slice start frame
+        :param frame_end: inclusive frame slice end frame
+        :param path_opener: opens a binary file stream from paths.
+
+        """
+
+        self._reader = MultiMediaReader(
+            [MediaReaderSpec(
+                path=path,
+                image_processor=image_processor,
+                resize_resolution=resize_resolution,
+                aspect_correct=aspect_correct,
+                align=align)],
+            frame_start=frame_start,
+            frame_end=frame_end,
+            path_opener=path_opener)
+
+        super().__init__(
+            width=self._reader.width(0),
+            height=self._reader.height(0),
+            anim_fps=self._reader.anim_fps,
+            anim_frame_duration=self._reader.anim_frame_duration,
+            total_frames=self._reader.total_frames)
+
+    def __next__(self) -> PIL.Image.Image:
+        return self._reader.__next__()[0]
+
+    def __iter__(self):
+        return self
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._reader.__exit__(exc_type, exc_val, exc_tb)
 
 
 class ImageSeed:
@@ -1682,15 +1798,15 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
         aspect_correct = parse_result.aspect_correct
 
     reader_specs = [
-        AnimationReaderSpec(path=parse_result.seed_path,
-                            image_processor=seed_image_processor,
-                            resize_resolution=resize_resolution,
-                            aspect_correct=aspect_correct,
-                            align=align)
+        MediaReaderSpec(path=parse_result.seed_path,
+                        image_processor=seed_image_processor,
+                        resize_resolution=resize_resolution,
+                        aspect_correct=aspect_correct,
+                        align=align)
     ]
 
     if parse_result.mask_path is not None:
-        reader_specs.append(AnimationReaderSpec(
+        reader_specs.append(MediaReaderSpec(
             path=parse_result.mask_path,
             image_processor=mask_image_processor,
             resize_resolution=resize_resolution,
@@ -1708,7 +1824,7 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
             guidance_images=control_guidance_image_paths)
 
         reader_specs += [
-            AnimationReaderSpec(
+            MediaReaderSpec(
                 path=p.strip(),
                 image_processor=control_image_processor[idx] if idx < len(control_image_processor) else None,
                 resize_resolution=resize_resolution,
@@ -1720,7 +1836,7 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
     if parse_result.floyd_path is not None:
         # There should never be a reason to process floyd stage output
         # also do not resize it
-        reader_specs.append(AnimationReaderSpec(
+        reader_specs.append(MediaReaderSpec(
             path=parse_result.floyd_path,
             resize_resolution=None,
             align=None))
@@ -1731,9 +1847,9 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
     if parse_result.frame_end is not None:
         frame_end = parse_result.frame_end
 
-    with MultiAnimationReader(specs=reader_specs,
-                              frame_start=frame_start,
-                              frame_end=frame_end) as reader:
+    with MultiMediaReader(specs=reader_specs,
+                          frame_start=frame_start,
+                          frame_end=frame_end) as reader:
 
         is_animation = reader.total_frames > 1
 
@@ -1872,7 +1988,7 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
         guidance_images=control_guidance_image_paths)
 
     reader_specs += [
-        AnimationReaderSpec(
+        MediaReaderSpec(
             path=p.strip(),
             image_processor=image_processor[idx] if idx < len(image_processor) else None,
             resize_resolution=resize_resolution,
@@ -1887,9 +2003,9 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
     if parse_result.frame_end is not None:
         frame_end = parse_result.frame_end
 
-    with MultiAnimationReader(specs=reader_specs,
-                              frame_start=frame_start,
-                              frame_end=frame_end) as reader:
+    with MultiMediaReader(specs=reader_specs,
+                          frame_start=frame_start,
+                          frame_end=frame_end) as reader:
 
         is_animation = reader.total_frames > 1
 

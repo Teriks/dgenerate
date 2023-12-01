@@ -468,7 +468,7 @@ class ImageProcessRenderLoop:
     def _record_save_animation(self, filename):
         self._written_animations.write(os.path.abspath(filename) + '\n')
 
-    def _process_reader(self, file, reader: _mediainput.MultiAnimationReader, out_filename):
+    def _process_reader(self, file, reader: _mediainput.MediaReader, out_filename):
         out_directory = os.path.dirname(out_filename)
 
         duplicate_output_suffix = '_duplicate_'
@@ -487,7 +487,7 @@ class ImageProcessRenderLoop:
                     out_directory if out_directory else '.',
                     path_maker=_filelock.suffix_path_maker(out_filename, duplicate_output_suffix))
 
-            next(reader)[0].save(out_filename)
+            next(reader).save(out_filename)
             self._record_save_image(out_filename)
 
             _messages.log(fr'{self.message_header}: Wrote Image "{out_filename}"',
@@ -528,7 +528,7 @@ class ImageProcessRenderLoop:
                         fr'{self.message_header}: Processing Frame {frame_idx + 1}/{reader.total_frames}, Completion ETA: {eta}')
 
                     # Processing happens here
-                    frame = next(reader)[0]
+                    frame = next(reader)
 
                     if not self.config.no_animation_file:
                         writer.write(frame)
@@ -560,12 +560,12 @@ class ImageProcessRenderLoop:
         else:
             processor = None
 
-        with _mediainput.MultiAnimationReader([
-            _mediainput.AnimationReaderSpec(path=file,
-                                            image_processor=processor,
-                                            resize_resolution=self.config.resize,
-                                            aspect_correct=not self.config.no_aspect,
-                                            align=self.config.align)],
+        with _mediainput.MediaReader(
+                path=file,
+                image_processor=processor,
+                resize_resolution=self.config.resize,
+                aspect_correct=not self.config.no_aspect,
+                align=self.config.align,
                 frame_start=self.config.frame_start,
                 frame_end=self.config.frame_end) as reader:
 
