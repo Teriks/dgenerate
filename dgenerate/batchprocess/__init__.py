@@ -26,6 +26,6 @@ from .configrunnerplugin import ConfigRunnerPlugin
 from .configrunnerpluginloader import ConfigRunnerPluginLoader, \
     ConfigRunnerPluginNotFoundError, \
     ConfigRunnerPluginArgumentError
-from .imageprocessdirective import ImageProcessDirective
+from .image_process_directive import ImageProcessDirective
 
 __all__ = _types.module_all()

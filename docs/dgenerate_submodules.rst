@@ -47,10 +47,10 @@ dgenerate.image module
    :show-inheritance:
    :special-members: __call__, __init__
 
-dgenerate.imageprocess module
------------------------------
+dgenerate.image_process module
+------------------------------
 
-.. automodule:: dgenerate.imageprocess
+.. automodule:: dgenerate.image_process
    :members:
    :undoc-members:
    :show-inheritance:
