@@ -77,13 +77,13 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
             raise self.argument_error('Unsupported model file format.')
 
         if tile < 2:
-            raise self.argument_error('tile argument must be greater than 2.')
+            raise self.argument_error('Argument "tile" must be greater than 2.')
 
         if tile % 2 != 0:
-            raise self.argument_error('tile argument must be divisible by 2.')
+            raise self.argument_error('Argument "tile" must be divisible by 2.')
 
         if overlap < 0:
-            raise self.argument_error('overlap argument must be greater than 0.')
+            raise self.argument_error('Argument "overlap" must be greater than 0.')
 
         self._tile = tile
         self._overlap = overlap
