@@ -1,9 +1,9 @@
-import dgenerate
+import dgenerate.image_process
 
 # the functionality of --sub-command image-process and the \image_process config
 # directive is reusable in a similar fashion to the dgenerate render loop
 
-config = dgenerate.ImageProcessConfig()
+config = dgenerate.image_process.ImageProcessConfig()
 
 config.files = ['../../media/earth.jpg']
 config.output = ['earth-upscaled.png']
@@ -12,7 +12,7 @@ config.output = ['earth-upscaled.png']
 config.processors = [
     'upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth']
 
-render_loop = dgenerate.ImageProcessRenderLoop(config=config)
+render_loop = dgenerate.image_process.ImageProcessRenderLoop(config=config)
 
 render_loop.run()
 
