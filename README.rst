@@ -3460,7 +3460,7 @@ An example for writing config directives can be found in the
 of the examples folder.
 
 Currently the only internal directive that is implemented as a plugin is the ``\image_process`` directive,
-who's source file `can be located here <https://github.com/Teriks/dgenerate/blob/v3.0.0/dgenerate/batchprocess/imageprocessdirective.py>`_,
+who's source file `can be located here <https://github.com/Teriks/dgenerate/blob/v3.0.0/dgenerate/batchprocess/image_process_directive.py>`_,
 the source file for this directive is terse as most of ``\image_process`` is implemented as reusable code as mentioned below.
 
 The behavior of ``\image_process`` which is also used for ``--sub-command image-process`` is

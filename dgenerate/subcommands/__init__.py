@@ -22,7 +22,7 @@
 import dgenerate.plugin as _plugin
 import dgenerate.types as _types
 from .exceptions import SubCommandArgumentError, SubCommandNotFoundError
-from .imageprocess import ImageProcessSubCommand
+from .image_process import ImageProcessSubCommand
 from .subcommand import SubCommand
 from .subcommandloader import SubCommandLoader
 
