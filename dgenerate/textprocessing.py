@@ -67,7 +67,7 @@ class TokenizedSplitSyntaxError(Exception):
 
 
 def tokenized_split(string: str,
-                    separator: str,
+                    separator: typing.Optional[str],
                     remove_quotes: bool = False,
                     strict: bool = False,
                     escapes_in_unquoted: bool = False,
@@ -588,9 +588,20 @@ class ConceptUriParser:
                                            remove_quotes=True,
                                            strict=True,
                                            escapes_in_quoted=True)
-
-                    args[name] = vals if len(vals) > 1 else vals[0]
+                    if len(vals) > 1:
+                        args[name] = vals
+                    elif len(vals) == 1 and vals[0]:
+                        args[name] = vals[0]
+                    else:
+                        raise ConceptUriParseError(
+                            f'Syntax error parsing argument "{name}" for '
+                            f'{self.concept_name} concept "{concept}", missing assignment value.')
                 else:
+                    if not vals[1].strip():
+                        raise ConceptUriParseError(
+                            f'Syntax error parsing argument "{name}" for '
+                            f'{self.concept_name} concept "{concept}", missing assignment value.')
+
                     args[name] = unquote(vals[1])
 
             except (TokenizedSplitSyntaxError, UnquoteSyntaxError) as e:
