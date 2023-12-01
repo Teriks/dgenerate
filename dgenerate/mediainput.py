@@ -1561,6 +1561,8 @@ class MediaReader(AnimationReader):
 
     With the default path opener, URLs will be downloaded,
     dgenerates temporary web cache will be utilized.
+
+    All images produced from this reader will be aligned to 8 pixels by default.
     """
 
     @property
