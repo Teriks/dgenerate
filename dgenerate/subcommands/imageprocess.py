@@ -19,7 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import dgenerate.imageprocess as _imageprocess
+import dgenerate.image_process as _image_process
 import dgenerate.subcommands.subcommand as _subcommand
 
 
@@ -43,6 +43,6 @@ class ImageProcessSubCommand(_subcommand.SubCommand):
         super().__init__(**kwargs)
 
     def __call__(self) -> int:
-        render_loop = _imageprocess.ImageProcessRenderLoop()
+        render_loop = _image_process.ImageProcessRenderLoop()
         render_loop.image_processor_loader.load_plugin_modules(self.plugin_module_paths)
-        return _imageprocess.invoke_image_process(self.args, render_loop=render_loop)
+        return _image_process.invoke_image_process(self.args, render_loop=render_loop)
