@@ -63,6 +63,27 @@ class ImageSeedError(Exception):
     pass
 
 
+class ImageSeedParseError(ImageSeedError):
+    """
+    Raised on image seed syntactic parsing error.
+    """
+    pass
+
+
+class ImageSeedArgumentError(ImageSeedError):
+    """
+    Raised when image seed URI keyword arguments receive invalid values.
+    """
+    pass
+
+
+class ImageSeedFileNotFoundError(ImageSeedError):
+    """
+    Raised when a file on disk in an image seed could not be found.
+    """
+    pass
+
+
 class ImageSeedSizeMismatchError(ImageSeedError):
     """
     Raised when the constituent image sources of an image seed specification are mismatched in dimension.
@@ -680,12 +701,13 @@ class ImageSeedParseResult:
 
 
 # noinspection HttpUrlsUsage
-def _parse_image_seed_uri_legacy(uri: str) -> ImageSeedParseResult:
+def _parse_image_seed_uri_legacy(uri: str, align: int = 8) -> ImageSeedParseResult:
     try:
         parts = _textprocessing.tokenized_split(uri, ';', remove_quotes=True)
         parts_iter = iter(parts)
     except _textprocessing.TokenizedSplitSyntaxError as e:
-        raise ImageSeedError(f'Parsing error in image seed URI "{uri}": {str(e).strip()}')
+        raise ImageSeedParseError(
+            f'Parsing error in image seed URI "{uri}": {str(e).strip()}')
 
     result = ImageSeedParseResult()
 
@@ -700,23 +722,26 @@ def _parse_image_seed_uri_legacy(uri: str) -> ImageSeedParseResult:
                 escapes_in_quoted=True)
 
         except _textprocessing.TokenizedSplitSyntaxError as e:
-            raise ImageSeedError(f'Parsing error in image seed URI "{uri}": {str(e).strip()}')
+            raise ImageSeedParseError(
+                f'Parsing error in image seed URI "{uri}": {str(e).strip()}')
     else:
         first_parts = [first]
 
     for part in first_parts:
         if not (is_downloadable_url(part) or os.path.exists(part)):
             if len(first_parts) > 1:
-                raise ImageSeedError(f'Control image file "{part}" does not exist.')
+                raise ImageSeedFileNotFoundError(
+                    f'Control image file "{part}" does not exist.')
             else:
-                raise ImageSeedError(f'Image seed file "{part}" does not exist.')
+                raise ImageSeedFileNotFoundError(
+                    f'Image seed file "{part}" does not exist.')
 
     if len(first_parts) > 1:
         result.seed_path = first_parts
 
-    for part in parts_iter:
+    for idx, part in enumerate(parts_iter):
         if part == '':
-            raise ImageSeedError(
+            raise ImageSeedParseError(
                 'Missing inpaint mask image or output size specification, '
                 'check image seed syntax, stray semicolon?')
 
@@ -726,21 +751,50 @@ def _parse_image_seed_uri_legacy(uri: str) -> ImageSeedParseResult:
             result.mask_path = part
         else:
             try:
-                result.resize_resolution = _textprocessing.parse_image_size(part)
+                dimensions = _textprocessing.parse_image_size(part)
             except ValueError:
-                raise ImageSeedError(f'Inpaint mask file "{part}" does not exist.')
+                # This is correct and more informative
+                # though it is counter intuitive
+                raise ImageSeedFileNotFoundError(
+                    f'Inpaint mask file "{part}" does not exist.')
+
+            for idx, d in enumerate(dimensions):
+                if d % align != 0:
+                    raise ImageSeedArgumentError(
+                        f'Image seed resize {["width", "height"][idx]} dimension {d} is not divisible by {align}.')
+
+            if result.resize_resolution is not None:
+                raise ImageSeedArgumentError(
+                    'Resize resolution argument defined multiple times.')
+
+            result.resize_resolution = dimensions
+
     return result
 
 
-def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
+def parse_image_seed_uri(uri: str, align: typing.Optional[int] = 8) -> ImageSeedParseResult:
     """
     Parse an ``--image-seeds`` uri into its constituents
 
-    :raises ImageSeedError: on parse errors
+    All URI related errors raised by this function derive from :py:exc:`.ImageSeedError`.
+
+    :raises ValueError: if ``align < 1``
+
+    :raises ImageSeedParseError: on syntactical parsing errors
+    :raises ImageSeedArgumentError: on image seed URI argument errors
+    :raises ImageSeedFileNotFoundError: when a file mentioned in an image seed does not exist on disk
 
     :param uri: ``--image-seeds`` uri
+    :param align: do not allow per image seed resize resolutions that are not aligned to this value,
+        setting this value to 1 or ``None`` disables alignment checks.
+
     :return: :py:class:`.ImageSeedParseResult`
     """
+
+    if align is None:
+        align = 1
+    elif align < 1:
+        raise ValueError('align argument may not be less than one.')
 
     keyword_args = ['mask',
                     'control',
@@ -753,7 +807,7 @@ def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
     try:
         parts = _textprocessing.tokenized_split(uri, ';')
     except _textprocessing.TokenizedSplitSyntaxError as e:
-        raise ImageSeedError(f'Image seed URI parsing error: {str(e).strip()}')
+        raise ImageSeedParseError(f'Image seed URI parsing error: {str(e).strip()}')
 
     non_legacy: bool = len(parts) > 3
 
@@ -768,7 +822,7 @@ def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
 
     if not non_legacy:
         # No keyword arguments, basic old syntax
-        return _parse_image_seed_uri_legacy(uri)
+        return _parse_image_seed_uri_legacy(uri, align=align)
 
     result = ImageSeedParseResult()
 
@@ -779,12 +833,12 @@ def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
     try:
         parse_result = seed_parser.parse(uri)
     except _textprocessing.ConceptUriParseError as e:
-        raise ImageSeedError(e)
+        raise ImageSeedParseError(e)
 
     # noinspection HttpUrlsUsage
     def _ensure_exists(path, title):
         if not (is_downloadable_url(path) or os.path.exists(path)):
-            raise ImageSeedError(f'{title} file "{path}" does not exist.')
+            raise ImageSeedFileNotFoundError(f'{title} file "{path}" does not exist.')
 
     seed_path = parse_result.concept
     _ensure_exists(seed_path, 'Image seed')
@@ -799,6 +853,9 @@ def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
     if control_path is not None:
         if isinstance(control_path, list):
             for f in control_path:
+                if not f.strip():
+                    raise ImageSeedParseError('Missing control image definition, stray comma?')
+
                 _ensure_exists(f, 'Control image')
         else:
             _ensure_exists(control_path, 'Control image')
@@ -809,7 +866,7 @@ def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
     if floyd_path is not None:
         _ensure_exists(floyd_path, 'Floyd image')
         if control_path is not None:
-            raise ImageSeedError(
+            raise ImageSeedArgumentError(
                 'The image seed "control" argument cannot be used with the "floyd" argument.')
         result.floyd_path = floyd_path
 
@@ -819,12 +876,12 @@ def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
         try:
             dimensions = _textprocessing.parse_image_size(resize)
         except ValueError as e:
-            raise ImageSeedError(
-                f'Error parsing image seed resize dimension: {e}.')
+            raise ImageSeedArgumentError(
+                f'Error parsing image seed "resize" argument: {e}.')
         for idx, d in enumerate(dimensions):
-            if d % 8 != 0:
-                raise ImageSeedError(
-                    f'Image seed resize {["width", "height"][idx]} dimension {d} is not divisible by 8.')
+            if d % align != 0:
+                raise ImageSeedArgumentError(
+                    f'Image seed resize {["width", "height"][idx]} dimension {d} is not divisible by {align}.')
 
         result.resize_resolution = dimensions
 
@@ -834,7 +891,7 @@ def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
         try:
             aspect = _types.parse_bool(aspect)
         except ValueError:
-            raise ImageSeedError(
+            raise ImageSeedArgumentError(
                 'Image seed aspect keyword argument must be a boolean value '
                 'indicating if aspect correct resizing is enabled. '
                 'received an un-parseable / non boolean value.')
@@ -848,18 +905,18 @@ def parse_image_seed_uri(uri: str) -> ImageSeedParseResult:
         try:
             frame_start = int(frame_start)
         except ValueError:
-            raise ImageSeedError(
+            raise ImageSeedArgumentError(
                 f'frame_start argument must be an integer.')
 
     if frame_end is not None:
         try:
             frame_end = int(frame_end)
         except ValueError:
-            raise ImageSeedError(
+            raise ImageSeedArgumentError(
                 f'frame_end argument must be an integer.')
 
         if frame_start is not None and (frame_start > frame_end):
-            raise ImageSeedError(
+            raise ImageSeedArgumentError(
                 f'frame_start argument must be less '
                 f'than or equal to frame_end argument.')
 
