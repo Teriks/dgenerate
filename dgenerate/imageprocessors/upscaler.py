@@ -55,13 +55,35 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
 
     NAMES = ['upscaler']
 
-    def __init__(self, model: str, tile: int = 512, overlap: int = 32, pre_resize: bool = False, **kwargs):
+    def __init__(self,
+                 model: str,
+                 tile: int = 512,
+                 overlap: int = 32,
+                 pre_resize: bool = False,
+                 **kwargs):
+        """
+        :param model: chaiNNer compatible upscaler model on disk, or at a URL
+        :param tile: specifies the tile size for tiled upscaling, and defaults to 512
+        :param overlap: the overlap amount of each tile in pixels, and defaults to 32
+        :param pre_resize: process the image before it is resized, or after? default is ``False`` (after).
+        :param kwargs:
+        """
+
         super().__init__(**kwargs)
 
         try:
             self._model = chainner.load_upscaler_model(model)
         except chainner.UnsupportedModelError:
             raise self.argument_error('Unsupported model file format.')
+
+        if tile < 2:
+            raise self.argument_error('tile argument must be greater than 2.')
+
+        if tile % 2 != 0:
+            raise self.argument_error('tile argument must be divisible by 2.')
+
+        if overlap < 0:
+            raise self.argument_error('overlap argument must be greater than 0.')
 
         self._tile = tile
         self._overlap = overlap
