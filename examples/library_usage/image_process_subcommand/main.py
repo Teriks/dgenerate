@@ -1,4 +1,4 @@
-import dgenerate.imageprocess
+import dgenerate.image_process
 
 # the functionality of --sub-command image-process and the \image_process config
 # directive is reusable in a similar fashion to the dgenerate render loop

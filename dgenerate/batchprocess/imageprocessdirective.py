@@ -21,7 +21,7 @@
 import collections.abc
 
 import dgenerate.batchprocess.configrunnerplugin as _configrunnerplugin
-import dgenerate.imageprocess as _imageprocess
+import dgenerate.image_process as _image_process
 
 
 class ImageProcessDirective(_configrunnerplugin.ConfigRunnerPlugin):
@@ -41,18 +41,18 @@ class ImageProcessDirective(_configrunnerplugin.ConfigRunnerPlugin):
         See: "dgenerate --sub-command image-process --help" for recognized arguments.
         """
 
-        render_loop = _imageprocess.ImageProcessRenderLoop(
+        render_loop = _image_process.ImageProcessRenderLoop(
             image_processor_loader=self.render_loop.image_processor_loader)
 
         render_loop.message_header = '\\image_process'
 
         try:
-            return_code = _imageprocess.invoke_image_process(
+            return_code = _image_process.invoke_image_process(
                 args,
                 render_loop=render_loop,
                 help_raises=True,
                 help_name='\\image_process')
-        except _imageprocess.ImageProcessHelpException:
+        except _image_process.ImageProcessHelpException:
             # --help
             return 0
 

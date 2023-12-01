@@ -26,7 +26,7 @@ import os
 import sys
 import types
 import typing
-from importlib.machinery import SourceFileLoader
+import importlib.machinery
 
 import dgenerate.messages as _messages
 import dgenerate.textprocessing as _textprocessing
@@ -349,7 +349,7 @@ def load_modules(paths: collections.abc.Iterable[str]) -> list[types.ModuleType]
             mod = LOADED_PLUGIN_MODULES[plugin_path]
         else:
             try:
-                mod = SourceFileLoader(plugin_path, plugin_path).load_module()
+                mod = importlib.machinery.SourceFileLoader(plugin_path, plugin_path).load_module()
             except FileNotFoundError as e:
                 raise ModuleFileNotFoundError(e)
             LOADED_PLUGIN_MODULES[plugin_path] = mod
