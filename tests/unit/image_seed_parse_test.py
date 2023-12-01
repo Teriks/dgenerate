@@ -192,6 +192,15 @@ class TestImageSeedParser(unittest.TestCase):
             _mi.parse_image_seed_uri("examples/media/earth.jpg;control= ")
 
         with self.assertRaises(_mi.ImageSeedParseError):
+            _mi.parse_image_seed_uri("examples/media/earth.jpg;control=examples/media/earth.jpg,")
+
+        with self.assertRaises(_mi.ImageSeedParseError):
+            _mi.parse_image_seed_uri("examples/media/earth.jpg;control=,examples/media/earth.jpg")
+
+        with self.assertRaises(_mi.ImageSeedParseError):
+            _mi.parse_image_seed_uri("examples/media/earth.jpg;control=examples/media/earth.jpg,,examples/media/earth.jpg")
+
+        with self.assertRaises(_mi.ImageSeedParseError):
             _mi.parse_image_seed_uri("examples/media/earth.jpg;control=,")
 
         with self.assertRaises(_mi.ImageSeedParseError):
