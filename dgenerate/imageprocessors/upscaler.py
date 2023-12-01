@@ -43,9 +43,10 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
     Fresh executions of dgenerate will always download the model, it is recommended that you download your upscaler
     models to some place on disk and provide a full path to them, and to use URLs only for examples and testing.
 
-    The "tile" argument can be used to specify the tile size for tiled upscaling, and defaults to 512.
+    The "tile" argument can be used to specify the tile size for tiled upscaling, it must be divisible by 2, and defaults to 512.
 
-    The "overlap" argument can be used to specify the overlap amount of each tile in pixels, and defaults to 32.
+    The "overlap" argument can be used to specify the overlap amount of each tile in pixels, it must be
+    greater than or equal to 0, and defaults to 32.
 
     The "pre-resize" argument is a boolean value determining if the processing should take place before or
     after the image is resized by dgenerate.
@@ -63,10 +64,10 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
                  **kwargs):
         """
         :param model: chaiNNer compatible upscaler model on disk, or at a URL
-        :param tile: specifies the tile size for tiled upscaling, and defaults to 512
-        :param overlap: the overlap amount of each tile in pixels, and defaults to 32
+        :param tile: specifies the tile size for tiled upscaling, it must be divisible by 2, and defaults to 512.
+        :param overlap: the overlap amount of each tile in pixels, it must be greater than or equal to 0, and defaults to 32.
         :param pre_resize: process the image before it is resized, or after? default is ``False`` (after).
-        :param kwargs:
+        :param kwargs: forwarded to base class
         """
 
         super().__init__(**kwargs)
@@ -83,7 +84,7 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
             raise self.argument_error('Argument "tile" must be divisible by 2.')
 
         if overlap < 0:
-            raise self.argument_error('Argument "overlap" must be greater than 0.')
+            raise self.argument_error('Argument "overlap" must be greater than or equal to 0.')
 
         self._tile = tile
         self._overlap = overlap
