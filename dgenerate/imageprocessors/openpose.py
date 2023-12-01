@@ -78,6 +78,14 @@ class OpenPoseProcessor(_imageprocessor.ImageProcessor):
         :param include_hand: include detailed hand rigging?
         :param include_face: include detailed face rigging?
         :param pre_resize: process the image before it is resized, or after? default is after (False)
+        :param detect_resolution: the input image is resized to this dimension before being processed,
+            providing ``None`` indicates it is not to be resized.  If there is no resize requested during
+            the processing action via ``resize_resolution`` it will be resized back to its original size.
+        :param detect_aspect: if the input image is resized by ``detect_resolution`` or ``detect_align``
+            before processing, will it be an aspect correct resize?
+        :param detect_align: the input image is forcefully aligned to this amount of pixels
+            before being processed.
+        :param pre_resize: process the image before it is resized, or after? default is ``False`` (after).
         :param kwargs: forwarded to base class
         """
 
