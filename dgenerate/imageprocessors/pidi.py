@@ -38,7 +38,7 @@ class PidiNetProcessor(_imageprocessor.ImageProcessor):
     """
     PidiNet (Pixel Difference Networks for Efficient Edge Detection) edge detector.
 
-    The "apply-filter" argument enables possibly crisper edges.
+    The "apply-filter" argument enables possibly crisper edges / less noise.
 
     The "safe" argument enables numerically safe / more precise stepping
 
@@ -70,6 +70,20 @@ class PidiNetProcessor(_imageprocessor.ImageProcessor):
                  detect_align: int = 1,
                  pre_resize: bool = False,
                  **kwargs):
+        """
+
+        :param apply_filter: enables possibly crisper edges / less noise
+        :param safe: enables numerically safe / more precise stepping
+        :param detect_resolution: the input image is resized to this dimension before being processed,
+            providing ``None`` indicates it is not to be resized.  If there is no resize requested during
+            the processing action via ``resize_resolution`` it will be resized back to its original size.
+        :param detect_aspect: if the input image is resized by ``detect_resolution`` or ``detect_align``
+            before processing, will it be an aspect correct resize?
+        :param detect_align: the input image is forcefully aligned to this amount of pixels
+            before being processed.
+        :param pre_resize: process the image before it is resized, or after? default is ``False`` (after).
+        :param kwargs: forwarded to base class
+        """
 
         super().__init__(**kwargs)
 

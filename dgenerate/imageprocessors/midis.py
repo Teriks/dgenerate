@@ -60,6 +60,15 @@ class MidisDepthProcessor(_imageprocessor.ImageProcessor):
                  detect_aspect: bool = True,
                  pre_resize: bool = False,
                  **kwargs):
+        """
+        :param detect_resolution: the input image is resized to this dimension before being processed,
+            providing ``None`` indicates it is not to be resized.  If there is no resize requested during
+            the processing action via ``resize_resolution`` it will be resized back to its original size.
+        :param detect_aspect: if the input image is resized by ``detect_resolution`` or ``detect_align``
+            before processing, will it be an aspect correct resize?
+        :param pre_resize: process the image before it is resized, or after? default is ``False`` (after).
+        :param kwargs: forwarded to base class
+        """
 
         super().__init__(**kwargs)
 
