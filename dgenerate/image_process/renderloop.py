@@ -60,7 +60,7 @@ class AnimationFileFinishedEvent(Event):
 
     starting_event: StartingAnimationFileEvent
     """
-    Animation :py:class:`.StartingAnimationFileEvent`related to this file finished event.
+    Animation :py:class:`.StartingAnimationFileEvent` related to this file finished event.
     """
 
     def __init__(self, origin: 'ImageProcessRenderLoop', path: str, starting_event: StartingAnimationFileEvent):

@@ -212,7 +212,7 @@ class VideoReader(_imageprocessors.ImageProcessorMixin, AnimationReader):
             this is for informational purpose when reading from a stream or a cached file
             and should be provided in every case even if it is a symbolic value only. It
             should possess a file extension as it is used to determine file format when
-            reading from a byte stream.:py:class:`PIL.Image.Image` objects produced by
+            reading from a byte stream. :py:class:`PIL.Image.Image` objects produced by
             the reader will have this value set to their *filename* attribute.
 
         :param resize_resolution: Progressively resize each frame to this
