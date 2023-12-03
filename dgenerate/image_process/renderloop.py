@@ -39,6 +39,33 @@ import dgenerate.messages as _messages
 import dgenerate.types as _types
 
 
+class AnimationETAEvent(_event.Event):
+    frame_index: int
+    """
+    Frame index at which the ETA was calculated.
+    """
+
+    total_frames: int
+    """
+    Total frames needed for the animation to complete.
+    """
+
+    eta: datetime.timedelta
+    """
+    Current estimated time to complete the animation.
+    """
+
+    def __init__(self,
+                 origin: 'ImageProcessRenderLoop',
+                 frame_index: int,
+                 total_frames: int,
+                 eta: datetime.timedelta):
+        super().__init__(origin)
+        self.frame_index = frame_index
+        self.total_frames = total_frames
+        self.eta = eta
+
+
 class StartingAnimationEvent(_event.Event):
     """
     Generated in the event stream of :py:meth:`.ImageProcessRenderLoop.events`
@@ -410,16 +437,24 @@ class ImageProcessRenderLoop:
                 for frame_idx in range(0, reader.total_frames):
 
                     if self._last_frame_time == 0:
-                        eta = 'tbd...'
+                        eta = None
                     else:
                         self._frame_time_sum += time.time() - self._last_frame_time
                         eta_seconds = (self._frame_time_sum / frame_idx) * (
                                 reader.total_frames - frame_idx)
-                        eta = str(datetime.timedelta(seconds=eta_seconds))
+                        eta = datetime.timedelta(seconds=eta_seconds)
                     self._last_frame_time = time.time()
 
+                    eta_str = str(eta) if eta is not None else 'tbd...'
+
                     _messages.log(
-                        fr'{self.message_header}: Processing Frame {frame_idx + 1}/{reader.total_frames}, Completion ETA: {eta}')
+                        fr'{self.message_header}: Processing Frame {frame_idx + 1}/{reader.total_frames}, Completion ETA: {eta_str}')
+
+                    if eta is not None:
+                        yield AnimationETAEvent(origin=self,
+                                                frame_index=frame_idx,
+                                                total_frames=reader.total_frames,
+                                                eta=eta)
 
                     frame_filename = out_filename_base + f'_frame_{frame_idx + 1}.{self.config.frame_format}'
 
