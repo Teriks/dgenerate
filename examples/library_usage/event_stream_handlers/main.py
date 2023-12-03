@@ -11,10 +11,10 @@ rl = dgenerate.RenderLoop()
 rl.config.model_path = 'stabilityai/stable-diffusion-2'
 rl.config.model_type = dgenerate.ModelType.TORCH
 rl.config.inference_steps = [30]
-rl.config.guidance_scales = [8]
+rl.config.guidance_scales = [5, 8]
 rl.config.image_seed_strengths = [0.3]
 rl.config.prompts = [dgenerate.Prompt.parse('cat')]
-rl.config.image_seeds = ['../../media/kitten.gif', '../../media/kitten.gif']
+rl.config.image_seeds = ['../../media/kitten.gif']
 rl.config.animation_format = 'GIF'
 rl.config.output_configs = True
 
