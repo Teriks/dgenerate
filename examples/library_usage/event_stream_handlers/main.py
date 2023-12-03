@@ -17,7 +17,6 @@ rl.config.prompts = [dgenerate.Prompt.parse('cat')]
 rl.config.image_seeds = ['examples/media/kitten.gif', 'examples/media/kitten.gif']
 rl.config.animation_format = 'GIF'
 rl.config.output_configs = True
-rl.config.batch_size = 1
 
 # simple event handler for every possible event in the event stream
 
