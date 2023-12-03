@@ -24,6 +24,10 @@ import PIL.Image
 
 import dgenerate.types as _types
 
+__doc__ = """
+Image operations commonly used by dgenerate.
+"""
+
 
 def resize_image_calc(old_size: _types.Size,
                       new_size: _types.OptionalSize,

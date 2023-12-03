@@ -36,6 +36,7 @@ import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.messages as _messages
 import dgenerate.types as _types
+
 from dgenerate.events import \
     Event, \
     AnimationFinishedEvent, \

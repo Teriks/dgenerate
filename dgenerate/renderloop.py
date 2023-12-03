@@ -39,7 +39,7 @@ import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.events import \
-    Event, \
+    Event as _Event, \
     AnimationFinishedEvent, \
     StartingGenerationStepEvent, \
     AnimationETAEvent, \
@@ -52,8 +52,12 @@ from dgenerate.renderloopconfig import \
     CONTROL_IMAGE_PROCESSOR_SEP, \
     gen_seeds
 
+__doc__ = """
+The main dgenerate render loop, which implements the primary functionality of dgenerate.
+"""
 
-class AnimationFileFinishedEvent(Event):
+
+class AnimationFileFinishedEvent(_Event):
     """
     Generated in the event stream of :py:meth:`.RenderLoop.events`
 
@@ -86,7 +90,7 @@ class AnimationFileFinishedEvent(Event):
         self.starting_event = starting_event
 
 
-class ImageGeneratedEvent(Event):
+class ImageGeneratedEvent(_Event):
     """
     Generated in the event stream of :py:meth:`.RenderLoop.events`
 
@@ -187,7 +191,7 @@ class ImageGeneratedEvent(Event):
         self.config_string = config_string
 
 
-class ImageFileSavedEvent(Event):
+class ImageFileSavedEvent(_Event):
     """
     Occurs when an image file is written to disk.
     """
@@ -807,7 +811,7 @@ class RenderLoop:
             _messages.debug_log('Loaded Post Processor:', self._post_processor)
 
     def _run_postprocess(self, generation_result: _pipelinewrapper.PipelineWrapperResult):
-        if self._post_processor is not None:
+        if self._post_processor is not None and generation_result.images is not None:
             for idx, image in enumerate(generation_result.images):
                 img = self._post_processor.process(image)
                 generation_result.images[idx] = img

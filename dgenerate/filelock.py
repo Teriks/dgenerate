@@ -27,6 +27,10 @@ import typing
 
 import portalocker
 
+__doc__ = """
+Thread / Multiprocess safe file locking utilities.
+"""
+
 PathMaker = typing.Callable[
     [typing.Optional[str], typing.Optional[int]], typing.Union[str, collections.abc.Iterable[str]]]
 

@@ -28,4 +28,8 @@ from .configrunnerpluginloader import ConfigRunnerPluginLoader, \
     ConfigRunnerPluginArgumentError
 from .image_process_directive import ImageProcessDirective
 
+__doc__ = """
+Batch processing / dgenerate config scripts.
+"""
+
 __all__ = _types.module_all()

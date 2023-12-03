@@ -42,6 +42,14 @@ import dgenerate.messages as _messages
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 
+__doc__ = """
+Media input, handles reading videos/animations and static images, and creating readers from image seed URIs.
+
+Also provides media download capabilities and temporary caching of web based files.
+
+Provides information about supported input formats.
+"""
+
 
 def frame_slice_count(total_frames: int, frame_start: int, frame_end: _types.OptionalInteger = None) -> int:
     """
