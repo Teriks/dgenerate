@@ -76,7 +76,7 @@ class AnimationFileFinishedEvent(_Event):
 
     starting_event: StartingAnimationFileEvent
     """
-    Animation :py:class:`.StartingAnimationFileEvent`related to this file finished event.
+    Animation :py:class:`.StartingAnimationFileEvent` related to this file finished event.
     """
 
     def __init__(self,
