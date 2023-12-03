@@ -29,6 +29,10 @@ import PIL.Image
 import dgenerate.prompt as _prompt
 import dgenerate.textprocessing
 
+__doc__ = """
+Commonly used static type definitions and utilities for introspecting on objects, functions, types, etc.
+"""
+
 Uri = str
 Path = str
 Name = str
@@ -81,6 +85,7 @@ OptionalString = typing.Optional[str]
 OptionalBoolean = typing.Optional[bool]
 
 Images = collections.abc.Sequence[PIL.Image.Image]
+MutableImages = collections.abc.MutableSequence[PIL.Image.Image]
 
 
 def iterate_attribute_combinations(

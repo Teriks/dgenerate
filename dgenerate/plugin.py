@@ -32,6 +32,10 @@ import dgenerate.messages as _messages
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 
+__doc__ = """
+URI based plugin loading system base implementations.
+"""
+
 LOADED_PLUGIN_MODULES: dict[str, types.ModuleType] = {}
 """Plugin module in memory cache"""
 

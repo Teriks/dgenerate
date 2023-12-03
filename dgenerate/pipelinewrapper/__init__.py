@@ -131,6 +131,12 @@ from .wrapper import \
     DiffusionArguments, \
     OutOfMemoryError
 
+__doc__ = """
+huggingface diffusers pipeline wrapper / driver interface.
+
+All functionality needed from the diffusers library is behind this interface.
+"""
+
 os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
 os.environ['XLA_PYTHON_CLIENT_ALLOCATOR'] = 'platform'
 

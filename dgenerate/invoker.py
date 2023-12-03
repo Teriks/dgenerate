@@ -31,6 +31,10 @@ import dgenerate.plugin as _plugin
 import dgenerate.renderloop as _renderloop
 import dgenerate.subcommands as _subcommands
 
+__doc__ = """
+Functions to invoke dgenerate inside the current process using its command line arguments.
+"""
+
 
 class DgenerateExitEvent(_event.Event):
     """

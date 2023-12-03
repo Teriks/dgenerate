@@ -21,6 +21,12 @@
 
 import sys
 
+__doc__ = """
+Windows installation entry point.
+
+This is used in the environment created by the windows installer.
+"""
+
 try:
     from dgenerate import main
 

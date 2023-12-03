@@ -24,6 +24,10 @@ import typing
 
 import dgenerate.textprocessing as _textprocessing
 
+__doc__ = """
+Library logging / informational output.
+"""
+
 LEVEL = 0
 """Current Log Level (set-able)"""
 

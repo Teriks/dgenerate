@@ -28,6 +28,13 @@ import av
 import dgenerate.filelock as _filelock
 
 
+__doc__ = """
+Media output, handles writing videos and animations.  
+
+Provides information about supported output formats.
+"""
+
+
 class AnimationWriter:
     """
     Interface for animation writers

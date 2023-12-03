@@ -27,6 +27,10 @@ import dgenerate.messages as _messages
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 
+__doc__ = """
+Function memoization wrapper and associated hashing tools.
+"""
+
 
 def args_cache_key(args_dict: dict[str, typing.Any],
                    custom_hashes: dict[str, typing.Callable[[typing.Any], str]] = None):

@@ -31,6 +31,7 @@ from .invoker import \
     invoke_image_process, \
     invoke_image_process_events
 
+# noinspection PyUnresolvedReferences
 from .renderloop import \
     ImageProcessRenderLoop, \
     RenderLoopEventStream, \
@@ -47,5 +48,10 @@ from .renderloop import \
 from .renderloopconfig import \
     ImageProcessRenderLoopConfigError, \
     ImageProcessRenderLoopConfig
+
+
+__doc__ = """
+Implements the behaviors of dgenerates image-process sub-command and \\image_process config directive.
+"""
 
 __all__ = dgenerate.types.module_all()

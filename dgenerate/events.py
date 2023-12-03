@@ -22,6 +22,10 @@ import datetime
 
 import dgenerate.types as _types
 
+__doc__ = """
+Common render loop events.
+"""
+
 
 class Event:
     """

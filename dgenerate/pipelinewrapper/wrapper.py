@@ -67,7 +67,7 @@ class PipelineWrapperResult:
     """
     The result of calling :py:class:`.DiffusionPipelineWrapper`
     """
-    images: typing.Optional[_types.Images]
+    images: typing.Optional[_types.MutableImages]
 
     @property
     def image_count(self):

@@ -36,6 +36,10 @@ import dgenerate.prompt as _prompt
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 
+__doc__ = """
+Argument parsing for the dgenerate command line tool.
+"""
+
 _SUPPORTED_MODEL_TYPES_PRETTY = \
     _textprocessing.oxford_comma(_pipelinewrapper.supported_model_type_strings(), 'or')
 

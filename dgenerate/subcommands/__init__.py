@@ -26,6 +26,10 @@ from .image_process import ImageProcessSubCommand
 from .subcommand import SubCommand
 from .subcommandloader import SubCommandLoader
 
+__doc__ = """
+Sub-Commands implemented by the dgenerate command line tool.
+"""
+
 
 class SubCommandHelpUsageError(Exception):
     """

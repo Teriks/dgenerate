@@ -28,6 +28,10 @@ import typing
 
 import dgenerate.types as _types
 
+__doc__ = """
+Text processing, console text rendering, and parsing utilities. URI parser, and reusable tokenization.
+"""
+
 
 class ConceptUriParseError(Exception):
     """

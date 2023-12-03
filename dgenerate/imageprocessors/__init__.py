@@ -47,6 +47,13 @@ from .sam import SegmentAnythingProcessor
 from .upscaler import UpscalerProcessor
 
 
+__doc__ = """
+Image processors implemented by dgenerate.
+
+This includes many image processing tasks useful for creating diffusion input images, or for postprocessing.
+"""
+
+
 class ImageProcessorHelpUsageError(Exception):
     """
     Raised on argument parse errors in :py:func:`.image_processor_help`
