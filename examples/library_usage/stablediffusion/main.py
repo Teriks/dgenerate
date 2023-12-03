@@ -33,7 +33,7 @@ render_loop.disable_writes = True
 # about events and just wanted to write to disk
 
 for event in render_loop.events():
-    if isinstance(event, dgenerate.ImageGeneratedEvent):
+    if isinstance(event, ImageGeneratedEvent):
         print('Filename:', event.suggested_filename)
         print('Seed:', event.diffusion_args.seed)
         print('Prompt:', event.diffusion_args.prompt)
