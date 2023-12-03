@@ -376,7 +376,7 @@ class MockImageAnimationReader(_imageprocessors.ImageProcessorMixin, AnimationRe
         :param resize_resolution: the source image will be resized to this dimension with
             a maintained aspect ratio. This occurs once upon construction, a copy is then yielded
             for each frame that is read. The provided resolution will be aligned by ``align`` if
-             it is not ``None``.
+            it is not ``None``.
 
         :param aspect_correct: Should resize operations be aspect correct?
 
