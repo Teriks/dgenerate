@@ -47,6 +47,52 @@ from dgenerate.renderloopconfig import \
     gen_seeds
 
 
+class AnimationETAEvent(_event.Event):
+    frame_index: int
+    """
+    Frame index at which the ETA was calculated.
+    """
+
+    total_frames: int
+    """
+    Total frames needed for the animation to complete.
+    """
+
+    eta: datetime.timedelta
+    """
+    Current estimated time to complete the animation.
+    """
+
+    def __init__(self,
+                 origin: 'RenderLoop',
+                 frame_index: int,
+                 total_frames: int,
+                 eta: datetime.timedelta):
+        super().__init__(origin)
+        self.frame_index = frame_index
+        self.total_frames = total_frames
+        self.eta = eta
+
+
+class StartingGenerationStepEvent(_event.Event):
+    generation_step: int
+    """
+    The generation step number.
+    """
+
+    total_steps: int
+    """
+    The total number of steps that are needed to complete the render loop.
+    """
+
+    def __init__(self,
+                 origin: 'RenderLoop',
+                 generation_step: int, total_steps: int):
+        super().__init__(origin)
+        self.generation_step = generation_step
+        self.total_steps = total_steps
+
+
 class StartingAnimationEvent(_event.Event):
     """
     Generated in the event stream of :py:meth:`.RenderLoop.events`
@@ -732,6 +778,14 @@ class RenderLoop:
                                                  generation_result)
 
     def _pre_generation_step(self, diffusion_args: _pipelinewrapper.DiffusionArguments):
+        total_steps = self.config.calculate_generation_steps()
+
+        yield StartingGenerationStepEvent(
+            origin=self,
+            generation_step=self._generation_step,
+            total_steps=total_steps
+        )
+
         self._last_frame_time = 0
         self._frame_time_sum = 0
         self._generation_step += 1
@@ -739,30 +793,30 @@ class RenderLoop:
         desc = diffusion_args.describe_pipeline_wrapper_args()
 
         _messages.log(
-            f'Generation Step: {self._generation_step + 1} / {self.config.calculate_generation_steps()}\n'
+            f'Generation Step: {self._generation_step + 1} / {total_steps}\n'
             + desc, underline=True)
 
-    def _pre_generation(self, diffusion_args):
-        pass
-
-    def _animation_frame_pre_generation(self,
-                                        diffusion_args: _pipelinewrapper.DiffusionArguments,
-                                        image_seed: _mediainput.ImageSeed):
+    def _animation_frame_pre_generation(self, image_seed: _mediainput.ImageSeed):
         if self._last_frame_time == 0:
-            eta = 'tbd...'
+            eta = None
         else:
             self._frame_time_sum += time.time() - self._last_frame_time
             eta_seconds = (self._frame_time_sum / image_seed.frame_index) * (
                     image_seed.total_frames - image_seed.frame_index)
-            eta = str(datetime.timedelta(seconds=eta_seconds))
+            eta = datetime.timedelta(seconds=eta_seconds)
 
         self._last_frame_time = time.time()
+
+        eta_str = str(eta) if eta is not None else 'tbd...'
+
         _messages.log(
-            f'Generating frame {image_seed.frame_index + 1} / {image_seed.total_frames}, Completion ETA: {eta}',
+            f'Generating frame {image_seed.frame_index + 1} / {image_seed.total_frames}, Completion ETA: {eta_str}',
             underline=True)
 
-    def _with_image_seed_pre_generation(self, diffusion_args: _pipelinewrapper.DiffusionArguments, image_seed_obj):
-        pass
+        if eta is not None:
+            yield AnimationETAEvent(origin=self,
+                                    frame_index=image_seed.frame_index,
+                                    total_frames=image_seed.total_frames, eta=eta)
 
     def run(self):
         """
@@ -868,8 +922,7 @@ class RenderLoop:
                     sdxl_high_noise_fraction=sdxl_high_noise_fractions,
                     image_seed_strength=None,
                     upscaler_noise_level=None):
-                self._pre_generation_step(diffusion_arguments)
-                self._pre_generation(diffusion_arguments)
+                yield from self._pre_generation_step(diffusion_arguments)
 
                 with pipeline_wrapper(diffusion_arguments,
                                       width=self.config.output_size[0],
@@ -1009,11 +1062,9 @@ class RenderLoop:
                 continue
 
             for diffusion_arguments in arg_iterator:
-                self._pre_generation_step(diffusion_arguments)
+                yield from self._pre_generation_step(diffusion_arguments)
                 with next(image_seed_iterator()) as image_seed:
                     with image_seed:
-                        self._with_image_seed_pre_generation(diffusion_arguments, image_seed)
-
                         if not is_control_guidance_spec:
                             diffusion_arguments.image = image_seed.image
 
@@ -1077,7 +1128,7 @@ class RenderLoop:
         with anim_writer:
 
             for diffusion_args in itertools.chain([first_diffusion_args], arg_iterator):
-                self._pre_generation_step(diffusion_args)
+                yield from self._pre_generation_step(diffusion_args)
 
                 if next_args_terminates_anim:
                     next_args_terminates_anim = False
@@ -1098,7 +1149,7 @@ class RenderLoop:
 
                     with image_seed_frame:
 
-                        self._animation_frame_pre_generation(diffusion_args, image_seed_frame)
+                        yield from self._animation_frame_pre_generation(image_seed_frame)
 
                         set_extra_wrapper_args(diffusion_args, image_seed_frame)
 
