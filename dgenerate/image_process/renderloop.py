@@ -346,26 +346,27 @@ class ImageProcessRenderLoop:
                     out_directory if out_directory else '.',
                     path_maker=_filelock.suffix_path_maker(out_filename, duplicate_output_suffix))
 
-            processed_image = next(reader)
+            # Processing happens here, when the frame is read
+            with next(reader) as processed_image:
 
-            generated_event = ImageGeneratedEvent(
-                origin=self,
-                image=processed_image,
-                suggested_directory=os.path.dirname(out_filename),
-                suggested_filename=os.path.basename(out_filename),
-                generation_step=generation_step)
+                generated_event = ImageGeneratedEvent(
+                    origin=self,
+                    image=processed_image,
+                    suggested_directory=os.path.dirname(out_filename),
+                    suggested_filename=os.path.basename(out_filename),
+                    generation_step=generation_step)
 
-            yield generated_event
+                yield generated_event
 
-            if not self.disable_writes:
-                processed_image.save(out_filename)
-                self._record_save_image(out_filename)
-                yield ImageFileSavedEvent(origin=self,
-                                          generated_event=generated_event,
-                                          path=out_filename)
+                if not self.disable_writes:
+                    processed_image.save(out_filename)
+                    self._record_save_image(out_filename)
+                    yield ImageFileSavedEvent(origin=self,
+                                              generated_event=generated_event,
+                                              path=out_filename)
 
-                _messages.log(fr'{self.message_header}: Wrote Image "{out_filename}"',
-                              underline=True)
+                    _messages.log(fr'{self.message_header}: Wrote Image "{out_filename}"',
+                                  underline=True)
         else:
             out_filename_base, ext = os.path.splitext(out_filename)
 
@@ -422,42 +423,42 @@ class ImageProcessRenderLoop:
 
                     frame_filename = out_filename_base + f'_frame_{frame_idx + 1}.{self.config.frame_format}'
 
-                    # Processing happens here
-                    frame = next(reader)
+                    # Processing happens here, when the frame is read
+                    with next(reader) as frame:
 
-                    frame_generated_event = ImageGeneratedEvent(
-                        origin=self,
-                        image=frame,
-                        generation_step=generation_step,
-                        suggested_directory=os.path.dirname(out_filename_base),
-                        suggested_filename=os.path.basename(frame_filename),
-                        is_animation_frame=True,
-                        frame_index=frame_idx
-                    )
-                    yield frame_generated_event
-
-                    if not self.config.no_animation_file:
-                        writer.write(frame)
-
-                    if not self.config.no_frames and not self.disable_writes:
-
-                        # frames do not get the _processed_ suffix in any case
-
-                        if not self.config.output_overwrite:
-                            frame_filename = _filelock.touch_avoid_duplicate(
-                                out_directory if out_directory else '.',
-                                path_maker=_filelock.suffix_path_maker(frame_filename,
-                                                                       duplicate_output_suffix))
-
-                        frame.save(frame_filename)
-                        self._record_save_image(frame_filename)
-
-                        yield ImageFileSavedEvent(
+                        frame_generated_event = ImageGeneratedEvent(
                             origin=self,
-                            path=frame_filename,
-                            generated_event=frame_generated_event)
+                            image=frame,
+                            generation_step=generation_step,
+                            suggested_directory=os.path.dirname(out_filename_base),
+                            suggested_filename=os.path.basename(frame_filename),
+                            is_animation_frame=True,
+                            frame_index=frame_idx
+                        )
+                        yield frame_generated_event
 
-                        _messages.log(fr'{self.message_header}: Wrote Frame "{frame_filename}"')
+                        if not self.config.no_animation_file:
+                            writer.write(frame)
+
+                        if not self.config.no_frames and not self.disable_writes:
+
+                            # frames do not get the _processed_ suffix in any case
+
+                            if not self.config.output_overwrite:
+                                frame_filename = _filelock.touch_avoid_duplicate(
+                                    out_directory if out_directory else '.',
+                                    path_maker=_filelock.suffix_path_maker(frame_filename,
+                                                                           duplicate_output_suffix))
+
+                            frame.save(frame_filename)
+                            self._record_save_image(frame_filename)
+
+                            yield ImageFileSavedEvent(
+                                origin=self,
+                                path=frame_filename,
+                                generated_event=frame_generated_event)
+
+                            _messages.log(fr'{self.message_header}: Wrote Frame "{frame_filename}"')
 
                     frame_idx += 1
 
