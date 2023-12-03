@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import datetime
+
 import dgenerate.types as _types
 
 
@@ -174,3 +175,6 @@ class AnimationFinishedEvent(Event):
                  starting_event: StartingAnimationEvent):
         super().__init__(origin)
         self.starting_event = starting_event
+
+
+__all__ = _types.module_all()
