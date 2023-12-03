@@ -54,7 +54,7 @@ class VideoWriter(AnimationWriter):
     Animation writer for MP4 h264 format video
     """
 
-    def __init__(self, filename, fps: typing.Union[float, int]):
+    def __init__(self, filename, fps: float):
         """
         :param filename: Filename to write to.
         :param fps: Frame rate, in frames per second.
@@ -62,7 +62,7 @@ class VideoWriter(AnimationWriter):
 
         super().__init__()
         self.filename = filename
-        self.fps = round(fps)
+        self.fps = fps
         self._container = None
         self._stream = None
 
@@ -86,7 +86,7 @@ class VideoWriter(AnimationWriter):
     def write(self, img: PIL.Image.Image):
         if self._container is None:
             self._container = av.open(self.filename, 'w')
-            self._stream = self._container.add_stream("h264", rate=self.fps)
+            self._stream = self._container.add_stream("h264", rate=round(self.fps))
             self._stream.codec_context.bit_rate = 8000000
             self._stream.width = img.width
             self._stream.height = img.height
@@ -162,7 +162,7 @@ class UnknownAnimationFormatError(Exception):
     """
 
 
-def create_animation_writer(animation_format: str, out_filename: str, fps: typing.Union[float, int]):
+def create_animation_writer(animation_format: str, out_filename: str, fps: float):
     """
     Create an animation writer of a given format.
 
@@ -191,8 +191,7 @@ class MultiAnimationWriter(AnimationWriter):
     def __init__(self,
                  animation_format: str,
                  filename: str,
-                 fps:
-                 typing.Union[float, int],
+                 fps: float,
                  allow_overwrites=False):
         """
         :param animation_format: One of :py:func:`.supported_animation_writer_formats`

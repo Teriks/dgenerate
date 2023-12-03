@@ -9,4 +9,9 @@ args = shlex.split(
 return_code = dgenerate.image_process.invoke_image_process(args=args)
 
 
-exit(return_code)
+print('Return Code:', return_code)
+
+# run the command again, this time observe render loop events
+
+for event in dgenerate.image_process.invoke_image_process_events(args=args):
+    print(event)

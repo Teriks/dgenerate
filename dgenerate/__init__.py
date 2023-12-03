@@ -38,7 +38,14 @@ try:
         RenderLoop, \
         RenderLoopConfig, \
         RenderLoopConfigError, \
-        ImageGeneratedCallbackArgument, \
+        RenderLoopEvent, \
+        RenderLoopEventStream, \
+        ImageGeneratedEvent, \
+        ImageFileSavedEvent, \
+        StartingAnimationFileEvent, \
+        StartingAnimationEvent, \
+        AnimationFinishedEvent, \
+        AnimationFileFinishedEvent, \
         gen_seeds
 
     from dgenerate.pipelinewrapper import \
@@ -58,12 +65,12 @@ try:
         ConfigRunnerPlugin, \
         ConfigRunnerPluginLoader
 
-    from dgenerate.invoker import invoke_dgenerate
+    from dgenerate.invoker import invoke_dgenerate, invoke_dgenerate_events
 
     from dgenerate.arguments import \
         parse_args, \
-        DgenerateUsageError,\
-        DgenerateArguments,\
+        DgenerateUsageError, \
+        DgenerateArguments, \
         DgenerateHelpException
 
     from dgenerate.pipelinewrapper import \

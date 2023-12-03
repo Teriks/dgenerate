@@ -2,7 +2,7 @@ import dgenerate.arguments
 from dgenerate import \
     RenderLoop, \
     RenderLoopConfig, \
-    ImageGeneratedCallbackArgument, \
+    ImageGeneratedEvent, \
     Prompt
 
 device, _ = dgenerate.arguments.parse_device()
@@ -25,24 +25,24 @@ config.device = device
 
 render_loop = RenderLoop(config=config)
 
-
-def render_callback(arg: ImageGeneratedCallbackArgument):
-    print('Filename:', arg.suggested_filename)
-    print('Seed:', arg.diffusion_args.seed)
-    print('Prompt:', arg.diffusion_args.prompt)
-    print('Reproduce With Command:', arg.command_string)
-    print(f'Reproduce With Config:\n{arg.config_string}')
-    arg.image.save(arg.suggested_filename)
-
-    # if you wish to work with this image after the completion
-    # of render_loop.run you should copy it out with arg.image.copy()
-    # management of PIL.Image lifetime is very aggressive and the
-    # image object given in this callback will be disposed of
-    # when the callback is finished
-
-
+# disables all writes to disk
 render_loop.disable_writes = True
 
-render_loop.image_generated_callbacks.append(render_callback)
+# run the render loop and handle events,
+# you could also use render_loop.run() if you did not care
+# about events and just wanted to write to disk
 
-render_loop.run()
+for event in render_loop.events():
+    if isinstance(event, dgenerate.ImageGeneratedEvent):
+        print('Filename:', event.suggested_filename)
+        print('Seed:', event.diffusion_args.seed)
+        print('Prompt:', event.diffusion_args.prompt)
+        print('Reproduce With Command:', event.command_string)
+        print(f'Reproduce With Config:\n{event.config_string}')
+        event.image.save(event.suggested_filename)
+
+        # if you wish to work with this image after the completion
+        # of your event stream handler you should copy it out with arg.image.copy()
+        # management of PIL.Image lifetime is very aggressive and the
+        # image object given in this event will be disposed of
+        # when handling of the event is finished
