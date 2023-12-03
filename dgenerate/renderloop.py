@@ -193,6 +193,8 @@ class ImageGeneratedEvent(_Event):
 
 class ImageFileSavedEvent(_Event):
     """
+    Generated in the event stream of :py:meth:`.RenderLoop.events`
+
     Occurs when an image file is written to disk.
     """
 
