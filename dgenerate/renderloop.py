@@ -778,13 +778,6 @@ class RenderLoop:
                                                  generation_result)
 
     def _pre_generation_step(self, diffusion_args: _pipelinewrapper.DiffusionArguments):
-        total_steps = self.config.calculate_generation_steps()
-
-        yield StartingGenerationStepEvent(
-            origin=self,
-            generation_step=self._generation_step,
-            total_steps=total_steps
-        )
 
         self._last_frame_time = 0
         self._frame_time_sum = 0
@@ -792,9 +785,17 @@ class RenderLoop:
 
         desc = diffusion_args.describe_pipeline_wrapper_args()
 
+        total_steps = self.config.calculate_generation_steps()
+
         _messages.log(
             f'Generation Step: {self._generation_step + 1} / {total_steps}\n'
             + desc, underline=True)
+
+        yield StartingGenerationStepEvent(
+            origin=self,
+            generation_step=self._generation_step,
+            total_steps=total_steps
+        )
 
     def _animation_frame_pre_generation(self, image_seed: _mediainput.ImageSeed):
         if self._last_frame_time == 0:
