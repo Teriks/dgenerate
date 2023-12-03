@@ -51,7 +51,14 @@ class DgenerateExitEvent(_event.Event):
 
 
 InvokeDgenerateEvents = typing.Union[_renderloop.RenderLoopEvent, DgenerateExitEvent]
+"""
+Events yield-able by :py:func:`invoke_dgenerate_events`
+"""
+
 InvokeDgenerateEventStream = typing.Generator[InvokeDgenerateEvents, None, None]
+"""
+Event stream produced by :py:func:`invoke_dgenerate_events`
+"""
 
 
 def invoke_dgenerate(args: collections.abc.Sequence[str],

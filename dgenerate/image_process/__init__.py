@@ -49,7 +49,6 @@ from .renderloopconfig import \
     ImageProcessRenderLoopConfigError, \
     ImageProcessRenderLoopConfig
 
-
 __doc__ = """
 Implements the behaviors of dgenerates image-process sub-command and \\image_process config directive.
 """
