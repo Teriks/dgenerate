@@ -69,7 +69,9 @@ try:
         ConfigRunnerPlugin, \
         ConfigRunnerPluginLoader
 
-    from dgenerate.invoker import invoke_dgenerate, invoke_dgenerate_events
+    from dgenerate.invoker import \
+        invoke_dgenerate, \
+        invoke_dgenerate_events
 
     from dgenerate.arguments import \
         parse_args, \
