@@ -138,7 +138,7 @@ class AnimationFinishedEvent(_event.Event):
 
     def __init__(self,
                  origin: 'RenderLoop',
-                 starting_event):
+                 starting_event: StartingAnimationEvent):
         super().__init__(origin)
         self.starting_event = starting_event
 
