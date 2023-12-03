@@ -54,10 +54,9 @@ try:
 
     from dgenerate.pipelinewrapper import \
         InvalidModelUriError, \
-        InvalidSchedulerName, \
+        InvalidSchedulerNameError, \
         ModelType, \
         DataType, \
-        DiffusionArguments, \
         OutOfMemoryError, \
         ModelNotFoundError, \
         PipelineType
@@ -88,7 +87,7 @@ try:
     from dgenerate.imageprocessors import \
         ImageProcessorArgumentError, \
         ImageProcessorNotFoundError
-    
+
     from dgenerate.plugin import \
         ModuleFileNotFoundError, \
         PluginNotFoundError, \

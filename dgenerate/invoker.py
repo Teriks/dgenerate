@@ -86,7 +86,7 @@ def invoke_dgenerate(args: collections.abc.Sequence[str],
     :raises dgenerate.imageprocessors.ImageProcessorArgumentError:
     :raises dgenerate.imageprocessors.ImageProcessorNotFoundError:
     :raises dgenerate.pipelinewrapper.InvalidModelUriError:
-    :raises dgenerate.pipelinewrapper.InvalidSchedulerName:
+    :raises dgenerate.pipelinewrapper.InvalidSchedulerNameError:
     :raises dgenerate.pipelinewrapper.OutOfMemoryError:
     :raises dgenerate.pipelinewrapper.ModelNotFoundError:
     :raises dgenerate.plugin.ModuleFileNotFoundError:
@@ -133,7 +133,7 @@ def invoke_dgenerate_events(
     :raises dgenerate.imageprocessors.ImageProcessorArgumentError:
     :raises dgenerate.imageprocessors.ImageProcessorNotFoundError:
     :raises dgenerate.pipelinewrapper.InvalidModelUriError:
-    :raises dgenerate.pipelinewrapper.InvalidSchedulerName:
+    :raises dgenerate.pipelinewrapper.InvalidSchedulerNameError:
     :raises dgenerate.pipelinewrapper.OutOfMemoryError:
     :raises dgenerate.pipelinewrapper.ModelNotFoundError:
     :raises dgenerate.plugin.ModuleFileNotFoundError:
@@ -301,7 +301,7 @@ def invoke_dgenerate_events(
             _mediainput.FrameStartOutOfBounds,
             _pipelinewrapper.ModelNotFoundError,
             _pipelinewrapper.InvalidModelUriError,
-            _pipelinewrapper.InvalidSchedulerName,
+            _pipelinewrapper.InvalidSchedulerNameError,
             _pipelinewrapper.OutOfMemoryError,
             _plugin.PluginNotFoundError,
             _plugin.PluginArgumentError,

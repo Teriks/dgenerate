@@ -37,7 +37,7 @@ import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 
 
-class InvalidSchedulerName(Exception):
+class InvalidSchedulerNameError(Exception):
     """
     Unknown scheduler name used
     """
@@ -134,7 +134,7 @@ def load_scheduler(pipeline: typing.Union[diffusers.DiffusionPipeline, diffusers
             pipeline.scheduler = i.from_config(pipeline.scheduler.config)
             return
 
-    raise InvalidSchedulerName(
+    raise InvalidSchedulerNameError(
         f'Scheduler named "{scheduler_name}" is not a valid compatible scheduler, '
         f'options are:\n\n{chr(10).join(sorted(" " * 4 + _textprocessing.quote(i.__name__.split(".")[-1]) for i in compatibles))}')
 
@@ -452,7 +452,7 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
 
     :raises ModelNotFoundError:
     :raises InvalidModelUriError:
-    :raises InvalidSchedulerName:
+    :raises InvalidSchedulerNameError:
     :raises NotImplementedError:
 
     :return: :py:class:`.TorchPipelineCreationResult`
@@ -505,7 +505,7 @@ class TorchPipelineFactory:
         """
         :raises ModelNotFoundError:
         :raises InvalidModelUriError:
-        :raises InvalidSchedulerName:
+        :raises InvalidSchedulerNameError:
         :raises NotImplementedError:
 
         :return: :py:class:`.TorchPipelineCreationResult`
@@ -956,7 +956,7 @@ def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
 
     :raises ModelNotFoundError:
     :raises InvalidModelUriError:
-    :raises InvalidSchedulerName:
+    :raises InvalidSchedulerNameError:
     :raises NotImplementedError:
 
     :return: :py:class:`.FlaxPipelineCreationResult`
@@ -995,7 +995,7 @@ class FlaxPipelineFactory:
         """
         :raises ModelNotFoundError:
         :raises InvalidModelUriError:
-        :raises InvalidSchedulerName:
+        :raises InvalidSchedulerNameError:
         :raises NotImplementedError:
 
         :return: :py:class:`.FlaxPipelineCreationResult`

@@ -92,7 +92,7 @@ from .enums import \
     supported_model_type_strings
 from .hfutil import ModelNotFoundError
 from .pipelines import \
-    InvalidSchedulerName, \
+    InvalidSchedulerNameError, \
     TorchPipelineFactory, \
     FlaxPipelineCreationResult, \
     TorchPipelineCreationResult, \
