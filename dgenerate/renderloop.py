@@ -131,9 +131,9 @@ class AnimationFinishedEvent(_event.Event):
     This occurs whether an animation was written to disk or not.
     """
 
-    starting_event: StartingAnimationFileEvent
+    starting_event: StartingAnimationEvent
     """
-    Animation :py:class:`.StartingAnimationEvent`related to this file finished event.
+    Animation :py:class:`.StartingAnimationEvent` related to this file finished event.
     """
 
     def __init__(self,
