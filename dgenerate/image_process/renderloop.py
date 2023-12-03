@@ -36,7 +36,6 @@ import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.messages as _messages
 import dgenerate.types as _types
-
 from dgenerate.events import \
     Event, \
     AnimationFinishedEvent, \
@@ -468,10 +467,8 @@ class ImageProcessRenderLoop:
     def run(self):
         """
         Run the render loop, this calls :py:meth:`ImageProcessRenderLoopConfig.check` prior to running.
-
-        :raises dgenerate.pipelinewrapper.ModelNotFoundError:
-        :raises dgenerate.pipelinewrapper.OutOfMemoryError:
-
+        
+        :raises ImageProcessRenderLoopConfigError:
         """
         for _ in self._run():
             continue
@@ -481,6 +478,11 @@ class ImageProcessRenderLoop:
         Run the render loop, and iterate over a stream of event objects produced by the render loop.
 
         Event objects are of the union type :py:class:`.RenderLoopEvent`
+
+        The exceptions mentioned here are those you may encounter upon iterating,
+        they will not occur upon simple acquisition of the event stream iterator.
+
+        :raises ImageProcessRenderLoopConfigError:
 
         :return: :py:class:`.RenderLoopEventStream`
         """
