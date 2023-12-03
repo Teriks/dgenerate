@@ -41,7 +41,8 @@ from .renderloop import \
     AnimationFileFinishedEvent, \
     ImageFileSavedEvent, \
     AnimationFinishedEvent, \
-    AnimationETAEvent
+    AnimationETAEvent, \
+    StartingGenerationStepEvent
 
 from .renderloopconfig import \
     ImageProcessRenderLoopConfigError, \
