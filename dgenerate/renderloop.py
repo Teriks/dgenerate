@@ -116,6 +116,8 @@ class ImageGeneratedEvent(_Event):
     suggested_directory: str
     """
     A suggested directory path for saving this image in.
+    
+    A value of ``'.'`` may be present, this indicates the current working directory.
     """
 
     suggested_filename: str
