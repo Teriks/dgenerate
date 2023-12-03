@@ -35,7 +35,7 @@ for event in rl.events():
         print('Image Saved:', event.path)
         print('Config Saved:', event.config_filename)
     if isinstance(event, dgenerate.AnimationFinishedEvent):
-        print('Finished Animation: ' + str(event.starting_event.total_frames))
+        print('Finished Animation:', event.starting_event.total_frames)
     if isinstance(event, dgenerate.AnimationFileFinishedEvent):
         print('Finished Animation File:', event.path)
         print('Animation Config Saved:', event.config_filename)
@@ -69,6 +69,6 @@ for event in rl.events():
     if isinstance(event, dgenerate.image_process.ImageFileSavedEvent):
         print('Image Saved:', event.path)
     if isinstance(event, dgenerate.image_process.AnimationFinishedEvent):
-        print('Finished Animation: ' + str(event.starting_event.total_frames))
+        print('Finished Animation:', event.starting_event.total_frames)
     if isinstance(event, dgenerate.image_process.AnimationFileFinishedEvent):
         print('Finished Animation File:', event.path)
