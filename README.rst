@@ -1467,7 +1467,13 @@ with ImageMagick for example as so:
 
     magick identify -format "%[Property:DgenerateConfig] generated_file.png
 
-Generated configuration files can be read back into dgenerate using `Batch Processing From STDIN`_.
+Generated configuration can be read back into dgenerate via a pipe or file redirection.
+
+.. code-block:: bash
+
+    magick identify -format "%[Property:DgenerateConfig] generated_file.png | dgenerate
+
+    dgenerate < generated-config.txt
 
 Specifying a seed directly and changing the prompt slightly, or parameters such as image seed strength
 if using a seed image, guidance scale, or inference steps, will allow for generating variations close
