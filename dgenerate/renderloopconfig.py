@@ -555,7 +555,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         def a_namer(attr_name):
             if attribute_namer:
                 return attribute_namer(attr_name)
-            return f'{self.__name__}.{attr_name}'
+            return f'{self.__class__.__name__}.{attr_name}'
 
         try:
             _types.type_check_struct(self, attribute_namer)
@@ -621,9 +621,9 @@ class RenderLoopConfig(_types.SetFromMixin):
         self.animation_format = self.animation_format.strip().lower()
         self.image_format = self.image_format.strip().lower()
 
-        if self.animation_format not in _mediaoutput.supported_animation_writer_formats():
+        if self.animation_format not in _mediaoutput.supported_animation_writer_formats() + ['frames']:
             raise RenderLoopConfigError(
-                f'Unsupported {a_namer("image_format")} value "{self.image_format}". Must be one of '
+                f'Unsupported {a_namer("animation_format")} value "{self.image_format}". Must be one of '
                 f'{_textprocessing.oxford_comma(_mediaoutput.supported_animation_writer_formats(), "or")}')
 
         if self.image_format != "png" and self.output_metadata:

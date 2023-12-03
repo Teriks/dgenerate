@@ -99,21 +99,21 @@ class AnimationReader:
     def __init__(self,
                  width: int,
                  height: int,
-                 anim_fps: int,
-                 anim_frame_duration: float,
+                 fps: float,
+                 frame_duration: float,
                  total_frames: int, **kwargs):
         """
         :param width: width of the animation, X dimension
         :param height: height of the animation, Y dimension
-        :param anim_fps: frames per second
-        :param anim_frame_duration: frame duration in milliseconds
+        :param fps: frames per second
+        :param frame_duration: frame duration in milliseconds
         :param total_frames: total frames in the animation
         :param kwargs: for mixins
         """
         self._width = width
         self._height = height
-        self._anim_fps = anim_fps
-        self._anim_frame_duration = anim_frame_duration
+        self._fps = fps
+        self._frame_duration = frame_duration
         self._total_frames = total_frames
 
     @property
@@ -144,22 +144,22 @@ class AnimationReader:
         return self._height
 
     @property
-    def anim_fps(self) -> int:
+    def fps(self) -> float:
         """
         Frame per second.
 
         :return: float or integer
         """
-        return self._anim_fps
+        return self._fps
 
     @property
-    def anim_frame_duration(self) -> float:
+    def frame_duration(self) -> float:
         """
         Duration of each frame in milliseconds.
 
         :return: duration
         """
-        return self._anim_frame_duration
+        return self._frame_duration
 
     @property
     def total_frames(self) -> int:
@@ -242,8 +242,8 @@ class VideoReader(_imageprocessors.ImageProcessorMixin, AnimationReader):
                                                  align=align)
         self._resize_resolution = (width, height)
 
-        anim_fps = int(self._container.streams.video[0].average_rate)
-        anim_frame_duration = 1000 / anim_fps
+        fps = float(self._container.streams.video[0].average_rate)
+        frame_duration = 1000 / fps
         total_frames = self._container.streams.video[0].frames
 
         self._container.streams.video[0].thread_type = "AUTO"
@@ -256,8 +256,8 @@ class VideoReader(_imageprocessors.ImageProcessorMixin, AnimationReader):
 
         super().__init__(width=width,
                          height=height,
-                         anim_fps=anim_fps,
-                         anim_frame_duration=anim_frame_duration,
+                         fps=fps,
+                         frame_duration=frame_duration,
                          total_frames=total_frames,
                          image_processor=image_processor)
 
@@ -317,13 +317,15 @@ class AnimatedImageReader(_imageprocessors.ImageProcessorMixin, AnimationReader)
 
         total_frames = self._img.n_frames
 
-        anim_frame_duration = self._img.info.get('duration', 0)
+        frame_duration = self._img.info.get('duration', 0)
 
-        if anim_frame_duration == 0:
+        if frame_duration == 0:
             # 10 frames per second for bugged gifs / webp
-            anim_frame_duration = 100
+            frame_duration = 100
 
-        anim_fps = 1000 / anim_frame_duration
+        frame_duration = float(frame_duration)
+
+        fps = 1000 / frame_duration
 
         width, height = _image.resize_image_calc(old_size=self._img.size,
                                                  new_size=resize_resolution,
@@ -333,8 +335,8 @@ class AnimatedImageReader(_imageprocessors.ImageProcessorMixin, AnimationReader)
 
         super().__init__(width=width,
                          height=height,
-                         anim_fps=anim_fps,
-                         anim_frame_duration=anim_frame_duration,
+                         fps=fps,
+                         frame_duration=frame_duration,
                          total_frames=total_frames,
                          image_processor=image_processor)
 
@@ -393,8 +395,8 @@ class MockImageAnimationReader(_imageprocessors.ImageProcessorMixin, AnimationRe
         self._align = align
 
         total_frames = image_repetitions
-        anim_fps = 30
-        anim_frame_duration = 1000 / anim_fps
+        fps = 30.0
+        frame_duration = 1000 / fps
 
         width, height = _image.resize_image_calc(old_size=self._img.size,
                                                  new_size=resize_resolution,
@@ -404,8 +406,8 @@ class MockImageAnimationReader(_imageprocessors.ImageProcessorMixin, AnimationRe
 
         super().__init__(width=width,
                          height=height,
-                         anim_fps=anim_fps,
-                         anim_frame_duration=anim_frame_duration,
+                         fps=fps,
+                         frame_duration=frame_duration,
                          total_frames=total_frames,
                          image_processor=image_processor)
 
@@ -1422,18 +1424,18 @@ class MultiMediaReader:
         return self._total_frames
 
     @property
-    def anim_fps(self) -> _types.OptionalInteger:
+    def fps(self) -> _types.OptionalFloat:
         """
         Frames per second, this will be None if there is only a single frame
         """
-        return self._anim_fps
+        return self._fps
 
     @property
-    def anim_frame_duration(self) -> _types.OptionalFloat:
+    def frame_duration(self) -> _types.OptionalFloat:
         """
         Duration of a frame in milliseconds, this will be None if there is only a single frame
         """
-        return self._anim_frame_duration
+        return self._frame_duration
 
     def __init__(self,
                  specs: list[MediaReaderSpec],
@@ -1460,8 +1462,8 @@ class MultiMediaReader:
 
         self._frame_start = frame_start
         self._frame_end = frame_end
-        self._anim_frame_duration = None
-        self._anim_fps = None
+        self._frame_duration = None
+        self._fps = None
 
         for spec in specs:
             mimetype, file_stream = path_opener(spec.path)
@@ -1486,8 +1488,8 @@ class MultiMediaReader:
 
             self._total_frames = frame_slice_count(self.total_frames, frame_start, frame_end)
 
-            self._anim_fps = non_images[0].anim_fps
-            self._anim_frame_duration = non_images[0].anim_frame_duration
+            self._fps = non_images[0].fps
+            self._frame_duration = non_images[0].frame_duration
 
             for r in self._readers:
                 if isinstance(r, MockImageAnimationReader):
@@ -1625,8 +1627,8 @@ class MediaReader(AnimationReader):
         super().__init__(
             width=self._reader.width(0),
             height=self._reader.height(0),
-            anim_fps=self._reader.anim_fps,
-            anim_frame_duration=self._reader.anim_frame_duration,
+            fps=self._reader.fps,
+            frame_duration=self._reader.frame_duration,
             total_frames=self._reader.total_frames)
 
     def __next__(self) -> PIL.Image.Image:
@@ -1657,12 +1659,12 @@ class ImageSeed:
     Total frame count in the case that :py:attr:`.ImageSeed.is_animation_frame` is True
     """
 
-    anim_fps: typing.Union[int, float, None] = None
+    fps: _types.OptionalFloat = None
     """
     Frames per second in the case that :py:attr:`.ImageSeed.is_animation_frame` is True
     """
 
-    anim_frame_duration: _types.OptionalFloat = None
+    frame_duration: _types.OptionalFloat = None
     """
     Duration of a frame in milliseconds in the case that :py:attr:`.ImageSeed.is_animation_frame` is True
     """
@@ -1947,8 +1949,8 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
 
             image_seed.is_animation_frame = is_animation
             if is_animation:
-                image_seed.anim_fps = reader.anim_fps
-                image_seed.anim_frame_duration = reader.anim_frame_duration
+                image_seed.fps = reader.fps
+                image_seed.frame_duration = reader.frame_duration
                 image_seed.frame_index = reader.frame_index
                 image_seed.total_frames = reader.total_frames if is_animation else None
             yield image_seed
@@ -2082,8 +2084,8 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
 
             image_seed.is_animation_frame = is_animation
             if is_animation:
-                image_seed.anim_fps = reader.anim_fps
-                image_seed.anim_frame_duration = reader.anim_frame_duration
+                image_seed.fps = reader.fps
+                image_seed.frame_duration = reader.frame_duration
                 image_seed.frame_index = reader.frame_index
                 image_seed.total_frames = reader.total_frames if is_animation else None
             yield image_seed
@@ -2092,12 +2094,12 @@ def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
 class ImageSeedInfo:
     """Information acquired about an ``--image-seeds`` uri"""
 
-    anim_fps: _types.OptionalInteger
+    fps: _types.OptionalFloat
     """
     Animation frames per second in the case that :py:attr:`.ImageSeedInfo.is_animation` is True
     """
 
-    anim_frame_duration: _types.OptionalFloat
+    frame_duration: _types.OptionalFloat
     """
     Animation frame duration in milliseconds in the case that :py:attr:`.ImageSeedInfo.is_animation` is True
     """
@@ -2115,10 +2117,10 @@ class ImageSeedInfo:
     def __init__(self,
                  is_animation: bool,
                  total_frames: _types.OptionalInteger,
-                 anim_fps: _types.OptionalInteger,
-                 anim_frame_duration: _types.OptionalFloat):
-        self.anim_fps = anim_fps
-        self.anim_frame_duration = anim_frame_duration
+                 fps: _types.OptionalFloat,
+                 frame_duration: _types.OptionalFloat):
+        self.fps = fps
+        self.frame_duration = frame_duration
         self.is_animation = is_animation
         self.total_frames = total_frames
 
@@ -2148,7 +2150,7 @@ def get_image_seed_info(uri: typing.Union[_types.Uri, ImageSeedParseResult],
     :return: :py:class:`.ImageSeedInfo`
     """
     with next(iterate_image_seed(uri, frame_start, frame_end)) as seed:
-        return ImageSeedInfo(seed.is_animation_frame, seed.total_frames, seed.anim_fps, seed.anim_frame_duration)
+        return ImageSeedInfo(seed.is_animation_frame, seed.total_frames, seed.fps, seed.frame_duration)
 
 
 def get_control_image_info(uri: typing.Union[_types.Path, ImageSeedParseResult],
@@ -2173,4 +2175,4 @@ def get_control_image_info(uri: typing.Union[_types.Path, ImageSeedParseResult],
     :return: :py:class:`.ImageSeedInfo`
     """
     with next(iterate_control_image(uri, frame_start, frame_end)) as seed:
-        return ImageSeedInfo(seed.is_animation_frame, seed.total_frames, seed.anim_fps, seed.anim_frame_duration)
+        return ImageSeedInfo(seed.is_animation_frame, seed.total_frames, seed.fps, seed.frame_duration)

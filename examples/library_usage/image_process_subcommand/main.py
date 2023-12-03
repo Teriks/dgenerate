@@ -3,9 +3,9 @@ import dgenerate.image_process
 # the functionality of --sub-command image-process and the \image_process config
 # directive is reusable in a similar fashion to the dgenerate render loop
 
-config = dgenerate.image_process.ImageProcessConfig()
+config = dgenerate.image_process.ImageProcessRenderLoopConfig()
 
-config.files = ['../../media/earth.jpg']
+config.input = ['../../media/earth.jpg']
 config.output = ['earth-upscaled.png']
 
 # any dgenerate implemented image processor can be specified by its URI here
@@ -28,6 +28,11 @@ config.processors = ['foo']
 
 config.output = ['foo-processed.png']
 
-# run again
+render_loop.disable_writes = True
 
-render_loop.run()
+# run again, this time observe user handleable events
+
+for event in render_loop.events():
+    if isinstance(event, dgenerate.image_process.ImageGeneratedEvent):
+        print('Filename:', event.suggested_filename)
+        event.image.save(event.suggested_filename)

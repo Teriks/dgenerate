@@ -509,7 +509,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         This does not cause the config to exit.
         """
-        _messages.log(self.generate_template_variables_help(args)+'\n')
+        _messages.log(self.generate_template_variables_help(args) + '\n')
         return 0
 
 

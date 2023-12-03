@@ -20,13 +20,13 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import ast
 import collections.abc
+import importlib.machinery
 import inspect
 import itertools
 import os
 import sys
 import types
 import typing
-import importlib.machinery
 
 import dgenerate.messages as _messages
 import dgenerate.textprocessing as _textprocessing
