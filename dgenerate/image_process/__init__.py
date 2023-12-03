@@ -40,7 +40,8 @@ from .renderloop import \
     StartingAnimationFileEvent, \
     AnimationFileFinishedEvent, \
     ImageFileSavedEvent, \
-    AnimationFinishedEvent
+    AnimationFinishedEvent, \
+    AnimationETAEvent
 
 from .renderloopconfig import \
     ImageProcessRenderLoopConfigError, \

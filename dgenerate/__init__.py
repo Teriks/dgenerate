@@ -46,6 +46,8 @@ try:
         StartingAnimationEvent, \
         AnimationFinishedEvent, \
         AnimationFileFinishedEvent, \
+        AnimationETAEvent, \
+        StartingGenerationStepEvent, \
         gen_seeds
 
     from dgenerate.pipelinewrapper import \
