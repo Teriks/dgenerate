@@ -141,7 +141,7 @@ def invoke_dgenerate_events(
     :raises EnvironmentError:
 
 
-    :return: event stream (generator)
+    :return: :py:class:`.InvokeDgenerateEventStream`
     """
     if render_loop is None:
         render_loop = _renderloop.RenderLoop()
