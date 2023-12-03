@@ -21,7 +21,9 @@
 
 __version__ = '3.0.0'
 
+import collections.abc
 import sys
+import typing
 import warnings
 
 warnings.filterwarnings('ignore', module='controlnet_aux')
@@ -100,10 +102,16 @@ except KeyboardInterrupt:
     sys.exit(1)
 
 
-def main():
+def main(args: typing.Optional[collections.abc.Sequence[str]] = None):
     """
     Entry point for the dgenerate command line tool.
+
+    :param args: program arguments, if ``None`` is provided they will be taken from ``sys.argv``
     """
+
+    if args is None:
+        args = sys.argv[1:]
+
     try:
         render_loop = RenderLoop()
         render_loop.config = DgenerateArguments()
@@ -115,7 +123,7 @@ def main():
             try:
                 ConfigRunner(render_loop=render_loop,
                              version=__version__,
-                             injected_args=sys.argv[1:]).run_file(sys.stdin)
+                             injected_args=args).run_file(sys.stdin)
             except ModuleFileNotFoundError as e:
                 # missing plugin file parsed by ConfigRunner out of injected args
                 dgenerate.messages.log(f'dgenerate: error: {str(e).strip()}',
@@ -126,7 +134,7 @@ def main():
                                        level=dgenerate.messages.ERROR)
                 sys.exit(1)
         else:
-            sys.exit(invoke_dgenerate(sys.argv[1:], render_loop=render_loop))
+            sys.exit(invoke_dgenerate(args, render_loop=render_loop))
     except KeyboardInterrupt:
         print('Aborting due to keyboard interrupt!', file=sys.stderr)
         sys.exit(1)
