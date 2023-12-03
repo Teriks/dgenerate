@@ -287,7 +287,7 @@ class ImageFileSavedEvent(_event.Event):
     The :py:class:`.ImageGeneratedEvent` for the image that was saved.
     """
 
-    filename: str
+    path: str
     """
     Path to the saved image.
     """
@@ -297,10 +297,14 @@ class ImageFileSavedEvent(_event.Event):
     Path to a dgenerate config file if ``output_configs`` is enabled.
     """
 
-    def __init__(self, origin: 'RenderLoop', generated_event, filename, config_filename=None):
+    def __init__(self,
+                 origin: 'RenderLoop',
+                 generated_event: ImageGeneratedEvent,
+                 path: str,
+                 config_filename: typing.Optional[str] = None):
         super().__init__(origin)
         self.generated_event = generated_event
-        self.filename = filename
+        self.path = path
         self.config_filename = config_filename
 
 
@@ -641,7 +645,7 @@ class RenderLoop:
 
             yield ImageFileSavedEvent(origin=self,
                                       generated_event=generated_image_event,
-                                      filename=image_filename,
+                                      path=image_filename,
                                       config_filename=config_filename)
 
             _messages.log(
@@ -651,7 +655,7 @@ class RenderLoop:
         else:
             yield ImageFileSavedEvent(origin=self,
                                       generated_event=generated_image_event,
-                                      filename=image_filename)
+                                      path=image_filename)
 
             _messages.log(f'Wrote Image File: "{image_filename}"',
                           underline=is_last_image)
