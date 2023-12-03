@@ -41,7 +41,7 @@ class Event:
 
 class AnimationETAEvent(Event):
     """
-    Common event stream object produced by the ``events()`` event stream of render loop.
+    Common event stream object produced by the ``events()`` event stream of a render loop.
 
     Occurs when there is an update about the estimated finish time of an animation being generated.
     """
@@ -73,7 +73,7 @@ class AnimationETAEvent(Event):
 
 class StartingGenerationStepEvent(Event):
     """
-    Common event stream object produced by the ``events()`` event stream of render loop.
+    Common event stream object produced by the ``events()`` event stream of a render loop.
 
     Occurs when a generation step is starting, a generation step may produce multiple images and or an animation.
     """
@@ -97,7 +97,7 @@ class StartingGenerationStepEvent(Event):
 
 class StartingAnimationEvent(Event):
     """
-    Common event stream object produced by the ``events()`` event stream of render loop.
+    Common event stream object produced by the ``events()`` event stream of a render loop.
 
     Occurs when a sequence of images that belong to an animation are about to start being generated.
 
@@ -132,7 +132,7 @@ class StartingAnimationEvent(Event):
 
 class StartingAnimationFileEvent(Event):
     """
-    Common event stream object produced by the ``events()`` event stream of render loop.
+    Common event stream object produced by the ``events()`` event stream of a render loop.
 
     Occurs when a sequence of images that belong to an animation are about to start being written to a file.
     """
@@ -172,7 +172,7 @@ class StartingAnimationFileEvent(Event):
 
 class AnimationFinishedEvent(Event):
     """
-    Common event stream object produced by the ``events()`` event stream of render loop.
+    Common event stream object produced by the ``events()`` event stream of a render loop.
 
     Occurs when a sequence of images that belong to an animation are done generating.
 
