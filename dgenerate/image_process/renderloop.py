@@ -467,7 +467,7 @@ class ImageProcessRenderLoop:
     def run(self):
         """
         Run the render loop, this calls :py:meth:`ImageProcessRenderLoopConfig.check` prior to running.
-        
+
         :raises ImageProcessRenderLoopConfigError:
         """
         for _ in self._run():
