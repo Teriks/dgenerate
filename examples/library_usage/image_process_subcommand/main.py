@@ -34,6 +34,8 @@ render_loop.disable_writes = True
 # run again, this time observe user handleable events
 
 for event in render_loop.events():
+    # the image-process render loop has its own set of event objects
+
     if isinstance(event, dgenerate.image_process.ImageGeneratedEvent):
         print('Filename:', event.suggested_filename)
         event.image.save(event.suggested_filename)
