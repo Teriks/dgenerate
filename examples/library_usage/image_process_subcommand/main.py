@@ -28,6 +28,7 @@ config.processors = ['foo']
 
 config.output = ['foo-processed.png']
 
+# do not write anything to disk for us
 render_loop.disable_writes = True
 
 # run again, this time observe user handleable events
@@ -36,3 +37,10 @@ for event in render_loop.events():
     if isinstance(event, dgenerate.image_process.ImageGeneratedEvent):
         print('Filename:', event.suggested_filename)
         event.image.save(event.suggested_filename)
+
+        # if you wish to work with this image after the completion
+        # of your event stream handler you should copy it out with arg.image.copy()
+        # management of PIL.Image lifetime is very aggressive and the
+        # image object given in this event will be disposed of
+        # when handling of the event is finished
+
