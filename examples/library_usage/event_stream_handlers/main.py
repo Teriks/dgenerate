@@ -14,7 +14,7 @@ rl.config.inference_steps = [30]
 rl.config.guidance_scales = [8]
 rl.config.image_seed_strengths = [0.3]
 rl.config.prompts = [dgenerate.Prompt.parse('cat')]
-rl.config.image_seeds = ['examples/media/kitten.gif', 'examples/media/kitten.gif']
+rl.config.image_seeds = ['../../media/kitten.gif', '../../media/kitten.gif']
 rl.config.animation_format = 'GIF'
 rl.config.output_configs = True
 
@@ -46,7 +46,7 @@ for event in rl.events():
 
 rl = dgenerate.image_process.ImageProcessRenderLoop()
 
-rl.config.input = ['examples/media/kitten.gif']
+rl.config.input = ['../../media/kitten.gif']
 rl.config.output = ['kitten/']
 rl.config.align = 1
 rl.config.no_aspect = True
