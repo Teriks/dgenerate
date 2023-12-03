@@ -85,6 +85,10 @@ try:
         UnknownMimetypeError, \
         FrameStartOutOfBounds
 
+    from dgenerate.imageprocessors import \
+        ImageProcessorArgumentError, \
+        ImageProcessorNotFoundError
+    
     from dgenerate.plugin import \
         ModuleFileNotFoundError, \
         PluginNotFoundError, \
