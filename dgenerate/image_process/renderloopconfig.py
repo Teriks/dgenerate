@@ -186,3 +186,6 @@ class ImageProcessRenderLoopConfig(_types.SetFromMixin):
                     if output_ext not in _mediaoutput.supported_static_image_formats():
                         raise ImageProcessRenderLoopConfigError(
                             f'Image file input "{file}" specifies unsupported image output format "{output_ext}".')
+
+
+__all__ = _types.module_all()
