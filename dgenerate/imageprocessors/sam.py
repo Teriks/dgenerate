@@ -179,3 +179,6 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
         if not self._pre_resize:
             return self._process(image, None)
         return image
+
+
+__all__ = _types.module_all()

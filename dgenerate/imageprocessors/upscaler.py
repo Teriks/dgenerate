@@ -99,3 +99,6 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
         if not self._pre_resize:
             return chainner.upscale(self._model, image, self._tile, self._overlap, self.device)
         return image
+
+
+__all__ = _types.module_all()
