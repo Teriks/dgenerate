@@ -1147,6 +1147,14 @@ class RenderLoop:
                     fps = image_seed_frame.fps
                     total_frames = image_seed_frame.total_frames
 
+                    if image_seed_frame.frame_index == 0:
+                        starting_animation_event = StartingAnimationEvent(
+                            origin=self,
+                            total_frames=total_frames,
+                            fps=fps,
+                            frame_duration=frame_duration)
+                        yield starting_animation_event
+
                     with image_seed_frame:
 
                         yield from self._animation_frame_pre_generation(image_seed_frame)
@@ -1167,13 +1175,6 @@ class RenderLoop:
 
                             if image_seed_frame.frame_index == 0:
                                 # Preform on first frame write
-
-                                starting_animation_event = StartingAnimationEvent(
-                                    origin=self,
-                                    total_frames=total_frames,
-                                    fps=fps,
-                                    frame_duration=frame_duration)
-                                yield starting_animation_event
 
                                 if not not_writing_animation_file:
 
