@@ -30,7 +30,6 @@ import typing
 import PIL.Image
 import PIL.PngImagePlugin
 
-import dgenerate.event as _event
 import dgenerate.filelock as _filelock
 import dgenerate.imageprocessors as _imageprocessors
 import dgenerate.mediainput as _mediainput
@@ -39,6 +38,13 @@ import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+from dgenerate.events import \
+    Event, \
+    AnimationFinishedEvent, \
+    StartingGenerationStepEvent, \
+    AnimationETAEvent, \
+    StartingAnimationEvent, \
+    StartingAnimationFileEvent
 # noinspection PyUnresolvedReferences
 from dgenerate.renderloopconfig import \
     RenderLoopConfig, \
@@ -47,149 +53,7 @@ from dgenerate.renderloopconfig import \
     gen_seeds
 
 
-class AnimationETAEvent(_event.Event):
-    frame_index: int
-    """
-    Frame index at which the ETA was calculated.
-    """
-
-    total_frames: int
-    """
-    Total frames needed for the animation to complete.
-    """
-
-    eta: datetime.timedelta
-    """
-    Current estimated time to complete the animation.
-    """
-
-    def __init__(self,
-                 origin: 'RenderLoop',
-                 frame_index: int,
-                 total_frames: int,
-                 eta: datetime.timedelta):
-        super().__init__(origin)
-        self.frame_index = frame_index
-        self.total_frames = total_frames
-        self.eta = eta
-
-
-class StartingGenerationStepEvent(_event.Event):
-    generation_step: int
-    """
-    The generation step number.
-    """
-
-    total_steps: int
-    """
-    The total number of steps that are needed to complete the render loop.
-    """
-
-    def __init__(self,
-                 origin: 'RenderLoop',
-                 generation_step: int, total_steps: int):
-        super().__init__(origin)
-        self.generation_step = generation_step
-        self.total_steps = total_steps
-
-
-class StartingAnimationEvent(_event.Event):
-    """
-    Generated in the event stream of :py:meth:`.RenderLoop.events`
-
-    Occurs when a sequence of images that belong to an animation are about to start being generated.
-
-    This occurs whether an animation is going to be written to disk or not.
-    """
-
-    total_frames: int
-    """
-    Number of frames written.
-    """
-
-    fps: float
-    """
-    FPS of the generated file.
-    """
-
-    frame_duration: float
-    """
-    Frame duration of the generated file, (the time a frame is visible in milliseconds)
-    """
-
-    def __init__(self,
-                 origin: 'RenderLoop',
-                 total_frames: int,
-                 fps: float,
-                 frame_duration: float):
-        super().__init__(origin)
-        self.total_frames = total_frames
-        self.fps = fps
-        self.frame_duration = frame_duration
-
-
-class StartingAnimationFileEvent(_event.Event):
-    """
-    Generated in the event stream of :py:meth:`.RenderLoop.events`
-
-    Occurs when a sequence of images that belong to an animation are about to start being written to a file.
-    """
-
-    path: str
-    """
-    File path where the animation will reside.
-    """
-
-    total_frames: int
-    """
-    Number of frames written.
-    """
-
-    fps: float
-    """
-    FPS of the generated file.
-    """
-
-    frame_duration: float
-    """
-    Frame duration of the generated file, (the time a frame is visible in milliseconds)
-    """
-
-    def __init__(self,
-                 origin: 'RenderLoop',
-                 path: str,
-                 total_frames: int,
-                 fps: float,
-                 frame_duration: float):
-        super().__init__(origin)
-        self.path = path
-        self.total_frames = total_frames
-        self.fps = fps
-        self.frame_duration = frame_duration
-
-
-class AnimationFinishedEvent(_event.Event):
-    """
-    Generated in the event stream of :py:meth:`.RenderLoop.events`
-
-    Occurs when a sequence of images that belong to an animation are done generating.
-
-    This occurs whether an animation was written to disk or not.
-    """
-
-    starting_event: StartingAnimationEvent
-    """
-    Animation :py:class:`.StartingAnimationEvent` related to this file finished event.
-    """
-
-    def __init__(self,
-                 origin: 'RenderLoop',
-                 starting_event: StartingAnimationEvent):
-        super().__init__(origin)
-        self.starting_event = starting_event
-
-
-class AnimationFileFinishedEvent(_event.Event):
+class AnimationFileFinishedEvent(Event):
     """
     Generated in the event stream of :py:meth:`.RenderLoop.events`
 
@@ -222,7 +86,7 @@ class AnimationFileFinishedEvent(_event.Event):
         self.starting_event = starting_event
 
 
-class ImageGeneratedEvent(_event.Event):
+class ImageGeneratedEvent(Event):
     """
     Generated in the event stream of :py:meth:`.RenderLoop.events`
 
@@ -323,7 +187,7 @@ class ImageGeneratedEvent(_event.Event):
         self.config_string = config_string
 
 
-class ImageFileSavedEvent(_event.Event):
+class ImageFileSavedEvent(Event):
     """
     Occurs when an image file is written to disk.
     """

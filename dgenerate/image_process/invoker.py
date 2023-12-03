@@ -22,7 +22,7 @@
 import collections.abc
 import typing
 
-import dgenerate.event as _event
+import dgenerate.events as _event
 import dgenerate.image_process.arguments as _arguments
 import dgenerate.image_process.renderloop as _renderloop
 import dgenerate.imageprocessors as _imageprocessors

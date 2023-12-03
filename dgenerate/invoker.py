@@ -22,7 +22,7 @@ import collections.abc
 import typing
 
 import dgenerate.arguments as _arguments
-import dgenerate.event as _event
+import dgenerate.events as _event
 import dgenerate.imageprocessors as _imageprocessors
 import dgenerate.mediainput as _mediainput
 import dgenerate.messages as _messages
