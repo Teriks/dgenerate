@@ -59,7 +59,8 @@ try:
         DataType, \
         DiffusionArguments, \
         OutOfMemoryError, \
-        ModelNotFoundError
+        ModelNotFoundError, \
+        PipelineType
 
     from dgenerate.prompt import Prompt
 
@@ -78,11 +79,6 @@ try:
         DgenerateUsageError, \
         DgenerateArguments, \
         DgenerateHelpException
-
-    from dgenerate.pipelinewrapper import \
-        PipelineType, \
-        ModelType, \
-        DiffusionArguments
 
     from dgenerate.mediainput import \
         ImageSeedError, \
