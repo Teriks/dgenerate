@@ -66,6 +66,25 @@ class AnimationETAEvent(_event.Event):
         self.eta = eta
 
 
+class StartingGenerationStepEvent(_event.Event):
+    generation_step: int
+    """
+    The generation step number.
+    """
+
+    total_steps: int
+    """
+    The total number of steps that are needed to complete the render loop.
+    """
+
+    def __init__(self,
+                 origin: 'ImageProcessRenderLoop',
+                 generation_step: int, total_steps: int):
+        super().__init__(origin)
+        self.generation_step = generation_step
+        self.total_steps = total_steps
+
+
 class StartingAnimationEvent(_event.Event):
     """
     Generated in the event stream of :py:meth:`.ImageProcessRenderLoop.events`
@@ -512,7 +531,7 @@ class ImageProcessRenderLoop:
                 _messages.log(fr'{self.message_header}: Wrote File "{out_anim_name}"',
                               underline=True)
 
-    def _process_file(self, file, out_filename, generation_step):
+    def _process_file(self, file, out_filename, generation_step, total_generation_steps):
         if self.config.processors:
             processor = self.image_processor_loader.load(self.config.processors, device=self.config.device)
         else:
@@ -530,6 +549,10 @@ class ImageProcessRenderLoop:
             self._last_frame_time = 0
             self._frame_time_sum = 0
 
+            yield StartingGenerationStepEvent(origin=self,
+                                              generation_step=generation_step,
+                                              total_steps=total_generation_steps)
+
             yield from self._process_reader(file, reader, out_filename, generation_step)
 
     def _run(self) -> RenderLoopEventStream:
@@ -544,11 +567,13 @@ class ImageProcessRenderLoop:
         self._written_images = tempfile.TemporaryFile('w+t')
         self._written_animations = tempfile.TemporaryFile('w+t')
 
+        total_generation_steps = len(self.config.input)
+
         if self.config.output and len(self.config.output) == 1 and self.config.output[0][-1] in '/\\':
             for idx, file in enumerate(self.config.input):
                 base, ext = os.path.splitext(os.path.basename(file))
                 output_file = os.path.join(self.config.output[0], base + f'_processed_{idx + 1}{ext}')
-                yield from self._process_file(file, output_file, idx)
+                yield from self._process_file(file, output_file, idx, total_generation_steps)
         else:
             for idx, file in enumerate(self.config.input):
                 output_file = self.config.output[idx] if self.config.output else file
@@ -559,7 +584,7 @@ class ImageProcessRenderLoop:
                 elif output_file[-1] in '/\\':
                     base, ext = os.path.splitext(os.path.basename(file))
                     output_file = os.path.join(output_file, base + f'_processed_{idx + 1}{ext}')
-                yield from self._process_file(file, output_file, idx)
+                yield from self._process_file(file, output_file, idx, total_generation_steps)
 
     def run(self):
         """
