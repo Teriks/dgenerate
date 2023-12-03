@@ -359,7 +359,9 @@ RenderLoopEvent = typing.Union[ImageGeneratedEvent,
                                StartingAnimationFileEvent,
                                AnimationFileFinishedEvent,
                                ImageFileSavedEvent,
-                               AnimationFinishedEvent]
+                               AnimationFinishedEvent,
+                               StartingGenerationStepEvent,
+                               AnimationETAEvent]
 """
 Possible events from the event stream created by :py:meth:`.RenderLoop.events`
 """
