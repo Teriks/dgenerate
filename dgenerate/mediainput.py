@@ -768,10 +768,10 @@ def _parse_image_seed_uri_legacy(uri: str, align: int = 8) -> ImageSeedParseResu
                 raise ImageSeedFileNotFoundError(
                     f'Inpaint mask file "{part}" does not exist.')
 
-            for idx, d in enumerate(dimensions):
+            for d_idx, d in enumerate(dimensions):
                 if d % align != 0:
                     raise ImageSeedArgumentError(
-                        f'Image seed resize {["width", "height"][idx]} dimension {d} is not divisible by {align}.')
+                        f'Image seed resize {["width", "height"][d_idx]} dimension {d} is not divisible by {align}.')
 
             if result.resize_resolution is not None:
                 raise ImageSeedArgumentError(
@@ -888,10 +888,10 @@ def parse_image_seed_uri(uri: str, align: typing.Optional[int] = 8) -> ImageSeed
         except ValueError as e:
             raise ImageSeedArgumentError(
                 f'Error parsing image seed "resize" argument: {e}.')
-        for idx, d in enumerate(dimensions):
+        for d_idx, d in enumerate(dimensions):
             if d % align != 0:
                 raise ImageSeedArgumentError(
-                    f'Image seed resize {["width", "height"][idx]} dimension {d} is not divisible by {align}.')
+                    f'Image seed resize {["width", "height"][d_idx]} dimension {d} is not divisible by {align}.')
 
         result.resize_resolution = dimensions
 
