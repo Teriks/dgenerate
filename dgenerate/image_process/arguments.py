@@ -226,3 +226,6 @@ def parse_args(args: typing.Optional[collections.abc.Sequence[str]] = None,
         except _renderloopconfig.ImageProcessRenderLoopConfigError as e:
             raise ImageProcessUsageError(e)
     return parsed
+
+
+__all__ = _types.module_all()
