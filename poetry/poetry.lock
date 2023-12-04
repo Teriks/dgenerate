@@ -506,18 +506,18 @@ tests = ["pytest", "pytest-cov", "pytest-xdist"]
 
 [[package]]
 name = "diffusers"
-version = "0.24.0"
+version = "0.23.1"
 description = "State-of-the-art diffusion in PyTorch and JAX."
 optional = false
 python-versions = ">=3.8.0"
 files = [
-    {file = "diffusers-0.24.0-py3-none-any.whl", hash = "sha256:d4507c7cc273594319b052c342ef0dc268fdf9b59a5da3518c900a03c58f9188"},
-    {file = "diffusers-0.24.0.tar.gz", hash = "sha256:05dec2b46797b0a8037f621a16cdd6c11c8ccaf1bc1714e544c07f80341c9aa5"},
+    {file = "diffusers-0.23.1-py3-none-any.whl", hash = "sha256:92c121c98bce790b4e6acd9add3d2ef418e5d666ab8892edaa7a07fca15aa8e1"},
+    {file = "diffusers-0.23.1.tar.gz", hash = "sha256:a2ca56bce53c7f8fc29e7e3aae0af1dbf5d776d9afc7c937fb01c95c1789da03"},
 ]
 
 [package.dependencies]
 filelock = "*"
-huggingface-hub = ">=0.19.4"
+huggingface-hub = ">=0.13.2"
 importlib-metadata = "*"
 numpy = "*"
 Pillow = "*"
@@ -526,10 +526,10 @@ requests = "*"
 safetensors = ">=0.3.1"
 
 [package.extras]
-dev = ["Jinja2", "accelerate (>=0.11.0)", "compel (==0.1.8)", "datasets", "flax (>=0.4.1)", "hf-doc-builder (>=0.3.0)", "invisible-watermark (>=0.2.0)", "isort (>=5.5.4)", "jax (>=0.4.1)", "jaxlib (>=0.4.1)", "k-diffusion (>=0.0.12)", "librosa", "omegaconf", "parameterized", "protobuf (>=3.20.3,<4)", "pytest", "pytest-timeout", "pytest-xdist", "requests-mock (==1.10.0)", "ruff (>=0.1.5,<=0.2)", "safetensors (>=0.3.1)", "scipy", "sentencepiece (>=0.1.91,!=0.1.92)", "tensorboard", "torch (>=1.4)", "torchvision", "transformers (>=4.25.1)", "urllib3 (<=2.0.0)"]
+dev = ["Jinja2", "accelerate (>=0.11.0)", "black (>=23.1,<24.0)", "compel (==0.1.8)", "datasets", "flax (>=0.4.1)", "hf-doc-builder (>=0.3.0)", "invisible-watermark (>=0.2.0)", "isort (>=5.5.4)", "jax (>=0.4.1)", "jaxlib (>=0.4.1)", "k-diffusion (>=0.0.12)", "librosa", "omegaconf", "parameterized", "protobuf (>=3.20.3,<4)", "pytest", "pytest-timeout", "pytest-xdist", "requests-mock (==1.10.0)", "ruff (==0.0.280)", "safetensors (>=0.3.1)", "scipy", "sentencepiece (>=0.1.91,!=0.1.92)", "tensorboard", "torch (>=1.4)", "torchvision", "transformers (>=4.25.1)", "urllib3 (<=2.0.0)"]
 docs = ["hf-doc-builder (>=0.3.0)"]
 flax = ["flax (>=0.4.1)", "jax (>=0.4.1)", "jaxlib (>=0.4.1)"]
-quality = ["hf-doc-builder (>=0.3.0)", "isort (>=5.5.4)", "ruff (>=0.1.5,<=0.2)", "urllib3 (<=2.0.0)"]
+quality = ["black (>=23.1,<24.0)", "hf-doc-builder (>=0.3.0)", "isort (>=5.5.4)", "ruff (==0.0.280)", "urllib3 (<=2.0.0)"]
 test = ["Jinja2", "compel (==0.1.8)", "datasets", "invisible-watermark (>=0.2.0)", "k-diffusion (>=0.0.12)", "librosa", "omegaconf", "parameterized", "pytest", "pytest-timeout", "pytest-xdist", "requests-mock (==1.10.0)", "safetensors (>=0.3.1)", "scipy", "sentencepiece (>=0.1.91,!=0.1.92)", "torchvision", "transformers (>=4.25.1)"]
 torch = ["accelerate (>=0.11.0)", "torch (>=1.4)"]
 training = ["Jinja2", "accelerate (>=0.11.0)", "datasets", "protobuf (>=3.20.3,<4)", "tensorboard"]
@@ -3191,4 +3191,4 @@ flax = ["flax", "jax"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<=3.11.6"
-content-hash = "40dfd8b64b957a0b4aaa1c8d0caed9b3b43a03aa4cc5c80a2e8e7de4872c85f6"
+content-hash = "090ced88dca8a4873eea87fb54e4a6d2b9d355eb09bd4fc14e0418826ff30513"
