@@ -78,18 +78,18 @@ def invoke_dgenerate(args: collections.abc.Sequence[str],
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
     :param help_exits: ``--help`` raises :py:exc:`dgenerate.arguments.DgenerateHelpException` ?
 
-    :raises dgenerate.arguments.DgenerateUsageError:
-    :raises dgenerate.arguments.DgenerateHelpException:
-    :raises dgenerate.mediainput.ImageSeedError:
-    :raises dgenerate.mediainput.UnknownMimetypeError:
-    :raises dgenerate.mediainput.FrameStartOutOfBounds:
-    :raises dgenerate.imageprocessors.ImageProcessorArgumentError:
-    :raises dgenerate.imageprocessors.ImageProcessorNotFoundError:
-    :raises dgenerate.pipelinewrapper.InvalidModelUriError:
-    :raises dgenerate.pipelinewrapper.InvalidSchedulerNameError:
-    :raises dgenerate.pipelinewrapper.OutOfMemoryError:
-    :raises dgenerate.pipelinewrapper.ModelNotFoundError:
-    :raises dgenerate.plugin.ModuleFileNotFoundError:
+    :raises dgenerate.DgenerateUsageError:
+    :raises dgenerate.DgenerateHelpException:
+    :raises dgenerate.ImageSeedError:
+    :raises dgenerate.UnknownMimetypeError:
+    :raises dgenerate.FrameStartOutOfBounds:
+    :raises dgenerate.ImageProcessorArgumentError:
+    :raises dgenerate.ImageProcessorNotFoundError:
+    :raises dgenerate.InvalidModelUriError:
+    :raises dgenerate.InvalidSchedulerNameError:
+    :raises dgenerate.OutOfMemoryError:
+    :raises dgenerate.ModelNotFoundError:
+    :raises dgenerate.ModuleFileNotFoundError:
     :raises NotImplementedError:
     :raises EnvironmentError:
 
@@ -125,18 +125,18 @@ def invoke_dgenerate_events(
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
     :param help_exits: ``--help`` raises :py:exc:`dgenerate.arguments.DgenerateHelpException` ?
 
-    :raises dgenerate.arguments.DgenerateUsageError:
-    :raises dgenerate.arguments.DgenerateHelpException:
-    :raises dgenerate.mediainput.ImageSeedError:
-    :raises dgenerate.mediainput.UnknownMimetypeError:
-    :raises dgenerate.mediainput.FrameStartOutOfBounds:
-    :raises dgenerate.imageprocessors.ImageProcessorArgumentError:
-    :raises dgenerate.imageprocessors.ImageProcessorNotFoundError:
-    :raises dgenerate.pipelinewrapper.InvalidModelUriError:
-    :raises dgenerate.pipelinewrapper.InvalidSchedulerNameError:
-    :raises dgenerate.pipelinewrapper.OutOfMemoryError:
-    :raises dgenerate.pipelinewrapper.ModelNotFoundError:
-    :raises dgenerate.plugin.ModuleFileNotFoundError:
+    :raises dgenerate.DgenerateUsageError:
+    :raises dgenerate.DgenerateHelpException:
+    :raises dgenerate.ImageSeedError:
+    :raises dgenerate.UnknownMimetypeError:
+    :raises dgenerate.FrameStartOutOfBounds:
+    :raises dgenerate.ImageProcessorArgumentError:
+    :raises dgenerate.ImageProcessorNotFoundError:
+    :raises dgenerate.InvalidModelUriError:
+    :raises dgenerate.InvalidSchedulerNameError:
+    :raises dgenerate.OutOfMemoryError:
+    :raises dgenerate.ModelNotFoundError:
+    :raises dgenerate.ModuleFileNotFoundError:
     :raises NotImplementedError:
     :raises EnvironmentError:
 
