@@ -79,9 +79,9 @@ def invoke_image_process(
 
     :raises ImageProcessUsageError:
     :raises ImageProcessHelpException:
-    :raises dgenerate.imageprocessors.ImageProcessorArgumentError:
-    :raises dgenerate.imageprocessors.ImageProcessorNotFoundError:
-    :raises dgenerate.mediainput.FrameStartOutOfBounds:
+    :raises dgenerate.ImageProcessorArgumentError:
+    :raises dgenerate.ImageProcessorNotFoundError:
+    :raises dgenerate.FrameStartOutOfBounds:
     :raises NotImplementedError:
     :raises EnvironmentError:
 
@@ -121,9 +121,9 @@ def invoke_image_process_events(
 
     :raises ImageProcessUsageError:
     :raises ImageProcessHelpException:
-    :raises dgenerate.imageprocessors.ImageProcessorArgumentError:
-    :raises dgenerate.imageprocessors.ImageProcessorNotFoundError:
-    :raises dgenerate.mediainput.FrameStartOutOfBounds:
+    :raises dgenerate.ImageProcessorArgumentError:
+    :raises dgenerate.ImageProcessorNotFoundError:
+    :raises dgenerate.FrameStartOutOfBounds:
     :raises NotImplementedError:
     :raises EnvironmentError:
 
