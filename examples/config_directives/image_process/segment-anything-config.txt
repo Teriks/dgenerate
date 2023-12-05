@@ -1,5 +1,7 @@
 #! dgenerate 3.0.0
 
+\set device_switch {{ '--device '+injected_device if injected_device else '' }}
+
 # run the segment anything model
 
 # the image will be sized down to 512 (aspect correct, no alignment)
@@ -11,4 +13,4 @@
 \image_process "../../media/horse2.jpeg"
 -o horse2-segment.png
 --processors sam
---align 1
+--align 1 {{ device_switch }}
