@@ -3497,8 +3497,9 @@ On Windows Powershell:
 
 
 If you need arguments injected from the command line within the config for
-some other purpose such as for using with the ``\image_process`` directive,
-use the ``injected_args`` template and related template variables.
+some other purpose such as for using with the ``\image_process`` directive
+which does not automatically recieve injected arguments, use the
+``injected_args``  and related ``injected_*`` template variables.
 
 .. code-block:: jinja
 
