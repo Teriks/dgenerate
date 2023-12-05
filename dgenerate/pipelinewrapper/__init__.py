@@ -108,7 +108,7 @@ from .pipelines import \
     UnsupportedPipelineConfigError, \
     get_torch_pipeline_modules, \
     is_model_cpu_offload_enabled, \
-    is_sequential_offload_enabled
+    is_sequential_cpu_offload_enabled
 
 from .uris import \
     InvalidModelUriError, \

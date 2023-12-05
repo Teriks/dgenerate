@@ -665,7 +665,7 @@ class DiffusionPipelineWrapper:
     def _pipeline_to(pipeline, device):
         if hasattr(pipeline, 'to'):
             if not (_pipelines.is_model_cpu_offload_enabled(pipeline)
-                    or _pipelines.is_sequential_offload_enabled(pipeline)):
+                    or _pipelines.is_sequential_cpu_offload_enabled(pipeline)):
 
                 if device == 'cpu':
                     _cache.pipeline_to_cpu_update_cache_info(pipeline)
@@ -674,7 +674,7 @@ class DiffusionPipelineWrapper:
                 try:
                     for name, module in _pipelines.get_torch_pipeline_modules(pipeline).items():
                         if not (_pipelines.is_model_cpu_offload_enabled(module)
-                                or _pipelines.is_sequential_offload_enabled(module)):
+                                or _pipelines.is_sequential_cpu_offload_enabled(module)):
                             setattr(pipeline, name, module.to(device))
                     return pipeline
                 except RuntimeError as e:
