@@ -838,7 +838,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
 
     # Model Offloading
 
-    if device == 'cuda':
+    if device.startswith('cuda'):
 
         set_sequential_cpu_offload_flag(pipeline, sequential_cpu_offload)
         set_cpu_offload_flag(pipeline, model_cpu_offload)
@@ -900,6 +900,7 @@ def _patch_torch_cast_for_sequential_offloading(module: torch.nn.Module):
     """
 
     def patch(device, *args, **kwargs):
+        _messages.debug_log(f'Patched module .to() on {module.__class__.__name__} -> ({locals()})')
         return module
 
     if module.to.__name__ is not patch.__name__:
