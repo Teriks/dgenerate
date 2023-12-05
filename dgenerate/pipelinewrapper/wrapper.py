@@ -1982,7 +1982,6 @@ class DiffusionPipelineWrapper:
 
         :raises UnsupportedPipelineConfigError:
         :raises InvalidModelUriError:
-        :raises ModelLoadFromURIError:
         :raises InvalidSchedulerNameError:
         :raises OutOfMemoryError:
 
