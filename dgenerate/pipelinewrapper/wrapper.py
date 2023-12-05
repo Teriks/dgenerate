@@ -600,7 +600,11 @@ class DiffusionPipelineWrapper:
                  auth_token: _types.OptionalString = None,
                  local_files_only: bool = False,
                  model_extra_modules=None,
-                 refiner_extra_modules=None):
+                 refiner_extra_modules=None,
+                 model_cpu_offload=False,
+                 model_sequential_offload=False,
+                 sdxl_refiner_cpu_offload=False,
+                 sdxl_refiner_sequential_offload=False):
 
         self._subfolder = subfolder
         self._device = device
@@ -632,6 +636,20 @@ class DiffusionPipelineWrapper:
         self._model_extra_modules = model_extra_modules
         self._refiner_extra_modules = refiner_extra_modules
 
+        if model_cpu_offload and model_sequential_offload:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'model_cpu_offload and model_sequential_offload cannot both be True.')
+
+        self._model_cpu_offload = model_cpu_offload
+        self._model_sequential_offload = model_sequential_offload
+
+        if sdxl_refiner_sequential_offload and sdxl_refiner_cpu_offload:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'refiner_cpu_offload and refiner_sequential_offload cannot both be True.')
+
+        self._sdxl_refiner_sequential_offload = sdxl_refiner_sequential_offload
+        self._sdxl_refiner_cpu_offload = sdxl_refiner_cpu_offload
+
         self._parsed_sdxl_refiner_uri = None
         self._sdxl_refiner_uri = sdxl_refiner_uri
         if sdxl_refiner_uri is not None:
@@ -640,20 +658,25 @@ class DiffusionPipelineWrapper:
 
         if lora_uris:
             if model_type == 'flax':
-                raise NotImplementedError('LoRA loading is not implemented for flax.')
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'LoRA loading is not implemented for flax.')
 
     @staticmethod
     def _pipeline_to(pipeline, device):
         if hasattr(pipeline, 'to'):
-            if not pipeline.DGENERATE_CPU_OFFLOAD and \
-                    not pipeline.DGENERATE_SEQUENTIAL_OFFLOAD:
+            if not (_pipelines.is_model_cpu_offload_enabled(pipeline)
+                    or _pipelines.is_sequential_offload_enabled(pipeline)):
 
                 if device == 'cpu':
                     _cache.pipeline_to_cpu_update_cache_info(pipeline)
                 else:
                     _cache.pipeline_off_cpu_update_cache_info(pipeline)
                 try:
-                    return pipeline.to(device)
+                    for name, module in _pipelines.get_torch_pipeline_modules(pipeline).items():
+                        if not (_pipelines.is_model_cpu_offload_enabled(module)
+                                or _pipelines.is_sequential_offload_enabled(module)):
+                            setattr(pipeline, name, module.to(device))
+                    return pipeline
                 except RuntimeError as e:
                     if 'memory' in str(e).lower():
                         raise OutOfMemoryError(e)
@@ -1400,11 +1423,11 @@ class DiffusionPipelineWrapper:
     def _call_flax(self, pipeline_args, user_args: DiffusionArguments):
         for arg, val in _types.get_public_attributes(user_args).items():
             if arg.startswith('sdxl') and val is not None:
-                raise NotImplementedError(
+                raise _pipelines.UnsupportedPipelineConfigError(
                     f'{arg} may only be used with SDXL models.')
 
         if user_args.guidance_rescale is not None:
-            raise NotImplementedError(
+            raise _pipelines.UnsupportedPipelineConfigError(
                 f'guidance_rescale is not supported when using flax.')
 
         prompt: _prompt.Prompt() = _types.default(user_args.prompt, _prompt.Prompt())
@@ -1493,7 +1516,7 @@ class DiffusionPipelineWrapper:
         else:
             val = _types.default(getattr(user_args, user_arg_name), None)
             if val is not None:
-                raise NotImplementedError(
+                raise _pipelines.UnsupportedPipelineConfigError(
                     f'{option_name} cannot be used with --model-type "{self.model_type_string}" in '
                     f'{_enums.get_pipeline_type_string(self._pipeline_type)} mode with the current '
                     f'combination of arguments and model.')
@@ -1804,20 +1827,21 @@ class DiffusionPipelineWrapper:
         self._recall_refiner_pipeline = None
 
         if _enums.model_type_is_sdxl(self._model_type) and self._textual_inversion_uris:
-            raise NotImplementedError('Textual inversion not supported for SDXL.')
+            raise _pipelines.UnsupportedPipelineConfigError('Textual inversion not supported for SDXL.')
 
         if self._model_type == _enums.ModelType.FLAX:
             if not _enums.have_jax_flax():
-                raise NotImplementedError('flax and jax are not installed.')
+                raise _pipelines.UnsupportedPipelineConfigError('flax and jax are not installed.')
 
             if self._textual_inversion_uris:
-                raise NotImplementedError('Textual inversion not supported for flax.')
+                raise _pipelines.UnsupportedPipelineConfigError('Textual inversion not supported for flax.')
 
             if self._pipeline_type != _enums.PipelineType.TXT2IMG and self._control_net_uris:
-                raise NotImplementedError('Inpaint and Img2Img not supported for flax with ControlNet.')
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Inpaint and Img2Img not supported for flax with ControlNet.')
 
             if self._vae_tiling or self._vae_slicing:
-                raise NotImplementedError('vae_tiling / vae_slicing not supported for flax.')
+                raise _pipelines.UnsupportedPipelineConfigError('vae_tiling / vae_slicing not supported for flax.')
 
             self._recall_main_pipeline = _pipelines.FlaxPipelineFactory(
                 pipeline_type=pipeline_type,
@@ -1841,8 +1865,9 @@ class DiffusionPipelineWrapper:
 
         elif self._sdxl_refiner_uri is not None:
             if not _enums.model_type_is_sdxl(self._model_type):
-                raise NotImplementedError('Only Stable Diffusion XL models support refiners, '
-                                          'please use model_type "torch-sdxl" if you are trying to load an sdxl model.')
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Only Stable Diffusion XL models support refiners, '
+                    'please use model_type "torch-sdxl" if you are trying to load an sdxl model.')
 
             if not _pipelines.scheduler_is_help(self._sdxl_refiner_scheduler):
                 # Don't load this up if were just going to be getting
@@ -1866,7 +1891,9 @@ class DiffusionPipelineWrapper:
                     local_files_only=self._local_files_only,
                     extra_modules=self._model_extra_modules,
                     vae_tiling=self._vae_tiling,
-                    vae_slicing=self._vae_slicing)
+                    vae_slicing=self._vae_slicing,
+                    model_cpu_offload=self._model_cpu_offload,
+                    sequential_cpu_offload=self._model_sequential_offload)
 
                 creation_result = self._recall_main_pipeline()
                 self._pipeline = creation_result.pipeline
@@ -1906,19 +1933,13 @@ class DiffusionPipelineWrapper:
                 extra_modules=refiner_extra_modules,
                 local_files_only=self._local_files_only,
                 vae_tiling=self._vae_tiling,
-                vae_slicing=self._vae_slicing
+                vae_slicing=self._vae_slicing,
+                model_cpu_offload=self._sdxl_refiner_cpu_offload,
+                sequential_cpu_offload=self._sdxl_refiner_sequential_offload
             )
 
             self._sdxl_refiner_pipeline = self._recall_refiner_pipeline().pipeline
         else:
-            offload = self._control_net_uris and self._model_type == _enums.ModelType.TORCH_SDXL
-            offload = offload or _enums.model_type_is_floyd(self._model_type)
-
-            # really defeats the point, but there is some sort of memory
-            # management problem unfixed
-            cpu_offload = not offload and (self._scheduler == 'LCMScheduler'
-                                           and self._model_type == _enums.ModelType.TORCH_SDXL)
-
             self._recall_main_pipeline = _pipelines.TorchPipelineFactory(
                 pipeline_type=pipeline_type,
                 model_path=self._model_path,
@@ -1936,8 +1957,8 @@ class DiffusionPipelineWrapper:
                 safety_checker=self._safety_checker,
                 auth_token=self._auth_token,
                 device=self._device,
-                sequential_cpu_offload=offload,
-                model_cpu_offload=cpu_offload,
+                sequential_cpu_offload=self._model_sequential_offload,
+                model_cpu_offload=self._model_cpu_offload,
                 local_files_only=self._local_files_only,
                 extra_modules=self._model_extra_modules,
                 vae_tiling=self._vae_tiling,
@@ -1959,10 +1980,12 @@ class DiffusionPipelineWrapper:
             any keyword arguments given here will override values derived from the
             :py:class:`.DiffusionArguments` object given to the *args* parameter.
 
+        :raises UnsupportedPipelineConfigError:
         :raises InvalidModelUriError:
+        :raises ModelLoadFromURIError:
         :raises InvalidSchedulerNameError:
         :raises OutOfMemoryError:
-        :raises NotImplementedError:
+
 
         :return: :py:class:`.PipelineWrapperResult`
         """

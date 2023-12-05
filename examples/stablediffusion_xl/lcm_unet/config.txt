@@ -6,6 +6,7 @@ stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
 --variant fp16 --dtype float16
 --unet latent-consistency/lcm-sdxl
 --scheduler LCMScheduler
+--model-cpu-offload
 --inference-steps 4
 --guidance-scales 8
 --gen-seeds 2

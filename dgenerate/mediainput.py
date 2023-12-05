@@ -226,6 +226,9 @@ class VideoReader(_imageprocessors.ImageProcessorMixin, AnimationReader):
             or ``1`` disables alignment.
 
         :param image_processor: optionally process every frame with this image processor
+
+        :raises ValueError: if file_source lacks a file extension, it is needed
+            to determine the video file format.
         """
         self._filename = file
         self._file_source = file_source
@@ -234,8 +237,8 @@ class VideoReader(_imageprocessors.ImageProcessorMixin, AnimationReader):
         else:
             _, ext = os.path.splitext(file_source)
             if not ext:
-                raise NotImplementedError(
-                    'Cannot determine the format of a video file lacking a file extension.')
+                raise ValueError(
+                    'Cannot determine the format of a video file from a file_source lacking a file extension.')
             self._container = av.open(file, format=ext.lstrip('.').lower())
 
         self._aspect_correct = aspect_correct

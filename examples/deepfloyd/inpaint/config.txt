@@ -7,6 +7,7 @@ DeepFloyd/IF-I-L-v1.0
 --variant fp16
 --dtype float16
 --model-type torch-if
+--model-sequential-offload
 --inference-steps 30
 --guidance-scales 10
 --gen-seeds 2
@@ -25,6 +26,7 @@ DeepFloyd/IF-II-L-v1.0
 --variant fp16
 --dtype float16
 --model-type torch-ifs
+--model-sequential-offload
 --inference-steps 30
 --guidance-scales 10
 --prompts {{ format_prompt(last_prompts) }}

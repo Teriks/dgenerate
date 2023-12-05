@@ -18,6 +18,7 @@ stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
                                                    # because the refiner does not use a LoRA
 
 --scheduler LCMScheduler # the main model uses the LCMScheduler
+--model-cpu-offload
 --inference-steps 8 # x0.8, around 7 inference steps on the main model with rounding error
 --guidance-scales 1
 --gen-seeds 2

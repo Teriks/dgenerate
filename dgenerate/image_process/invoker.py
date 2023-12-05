@@ -82,7 +82,6 @@ def invoke_image_process(
     :raises dgenerate.ImageProcessorArgumentError:
     :raises dgenerate.ImageProcessorNotFoundError:
     :raises dgenerate.FrameStartOutOfBounds:
-    :raises NotImplementedError:
     :raises EnvironmentError:
 
     :return: integer return-code, anything other than 0 is failure
@@ -124,7 +123,6 @@ def invoke_image_process_events(
     :raises dgenerate.ImageProcessorArgumentError:
     :raises dgenerate.ImageProcessorNotFoundError:
     :raises dgenerate.FrameStartOutOfBounds:
-    :raises NotImplementedError:
     :raises EnvironmentError:
 
     :return: :py:class:`.InvokeImageProcessEventStream`
@@ -155,7 +153,6 @@ def invoke_image_process_events(
             _imageprocessors.ImageProcessorArgumentError,
             _imageprocessors.ImageProcessorNotFoundError,
             _mediainput.FrameStartOutOfBounds,
-            NotImplementedError,
             EnvironmentError) as e:
         if log_error:
             _messages.log(f'{help_name}: error: {str(e).strip()}', level=_messages.ERROR)

@@ -6,6 +6,7 @@ DeepFloyd/IF-I-L-v1.0
 --variant fp16
 --dtype float16
 --model-type torch-if
+--model-sequential-offload
 --inference-steps 100
 --image-seed-strengths 0.5
 --guidance-scales 5
@@ -21,6 +22,7 @@ DeepFloyd/IF-II-L-v1.0
 --variant fp16
 --dtype float16
 --model-type torch-ifs-img2img
+--model-sequential-offload
 --inference-steps 70
 --image-seed-strengths 0.5
 --guidance-scales 5

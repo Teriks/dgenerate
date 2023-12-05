@@ -55,6 +55,7 @@ try:
     from dgenerate.pipelinewrapper import \
         InvalidModelUriError, \
         InvalidSchedulerNameError, \
+        UnsupportedPipelineConfigError, \
         ModelType, \
         DataType, \
         OutOfMemoryError, \
@@ -124,7 +125,7 @@ def main(args: typing.Optional[collections.abc.Sequence[str]] = None):
             try:
                 ConfigRunner(render_loop=render_loop,
                              version=__version__,
-                             injected_args=args).run_file(sys.stdin)
+                             injected_args=args, throw=True).run_file(sys.stdin)
             except ModuleFileNotFoundError as e:
                 # missing plugin file parsed by ConfigRunner out of injected args
                 dgenerate.messages.log(f'dgenerate: error: {str(e).strip()}',

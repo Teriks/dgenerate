@@ -90,7 +90,7 @@ def invoke_dgenerate(args: collections.abc.Sequence[str],
     :raises dgenerate.OutOfMemoryError:
     :raises dgenerate.ModelNotFoundError:
     :raises dgenerate.ModuleFileNotFoundError:
-    :raises NotImplementedError:
+    :raises dgenerate.UnsupportedPipelineConfigError:
     :raises EnvironmentError:
 
     :return: integer return-code, anything other than 0 is failure
@@ -137,7 +137,7 @@ def invoke_dgenerate_events(
     :raises dgenerate.OutOfMemoryError:
     :raises dgenerate.ModelNotFoundError:
     :raises dgenerate.ModuleFileNotFoundError:
-    :raises NotImplementedError:
+    :raises dgenerate.UnsupportedPipelineConfigError:
     :raises EnvironmentError:
 
 
@@ -302,10 +302,10 @@ def invoke_dgenerate_events(
             _pipelinewrapper.ModelNotFoundError,
             _pipelinewrapper.InvalidModelUriError,
             _pipelinewrapper.InvalidSchedulerNameError,
+            _pipelinewrapper.UnsupportedPipelineConfigError,
             _pipelinewrapper.OutOfMemoryError,
             _plugin.PluginNotFoundError,
             _plugin.PluginArgumentError,
-            NotImplementedError,
             EnvironmentError) as e:
         yield rethrow_with_message(e)
         return

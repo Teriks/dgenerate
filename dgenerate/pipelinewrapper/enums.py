@@ -63,15 +63,21 @@ def get_pipeline_type_enum(id_str: typing.Union[PipelineType, str, None]) -> Pip
     Get a :py:class:`.PipelineType` enum value from a string.
 
     :param id_str: one of: "txt2img", "img2img", or "inpaint"
+
+    :raises ValueError: if an invalid string value (name) is passed
+
     :return: :py:class:`.PipelineType`
     """
 
     if isinstance(id_str, PipelineType):
         return id_str
 
-    return {'txt2img': PipelineType.TXT2IMG,
-            'img2img': PipelineType.IMG2IMG,
-            'inpaint': PipelineType.INPAINT}[id_str.strip().lower()]
+    try:
+        return {'txt2img': PipelineType.TXT2IMG,
+                'img2img': PipelineType.IMG2IMG,
+                'inpaint': PipelineType.INPAINT}[id_str.strip().lower()]
+    except KeyError:
+        raise ValueError('invalid PipelineType string')
 
 
 def get_pipeline_type_string(pipeline_type_enum: PipelineType):
@@ -123,15 +129,21 @@ def get_data_type_enum(id_str: typing.Union[DataType, str, None]) -> DataType:
     Convert a ``--dtype`` string to its :py:class:`.DataType` enum value
 
     :param id_str: ``--dtype`` string
+
+    :raises ValueError: if an invalid string value (name) is passed
+
     :return: :py:class:`.DataType`
     """
 
     if isinstance(id_str, DataType):
         return id_str
 
-    return {'auto': DataType.AUTO,
-            'float16': DataType.FLOAT16,
-            'float32': DataType.FLOAT32}[id_str.strip().lower()]
+    try:
+        return {'auto': DataType.AUTO,
+                'float16': DataType.FLOAT16,
+                'float32': DataType.FLOAT32}[id_str.strip().lower()]
+    except KeyError:
+        raise ValueError('invalid DataType string')
 
 
 def get_data_type_string(data_type_enum: DataType) -> str:
@@ -219,22 +231,28 @@ def get_model_type_enum(id_str: typing.Union[ModelType, str]) -> ModelType:
     Convert a ``--model-type`` string to its :py:class:`.ModelType` enum value
 
     :param id_str: ``--model-type`` string
+
+    :raises ValueError: if an invalid string value (name) is passed
+
     :return: :py:class:`.ModelType`
     """
 
     if isinstance(id_str, ModelType):
         return id_str
 
-    return {'torch': ModelType.TORCH,
-            'torch-pix2pix': ModelType.TORCH_PIX2PIX,
-            'torch-sdxl': ModelType.TORCH_SDXL,
-            'torch-if': ModelType.TORCH_IF,
-            'torch-ifs': ModelType.TORCH_IFS,
-            'torch-ifs-img2img': ModelType.TORCH_IFS_IMG2IMG,
-            'torch-sdxl-pix2pix': ModelType.TORCH_SDXL_PIX2PIX,
-            'torch-upscaler-x2': ModelType.TORCH_UPSCALER_X2,
-            'torch-upscaler-x4': ModelType.TORCH_UPSCALER_X4,
-            'flax': ModelType.FLAX}[id_str.strip().lower()]
+    try:
+        return {'torch': ModelType.TORCH,
+                'torch-pix2pix': ModelType.TORCH_PIX2PIX,
+                'torch-sdxl': ModelType.TORCH_SDXL,
+                'torch-if': ModelType.TORCH_IF,
+                'torch-ifs': ModelType.TORCH_IFS,
+                'torch-ifs-img2img': ModelType.TORCH_IFS_IMG2IMG,
+                'torch-sdxl-pix2pix': ModelType.TORCH_SDXL_PIX2PIX,
+                'torch-upscaler-x2': ModelType.TORCH_UPSCALER_X2,
+                'torch-upscaler-x4': ModelType.TORCH_UPSCALER_X4,
+                'flax': ModelType.FLAX}[id_str.strip().lower()]
+    except KeyError:
+        raise ValueError('invalid ModelType string')
 
 
 def get_model_type_string(model_type_enum: ModelType) -> str:
@@ -376,6 +394,9 @@ def get_flax_dtype(dtype: typing.Union[DataType, str, typing.Any, None]):
     Passing 'auto' or :py:attr:`DataType.AUTO` results in None being returned.
 
     :param dtype: :py:class:`.DataType`, string, jax.numpy dtype, None
+
+    :raises ValueError: if an invalid string value (name) is passed
+
     :return: jax.numpy dtype
     """
 
@@ -388,10 +409,13 @@ def get_flax_dtype(dtype: typing.Union[DataType, str, typing.Any, None]):
     if isinstance(dtype, DataType):
         dtype = get_data_type_string(dtype)
 
-    return {'float16': jnp.bfloat16,
-            'float32': jnp.float32,
-            'float64': jnp.float64,
-            'auto': None}[dtype.lower()]
+    try:
+        return {'float16': jnp.bfloat16,
+                'float32': jnp.float32,
+                'float64': jnp.float64,
+                'auto': None}[dtype.lower()]
+    except KeyError:
+        raise ValueError('invalid DataType string')
 
 
 def get_torch_dtype(dtype: typing.Union[DataType, torch.dtype, str, None]) -> typing.Union[torch.dtype, None]:
@@ -404,6 +428,9 @@ def get_torch_dtype(dtype: typing.Union[DataType, torch.dtype, str, None]) -> ty
     Passing 'auto' or :py:attr:`DataType.AUTO` results in None being returned.
 
     :param dtype: :py:class:`.DataType`, string, torch.dtype, None
+
+    :raises ValueError: if an invalid string value (name) is passed
+
     :return: torch.dtype
     """
 
@@ -416,10 +443,13 @@ def get_torch_dtype(dtype: typing.Union[DataType, torch.dtype, str, None]) -> ty
     if isinstance(dtype, DataType):
         dtype = get_data_type_string(dtype)
 
-    return {'float16': torch.float16,
-            'float32': torch.float32,
-            'float64': torch.float64,
-            'auto': None}[dtype.lower()]
+    try:
+        return {'float16': torch.float16,
+                'float32': torch.float32,
+                'float64': torch.float64,
+                'auto': None}[dtype.lower()]
+    except KeyError:
+        raise ValueError('invalid DataType string')
 
 
 __all__ = _types.module_all()
