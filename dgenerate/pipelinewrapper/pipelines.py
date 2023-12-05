@@ -892,22 +892,22 @@ def get_torch_pipeline_modules(pipeline: diffusers.DiffusionPipeline):
     return {k: v for k, v in pipeline.components.items() if isinstance(v, torch.nn.Module)}
 
 
-def _patch_torch_cast_for_sequential_offloading(module: torch.nn.Module):
+def _patch_torch_cast_for_sequential_offloading(module: typing.Union[diffusers.DiffusionPipeline, torch.nn.Module]):
     """
     This is really terrible :)
 
-    :param module: nn module to violate
+    :param module: nn module or pipeline to violate
     """
 
     def patch(device, *args, **kwargs):
-        _messages.debug_log(f'Patched module .to() on {module.__class__.__name__} -> ({locals()})')
+        _messages.debug_log(f'Patched module .to() NO-OP on {module.__class__.__name__} -> ({locals()})')
         return module
 
     if module.to.__name__ is not patch.__name__:
         module.to = patch
 
 
-def set_sequential_cpu_offload_flag(module: torch.nn.Module, value: bool):
+def set_sequential_cpu_offload_flag(module: typing.Union[diffusers.DiffusionPipeline, torch.nn.Module], value: bool):
     """
     Set ``DGENERATE_SEQUENTIAL_CPU_OFFLOAD`` on a module, flagging it
     to dgenerate as belonging to a sequentially offloaded pipeline, or being
@@ -924,7 +924,7 @@ def set_sequential_cpu_offload_flag(module: torch.nn.Module, value: bool):
         f'setting DGENERATE_SEQUENTIAL_CPU_OFFLOAD={value} on module "{module.__class__.__name__}"')
 
 
-def set_cpu_offload_flag(module: torch.nn.Module, value: bool):
+def set_cpu_offload_flag(module: typing.Union[diffusers.DiffusionPipeline, torch.nn.Module], value: bool):
     """
     Set ``DGENERATE_CPU_OFFLOAD = True`` on a module, flagging it
     to dgenerate as belonging to a cpu offloaded pipeline, or being
@@ -940,7 +940,7 @@ def set_cpu_offload_flag(module: torch.nn.Module, value: bool):
         f'setting DGENERATE_CPU_OFFLOAD={value} on module "{module.__class__.__name__}"')
 
 
-def is_sequential_cpu_offload_enabled(module: torch.nn.Module):
+def is_sequential_cpu_offload_enabled(module: typing.Union[diffusers.DiffusionPipeline, torch.nn.Module]):
     """
     Test if a neural net module created by dgenerate has sequential offload enabled.
     :param module: the module object
@@ -949,7 +949,7 @@ def is_sequential_cpu_offload_enabled(module: torch.nn.Module):
     return hasattr(module, 'DGENERATE_SEQUENTIAL_CPU_OFFLOAD') and module.DGENERATE_SEQUENTIAL_CPU_OFFLOAD
 
 
-def is_model_cpu_offload_enabled(module: torch.nn.Module):
+def is_model_cpu_offload_enabled(module: typing.Union[diffusers.DiffusionPipeline, torch.nn.Module]):
     """
     Test if a neural net module created by dgenerate has model cpu offload enabled.
     :param module: the module object

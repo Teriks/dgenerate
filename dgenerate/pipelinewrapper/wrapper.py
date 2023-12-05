@@ -663,6 +663,9 @@ class DiffusionPipelineWrapper:
 
     @staticmethod
     def _pipeline_to(pipeline, device):
+        # models which are marked as sequential cpu offloaded or cpu offloaded
+        # are not considered by dgenerates cache to ever leave CPU side memory,
+        # meaning they always contribute to the CPU side memory overhead heuristic
         if hasattr(pipeline, 'to'):
             if not (_pipelines.is_model_cpu_offload_enabled(pipeline)
                     or _pipelines.is_sequential_cpu_offload_enabled(pipeline)):

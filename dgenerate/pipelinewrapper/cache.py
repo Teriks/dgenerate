@@ -539,26 +539,42 @@ def unet_create_update_cache_info(unet, estimated_size: int):
     unet.DGENERATE_SIZE_ESTIMATE = estimated_size
 
 
-def pipeline_to_cpu_update_cache_info(
-        pipeline: typing.Union[diffusers.DiffusionPipeline, diffusers.FlaxDiffusionPipeline]):
+def pipeline_to_cpu_update_cache_info(pipeline: diffusers.DiffusionPipeline):
+    """
+    Update cache info about a pipeline and its components on before a torch ``.to('cpu')`` cast.
+
+    Pipelines / components marked for sequential cpu offload or model cpu offload are ignored.
+
+    :param pipeline: the pipeline
+    """
+
     # Update CPU side memory overhead estimates when
     # a pipeline gets casted back to the CPU
+
+    import dgenerate.pipelinewrapper.pipelines as _pipelines
 
     global _PIPELINE_CACHE_SIZE, \
         _UNET_CACHE_SIZE, \
         _VAE_CACHE_SIZE, \
         _CONTROL_NET_CACHE_SIZE
 
-    enforce_pipeline_cache_constraints(pipeline.DGENERATE_SIZE_ESTIMATE)
-    _PIPELINE_CACHE_SIZE += pipeline.DGENERATE_SIZE_ESTIMATE
+    skip_pipeline_adjustment = (_pipelines.is_sequential_cpu_offload_enabled(pipeline)
+                                or _pipelines.is_model_cpu_offload_enabled(pipeline))
 
-    _messages.debug_log(f'{_types.class_and_id_string(pipeline)} '
-                        f'Size = {pipeline.DGENERATE_SIZE_ESTIMATE} Bytes '
-                        f'is entering CPU side memory, {_types.fullname(pipeline_cache_size)}() '
-                        f'is now {pipeline_cache_size()} Bytes')
+    if not skip_pipeline_adjustment:
+        enforce_pipeline_cache_constraints(pipeline.DGENERATE_SIZE_ESTIMATE)
+        _PIPELINE_CACHE_SIZE += pipeline.DGENERATE_SIZE_ESTIMATE
+
+        _messages.debug_log(f'{_types.class_and_id_string(pipeline)} '
+                            f'Size = {pipeline.DGENERATE_SIZE_ESTIMATE} Bytes '
+                            f'is entering CPU side memory, {_types.fullname(pipeline_cache_size)}() '
+                            f'is now {pipeline_cache_size()} Bytes')
 
     if hasattr(pipeline, 'unet') and pipeline.unet is not None:
-        if hasattr(pipeline.unet, 'DGENERATE_SIZE_ESTIMATE'):
+        skip_unet_adjustment = (_pipelines.is_sequential_cpu_offload_enabled(pipeline.unet)
+                                or _pipelines.is_model_cpu_offload_enabled(pipeline.unet))
+
+        if not skip_unet_adjustment and hasattr(pipeline.unet, 'DGENERATE_SIZE_ESTIMATE'):
             # UNet returning to CPU side memory
             enforce_unet_cache_constraints(pipeline.unet.DGENERATE_SIZE_ESTIMATE)
             _UNET_CACHE_SIZE += pipeline.unet.DGENERATE_SIZE_ESTIMATE
@@ -569,7 +585,10 @@ def pipeline_to_cpu_update_cache_info(
                                 f'is now {unet_cache_size()} Bytes')
 
     if hasattr(pipeline, 'vae') and pipeline.vae is not None:
-        if hasattr(pipeline.vae, 'DGENERATE_SIZE_ESTIMATE'):
+        skip_vae_adjustment = (_pipelines.is_sequential_cpu_offload_enabled(pipeline.vae)
+                               or _pipelines.is_model_cpu_offload_enabled(pipeline.vae))
+
+        if not skip_vae_adjustment and hasattr(pipeline.vae, 'DGENERATE_SIZE_ESTIMATE'):
             # VAE returning to CPU side memory
             enforce_vae_cache_constraints(pipeline.vae.DGENERATE_SIZE_ESTIMATE)
             _VAE_CACHE_SIZE += pipeline.vae.DGENERATE_SIZE_ESTIMATE
@@ -580,6 +599,12 @@ def pipeline_to_cpu_update_cache_info(
                                 f'is now {vae_cache_size()} Bytes')
 
     if hasattr(pipeline, 'controlnet') and pipeline.controlnet is not None:
+        skip_controlnet_adjustment = (_pipelines.is_sequential_cpu_offload_enabled(pipeline.controlnet)
+                                      or _pipelines.is_model_cpu_offload_enabled(pipeline.controlnet))
+
+        if skip_controlnet_adjustment:
+            return
+
         if isinstance(pipeline.controlnet,
                       diffusers.pipelines.controlnet.MultiControlNetModel):
             total_size = 0
@@ -608,8 +633,16 @@ def pipeline_to_cpu_update_cache_info(
                                 f'is now {control_net_cache_size()} Bytes')
 
 
-def pipeline_off_cpu_update_cache_info(
-        pipeline: typing.Union[diffusers.DiffusionPipeline, diffusers.FlaxDiffusionPipeline]):
+def pipeline_off_cpu_update_cache_info(pipeline: diffusers.DiffusionPipeline):
+    """
+    Update cache info about a pipeline and its components on before a torch ``.to()`` cast
+    to a device which is not the CPU.
+
+    Pipelines / components marked for sequential cpu offload or model cpu offload are ignored.
+
+    :param pipeline: the pipeline
+    """
+
     # Update CPU side memory overhead estimates when a
     # pipeline gets casted to the GPU or some other
     # processing device
@@ -631,15 +664,24 @@ def pipeline_off_cpu_update_cache_info(
         _VAE_CACHE_SIZE, \
         _CONTROL_NET_CACHE_SIZE
 
-    _PIPELINE_CACHE_SIZE -= pipeline.DGENERATE_SIZE_ESTIMATE
+    import dgenerate.pipelinewrapper.pipelines as _pipelines
 
-    _messages.debug_log(f'{_types.class_and_id_string(pipeline)} '
-                        f'Size = {pipeline.DGENERATE_SIZE_ESTIMATE} Bytes '
-                        f'is leaving CPU side memory, {_types.fullname(pipeline_cache_size)}() '
-                        f'is now {pipeline_cache_size()} Bytes')
+    skip_pipeline_adjustment = (_pipelines.is_sequential_cpu_offload_enabled(pipeline)
+                                or _pipelines.is_model_cpu_offload_enabled(pipeline))
+
+    if not skip_pipeline_adjustment:
+        _PIPELINE_CACHE_SIZE -= pipeline.DGENERATE_SIZE_ESTIMATE
+
+        _messages.debug_log(f'{_types.class_and_id_string(pipeline)} '
+                            f'Size = {pipeline.DGENERATE_SIZE_ESTIMATE} Bytes '
+                            f'is leaving CPU side memory, {_types.fullname(pipeline_cache_size)}() '
+                            f'is now {pipeline_cache_size()} Bytes')
 
     if hasattr(pipeline, 'unet') and pipeline.unet is not None:
-        if hasattr(pipeline.unet, 'DGENERATE_SIZE_ESTIMATE'):
+        skip_unet_adjustment = (_pipelines.is_sequential_cpu_offload_enabled(pipeline.unet)
+                                or _pipelines.is_model_cpu_offload_enabled(pipeline.unet))
+
+        if not skip_unet_adjustment and hasattr(pipeline.unet, 'DGENERATE_SIZE_ESTIMATE'):
             _UNET_CACHE_SIZE -= pipeline.unet.DGENERATE_SIZE_ESTIMATE
 
             _messages.debug_log(f'{_types.class_and_id_string(pipeline.unet)} '
@@ -648,7 +690,10 @@ def pipeline_off_cpu_update_cache_info(
                                 f'is now {unet_cache_size()} Bytes')
 
     if hasattr(pipeline, 'vae') and pipeline.vae is not None:
-        if hasattr(pipeline.vae, 'DGENERATE_SIZE_ESTIMATE'):
+        skip_vae_adjustment = (_pipelines.is_sequential_cpu_offload_enabled(pipeline.vae)
+                               or _pipelines.is_model_cpu_offload_enabled(pipeline.vae))
+
+        if not skip_vae_adjustment and hasattr(pipeline.vae, 'DGENERATE_SIZE_ESTIMATE'):
             _VAE_CACHE_SIZE -= pipeline.vae.DGENERATE_SIZE_ESTIMATE
 
             _messages.debug_log(f'{_types.class_and_id_string(pipeline.vae)} '
@@ -657,6 +702,12 @@ def pipeline_off_cpu_update_cache_info(
                                 f'is now {vae_cache_size()} Bytes')
 
     if hasattr(pipeline, 'controlnet') and pipeline.controlnet is not None:
+        skip_controlnet_adjustment = (_pipelines.is_sequential_cpu_offload_enabled(pipeline.controlnet)
+                                      or _pipelines.is_model_cpu_offload_enabled(pipeline.controlnet))
+
+        if skip_controlnet_adjustment:
+            return
+
         if isinstance(pipeline.controlnet,
                       diffusers.pipelines.controlnet.MultiControlNetModel):
             for control_net in pipeline.controlnet.nets:
