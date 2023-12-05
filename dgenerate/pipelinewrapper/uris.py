@@ -787,12 +787,12 @@ class TorchVAEUri:
     def load(self,
              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
              use_auth_token: _types.OptionalString = None,
-             local_files_only=False,
+             local_files_only: bool = False,
              sequential_cpu_offload_member: bool = False,
              model_cpu_offload_member: bool = False) -> typing.Union[diffusers.AutoencoderKL,
-                                                               diffusers.AsymmetricAutoencoderKL,
-                                                               diffusers.AutoencoderTiny,
-                                                               diffusers.ConsistencyDecoderVAE]:
+                                                                     diffusers.AsymmetricAutoencoderKL,
+                                                                     diffusers.AutoencoderTiny,
+                                                                     diffusers.ConsistencyDecoderVAE]:
         """
         Load a VAE of type :py:class:`diffusers.AutoencoderKL`, :py:class:`diffusers.AsymmetricAutoencoderKL`,
         :py:class:`diffusers.AutoencoderKLTemporalDecoder`, or :py:class:`diffusers.AutoencoderTiny` from this URI
@@ -835,9 +835,9 @@ class TorchVAEUri:
               local_files_only: bool = False,
               sequential_cpu_offload_member: bool = False,
               model_cpu_offload_member: bool = False) -> typing.Union[diffusers.AutoencoderKL,
-                                                                diffusers.AsymmetricAutoencoderKL,
-                                                                diffusers.AutoencoderTiny,
-                                                                diffusers.ConsistencyDecoderVAE]:
+                                                                      diffusers.AsymmetricAutoencoderKL,
+                                                                      diffusers.AutoencoderTiny,
+                                                                      diffusers.ConsistencyDecoderVAE]:
 
         if sequential_cpu_offload_member and model_cpu_offload_member:
             # these are used for cache differentiation only
@@ -1017,7 +1017,7 @@ class TorchUNetUri:
              variant_fallback: _types.OptionalString = None,
              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
              use_auth_token: _types.OptionalString = None,
-             local_files_only=False,
+             local_files_only: bool = False,
              sequential_cpu_offload_member: bool = False,
              model_cpu_offload_member: bool = False) -> diffusers.UNet2DConditionModel:
         """
@@ -1059,7 +1059,7 @@ class TorchUNetUri:
               variant_fallback: _types.OptionalString = None,
               dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
               use_auth_token: _types.OptionalString = None,
-              local_files_only=False,
+              local_files_only: bool = False,
               sequential_cpu_offload_member: bool = False,
               model_cpu_offload_member: bool = False) -> diffusers.UNet2DConditionModel:
 
@@ -1233,7 +1233,7 @@ class FlaxVAEUri:
     def load(self,
              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
              use_auth_token: _types.OptionalString = None,
-             local_files_only=False) -> tuple[diffusers.FlaxAutoencoderKL, typing.Any]:
+             local_files_only: bool = False) -> tuple[diffusers.FlaxAutoencoderKL, typing.Any]:
         """
         Load a :py:class:`diffusers.FlaxAutoencoderKL` VAE and its flax_params from this URI
 
@@ -1260,7 +1260,7 @@ class FlaxVAEUri:
     def _load(self,
               dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
               use_auth_token: _types.OptionalString = None,
-              local_files_only=False) -> tuple[diffusers.FlaxAutoencoderKL, typing.Any]:
+              local_files_only: bool = False) -> tuple[diffusers.FlaxAutoencoderKL, typing.Any]:
 
         if self.dtype is None:
             flax_dtype = _enums.get_flax_dtype(dtype_fallback)
@@ -1418,7 +1418,7 @@ class FlaxUNetUri:
     def load(self,
              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
              use_auth_token: _types.OptionalString = None,
-             local_files_only=False) -> tuple[diffusers.FlaxUNet2DConditionModel, typing.Any]:
+             local_files_only: bool = False) -> tuple[diffusers.FlaxUNet2DConditionModel, typing.Any]:
         """
         Load a :py:class:`diffusers.FlaxUNet2DConditionModel` UNet and its flax_params from this URI
 
@@ -1445,7 +1445,7 @@ class FlaxUNetUri:
     def _load(self,
               dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
               use_auth_token: _types.OptionalString = None,
-              local_files_only=False) -> tuple[diffusers.FlaxUNet2DConditionModel, typing.Any]:
+              local_files_only: bool = False) -> tuple[diffusers.FlaxUNet2DConditionModel, typing.Any]:
 
         if self.dtype is None:
             flax_dtype = _enums.get_flax_dtype(dtype_fallback)
@@ -1570,7 +1570,7 @@ class LoRAUri:
     def load_on_pipeline(self,
                          pipeline: diffusers.DiffusionPipeline,
                          use_auth_token: _types.OptionalString = None,
-                         local_files_only=False):
+                         local_files_only: bool = False):
         """
         Load LoRA weights on to a pipeline using this URI
 
@@ -1592,7 +1592,7 @@ class LoRAUri:
     def _load_on_pipeline(self,
                           pipeline: diffusers.DiffusionPipeline,
                           use_auth_token: _types.OptionalString = None,
-                          local_files_only=False):
+                          local_files_only: bool = False):
 
         extra_args = {k: v for k, v in locals().items() if k not in {'self', 'pipeline'}}
 
@@ -1714,7 +1714,7 @@ class TextualInversionUri:
     def load_on_pipeline(self,
                          pipeline: diffusers.DiffusionPipeline,
                          use_auth_token: _types.OptionalString = None,
-                         local_files_only=False):
+                         local_files_only: bool = False):
         """
         Load Textual Inversion weights on to a pipeline using this URI
 
@@ -1736,7 +1736,7 @@ class TextualInversionUri:
     def _load_on_pipeline(self,
                           pipeline: diffusers.DiffusionPipeline,
                           use_auth_token: _types.OptionalString = None,
-                          local_files_only=False):
+                          local_files_only: bool = False):
 
         extra_args = {k: v for k, v in locals().items() if k not in {'self', 'pipeline'}}
 
