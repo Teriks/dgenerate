@@ -540,26 +540,28 @@ class RenderLoopConfig(_types.SetFromMixin):
     """
     Force model cpu offloading for the main pipeline, this may reduce memory consumption
     and allow large models to run when they would otherwise not fit in your GPUs VRAM. 
-    Inference will be slower. Mutually exclusive with ``model_sequential_offload``
+    Inference will be slower. Mutually exclusive with :py:attr:`RenderLoopConfig.model_sequential_offload`
     """
 
     model_sequential_offload: bool = False
     """
     Force sequential model offloading for the main pipeline, this may drastically reduce memory consumption
     and allow large models to run when they would otherwise not fit in your GPUs VRAM. 
-    Inference will be much slower. Mutually exclusive with ``model_cpu_offload``"""
+    Inference will be much slower. Mutually exclusive with :py:attr:`RenderLoopConfig.model_cpu_offload`
+    """
 
     sdxl_refiner_cpu_offload: _types.OptionalBoolean = None
     """
     Force model cpu offloading for the SDXL refiner pipeline, this may reduce memory consumption
     and allow large models to run when they would otherwise not fit in your GPUs VRAM. 
-    Inference will be slower. Mutually exclusive with ``refiner_sequential_offload``"""
+    Inference will be slower. Mutually exclusive with :py:attr:`RenderLoopConfig.refiner_sequential_offload`
+    """
 
     sdxl_refiner_sequential_offload: _types.OptionalBoolean = None
     """
     Force sequential model offloading for the SDXL refiner pipeline, this may drastically
     reduce memory consumption and allow large models to run when they would otherwise not fit in 
-    your GPUs VRAM. Inference will be much slower. Mutually exclusive with ``refiner_cpu_offload``
+    your GPUs VRAM. Inference will be much slower. Mutually exclusive with :py:attr:`RenderLoopConfig.refiner_cpu_offload`
     """
 
     def __init__(self):
