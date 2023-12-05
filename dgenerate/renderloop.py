@@ -124,7 +124,7 @@ class ImageGeneratedEvent(_Event):
     """
     A suggested filename for saving this image as. This filename will be unique
     to the render loop run / configuration. This filename will not contain
-    :py:attr:`RenderLoopConfig.output_path`, it is the suggested filename by itself.
+    :py:attr:`.RenderLoopConfig.output_path`, it is the suggested filename by itself.
     """
 
     diffusion_args: _pipelinewrapper.DiffusionArguments
@@ -258,7 +258,7 @@ class RenderLoop:
     Disable or enable all writes to disk, if you intend to only ever use the event
     stream of the render loop when using dgenerate as a library, this is a useful option.
     
-    py:attr:`RenderLoop.last_images` and py:attr:`last_animations` will not be available
+    :py:attr:`.RenderLoop.last_images` and :py:attr:`.last_animations` will not be available
     if writes to disk are disabled.
     """
 
