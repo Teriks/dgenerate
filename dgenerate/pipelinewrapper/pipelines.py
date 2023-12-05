@@ -714,7 +714,9 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                 parsed_vae_uri.load(
                     dtype_fallback=dtype,
                     use_auth_token=auth_token,
-                    local_files_only=local_files_only)
+                    local_files_only=local_files_only,
+                    sequential_cpu_offload_member=sequential_cpu_offload,
+                    model_cpu_offload_member=model_cpu_offload)
 
             _messages.debug_log(lambda:
                                 f'Added Torch VAE: "{vae_uri}" to pipeline: "{pipeline_class.__name__}"')
@@ -727,7 +729,9 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                     variant_fallback=variant,
                     dtype_fallback=dtype,
                     use_auth_token=auth_token,
-                    local_files_only=local_files_only)
+                    local_files_only=local_files_only,
+                    sequential_cpu_offload_member=sequential_cpu_offload,
+                    model_cpu_offload_member=model_cpu_offload)
 
             _messages.debug_log(lambda:
                                 f'Added Torch UNet: "{unet_uri}" to pipeline: "{pipeline_class.__name__}"')
@@ -747,7 +751,9 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
 
             new_net = parsed_control_net_uri.load(use_auth_token=auth_token,
                                                   dtype_fallback=dtype,
-                                                  local_files_only=local_files_only)
+                                                  local_files_only=local_files_only,
+                                                  sequential_cpu_offload_member=sequential_cpu_offload,
+                                                  model_cpu_offload_member=model_cpu_offload)
 
             _messages.debug_log(lambda:
                                 f'Added Torch ControlNet: "{control_net_uri}" '
@@ -832,38 +838,35 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
 
     # Model Offloading
 
-    # Tag the pipeline with our own attributes
-    pipeline.DGENERATE_SEQUENTIAL_OFFLOAD = sequential_cpu_offload
-    pipeline.DGENERATE_CPU_OFFLOAD = model_cpu_offload
+    if device == 'cuda':
 
-    all_model_components = get_torch_pipeline_modules(pipeline)
+        set_sequential_cpu_offload_flag(pipeline, sequential_cpu_offload)
+        set_cpu_offload_flag(pipeline, model_cpu_offload)
 
-    if sequential_cpu_offload and 'cuda' in device:
-        pipeline.enable_sequential_cpu_offload(device=device)
+        all_model_components = get_torch_pipeline_modules(pipeline)
 
-        for name, model in all_model_components.items():
-            if not isinstance(model, torch.nn.Module):
-                continue
+        if sequential_cpu_offload:
+            pipeline.enable_sequential_cpu_offload(device=device)
+            _patch_torch_cast_for_sequential_offloading(pipeline)
 
-            if name not in pipeline._exclude_from_cpu_offload:
-                _messages.debug_log(
-                    f'setting DGENERATE_SEQUENTIAL_OFFLOAD={sequential_cpu_offload} on module "{name}" of {pipeline_class}')
+            for name, model in all_model_components.items():
+                if not isinstance(model, torch.nn.Module):
+                    continue
 
-                model.DGENERATE_SEQUENTIAL_OFFLOAD = sequential_cpu_offload
+                if name not in pipeline._exclude_from_cpu_offload:
+                    set_sequential_cpu_offload_flag(model, True)
+                    _patch_torch_cast_for_sequential_offloading(model)
 
-    elif model_cpu_offload and 'cuda' in device:
+        elif model_cpu_offload:
 
-        pipeline.enable_model_cpu_offload(device=device)
+            pipeline.enable_model_cpu_offload(device=device)
 
-        for model_str in pipeline.model_cpu_offload_seq.split("->"):
-            model = all_model_components.pop(model_str, None)
-            if not isinstance(model, torch.nn.Module):
-                continue
+            for model_str in pipeline.model_cpu_offload_seq.split("->"):
+                model = all_model_components.pop(model_str, None)
+                if not isinstance(model, torch.nn.Module):
+                    continue
 
-            _messages.debug_log(
-                f'setting DGENERATE_CPU_OFFLOAD={model_cpu_offload} on module "{model_str}" of {pipeline_class}')
-
-            model.DGENERATE_CPU_OFFLOAD = model_cpu_offload
+                set_cpu_offload_flag(model, True)
 
     _cache.pipeline_create_update_cache_info(pipeline=pipeline,
                                              estimated_size=estimated_memory_usage)
@@ -889,13 +892,60 @@ def get_torch_pipeline_modules(pipeline: diffusers.DiffusionPipeline):
     return {k: v for k, v in pipeline.components.items() if isinstance(v, torch.nn.Module)}
 
 
-def is_sequential_offload_enabled(module: torch.nn.Module):
+def _patch_torch_cast_for_sequential_offloading(module: torch.nn.Module):
+    """
+    This is really terrible :)
+
+    :param module: nn module to violate
+    """
+
+    def patch(device, *args, **kwargs):
+        return module
+
+    if module.to.__name__ is not patch.__name__:
+        module.to = patch
+
+
+def set_sequential_cpu_offload_flag(module: torch.nn.Module, value: bool):
+    """
+    Set ``DGENERATE_SEQUENTIAL_CPU_OFFLOAD`` on a module, flagging it
+    to dgenerate as belonging to a sequentially offloaded pipeline, or being
+    a sequentially offloaded pipeline itself if the value is ``True``
+
+
+    :param module: the module
+
+    :param value: ``True`` or ``False``
+    """
+    module.DGENERATE_SEQUENTIAL_CPU_OFFLOAD = value
+
+    _messages.debug_log(
+        f'setting DGENERATE_SEQUENTIAL_CPU_OFFLOAD={value} on module "{module.__class__.__name__}"')
+
+
+def set_cpu_offload_flag(module: torch.nn.Module, value: bool):
+    """
+    Set ``DGENERATE_CPU_OFFLOAD = True`` on a module, flagging it
+    to dgenerate as belonging to a cpu offloaded pipeline, or being
+    a cpu offloaded pipeline itself if the value is ``True``
+
+    :param module: the module
+
+    :param value: ``True`` or ``False``
+    """
+    module.DGENERATE_CPU_OFFLOAD = value
+
+    _messages.debug_log(
+        f'setting DGENERATE_CPU_OFFLOAD={value} on module "{module.__class__.__name__}"')
+
+
+def is_sequential_cpu_offload_enabled(module: torch.nn.Module):
     """
     Test if a neural net module created by dgenerate has sequential offload enabled.
     :param module: the module object
     :return: ``True`` or ``False``
     """
-    return hasattr(module, 'DGENERATE_SEQUENTIAL_OFFLOAD') and module.DGENERATE_SEQUENTIAL_OFFLOAD
+    return hasattr(module, 'DGENERATE_SEQUENTIAL_CPU_OFFLOAD') and module.DGENERATE_SEQUENTIAL_CPU_OFFLOAD
 
 
 def is_model_cpu_offload_enabled(module: torch.nn.Module):

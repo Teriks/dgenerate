@@ -411,9 +411,13 @@ class TorchControlNetUri:
     def load(self,
              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
              use_auth_token: _types.OptionalString = None,
-             local_files_only: bool = False) -> diffusers.ControlNetModel:
+             local_files_only: bool = False,
+             sequential_cpu_offload_member: bool = False,
+             model_cpu_offload_member: bool = False) -> diffusers.ControlNetModel:
         """
         Load a :py:class:`diffusers.ControlNetModel` from this URI.
+
+
 
         :param dtype_fallback: Fallback datatype if ``dtype`` was not specified in the URI.
 
@@ -423,12 +427,22 @@ class TorchControlNetUri:
         :param local_files_only: Avoid connecting to huggingface to download models and
             only use cached models?
 
+        :param sequential_cpu_offload_member: This model will be attached to
+            a pipeline which will have sequential cpu offload enabled?
+
+        :param model_cpu_offload_member: This model will be attached to a pipeline
+            which will have model cpu offload enabled?
+
         :raises ModelNotFoundError: If the model could not be found.
 
         :return: :py:class:`diffusers.ControlNetModel`
         """
         try:
-            return self._load(dtype_fallback, use_auth_token, local_files_only)
+            return self._load(dtype_fallback,
+                              use_auth_token,
+                              local_files_only,
+                              sequential_cpu_offload_member,
+                              model_cpu_offload_member)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
@@ -441,7 +455,13 @@ class TorchControlNetUri:
     def _load(self,
               dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
               use_auth_token: _types.OptionalString = None,
-              local_files_only: bool = False) -> diffusers.ControlNetModel:
+              local_files_only: bool = False,
+              sequential_cpu_offload_member: bool = False,
+              model_cpu_offload_member: bool = False) -> diffusers.ControlNetModel:
+
+        if sequential_cpu_offload_member and model_cpu_offload_member:
+            # these are used for cache differentiation only
+            raise ValueError('sequential_cpu_offload_member and model_cpu_offload_member cannot both be True.')
 
         single_file_load_path = _hfutil.is_single_file_model_load(self.model)
 
@@ -767,9 +787,12 @@ class TorchVAEUri:
     def load(self,
              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
              use_auth_token: _types.OptionalString = None,
-             local_files_only=False) -> typing.Union[diffusers.AutoencoderKL,
-                                                     diffusers.AsymmetricAutoencoderKL,
-                                                     diffusers.AutoencoderTiny]:
+             local_files_only=False,
+             sequential_cpu_offload_member: bool = False,
+             model_cpu_offload_member: bool = False) -> typing.Union[diffusers.AutoencoderKL,
+                                                               diffusers.AsymmetricAutoencoderKL,
+                                                               diffusers.AutoencoderTiny,
+                                                               diffusers.ConsistencyDecoderVAE]:
         """
         Load a VAE of type :py:class:`diffusers.AutoencoderKL`, :py:class:`diffusers.AsymmetricAutoencoderKL`,
         :py:class:`diffusers.AutoencoderKLTemporalDecoder`, or :py:class:`diffusers.AutoencoderTiny` from this URI
@@ -779,13 +802,24 @@ class TorchVAEUri:
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug or blob link
 
+        :param sequential_cpu_offload_member: This model will be attached to
+            a pipeline which will have sequential cpu offload enabled?
+
+        :param model_cpu_offload_member: This model will be attached to a pipeline
+            which will have model cpu offload enabled?
+
         :raises ModelNotFoundError: If the model could not be found.
 
         :return: :py:class:`diffusers.AutoencoderKL`, :py:class:`diffusers.AsymmetricAutoencoderKL`,
             :py:class:`diffusers.AutoencoderKLTemporalDecoder`, or :py:class:`diffusers.AutoencoderTiny`
         """
         try:
-            return self._load(dtype_fallback, use_auth_token, local_files_only)
+            return self._load(dtype_fallback,
+                              use_auth_token,
+                              local_files_only,
+                              sequential_cpu_offload_member,
+                              model_cpu_offload_member)
+
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
@@ -798,9 +832,16 @@ class TorchVAEUri:
     def _load(self,
               dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
               use_auth_token: _types.OptionalString = None,
-              local_files_only=False) -> typing.Union[diffusers.AutoencoderKL,
-                                                      diffusers.AsymmetricAutoencoderKL,
-                                                      diffusers.AutoencoderTiny]:
+              local_files_only: bool = False,
+              sequential_cpu_offload_member: bool = False,
+              model_cpu_offload_member: bool = False) -> typing.Union[diffusers.AutoencoderKL,
+                                                                diffusers.AsymmetricAutoencoderKL,
+                                                                diffusers.AutoencoderTiny,
+                                                                diffusers.ConsistencyDecoderVAE]:
+
+        if sequential_cpu_offload_member and model_cpu_offload_member:
+            # these are used for cache differentiation only
+            raise ValueError('sequential_cpu_offload_member and model_cpu_offload_member cannot both be True.')
 
         if self.dtype is None:
             torch_dtype = _enums.get_torch_dtype(dtype_fallback)
@@ -976,7 +1017,9 @@ class TorchUNetUri:
              variant_fallback: _types.OptionalString = None,
              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
              use_auth_token: _types.OptionalString = None,
-             local_files_only=False) -> diffusers.UNet2DConditionModel:
+             local_files_only=False,
+             sequential_cpu_offload_member: bool = False,
+             model_cpu_offload_member: bool = False) -> diffusers.UNet2DConditionModel:
         """
         Load a UNet of type :py:class:`diffusers.UNet2DConditionModel`
 
@@ -986,12 +1029,23 @@ class TorchUNetUri:
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug or blob link
 
+        :param sequential_cpu_offload_member: This model will be attached to
+            a pipeline which will have sequential cpu offload enabled?
+
+        :param model_cpu_offload_member: This model will be attached to a pipeline
+            which will have model cpu offload enabled?
+
         :raises ModelNotFoundError: If the model could not be found.
 
         :return: :py:class:`diffusers.UNet2DConditionModel`
         """
         try:
-            return self._load(variant_fallback, dtype_fallback, use_auth_token, local_files_only)
+            return self._load(variant_fallback,
+                              dtype_fallback,
+                              use_auth_token,
+                              local_files_only,
+                              sequential_cpu_offload_member,
+                              model_cpu_offload_member)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
@@ -1005,7 +1059,13 @@ class TorchUNetUri:
               variant_fallback: _types.OptionalString = None,
               dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
               use_auth_token: _types.OptionalString = None,
-              local_files_only=False) -> diffusers.UNet2DConditionModel:
+              local_files_only=False,
+              sequential_cpu_offload_member: bool = False,
+              model_cpu_offload_member: bool = False) -> diffusers.UNet2DConditionModel:
+
+        if sequential_cpu_offload_member and model_cpu_offload_member:
+            # these are used for cache differentiation only
+            raise ValueError('sequential_cpu_offload_member and model_cpu_offload_member cannot both be True.')
 
         if self.dtype is None:
             torch_dtype = _enums.get_torch_dtype(dtype_fallback)
