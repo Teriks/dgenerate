@@ -147,6 +147,9 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         self.template_variables = {
             'injected_args': self.injected_args,
+            'injected_device': _arguments.parse_device(self.injected_args)[0],
+            'injected_verbose': _arguments.parse_verbose(self.injected_args)[0],
+            'injected_plugin_modules': _arguments.parse_plugin_modules(self.injected_args)[0],
             'saved_modules': dict(),
             'glob': glob
         }
@@ -374,6 +377,15 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         template_variables['injected_args'] = (collections.abc.Sequence[str],
                                                self.template_variables.get('injected_args'))
+
+        template_variables['injected_device'] = (_types.OptionalString,
+                                                 self.template_variables.get('injected_device'))
+
+        template_variables['injected_verbose'] = (_types.OptionalBoolean,
+                                                  self.template_variables.get('injected_verbose'))
+
+        template_variables['injected_plugin_modules'] = (_types.OptionalPaths,
+                                                         self.template_variables.get('injected_plugin_modules'))
 
         template_variables['saved_modules'] = (dict[str, dict[str, typing.Any]],
                                                self.template_variables.get('saved_modules'))
