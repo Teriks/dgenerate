@@ -1,5 +1,8 @@
 #! dgenerate 3.0.0
 
+\set device_switch {{ '--device '+injected_device if injected_device else '' }}
+
+
 # image process can be used without any processor URIs to preform
 # simple resizing and pixel alignment on an image, --align is 8 by default
 # for 8 pixel alignment
@@ -8,10 +11,11 @@
 
 # resize to 1024x568
 
+
 \image_process "../../media/horse1.jpg"
 -o horse-resized-aligned-8.png
 --resize 1026
---align 8
+--align 8 {{ device_switch }}
 
 # resize to 1024x1024
 
@@ -25,4 +29,4 @@
 
 \image_process "../../media/horse1.jpg"
 -o horse-aligned-8.png
---align 8
+--align 8 {{ device_switch }}

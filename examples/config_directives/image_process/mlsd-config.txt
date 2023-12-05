@@ -2,7 +2,9 @@
 
 # run the mlsd processor (Machine Learning Model for Detecting Wireframes)
 
+\set device_switch {{ '--device '+injected_device if injected_device else '' }}
+
 \image_process "../../media/dog-on-bench.png"
 -o dog-bench-mlsd.png
 --processors mlsd;threshold-score=0.2;threshold-distance=10
---align 1
+--align 1 {{ device_switch }}

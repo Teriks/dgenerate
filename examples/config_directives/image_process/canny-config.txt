@@ -4,6 +4,10 @@
 
 \image_process --help
 
+
+\set device_switch {{ '--device '+injected_device if injected_device else '' }}
+
+
 # run canny edge detection on the gif
 # generate a gif without rendering intermediate frames
 # do not align the resolution to 8 pixels
@@ -12,4 +16,4 @@
 -o rickroll-canny.gif
 --processors "canny;threshold-algo=otsu;blur=true;gray=true"
 --align 1
---no-frames
+--no-frames {{ device_switch }}

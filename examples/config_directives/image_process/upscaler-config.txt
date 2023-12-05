@@ -1,5 +1,9 @@
 #! dgenerate 3.0.0
 
+
+\set device_switch {{ '--device '+injected_device if injected_device else '' }}
+
+
 # Get arguments help and continue, this does not cause dgenerate to exit
 
 \image_process --help
@@ -7,7 +11,7 @@
 # Naive resizing with aspect correction
 # Disable alignment so the image is resized to an exact size
 
-\image_process "../../media/earth.jpg" -o earth-resized.jpg --resize 1467 --align 1
+\image_process "../../media/earth.jpg" -o earth-resized.jpg --resize 1467 --align 1 {{ device_switch }}
 
 # last_images is assigned by this directive
 
@@ -21,7 +25,7 @@
 # So below, dgenerate resizes the image down to 196x196 pixels (no alignment, LANCZOS)
 # and then upscales it using an ESRGAN X4 upscaling model, resulting in an image output that is 784x784
 
-\image_process "../../media/earth.jpg"
+\image_process "../../media/earth.jpg" {{ device_switch }}
 --output earth-reupscaled.jpg
 --resize 196
 --align 1
@@ -34,7 +38,7 @@
 # The name of the generated frames will be based off the --output-file name, _frame_(idx) will be appended
 # if you want to change the format of the frame images, use --image-format with an image file extension
 
-\image_process "../../media/kitten.gif"
+\image_process "../../media/kitten.gif" {{ device_switch }}
 --output "kitten\kitten.gif"
 --processors upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth
 
