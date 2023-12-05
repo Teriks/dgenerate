@@ -24,6 +24,7 @@ import typing
 import diffusers
 import diffusers.loaders
 import huggingface_hub
+import torch.nn
 
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
@@ -35,6 +36,14 @@ import dgenerate.pipelinewrapper.uris as _uris
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
+
+
+class UnsupportedPipelineConfigError(Exception):
+    """
+    Occurs when the a diffusers pipeline is requested to be
+    configured in a way that is unsupported by that pipeline.
+    """
+    pass
 
 
 class InvalidSchedulerNameError(Exception):
@@ -252,11 +261,11 @@ def set_vae_slicing_tiling(pipeline: typing.Union[diffusers.DiffusionPipeline,
                                     f'VAE: "{pipeline.vae.__class__.__name__}"')
                 pipeline.vae.enable_tiling()
             else:
-                raise NotImplementedError(
+                raise UnsupportedPipelineConfigError(
                     '--vae-tiling not supported as loaded VAE does not support it.'
                 )
         else:
-            raise NotImplementedError(
+            raise UnsupportedPipelineConfigError(
                 '--vae-tiling not supported as no VAE is present for the specified model.')
     elif has_vae:
         if hasattr(pipeline.vae, 'disable_tiling'):
@@ -271,11 +280,11 @@ def set_vae_slicing_tiling(pipeline: typing.Union[diffusers.DiffusionPipeline,
                                     f'VAE: "{pipeline.vae.__class__.__name__}"')
                 pipeline.vae.enable_slicing()
             else:
-                raise NotImplementedError(
+                raise UnsupportedPipelineConfigError(
                     '--vae-slicing not supported as loaded VAE does not support it.'
                 )
         else:
-            raise NotImplementedError(
+            raise UnsupportedPipelineConfigError(
                 '--vae-slicing not supported as no VAE is present for the specified model.')
     elif has_vae:
         if hasattr(pipeline.vae, 'disable_slicing'):
@@ -453,7 +462,7 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     :raises ModelNotFoundError:
     :raises InvalidModelUriError:
     :raises InvalidSchedulerNameError:
-    :raises NotImplementedError:
+    :raises UnsupportedPipelineConfigError:
 
     :return: :py:class:`.TorchPipelineCreationResult`
     """
@@ -506,7 +515,7 @@ class TorchPipelineFactory:
         :raises ModelNotFoundError:
         :raises InvalidModelUriError:
         :raises InvalidSchedulerNameError:
-        :raises NotImplementedError:
+        :raises UnsupportedPipelineConfigError:
 
         :return: :py:class:`.TorchPipelineCreationResult`
         """
@@ -566,20 +575,20 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
 
     if _enums.model_type_is_floyd(model_type):
         if control_net_uris:
-            raise NotImplementedError(
+            raise UnsupportedPipelineConfigError(
                 'Deep Floyd --model-type values are not compatible with --control-nets.')
         if textual_inversion_uris:
-            raise NotImplementedError(
+            raise UnsupportedPipelineConfigError(
                 'Deep Floyd --model-type values are not compatible with --textual-inversions.')
 
     if _enums.model_type_is_upscaler(model_type):
         if pipeline_type != _enums.PipelineType.IMG2IMG and not scheduler_is_help(scheduler):
-            raise NotImplementedError(
+            raise UnsupportedPipelineConfigError(
                 'Upscaler models only work with img2img generation, IE: --image-seeds (with no image masks).')
 
         if model_type == _enums.ModelType.TORCH_UPSCALER_X2:
             if lora_uris or textual_inversion_uris:
-                raise NotImplementedError(
+                raise UnsupportedPipelineConfigError(
                     '--model-type torch-upscaler-x2 is not compatible with --loras or --textual-inversions.')
 
         pipeline_class = (diffusers.StableDiffusionUpscalePipeline if model_type == _enums.ModelType.TORCH_UPSCALER_X4
@@ -590,13 +599,13 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
 
         if pipeline_type == _enums.PipelineType.TXT2IMG:
             if pix2pix:
-                raise NotImplementedError(
+                raise UnsupportedPipelineConfigError(
                     'pix2pix models only work in img2img mode and cannot work without --image-seeds.')
 
             if model_type == _enums.ModelType.TORCH_IF:
                 pipeline_class = diffusers.IFPipeline
             elif model_type == _enums.ModelType.TORCH_IFS:
-                raise NotImplementedError(
+                raise UnsupportedPipelineConfigError(
                     'Deep Floyd IF super resolution (IFS) only works in img2img mode and cannot work without --image-seeds.')
             elif control_net_uris:
                 pipeline_class = diffusers.StableDiffusionXLControlNetPipeline if sdxl else diffusers.StableDiffusionControlNetPipeline
@@ -605,7 +614,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         elif pipeline_type == _enums.PipelineType.IMG2IMG:
             if pix2pix:
                 if control_net_uris:
-                    raise NotImplementedError(
+                    raise UnsupportedPipelineConfigError(
                         'pix2pix models are not compatible with --control-nets.')
 
                 pipeline_class = diffusers.StableDiffusionXLInstructPix2PixPipeline if sdxl else diffusers.StableDiffusionInstructPix2PixPipeline
@@ -624,7 +633,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                 pipeline_class = diffusers.StableDiffusionXLImg2ImgPipeline if sdxl else diffusers.StableDiffusionImg2ImgPipeline
         elif pipeline_type == _enums.PipelineType.INPAINT:
             if pix2pix:
-                raise NotImplementedError(
+                raise UnsupportedPipelineConfigError(
                     'pix2pix models only work in img2img mode and cannot work in inpaint mode (with a mask).')
             if model_type == _enums.ModelType.TORCH_IF:
                 pipeline_class = diffusers.IFInpaintingPipeline
@@ -639,7 +648,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                 pipeline_class = diffusers.StableDiffusionXLInpaintPipeline if sdxl else diffusers.StableDiffusionInpaintPipeline
         else:
             # Should be impossible
-            raise NotImplementedError('Pipeline type not implemented.')
+            raise UnsupportedPipelineConfigError('Pipeline type not implemented.')
 
     unet_override = extra_modules and 'unet' in extra_modules
     vae_override = extra_modules and 'vae' in extra_modules
@@ -675,12 +684,12 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
 
     if textual_inversion_uris:
         if model_type == _enums.ModelType.TORCH_UPSCALER_X2:
-            raise NotImplementedError(
+            raise UnsupportedPipelineConfigError(
                 '--model-type torch-upscaler-x2 cannot be used with textual inversion models.')
 
     if lora_uris:
         if _enums.model_type_is_upscaler(model_type):
-            raise NotImplementedError(
+            raise UnsupportedPipelineConfigError(
                 'LoRA models cannot be used with upscaler models.')
 
     # ControlNet and VAE loading
@@ -725,7 +734,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
 
     if control_net_uris and not controlnet_override:
         if _enums.model_type_is_pix2pix(model_type):
-            raise NotImplementedError(
+            raise UnsupportedPipelineConfigError(
                 'Using ControlNets with pix2pix models is not supported.'
             )
 
@@ -767,7 +776,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
 
     if _hfutil.is_single_file_model_load(model_path):
         if subfolder is not None:
-            raise NotImplementedError('Single file model loads do not support the subfolder option.')
+            raise UnsupportedPipelineConfigError('Single file model loads do not support the subfolder option.')
         pipeline = pipeline_class.from_single_file(model_path,
                                                    revision=revision,
                                                    variant=variant,
@@ -827,10 +836,34 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     pipeline.DGENERATE_SEQUENTIAL_OFFLOAD = sequential_cpu_offload
     pipeline.DGENERATE_CPU_OFFLOAD = model_cpu_offload
 
+    all_model_components = get_torch_pipeline_modules(pipeline)
+
     if sequential_cpu_offload and 'cuda' in device:
         pipeline.enable_sequential_cpu_offload(device=device)
+
+        for name, model in all_model_components.items():
+            if not isinstance(model, torch.nn.Module):
+                continue
+
+            if name not in pipeline._exclude_from_cpu_offload:
+                _messages.debug_log(
+                    f'setting DGENERATE_SEQUENTIAL_OFFLOAD={sequential_cpu_offload} on module "{name}" of {pipeline_class}')
+
+                model.DGENERATE_SEQUENTIAL_OFFLOAD = sequential_cpu_offload
+
     elif model_cpu_offload and 'cuda' in device:
+
         pipeline.enable_model_cpu_offload(device=device)
+
+        for model_str in pipeline.model_cpu_offload_seq.split("->"):
+            model = all_model_components.pop(model_str, None)
+            if not isinstance(model, torch.nn.Module):
+                continue
+
+            _messages.debug_log(
+                f'setting DGENERATE_CPU_OFFLOAD={model_cpu_offload} on module "{model_str}" of {pipeline_class}')
+
+            model.DGENERATE_CPU_OFFLOAD = model_cpu_offload
 
     _cache.pipeline_create_update_cache_info(pipeline=pipeline,
                                              estimated_size=estimated_memory_usage)
@@ -845,6 +878,33 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         parsed_textual_inversion_uris=parsed_textual_inversion_uris,
         parsed_control_net_uris=parsed_control_net_uris
     )
+
+
+def get_torch_pipeline_modules(pipeline: diffusers.DiffusionPipeline):
+    """
+    Get all component modules of a torch diffusers pipeline.
+    :param pipeline: the pipeline
+    :return: dictionary of modules by name
+    """
+    return {k: v for k, v in pipeline.components.items() if isinstance(v, torch.nn.Module)}
+
+
+def is_sequential_offload_enabled(module: torch.nn.Module):
+    """
+    Test if a neural net module created by dgenerate has sequential offload enabled.
+    :param module: the module object
+    :return: ``True`` or ``False``
+    """
+    return hasattr(module, 'DGENERATE_SEQUENTIAL_OFFLOAD') and module.DGENERATE_SEQUENTIAL_OFFLOAD
+
+
+def is_model_cpu_offload_enabled(module: torch.nn.Module):
+    """
+    Test if a neural net module created by dgenerate has model cpu offload enabled.
+    :param module: the module object
+    :return: ``True`` or ``False``
+    """
+    return hasattr(module, 'DGENERATE_CPU_OFFLOAD') and module.DGENERATE_CPU_OFFLOAD
 
 
 class FlaxPipelineCreationResult(PipelineCreationResult):
@@ -957,7 +1017,7 @@ def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     :raises ModelNotFoundError:
     :raises InvalidModelUriError:
     :raises InvalidSchedulerNameError:
-    :raises NotImplementedError:
+    :raises UnsupportedPipelineConfigError:
 
     :return: :py:class:`.FlaxPipelineCreationResult`
     """
@@ -996,7 +1056,7 @@ class FlaxPipelineFactory:
         :raises ModelNotFoundError:
         :raises InvalidModelUriError:
         :raises InvalidSchedulerNameError:
-        :raises NotImplementedError:
+        :raises UnsupportedPipelineConfigError:
 
         :return: :py:class:`.FlaxPipelineCreationResult`
         """
@@ -1043,7 +1103,7 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     has_control_nets = False
     if control_net_uris:
         if len(control_net_uris) > 1:
-            raise NotImplementedError('Flax does not support multiple --control-nets.')
+            raise UnsupportedPipelineConfigError('Flax does not support multiple --control-nets.')
         if len(control_net_uris) == 1:
             has_control_nets = True
 
@@ -1054,14 +1114,14 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             pipeline_class = diffusers.FlaxStableDiffusionPipeline
     elif pipeline_type == _enums.PipelineType.IMG2IMG:
         if has_control_nets:
-            raise NotImplementedError('Flax does not support img2img mode with --control-nets.')
+            raise UnsupportedPipelineConfigError('Flax does not support img2img mode with --control-nets.')
         pipeline_class = diffusers.FlaxStableDiffusionImg2ImgPipeline
     elif pipeline_type == _enums.PipelineType.INPAINT:
         if has_control_nets:
-            raise NotImplementedError('Flax does not support inpaint mode with --control-nets.')
+            raise UnsupportedPipelineConfigError('Flax does not support inpaint mode with --control-nets.')
         pipeline_class = diffusers.FlaxStableDiffusionInpaintPipeline
     else:
-        raise NotImplementedError('Pipeline type not implemented.')
+        raise UnsupportedPipelineConfigError('Pipeline type not implemented.')
 
     unet_override = extra_modules and 'unet' in extra_modules
     vae_override = extra_modules and 'vae' in extra_modules

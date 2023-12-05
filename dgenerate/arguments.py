@@ -439,7 +439,7 @@ actions.append(
                         "AutoEncoderClass;model=(huggingface repository slug/blob link or file/folder path)".
                         
                         Examples: "AutoencoderKL;model=vae.pt", "AsymmetricAutoencoderKL;model=huggingface/vae",
-                        "AutoencoderTiny;model=huggingface/vae". 
+                        "AutoencoderTiny;model=huggingface/vae", "ConsistencyDecoderVAE;model=huggingface/vae". 
                         
                         When using a Flax model, there is currently only one available 
                         encoder class: "FlaxAutoencoderKL;model=huggingface/vae".
@@ -624,6 +624,38 @@ actions.append(
                         f'will print the compatible schedulers for a model without generating any images. '
                         f'Torch schedulers: ({", ".join(e.name for e in diffusers.schedulers.KarrasDiffusionSchedulers)}).'
                         + _flax_scheduler_help_part))
+
+_model_offload_group = parser.add_mutually_exclusive_group()
+
+actions.append(
+    _model_offload_group.add_argument(
+        '-mqo', '--model-sequential-offload', action='store_true', default=False,
+        help="""Force sequential model offloading for the main pipeline, this may drastically reduce memory consumption
+                and allow large models to run when they would otherwise not fit in your GPUs VRAM. 
+                Inference will be much slower. Mutually exclusive with --model-cpu-offload"""))
+
+actions.append(
+    _model_offload_group.add_argument(
+        '-mco', '--model-cpu-offload', action='store_true', default=False,
+        help="""Force model cpu offloading for the main pipeline, this may reduce memory consumption
+                and allow large models to run when they would otherwise not fit in your GPUs VRAM. 
+                Inference will be slower. Mutually exclusive with --model-sequential-offload"""))
+
+_refiner_offload_group = parser.add_mutually_exclusive_group()
+
+actions.append(
+    _refiner_offload_group.add_argument(
+        '-rqo', '--sdxl-refiner-sequential-offload', action='store_true', default=False,
+        help="""Force sequential model offloading for the SDXL refiner pipeline, this may drastically
+                reduce memory consumption and allow large models to run when they would otherwise not fit in 
+                your GPUs VRAM. Inference will be much slower. Mutually exclusive with --refiner-cpu-offload"""))
+
+actions.append(
+    _refiner_offload_group.add_argument(
+        '-rco', '--sdxl-refiner-cpu-offload', action='store_true', default=False,
+        help="""Force model cpu offloading for the SDXL refiner pipeline, this may reduce memory consumption
+                and allow large models to run when they would otherwise not fit in your GPUs VRAM. 
+                Inference will be slower. Mutually exclusive with --refiner-sequential-offload"""))
 
 actions.append(
     parser.add_argument('--sdxl-refiner', action='store', default=None, metavar="MODEL_URI",

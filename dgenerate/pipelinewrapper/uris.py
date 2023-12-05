@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import collections.abc
 import os.path
 import typing
 
@@ -116,35 +117,47 @@ class FlaxControlNetUri:
     Representation of ``--control-nets`` uri when ``--model-type`` flax*
     """
 
-    model: str
-    """
-    Model path, huggingface slug
-    """
+    @property
+    def model(self) -> str:
+        """
+        Model path, huggingface slug
+        """
+        return self._model
 
-    revision: _types.OptionalString
-    """
-    Model repo revision
-    """
+    @property
+    def revision(self) -> _types.OptionalString:
+        """
+        Model repo revision
+        """
+        return self._revision
 
-    subfolder: _types.OptionalPath
-    """
-    Model repo subfolder
-    """
+    @property
+    def subfolder(self) -> _types.OptionalPath:
+        """
+        Model repo subfolder
+        """
+        return self._subfolder
 
-    dtype: typing.Optional[_enums.DataType]
-    """
-    Model dtype (precision)
-    """
+    @property
+    def dtype(self) -> typing.Optional[_enums.DataType]:
+        """
+        Model dtype (precision)
+        """
+        return self._dtype
 
-    scale: float
-    """
-    ControlNet guidance scale
-    """
+    @property
+    def scale(self) -> float:
+        """
+        ControlNet guidance scale
+        """
+        return self.scale
 
-    from_torch: bool
-    """
-    Load from a model format meant for torch?
-    """
+    @property
+    def from_torch(self) -> bool:
+        """
+        Load from a model format meant for torch?
+        """
+        return self._from_torch
 
     def __init__(self,
                  model: str,
@@ -153,13 +166,33 @@ class FlaxControlNetUri:
                  dtype: typing.Union[_enums.DataType, str, None] = None,
                  scale: float = 1.0,
                  from_torch: bool = False):
+        """
+        :param model: model path
+        :param revision: model revision (branch)
+        :param subfolder: model subfolder
+        :param dtype: data type (precision)
+        :param scale: control net scale value
+        :param from_torch: load from a model designed for torch?
 
-        self.model = model
-        self.revision = revision
-        self.subfolder = subfolder
-        self.dtype = _enums.get_data_type_enum(dtype) if dtype else None
-        self.scale = scale
-        self.from_torch = from_torch
+        :raises InvalidControlNetUriError: If the ``model`` path represents a singular file (not supported),
+            or if ``dtype`` is passed an invalid string
+        """
+
+        if _hfutil.is_single_file_model_load(model):
+            raise InvalidControlNetUriError('Flax --control-nets do not support single file loads.')
+
+        self._model = model
+        self._revision = revision
+        self._subfolder = subfolder
+
+        try:
+            self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
+        except ValueError:
+            raise InvalidControlNetUriError(
+                f'invalid dtype string, must be one of: {_textprocessing.oxford_comma(_enums.supported_data_type_strings(), "or")}')
+
+        self._scale = scale
+        self._from_torch = from_torch
 
     def load(self,
              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
@@ -175,6 +208,8 @@ class FlaxControlNetUri:
 
         :param local_files_only: Avoid connecting to huggingface to download models and
             only use cached models?
+
+        :raises ModelNotFoundError: If the model could not be found.
 
         :return: tuple (:py:class:`diffusers.FlaxControlNetModel`, flax_control_net_params)
         """
@@ -194,35 +229,29 @@ class FlaxControlNetUri:
               use_auth_token: _types.OptionalString = None,
               local_files_only: bool = False) -> tuple[diffusers.FlaxControlNetModel, typing.Any]:
 
-        single_file_load_path = _hfutil.is_single_file_model_load(self.model)
+        estimated_memory_usage = _hfutil.estimate_model_memory_use(
+            repo_id=self.model,
+            revision=self.revision,
+            subfolder=self.subfolder,
+            flax=not self.from_torch,
+            use_auth_token=use_auth_token,
+            local_files_only=local_files_only
+        )
 
-        if single_file_load_path:
-            raise NotImplementedError('Flax --control-nets do not support single file loads.')
-        else:
+        _cache.enforce_control_net_cache_constraints(
+            new_control_net_size=estimated_memory_usage)
 
-            estimated_memory_usage = _hfutil.estimate_model_memory_use(
-                repo_id=self.model,
-                revision=self.revision,
-                subfolder=self.subfolder,
-                flax=not self.from_torch,
-                use_auth_token=use_auth_token,
-                local_files_only=local_files_only
-            )
+        flax_dtype = _enums.get_flax_dtype(
+            dtype_fallback if self.dtype is None else self.dtype)
 
-            _cache.enforce_control_net_cache_constraints(
-                new_control_net_size=estimated_memory_usage)
-
-            flax_dtype = _enums.get_flax_dtype(
-                dtype_fallback if self.dtype is None else self.dtype)
-
-            new_net: diffusers.FlaxControlNetModel = \
-                diffusers.FlaxControlNetModel.from_pretrained(self.model,
-                                                              revision=self.revision,
-                                                              subfolder=self.subfolder,
-                                                              dtype=flax_dtype,
-                                                              from_pt=self.from_torch,
-                                                              use_auth_token=use_auth_token,
-                                                              local_files_only=local_files_only)
+        new_net: diffusers.FlaxControlNetModel = \
+            diffusers.FlaxControlNetModel.from_pretrained(self.model,
+                                                          revision=self.revision,
+                                                          subfolder=self.subfolder,
+                                                          dtype=flax_dtype,
+                                                          from_pt=self.from_torch,
+                                                          use_auth_token=use_auth_token,
+                                                          local_files_only=local_files_only)
 
         _messages.debug_log('Estimated Flax ControlNet Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_usage))
@@ -286,45 +315,61 @@ class TorchControlNetUri:
     Representation of ``--control-nets`` uri when ``--model-type`` torch*
     """
 
-    model: str
-    """
-    Model path, huggingface slug
-    """
+    @property
+    def model(self) -> str:
+        """
+        Model path, huggingface slug
+        """
+        return self._model
 
-    revision: _types.OptionalString
-    """
-    Model repo revision
-    """
+    @property
+    def revision(self) -> _types.OptionalString:
+        """
+        Model repo revision
+        """
+        return self._revision
 
-    variant: _types.OptionalString
-    """
-    Model repo revision
-    """
+    @property
+    def variant(self) -> _types.OptionalString:
+        """
+        Model repo revision
+        """
+        return self._variant
 
-    subfolder: _types.OptionalPath
-    """
-    Model repo subfolder
-    """
+    @property
+    def subfolder(self) -> _types.OptionalPath:
+        """
+        Model repo subfolder
+        """
+        return self._subfolder
 
-    dtype: typing.Optional[_enums.DataType]
-    """
-    Model dtype (precision)
-    """
+    @property
+    def dtype(self) -> typing.Optional[_enums.DataType]:
+        """
+        Model dtype (precision)
+        """
+        return self._dtype
 
-    scale: float
-    """
-    ControlNet guidance scale
-    """
+    @property
+    def scale(self) -> float:
+        """
+        ControlNet guidance scale
+        """
+        return self._scale
 
-    start: float
-    """
-    ControlNet guidance start point, fraction of inference / timesteps.
-    """
+    @property
+    def start(self) -> float:
+        """
+        ControlNet guidance start point, fraction of inference / timesteps.
+        """
+        return self._start
 
-    end: float
-    """
-    ControlNet guidance end point, fraction of inference / timesteps.
-    """
+    @property
+    def end(self) -> float:
+        """
+        ControlNet guidance end point, fraction of inference / timesteps.
+        """
+        return self._end
 
     def __init__(self,
                  model: str,
@@ -335,15 +380,33 @@ class TorchControlNetUri:
                  scale: float = 1.0,
                  start: float = 0.0,
                  end: float = 1.0):
+        """
+        :param model: model path
+        :param revision: model revision (branch name)
+        :param variant: model variant, for example ``fp16``
+        :param subfolder: model subfolder
+        :param dtype: model data type (precision)
+        :param scale: control net scale
+        :param start: control net guidance start value
+        :param end: control net guidance end value
 
-        self.model = model
-        self.revision = revision
-        self.variant = variant
-        self.subfolder = subfolder
-        self.dtype = _enums.get_data_type_enum(dtype) if dtype else None
-        self.scale = scale
-        self.start = start
-        self.end = end
+        :raises InvalidControlNetUriError: If ``dtype`` is passed an invalid data type string.
+        """
+
+        self._model = model
+        self._revision = revision
+        self._variant = variant
+        self._subfolder = subfolder
+
+        try:
+            self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
+        except ValueError:
+            raise InvalidControlNetUriError(
+                f'invalid dtype string, must be one of: {_textprocessing.oxford_comma(_enums.supported_data_type_strings(), "or")}')
+
+        self._scale = scale
+        self._start = start
+        self._end = end
 
     def load(self,
              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
@@ -359,6 +422,8 @@ class TorchControlNetUri:
 
         :param local_files_only: Avoid connecting to huggingface to download models and
             only use cached models?
+
+        :raises ModelNotFoundError: If the model could not be found.
 
         :return: :py:class:`diffusers.ControlNetModel`
         """
@@ -498,30 +563,40 @@ class SDXLRefinerUri:
     Representation of ``--sdxl-refiner`` uri
     """
 
-    model: str
-    """
-    Model path, huggingface slug
-    """
+    @property
+    def model(self) -> str:
+        """
+        Model path, huggingface slug
+        """
+        return self._model
 
-    revision: _types.OptionalString
-    """
-    Model repo revision
-    """
+    @property
+    def revision(self) -> _types.OptionalString:
+        """
+        Model repo revision
+        """
+        return self._revision
 
-    variant: _types.OptionalString
-    """
-    Model repo revision
-    """
+    @property
+    def variant(self) -> _types.OptionalString:
+        """
+        Model repo revision
+        """
+        return self._variant
 
-    subfolder: _types.OptionalPath
-    """
-    Model repo subfolder
-    """
+    @property
+    def subfolder(self) -> _types.OptionalPath:
+        """
+        Model repo subfolder
+        """
+        return self._subfolder
 
-    dtype: typing.Optional[_enums.DataType]
-    """
-    Model dtype (precision)
-    """
+    @property
+    def dtype(self) -> typing.Optional[_enums.DataType]:
+        """
+        Model dtype (precision)
+        """
+        return self._dtype
 
     def __init__(self,
                  model: str,
@@ -529,11 +604,27 @@ class SDXLRefinerUri:
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalPath = None,
                  dtype: typing.Union[_enums.DataType, str, None] = None):
-        self.model = model
-        self.revision = revision
-        self.variant = variant
-        self.dtype = _enums.get_data_type_enum(dtype) if dtype else None
-        self.subfolder = subfolder
+        """
+        :param model: model path
+        :param revision: model revision (branch name)
+        :param variant: model variant, for example ``fp16``
+        :param subfolder: model subfolder
+        :param dtype: model data type (precision)
+
+        :raises InvalidSDXLRefinerUriError: If ``dtype`` is passed an invalid data type string.
+        """
+
+        self._model = model
+        self._revision = revision
+        self._variant = variant
+
+        try:
+            self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
+        except ValueError:
+            raise InvalidSDXLRefinerUriError(
+                f'invalid dtype string, must be one of: {_textprocessing.oxford_comma(_enums.supported_data_type_strings(), "or")}')
+
+        self._subfolder = subfolder
 
     @staticmethod
     def parse(uri: _types.Uri) -> 'SDXLRefinerUri':
@@ -572,35 +663,58 @@ class TorchVAEUri:
     Representation of ``--vae`` uri when ``--model-type`` torch*
     """
 
-    encoder: str
-    """
-    Encoder class name such as "AutoencoderKL"
-    """
+    @property
+    def encoder(self) -> str:
+        """
+        Encoder class name such as "AutoencoderKL"
+        """
+        return self._encoder
 
-    model: str
-    """
-    Model path, huggingface slug, file path, or blob link
-    """
+    @property
+    def model(self) -> str:
+        """
+        Model path, huggingface slug
+        """
+        return self._model
 
-    revision: _types.OptionalString
-    """
-    Model repo revision
-    """
+    @property
+    def revision(self) -> _types.OptionalString:
+        """
+        Model repo revision
+        """
+        return self._revision
 
-    variant: _types.OptionalString
-    """
-    Model repo revision
-    """
+    @property
+    def variant(self) -> _types.OptionalString:
+        """
+        Model repo revision
+        """
+        return self._variant
 
-    subfolder: _types.OptionalPath
-    """
-    Model repo subfolder
-    """
+    @property
+    def subfolder(self) -> _types.OptionalPath:
+        """
+        Model repo subfolder
+        """
+        return self._subfolder
 
-    dtype: typing.Optional[_enums.DataType]
-    """
-    Model dtype (precision)
-    """
+    @property
+    def dtype(self) -> typing.Optional[_enums.DataType]:
+        """
+        Model dtype (precision)
+        """
+        return self._dtype
+
+    _encoders = {
+        'AutoencoderKL': diffusers.AutoencoderKL,
+        'AsymmetricAutoencoderKL': diffusers.AsymmetricAutoencoderKL,
+        'AutoencoderTiny': diffusers.AutoencoderTiny,
+        'ConsistencyDecoderVAE': diffusers.ConsistencyDecoderVAE
+    }
+
+    @staticmethod
+    def supported_encoder_names() -> list[str]:
+        return list(TorchVAEUri._encoders.keys())
 
     def __init__(self,
                  encoder: str,
@@ -609,13 +723,46 @@ class TorchVAEUri:
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
                  dtype: typing.Union[_enums.DataType, str, None] = None):
+        """
+        :param encoder: encoder class name, for example ``AutoencoderKL``
+        :param model: model path
+        :param revision: model revision (branch name)
+        :param variant: model variant, for example ``fp16``
+        :param subfolder: model subfolder
+        :param dtype: model data type (precision)
 
-        self.encoder = encoder
-        self.model = model
-        self.revision = revision
-        self.variant = variant
-        self.dtype = _enums.get_data_type_enum(dtype) if dtype else None
-        self.subfolder = subfolder
+        :raises InvalidVaeUriError: If ``dtype`` is passed an invalid data type string, or if
+            ``model`` points to a single file and the specified ``encoder`` class name does not
+            support loading from a single file.
+        """
+
+        if encoder not in self._encoders:
+            raise InvalidVaeUriError(
+                f'Unknown VAE encoder class {encoder}, must be one of: {_textprocessing.oxford_comma(self._encoders.keys(), "or")}')
+
+        can_single_file_load = hasattr(self._encoders[encoder], 'from_single_file')
+        single_file_load_path = _hfutil.is_single_file_model_load(model)
+
+        if single_file_load_path and not can_single_file_load:
+            raise InvalidVaeUriError(f'{encoder} is not capable of loading from a single file, '
+                                     f'must be loaded from a huggingface repository slug or folder on disk.')
+
+        if single_file_load_path:
+            if self.subfolder is not None:
+                raise InvalidVaeUriError('Single file VAE loads do not support the subfolder option.')
+
+        self._encoder = encoder
+        self._model = model
+        self._revision = revision
+        self._variant = variant
+
+        try:
+            self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
+        except ValueError:
+            raise InvalidVaeUriError(
+                f'invalid dtype string, must be one of: {_textprocessing.oxford_comma(_enums.supported_data_type_strings(), "or")}')
+
+        self._subfolder = subfolder
 
     def load(self,
              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
@@ -625,14 +772,17 @@ class TorchVAEUri:
                                                      diffusers.AutoencoderTiny]:
         """
         Load a VAE of type :py:class:`diffusers.AutoencoderKL`, :py:class:`diffusers.AsymmetricAutoencoderKL`,
-          or :py:class:`diffusers.AutoencoderTiny` from this URI
+        :py:class:`diffusers.AutoencoderKLTemporalDecoder`, or :py:class:`diffusers.AutoencoderTiny` from this URI
 
         :param dtype_fallback: If the URI does not specify a dtype, use this dtype.
         :param use_auth_token: optional huggingface auth token.
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug or blob link
+
+        :raises ModelNotFoundError: If the model could not be found.
+
         :return: :py:class:`diffusers.AutoencoderKL`, :py:class:`diffusers.AsymmetricAutoencoderKL`,
-          or :py:class:`diffusers.AutoencoderTiny`
+            :py:class:`diffusers.AutoencoderKLTemporalDecoder`, or :py:class:`diffusers.AutoencoderTiny`
         """
         try:
             return self._load(dtype_fallback, use_auth_token, local_files_only)
@@ -657,32 +807,13 @@ class TorchVAEUri:
         else:
             torch_dtype = _enums.get_torch_dtype(self.dtype)
 
-        encoder_name = self.encoder
+        encoder = self._encoders[self.encoder]
 
-        if encoder_name == 'AutoencoderKL':
-            encoder = diffusers.AutoencoderKL
-        elif encoder_name == 'AsymmetricAutoencoderKL':
-            encoder = diffusers.AsymmetricAutoencoderKL
-        elif encoder_name == 'AutoencoderTiny':
-            encoder = diffusers.AutoencoderTiny
-        else:
-            raise InvalidVaeUriError(f'Unknown VAE encoder class {encoder_name}')
-
-        path = self.model
-
-        can_single_file_load = hasattr(encoder, 'from_single_file')
-        single_file_load_path = _hfutil.is_single_file_model_load(path)
-
-        if single_file_load_path and not can_single_file_load:
-            raise NotImplementedError(f'{encoder_name} is not capable of loading from a single file, '
-                                      f'must be loaded from a huggingface repository slug or folder on disk.')
+        single_file_load_path = _hfutil.is_single_file_model_load(self.model)
 
         if single_file_load_path:
-            if self.subfolder is not None:
-                raise NotImplementedError('Single file VAE loads do not support the subfolder option.')
-
             estimated_memory_use = _hfutil.estimate_model_memory_use(
-                repo_id=path,
+                repo_id=self.model,
                 revision=self.revision,
                 local_files_only=local_files_only,
                 use_auth_token=use_auth_token
@@ -692,12 +823,12 @@ class TorchVAEUri:
 
             if encoder is diffusers.AutoencoderKL:
                 # There is a bug in their cast
-                vae = encoder.from_single_file(path,
+                vae = encoder.from_single_file(self.model,
                                                revision=self.revision,
                                                local_files_only=local_files_only) \
                     .to(dtype=torch_dtype, non_blocking=False)
             else:
-                vae = encoder.from_single_file(path,
+                vae = encoder.from_single_file(self.model,
                                                revision=self.revision,
                                                torch_dtype=torch_dtype,
                                                local_files_only=local_files_only)
@@ -705,7 +836,7 @@ class TorchVAEUri:
         else:
 
             estimated_memory_use = _hfutil.estimate_model_memory_use(
-                repo_id=path,
+                repo_id=self.model,
                 revision=self.revision,
                 variant=self.variant,
                 subfolder=self.subfolder,
@@ -715,7 +846,7 @@ class TorchVAEUri:
 
             _cache.enforce_vae_cache_constraints(new_vae_size=estimated_memory_use)
 
-            vae = encoder.from_pretrained(path,
+            vae = encoder.from_pretrained(self.model,
                                           revision=self.revision,
                                           variant=self.variant,
                                           torch_dtype=torch_dtype,
@@ -772,30 +903,40 @@ class TorchUNetUri:
     Representation of ``--unet`` uri when ``--model-type`` torch*
     """
 
-    model: str
-    """
-    Model path, huggingface slug, file path, or blob link
-    """
+    @property
+    def model(self) -> str:
+        """
+        Model path, huggingface slug, file path, or blob link
+        """
+        return self._model
 
-    revision: _types.OptionalString
-    """
-    Model repo revision
-    """
+    @property
+    def revision(self) -> _types.OptionalString:
+        """
+        Model repo revision
+        """
+        return self._revision
 
-    variant: _types.OptionalString
-    """
-    Model repo revision
-    """
+    @property
+    def variant(self) -> _types.OptionalString:
+        """
+        Model repo revision
+        """
+        return self._variant
 
-    subfolder: _types.OptionalPath
-    """
-    Model repo subfolder
-    """
+    @property
+    def subfolder(self) -> _types.OptionalPath:
+        """
+        Model repo subfolder
+        """
+        return self._subfolder
 
-    dtype: typing.Optional[_enums.DataType]
-    """
-    Model dtype (precision)
-    """
+    @property
+    def dtype(self) -> typing.Optional[_enums.DataType]:
+        """
+        Model dtype (precision)
+        """
+        return self._dtype
 
     def __init__(self,
                  model: str,
@@ -803,12 +944,33 @@ class TorchUNetUri:
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
                  dtype: typing.Union[_enums.DataType, str, None] = None):
+        """
+        :param model: model path
+        :param revision: model revision (branch name)
+        :param variant: model variant, for example ``fp16``
+        :param subfolder: model subfolder
+        :param dtype: model data type (precision)
 
-        self.model = model
-        self.revision = revision
-        self.variant = variant
-        self.dtype = _enums.get_data_type_enum(dtype) if dtype else None
-        self.subfolder = subfolder
+        :raises InvalidUNetUriError: If ``model`` points to a single file,
+            single file loads are not supported. Or if ``dtype`` is passed an
+            invalid data type string.
+        """
+
+        if _hfutil.is_single_file_model_load(model):
+            raise InvalidUNetUriError(
+                'Loading a UNet from a single file is not supported.')
+
+        self._model = model
+        self._revision = revision
+        self._variant = variant
+
+        try:
+            self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
+        except ValueError:
+            raise InvalidUNetUriError(
+                f'invalid dtype string, must be one of: {_textprocessing.oxford_comma(_enums.supported_data_type_strings(), "or")}')
+
+        self._subfolder = subfolder
 
     def load(self,
              variant_fallback: _types.OptionalString = None,
@@ -823,6 +985,9 @@ class TorchUNetUri:
         :param use_auth_token: optional huggingface auth token.
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug or blob link
+
+        :raises ModelNotFoundError: If the model could not be found.
+
         :return: :py:class:`diffusers.UNet2DConditionModel`
         """
         try:
@@ -854,30 +1019,24 @@ class TorchUNetUri:
 
         path = self.model
 
-        single_file_load_path = _hfutil.is_single_file_model_load(path)
+        estimated_memory_use = _hfutil.estimate_model_memory_use(
+            repo_id=path,
+            revision=self.revision,
+            variant=variant,
+            subfolder=self.subfolder,
+            local_files_only=local_files_only,
+            use_auth_token=use_auth_token
+        )
 
-        if single_file_load_path:
-            raise NotImplementedError('Loading a UNet from a single file is not supported.')
-        else:
+        _cache.enforce_unet_cache_constraints(new_unet_size=estimated_memory_use)
 
-            estimated_memory_use = _hfutil.estimate_model_memory_use(
-                repo_id=path,
-                revision=self.revision,
-                variant=variant,
-                subfolder=self.subfolder,
-                local_files_only=local_files_only,
-                use_auth_token=use_auth_token
-            )
-
-            _cache.enforce_unet_cache_constraints(new_unet_size=estimated_memory_use)
-
-            unet = diffusers.UNet2DConditionModel.from_pretrained(path,
-                                                                  revision=self.revision,
-                                                                  variant=variant,
-                                                                  torch_dtype=torch_dtype,
-                                                                  subfolder=self.subfolder,
-                                                                  use_auth_token=use_auth_token,
-                                                                  local_files_only=local_files_only)
+        unet = diffusers.UNet2DConditionModel.from_pretrained(path,
+                                                              revision=self.revision,
+                                                              variant=variant,
+                                                              torch_dtype=torch_dtype,
+                                                              subfolder=self.subfolder,
+                                                              use_auth_token=use_auth_token,
+                                                              local_files_only=local_files_only)
 
         _messages.debug_log('Estimated Torch UNet Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_use))
@@ -924,30 +1083,44 @@ class FlaxVAEUri:
     Representation of ``--vae`` uri when ``--model-type`` flax*
     """
 
-    encoder: str
-    """
-    Encoder class name such as "FlaxAutoencoderKL"
-    """
+    @property
+    def encoder(self) -> str:
+        """
+        Encoder class name, "FlaxAutoencoderKL"
+        """
+        return self._encoder
 
-    model: str
-    """
-    Model path, huggingface slug, file path, or blob link
-    """
+    @property
+    def model(self) -> str:
+        """
+        Model path, huggingface slug
+        """
+        return self._model
 
-    revision: _types.OptionalString
-    """
-    Model repo revision
-    """
+    @property
+    def revision(self) -> _types.OptionalString:
+        """
+        Model repo revision
+        """
+        return self._revision
 
-    subfolder: _types.OptionalPath
-    """
-    Model repo subfolder
-    """
+    @property
+    def subfolder(self) -> _types.OptionalPath:
+        """
+        Model repo subfolder
+        """
+        return self._subfolder
 
-    dtype: typing.Optional[_enums.DataType]
-    """
-    Model dtype (precision)
-    """
+    @property
+    def dtype(self) -> typing.Optional[_enums.DataType]:
+        """
+        Model dtype (precision)
+        """
+        return self._dtype
+
+    _encoders = {
+        'FlaxAutoencoderKL': diffusers.FlaxAutoencoderKL
+    }
 
     def __init__(self,
                  encoder: str,
@@ -955,12 +1128,47 @@ class FlaxVAEUri:
                  revision: _types.OptionalString,
                  subfolder: _types.OptionalPath,
                  dtype: typing.Optional[_enums.DataType]):
+        """
+        :param encoder: Encoder class name
+        :param model: model path
+        :param revision: model revision (branch name)
+        :param subfolder: model subfolder
+        :param dtype: model data type (precision)
 
-        self.encoder = encoder
-        self.model = model
-        self.revision = revision
-        self.dtype = dtype
-        self.subfolder = subfolder
+        :raises InvalidVaeUriError: If ``encoder != 'FlaxAutoencoderKL'``, or if the ``model``
+            path is a single file and that is not supported, or if ``dtype`` is passed an
+            invalid string.
+        """
+
+        if encoder not in self._encoders:
+            raise InvalidVaeUriError(
+                f'Unknown VAE flax encoder class {encoder}, '
+                f'must be one of: {_textprocessing.oxford_comma(self._encoders.keys(), "or")}')
+
+        can_single_file_load = hasattr(self._encoders[encoder], 'from_single_file')
+        single_file_load_path = _hfutil.is_single_file_model_load(model)
+
+        if single_file_load_path and not can_single_file_load:
+            raise InvalidVaeUriError(
+                f'{encoder} is not capable of loading from a single file, '
+                f'must be loaded from a huggingface repository slug or folder on disk.')
+
+        if single_file_load_path:
+            # in the future this will be supported?
+            if subfolder is not None:
+                raise InvalidVaeUriError('Single file VAE loads do not support the subfolder option.')
+
+        self._encoder = encoder
+        self._model = model
+        self._revision = revision
+
+        try:
+            self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
+        except ValueError:
+            raise InvalidVaeUriError(
+                f'invalid dtype string, must be one of: {_textprocessing.oxford_comma(_enums.supported_data_type_strings(), "or")}')
+
+        self._subfolder = subfolder
 
     def load(self,
              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
@@ -973,6 +1181,9 @@ class FlaxVAEUri:
         :param use_auth_token: optional huggingface auth token.
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug or blob link
+
+        :raises ModelNotFoundError: If the model could not be found.
+
         :return: tuple (:py:class:`diffusers.FlaxAutoencoderKL`, flax_vae_params)
         """
         try:
@@ -996,29 +1207,14 @@ class FlaxVAEUri:
         else:
             flax_dtype = _enums.get_flax_dtype(self.dtype)
 
-        encoder_name = self.encoder
+        encoder = self._encoders[self.encoder]
 
-        if encoder_name == 'FlaxAutoencoderKL':
-            encoder = diffusers.FlaxAutoencoderKL
-        else:
-            raise InvalidVaeUriError(f'Unknown VAE flax encoder class {encoder_name}')
-
-        path = self.model
-
-        can_single_file_load = hasattr(encoder, 'from_single_file')
-        single_file_load_path = _hfutil.is_single_file_model_load(path)
-
-        if single_file_load_path and not can_single_file_load:
-            raise NotImplementedError(f'{encoder_name} is not capable of loading from a single file, '
-                                      f'must be loaded from a huggingface repository slug or folder on disk.')
+        single_file_load_path = _hfutil.is_single_file_model_load(self.model)
 
         if single_file_load_path:
-            # in the future this will be supported?
-            if self.subfolder is not None:
-                raise NotImplementedError('Single file VAE loads do not support the subfolder option.')
 
             estimated_memory_use = _hfutil.estimate_model_memory_use(
-                repo_id=path,
+                repo_id=self.model,
                 revision=self.revision,
                 local_files_only=local_files_only,
                 use_auth_token=use_auth_token,
@@ -1027,7 +1223,7 @@ class FlaxVAEUri:
 
             _cache.enforce_vae_cache_constraints(new_vae_size=estimated_memory_use)
 
-            vae = encoder.from_single_file(path,
+            vae = encoder.from_single_file(self.model,
                                            revision=self.revision,
                                            dtype=flax_dtype,
                                            use_auth_token=use_auth_token,
@@ -1035,7 +1231,7 @@ class FlaxVAEUri:
         else:
 
             estimated_memory_use = _hfutil.estimate_model_memory_use(
-                repo_id=path,
+                repo_id=self.model,
                 revision=self.revision,
                 subfolder=self.subfolder,
                 local_files_only=local_files_only,
@@ -1045,7 +1241,7 @@ class FlaxVAEUri:
 
             _cache.enforce_vae_cache_constraints(new_vae_size=estimated_memory_use)
 
-            vae = encoder.from_pretrained(path,
+            vae = encoder.from_pretrained(self.model,
                                           revision=self.revision,
                                           dtype=flax_dtype,
                                           subfolder=self.subfolder,
@@ -1100,36 +1296,64 @@ class FlaxUNetUri:
     Representation of ``--unet`` uri when ``--model-type`` flax*
     """
 
-    model: str
-    """
-    Model path, huggingface slug, file path, or blob link
-    """
+    @property
+    def model(self) -> str:
+        """
+        Model path, huggingface slug
+        """
+        return self._model
 
-    revision: _types.OptionalString
-    """
-    Model repo revision
-    """
+    @property
+    def revision(self) -> _types.OptionalString:
+        """
+        Model repo revision
+        """
+        return self._revision
 
-    subfolder: _types.OptionalPath
-    """
-    Model repo subfolder
-    """
+    @property
+    def subfolder(self) -> _types.OptionalPath:
+        """
+        Model repo subfolder
+        """
+        return self._subfolder
 
-    dtype: typing.Optional[_enums.DataType]
-    """
-    Model dtype (precision)
-    """
+    @property
+    def dtype(self) -> typing.Optional[_enums.DataType]:
+        """
+        Model dtype (precision)
+        """
+        return self._dtype
 
     def __init__(self,
                  model: str,
                  revision: _types.OptionalString,
                  subfolder: _types.OptionalPath,
                  dtype: typing.Optional[_enums.DataType]):
+        """
+        :param model: model path
+        :param revision: model revision (branch name)
+        :param subfolder: model subfolder
+        :param dtype: model data type (precision)
 
-        self.model = model
-        self.revision = revision
-        self.dtype = dtype
-        self.subfolder = subfolder
+        :raises InvalidUNetUriError: If ``model`` points to a single file, single file loads are not supported, or
+            if ``dtype`` is passed an invalid string.
+        """
+
+        single_file_load_path = _hfutil.is_single_file_model_load(model)
+
+        if single_file_load_path:
+            raise InvalidUNetUriError('Loading a UNet from a single file is not supported.')
+
+        self._model = model
+        self._revision = revision
+
+        try:
+            self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
+        except ValueError:
+            raise InvalidUNetUriError(
+                f'invalid dtype string, must be one of: {_textprocessing.oxford_comma(_enums.supported_data_type_strings(), "or")}')
+
+        self._subfolder = subfolder
 
     def load(self,
              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
@@ -1142,6 +1366,9 @@ class FlaxUNetUri:
         :param use_auth_token: optional huggingface auth token.
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug or blob link
+
+        :raises ModelNotFoundError: If the model could not be found.
+
         :return: tuple (:py:class:`diffusers.FlaxUNet2DConditionModel`, flax_unet_params)
         """
         try:
@@ -1165,31 +1392,23 @@ class FlaxUNetUri:
         else:
             flax_dtype = _enums.get_flax_dtype(self.dtype)
 
-        path = self.model
+        estimated_memory_use = _hfutil.estimate_model_memory_use(
+            repo_id=self.model,
+            revision=self.revision,
+            subfolder=self.subfolder,
+            local_files_only=local_files_only,
+            use_auth_token=use_auth_token,
+            flax=True
+        )
 
-        single_file_load_path = _hfutil.is_single_file_model_load(path)
+        _cache.enforce_unet_cache_constraints(new_unet_size=estimated_memory_use)
 
-        if single_file_load_path:
-            raise NotImplementedError('Loading a UNet from a single file is not supported.')
-        else:
-
-            estimated_memory_use = _hfutil.estimate_model_memory_use(
-                repo_id=path,
-                revision=self.revision,
-                subfolder=self.subfolder,
-                local_files_only=local_files_only,
-                use_auth_token=use_auth_token,
-                flax=True
-            )
-
-            _cache.enforce_unet_cache_constraints(new_unet_size=estimated_memory_use)
-
-            unet = diffusers.FlaxUNet2DConditionModel.from_pretrained(path,
-                                                                      revision=self.revision,
-                                                                      dtype=flax_dtype,
-                                                                      subfolder=self.subfolder,
-                                                                      use_auth_token=use_auth_token,
-                                                                      local_files_only=local_files_only)
+        unet = diffusers.FlaxUNet2DConditionModel.from_pretrained(self.model,
+                                                                  revision=self.revision,
+                                                                  dtype=flax_dtype,
+                                                                  subfolder=self.subfolder,
+                                                                  use_auth_token=use_auth_token,
+                                                                  local_files_only=local_files_only)
 
         _messages.debug_log('Estimated Flax UNet Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_use))
@@ -1235,30 +1454,40 @@ class LoRAUri:
     Representation of a ``--loras`` uri
     """
 
-    model: str
-    """
-    Model path, huggingface slug, file path
-    """
+    @property
+    def model(self) -> str:
+        """
+        Model path, huggingface slug, file path
+        """
+        return self._model
 
-    revision: _types.OptionalString
-    """
-    Model repo revision
-    """
+    @property
+    def revision(self) -> _types.OptionalString:
+        """
+        Model repo revision
+        """
+        return self._revision
 
-    subfolder: _types.OptionalPath
-    """
-    Model repo subfolder
-    """
+    @property
+    def subfolder(self) -> _types.OptionalPath:
+        """
+        Model repo subfolder
+        """
+        return self._subfolder
 
-    weight_name: _types.OptionalName
-    """
-    Model weight-name
-    """
+    @property
+    def weight_name(self) -> _types.OptionalName:
+        """
+        Model weight-name
+        """
+        return self._weight_name
 
-    scale: float
-    """
-    LoRA scale
-    """
+    @property
+    def scale(self) -> float:
+        """
+        LoRA scale
+        """
+        return self._scale
 
     def __init__(self,
                  model: str,
@@ -1266,11 +1495,11 @@ class LoRAUri:
                  subfolder: _types.OptionalPath = None,
                  weight_name: _types.OptionalName = None,
                  scale: float = 1.0):
-        self.model = model
-        self.scale = scale
-        self.revision = revision
-        self.subfolder = subfolder
-        self.weight_name = weight_name
+        self._model = model
+        self._scale = scale
+        self._revision = revision
+        self._subfolder = subfolder
+        self._weight_name = weight_name
 
     def __str__(self):
         return f'{self.__class__.__name__}({str(_types.get_public_attributes(self))})'
@@ -1289,6 +1518,8 @@ class LoRAUri:
         :param use_auth_token: optional huggingface auth token.
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug
+
+        :raises ModelNotFoundError: If the model could not be found.
         """
         try:
             self._load_on_pipeline(pipeline=pipeline,
@@ -1333,7 +1564,7 @@ class LoRAUri:
                                                                        revision=self.revision)
 
                 if not isinstance(file_path, str):
-                    raise RuntimeError(
+                    raise ModuleNotFoundError(
                         f'LoRA model "{self.model}" was not available in the local huggingface cache.')
 
                 load_path = os.path.dirname(file_path)
@@ -1376,35 +1607,43 @@ class TextualInversionUri:
     Representation of ``--textual-inversions`` uri
     """
 
-    model: str
-    """
-    Model path, huggingface slug, file path
-    """
+    @property
+    def model(self) -> str:
+        """
+        Model path, huggingface slug, file path
+        """
+        return self._model
 
-    revision: _types.OptionalString
-    """
-    Model repo revision
-    """
+    @property
+    def revision(self) -> _types.OptionalString:
+        """
+        Model repo revision
+        """
+        return self._revision
 
-    subfolder: _types.OptionalPath
-    """
-    Model repo subfolder
-    """
+    @property
+    def subfolder(self) -> _types.OptionalPath:
+        """
+        Model repo subfolder
+        """
+        return self._subfolder
 
-    weight_name: _types.OptionalName
-    """
-    Model weight-name
-    """
+    @property
+    def weight_name(self) -> _types.OptionalName:
+        """
+        Model weight-name
+        """
+        return self._weight_name
 
     def __init__(self,
                  model: str,
                  revision: _types.OptionalString = None,
                  subfolder: _types.OptionalPath = None,
                  weight_name: _types.OptionalName = None):
-        self.model = model
-        self.revision = revision
-        self.subfolder = subfolder
-        self.weight_name = weight_name
+        self._model = model
+        self._revision = revision
+        self._subfolder = subfolder
+        self._weight_name = weight_name
 
     def __str__(self):
         return f'{self.__class__.__name__}({str(_types.get_public_attributes(self))})'
@@ -1423,6 +1662,8 @@ class TextualInversionUri:
         :param use_auth_token: optional huggingface auth token.
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug
+
+        :raises ModelNotFoundError: If the model could not be found.
         """
         try:
             self._load_on_pipeline(pipeline=pipeline,

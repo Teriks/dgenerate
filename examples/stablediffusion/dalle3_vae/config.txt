@@ -1,0 +1,12 @@
+# dgenerate 3.0.0
+
+# Test the consistency decoder VAE contributed from Dalle-3, which works
+# with stable diffusion 1.x models
+
+runwayml/stable-diffusion-v1-5
+--vae ConsistencyDecoderVAE;model=openai/consistency-decoder
+--prompts "a jet age style robot playing chess with a child"
+--inference-steps 30
+--guidance-scales 8
+--output-size 1024
+--model-sequential-offload

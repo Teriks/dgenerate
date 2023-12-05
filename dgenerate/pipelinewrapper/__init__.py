@@ -104,7 +104,12 @@ from .pipelines import \
     create_torch_diffusion_pipeline, \
     estimate_pipeline_memory_use, \
     load_scheduler, \
-    scheduler_is_help
+    scheduler_is_help, \
+    UnsupportedPipelineConfigError, \
+    get_torch_pipeline_modules, \
+    is_model_cpu_offload_enabled, \
+    is_sequential_offload_enabled
+
 from .uris import \
     InvalidModelUriError, \
     LoRAUri, \
