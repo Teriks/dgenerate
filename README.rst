@@ -3149,9 +3149,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_animations"
             Type: collections.abc.Iterable[str]
             Value: <dgenerate.renderloop.RenderLoop.written_animations.<locals>.Iterable object at 0x000001FBFE609790>
-        Name: "injected_args"
-            Type: collections.abc.Sequence[str]
-            Value: []
+        Name: "injected_device"
+            Type: str
+            Value: None
         Name: "saved_modules"
             Type: dict[str, dict[str, typing.Any]]
             Value: {}
@@ -3496,18 +3496,27 @@ On Windows Powershell:
     Get-Content my-animations-config.txt | dgenerate --frame-start 0 --frame-end 10
 
 
-If you need the arguments injected from the command line within the config
-for some other purpose use the ``injected_args`` template variable.
+If you need arguments injected from the command line within the config for
+some other purpose such as for using with the ``\image_process`` directive,
+use the ``injected_args`` template and related template variables.
 
 .. code-block:: jinja
 
-    # these are the arguments that were injected by: dgenerate -args -here < config.txt
-    # these arguments automatically get added to the end of any dgenerate invocation
-    # and are type validated before the config starts running, but not logically
-    # validated for correctness other than args that are marked mutually exclusive by
-    # the argument parser
+    # all injected args
 
     \print {{ quote(injected_args) }}
+
+    # just the injected device
+
+    \print {{ '--device '+injected_device if injected_device else '' }}
+
+    # was -v/--verbose injected?
+
+    \print {{ '-v' if injected_verbose else '' }}
+
+    # plugin module paths injected with --plugin-modules
+
+    \print {{ quote(injected_plugin_modules) if injected_plugin_modules else '' }}
 
 
 Writing Plugins
