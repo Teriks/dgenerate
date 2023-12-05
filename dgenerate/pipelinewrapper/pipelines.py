@@ -436,13 +436,13 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     Create a :py:class:`diffusers.DiffusionPipeline` in dgenerates in memory cacheing system.
 
 
-    :param pipeline_type: py:class:`dgenerate.pipelinewrapper.PipelineType` enum value
-    :param model_type:  py:class:`dgenerate.pipelinewrapper.ModelType` enum value
+    :param pipeline_type: :py:class:`dgenerate.pipelinewrapper.PipelineType` enum value
+    :param model_type:  :py:class:`dgenerate.pipelinewrapper.ModelType` enum value
     :param model_path: huggingface slug, huggingface blob link, path to folder on disk, path to file on disk
     :param revision: huggingface repo revision (branch)
     :param variant: model weights name variant, for example 'fp16'
     :param subfolder: huggingface repo subfolder if applicable
-    :param dtype: Optional py:class:`dgenerate.pipelinewrapper.DataType` enum value
+    :param dtype: Optional :py:class:`dgenerate.pipelinewrapper.DataType` enum value
     :param unet_uri: Optional ``--unet`` URI string for specifying a specific UNet
     :param vae_uri: Optional ``--vae`` URI string for specifying a specific VAE
     :param lora_uris: Optional ``--loras`` URI strings for specifying LoRA weights
@@ -998,12 +998,12 @@ def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     Create a :py:class:`diffusers.FlaxDiffusionPipeline` in dgenerates in memory cacheing system.
 
 
-    :param pipeline_type: py:class:`dgenerate.pipelinewrapper.PipelineType` enum value
+    :param pipeline_type: :py:class:`dgenerate.pipelinewrapper.PipelineType` enum value
     :param model_path: huggingface slug, huggingface blob link, path to folder on disk, path to file on disk
     :param model_type: Currently only accepts :py:attr:`dgenerate.pipelinewrapper.ModelType.FLAX`
     :param revision: huggingface repo revision (branch)
     :param subfolder: huggingface repo subfolder if applicable
-    :param dtype: Optional py:class:`dgenerate.pipelinewrapper.DataType` enum value
+    :param dtype: Optional :py:class:`dgenerate.pipelinewrapper.DataType` enum value
     :param unet_uri: Optional Flax specific ``--unet`` URI string for specifying a specific UNet
     :param vae_uri: Optional Flax specific ``--vae`` URI string for specifying a specific VAE
     :param control_net_uris: Optional ``--control-nets`` URI strings for specifying ControlNet models
