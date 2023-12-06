@@ -21,9 +21,9 @@
 import typing
 
 import PIL.Image
-import controlnet_aux as _cna
-import controlnet_aux.open_pose as _cna_open_pose
-import controlnet_aux.util as _cna_util
+import dgenerate.extras.controlnet_aux as _cna
+import dgenerate.extras.controlnet_aux.open_pose as _cna_open_pose
+import dgenerate.extras.controlnet_aux.util as _cna_util
 import cv2
 import numpy
 

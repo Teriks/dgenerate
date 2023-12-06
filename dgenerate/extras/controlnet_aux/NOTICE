@@ -1,0 +1,13 @@
+This code is forked from https://github.com/patrickvonplaten/controlnet_aux
+
+Which is in turn forked from https://github.com/lllyasviel/ControlNet
+
+All edits can be found in a NOTICE file in the sub module where the edit occurred,
+which mostly are going to consist of bug fixes :)
+
+
+Currently added NOTICE files:
+
+pidi/NOTICE
+leres/leres/NOTICE
+leres/pix2pix/NOTICE

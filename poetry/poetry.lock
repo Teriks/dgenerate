@@ -466,30 +466,6 @@ test = ["Pillow", "contourpy[test-no-images]", "matplotlib"]
 test-no-images = ["pytest", "pytest-cov", "pytest-xdist", "wurlitzer"]
 
 [[package]]
-name = "controlnet-aux"
-version = "0.0.7"
-description = "Auxillary models for controlnet"
-optional = false
-python-versions = ">=3.7.0"
-files = [
-    {file = "controlnet_aux-0.0.7.tar.gz", hash = "sha256:db7299323ba6d389e2fe6b7d8131a05a271af3a4ac2a574775448c4d0778be8c"},
-]
-
-[package.dependencies]
-einops = "*"
-filelock = "*"
-huggingface_hub = "*"
-importlib_metadata = "*"
-numpy = "*"
-opencv-python = "*"
-Pillow = "*"
-scikit-image = "*"
-scipy = "*"
-timm = "*"
-torch = "*"
-torchvision = "*"
-
-[[package]]
 name = "cycler"
 version = "0.12.1"
 description = "Composable style cycles"
@@ -772,13 +748,13 @@ files = [
 
 [[package]]
 name = "fsspec"
-version = "2023.12.0"
+version = "2023.12.1"
 description = "File-system specification"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "fsspec-2023.12.0-py3-none-any.whl", hash = "sha256:f807252ee2018f2223760315beb87a2166c2b9532786eeca9e6548dfcf2cfac9"},
-    {file = "fsspec-2023.12.0.tar.gz", hash = "sha256:8e0bb2db2a94082968483b7ba2eaebf3949835e2dfdf09243dda387539464b31"},
+    {file = "fsspec-2023.12.1-py3-none-any.whl", hash = "sha256:6271f1d3075a378bfe432f6f42bf7e1d2a6ba74f78dd9b512385474c579146a0"},
+    {file = "fsspec-2023.12.1.tar.gz", hash = "sha256:c4da01a35ac65c853f833e43f67802c25213f560820d54ddf248f92eddd5e990"},
 ]
 
 [package.dependencies]
@@ -1753,19 +1729,19 @@ antlr4-python3-runtime = "==4.9.*"
 PyYAML = ">=5.1.0"
 
 [[package]]
-name = "opencv-python"
+name = "opencv-python-headless"
 version = "4.8.1.78"
 description = "Wrapper package for OpenCV python bindings."
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "opencv-python-4.8.1.78.tar.gz", hash = "sha256:cc7adbbcd1112877a39274106cb2752e04984bc01a031162952e97450d6117f6"},
-    {file = "opencv_python-4.8.1.78-cp37-abi3-macosx_10_16_x86_64.whl", hash = "sha256:91d5f6f5209dc2635d496f6b8ca6573ecdad051a09e6b5de4c399b8e673c60da"},
-    {file = "opencv_python-4.8.1.78-cp37-abi3-macosx_11_0_arm64.whl", hash = "sha256:bc31f47e05447da8b3089faa0a07ffe80e114c91ce0b171e6424f9badbd1c5cd"},
-    {file = "opencv_python-4.8.1.78-cp37-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:9814beca408d3a0eca1bae7e3e5be68b07c17ecceb392b94170881216e09b319"},
-    {file = "opencv_python-4.8.1.78-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c4c406bdb41eb21ea51b4e90dfbc989c002786c3f601c236a99c59a54670a394"},
-    {file = "opencv_python-4.8.1.78-cp37-abi3-win32.whl", hash = "sha256:a7aac3900fbacf55b551e7b53626c3dad4c71ce85643645c43e91fcb19045e47"},
-    {file = "opencv_python-4.8.1.78-cp37-abi3-win_amd64.whl", hash = "sha256:b983197f97cfa6fcb74e1da1802c7497a6f94ed561aba6980f1f33123f904956"},
+    {file = "opencv-python-headless-4.8.1.78.tar.gz", hash = "sha256:bc7197b42352f6f865c302a49140b889ec7cd957dd697e2d7fc016ad0d3f28f1"},
+    {file = "opencv_python_headless-4.8.1.78-cp37-abi3-macosx_10_16_x86_64.whl", hash = "sha256:f3a33f644249f9ce1c913eac580e4b3ef4ce7cab0a71900274708959c2feb5e3"},
+    {file = "opencv_python_headless-4.8.1.78-cp37-abi3-macosx_11_0_arm64.whl", hash = "sha256:2c7d45721df9801c4dcd34683a15caa0e30f38b185263fec04a6eb274bc720f0"},
+    {file = "opencv_python_headless-4.8.1.78-cp37-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:3b6bd6e1132b6f5dcb3a5bfe30fc4d341a7bfb26134da349a06c9255288ded94"},
+    {file = "opencv_python_headless-4.8.1.78-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:58e70d2f0915fe23e02c6e405588276c9397844a47d38b9c87fac5f7f9ba2dcc"},
+    {file = "opencv_python_headless-4.8.1.78-cp37-abi3-win32.whl", hash = "sha256:382f8c7a6a14f80091284eecedd52cee4812231ee0eff1118592197b538d9252"},
+    {file = "opencv_python_headless-4.8.1.78-cp37-abi3-win_amd64.whl", hash = "sha256:0a0f1e9f836f7d5bad1dd164694944c8761711cbdf4b36ebbd4815a8ef731079"},
 ]
 
 [package.dependencies]
@@ -1819,13 +1795,13 @@ test = ["dm-haiku (>=0.0.3)", "dm-tree (>=0.1.7)", "flax (==0.5.3)"]
 
 [[package]]
 name = "orbax-checkpoint"
-version = "0.4.4"
+version = "0.4.5"
 description = "Orbax Checkpoint"
 optional = true
 python-versions = ">=3.9"
 files = [
-    {file = "orbax_checkpoint-0.4.4-py3-none-any.whl", hash = "sha256:e356288d7f62b30519b20ae3c0584743d6598234e4996b4c15bbbd32c13c1f04"},
-    {file = "orbax_checkpoint-0.4.4.tar.gz", hash = "sha256:85ab96268b3f39e83809254cb3d55aa5a47c2279d7d3e725bd5f7c2da10a4de9"},
+    {file = "orbax_checkpoint-0.4.5-py3-none-any.whl", hash = "sha256:641b343aefdeb03ea58e19499abbfd939a15f84643216c899c58c4edc3d874fb"},
+    {file = "orbax_checkpoint-0.4.5.tar.gz", hash = "sha256:c0d254ff7baf3d661943ff43ef460635199fbfd67ffa25778b989ad6eb18582a"},
 ]
 
 [package.dependencies]
@@ -1838,7 +1814,7 @@ nest_asyncio = "*"
 numpy = "*"
 protobuf = "*"
 pyyaml = "*"
-tensorstore = ">=0.1.35"
+tensorstore = ">=0.1.51"
 typing_extensions = "*"
 
 [package.extras]
@@ -2598,28 +2574,28 @@ mpmath = ">=0.19"
 
 [[package]]
 name = "tensorstore"
-version = "0.1.50"
+version = "0.1.51"
 description = "Read and write large, multi-dimensional arrays"
 optional = true
 python-versions = ">=3.9"
 files = [
-    {file = "tensorstore-0.1.50-cp310-cp310-macosx_10_14_x86_64.whl", hash = "sha256:a1091838c0e7b613a7683eea968b4a7d1e9c87df0fe1d5d05bfa97059cfd7d3a"},
-    {file = "tensorstore-0.1.50-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:385e4f5d59eca38ab31bff5718e46521d0d65cc632d0e24783c1f63f5addfeb8"},
-    {file = "tensorstore-0.1.50-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:672554e7359a87e23bc15de18fb7aa6f8cd1097964fcf9e841d27eb775f2cb8d"},
-    {file = "tensorstore-0.1.50-cp310-cp310-win_amd64.whl", hash = "sha256:06c51a9534488eb09902883f34fe7bb0cf6254edc5dd24994b4d0a07575b3c4f"},
-    {file = "tensorstore-0.1.50-cp311-cp311-macosx_10_14_x86_64.whl", hash = "sha256:92b67b64875c12c3cde5c47e9dd051181d71045340b935d583d5914bfa055813"},
-    {file = "tensorstore-0.1.50-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:273b2b76d8d27766f0604f81a8a8041fa441bd4dabc770ed9cc7ae33230a0dc8"},
-    {file = "tensorstore-0.1.50-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b0d56508da22800619639975042ac1de73de06f81ee31c7faa311e2c2053d456"},
-    {file = "tensorstore-0.1.50-cp311-cp311-win_amd64.whl", hash = "sha256:6d95638e226aeea41830efae6ed2c7e7c91fdcfad26db4dae536d797acc485c5"},
-    {file = "tensorstore-0.1.50-cp312-cp312-macosx_10_14_x86_64.whl", hash = "sha256:dcc0b820f65c7fd884be3c2ab3cc8eef8f96b9e121d2a80cda391a13d531beb6"},
-    {file = "tensorstore-0.1.50-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:0b02b8e58033256b8dc26c06e1de8ee5ae430565d29dd7bea6762b00126e1b57"},
-    {file = "tensorstore-0.1.50-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:3c8fd3319d9f1755eabadfd4fdb2f6a141cbc824836cf27fa1d50b73d41db2e4"},
-    {file = "tensorstore-0.1.50-cp312-cp312-win_amd64.whl", hash = "sha256:1a17bc64ce895bc465afd5dfa09b25d4db459a050828b7bf1e2953d466896f19"},
-    {file = "tensorstore-0.1.50-cp39-cp39-macosx_10_14_x86_64.whl", hash = "sha256:16b03040f3f755dba859206890ec57983be50da594d3ae9e8bb855be58e7779d"},
-    {file = "tensorstore-0.1.50-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:03b4bd51fb9d694209671f3d0521aa38c65bb49aa8c7933904e86c0f5234e633"},
-    {file = "tensorstore-0.1.50-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b31b694484afb44355d92d5447611d89a4c0594824a816c30f21465d58c30430"},
-    {file = "tensorstore-0.1.50-cp39-cp39-win_amd64.whl", hash = "sha256:dfef891fb722907df530edeb260ed2fadb83695ac834d7957e71bd86f588031e"},
-    {file = "tensorstore-0.1.50.tar.gz", hash = "sha256:e251226bfaca7829966e78712156df316137257328001d3295df849be577e61f"},
+    {file = "tensorstore-0.1.51-cp310-cp310-macosx_10_14_x86_64.whl", hash = "sha256:66bd61a819fb36a238fed24c0bcbb04e945e8185e15bc8e052904be9543cc3b9"},
+    {file = "tensorstore-0.1.51-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:23d56d71150a0eb1631b0217b590d1ffba310b5afdebe902fc104eb80d5cb975"},
+    {file = "tensorstore-0.1.51-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:1269855bb59ec1d67a542382c3ab362e4c2343995a05ba4aa7e10470d10ccae2"},
+    {file = "tensorstore-0.1.51-cp310-cp310-win_amd64.whl", hash = "sha256:60c0d797e0ccf3ad9a9277310715ad2ab40d014bcd6fc0885d6e89f05f21e5c7"},
+    {file = "tensorstore-0.1.51-cp311-cp311-macosx_10_14_x86_64.whl", hash = "sha256:7996aa605d743ddabde84ca24fb0891beb45e0b4bf7cd64fe9d9f340e137146f"},
+    {file = "tensorstore-0.1.51-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:03bea83d2dc78599611f32e4c86a2bf9e5b797fd2868a15ee438f0d2596f2230"},
+    {file = "tensorstore-0.1.51-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0a6a7d1622cce46019e8b9a36668031c9f817b5b1f78fe47e71a920e36692fde"},
+    {file = "tensorstore-0.1.51-cp311-cp311-win_amd64.whl", hash = "sha256:ee8900136b00ac11b253a824f3bc8b8b25a0d37704e117aa6a8d5c84218309e6"},
+    {file = "tensorstore-0.1.51-cp312-cp312-macosx_10_14_x86_64.whl", hash = "sha256:4c834f91d7ce91837737dbe2babd53e3e60b161e8bdcf4b3c4450c1bb02356e6"},
+    {file = "tensorstore-0.1.51-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:db34ec518e8e6dc542359d370631567775f90fbbdd2943d455de27a53b82c3e0"},
+    {file = "tensorstore-0.1.51-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0beab1a0e50c1db760cb8eb93ce4c51e9c4954b01fa99b73276712cdc238e58b"},
+    {file = "tensorstore-0.1.51-cp312-cp312-win_amd64.whl", hash = "sha256:d64ba3b6a7485beebea8f1ea03d6e95752e32f94b03a708361d2d6ed58032feb"},
+    {file = "tensorstore-0.1.51-cp39-cp39-macosx_10_14_x86_64.whl", hash = "sha256:39bebfc68163831aa1c1a35d7840e0aab155b80cd450947499041ebbdb3bc35a"},
+    {file = "tensorstore-0.1.51-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:20425519d1b9f18e56e6dc954bfe1753179cb21522bb211d275e33f60cd1a79c"},
+    {file = "tensorstore-0.1.51-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:4cc93cf2336ab7125ee09c2a521d6b078d27ce3f405369318fdf452e387b6b1a"},
+    {file = "tensorstore-0.1.51-cp39-cp39-win_amd64.whl", hash = "sha256:dbb56354d80ac4e88d5d8df562e27b73b91ce08412ad217f35b58660a2798b40"},
+    {file = "tensorstore-0.1.51.tar.gz", hash = "sha256:8a7610c0cc5263593dd8865160f7a1c51d8380706008cd0f866150b36550bd31"},
 ]
 
 [package.dependencies]
@@ -2870,31 +2846,19 @@ trampoline = ">=0.1.2"
 
 [[package]]
 name = "torchvision"
-version = "0.16.1"
+version = "0.16.1+cu118"
 description = "image and video datasets and models for torch deep learning"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "torchvision-0.16.1-cp310-cp310-macosx_10_13_x86_64.whl", hash = "sha256:987132795e5c037cb74e7be35a693999fdb2f603152266ee15b80206e83a5b0c"},
-    {file = "torchvision-0.16.1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:25da6a7b22ea0348f62c45ec0daf157731096babcae65d222404081af96e085c"},
-    {file = "torchvision-0.16.1-cp310-cp310-manylinux1_x86_64.whl", hash = "sha256:c82e291e674a18b67f92ddb476ae18498fb46d7032ae914f3fda90c955e7d86f"},
-    {file = "torchvision-0.16.1-cp310-cp310-manylinux2014_aarch64.whl", hash = "sha256:632887b22e67ce32a3ede806b868bba4057601e46d680de14b32a391eac1b483"},
-    {file = "torchvision-0.16.1-cp310-cp310-win_amd64.whl", hash = "sha256:92c76a5092b4033efdb183b11fa4854a7630e23c46f4a1c3ffd70c30cb5be4fc"},
-    {file = "torchvision-0.16.1-cp311-cp311-macosx_10_13_x86_64.whl", hash = "sha256:4aea5cf491c6c21b1cbdbb1bf2a3838a59d4db93ad5f49019a6564d3ca7127c7"},
-    {file = "torchvision-0.16.1-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:3391757167637ace3ef33a67c9d5ef86b1f8cbd93eaa5bad45eebcf266ea6089"},
-    {file = "torchvision-0.16.1-cp311-cp311-manylinux1_x86_64.whl", hash = "sha256:4f9d5b192b336982e6dbe32c070b05606f0b53e87d722ae332a02909fbf988ed"},
-    {file = "torchvision-0.16.1-cp311-cp311-manylinux2014_aarch64.whl", hash = "sha256:3d34601614958c4e30f53ec0eb7bf3f282ee72bb747734be2d75422831a43384"},
-    {file = "torchvision-0.16.1-cp311-cp311-win_amd64.whl", hash = "sha256:e11af530585574eb5ca837b8f151bcdd57c10e35c3af56c76a10f3281d2a2f2c"},
-    {file = "torchvision-0.16.1-cp38-cp38-macosx_10_13_x86_64.whl", hash = "sha256:4f2cad621fb96cf10e29af93e16c98b3226bdd53ae712b57e873c3deaf061617"},
-    {file = "torchvision-0.16.1-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:1d614b3c9e2de9cd75cc0e4e1923fcfbbcd9fdb9f08a0bbbbf7e135e4a0a1cfa"},
-    {file = "torchvision-0.16.1-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:73271e930501a008fe24ba38945b2a75b25a6098f4c2f4402e39a9d0dd305ca6"},
-    {file = "torchvision-0.16.1-cp38-cp38-manylinux2014_aarch64.whl", hash = "sha256:fab67ddc4809fcc2a04610b13cac5193b9d3be2896b77538bfdff401b13022e5"},
-    {file = "torchvision-0.16.1-cp38-cp38-win_amd64.whl", hash = "sha256:13782d574033efec6646d1a2f5d85f4c59fcf3f403367bb407b15df07adc87e0"},
-    {file = "torchvision-0.16.1-cp39-cp39-macosx_10_13_x86_64.whl", hash = "sha256:f14d201c37176dc4106eec76b229d6585a1505266b8cea99d3366fd38897b7c0"},
-    {file = "torchvision-0.16.1-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:a15e88a93a7501cc75b761a2dcd07aaedaaf9cbfaf48c8affa8c98989ecbb19d"},
-    {file = "torchvision-0.16.1-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:72fde5fdb462e66ebe25ae42d2ee11434cbc395f74cad0d3b22cf60524345cc5"},
-    {file = "torchvision-0.16.1-cp39-cp39-manylinux2014_aarch64.whl", hash = "sha256:153f753f14eba58969cdc86360893a57f8bf63f8136c7d1cd4388108560b5446"},
-    {file = "torchvision-0.16.1-cp39-cp39-win_amd64.whl", hash = "sha256:75e33b198b1265f61d822aa66d646ec3df67a712470ffec1e0c37ff46d4103c1"},
+    {file = "torchvision-0.16.1+cu118-cp310-cp310-linux_x86_64.whl", hash = "sha256:17662e70126711b80464d0f1d9255265055f450e600607637715beb244fbe0a4"},
+    {file = "torchvision-0.16.1+cu118-cp310-cp310-win_amd64.whl", hash = "sha256:4904755d361040ef41a79e15d6b1ca62a760f640670629fd53cb4d53e84decda"},
+    {file = "torchvision-0.16.1+cu118-cp311-cp311-linux_x86_64.whl", hash = "sha256:71cb97588f5bb4ec8937c98dc1bb7909095705790eeaafc460497a3cacb8deeb"},
+    {file = "torchvision-0.16.1+cu118-cp311-cp311-win_amd64.whl", hash = "sha256:bfd85e941d286c09c49df972db156dbab565371be4add105f290dbc6e8029b20"},
+    {file = "torchvision-0.16.1+cu118-cp38-cp38-linux_x86_64.whl", hash = "sha256:3c6c078bc08341e007b5ab45345eaf8260448d87bf73748bde706611e6ce92bc"},
+    {file = "torchvision-0.16.1+cu118-cp38-cp38-win_amd64.whl", hash = "sha256:88e68a7f5b705688553d7c73f2acf7b6e4ebcca6ecba3883fe3f173980a89f0e"},
+    {file = "torchvision-0.16.1+cu118-cp39-cp39-linux_x86_64.whl", hash = "sha256:99a2e22eccf4b56866b9e4b01fd1a3ad4d1a7373c5f37ac9366d783441e588b0"},
+    {file = "torchvision-0.16.1+cu118-cp39-cp39-win_amd64.whl", hash = "sha256:84f97feb1bd0e5256d40313b0cfc16c2d25b6fb14934f512a5ab048def648340"},
 ]
 
 [package.dependencies]
@@ -2905,6 +2869,11 @@ torch = "2.1.1"
 
 [package.extras]
 scipy = ["scipy"]
+
+[package.source]
+type = "legacy"
+url = "https://download.pytorch.org/whl/cu118"
+reference = "pytorch"
 
 [[package]]
 name = "tqdm"
@@ -3191,4 +3160,4 @@ flax = ["flax", "jax"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<=3.11.6"
-content-hash = "090ced88dca8a4873eea87fb54e4a6d2b9d355eb09bd4fc14e0418826ff30513"
+content-hash = "d5a8c448cc763d089402a1eb8dab7d9b23c05054462eef42b6587d1376d947f7"
