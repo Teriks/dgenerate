@@ -602,9 +602,9 @@ class DiffusionPipelineWrapper:
                  model_extra_modules=None,
                  refiner_extra_modules=None,
                  model_cpu_offload=False,
-                 model_sequential_offload=False,
-                 sdxl_refiner_cpu_offload=False,
-                 sdxl_refiner_sequential_offload=False):
+                 model_sequential_offload: bool = False,
+                 sdxl_refiner_cpu_offload: bool = False,
+                 sdxl_refiner_sequential_offload: bool = False):
 
         self._subfolder = subfolder
         self._device = device
