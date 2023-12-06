@@ -1,0 +1,10 @@
+#! dgenerate 3.0.0
+
+# run the MiDaS depth detector, but generate a normal map from the depth image.
+
+\set device_switch {{ '--device '+injected_device if injected_device else '' }}
+
+\image_process "../../media/horse2.jpeg"
+-o horse2-midas-normals.png
+--processors midas;normals=True
+--align 1 {{ device_switch }}
