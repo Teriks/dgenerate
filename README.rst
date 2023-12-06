@@ -2899,7 +2899,7 @@ The ``\templates_help`` output from the above example is:
 
         Name: "last_model_path"
             Type: typing.Optional[str]
-            Value: None
+            Value: stabilityai/stable-diffusion-2
         Name: "last_subfolder"
             Type: typing.Optional[str]
             Value: None
@@ -2911,13 +2911,13 @@ The ``\templates_help`` output from the above example is:
             Value: None
         Name: "last_batch_size"
             Type: typing.Optional[int]
-            Value: None
+            Value: 1
         Name: "last_batch_grid_size"
             Type: typing.Optional[tuple[int, int]]
             Value: None
         Name: "last_prompts"
             Type: collections.abc.Sequence[dgenerate.prompt.Prompt]
-            Value: ['']
+            Value: ['a man walking on the moon without a space suit']
         Name: "last_sdxl_second_prompts"
             Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
             Value: []
@@ -2929,7 +2929,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [95069831100230]
+            Value: [50629264152573]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -3058,7 +3058,7 @@ The ``\templates_help`` output from the above example is:
             Value: ModelType.TORCH
         Name: "last_device"
             Type: <class 'str'>
-            Value: cuda
+            Value: cuda:1
         Name: "last_dtype"
             Type: <enum 'DataType'>
             Value: DataType.AUTO
@@ -3070,7 +3070,7 @@ The ``\templates_help`` output from the above example is:
             Value: None
         Name: "last_output_size"
             Type: typing.Optional[tuple[int, int]]
-            Value: None
+            Value: (512, 512)
         Name: "last_no_aspect"
             Type: <class 'bool'>
             Value: False
@@ -3085,10 +3085,10 @@ The ``\templates_help`` output from the above example is:
             Value: False
         Name: "last_output_configs"
             Type: <class 'bool'>
-            Value: False
+            Value: True
         Name: "last_output_metadata"
             Type: <class 'bool'>
-            Value: False
+            Value: True
         Name: "last_animation_format"
             Type: <class 'str'>
             Value: mp4
@@ -3122,12 +3122,24 @@ The ``\templates_help`` output from the above example is:
         Name: "last_offline_mode"
             Type: <class 'bool'>
             Value: False
+        Name: "last_model_cpu_offload"
+            Type: <class 'bool'>
+            Value: False
+        Name: "last_model_sequential_offload"
+            Type: <class 'bool'>
+            Value: False
+        Name: "last_sdxl_refiner_cpu_offload"
+            Type: typing.Optional[bool]
+            Value: None
+        Name: "last_sdxl_refiner_sequential_offload"
+            Type: typing.Optional[bool]
+            Value: None
         Name: "last_plugin_module_paths"
             Type: collections.abc.Sequence[str]
             Value: []
         Name: "last_verbose"
             Type: <class 'bool'>
-            Value: False
+            Value: True
         Name: "last_cache_memory_constraints"
             Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
@@ -3145,19 +3157,28 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_images"
             Type: collections.abc.Iterable[str]
-            Value: <dgenerate.renderloop.RenderLoop.written_images.<locals>.Iterable object at 0x000001FBFE6096D0>
+            Value: <dgenerate.renderloop.RenderLoop.written_images.<locals>.Iterable object at 0x000001E401B2D050>
         Name: "last_animations"
             Type: collections.abc.Iterable[str]
-            Value: <dgenerate.renderloop.RenderLoop.written_animations.<locals>.Iterable object at 0x000001FBFE609790>
+            Value: <dgenerate.renderloop.RenderLoop.written_animations.<locals>.Iterable object at 0x000001E401B2C910>
+        Name: "injected_args"
+            Type: collections.abc.Sequence[str]
+            Value: []
         Name: "injected_device"
-            Type: str
+            Type: typing.Optional[str]
             Value: None
+        Name: "injected_verbose"
+            Type: typing.Optional[bool]
+            Value: None
+        Name: "injected_plugin_modules"
+            Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
         Name: "saved_modules"
             Type: dict[str, dict[str, typing.Any]]
             Value: {}
         Name: "glob"
             Type: <class 'module'>
-            Value: <module 'glob' from 'glob.py'>
+            Value: <module 'glob'>
 
 
 
