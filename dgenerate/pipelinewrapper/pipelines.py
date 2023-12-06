@@ -924,7 +924,9 @@ def _patch_torch_cast_for_sequential_offloading(module: typing.Union[diffusers.D
     """
 
     def patch(device, *args, **kwargs):
-        _messages.debug_log(f'Patched module .to() NO-OP on {module.__class__.__name__} -> ({locals()})')
+        _messages.debug_log(
+            f'Patched module .to() NO-OP on {module.__class__.__name__} '
+            f'-> (device="{device}", args={args}, kwargs={kwargs})')
         return module
 
     if module.to.__name__ is not patch.__name__:
