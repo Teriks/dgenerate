@@ -3,6 +3,8 @@ import os.path
 import subprocess
 import sys
 
+import argparse
+
 try:
     import dgenerate.batchprocess as _batchprocess
 except ImportError:
@@ -10,61 +12,45 @@ except ImportError:
 
 pwd = os.path.dirname(__file__)
 
-args = sys.argv[1:]
+parser = argparse.ArgumentParser(prog='run')
 
-_skip_animations = False
-_skip_library = False
-_short_animations = False
-_skip_flax = False
+parser.add_argument('--paths', nargs='*',
+                    help='example paths, do not include the working directory (examples parent directory).')
+parser.add_argument('--subprocess-only', action='store_true', default=False,
+                    help='Use a different subprocess for every example.')
+parser.add_argument('--skip-animations', action='store_true', default=False, help='Entirely skip rendering animations.')
+parser.add_argument('--skip-library', action='store_true', default=False, help='Entirely skip library usage examples.')
+parser.add_argument('--skip-flax', action='store_true', default=False, help='Entirely skip flax examples on linux.')
+parser.add_argument('--short-animations', action='store_true', default=False,
+                    help='Reduce animation examples to rendering only 3 frames.')
 
-if '--subprocess-only' in args:
-    _batchprocess = None
-    args.remove('--subprocess-only')
+known_args, injected_args = parser.parse_known_args()
 
-if '--skip-animations' in args:
-    _skip_animations = True
-    args.remove('--skip-animations')
+if known_args.paths:
+    configs = []
 
-if '--skip-library' in args:
-    _skip_library = True
-    args.remove('--skip-library')
+    for path in known_args.paths:
+        _, ext = os.path.splitext(path)
+        if ext:
+            configs += [path]
+        else:
+            configs += glob.glob(
+                os.path.join(pwd, *os.path.split(path), '**', '*main.py'),
+                recursive=True)
 
-if '--skip-flax' in args:
-    _skip_flax = True
-    args.remove('--skip-flax')
+            configs += glob.glob(
+                os.path.join(pwd, *os.path.split(path), '**', '*config.txt'),
+                recursive=True)
 
-if '--short-animations' in args:
-    _skip_animations = False
-    _short_animations = True
-    args.remove('--short-animations')
-
-if len(args) > 0:
-    first_arg = args[0]
 else:
-    first_arg = None
 
-if first_arg and not first_arg.startswith('-'):
-    _, ext = os.path.splitext(first_arg)
-    if ext:
-        configs = [first_arg]
-    else:
-
-        configs = glob.glob(
-            os.path.join(pwd, *os.path.split(first_arg), '**', '*main.py'),
-            recursive=True)
-
-        configs += glob.glob(
-            os.path.join(pwd, *os.path.split(first_arg), '**', '*config.txt'),
-            recursive=True)
-
-    args = args[1:]
-else:
     configs = glob.glob(
         os.path.join(pwd, '**', '*main.py'),
         recursive=True)
 
-    configs += glob.glob(os.path.join(pwd, '**', '*config.txt'),
-                         recursive=True)
+    configs += glob.glob(
+        os.path.join(pwd, '**', '*config.txt'),
+        recursive=True)
 
 
 def log(*args):
@@ -74,7 +60,7 @@ def log(*args):
 for config in configs:
     c = os.path.relpath(config, pwd)
 
-    if _skip_animations and 'animation' in c:
+    if known_args.skip_animations and 'animation' in c:
         log(f'SKIPPING ANIMATION: {config}')
         continue
 
@@ -82,12 +68,12 @@ for config in configs:
         if os.name == 'nt':
             log(f'SKIPPING FLAX ON WINDOWS: {config}')
             continue
-        if _skip_flax:
+        if known_args.skip_flax:
             log(f'SKIPPING FLAX: {config}')
             continue
 
     extra_args = []
-    if _short_animations and 'animation' in c:
+    if known_args.short_animations and 'animation' in c:
         log(f'SHORTENING ANIMATION TO 3 FRAMES MAX: {config}')
         extra_args = ['--frame-end', '2']
 
@@ -103,17 +89,17 @@ for config in configs:
                     os.chdir(dirname)
                     content = f.read()
                     try:
-                        _batchprocess.ConfigRunner(args + extra_args).run_string(content)
+                        _batchprocess.ConfigRunner(injected_args + extra_args).run_string(content)
                     except _batchprocess.BatchProcessError as e:
                         log(e)
                         sys.exit(1)
                 else:
-                    subprocess.run(["dgenerate"] + args + extra_args, stdin=f, cwd=dirname, check=True)
+                    subprocess.run(["dgenerate"] + injected_args + extra_args, stdin=f, cwd=dirname, check=True)
             except KeyboardInterrupt:
                 sys.exit(1)
-        elif _batchprocess is not None and not _skip_library:
+        elif _batchprocess is not None and not known_args.skip_library:
             # library is installed
             try:
-                subprocess.run([sys.executable] + [config] + args, stdin=f, cwd=dirname, check=True)
+                subprocess.run([sys.executable] + [config] + injected_args, stdin=f, cwd=dirname, check=True)
             except KeyboardInterrupt:
                 sys.exit(1)
