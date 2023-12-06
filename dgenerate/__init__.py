@@ -27,6 +27,7 @@ import typing
 import warnings
 
 warnings.filterwarnings('ignore', module='dgenerate.extras.controlnet_aux')
+warnings.filterwarnings('ignore', module='timm')
 warnings.filterwarnings('ignore', module='diffusers')
 warnings.filterwarnings('ignore', module='transformers')
 warnings.filterwarnings('ignore', module='huggingface_hub')
