@@ -105,7 +105,8 @@ class HEDProcessor(_imageprocessor.ImageProcessor):
             self._detect_resolution = None
 
         self._hed = _cna.HEDdetector.from_pretrained("lllyasviel/Annotators")
-        self._hed.to(self.device)
+        self.register_module(self._hed)
+        self.to(self.device)
 
     def __str__(self):
         args = [

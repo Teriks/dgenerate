@@ -110,9 +110,11 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
                 cache_dir=cache_dir)
 
         sam = _cna.segment_anything.build_sam.sam_model_registry[model_type](checkpoint=model_path)
-        sam.to(self.device)
+        self.register_module(sam)
+        self.to(self.device)
 
         mask_generator = _cna.segment_anything.SamAutomaticMaskGenerator(sam)
+
         return _cna.SamDetector(mask_generator)
 
     def __str__(self):

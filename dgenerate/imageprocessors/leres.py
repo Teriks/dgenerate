@@ -100,7 +100,8 @@ class LeresDepthProcessor(_imageprocessor.ImageProcessor):
             self._detect_resolution = None
 
         self._leres = _cna.LeresDetector.from_pretrained("lllyasviel/Annotators")
-        self._leres.to(self.device)
+        self.register_module(self._leres)
+        self.to(self.device)
 
     def __str__(self):
         args = [

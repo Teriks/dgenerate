@@ -110,7 +110,8 @@ class OpenPoseProcessor(_imageprocessor.ImageProcessor):
             self._detect_resolution = None
 
         self._openpose = _cna.OpenposeDetector.from_pretrained('lllyasviel/Annotators')
-        self._openpose.to(self.device)
+        self.register_module(self._openpose)
+        self.to(self.device)
 
     def __str__(self):
         args = [

@@ -50,6 +50,7 @@ class ImageProcessor(_plugin.Plugin):
         self.__output_file = output_file
         self.__output_overwrite = output_overwrite
         self.__device = device
+        self.__modules = []
 
     @property
     def device(self) -> str:
@@ -282,6 +283,28 @@ class ImageProcessor(_plugin.Plugin):
 
     def __repr__(self):
         return str(self)
+
+    def register_module(self, module):
+        """
+        Register :py:class:`torch.nn.Module` objects.
+
+        These will be brought on to the cpu during finalization.
+
+        All of these modules can be cast to a specific device with :py:attr:`.ImageProcessor.to`
+
+        :param module: the module
+        """
+        self.__modules.append(module)
+
+    def to(self, device):
+        for m in self.__modules:
+            _messages.debug_log(f'Casting ImageProcessor module: {dgenerate.types.fullname(m)}.to("{device}")')
+            m.to(device)
+
+    def __del__(self):
+        if self.__modules:
+            _messages.debug_log(f'Finalizing ImageProcessor: {dgenerate.types.fullname(self)}')
+            self.to('cpu')
 
 
 __all__ = dgenerate.types.module_all()

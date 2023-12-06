@@ -97,7 +97,8 @@ class MidisDepthProcessor(_imageprocessor.ImageProcessor):
             self._detect_resolution = None
 
         self._midas = _cna.MidasDetector.from_pretrained("lllyasviel/Annotators")
-        self._midas.to(self.device)
+        self.register_module(self._midas)
+        self.to(self.device)
 
     def __str__(self):
         args = [

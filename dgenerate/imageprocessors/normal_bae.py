@@ -84,7 +84,8 @@ class NormalBaeProcessor(_imageprocessor.ImageProcessor):
             self._detect_resolution = None
 
         self._normal_bae = _cna.NormalBaeDetector.from_pretrained("lllyasviel/Annotators")
-        self._normal_bae.to(self.device)
+        self.register_module(self._normal_bae)
+        self.to(self.device)
 
     def __str__(self):
         args = [

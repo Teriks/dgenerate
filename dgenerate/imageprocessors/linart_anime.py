@@ -94,7 +94,8 @@ class LineArtAnimeProcessor(_imageprocessor.ImageProcessor):
             self._detect_resolution = None
 
         self._lineart = _cna.LineartAnimeDetector.from_pretrained("lllyasviel/Annotators")
-        self._lineart.to(self.device)
+        self.register_module(self._lineart)
+        self.to(self.device)
 
     def __str__(self):
         args = [
