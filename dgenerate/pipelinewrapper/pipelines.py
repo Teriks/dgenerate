@@ -37,6 +37,9 @@ import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 
+import accelerate
+import torch.nn
+
 
 class UnsupportedPipelineConfigError(Exception):
     """
@@ -892,6 +895,27 @@ def get_torch_pipeline_modules(pipeline: diffusers.DiffusionPipeline):
     return {k: v for k, v in pipeline.components.items() if isinstance(v, torch.nn.Module)}
 
 
+_a_cpu_offload = accelerate.cpu_offload
+
+
+def _cpu_offload_patch(
+        model: torch.nn.Module,
+        execution_device: typing.Optional[torch.device] = None,
+        offload_buffers: bool = False,
+        state_dict: typing.Optional[dict[str, torch.Tensor]] = None,
+        preload_module_classes: typing.Optional[list[str]] = None,
+):
+    __args = locals()
+
+    if not is_sequential_cpu_offload_enabled(model):
+        return _a_cpu_offload(**__args)
+
+    return model
+
+
+accelerate.cpu_offload = _cpu_offload_patch
+
+
 def _patch_torch_cast_for_sequential_offloading(module: typing.Union[diffusers.DiffusionPipeline, torch.nn.Module]):
     """
     This is really terrible :)
@@ -905,6 +929,11 @@ def _patch_torch_cast_for_sequential_offloading(module: typing.Union[diffusers.D
 
     if module.to.__name__ is not patch.__name__:
         module.to = patch
+
+        if isinstance(module, torch.nn.Module):
+            for m in module.state_dict().values():
+                if m.to.__name__ is not patch.__name__:
+                    m.to = patch
 
 
 def set_sequential_cpu_offload_flag(module: typing.Union[diffusers.DiffusionPipeline, torch.nn.Module], value: bool):
