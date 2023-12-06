@@ -947,7 +947,7 @@ def set_sequential_cpu_offload_flag(module: typing.Union[diffusers.DiffusionPipe
 
     :param value: ``True`` or ``False``
     """
-    module.DGENERATE_SEQUENTIAL_CPU_OFFLOAD = value
+    module.DGENERATE_SEQUENTIAL_CPU_OFFLOAD = bool(value)
 
     _messages.debug_log(
         f'setting DGENERATE_SEQUENTIAL_CPU_OFFLOAD={value} on module "{module.__class__.__name__}"')
@@ -963,7 +963,7 @@ def set_cpu_offload_flag(module: typing.Union[diffusers.DiffusionPipeline, torch
 
     :param value: ``True`` or ``False``
     """
-    module.DGENERATE_CPU_OFFLOAD = value
+    module.DGENERATE_CPU_OFFLOAD = bool(value)
 
     _messages.debug_log(
         f'setting DGENERATE_CPU_OFFLOAD={value} on module "{module.__class__.__name__}"')
@@ -975,7 +975,7 @@ def is_sequential_cpu_offload_enabled(module: typing.Union[diffusers.DiffusionPi
     :param module: the module object
     :return: ``True`` or ``False``
     """
-    return hasattr(module, 'DGENERATE_SEQUENTIAL_CPU_OFFLOAD') and module.DGENERATE_SEQUENTIAL_CPU_OFFLOAD
+    return hasattr(module, 'DGENERATE_SEQUENTIAL_CPU_OFFLOAD') and bool(module.DGENERATE_SEQUENTIAL_CPU_OFFLOAD)
 
 
 def is_model_cpu_offload_enabled(module: typing.Union[diffusers.DiffusionPipeline, torch.nn.Module]):
@@ -984,7 +984,7 @@ def is_model_cpu_offload_enabled(module: typing.Union[diffusers.DiffusionPipelin
     :param module: the module object
     :return: ``True`` or ``False``
     """
-    return hasattr(module, 'DGENERATE_CPU_OFFLOAD') and module.DGENERATE_CPU_OFFLOAD
+    return hasattr(module, 'DGENERATE_CPU_OFFLOAD') and bool(module.DGENERATE_CPU_OFFLOAD)
 
 
 class FlaxPipelineCreationResult(PipelineCreationResult):

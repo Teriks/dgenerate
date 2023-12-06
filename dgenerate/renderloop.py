@@ -756,8 +756,8 @@ class RenderLoop:
             refiner_extra_modules=self.refiner_extra_modules,
             model_cpu_offload=self.config.model_cpu_offload,
             model_sequential_offload=self.config.model_sequential_offload,
-            sdxl_refiner_cpu_offload=self.config.sdxl_refiner_cpu_offload,
-            sdxl_refiner_sequential_offload=self.config.sdxl_refiner_sequential_offload)
+            sdxl_refiner_cpu_offload=bool(self.config.sdxl_refiner_cpu_offload),
+            sdxl_refiner_sequential_offload=bool(self.config.sdxl_refiner_sequential_offload))
         return self._pipeline_wrapper
 
     def _ensure_output_path(self):

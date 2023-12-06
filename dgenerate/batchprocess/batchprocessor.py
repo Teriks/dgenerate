@@ -296,7 +296,8 @@ class BatchProcessor:
             directive_args = directive_args[1:]
             try:
                 if directive_args:
-                    return_code = impl(shlex.split(directive_args[0]))
+                    return_code = impl(
+                        shlex.split(self.render_template(directive_args[0].strip())))
                 else:
                     return_code = impl([])
                 if return_code != 0:
