@@ -100,5 +100,8 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
             return chainner.upscale(self._model, image, self._tile, self._overlap, self.device)
         return image
 
+    def __del__(self):
+        self._model.cpu()
+
 
 __all__ = _types.module_all()

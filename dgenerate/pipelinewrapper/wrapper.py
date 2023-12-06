@@ -675,11 +675,10 @@ class DiffusionPipelineWrapper:
                 else:
                     _cache.pipeline_off_cpu_update_cache_info(pipeline)
                 try:
-                    for name, module in _pipelines.get_torch_pipeline_modules(pipeline).items():
-                        if not (_pipelines.is_model_cpu_offload_enabled(module)
-                                or _pipelines.is_sequential_cpu_offload_enabled(module)):
-                            setattr(pipeline, name, module.to(device))
-                    return pipeline
+                    # for name, module in _pipelines.get_torch_pipeline_modules(pipeline).items():
+                    #     if not _pipelines.is_sequential_cpu_offload_enabled(module):
+                    #         setattr(pipeline, name, module.to(device))
+                    return pipeline.to(device)
                 except RuntimeError as e:
                     if 'memory' in str(e).lower():
                         raise OutOfMemoryError(e)

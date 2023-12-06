@@ -105,7 +105,8 @@ class PidiNetProcessor(_imageprocessor.ImageProcessor):
             self._detect_resolution = None
 
         self._pidi = _cna.PidiNetDetector.from_pretrained("lllyasviel/Annotators")
-        self._pidi.to(self.device)
+        self.register_module(self._pidi)
+        self.to(self.device)
 
     def __str__(self):
         args = [
