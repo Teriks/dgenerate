@@ -312,7 +312,7 @@ def memory_use_debug_string(pid=None):
     if pid is None:
         pid = os.getpid()
 
-    return (f'Used Memory: '
+    return (f'Used Memory (CPU Side): '
             f'{bytes_best_human_unit(get_used_memory(pid=pid))}, '
             f'Available Memory: '
             f'{bytes_best_human_unit(get_available_memory())}, '

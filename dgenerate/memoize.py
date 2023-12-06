@@ -190,6 +190,4 @@ def struct_hasher(obj: typing.Any,
     :param custom_hashes: Custom hash functions for specific attribute names if needed
     :return: string
     """
-    return _textprocessing.quote(
-        args_cache_key(args_dict=_types.get_public_attributes(obj),
-                       custom_hashes=custom_hashes))
+    return '{' + args_cache_key(args_dict=_types.get_public_attributes(obj), custom_hashes=custom_hashes) + '}'
