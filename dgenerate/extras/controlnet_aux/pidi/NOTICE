@@ -1,0 +1,11 @@
+EDITS
+
+Teriks: line 334
+
+    buffer = torch.cuda.FloatTensor(shape[0], shape[1], 5 * 5).fill_(0)
+
+    to
+
+    buffer = torch.FloatTensor(shape[0], shape[1], 5 * 5).fill_(0).to(f'cuda:{weights.get_device()}')
+
+    Keeps both tensors on the correct device in case of running on cuda where the device ordinal is not 0.
