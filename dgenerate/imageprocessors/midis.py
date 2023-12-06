@@ -36,7 +36,13 @@ from dgenerate.imageprocessors import imageprocessor as _imageprocessor
 
 class MidisDepthProcessor(_imageprocessor.ImageProcessor):
     """
-    MiDaS depth detector.
+    MiDaS depth detector and normal map generation.
+
+    The argument "normals" determines if this processor produces a normal map or a depth image.
+
+    The argument "alpha" is related to normal map generation.
+
+    The argument "background_threshold" is related to normal map generation.
 
     The argument "detect-resolution" is the resolution the image is resized to internal to the processor before
     detection is run on it. It should be a single dimension for example: "detect-resolution=512" or the X/Y dimensions
@@ -56,11 +62,15 @@ class MidisDepthProcessor(_imageprocessor.ImageProcessor):
     NAMES = ['midas']
 
     def __init__(self,
+                 normals: bool = False,
+                 alpha: float = np.pi * 2.0,
+                 background_threshold: float = 0.1,
                  detect_resolution: typing.Optional[str] = None,
                  detect_aspect: bool = True,
                  pre_resize: bool = False,
                  **kwargs):
         """
+        :param normals: Return a generated normals image instead of a depth image?
         :param detect_resolution: the input image is resized to this dimension before being processed,
             providing ``None`` indicates it is not to be resized.  If there is no resize requested during
             the processing action via ``resize_resolution`` it will be resized back to its original size.
@@ -74,6 +84,9 @@ class MidisDepthProcessor(_imageprocessor.ImageProcessor):
 
         self._detect_aspect = detect_aspect
         self._pre_resize = pre_resize
+        self._normals = normals
+        self._alpha = alpha
+        self._background_threshold = background_threshold
 
         if detect_resolution is not None:
             try:
@@ -126,7 +139,21 @@ class MidisDepthProcessor(_imageprocessor.ImageProcessor):
             depth_pt = depth_pt.cpu().numpy()
             depth_image = (depth_pt * 255.0).clip(0, 255).astype(np.uint8)
 
-        detected_map = _cna_util.HWC3(depth_image)
+            if self._normals:
+                depth_np = depth.cpu().numpy()
+                x = cv2.Sobel(depth_np, cv2.CV_32F, 1, 0, ksize=3)
+                y = cv2.Sobel(depth_np, cv2.CV_32F, 0, 1, ksize=3)
+                z = np.ones_like(x) * self._alpha
+                x[depth_pt < self._background_threshold] = 0
+                y[depth_pt < self._background_threshold] = 0
+                normal = np.stack([x, y, z], axis=2)
+                normal /= np.sum(normal ** 2.0, axis=2, keepdims=True) ** 0.5
+                normal_image = (normal * 127.5 + 127.5).clip(0, 255).astype(np.uint8)[:, :, ::-1]
+
+                detected_map = _cna_util.HWC3(normal_image)
+            else:
+
+                detected_map = _cna_util.HWC3(depth_image)
 
         if resize_resolution is not None:
             detected_map = cv2.resize(detected_map, resize_resolution, interpolation=cv2.INTER_LINEAR)
