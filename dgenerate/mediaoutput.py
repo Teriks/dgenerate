@@ -27,7 +27,6 @@ import av
 
 import dgenerate.filelock as _filelock
 
-
 __doc__ = """
 Media output, handles writing videos and animations.  
 

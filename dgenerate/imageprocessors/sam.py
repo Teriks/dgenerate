@@ -22,12 +22,12 @@ import os
 import typing
 
 import PIL.Image
-import dgenerate.extras.controlnet_aux as _cna
-import dgenerate.extras.controlnet_aux.util as _cna_util
 import cv2
 import huggingface_hub
-import numpy as np
+import numpy
 
+import dgenerate.extras.controlnet_aux as _cna
+import dgenerate.extras.controlnet_aux.util as _cna_util
 import dgenerate.image as _image
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
@@ -138,7 +138,7 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
 
         image = resized
 
-        input_image = np.array(image, dtype=np.uint8)
+        input_image = numpy.array(image, dtype=numpy.uint8)
 
         input_image = _cna_util.HWC3(input_image)
 

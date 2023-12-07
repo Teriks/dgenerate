@@ -116,7 +116,6 @@ from .pipelines import \
     enable_sequential_cpu_offload, \
     enable_model_cpu_offload, \
     get_torch_device_string
-
 from .uris import \
     InvalidModelUriError, \
     LoRAUri, \

@@ -21,13 +21,13 @@
 import typing
 
 import PIL.Image
-import dgenerate.extras.controlnet_aux as _cna
-import dgenerate.extras.controlnet_aux.util as _cna_util
 import cv2
 import einops
-import numpy as np
+import numpy
 import torch
 
+import dgenerate.extras.controlnet_aux as _cna
+import dgenerate.extras.controlnet_aux.util as _cna_util
 import dgenerate.image as _image
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
@@ -131,7 +131,7 @@ class HEDProcessor(_imageprocessor.ImageProcessor):
 
         image = resized
 
-        input_image = np.array(image, dtype=np.uint8)
+        input_image = numpy.array(image, dtype=numpy.uint8)
 
         input_image = _cna_util.HWC3(input_image)
         H, W, C = input_image.shape
@@ -139,13 +139,13 @@ class HEDProcessor(_imageprocessor.ImageProcessor):
             image_hed = torch.from_numpy(input_image.copy()).float().to(self.modules_device)
             image_hed = einops.rearrange(image_hed, 'h w c -> 1 c h w')
             edges = self._hed.netNetwork(image_hed)
-            edges = [e.detach().cpu().numpy().astype(np.float32)[0, 0] for e in edges]
+            edges = [e.detach().cpu().numpy().astype(numpy.float32)[0, 0] for e in edges]
             edges = [cv2.resize(e, (W, H), interpolation=cv2.INTER_LINEAR) for e in edges]
-            edges = np.stack(edges, axis=2)
-            edge = 1 / (1 + np.exp(-np.mean(edges, axis=2).astype(np.float64)))
+            edges = numpy.stack(edges, axis=2)
+            edge = 1 / (1 + numpy.exp(-numpy.mean(edges, axis=2).astype(numpy.float64)))
             if self._safe:
                 edge = _cna_util.safe_step(edge)
-            edge = (edge * 255.0).clip(0, 255).astype(np.uint8)
+            edge = (edge * 255.0).clip(0, 255).astype(numpy.uint8)
 
         detected_map = edge
         detected_map = _cna_util.HWC3(detected_map)

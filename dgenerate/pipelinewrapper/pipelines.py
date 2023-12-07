@@ -21,9 +21,11 @@
 import collections.abc
 import typing
 
+import accelerate
 import diffusers
 import diffusers.loaders
 import huggingface_hub
+import torch.nn
 import torch.nn
 
 import dgenerate.memoize as _d_memoize
@@ -36,9 +38,6 @@ import dgenerate.pipelinewrapper.uris as _uris
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
-
-import accelerate
-import torch.nn
 
 
 class OutOfMemoryError(Exception):

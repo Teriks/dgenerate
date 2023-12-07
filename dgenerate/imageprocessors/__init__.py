@@ -46,7 +46,6 @@ from .pidi import PidiNetProcessor
 from .sam import SegmentAnythingProcessor
 from .upscaler import UpscalerProcessor
 
-
 __doc__ = """
 Image processors implemented by dgenerate.
 

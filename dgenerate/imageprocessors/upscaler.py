@@ -20,13 +20,13 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import PIL.Image
+import numpy
 import torch
+import tqdm.auto
 
 import dgenerate.imageprocessors.imageprocessor as _imageprocessor
 import dgenerate.types as _types
 from dgenerate.extras import chainner
-import numpy as np
-import tqdm.auto
 
 
 class UpscalerProcessor(_imageprocessor.ImageProcessor):
@@ -96,7 +96,7 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
         self.register_module(self._model)
 
     def _process(self, image):
-        image = torch.from_numpy(np.array(image).astype(np.float32) / 255.0)[None,]
+        image = torch.from_numpy(numpy.array(image).astype(numpy.float32) / 255.0)[None,]
 
         in_img = image.movedim(-1, -3).to(self.modules_device)
 
@@ -131,7 +131,7 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
 
         s = torch.clamp(s.movedim(-3, -1), min=0, max=1.0)
 
-        return PIL.Image.fromarray(np.clip(255. * s[0].cpu().numpy(), 0, 255).astype(np.uint8))
+        return PIL.Image.fromarray(numpy.clip(255. * s[0].cpu().numpy(), 0, 255).astype(numpy.uint8))
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize) -> PIL.Image.Image:
         if self._pre_resize:

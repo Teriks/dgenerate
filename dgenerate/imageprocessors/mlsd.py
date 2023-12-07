@@ -21,12 +21,12 @@
 import typing
 
 import PIL.Image
-import dgenerate.extras.controlnet_aux as _cna
-import dgenerate.extras.controlnet_aux.util as _cna_util
 import cv2
-import numpy as np
+import numpy
 import torch
 
+import dgenerate.extras.controlnet_aux as _cna
+import dgenerate.extras.controlnet_aux.util as _cna_util
 import dgenerate.image as _image
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
@@ -130,11 +130,11 @@ class MLSDProcessor(_imageprocessor.ImageProcessor):
 
         image = resized
 
-        input_image = np.array(image, dtype=np.uint8)
+        input_image = numpy.array(image, dtype=numpy.uint8)
         input_image = _cna_util.HWC3(input_image)
 
         img = input_image
-        img_output = np.zeros_like(img)
+        img_output = numpy.zeros_like(img)
         try:
             with torch.no_grad():
                 lines = _cna.mlsd.pred_lines(
