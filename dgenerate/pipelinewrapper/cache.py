@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import gc
+import typing
 
 import diffusers
 
@@ -539,6 +540,12 @@ def unet_create_update_cache_info(unet, estimated_size: int):
 
 
 def pipeline_to_cpu_update_cache_info(pipeline: diffusers.DiffusionPipeline):
+    """
+    Update CPU side cache size information when a diffusers pipeline is moved to the CPU
+
+    :param pipeline: the pipeline
+    """
+
     global _PIPELINE_CACHE_SIZE
 
     enforce_pipeline_cache_constraints(pipeline.DGENERATE_SIZE_ESTIMATE)
@@ -552,6 +559,12 @@ def pipeline_to_cpu_update_cache_info(pipeline: diffusers.DiffusionPipeline):
 
 
 def unet_to_cpu_update_cache_info(unet):
+    """
+    Update CPU side cache size information when a UNet module is moved to the CPU
+
+    :param unet: the UNet
+    """
+
     global _UNET_CACHE_SIZE
 
     if hasattr(unet, 'DGENERATE_SIZE_ESTIMATE'):
@@ -567,6 +580,12 @@ def unet_to_cpu_update_cache_info(unet):
 
 
 def vae_to_cpu_update_cache_info(vae):
+    """
+    Update CPU side cache size information when a VAE module is moved to the CPU
+
+    :param vae: the VAE
+    """
+
     global _VAE_CACHE_SIZE
     if hasattr(vae, 'DGENERATE_SIZE_ESTIMATE'):
         # vae returning to CPU side memory
@@ -580,7 +599,14 @@ def vae_to_cpu_update_cache_info(vae):
                             f'({_memory.bytes_best_human_unit(vae.DGENERATE_SIZE_ESTIMATE)})')
 
 
-def controlnet_to_cpu_update_cache_info(controlnet):
+def controlnet_to_cpu_update_cache_info(controlnet: typing.Union[diffusers.models.ControlNetModel,
+                                                                 diffusers.pipelines.controlnet.MultiControlNetModel]):
+    """
+    Update CPU side cache size information when a ControlNet module is moved to the CPU
+
+    :param controlnet: the control net, or multi control net
+    """
+
     global _CONTROL_NET_CACHE_SIZE
 
     if isinstance(controlnet,
@@ -615,7 +641,14 @@ def controlnet_to_cpu_update_cache_info(controlnet):
                             f'({_memory.bytes_best_human_unit(control_net_cache_size())})')
 
 
-def pipeline_off_cpu_update_cache_info(pipeline: diffusers.DiffusionPipeline):
+def pipeline_off_cpu_update_cache_info(
+        pipeline: typing.Union[diffusers.DiffusionPipeline, diffusers.FlaxDiffusionPipeline]):
+    """
+    Update CPU side cache size information when a diffusers pipeline is moved to a device that is not the CPU
+
+    :param pipeline: the pipeline
+    """
+
     global _PIPELINE_CACHE_SIZE
 
     _PIPELINE_CACHE_SIZE -= pipeline.DGENERATE_SIZE_ESTIMATE
@@ -628,6 +661,12 @@ def pipeline_off_cpu_update_cache_info(pipeline: diffusers.DiffusionPipeline):
 
 
 def unet_off_cpu_update_cache_info(unet):
+    """
+    Update CPU side cache size information when a UNet module is moved to a device that is not the CPU
+
+    :param unet: the UNet
+    """
+
     global _UNET_CACHE_SIZE
 
     if hasattr(unet, 'DGENERATE_SIZE_ESTIMATE'):
@@ -641,6 +680,11 @@ def unet_off_cpu_update_cache_info(unet):
 
 
 def vae_off_cpu_update_cache_info(vae):
+    """
+    Update CPU side cache size information when a VAE module is moved to a device that is not the CPU
+
+    :param vae: the VAE
+    """
     global _VAE_CACHE_SIZE
 
     if hasattr(vae, 'DGENERATE_SIZE_ESTIMATE'):
@@ -653,7 +697,13 @@ def vae_off_cpu_update_cache_info(vae):
                             f'({_memory.bytes_best_human_unit(vae_cache_size())})')
 
 
-def controlnet_off_cpu_update_cache_info(controlnet):
+def controlnet_off_cpu_update_cache_info(controlnet: typing.Union[diffusers.models.ControlNetModel,
+                                                                  diffusers.pipelines.controlnet.MultiControlNetModel]):
+    """
+    Update CPU side cache size information when a ControlNet module is moved to a device that is not the CPU
+
+    :param controlnet: the control net, or multi control net
+    """
     global _CONTROL_NET_CACHE_SIZE
 
     if isinstance(controlnet, diffusers.pipelines.controlnet.MultiControlNetModel):
