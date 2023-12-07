@@ -322,10 +322,10 @@ def _set_sequential_cpu_offload_flag(module: typing.Union[diffusers.DiffusionPip
 
 
 def _set_cpu_offload_flag(module: typing.Union[diffusers.DiffusionPipeline, torch.nn.Module], value: bool):
-    module.DGENERATE_CPU_OFFLOAD = bool(value)
+    module.DGENERATE_MODEL_CPU_OFFLOAD = bool(value)
 
     _messages.debug_log(
-        f'setting DGENERATE_CPU_OFFLOAD={value} on module "{module.__class__.__name__}"')
+        f'setting DGENERATE_MODEL_CPU_OFFLOAD={value} on module "{module.__class__.__name__}"')
 
 
 def is_sequential_cpu_offload_enabled(module: typing.Union[diffusers.DiffusionPipeline, torch.nn.Module]):
@@ -345,7 +345,7 @@ def is_model_cpu_offload_enabled(module: typing.Union[diffusers.DiffusionPipelin
     :param module: the module object
     :return: ``True`` or ``False``
     """
-    return hasattr(module, 'DGENERATE_CPU_OFFLOAD') and bool(module.DGENERATE_CPU_OFFLOAD)
+    return hasattr(module, 'DGENERATE_MODEL_CPU_OFFLOAD') and bool(module.DGENERATE_MODEL_CPU_OFFLOAD)
 
 
 def enable_sequential_cpu_offload(pipeline: diffusers.DiffusionPipeline,
