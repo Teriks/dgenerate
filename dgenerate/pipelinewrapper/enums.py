@@ -386,18 +386,18 @@ def have_jax_flax():
 
 def get_flax_dtype(dtype: typing.Union[DataType, str, typing.Any, None]):
     """
-    Return a jax.numpy datatype from a :py:class:`.DataType` value, or a string,
-    or a jax.numpy datatype itself.
+    Return a :py:class:`jax.numpy.dtype` datatype from a :py:class:`.DataType` value,
+    or a string, or a :py:class:`jax.numpy.dtype` datatype itself.
 
-    Passing None results in None being returned.
+    Passing ``None`` results in ``None`` being returned.
 
-    Passing 'auto' or :py:attr:`DataType.AUTO` results in None being returned.
+    Passing 'auto' or :py:attr:`DataType.AUTO` results in ``None`` being returned.
 
-    :param dtype: :py:class:`.DataType`, string, jax.numpy dtype, None
+    :param dtype: :py:class:`.DataType`, string, :py:class:`jax.numpy.dtype`, ``None``
 
     :raises ValueError: if an invalid string value (name) is passed
 
-    :return: jax.numpy dtype
+    :return: :py:class:`jax.numpy.dtype`
     """
 
     if dtype is None:
@@ -420,18 +420,18 @@ def get_flax_dtype(dtype: typing.Union[DataType, str, typing.Any, None]):
 
 def get_torch_dtype(dtype: typing.Union[DataType, torch.dtype, str, None]) -> typing.Union[torch.dtype, None]:
     """
-    Return a torch.dtype datatype from a :py:class:`.DataType` value, or a string,
-    or a torch.dtype datatype itself.
+    Return a :py:class:`torch.dtype` datatype from a :py:class:`.DataType` value, or a string,
+    or a :py:class:`torch.dtype` datatype itself.
 
-    Passing None results in None being returned.
+    Passing ``None`` results in ``None`` being returned.
 
-    Passing 'auto' or :py:attr:`DataType.AUTO` results in None being returned.
+    Passing 'auto' or :py:attr:`DataType.AUTO` results in ``None`` being returned.
 
-    :param dtype: :py:class:`.DataType`, string, torch.dtype, None
+    :param dtype: :py:class:`.DataType`, string, :py:class:`torch.dtype`, None
 
     :raises ValueError: if an invalid string value (name) is passed
 
-    :return: torch.dtype
+    :return: :py:class:`torch.dtype`
     """
 
     if dtype is None:
