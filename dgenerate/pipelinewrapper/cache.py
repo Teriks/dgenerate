@@ -553,6 +553,7 @@ def pipeline_to_cpu_update_cache_info(pipeline: diffusers.DiffusionPipeline):
 
     _messages.debug_log(f'{_types.class_and_id_string(pipeline)} '
                         f'Size = {pipeline.DGENERATE_SIZE_ESTIMATE} Bytes '
+                        f'({_memory.bytes_best_human_unit(pipeline.DGENERATE_SIZE_ESTIMATE)}) '
                         f'is entering CPU side memory, {_types.fullname(pipeline_cache_size)}() '
                         f'is now {pipeline_cache_size()} Bytes '
                         f'({_memory.bytes_best_human_unit(pipeline.DGENERATE_SIZE_ESTIMATE)})')
@@ -574,6 +575,7 @@ def unet_to_cpu_update_cache_info(unet):
 
         _messages.debug_log(f'{_types.class_and_id_string(unet)} '
                             f'Size = {unet.DGENERATE_SIZE_ESTIMATE} Bytes '
+                            f'({_memory.bytes_best_human_unit(unet.DGENERATE_SIZE_ESTIMATE)}) '
                             f'is entering CPU side memory, {_types.fullname(unet_cache_size)}() '
                             f'is now {unet_cache_size()} Bytes '
                             f'({_memory.bytes_best_human_unit(unet.DGENERATE_SIZE_ESTIMATE)})')
@@ -594,6 +596,7 @@ def vae_to_cpu_update_cache_info(vae):
 
         _messages.debug_log(f'Cached VAE {_types.class_and_id_string(vae)} '
                             f'Size = {vae.DGENERATE_SIZE_ESTIMATE} Bytes '
+                            f'({_memory.bytes_best_human_unit(vae.DGENERATE_SIZE_ESTIMATE)}) '
                             f'is entering CPU side memory, {_types.fullname(vae_cache_size)}() '
                             f'is now {vae_cache_size()} Bytes '
                             f'({_memory.bytes_best_human_unit(vae.DGENERATE_SIZE_ESTIMATE)})')
@@ -655,6 +658,7 @@ def pipeline_off_cpu_update_cache_info(
 
     _messages.debug_log(f'Cached Diffusers Pipeline {_types.class_and_id_string(pipeline)} '
                         f'Size = {pipeline.DGENERATE_SIZE_ESTIMATE} Bytes '
+                        f'({_memory.bytes_best_human_unit(pipeline.DGENERATE_SIZE_ESTIMATE)}) '
                         f'is leaving CPU side memory, {_types.fullname(pipeline_cache_size)}() '
                         f'is now {pipeline_cache_size()} Bytes '
                         f'({_memory.bytes_best_human_unit(pipeline_cache_size())})')
@@ -674,6 +678,7 @@ def unet_off_cpu_update_cache_info(unet):
 
         _messages.debug_log(f'Cached UNet {_types.class_and_id_string(unet)} '
                             f'Size = {unet.DGENERATE_SIZE_ESTIMATE} Bytes '
+                            f'({_memory.bytes_best_human_unit(unet.DGENERATE_SIZE_ESTIMATE)}) '
                             f'is leaving CPU side memory, {_types.fullname(unet_cache_size)}() '
                             f'is now {unet_cache_size()} Bytes '
                             f'({_memory.bytes_best_human_unit(unet_cache_size())})')
@@ -692,6 +697,7 @@ def vae_off_cpu_update_cache_info(vae):
 
         _messages.debug_log(f'Cached VAE {_types.class_and_id_string(vae)} '
                             f'Size = {vae.DGENERATE_SIZE_ESTIMATE} Bytes '
+                            f'({_memory.bytes_best_human_unit(vae.DGENERATE_SIZE_ESTIMATE)}) '
                             f'is leaving CPU side memory, {_types.fullname(vae_cache_size)}() '
                             f'is now {vae_cache_size()} Bytes '
                             f'({_memory.bytes_best_human_unit(vae_cache_size())})')
