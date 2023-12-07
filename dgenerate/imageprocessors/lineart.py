@@ -21,13 +21,13 @@
 import typing
 
 import PIL.Image
-import dgenerate.extras.controlnet_aux as _cna
-import dgenerate.extras.controlnet_aux.util as _cna_util
 import cv2
 import einops
-import numpy as np
+import numpy
 import torch
 
+import dgenerate.extras.controlnet_aux as _cna
+import dgenerate.extras.controlnet_aux.util as _cna_util
 import dgenerate.image as _image
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
@@ -124,7 +124,7 @@ class LineArtProcessor(_imageprocessor.ImageProcessor):
 
         image = resized
 
-        input_image = np.array(image, dtype=np.uint8)
+        input_image = numpy.array(image, dtype=numpy.uint8)
 
         input_image = _cna_util.HWC3(input_image)
 
@@ -138,7 +138,7 @@ class LineArtProcessor(_imageprocessor.ImageProcessor):
             line = model(image)[0][0]
 
             line = line.cpu().numpy()
-            line = (line * 255.0).clip(0, 255).astype(np.uint8)
+            line = (line * 255.0).clip(0, 255).astype(numpy.uint8)
 
         detected_map = _cna_util.HWC3(line)
 

@@ -21,13 +21,13 @@
 import typing
 
 import PIL.Image
-import dgenerate.extras.controlnet_aux as _cna
-import dgenerate.extras.controlnet_aux.util as _cna_util
 import cv2
 import einops
-import numpy as np
+import numpy
 import torch
 
+import dgenerate.extras.controlnet_aux as _cna
+import dgenerate.extras.controlnet_aux.util as _cna_util
 import dgenerate.image as _image
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
@@ -63,7 +63,7 @@ class MidisDepthProcessor(_imageprocessor.ImageProcessor):
 
     def __init__(self,
                  normals: bool = False,
-                 alpha: float = np.pi * 2.0,
+                 alpha: float = numpy.pi * 2.0,
                  background_threshold: float = 0.1,
                  detect_resolution: typing.Optional[str] = None,
                  detect_aspect: bool = True,
@@ -120,7 +120,7 @@ class MidisDepthProcessor(_imageprocessor.ImageProcessor):
 
         image = resized
 
-        input_image = np.array(image, dtype=np.uint8)
+        input_image = numpy.array(image, dtype=numpy.uint8)
 
         input_image = _cna_util.HWC3(input_image)
 
@@ -137,18 +137,18 @@ class MidisDepthProcessor(_imageprocessor.ImageProcessor):
             depth_pt -= torch.min(depth_pt)
             depth_pt /= torch.max(depth_pt)
             depth_pt = depth_pt.cpu().numpy()
-            depth_image = (depth_pt * 255.0).clip(0, 255).astype(np.uint8)
+            depth_image = (depth_pt * 255.0).clip(0, 255).astype(numpy.uint8)
 
             if self._normals:
                 depth_np = depth.cpu().numpy()
                 x = cv2.Sobel(depth_np, cv2.CV_32F, 1, 0, ksize=3)
                 y = cv2.Sobel(depth_np, cv2.CV_32F, 0, 1, ksize=3)
-                z = np.ones_like(x) * self._alpha
+                z = numpy.ones_like(x) * self._alpha
                 x[depth_pt < self._background_threshold] = 0
                 y[depth_pt < self._background_threshold] = 0
-                normal = np.stack([x, y, z], axis=2)
-                normal /= np.sum(normal ** 2.0, axis=2, keepdims=True) ** 0.5
-                normal_image = (normal * 127.5 + 127.5).clip(0, 255).astype(np.uint8)[:, :, ::-1]
+                normal = numpy.stack([x, y, z], axis=2)
+                normal /= numpy.sum(normal ** 2.0, axis=2, keepdims=True) ** 0.5
+                normal_image = (normal * 127.5 + 127.5).clip(0, 255).astype(numpy.uint8)[:, :, ::-1]
 
                 detected_map = _cna_util.HWC3(normal_image)
             else:

@@ -1,8 +1,10 @@
 import math
+
 import PIL.Image
 import numpy as np
 import torch
 from tqdm.auto import tqdm
+
 from .types import PyTorchModel
 
 

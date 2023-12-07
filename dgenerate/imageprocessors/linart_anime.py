@@ -21,13 +21,13 @@
 import typing
 
 import PIL.Image
-import dgenerate.extras.controlnet_aux as _cna
-import dgenerate.extras.controlnet_aux.util as _cna_util
 import cv2
 import einops
-import numpy as np
+import numpy
 import torch
 
+import dgenerate.extras.controlnet_aux as _cna
+import dgenerate.extras.controlnet_aux.util as _cna_util
 import dgenerate.image as _image
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
@@ -118,12 +118,12 @@ class LineArtAnimeProcessor(_imageprocessor.ImageProcessor):
 
         image = resized
 
-        input_image = np.array(image, dtype=np.uint8)
+        input_image = numpy.array(image, dtype=numpy.uint8)
         input_image = _cna_util.HWC3(input_image)
 
         H, W, C = input_image.shape
-        Hn = 256 * int(np.ceil(float(H) / 256.0))
-        Wn = 256 * int(np.ceil(float(W) / 256.0))
+        Hn = 256 * int(numpy.ceil(float(H) / 256.0))
+        Wn = 256 * int(numpy.ceil(float(W) / 256.0))
         img = cv2.resize(input_image, (Wn, Hn), interpolation=cv2.INTER_CUBIC)
         with torch.no_grad():
             image_feed = torch.from_numpy(img).float().to(self.modules_device)
@@ -134,7 +134,7 @@ class LineArtAnimeProcessor(_imageprocessor.ImageProcessor):
             line = line.cpu().numpy()
 
             line = cv2.resize(line, (W, H), interpolation=cv2.INTER_CUBIC)
-            line = line.clip(0, 255).astype(np.uint8)
+            line = line.clip(0, 255).astype(numpy.uint8)
 
         detected_map = _cna_util.HWC3(line)
 

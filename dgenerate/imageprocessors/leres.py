@@ -21,12 +21,12 @@
 import typing
 
 import PIL.Image
-import dgenerate.extras.controlnet_aux as _cna
-import dgenerate.extras.controlnet_aux.util as _cna_util
 import cv2
-import numpy as np
+import numpy
 import torch
 
+import dgenerate.extras.controlnet_aux as _cna
+import dgenerate.extras.controlnet_aux.util as _cna_util
 import dgenerate.image as _image
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
@@ -127,7 +127,7 @@ class LeresDepthProcessor(_imageprocessor.ImageProcessor):
 
         image = resized
 
-        input_image = np.array(image, dtype=np.uint8)
+        input_image = numpy.array(image, dtype=numpy.uint8)
         input_image = _cna_util.HWC3(input_image)
         height, width, dim = input_image.shape
 
@@ -145,10 +145,10 @@ class LeresDepthProcessor(_imageprocessor.ImageProcessor):
             max_val = (2 ** (8 * numbytes)) - 1
 
             # check output before normalizing and mapping to 16 bit
-            if depth_max - depth_min > np.finfo("float").eps:
+            if depth_max - depth_min > numpy.finfo("float").eps:
                 out = max_val * (depth - depth_min) / (depth_max - depth_min)
             else:
-                out = np.zeros(depth.shape)
+                out = numpy.zeros(depth.shape)
 
             # single channel, 16 bit image
             depth_image = out.astype("uint16")

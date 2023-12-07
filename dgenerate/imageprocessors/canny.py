@@ -23,7 +23,6 @@ import typing
 import PIL.Image
 import cv2
 import numpy
-import numpy as np
 
 import dgenerate.image as _image
 import dgenerate.messages as _messages
@@ -193,7 +192,7 @@ class CannyEdgeDetectProcessor(_imageprocessor.ImageProcessor):
             elif self._threshold_algo == 'triangle':
                 lower, upper = self._get_range(cv2.threshold(cv_img, 0, 255, cv2.THRESH_TRIANGLE)[0])
             elif self._threshold_algo == 'median':
-                lower, upper = self._get_range(np.median(cv_img))
+                lower, upper = self._get_range(numpy.median(cv_img))
 
         _messages.debug_log(f'Canny Processing with cv2.Canny: (lower={lower}, upper={upper}, '
                             f'apertureSize={self._aperture_size}, L2gradient={self._L2_gradient})')
