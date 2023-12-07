@@ -905,8 +905,20 @@ class DiffusionPipelineWrapper:
         if self._vae_slicing:
             opts.append(('--vae-slicing',))
 
+        if self._model_cpu_offload:
+            opts.append(('--model-cpu-offload',))
+
+        if self._model_sequential_offload:
+            opts.append(('--model-sequential-offload',))
+
         if self._sdxl_refiner_uri is not None:
             opts.append(('--sdxl-refiner', self._sdxl_refiner_uri))
+
+        if self._sdxl_refiner_cpu_offload:
+            opts.append(('--sdxl-refiner-cpu-offload',))
+
+        if self._sdxl_refiner_sequential_offload:
+            opts.append(('--sdxl-refiner-sequential-offload',))
 
         if args.sdxl_refiner_edit:
             opts.append(('--sdxl-refiner-edit',))
