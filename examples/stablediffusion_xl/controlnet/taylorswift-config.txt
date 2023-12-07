@@ -14,4 +14,3 @@
  --image-seeds "../../media/vermeer_canny_edged.png"
  --output-size 1024
  --output-path taylorswift
- --model-sequential-offload

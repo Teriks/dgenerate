@@ -100,7 +100,6 @@ class LineArtProcessor(_imageprocessor.ImageProcessor):
 
         self._lineart = _cna.LineartDetector.from_pretrained("lllyasviel/Annotators")
         self.register_module(self._lineart)
-        self.to(self.device)
 
     def __str__(self):
         args = [
@@ -133,7 +132,7 @@ class LineArtProcessor(_imageprocessor.ImageProcessor):
 
         image = input_image
         with torch.no_grad():
-            image = torch.from_numpy(image).float().to(self.device)
+            image = torch.from_numpy(image).float().to(self.modules_device)
             image = image / 255.0
             image = einops.rearrange(image, 'h w c -> 1 c h w')
             line = model(image)[0][0]

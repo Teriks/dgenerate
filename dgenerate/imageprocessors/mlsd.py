@@ -105,7 +105,6 @@ class MLSDProcessor(_imageprocessor.ImageProcessor):
 
         self._mlsd = _cna.MLSDdetector.from_pretrained("lllyasviel/Annotators")
         self.register_module(self._mlsd)
-        self.to(self.device)
 
     def __str__(self):
         args = [

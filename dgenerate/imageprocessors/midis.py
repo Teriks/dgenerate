@@ -98,7 +98,6 @@ class MidisDepthProcessor(_imageprocessor.ImageProcessor):
 
         self._midas = _cna.MidasDetector.from_pretrained("lllyasviel/Annotators")
         self.register_module(self._midas)
-        self.to(self.device)
 
     def __str__(self):
         args = [
@@ -129,7 +128,7 @@ class MidisDepthProcessor(_imageprocessor.ImageProcessor):
 
         with torch.no_grad():
             image_depth = torch.from_numpy(image_depth).float()
-            image_depth = image_depth.to(self.device)
+            image_depth = image_depth.to(self.modules_device)
             image_depth = image_depth / 127.5 - 1.0
             image_depth = einops.rearrange(image_depth, 'h w c -> 1 c h w')
             depth = self._midas.model(image_depth)[0]

@@ -106,7 +106,6 @@ class PidiNetProcessor(_imageprocessor.ImageProcessor):
 
         self._pidi = _cna.PidiNetDetector.from_pretrained("lllyasviel/Annotators")
         self.register_module(self._pidi)
-        self.to(self.device)
 
     def __str__(self):
         args = [
@@ -137,7 +136,7 @@ class PidiNetProcessor(_imageprocessor.ImageProcessor):
 
         input_image = input_image[:, :, ::-1].copy()
         with torch.no_grad():
-            image_pidi = torch.from_numpy(input_image).float().to(self.device)
+            image_pidi = torch.from_numpy(input_image).float().to(self.modules_device)
             image_pidi = image_pidi / 255.0
             image_pidi = einops.rearrange(image_pidi, 'h w c -> 1 c h w')
             edge = self._pidi.netNetwork(image_pidi)[-1]

@@ -85,7 +85,6 @@ class NormalBaeProcessor(_imageprocessor.ImageProcessor):
 
         self._normal_bae = _cna.NormalBaeDetector.from_pretrained("lllyasviel/Annotators")
         self.register_module(self._normal_bae)
-        self.to(self.device)
 
     def __str__(self):
         args = [
@@ -115,7 +114,7 @@ class NormalBaeProcessor(_imageprocessor.ImageProcessor):
         image_normal = input_image
 
         with torch.no_grad():
-            image_normal = torch.from_numpy(image_normal).float().to(self.device)
+            image_normal = torch.from_numpy(image_normal).float().to(self.modules_device)
             image_normal = image_normal / 255.0
             image_normal = einops.rearrange(image_normal, 'h w c -> 1 c h w')
             image_normal = self._normal_bae.norm(image_normal)

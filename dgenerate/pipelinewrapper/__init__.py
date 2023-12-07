@@ -108,7 +108,14 @@ from .pipelines import \
     UnsupportedPipelineConfigError, \
     get_torch_pipeline_modules, \
     is_model_cpu_offload_enabled, \
-    is_sequential_cpu_offload_enabled
+    is_sequential_cpu_offload_enabled, \
+    OutOfMemoryError, \
+    call_pipeline, \
+    get_torch_device, \
+    pipeline_to, \
+    enable_sequential_cpu_offload, \
+    enable_model_cpu_offload, \
+    get_torch_device_string
 
 from .uris import \
     InvalidModelUriError, \
@@ -133,8 +140,7 @@ from .util import \
 from .wrapper import \
     PipelineWrapperResult, \
     DiffusionPipelineWrapper, \
-    DiffusionArguments, \
-    OutOfMemoryError
+    DiffusionArguments
 
 __doc__ = """
 huggingface diffusers pipeline wrapper / driver interface.

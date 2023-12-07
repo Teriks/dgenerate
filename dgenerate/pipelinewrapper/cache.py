@@ -540,192 +540,144 @@ def unet_create_update_cache_info(unet, estimated_size: int):
 
 
 def pipeline_to_cpu_update_cache_info(pipeline: diffusers.DiffusionPipeline):
-    """
-    Update cache info about a pipeline and its components on before a torch ``.to('cpu')`` cast.
+    global _PIPELINE_CACHE_SIZE
 
-    Pipelines / components marked for sequential cpu offload or model cpu offload are ignored.
+    enforce_pipeline_cache_constraints(pipeline.DGENERATE_SIZE_ESTIMATE)
+    _PIPELINE_CACHE_SIZE += pipeline.DGENERATE_SIZE_ESTIMATE
 
-    :param pipeline: the pipeline
-    """
+    _messages.debug_log(f'{_types.class_and_id_string(pipeline)} '
+                        f'Size = {pipeline.DGENERATE_SIZE_ESTIMATE} Bytes '
+                        f'is entering CPU side memory, {_types.fullname(pipeline_cache_size)}() '
+                        f'is now {pipeline_cache_size()} Bytes '
+                        f'({_memory.bytes_best_human_unit(pipeline.DGENERATE_SIZE_ESTIMATE)})')
 
-    # Update CPU side memory overhead estimates when
-    # a pipeline gets casted back to the CPU
 
-    import dgenerate.pipelinewrapper.pipelines as _pipelines
+def unet_to_cpu_update_cache_info(unet):
+    global _UNET_CACHE_SIZE
 
-    global _PIPELINE_CACHE_SIZE, \
-        _UNET_CACHE_SIZE, \
-        _VAE_CACHE_SIZE, \
-        _CONTROL_NET_CACHE_SIZE
+    if hasattr(unet, 'DGENERATE_SIZE_ESTIMATE'):
+        # UNet returning to CPU side memory
+        enforce_unet_cache_constraints(unet.DGENERATE_SIZE_ESTIMATE)
+        _UNET_CACHE_SIZE += unet.DGENERATE_SIZE_ESTIMATE
 
-    skip_pipeline_adjustment = (_pipelines.is_sequential_cpu_offload_enabled(pipeline)
-                                or _pipelines.is_model_cpu_offload_enabled(pipeline))
+        _messages.debug_log(f'{_types.class_and_id_string(unet)} '
+                            f'Size = {unet.DGENERATE_SIZE_ESTIMATE} Bytes '
+                            f'is entering CPU side memory, {_types.fullname(unet_cache_size)}() '
+                            f'is now {unet_cache_size()} Bytes '
+                            f'({_memory.bytes_best_human_unit(unet.DGENERATE_SIZE_ESTIMATE)})')
 
-    if not skip_pipeline_adjustment:
-        enforce_pipeline_cache_constraints(pipeline.DGENERATE_SIZE_ESTIMATE)
-        _PIPELINE_CACHE_SIZE += pipeline.DGENERATE_SIZE_ESTIMATE
 
-        _messages.debug_log(f'{_types.class_and_id_string(pipeline)} '
-                            f'Size = {pipeline.DGENERATE_SIZE_ESTIMATE} Bytes '
-                            f'is entering CPU side memory, {_types.fullname(pipeline_cache_size)}() '
-                            f'is now {pipeline_cache_size()} Bytes')
+def vae_to_cpu_update_cache_info(vae):
+    global _VAE_CACHE_SIZE
+    if hasattr(vae, 'DGENERATE_SIZE_ESTIMATE'):
+        # vae returning to CPU side memory
+        enforce_vae_cache_constraints(vae.DGENERATE_SIZE_ESTIMATE)
+        _VAE_CACHE_SIZE += vae.DGENERATE_SIZE_ESTIMATE
 
-    if hasattr(pipeline, 'unet') and pipeline.unet is not None:
-        skip_unet_adjustment = (_pipelines.is_sequential_cpu_offload_enabled(pipeline.unet)
-                                or _pipelines.is_model_cpu_offload_enabled(pipeline.unet))
+        _messages.debug_log(f'Cached VAE {_types.class_and_id_string(vae)} '
+                            f'Size = {vae.DGENERATE_SIZE_ESTIMATE} Bytes '
+                            f'is entering CPU side memory, {_types.fullname(vae_cache_size)}() '
+                            f'is now {vae_cache_size()} Bytes '
+                            f'({_memory.bytes_best_human_unit(vae.DGENERATE_SIZE_ESTIMATE)})')
 
-        if not skip_unet_adjustment and hasattr(pipeline.unet, 'DGENERATE_SIZE_ESTIMATE'):
-            # UNet returning to CPU side memory
-            enforce_unet_cache_constraints(pipeline.unet.DGENERATE_SIZE_ESTIMATE)
-            _UNET_CACHE_SIZE += pipeline.unet.DGENERATE_SIZE_ESTIMATE
 
-            _messages.debug_log(f'{_types.class_and_id_string(pipeline.unet)} '
-                                f'Size = {pipeline.unet.DGENERATE_SIZE_ESTIMATE} Bytes '
-                                f'is entering CPU side memory, {_types.fullname(unet_cache_size)}() '
-                                f'is now {unet_cache_size()} Bytes')
+def controlnet_to_cpu_update_cache_info(controlnet):
+    global _CONTROL_NET_CACHE_SIZE
 
-    if hasattr(pipeline, 'vae') and pipeline.vae is not None:
-        skip_vae_adjustment = (_pipelines.is_sequential_cpu_offload_enabled(pipeline.vae)
-                               or _pipelines.is_model_cpu_offload_enabled(pipeline.vae))
+    if isinstance(controlnet,
+                  diffusers.pipelines.controlnet.MultiControlNetModel):
+        total_size = 0
+        for control_net in controlnet.nets:
+            total_size += control_net.DGENERATE_SIZE_ESTIMATE
 
-        if not skip_vae_adjustment and hasattr(pipeline.vae, 'DGENERATE_SIZE_ESTIMATE'):
-            # VAE returning to CPU side memory
-            enforce_vae_cache_constraints(pipeline.vae.DGENERATE_SIZE_ESTIMATE)
-            _VAE_CACHE_SIZE += pipeline.vae.DGENERATE_SIZE_ESTIMATE
+            _messages.debug_log(f'Cached ControlNetModel {_types.class_and_id_string(control_net)} '
+                                f'Size = {control_net.DGENERATE_SIZE_ESTIMATE} Bytes '
+                                f'({_memory.bytes_best_human_unit(control_net.DGENERATE_SIZE_ESTIMATE)}) '
+                                f'from "MultiControlNetModel" is entering CPU side memory.')
 
-            _messages.debug_log(f'{_types.class_and_id_string(pipeline.vae)} '
-                                f'Size = {pipeline.vae.DGENERATE_SIZE_ESTIMATE} Bytes '
-                                f'is entering CPU side memory, {_types.fullname(vae_cache_size)}() '
-                                f'is now {vae_cache_size()} Bytes')
+        enforce_control_net_cache_constraints(total_size)
+        _CONTROL_NET_CACHE_SIZE += total_size
 
-    if hasattr(pipeline, 'controlnet') and pipeline.controlnet is not None:
-        skip_controlnet_adjustment = (_pipelines.is_sequential_cpu_offload_enabled(pipeline.controlnet)
-                                      or _pipelines.is_model_cpu_offload_enabled(pipeline.controlnet))
+        _messages.debug_log(f'"MultiControlNetModel" size fully estimated, '
+                            f'{_types.fullname(control_net_cache_size)}() '
+                            f'is now {control_net_cache_size()} Bytes '
+                            f'({_memory.bytes_best_human_unit(control_net_cache_size())})')
 
-        if skip_controlnet_adjustment:
-            return
+    else:
+        # ControlNet returning to CPU side memory
+        enforce_control_net_cache_constraints(controlnet.DGENERATE_SIZE_ESTIMATE)
+        _CONTROL_NET_CACHE_SIZE += controlnet.DGENERATE_SIZE_ESTIMATE
 
-        if isinstance(pipeline.controlnet,
-                      diffusers.pipelines.controlnet.MultiControlNetModel):
-            total_size = 0
-            for control_net in pipeline.controlnet.nets:
-                total_size += control_net.DGENERATE_SIZE_ESTIMATE
-
-                _messages.debug_log(f'{_types.class_and_id_string(control_net)} '
-                                    f'Size = {control_net.DGENERATE_SIZE_ESTIMATE} Bytes '
-                                    f'from "MultiControlNetModel" is entering CPU side memory.')
-
-            enforce_control_net_cache_constraints(total_size)
-            _CONTROL_NET_CACHE_SIZE += total_size
-
-            _messages.debug_log(f'"MultiControlNetModel" size fully estimated, '
-                                f'{_types.fullname(control_net_cache_size)}() '
-                                f'is now {control_net_cache_size()} Bytes')
-
-        else:
-            # ControlNet returning to CPU side memory
-            enforce_control_net_cache_constraints(pipeline.controlnet.DGENERATE_SIZE_ESTIMATE)
-            _CONTROL_NET_CACHE_SIZE += pipeline.controlnet.DGENERATE_SIZE_ESTIMATE
-
-            _messages.debug_log(f'{_types.class_and_id_string(pipeline.controlnet)} '
-                                f'Size = {pipeline.controlnet.DGENERATE_SIZE_ESTIMATE} Bytes '
-                                f'is entering CPU side memory, {_types.fullname(control_net_cache_size)}() '
-                                f'is now {control_net_cache_size()} Bytes')
+        _messages.debug_log(f'Cached ControlNetModel {_types.class_and_id_string(controlnet)} '
+                            f'Size = {controlnet.DGENERATE_SIZE_ESTIMATE} Bytes '
+                            f'({_memory.bytes_best_human_unit(controlnet.DGENERATE_SIZE_ESTIMATE)}) '
+                            f'is entering CPU side memory, {_types.fullname(control_net_cache_size)}() '
+                            f'is now {control_net_cache_size()} Bytes '
+                            f'({_memory.bytes_best_human_unit(control_net_cache_size())})')
 
 
 def pipeline_off_cpu_update_cache_info(pipeline: diffusers.DiffusionPipeline):
-    """
-    Update cache info about a pipeline and its components on before a torch ``.to()`` cast
-    to a device which is not the CPU.
+    global _PIPELINE_CACHE_SIZE
 
-    Pipelines / components marked for sequential cpu offload or model cpu offload are ignored.
+    _PIPELINE_CACHE_SIZE -= pipeline.DGENERATE_SIZE_ESTIMATE
 
-    :param pipeline: the pipeline
-    """
+    _messages.debug_log(f'Cached Diffusers Pipeline {_types.class_and_id_string(pipeline)} '
+                        f'Size = {pipeline.DGENERATE_SIZE_ESTIMATE} Bytes '
+                        f'is leaving CPU side memory, {_types.fullname(pipeline_cache_size)}() '
+                        f'is now {pipeline_cache_size()} Bytes '
+                        f'({_memory.bytes_best_human_unit(pipeline_cache_size())})')
 
-    # Update CPU side memory overhead estimates when a
-    # pipeline gets casted to the GPU or some other
-    # processing device
 
-    # It is not the case that once the model is casted off the CPU
-    # that there is no CPU side memory overhead for that model,
-    # in fact there is usually a non insignificant amount of system
-    # ram still used when the model is casted to another device. This
-    # function does not account for that and assumes that once the model is
-    # casted off of the CPU, that all of its memory overhead is on the
-    # other device IE: VRAM or some other tensor processing unit.
-    # This is not entirely correct but probably close enough for the
-    # CPU side memory overhead estimates, and for use as a heuristic
-    # value for garbage collection of the model cache that exists
-    # in CPU side memory
+def unet_off_cpu_update_cache_info(unet):
+    global _UNET_CACHE_SIZE
 
-    global _PIPELINE_CACHE_SIZE, \
-        _UNET_CACHE_SIZE, \
-        _VAE_CACHE_SIZE, \
-        _CONTROL_NET_CACHE_SIZE
+    if hasattr(unet, 'DGENERATE_SIZE_ESTIMATE'):
+        _UNET_CACHE_SIZE -= unet.DGENERATE_SIZE_ESTIMATE
 
-    import dgenerate.pipelinewrapper.pipelines as _pipelines
+        _messages.debug_log(f'Cached UNet {_types.class_and_id_string(unet)} '
+                            f'Size = {unet.DGENERATE_SIZE_ESTIMATE} Bytes '
+                            f'is leaving CPU side memory, {_types.fullname(unet_cache_size)}() '
+                            f'is now {unet_cache_size()} Bytes '
+                            f'({_memory.bytes_best_human_unit(unet_cache_size())})')
 
-    skip_pipeline_adjustment = (_pipelines.is_sequential_cpu_offload_enabled(pipeline)
-                                or _pipelines.is_model_cpu_offload_enabled(pipeline))
 
-    if not skip_pipeline_adjustment:
-        _PIPELINE_CACHE_SIZE -= pipeline.DGENERATE_SIZE_ESTIMATE
+def vae_off_cpu_update_cache_info(vae):
+    global _VAE_CACHE_SIZE
 
-        _messages.debug_log(f'{_types.class_and_id_string(pipeline)} '
-                            f'Size = {pipeline.DGENERATE_SIZE_ESTIMATE} Bytes '
-                            f'is leaving CPU side memory, {_types.fullname(pipeline_cache_size)}() '
-                            f'is now {pipeline_cache_size()} Bytes')
+    if hasattr(vae, 'DGENERATE_SIZE_ESTIMATE'):
+        _VAE_CACHE_SIZE -= vae.DGENERATE_SIZE_ESTIMATE
 
-    if hasattr(pipeline, 'unet') and pipeline.unet is not None:
-        skip_unet_adjustment = (_pipelines.is_sequential_cpu_offload_enabled(pipeline.unet)
-                                or _pipelines.is_model_cpu_offload_enabled(pipeline.unet))
+        _messages.debug_log(f'Cached VAE {_types.class_and_id_string(vae)} '
+                            f'Size = {vae.DGENERATE_SIZE_ESTIMATE} Bytes '
+                            f'is leaving CPU side memory, {_types.fullname(vae_cache_size)}() '
+                            f'is now {vae_cache_size()} Bytes '
+                            f'({_memory.bytes_best_human_unit(vae_cache_size())})')
 
-        if not skip_unet_adjustment and hasattr(pipeline.unet, 'DGENERATE_SIZE_ESTIMATE'):
-            _UNET_CACHE_SIZE -= pipeline.unet.DGENERATE_SIZE_ESTIMATE
 
-            _messages.debug_log(f'{_types.class_and_id_string(pipeline.unet)} '
-                                f'Size = {pipeline.unet.DGENERATE_SIZE_ESTIMATE} Bytes '
-                                f'is leaving CPU side memory, {_types.fullname(unet_cache_size)}() '
-                                f'is now {unet_cache_size()} Bytes')
+def controlnet_off_cpu_update_cache_info(controlnet):
+    global _CONTROL_NET_CACHE_SIZE
 
-    if hasattr(pipeline, 'vae') and pipeline.vae is not None:
-        skip_vae_adjustment = (_pipelines.is_sequential_cpu_offload_enabled(pipeline.vae)
-                               or _pipelines.is_model_cpu_offload_enabled(pipeline.vae))
+    if isinstance(controlnet, diffusers.pipelines.controlnet.MultiControlNetModel):
+        for control_net in controlnet.nets:
+            _CONTROL_NET_CACHE_SIZE -= control_net.DGENERATE_SIZE_ESTIMATE
 
-        if not skip_vae_adjustment and hasattr(pipeline.vae, 'DGENERATE_SIZE_ESTIMATE'):
-            _VAE_CACHE_SIZE -= pipeline.vae.DGENERATE_SIZE_ESTIMATE
+            _messages.debug_log(f'Cached ControlNetModel {_types.class_and_id_string(control_net)} Size = '
+                                f'{control_net.DGENERATE_SIZE_ESTIMATE} Bytes '
+                                f'({_memory.bytes_best_human_unit(control_net.DGENERATE_SIZE_ESTIMATE)})'
+                                f'from "MultiControlNetModel" is leaving CPU side memory, '
+                                f'{_types.fullname(control_net_cache_size)}() is now '
+                                f'{control_net_cache_size()} Bytes '
+                                f'({_memory.bytes_best_human_unit(control_net_cache_size())})')
 
-            _messages.debug_log(f'{_types.class_and_id_string(pipeline.vae)} '
-                                f'Size = {pipeline.vae.DGENERATE_SIZE_ESTIMATE} Bytes '
-                                f'is leaving CPU side memory, {_types.fullname(vae_cache_size)}() '
-                                f'is now {vae_cache_size()} Bytes')
+    elif isinstance(controlnet, diffusers.models.ControlNetModel):
+        _CONTROL_NET_CACHE_SIZE -= controlnet.DGENERATE_SIZE_ESTIMATE
 
-    if hasattr(pipeline, 'controlnet') and pipeline.controlnet is not None:
-        skip_controlnet_adjustment = (_pipelines.is_sequential_cpu_offload_enabled(pipeline.controlnet)
-                                      or _pipelines.is_model_cpu_offload_enabled(pipeline.controlnet))
-
-        if skip_controlnet_adjustment:
-            return
-
-        if isinstance(pipeline.controlnet,
-                      diffusers.pipelines.controlnet.MultiControlNetModel):
-            for control_net in pipeline.controlnet.nets:
-                _CONTROL_NET_CACHE_SIZE -= control_net.DGENERATE_SIZE_ESTIMATE
-
-                _messages.debug_log(f'{_types.class_and_id_string(control_net)} Size = '
-                                    f'{control_net.DGENERATE_SIZE_ESTIMATE} Bytes '
-                                    f'from "MultiControlNetModel" is leaving CPU side memory, '
-                                    f'{_types.fullname(control_net_cache_size)}() is now '
-                                    f'{control_net_cache_size()} Bytes')
-
-        elif isinstance(pipeline.controlnet, diffusers.models.ControlNetModel):
-            _CONTROL_NET_CACHE_SIZE -= pipeline.controlnet.DGENERATE_SIZE_ESTIMATE
-
-            _messages.debug_log(f'{_types.class_and_id_string(pipeline.controlnet)} '
-                                f'Size = {pipeline.controlnet.DGENERATE_SIZE_ESTIMATE} Bytes '
-                                f'is leaving CPU side memory, {_types.fullname(control_net_cache_size)}() '
-                                f'is now {control_net_cache_size()} Bytes')
+        _messages.debug_log(f'Cached ControlNetModel {_types.class_and_id_string(controlnet)} '
+                            f'Size = {controlnet.DGENERATE_SIZE_ESTIMATE} Bytes '
+                            f'({_memory.bytes_best_human_unit(controlnet.DGENERATE_SIZE_ESTIMATE)})'
+                            f'is leaving CPU side memory, {_types.fullname(control_net_cache_size)}() '
+                            f'is now {control_net_cache_size()} Bytes '
+                            f'({_memory.bytes_best_human_unit(control_net_cache_size())})')
 
 
 __all__ = _types.module_all()

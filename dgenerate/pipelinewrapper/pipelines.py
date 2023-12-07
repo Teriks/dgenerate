@@ -41,6 +41,15 @@ import accelerate
 import torch.nn
 
 
+class OutOfMemoryError(Exception):
+    """
+    Raised when a GPU or processing device runs out of memory.
+    """
+
+    def __init__(self, message):
+        super().__init__(f'Device Out Of Memory: {message}')
+
+
 class UnsupportedPipelineConfigError(Exception):
     """
     Occurs when the a diffusers pipeline is requested to be
@@ -296,6 +305,256 @@ def set_vae_slicing_tiling(pipeline: typing.Union[diffusers.DiffusionPipeline,
             pipeline.vae.disable_slicing()
 
 
+def get_torch_pipeline_modules(pipeline: diffusers.DiffusionPipeline):
+    """
+    Get all component modules of a torch diffusers pipeline.
+
+    :param pipeline: the pipeline
+    :return: dictionary of modules by name
+    """
+    return {k: v for k, v in pipeline.components.items() if isinstance(v, torch.nn.Module)}
+
+
+def _set_sequential_cpu_offload_flag(module: typing.Union[diffusers.DiffusionPipeline, torch.nn.Module], value: bool):
+    module.DGENERATE_SEQUENTIAL_CPU_OFFLOAD = bool(value)
+
+    _messages.debug_log(
+        f'setting DGENERATE_SEQUENTIAL_CPU_OFFLOAD={value} on module "{module.__class__.__name__}"')
+
+
+def _set_cpu_offload_flag(module: typing.Union[diffusers.DiffusionPipeline, torch.nn.Module], value: bool):
+    module.DGENERATE_CPU_OFFLOAD = bool(value)
+
+    _messages.debug_log(
+        f'setting DGENERATE_CPU_OFFLOAD={value} on module "{module.__class__.__name__}"')
+
+
+def is_sequential_cpu_offload_enabled(module: typing.Union[diffusers.DiffusionPipeline, torch.nn.Module]):
+    """
+    Test if a pipeline or torch neural net module created by dgenerate has sequential offload enabled.
+
+    :param module: the module object
+    :return: ``True`` or ``False``
+    """
+    return hasattr(module, 'DGENERATE_SEQUENTIAL_CPU_OFFLOAD') and bool(module.DGENERATE_SEQUENTIAL_CPU_OFFLOAD)
+
+
+def is_model_cpu_offload_enabled(module: typing.Union[diffusers.DiffusionPipeline, torch.nn.Module]):
+    """
+    Test if a pipeline or torch neural net module created by dgenerate has model cpu offload enabled.
+
+    :param module: the module object
+    :return: ``True`` or ``False``
+    """
+    return hasattr(module, 'DGENERATE_CPU_OFFLOAD') and bool(module.DGENERATE_CPU_OFFLOAD)
+
+
+def enable_sequential_cpu_offload(pipeline: diffusers.DiffusionPipeline,
+                                  device: typing.Union[torch.device, str] = "cuda"):
+    """
+    Enable sequential offloading on a torch pipeline, in a way dgenerate can keep track of.
+
+    :param pipeline: the pipeline
+    :param device: the device
+    """
+    torch_device = torch.device(device)
+
+    _set_sequential_cpu_offload_flag(pipeline, True)
+    for name, model in get_torch_pipeline_modules(pipeline).items():
+        if name in pipeline._exclude_from_cpu_offload:
+            continue
+        elif not is_sequential_cpu_offload_enabled(model):
+            _set_sequential_cpu_offload_flag(model, True)
+            accelerate.cpu_offload(model, torch_device, offload_buffers=len(model._parameters) > 0)
+
+
+def enable_model_cpu_offload(pipeline: diffusers.DiffusionPipeline,
+                             device: typing.Union[torch.device, str] = "cuda"):
+    """
+    Enable sequential model cpu offload on a torch pipeline, in a way dgenerate can keep track of.
+
+    :param pipeline: the pipeline
+    :param device: the device
+    """
+
+    if pipeline.model_cpu_offload_seq is None:
+        raise ValueError(
+            "Model CPU offload cannot be enabled because no `model_cpu_offload_seq` class attribute is set."
+        )
+
+    torch_device = torch.device(device)
+
+    pipeline._offload_gpu_id = torch_device.index or getattr(pipeline, "_offload_gpu_id", 0)
+
+    device_type = torch_device.type
+    device = torch.device(f"{device_type}:{pipeline._offload_gpu_id}")
+
+    if pipeline.device.type != "cpu":
+        pipeline.to("cpu", silence_dtype_warnings=True)
+        device_mod = getattr(torch, pipeline.device.type, None)
+        if hasattr(device_mod, "empty_cache") and device_mod.is_available():
+            device_mod.empty_cache()
+
+    _set_cpu_offload_flag(pipeline, True)
+
+    all_model_components = {k: v for k, v in pipeline.components.items() if isinstance(v, torch.nn.Module)}
+
+    pipeline._all_hooks = []
+    hook = None
+    for model_str in pipeline.model_cpu_offload_seq.split("->"):
+        model = all_model_components.pop(model_str, None)
+        if not isinstance(model, torch.nn.Module):
+            continue
+
+        _, hook = accelerate.cpu_offload_with_hook(model, device, prev_module_hook=hook)
+        _set_cpu_offload_flag(model, True)
+        pipeline._all_hooks.append(hook)
+
+    for name, model in all_model_components.items():
+        if not isinstance(model, torch.nn.Module):
+            continue
+
+        if name in pipeline._exclude_from_cpu_offload:
+            model.to(device)
+        else:
+            _, hook = accelerate.cpu_offload_with_hook(model, device)
+            _set_cpu_offload_flag(model, True)
+            pipeline._all_hooks.append(hook)
+
+
+def get_torch_device(component: typing.Union[diffusers.DiffusionPipeline, torch.nn.Module]) -> torch.device:
+    """
+    Get the device that a pipeline or pipeline component exists on.
+
+    :param component: pipeline or pipeline component.
+    :return: :py:class:`torch.device`
+    """
+    if hasattr(component, 'device'):
+        return component.device
+    elif hasattr(component, 'get_device'):
+        return component.get_device()
+
+    raise ValueError('component did not have a device attribute or the function get_device()')
+
+
+def get_torch_device_string(component: typing.Union[diffusers.DiffusionPipeline, torch.nn.Module]) -> str:
+    """
+    Get the device string that a pipeline or pipeline component exists on.
+
+    :param component: pipeline or pipeline component.
+    :return: device string
+    """
+    return str(get_torch_device(component))
+
+
+def pipeline_to(pipeline, device: typing.Union[torch.device, str, None]):
+    """
+    Move a diffusers pipeline to a device if possible, in a way that dgenerate can keep track of.
+
+    If the pipeline does not possess the ``.to()`` method (such as with flax pipelines), this is a no-op.
+
+    If ``device==None`` this is a no-op.
+
+    Modules which are meta tensors will not be moved (sequentially offloaded modules)
+
+    Modules which have model cpu offload enabled will not be moved unless they are moving to "cpu"
+
+    :param pipeline: the pipeline
+    :param device: the device
+
+    :return: the moved pipeline
+    """
+    if device is None:
+        return
+
+    if not hasattr(pipeline, 'to'):
+        return
+
+    to_device = torch.device(device)
+
+    if to_device.type != 'cpu':
+        _cache.pipeline_off_cpu_update_cache_info(pipeline)
+    else:
+        _cache.pipeline_to_cpu_update_cache_info(pipeline)
+
+    for name, value in get_torch_pipeline_modules(pipeline).items():
+
+        current_device = get_torch_device(value)
+
+        if current_device.type == 'meta' or current_device == to_device:
+            continue
+
+        if is_model_cpu_offload_enabled(value) and to_device.type != 'cpu':
+            continue
+
+        if name == 'unet':
+            if to_device.type != 'cpu':
+                _cache.unet_off_cpu_update_cache_info(value)
+            else:
+                _cache.unet_to_cpu_update_cache_info(value)
+        elif name == 'vae':
+            if to_device.type != 'cpu':
+                _cache.vae_off_cpu_update_cache_info(value)
+            else:
+                _cache.vae_to_cpu_update_cache_info(value)
+        elif name == 'controlnet':
+            if to_device.type != 'cpu':
+                _cache.controlnet_off_cpu_update_cache_info(value)
+            else:
+                _cache.controlnet_to_cpu_update_cache_info(value)
+
+        _messages.debug_log(
+            f'Moving module "{name}" of pipeline {_types.fullname(pipeline)} '
+            f'from device "{current_device}" to device "{to_device}"')
+
+        value.to(device)
+
+
+_LAST_CALLED_PIPELINE = None
+
+
+# noinspection PyCallingNonCallable
+def call_pipeline(pipeline: typing.Union[diffusers.DiffusionPipeline, diffusers.FlaxDiffusionPipeline],
+                  device: typing.Union[torch.device, str, None] = 'cuda', *args, **kwargs):
+    """
+    Call a diffusers pipeline, offload the last called pipeline to CPU before
+    doing so if the last pipeline is not being called in succession
+
+    :param pipeline: The pipeline
+
+    :param device: The device to move the pipeline to before calling, it will be
+        moved to this device if it is not already on the device. If the pipeline
+        does not support moving to a device, such as with flax pipelines,
+        this argument is ignored.
+
+    :param args: diffusers pipeline arguments
+    :param kwargs: diffusers pipeline keyword arguments
+    :return: the result of calling the diffusers pipeline
+    """
+
+    global _LAST_CALLED_PIPELINE
+
+    _messages.debug_log(f'Calling Pipeline: "{pipeline.__class__.__name__}",',
+                        f'Device: "{device}",',
+                        'Args:',
+                        lambda: _textprocessing.debug_format_args(kwargs,
+                                                                  value_transformer=lambda key, value:
+                                                                  f'torch.Generator(seed={value.initial_seed()})'
+                                                                  if isinstance(value, torch.Generator) else value))
+
+    if pipeline is _LAST_CALLED_PIPELINE:
+        return pipeline(*args, **kwargs)
+    else:
+        pipeline_to(_LAST_CALLED_PIPELINE, 'cpu')
+
+    pipeline_to(pipeline, device)
+
+    result = pipeline(*args, **kwargs)
+
+    _LAST_CALLED_PIPELINE = pipeline
+    return result
+
+
 class PipelineCreationResult:
     def __init__(self, pipeline):
         self._pipeline = pipeline
@@ -404,15 +663,16 @@ class TorchPipelineCreationResult(PipelineCreationResult):
         self.parsed_textual_inversion_uris = parsed_textual_inversion_uris
         self.parsed_control_net_uris = parsed_control_net_uris
 
-    def call(self, *args, **kwargs) -> diffusers.utils.BaseOutput:
+    def call(self, device, *args, **kwargs) -> diffusers.utils.BaseOutput:
         """
-        Call **pipeline**
+        Call **pipeline**, see: :py:func:`.call_pipeline`
 
+        :param device: move the pipeline to this device before calling
         :param args: forward args to pipeline
         :param kwargs: forward kwargs to pipeline
         :return: A subclass of :py:class:`diffusers.utils.BaseOutput`
         """
-        return self.pipeline(*args, **kwargs)
+        return call_pipeline(self.pipeline, device, *args, **kwargs)
 
 
 def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
@@ -842,34 +1102,10 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     # Model Offloading
 
     if device.startswith('cuda'):
-
-        set_sequential_cpu_offload_flag(pipeline, sequential_cpu_offload)
-        set_cpu_offload_flag(pipeline, model_cpu_offload)
-
-        all_model_components = get_torch_pipeline_modules(pipeline)
-
         if sequential_cpu_offload:
-            pipeline.enable_sequential_cpu_offload(device=device)
-            _patch_torch_cast_for_sequential_offloading(pipeline)
-
-            for name, model in all_model_components.items():
-                if not isinstance(model, torch.nn.Module):
-                    continue
-
-                if name not in pipeline._exclude_from_cpu_offload:
-                    set_sequential_cpu_offload_flag(model, True)
-                    _patch_torch_cast_for_sequential_offloading(model)
-
+            enable_sequential_cpu_offload(pipeline, device)
         elif model_cpu_offload:
-
-            pipeline.enable_model_cpu_offload(device=device)
-
-            for model_str in pipeline.model_cpu_offload_seq.split("->"):
-                model = all_model_components.pop(model_str, None)
-                if not isinstance(model, torch.nn.Module):
-                    continue
-
-                set_cpu_offload_flag(model, True)
+            enable_model_cpu_offload(pipeline, device)
 
     _cache.pipeline_create_update_cache_info(pipeline=pipeline,
                                              estimated_size=estimated_memory_usage)
@@ -884,109 +1120,6 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         parsed_textual_inversion_uris=parsed_textual_inversion_uris,
         parsed_control_net_uris=parsed_control_net_uris
     )
-
-
-def get_torch_pipeline_modules(pipeline: diffusers.DiffusionPipeline):
-    """
-    Get all component modules of a torch diffusers pipeline.
-    :param pipeline: the pipeline
-    :return: dictionary of modules by name
-    """
-    return {k: v for k, v in pipeline.components.items() if isinstance(v, torch.nn.Module)}
-
-
-_a_cpu_offload = accelerate.cpu_offload
-
-
-def _cpu_offload_patch(
-        model: torch.nn.Module,
-        execution_device: typing.Optional[torch.device] = None,
-        offload_buffers: bool = False,
-        state_dict: typing.Optional[dict[str, torch.Tensor]] = None,
-        preload_module_classes: typing.Optional[list[str]] = None,
-):
-    __args = locals()
-
-    if not is_sequential_cpu_offload_enabled(model):
-        return _a_cpu_offload(**__args)
-
-    return model
-
-
-accelerate.cpu_offload = _cpu_offload_patch
-
-
-def _patch_torch_cast_for_sequential_offloading(module: typing.Union[diffusers.DiffusionPipeline, torch.nn.Module]):
-    """
-    This is really terrible :)
-
-    :param module: nn module or pipeline to violate
-    """
-
-    def patch(device, *args, **kwargs):
-        _messages.debug_log(
-            f'Patched module .to() NO-OP on {module.__class__.__name__} '
-            f'-> (device="{device}", args={args}, kwargs={kwargs})')
-        return module
-
-    if module.to.__name__ is not patch.__name__:
-        module.to = patch
-
-        if isinstance(module, torch.nn.Module):
-            for m in module.state_dict().values():
-                if m.to.__name__ is not patch.__name__:
-                    m.to = patch
-
-
-def set_sequential_cpu_offload_flag(module: typing.Union[diffusers.DiffusionPipeline, torch.nn.Module], value: bool):
-    """
-    Set ``DGENERATE_SEQUENTIAL_CPU_OFFLOAD`` on a module, flagging it
-    to dgenerate as belonging to a sequentially offloaded pipeline, or being
-    a sequentially offloaded pipeline itself if the value is ``True``
-
-
-    :param module: the module
-
-    :param value: ``True`` or ``False``
-    """
-    module.DGENERATE_SEQUENTIAL_CPU_OFFLOAD = bool(value)
-
-    _messages.debug_log(
-        f'setting DGENERATE_SEQUENTIAL_CPU_OFFLOAD={value} on module "{module.__class__.__name__}"')
-
-
-def set_cpu_offload_flag(module: typing.Union[diffusers.DiffusionPipeline, torch.nn.Module], value: bool):
-    """
-    Set ``DGENERATE_CPU_OFFLOAD = True`` on a module, flagging it
-    to dgenerate as belonging to a cpu offloaded pipeline, or being
-    a cpu offloaded pipeline itself if the value is ``True``
-
-    :param module: the module
-
-    :param value: ``True`` or ``False``
-    """
-    module.DGENERATE_CPU_OFFLOAD = bool(value)
-
-    _messages.debug_log(
-        f'setting DGENERATE_CPU_OFFLOAD={value} on module "{module.__class__.__name__}"')
-
-
-def is_sequential_cpu_offload_enabled(module: typing.Union[diffusers.DiffusionPipeline, torch.nn.Module]):
-    """
-    Test if a neural net module created by dgenerate has sequential offload enabled.
-    :param module: the module object
-    :return: ``True`` or ``False``
-    """
-    return hasattr(module, 'DGENERATE_SEQUENTIAL_CPU_OFFLOAD') and bool(module.DGENERATE_SEQUENTIAL_CPU_OFFLOAD)
-
-
-def is_model_cpu_offload_enabled(module: typing.Union[diffusers.DiffusionPipeline, torch.nn.Module]):
-    """
-    Test if a neural net module created by dgenerate has model cpu offload enabled.
-    :param module: the module object
-    :return: ``True`` or ``False``
-    """
-    return hasattr(module, 'DGENERATE_CPU_OFFLOAD') and bool(module.DGENERATE_CPU_OFFLOAD)
 
 
 class FlaxPipelineCreationResult(PipelineCreationResult):
@@ -1053,13 +1186,13 @@ class FlaxPipelineCreationResult(PipelineCreationResult):
 
     def call(self, *args, **kwargs) -> diffusers.utils.BaseOutput:
         """
-        Call **pipeline**
+        Call **pipeline**, see: :py:func:`.call_pipeline`
 
         :param args: forward args to pipeline
         :param kwargs: forward kwargs to pipeline
         :return: A subclass of :py:class:`diffusers.utils.BaseOutput`
         """
-        return self.pipeline(*args, **kwargs)
+        return call_pipeline(self.pipeline, None, *args, **kwargs)
 
 
 def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
