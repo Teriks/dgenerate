@@ -2379,7 +2379,7 @@ processor module and a description of what the module does.
 Custom image processor modules can also be loaded through the ``--plugin-modules`` option as discussed
 in the `Writing Plugins`_ section.
 
-All processors posses the arguments: ``output-file``, ``output-overwrite``, and ``device``
+All processors posses the arguments: ``output-file``, ``output-overwrite``, ``device``, and ``model-offload``
 
 The ``output-file`` argument can be used to write the processed image to a specific file, if multiple
 processing steps occur such as when rendering an animation or multiple generation steps, a numbered suffix
@@ -2395,6 +2395,20 @@ occurs on if any. It defaults to the value of ``--device`` and has the same synt
 ordinals, for instance if you have multiple GPUs you may specify ``device=cuda:1`` to run image processing
 on your second GPU, etc. Not all image processors respect this argument as some image processing is only
 ever CPU based.
+
+The ``model-offload`` is a boolean argument that can be used to force any torch modules / tensors
+associated with an image processor to immediately evacuate the GPU or other non CPU processing device
+as soon as the processor finishes processing an image.  Usually, any modules / tensors will be
+brought on to  the desired device right before processing an image, and left on the device until
+the image processor object leaves scope and is garbage collected.  This can be useful for achieving
+certain GPU or processing device memory constraints, however it is slower when processing multiple
+images in a row, as the modules / tensors must be brought on to the desired device repeatedly
+for each image. In the context of dgenerate invocations where processors can be used as preprocessors
+or postprocessors, the image processor object is garbage collected when the invocation completes,
+this is also true for the ``\\image_process`` directive.  Using this argument with a preprocess
+specification, such as ``--control-image-processors`` may yield a noticeable memory overhead
+reduction when using a single GPU, as any models from the image processor will be moved to the
+CPU immediately when it is done, clearing up VRAM space before the diffusion models enter GPU VRAM.
 
 For an example, images can be processed with the canny edge detection algorithm or OpenPose (rigging generation)
 before being used for generation with a model + a ControlNet.
