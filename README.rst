@@ -2399,7 +2399,7 @@ ever CPU based.
 The ``model-offload`` is a boolean argument that can be used to force any torch modules / tensors
 associated with an image processor to immediately evacuate the GPU or other non CPU processing device
 as soon as the processor finishes processing an image.  Usually, any modules / tensors will be
-brought on to  the desired device right before processing an image, and left on the device until
+brought on to the desired device right before processing an image, and left on the device until
 the image processor object leaves scope and is garbage collected.  This can be useful for achieving
 certain GPU or processing device memory constraints, however it is slower when processing multiple
 images in a row, as the modules / tensors must be brought on to the desired device repeatedly
