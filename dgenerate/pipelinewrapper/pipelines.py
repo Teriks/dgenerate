@@ -544,6 +544,10 @@ def call_pipeline(pipeline: typing.Union[diffusers.DiffusionPipeline, diffusers.
     if pipeline is _LAST_CALLED_PIPELINE:
         return pipeline(*args, **kwargs)
     else:
+        if hasattr(_LAST_CALLED_PIPELINE, 'to'):
+            _messages.debug_log(
+                f'Moving previously called pipeline "{_LAST_CALLED_PIPELINE.__class__.__name__}", back to the CPU.')
+
         pipeline_to(_LAST_CALLED_PIPELINE, 'cpu')
 
     pipeline_to(pipeline, device)
