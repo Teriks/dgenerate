@@ -540,6 +540,8 @@ def call_pipeline(pipeline: typing.Union[diffusers.DiffusionPipeline, diffusers.
                                                                   value_transformer=lambda key, value:
                                                                   f'torch.Generator(seed={value.initial_seed()})'
                                                                   if isinstance(value, torch.Generator) else value))
+    
+    torch.cuda.empty_cache()
 
     if pipeline is _LAST_CALLED_PIPELINE:
         return pipeline(*args, **kwargs)
