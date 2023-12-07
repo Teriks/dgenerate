@@ -95,7 +95,6 @@ class LineArtAnimeProcessor(_imageprocessor.ImageProcessor):
 
         self._lineart = _cna.LineartAnimeDetector.from_pretrained("lllyasviel/Annotators")
         self.register_module(self._lineart)
-        self.to(self.device)
 
     def __str__(self):
         args = [
@@ -127,7 +126,7 @@ class LineArtAnimeProcessor(_imageprocessor.ImageProcessor):
         Wn = 256 * int(np.ceil(float(W) / 256.0))
         img = cv2.resize(input_image, (Wn, Hn), interpolation=cv2.INTER_CUBIC)
         with torch.no_grad():
-            image_feed = torch.from_numpy(img).float().to(self.device)
+            image_feed = torch.from_numpy(img).float().to(self.modules_device)
             image_feed = image_feed / 127.5 - 1.0
             image_feed = einops.rearrange(image_feed, 'h w c -> 1 c h w')
 

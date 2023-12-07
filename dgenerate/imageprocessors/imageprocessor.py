@@ -41,7 +41,19 @@ class ImageProcessor(_plugin.Plugin):
                  loaded_by_name: str,
                  device: str = 'cpu',
                  output_file: dgenerate.types.OptionalPath = None,
-                 output_overwrite: bool = False, **kwargs):
+                 output_overwrite: bool = False,
+                 model_offload: bool = False,
+                 **kwargs):
+        """
+        :param loaded_by_name: The name the processor was loaded by
+        :param device: the device the processor will run on
+        :param output_file: output a debug image to this path
+        :param output_overwrite: can the debug image output path be overwritten?
+        :param model_offload: if ``True``, any torch modules that the processor
+            has registered are offloaded to the CPU immediately after processing an
+            image
+        :param kwargs: child class arguments
+        """
 
         super().__init__(loaded_by_name=loaded_by_name,
                          argument_error_type=_exceptions.ImageProcessorArgumentError,
@@ -51,15 +63,32 @@ class ImageProcessor(_plugin.Plugin):
         self.__output_overwrite = output_overwrite
         self.__device = device
         self.__modules = []
+        self.__modules_device = 'cpu'
+        self.__model_offload = model_offload
 
     @property
     def device(self) -> str:
         """
         The rendering device requested for this processor.
 
+        Torch modules associated with the processor will not be
+        on this device until the processor is used.
+
         :return: device string, for example "cuda", "cuda:N", or "cpu"
         """
         return self.__device
+
+    @property
+    def modules_device(self) -> str:
+        """
+        The rendering device that this processors modules currently exist on.
+
+        This will change with calls to :py:meth:`.ImageProcessor.to` and
+        possibly when the processor is used.
+
+        :return: device string, for example "cuda", "cuda:N", or "cpu"
+        """
+        return self.__modules_device
 
     def __gen_filename(self):
         return _filelock.touch_avoid_duplicate(os.path.dirname(self.__output_file),
@@ -97,6 +126,8 @@ class ImageProcessor(_plugin.Plugin):
 
         :return: processed image, may be the same image or a copy.
         """
+
+        self.to(self.device)
 
         img_copy = image.copy()
 
@@ -150,6 +181,10 @@ class ImageProcessor(_plugin.Plugin):
         img_copy = image.copy()
 
         processed = self.impl_post_resize(image)
+
+        if self.__model_offload:
+            self.to('cpu')
+
         if processed is not image:
             image.close()
 
@@ -297,14 +332,23 @@ class ImageProcessor(_plugin.Plugin):
         self.__modules.append(module)
 
     def to(self, device):
-        for m in self.__modules:
-            _messages.debug_log(f'Casting ImageProcessor module: {dgenerate.types.fullname(m)}.to("{device}")')
-            m.to(device)
+        """
+        Move all :py:class:`torch.nn.Module` modules registered
+        to this image processor to a specific device.
+        :param device:
+        :return: the image processor itself
+        """
 
-    def __del__(self):
-        if self.__modules:
-            _messages.debug_log(f'Finalizing ImageProcessor: {dgenerate.types.fullname(self)}')
-            self.to('cpu')
+        self.__modules_device = device
+
+        for m in self.__modules:
+            if not hasattr(m, '_DGENERATE_IMAGE_PROCESSOR_DEVICE') or m._DGENERATE_IMAGE_PROCESSOR_DEVICE != device:
+                m._DGENERATE_IMAGE_PROCESSOR_DEVICE = device
+                _messages.debug_log(
+                    f'Moving ImageProcessor registered module: {dgenerate.types.fullname(m)}.to("{device}")')
+                m.to(device)
+
+        return self
 
 
 __all__ = dgenerate.types.module_all()

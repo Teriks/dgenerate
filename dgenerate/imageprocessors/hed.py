@@ -106,7 +106,6 @@ class HEDProcessor(_imageprocessor.ImageProcessor):
 
         self._hed = _cna.HEDdetector.from_pretrained("lllyasviel/Annotators")
         self.register_module(self._hed)
-        self.to(self.device)
 
     def __str__(self):
         args = [
@@ -137,7 +136,7 @@ class HEDProcessor(_imageprocessor.ImageProcessor):
         input_image = _cna_util.HWC3(input_image)
         H, W, C = input_image.shape
         with torch.no_grad():
-            image_hed = torch.from_numpy(input_image.copy()).float().to(self.device)
+            image_hed = torch.from_numpy(input_image.copy()).float().to(self.modules_device)
             image_hed = einops.rearrange(image_hed, 'h w c -> 1 c h w')
             edges = self._hed.netNetwork(image_hed)
             edges = [e.detach().cpu().numpy().astype(np.float32)[0, 0] for e in edges]

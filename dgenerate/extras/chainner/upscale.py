@@ -1,20 +1,18 @@
 import math
-
 import PIL.Image
 import numpy as np
 import torch
 from tqdm.auto import tqdm
-
 from .types import PyTorchModel
 
 
-def _get_tiled_scale_steps(width, height, tile_x, tile_y, overlap):
+def get_tiled_scale_steps(width, height, tile_x, tile_y, overlap):
     return math.ceil((height / (tile_y - overlap))) * math.ceil((width / (tile_x - overlap)))
 
 
 @torch.inference_mode()
-def _tiled_scale(samples: torch.Tensor, upscale_model: PyTorchModel, tile_x=64, tile_y=64, overlap=8, upscale_amount=4,
-                 out_channels=3, pbar=None):
+def tiled_scale(samples: torch.Tensor, upscale_model: PyTorchModel, tile_x=64, tile_y=64, overlap=8, upscale_amount=4,
+                out_channels=3, pbar=None):
     output = torch.empty((samples.shape[0], out_channels, round(samples.shape[2] * upscale_amount),
                           round(samples.shape[3] * upscale_amount)), device="cpu")
     for b in range(samples.shape[0]):
@@ -58,7 +56,7 @@ def upscale(upscale_model: PyTorchModel, image, tile=512, overlap=32, device='cu
 
     while oom:
         try:
-            steps = in_img.shape[0] * _get_tiled_scale_steps(
+            steps = in_img.shape[0] * get_tiled_scale_steps(
                 in_img.shape[3],
                 in_img.shape[2],
                 tile_x=tile,
@@ -67,13 +65,13 @@ def upscale(upscale_model: PyTorchModel, image, tile=512, overlap=32, device='cu
 
             pbar = tqdm(total=steps)
 
-            s = _tiled_scale(in_img,
-                             upscale_model,
-                             tile_x=tile,
-                             tile_y=tile,
-                             overlap=overlap,
-                             upscale_amount=upscale_model.scale,
-                             pbar=pbar)
+            s = tiled_scale(in_img,
+                            upscale_model,
+                            tile_x=tile,
+                            tile_y=tile,
+                            overlap=overlap,
+                            upscale_amount=upscale_model.scale,
+                            pbar=pbar)
 
             oom = False
         except torch.cuda.OutOfMemoryError as e:

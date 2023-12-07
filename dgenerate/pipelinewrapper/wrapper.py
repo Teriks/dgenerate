@@ -54,15 +54,6 @@ except ImportError:
     flax = None
 
 
-class OutOfMemoryError(Exception):
-    """
-    Raised when a GPU or processing device runs out of memory.
-    """
-
-    def __init__(self, message):
-        super().__init__(f'Device Out Of Memory: {message}')
-
-
 class PipelineWrapperResult:
     """
     The result of calling :py:class:`.DiffusionPipelineWrapper`
@@ -660,56 +651,6 @@ class DiffusionPipelineWrapper:
             if model_type == 'flax':
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'LoRA loading is not implemented for flax.')
-
-    @staticmethod
-    def _pipeline_to(pipeline, device):
-        # models which are marked as sequential cpu offloaded or cpu offloaded
-        # are not considered by dgenerates cache to ever leave CPU side memory,
-        # meaning they always contribute to the CPU side memory overhead heuristic
-        if hasattr(pipeline, 'to'):
-            if not (_pipelines.is_model_cpu_offload_enabled(pipeline)
-                    or _pipelines.is_sequential_cpu_offload_enabled(pipeline)):
-
-                if device == 'cpu':
-                    _cache.pipeline_to_cpu_update_cache_info(pipeline)
-                else:
-                    _cache.pipeline_off_cpu_update_cache_info(pipeline)
-                try:
-                    # for name, module in _pipelines.get_torch_pipeline_modules(pipeline).items():
-                    #     if not _pipelines.is_sequential_cpu_offload_enabled(module):
-                    #         setattr(pipeline, name, module.to(device))
-                    return pipeline.to(device)
-                except RuntimeError as e:
-                    if 'memory' in str(e).lower():
-                        raise OutOfMemoryError(e)
-                    raise e
-            else:
-                return pipeline
-        return pipeline
-
-    _LAST_CALLED_PIPE = None
-
-    @staticmethod
-    def _call_pipeline(pipeline, device, **kwargs):
-        _messages.debug_log(f'Calling Pipeline: "{pipeline.__class__.__name__}",',
-                            f'Device: "{device}",',
-                            'Args:',
-                            lambda: _textprocessing.debug_format_args(kwargs,
-                                                                      value_transformer=lambda key, value:
-                                                                      f'torch.Generator(seed={value.initial_seed()})'
-                                                                      if isinstance(value, torch.Generator) else value))
-
-        if pipeline is DiffusionPipelineWrapper._LAST_CALLED_PIPE:
-            return pipeline(**kwargs)
-        else:
-            DiffusionPipelineWrapper._pipeline_to(
-                DiffusionPipelineWrapper._LAST_CALLED_PIPE, 'cpu')
-
-        DiffusionPipelineWrapper._pipeline_to(pipeline, device)
-        r = pipeline(**kwargs)
-
-        DiffusionPipelineWrapper._LAST_CALLED_PIPE = pipeline
-        return r
 
     @property
     def local_files_only(self) -> bool:
@@ -1398,7 +1339,7 @@ class DiffusionPipelineWrapper:
         pipeline_args.pop('width', None)
         pipeline_args.pop('height', None)
 
-        images = DiffusionPipelineWrapper._call_pipeline(
+        images = _pipelines.call_pipeline(
             pipeline=self._pipeline,
             device=self.device,
             prompt_ids=prompt_ids,
@@ -1481,9 +1422,9 @@ class DiffusionPipelineWrapper:
         else:
             prompt_ids = self._pipeline.prepare_inputs([positive_prompt] * device_count)
 
-        images = DiffusionPipelineWrapper._call_pipeline(
+        images = _pipelines.call_pipeline(
             pipeline=self._pipeline,
-            device=self._device,
+            device=None,
             prompt_ids=_flax_shard(prompt_ids),
             neg_prompt_ids=negative_prompt_ids,
             params=_flax_replicate(self._flax_params),
@@ -1626,11 +1567,11 @@ class DiffusionPipelineWrapper:
             if mock_batching:
                 images = []
                 for i in range(0, batch_size):
-                    images.append(DiffusionPipelineWrapper._call_pipeline(
+                    images.append(_pipelines.call_pipeline(
                         *args, **kwargs).images[0])
                 return images
             else:
-                return DiffusionPipelineWrapper._call_pipeline(
+                return _pipelines.call_pipeline(
                     *args, **kwargs).images
 
         pipeline_args['generator'] = \
@@ -1673,11 +1614,11 @@ class DiffusionPipelineWrapper:
             i_start = {'denoising_start': high_noise_fraction}
             i_end = {'denoising_end': high_noise_fraction}
 
-        image = DiffusionPipelineWrapper._call_pipeline(pipeline=self._pipeline,
-                                                        device=self._device,
-                                                        **pipeline_args,
-                                                        **i_end,
-                                                        output_type='latent').images
+        image = _pipelines.call_pipeline(pipeline=self._pipeline,
+                                         device=self._device,
+                                         **pipeline_args,
+                                         **i_end,
+                                         output_type='latent').images
 
         pipeline_args['image'] = image
 
@@ -1778,7 +1719,7 @@ class DiffusionPipelineWrapper:
             pipeline_args['strength'] = strength
 
         return PipelineWrapperResult(
-            DiffusionPipelineWrapper._call_pipeline(
+            _pipelines.call_pipeline(
                 pipeline=self._sdxl_refiner_pipeline,
                 device=self._device,
                 **pipeline_args, **i_start).images)
@@ -2019,13 +1960,13 @@ class DiffusionPipelineWrapper:
                 result = self._call_flax(pipeline_args=pipeline_args,
                                          user_args=copy_args)
             except jaxlib.xla_extension.XlaRuntimeError as e:
-                raise OutOfMemoryError(e)
+                raise _pipelines.OutOfMemoryError(e)
         else:
             try:
                 result = self._call_torch(pipeline_args=pipeline_args,
                                           user_args=copy_args)
             except torch.cuda.OutOfMemoryError as e:
-                raise OutOfMemoryError(e)
+                raise _pipelines.OutOfMemoryError(e)
 
         return result
 

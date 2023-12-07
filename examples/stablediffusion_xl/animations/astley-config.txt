@@ -4,6 +4,7 @@
 
 stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
 --variant fp16 --dtype float16
+--vae AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix
 --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
 --sdxl-high-noise-fractions 0.8
 --inference-steps 30

@@ -20,10 +20,13 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import PIL.Image
+import torch
 
 import dgenerate.imageprocessors.imageprocessor as _imageprocessor
 import dgenerate.types as _types
 from dgenerate.extras import chainner
+import numpy as np
+import tqdm.auto
 
 
 class UpscalerProcessor(_imageprocessor.ImageProcessor):
@@ -90,18 +93,55 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
         self._overlap = overlap
         self._pre_resize = pre_resize
 
+        self.register_module(self._model)
+
+    def _process(self, image):
+        image = torch.from_numpy(np.array(image).astype(np.float32) / 255.0)[None,]
+
+        in_img = image.movedim(-1, -3).to(self.modules_device)
+
+        oom = True
+
+        tile = self._tile
+
+        while oom:
+            try:
+                steps = in_img.shape[0] * chainner.get_tiled_scale_steps(
+                    in_img.shape[3],
+                    in_img.shape[2],
+                    tile_x=tile,
+                    tile_y=tile,
+                    overlap=self._overlap)
+
+                pbar = tqdm.auto.tqdm(total=steps)
+
+                s = chainner.tiled_scale(in_img,
+                                         self._model,
+                                         tile_x=tile,
+                                         tile_y=tile,
+                                         overlap=self._overlap,
+                                         upscale_amount=self._model.scale,
+                                         pbar=pbar)
+
+                oom = False
+            except torch.cuda.OutOfMemoryError as e:
+                tile //= 2
+                if tile < 128:
+                    raise e
+
+        s = torch.clamp(s.movedim(-3, -1), min=0, max=1.0)
+
+        return PIL.Image.fromarray(np.clip(255. * s[0].cpu().numpy(), 0, 255).astype(np.uint8))
+
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize) -> PIL.Image.Image:
         if self._pre_resize:
-            return chainner.upscale(self._model, image, self._tile, self._overlap, self.device)
+            return self._process(image)
         return image
 
     def impl_post_resize(self, image: PIL.Image.Image):
         if not self._pre_resize:
-            return chainner.upscale(self._model, image, self._tile, self._overlap, self.device)
+            return self._process(image)
         return image
-
-    def __del__(self):
-        self._model.cpu()
 
 
 __all__ = _types.module_all()
