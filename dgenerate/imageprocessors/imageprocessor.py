@@ -23,6 +23,7 @@ import os
 import typing
 
 import PIL.Image
+import torch
 
 import dgenerate.filelock as _filelock
 import dgenerate.image as _image
@@ -63,7 +64,7 @@ class ImageProcessor(_plugin.Plugin):
         self.__output_overwrite = output_overwrite
         self.__device = device
         self.__modules = []
-        self.__modules_device = 'cpu'
+        self.__modules_device = torch.device('cpu')
         self.__model_offload = model_offload
 
     @property
@@ -79,14 +80,15 @@ class ImageProcessor(_plugin.Plugin):
         return self.__device
 
     @property
-    def modules_device(self) -> str:
+    def modules_device(self) -> torch.device:
         """
         The rendering device that this processors modules currently exist on.
 
         This will change with calls to :py:meth:`.ImageProcessor.to` and
         possibly when the processor is used.
 
-        :return: device string, for example "cuda", "cuda:N", or "cpu"
+        :return: :py:class:`torch.device`, using ``str()`` on this object
+            will yield a device string such as "cuda", "cuda:N", or "cpu"
         """
         return self.__modules_device
 
@@ -331,13 +333,16 @@ class ImageProcessor(_plugin.Plugin):
         """
         self.__modules.append(module)
 
-    def to(self, device):
+    def to(self, device: typing.Union[torch.device, str]):
         """
         Move all :py:class:`torch.nn.Module` modules registered
         to this image processor to a specific device.
-        :param device:
+
+        :param device: The device string, or torch device object
         :return: the image processor itself
         """
+
+        device = torch.device(device)
 
         self.__modules_device = device
 
