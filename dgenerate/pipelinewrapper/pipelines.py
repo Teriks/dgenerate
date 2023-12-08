@@ -124,6 +124,8 @@ def load_scheduler(pipeline: typing.Union[diffusers.DiffusionPipeline, diffusers
     """
     Load a specific compatible scheduler class name onto a huggingface diffusers pipeline object.
 
+    :raises SchedulerHelpException: if "help" is passed as a scheduler name.
+
     :param pipeline: pipeline object
     :param scheduler_name: compatible scheduler class name, pass "help" to receive a print out to STDOUT
         and raise :py:exc:`.SchedulerHelpException`
@@ -256,10 +258,12 @@ def set_vae_slicing_tiling(pipeline: typing.Union[diffusers.DiffusionPipeline,
     """
     Set the vae_slicing and vae_tiling status on a created huggingface diffusers pipeline.
 
+    :raises UnsupportedPipelineConfigError: if the pipeline does not support one or both
+    of the provided values for ``vae_tiling`` and ``vae_slicing``
+
     :param pipeline: pipeline object
     :param vae_tiling: tiling status
     :param vae_slicing: slicing status
-    :return:
     """
 
     has_vae = hasattr(pipeline, 'vae') and pipeline.vae is not None
