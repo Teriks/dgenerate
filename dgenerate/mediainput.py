@@ -1076,14 +1076,13 @@ def create_web_cache_file(url,
                 # no record of this file existed
                 cursor.execute(
                     'INSERT INTO files(mime_type, url) VALUES(?, ?)', [mime_type, url])
+                path = os.path.join(cache_dir, f'web_{cursor.lastrowid}')
             else:
                 # a record of this file existed but
                 # the file was missing on disk
                 # make sure mime_type matches
                 cursor.execute(
                     'UPDATE files SET mime_type = ? WHERE id = ?', [mime_type, exists[1]])
-
-            path = os.path.join(cache_dir, f'web_{cursor.lastrowid}')
 
             with open(path, mode='wb') as new_file:
                 new_file.write(req.content)
