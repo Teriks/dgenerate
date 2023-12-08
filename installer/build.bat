@@ -24,7 +24,7 @@ pyinstaller dgenerate.spec --clean
 
 call venv\Scripts\deactivate.bat
 
-dotnet build Installer.wixproj --configuration Release
+dotnet build dgenerate.wixproj --configuration Release
 
 pushd obj\Release
 "C:\Program Files\7-Zip\7z.exe" -v1500m a dgenerate_installer.zip dgenerate.msi cab1.cab cab2.cab cab3.cab
