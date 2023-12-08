@@ -65,7 +65,7 @@ def invoke_dgenerate(args: collections.abc.Sequence[str],
                      render_loop: typing.Optional[_renderloop.RenderLoop] = None,
                      throw: bool = False,
                      log_error: bool = True,
-                     help_exits: bool = False) -> int:
+                     help_raises: bool = False) -> int:
     """
     Invoke dgenerate using its command line arguments and return a return code.
 
@@ -76,7 +76,8 @@ def invoke_dgenerate(args: collections.abc.Sequence[str],
         if ``None`` is provided one will be created.
     :param throw: Whether to throw known exceptions or handle them.
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
-    :param help_exits: ``--help`` raises :py:exc:`dgenerate.arguments.DgenerateHelpException` ?
+    :param help_raises: ``--help`` raises :py:exc:`dgenerate.arguments.DgenerateHelpException` ?
+        When ``True``, this will occur even if ``throw=False``
 
     :raises dgenerate.DgenerateUsageError:
     :raises dgenerate.DgenerateHelpException:
@@ -107,7 +108,7 @@ def invoke_dgenerate_events(
         render_loop: typing.Optional[_renderloop.RenderLoop] = None,
         throw: bool = False,
         log_error: bool = True,
-        help_exits: bool = False) -> InvokeDgenerateEventStream:
+        help_raises: bool = False) -> InvokeDgenerateEventStream:
     """
     Invoke dgenerate using its command line arguments and return a stream of events,
     you must iterate over this stream of events to progress through the execution of
@@ -123,7 +124,8 @@ def invoke_dgenerate_events(
         if ``None`` is provided one will be created.
     :param throw: Whether to throw known exceptions or handle them.
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
-    :param help_exits: ``--help`` raises :py:exc:`dgenerate.arguments.DgenerateHelpException` ?
+    :param help_raises: ``--help`` raises :py:exc:`dgenerate.arguments.DgenerateHelpException` ?
+        When ``True``, this will occur even if ``throw=False``
 
     :raises dgenerate.DgenerateUsageError:
     :raises dgenerate.DgenerateHelpException:
@@ -254,7 +256,7 @@ def invoke_dgenerate_events(
     try:
         arguments = _arguments.parse_args(args, log_error=log_error, help_raises=True)
     except _arguments.DgenerateHelpException:
-        if help_exits:
+        if help_raises:
             raise
         yield DgenerateExitEvent(invoke_dgenerate_events, 0)
         return

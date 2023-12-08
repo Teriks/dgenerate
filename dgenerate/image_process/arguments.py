@@ -195,6 +195,7 @@ def parse_args(args: typing.Optional[collections.abc.Sequence[str]] = None,
     :param throw: throw :py:exc:`.ImageProcessUsageError` on error? defaults to True
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
     :param help_raises: ``--help`` raises :py:exc:`.ImageProcessHelpException` ?
+        When ``True``, this will occur even if ``throw=False``
 
     :raises ImageProcessUsageError:
     :raises ImageProcessHelpException:

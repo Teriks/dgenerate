@@ -74,6 +74,7 @@ def invoke_image_process(
     :param throw: Whether to throw known exceptions or handle them.
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
     :param help_raises: ``--help`` raises :py:exc:`.ImageProcessHelpException` ?
+        When ``True``, this will occur even if ``throw=False``
     :param help_name: name used in the ``--help`` output
     :param help_desc: description used in the ``--help`` output, if ``None`` is provided a default value will be used.
 
@@ -115,6 +116,7 @@ def invoke_image_process_events(
     :param throw: Whether to throw known exceptions or handle them.
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
     :param help_raises: ``--help`` raises :py:exc:`.ImageProcessHelpException` ?
+        When ``True``, this will occur even if ``throw=False``
     :param help_name: name used in the ``--help`` output
     :param help_desc: description used in the ``--help`` output, if ``None`` is provided a default value will be used.
 
