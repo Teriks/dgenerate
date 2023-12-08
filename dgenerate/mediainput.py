@@ -1073,9 +1073,12 @@ def create_web_cache_file(url,
                     f'Expected: {mime_acceptable_desc}')
 
             if not missing_file_only:
+                # no record of this file existed
                 cursor.execute(
                     'INSERT INTO files(mime_type, url) VALUES(?, ?)', [mime_type, url])
             else:
+                # a record of this file existed but
+                # the file was missing on disk
                 # make sure mime_type matches
                 cursor.execute(
                     'UPDATE files SET mime_type = ? WHERE id = ?', [mime_type, exists[1]])
