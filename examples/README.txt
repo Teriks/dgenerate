@@ -40,6 +40,6 @@ python run.py --paths stablediffusion/animations/kitten-config.txt -v
 # you can run library_usage examples but arguments
 # will be ignored for them
 
-python run.py --paths  library_usage/basic
+python run.py --paths library_usage/basic
 
 

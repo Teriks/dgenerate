@@ -1,0 +1,26 @@
+<Project Sdk="WixToolset.Sdk/4.0.3" >
+
+
+  <PropertyGroup>
+    <InstallerPlatform>x64</InstallerPlatform>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <HarvestDirectory Include="dist\dgenerate">
+      <ComponentGroupName>DgenerateComponents</ComponentGroupName>
+      <DirectoryRefId>INSTALLFOLDER</DirectoryRefId>
+      <SuppressRootDirectory>true</SuppressRootDirectory>
+    </HarvestDirectory>
+
+    <BindPath Include="dist\dgenerate" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.UI.wixext" />
+    <PackageReference Include="WixToolset.Heat" />
+    <Compile Include="product.wix" />
+  </ItemGroup>
+
+
+  <Import Project="$(WixTargetsPath)" />
+</Project>
