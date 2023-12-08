@@ -3574,7 +3574,7 @@ the `openpose <https://github.com/Teriks/dgenerate/blob/v3.0.0/dgenerate/imagepr
 be of reference as they are written as internal image processor plugins.
 
 An example for writing config directives can be found in the
-`"writing_plugins/config_directive" <https://github.com/Teriks/dgenerate/tree/v3.0.0/examples/writing_plugins/image_processor>`_ folder
+`"writing_plugins/config_directive" <https://github.com/Teriks/dgenerate/tree/v3.0.0/examples/writing_plugins/config_directive>`_ folder
 of the examples folder.
 
 Currently the only internal directive that is implemented as a plugin is the ``\image_process`` directive,
