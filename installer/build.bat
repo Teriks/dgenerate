@@ -13,11 +13,8 @@ python -m venv venv
 call venv\Scripts\activate.bat
 
 pushd ".."
-
 set DGENERATE_FORCE_LOCKFILE_REQUIRES=1
-
 pip install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu118/
-
 popd
 
 pyinstaller dgenerate.spec --clean
@@ -27,8 +24,12 @@ call venv\Scripts\deactivate.bat
 dotnet build dgenerate.wixproj --configuration Release
 
 pushd obj\Release
-"C:\Program Files\7-Zip\7z.exe" -v1500m a dgenerate_installer.zip dgenerate.msi cab1.cab cab2.cab cab3.cab
+set cab_files=
+for /f "tokens=*" %%F in ('dir /b /a:-d "*.cab"') do call set cab_files=%%cab_files%% "%%F"
+
+"C:\Program Files\7-Zip\7z.exe" -v1500m a dgenerate_installer.zip dgenerate.msi %cab_files%
 popd
+
 
 popd
 
