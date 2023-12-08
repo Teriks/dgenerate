@@ -24,6 +24,7 @@ exclude_from_forced_collection = {'triton', 'cmake', 'lit', 'opencv-python', 'op
 # the cv2 hook works properly, other mentioned deps just are not needed
 
 requires_extra_data_forced = [
+    'dgenerate',
     'skimage',
     'fontTools',
     'antlr4',
@@ -35,7 +36,7 @@ requires_extra_data_forced = [
     'win32comext',
     'win32ctypes']
 # these packages have names that do not align with their folder name
-# or are needed
+# or have needed source files
 
 datas = []
 binaries = []

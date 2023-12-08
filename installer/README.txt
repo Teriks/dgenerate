@@ -12,3 +12,5 @@ From the command line:
 You must also install 7-Zip (for creating the multipart zip file): https://www.7-zip.org/
 
 After which, to build the installer, run: build.bat
+
+The finished installer files will reside in: bin/Release
