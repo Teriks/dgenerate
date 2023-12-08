@@ -1050,8 +1050,17 @@ def create_web_cache_file(url,
         exists = cursor.execute(
             'SELECT mime_type, id FROM files WHERE url = ?', [url]).fetchone()
 
+        # entry exists to a missing file on disk?
+        missing_file_only = False
+
         if exists is not None:
-            return exists[0], os.path.join(cache_dir, f'web_{exists[1]}')
+            path = os.path.join(cache_dir, f'web_{exists[1]}')
+
+            if os.path.exists(path):
+                return exists[0], path
+            else:
+                # file exists in the database but is missing on disk
+                missing_file_only = True
 
         headers = {'User-Agent': fake_useragent.UserAgent().chrome}
 
@@ -1063,8 +1072,13 @@ def create_web_cache_file(url,
                     f'Unknown mimetype "{mime_type}" from URL "{url}". '
                     f'Expected: {mime_acceptable_desc}')
 
-            cursor.execute(
-                'INSERT INTO files(mime_type, url) VALUES(?, ?)', [mime_type, url])
+            if not missing_file_only:
+                cursor.execute(
+                    'INSERT INTO files(mime_type, url) VALUES(?, ?)', [mime_type, url])
+            else:
+                # make sure mime_type matches
+                cursor.execute(
+                    'UPDATE files SET mime_type = ? WHERE id = ?', [mime_type, exists[1]])
 
             path = os.path.join(cache_dir, f'web_{cursor.lastrowid}')
 
