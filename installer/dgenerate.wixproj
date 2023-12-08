@@ -1,6 +1,5 @@
 <Project Sdk="WixToolset.Sdk/4.0.3" >
 
-
   <PropertyGroup>
     <InstallerPlatform>x64</InstallerPlatform>
   </PropertyGroup>
@@ -20,7 +19,6 @@
     <PackageReference Include="WixToolset.Heat" />
     <Compile Include="product.wix" />
   </ItemGroup>
-
 
   <Import Project="$(WixTargetsPath)" />
 </Project>
