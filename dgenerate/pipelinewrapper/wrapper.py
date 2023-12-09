@@ -656,8 +656,6 @@ class DiffusionPipelineWrapper:
     def local_files_only(self) -> bool:
         """
         Currently set value for **local_files_only**
-
-        :return:
         """
         return self._local_files_only
 
