@@ -73,7 +73,7 @@ for package_name in required_package_names:
     binaries += collect_dynamic_libs(package_name, search_patterns=['*.dll', '*.pyd'])
 
 # need the browser data
-datas += collect_data_files('fake-useragent', include_py_files=False, includes=['*.json'])
+datas += collect_data_files('fake-useragent', include_py_files=False, includes=['**/*.json'])
 
 a = Analysis(
     ['../dgenerate/dgenerate.py'],
