@@ -43,7 +43,8 @@ binaries = []
 module_collection_mode = {}
 
 required_package_names = \
-    list(setup.get_poetry_lockfile_as_pip_requires(exclude=exclude_from_forced_collection).keys()) + requires_extra_data_forced
+    list(setup.get_poetry_lockfile_as_pip_requires(
+        exclude=exclude_from_forced_collection).keys()) + requires_extra_data_forced
 
 for package_name in required_package_names:
 
@@ -71,6 +72,8 @@ for package_name in required_package_names:
                                           '**/*.h'])
     binaries += collect_dynamic_libs(package_name, search_patterns=['*.dll', '*.pyd'])
 
+# need the browser data
+datas += collect_data_files('fake-useragent', include_py_files=False, includes=['*.json'])
 
 a = Analysis(
     ['../dgenerate/dgenerate.py'],
