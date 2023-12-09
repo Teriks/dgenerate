@@ -454,6 +454,12 @@ def pipeline_to(pipeline, device: typing.Union[torch.device, str, None]):
     """
     Move a diffusers pipeline to a device if possible, in a way that dgenerate can keep track of.
 
+    This calls methods associated with updating the cache statistics such as
+    :py:func:`dgenerate.pipelinewrapper.pipeline_off_cpu_update_cache_info` and
+    :py:func:`dgenerate.pipelinewrapper.pipeline_to_cpu_update_cache_info` for you,
+    as well as the associated cache update functions for the pipelines individual
+    components as needed.
+
     If the pipeline does not possess the ``.to()`` method (such as with flax pipelines), this is a no-op.
 
     If ``device==None`` this is a no-op.
