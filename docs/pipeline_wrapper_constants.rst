@@ -1,7 +1,7 @@
 .. py:currentmodule:: dgenerate.pipelinewrapper
 
 
-.. data:: CACHE_MEMORY_CONSTRAINTS:
+.. data:: CACHE_MEMORY_CONSTRAINTS
     :annotation: = ['used_percent > 70']
 
     Cache constraint expressions for when to clear all model caches (DiffusionPipeline, VAE, and ControlNet),
