@@ -655,14 +655,14 @@ class DiffusionPipelineWrapper:
     @property
     def local_files_only(self) -> bool:
         """
-        Currently set value for **local_files_only**
+        Currently set value for ``local_files_only``
         """
         return self._local_files_only
 
     @property
     def revision(self) -> _types.OptionalName:
         """
-        Currently set revision for the main model or None
+        Currently set ``--revision`` for the main model or ``None``
         """
         return self._revision
 
@@ -676,35 +676,42 @@ class DiffusionPipelineWrapper:
     @property
     def variant(self) -> _types.OptionalName:
         """
-        Currently set variant for the main model or None
+        Currently set ``--variant`` for the main model or ``None``
         """
         return self._variant
 
     @property
     def dtype(self) -> _enums.DataType:
         """
-        Currently set dtype for the main model
+        Currently set ``--dtype`` enum value for the main model
         """
         return self._dtype
 
     @property
+    def dtype_string(self) -> str:
+        """
+        Currently set ``--dtype`` string value for the main model
+        """
+        return _enums.get_data_type_string(self._dtype)
+
+    @property
     def textual_inversion_uris(self) -> _types.OptionalUris:
         """
-        List of supplied --textual-inversions uri strings or an empty list
+        List of supplied ``--textual-inversions`` uri strings or an empty list
         """
         return list(self._textual_inversion_uris) if self._textual_inversion_uris else []
 
     @property
     def control_net_uris(self) -> _types.OptionalUris:
         """
-        List of supplied --control-nets uri strings or an empty list
+        List of supplied ``--control-nets`` uri strings or an empty list
         """
         return list(self._control_net_uris) if self._control_net_uris else []
 
     @property
     def device(self) -> _types.Name:
         """
-        Currently set --device string
+        Currently set ``--device`` string
         """
         return self._device
 
@@ -718,14 +725,14 @@ class DiffusionPipelineWrapper:
     @property
     def scheduler(self) -> _types.OptionalName:
         """
-        Selected scheduler name for the main model or None
+        Selected scheduler name for the main model or ``None``
         """
         return self._scheduler
 
     @property
     def sdxl_refiner_scheduler(self) -> _types.OptionalName:
         """
-        Selected scheduler name for the SDXL refiner or None
+        Selected scheduler name for the SDXL refiner or ``None``
         """
         return self._sdxl_refiner_scheduler
 
@@ -737,7 +744,7 @@ class DiffusionPipelineWrapper:
         return self._sdxl_refiner_uri
 
     @property
-    def model_type_enum(self) -> _enums.ModelType:
+    def model_type(self) -> _enums.ModelType:
         """
         Currently set ``--model-type`` enum value
         """
@@ -751,65 +758,51 @@ class DiffusionPipelineWrapper:
         return _enums.get_model_type_string(self._model_type)
 
     @property
-    def dtype_enum(self) -> _enums.DataType:
-        """
-        Currently set --dtype enum value
-        """
-        return self._dtype
-
-    @property
-    def dtype_string(self) -> str:
-        """
-        Currently set --dtype string value
-        """
-        return _enums.get_data_type_string(self._dtype)
-
-    @property
     def subfolder(self) -> _types.OptionalName:
         """
-        Selected model subfolder for the main model, (remote repo subfolder or local) or None
+        Selected model ``--subfolder`` for the main model, (remote repo subfolder or local) or ``None``
         """
         return self._subfolder
 
     @property
     def vae_uri(self) -> _types.OptionalUri:
         """
-        Selected --vae uri for the main model or None
+        Selected ``--vae`` uri for the main model or ``None``
         """
         return self._vae_uri
 
     @property
     def unet_uri(self) -> _types.OptionalUri:
         """
-        Selected --unet uri for the main model or None
+        Selected ``--unet`` uri for the main model or ``None``
         """
         return self._unet_uri
 
     @property
     def vae_tiling(self) -> bool:
         """
-        Current --vae-tiling status
+        Current ``--vae-tiling`` status
         """
         return self._vae_tiling
 
     @property
     def vae_slicing(self) -> bool:
         """
-        Current --vae-slicing status
+        Current ``--vae-slicing`` status
         """
         return self._vae_slicing
 
     @property
     def lora_uris(self) -> _types.OptionalUris:
         """
-        List of supplied --loras uri strings or an empty list
+        List of supplied ``--loras`` uri strings or an empty list
         """
         return list(self._lora_uris) if self._lora_uris else []
 
     @property
     def auth_token(self) -> _types.OptionalString:
         """
-        Current --auth-token value or None
+        Current ``--auth-token`` value or ``None``
         """
         return self._auth_token
 
