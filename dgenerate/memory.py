@@ -187,11 +187,11 @@ _MEM_FACTORS = {
 }
 
 
-def get_used_memory(measure='b', pid: typing.Optional[int] = None) -> int:
+def get_used_memory(unit='b', pid: typing.Optional[int] = None) -> int:
     """
     Get the memory used by a process in a selectable unit.
 
-    :param measure: one of (case insensitive): b (bytes), kb (kilobytes),
+    :param unit: one of (case insensitive): b (bytes), kb (kilobytes),
         mb (megabytes), gb (gigabytes), kib (kibibytes),
         mib (mebibytes), gib (gibibytes)
 
@@ -203,7 +203,7 @@ def get_used_memory(measure='b', pid: typing.Optional[int] = None) -> int:
     if pid is None:
         pid = os.getpid()
 
-    return psutil.Process(pid).memory_info().rss / _MEM_FACTORS[measure.strip().lower()]
+    return psutil.Process(pid).memory_info().rss / _MEM_FACTORS[unit.strip().lower()]
 
 
 def get_used_total_memory_percent(pid: typing.Optional[int] = None) -> float:
@@ -240,31 +240,31 @@ def get_used_memory_percent(pid: typing.Optional[int] = None) -> float:
     return (used / (used + available)) * 100.0
 
 
-def get_available_memory(measure='b'):
+def get_available_memory(unit='b'):
     """
     Get the available memory remaining on the system in a selectable unit.
 
-    :param measure: one of (case insensitive): b (bytes), kb (kilobytes),
+    :param unit: one of (case insensitive): b (bytes), kb (kilobytes),
         mb (megabytes), gb (gigabytes), kib (kibibytes),
         mib (mebibytes), gib (gibibytes)
 
     :return: Requested value.
     """
-    return psutil.virtual_memory().available / _MEM_FACTORS[measure.strip().lower()]
+    return psutil.virtual_memory().available / _MEM_FACTORS[unit.strip().lower()]
 
 
-def get_total_memory(measure='b'):
+def get_total_memory(unit='b'):
     """
     Get the total physical memory on the system.
 
-    :param measure: one of (case insensitive): b (bytes), kb (kilobytes),
+    :param unit: one of (case insensitive): b (bytes), kb (kilobytes),
         mb (megabytes), gb (gigabytes), kib (kibibytes),
         mib (mebibytes), gib (gibibytes)
 
     :return: Requested value.
     """
 
-    return psutil.virtual_memory().total / _MEM_FACTORS[measure.strip().lower()]
+    return psutil.virtual_memory().total / _MEM_FACTORS[unit.strip().lower()]
 
 
 def bytes_best_human_unit(byte_count: int, delimiter='') -> str:
