@@ -135,9 +135,10 @@ class Plugin:
                  **kwargs):
         """
         :param loaded_by_name: The name the plugin was loaded by, will be passed by the loader.
-        :param argument_error_type: This exception type will be raised by ``get_*_arg`` and friends when
-            an argument is of an invalid format (they are passed as strings).  It should match the ``argument_error_type``
-            given to the :py:class:`.PluginLoader` implementation being used to load the inheritor of this class.
+        :param argument_error_type: This exception type will be raised upon argument errors (invalid arguments)
+            when loading a plugin using a :py:class:`.PluginLoader` implementation. It should match the
+            ``argument_error_type`` given to the :py:class:`.PluginLoader` implementation being used
+             to load the inheritor of this class.
         :param kwargs: Additional arguments that may arise when using an ``ARGS`` static signature definition
             with multiple ``NAMES`` in your implementation.
         """
