@@ -256,17 +256,12 @@ class Plugin:
     @classmethod
     def get_accepted_args(cls, loaded_by_name) -> list[PluginArg]:
         """
-        Retrieve the argument signature of a plugin implementation. As a list of tuples
-        which are: (name,) or (name, default_value) depending on if a default value for the argument
-        is present in the signature.
+        Retrieve the argument signature of a plugin implementation.
 
         :param loaded_by_name: The name used to load the plugin.
             Argument signature may vary by name used to load.
 
-        :return: mixed list of tuples, of length 1 or 2, depending on if
-            the argument has a default value. IE: (name,) or (name, default_value).
-            Arguments with defaults are not guaranteed to be positioned at the end
-            of this sequence.
+        :return: List of argument descriptors, :py:class:`.PluginArg`
         """
 
         if hasattr(cls, 'ARGS'):
