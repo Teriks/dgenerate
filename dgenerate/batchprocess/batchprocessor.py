@@ -476,7 +476,10 @@ class BatchProcessor:
         """
 
         try:
-            parsed, _ = _arguments.parse_known_args(self.injected_args, log_error=False)
+            parsed, _ = _arguments.parse_known_args(
+                self.injected_args,
+                log_error=False
+            )
         except _arguments.DgenerateUsageError as e:
             raise BatchProcessError(f'Error parsing injected arguments: {str(e).strip()}')
 

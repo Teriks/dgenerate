@@ -1494,24 +1494,22 @@ def parse_verbose(
 def parse_known_args(args: typing.Optional[collections.abc.Sequence[str]] = None,
                      throw: bool = True,
                      log_error: bool = True,
-                     ignore_model: bool = True,
-                     ignore_help: bool = True,
+                     no_model: bool = True,
+                     no_help: bool = True,
                      help_raises: bool = False) -> typing.Optional[tuple[DgenerateArguments, list[str]]]:
     """
     Parse only known arguments off the command line.
 
     Ignores dgenerates only required argument 'module_path' by default.
 
-
     No logical validation is preformed, :py:meth:`DgenerateArguments.check()` is not called by this function,
     only argument parsing and simple type validation is preformed by this function.
-
 
     :param args: arguments list, as in args taken from sys.argv, or in that format
     :param throw: throw :py:exc:`.DgenerateUsageError` on error? defaults to True
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
-    :param ignore_model: Ignore dgenerates only required argument, fill it with the value 'none'
-    :param ignore_help: Do not allow ``--help`` to be passed and proc help being printed.
+    :param no_model: Remove the ``model_path`` argument from the parser.
+    :param no_help: Remove the ``--help`` argument from the parser.
     :param help_raises: ``--help`` raises :py:exc:`dgenerate.arguments.DgenerateHelpException` ?
         When ``True``, this will occur even if ``throw=False``
 
@@ -1529,8 +1527,8 @@ def parse_known_args(args: typing.Optional[collections.abc.Sequence[str]] = None
 
     try:
         _custom_parser, _ = _create_parser(
-            add_model=not ignore_model,
-            add_help=not ignore_help)
+            add_model=not no_model,
+            add_help=not no_help)
 
         # noinspection PyTypeChecker
         known, unknown = _custom_parser.parse_known_args(args, namespace=DgenerateArguments())
