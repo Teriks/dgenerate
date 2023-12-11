@@ -33,6 +33,19 @@ class InvalidDeviceOrdinalException(Exception):
 
 
 def is_valid_device_string(device, raise_ordinal=True):
+    """
+    Is a device string valid? including the device ordinal specified?
+
+    :param device: device string, such as ``cpu``, or ``cuda``, or ``cuda:N``
+    :param raise_ordinal: Raise :py:exc:`.InvalidDeviceOrdinalException` if
+        a specified CUDA device ordinal is found to not exist?
+
+
+    :raises InvalidDeviceOrdinalException: If ``raise_ordinal=True`` and a the
+        device ordinal specified in a CUDA device string does not exist.
+
+    :return: ``True`` or ``False``
+    """
     match = re.match(r'^(?:cpu|cuda(?::([0-9]+))?)$', device)
     if match:
         if match.lastindex:
