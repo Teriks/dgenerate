@@ -1708,7 +1708,7 @@ class ImageSeed:
 
     image: typing.Optional[PIL.Image.Image]
     """
-    An optional image used for img2img mode, or inpainting mode in combination with :py:attr:`.ImageSeed.mask`
+    An optional image used for img2img mode, or inpainting mode in combination with :py:attr:`.ImageSeed.mask_image`
     """
 
     mask_image: typing.Optional[PIL.Image.Image]
