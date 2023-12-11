@@ -52,12 +52,12 @@ class DgenerateExitEvent(_event.Event):
 
 InvokeDgenerateEvents = typing.Union[_renderloop.RenderLoopEvent, DgenerateExitEvent]
 """
-Events yield-able by :py:func:`invoke_dgenerate_events`
+Events yield-able by :py:func:`.invoke_dgenerate_events`
 """
 
 InvokeDgenerateEventStream = typing.Generator[InvokeDgenerateEvents, None, None]
 """
-Event stream produced by :py:func:`invoke_dgenerate_events`
+Event stream produced by :py:func:`.invoke_dgenerate_events`
 """
 
 
@@ -143,7 +143,7 @@ def invoke_dgenerate_events(
     :raises EnvironmentError:
 
 
-    :return: :py:class:`.InvokeDgenerateEventStream`
+    :return: :py:data:`.InvokeDgenerateEventStream`
     """
     if render_loop is None:
         render_loop = _renderloop.RenderLoop()
