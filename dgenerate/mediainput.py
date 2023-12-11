@@ -486,10 +486,20 @@ def is_downloadable_url(string) -> bool:
 
 
 def get_supported_animated_image_mimetypes() -> list[str]:
+    """
+    Get a list of mimetypes that are considered to be supported animated image mimetypes.
+
+    :return: list of mimetype strings.
+    """
     return ['image/gif', 'image/webp', 'image/apng']
 
 
 def get_supported_static_image_mimetypes() -> list[str]:
+    """
+    Get a list of mimetypes that are considered to be supported static image mimetypes.
+
+    :return: list of mimetype strings.
+    """
     return ['image/png',
             'application/png',
             'application/x-png',
