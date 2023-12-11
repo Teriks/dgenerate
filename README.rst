@@ -884,23 +884,12 @@ Run **dgenerate** to generate images:
 Linux or WSL Install
 ====================
 
-First update your system and install build-essential and native dependencies
+First update your system and install build-essential
 
 .. code-block:: bash
 
     sudo apt update && sudo apt upgrade
     sudo apt install build-essential
-
-    # Install libgl1 dependency for OpenCV.
-    # Needed on WSL, not sure about normal Ubuntu/Debian?
-    # I don't have a linux machine with a GPU :)
-    # You'll probably need to install this
-    # if your install is headless, you will
-    # know because a relevant exception will
-    # be produced when running dgenerate if you need it
-
-    sudo apt install libgl1
-
 
 Install CUDA Toolkit 12.*: https://developer.nvidia.com/cuda-downloads
 
