@@ -46,12 +46,12 @@ class ImageProcessExitEvent(_event.Event):
 
 InvokeImageProcessEvent = typing.Union[ImageProcessExitEvent, _renderloop.RenderLoopEvent]
 """
-Events yield-able by :py:func:`invoke_image_process_events`
+Events yield-able by :py:func:`.invoke_image_process_events`
 """
 
 InvokeImageProcessEventStream = typing.Generator[InvokeImageProcessEvent, None, None]
 """
-Event stream produced by :py:func:`invoke_image_process_events`
+Event stream produced by :py:func:`.invoke_image_process_events`
 """
 
 
@@ -127,7 +127,7 @@ def invoke_image_process_events(
     :raises dgenerate.FrameStartOutOfBounds:
     :raises EnvironmentError:
 
-    :return: :py:class:`.InvokeImageProcessEventStream`
+    :return: :py:data:`.InvokeImageProcessEventStream`
     """
 
     try:

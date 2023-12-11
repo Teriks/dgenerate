@@ -3204,7 +3204,7 @@ as VAEs etc. outside of relying on the caching system.
 You can see all available config directives with the command
 ``dgenerate --directives-help``, providing this option with a name, or multiple
 names such as: ``dgenerate --directives-help \save_modules \use_modules`` will print
-the documentation for the specified directives.
+the documentation for the specified directives. The backslash may be omitted.
 
 
 .. code-block:: jinja
@@ -3433,7 +3433,7 @@ can glob directories using functions from the glob module like so:
     --image-seeds {{ quote(glob.glob('my_images/*.png')) }}
 
 
-The dgenerate sub-command ``image-process`` is has a directive implementation.
+The dgenerate sub-command ``image-process`` has a config directive implementation.
 
 
 .. code-block:: jinja

@@ -718,7 +718,7 @@ def controlnet_off_cpu_update_cache_info(controlnet: typing.Union[diffusers.mode
 
             _messages.debug_log(f'Cached ControlNetModel {_types.class_and_id_string(control_net)} Size = '
                                 f'{control_net.DGENERATE_SIZE_ESTIMATE} Bytes '
-                                f'({_memory.bytes_best_human_unit(control_net.DGENERATE_SIZE_ESTIMATE)})'
+                                f'({_memory.bytes_best_human_unit(control_net.DGENERATE_SIZE_ESTIMATE)}) '
                                 f'from "MultiControlNetModel" is leaving CPU side memory, '
                                 f'{_types.fullname(control_net_cache_size)}() is now '
                                 f'{control_net_cache_size()} Bytes '
@@ -729,7 +729,7 @@ def controlnet_off_cpu_update_cache_info(controlnet: typing.Union[diffusers.mode
 
         _messages.debug_log(f'Cached ControlNetModel {_types.class_and_id_string(controlnet)} '
                             f'Size = {controlnet.DGENERATE_SIZE_ESTIMATE} Bytes '
-                            f'({_memory.bytes_best_human_unit(controlnet.DGENERATE_SIZE_ESTIMATE)})'
+                            f'({_memory.bytes_best_human_unit(controlnet.DGENERATE_SIZE_ESTIMATE)}) '
                             f'is leaving CPU side memory, {_types.fullname(control_net_cache_size)}() '
                             f'is now {control_net_cache_size()} Bytes '
                             f'({_memory.bytes_best_human_unit(control_net_cache_size())})')
