@@ -683,11 +683,12 @@ class ImageSeedParseResult:
 
     def get_control_image_paths(self) -> typing.Optional[_types.Paths]:
         """
-        Return :py:attr:`.ImageSeed.seed_path` if :py:attr:`.ImageSeed.is_single_spec` is ``True``.
+        Return :py:attr:`.ImageSeedParseResult.seed_path` if :py:attr:`.ImageSeedParseResult.is_single_spec` is ``True``.
 
-        If the image seed is not a single specification, return :py:attr:`.ImageSeed.control_path`.
+        If the image seed is not a single specification, return :py:attr:`.ImageSeedParseResult.control_path`.
 
-        If :py:attr:`.ImageSeed.control_path` is not set and the image seed is not a single specification, return ``None``.
+        If :py:attr:`.ImageSeedParseResult.control_path` is not set and the image seed is not a single
+        specification, return ``None``.
 
         :return: list of resource paths, or None
         """
