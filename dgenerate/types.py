@@ -253,6 +253,7 @@ def get_type_of_optional(hinted_type: type, get_origin=True):
 def is_typing_hint(obj):
     """
     Does a type hint object originate from the the builtin ``typing`` module?
+
     :param obj: type hint
     :return: ``True`` or ``False``
     """
