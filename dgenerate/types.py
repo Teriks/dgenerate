@@ -377,6 +377,7 @@ def get_default_args(func) -> collections.abc.Iterator[tuple[str, typing.Any]]:
 def default(value, default_value):
     """
     Return value if value is not None, otherwise default
+
     :param value:
     :param default_value:
     :return: bool
