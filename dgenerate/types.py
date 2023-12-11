@@ -380,7 +380,7 @@ def default(value, default_value):
 
     :param value:
     :param default_value:
-    :return: bool
+    :return: ``value`` or ``default_value``
     """
     return value if value is not None else default_value
 
