@@ -2324,24 +2324,24 @@ Using the option ``--image-processor-help`` with no arguments will yield a list 
     #
     # Available image processors:
     #
+    #     "sam"
+    #     "pidi"
+    #     "normal-bae"
+    #     "upscaler"
+    #     "grayscale"
+    #     "invert"
     #     "posterize"
-    #     "solarize"
-    #     "canny"
-    #     "leres"
     #     "mirror"
     #     "flip"
     #     "mlsd"
-    #     "upscaler"
-    #     "midas"
+    #     "leres"
     #     "hed"
-    #     "grayscale"
-    #     "invert"
-    #     "pidi"
+    #     "solarize"
+    #     "midas"
+    #     "canny"
     #     "lineart"
-    #     "normal-bae"
-    #     "lineart-anime"
-    #     "sam"
     #     "openpose"
+    #     "lineart-anime"
 
 
 Specifying one or more specific processors for example: ``--image-processor-help canny openpose`` will yield
