@@ -29,7 +29,9 @@ from .arguments import \
 
 from .invoker import \
     invoke_image_process, \
-    invoke_image_process_events
+    invoke_image_process_events, \
+    InvokeImageProcessEvent, \
+    InvokeImageProcessEventStream
 
 # noinspection PyUnresolvedReferences
 from .renderloop import \
