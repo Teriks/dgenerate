@@ -646,7 +646,11 @@ def long_text_wrap_width() -> int:
 
     :return: int
     """
-    return min(shutil.get_terminal_size(fallback=(150, 0))[0], 150)
+    val = min(shutil.get_terminal_size(fallback=(150, 150))[0], 150)
+    if val == 0:
+        # should not be able to happen, but it has, wonderfulapt
+        return 150
+    return val
 
 
 def underline(string: str, underline_char: str = '=') -> str:

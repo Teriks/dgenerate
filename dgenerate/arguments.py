@@ -1500,7 +1500,7 @@ def parse_known_args(args: typing.Optional[collections.abc.Sequence[str]] = None
     """
     Parse only known arguments off the command line.
 
-    Ignores dgenerates only required argument 'module_path' by default.
+    Ignores dgenerates only required argument ``model_path`` by default.
 
     No logical validation is preformed, :py:meth:`DgenerateArguments.check()` is not called by this function,
     only argument parsing and simple type validation is preformed by this function.

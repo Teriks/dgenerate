@@ -149,7 +149,7 @@ class FlaxControlNetUri:
         """
         ControlNet guidance scale
         """
-        return self.scale
+        return self._scale
 
     @property
     def from_torch(self) -> bool:

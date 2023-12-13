@@ -1,6 +1,7 @@
 import argparse
 import os
 import subprocess
+import sys
 import unittest
 
 parser = argparse.ArgumentParser()
@@ -28,7 +29,7 @@ if runner.run(unittest.defaultTestLoader.discover("tests", pattern='*_test.py'))
         os.chdir('..')
 
     offline = ' --offline-mode' if args.offline_mode else ''
-    run_string = f'python examples/run.py --device {args.device} --short-animations --output-configs --output-metadata{offline} -v > examples/examples.log 2>&1'
+    run_string = f'{sys.executable} examples/run.py --device {args.device} --short-animations --output-configs --output-metadata{offline} -v > examples/examples.log 2>&1'
     print('running:', run_string)
     subprocess.run(run_string, shell=True)
 else:
