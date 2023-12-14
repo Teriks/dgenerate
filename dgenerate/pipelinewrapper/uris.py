@@ -767,13 +767,14 @@ class TorchVAEUri:
                                      f'must be loaded from a huggingface repository slug or folder on disk.')
 
         if single_file_load_path:
-            if self.subfolder is not None:
+            if subfolder is not None:
                 raise InvalidVaeUriError('Single file VAE loads do not support the subfolder option.')
 
         self._encoder = encoder
         self._model = model
         self._revision = revision
         self._variant = variant
+        self._subfolder = subfolder
 
         try:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
@@ -781,7 +782,7 @@ class TorchVAEUri:
             raise InvalidVaeUriError(
                 f'invalid dtype string, must be one of: {_textprocessing.oxford_comma(_enums.supported_data_type_strings(), "or")}')
 
-        self._subfolder = subfolder
+
 
     def load(self,
              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
