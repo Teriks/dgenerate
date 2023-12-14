@@ -904,6 +904,15 @@ I recommend using the runfile option:
 
 Do not attempt to install a driver from the prompts if using WSL.
 
+
+.. code-block:: bash
+
+    # On linux, if you intend to use flax, you may or may not need to create a symlink for libnvrtc
+    # flax will look for libnvrtc.so, and may not be able to find it.
+
+    ln -s /usr/local/cuda/lib64/libnvrtc.so.12 /usr/local/cuda/lib64/libnvrtc.so
+
+
 Add libraries to linker path:
 
 .. code-block:: bash
