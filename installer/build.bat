@@ -1,7 +1,7 @@
 pushd "%~dp0"
 
 IF [%VIRTUAL_ENV%] == [] GOTO skip_venv_save
-SAVED_VIRTUAL_ENV=%VIRTUAL_ENV%
+set SAVED_VIRTUAL_ENV=%VIRTUAL_ENV%
 :skip_venv_save
 
 rmdir venv /s /q
