@@ -2647,7 +2647,8 @@ Upscaling with chaiNNer Compatible Upscaler Models
 
 `chaiNNer <https://github.com/chaiNNer-org/chaiNNer>`_ compatible upscaler models from https://openmodeldb.info/
 and elsewhere can be utilized for tiled upscaling using dgenerates ``upscaler`` image processor and the
-``--post-processors`` option.
+``--post-processors`` option.  The ``upscaler`` image processor can also be used for processing
+input images via the other options mentioned in `Image Processors`_ such as ``--seed-image-processors``
 
 The ``upscaler`` image processor can make use of URLs or files on disk.
 
