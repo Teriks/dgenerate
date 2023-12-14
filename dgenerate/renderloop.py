@@ -272,6 +272,16 @@ class RenderLoop:
     Extra raw diffusers modules to use in the creation of any refiner model pipeline.
     """
 
+    image_processor_loader: _imageprocessors.ImageProcessorLoader
+    """
+    Responsible for loading any image processors referenced in the render loop configuration.
+    """
+
+    config: RenderLoopConfig
+    """
+    Render loop configuration.
+    """
+
     @property
     def pipeline_wrapper(self) -> _pipelinewrapper.DiffusionPipelineWrapper:
         """
@@ -291,7 +301,7 @@ class RenderLoop:
             If None is provided, a :py:class:`.RenderLoopConfig` instance will be created and
             assigned to :py:attr:`.RenderLoop.config`.
 
-        :param image_processor_loader: :py:class:`dgenerate.imageprocessors.loader.ImageProcessorLoader`.
+        :param image_processor_loader: :py:class:`dgenerate.imageprocessors.ImageProcessorLoader`.
             If None is provided, an instance will be created and assigned to
             :py:attr:`.RenderLoop.image_processor_loader`.
         """
