@@ -480,7 +480,7 @@ def _create_parser(add_model=True, add_help=True):
                             
                             If you wish to load a weights file directly from disk, the simplest
                             way is: --vae "AutoencoderKL;my_vae.safetensors", or with a dtype "AutoencoderKL;my_vae.safetensors;dtype=float16". 
-                            All loading arguments except "dtype" and "revision" are unused in this case and may produce an error message if used.
+                            All loading arguments except "dtype" are unused in this case and may produce an error message if used.
                             
                             If you wish to load a specific weight file from a huggingface repository, use the blob link
                             loading syntax: --vae "AutoencoderKL;https://huggingface.co/UserName/repository-name/blob/main/vae_model.safetensors",
