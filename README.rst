@@ -1641,7 +1641,7 @@ Loading arguments available when specifying VAE for flax ``--model-type`` values
 are: ``model``, ``revision``, ``subfolder``, ``dtype``
 
 The only named arguments compatible with loading a .safetensors or other model file
-directly off disk are ``model``, ``dtype``, and ``revision``
+directly off disk are ``model`` and ``dtype``
 
 The other named arguments are available when loading from a huggingface repository or folder
 that may or may not be a local git repository on disk.
