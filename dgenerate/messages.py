@@ -120,7 +120,7 @@ def add_logging_handler(callback: typing.Callable[[typing.ParamSpecArgs, int, bo
     """
     Add your own logging handler callback.
 
-    :param callback: Callback accepting (\\*args, LEVEL, underline (bool), underline_char)
+    :param callback: Callback accepting ``(\\*args, LEVEL, underline (bool), underline_char)``
     """
     _handlers.append(callback)
 
