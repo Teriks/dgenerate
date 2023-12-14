@@ -128,8 +128,6 @@ class AnimationReader:
     def width(self) -> int:
         """
         Width dimension, (X dimension).
-
-        :return: width
         """
         return self._width
 
@@ -137,8 +135,6 @@ class AnimationReader:
     def size(self) -> _types.Size:
         """
         returns (width, height) as a tuple.
-
-        :return: (width, height)
         """
         return self._width, self._height
 
@@ -146,17 +142,13 @@ class AnimationReader:
     def height(self) -> int:
         """
         Height dimension, (Y dimension).
-
-        :return: height
         """
         return self._height
 
     @property
     def fps(self) -> float:
         """
-        Frame per second.
-
-        :return: float or integer
+        Frames per second.
         """
         return self._fps
 
@@ -164,8 +156,6 @@ class AnimationReader:
     def frame_duration(self) -> float:
         """
         Duration of each frame in milliseconds.
-
-        :return: duration
         """
         return self._frame_duration
 
@@ -173,8 +163,6 @@ class AnimationReader:
     def total_frames(self) -> int:
         """
         Total number of frames that can be read.
-
-        :return: count
         """
         return self._total_frames
 
