@@ -298,11 +298,11 @@ class RenderLoop:
                  image_processor_loader: typing.Optional[_imageprocessors.ImageProcessorLoader] = None):
         """
         :param config: :py:class:`.RenderLoopConfig` or :py:class:`dgenerate.arguments.DgenerateArguments`.
-            If None is provided, a :py:class:`.RenderLoopConfig` instance will be created and
+            If ``None`` is provided, a :py:class:`.RenderLoopConfig` instance will be created and
             assigned to :py:attr:`.RenderLoop.config`.
 
         :param image_processor_loader: :py:class:`dgenerate.imageprocessors.ImageProcessorLoader`.
-            If None is provided, an instance will be created and assigned to
+            If ``None`` is provided, an instance will be created and assigned to
             :py:attr:`.RenderLoop.image_processor_loader`.
         """
 
