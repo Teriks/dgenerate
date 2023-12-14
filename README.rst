@@ -3558,7 +3558,7 @@ who's source file `can be located here <https://github.com/Teriks/dgenerate/blob
 the source file for this directive is terse as most of ``\image_process`` is implemented as reusable code as mentioned below.
 
 The behavior of ``\image_process`` which is also used for ``--sub-command image-process`` is
-`is implemented here <https://github.com/Teriks/dgenerate/blob/v3.0.0/dgenerate/image_process.py>`_.
+`is implemented here <https://github.com/Teriks/dgenerate/blob/v3.0.0/dgenerate/image_process>`_.
 
 File Cache Control
 ==================
