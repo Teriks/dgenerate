@@ -258,7 +258,7 @@ class RenderLoop:
     Disable or enable all writes to disk, if you intend to only ever use the event
     stream of the render loop when using dgenerate as a library, this is a useful option.
     
-    :py:attr:`.RenderLoop.last_images` and :py:attr:`.last_animations` will not be available
+    :py:attr:`.RenderLoop.written_images` and :py:attr:`.RenderLoop.written_animations` will not be available
     if writes to disk are disabled.
     """
 
