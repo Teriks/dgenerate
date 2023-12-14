@@ -74,3 +74,11 @@ for event in rl.events():
         print('Finished Animation:', event.starting_event.total_frames)
     if isinstance(event, dgenerate.image_process.AnimationFileFinishedEvent):
         print('Finished Animation File:', event.path)
+
+
+# if you wish to work with any image offered by an event object
+# in the event stream outside of the event handler you have written,
+# you should copy it out with arg.image.copy(). management of PIL.Image
+# lifetime is very aggressive and the image objects in events will be disposed
+# of when no longer needed for the event, IE. have .close() called on them
+# making them unusable
