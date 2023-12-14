@@ -712,7 +712,7 @@ class RenderLoop:
         """
         Run the render loop, and iterate over a stream of event objects produced by the render loop.
 
-        Event objects are of the union type :py:class:`.RenderLoopEvent`
+        Event objects are of the union type :py:data:`.RenderLoopEvent`
 
         The exceptions mentioned here are those you may encounter upon iterating,
         they will not occur upon simple acquisition of the event stream iterator.
@@ -721,7 +721,7 @@ class RenderLoop:
         :raises dgenerate.ModelNotFoundError:
         :raises dgenerate.OutOfMemoryError:
 
-        :return: :py:class:`.RenderLoopEventStream`
+        :return: :py:data:`.RenderLoopEventStream`
         """
         try:
             yield from self._run()
