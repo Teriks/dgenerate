@@ -1606,19 +1606,22 @@ Typically however, there will be many compatible schedulers:
     # Compatible schedulers for "stabilityai/stable-diffusion-2" are:
     #
     #    "EulerDiscreteScheduler"
-    #    "DPMSolverSinglestepScheduler"
-    #    "DDIMScheduler"
-    #    "KDPM2DiscreteScheduler"
-    #    "KDPM2AncestralDiscreteScheduler"
     #    "HeunDiscreteScheduler"
-    #    "DEISMultistepScheduler"
-    #    "DPMSolverSDEScheduler"
-    #    "DDPMScheduler"
-    #    "PNDMScheduler"
     #    "UniPCMultistepScheduler"
-    #    "EulerAncestralDiscreteScheduler"
-    #    "DPMSolverMultistepScheduler"
+    #    "DDPMScheduler"
+    #    "EulerDiscreteScheduler"
+    #    "DDIMScheduler"
+    #    "DEISMultistepScheduler"
     #    "LMSDiscreteScheduler"
+    #    "DPMSolverMultistepScheduler"
+    #    "EulerAncestralDiscreteScheduler"
+    #    "DPMSolverSinglestepScheduler"
+    #    "DPMSolverSDEScheduler"
+    #    "KDPM2DiscreteScheduler"
+    #    "PNDMScheduler"
+    #    "KDPM2AncestralDiscreteScheduler"
+    #    "LCMScheduler"
+
 
 
 Specifying a VAE
