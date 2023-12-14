@@ -30,7 +30,8 @@ for event in rl.events():
     if isinstance(event, dgenerate.StartingAnimationFileEvent):
         print('Starting Writes To Animation File:', event.path)
     if isinstance(event, dgenerate.ImageGeneratedEvent):
-        print('Image Generated:', event.suggested_filename)
+        print('Image Generated (Suggested Filename):', event.suggested_filename)
+        print('Image Generated (Suggested Directory):', event.suggested_directory)
     if isinstance(event, dgenerate.ImageFileSavedEvent):
         print('Image Saved:', event.path)
         print('Config Saved:', event.config_filename)
@@ -65,7 +66,8 @@ for event in rl.events():
     if isinstance(event, dgenerate.image_process.StartingAnimationFileEvent):
         print('Starting Writes To Animation File:', event.path)
     if isinstance(event, dgenerate.image_process.ImageGeneratedEvent):
-        print('Image Generated:', event.suggested_filename)
+        print('Image Generated (Suggested Filename):', event.suggested_filename)
+        print('Image Generated (Suggested Directory):', event.suggested_directory)
     if isinstance(event, dgenerate.image_process.ImageFileSavedEvent):
         print('Image Saved:', event.path)
     if isinstance(event, dgenerate.image_process.AnimationFinishedEvent):
