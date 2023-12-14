@@ -98,7 +98,7 @@ def variant_match(filename: str, variant: typing.Optional[str] = None):
     Match a model filename against a huggingface variant specifier such as "fp16"
 
     If no variant is specified and the filename contains a variant, this function will
-    return false.
+    return ``False``.
 
     Examples:
 
@@ -106,7 +106,7 @@ def variant_match(filename: str, variant: typing.Optional[str] = None):
         * ``variant_match('file.bin', variant=None) -> True``
 
     If a variant is specified and the filename contains a matching
-    variant specifier, this function will return True.
+    variant specifier, this function will return ``True``.
 
     Examples:
 
@@ -170,7 +170,7 @@ def fetch_model_files_with_size(repo_id: str,
     """
     Attempt to fetch model files with their size that are relevant for the type of model being loaded.
 
-    Either from huggingface disk cache or through the huggingface API if not on disk and local_files_only is False.
+    Either from huggingface disk cache or through the huggingface API if not on disk and ``local_files_only`` is ``False``.
 
     This function also works on blob links, paths to folders, or singular files on disk.
 
@@ -184,10 +184,10 @@ def fetch_model_files_with_size(repo_id: str,
     :param use_auth_token: optional huggingface auth token
     :param extensions: if specified, only search for extensions in this iterable
     :param local_files_only: utilize the huggingface API if necessary?
-        if this is True, and it is necessary to fetch info from the API, this function
+        if this is ``True``, and it is necessary to fetch info from the API, this function
         will simply yield nothing
-    :param flax: if False, only look for torch diffusion weights.
-        If True, only look for flax diffusion weights.
+    :param flax: if ``False``, only look for torch diffusion weights.
+        If ``True``, only look for flax diffusion weights.
     :param sentencepiece: Forcibly include tokenizer/spiece.model for models with a unet?
     :param watermarker: Forcibly include watermarker/diffusion_pytorch_model.bin for models with a unet?
 
@@ -414,7 +414,7 @@ def estimate_model_memory_use(repo_id: str,
     """
     Attempt to estimate the CPU side memory consumption of a model before it is loaded into memory.
 
-    Either from huggingface disk cache or through the huggingface API if not on disk and local_files_only is False.
+    Either from huggingface disk cache or through the huggingface API if not on disk and ``local_files_only`` is ``False``.
 
     This function also works on blob links, paths to folders, or singular files on disk.
 
@@ -571,7 +571,7 @@ def is_single_file_model_load(path):
     Should we use :py:meth:`diffusers.loaders.FromSingleFileMixin.from_single_file` on this path?
 
     :param path: The path
-    :return: true or false
+    :return: ``True`` or ``False``
     """
     path, ext = os.path.splitext(path)
 

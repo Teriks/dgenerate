@@ -1506,7 +1506,7 @@ def parse_known_args(args: typing.Optional[collections.abc.Sequence[str]] = None
     only argument parsing and simple type validation is preformed by this function.
 
     :param args: arguments list, as in args taken from sys.argv, or in that format
-    :param throw: throw :py:exc:`.DgenerateUsageError` on error? defaults to True
+    :param throw: throw :py:exc:`.DgenerateUsageError` on error? defaults to ``True``
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
     :param no_model: Remove the ``model_path`` argument from the parser.
     :param no_help: Remove the ``--help`` argument from the parser.
@@ -1559,7 +1559,7 @@ def parse_args(args: typing.Optional[collections.abc.Sequence[str]] = None,
 
 
     :param args: arguments list, as in args taken from sys.argv, or in that format
-    :param throw: throw :py:exc:`.DgenerateUsageError` on error? defaults to True
+    :param throw: throw :py:exc:`.DgenerateUsageError` on error? defaults to ``True``
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
     :param help_raises: ``--help`` raises :py:exc:`dgenerate.arguments.DgenerateHelpException` ?
         When ``True``, this will occur even if ``throw=False``
