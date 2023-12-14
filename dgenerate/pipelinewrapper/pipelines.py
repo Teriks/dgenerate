@@ -112,7 +112,7 @@ def scheduler_is_help(name: typing.Optional[str]):
     This scheduler name is simply a request for help?, IE: "help"?
 
     :param name: string to test
-    :return: true of false
+    :return: ``True`` or ``False``
     """
     if name is None:
         return False
@@ -729,7 +729,7 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     :param control_net_uris: Optional ``--control-nets`` URI strings for specifying ControlNet models
     :param scheduler: Optional scheduler (sampler) class name, unqualified, or "help" to print supported values
         to STDOUT and raise :py:exc:`dgenerate.pipelinewrapper.SchedulerHelpException`
-    :param safety_checker: Safety checker enabled? default is false
+    :param safety_checker: Safety checker enabled? default is ``False``
     :param auth_token: Optional huggingface API token for accessing repositories that are restricted to your account
     :param device: Optional ``--device`` string, defaults to "cuda"
     :param extra_modules: Extra module arguments to pass directly into
@@ -1240,7 +1240,7 @@ def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     :param control_net_uris: Optional ``--control-nets`` URI strings for specifying ControlNet models
     :param scheduler: Optional scheduler (sampler) class name, unqualified, or "help" to print supported values
         to STDOUT and raise :py:exc:`dgenerate.pipelinewrapper.SchedulerHelpException`
-    :param safety_checker: Safety checker enabled? default is false
+    :param safety_checker: Safety checker enabled? default is ``False``
     :param auth_token: Optional huggingface API token for accessing repositories that are restricted to your account
     :param extra_modules: Extra module arguments to pass directly into :py:meth:`diffusers.FlaxDiffusionPipeline.from_pretrained`
     :param local_files_only: Only look in the huggingface cache and do not connect to download models?

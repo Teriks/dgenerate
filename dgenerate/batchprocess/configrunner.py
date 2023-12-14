@@ -73,9 +73,10 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         :param plugin_loader: Batch processor plugin loader, if one is not provided one will be created.
         :param version: Config version for ``#! dgenerate x.x.x`` version checks, defaults to ``dgenerate.__version__``
         :param throw: Whether to throw exceptions from :py:func:`dgenerate.invoker.invoke_dgenerate` or handle them.
-            If you set this to ``True`` exceptions will propagate out of dgenerate invocations instead of a :py:exc:`dgenerate.batchprocess.BatchProcessError`
-            being raised by the created :py:class:`dgenerate.batchprocess.BatchProcessor`. A line number where the error
-            occurred can be obtained using :py:attr:`dgenerate.batchprocess.BatchProcessor.current_line`.
+            If you set this to ``True`` exceptions will propagate out of dgenerate invocations instead of a
+            :py:exc:`dgenerate.batchprocess.BatchProcessError` being raised by the created
+            :py:class:`dgenerate.batchprocess.BatchProcessor`. A line number where the error occurred can be
+             obtained using :py:attr:`dgenerate.batchprocess.BatchProcessor.current_line`.
         """
 
         def invoker(args):

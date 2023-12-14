@@ -105,7 +105,7 @@ def memory_constraints(expressions: collections.abc.Iterable[str],
         of an expression is not a boolean value.
 
     :param expressions: a list of expressions, if expressions is ``None`` or empty this
-        function will return False.
+        function will return ``False``.
     :param extra_vars: extra integer or float variables
     :param mode: the standard library function 'any' (equating to OR all expressions) or
         the standard library function 'all' (equating to AND all expressions). The default

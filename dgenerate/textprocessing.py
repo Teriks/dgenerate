@@ -682,7 +682,7 @@ def quote(string: str, char='"') -> str:
 
 def is_quoted(string: str) -> bool:
     """
-    Return True if a string is quoted with an identical starting and end quote.
+    Return ``True`` if a string is quoted with an identical starting and end quote.
 
     :param string: the string
     :return: ``True`` or ``False``
@@ -760,8 +760,8 @@ def wrap_paragraphs(text: str,
 
     :param text: Text containing paragraphs
     :param width: Wrap with in characters
-    :param break_long_words: break on long words? default False
-    :param break_on_hyphens: break on hyphens? default False
+    :param break_long_words: break on long words? default ``False``
+    :param break_on_hyphens: break on hyphens? default ``False``
     :param fill_args: extra keyword arguments to :py:func:`textwrap.fill` if desired
     :return: text wrapped string
     """
