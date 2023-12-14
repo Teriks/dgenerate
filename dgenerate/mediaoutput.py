@@ -202,9 +202,9 @@ class MultiAnimationWriter(AnimationWriter):
         """
         :param animation_format: One of :py:func:`.supported_animation_writer_formats`
         :param filename: The desired filename, if multiple images are written a 
-            suffix _animation_N will be appended for each file
+            suffix ``_animation_N`` will be appended for each file
         :param fps: Frames per second
-        :param allow_overwrites: Allow overwrites of existing files? or append _duplicate_N,
+        :param allow_overwrites: Allow overwrites of existing files? or append ``_duplicate_N``,
             The overwrite dis-allowance is multiprocess safe between instances of this library.
         """
 
