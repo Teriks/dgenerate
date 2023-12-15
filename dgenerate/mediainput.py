@@ -1014,9 +1014,8 @@ atexit.register(_wipe_web_cache_directory)
 
 
 def create_web_cache_file(url,
-                           mime_acceptable_desc: str = _textprocessing.oxford_comma(
-                               get_supported_mimetypes(), conjunction='or'),
-                           mimetype_is_supported: typing.Optional[typing.Callable[[str], bool]] = mimetype_is_supported) \
+                          mime_acceptable_desc: typing.Optional[str] = None,
+                          mimetype_is_supported: typing.Optional[typing.Callable[[str], bool]] = mimetype_is_supported) \
         -> tuple[str, str]:
     """
     Download a file from a url and add it to dgenerates temporary web cache that is
@@ -1027,7 +1026,8 @@ def create_web_cache_file(url,
     :param url: The url
 
     :param mime_acceptable_desc: a string describing what mimetype values are acceptable which is used
-        when :py:exc:`.UnknownMimetypeError` is raised.
+        when :py:exc:`.UnknownMimetypeError` is raised. If ``None`` is provided, this string will be
+        generated using :py:func:`.get_supported_mimetypes`
 
     :param mimetype_is_supported: a function that test if a mimetype string is supported, if you
         supply the value ``None`` all mimetypes are considered supported.
@@ -1038,6 +1038,9 @@ def create_web_cache_file(url,
     """
 
     try:
+        if mime_acceptable_desc is None:
+            mime_acceptable_desc = _textprocessing.oxford_comma(get_supported_mimetypes(), conjunction='or')
+
         return _create_web_cache_file(url, mime_acceptable_desc, mimetype_is_supported)
     except sqlite3.OperationalError as e:
         if 'column' in str(e):
@@ -1048,8 +1051,7 @@ def create_web_cache_file(url,
 
 
 def _create_web_cache_file(url,
-                           mime_acceptable_desc: str = _textprocessing.oxford_comma(
-                           get_supported_mimetypes(), conjunction='or'),
+                           mime_acceptable_desc: typing.Optional[str] = None,
                            mimetype_is_supported: typing.Optional[typing.Callable[[str], bool]] = mimetype_is_supported) \
         -> tuple[str, str]:
 
