@@ -996,8 +996,7 @@ def _wipe_web_cache_directory(force=False):
         # delete any cache files that existed
         for filename in os.listdir(get_web_cache_directory()):
             file_path = os.path.join(folder, filename)
-            _, ext = os.path.splitext(filename)
-            if ext in {'.db', '.db-journal', '.lock'}:
+            if filename in {'cache.db', 'cache.db-journal', 'cache.lock'}:
                 # Do not delete database related files
                 continue
 
