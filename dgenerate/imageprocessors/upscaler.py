@@ -79,8 +79,8 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
 
         try:
             self._model = chainner.load_upscaler_model(model)
-        except chainner.UnsupportedModelError:
-            raise self.argument_error('Unsupported model file format.')
+        except chainner.UnsupportedModelError as e:
+            raise self.argument_error(f'Unsupported model file format: {e}')
 
         if tile < 2:
             raise self.argument_error('Argument "tile" must be greater than 2.')

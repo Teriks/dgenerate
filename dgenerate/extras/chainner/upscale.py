@@ -3,7 +3,7 @@ import PIL.Image
 import numpy as np
 import torch
 from tqdm.auto import tqdm
-from spandrel import ImageModelDescriptor
+import spandrel
 
 
 def get_tiled_scale_steps(width, height, tile_x, tile_y, overlap):
@@ -11,7 +11,7 @@ def get_tiled_scale_steps(width, height, tile_x, tile_y, overlap):
 
 
 @torch.inference_mode()
-def tiled_scale(samples: torch.Tensor, upscale_model: ImageModelDescriptor, tile_x=64, tile_y=64, overlap=8,
+def tiled_scale(samples: torch.Tensor, upscale_model: spandrel.ImageModelDescriptor, tile_x=64, tile_y=64, overlap=8,
                 upscale_amount=4,
                 out_channels=3, pbar=None):
     output = torch.empty((samples.shape[0], out_channels, round(samples.shape[2] * upscale_amount),
@@ -46,7 +46,7 @@ def tiled_scale(samples: torch.Tensor, upscale_model: ImageModelDescriptor, tile
     return output
 
 
-def upscale(upscale_model: ImageModelDescriptor, image, tile=512, overlap=32, device='cuda'):
+def upscale(upscale_model: spandrel.ImageModelDescriptor, image, tile=512, overlap=32, device='cuda'):
     image = torch.from_numpy(np.array(image).astype(np.float32) / 255.0)[None,]
 
     upscale_model.to(device)
