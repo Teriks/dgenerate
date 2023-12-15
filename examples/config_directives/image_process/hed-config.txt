@@ -1,4 +1,4 @@
-#! dgenerate 3.0.0
+#! dgenerate 3.1.0
 
 # run the hed (edge) detector
 
