@@ -1,6 +1,6 @@
 #! dgenerate 3.0.0
 
-# run the segment anything model
+# generate a normal map
 
 # the image will be sized down to 512 (aspect correct, no alignment)
 # before the detection runs via "detect-resolution=512", and then be resized
