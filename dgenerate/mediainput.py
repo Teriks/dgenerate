@@ -968,7 +968,8 @@ def _get_web_cache_db():
                 'CREATE TABLE IF NOT EXISTS users (pid INTEGER, UNIQUE(pid))')
             db.execute(
                 'CREATE TABLE IF NOT EXISTS files '
-                '(id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT_TOKEN_STRICT UNIQUE, mime_type TEXT_TOKEN_STRICT)')
+                '(id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT_TOKEN_STRICT UNIQUE, '
+                'mime_type TEXT_TOKEN_STRICT, ext TEXT_TOKEN_STRICT)')
             db.execute(
                 'INSERT OR IGNORE INTO users(pid) VALUES(?)', [os.getpid()])
             yield db
@@ -981,21 +982,21 @@ def _get_web_cache_db():
             db.close()
 
 
-def _wipe_web_cache_directory():
+def _wipe_web_cache_directory(force=False):
     folder = get_web_cache_directory()
 
     with _get_web_cache_db() as db:
         db.execute('DELETE FROM users WHERE pid = (?)', [os.getpid()])
         count = db.execute('SELECT COUNT(pid) FROM users').fetchone()[0]
-        if count != 0:
+        if count != 0 and not force:
             # Another instance is still using
             return
+        db.execute('DROP TABLE users')
         db.execute('DROP TABLE files')
         # delete any cache files that existed
         for filename in os.listdir(get_web_cache_directory()):
             file_path = os.path.join(folder, filename)
-            _, ext = os.path.splitext(filename)
-            if ext:
+            if filename in {'cache.db', 'cache.db-journal', 'cache.lock'}:
                 # Do not delete database related files
                 continue
 
@@ -1013,8 +1014,7 @@ atexit.register(_wipe_web_cache_directory)
 
 
 def create_web_cache_file(url,
-                          mime_acceptable_desc: str = _textprocessing.oxford_comma(
-                              get_supported_mimetypes(), conjunction='or'),
+                          mime_acceptable_desc: typing.Optional[str] = None,
                           mimetype_is_supported: typing.Optional[typing.Callable[[str], bool]] = mimetype_is_supported) \
         -> tuple[str, str]:
     """
@@ -1026,7 +1026,8 @@ def create_web_cache_file(url,
     :param url: The url
 
     :param mime_acceptable_desc: a string describing what mimetype values are acceptable which is used
-        when :py:exc:`.UnknownMimetypeError` is raised.
+        when :py:exc:`.UnknownMimetypeError` is raised. If ``None`` is provided, this string will be
+        generated using :py:func:`.get_supported_mimetypes`
 
     :param mimetype_is_supported: a function that test if a mimetype string is supported, if you
         supply the value ``None`` all mimetypes are considered supported.
@@ -1036,6 +1037,24 @@ def create_web_cache_file(url,
     :return: tuple(mimetype_str, filepath)
     """
 
+    try:
+        if mime_acceptable_desc is None:
+            mime_acceptable_desc = _textprocessing.oxford_comma(get_supported_mimetypes(), conjunction='or')
+
+        return _create_web_cache_file(url, mime_acceptable_desc, mimetype_is_supported)
+    except sqlite3.OperationalError as e:
+        if 'column' in str(e):
+            _wipe_web_cache_directory(force=True)
+            return _create_web_cache_file(url, mime_acceptable_desc, mimetype_is_supported)
+        else:
+            raise
+
+
+def _create_web_cache_file(url,
+                           mime_acceptable_desc: typing.Optional[str] = None,
+                           mimetype_is_supported: typing.Optional[typing.Callable[[str], bool]] = mimetype_is_supported) \
+        -> tuple[str, str]:
+
     cache_dir = get_web_cache_directory()
 
     def _mimetype_is_supported(mimetype):
@@ -1043,17 +1062,19 @@ def create_web_cache_file(url,
             return mimetype_is_supported(mimetype)
         return True
 
+    _, ext = os.path.splitext(url)
+
     with _get_web_cache_db() as db:
         cursor = db.cursor()
 
         exists = cursor.execute(
-            'SELECT mime_type, id FROM files WHERE url = ?', [url]).fetchone()
+            'SELECT mime_type, id, ext FROM files WHERE url = ?', [url]).fetchone()
 
         # entry exists to a missing file on disk?
         missing_file_only = False
 
         if exists is not None:
-            path = os.path.join(cache_dir, f'web_{exists[1]}')
+            path = os.path.join(cache_dir, f'web_{exists[1]}' + exists[2])
 
             if os.path.exists(path):
                 return exists[0], path
@@ -1074,14 +1095,14 @@ def create_web_cache_file(url,
             if not missing_file_only:
                 # no record of this file existed
                 cursor.execute(
-                    'INSERT INTO files(mime_type, url) VALUES(?, ?)', [mime_type, url])
-                path = os.path.join(cache_dir, f'web_{cursor.lastrowid}')
+                    'INSERT INTO files(mime_type, url, ext) VALUES(?, ?, ?)', [mime_type, url, ext])
+                path = os.path.join(cache_dir, f'web_{cursor.lastrowid}' + ext)
             else:
                 # a record of this file existed but
                 # the file was missing on disk
                 # make sure mime_type matches
                 cursor.execute(
-                    'UPDATE files SET mime_type = ? WHERE id = ?', [mime_type, exists[1]])
+                    'UPDATE files SET mime_type = ?, ext = ? WHERE id = ?', [mime_type, ext, exists[1]])
 
             with open(path, mode='wb') as new_file:
                 new_file.write(req.content)
