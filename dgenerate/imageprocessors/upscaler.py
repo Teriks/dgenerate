@@ -28,6 +28,8 @@ import dgenerate.imageprocessors.imageprocessor as _imageprocessor
 import dgenerate.types as _types
 from dgenerate.extras import chainner
 
+import spandrel
+
 
 class UpscalerProcessor(_imageprocessor.ImageProcessor):
     """
