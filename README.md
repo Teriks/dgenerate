@@ -2452,7 +2452,7 @@ brought on to the desired device repeatedly for each image. In the
 context of dgenerate invocations where processors can be used as
 preprocessors or postprocessors, the image processor object is garbage
 collected when the invocation completes, this is also true for the
-`\\image_process` directive. Using this argument with a preprocess
+`\image_process` directive. Using this argument with a preprocess
 specification, such as `--control-image-processors` may yield a
 noticeable memory overhead reduction when using a single GPU, as any
 models from the image processor will be moved to the CPU immediately
