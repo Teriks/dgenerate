@@ -26,6 +26,8 @@ parser.add_argument('--short-animations', action='store_true', default=False,
 
 known_args, injected_args = parser.parse_known_args()
 
+library_installed = _batchprocess is not None and not known_args.skip_library
+
 if known_args.paths:
     configs = []
 
@@ -34,19 +36,22 @@ if known_args.paths:
         if ext:
             configs += [path]
         else:
-            configs += glob.glob(
-                os.path.join(pwd, *os.path.split(path), '**', '*main.py'),
-                recursive=True)
+            if library_installed:
+                configs += glob.glob(
+                    os.path.join(pwd, *os.path.split(path), '**', '*main.py'),
+                    recursive=True)
 
             configs += glob.glob(
                 os.path.join(pwd, *os.path.split(path), '**', '*config.txt'),
                 recursive=True)
 
 else:
+    configs = []
 
-    configs = glob.glob(
-        os.path.join(pwd, '**', '*main.py'),
-        recursive=True)
+    if library_installed:
+        configs = glob.glob(
+            os.path.join(pwd, '**', '*main.py'),
+            recursive=True)
 
     configs += glob.glob(
         os.path.join(pwd, '**', '*config.txt'),
@@ -97,7 +102,7 @@ for config in configs:
                     subprocess.run(["dgenerate"] + injected_args + extra_args, stdin=f, cwd=dirname, check=True)
             except KeyboardInterrupt:
                 sys.exit(1)
-        elif _batchprocess is not None and not known_args.skip_library:
+        elif library_installed:
             # library is installed
             try:
                 subprocess.run([sys.executable] + [config] + injected_args, stdin=f, cwd=dirname, check=True)
