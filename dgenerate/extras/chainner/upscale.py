@@ -4,6 +4,9 @@ import numpy as np
 import torch
 from tqdm.auto import tqdm
 import spandrel
+import spandrel_extra_arches
+
+spandrel.MAIN_REGISTRY.add(*spandrel_extra_arches.EXTRA_REGISTRY)
 
 
 def get_tiled_scale_steps(width, height, tile_x, tile_y, overlap):
