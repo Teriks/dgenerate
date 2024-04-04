@@ -3282,4 +3282,4 @@ flax = ["flax", "jax"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<=3.11.6"
-content-hash = "1b9e4511547e4633ea40aad90c5de7b1b86b544aadd0248685f65fb65ff51136"
+content-hash = "195d23b13ec8520967432a2a9ce57bb28ff886f2e1b3a52b87afd48880c4b63d"
