@@ -102,8 +102,7 @@ for config in configs:
                     subprocess.run(["dgenerate"] + injected_args + extra_args, stdin=f, cwd=dirname, check=True)
             except KeyboardInterrupt:
                 sys.exit(1)
-        elif library_installed:
-            # library is installed
+        elif ext == '.py':
             try:
                 subprocess.run([sys.executable] + [config] + injected_args, stdin=f, cwd=dirname, check=True)
             except KeyboardInterrupt:
