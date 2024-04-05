@@ -75,35 +75,54 @@ def _get_tiled_scale_steps(width, height, tile_x, tile_y, overlap):
 def _tiled_scale(samples: torch.Tensor, upscale_model: spandrel.ImageModelDescriptor, tile_x=64, tile_y=64, overlap=8,
                  upscale_amount=4,
                  out_channels=3, pbar=None):
-    output = torch.empty((samples.shape[0], out_channels, round(samples.shape[2] * upscale_amount),
-                          round(samples.shape[3] * upscale_amount)), device="cpu")
+    # Pre-calculate the scaled dimensions
+    scaled_height = round(samples.shape[2] * upscale_amount)
+    scaled_width = round(samples.shape[3] * upscale_amount)
+
+    # Initialize the output tensor on CPU
+    output = torch.empty((samples.shape[0], out_channels, scaled_height, scaled_width), device="cpu")
+
+    # Pre-calculate the feathering factor
+    feather = round(overlap * upscale_amount)
+    feather_factor = 1.0 / feather
+
+    # Iterate over each sample
     for b in range(samples.shape[0]):
         s = samples[b:b + 1]
-        out = torch.zeros(
-            (s.shape[0], out_channels, round(s.shape[2] * upscale_amount), round(s.shape[3] * upscale_amount)),
-            device="cpu")
-        out_div = torch.zeros(
-            (s.shape[0], out_channels, round(s.shape[2] * upscale_amount), round(s.shape[3] * upscale_amount)),
-            device="cpu")
+        out = torch.zeros((s.shape[0], out_channels, scaled_height, scaled_width), device="cpu")
+        out_div = torch.zeros_like(out)
+
+        # Iterate over the tiles
         for y in range(0, s.shape[2], tile_y - overlap):
             for x in range(0, s.shape[3], tile_x - overlap):
                 s_in = s[:, :, y:y + tile_y, x:x + tile_x]
-
                 ps = upscale_model(s_in).cpu()
                 mask = torch.ones_like(ps)
-                feather = round(overlap * upscale_amount)
+
+                # Apply feathering to the mask
                 for t in range(feather):
-                    mask[:, :, t:1 + t, :] *= ((1.0 / feather) * (t + 1))
-                    mask[:, :, mask.shape[2] - 1 - t: mask.shape[2] - t, :] *= ((1.0 / feather) * (t + 1))
-                    mask[:, :, :, t:1 + t] *= ((1.0 / feather) * (t + 1))
-                    mask[:, :, :, mask.shape[3] - 1 - t: mask.shape[3] - t] *= ((1.0 / feather) * (t + 1))
-                out[:, :, round(y * upscale_amount):round((y + tile_y) * upscale_amount),
-                round(x * upscale_amount):round((x + tile_x) * upscale_amount)] += ps * mask
-                out_div[:, :, round(y * upscale_amount):round((y + tile_y) * upscale_amount),
-                round(x * upscale_amount):round((x + tile_x) * upscale_amount)] += mask
+                    mask[:, :, t:1 + t, :] *= (feather_factor * (t + 1))
+                    mask[:, :, -1 - t: -t, :] *= (feather_factor * (t + 1))
+                    mask[:, :, :, t:1 + t] *= (feather_factor * (t + 1))
+                    mask[:, :, :, -1 - t: -t] *= (feather_factor * (t + 1))
+
+                # Calculate the indices for the output tensor
+                y_start = round(y * upscale_amount)
+                y_end = y_start + round(tile_y * upscale_amount)
+                x_start = round(x * upscale_amount)
+                x_end = x_start + round(tile_x * upscale_amount)
+
+                # Update the output tensor
+                out[:, :, y_start:y_end, x_start:x_end] += ps * mask
+                out_div[:, :, y_start:y_end, x_start:x_end] += mask
+
+                # Update progress bar if provided
                 if pbar is not None:
                     pbar.update(1)
+
+        # Divide the accumulated output by the mask to get the final result
         output[b:b + 1] = out / out_div
+
     return output
 
 
