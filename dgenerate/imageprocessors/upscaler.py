@@ -71,7 +71,6 @@ def _get_tiled_scale_steps(width, height, tile_x, tile_y, overlap):
     return math.ceil((height / (tile_y - overlap))) * math.ceil((width / (tile_x - overlap)))
 
 
-@torch.inference_mode()
 def _tiled_scale(samples: torch.Tensor, upscale_model: spandrel.ImageModelDescriptor, tile_x=64, tile_y=64, overlap=8,
                  upscale_amount=4,
                  out_channels=3, pbar=None):
@@ -208,10 +207,11 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
 
         self.register_module(self._model)
 
+    @torch.inference_mode()
     def _process(self, image):
         image = torch.from_numpy(numpy.array(image).astype(numpy.float32) / 255.0)[None,]
 
-        in_img = image.movedim(-1, -3)
+        in_img = image.movedim(-1, -3).to(self.modules_device)
 
         if self._model.input_channels == 1:
             # noinspection PyTypeChecker
@@ -223,8 +223,6 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
             else:
                 # make it grayscale [1,1,W,H]
                 in_img = 0.299 * in_img[:, 0:1, :, :] + 0.587 * in_img[:, 1:2, :, :] + 0.114 * in_img[:, 2:3, :, :]
-
-        in_img = in_img.to(self.modules_device)
 
         if self._model.tiling == spandrel.ModelTiling.INTERNAL or \
                 (self._model.tiling == spandrel.ModelTiling.DISCOURAGED and not self._force_tiling):
