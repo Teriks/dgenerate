@@ -21,13 +21,91 @@
 
 import PIL.Image
 import numpy
-import torch
 import tqdm.auto
 
 import dgenerate.imageprocessors.imageprocessor as _imageprocessor
 import dgenerate.types as _types
-from dgenerate.extras import chainner
+import dgenerate.mediainput as _mediainput
+import dgenerate.messages as _messages
+import math
+import PIL.Image
+import torch
+from tqdm.auto import tqdm
 import spandrel
+import spandrel_extra_arches
+
+spandrel.MAIN_REGISTRY.add(*spandrel_extra_arches.EXTRA_REGISTRY)
+
+
+class _UnsupportedModelError(Exception):
+    """chaiNNer model is not of a supported type."""
+    pass
+
+
+def _load_upscaler_model(model_path) -> spandrel.ImageModelDescriptor:
+    """
+    Load an upscaler model from a file path or URL.
+
+    :param model_path: path
+    :return: model
+    """
+    if _mediainput.is_downloadable_url(model_path):
+        # Any mimetype
+        _, model_path = _mediainput.create_web_cache_file(
+            model_path, mimetype_is_supported=None)
+
+    try:
+        model = spandrel.ModelLoader().load_from_file(model_path).eval()
+    except ValueError as e:
+        raise _UnsupportedModelError(e)
+
+    if not isinstance(model, spandrel.ImageModelDescriptor):
+        raise _UnsupportedModelError("Upscale model must be a single-image model.")
+
+    _messages.debug_log(
+        f'{_types.fullname(_load_upscaler_model)}("{model_path}") -> {model.__class__.__name__}')
+
+    return model
+
+
+def _get_tiled_scale_steps(width, height, tile_x, tile_y, overlap):
+    return math.ceil((height / (tile_y - overlap))) * math.ceil((width / (tile_x - overlap)))
+
+
+@torch.inference_mode()
+def _tiled_scale(samples: torch.Tensor, upscale_model: spandrel.ImageModelDescriptor, tile_x=64, tile_y=64, overlap=8,
+                 upscale_amount=4,
+                 out_channels=3, pbar=None):
+    output = torch.empty((samples.shape[0], out_channels, round(samples.shape[2] * upscale_amount),
+                          round(samples.shape[3] * upscale_amount)), device="cpu")
+    for b in range(samples.shape[0]):
+        s = samples[b:b + 1]
+        out = torch.zeros(
+            (s.shape[0], out_channels, round(s.shape[2] * upscale_amount), round(s.shape[3] * upscale_amount)),
+            device="cpu")
+        out_div = torch.zeros(
+            (s.shape[0], out_channels, round(s.shape[2] * upscale_amount), round(s.shape[3] * upscale_amount)),
+            device="cpu")
+        for y in range(0, s.shape[2], tile_y - overlap):
+            for x in range(0, s.shape[3], tile_x - overlap):
+                s_in = s[:, :, y:y + tile_y, x:x + tile_x]
+
+                ps = upscale_model(s_in).cpu()
+                mask = torch.ones_like(ps)
+                feather = round(overlap * upscale_amount)
+                for t in range(feather):
+                    mask[:, :, t:1 + t, :] *= ((1.0 / feather) * (t + 1))
+                    mask[:, :, mask.shape[2] - 1 - t: mask.shape[2] - t, :] *= ((1.0 / feather) * (t + 1))
+                    mask[:, :, :, t:1 + t] *= ((1.0 / feather) * (t + 1))
+                    mask[:, :, :, mask.shape[3] - 1 - t: mask.shape[3] - t] *= ((1.0 / feather) * (t + 1))
+                out[:, :, round(y * upscale_amount):round((y + tile_y) * upscale_amount),
+                round(x * upscale_amount):round((x + tile_x) * upscale_amount)] += ps * mask
+                out_div[:, :, round(y * upscale_amount):round((y + tile_y) * upscale_amount),
+                round(x * upscale_amount):round((x + tile_x) * upscale_amount)] += mask
+                if pbar is not None:
+                    pbar.update(1)
+        output[b:b + 1] = out / out_div
+    return output
 
 
 def _model_output_to_pil(tensor):
@@ -92,8 +170,8 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
         super().__init__(**kwargs)
 
         try:
-            self._model = chainner.load_upscaler_model(model)
-        except chainner.UnsupportedModelError as e:
+            self._model = _load_upscaler_model(model)
+        except _UnsupportedModelError as e:
             raise self.argument_error(f'Unsupported model file format: {e}')
 
         if tile < 2:
@@ -142,7 +220,7 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
 
         while oom:
             try:
-                steps = in_img.shape[0] * chainner.get_tiled_scale_steps(
+                steps = in_img.shape[0] * _get_tiled_scale_steps(
                     in_img.shape[3],
                     in_img.shape[2],
                     tile_x=tile,
@@ -151,13 +229,13 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
 
                 pbar = tqdm.auto.tqdm(total=steps)
 
-                s = chainner.tiled_scale(in_img,
-                                         self._model,
-                                         tile_x=tile,
-                                         tile_y=tile,
-                                         overlap=self._overlap,
-                                         upscale_amount=self._model.scale,
-                                         pbar=pbar)
+                s = _tiled_scale(in_img,
+                                 self._model,
+                                 tile_x=tile,
+                                 tile_y=tile,
+                                 overlap=self._overlap,
+                                 upscale_amount=self._model.scale,
+                                 pbar=pbar)
 
                 oom = False
             except torch.cuda.OutOfMemoryError as e:
