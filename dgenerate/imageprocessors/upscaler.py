@@ -30,7 +30,6 @@ import dgenerate.messages as _messages
 import math
 import PIL.Image
 import torch
-from tqdm.auto import tqdm
 import spandrel
 import spandrel_extra_arches
 
