@@ -30,6 +30,7 @@ import dgenerate.image as _image
 import dgenerate.imageprocessors.exceptions as _exceptions
 import dgenerate.messages as _messages
 import dgenerate.plugin as _plugin
+import dgenerate.pipelinewrapper.util as _util
 import dgenerate.types
 
 
@@ -59,6 +60,14 @@ class ImageProcessor(_plugin.Plugin):
         super().__init__(loaded_by_name=loaded_by_name,
                          argument_error_type=_exceptions.ImageProcessorArgumentError,
                          **kwargs)
+
+        try:
+            if not _util.is_valid_device_string(device):
+                raise _exceptions.ImageProcessorArgumentError(
+                    f'Invalid device argument: "{device}" is not a valid device string.')
+        except _util.InvalidDeviceOrdinalException as e:
+            raise _exceptions.ImageProcessorArgumentError(
+                f'Invalid device argument: {e}')
 
         self.__output_file = output_file
         self.__output_overwrite = output_overwrite
