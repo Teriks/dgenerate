@@ -1,4 +1,4 @@
-#! dgenerate 3.1.1
+#! dgenerate 3.2.0
 
 timbrooks/instruct-pix2pix --model-type "torch-pix2pix" --dtype float16
 --inference-steps 30
