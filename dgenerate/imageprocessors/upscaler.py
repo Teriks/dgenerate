@@ -27,8 +27,12 @@ import tqdm.auto
 import dgenerate.imageprocessors.imageprocessor as _imageprocessor
 import dgenerate.types as _types
 from dgenerate.extras import chainner
-
 import spandrel
+
+
+def _model_output_to_pil(tensor):
+    tensor = torch.clamp(tensor.movedim(-3, -1), min=0, max=1.0)
+    return PIL.Image.fromarray(numpy.clip(255. * tensor[0].cpu().numpy(), 0, 255).astype(numpy.uint8))
 
 
 class UpscalerProcessor(_imageprocessor.ImageProcessor):
@@ -53,6 +57,14 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
     The "overlap" argument can be used to specify the overlap amount of each tile in pixels, it must be
     greater than or equal to 0, and defaults to 32.
 
+    The "force-tiling" argument can be used to force external image tiling for upscaler model architectures which
+    discourage the use of external tiling (SCUNEt and MixDehazeNet currently), this may mean that the model needs
+    information about the whole image to achieve a good result. External tiling breaks up the image into tiles
+    before feeding it to the model and reassembles the images output by the model, this is not the default behavior
+    when a model specifies that tiling is discouraged, tiling is only on by default for models where external tiling is
+    fully supported. Only use this if you run into memory issues with models that discourage external tiling, in the
+    case that the model discourages its use, using it may result in substandard image output.
+
     The "pre-resize" argument is a boolean value determining if the processing should take place before or
     after the image is resized by dgenerate.
 
@@ -65,12 +77,14 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
                  model: str,
                  tile: int = 512,
                  overlap: int = 32,
+                 force_tiling: bool = False,
                  pre_resize: bool = False,
                  **kwargs):
         """
         :param model: chaiNNer compatible upscaler model on disk, or at a URL
         :param tile: specifies the tile size for tiled upscaling, it must be divisible by 2, and defaults to 512.
         :param overlap: the overlap amount of each tile in pixels, it must be greater than or equal to 0, and defaults to 32.
+        :param force_tiling: Force external image tiling for model architectures that discourage it.
         :param pre_resize: process the image before it is resized, or after? default is ``False`` (after).
         :param kwargs: forwarded to base class
         """
@@ -94,13 +108,33 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
         self._tile = tile
         self._overlap = overlap
         self._pre_resize = pre_resize
+        self._force_tiling = force_tiling
 
         self.register_module(self._model)
 
     def _process(self, image):
         image = torch.from_numpy(numpy.array(image).astype(numpy.float32) / 255.0)[None,]
 
-        in_img = image.movedim(-1, -3).to(self.modules_device)
+        in_img = image.movedim(-1, -3)
+
+        if self._model.input_channels == 1:
+            # noinspection PyTypeChecker
+            # operator overloading, a tensor full of bool is returned
+            if torch.all(in_img[:, 0, :, :] == in_img[:, 1, :, :]) \
+                    and torch.all(in_img[:, 0, :, :] == in_img[:, 2, :, :]):
+                # already grayscale, only keep the red value
+                in_img = in_img[:, :1, :, :]
+            else:
+                # make it grayscale [1,1,W,H]
+                in_img = 0.299 * in_img[:, 0:1, :, :] + 0.587 * in_img[:, 1:2, :, :] + 0.114 * in_img[:, 2:3, :, :]
+
+        in_img = in_img.to(self.modules_device)
+
+        if self._model.tiling == spandrel.ModelTiling.INTERNAL or \
+                (self._model.tiling == spandrel.ModelTiling.DISCOURAGED and not self._force_tiling):
+            # do not externally tile, there is either internal tiling, or the model
+            # discourages doing so and the user has not forced it to occur
+            return _model_output_to_pil(self._model(in_img))
 
         oom = True
 
@@ -131,9 +165,7 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
                 if tile < 128:
                     raise e
 
-        s = torch.clamp(s.movedim(-3, -1), min=0, max=1.0)
-
-        return PIL.Image.fromarray(numpy.clip(255. * s[0].cpu().numpy(), 0, 255).astype(numpy.uint8))
+        return _model_output_to_pil(s)
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize) -> PIL.Image.Image:
         if self._pre_resize:
