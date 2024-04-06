@@ -22,6 +22,10 @@ pyinstaller dgenerate.spec --clean
 
 call venv\Scripts\deactivate.bat
 
+pushd dist
+"C:\Program Files\7-Zip\7z.exe" -v1500m a dgenerate_portable.zip dgenerate
+popd
+
 dotnet build dgenerate.wixproj --configuration Release
 
 pushd bin\Release
@@ -31,6 +35,7 @@ for /f "tokens=*" %%F in ('dir /b /a:-d "*.cab"') do call set cab_files=%%cab_fi
 "C:\Program Files\7-Zip\7z.exe" -v1500m a dgenerate_installer.zip dgenerate.msi %cab_files%
 popd
 
+for /r "dist" %%x in (*.zip.*) do move "%%x" "bin\Release"
 
 popd
 
