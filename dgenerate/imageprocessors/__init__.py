@@ -38,7 +38,7 @@ from .imageprocessormixin import ImageProcessorMixin
 from .leres import LeresDepthProcessor
 from .linart_anime import LineArtAnimeProcessor
 from .lineart import LineArtProcessor
-from .midis import MidisDepthProcessor
+from .midas import MidasDepthProcessor
 from .mlsd import MLSDProcessor
 from .normal_bae import NormalBaeProcessor
 from .openpose import OpenPoseProcessor

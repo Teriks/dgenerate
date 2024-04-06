@@ -34,7 +34,7 @@ import dgenerate.types as _types
 from dgenerate.imageprocessors import imageprocessor as _imageprocessor
 
 
-class MidisDepthProcessor(_imageprocessor.ImageProcessor):
+class MidasDepthProcessor(_imageprocessor.ImageProcessor):
     """
     MiDaS depth detector and normal map generation.
 
