@@ -32,6 +32,7 @@ import PIL.Image
 import torch
 import spandrel
 import spandrel_extra_arches
+import dgenerate.imageprocessors.leres as _leres
 
 spandrel.MAIN_REGISTRY.add(*spandrel_extra_arches.EXTRA_REGISTRY)
 
@@ -212,6 +213,14 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
         image = torch.from_numpy(numpy.array(image).astype(numpy.float32) / 255.0)[None,]
 
         in_img = image.movedim(-1, -3).to(self.modules_device)
+
+        if self._model.input_channels == 4:
+            # Fill 4th channel with 1.0s, this is definitely incorrect.
+            # Not all models expect this to be an alpha channel
+            in_img = torch.cat(
+                (in_img, torch.ones(
+                    1, 1, in_img.shape[2], in_img.shape[3]).to(self.modules_device)),
+                dim=1)
 
         if self._model.input_channels == 1:
             # noinspection PyTypeChecker
