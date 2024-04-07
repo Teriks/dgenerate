@@ -219,7 +219,7 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
             # Not all models expect this to be an alpha channel
             _messages.log(
                 f'Appending 1.0 (opaque) alpha channel RGB -> RGBA for model '
-                f'architecture "{_types.fullname(self._model.architecture)}" which requires 4 input'
+                f'architecture "{_types.fullname(self._model.architecture)}" which requires 4 input '
                 f'channels. This is not guaranteed to be correct input data for this model architecture! '
                 'If you know how this model architecture is supposed to work, submit an issue.',
                 level=_messages.WARNING)
