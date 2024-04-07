@@ -217,6 +217,13 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
         if self._model.input_channels == 4:
             # Fill 4th channel with 1.0s, this is definitely incorrect.
             # Not all models expect this to be an alpha channel
+            _messages.log(
+                f'Appending 1.0 (opaque) alpha channel RGB -> RGBA for model '
+                f'architecture "{_types.fullname(self._model.architecture)}" which requires 4 input'
+                f'channels. This is not guaranteed to be correct input data for this model architecture! '
+                'If you know how this model architecture is supposed to work, submit an issue.',
+                level=_messages.WARNING)
+
             in_img = torch.cat(
                 (in_img, torch.ones(
                     1, 1, in_img.shape[2], in_img.shape[3]).to(self.modules_device)),
