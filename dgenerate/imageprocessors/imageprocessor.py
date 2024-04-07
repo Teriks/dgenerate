@@ -284,8 +284,7 @@ class ImageProcessor(_plugin.Plugin):
 
         forced_alignment = self.get_alignment()
         if forced_alignment is not None:
-            if align != forced_alignment or \
-                    not _image.is_aligned(image.size, align=forced_alignment):
+            if (not _image.is_aligned(image.size, align=forced_alignment)) and align != forced_alignment:
                 align = forced_alignment
                 _messages.log(
                     f'"{self.loaded_by_name}" image processor requires an image alignment of {align}, '
