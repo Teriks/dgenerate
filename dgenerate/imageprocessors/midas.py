@@ -61,6 +61,9 @@ class MidasDepthProcessor(_imageprocessor.ImageProcessor):
 
     NAMES = ['midas']
 
+    # Force incoming image alignment to 64 pixels, required
+    ALIGN = 64
+
     def __init__(self,
                  normals: bool = False,
                  alpha: float = numpy.pi * 2.0,
