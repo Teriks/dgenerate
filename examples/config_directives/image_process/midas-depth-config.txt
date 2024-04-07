@@ -7,4 +7,4 @@
 \image_process "../../media/horse2.jpeg"
 -o horse2-midas-depth.png
 --processors midas
---align 1 {{ device_switch }}
+--align 64 {{ device_switch }}
