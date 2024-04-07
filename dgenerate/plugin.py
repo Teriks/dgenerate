@@ -110,7 +110,7 @@ class PluginArg:
             if base_type is typing.Union:
                 try:
                     evaled = ast.literal_eval(value)
-                except ValueError:
+                except (ValueError, SyntaxError):
                     # string
                     evaled = value
 
