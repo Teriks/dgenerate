@@ -1,4 +1,4 @@
-#! dgenerate 3.2.0
+#! dgenerate 3.2.1
 
 # Place the variations side by side on an image grid
 # That is 2 wide and 1 high

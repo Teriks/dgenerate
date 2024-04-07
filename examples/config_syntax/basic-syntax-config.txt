@@ -1,4 +1,4 @@
-#! dgenerate 3.2.0
+#! dgenerate 3.2.1
 
 # If a hash-bang version is provided in the format above
 # a warning will be produced if the version you are running
