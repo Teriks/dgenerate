@@ -296,9 +296,11 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
         elif self._model.input_channels == 2:
 
             raise self.argument_error(
-                f'Specified model "{self._model_path}" requires a 2 channel image (non RGB or RGBA input required), '
-                'conversion to this format internally is not supported currently for any model. '
-                'If you know how this model is supposed to work, please submit an issue.')
+                f'Specified model "{self._model_path}" using architecture type '
+                f'"{_types.fullname(self._model.architecture)}" requires a 2 channel image '
+                '(non RGB or RGBA input required), conversion to this format internally is not '
+                'supported currently for any model. If you know how this model is supposed to '
+                'work, please submit an issue.')
 
         elif self._model.input_channels == 1:
             # noinspection PyTypeChecker
