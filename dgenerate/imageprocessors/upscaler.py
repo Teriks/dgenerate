@@ -292,11 +292,14 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
                 (in_img, torch.ones(
                     1, 1, in_img.shape[2], in_img.shape[3]).to(self.modules_device)),
                 dim=1)
+
         elif self._model.input_channels == 2:
+
             raise self.argument_error(
                 f'Specified model "{self._model_path}" requires a 2 channel image (non RGB or RGBA input required), '
                 'conversion to this format internally is not supported currently for any model. '
                 'If you know how this model is supposed to work, please submit an issue.')
+
         elif self._model.input_channels == 1:
             # noinspection PyTypeChecker
             # operator overloading, a tensor full of bool is returned
