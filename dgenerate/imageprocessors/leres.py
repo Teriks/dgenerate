@@ -61,7 +61,8 @@ class LeresDepthProcessor(_imageprocessor.ImageProcessor):
     NAMES = ['leres']
 
     # Force incoming image alignment to 64 pixels, required
-    ALIGN = 64
+    def get_alignment(self):
+        return 64
 
     def __init__(self,
                  threshold_near: int = 0,
