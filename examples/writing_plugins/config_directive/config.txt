@@ -1,4 +1,4 @@
-#! dgenerate 3.2.1
+#! dgenerate 3.3.0
 
 # the import_plugins directive can receive multiple plugin paths as arguments
 
