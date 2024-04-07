@@ -220,7 +220,7 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
             raise self.argument_error('Argument "overlap" must be greater than or equal to 0.')
 
         dtype = dtype.lower()
-        if dtype not in ['float32', 'float16']:
+        if dtype not in {'float32', 'float16'}:
             raise self.argument_error('Argument "dtype" must be either float32 or float16.')
 
         self._dtype = torch.float32 if dtype == 'float32' else torch.float16
