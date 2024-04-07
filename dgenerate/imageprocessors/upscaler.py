@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import typing
 
 import PIL.Image
 import numpy
@@ -147,7 +148,9 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
     Fresh executions of dgenerate will always download the model, it is recommended that you download your upscaler
     models to some place on disk and provide a full path to them, and to use URLs only for examples and testing.
 
-    The "tile" argument can be used to specify the tile size for tiled upscaling, it must be divisible by 2, and defaults to 512.
+    The "tile" argument can be used to specify the tile size for tiled upscaling, it must be divisible by 2, and
+    defaults to 512. Specifying 'auto' indicates that this value should be calculated based off available GPU
+    memory if applicable. Specifying 0 disables tiling entirely.
 
     The "overlap" argument can be used to specify the overlap amount of each tile in pixels, it must be
     greater than or equal to 0, and defaults to 32.
@@ -160,6 +163,9 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
     fully supported. Only use this if you run into memory issues with models that discourage external tiling, in the
     case that the model discourages its use, using it may result in substandard image output.
 
+    The "dtype" argument can be used to specify the datatype to use to for the model in memory, it can be
+    either "float32" or "float16". using float16 will result in a smaller memory footprint if supported.
+
     The "pre-resize" argument is a boolean value determining if the processing should take place before or
     after the image is resized by dgenerate.
 
@@ -170,15 +176,20 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
 
     def __init__(self,
                  model: str,
-                 tile: int = 512,
+                 tile: typing.Union[int, str] = 512,
                  overlap: int = 32,
                  force_tiling: bool = False,
+                 dtype: str = 'float32',
                  pre_resize: bool = False,
                  **kwargs):
         """
         :param model: chaiNNer compatible upscaler model on disk, or at a URL
         :param tile: specifies the tile size for tiled upscaling, it must be divisible by 2, and defaults to 512.
+            Specifying 'auto' indicates that this value should be calculated based off available GPU memory
+            if applicable. Specifying 0 disable tiling entirely.
         :param overlap: the overlap amount of each tile in pixels, it must be greater than or equal to 0, and defaults to 32.
+        :param dtype: the datatype to use to for the model in memory, it may be either "float32" or "float16".
+            using float16 will result in a smaller memory footprint if supported.
         :param force_tiling: Force external image tiling for model architectures that discourage it.
         :param pre_resize: process the image before it is resized, or after? default is ``False`` (after).
         :param kwargs: forwarded to base class
@@ -186,41 +197,95 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
 
         super().__init__(**kwargs)
 
+        self._model_path = model
+
         try:
             self._model = _load_upscaler_model(model)
         except _UnsupportedModelError as e:
             raise self.argument_error(f'Unsupported model file format: {e}')
 
-        if tile < 2:
-            raise self.argument_error('Argument "tile" must be greater than 2.')
+        if type(tile) is str:
+            tile = tile.lower()
+            if tile != 'auto':
+                raise self.argument_error(
+                    f'Argument "tile" passed unrecognized string: "{tile}", expected "auto".')
+        else:
+            if tile != 0 and tile < 2:
+                raise self.argument_error('Argument "tile" must be greater than 2, or exactly 0.')
 
-        if tile % 2 != 0:
-            raise self.argument_error('Argument "tile" must be divisible by 2.')
+            if tile % 2 != 0:
+                raise self.argument_error('Argument "tile" must be divisible by 2.')
 
         if overlap < 0:
             raise self.argument_error('Argument "overlap" must be greater than or equal to 0.')
 
+        dtype = dtype.lower()
+        if dtype not in ['float32', 'float16']:
+            raise self.argument_error('Argument "dtype" must be either float32 or float16.')
+
+        self._dtype = torch.float32 if dtype == 'float32' else torch.float16
         self._tile = tile
         self._overlap = overlap
         self._pre_resize = pre_resize
         self._force_tiling = force_tiling
 
-        self.register_module(self._model)
+        # hack
+        class UpscalerModel:
+            def __init__(self, plugin, m, d):
+                self._model = m
+                self._dtype = d
+                self._plugin = plugin
+
+            def to(self, device):
+                try:
+                    self._model.to(device=device, dtype=self._dtype)
+                except spandrel.UnsupportedDtypeError:
+                    raise self._plugin.argument_error(
+                        f'Argument "dtype" value "{dtype}" not supported for '
+                        f'upscaler model architecture "{_types.fullname(self._model.architecture)}" '
+                        f'used with model file: "{model}"')
+
+        self.register_module(UpscalerModel(self, self._model, self._dtype))
+
+    def _auto_tile_size(self, img: PIL.Image.Image) -> int:
+        if self.modules_device.type == 'cpu':
+            # default
+            return 512
+
+        h, w, c = (img.height, img.width, 3)
+
+        dtype_size = 4 if self._dtype is torch.float32 else 2
+
+        model_size = sum(
+            p.numel() * 4 for p in self._model.model.parameters()
+        )
+
+        # 80 percent of total free memory
+        budget = int(torch.cuda.mem_get_info(self.modules_device.index)[0] * .8)
+
+        img_bytes = h * w * c * dtype_size
+        mem_required_estimation = (model_size / (1024 * 52)) * img_bytes
+
+        tile_pixels = w * h * budget / mem_required_estimation
+
+        # the largest power-of-2 tile_size such that tile_size**2 < tile_pixels
+        tile_size = 2 ** (int(tile_pixels ** 0.5).bit_length() - 1)
+
+        return tile_size
 
     @torch.inference_mode()
     def _process(self, image):
-        image = torch.from_numpy(numpy.array(image).astype(numpy.float32) / 255.0)[None,]
-
-        in_img = image.movedim(-1, -3).to(self.modules_device)
+        in_img = (torch.from_numpy(
+            numpy.array(image).astype(numpy.float32) / 255.0)[None,]).movedim(-1, -3).to(self.modules_device)
 
         if self._model.input_channels == 4:
             # Fill 4th channel with 1.0s, this is definitely incorrect.
             # Not all models expect this to be an alpha channel
             _messages.log(
                 f'Appending 1.0 (opaque) alpha channel RGB -> RGBA for model '
-                f'architecture type "{_types.fullname(self._model.architecture)}" which requires 4 input '
-                f'channels. This is not guaranteed to be correct input data for this model architecture! '
-                'If you know how this model is supposed to work, please submit an issue.',
+                f'architecture type "{_types.fullname(self._model.architecture)}" used by model "{self._model_path}" '
+                'which requires 4 input channels. This is not guaranteed to be correct input data for '
+                'this model architecture! If you know how this model is supposed to work, please submit an issue.',
                 level=_messages.WARNING)
 
             in_img = torch.cat(
@@ -229,7 +294,7 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
                 dim=1)
         elif self._model.input_channels == 2:
             raise self.argument_error(
-                'Specified model requires a 2 channel image (non RGB or RGBA input required), '
+                f'Specified model "{self._model_path}" requires a 2 channel image (non RGB or RGBA input required), '
                 'conversion to this format internally is not supported currently for any model. '
                 'If you know how this model is supposed to work, please submit an issue.')
         elif self._model.input_channels == 1:
@@ -243,15 +308,19 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
                 # make it grayscale [1,1,W,H]
                 in_img = 0.299 * in_img[:, 0:1, :, :] + 0.587 * in_img[:, 1:2, :, :] + 0.114 * in_img[:, 2:3, :, :]
 
-        if self._model.tiling == spandrel.ModelTiling.INTERNAL or \
+        if self._tile == 'auto':
+            tile = self._auto_tile_size(image)
+            _messages.log(f'Automatically calculated optimal tile size: {tile}')
+        else:
+            tile = self._tile
+
+        if tile == 0 or self._model.tiling == spandrel.ModelTiling.INTERNAL or \
                 (self._model.tiling == spandrel.ModelTiling.DISCOURAGED and not self._force_tiling):
             # do not externally tile, there is either internal tiling, or the model
             # discourages doing so and the user has not forced it to occur
             return _model_output_to_pil(self._model(in_img))
 
         oom = True
-
-        tile = self._tile
 
         while oom:
             try:

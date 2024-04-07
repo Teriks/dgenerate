@@ -22,6 +22,8 @@
 import collections.abc
 import typing
 
+import torch.cuda
+
 import dgenerate.events as _event
 import dgenerate.image_process.arguments as _arguments
 import dgenerate.image_process.renderloop as _renderloop
@@ -155,6 +157,7 @@ def invoke_image_process_events(
             _imageprocessors.ImageProcessorArgumentError,
             _imageprocessors.ImageProcessorNotFoundError,
             _mediainput.FrameStartOutOfBounds,
+            torch.cuda.OutOfMemoryError,
             EnvironmentError) as e:
         if log_error:
             _messages.log(f'{help_name}: error: {str(e).strip()}', level=_messages.ERROR)

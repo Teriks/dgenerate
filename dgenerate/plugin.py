@@ -106,6 +106,30 @@ class PluginArg:
                                 f'hint "{self.type_string()}".')
                     return evaled
                 return base_type(value)
+
+            if base_type is typing.Union:
+                try:
+                    evaled = ast.literal_eval(value)
+                except ValueError:
+                    # string
+                    evaled = value
+
+                failures = 0
+                union_types = typing.get_args(self.type)
+                for t in union_types:
+                    if _types.is_type(t, type(evaled)):
+                        continue
+                    else:
+                        failures += 1
+
+                if failures == len(union_types):
+                    raise ValueError(
+                        f'Literal type "{evaled.__class__.__name__}" '
+                        f'does not match plugin argument "{self.name}" type '
+                        f'hint "{self.type_string()}".')
+
+                return evaled
+
             return value
         except SyntaxError as e:
             if base_type is typing.Any:

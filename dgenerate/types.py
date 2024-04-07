@@ -161,11 +161,12 @@ def is_type(hinted_type, comparison_type):
     :param comparison_type: The type to check for
     :return: bool
     """
-
     if hinted_type is comparison_type:
         return True
 
-    if typing.get_origin(hinted_type) is comparison_type:
+    origin = typing.get_origin(hinted_type)
+
+    if origin is comparison_type:
         return True
 
     return False
@@ -174,7 +175,7 @@ def is_type(hinted_type, comparison_type):
 def is_type_or_optional(hinted_type, comparison_type):
     """
     Check if a hinted type is equal to a comparison type, even if the type hint is
-    optional (compare the inside if necessary).
+    ``typing.Optional[]`` (compare the inside if necessary).
 
     :param hinted_type: The hinted type
     :param comparison_type: The type to check for
@@ -212,7 +213,7 @@ def get_type(hinted_type):
 
 def is_optional(hinted_type):
     """
-    Check if a hinted type is optional
+    Check if a hinted type is ``typing.Optional[]``
 
     :param hinted_type: The hinted type
     :return: bool
@@ -224,14 +225,14 @@ def is_optional(hinted_type):
         union_args = typing.get_args(hinted_type)
         if len(union_args) == 2:
             for a in union_args:
-                if is_type(a, None):
+                if is_type(a, type(None)):
                     return True
     return False
 
 
 def get_type_of_optional(hinted_type: type, get_origin=True):
     """
-    Get the first possible type for an optional type hint
+    Get the first possible type for an ``typing.Optional[]`` type hint
 
     :param get_origin: Should the returned type be the origin type?
     :param hinted_type: The hinted type to extract from
