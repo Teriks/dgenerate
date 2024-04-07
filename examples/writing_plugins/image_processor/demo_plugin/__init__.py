@@ -12,6 +12,12 @@ class FooBarImageProcessor(dgenerate.imageprocessors.ImageProcessor):
     # This static property defines what names this module can be invoked by
     NAMES = ['foobar']
 
+    # You can force a specific image alignment to be obeyed with this
+    # static member variable if necessary, the user will be warned when
+    # the image is forcefully aligned
+
+    # ALIGN = 64
+
     # All argument names will have _ replaced with - on the command line.
     # Argument signature correctness (missing arguments, unknown arguments) etc.
     # is verified by dgenerate, adding type hints will cause the argument values
