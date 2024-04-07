@@ -219,17 +219,21 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
             # Not all models expect this to be an alpha channel
             _messages.log(
                 f'Appending 1.0 (opaque) alpha channel RGB -> RGBA for model '
-                f'architecture "{_types.fullname(self._model.architecture)}" which requires 4 input '
+                f'architecture type "{_types.fullname(self._model.architecture)}" which requires 4 input '
                 f'channels. This is not guaranteed to be correct input data for this model architecture! '
-                'If you know how this model architecture is supposed to work, submit an issue.',
+                'If you know how this model is supposed to work, please submit an issue.',
                 level=_messages.WARNING)
 
             in_img = torch.cat(
                 (in_img, torch.ones(
                     1, 1, in_img.shape[2], in_img.shape[3]).to(self.modules_device)),
                 dim=1)
-
-        if self._model.input_channels == 1:
+        elif self._model.input_channels == 2:
+            raise self.argument_error(
+                'Specified model requires a 2 channel image (non RGB or RGBA input required), '
+                'conversion to this format internally is not supported currently for any model. '
+                'If you know how this model is supposed to work, please submit an issue.')
+        elif self._model.input_channels == 1:
             # noinspection PyTypeChecker
             # operator overloading, a tensor full of bool is returned
             if torch.all(in_img[:, 0, :, :] == in_img[:, 1, :, :]) \
