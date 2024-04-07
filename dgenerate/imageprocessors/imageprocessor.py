@@ -245,7 +245,7 @@ class ImageProcessor(_plugin.Plugin):
         _messages.debug_log(f'Finished Image Process - {self}.post_resize')
         return processed
 
-    def get_alignment(self) -> typing.Union[int, None]:
+    def get_alignment(self) -> typing.Optional[int]:
         """
         Get required input image alignment, which will be forcefully applied.
 
