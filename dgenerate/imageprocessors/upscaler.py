@@ -257,7 +257,7 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
         dtype_size = 4 if self._dtype is torch.float32 else 2
 
         model_size = sum(
-            p.numel() * 4 for p in self._model.model.parameters()
+            p.numel() * dtype_size for p in self._model.model.parameters()
         )
 
         # 80 percent of total free memory
