@@ -7,10 +7,10 @@
 \image_process "../../media/horse2.jpeg"
 -o horse2-leres-depth.png
 --processors leres
---align 1 {{ device_switch }}
+--align 64 {{ device_switch }}
 
 
 \image_process "../../media/horse2.jpeg"
 -o horse2-leres-depth-boost.png
 --processors leres;boost=True
---align 1 {{ device_switch }}
+--align 64 {{ device_switch }}
