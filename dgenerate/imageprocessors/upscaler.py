@@ -348,7 +348,11 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
 
                 oom = False
             except torch.cuda.OutOfMemoryError as e:
+                pbar.close()
                 tile //= 2
+                _messages.log(
+                    f'Reducing tile size to {tile} and retrying due to GPU running out of memory.',
+                    level=_messages.WARNING)
                 if tile < 128:
                     raise e
 
