@@ -245,6 +245,16 @@ class ImageProcessor(_plugin.Plugin):
         _messages.debug_log(f'Finished Image Process - {self}.post_resize')
         return processed
 
+    def get_alignment(self) -> typing.Union[int, None]:
+        """
+        Get required input image alignment, which will be forcefully applied.
+
+        If this function returns ``None``, specific alignment is not required and will never be forced.
+
+        :return: integer or ``None``
+        """
+        return None
+
     def process(self,
                 image: PIL.Image.Image,
                 resize_resolution: dgenerate.types.OptionalSize = None,
@@ -272,9 +282,11 @@ class ImageProcessor(_plugin.Plugin):
         :return: the processed image
         """
 
-        if hasattr(self.__class__, 'ALIGN'):
-            if align != self.__class__.ALIGN:
-                align = self.__class__.ALIGN
+        forced_alignment = self.get_alignment()
+        if forced_alignment is not None:
+            if align != forced_alignment or \
+                    not _image.is_aligned(image.size, align=forced_alignment):
+                align = forced_alignment
                 _messages.log(
                     f'"{self.loaded_by_name}" image processor requires an image alignment of {align}, '
                     f'this alignment has been forced to prevent an error.', level=_messages.WARNING)
