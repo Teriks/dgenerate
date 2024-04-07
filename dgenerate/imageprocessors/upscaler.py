@@ -32,7 +32,6 @@ import PIL.Image
 import torch
 import spandrel
 import spandrel_extra_arches
-import dgenerate.imageprocessors.leres as _leres
 
 spandrel.MAIN_REGISTRY.add(*spandrel_extra_arches.EXTRA_REGISTRY)
 
