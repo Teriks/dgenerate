@@ -272,6 +272,13 @@ class ImageProcessor(_plugin.Plugin):
         :return: the processed image
         """
 
+        if hasattr(self.__class__, 'ALIGN'):
+            if align != self.__class__.ALIGN:
+                align = self.__class__.ALIGN
+                _messages.log(
+                    f'"{self.loaded_by_name}" image processor requires an image alignment of {align}, '
+                    f'this alignment has been forced to prevent an error.', level=_messages.WARNING)
+
         # This is the actual size it will end
         # up being resized to by resize_image
         calculate_new_size = _image.resize_image_calc(old_size=image.size,
