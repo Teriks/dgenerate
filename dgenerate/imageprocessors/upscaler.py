@@ -82,9 +82,12 @@ def _tiled_scale(samples: torch.Tensor, upscale_model: spandrel.ImageModelDescri
     # Initialize the output tensor on CPU
     output = torch.empty((samples.shape[0], out_channels, scaled_height, scaled_width), device="cpu")
 
+    tile_blending = overlap > 0
+
     # Pre-calculate the feathering factor
-    feather = round(overlap * upscale_amount)
-    feather_factor = 1.0 / feather
+    if tile_blending:
+        feather = round(overlap * upscale_amount)
+        feather_factor = 1.0 / feather
 
     # Iterate over each sample
     for b in range(samples.shape[0]):
@@ -97,14 +100,16 @@ def _tiled_scale(samples: torch.Tensor, upscale_model: spandrel.ImageModelDescri
             for x in range(0, s.shape[3], tile_x - overlap):
                 s_in = s[:, :, y:y + tile_y, x:x + tile_x]
                 ps = upscale_model(s_in).cpu()
-                mask = torch.ones_like(ps)
 
-                # Apply feathering to the mask
-                for t in range(feather):
-                    mask[:, :, t:1 + t, :] *= (feather_factor * (t + 1))
-                    mask[:, :, -1 - t: -t, :] *= (feather_factor * (t + 1))
-                    mask[:, :, :, t:1 + t] *= (feather_factor * (t + 1))
-                    mask[:, :, :, -1 - t: -t] *= (feather_factor * (t + 1))
+                if tile_blending:
+                    mask = torch.ones_like(ps)
+
+                    # Apply feathering to the mask
+                    for t in range(feather):
+                        mask[:, :, t:1 + t, :] *= (feather_factor * (t + 1))
+                        mask[:, :, -1 - t: -t, :] *= (feather_factor * (t + 1))
+                        mask[:, :, :, t:1 + t] *= (feather_factor * (t + 1))
+                        mask[:, :, :, -1 - t: -t] *= (feather_factor * (t + 1))
 
                 # Calculate the indices for the output tensor
                 y_start = round(y * upscale_amount)
@@ -113,15 +118,21 @@ def _tiled_scale(samples: torch.Tensor, upscale_model: spandrel.ImageModelDescri
                 x_end = x_start + round(tile_x * upscale_amount)
 
                 # Update the output tensor
-                out[:, :, y_start:y_end, x_start:x_end] += ps * mask
-                out_div[:, :, y_start:y_end, x_start:x_end] += mask
+                if tile_blending:
+                    out[:, :, y_start:y_end, x_start:x_end] += ps * mask
+                    out_div[:, :, y_start:y_end, x_start:x_end] += mask
+                else:
+                    out[:, :, y_start:y_end, x_start:x_end] += ps
 
                 # Update progress bar if provided
                 if pbar is not None:
                     pbar.update(1)
 
         # Divide the accumulated output by the mask to get the final result
-        output[b:b + 1] = out / out_div
+        if tile_blending:
+            output[b:b + 1] = out / out_div
+        else:
+            output[b:b + 1] = out
 
     return output
 
