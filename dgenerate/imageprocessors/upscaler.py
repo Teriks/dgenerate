@@ -21,7 +21,6 @@
 import typing
 
 import PIL.Image
-import numpy
 import torchvision
 import tqdm.auto
 
@@ -136,11 +135,6 @@ def _tiled_scale(samples: torch.Tensor, upscale_model: spandrel.ImageModelDescri
             output[b:b + 1] = out
 
     return output
-
-
-def _model_output_to_pil(tensor):
-    tensor = torch.clamp(tensor.movedim(-3, -1), min=0, max=1.0)
-    return PIL.Image.fromarray(numpy.clip(255. * tensor[0].cpu().numpy(), 0, 255).astype(numpy.uint8))
 
 
 class UpscalerProcessor(_imageprocessor.ImageProcessor):
@@ -369,6 +363,18 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
                     raise e
 
         return torchvision.transforms.ToPILImage()(output.squeeze(0))
+
+    def __str__(self):
+        args = [
+            ('model', self._model),
+            ('tile', self._tile),
+            ('overlap', self._overlap),
+            ('force_tiling', self._force_tiling),
+            ('dtype', self._dtype),
+            ('pre_resize', self._pre_resize)
+        ]
+
+        return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize) -> PIL.Image.Image:
         if self._pre_resize:

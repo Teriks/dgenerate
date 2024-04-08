@@ -356,6 +356,7 @@ def _disable_to(module):
         pass
 
     module.to = dummy
+    _messages.debug_log(f'Disabled .to() on meta tensor: {_types.fullname(module)}')
 
 
 def enable_sequential_cpu_offload(pipeline: diffusers.DiffusionPipeline,
@@ -500,6 +501,7 @@ def pipeline_to(pipeline, device: typing.Union[torch.device, str, None]):
 
         if current_device.type == 'meta':
             _disable_to(value)
+            continue
 
         if current_device == to_device:
             continue
