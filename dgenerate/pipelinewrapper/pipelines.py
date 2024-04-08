@@ -252,7 +252,7 @@ def estimate_pipeline_memory_use(
 
 
 def set_vae_slicing_tiling(pipeline: typing.Union[diffusers.DiffusionPipeline,
-                                                  diffusers.FlaxDiffusionPipeline],
+diffusers.FlaxDiffusionPipeline],
                            vae_tiling: bool,
                            vae_slicing: bool):
     """
@@ -352,6 +352,13 @@ def is_model_cpu_offload_enabled(module: typing.Union[diffusers.DiffusionPipelin
     return hasattr(module, 'DGENERATE_MODEL_CPU_OFFLOAD') and bool(module.DGENERATE_MODEL_CPU_OFFLOAD)
 
 
+def _disable_to(module):
+    def dummy(*args, **kwargs):
+        pass
+
+    module.to = dummy
+
+
 def enable_sequential_cpu_offload(pipeline: diffusers.DiffusionPipeline,
                                   device: typing.Union[torch.device, str] = "cuda"):
     """
@@ -369,6 +376,13 @@ def enable_sequential_cpu_offload(pipeline: diffusers.DiffusionPipeline,
         elif not is_sequential_cpu_offload_enabled(model):
             _set_sequential_cpu_offload_flag(model, True)
             accelerate.cpu_offload(model, torch_device, offload_buffers=len(model._parameters) > 0)
+            # dgenerate allows / encourages the sharing of pipeline modules between
+            # different pipelines. other pipelines will not know this tensor is a meta
+            # tensor when the original pipeline made it so, and will try
+            # to move it to a device, this causes errors. they do not actually
+            # need to be moved anywhere manually and they can still function in
+            # the pipeline so just disable the function
+            _disable_to(model)
 
 
 def enable_model_cpu_offload(pipeline: diffusers.DiffusionPipeline,
