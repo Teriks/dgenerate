@@ -251,8 +251,7 @@ def estimate_pipeline_memory_use(
     return usage
 
 
-def set_vae_slicing_tiling(pipeline: typing.Union[diffusers.DiffusionPipeline,
-diffusers.FlaxDiffusionPipeline],
+def set_vae_slicing_tiling(pipeline: typing.Union[diffusers.DiffusionPipeline, diffusers.FlaxDiffusionPipeline],
                            vae_tiling: bool,
                            vae_slicing: bool):
     """
