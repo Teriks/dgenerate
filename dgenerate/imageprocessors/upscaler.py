@@ -22,6 +22,7 @@ import typing
 
 import PIL.Image
 import numpy
+import torchvision
 import tqdm.auto
 
 import dgenerate.imageprocessors.imageprocessor as _imageprocessor
@@ -286,8 +287,7 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
 
     @torch.inference_mode()
     def _process(self, image):
-        in_img = (torch.from_numpy(
-            numpy.array(image).astype(numpy.float32) / 255.0)[None,]).movedim(-1, -3).to(self.modules_device)
+        in_img = torchvision.transforms.ToTensor()(image).unsqueeze(0).to(self.modules_device)
 
         if self._model.input_channels == 4:
             # Fill 4th channel with 1.0s, this is definitely incorrect.
@@ -334,7 +334,7 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
                 (self._model.tiling == spandrel.ModelTiling.DISCOURAGED and not self._force_tiling):
             # do not externally tile, there is either internal tiling, or the model
             # discourages doing so and the user has not forced it to occur
-            return _model_output_to_pil(self._model(in_img))
+            return torchvision.transforms.ToPILImage()(self._model(in_img).squeeze(0))
 
         oom = True
 
@@ -349,13 +349,14 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
 
                 pbar = tqdm.auto.tqdm(total=steps)
 
-                s = _tiled_scale(in_img,
-                                 self._model,
-                                 tile_x=tile,
-                                 tile_y=tile,
-                                 overlap=self._overlap,
-                                 upscale_amount=self._model.scale,
-                                 pbar=pbar)
+                output = _tiled_scale(
+                    in_img,
+                    self._model,
+                    tile_x=tile,
+                    tile_y=tile,
+                    overlap=self._overlap,
+                    upscale_amount=self._model.scale,
+                    pbar=pbar)
 
                 oom = False
             except torch.cuda.OutOfMemoryError as e:
@@ -367,7 +368,7 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
                 if tile < 128:
                     raise e
 
-        return _model_output_to_pil(s)
+        return torchvision.transforms.ToPILImage()(output.squeeze(0))
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize) -> PIL.Image.Image:
         if self._pre_resize:
