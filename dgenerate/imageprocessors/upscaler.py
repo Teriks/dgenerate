@@ -170,7 +170,7 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
     case that the model discourages its use, using it may result in substandard image output.
 
     The "dtype" argument can be used to specify the datatype to use to for the model in memory, it can be
-    either "float32" or "float16". using float16 will result in a smaller memory footprint if supported.
+    either "float32" or "float16". Using "float16" will result in a smaller memory footprint if supported.
 
     The "pre-resize" argument is a boolean value determining if the processing should take place before or
     after the image is resized by dgenerate.
