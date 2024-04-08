@@ -375,13 +375,8 @@ def enable_sequential_cpu_offload(pipeline: diffusers.DiffusionPipeline,
         elif not is_sequential_cpu_offload_enabled(model):
             _set_sequential_cpu_offload_flag(model, True)
             accelerate.cpu_offload(model, torch_device, offload_buffers=len(model._parameters) > 0)
-            # dgenerate allows / encourages the sharing of pipeline modules between
-            # different pipelines. other pipelines will not know this tensor is a meta
-            # tensor when the original pipeline made it so, and will try
-            # to move it to a device, this causes errors. they do not actually
-            # need to be moved anywhere manually and they can still function in
-            # the pipeline so just disable the function
-            _disable_to(model)
+
+        _disable_to(model)
 
 
 def enable_model_cpu_offload(pipeline: diffusers.DiffusionPipeline,
@@ -503,7 +498,10 @@ def pipeline_to(pipeline, device: typing.Union[torch.device, str, None]):
 
         current_device = get_torch_device(value)
 
-        if current_device.type == 'meta' or current_device == to_device:
+        if current_device.type == 'meta':
+            _disable_to(value)
+
+        if current_device == to_device:
             continue
 
         if is_model_cpu_offload_enabled(value) and to_device.type != 'cpu':
