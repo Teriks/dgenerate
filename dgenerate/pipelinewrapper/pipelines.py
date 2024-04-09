@@ -1041,11 +1041,12 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
 
             parsed_control_net_uris.append(parsed_control_net_uri)
 
-            new_net = parsed_control_net_uri.load(use_auth_token=auth_token,
-                                                  dtype_fallback=dtype,
-                                                  local_files_only=local_files_only,
-                                                  sequential_cpu_offload_member=sequential_cpu_offload,
-                                                  model_cpu_offload_member=model_cpu_offload)
+            new_net = parsed_control_net_uri.load(
+                use_auth_token=auth_token,
+                dtype_fallback=dtype,
+                local_files_only=local_files_only,
+                sequential_cpu_offload_member=sequential_cpu_offload,
+                model_cpu_offload_member=model_cpu_offload)
 
             _messages.debug_log(lambda:
                                 f'Added Torch ControlNet: "{control_net_uri}" '
@@ -1075,23 +1076,25 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     if _hfutil.is_single_file_model_load(model_path):
         if subfolder is not None:
             raise UnsupportedPipelineConfigError('Single file model loads do not support the subfolder option.')
-        pipeline = pipeline_class.from_single_file(model_path,
-                                                   token=auth_token,
-                                                   revision=revision,
-                                                   variant=variant,
-                                                   torch_dtype=torch_dtype,
-                                                   use_safe_tensors=model_path.endswith('.safetensors'),
-                                                   local_files_only=local_files_only,
-                                                   **creation_kwargs)
+        pipeline = pipeline_class.from_single_file(
+            model_path,
+            token=auth_token,
+            revision=revision,
+            variant=variant,
+            torch_dtype=torch_dtype,
+            use_safe_tensors=model_path.endswith('.safetensors'),
+            local_files_only=local_files_only,
+            **creation_kwargs)
     else:
-        pipeline = pipeline_class.from_pretrained(model_path,
-                                                  token=auth_token,
-                                                  revision=revision,
-                                                  variant=variant,
-                                                  torch_dtype=torch_dtype,
-                                                  subfolder=subfolder,
-                                                  local_files_only=local_files_only,
-                                                  **creation_kwargs)
+        pipeline = pipeline_class.from_pretrained(
+            model_path,
+            token=auth_token,
+            revision=revision,
+            variant=variant,
+            torch_dtype=torch_dtype,
+            subfolder=subfolder,
+            local_files_only=local_files_only,
+            **creation_kwargs)
 
     # Select Scheduler
 
@@ -1456,13 +1459,15 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         creation_kwargs['safety_checker'] = None
 
     try:
-        pipeline, params = pipeline_class.from_pretrained(model_path,
-                                                          revision=revision,
-                                                          dtype=flax_dtype,
-                                                          subfolder=subfolder,
-                                                          token=auth_token,
-                                                          local_files_only=local_files_only,
-                                                          **creation_kwargs)
+        pipeline, params = pipeline_class.from_pretrained(
+            model_path,
+            revision=revision,
+            dtype=flax_dtype,
+            subfolder=subfolder,
+            token=auth_token,
+            local_files_only=local_files_only,
+            **creation_kwargs)
+
     except ValueError as e:
         if 'feature_extractor' not in str(e):
             raise e
@@ -1472,13 +1477,15 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         if not feature_extractor_override:
             creation_kwargs['feature_extractor'] = None
 
-        pipeline, params = pipeline_class.from_pretrained(model_path,
-                                                          revision=revision,
-                                                          dtype=flax_dtype,
-                                                          subfolder=subfolder,
-                                                          token=auth_token,
-                                                          local_files_only=local_files_only,
-                                                          **creation_kwargs)
+        pipeline, params = pipeline_class.from_pretrained(
+            model_path,
+            revision=revision,
+            dtype=flax_dtype,
+            subfolder=subfolder,
+            token=auth_token,
+            local_files_only=local_files_only,
+            **creation_kwargs)
+
     if unet_params is not None:
         params['unet'] = unet_params
 
