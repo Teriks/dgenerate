@@ -244,13 +244,14 @@ class FlaxControlNetUri:
             dtype_fallback if self.dtype is None else self.dtype)
 
         new_net: diffusers.FlaxControlNetModel = \
-            diffusers.FlaxControlNetModel.from_pretrained(self.model,
-                                                          revision=self.revision,
-                                                          subfolder=self.subfolder,
-                                                          dtype=flax_dtype,
-                                                          from_pt=self.from_torch,
-                                                          use_auth_token=use_auth_token,
-                                                          local_files_only=local_files_only)
+            diffusers.FlaxControlNetModel.from_pretrained(
+                self.model,
+                revision=self.revision,
+                subfolder=self.subfolder,
+                dtype=flax_dtype,
+                from_pt=self.from_torch,
+                token=use_auth_token,
+                local_files_only=local_files_only)
 
         _messages.debug_log('Estimated Flax ControlNet Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_usage))
@@ -480,11 +481,12 @@ class TorchControlNetUri:
                 new_control_net_size=estimated_memory_usage)
 
             new_net: diffusers.ControlNetModel = \
-                diffusers.ControlNetModel.from_single_file(self.model,
-                                                           revision=self.revision,
-                                                           torch_dtype=torch_dtype,
-                                                           use_auth_token=use_auth_token,
-                                                           local_files_only=local_files_only)
+                diffusers.ControlNetModel.from_single_file(
+                    self.model,
+                    revision=self.revision,
+                    torch_dtype=torch_dtype,
+                    token=use_auth_token,
+                    local_files_only=local_files_only)
         else:
 
             estimated_memory_usage = _hfutil.estimate_model_memory_use(
@@ -500,13 +502,14 @@ class TorchControlNetUri:
                 new_control_net_size=estimated_memory_usage)
 
             new_net: diffusers.ControlNetModel = \
-                diffusers.ControlNetModel.from_pretrained(self.model,
-                                                          revision=self.revision,
-                                                          variant=self.variant,
-                                                          subfolder=self.subfolder,
-                                                          torch_dtype=torch_dtype,
-                                                          use_auth_token=use_auth_token,
-                                                          local_files_only=local_files_only)
+                diffusers.ControlNetModel.from_pretrained(
+                    self.model,
+                    revision=self.revision,
+                    variant=self.variant,
+                    subfolder=self.subfolder,
+                    torch_dtype=torch_dtype,
+                    token=use_auth_token,
+                    local_files_only=local_files_only)
 
         _messages.debug_log('Estimated Torch ControlNet Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_usage))
@@ -782,17 +785,15 @@ class TorchVAEUri:
             raise InvalidVaeUriError(
                 f'invalid dtype string, must be one of: {_textprocessing.oxford_comma(_enums.supported_data_type_strings(), "or")}')
 
-
-
     def load(self,
              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
              use_auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
              sequential_cpu_offload_member: bool = False,
              model_cpu_offload_member: bool = False) -> typing.Union[diffusers.AutoencoderKL,
-                                                                     diffusers.AsymmetricAutoencoderKL,
-                                                                     diffusers.AutoencoderTiny,
-                                                                     diffusers.ConsistencyDecoderVAE]:
+    diffusers.AsymmetricAutoencoderKL,
+    diffusers.AutoencoderTiny,
+    diffusers.ConsistencyDecoderVAE]:
         """
         Load a VAE of type :py:class:`diffusers.AutoencoderKL`, :py:class:`diffusers.AsymmetricAutoencoderKL`,
         :py:class:`diffusers.AutoencoderKLTemporalDecoder`, or :py:class:`diffusers.AutoencoderTiny` from this URI
@@ -835,9 +836,9 @@ class TorchVAEUri:
               local_files_only: bool = False,
               sequential_cpu_offload_member: bool = False,
               model_cpu_offload_member: bool = False) -> typing.Union[diffusers.AutoencoderKL,
-                                                                      diffusers.AsymmetricAutoencoderKL,
-                                                                      diffusers.AutoencoderTiny,
-                                                                      diffusers.ConsistencyDecoderVAE]:
+    diffusers.AsymmetricAutoencoderKL,
+    diffusers.AutoencoderTiny,
+    diffusers.ConsistencyDecoderVAE]:
 
         if sequential_cpu_offload_member and model_cpu_offload_member:
             # these are used for cache differentiation only
@@ -865,11 +866,13 @@ class TorchVAEUri:
             if encoder is diffusers.AutoencoderKL:
                 # There is a bug in their cast
                 vae = encoder.from_single_file(self.model,
+                                               token=use_auth_token,
                                                revision=self.revision,
                                                local_files_only=local_files_only) \
                     .to(dtype=torch_dtype, non_blocking=False)
             else:
                 vae = encoder.from_single_file(self.model,
+                                               token=use_auth_token,
                                                revision=self.revision,
                                                torch_dtype=torch_dtype,
                                                local_files_only=local_files_only)
@@ -887,13 +890,14 @@ class TorchVAEUri:
 
             _cache.enforce_vae_cache_constraints(new_vae_size=estimated_memory_use)
 
-            vae = encoder.from_pretrained(self.model,
-                                          revision=self.revision,
-                                          variant=self.variant,
-                                          torch_dtype=torch_dtype,
-                                          subfolder=self.subfolder,
-                                          use_auth_token=use_auth_token,
-                                          local_files_only=local_files_only)
+            vae = encoder.from_pretrained(
+                self.model,
+                revision=self.revision,
+                variant=self.variant,
+                torch_dtype=torch_dtype,
+                subfolder=self.subfolder,
+                token=use_auth_token,
+                local_files_only=local_files_only)
 
         _messages.debug_log('Estimated Torch VAE Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_use))
@@ -1090,13 +1094,14 @@ class TorchUNetUri:
 
         _cache.enforce_unet_cache_constraints(new_unet_size=estimated_memory_use)
 
-        unet = diffusers.UNet2DConditionModel.from_pretrained(path,
-                                                              revision=self.revision,
-                                                              variant=variant,
-                                                              torch_dtype=torch_dtype,
-                                                              subfolder=self.subfolder,
-                                                              use_auth_token=use_auth_token,
-                                                              local_files_only=local_files_only)
+        unet = diffusers.UNet2DConditionModel.from_pretrained(
+            path,
+            revision=self.revision,
+            variant=variant,
+            torch_dtype=torch_dtype,
+            subfolder=self.subfolder,
+            token=use_auth_token,
+            local_files_only=local_files_only)
 
         _messages.debug_log('Estimated Torch UNet Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_use))
@@ -1283,11 +1288,12 @@ class FlaxVAEUri:
 
             _cache.enforce_vae_cache_constraints(new_vae_size=estimated_memory_use)
 
-            vae = encoder.from_single_file(self.model,
-                                           revision=self.revision,
-                                           dtype=flax_dtype,
-                                           use_auth_token=use_auth_token,
-                                           local_files_only=local_files_only)
+            vae = encoder.from_single_file(
+                self.model,
+                revision=self.revision,
+                dtype=flax_dtype,
+                token=use_auth_token,
+                local_files_only=local_files_only)
         else:
 
             estimated_memory_use = _hfutil.estimate_model_memory_use(
@@ -1301,12 +1307,13 @@ class FlaxVAEUri:
 
             _cache.enforce_vae_cache_constraints(new_vae_size=estimated_memory_use)
 
-            vae = encoder.from_pretrained(self.model,
-                                          revision=self.revision,
-                                          dtype=flax_dtype,
-                                          subfolder=self.subfolder,
-                                          use_auth_token=use_auth_token,
-                                          local_files_only=local_files_only)
+            vae = encoder.from_pretrained(
+                self.model,
+                revision=self.revision,
+                dtype=flax_dtype,
+                subfolder=self.subfolder,
+                token=use_auth_token,
+                local_files_only=local_files_only)
 
         _messages.debug_log('Estimated Flax VAE Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_use))
@@ -1463,12 +1470,13 @@ class FlaxUNetUri:
 
         _cache.enforce_unet_cache_constraints(new_unet_size=estimated_memory_use)
 
-        unet = diffusers.FlaxUNet2DConditionModel.from_pretrained(self.model,
-                                                                  revision=self.revision,
-                                                                  dtype=flax_dtype,
-                                                                  subfolder=self.subfolder,
-                                                                  use_auth_token=use_auth_token,
-                                                                  local_files_only=local_files_only)
+        unet = diffusers.FlaxUNet2DConditionModel.from_pretrained(
+            self.model,
+            revision=self.revision,
+            dtype=flax_dtype,
+            subfolder=self.subfolder,
+            token=use_auth_token,
+            local_files_only=local_files_only)
 
         _messages.debug_log('Estimated Flax UNet Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_use))
@@ -1594,11 +1602,12 @@ class LoRAUri:
                           use_auth_token: _types.OptionalString = None,
                           local_files_only: bool = False):
 
-        extra_args = {k: v for k, v in locals().items() if k not in {'self', 'pipeline'}}
+        
 
         if hasattr(pipeline, 'load_lora_weights'):
+            debug_args = {k: v for k, v in locals().items() if k not in {'self', 'pipeline'}}
             _messages.debug_log('pipeline.load_lora_weights('
-                                + str(_types.get_public_attributes(self) | extra_args) + ')')
+                                + str(_types.get_public_attributes(self) | debug_args) + ')')
 
             load_path = self.model
 
@@ -1633,7 +1642,8 @@ class LoRAUri:
                                        revision=self.revision,
                                        subfolder=self.subfolder,
                                        weight_name=self.weight_name,
-                                       **extra_args)
+                                       local_files_only=local_files_only,
+                                       token=use_auth_token)
 
             pipeline.fuse_lora(lora_scale=self.scale)
 
@@ -1738,17 +1748,21 @@ class TextualInversionUri:
                           use_auth_token: _types.OptionalString = None,
                           local_files_only: bool = False):
 
-        extra_args = {k: v for k, v in locals().items() if k not in {'self', 'pipeline'}}
-
         if hasattr(pipeline, 'load_textual_inversion'):
-            _messages.debug_log('pipeline.load_textual_inversion(' +
-                                str(_types.get_public_attributes(self) | extra_args) + ')')
+            debug_args = {k: v for k, v in locals().items() if k not in {'self', 'pipeline'}}
 
+            _messages.debug_log('pipeline.load_textual_inversion(' +
+                                str(_types.get_public_attributes(self) | debug_args) + ')')
+
+            # this is tricky because there is stupidly a positional argument named 'token'
+            # as well as an accepted kwargs value with the key 'token'
             pipeline.load_textual_inversion(self.model,
                                             revision=self.revision,
                                             subfolder=self.subfolder,
                                             weight_name=self.weight_name,
-                                            **extra_args)
+                                            local_files_only=local_files_only,
+                                            kwargs={'token': use_auth_token})
+
             _messages.debug_log(f'Added Textual Inversion: "{self}" to pipeline: "{pipeline.__class__.__name__}"')
 
     @staticmethod
