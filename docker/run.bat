@@ -1,3 +1,4 @@
+@echo off
 
 mkdir docker_cache 2> NUL
 mkdir docker_cache\huggingface 2> NUL
