@@ -1076,6 +1076,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         if subfolder is not None:
             raise UnsupportedPipelineConfigError('Single file model loads do not support the subfolder option.')
         pipeline = pipeline_class.from_single_file(model_path,
+                                                   token=auth_token,
                                                    revision=revision,
                                                    variant=variant,
                                                    torch_dtype=torch_dtype,
@@ -1084,11 +1085,11 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                                                    **creation_kwargs)
     else:
         pipeline = pipeline_class.from_pretrained(model_path,
+                                                  token=auth_token,
                                                   revision=revision,
                                                   variant=variant,
                                                   torch_dtype=torch_dtype,
                                                   subfolder=subfolder,
-                                                  use_auth_token=auth_token,
                                                   local_files_only=local_files_only,
                                                   **creation_kwargs)
 
@@ -1459,7 +1460,7 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                                                           revision=revision,
                                                           dtype=flax_dtype,
                                                           subfolder=subfolder,
-                                                          use_auth_token=auth_token,
+                                                          token=auth_token,
                                                           local_files_only=local_files_only,
                                                           **creation_kwargs)
     except ValueError as e:
@@ -1475,7 +1476,7 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                                                           revision=revision,
                                                           dtype=flax_dtype,
                                                           subfolder=subfolder,
-                                                          use_auth_token=auth_token,
+                                                          token=auth_token,
                                                           local_files_only=local_files_only,
                                                           **creation_kwargs)
     if unet_params is not None:
