@@ -1075,7 +1075,9 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
 
     if _hfutil.is_single_file_model_load(model_path):
         if subfolder is not None:
-            raise UnsupportedPipelineConfigError('Single file model loads do not support the subfolder option.')
+            raise UnsupportedPipelineConfigError(
+                'Single file model loads do not support the subfolder option.')
+
         pipeline = pipeline_class.from_single_file(
             model_path,
             token=auth_token,
