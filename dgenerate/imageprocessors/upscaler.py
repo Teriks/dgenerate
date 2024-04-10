@@ -366,7 +366,7 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
 
     def __str__(self):
         args = [
-            ('model', self._model),
+            ('model', self._model_path),
             ('tile', self._tile),
             ('overlap', self._overlap),
             ('force_tiling', self._force_tiling),
