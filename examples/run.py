@@ -89,7 +89,7 @@ for config in configs:
         _, ext = os.path.splitext(config)
         if ext == '.txt':
             try:
-                if _batchprocess is not None:
+                if _batchprocess is not None and not known_args.subprocess_only:
                     log('ENTERING DIRECTORY:', dirname)
                     os.chdir(dirname)
                     content = f.read()

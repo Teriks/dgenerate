@@ -15,7 +15,7 @@ call venv\Scripts\activate.bat
 
 pushd ".."
 set DGENERATE_FORCE_LOCKFILE_REQUIRES=1
-pip install .[win-installer] --extra-index-url https://download.pytorch.org/whl/cu118/
+pip install .[win-installer] --extra-index-url https://download.pytorch.org/whl/cu121/
 popd
 
 pyinstaller dgenerate.spec --clean

@@ -20,12 +20,12 @@ requests = "^2.31.0"
 av = "^12.0.0"
 pillow = "^10.3.0"
 jinja2 = "^3.1.3"
-torch = { version = "2.1.1+cu118", source = "pytorch" }
-torchvision = {version = "0.16.1+cu118", source = "pytorch"}
+torch = { version = "2.2.2+cu121", source = "pytorch" }
+torchvision = {version = "0.17.2+cu121", source = "pytorch"}
 torchsde = "^0.2.6"
 fake-useragent = "1.4.0"
-flax = { version = "0.7.4", optional = true }
-jax = { version = "0.4.18", optional = true, extras = ["cuda11_pip"] }
+flax = { version = "0.8.2", optional = true }
+jax = { version = "0.4.26", optional = true, extras = ["cuda12_pip"] }
 opencv-python-headless = "^4.9.0.80"
 portalocker = "^2.8.2"
 psutil = "^5.9.8"
@@ -55,7 +55,7 @@ build-backend = "poetry.core.masonry.api"
 
 [[tool.poetry.source]]
 name = "pytorch"
-url = "https://download.pytorch.org/whl/cu118/"
+url = "https://download.pytorch.org/whl/cu121/"
 priority = "explicit"
 
 [[tool.poetry.source]]

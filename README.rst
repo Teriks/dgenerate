@@ -32,7 +32,7 @@ animated image using any of its built in image processors, which include various
 depth detectors, segment generation, normal map generation, pose detection, non-diffusion based AI upscaling,
 and more.
 
-This software requires an Nvidia GPU supporting CUDA 11.8+, CPU rendering is possible for
+This software requires an Nvidia GPU supporting CUDA 12.1+, CPU rendering is possible for
 some operations but extraordinarily slow.
 
 For library documentation visit `readthedocs <http://dgenerate.readthedocs.io/en/v3.3.0/>`_.
@@ -836,16 +836,16 @@ Install dgenerate:
 .. code-block:: bash
 
     pipx install dgenerate ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu121/"
 
     # If you want a specific version
 
     pipx install dgenerate==3.3.0 ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu121/"
 
     # You can install without pipx into your own environment like so
 
-    pip install dgenerate==3.3.0 --extra-index-url https://download.pytorch.org/whl/cu118/
+    pip install dgenerate==3.3.0 --extra-index-url https://download.pytorch.org/whl/cu121/
 
 
 It is recommended to install dgenerate with pipx if you are just intending
@@ -862,7 +862,7 @@ a cloned repository like this:
 
     # Install with pip into the environment
 
-    pip install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu118/
+    pip install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu121/
 
 
 Run **dgenerate** to generate images:
@@ -952,32 +952,32 @@ Install dgenerate
 .. code-block:: bash
 
     pipx install dgenerate \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu121/"
 
     # With flax/jax support
 
     pipx install dgenerate[flax] \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/ \
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu121/ \
     -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html"
 
     # If you want a specific version
 
     pipx install dgenerate==3.3.0 \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu121/"
 
     # Specific version with flax/jax support
 
     pipx install dgenerate[flax]==3.3.0 \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu118/ \
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu121/ \
     -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html"
 
     # You can install without pipx into your own environment like so
 
-    pip3 install dgenerate==3.3.0 --extra-index-url https://download.pytorch.org/whl/cu118/
+    pip3 install dgenerate==3.3.0 --extra-index-url https://download.pytorch.org/whl/cu121/
 
     # Or with flax
 
-    pip3 install dgenerate[flax]==3.3.0 --extra-index-url https://download.pytorch.org/whl/cu118/ \
+    pip3 install dgenerate[flax]==3.3.0 --extra-index-url https://download.pytorch.org/whl/cu121/ \
     -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 
@@ -995,11 +995,11 @@ a cloned repository like this:
 
     # Install with pip into the environment
 
-    pip3 install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu118/
+    pip3 install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu121/
 
     # With flax if you want
 
-    pip3 install --editable .[dev,flax] --extra-index-url https://download.pytorch.org/whl/cu118/ \
+    pip3 install --editable .[dev,flax] --extra-index-url https://download.pytorch.org/whl/cu121/ \
     -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 
