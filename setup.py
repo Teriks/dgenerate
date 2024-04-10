@@ -234,7 +234,7 @@ if __name__ != 'setup_as_library':
     if 'READTHEDOCS' in os.environ:
         for idx, requires in enumerate(pyproject_requirements):
             # no cuda
-            pyproject_requirements[idx] = requires.replace('+cu118', '')
+            pyproject_requirements[idx] = requires.replace('+cu121', '')
 
     lockfile_flax_requirements = [name + spec for name, spec in
                                   get_poetry_lockfile_as_pip_requires(optionals=True).items()]
