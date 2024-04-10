@@ -222,8 +222,10 @@ if __name__ != 'setup_as_library':
     exclude = {'triton'} if 'linux' not in sys.platform else set()
 
     if force_lockfile_requires:
+        # nvidia- packages not actually required on windows
         pyproject_requirements = [name + spec for name, spec in
-                                  get_poetry_lockfile_as_pip_requires(exclude=exclude).items()]
+                                  get_poetry_lockfile_as_pip_requires(exclude=exclude).items()
+                                  if not (name.startswith('nvidia-') and sys.platform.startswith('win'))]
     else:
         pyproject_requirements = [name + spec for name, spec in
                                   get_poetry_pyproject_as_pip_requires(
