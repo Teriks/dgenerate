@@ -7,4 +7,4 @@ stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
 --inference-steps 40
 --gen-seeds 2
 --output-size 1024
---prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork"
+--prompts "an image of a shiba inu, donning a spacesuit and helmet"
