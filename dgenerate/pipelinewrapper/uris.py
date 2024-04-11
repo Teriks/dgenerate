@@ -37,6 +37,9 @@ from dgenerate.memoize import memoize as _memoize
 _sdxl_refiner_uri_parser = _textprocessing.ConceptUriParser('SDXL Refiner',
                                                             ['revision', 'variant', 'subfolder', 'dtype'])
 
+_sd_cascade_decoder_uri_parser = _textprocessing.ConceptUriParser('Stable Cascade decoder',
+                                                                  ['revision', 'variant', 'subfolder', 'dtype'])
+
 _torch_vae_uri_parser = _textprocessing.ConceptUriParser('VAE',
                                                          ['model', 'revision', 'variant', 'subfolder', 'dtype'])
 
@@ -72,6 +75,13 @@ class InvalidModelUriError(Exception):
 class InvalidSDXLRefinerUriError(InvalidModelUriError):
     """
     Error in ``--sdxl-refiner`` uri
+    """
+    pass
+
+
+class InvalidSDCascadeDecoderUriError(InvalidModelUriError):
+    """
+    Error in ``--sd-cascade-decoder`` uri
     """
     pass
 
@@ -657,7 +667,7 @@ class SDXLRefinerUri:
 
         :raise InvalidSDXLRefinerUriError:
 
-        :return: :py:class:`.SDXLRefinerPath`
+        :return: :py:class:`.SDXLRefinerUri`
         """
         try:
             r = _sdxl_refiner_uri_parser.parse(uri)
@@ -678,6 +688,101 @@ class SDXLRefinerUri:
                 subfolder=r.args.get('subfolder', None))
         except _textprocessing.ConceptUriParseError as e:
             raise InvalidSDXLRefinerUriError(e)
+
+
+class SDCascadeDecoderUri:
+    """
+    Representation of ``--sd-cascade-decoder`` uri
+    """
+
+    @property
+    def model(self) -> str:
+        """
+        Model path, huggingface slug
+        """
+        return self._model
+
+    @property
+    def revision(self) -> _types.OptionalString:
+        """
+        Model repo revision
+        """
+        return self._revision
+
+    @property
+    def variant(self) -> _types.OptionalString:
+        """
+        Model repo revision
+        """
+        return self._variant
+
+    @property
+    def subfolder(self) -> _types.OptionalPath:
+        """
+        Model repo subfolder
+        """
+        return self._subfolder
+
+    @property
+    def dtype(self) -> typing.Optional[_enums.DataType]:
+        """
+        Model dtype (precision)
+        """
+        return self._dtype
+
+    def __init__(self,
+                 model: str,
+                 revision: _types.OptionalString = None,
+                 variant: _types.OptionalString = None,
+                 subfolder: _types.OptionalPath = None,
+                 dtype: typing.Union[_enums.DataType, str, None] = None):
+        """
+        :param model: model path
+        :param revision: model revision (branch name)
+        :param variant: model variant, for example ``fp16``
+        :param subfolder: model subfolder
+        :param dtype: model data type (precision)
+        """
+
+        self._model = model
+        self._revision = revision
+        self._variant = variant
+        self._subfolder = subfolder
+
+        try:
+            self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
+        except ValueError:
+            raise InvalidVaeUriError(
+                f'invalid dtype string, must be one of: {_textprocessing.oxford_comma(_enums.supported_data_type_strings(), "or")}')
+
+    @staticmethod
+    def parse(uri: _types.Uri) -> 'SDCascadeDecoderUri':
+        """
+        Parse an ``--sd-cascade-decoder`` uri and return an object representing its constituents
+
+        :param uri: string with ``--sd-cascade-decoder`` uri syntax
+
+        :return: :py:class:`.SDCascadeDecoderUri`
+        """
+        try:
+            r = _sd_cascade_decoder_uri_parser.parse(uri)
+
+            supported_dtypes = _enums.supported_data_type_strings()
+
+            dtype = r.args.get('dtype', None)
+            if dtype is not None and dtype not in supported_dtypes:
+                raise InvalidSDCascadeDecoderUriError(
+                    f'Torch Stable Cascade "dtype" must be {", ".join(supported_dtypes)}, '
+                    f'or left undefined, received: {dtype}')
+
+            return SDCascadeDecoderUri(
+                model=r.concept,
+                revision=r.args.get('revision', None),
+                variant=r.args.get('variant', None),
+                dtype=dtype,
+                subfolder=r.args.get('subfolder', None))
+        except _textprocessing.ConceptUriParseError as e:
+            raise InvalidSDCascadeDecoderUriError(e)
 
 
 class TorchVAEUri:
@@ -1601,8 +1706,6 @@ class LoRAUri:
                           pipeline: diffusers.DiffusionPipeline,
                           use_auth_token: _types.OptionalString = None,
                           local_files_only: bool = False):
-
-        
 
         if hasattr(pipeline, 'load_lora_weights'):
             debug_args = {k: v for k, v in locals().items() if k not in {'self', 'pipeline'}}

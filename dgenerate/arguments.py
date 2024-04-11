@@ -666,6 +666,79 @@ def _create_parser(add_model=True, add_help=True):
                     Inference will be slower. Mutually exclusive with --refiner-sequential-offload"""))
 
     actions.append(
+        parser.add_argument('--sd-cascade-decoder', action='store', default=None, metavar="MODEL_URI",
+                            dest='sd_cascade_decoder_uri',
+                            help=f"""Specify a Stable Cascade (torch-sd-cascade) decoder model path using a URI. 
+                            This should be a huggingface repository slug / blob link, path to model file 
+                            on disk (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model
+                            folder containing model files. 
+                            
+                            Optional arguments can be provided after the decoder model specification, 
+                            these include: "revision", "variant", "subfolder", and "dtype".
+                            
+                            They can be specified as so in any order, they are not positional:
+                            "huggingface/decoder_model;revision=main;variant=fp16;subfolder=repo_subfolder;dtype=float16".
+                            
+                            The "revision" argument specifies the model revision to use for the Textual Inversion model
+                            when loading from huggingface repository, (The git branch / tag, default is "main").
+                            
+                            The "variant" argument specifies the decoder model variant and defaults to the value of 
+                            --variant. When "variant" is specified when loading from a huggingface repository or folder,
+                            weights will be loaded from "variant" filename, e.g. "pytorch_model.<variant>.safetensors.
+                            
+                            The "subfolder" argument specifies the decoder model subfolder, if specified 
+                            when loading from a huggingface repository or folder, weights from the specified subfolder.
+                        
+                            If you wish to load a weights file directly from disk, the simplest way is: 
+                            --sd-cascade-decoder "decoder.safetensors".
+                            
+                            If you wish to load a specific weight file from a huggingface repository, use the blob link
+                            loading syntax: --sd-cascade-decoder 
+                            "https://huggingface.co/UserName/repository-name/blob/main/decoder.safetensors",
+                            the "revision" argument may be used with this syntax.
+                            """))
+
+    actions.append(
+        _refiner_offload_group.add_argument(
+            '--sd-cascade-decoder-sequential-offload', action='store_true', default=False,
+            help="""Force sequential model offloading for the Stable Cascade decoder pipeline, this may drastically
+                    reduce memory consumption and allow large models to run when they would otherwise not fit in 
+                    your GPUs VRAM. Inference will be much slower. Mutually exclusive with --refiner-cpu-offload"""))
+
+    actions.append(
+        _refiner_offload_group.add_argument(
+            '--sd-cascade-decoder-cpu-offload', action='store_true', default=False,
+            help="""Force model cpu offloading for the Stable Cascade decoder pipeline, this may reduce memory consumption
+                    and allow large models to run when they would otherwise not fit in your GPUs VRAM. 
+                    Inference will be slower. Mutually exclusive with --refiner-sequential-offload"""))
+
+    actions.append(
+        parser.add_argument('--sd-cascade-decoder-prompts', nargs='+', action='store',
+                            metavar="PROMPT",
+                            default=None,
+                            type=_type_prompts,
+                            help="""One or more prompts to try with the Stable Cascade decoder model, 
+                            by default the decoder model gets the primary prompt, this argument 
+                            overrides that with a prompt of your choosing. The negative prompt 
+                            component can be specified with the same syntax as --prompts"""))
+
+    actions.append(
+        parser.add_argument('--sd-cascade-decoder-inference-steps', action='store', nargs='+',
+                            default=[_pipelinewrapper.DEFAULT_SD_CASCADE_DECODER_INFERENCE_STEPS],
+                            type=_type_inference_steps,
+                            metavar="INTEGER",
+                            help=f"""One or more inference steps values to try with the Stable Cascade decoder. 
+                            (default: [{_pipelinewrapper.DEFAULT_SD_CASCADE_DECODER_INFERENCE_STEPS}])"""))
+
+    actions.append(
+        parser.add_argument('--sd-cascade-decoder-guidance-scales', action='store', nargs='+',
+                            default=[_pipelinewrapper.DEFAULT_SD_CASCADE_DECODER_GUIDANCE_SCALE],
+                            type=_type_guidance_scale,
+                            metavar="INTEGER",
+                            help=f"""One or more guidance scale values to try with the Stable Cascade decoder.
+                             (default: [{_pipelinewrapper.DEFAULT_SD_CASCADE_DECODER_GUIDANCE_SCALE}])"""))
+
+    actions.append(
         parser.add_argument('--sdxl-refiner', action='store', default=None, metavar="MODEL_URI",
                             dest='sdxl_refiner_uri',
                             help=f"""Specify a Stable Diffusion XL (torch-sdxl) refiner model path using a URI. 

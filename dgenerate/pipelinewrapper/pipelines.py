@@ -899,6 +899,10 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             elif model_type == _enums.ModelType.TORCH_IFS:
                 raise UnsupportedPipelineConfigError(
                     'Deep Floyd IF super resolution (IFS) only works in img2img mode and cannot work without --image-seeds.')
+            elif model_type == _enums.ModelType.TORCH_SD_CASCADE:
+                pipeline_class = diffusers.StableCascadePriorPipeline
+            elif model_type == _enums.ModelType.TORCH_SD_CASCADE_DECODER:
+                pipeline_class = diffusers.StableCascadeDecoderPipeline
             elif control_net_uris:
                 pipeline_class = diffusers.StableDiffusionXLControlNetPipeline if sdxl else diffusers.StableDiffusionControlNetPipeline
             else:
@@ -916,6 +920,11 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                 pipeline_class = diffusers.IFSuperResolutionPipeline
             elif model_type == _enums.ModelType.TORCH_IFS_IMG2IMG:
                 pipeline_class = diffusers.IFImg2ImgSuperResolutionPipeline
+            elif model_type == _enums.ModelType.TORCH_SD_CASCADE:
+                pipeline_class = diffusers.StableCascadePriorPipeline
+            elif model_type == _enums.ModelType.TORCH_SD_CASCADE_DECODER:
+                raise UnsupportedPipelineConfigError(
+                    'Stable Cascade decoder models do not support PipelineType.IMG2IMG.')
             elif control_net_uris:
                 if sdxl:
                     pipeline_class = diffusers.StableDiffusionXLControlNetImg2ImgPipeline
@@ -927,6 +936,9 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             if pix2pix:
                 raise UnsupportedPipelineConfigError(
                     'pix2pix models only work in img2img mode and cannot work in inpaint mode (with a mask).')
+            if _enums.model_type_is_sd_cascade(model_type):
+                raise UnsupportedPipelineConfigError(
+                    'Stable Cascade model types do not support inpainting.')
             if model_type == _enums.ModelType.TORCH_IF:
                 pipeline_class = diffusers.IFInpaintingPipeline
             elif model_type == _enums.ModelType.TORCH_IFS:

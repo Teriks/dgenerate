@@ -109,12 +109,15 @@ class DataType(enum.Enum):
     FLOAT32 = 2
     """32 bit floating point."""
 
+    BFLOAT16 = 3
+    """16 bit floating point."""
+
 
 def supported_data_type_strings():
     """
     Return a list of supported ``--dtype`` strings
     """
-    return ['auto', 'float16', 'float32']
+    return ['auto', 'bfloat16', 'float16', 'float32']
 
 
 def supported_data_type_enums() -> list[DataType]:
@@ -141,7 +144,8 @@ def get_data_type_enum(id_str: typing.Union[DataType, str, None]) -> DataType:
     try:
         return {'auto': DataType.AUTO,
                 'float16': DataType.FLOAT16,
-                'float32': DataType.FLOAT32}[id_str.strip().lower()]
+                'float32': DataType.FLOAT32,
+                'bfloat16': DataType.BFLOAT16}[id_str.strip().lower()]
     except KeyError:
         raise ValueError('invalid DataType string')
 
@@ -158,7 +162,8 @@ def get_data_type_string(data_type_enum: DataType) -> str:
 
     return {DataType.AUTO: 'auto',
             DataType.FLOAT16: 'float16',
-            DataType.FLOAT32: 'float32'}[model_type]
+            DataType.FLOAT32: 'float32',
+            DataType.BFLOAT16: 'bfloat16'}[model_type]
 
 
 class ModelType(enum.Enum):
@@ -198,6 +203,16 @@ class ModelType(enum.Enum):
     Stable Diffusion, such as SD 1.0 - 2.x, with Flax / Jax parallelization.
     """
 
+    TORCH_SD_CASCADE = 10
+    """
+    Stable Cascade
+    """
+
+    TORCH_SD_CASCADE_DECODER = 11
+    """
+    Stable Cascade decoder
+    """
+
 
 def supported_model_type_strings():
     """
@@ -211,7 +226,8 @@ def supported_model_type_strings():
                 'torch-upscaler-x4',
                 'torch-if',
                 'torch-ifs',
-                'torch-ifs-img2img']
+                'torch-ifs-img2img',
+                'torch-sd-cascade']
 
     if have_jax_flax():
         return base_set + ['flax']
@@ -250,6 +266,7 @@ def get_model_type_enum(id_str: typing.Union[ModelType, str]) -> ModelType:
                 'torch-sdxl-pix2pix': ModelType.TORCH_SDXL_PIX2PIX,
                 'torch-upscaler-x2': ModelType.TORCH_UPSCALER_X2,
                 'torch-upscaler-x4': ModelType.TORCH_UPSCALER_X4,
+                'torch-sd-cascade': ModelType.TORCH_SD_CASCADE,
                 'flax': ModelType.FLAX}[id_str.strip().lower()]
     except KeyError:
         raise ValueError('invalid ModelType string')
@@ -274,6 +291,8 @@ def get_model_type_string(model_type_enum: ModelType) -> str:
             ModelType.TORCH_SDXL_PIX2PIX: 'torch-sdxl-pix2pix',
             ModelType.TORCH_UPSCALER_X2: 'torch-upscaler-x2',
             ModelType.TORCH_UPSCALER_X4: 'torch-upscaler-x4',
+            ModelType.TORCH_SD_CASCADE: 'torch-sd-cascade',
+            ModelType.TORCH_SD_CASCADE_DECODER: 'torch-sd-cascade-decoder',
             ModelType.FLAX: 'flax'}[model_type]
 
 
@@ -299,6 +318,18 @@ def model_type_is_sdxl(model_type: typing.Union[ModelType, str]) -> bool:
     model_type = get_model_type_string(model_type)
 
     return 'sdxl' in model_type
+
+
+def model_type_is_sd_cascade(model_type: typing.Union[ModelType, str]) -> bool:
+    """
+    Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent a Stable Cascade related model?
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
+    :return: bool
+    """
+    model_type = get_model_type_string(model_type)
+
+    return 'sd-cascade' in model_type
 
 
 def model_type_is_torch(model_type: typing.Union[ModelType, str]) -> bool:
@@ -347,8 +378,8 @@ def model_type_is_floyd(model_type: typing.Union[ModelType, str]) -> bool:
     model_type = get_model_type_enum(model_type)
 
     return model_type == ModelType.TORCH_IF or \
-           model_type == ModelType.TORCH_IFS or \
-           model_type == ModelType.TORCH_IFS_IMG2IMG
+        model_type == ModelType.TORCH_IFS or \
+        model_type == ModelType.TORCH_IFS_IMG2IMG
 
 
 def model_type_is_floyd_if(model_type: typing.Union[ModelType, str]) -> bool:
@@ -444,7 +475,8 @@ def get_torch_dtype(dtype: typing.Union[DataType, torch.dtype, str, None]) -> ty
         dtype = get_data_type_string(dtype)
 
     try:
-        return {'float16': torch.float16,
+        return {'bfloat16': torch.bfloat16,
+                'float16': torch.float16,
                 'float32': torch.float32,
                 'float64': torch.float64,
                 'auto': None}[dtype.lower()]

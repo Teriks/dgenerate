@@ -83,3 +83,23 @@ DEFAULT_SEED = 0
 """
 Default RNG seed.
 """
+
+DEFAULT_SD_CASCADE_DECODER_GUIDANCE_SCALE = 0
+"""
+Default guidance scale for the Stable Cascade decoder.
+"""
+
+DEFAULT_SD_CASCADE_DECODER_INFERENCE_STEPS = 10
+"""
+Default inference steps for the Stable Cascade decoder.
+"""
+
+DEFAULT_SD_CASCADE_OUTPUT_HEIGHT = 1024
+"""
+Default output height for Stable Cascade.
+"""
+
+DEFAULT_SD_CASCADE_OUTPUT_WIDTH = 1024
+"""
+Default output width for Stable Cascade.
+"""

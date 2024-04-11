@@ -1,0 +1,17 @@
+#! dgenerate 3.3.1
+
+stabilityai/stable-cascade-prior
+--image-seeds ../media/earth.jpg
+--variant bf16
+--dtype bfloat16
+--model-type torch-sd-cascade
+--model-cpu-offload
+--sd-cascade-decoder-sequential-offload
+--sd-cascade-decoder "stabilityai/stable-cascade;dtype=float16"
+--inference-steps 20
+--guidance-scales 4
+--sd-cascade-decoder-inference-steps 10
+--sd-cascade-decoder-guidance-scales 0
+--output-size 1024
+--gen-seeds 2
+--prompts "an image of a shiba inu, donning a spacesuit and helmet"

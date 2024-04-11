@@ -227,13 +227,13 @@ class ImageFileSavedEvent(_Event):
 
 
 RenderLoopEvent = typing.Union[ImageGeneratedEvent,
-                               StartingAnimationEvent,
-                               StartingAnimationFileEvent,
-                               AnimationFileFinishedEvent,
-                               ImageFileSavedEvent,
-                               AnimationFinishedEvent,
-                               StartingGenerationStepEvent,
-                               AnimationETAEvent]
+StartingAnimationEvent,
+StartingAnimationFileEvent,
+AnimationFileFinishedEvent,
+ImageFileSavedEvent,
+AnimationFinishedEvent,
+StartingGenerationStepEvent,
+AnimationETAEvent]
 """
 Possible events from the event stream created by :py:meth:`.RenderLoop.events`
 """
@@ -756,6 +756,9 @@ class RenderLoop:
             control_net_uris=
             self.config.control_net_uris if self.config.image_seeds else [],
             sdxl_refiner_uri=self.config.sdxl_refiner_uri,
+            sd_cascade_decoder_uri=self.config.sd_cascade_decoder_uri,
+            sd_cascade_decoder_cpu_offload=bool(self.config.sd_cascade_decoder_cpu_offload),
+            sd_cascade_decoder_sequential_offload=bool(self.config.sd_cascade_decoder_sequential_offload),
             scheduler=self.config.scheduler,
             sdxl_refiner_scheduler=
             self.config.sdxl_refiner_scheduler if self.config.sdxl_refiner_uri else None,
