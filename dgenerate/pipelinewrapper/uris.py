@@ -1175,7 +1175,7 @@ class TorchUNetUri:
               local_files_only: bool = False,
               sequential_cpu_offload_member: bool = False,
               model_cpu_offload_member: bool = False,
-              unet_class=diffusers.UNet2DConditionModel) -> diffusers.UNet2DConditionModel:
+              unet_class=diffusers.UNet2DConditionModel):
 
         if sequential_cpu_offload_member and model_cpu_offload_member:
             # these are used for cache differentiation only
