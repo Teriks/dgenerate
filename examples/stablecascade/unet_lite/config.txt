@@ -4,6 +4,8 @@ stabilityai/stable-cascade-prior
 --model-type torch-s-cascade
 --variant bf16
 --dtype bfloat16
+--unet "stabilityai/stable-cascade-prior;subfolder=prior_lite"
+--unet2 "stabilityai/stable-cascade;subfolder=decoder_lite"
 --model-cpu-offload
 --s-cascade-decoder-cpu-offload
 --s-cascade-decoder "stabilityai/stable-cascade;dtype=float16"

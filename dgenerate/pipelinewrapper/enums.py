@@ -203,12 +203,12 @@ class ModelType(enum.Enum):
     Stable Diffusion, such as SD 1.0 - 2.x, with Flax / Jax parallelization.
     """
 
-    TORCH_SD_CASCADE = 10
+    TORCH_S_CASCADE = 10
     """
     Stable Cascade
     """
 
-    TORCH_SD_CASCADE_DECODER = 11
+    TORCH_S_CASCADE_DECODER = 11
     """
     Stable Cascade decoder
     """
@@ -227,7 +227,7 @@ def supported_model_type_strings():
                 'torch-if',
                 'torch-ifs',
                 'torch-ifs-img2img',
-                'torch-sd-cascade']
+                'torch-s-cascade']
 
     if have_jax_flax():
         return base_set + ['flax']
@@ -266,7 +266,7 @@ def get_model_type_enum(id_str: typing.Union[ModelType, str]) -> ModelType:
                 'torch-sdxl-pix2pix': ModelType.TORCH_SDXL_PIX2PIX,
                 'torch-upscaler-x2': ModelType.TORCH_UPSCALER_X2,
                 'torch-upscaler-x4': ModelType.TORCH_UPSCALER_X4,
-                'torch-sd-cascade': ModelType.TORCH_SD_CASCADE,
+                'torch-s-cascade': ModelType.TORCH_S_CASCADE,
                 'flax': ModelType.FLAX}[id_str.strip().lower()]
     except KeyError:
         raise ValueError('invalid ModelType string')
@@ -291,8 +291,8 @@ def get_model_type_string(model_type_enum: ModelType) -> str:
             ModelType.TORCH_SDXL_PIX2PIX: 'torch-sdxl-pix2pix',
             ModelType.TORCH_UPSCALER_X2: 'torch-upscaler-x2',
             ModelType.TORCH_UPSCALER_X4: 'torch-upscaler-x4',
-            ModelType.TORCH_SD_CASCADE: 'torch-sd-cascade',
-            ModelType.TORCH_SD_CASCADE_DECODER: 'torch-sd-cascade-decoder',
+            ModelType.TORCH_S_CASCADE: 'torch-s-cascade',
+            ModelType.TORCH_S_CASCADE_DECODER: 'torch-s-cascade-decoder',
             ModelType.FLAX: 'flax'}[model_type]
 
 
@@ -320,7 +320,7 @@ def model_type_is_sdxl(model_type: typing.Union[ModelType, str]) -> bool:
     return 'sdxl' in model_type
 
 
-def model_type_is_sd_cascade(model_type: typing.Union[ModelType, str]) -> bool:
+def model_type_is_s_cascade(model_type: typing.Union[ModelType, str]) -> bool:
     """
     Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent a Stable Cascade related model?
 
@@ -329,7 +329,7 @@ def model_type_is_sd_cascade(model_type: typing.Union[ModelType, str]) -> bool:
     """
     model_type = get_model_type_string(model_type)
 
-    return 'sd-cascade' in model_type
+    return 's-cascade' in model_type
 
 
 def model_type_is_torch(model_type: typing.Union[ModelType, str]) -> bool:

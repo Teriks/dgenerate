@@ -1,16 +1,16 @@
 #! dgenerate 3.4.0
 
 stabilityai/stable-cascade-prior
+--model-type torch-s-cascade
 --image-seeds "../../media/beach.jpg"
 --variant bf16
 --dtype bfloat16
---model-type torch-sd-cascade
 --model-cpu-offload
---sd-cascade-decoder-sequential-offload
---sd-cascade-decoder "stabilityai/stable-cascade;dtype=float16"
+--s-cascade-decoder-sequential-offload
+--s-cascade-decoder "stabilityai/stable-cascade;dtype=float16"
 --inference-steps 20
 --guidance-scales 4
---sd-cascade-decoder-inference-steps 10
---sd-cascade-decoder-guidance-scales 0
+--s-cascade-decoder-inference-steps 10
+--s-cascade-decoder-guidance-scales 0
 --gen-seeds 2
 --prompts "A huge tsunami wave about to impact a tropical beach, high resolution, photo, real; fake, artwork, imaginary"
