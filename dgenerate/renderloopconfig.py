@@ -409,6 +409,14 @@ class RenderLoopConfig(_types.SetFromMixin):
     configuration upon running.
     """
 
+    sd_cascade_decoder_scheduler: _types.OptionalName = None
+    """
+    Optional Stable Cascade decoder model scheduler/sampler class name specification, this corresponds to the 
+    ``--sd-cascade-decoder-scheduler`` argument of the dgenerate command line tool. Setting this to 'help' 
+    will yield a help message to stdout describing scheduler names compatible with the current 
+    configuration upon running.
+    """
+
     safety_checker: bool = False
     """
     Enable safety checker? ``--safety-checker``
