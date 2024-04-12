@@ -682,11 +682,19 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'{a_namer("s_cascade_decoder_cpu_offload")} and {a_namer("s_cascade_decoder_sequential_offload")} '
                 f'may not be enabled simultaneously.')
 
+        if self.model_type == _pipelinewrapper.ModelType.TORCH_S_CASCADE_DECODER:
+            raise RenderLoopConfigError(
+                f'Stable Cascade decoder {a_namer("model_type")} may not be used as the primary model.')
+
         if self.model_type == _pipelinewrapper.ModelType.TORCH_S_CASCADE:
             if not self.s_cascade_decoder_uri:
                 raise RenderLoopConfigError(
                     f'You must specify a Stable Cascade decoder '
                     f'model when {a_namer("model_type")} is "torch-s-cascade"')
+
+            if self.vae_uri is not None:
+                raise RenderLoopConfigError(
+                    f'Stable Cascade can not use a {a_namer("vae_uri")} value.')
 
             if not self.s_cascade_decoder_guidance_scales:
                 self.s_cascade_decoder_guidance_scales = [
@@ -1135,11 +1143,11 @@ class RenderLoopConfig(_types.SetFromMixin):
                                              self.sdxl_refiner_guidance_rescales),
 
             s_cascade_decoder_inference_steps=ov('s_cascade_decoder_inference_steps',
-                                                  self.s_cascade_decoder_inference_steps),
+                                                 self.s_cascade_decoder_inference_steps),
             s_cascade_decoder_guidance_scale=ov('s_cascade_decoder_guidance_scale',
-                                                 self.s_cascade_decoder_guidance_scales),
+                                                self.s_cascade_decoder_guidance_scales),
             s_cascade_decoder_prompt=ov('s_cascade_decoder_prompt',
-                                         self.s_cascade_decoder_prompts),
+                                        self.s_cascade_decoder_prompts),
             upscaler_noise_level=ov('upscaler_noise_level', self.upscaler_noise_levels),
             sdxl_aesthetic_score=ov('sdxl_aesthetic_score', self.sdxl_aesthetic_scores),
             sdxl_original_size=ov('sdxl_original_size', self.sdxl_original_sizes),
