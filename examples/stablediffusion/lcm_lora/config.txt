@@ -1,4 +1,4 @@
-#! dgenerate 3.3.1
+#! dgenerate 3.4.0
 
 wavymulder/collage-diffusion
 --loras latent-consistency/lcm-lora-sdv1-5
