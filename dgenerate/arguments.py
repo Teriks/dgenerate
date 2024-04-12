@@ -495,7 +495,7 @@ def _create_parser(add_model=True, add_help=True):
 
     actions.append(
         parser.add_argument('-vt', '--vae-tiling', action='store_true', default=False,
-                            help="""Enable VAE tiling (torch models only). Assists in the generation of
+                            help="""Enable VAE tiling (torch Stable Diffusion only). Assists in the generation of
                             large images with lower memory overhead. The VAE will split the input tensor 
                             into tiles to compute decoding and encoding in several steps. This is 
                             useful for saving a large amount of memory and to allow processing larger images. 
@@ -504,7 +504,7 @@ def _create_parser(add_model=True, add_help=True):
 
     actions.append(
         parser.add_argument('-vs', '--vae-slicing', action='store_true', default=False,
-                            help="""Enable VAE slicing (torch* models only). Assists in the generation 
+                            help="""Enable VAE slicing (torch Stable Diffusion models only). Assists in the generation 
                             of large images with lower memory overhead. The VAE will split the input tensor
                             in slices to compute decoding in several steps. This is useful to save some memory,
                             especially when --batch-size is greater than 1. Note that if you are using --control-nets
