@@ -446,7 +446,8 @@ def get_torch_device(component: typing.Union[diffusers.DiffusionPipeline, torch.
     elif hasattr(component, 'get_device'):
         return component.get_device()
 
-    raise ValueError('component did not have a device attribute or the function get_device()')
+    raise ValueError(f'component type {component.__class__} did not have a '
+                     f'device attribute or the function get_device()')
 
 
 def get_torch_device_string(component: typing.Union[diffusers.DiffusionPipeline, torch.nn.Module]) -> str:
@@ -490,6 +491,9 @@ def pipeline_to(pipeline, device: typing.Union[torch.device, str, None]):
 
     to_device = torch.device(device)
 
+    if get_torch_device(pipeline) == to_device:
+        return
+
     if to_device.type != 'cpu':
         _cache.pipeline_off_cpu_update_cache_info(pipeline)
     else:
@@ -508,22 +512,6 @@ def pipeline_to(pipeline, device: typing.Union[torch.device, str, None]):
 
         if is_model_cpu_offload_enabled(value) and to_device.type != 'cpu':
             continue
-
-        if name == 'unet':
-            if to_device.type != 'cpu':
-                _cache.unet_off_cpu_update_cache_info(value)
-            else:
-                _cache.unet_to_cpu_update_cache_info(value)
-        elif name == 'vae':
-            if to_device.type != 'cpu':
-                _cache.vae_off_cpu_update_cache_info(value)
-            else:
-                _cache.vae_to_cpu_update_cache_info(value)
-        elif name == 'controlnet':
-            if to_device.type != 'cpu':
-                _cache.controlnet_off_cpu_update_cache_info(value)
-            else:
-                _cache.controlnet_to_cpu_update_cache_info(value)
 
         _messages.debug_log(
             f'Moving module "{name}" of pipeline {_types.fullname(pipeline)} '
@@ -969,6 +957,18 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             # Should be impossible
             raise UnsupportedPipelineConfigError('Pipeline type not implemented.')
 
+    if extra_modules is not None:
+        _messages.debug_log('Checking extra_modules for meta tensors...')
+        for module in extra_modules.items():
+            _messages.debug_log(f'Checking extra module {module[0]} = {module[1].__class__}...')
+            try:
+                if get_torch_device(module[1]) == 'meta':
+                    _messages.debug_log(f'"{module[0]}" is a meta tensor.')
+                    _disable_to(module[1])
+            except ValueError:
+                _messages.debug_log(
+                    f'Unable to get device of {module[0]} = {module[1].__class__}')
+
     unet_override = extra_modules and 'unet' in extra_modules
     vae_override = extra_modules and 'vae' in extra_modules
     controlnet_override = extra_modules and 'controlnet' in extra_modules
@@ -1173,7 +1173,6 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
 
     _cache.pipeline_create_update_cache_info(pipeline=pipeline,
                                              estimated_size=estimated_memory_usage)
-
     _messages.debug_log(f'Finished Creating Torch Pipeline: "{pipeline_class.__name__}"')
 
     return TorchPipelineCreationResult(

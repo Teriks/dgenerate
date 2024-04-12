@@ -656,6 +656,9 @@ def pipeline_off_cpu_update_cache_info(
 
     _PIPELINE_CACHE_SIZE -= pipeline.DGENERATE_SIZE_ESTIMATE
 
+    if _PIPELINE_CACHE_SIZE < 0:
+        _PIPELINE_CACHE_SIZE = 0
+
     _messages.debug_log(f'Cached Diffusers Pipeline {_types.class_and_id_string(pipeline)} '
                         f'Size = {pipeline.DGENERATE_SIZE_ESTIMATE} Bytes '
                         f'({_memory.bytes_best_human_unit(pipeline.DGENERATE_SIZE_ESTIMATE)}) '
@@ -676,6 +679,9 @@ def unet_off_cpu_update_cache_info(unet):
     if hasattr(unet, 'DGENERATE_SIZE_ESTIMATE'):
         _UNET_CACHE_SIZE -= unet.DGENERATE_SIZE_ESTIMATE
 
+        if _UNET_CACHE_SIZE < 0:
+            _UNET_CACHE_SIZE = 0
+
         _messages.debug_log(f'Cached UNet {_types.class_and_id_string(unet)} '
                             f'Size = {unet.DGENERATE_SIZE_ESTIMATE} Bytes '
                             f'({_memory.bytes_best_human_unit(unet.DGENERATE_SIZE_ESTIMATE)}) '
@@ -695,6 +701,9 @@ def vae_off_cpu_update_cache_info(vae):
     if hasattr(vae, 'DGENERATE_SIZE_ESTIMATE'):
         _VAE_CACHE_SIZE -= vae.DGENERATE_SIZE_ESTIMATE
 
+        if _VAE_CACHE_SIZE < 0:
+            _VAE_CACHE_SIZE = 0
+
         _messages.debug_log(f'Cached VAE {_types.class_and_id_string(vae)} '
                             f'Size = {vae.DGENERATE_SIZE_ESTIMATE} Bytes '
                             f'({_memory.bytes_best_human_unit(vae.DGENERATE_SIZE_ESTIMATE)}) '
@@ -704,7 +713,7 @@ def vae_off_cpu_update_cache_info(vae):
 
 
 def controlnet_off_cpu_update_cache_info(controlnet: typing.Union[diffusers.models.ControlNetModel,
-                                                                  diffusers.pipelines.controlnet.MultiControlNetModel]):
+diffusers.pipelines.controlnet.MultiControlNetModel]):
     """
     Update CPU side cache size information when a ControlNet module is moved to a device that is not the CPU
 
@@ -716,6 +725,9 @@ def controlnet_off_cpu_update_cache_info(controlnet: typing.Union[diffusers.mode
         for control_net in controlnet.nets:
             _CONTROL_NET_CACHE_SIZE -= control_net.DGENERATE_SIZE_ESTIMATE
 
+            if _CONTROL_NET_CACHE_SIZE < 0:
+                _CONTROL_NET_CACHE_SIZE = 0
+
             _messages.debug_log(f'Cached ControlNetModel {_types.class_and_id_string(control_net)} Size = '
                                 f'{control_net.DGENERATE_SIZE_ESTIMATE} Bytes '
                                 f'({_memory.bytes_best_human_unit(control_net.DGENERATE_SIZE_ESTIMATE)}) '
@@ -726,6 +738,9 @@ def controlnet_off_cpu_update_cache_info(controlnet: typing.Union[diffusers.mode
 
     elif isinstance(controlnet, diffusers.models.ControlNetModel):
         _CONTROL_NET_CACHE_SIZE -= controlnet.DGENERATE_SIZE_ESTIMATE
+
+        if _CONTROL_NET_CACHE_SIZE < 0:
+            _CONTROL_NET_CACHE_SIZE = 0
 
         _messages.debug_log(f'Cached ControlNetModel {_types.class_and_id_string(controlnet)} '
                             f'Size = {controlnet.DGENERATE_SIZE_ESTIMATE} Bytes '
