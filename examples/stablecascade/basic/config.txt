@@ -3,7 +3,6 @@
 stabilityai/stable-cascade-prior
 --variant bf16
 --dtype bfloat16
---output-size 1024x512
 --model-type torch-sd-cascade
 --model-cpu-offload
 --sd-cascade-decoder-sequential-offload
