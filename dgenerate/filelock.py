@@ -24,8 +24,7 @@ import contextlib
 import os
 import pathlib
 import typing
-
-import portalocker
+import filelock
 
 __doc__ = """
 Thread / Multiprocess safe file locking utilities.
@@ -128,7 +127,7 @@ def temp_file_lock(path):
     :return: Lock as a context manager
     """
     try:
-        with portalocker.Lock(path):
+        with filelock.FileLock(path):
             yield
     finally:
         try:
