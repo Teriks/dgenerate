@@ -1208,10 +1208,7 @@ class DiffusionPipelineWrapper:
 
         last = opts[-1]
 
-        if len(last) == 2:
-            config += self._format_option_pair(last)
-
-        return config
+        return config + self._format_option_pair(last)
 
     def gen_dgenerate_command(self,
                               args: typing.Optional[DiffusionArguments] = None,
