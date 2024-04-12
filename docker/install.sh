@@ -1,1 +1,2 @@
-pip3 install git+https://github.com/Teriks/dgenerate@v3.1.1 --extra-index-url https://download.pytorch.org/whl/cu121/ -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+pip3 install --editable .[flax] --extra-index-url https://download.pytorch.org/whl/cu121/ \
+-f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
