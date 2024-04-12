@@ -262,16 +262,16 @@ options:
                         syntax: --vae "AutoencoderKL;https://huggingface.co/UserName/repository-
                         name/blob/main/vae_model.safetensors", the "revision" argument may be used with this    
                         syntax.
-  -vt, --vae-tiling     Enable VAE tiling (torch models only). Assists in the generation of large images with   
-                        lower memory overhead. The VAE will split the input tensor into tiles to compute        
-                        decoding and encoding in several steps. This is useful for saving a large amount of     
-                        memory and to allow processing larger images. Note that if you are using --control-     
-                        nets you may still run into memory issues generating large images, or with --batch-     
-                        size greater than 1.
-  -vs, --vae-slicing    Enable VAE slicing (torch* models only). Assists in the generation of large images      
-                        with lower memory overhead. The VAE will split the input tensor in slices to compute    
-                        decoding in several steps. This is useful to save some memory, especially when
-                        --batch-size is greater than 1. Note that if you are using --control-nets you may       
+  -vt, --vae-tiling     Enable VAE tiling (torch Stable Diffusion only). Assists in the generation of large     
+                        images with lower memory overhead. The VAE will split the input tensor into tiles to    
+                        compute decoding and encoding in several steps. This is useful for saving a large       
+                        amount of memory and to allow processing larger images. Note that if you are using      
+                        --control-nets you may still run into memory issues generating large images, or with    
+                        --batch-size greater than 1.
+  -vs, --vae-slicing    Enable VAE slicing (torch Stable Diffusion models only). Assists in the generation of   
+                        large images with lower memory overhead. The VAE will split the input tensor in slices  
+                        to compute decoding in several steps. This is useful to save some memory, especially    
+                        when --batch-size is greater than 1. Note that if you are using --control-nets you may  
                         still run into memory issues generating large images.
   -lra LORA_URI [LORA_URI ...], --loras LORA_URI [LORA_URI ...]
                         Specify one or more LoRA models using URIs (flax not supported). These should be a      
@@ -806,7 +806,6 @@ options:
                         and default value: "control_net_size > (available * 0.75)" For Syntax See: [https://dg  
                         enerate.readthedocs.io/en/v3.4.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.C  
                         ONTROL_NET_CACHE_MEMORY_CONSTRAINTS]
-
 ```
 
 # Windows Install
