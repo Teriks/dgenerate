@@ -37,7 +37,7 @@ from dgenerate.memoize import memoize as _memoize
 _sdxl_refiner_uri_parser = _textprocessing.ConceptUriParser('SDXL Refiner',
                                                             ['revision', 'variant', 'subfolder', 'dtype'])
 
-_sd_cascade_decoder_uri_parser = _textprocessing.ConceptUriParser('Stable Cascade decoder',
+_s_cascade_decoder_uri_parser = _textprocessing.ConceptUriParser('Stable Cascade decoder',
                                                                   ['revision', 'variant', 'subfolder', 'dtype'])
 
 _torch_vae_uri_parser = _textprocessing.ConceptUriParser('VAE',
@@ -81,7 +81,7 @@ class InvalidSDXLRefinerUriError(InvalidModelUriError):
 
 class InvalidSDCascadeDecoderUriError(InvalidModelUriError):
     """
-    Error in ``--sd-cascade-decoder`` uri
+    Error in ``--s-cascade-decoder`` uri
     """
     pass
 
@@ -692,7 +692,7 @@ class SDXLRefinerUri:
 
 class SDCascadeDecoderUri:
     """
-    Representation of ``--sd-cascade-decoder`` uri
+    Representation of ``--s-cascade-decoder`` uri
     """
 
     @property
@@ -758,14 +758,14 @@ class SDCascadeDecoderUri:
     @staticmethod
     def parse(uri: _types.Uri) -> 'SDCascadeDecoderUri':
         """
-        Parse an ``--sd-cascade-decoder`` uri and return an object representing its constituents
+        Parse an ``--s-cascade-decoder`` uri and return an object representing its constituents
 
-        :param uri: string with ``--sd-cascade-decoder`` uri syntax
+        :param uri: string with ``--s-cascade-decoder`` uri syntax
 
         :return: :py:class:`.SDCascadeDecoderUri`
         """
         try:
-            r = _sd_cascade_decoder_uri_parser.parse(uri)
+            r = _s_cascade_decoder_uri_parser.parse(uri)
 
             supported_dtypes = _enums.supported_data_type_strings()
 
@@ -1128,7 +1128,8 @@ class TorchUNetUri:
              use_auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
              sequential_cpu_offload_member: bool = False,
-             model_cpu_offload_member: bool = False) -> diffusers.UNet2DConditionModel:
+             model_cpu_offload_member: bool = False,
+             unet_class=diffusers.UNet2DConditionModel):
         """
         Load a UNet of type :py:class:`diffusers.UNet2DConditionModel`
 
@@ -1144,6 +1145,8 @@ class TorchUNetUri:
         :param model_cpu_offload_member: This model will be attached to a pipeline
             which will have model cpu offload enabled?
 
+        :param unet_class: UNet class
+
         :raises ModelNotFoundError: If the model could not be found.
 
         :return: :py:class:`diffusers.UNet2DConditionModel`
@@ -1154,7 +1157,8 @@ class TorchUNetUri:
                               use_auth_token,
                               local_files_only,
                               sequential_cpu_offload_member,
-                              model_cpu_offload_member)
+                              model_cpu_offload_member,
+                              unet_class)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
@@ -1170,7 +1174,8 @@ class TorchUNetUri:
               use_auth_token: _types.OptionalString = None,
               local_files_only: bool = False,
               sequential_cpu_offload_member: bool = False,
-              model_cpu_offload_member: bool = False) -> diffusers.UNet2DConditionModel:
+              model_cpu_offload_member: bool = False,
+              unet_class=diffusers.UNet2DConditionModel) -> diffusers.UNet2DConditionModel:
 
         if sequential_cpu_offload_member and model_cpu_offload_member:
             # these are used for cache differentiation only
@@ -1199,7 +1204,7 @@ class TorchUNetUri:
 
         _cache.enforce_unet_cache_constraints(new_unet_size=estimated_memory_use)
 
-        unet = diffusers.UNet2DConditionModel.from_pretrained(
+        unet = unet_class.from_pretrained(
             path,
             revision=self.revision,
             variant=variant,

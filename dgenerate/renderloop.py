@@ -408,6 +408,12 @@ class RenderLoop:
         if diffusion_args.sdxl_refiner_inference_steps is not None:
             args += ['ri', diffusion_args.sdxl_refiner_inference_steps]
 
+        if diffusion_args.s_cascade_decoder_guidance_scale is not None:
+            args += ['scdg', diffusion_args.s_cascade_decoder_guidance_scale]
+
+        if diffusion_args.s_cascade_decoder_inference_steps is not None:
+            args += ['scdi', diffusion_args.s_cascade_decoder_inference_steps]
+
         return args
 
     def _get_base_extra_config_opts(self):
@@ -748,6 +754,7 @@ class RenderLoop:
             variant=self.config.variant,
             subfolder=self.config.subfolder,
             unet_uri=self.config.unet_uri,
+            second_unet_uri=self.config.second_unet_uri,
             vae_uri=self.config.vae_uri,
             vae_tiling=self.config.vae_tiling,
             vae_slicing=self.config.vae_slicing,
@@ -756,10 +763,10 @@ class RenderLoop:
             control_net_uris=
             self.config.control_net_uris if self.config.image_seeds else [],
             sdxl_refiner_uri=self.config.sdxl_refiner_uri,
-            sd_cascade_decoder_uri=self.config.sd_cascade_decoder_uri,
-            sd_cascade_decoder_cpu_offload=bool(self.config.sd_cascade_decoder_cpu_offload),
-            sd_cascade_decoder_sequential_offload=bool(self.config.sd_cascade_decoder_sequential_offload),
-            sd_cascade_decoder_scheduler=self.config.sd_cascade_decoder_scheduler,
+            s_cascade_decoder_uri=self.config.s_cascade_decoder_uri,
+            s_cascade_decoder_cpu_offload=bool(self.config.s_cascade_decoder_cpu_offload),
+            s_cascade_decoder_sequential_offload=bool(self.config.s_cascade_decoder_sequential_offload),
+            s_cascade_decoder_scheduler=self.config.s_cascade_decoder_scheduler,
             scheduler=self.config.scheduler,
             sdxl_refiner_scheduler=
             self.config.sdxl_refiner_scheduler if self.config.sdxl_refiner_uri else None,

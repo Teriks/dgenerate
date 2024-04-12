@@ -202,27 +202,27 @@ class RenderLoopConfig(_types.SetFromMixin):
     to the ``--image-guidance-scales`` argument of the dgenerate command line tool.
     """
 
-    sd_cascade_decoder_uri: _types.OptionalUri = None
+    s_cascade_decoder_uri: _types.OptionalUri = None
     """
-    Stable Cascade model URI, ``--sd-cascade-decoder-uri`` argument of dgenerate command line tool.
+    Stable Cascade model URI, ``--s-cascade-decoder-uri`` argument of dgenerate command line tool.
     """
 
-    sd_cascade_decoder_prompts: _types.OptionalPrompts = None
+    s_cascade_decoder_prompts: _types.OptionalPrompts = None
     """
-    Optional list of Stable Cascade decoder prompt overrides, this corresponds to the ``--sd-cascade-decoder-prompts`` 
+    Optional list of Stable Cascade decoder prompt overrides, this corresponds to the ``--s-cascade-decoder-prompts`` 
     argument of the dgenerate command line tool.
     """
 
-    sd_cascade_decoder_inference_steps: _types.OptionalIntegers = None
+    s_cascade_decoder_inference_steps: _types.OptionalIntegers = None
     """
     List of inference steps values for the Stable Cascade decoder, this corresponds 
-    to the ``--sd-cascade-decoder-inference-steps`` argument of the dgenerate command line tool.
+    to the ``--s-cascade-decoder-inference-steps`` argument of the dgenerate command line tool.
     """
 
-    sd_cascade_decoder_guidance_scales: _types.OptionalFloats = None
+    s_cascade_decoder_guidance_scales: _types.OptionalFloats = None
     """
     List of guidance scale values for the Stable Cascade refiner, this 
-    corresponds to the ``--sd-cascade-decoder-guidance-scales`` argument of the dgenerate
+    corresponds to the ``--s-cascade-decoder-guidance-scales`` argument of the dgenerate
     command line tool.
     """
 
@@ -361,6 +361,12 @@ class RenderLoopConfig(_types.SetFromMixin):
     Optional user specified UNet URI, this corresponds to the ``--unet`` argument of the dgenerate command line tool.
     """
 
+    second_unet_uri: _types.OptionalUri = None
+    """
+    Optional user specified second UNet URI, this corresponds to the ``--unet2`` argument of the dgenerate command line tool.
+    This UNet uri will be used for the SDXL refiner or Stable Cascade decoder model.
+    """
+
     vae_uri: _types.OptionalUri = None
     """
     Optional user specified VAE URI, this corresponds to the ``--vae`` argument of the dgenerate command line tool.
@@ -409,10 +415,10 @@ class RenderLoopConfig(_types.SetFromMixin):
     configuration upon running.
     """
 
-    sd_cascade_decoder_scheduler: _types.OptionalName = None
+    s_cascade_decoder_scheduler: _types.OptionalName = None
     """
     Optional Stable Cascade decoder model scheduler/sampler class name specification, this corresponds to the 
-    ``--sd-cascade-decoder-scheduler`` argument of the dgenerate command line tool. Setting this to 'help' 
+    ``--s-cascade-decoder-scheduler`` argument of the dgenerate command line tool. Setting this to 'help' 
     will yield a help message to stdout describing scheduler names compatible with the current 
     configuration upon running.
     """
@@ -597,20 +603,20 @@ class RenderLoopConfig(_types.SetFromMixin):
     your GPUs VRAM. Inference will be much slower. Mutually exclusive with :py:attr:`RenderLoopConfig.sdxl_refiner_cpu_offload`
     """
 
-    sd_cascade_decoder_cpu_offload: _types.OptionalBoolean = None
+    s_cascade_decoder_cpu_offload: _types.OptionalBoolean = None
     """
     Force model cpu offloading for the Stable Cascade decoder pipeline, this may reduce memory consumption
     and allow large models to run when they would otherwise not fit in your GPUs VRAM. 
     Inference will be slower. Mutually exclusive with 
-    :py:attr:`RenderLoopConfig.sd_cascade_decoder_sequential_offload`
+    :py:attr:`RenderLoopConfig.s_cascade_decoder_sequential_offload`
     """
 
-    sd_cascade_decoder_sequential_offload: _types.OptionalBoolean = None
+    s_cascade_decoder_sequential_offload: _types.OptionalBoolean = None
     """
     Force sequential model offloading for the Stable Cascade decoder pipeline, this may drastically
     reduce memory consumption and allow large models to run when they would otherwise not fit in 
     your GPUs VRAM. Inference will be much slower. Mutually exclusive with 
-    :py:attr:`RenderLoopConfig.sd_cascade_decoder_cpu_offload`
+    :py:attr:`RenderLoopConfig.s_cascade_decoder_cpu_offload`
     """
 
     def __init__(self):
@@ -671,24 +677,24 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'{a_namer("refiner_cpu_offload")} and {a_namer("refiner_sequential_offload")} '
                 f'may not be enabled simultaneously.')
 
-        if self.sd_cascade_decoder_cpu_offload and self.sd_cascade_decoder_sequential_offload:
+        if self.s_cascade_decoder_cpu_offload and self.s_cascade_decoder_sequential_offload:
             raise RenderLoopConfigError(
-                f'{a_namer("sd_cascade_decoder_cpu_offload")} and {a_namer("sd_cascade_decoder_sequential_offload")} '
+                f'{a_namer("s_cascade_decoder_cpu_offload")} and {a_namer("s_cascade_decoder_sequential_offload")} '
                 f'may not be enabled simultaneously.')
 
-        if self.model_type == _pipelinewrapper.ModelType.TORCH_SD_CASCADE:
-            if not self.sd_cascade_decoder_uri:
+        if self.model_type == _pipelinewrapper.ModelType.TORCH_S_CASCADE:
+            if not self.s_cascade_decoder_uri:
                 raise RenderLoopConfigError(
                     f'You must specify a Stable Cascade decoder '
-                    f'model when {a_namer("model_type")} is "torch-sd-cascade"')
+                    f'model when {a_namer("model_type")} is "torch-s-cascade"')
 
-            if not self.sd_cascade_decoder_guidance_scales:
-                self.sd_cascade_decoder_guidance_scales = [
-                    _pipelinewrapper.DEFAULT_SD_CASCADE_DECODER_GUIDANCE_SCALE]
+            if not self.s_cascade_decoder_guidance_scales:
+                self.s_cascade_decoder_guidance_scales = [
+                    _pipelinewrapper.DEFAULT_S_CASCADE_DECODER_GUIDANCE_SCALE]
 
-            if not self.sd_cascade_decoder_inference_steps:
-                self.sd_cascade_decoder_inference_steps = [
-                    _pipelinewrapper.DEFAULT_SD_CASCADE_DECODER_INFERENCE_STEPS]
+            if not self.s_cascade_decoder_inference_steps:
+                self.s_cascade_decoder_inference_steps = [
+                    _pipelinewrapper.DEFAULT_S_CASCADE_DECODER_INFERENCE_STEPS]
 
             if self.control_net_uris is not None:
                 raise RenderLoopConfigError(
@@ -698,15 +704,15 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(
                     f'Stable Cascade requires {a_namer("output_size")} to be a power of 2.')
 
-        elif self.sd_cascade_decoder_uri:
+        elif self.s_cascade_decoder_uri:
             raise RenderLoopConfigError(
-                f'{a_namer("sd_cascade_decoder_uri")} may only be used with "torch-sd-cascade"')
-        elif self.sd_cascade_decoder_inference_steps is not None:
+                f'{a_namer("s_cascade_decoder_uri")} may only be used with "torch-s-cascade"')
+        elif self.s_cascade_decoder_inference_steps is not None:
             raise RenderLoopConfigError(
-                f'{a_namer("sd_cascade_decoder_inference_steps")} may only be used with "torch-sd-cascade"')
-        elif self.sd_cascade_decoder_guidance_scales is not None:
+                f'{a_namer("s_cascade_decoder_inference_steps")} may only be used with "torch-s-cascade"')
+        elif self.s_cascade_decoder_guidance_scales is not None:
             raise RenderLoopConfigError(
-                f'{a_namer("sd_cascade_decoder_guidance_scales")} may only be used with "torch-sd-cascade"')
+                f'{a_namer("s_cascade_decoder_guidance_scales")} may only be used with "torch-s-cascade"')
 
         if _pipelinewrapper.model_type_is_flax(self.model_type):
             if not _pipelinewrapper.have_jax_flax():
@@ -779,9 +785,9 @@ class RenderLoopConfig(_types.SetFromMixin):
             elif _pipelinewrapper.model_type_is_floyd_if(self.model_type):
                 self.output_size = (_pipelinewrapper.DEFAULT_FLOYD_IF_OUTPUT_WIDTH,
                                     _pipelinewrapper.DEFAULT_FLOYD_IF_OUTPUT_HEIGHT)
-            elif self.model_type == _pipelinewrapper.ModelType.TORCH_SD_CASCADE:
-                self.output_size = (_pipelinewrapper.DEFAULT_SD_CASCADE_OUTPUT_WIDTH,
-                                    _pipelinewrapper.DEFAULT_SD_CASCADE_OUTPUT_HEIGHT)
+            elif self.model_type == _pipelinewrapper.ModelType.TORCH_S_CASCADE:
+                self.output_size = (_pipelinewrapper.DEFAULT_S_CASCADE_OUTPUT_WIDTH,
+                                    _pipelinewrapper.DEFAULT_S_CASCADE_OUTPUT_HEIGHT)
             else:
                 self.output_size = (_pipelinewrapper.DEFAULT_OUTPUT_WIDTH,
                                     _pipelinewrapper.DEFAULT_OUTPUT_HEIGHT)
@@ -1125,12 +1131,12 @@ class RenderLoopConfig(_types.SetFromMixin):
             sdxl_refiner_guidance_rescale=ov('sdxl_refiner_guidance_rescale',
                                              self.sdxl_refiner_guidance_rescales),
 
-            sd_cascade_decoder_inference_steps=ov('sd_cascade_decoder_inference_steps',
-                                                  self.sd_cascade_decoder_inference_steps),
-            sd_cascade_decoder_guidance_scale=ov('sd_cascade_decoder_guidance_scale',
-                                                 self.sd_cascade_decoder_guidance_scales),
-            sd_cascade_decoder_prompt=ov('sd_cascade_decoder_prompt',
-                                         self.sd_cascade_decoder_prompts),
+            s_cascade_decoder_inference_steps=ov('s_cascade_decoder_inference_steps',
+                                                  self.s_cascade_decoder_inference_steps),
+            s_cascade_decoder_guidance_scale=ov('s_cascade_decoder_guidance_scale',
+                                                 self.s_cascade_decoder_guidance_scales),
+            s_cascade_decoder_prompt=ov('s_cascade_decoder_prompt',
+                                         self.s_cascade_decoder_prompts),
             upscaler_noise_level=ov('upscaler_noise_level', self.upscaler_noise_levels),
             sdxl_aesthetic_score=ov('sdxl_aesthetic_score', self.sdxl_aesthetic_scores),
             sdxl_original_size=ov('sdxl_original_size', self.sdxl_original_sizes),
