@@ -672,7 +672,7 @@ def _create_parser(add_model=True, add_help=True):
                     Inference will be slower. Mutually exclusive with --refiner-sequential-offload"""))
 
     actions.append(
-        parser.add_argument('-scd', '--s-cascade-decoder', action='store', default=None, metavar="MODEL_URI",
+        parser.add_argument('--s-cascade-decoder', action='store', default=None, metavar="MODEL_URI",
                             dest='s_cascade_decoder_uri',
                             help=f"""Specify a Stable Cascade (torch-s-cascade) decoder model path using a URI. 
                             This should be a huggingface repository slug / blob link, path to model file 
