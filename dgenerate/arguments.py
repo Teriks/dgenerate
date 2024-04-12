@@ -694,9 +694,14 @@ def _create_parser(add_model=True, add_help=True):
                             
                             The "subfolder" argument specifies the decoder model subfolder, if specified 
                             when loading from a huggingface repository or folder, weights from the specified subfolder.
+                            
+                            The "dtype" argument specifies the Stable Cascade decoder model precision, it defaults to 
+                            the value of -t/--dtype and should be one of: {_SUPPORTED_DATA_TYPES_PRETTY}.
                         
                             If you wish to load a weights file directly from disk, the simplest way is: 
-                            --s-cascade-decoder "decoder.safetensors".
+                            --sdxl-refiner "my_decoder.safetensors" or --sdxl-refiner "my_decoder.safetensors;dtype=float16", 
+                            all other loading arguments aside from "dtype" are unused in this case and may produce
+                            an error message if used.
                             
                             If you wish to load a specific weight file from a huggingface repository, use the blob link
                             loading syntax: --s-cascade-decoder 
@@ -709,14 +714,14 @@ def _create_parser(add_model=True, add_help=True):
             '--s-cascade-decoder-sequential-offload', action='store_true', default=False,
             help="""Force sequential model offloading for the Stable Cascade decoder pipeline, this may drastically
                     reduce memory consumption and allow large models to run when they would otherwise not fit in 
-                    your GPUs VRAM. Inference will be much slower. Mutually exclusive with --refiner-cpu-offload"""))
+                    your GPUs VRAM. Inference will be much slower. Mutually exclusive with --s-cascade-decoder-cpu-offload"""))
 
     actions.append(
         _refiner_offload_group.add_argument(
             '--s-cascade-decoder-cpu-offload', action='store_true', default=False,
             help="""Force model cpu offloading for the Stable Cascade decoder pipeline, this may reduce memory consumption
                     and allow large models to run when they would otherwise not fit in your GPUs VRAM. 
-                    Inference will be slower. Mutually exclusive with --refiner-sequential-offload"""))
+                    Inference will be slower. Mutually exclusive with --s-cascade-decoder-sequential-offload"""))
 
     actions.append(
         parser.add_argument('--s-cascade-decoder-prompts', nargs='+', action='store',
