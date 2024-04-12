@@ -27,6 +27,7 @@ import typing
 import PIL.Image
 import diffusers
 import torch
+import torchvision.transforms
 
 import dgenerate.image as _image
 import dgenerate.messages as _messages
@@ -1318,8 +1319,17 @@ class DiffusionPipelineWrapper:
                 args['height'] = image.size[1]
 
             if self._model_type == _enums.ModelType.TORCH_SD_CASCADE:
-                args['height'] = _types.default(user_args.height, _constants.DEFAULT_SD_CASCADE_OUTPUT_HEIGHT)
-                args['width'] = _types.default(user_args.width, _constants.DEFAULT_SD_CASCADE_OUTPUT_WIDTH)
+                if not _image.is_power_of_two(image.size):
+                    size = _image.nearest_power_of_two(image.size)
+                    _messages.log(
+                        f'Input image size {image.size} is not a power of 2. '
+                        f'Output dimensions will be forced to the nearest power of 2: {size}.',
+                        level=_messages.WARNING)
+                else:
+                    size = image.size
+
+                args['width'] = _types.default(user_args.width, size[0])
+                args['height'] = _types.default(user_args.height, size[1])
         else:
             if _enums.model_type_is_sdxl(self._model_type):
                 args['height'] = _types.default(user_args.height, _constants.DEFAULT_SDXL_OUTPUT_HEIGHT)

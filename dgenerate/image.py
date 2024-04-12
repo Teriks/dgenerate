@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import math
 import typing
 
 import PIL.Image
@@ -70,6 +71,50 @@ def resize_image_calc(old_size: _types.Size,
         return width, hsize
     else:
         return new_size
+
+
+def is_power_of_two(iterable: typing.Iterable[int]) -> bool:
+    """
+    Check if all elements are a power of 2.
+
+    :param iterable: Elements to test
+    :param align: The alignment value, ``None`` indicates no alignment.
+
+    :return: bool
+    """
+    for n in iterable:
+        if n <= 0:
+            return False
+        if not (n & (n - 1)) == 0:
+            return False
+    return True
+
+
+def nearest_power_of_two(iterable: typing.Iterable[int]) -> tuple:
+    """
+    Round all elements to the nearest power of two and return a tuple.
+
+    :param iterable: Elements to round
+    :param align: The alignment value, ``None`` indicates no alignment.
+
+    :return: tuple(...)
+    """
+
+    result = []
+    for number in iterable:
+        if number <= 0:
+            result.append(0)
+            continue
+
+        lower_power_of_two = 2 ** int(math.log2(number))
+        higher_power_of_two = 2 ** (int(math.log2(number)) + 1)
+
+        if abs(number - lower_power_of_two) < abs(number - higher_power_of_two):
+            result.append(lower_power_of_two)
+        else:
+            result.append(higher_power_of_two)
+
+    return tuple(result)
 
 
 def is_aligned(iterable: typing.Iterable[int], align: int) -> bool:

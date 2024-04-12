@@ -281,7 +281,7 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
 
     @torch.inference_mode()
     def _process(self, image):
-        in_img = torchvision.transforms.ToTensor()(image).unsqueeze(0).to(self.modules_device)
+        in_img = torchvision.transforms.ToTensor()(image).unsqueeze(0).to(self.modules_device, dtype=self._dtype)
 
         if self._model.input_channels == 4:
             # Fill 4th channel with 1.0s, this is definitely incorrect.

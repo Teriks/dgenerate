@@ -898,22 +898,29 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                 pipeline_class = diffusers.IFPipeline
             elif model_type == _enums.ModelType.TORCH_IFS:
                 raise UnsupportedPipelineConfigError(
-                    'Deep Floyd IF super resolution (IFS) only works in img2img mode and cannot work without --image-seeds.')
+                    'Deep Floyd IF super resolution (IFS) only works in img2img '
+                    'mode and cannot work without --image-seeds.')
             elif model_type == _enums.ModelType.TORCH_SD_CASCADE:
                 pipeline_class = diffusers.StableCascadePriorPipeline
             elif model_type == _enums.ModelType.TORCH_SD_CASCADE_DECODER:
                 pipeline_class = diffusers.StableCascadeDecoderPipeline
             elif control_net_uris:
-                pipeline_class = diffusers.StableDiffusionXLControlNetPipeline if sdxl else diffusers.StableDiffusionControlNetPipeline
+                pipeline_class = diffusers.StableDiffusionXLControlNetPipeline if sdxl \
+                    else diffusers.StableDiffusionControlNetPipeline
             else:
                 pipeline_class = diffusers.StableDiffusionXLPipeline if sdxl else diffusers.StableDiffusionPipeline
+
         elif pipeline_type == _enums.PipelineType.IMG2IMG:
-            if pix2pix:
-                if control_net_uris:
+            if control_net_uris:
+                if pix2pix:
                     raise UnsupportedPipelineConfigError(
                         'pix2pix models are not compatible with --control-nets.')
+                if _enums.model_type_is_sd_cascade(model_type):
+                    raise UnsupportedPipelineConfigError(
+                        'Stable Cascade does not support the use of --control-nets.')
 
-                pipeline_class = diffusers.StableDiffusionXLInstructPix2PixPipeline if sdxl else diffusers.StableDiffusionInstructPix2PixPipeline
+                pipeline_class = diffusers.StableDiffusionXLInstructPix2PixPipeline if sdxl \
+                    else diffusers.StableDiffusionInstructPix2PixPipeline
             elif model_type == _enums.ModelType.TORCH_IF:
                 pipeline_class = diffusers.IFImg2ImgPipeline
             elif model_type == _enums.ModelType.TORCH_IFS:
@@ -924,7 +931,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                 pipeline_class = diffusers.StableCascadePriorPipeline
             elif model_type == _enums.ModelType.TORCH_SD_CASCADE_DECODER:
                 raise UnsupportedPipelineConfigError(
-                    'Stable Cascade decoder models do not support PipelineType.IMG2IMG.')
+                    'Stable Cascade decoder models do not support img2img.')
             elif control_net_uris:
                 if sdxl:
                     pipeline_class = diffusers.StableDiffusionXLControlNetImg2ImgPipeline
@@ -938,7 +945,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                     'pix2pix models only work in img2img mode and cannot work in inpaint mode (with a mask).')
             if _enums.model_type_is_sd_cascade(model_type):
                 raise UnsupportedPipelineConfigError(
-                    'Stable Cascade model types do not support inpainting.')
+                    'Stable Cascade model types do not currently support inpainting.')
             if model_type == _enums.ModelType.TORCH_IF:
                 pipeline_class = diffusers.IFInpaintingPipeline
             elif model_type == _enums.ModelType.TORCH_IFS:
