@@ -739,6 +739,12 @@ def _create_parser(add_model=True, add_help=True):
                              (default: [{_pipelinewrapper.DEFAULT_SD_CASCADE_DECODER_GUIDANCE_SCALE}])"""))
 
     actions.append(
+        parser.add_argument('--sd-cascade-decoder-scheduler', action='store', default=None, metavar="SCHEDULER_NAME",
+                            help="""Specify a scheduler (sampler) by name for the Stable Cascade decoder pass. 
+                            Operates the exact same way as --scheduler including the "help" option. 
+                            Defaults to the value of --scheduler."""))
+
+    actions.append(
         parser.add_argument('--sdxl-refiner', action='store', default=None, metavar="MODEL_URI",
                             dest='sdxl_refiner_uri',
                             help=f"""Specify a Stable Diffusion XL (torch-sdxl) refiner model path using a URI. 

@@ -201,7 +201,7 @@ class DiffusionArguments(_types.SetFromMixin):
     command line tool.
     """
 
-    sd_cascade_decoder_prompt: _types.OptionalFloat = None
+    sd_cascade_decoder_prompt: _types.OptionalPrompt = None
     """
     Primary prompt for the Stable Cascade decoder when a decoder URI is specified in the 
     constructor of :py:class:`.DiffusionPipelineWrapper`. Usually the **prompt**
@@ -520,6 +520,11 @@ class DiffusionArguments(_types.SetFromMixin):
             "Negative Prompt")
 
         DiffusionArguments._describe_prompt(
+            prompt_format, self.sd_cascade_decoder_prompt,
+            "Stable Cascade Decoder Prompt",
+            "Stable Cascade Decoder Negative Prompt")
+
+        DiffusionArguments._describe_prompt(
             prompt_format, self.sdxl_second_prompt,
             "SDXL Second Prompt",
             "SDXL Second Negative Prompt")
@@ -545,6 +550,8 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.sdxl_refiner_clip_skip, "SDXL Refiner Clip Skip:"),
             (self.image_seed_strength, "Image Seed Strength:"),
             (self.upscaler_noise_level, "Upscaler Noise Level:"),
+            (self.sd_cascade_decoder_inference_steps, 'Stable Cascade Decoder Inference Steps:'),
+            (self.sd_cascade_decoder_guidance_scale, 'Stable Cascade Decoder Guidance Scale:'),
             (self.sdxl_high_noise_fraction, "SDXL High Noise Fraction:"),
             (self.sdxl_refiner_inference_steps, "SDXL Refiner Inference Steps:"),
             (self.sdxl_refiner_guidance_scale, "SDXL Refiner Guidance Scale:"),
@@ -912,6 +919,28 @@ class DiffusionPipelineWrapper:
 
         if args.sdxl_refiner_second_prompt is not None:
             opts.append(('--sdxl-refiner-second-prompts', args.sdxl_refiner_second_prompt))
+
+        if self._sd_cascade_decoder_uri is not None:
+            opts.append(('--sd-cascade-decoder', self._sd_cascade_decoder_uri))
+
+        if args.sd_cascade_decoder_inference_steps is not None:
+            opts.append(('--sd-cascade-decoder-inference-steps', args.sd_cascade_decoder_inference_steps))
+
+        if args.sd_cascade_decoder_guidance_scale is not None:
+            opts.append(('--sd-cascade-decoder-guidance-scales', args.sd_cascade_decoder_guidance_scale))
+
+        if args.sd_cascade_decoder_prompt is not None:
+            opts.append(('--sd-cascade-decoder-prompts', args.sd_cascade_decoder_prompt))
+
+        if self._sd_cascade_decoder_cpu_offload:
+            opts.append(('--sd-cascade-decoder-cpu-offload',))
+
+        if self._sd_cascade_decoder_sequential_offload:
+            opts.append(('--sd-cascade-decoder-sequential-offload',))
+
+        if self._sd_cascade_decoder_scheduler is not None:
+            opts.append(('--sd-cascade-decoder-scheduler',
+                         self._sd_cascade_decoder_scheduler))
 
         if self._revision is not None:
             opts.append(('--revision', self._revision))
@@ -1902,29 +1931,38 @@ class DiffusionPipelineWrapper:
 
         elif self._model_type == _enums.ModelType.TORCH_SD_CASCADE:
 
-            self._recall_main_pipeline = _pipelines.TorchPipelineFactory(
-                pipeline_type=pipeline_type,
-                model_path=self._model_path,
-                model_type=self._model_type,
-                subfolder=self._subfolder,
-                revision=self._revision,
-                variant=self._variant,
-                dtype=self._dtype,
-                unet_uri=self._unet_uri,
-                vae_uri=self._vae_uri,
-                lora_uris=self._lora_uris,
-                textual_inversion_uris=self._textual_inversion_uris,
-                control_net_uris=self._control_net_uris,
-                scheduler=self._scheduler,
-                safety_checker=self._safety_checker,
-                auth_token=self._auth_token,
-                device=self._device,
-                sequential_cpu_offload=self._model_sequential_offload,
-                model_cpu_offload=self._model_cpu_offload,
-                local_files_only=self._local_files_only,
-                extra_modules=self._model_extra_modules,
-                vae_tiling=self._vae_tiling,
-                vae_slicing=self._vae_slicing)
+            if self._sd_cascade_decoder_uri is None:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Stable Cascade must be used with a decoder model.')
+
+            if not _pipelines.scheduler_is_help(self._sd_cascade_decoder_scheduler):
+                # Don't load this up if were just going to be getting
+                # information about compatible schedulers for the refiner
+                self._recall_main_pipeline = _pipelines.TorchPipelineFactory(
+                    pipeline_type=pipeline_type,
+                    model_path=self._model_path,
+                    model_type=self._model_type,
+                    subfolder=self._subfolder,
+                    revision=self._revision,
+                    variant=self._variant,
+                    dtype=self._dtype,
+                    unet_uri=self._unet_uri,
+                    vae_uri=self._vae_uri,
+                    lora_uris=self._lora_uris,
+                    textual_inversion_uris=self._textual_inversion_uris,
+                    control_net_uris=self._control_net_uris,
+                    scheduler=self._scheduler,
+                    safety_checker=self._safety_checker,
+                    auth_token=self._auth_token,
+                    device=self._device,
+                    sequential_cpu_offload=self._model_sequential_offload,
+                    model_cpu_offload=self._model_cpu_offload,
+                    local_files_only=self._local_files_only,
+                    extra_modules=self._model_extra_modules,
+                    vae_tiling=self._vae_tiling,
+                    vae_slicing=self._vae_slicing)
+                creation_result = self._recall_main_pipeline()
+                self._pipeline = creation_result.pipeline
 
             self._recall_sd_cascade_decoder_pipeline = _pipelines.TorchPipelineFactory(
                 pipeline_type=_enums.PipelineType.TXT2IMG,
@@ -1950,9 +1988,8 @@ class DiffusionPipelineWrapper:
                 model_cpu_offload=self._sd_cascade_decoder_cpu_offload,
                 sequential_cpu_offload=self._sd_cascade_decoder_sequential_offload)
 
-            creation_result = self._recall_main_pipeline()
-            self._pipeline = creation_result.pipeline
-            self._sd_cascade_decoder_pipeline = self._recall_sd_cascade_decoder_pipeline().pipeline
+            creation_result = self._recall_sd_cascade_decoder_pipeline()
+            self._sd_cascade_decoder_pipeline = creation_result.pipeline
 
         elif self._sdxl_refiner_uri is not None:
             if not _enums.model_type_is_sdxl(self._model_type):

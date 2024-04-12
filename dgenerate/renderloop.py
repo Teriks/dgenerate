@@ -759,6 +759,7 @@ class RenderLoop:
             sd_cascade_decoder_uri=self.config.sd_cascade_decoder_uri,
             sd_cascade_decoder_cpu_offload=bool(self.config.sd_cascade_decoder_cpu_offload),
             sd_cascade_decoder_sequential_offload=bool(self.config.sd_cascade_decoder_sequential_offload),
+            sd_cascade_decoder_scheduler=self.config.sd_cascade_decoder_scheduler,
             scheduler=self.config.scheduler,
             sdxl_refiner_scheduler=
             self.config.sdxl_refiner_scheduler if self.config.sdxl_refiner_uri else None,
