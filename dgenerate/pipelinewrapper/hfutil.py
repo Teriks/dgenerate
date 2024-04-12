@@ -485,12 +485,22 @@ def estimate_model_memory_use(repo_id: str,
 
     def estimate(forced_only=False):
         size_sum = 0
-        if 'unet' in directories:
+        if 'unet' in directories \
+                or 'prior' in directories \
+                or 'decoder' in directories:
 
             important_directories = set()
 
+            if 'decoder' in directories:
+                important_directories.add('vqgan')
+
+            if 'prior' in directories:
+                important_directories.add('image_encoder')
+
             if include_unet:
                 important_directories.add('unet')
+                important_directories.add('prior')
+                important_directories.add('decoder')
 
             if not forced_only and include_vae:
                 important_directories.add('vae')
