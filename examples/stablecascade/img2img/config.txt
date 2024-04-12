@@ -7,7 +7,7 @@ stabilityai/stable-cascade-prior
 --model-type torch-sd-cascade
 --model-cpu-offload
 --sd-cascade-decoder-sequential-offload
---sd-cascade-decoder "stabilityai/stable-cascade;dtype=bfloat16"
+--sd-cascade-decoder "stabilityai/stable-cascade;dtype=float16"
 --inference-steps 20
 --guidance-scales 4
 --sd-cascade-decoder-inference-steps 10
