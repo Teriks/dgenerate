@@ -28,6 +28,7 @@ import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.prompt as _prompt
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+import dgenerate.image as _image
 
 CONTROL_IMAGE_PROCESSOR_SEP = '+'
 """
@@ -683,7 +684,11 @@ class RenderLoopConfig(_types.SetFromMixin):
 
             if self.control_net_uris is not None:
                 raise RenderLoopConfigError(
-                    f'Stable Cascade does not support the use of {a_namer("control_net_uris")}.')
+                    f'Stable Cascade does not currently support the use of {a_namer("control_net_uris")}.')
+
+            if self.output_size is not None and not _image.is_power_of_two(self.output_size):
+                raise RenderLoopConfigError(
+                    f'Stable Cascade requires {a_namer("output_size")} to be a power of 2.')
 
         elif self.sd_cascade_decoder_uri:
             raise RenderLoopConfigError(
