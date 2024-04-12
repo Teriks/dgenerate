@@ -204,7 +204,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     s_cascade_decoder_uri: _types.OptionalUri = None
     """
-    Stable Cascade model URI, ``--s-cascade-decoder-uri`` argument of dgenerate command line tool.
+    Stable Cascade model URI, ``--s-cascade-decoder`` argument of dgenerate command line tool.
     """
 
     s_cascade_decoder_prompts: _types.OptionalPrompts = None
