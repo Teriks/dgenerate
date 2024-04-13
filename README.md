@@ -48,53 +48,47 @@ For library documentation visit
 
 ------------------------------------------------------------------------
 
--   
+## How to install
 
-    How to install
+<!--ts-->
+   * [Windows Install](#windows-install)
+   * [Linux or WSL Install](#linux-or-wsl-install)
+<!--te-->
+ 
 
-    :   -   [Windows Install](#windows-install)
-        -   [Linux or WSL Install](#linux-or-wsl-install)
+## Usage Examples
 
--   
-
-    Usage Examples
-
-    :   -   [Basic Usage](#basic-usage)
-        -   [Negative Prompt](#negative-prompt)
-        -   [Multiple Prompts](#multiple-prompts)
-        -   [Image Seed](#image-seed)
-        -   [Inpainting](#inpainting)
-        -   [Per Image Seed Resizing](#per-image-seed-resizing)
-        -   [Animated Output](#animated-output)
-        -   [Animation Slicing](#animation-slicing)
-        -   [Inpainting Animations](#inpainting-animations)
-        -   [Deterministic Output](#deterministic-output)
-        -   [Specifying a specific GPU for
-            CUDA](#specifying-a-specific-gpu-for-cuda)
-        -   [Specifying a Scheduler
-            (sampler)](#specifying-a-scheduler-sampler)
-        -   [Specifying a VAE](#specifying-a-vae)
-        -   [VAE Tiling and Slicing](#vae-tiling-and-slicing)
-        -   [Specifying a UNet](#specifying-a-unet)
-        -   [Specifying an SDXL Refiner](#specifying-an-sdxl-refiner)
-        -   [Specifying a Stable Cascade
-            Decoder](#specifying-a-stable-cascade-decoder)
-        -   [Specifying LoRAs](#specifying-loras)
-        -   [Specifying Textual
-            Inversions](#specifying-textual-inversions)
-        -   [Specifying Control Nets](#specifying-control-nets)
-        -   [Specifying Generation Batch
-            Size](#specifying-generation-batch-size)
-        -   [Image Processors](#image-processors)
-        -   [Upscaling with Diffusion Upscaler
-            Models](#upscaling-with-diffusion-upscaler-models)
-        -   [Sub Commands (image-process)](#sub-commands-image-process)
-        -   [Upscaling with chaiNNer Compatible Upscaler
-            Models](#upscaling-with-chainner-compatible-upscaler-models)
-        -   [Writing and Running Configs](#writing-and-running-configs)
-        -   [Config Argument Injection](#config-argument-injection)
-        -   [Writing Plugins](#writing-plugins)
-        -   [File Cache Control](#file-cache-control)
+<!--ts-->
+   * [Basic Usage](#basic-usage)
+   * [Negative Prompt](#negative-prompt)
+   * [Multiple Prompts](#multiple-prompts)
+   * [Image Seed](#image-seed)
+   * [Inpainting](#inpainting)
+   * [Per Image Seed Resizing](#per-image-seed-resizing)
+   * [Animated Output](#animated-output)
+   * [Animation Slicing](#animation-slicing)
+   * [Inpainting Animations](#inpainting-animations)
+   * [Deterministic Output](#deterministic-output)
+   * [Specifying a specific GPU for CUDA](#specifying-a-specific-gpu-for-cuda)
+   * [Specifying a Scheduler (sampler)](#specifying-a-scheduler-sampler)
+   * [Specifying a VAE](#specifying-a-vae)
+   * [VAE Tiling and Slicing](#vae-tiling-and-slicing)
+   * [Specifying a UNet](#specifying-a-unet)
+   * [Specifying an SDXL Refiner](#specifying-an-sdxl-refiner)
+   * [Specifying a Stable Cascade Decoder](#specifying-a-stable-cascade-decoder)
+   * [Specifying LoRAs](#specifying-loras)
+   * [Specifying Textual Inversions](#specifying-textual-inversions)
+   * [Specifying Control Nets](#specifying-control-nets)
+   * [Specifying Generation Batch Size](#specifying-generation-batch-size)
+   * [Image Processors](#image-processors)
+   * [Upscaling with Diffusion Upscaler Models](#upscaling-with-diffusion-upscaler-models)
+   * [Sub Commands (image-process)](#sub-commands-image-process)
+   * [Upscaling with chaiNNer Compatible Upscaler Models](#upscaling-with-chainner-compatible-upscaler-models)
+   * [Writing and Running Configs](#writing-and-running-configs)
+   * [Config Argument Injection](#config-argument-injection)
+   * [Writing Plugins](#writing-plugins)
+   * [File Cache Control](#file-cache-control)
+<!--te-->
 
 ## Help Output
 
