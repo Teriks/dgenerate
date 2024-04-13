@@ -752,7 +752,7 @@ class SCascadeDecoderUri:
         try:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
         except ValueError:
-            raise InvalidVaeUriError(
+            raise InvalidSCascadeDecoderUriError(
                 f'invalid dtype string, must be one of: '
                 f'{_textprocessing.oxford_comma(_enums.supported_data_type_strings(), "or")}')
 
