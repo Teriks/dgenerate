@@ -79,7 +79,7 @@ class InvalidSDXLRefinerUriError(InvalidModelUriError):
     pass
 
 
-class InvalidSDCascadeDecoderUriError(InvalidModelUriError):
+class InvalidSCascadeDecoderUriError(InvalidModelUriError):
     """
     Error in ``--s-cascade-decoder`` uri
     """
@@ -771,7 +771,7 @@ class SDCascadeDecoderUri:
 
             dtype = r.args.get('dtype', None)
             if dtype is not None and dtype not in supported_dtypes:
-                raise InvalidSDCascadeDecoderUriError(
+                raise InvalidSCascadeDecoderUriError(
                     f'Torch Stable Cascade "dtype" must be {", ".join(supported_dtypes)}, '
                     f'or left undefined, received: {dtype}')
 
@@ -782,7 +782,7 @@ class SDCascadeDecoderUri:
                 dtype=dtype,
                 subfolder=r.args.get('subfolder', None))
         except _textprocessing.ConceptUriParseError as e:
-            raise InvalidSDCascadeDecoderUriError(e)
+            raise InvalidSCascadeDecoderUriError(e)
 
 
 class TorchVAEUri:
