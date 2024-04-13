@@ -1,4 +1,4 @@
-#! dgenerate 3.4.0
+#! dgenerate 3.4.1
 
 # The simplest use case is without a refiner, good results are achieved with very few inference steps
 

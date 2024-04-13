@@ -1,4 +1,4 @@
-#! dgenerate 3.4.0
+#! dgenerate 3.4.1
 
 # Use an already processed image with the canny control net
 

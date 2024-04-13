@@ -1,5 +1,5 @@
-.. |Documentation Status| image:: https://readthedocs.org/projects/dgenerate/badge/?version=v3.4.0
-   :target: http://dgenerate.readthedocs.io/en/v3.4.0/
+.. |Documentation Status| image:: https://readthedocs.org/projects/dgenerate/badge/?version=v3.4.1
+   :target: http://dgenerate.readthedocs.io/en/v3.4.1/
 
 Overview
 ========
@@ -35,7 +35,7 @@ and more.
 This software requires an Nvidia GPU supporting CUDA 12.1+, CPU rendering is possible for
 some operations but extraordinarily slow.
 
-For library documentation visit `readthedocs <http://dgenerate.readthedocs.io/en/v3.4.0/>`_.
+For library documentation visit `readthedocs <http://dgenerate.readthedocs.io/en/v3.4.1/>`_.
 
 ----
 
@@ -803,7 +803,7 @@ Help Output
                             automatically (DiffusionPipeline, VAE, and ControlNet) considering current
                             memory usage. If any of these constraint expressions are met all models cached
                             in memory will be cleared. Example, and default value: "used_percent > 70" For
-                            Syntax See: [https://dgenerate.readthedocs.io/en/v3.4.0/dgenerate_submodules.htm
+                            Syntax See: [https://dgenerate.readthedocs.io/en/v3.4.1/dgenerate_submodules.htm
                             l#dgenerate.pipelinewrapper.CACHE_MEMORY_CONSTRAINTS]
       -pmc EXPR [EXPR ...], --pipeline-cache-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the in
@@ -811,7 +811,7 @@ Help Output
                             memory usage of new models that are about to enter memory. If any of these
                             constraint expressions are met all DiffusionPipeline objects cached in memory
                             will be cleared. Example, and default value: "pipeline_size > (available *
-                            0.75)" For Syntax See: [https://dgenerate.readthedocs.io/en/v3.4.0/dgenerate_sub
+                            0.75)" For Syntax See: [https://dgenerate.readthedocs.io/en/v3.4.1/dgenerate_sub
                             modules.html#dgenerate.pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS]
       -umc EXPR [EXPR ...], --unet-cache-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the in
@@ -819,7 +819,7 @@ Help Output
                             of new UNet models that are about to enter memory. If any of these constraint
                             expressions are met all UNet models cached in memory will be cleared. Example,
                             and default value: "unet_size > (available * 0.75)" For Syntax See: [https://dge
-                            nerate.readthedocs.io/en/v3.4.0/dgenerate_submodules.html#dgenerate.pipelinewrap
+                            nerate.readthedocs.io/en/v3.4.1/dgenerate_submodules.html#dgenerate.pipelinewrap
                             per.UNET_CACHE_MEMORY_CONSTRAINTS]
       -vmc EXPR [EXPR ...], --vae-cache-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the in
@@ -827,7 +827,7 @@ Help Output
                             new VAE models that are about to enter memory. If any of these constraint
                             expressions are met all VAE models cached in memory will be cleared. Example,
                             and default value: "vae_size > (available * 0.75)" For Syntax See: [https://dgen
-                            erate.readthedocs.io/en/v3.4.0/dgenerate_submodules.html#dgenerate.pipelinewrapp
+                            erate.readthedocs.io/en/v3.4.1/dgenerate_submodules.html#dgenerate.pipelinewrapp
                             er.VAE_CACHE_MEMORY_CONSTRAINTS]
       -cmc EXPR [EXPR ...], --control-net-cache-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the in
@@ -835,7 +835,7 @@ Help Output
                             usage of new ControlNet models that are about to enter memory. If any of these
                             constraint expressions are met all ControlNet models cached in memory will be
                             cleared. Example, and default value: "control_net_size > (available * 0.75)" For
-                            Syntax See: [https://dgenerate.readthedocs.io/en/v3.4.0/dgenerate_submodules.htm
+                            Syntax See: [https://dgenerate.readthedocs.io/en/v3.4.1/dgenerate_submodules.htm
                             l#dgenerate.pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS]
 
 
@@ -897,12 +897,12 @@ Install dgenerate:
 
     # If you want a specific version
 
-    pipx install dgenerate==3.4.0 ^
+    pipx install dgenerate==3.4.1 ^
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu121/"
 
     # You can install without pipx into your own environment like so
 
-    pip install dgenerate==3.4.0 --extra-index-url https://download.pytorch.org/whl/cu121/
+    pip install dgenerate==3.4.1 --extra-index-url https://download.pytorch.org/whl/cu121/
 
 
 It is recommended to install dgenerate with pipx if you are just intending
@@ -1019,22 +1019,22 @@ Install dgenerate
 
     # If you want a specific version
 
-    pipx install dgenerate==3.4.0 \
+    pipx install dgenerate==3.4.1 \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu121/"
 
     # Specific version with flax/jax support
 
-    pipx install dgenerate[flax]==3.4.0 \
+    pipx install dgenerate[flax]==3.4.1 \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu121/ \
     -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html"
 
     # You can install without pipx into your own environment like so
 
-    pip3 install dgenerate==3.4.0 --extra-index-url https://download.pytorch.org/whl/cu121/
+    pip3 install dgenerate==3.4.1 --extra-index-url https://download.pytorch.org/whl/cu121/
 
     # Or with flax
 
-    pip3 install dgenerate[flax]==3.4.0 --extra-index-url https://download.pytorch.org/whl/cu121/ \
+    pip3 install dgenerate[flax]==3.4.1 --extra-index-url https://download.pytorch.org/whl/cu121/ \
     -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 
@@ -1260,8 +1260,8 @@ however for this example files on disk are used for brevity.
 
 You can download them here:
 
- * `my-image-seed.png <https://raw.githubusercontent.com/Teriks/dgenerate/v3.4.0/examples/media/dog-on-bench.png>`_
- * `my-mask-image.png <https://raw.githubusercontent.com/Teriks/dgenerate/v3.4.0/examples/media/dog-on-bench-mask.png>`_
+ * `my-image-seed.png <https://raw.githubusercontent.com/Teriks/dgenerate/v3.4.1/examples/media/dog-on-bench.png>`_
+ * `my-mask-image.png <https://raw.githubusercontent.com/Teriks/dgenerate/v3.4.1/examples/media/dog-on-bench-mask.png>`_
 
 The command below generates a cat sitting on a bench with the images from the links above, the mask image masks out
 areas over the dog in the original image, causing the dog to be replaced with an AI generated cat.
@@ -2270,7 +2270,7 @@ at which the control net model stops applying guidance. It defaults to 1.0, mean
 stop at the last inference step.
 
 
-These examples use: `vermeer_canny_edged.png <https://raw.githubusercontent.com/Teriks/dgenerate/v3.4.0/examples/media/vermeer_canny_edged.png>`_
+These examples use: `vermeer_canny_edged.png <https://raw.githubusercontent.com/Teriks/dgenerate/v3.4.1/examples/media/vermeer_canny_edged.png>`_
 
 
 .. code-block:: bash
@@ -2473,7 +2473,7 @@ CPU immediately when it is done, clearing up VRAM space before the diffusion mod
 For an example, images can be processed with the canny edge detection algorithm or OpenPose (rigging generation)
 before being used for generation with a model + a ControlNet.
 
-This image of a `horse <https://raw.githubusercontent.com/Teriks/dgenerate/v3.4.0/examples/media/horse2.jpeg>`_
+This image of a `horse <https://raw.githubusercontent.com/Teriks/dgenerate/v3.4.1/examples/media/horse2.jpeg>`_
 is used in the example below with a ControlNet that is trained to generate images from canny edge detected input.
 
 .. code-block:: bash
@@ -2553,7 +2553,7 @@ Upscaling with Diffusion Upscaler Models
 
 Stable diffusion image upscaling models can be used via the model types ``torch-upscaler-x2`` and ``torch-upscaler-x4``.
 
-The image used in the example below is this `low resolution cat <https://raw.githubusercontent.com/Teriks/dgenerate/v3.4.0/examples/media/low_res_cat.png>`_
+The image used in the example below is this `low resolution cat <https://raw.githubusercontent.com/Teriks/dgenerate/v3.4.1/examples/media/low_res_cat.png>`_
 
 .. code-block:: bash
 
@@ -2862,7 +2862,7 @@ The following is a config file example that covers very basic syntax concepts:
 
 .. code-block:: jinja
 
-    #! dgenerate 3.4.0
+    #! dgenerate 3.4.1
 
     # If a hash-bang version is provided in the format above
     # a warning will be produced if the version you are running
@@ -2957,7 +2957,7 @@ Template variables set with the ``\set`` directive will also be mentioned in thi
 
 .. code-block:: jinja
 
-    #! dgenerate 3.4.0
+    #! dgenerate 3.4.1
 
     # Invocation will proceed as normal
 
@@ -3272,7 +3272,7 @@ the documentation for the specified directives. The backslash may be omitted.
 
 .. code-block:: jinja
 
-    #! dgenerate 3.4.0
+    #! dgenerate 3.4.1
 
     # You can define your own template variables with the \set directive
     # the \set directive does not do any shell args parsing on its value
@@ -3472,7 +3472,7 @@ can glob directories using functions from the glob module like so:
 
 .. code-block:: jinja
 
-    #! dgenerate 3.4.0
+    #! dgenerate 3.4.1
 
     # The most basic usage is full expansion of every file
 
@@ -3501,7 +3501,7 @@ The dgenerate sub-command ``image-process`` has a config directive implementatio
 
 .. code-block:: jinja
 
-    #! dgenerate 3.4.0
+    #! dgenerate 3.4.1
 
     # print the help message of --sub-command image-process, this does
     # not cause the config to exit
@@ -3530,7 +3530,7 @@ You can exit a config early if need be using the ``\exit`` directive
 
 .. code-block:: jinja
 
-    #! dgenerate 3.4.0
+    #! dgenerate 3.4.1
 
     # exit the process with return code 1, which indicates an error
 
@@ -3628,24 +3628,24 @@ You simply specify one or more module directories on disk, or paths to python fi
 dgenerate supports implementing image processors and config directives through plugins.
 
 A code example as well as a usage example for image processor plugins can be found
-in the `"writing_plugins/image_processor" <https://github.com/Teriks/dgenerate/tree/v3.4.0/examples/writing_plugins/image_processor>`_
+in the `"writing_plugins/image_processor" <https://github.com/Teriks/dgenerate/tree/v3.4.1/examples/writing_plugins/image_processor>`_
 folder of the examples folder.
 
-The source code for the built in `canny <https://github.com/Teriks/dgenerate/blob/v3.4.0/dgenerate/imageprocessors/canny.py>`_ processor,
-the `openpose <https://github.com/Teriks/dgenerate/blob/v3.4.0/dgenerate/imageprocessors/openpose.py>`_ processor, and the simple
-`pillow image operations <https://github.com/Teriks/dgenerate/blob/v3.4.0/dgenerate/imageprocessors/imageops.py>`_ processors can also
+The source code for the built in `canny <https://github.com/Teriks/dgenerate/blob/v3.4.1/dgenerate/imageprocessors/canny.py>`_ processor,
+the `openpose <https://github.com/Teriks/dgenerate/blob/v3.4.1/dgenerate/imageprocessors/openpose.py>`_ processor, and the simple
+`pillow image operations <https://github.com/Teriks/dgenerate/blob/v3.4.1/dgenerate/imageprocessors/imageops.py>`_ processors can also
 be of reference as they are written as internal image processor plugins.
 
 An example for writing config directives can be found in the
-`"writing_plugins/config_directive" <https://github.com/Teriks/dgenerate/tree/v3.4.0/examples/writing_plugins/config_directive>`_ folder
+`"writing_plugins/config_directive" <https://github.com/Teriks/dgenerate/tree/v3.4.1/examples/writing_plugins/config_directive>`_ folder
 of the examples folder.
 
 Currently the only internal directive that is implemented as a plugin is the ``\image_process`` directive,
-who's source file `can be located here <https://github.com/Teriks/dgenerate/blob/v3.4.0/dgenerate/batchprocess/image_process_directive.py>`_,
+who's source file `can be located here <https://github.com/Teriks/dgenerate/blob/v3.4.1/dgenerate/batchprocess/image_process_directive.py>`_,
 the source file for this directive is terse as most of ``\image_process`` is implemented as reusable code as mentioned below.
 
 The behavior of ``\image_process`` which is also used for ``--sub-command image-process`` is
-`is implemented here <https://github.com/Teriks/dgenerate/blob/v3.4.0/dgenerate/image_process>`_.
+`is implemented here <https://github.com/Teriks/dgenerate/blob/v3.4.1/dgenerate/image_process>`_.
 
 File Cache Control
 ==================

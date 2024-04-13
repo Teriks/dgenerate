@@ -1,4 +1,4 @@
-#! dgenerate 3.4.0
+#! dgenerate 3.4.1
 
 diffusers/stable-diffusion-xl-1.0-inpainting-0.1 --model-type torch-sdxl
 --variant fp16 --dtype float16

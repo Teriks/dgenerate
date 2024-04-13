@@ -1738,7 +1738,7 @@ class DiffusionPipelineWrapper:
 
         self._set_non_universal_pipeline_arg(self._pipeline,
                                              pipeline_args, user_args,
-                                             'image_guidance_scale', 'image_guidance_scale',
+                                             'guidance_scale', 'image_guidance_scale',
                                              '--image-guidance-scales')
 
         batch_size = _types.default(user_args.batch_size, 1)
