@@ -1932,8 +1932,7 @@ values are: `revision`, `subfolder`, `dtype`. variant is not used for
 flax.
 
 The `--unet2` option can be used to specify a UNet for the [SDXL
-Refiner](Specifying%20an%20SDXL%20Refiner) or [Stable Cascade Decoder
-\<Specifying a Stable Cascade Decoder\>]{.title-ref}, and uses the same
+Refiner](Specifying%20an%20SDXL%20Refiner) or [Stable Cascade Decoder](Specifying%20a%20Stable%20Cascade%20Decoder), and uses the same
 syntax as `--unet`.
 
 # Specifying an SDXL Refiner
