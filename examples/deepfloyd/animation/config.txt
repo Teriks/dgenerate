@@ -45,7 +45,6 @@ stabilityai/stable-diffusion-x4-upscaler
 --image-seeds {{ quote(last_animations) }}
 --upscaler-noise-levels 100
 --output-prefix stage3
---model-sequential-offload
 
 # Clear out any saved modules from memory
 
