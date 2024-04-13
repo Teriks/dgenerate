@@ -692,7 +692,7 @@ class DiffusionPipelineWrapper:
         self._parsed_s_cascade_decoder_uri = None
         if s_cascade_decoder_uri is not None:
             # up front validation of this URI is optimal
-            self._parsed_s_cascade_decoder_uri = _uris.SDCascadeDecoderUri.parse(s_cascade_decoder_uri)
+            self._parsed_s_cascade_decoder_uri = _uris.SCascadeDecoderUri.parse(s_cascade_decoder_uri)
 
         if lora_uris:
             if model_type == 'flax':
