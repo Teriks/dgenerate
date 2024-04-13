@@ -1892,6 +1892,11 @@ Loading arguments available when specifying UNet for flax ``--model-type`` value
 are: ``revision``, ``subfolder``, ``dtype``. variant is not used for flax.
 
 
+The ``--unet2`` option can be used to specify a UNet for the
+`SDXL Refiner <Specifying an SDXL Refiner>`_ or `Stable Cascade Decoder <Specifying a Stable Cascade Decoder>`,
+and uses the same syntax as ``--unet``.
+
+
 Specifying an SDXL Refiner
 ==========================
 
