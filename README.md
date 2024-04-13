@@ -77,6 +77,8 @@ For library documentation visit
         -   [VAE Tiling and Slicing](#vae-tiling-and-slicing)
         -   [Specifying a UNet](#specifying-a-unet)
         -   [Specifying an SDXL Refiner](#specifying-an-sdxl-refiner)
+        -   [Specifying a Stable Cascade
+            Decoder](#specifying-a-stable-cascade-decoder)
         -   [Specifying LoRAs](#specifying-loras)
         -   [Specifying Textual
             Inversions](#specifying-textual-inversions)
@@ -2055,6 +2057,31 @@ less modification of the latent output by the main model.
 This is similar to what happens when using dgenerate in img2img with a
 standalone model, technically it is just img2img, however refiner models
 are better at enhancing details from the main model in this use case.
+
+# Specifying a Stable Cascade Decoder
+
+When the main model is a Stable Cascade prior model and
+`--model-type torch-s-cascade` is specified, you may specify a decoder
+model with `--s-cascade-decoder`.
+
+The syntax (and URI arguments) for specifying the decoder model is
+identical to specifying an SDXL refiner model as mentioned above.
+
+``` bash
+dgenerate stabilityai/stable-cascade-prior \
+--model-type torch-s-cascade \
+--variant bf16 \
+--dtype bfloat16 \
+--model-cpu-offload \
+--s-cascade-decoder-cpu-offload \
+--s-cascade-decoder "stabilityai/stable-cascade;dtype=float16" \
+--inference-steps 20 \
+--guidance-scales 4 \
+--s-cascade-decoder-inference-steps 10 \
+--s-cascade-decoder-guidance-scales 0 \
+--gen-seeds 2 \
+--prompts "an image of a shiba inu, donning a spacesuit and helmet"
+```
 
 # Specifying LoRAs
 
