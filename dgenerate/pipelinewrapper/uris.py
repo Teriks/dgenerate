@@ -690,7 +690,7 @@ class SDXLRefinerUri:
             raise InvalidSDXLRefinerUriError(e)
 
 
-class SDCascadeDecoderUri:
+class SCascadeDecoderUri:
     """
     Representation of ``--s-cascade-decoder`` uri
     """
@@ -753,10 +753,11 @@ class SDCascadeDecoderUri:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
         except ValueError:
             raise InvalidVaeUriError(
-                f'invalid dtype string, must be one of: {_textprocessing.oxford_comma(_enums.supported_data_type_strings(), "or")}')
+                f'invalid dtype string, must be one of: '
+                f'{_textprocessing.oxford_comma(_enums.supported_data_type_strings(), "or")}')
 
     @staticmethod
-    def parse(uri: _types.Uri) -> 'SDCascadeDecoderUri':
+    def parse(uri: _types.Uri) -> 'SCascadeDecoderUri':
         """
         Parse an ``--s-cascade-decoder`` uri and return an object representing its constituents
 
@@ -775,7 +776,7 @@ class SDCascadeDecoderUri:
                     f'Torch Stable Cascade "dtype" must be {", ".join(supported_dtypes)}, '
                     f'or left undefined, received: {dtype}')
 
-            return SDCascadeDecoderUri(
+            return SCascadeDecoderUri(
                 model=r.concept,
                 revision=r.args.get('revision', None),
                 variant=r.args.get('variant', None),
