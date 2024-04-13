@@ -1893,7 +1893,7 @@ are: ``revision``, ``subfolder``, ``dtype``. variant is not used for flax.
 
 
 The ``--unet2`` option can be used to specify a UNet for the
-`SDXL Refiner <#specifying-an-sdxl-refiner>`_ or `Stable Cascade Decoder <specifying-a-stable-cascade-decoder>`_,
+`SDXL Refiner <#specifying-an-sdxl-refiner>`_ or `Stable Cascade Decoder <#specifying-a-stable-cascade-decoder>`_,
 and uses the same syntax as ``--unet``.
 
 
