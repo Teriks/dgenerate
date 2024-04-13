@@ -73,6 +73,7 @@ stabilityai/stable-diffusion-x4-upscaler
 --image-seeds {{ quote(last_images) }}
 --upscaler-noise-levels 100
 --output-prefix stage3
+--model-sequential-offload
 
 # Notice that --safety-checker is not used on the invocation above,
 # it is not neccessary because we are using the saved "safety_checker" module from

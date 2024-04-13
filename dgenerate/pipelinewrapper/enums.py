@@ -110,7 +110,7 @@ class DataType(enum.Enum):
     """32 bit floating point."""
 
     BFLOAT16 = 3
-    """16 bit floating point."""
+    """16 bit brain floating point."""
 
 
 def supported_data_type_strings():
@@ -205,7 +205,7 @@ class ModelType(enum.Enum):
 
     TORCH_S_CASCADE = 10
     """
-    Stable Cascade
+    Stable Cascade prior
     """
 
     TORCH_S_CASCADE_DECODER = 11
