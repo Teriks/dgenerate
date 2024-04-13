@@ -254,7 +254,8 @@ if __name__ != 'setup_as_library':
           install_requires=pyproject_requirements,
           extras_require={
               'flax': lockfile_flax_requirements,
-              'dev': ['pyinstaller==6.2.0',
+              'dev': ['pandoc==2.3',
+                      'pyinstaller==6.2.0',
                       'sphinx==7.2.6',
                       'sphinx_rtd_theme==2.0.0',
                       'build==1.0.3'],

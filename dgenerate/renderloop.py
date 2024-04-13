@@ -226,14 +226,15 @@ class ImageFileSavedEvent(_Event):
         self.config_filename = config_filename
 
 
-RenderLoopEvent = typing.Union[ImageGeneratedEvent,
-StartingAnimationEvent,
-StartingAnimationFileEvent,
-AnimationFileFinishedEvent,
-ImageFileSavedEvent,
-AnimationFinishedEvent,
-StartingGenerationStepEvent,
-AnimationETAEvent]
+RenderLoopEvent = typing.Union[
+    ImageGeneratedEvent,
+    StartingAnimationEvent,
+    StartingAnimationFileEvent,
+    AnimationFileFinishedEvent,
+    ImageFileSavedEvent,
+    AnimationFinishedEvent,
+    StartingGenerationStepEvent,
+    AnimationETAEvent]
 """
 Possible events from the event stream created by :py:meth:`.RenderLoop.events`
 """

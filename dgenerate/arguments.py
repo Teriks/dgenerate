@@ -655,22 +655,6 @@ def _create_parser(add_model=True, add_help=True):
                     and allow large models to run when they would otherwise not fit in your GPUs VRAM. 
                     Inference will be slower. Mutually exclusive with --model-sequential-offload"""))
 
-    _refiner_offload_group = parser.add_mutually_exclusive_group()
-
-    actions.append(
-        _refiner_offload_group.add_argument(
-            '-rqo', '--sdxl-refiner-sequential-offload', action='store_true', default=False,
-            help="""Force sequential model offloading for the SDXL refiner pipeline, this may drastically
-                    reduce memory consumption and allow large models to run when they would otherwise not fit in 
-                    your GPUs VRAM. Inference will be much slower. Mutually exclusive with --refiner-cpu-offload"""))
-
-    actions.append(
-        _refiner_offload_group.add_argument(
-            '-rco', '--sdxl-refiner-cpu-offload', action='store_true', default=False,
-            help="""Force model cpu offloading for the SDXL refiner pipeline, this may reduce memory consumption
-                    and allow large models to run when they would otherwise not fit in your GPUs VRAM. 
-                    Inference will be slower. Mutually exclusive with --refiner-sequential-offload"""))
-
     actions.append(
         parser.add_argument('--s-cascade-decoder', action='store', default=None, metavar="MODEL_URI",
                             dest='s_cascade_decoder_uri',
@@ -709,16 +693,18 @@ def _create_parser(add_model=True, add_help=True):
                             the "revision" argument may be used with this syntax.
                             """))
 
+    _second_pass_offload_group = parser.add_mutually_exclusive_group()
+
     actions.append(
-        _refiner_offload_group.add_argument(
-            '--s-cascade-decoder-sequential-offload', action='store_true', default=False,
+        _second_pass_offload_group.add_argument(
+            '-dqo', '--s-cascade-decoder-sequential-offload', action='store_true', default=False,
             help="""Force sequential model offloading for the Stable Cascade decoder pipeline, this may drastically
                     reduce memory consumption and allow large models to run when they would otherwise not fit in 
                     your GPUs VRAM. Inference will be much slower. Mutually exclusive with --s-cascade-decoder-cpu-offload"""))
 
     actions.append(
-        _refiner_offload_group.add_argument(
-            '--s-cascade-decoder-cpu-offload', action='store_true', default=False,
+        _second_pass_offload_group.add_argument(
+            '-dco', '--s-cascade-decoder-cpu-offload', action='store_true', default=False,
             help="""Force model cpu offloading for the Stable Cascade decoder pipeline, this may reduce memory consumption
                     and allow large models to run when they would otherwise not fit in your GPUs VRAM. 
                     Inference will be slower. Mutually exclusive with --s-cascade-decoder-sequential-offload"""))
@@ -792,6 +778,20 @@ def _create_parser(add_model=True, add_help=True):
                             "https://huggingface.co/UserName/repository-name/blob/main/refiner_model.safetensors",
                             the "revision" argument may be used with this syntax.
                             """))
+
+    actions.append(
+        _second_pass_offload_group.add_argument(
+            '-rqo', '--sdxl-refiner-sequential-offload', action='store_true', default=False,
+            help="""Force sequential model offloading for the SDXL refiner pipeline, this may drastically
+                    reduce memory consumption and allow large models to run when they would otherwise not fit in 
+                    your GPUs VRAM. Inference will be much slower. Mutually exclusive with --refiner-cpu-offload"""))
+
+    actions.append(
+        _second_pass_offload_group.add_argument(
+            '-rco', '--sdxl-refiner-cpu-offload', action='store_true', default=False,
+            help="""Force model cpu offloading for the SDXL refiner pipeline, this may reduce memory consumption
+                    and allow large models to run when they would otherwise not fit in your GPUs VRAM. 
+                    Inference will be slower. Mutually exclusive with --refiner-sequential-offload"""))
 
     actions.append(
         parser.add_argument('--sdxl-refiner-scheduler', action='store', default=None, metavar="SCHEDULER_NAME",
