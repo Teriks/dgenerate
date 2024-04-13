@@ -915,6 +915,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                     raise UnsupportedPipelineConfigError(
                         'Stable Cascade does not support the use of --control-nets.')
 
+            if pix2pix:
                 pipeline_class = diffusers.StableDiffusionXLInstructPix2PixPipeline if sdxl \
                     else diffusers.StableDiffusionInstructPix2PixPipeline
             elif model_type == _enums.ModelType.TORCH_IF:
@@ -968,6 +969,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             except ValueError:
                 _messages.debug_log(
                     f'Unable to get device of {module[0]} = {module[1].__class__}')
+
 
     unet_override = extra_modules and 'unet' in extra_modules
     vae_override = extra_modules and 'vae' in extra_modules
