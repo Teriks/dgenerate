@@ -1678,6 +1678,10 @@ class DiffusionPipelineWrapper:
         pipeline_args['prompt'] = prompt.positive if prompt.positive else ''
         pipeline_args['negative_prompt'] = prompt.negative
 
+        pipeline_args['generator'] = \
+            torch.Generator(device=self._device).manual_seed(
+                _types.default(user_args.seed, _constants.DEFAULT_SEED))
+
         prior = _pipelines.call_pipeline(
             pipeline=self._pipeline,
             device=self._device,
