@@ -1,4 +1,4 @@
-#! dgenerate 3.4.1
+#! dgenerate 3.4.2
 
 # Complete transformation with canny edge detection
 

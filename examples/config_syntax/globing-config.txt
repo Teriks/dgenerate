@@ -1,4 +1,4 @@
-#! dgenerate 3.4.1
+#! dgenerate 3.4.2
 
 # The most basic usage is full expansion of every file
 
