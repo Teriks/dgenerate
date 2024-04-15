@@ -1,4 +1,4 @@
-#! dgenerate 3.4.2
+#! dgenerate 3.4.3
 
 CompVis/stable-diffusion-v1-4 
 --loras sayakpaul/sd-model-finetuned-lora-t4

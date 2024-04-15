@@ -1,4 +1,4 @@
-#! dgenerate 3.4.2
+#! dgenerate 3.4.3
 
 # Get arguments help and continue, this does not cause dgenerate to exit
 

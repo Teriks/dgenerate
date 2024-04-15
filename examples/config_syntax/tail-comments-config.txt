@@ -1,4 +1,4 @@
-#! dgenerate 3.4.2
+#! dgenerate 3.4.3
 
 # the ability to use tail comments requires a non trivial parse
 # that creates some penalty over the usage of the # character

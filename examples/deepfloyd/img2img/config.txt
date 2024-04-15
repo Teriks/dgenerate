@@ -1,4 +1,4 @@
-#! dgenerate 3.4.2
+#! dgenerate 3.4.3
 
 \set image_to_vary ../../media/dog-on-bench.png
 

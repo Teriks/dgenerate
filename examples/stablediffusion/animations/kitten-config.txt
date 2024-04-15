@@ -1,4 +1,4 @@
-#! dgenerate 3.4.2
+#! dgenerate 3.4.3
 
 
 # Strange but interesting upscaling effect on a gif
