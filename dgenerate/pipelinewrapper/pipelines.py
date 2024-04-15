@@ -1045,7 +1045,17 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         if unet_uri is not None and not unet_override:
             parsed_unet_uri = _uris.TorchUNetUri.parse(unet_uri)
 
-            creation_kwargs['unet'] = \
+            unet_parameter = 'unet'
+
+            if model_type == _enums.ModelType.TORCH_S_CASCADE:
+                unet_parameter = 'prior'
+            elif model_type == _enums.ModelType.TORCH_S_CASCADE_DECODER:
+                unet_parameter = 'decoder'
+
+            unet_class = diffusers.UNet2DConditionModel if unet_parameter == 'unet' \
+                else diffusers.models.unets.StableCascadeUNet
+
+            creation_kwargs[unet_parameter] = \
                 parsed_unet_uri.load(
                     variant_fallback=variant,
                     dtype_fallback=dtype,
@@ -1053,8 +1063,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                     local_files_only=local_files_only,
                     sequential_cpu_offload_member=sequential_cpu_offload,
                     model_cpu_offload_member=model_cpu_offload,
-                    unet_class=diffusers.models.unets.StableCascadeUNet if
-                    _enums.model_type_is_s_cascade(model_type) else diffusers.UNet2DConditionModel)
+                    unet_class=unet_class)
 
             _messages.debug_log(lambda:
                                 f'Added Torch UNet: "{unet_uri}" to pipeline: "{pipeline_class.__name__}"')
