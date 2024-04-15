@@ -30,7 +30,6 @@ import dgenerate.image as _image
 import dgenerate.imageprocessors.exceptions as _exceptions
 import dgenerate.messages as _messages
 import dgenerate.plugin as _plugin
-import dgenerate.pipelinewrapper.util as _util
 import dgenerate.types
 
 

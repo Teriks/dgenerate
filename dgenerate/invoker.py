@@ -24,11 +24,8 @@ import typing
 import dgenerate.arguments as _arguments
 import dgenerate.events as _event
 import dgenerate.imageprocessors as _imageprocessors
-import dgenerate.mediainput as _mediainput
 import dgenerate.messages as _messages
-import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.plugin as _plugin
-import dgenerate.renderloop as _renderloop
 import dgenerate.subcommands as _subcommands
 
 __doc__ = """
@@ -50,7 +47,7 @@ class DgenerateExitEvent(_event.Event):
         self.return_code = return_code
 
 
-InvokeDgenerateEvents = typing.Union[_renderloop.RenderLoopEvent, DgenerateExitEvent]
+InvokeDgenerateEvents = typing.Union[DgenerateExitEvent]
 """
 Events yield-able by :py:func:`.invoke_dgenerate_events`
 """
@@ -62,7 +59,6 @@ Event stream produced by :py:func:`.invoke_dgenerate_events`
 
 
 def invoke_dgenerate(args: collections.abc.Sequence[str],
-                     render_loop: typing.Optional[_renderloop.RenderLoop] = None,
                      throw: bool = False,
                      log_error: bool = True,
                      help_raises: bool = False) -> int:
@@ -105,7 +101,6 @@ def invoke_dgenerate(args: collections.abc.Sequence[str],
 
 def invoke_dgenerate_events(
         args: collections.abc.Sequence[str],
-        render_loop: typing.Optional[_renderloop.RenderLoop] = None,
         throw: bool = False,
         log_error: bool = True,
         help_raises: bool = False) -> InvokeDgenerateEventStream:
@@ -145,8 +140,6 @@ def invoke_dgenerate_events(
 
     :return: :py:data:`.InvokeDgenerateEventStream`
     """
-    if render_loop is None:
-        render_loop = _renderloop.RenderLoop()
 
     def rethrow_with_message(e):
         if log_error:
@@ -198,6 +191,8 @@ def invoke_dgenerate_events(
         yield rethrow_with_message(e)
         return
 
+    sub_command_name = "image-process"
+
     if sub_command_name is not None:
         verbose, verbose_rest = _arguments.parse_verbose(sub_command_name_rest)
 
@@ -218,118 +213,5 @@ def invoke_dgenerate_events(
             _messages.pop_level()
         return
 
-    template_help_variable_names, _ = _arguments.parse_templates_help(args)
-    directives_help_variable_names, _ = _arguments.parse_directives_help(args)
-
-    if template_help_variable_names is not None \
-            or directives_help_variable_names is not None:
-        import dgenerate.batchprocess
-
-        config_runner_args = dict()
-        if plugin_module_paths:
-            config_runner_args['injected_args'] = ['--plugin-modules'] + plugin_module_paths
-
-        config_runner = dgenerate.batchprocess.ConfigRunner(**config_runner_args)
-        if template_help_variable_names is not None:
-            try:
-                _messages.log(
-                    config_runner.generate_template_variables_help(
-                        template_help_variable_names,
-                        show_values=False))
-            except ValueError as e:
-                yield rethrow_with_message(e)
-                return
-        if directives_help_variable_names is not None:
-            try:
-                _messages.log(
-                    config_runner.generate_directives_help(
-                        directives_help_variable_names))
-            except ValueError as e:
-                yield rethrow_with_message(e)
-                return
-
-        yield DgenerateExitEvent(invoke_dgenerate_events, 0)
-        return
-
-    constraint_lists = []
-
-    try:
-        arguments = _arguments.parse_args(args, log_error=log_error, help_raises=True)
-    except _arguments.DgenerateHelpException:
-        if help_raises:
-            raise
-        yield DgenerateExitEvent(invoke_dgenerate_events, 0)
-        return
-    except _arguments.DgenerateUsageError as e:
-        if throw:
-            raise e
-        yield DgenerateExitEvent(invoke_dgenerate_events, 1)
-        return
-
-    try:
-        if arguments.cache_memory_constraints:
-            constraint_lists.append(_pipelinewrapper.CACHE_MEMORY_CONSTRAINTS)
-            _pipelinewrapper.CACHE_MEMORY_CONSTRAINTS = arguments.cache_memory_constraints
-
-        if arguments.pipeline_cache_memory_constraints:
-            constraint_lists.append(_pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS)
-            _pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS = arguments.pipeline_cache_memory_constraints
-
-        if arguments.unet_cache_memory_constraints:
-            constraint_lists.append(_pipelinewrapper.UNET_CACHE_MEMORY_CONSTRAINTS)
-            _pipelinewrapper.UNET_CACHE_MEMORY_CONSTRAINTS = arguments.unet_cache_memory_constraints
-
-        if arguments.vae_cache_memory_constraints:
-            constraint_lists.append(_pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS)
-            _pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS = arguments.vae_cache_memory_constraints
-
-        if arguments.control_net_cache_memory_constraints:
-            constraint_lists.append(_pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS)
-            _pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS = arguments.control_net_cache_memory_constraints
-
-        render_loop.config = arguments
-        render_loop.image_processor_loader.load_plugin_modules(arguments.plugin_module_paths)
-
-        if arguments.verbose:
-            _messages.push_level(_messages.DEBUG)
-        else:
-            # enable setting and unsetting in batch processing
-            _messages.push_level(_messages.INFO)
-
-        yield from render_loop.events()
-
-    except (_mediainput.ImageSeedError,
-            _mediainput.UnknownMimetypeError,
-            _mediainput.FrameStartOutOfBounds,
-            _pipelinewrapper.ModelNotFoundError,
-            _pipelinewrapper.InvalidModelUriError,
-            _pipelinewrapper.InvalidSchedulerNameError,
-            _pipelinewrapper.UnsupportedPipelineConfigError,
-            _pipelinewrapper.OutOfMemoryError,
-            _plugin.PluginNotFoundError,
-            _plugin.PluginArgumentError,
-            EnvironmentError) as e:
-        yield rethrow_with_message(e)
-        return
-    finally:
-        _messages.pop_level()
-
-        if arguments is not None:
-            if arguments.control_net_cache_memory_constraints:
-                _pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()
-
-            if arguments.unet_cache_memory_constraints:
-                _pipelinewrapper.UNET_CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()
-
-            if arguments.vae_cache_memory_constraints:
-                _pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()
-
-            if arguments.pipeline_cache_memory_constraints:
-                _pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()
-
-            if arguments.cache_memory_constraints:
-                _pipelinewrapper.CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()
-
-    # Return the template environment for pipelining
-    yield DgenerateExitEvent(invoke_dgenerate_events, 0)
+    exit(1)
     return

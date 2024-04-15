@@ -1,7 +1,0 @@
-EDITS
-
-Teriks: net_tools.py = line 20
-
-    This line originally did not contain 'dgenerate.extras.', it is needed for obvious reasons :)
-
-    module_name = 'dgenerate.extras.controlnet_aux.leres.leres.' + '.'.join(parts[:-1])

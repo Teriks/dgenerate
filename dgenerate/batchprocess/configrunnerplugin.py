@@ -24,7 +24,6 @@ import typing
 import dgenerate
 import dgenerate.batchprocess.configrunnerpluginloader as _configrunnerpluginloader
 import dgenerate.plugin as _plugin
-import dgenerate.renderloop as _renderloop
 import dgenerate.types as _types
 
 
@@ -36,7 +35,6 @@ class ConfigRunnerPlugin(_plugin.Plugin):
     def __init__(self,
                  loaded_by_name: str,
                  config_runner: typing.Optional['dgenerate.batchprocess.ConfigRunner'] = None,
-                 render_loop: typing.Optional[_renderloop.RenderLoop] = None,
                  **kwargs):
 
         super().__init__(loaded_by_name=loaded_by_name,
@@ -44,7 +42,6 @@ class ConfigRunnerPlugin(_plugin.Plugin):
                          **kwargs)
 
         self.__config_runner = config_runner
-        self.__render_loop = render_loop
 
     def set_template_variable(self, name, value):
         """
@@ -99,15 +96,6 @@ class ConfigRunnerPlugin(_plugin.Plugin):
         if self.config_runner is not None:
             return self.config_runner.injected_args
         return []
-
-    @property
-    def render_loop(self) -> typing.Optional[_renderloop.RenderLoop]:
-        """
-        Provides access to the currently instantiated :py:class:`dgenerate.renderloop.RenderLoop` object.
-
-        This object will have been used for any previous invocation of dgenerate in a config file.
-        """
-        return self.__render_loop
 
     @property
     def config_runner(self) -> typing.Optional['dgenerate.batchprocess.ConfigRunner']:

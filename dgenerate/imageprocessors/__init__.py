@@ -21,11 +21,9 @@
 
 import dgenerate.plugin as _plugin
 import dgenerate.types as _types
-from .canny import CannyEdgeDetectProcessor
 from .exceptions import \
     ImageProcessorNotFoundError, \
     ImageProcessorArgumentError
-from .hed import HEDProcessor
 from .imageops import \
     PosterizeProcessor, \
     SolarizeProcessor, \
@@ -35,15 +33,6 @@ from .imageprocessor import ImageProcessor
 from .imageprocessorchain import ImageProcessorChain
 from .imageprocessorloader import ImageProcessorLoader
 from .imageprocessormixin import ImageProcessorMixin
-from .leres import LeresDepthProcessor
-from .linart_anime import LineArtAnimeProcessor
-from .lineart import LineArtProcessor
-from .midas import MidasDepthProcessor
-from .mlsd import MLSDProcessor
-from .normal_bae import NormalBaeProcessor
-from .openpose import OpenPoseProcessor
-from .pidi import PidiNetProcessor
-from .sam import SegmentAnythingProcessor
 from .upscaler import UpscalerProcessor
 
 __doc__ = """

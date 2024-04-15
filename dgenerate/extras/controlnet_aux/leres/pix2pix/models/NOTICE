@@ -1,7 +1,0 @@
-EDITS
-
-Teriks: __init__.py = line 32
-
-    This line originally did not contain 'dgenerate.extras.', it is needed for obvious reasons :)
-
-    model_filename = "dgenerate.extras.controlnet_aux.leres.pix2pix.models." + model_name + "_model"

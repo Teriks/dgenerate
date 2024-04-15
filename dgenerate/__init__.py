@@ -34,37 +34,6 @@ warnings.filterwarnings('ignore', module='huggingface_hub')
 warnings.filterwarnings('ignore', module='torch')
 
 try:
-    import diffusers
-    import transformers
-
-    from dgenerate.renderloop import \
-        RenderLoop, \
-        RenderLoopConfig, \
-        RenderLoopConfigError, \
-        RenderLoopEvent, \
-        RenderLoopEventStream, \
-        ImageGeneratedEvent, \
-        ImageFileSavedEvent, \
-        StartingAnimationFileEvent, \
-        StartingAnimationEvent, \
-        AnimationFinishedEvent, \
-        AnimationFileFinishedEvent, \
-        AnimationETAEvent, \
-        StartingGenerationStepEvent, \
-        gen_seeds
-
-    from dgenerate.pipelinewrapper import \
-        InvalidModelUriError, \
-        InvalidSchedulerNameError, \
-        UnsupportedPipelineConfigError, \
-        ModelType, \
-        DataType, \
-        OutOfMemoryError, \
-        ModelNotFoundError, \
-        PipelineType
-
-    from dgenerate.prompt import Prompt
-
     from dgenerate.batchprocess import \
         BatchProcessError, \
         ConfigRunner, \
@@ -98,8 +67,6 @@ try:
     import dgenerate.messages
     import dgenerate.types
 
-    transformers.logging.set_verbosity(transformers.logging.CRITICAL)
-    diffusers.logging.set_verbosity(diffusers.logging.CRITICAL)
 except KeyboardInterrupt:
     print('Aborting due to keyboard interrupt!')
     sys.exit(1)
@@ -116,15 +83,13 @@ def main(args: typing.Optional[collections.abc.Sequence[str]] = None):
         args = sys.argv[1:]
 
     try:
-        render_loop = RenderLoop()
-        render_loop.config = DgenerateArguments()
         # ^ this is necessary for --templates-help to
         # render all the correct values
 
         if not sys.stdin.isatty():
             # Not a terminal, batch process STDIN
             try:
-                ConfigRunner(render_loop=render_loop,
+                ConfigRunner(
                              version=__version__,
                              injected_args=args).run_file(sys.stdin)
             except ModuleFileNotFoundError as e:
@@ -137,7 +102,7 @@ def main(args: typing.Optional[collections.abc.Sequence[str]] = None):
                                        level=dgenerate.messages.ERROR)
                 sys.exit(1)
         else:
-            sys.exit(invoke_dgenerate(args, render_loop=render_loop))
+            sys.exit(invoke_dgenerate(args))
     except KeyboardInterrupt:
         print('Aborting due to keyboard interrupt!', file=sys.stderr)
         sys.exit(1)
