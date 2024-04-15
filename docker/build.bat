@@ -1,2 +1,2 @@
 @echo off
-docker image build -t teriks/dgenerate:3.4.3 .
+docker image build -t teriks/dgenerate:3.4.4 .
