@@ -1678,6 +1678,8 @@ class DiffusionPipelineWrapper:
         pipeline_args['prompt'] = prompt.positive if prompt.positive else ''
         pipeline_args['negative_prompt'] = prompt.negative
 
+        pipeline_args['num_images_per_prompt'] = _types.default(user_args.batch_size, 1)
+
         pipeline_args['generator'] = \
             torch.Generator(device=self._device).manual_seed(
                 _types.default(user_args.seed, _constants.DEFAULT_SEED))
@@ -1704,12 +1706,17 @@ class DiffusionPipelineWrapper:
             pipeline_args['prompt'] = prompt.positive if prompt.positive else ''
             pipeline_args['negative_prompt'] = prompt.negative
 
-        return PipelineWrapperResult(
-            _pipelines.call_pipeline(
-                image_embeddings=image_embeddings,
+        pipeline_args['num_images_per_prompt'] = 1
+
+        output_images = []
+        for embedding in image_embeddings:
+            output_images += _pipelines.call_pipeline(
+                image_embeddings=embedding.unsqueeze(0),
                 pipeline=self._s_cascade_decoder_pipeline,
                 device=self._device,
-                **pipeline_args).images)
+                **pipeline_args).images
+
+        return PipelineWrapperResult(output_images)
 
     def _call_torch(self, pipeline_args, user_args: DiffusionArguments):
         prompt: _prompt.Prompt() = _types.default(user_args.prompt, _prompt.Prompt())
