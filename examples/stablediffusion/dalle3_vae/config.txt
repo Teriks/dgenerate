@@ -1,4 +1,4 @@
-# dgenerate 3.4.2
+# dgenerate 3.4.3
 
 # Test the consistency decoder VAE contributed from Dalle-3, which works
 # with stable diffusion 1.x models
