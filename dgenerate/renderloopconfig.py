@@ -404,7 +404,8 @@ class RenderLoopConfig(_types.SetFromMixin):
     """
     Optional primary model scheduler/sampler class name specification, this corresponds to the ``--scheduler``
     argument of the dgenerate command line tool. Setting this to 'help' will yield a help message to stdout
-    describing scheduler names compatible with the current configuration upon running.
+    describing scheduler names compatible with the current configuration upon running. Passing 'helpargs' will
+    yield a help message with a list of overridable arguments for each scheduler and their typical defaults.
     """
 
     sdxl_refiner_scheduler: _types.OptionalName = None
@@ -412,7 +413,8 @@ class RenderLoopConfig(_types.SetFromMixin):
     Optional SDXL refiner model scheduler/sampler class name specification, this corresponds to the 
     ``--sdxl-refiner-scheduler`` argument of the dgenerate command line tool. Setting this to 'help' 
     will yield a help message to stdout describing scheduler names compatible with the current 
-    configuration upon running.
+    configuration upon running. Passing 'helpargs' will yield a help message with a list of overridable 
+    arguments for each scheduler and their typical defaults.
     """
 
     s_cascade_decoder_scheduler: _types.OptionalName = None
@@ -420,7 +422,8 @@ class RenderLoopConfig(_types.SetFromMixin):
     Optional Stable Cascade decoder model scheduler/sampler class name specification, this corresponds to the 
     ``--s-cascade-decoder-scheduler`` argument of the dgenerate command line tool. Setting this to 'help' 
     will yield a help message to stdout describing scheduler names compatible with the current 
-    configuration upon running.
+    configuration upon running. Passing 'helpargs' will yield a help message with a list of overridable 
+    arguments for each scheduler and their typical defaults.
     """
 
     safety_checker: bool = False
