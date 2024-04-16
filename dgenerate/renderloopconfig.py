@@ -221,7 +221,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     s_cascade_decoder_guidance_scales: _types.OptionalFloats = None
     """
-    List of guidance scale values for the Stable Cascade refiner, this 
+    List of guidance scale values for the Stable Cascade decoder, this 
     corresponds to the ``--s-cascade-decoder-guidance-scales`` argument of the dgenerate
     command line tool.
     """

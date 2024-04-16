@@ -2843,6 +2843,7 @@ directive mentioned in an example further down.
 
 Available custom jinja2 functions/filters are:
 
+* ``{{ first(list_of_items) }}`` (First element in a list)
 * ``{{ last(list_of_items) }}`` (Last element in a list)
 * ``{{ unquote('"unescape-me"') }}`` (shell unquote / split, works on strings and lists)
 * ``{{ quote('escape-me') }}`` (shell quote, works on strings and lists)
@@ -2976,7 +2977,7 @@ The ``\templates_help`` output from the above example is:
 
         Name: "last_model_path"
             Type: typing.Optional[str]
-            Value: stabilityai/stable-diffusion-2
+            Value: stabilityai/stable-diffusion-2-1
         Name: "last_subfolder"
             Type: typing.Optional[str]
             Value: None
@@ -3006,7 +3007,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [50629264152573]
+            Value: [98030306583037]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -3038,6 +3039,18 @@ The ``\templates_help`` output from the above example is:
             Type: typing.Optional[collections.abc.Sequence[float]]
             Value: []
         Name: "last_image_guidance_scales"
+            Type: typing.Optional[collections.abc.Sequence[float]]
+            Value: []
+        Name: "last_s_cascade_decoder_uri"
+            Type: typing.Optional[str]
+            Value: None
+        Name: "last_s_cascade_decoder_prompts"
+            Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
+            Value: []
+        Name: "last_s_cascade_decoder_inference_steps"
+            Type: typing.Optional[collections.abc.Sequence[int]]
+            Value: []
+        Name: "last_s_cascade_decoder_guidance_scales"
             Type: typing.Optional[collections.abc.Sequence[float]]
             Value: []
         Name: "last_sdxl_high_noise_fractions"
@@ -3103,6 +3116,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_unet_uri"
             Type: typing.Optional[str]
             Value: None
+        Name: "last_second_unet_uri"
+            Type: typing.Optional[str]
+            Value: None
         Name: "last_vae_uri"
             Type: typing.Optional[str]
             Value: None
@@ -3127,6 +3143,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_sdxl_refiner_scheduler"
             Type: typing.Optional[str]
             Value: None
+        Name: "last_s_cascade_decoder_scheduler"
+            Type: typing.Optional[str]
+            Value: None
         Name: "last_safety_checker"
             Type: <class 'bool'>
             Value: False
@@ -3135,7 +3154,7 @@ The ``\templates_help`` output from the above example is:
             Value: ModelType.TORCH
         Name: "last_device"
             Type: <class 'str'>
-            Value: cuda:1
+            Value: cuda
         Name: "last_dtype"
             Type: <enum 'DataType'>
             Value: DataType.AUTO
@@ -3162,10 +3181,10 @@ The ``\templates_help`` output from the above example is:
             Value: False
         Name: "last_output_configs"
             Type: <class 'bool'>
-            Value: True
+            Value: False
         Name: "last_output_metadata"
             Type: <class 'bool'>
-            Value: True
+            Value: False
         Name: "last_animation_format"
             Type: <class 'str'>
             Value: mp4
@@ -3211,12 +3230,18 @@ The ``\templates_help`` output from the above example is:
         Name: "last_sdxl_refiner_sequential_offload"
             Type: typing.Optional[bool]
             Value: None
+        Name: "last_s_cascade_decoder_cpu_offload"
+            Type: typing.Optional[bool]
+            Value: None
+        Name: "last_s_cascade_decoder_sequential_offload"
+            Type: typing.Optional[bool]
+            Value: None
         Name: "last_plugin_module_paths"
             Type: collections.abc.Sequence[str]
             Value: []
         Name: "last_verbose"
             Type: <class 'bool'>
-            Value: True
+            Value: False
         Name: "last_cache_memory_constraints"
             Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
@@ -3234,10 +3259,10 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_images"
             Type: collections.abc.Iterable[str]
-            Value: <dgenerate.renderloop.RenderLoop.written_images.<locals>.Iterable object at 0x000001E401B2D050>
+            Value: <dgenerate.renderloop.RenderLoop.written_images.<locals>.Iterable object at ...>
         Name: "last_animations"
             Type: collections.abc.Iterable[str]
-            Value: <dgenerate.renderloop.RenderLoop.written_animations.<locals>.Iterable object at 0x000001E401B2C910>
+            Value: <dgenerate.renderloop.RenderLoop.written_animations.<locals>.Iterable object at ...>
         Name: "injected_args"
             Type: collections.abc.Sequence[str]
             Value: []
@@ -3246,7 +3271,7 @@ The ``\templates_help`` output from the above example is:
             Value: None
         Name: "injected_verbose"
             Type: typing.Optional[bool]
-            Value: None
+            Value: False
         Name: "injected_plugin_modules"
             Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []

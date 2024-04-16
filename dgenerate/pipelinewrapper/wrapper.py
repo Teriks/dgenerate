@@ -196,7 +196,7 @@ class DiffusionArguments(_types.SetFromMixin):
 
     s_cascade_decoder_guidance_scale: _types.OptionalFloat = None
     """
-    Guidance scale value for the Stable Cascade refiner, this 
+    Guidance scale value for the Stable Cascade decoder, this 
     corresponds to the ``--s-cascade-decoder-guidance-scales`` argument of the dgenerate
     command line tool.
     """
@@ -1706,17 +1706,13 @@ class DiffusionPipelineWrapper:
             pipeline_args['prompt'] = prompt.positive if prompt.positive else ''
             pipeline_args['negative_prompt'] = prompt.negative
 
-        pipeline_args['num_images_per_prompt'] = 1
+        pipeline_args.pop('num_images_per_prompt')
 
-        output_images = []
-        for embedding in image_embeddings:
-            output_images += _pipelines.call_pipeline(
-                image_embeddings=embedding.unsqueeze(0),
-                pipeline=self._s_cascade_decoder_pipeline,
-                device=self._device,
-                **pipeline_args).images
-
-        return PipelineWrapperResult(output_images)
+        return PipelineWrapperResult(_pipelines.call_pipeline(
+            image_embeddings=image_embeddings,
+            pipeline=self._s_cascade_decoder_pipeline,
+            device=self._device,
+            **pipeline_args).images)
 
     def _call_torch(self, pipeline_args, user_args: DiffusionArguments):
         prompt: _prompt.Prompt() = _types.default(user_args.prompt, _prompt.Prompt())
