@@ -309,7 +309,7 @@ class Plugin:
 
         args_with_defaults = []
 
-        spec = _types.get_accepted_args_with_defaults(cls.__init__)
+        spec = list(_types.get_accepted_args_with_defaults(cls.__init__))[1:]
         hints = typing.get_type_hints(cls.__init__)
 
         for arg in spec:
