@@ -350,7 +350,7 @@ def get_accepted_args_with_defaults(func) -> \
     """
 
     spec = inspect.getfullargspec(func)
-    sig_args = spec.args[1:]
+    sig_args = spec.args
     defaults_cnt = len(spec.defaults) if spec.defaults else 0
     no_defaults_before = len(sig_args) - defaults_cnt
 
