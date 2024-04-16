@@ -13,4 +13,3 @@ stabilityai/stable-cascade-prior
 --s-cascade-decoder-guidance-scales 0
 --gen-seeds 2
 --prompts "an image of a shiba inu, donning a spacesuit and helmet"
---batch-size 3
