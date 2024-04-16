@@ -1,4 +1,4 @@
-#! dgenerate 3.4.4
+#! dgenerate 3.4.5
 
 
 # Utilize the OpenPose ControlNet with an OpenPose rigging image
