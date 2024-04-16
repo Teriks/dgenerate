@@ -120,7 +120,7 @@ def scheduler_is_help(name: typing.Optional[str]):
         return False
     lname = name.strip().lower()
 
-    return lname == 'help' and lname == 'helpargs'
+    return lname == 'help' or lname == 'helpargs'
 
 
 def load_scheduler(pipeline: typing.Union[diffusers.DiffusionPipeline, diffusers.FlaxDiffusionPipeline],
