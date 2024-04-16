@@ -3579,14 +3579,14 @@ On Windows CMD:
 
 .. code-block:: bash
 
-    dgenerate < my-arguments.txt
+    dgenerate < my-config.txt
 
 
 On Windows Powershell:
 
 .. code-block:: powershell
 
-    Get-Content my-arguments.txt | dgenerate
+    Get-Content my-config.txt | dgenerate
 
 
 Config Argument Injection
