@@ -3676,13 +3676,13 @@ dgenerate < my-config.txt
 On Windows CMD:
 
 ``` bash
-dgenerate < my-arguments.txt
+dgenerate < my-config.txt
 ```
 
 On Windows Powershell:
 
 ``` powershell
-Get-Content my-arguments.txt | dgenerate
+Get-Content my-config.txt | dgenerate
 ```
 
 # Config Argument Injection
