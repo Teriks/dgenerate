@@ -632,10 +632,12 @@ def _create_parser(add_model=True, add_help=True):
             if _pipelinewrapper.have_jax_flax() else ''
 
     actions.append(
-        parser.add_argument('-sch', '--scheduler', action='store', default=None, metavar="SCHEDULER_NAME",
+        parser.add_argument('-sch', '--scheduler', action='store', default=None, metavar="SCHEDULER_URI",
                             help=
-                            f'Specify a scheduler (sampler) by name. Passing "help" to this argument '
-                            f'will print the compatible schedulers for a model without generating any images. '
+                            f'Specify a scheduler (sampler) by URI. Passing "help" to this argument '
+                            f'will print the compatible schedulers for a model without generating any images. Passing "helpargs" '
+                            f'will yield a help message with a list of overridable arguments for each scheduler and their typical defaults. '
+                            f'Arguments listed by "helpargs" can be overridden using the URI syntax typical to other dgenerate URI arguments.'
                             f'Torch schedulers: ({", ".join(e.name for e in diffusers.schedulers.KarrasDiffusionSchedulers)}).'
                             + _flax_scheduler_help_part))
 
@@ -736,10 +738,11 @@ def _create_parser(add_model=True, add_help=True):
                              (default: [{_pipelinewrapper.DEFAULT_S_CASCADE_DECODER_GUIDANCE_SCALE}])"""))
 
     actions.append(
-        parser.add_argument('--s-cascade-decoder-scheduler', action='store', default=None, metavar="SCHEDULER_NAME",
-                            help="""Specify a scheduler (sampler) by name for the Stable Cascade decoder pass. 
-                            Operates the exact same way as --scheduler including the "help" option. 
-                            Defaults to the value of --scheduler."""))
+        parser.add_argument('--s-cascade-decoder-scheduler', action='store', default=None, metavar="SCHEDULER_URI",
+                            help="""Specify a scheduler (sampler) by URI for the Stable Cascade decoder pass. 
+                            Operates the exact same way as --scheduler including the "help" option. Passing 'helpargs' 
+                            will yield a help message with a list of overridable arguments for each scheduler and 
+                            their typical defaults. Defaults to the value of --scheduler."""))
 
     actions.append(
         parser.add_argument('--sdxl-refiner', action='store', default=None, metavar="MODEL_URI",
@@ -794,9 +797,11 @@ def _create_parser(add_model=True, add_help=True):
                     Inference will be slower. Mutually exclusive with --refiner-sequential-offload"""))
 
     actions.append(
-        parser.add_argument('--sdxl-refiner-scheduler', action='store', default=None, metavar="SCHEDULER_NAME",
-                            help="""Specify a scheduler (sampler) by name for the SDXL refiner pass. Operates the exact
-                                 same way as --scheduler including the "help" option. Defaults to the value of --scheduler."""))
+        parser.add_argument('--sdxl-refiner-scheduler', action='store', default=None, metavar="SCHEDULER_URI",
+                            help="""Specify a scheduler (sampler) by URI for the SDXL refiner pass. Operates the exact
+                                 same way as --scheduler including the "help" option. Passing 'helpargs' will yield a help 
+                                 message with a list of overridable arguments for each scheduler and their typical defaults.
+                                 Defaults to the value of --scheduler."""))
 
     actions.append(
         parser.add_argument('--sdxl-refiner-edit', action='store_true', default=None,

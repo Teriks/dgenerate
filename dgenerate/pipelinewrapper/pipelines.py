@@ -18,7 +18,9 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import ast
 import collections.abc
+import inspect
 import typing
 
 import accelerate
@@ -116,7 +118,9 @@ def scheduler_is_help(name: typing.Optional[str]):
     """
     if name is None:
         return False
-    return name.strip().lower() == 'help'
+    lname = name.strip().lower()
+
+    return lname == 'help' and lname == 'helpargs'
 
 
 def load_scheduler(pipeline: typing.Union[diffusers.DiffusionPipeline, diffusers.FlaxDiffusionPipeline],
@@ -128,7 +132,8 @@ def load_scheduler(pipeline: typing.Union[diffusers.DiffusionPipeline, diffusers
 
     :param pipeline: pipeline object
     :param scheduler_name: compatible scheduler class name, pass "help" to receive a print out to STDOUT
-        and raise :py:exc:`.SchedulerHelpException`
+        and raise :py:exc:`.SchedulerHelpException`, this argument can accept a URI in typical dgenerate format,
+        for overriding the schedulers constructor parameters.
     :param model_path: Optional model path to be used in the message to STDOUT produced by passing "help"
     :return:
     """
@@ -145,15 +150,42 @@ def load_scheduler(pipeline: typing.Union[diffusers.DiffusionPipeline, diffusers
         # Seems to only work with this scheduler
         compatibles = [c for c in compatibles if c.__name__ == 'EulerDiscreteScheduler']
 
-    if scheduler_is_help(scheduler_name):
+    help_name = scheduler_name.strip().lower()
+    if help_name == 'help':
         help_string = f'Compatible schedulers for "{model_path}" are:' + '\n\n'
         help_string += '\n'.join((" " * 4) + _textprocessing.quote(i.__name__) for i in compatibles) + '\n'
         _messages.log(help_string)
         raise SchedulerHelpException(help_string)
 
+    if help_name == 'helpargs':
+        help_string = f'Compatible schedulers for "{model_path}" are:' + '\n\n'
+        help_string += '\n\n'.join((" " * 4) + i.__name__+('\n'+' '*8)+('\n'+' '*8).join(
+            _textprocessing.dashup(n) + '=' + str(v) for n, v in
+            _types.get_default_args(i.__init__.__wrapped__)) for i in compatibles) + '\n'
+        _messages.log(help_string)
+        raise SchedulerHelpException(help_string)
+
+    def _get_value(v):
+        try:
+            return ast.literal_eval(v)
+        except (ValueError, SyntaxError):
+            return v
+
     for i in compatibles:
-        if i.__name__ == scheduler_name:
-            pipeline.scheduler = i.from_config(pipeline.scheduler.config)
+        if i.__name__.startswith(scheduler_name.split(';')[0]):
+            parser = _textprocessing.ConceptUriParser(
+                'Scheduler',
+                known_args=[_textprocessing.dashup(a) for a in inspect.getfullargspec(i.__init__.__wrapped__).args[1:]])
+
+            try:
+                result = parser.parse(scheduler_name)
+            except _textprocessing.ConceptUriParseError as e:
+                raise InvalidSchedulerNameError(e)
+
+            pipeline.scheduler = i.from_config(
+                pipeline.scheduler.config,
+                **{_textprocessing.dashdown(k): _get_value(v) for k, v in result.args.items()})
+
             return
 
     raise InvalidSchedulerNameError(
@@ -728,8 +760,9 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     :param lora_uris: Optional ``--loras`` URI strings for specifying LoRA weights
     :param textual_inversion_uris: Optional ``--textual-inversions`` URI strings for specifying Textual Inversion weights
     :param control_net_uris: Optional ``--control-nets`` URI strings for specifying ControlNet models
-    :param scheduler: Optional scheduler (sampler) class name, unqualified, or "help" to print supported values
-        to STDOUT and raise :py:exc:`dgenerate.pipelinewrapper.SchedulerHelpException`
+    :param scheduler: Optional scheduler (sampler) class name, unqualified, or "help" / "helpargs" to print supported values
+        to STDOUT and raise :py:exc:`dgenerate.pipelinewrapper.SchedulerHelpException`.  Dgenerate URI syntax is supported
+        for overriding the schedulers constructor parameter defaults.
     :param safety_checker: Safety checker enabled? default is ``False``
     :param auth_token: Optional huggingface API token for accessing repositories that are restricted to your account
     :param device: Optional ``--device`` string, defaults to "cuda"
@@ -969,7 +1002,6 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             except ValueError:
                 _messages.debug_log(
                     f'Unable to get device of {module[0]} = {module[1].__class__}')
-
 
     unet_override = extra_modules and 'unet' in extra_modules
     vae_override = extra_modules and 'vae' in extra_modules
