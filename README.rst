@@ -345,7 +345,7 @@ Help Output
                             compatible schedulers for a model without generating any images. Passing "helpargs"
                             will yield a help message with a list of overridable arguments for each scheduler and
                             their typical defaults. Arguments listed by "helpargs" can be overridden using the
-                            URI syntax typical to other dgenerate URI arguments.Torch schedulers: (DDIMScheduler,
+                            URI syntax typical to other dgenerate URI arguments. Torch schedulers: (DDIMScheduler,
                             DDPMScheduler, PNDMScheduler, LMSDiscreteScheduler, EulerDiscreteScheduler,
                             HeunDiscreteScheduler, EulerAncestralDiscreteScheduler, DPMSolverMultistepScheduler,
                             DPMSolverSinglestepScheduler, KDPM2DiscreteScheduler,
