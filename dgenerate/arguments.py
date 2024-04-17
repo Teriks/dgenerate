@@ -637,7 +637,7 @@ def _create_parser(add_model=True, add_help=True):
                             f'Specify a scheduler (sampler) by URI. Passing "help" to this argument '
                             f'will print the compatible schedulers for a model without generating any images. Passing "helpargs" '
                             f'will yield a help message with a list of overridable arguments for each scheduler and their typical defaults. '
-                            f'Arguments listed by "helpargs" can be overridden using the URI syntax typical to other dgenerate URI arguments.'
+                            f'Arguments listed by "helpargs" can be overridden using the URI syntax typical to other dgenerate URI arguments. '
                             f'Torch schedulers: ({", ".join(e.name for e in diffusers.schedulers.KarrasDiffusionSchedulers)}).'
                             + _flax_scheduler_help_part))
 
