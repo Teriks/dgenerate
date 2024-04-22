@@ -21,8 +21,15 @@
 
 __version__ = '3.4.5'
 
-import collections.abc
 import sys
+
+if '--dgenerate-console' in sys.argv:
+    import dgenerate.console as _console
+
+    _console.main()
+    exit(0)
+
+import collections.abc
 import typing
 import warnings
 
@@ -115,6 +122,10 @@ def main(args: typing.Optional[collections.abc.Sequence[str]] = None):
     if args is None:
         args = sys.argv[1:]
 
+    server_mode = '--server' in args
+    if server_mode:
+        args.remove('--server')
+        dgenerate.messages.set_error_file(sys.stdout)
     try:
         render_loop = RenderLoop()
         render_loop.config = DgenerateArguments()
@@ -123,19 +134,24 @@ def main(args: typing.Optional[collections.abc.Sequence[str]] = None):
 
         if not sys.stdin.isatty():
             # Not a terminal, batch process STDIN
-            try:
-                ConfigRunner(render_loop=render_loop,
-                             version=__version__,
-                             injected_args=args).run_file(sys.stdin)
-            except ModuleFileNotFoundError as e:
-                # missing plugin file parsed by ConfigRunner out of injected args
-                dgenerate.messages.log(f'dgenerate: error: {str(e).strip()}',
-                                       level=dgenerate.messages.ERROR)
-                sys.exit(1)
-            except BatchProcessError as e:
-                dgenerate.messages.log(f'Config Error: {str(e).strip()}',
-                                       level=dgenerate.messages.ERROR)
-                sys.exit(1)
+            runner = ConfigRunner(render_loop=render_loop,
+                                  version=__version__,
+                                  injected_args=args)
+            while True:
+                try:
+                    runner.run_file(sys.stdin)
+                except ModuleFileNotFoundError as e:
+                    # missing plugin file parsed by ConfigRunner out of injected args
+                    dgenerate.messages.log(f'dgenerate: error: {str(e).strip()}',
+                                           level=dgenerate.messages.ERROR)
+                    if not server_mode:
+                        sys.exit(1)
+
+                except BatchProcessError as e:
+                    dgenerate.messages.log(f'Config Error: {str(e).strip()}',
+                                           level=dgenerate.messages.ERROR)
+                    if not server_mode:
+                        sys.exit(1)
         else:
             sys.exit(invoke_dgenerate(args, render_loop=render_loop))
     except KeyboardInterrupt:

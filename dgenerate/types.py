@@ -494,3 +494,34 @@ def type_check_struct(obj,
                 _is_literal(attr, v, hint)
             else:
                 _is(get_type(hint), attr, v)
+
+
+def format_function_signature(func: typing.Callable, alternate_name=None) -> str:
+    """
+    Formats the signature of a given function to a string.
+    """
+
+    signature = inspect.signature(func)
+    parameters = signature.parameters
+    return_type = signature.return_annotation
+
+    param_strs = []
+    for param_name, param in parameters.items():
+        param_type = param.annotation
+        if param_type != inspect.Parameter.empty:
+            param_strs.append(
+                f"{param_name}: {param_type.__name__ if str(param_type).startswith('<class') else param_type}")
+        else:
+            param_strs.append(param_name)
+
+    if return_type != inspect.Signature.empty:
+        return_type_str = f" -> {return_type.__name__ if str(return_type).startswith('<class') else return_type}"
+    else:
+        return_type_str = ""
+
+    if alternate_name is None:
+        name = func.__name__
+    else:
+        name = alternate_name
+
+    return f"{name}({', '.join(param_strs)}){return_type_str}"

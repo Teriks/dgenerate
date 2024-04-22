@@ -220,9 +220,12 @@ def invoke_dgenerate_events(
 
     template_help_variable_names, _ = _arguments.parse_templates_help(args)
     directives_help_variable_names, _ = _arguments.parse_directives_help(args)
+    functions_help_variable_names, _ = _arguments.parse_functions_help(args)
 
     if template_help_variable_names is not None \
-            or directives_help_variable_names is not None:
+            or directives_help_variable_names is not None \
+            or functions_help_variable_names is not None:
+
         import dgenerate.batchprocess
 
         config_runner_args = dict()
@@ -244,6 +247,14 @@ def invoke_dgenerate_events(
                 _messages.log(
                     config_runner.generate_directives_help(
                         directives_help_variable_names))
+            except ValueError as e:
+                yield rethrow_with_message(e)
+                return
+        if functions_help_variable_names is not None:
+            try:
+                _messages.log(
+                    config_runner.generate_functions_help(
+                        functions_help_variable_names))
             except ValueError as e:
                 yield rethrow_with_message(e)
                 return
