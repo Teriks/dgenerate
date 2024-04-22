@@ -265,7 +265,7 @@ if __name__ != 'setup_as_library':
           },
           entry_points={
               'console_scripts': [
-                  'dgenerate = dgenerate:main',
+                  'dgenerate = dgenerate:main'
               ]
           },
           classifiers=[

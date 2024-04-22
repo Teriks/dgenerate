@@ -361,6 +361,14 @@ def _create_parser(add_model=True, add_help=True):
                              will also be listed."""))
 
     actions.append(
+        parser.add_argument('--functions-help', nargs='*', dest=None, default=None, metavar='FUNCTION_NAME',
+                            help="""Print a list of template functions available in dgenerate configs 
+                            during batch processing from STDIN. Providing names will print 
+                            documentation for the specified function names. When used with 
+                            --plugin-modules, functions implemented by the specified plugins
+                             will also be listed."""))
+
+    actions.append(
         parser.add_argument('-mt', '--model-type', action='store', default='torch', type=_model_type,
                             help=f"""Use when loading different model types. 
                              Currently supported: {_SUPPORTED_MODEL_TYPES_PRETTY}. (default: torch)"""))
@@ -1471,6 +1479,21 @@ def parse_directives_help(
     parsed, unknown = parser.parse_known_args(args)
 
     return parsed.directives_help, unknown
+
+
+def parse_functions_help(
+        args: typing.Optional[collections.abc.Sequence[str]] = None) -> tuple[list[str], list[str]]:
+    """
+    Retrieve the ``--functions-help`` argument value
+
+    :param args: command line arguments
+    :return: (value, unknown_args_list)
+    """
+    parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
+    parser.add_argument('--functions-help', nargs='*', default=None)
+    parsed, unknown = parser.parse_known_args(args)
+
+    return parsed.functions_help, unknown
 
 
 def parse_plugin_modules(

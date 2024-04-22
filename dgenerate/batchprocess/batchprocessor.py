@@ -83,7 +83,7 @@ class BatchProcessor:
     Implements dgenerates batch processing scripts in a generified manner.
 
     This is the bare-bones implementation of the shell with nothing
-    implemented for you except the ``\\print`` and ``\\set`` directives.
+    implemented for you except the ``\\print``,  ``\\set`` and `\\unset`` directives.
 
     If you wish to create this object to run a dgenerate configuration, use
     :py:class:`dgenerate.batchprocess.ConfigRunner`
@@ -111,7 +111,8 @@ class BatchProcessor:
 
     reserved_template_variables: set[str]
     """
-    These template variables cannot be set with the ``\\set`` directive
+    These template variables cannot be set with the ``\\set`` directive, or 
+    un-defined with the ``\\unset`` directive.
     """
 
     template_functions: dict[str, typing.Callable[[typing.Any], typing.Any]]
@@ -154,9 +155,10 @@ class BatchProcessor:
         :param version: Version for version check hash bang directive.
         :param template_variables: Live template variables, the initial environment, this dictionary will be
             modified during runtime.
-        :param reserved_template_variables: These template variable names cannot be set with the \\set directive.
+        :param reserved_template_variables: These template variable names cannot be set with the ``\\set`` directive,
+            or un-defined with the ``\\unset`` directive.
         :param template_functions: Functions available to Jinja2
-        :param directives: batch processing directive handlers, for: *\\\\directives*. This is a dictionary
+        :param directives: batch processing directive handlers, for: ``\\directives``. This is a dictionary
             of names to functions which accept a single parameter, a list of directive arguments, and return
             a return code.
         :param injected_args: Arguments to be injected at the end of user specified arguments for every shell invocation.
@@ -260,6 +262,22 @@ class BatchProcessor:
                 f'as that name is a reserved variable name.')
         self.template_variables[name] = value
 
+    def _jinja_user_undefine(self, name):
+        if name in self.template_functions:
+            raise BatchProcessError(
+                f'Cannot un-define template variable "{name}" on line {self.current_line}, '
+                f'as that name is taken by a template function.')
+        if name in self.reserved_template_variables:
+            raise BatchProcessError(
+                f'Cannot un-define template variable "{name}" on line {self.current_line}, '
+                f'as that name is a reserved variable name.')
+        try:
+            self.template_variables.pop(name)
+        except KeyError:
+            raise BatchProcessError(
+                f'Cannot un-define template variable "{name}" on line {self.current_line}, '
+                f'variable does not exist.')
+
     def _directive_handlers(self, line):
         if line.startswith('\\set'):
             directive_args = line.split(' ', 2)
@@ -270,6 +288,15 @@ class BatchProcessor:
                 raise BatchProcessError(
                     f'\\set directive received less than 2 arguments, '
                     f'syntax is: \\set name value')
+        elif line.startswith('\\unset'):
+            directive_args = line.split(' ', 1)
+            if len(directive_args) == 2:
+                self._jinja_user_undefine(directive_args[1].strip())
+                return True
+            else:
+                raise BatchProcessError(
+                    f'\\unset directive received less than 1 arguments, '
+                    f'syntax is: \\unset name')
         elif line.startswith('\\print'):
             directive_args = line.split(' ', 1)
             if len(directive_args) == 2:

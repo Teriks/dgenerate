@@ -37,6 +37,80 @@ import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 
 
+def _format_prompt_single(prompt):
+    pos = prompt.positive
+    neg = prompt.negative
+
+    if pos is None:
+        raise _batchprocessor.BatchProcessError('Attempt to format a prompt with no positive prompt value.')
+
+    if pos and neg:
+        return shlex.quote(f"{pos}; {neg}")
+    return shlex.quote(pos)
+
+
+def _format_prompt(
+        prompts: typing.Union[_prompt.Prompt,
+        collections.abc.Iterable[_prompt.Prompt]]):
+    """
+    Format a prompt object, or a list of prompt objects, into quoted string(s)
+    """
+    if isinstance(prompts, _prompt.Prompt):
+        return _format_prompt_single(prompts)
+    return ' '.join(_format_prompt_single(p) for p in prompts)
+
+
+def _format_size(size: collections.abc.Iterable[int]):
+    """
+    Join an iterable of integers into a string seperated by the character 'x', for example (512, 512) -> "512x512"
+    """
+    return _textprocessing.format_size(size)
+
+
+def _quote(strings: typing.Union[str, collections.abc.Iterable[typing.Any]]):
+    """
+    Shell quote a string or iterable of strings
+    """
+    if isinstance(strings, str):
+        return shlex.quote(str(strings))
+    return ' '.join(shlex.quote(str(s)) for s in strings)
+
+
+def _unquote(strings: typing.Union[str, collections.abc.Iterable[typing.Any]]):
+    """
+    Un-Shell quote a string or iterable of strings
+    """
+    if isinstance(strings, str):
+        return shlex.split(str(strings))
+    return [shlex.split(str(s)) for s in strings]
+
+
+def _last(iterable: typing.Union[list, collections.abc.Iterable[typing.Any]]):
+    """
+    Return the last element in an iterable collection.
+    """
+    if isinstance(iterable, list):
+        return iterable[-1]
+    try:
+        *_, last_item = iterable
+    except ValueError:
+        raise _batchprocessor.BatchProcessError(
+            'Usage of template function "last" on an empty iterable.')
+    return last_item
+
+
+def _first(iterable: collections.abc.Iterable[typing.Any]):
+    """
+    Return the first element in an iterable collection.
+    """
+    try:
+        v = next(iter(iterable))
+    except StopIteration:
+        raise _batchprocessor.BatchProcessError(
+            'Usage of template function "first" on an empty iterable.')
+    return v
+
+
 class ConfigRunner(_batchprocessor.BatchProcessor):
     """
     A :py:class:`.BatchProcessor` that can run dgenerate batch processing configs from a string or file.
@@ -102,50 +176,6 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         self.render_loop = render_loop
 
-        def _format_prompt(prompt):
-            pos = prompt.positive
-            neg = prompt.negative
-
-            if pos is None:
-                raise _batchprocessor.BatchProcessError('Attempt to format a prompt with no positive prompt value.')
-
-            if pos and neg:
-                return shlex.quote(f"{pos}; {neg}")
-            return shlex.quote(pos)
-
-        def format_prompt(string_or_iterable):
-            if isinstance(string_or_iterable, _prompt.Prompt):
-                return _format_prompt(string_or_iterable)
-            return ' '.join(_format_prompt(p) for p in string_or_iterable)
-
-        def quote(string_or_iterable):
-            if isinstance(string_or_iterable, str):
-                return shlex.quote(str(string_or_iterable))
-            return ' '.join(shlex.quote(str(s)) for s in string_or_iterable)
-
-        def unquote(string_or_iterable):
-            if isinstance(string_or_iterable, str):
-                return shlex.split(str(string_or_iterable))
-            return [shlex.split(str(s)) for s in string_or_iterable]
-
-        def last(list_or_iterable):
-            if isinstance(list_or_iterable, list):
-                return list_or_iterable[-1]
-            try:
-                *_, last_item = list_or_iterable
-            except ValueError:
-                raise _batchprocessor.BatchProcessError(
-                    'Usage of template function "last" on an empty iterable.')
-            return last_item
-
-        def first(iterable):
-            try:
-                v = next(iter(iterable))
-            except StopIteration:
-                raise _batchprocessor.BatchProcessError(
-                    'Usage of template function "first" on an empty iterable.')
-            return v
-
         self.template_variables = {
             'injected_args': self.injected_args,
             'injected_device': _arguments.parse_device(self.injected_args)[0],
@@ -160,12 +190,12 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         self.reserved_template_variables = set(self.template_variables.keys())
 
         self.template_functions = {
-            'unquote': unquote,
-            'quote': quote,
-            'format_prompt': format_prompt,
-            'format_size': _textprocessing.format_size,
-            'last': last,
-            'first': first
+            'unquote': _unquote,
+            'quote': _quote,
+            'format_prompt': _format_prompt,
+            'format_size': _format_size,
+            'last': _last,
+            'first': _first
         }
 
         def return_zero(func, help):
@@ -179,6 +209,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         self.directives = {
             'templates_help': self._templates_help_directive,
+            'directives_help': self._directives_help_directive,
+            'functions_help': self._functions_help_directive,
             'clear_model_cache': return_zero(
                 _pipelinewrapper.clear_model_cache,
                 help='Clear all user specified models from the in memory cache.'),
@@ -410,6 +442,9 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         :return: help string
         """
 
+        if directive_names is None:
+            directive_names = []
+
         directives: dict[str, typing.Union[str, typing.Callable]] = self.directives.copy()
 
         directives.update({
@@ -417,14 +452,15 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                    'Attempting to set a reserved template variable such as those pre-defined by dgenerate '
                    'will result in an error. The second argument is accepted as a raw value, it is not shell '
                    'parsed in any way, only striped of leading and trailing whitespace.',
+            'unset': 'Undefines a template variable previously set with \\set, accepts one argument, '
+                     'the variable name. Attempting to unset a reserved variable such as those '
+                     'pre-defined by dgenerate will result in an error.',
             'print': 'Prints all content to the right to stdout, no shell parsing of the argument occurs.'
         })
 
         if len(directive_names) == 0:
-
             help_string = f'Available config directives:' + '\n\n'
             help_string += '\n'.join((' ' * 4) + _textprocessing.quote('\\' + i) for i in directives.keys())
-
         else:
             help_string = ''
 
@@ -457,6 +493,66 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                             subsequent_indent=' ' * 4,
                             width=_textprocessing.long_text_wrap_width())
                     yield name + _textprocessing.underline(':\n\n' + doc + '\n')
+
+            help_string += '\n'.join(docs())
+
+        return help_string
+
+    def generate_functions_help(self, function_names: typing.Optional[typing.Collection[str]] = None):
+        """
+        Generate the help string for ``--functions-help``
+
+
+        :param function_names: Display help for specific functions, if ``None`` or ``[]`` is specified, display all.
+
+        :raise ValueError: if given directive names could not be found
+
+        :return: help string
+        """
+
+        if function_names is None:
+            function_names = []
+
+        functions: dict[str, typing.Union[str, typing.Callable]] = self.template_functions.copy()
+
+        if len(function_names) == 0:
+
+            help_string = f'Available config template functions:' + '\n\n'
+            help_string += '\n\n'.join((' ' * 4) +
+                                       _types.format_function_signature(v, alternate_name=n)
+                                       for n, v in functions.items())
+
+        else:
+            help_string = ''
+
+            if function_names is not None and len(function_names) > 0:
+                found = dict()
+                not_found = []
+                for n in function_names:
+                    if n not in functions:
+                        not_found.append(n)
+                        continue
+                    found[n] = functions[n]
+                if not_found:
+                    raise ValueError(
+                        f'No template functions named: {_textprocessing.oxford_comma(not_found, "or")}')
+                functions = found
+
+            def docs():
+                for name, impl in functions.items():
+                    if isinstance(impl, str):
+                        doc = impl
+                    else:
+                        doc = _textprocessing.justify_left(impl.__doc__).strip() \
+                            if impl.__doc__ is not None else 'No documentation provided.'
+                    doc = \
+                        _textprocessing.wrap_paragraphs(
+                            doc,
+                            initial_indent=' ' * 4,
+                            subsequent_indent=' ' * 4,
+                            width=_textprocessing.long_text_wrap_width())
+                    yield _types.format_function_signature(impl, alternate_name=name) + \
+                        _textprocessing.underline(':\n\n' + doc + '\n')
 
             help_string += '\n'.join(docs())
 
@@ -520,9 +616,33 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         """
         Prints all template variables in the global scope, with their types and values.
 
+        Providing template variable names as arguments prints just information about those template variables.
+
         This does not cause the config to exit.
         """
         _messages.log(self.generate_template_variables_help(args) + '\n')
+        return 0
+
+    def _directives_help_directive(self, args: collections.abc.Sequence[str]):
+        """
+        Prints all directives.
+
+        Providing directive names as arguments prints documentation for those directives.
+
+        This does not cause the config to exit.
+        """
+        _messages.log(self.generate_directives_help(args) + '\n')
+        return 0
+
+    def _functions_help_directive(self, args: collections.abc.Sequence[str]):
+        """
+        Prints all template functions.
+
+        Providing function names as arguments prints documentation for those functions.
+
+        This does not cause the config to exit.
+        """
+        _messages.log(self.generate_functions_help(args) + '\n')
         return 0
 
 
