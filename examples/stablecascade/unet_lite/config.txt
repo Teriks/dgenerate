@@ -1,4 +1,4 @@
-#! dgenerate 3.4.5
+#! dgenerate 3.5.0
 
 stabilityai/stable-cascade-prior
 --model-type torch-s-cascade
