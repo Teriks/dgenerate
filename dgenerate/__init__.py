@@ -28,7 +28,7 @@ if '--dgenerate-console' in sys.argv:
     args = sys.argv[1:]
     args.remove('--dgenerate-console')
     _console.main(args)
-    exit(0)
+    sys.exit(0)
 
 import collections.abc
 import typing
