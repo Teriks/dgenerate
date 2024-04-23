@@ -86,46 +86,55 @@ class _DgenerateConsole(tk.Tk):
             variable=self._multi_line_input_check_var)
         self._multi_line_input_checkbox.pack(side='right', anchor='e')
 
-        # Create the word wrap checkbox
+        # Create the word wrap output checkbox
+
+        self._word_wrap_output_check_var = tk.BooleanVar(value=False)
+        self._word_wrap_output_check_var.set(True)
+        self._word_wrap_output_checkbox = tk.Checkbutton(
+            top_menu_frame,
+            text='Word Wrap Output',
+            command=self._toggle_output_wrap, variable=self._word_wrap_output_check_var)
+        self._word_wrap_output_checkbox.pack(side='right', anchor='e')
+
+        # Create the word wrap input checkbox
 
         self._word_wrap_input_check_var = tk.BooleanVar(value=False)
         self._word_wrap_input_check_var.set(True)
         self._word_wrap_input_checkbox = tk.Checkbutton(
             top_menu_frame,
-            text='Word Wrap',
+            text='Word Wrap Input',
             command=self._toggle_input_wrap, variable=self._word_wrap_input_check_var)
         self._word_wrap_input_checkbox.pack(side='right', anchor='e')
 
         # Create the top text input pane
 
-        self._input_entry = _ScrolledText(self._paned_window)
+        self._input_text = _ScrolledText(self._paned_window)
 
-        self._input_entry.text.bind('<Return>', self._handle_input)
-        self._input_entry.text.bind('<Up>', self._show_previous_command)
-        self._input_entry.text.bind('<Down>', self._show_next_command)
-        self._input_entry.text.bind('<Button-3>',
-                                    lambda e: self._input_text_context.tk_popup(
+        self._input_text.text.bind('<Return>', self._handle_input)
+        self._input_text.text.bind('<Up>', self._show_previous_command)
+        self._input_text.text.bind('<Down>', self._show_next_command)
+        self._input_text.text.bind('<Button-3>',
+                                   lambda e: self._input_text_context.tk_popup(
                                         self.winfo_pointerx(), self.winfo_pointery()))
-        self._input_entry.text.bind('<Return>', self._handle_input)
-        self._input_entry.text.bind('<Insert>',
-                                    lambda e:
+        self._input_text.text.bind('<Return>', self._handle_input)
+        self._input_text.text.bind('<Insert>',
+                                   lambda e:
                                     self._multi_line_input_check_var.set(
                                         not self._multi_line_input_check_var.get()))
-        self._input_entry.text.bind('<Control-c>', lambda e: self._kill_sub_process())
+        self._input_text.text.bind('<Control-c>', lambda e: self._kill_sub_process())
 
-        self._input_entry.text.focus_set()
+        self._input_text.text.focus_set()
 
-        self._input_text_context = tk.Menu(self._input_entry, tearoff=0)
+        self._input_text_context = tk.Menu(self._input_text, tearoff=0)
         self._input_text_context.add_command(label='Copy', command=self._copy_input_entry_selection)
         self._input_text_context.add_command(label='Paste', command=self._paste_input_entry)
         self._input_text_context.add_command(label='Load', command=self._load_input_entry_text)
 
-        self._paned_window.add(self._input_entry)
+        self._paned_window.add(self._input_text)
 
         # Create the bottom pane
 
         self._output_text = _ScrolledText(self._paned_window)
-        self._output_text.disable_word_wrap()
 
         self._output_text.text.bind('<Button-3>',
                                     lambda e: self._output_text_context.tk_popup(
@@ -184,10 +193,17 @@ class _DgenerateConsole(tk.Tk):
 
     def _toggle_input_wrap(self):
         if self._word_wrap_input_check_var.get():
-            self._input_entry.enable_word_wrap()
+            self._input_text.enable_word_wrap()
 
         else:
-            self._input_entry.disable_word_wrap()
+            self._input_text.disable_word_wrap()
+
+    def _toggle_output_wrap(self):
+        if self._word_wrap_output_check_var.get():
+            self._output_text.enable_word_wrap()
+
+        else:
+            self._output_text.disable_word_wrap()
 
     def _restart_dgenerate_process(self):
         self._write_output('Restarting Shell Process...\n')
@@ -227,24 +243,24 @@ class _DgenerateConsole(tk.Tk):
         if f is None:
             return
 
-        self._input_entry.text.delete('1.0', tk.END)
-        self._input_entry.text.insert('1.0', f.read())
+        self._input_text.text.delete('1.0', tk.END)
+        self._input_text.text.insert('1.0', f.read())
 
     def _copy_input_entry_selection(self):
-        text = self._input_entry.selection_get()
+        text = self._input_text.selection_get()
         self.clipboard_clear()
         self.clipboard_append(text)
 
     def _paste_input_entry(self):
         try:
-            start = self._input_entry.text.index(tk.SEL_FIRST)
-            end = self._input_entry.text.index(tk.SEL_LAST)
-            self._input_entry.text.delete(start, end)
+            start = self._input_text.text.index(tk.SEL_FIRST)
+            end = self._input_text.text.index(tk.SEL_LAST)
+            self._input_text.text.delete(start, end)
         except tk.TclError:
-            start = self._input_entry.text.index(tk.INSERT)
+            start = self._input_text.text.index(tk.INSERT)
 
         clipboard_content = self.clipboard_get()
-        self._input_entry.text.insert(start, clipboard_content)
+        self._input_text.text.insert(start, clipboard_content)
 
     def _copy_output_text_selection(self):
         text = self._output_text.selection_get()
@@ -336,10 +352,10 @@ class _DgenerateConsole(tk.Tk):
             return
         if self._current_command_index > 0:
             self._current_command_index -= 1
-            self._input_entry.text.delete('1.0', tk.END)
-            self._input_entry.text.insert(tk.END, self._command_history[self._current_command_index])
-            self._input_entry.text.see(tk.END)
-            self._input_entry.text.mark_set(tk.INSERT, tk.END)
+            self._input_text.text.delete('1.0', tk.END)
+            self._input_text.text.insert(tk.END, self._command_history[self._current_command_index])
+            self._input_text.text.see(tk.END)
+            self._input_text.text.mark_set(tk.INSERT, tk.END)
             return "break"
 
     def _show_next_command(self, event):
@@ -347,10 +363,10 @@ class _DgenerateConsole(tk.Tk):
             return
         if self._current_command_index < len(self._command_history) - 1:
             self._current_command_index += 1
-            self._input_entry.text.delete('1.0', tk.END)
-            self._input_entry.text.insert(tk.END, self._command_history[self._current_command_index])
-            self._input_entry.text.see(tk.END)
-            self._input_entry.text.mark_set(tk.INSERT, tk.END)
+            self._input_text.text.delete('1.0', tk.END)
+            self._input_text.text.insert(tk.END, self._command_history[self._current_command_index])
+            self._input_text.text.see(tk.END)
+            self._input_text.text.mark_set(tk.INSERT, tk.END)
             return "break"
 
     def _load_command_history(self):
@@ -373,9 +389,9 @@ class _DgenerateConsole(tk.Tk):
             if self._sub_process.poll() is not None:
                 self._restart_dgenerate_process()
 
-        user_input = self._input_entry.text.get('1.0', 'end-1c')
+        user_input = self._input_text.text.get('1.0', 'end-1c')
 
-        self._input_entry.text.delete(1.0, tk.END)
+        self._input_text.text.delete(1.0, tk.END)
         self._sub_process.stdin.write(user_input + '\n\n')
 
         self._command_history.append(user_input)
