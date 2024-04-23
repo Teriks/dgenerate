@@ -142,7 +142,7 @@ Help Output
       --server              When reading configuration from STDIN (a pipe), read forever, even when
                             configuration errors occur. This allows dgenerate to run in the background and
                             be communicated with by another process sending it commands, like a server.
-      --dgenerate-console   Launch a terminal like tkinter GUI that communicates with an instance of
+      --dgenerate-console   Launch a terminal-like tkinter GUI that communicates with an instance of
                             dgenerate running in the background. This allows you to interactively write
                             dgenerate config scripts as if dgenerate were a shell.
       --plugin-modules PATH [PATH ...]
