@@ -1775,7 +1775,7 @@ dgenerate stabilityai/stable-diffusion-2 \
 --output-size 1024 \
 --gen-seeds 2 \
 --prompts "none" \
---scheduler help
+--scheduler helpargs
 
 Compatible schedulers for "stabilityai/stable-diffusion-2" are:
 

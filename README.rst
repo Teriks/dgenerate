@@ -1736,7 +1736,7 @@ can be overridden via a URI syntax, for every possible scheduler.
     --output-size 1024 \
     --gen-seeds 2 \
     --prompts "none" \
-    --scheduler help
+    --scheduler helpargs
 
     Compatible schedulers for "stabilityai/stable-diffusion-2" are:
 
