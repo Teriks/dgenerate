@@ -161,7 +161,7 @@ class _DgenerateConsole(tk.Tk):
             t.start()
 
         # max output scroll-back history
-        self._max_output_lines = 10000
+        self._max_output_lines = int(os.environ.get('DGENERATE_CONSOLE_MAX_SCROLLBACK', 1000))
 
         # output (stdout) refresh rate (ms)
         self._output_refresh_rate = 100
@@ -170,7 +170,7 @@ class _DgenerateConsole(tk.Tk):
         self._output_lines_per_refresh = 30
 
         # max terminal command history
-        self._max_command_history = 100
+        self._max_command_history = int(os.environ.get('DGENERATE_CONSOLE_MAX_HISTORY', 500))
 
         self._write_output(
             'This console supports sending dgenerate configuration into a dgenerate\n'
