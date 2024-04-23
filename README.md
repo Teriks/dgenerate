@@ -3839,7 +3839,7 @@ dgenerate process.
 It can be used to work with dgenerate without encountering the startup
 overhead of loading large python modules for every command line invocation.
 
-The UI is very minimal, both the console and the output window possess
+The UI is very minimal, both the input and the output window possess
 right click context menus which may not at first be apparent.
 
 Multiline input mode is activated via the insert key (you must deactivate this mode to submit commands),
