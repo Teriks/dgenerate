@@ -325,7 +325,7 @@ def _create_parser(add_model=True, add_help=True):
         parser.add_argument('--dgenerate-console', action='store_true', default=False,
                             help="""Launch a terminal-like tkinter GUI that communicates with an instance
                             of dgenerate running in the background. This allows you to interactively write
-                            dgenerate config scripts as if dgenerate were a shell."""))
+                            dgenerate config scripts as if dgenerate were a shell / REPL."""))
 
     actions.append(
         parser.add_argument('--plugin-modules', action='store', default=[], nargs="+", dest='plugin_module_paths',
