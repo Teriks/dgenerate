@@ -151,7 +151,7 @@ class _DgenerateConsole(tk.Tk):
         self._start_dgenerate_process()
 
         self._threads = [
-            threading.Thread(target=self._write_stdout)
+            threading.Thread(target=self._read_stdout_thread)
         ]
 
         self._text_queue = queue.Queue()
@@ -312,7 +312,7 @@ class _DgenerateConsole(tk.Tk):
     def _write_output(self, text):
         self._text_queue.put(text)
 
-    def _write_stdout(self):
+    def _read_stdout_thread(self):
         exit_message = True
         while True:
             with self._termination_lock:
