@@ -1,3 +1,24 @@
+# Copyright (c) 2023, Teriks
+#
+# dgenerate is distributed under the following BSD 3-Clause License
+#
+# Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in
+#    the documentation and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived
+#    from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+# ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 import json
 import pathlib
 import queue
@@ -12,7 +33,7 @@ import tkinter.scrolledtext
 import os
 
 
-class ScrolledText(tk.Frame):
+class _ScrolledText(tk.Frame):
     def __init__(self, master=None, **kwargs):
         super().__init__(master, **kwargs)
 
@@ -36,7 +57,7 @@ class ScrolledText(tk.Frame):
         self.text.config(wrap='none')
 
 
-class DgenerateConsole(tk.Tk):
+class _DgenerateConsole(tk.Tk):
     def __init__(self):
         super().__init__()
 
@@ -77,7 +98,7 @@ class DgenerateConsole(tk.Tk):
 
         # Create the top text input pane
 
-        self._input_entry = ScrolledText(self._paned_window)
+        self._input_entry = _ScrolledText(self._paned_window)
 
         self._input_entry.text.bind('<Return>', self._handle_input)
         self._input_entry.text.bind('<Up>', self._show_previous_command)
@@ -103,7 +124,7 @@ class DgenerateConsole(tk.Tk):
 
         # Create the bottom pane
 
-        self._output_text = ScrolledText(self._paned_window)
+        self._output_text = _ScrolledText(self._paned_window)
         self._output_text.disable_word_wrap()
 
         self._output_text.text.bind('<Button-3>',
@@ -117,6 +138,8 @@ class DgenerateConsole(tk.Tk):
         self._output_text_context.add_command(label='Save All', command=self._save_output_text)
 
         self._paned_window.add(self._output_text)
+
+        # config
 
         self._command_history = []
         self._current_command_index = -1
@@ -137,7 +160,17 @@ class DgenerateConsole(tk.Tk):
             t.daemon = True
             t.start()
 
+        # max output scroll-back history
         self._max_output_lines = 10000
+
+        # output (stdout) refresh rate
+        self._output_refresh_rate = 100
+
+        # output lines per refresh
+        self._output_lines_per_refresh = 30
+
+        # max terminal command history
+        self._max_command_history = 100
 
         self._write_output(
             'This console supports sending dgenerate configuration into a dgenerate\n'
@@ -163,10 +196,10 @@ class DgenerateConsole(tk.Tk):
 
     def _kill_sub_process(self):
         with self._termination_lock:
-            self.sub_process.terminate()
-            self.sub_process.communicate()
+            self._sub_process.terminate()
+            self._sub_process.communicate()
             self._write_output(
-                f'\nShell Process Terminated, Exit Code: {self.sub_process.poll()}\n')
+                f'\nShell Process Terminated, Exit Code: {self._sub_process.poll()}\n')
             self._restart_dgenerate_process()
 
     def _start_dgenerate_process(self):
@@ -174,7 +207,7 @@ class DgenerateConsole(tk.Tk):
         env['PYTHONIOENCODING'] = 'utf-8'
         env['PYTHONUNBUFFERED'] = '1'
 
-        self.sub_process = subprocess.Popen(
+        self._sub_process = subprocess.Popen(
             ['dgenerate', '--server'],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -254,7 +287,7 @@ class DgenerateConsole(tk.Tk):
         self._output_text.text.config(state=tk.NORMAL)
 
         while True:
-            if lines > 30:
+            if lines > self._output_lines_per_refresh:
                 break
             try:
                 text = self._text_queue.get_nowait()
@@ -274,7 +307,7 @@ class DgenerateConsole(tk.Tk):
 
         self._output_text.text.config(state=tk.DISABLED)
 
-        self.after(100, self._text_update)
+        self.after(self._output_refresh_rate, self._text_update)
 
     def _write_output(self, text):
         self._text_queue.put(text)
@@ -283,11 +316,11 @@ class DgenerateConsole(tk.Tk):
         exit_message = True
         while True:
             with self._termination_lock:
-                return_code = self.sub_process.poll()
+                return_code = self._sub_process.poll()
 
             if return_code is None:
                 exit_message = True
-                self._write_output(self.sub_process.stdout.readline())
+                self._write_output(self._sub_process.stdout.readline())
             elif exit_message:
                 exit_message = False
                 with self._termination_lock:
@@ -329,35 +362,35 @@ class DgenerateConsole(tk.Tk):
     def _save_command_history(self):
         history_path = pathlib.Path(pathlib.Path.home(), '.dgenerate_console_history')
         with history_path.open('w') as file:
-            json.dump(self._command_history[-100:], file)
+            json.dump(self._command_history[-self._max_command_history:], file)
 
     def _handle_input(self, event):
         if self._multi_line_input_check_var.get():
             return
 
         with self._termination_lock:
-            if self.sub_process.poll() is not None:
+            if self._sub_process.poll() is not None:
                 self._restart_dgenerate_process()
 
         user_input = self._input_entry.text.get('1.0', 'end-1c')
 
         self._input_entry.text.delete(1.0, tk.END)
-        self.sub_process.stdin.write(user_input + '\n\n')
+        self._sub_process.stdin.write(user_input + '\n\n')
 
         self._command_history.append(user_input)
 
         self._current_command_index = len(self._command_history)
         self._save_command_history()
 
-        self.sub_process.stdin.flush()
+        self._sub_process.stdin.flush()
 
         return 'break'
 
     def destroy(self) -> None:
-        self.sub_process.terminate()
+        self._sub_process.terminate()
         super().destroy()
 
 
 def main():
-    app = DgenerateConsole()
+    app = _DgenerateConsole()
     app.mainloop()
