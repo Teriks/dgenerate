@@ -140,6 +140,8 @@ def main(args: typing.Optional[collections.abc.Sequence[str]] = None):
             while True:
                 try:
                     runner.run_file(sys.stdin)
+                    if not server_mode:
+                        sys.exit(0)
                 except ModuleFileNotFoundError as e:
                     # missing plugin file parsed by ConfigRunner out of injected args
                     dgenerate.messages.log(f'dgenerate: error: {str(e).strip()}',
