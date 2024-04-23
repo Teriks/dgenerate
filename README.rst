@@ -3745,7 +3745,7 @@ as well as optional multiline input for sending multiline commands / configurati
 dgenerate process.
 
 It can be used to work with dgenerate without encountering the startup
-overhead from loading large python modules.
+overhead of loading large python modules for every command line invocation.
 
 The UI is very minimal, both the console and the output window possess
 right click context menus which may not at first be apparent.
