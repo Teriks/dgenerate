@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import collections.abc
+import inspect
 import io
 import itertools
 import os
@@ -215,7 +216,9 @@ class BatchProcessor:
 
         for name, func in self.template_functions.items():
             jinja_env.globals[name] = func
-            jinja_env.filters[name] = func
+
+            if len(inspect.signature(func).parameters) > 0:
+                jinja_env.filters[name] = func
 
         try:
             return self.expand_vars(
