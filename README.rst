@@ -3752,7 +3752,9 @@ The UI is very minimal, both the input and the output window possess
 right click context menus which may not at first be apparent.
 
 Multiline input mode is activated via the insert key (you must deactivate this mode to submit commands),
-and ctrl-c is supported in the console for killing and then restarting the background interpreter process.
+and Ctrl-C is supported in the console for killing and then restarting the background interpreter process.
+
+Ctrl-F (find) is supported for both the input and output text areas.
 
 Scroll back history in the output window is currently limited to 10000 lines.
 

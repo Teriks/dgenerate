@@ -58,6 +58,78 @@ class _ScrolledText(tk.Frame):
         self.text.config(wrap='none')
 
 
+class _FindDialog(tk.Toplevel):
+    def __init__(self, master, name, text_widget):
+        super().__init__(master=master)
+        self.master = master
+        self.title(name)
+        self.text_widget = text_widget
+        self.transient(self.master)
+
+        self.find_entry = tk.Entry(self)
+        self.find_entry.pack(side='top', fill='x', padx=2, pady=2)
+
+        find_frame = tk.Frame(self)
+        find_frame.pack(side='top', fill='x')
+
+        self.case_var = tk.IntVar()
+        self.case_check = tk.Checkbutton(find_frame, text="Case Sensitive", variable=self.case_var)
+        self.case_check.pack(side='left', padx=2, pady=2)
+
+        self.previous_button = tk.Button(find_frame, text='Previous', command=self.find_previous)
+        self.previous_button.pack(side='left', padx=2, pady=2)
+
+        self.next_button = tk.Button(find_frame, text='Next', command=self.find_next)
+        self.next_button.pack(side='left', padx=2, pady=2)
+
+        self.last_find = None
+
+        # self.geometry(f'{self.winfo_reqwidth()}x{self.winfo_reqheight()}')
+        self.resizable(False, False)
+
+        self.master.update_idletasks()
+        self.update_idletasks()
+
+        window_width = self.master.winfo_width()
+        window_height = self.master.winfo_height()
+        top_level_width = self.winfo_width()
+        top_level_height = self.winfo_height()
+
+        # Calculate position coordinates
+        position_top = self.master.winfo_y() + window_height // 2 - top_level_height // 2
+        position_left = self.master.winfo_x() + window_width // 2 - top_level_width // 2
+
+        # Position the window
+        self.geometry(f"+{position_left}+{position_top}")
+
+    def find_next(self):
+        start_idx = '1.0' if not self.last_find else self.last_find + '+1c'
+        s = self.find_entry.get()
+        idx = self.text_widget.search(s, start_idx, nocase=1 - self.case_var.get(), stopindex=tk.END)
+        if idx:
+            end_idx = f'{idx}+{len(s)}c'
+            self.text_widget.tag_remove('found', '1.0', tk.END)
+            self.text_widget.tag_add('found', idx, end_idx)
+            self.text_widget.mark_set(tk.INSERT, end_idx)
+            self.text_widget.see(idx)
+            self.text_widget.tag_config('found', foreground='white', background='blue')
+            self.last_find = idx
+
+    def find_previous(self):
+        if not self.last_find:
+            return
+        s = self.find_entry.get()
+        idx = self.text_widget.search(s, '1.0', nocase=1 - self.case_var.get(), stopindex=self.last_find)
+        if idx:
+            end_idx = f'{idx}+{len(s)}c'
+            self.text_widget.tag_remove('found', '1.0', tk.END)
+            self.text_widget.tag_add('found', idx, end_idx)
+            self.text_widget.mark_set(tk.INSERT, idx)
+            self.text_widget.see(idx)
+            self.text_widget.tag_config('found', foreground='white', background='blue')
+            self.last_find = idx
+
+
 class _DgenerateConsole(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -116,17 +188,28 @@ class _DgenerateConsole(tk.Tk):
         self._input_text.text.bind('<Down>', self._show_next_command)
         self._input_text.text.bind('<Button-3>',
                                    lambda e: self._input_text_context.tk_popup(
-                                        self.winfo_pointerx(), self.winfo_pointery()))
+                                       self.winfo_pointerx(), self.winfo_pointery()))
         self._input_text.text.bind('<Return>', self._handle_input)
         self._input_text.text.bind('<Insert>',
                                    lambda e:
-                                    self._multi_line_input_check_var.set(
-                                        not self._multi_line_input_check_var.get()))
+                                   self._multi_line_input_check_var.set(
+                                       not self._multi_line_input_check_var.get()))
         self._input_text.text.bind('<Control-c>', lambda e: self._kill_sub_process())
+        self._input_text.text.bind('<Control-f>',
+                                   lambda e: self._open_find_dialog(
+                                       'Find In Input',
+                                       self._input_text.text))
 
         self._input_text.text.focus_set()
 
         self._input_text_context = tk.Menu(self._input_text, tearoff=0)
+
+        self._input_text_context.add_command(label='Find',
+                                             command=lambda:
+                                             self._open_find_dialog(
+                                                 'Find In Input',
+                                                 self._input_text.text))
+
         self._input_text_context.add_command(label='Copy', command=self._copy_input_entry_selection)
         self._input_text_context.add_command(label='Paste', command=self._paste_input_entry)
         self._input_text_context.add_command(label='Load', command=self._load_input_entry_text)
@@ -140,8 +223,17 @@ class _DgenerateConsole(tk.Tk):
         self._output_text.text.bind('<Button-3>',
                                     lambda e: self._output_text_context.tk_popup(
                                         self.winfo_pointerx(), self.winfo_pointery()))
+        self._output_text.text.bind('<Control-f>',
+                                    lambda e: self._open_find_dialog(
+                                        'Find In Output',
+                                        self._output_text.text))
 
         self._output_text_context = tk.Menu(self._output_text, tearoff=0)
+        self._output_text_context.add_command(label='Find',
+                                              command=lambda:
+                                              self._open_find_dialog(
+                                                  'Find In Output',
+                                                  self._output_text.text))
         self._output_text_context.add_command(label='Clear', command=self._clear_output_text)
         self._output_text_context.add_command(label='Copy Selection', command=self._copy_output_text_selection)
         self._output_text_context.add_command(label='Save Selection', command=self._save_output_text_selection)
@@ -165,6 +257,8 @@ class _DgenerateConsole(tk.Tk):
         ]
 
         self._text_queue = queue.Queue()
+
+        self._find_dialog = None
 
         for t in self._threads:
             t.daemon = True
@@ -191,6 +285,18 @@ class _DgenerateConsole(tk.Tk):
             '============================================================\n\n')
 
         self._text_update()
+
+    def _open_find_dialog(self, name, text_box):
+        if self._find_dialog is not None:
+            if self._find_dialog.text_widget is text_box:
+                try:
+                    self._find_dialog.focus()
+                    return
+                except tk.TclError:
+                    pass
+            else:
+                self._find_dialog.destroy()
+        self._find_dialog = _FindDialog(self, name, text_box)
 
     def _toggle_input_wrap(self):
         if self._word_wrap_input_check_var.get():
