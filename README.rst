@@ -71,6 +71,7 @@ For library documentation visit `readthedocs <http://dgenerate.readthedocs.io/en
     * `Upscaling with chaiNNer Compatible Upscaler Models`_
     * `Writing and Running Configs`_
     * `Config Argument Injection`_
+    * `Console UI`_
     * `Writing Plugins`_
     * `File Cache Control`_
 
@@ -3732,6 +3733,34 @@ which does not automatically recieve injected arguments, use the
 
     \print {{ quote(injected_plugin_modules) if injected_plugin_modules else '' }}
 
+Console UI
+==========
+
+You can launch a Tkinter GUI for interacting with a live dgenerate process using ``dgenerate --dgenerate-console``
+
+This provides a basic REPL for the dgenerate config language.
+
+The console supports command history via the up and down arrow keys as a normal terminal would,
+as well as optional multiline input for sending multiline commands / configuration to the background
+dgenerate process.
+
+It can be used to work with dgenerate without encountering the startup
+overhead from loading large python modules.
+
+The UI is very minimal, both the console and the output window possess
+right click context menus which may not at first be apparent.
+
+Multiline input mode is activated via the insert key (you must deactivate this mode to submit commands),
+and ctrl-c is supported in the console for killing and then restarting the background interpreter process.
+
+Scroll back history in the output window is currently limited to 10000 lines.
+
+This can be configured by setting the environmental variable ``DGENERATE_CONSOLE_MAX_SCROLLBACK=10000``
+
+Command history is currently limited to 500 commands, multiline commands are also
+saved to command history.
+
+This can be configured by setting the environmental variable ``DGENERATE_CONSOLE_MAX_HISTORY=500``
 
 Writing Plugins
 ===============
