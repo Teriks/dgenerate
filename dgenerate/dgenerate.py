@@ -18,7 +18,8 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
+import codecs
+import os
 import sys
 
 __doc__ = """
@@ -27,7 +28,38 @@ Windows installation entry point.
 This is used in the environment created by the windows installer.
 """
 
+
+class _Unbuffered(object):
+    def __init__(self, stream):
+        self.stream = stream
+
+    def write(self, data):
+        self.stream.write(data)
+        self.stream.flush()
+
+    def writelines(self, datas):
+        self.stream.writelines(datas)
+        self.stream.flush()
+
+    def __getattr__(self, attr):
+        return getattr(self.stream, attr)
+
+
 try:
+    env_encoding = os.environ.get('PYTHONIOENCODING', None)
+    unbuffered_io = os.environ.get('PYTHONUNBUFFERED', '0').strip() != '0'
+
+    if env_encoding is not None:
+        env_encoding = env_encoding.lower()
+        if sys.stdout.encoding.lower() != env_encoding:
+            sys.stdout = codecs.getwriter(env_encoding)(sys.stdout.buffer, 'strict')
+        if sys.stderr.encoding.lower() != env_encoding:
+            sys.stderr = codecs.getwriter(env_encoding)(sys.stderr.buffer, 'strict')
+
+    if unbuffered_io:
+        sys.stdout = _Unbuffered(sys.stdout)
+        sys.stderr = _Unbuffered(sys.stderr)
+
     from dgenerate import main
 
     main()
