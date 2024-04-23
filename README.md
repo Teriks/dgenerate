@@ -3487,7 +3487,7 @@ caching system.
 You can see all available config directives with the command
 `dgenerate --directives-help`, providing this option with a name, or
 multiple names such as:
-`dgenerate --directives-help \save_modules \use_modules` will print the
+`dgenerate --directives-help save_modules use_modules` will print the
 documentation for the specified directives. The backslash may be
 omitted.
 
