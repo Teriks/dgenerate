@@ -129,6 +129,14 @@ class _FindDialog(tk.Toplevel):
             self.text_widget.tag_config('found', foreground='white', background='blue')
             self.last_find = idx
 
+    def destroy(self) -> None:
+        try:
+            self.text_widget.tag_remove('found', '1.0', tk.END)
+        except tk.TclError:
+            # main window already destroyed
+            pass
+        super().destroy()
+
 
 class _DgenerateConsole(tk.Tk):
     def __init__(self):
