@@ -75,6 +75,8 @@ class ConfigRunnerPlugin(_plugin.Plugin):
 
         Any non-exiting exception will be eaten and rethrown as :py:class:`BatchProcessError`, also halting execution of the config.
 
+        :raise RuntimeError: if a config directive with the same name already exists
+
         :param name: directive name
         :param implementation: implementation callable
         """
@@ -86,6 +88,24 @@ class ConfigRunnerPlugin(_plugin.Plugin):
                     f'"{self.loaded_by_name}" because that directive name already exists.')
 
             self.config_runner.directives[name] = implementation
+
+    def register_template_function(self, name, implementation: typing.Callable):
+        """
+        Register a config template function implementation on the :py:class:`dgenerate.batchprocess.ConfigRunner` instance.
+
+        :raise RuntimeError: if a template function with the same name already exists
+
+        :param name: function name
+        :param implementation: implementation callable
+        """
+        if self.config_runner is not None:
+
+            if name in self.config_runner.template_functions:
+                raise RuntimeError(
+                    f'template function name "{name}" cannot be registered by plugin '
+                    f'"{self.loaded_by_name}" because that template function name already exists.')
+
+            self.config_runner.template_functions[name] = implementation
 
     @property
     def injected_args(self) -> collections.abc.Sequence[str]:
