@@ -1,12 +1,9 @@
-import ctypes
 import json
 import pathlib
 import queue
-import signal
 import subprocess
-import sys
 import time
-from threading import Thread
+import threading
 from tkinter import ttk
 
 import tkinter as tk
@@ -126,10 +123,12 @@ class DgenerateConsole(tk.Tk):
 
         self._load_command_history()
 
+        self._termination_lock = threading.Lock()
+
         self._start_dgenerate_process()
 
         self._threads = [
-            Thread(target=self._write_stdout)
+            threading.Thread(target=self._write_stdout)
         ]
 
         self._text_queue = queue.Queue()
@@ -163,10 +162,12 @@ class DgenerateConsole(tk.Tk):
         self._write_output('Shell Process Started.\n')
 
     def _kill_sub_process(self):
-        self.sub_process.terminate()
-        while self.sub_process.poll() is None:
-            time.sleep(0.1)
-        self._restart_dgenerate_process()
+        with self._termination_lock:
+            self.sub_process.terminate()
+            self.sub_process.communicate()
+            self._write_output(
+                f'\nShell Process Terminated, Exit Code: {self.sub_process.poll()}\n')
+            self._restart_dgenerate_process()
 
     def _start_dgenerate_process(self):
         env = os.environ.copy()
@@ -180,8 +181,7 @@ class DgenerateConsole(tk.Tk):
             stdin=subprocess.PIPE,
             text=True,
             encoding='utf-8',
-            env=env,
-            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+            env=env)
 
     def _load_input_entry_text(self):
         f = tkinter.filedialog.askopenfile(
@@ -282,14 +282,18 @@ class DgenerateConsole(tk.Tk):
     def _write_stdout(self):
         exit_message = True
         while True:
-            return_code = self.sub_process.poll()
+            with self._termination_lock:
+                return_code = self.sub_process.poll()
+
             if return_code is None:
                 exit_message = True
                 self._write_output(self.sub_process.stdout.readline())
             elif exit_message:
                 exit_message = False
-                self._write_output(
-                    f'\nShell Process Terminated, Exit Code: {return_code}\n')
+                with self._termination_lock:
+                    self._write_output(
+                        f'\nShell Process Terminated, Exit Code: {return_code}\n')
+                    self._restart_dgenerate_process()
             else:
                 time.sleep(1)
 
@@ -331,8 +335,9 @@ class DgenerateConsole(tk.Tk):
         if self._multi_line_input_check_var.get():
             return
 
-        if self.sub_process.poll() is not None:
-            self._restart_dgenerate_process()
+        with self._termination_lock:
+            if self.sub_process.poll() is not None:
+                self._restart_dgenerate_process()
 
         user_input = self._input_entry.text.get('1.0', 'end-1c')
 
