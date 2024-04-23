@@ -3036,7 +3036,7 @@ Available custom jinja2 functions/filters are:
     lists)
 -   `{{ pwd() }}` Return the current working directory as a string
 
-The above functions possessing arguments can be used as either a function or filter IE:
+The above functions which possess arguments can be used as either a function or filter IE:
 `{{ "quote_me" | quote }}`
 
 The option `--functions-help` and the directive `\functions_help` can be
