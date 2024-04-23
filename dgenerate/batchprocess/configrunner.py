@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import collections.abc
 import glob
+import os
 import shlex
 import types
 import typing
@@ -111,6 +112,13 @@ def _first(iterable: collections.abc.Iterable[typing.Any]):
     return v
 
 
+def _pwd():
+    """
+    Return the current working directory as a string.
+    """
+    return os.getcwd()
+
+
 class ConfigRunner(_batchprocessor.BatchProcessor):
     """
     A :py:class:`.BatchProcessor` that can run dgenerate batch processing configs from a string or file.
@@ -195,7 +203,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'format_prompt': _format_prompt,
             'format_size': _format_size,
             'last': _last,
-            'first': _first
+            'first': _first,
+            'pwd': _pwd
         }
 
         def return_zero(func, help):
@@ -232,6 +241,10 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'use_modules': self._use_modules_directive,
             'clear_modules': self._clear_modules_directive,
             'gen_seeds': self._gen_seeds_directive,
+            'pwd': self._pwd_directive,
+            'cd': self._cd_directive,
+            'pushd': self._pushd_directive,
+            'popd': self._popd_directive,
             'exit': self._exit_directive
         }
 
@@ -252,6 +265,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                                     render_loop=self.render_loop)
 
         self.directives['import_plugins'] = self._import_plugins_directive
+
+        self._directory_stack = []
 
     def _import_plugins_directive(self, plugin_paths: collections.abc.Sequence[str]):
         """
@@ -376,6 +391,64 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             raise _batchprocessor.BatchProcessError(
                 '\\gen_seeds directive takes 2 arguments, template variable '
                 'name (to store value at), and number of seeds to generate.')
+        return 0
+
+    def _pwd_directive(self, args: collections.abc.Sequence[str]):
+        """
+        Print the current working directory.
+        """
+        _messages.log(os.getcwd())
+        return 0
+
+    def _cd_directive(self, args: collections.abc.Sequence[str]):
+        """
+        Change the current working directory.
+
+        Takes one argument, the directory to change to.
+        """
+        if len(args) == 1:
+            try:
+                os.chdir(args[0])
+                _messages.log(f'Working Directory Changed To: "{args[0]}"')
+            except OSError as e:
+                raise _batchprocessor.BatchProcessError(e)
+        else:
+            raise _batchprocessor.BatchProcessError(
+                '\\cd directive takes 1 argument, the directory name.')
+        return 0
+
+    def _pushd_directive(self, args: collections.abc.Sequence[str]):
+        """
+        Change the current working directory and push the last directory on to the directory stack.
+
+        Takes one argument, the directory to change to.
+        """
+        if len(args) == 1:
+            try:
+                old_dir = os.getcwd()
+                os.chdir(args[0])
+                _messages.log(f'Working Directory Changed To: "{args[0]}"')
+                self._directory_stack.append(old_dir)
+            except OSError as e:
+                raise _batchprocessor.BatchProcessError(e)
+        else:
+            raise _batchprocessor.BatchProcessError(
+                '\\pushd directive takes 1 argument, the directory name.')
+        return 0
+
+    def _popd_directive(self, args: collections.abc.Sequence[str]):
+        """
+        Pop the last directory of the directory stack and change to that directory.
+        """
+        try:
+            dir = self._directory_stack.pop()
+            os.chdir(dir)
+            _messages.log(f'Working Directory Changed To: "{dir}"')
+        except IndexError:
+            raise _batchprocessor.BatchProcessError('\\popd failed, no directory on the stack.')
+        except OSError as e:
+            self._directory_stack.append(dir)
+            raise _batchprocessor.BatchProcessError(e)
         return 0
 
     def _config_generate_template_variables_with_types(self) -> dict[str, tuple[type, typing.Any]]:
