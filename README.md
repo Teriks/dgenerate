@@ -674,7 +674,7 @@ options:
                         Write a configuration text file for every output image or animation. The text
                         file can be used reproduce that particular output image or animation by piping
                         it to dgenerate STDIN, for example "dgenerate < config.txt". These files will
-                        be written to --output-directory and are affected by --output-prefix and
+                        be written to --output-path and are affected by --output-prefix and
                         --output-overwrite as well. The files will be named after their corresponding
                         image or animation file. Configuration files produced for animation frame
                         images will utilize --frame-start and --frame-end to specify the frame number.
