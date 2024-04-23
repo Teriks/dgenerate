@@ -144,7 +144,7 @@ Help Output
                             be communicated with by another process sending it commands, like a server.
       --dgenerate-console   Launch a terminal-like tkinter GUI that communicates with an instance of
                             dgenerate running in the background. This allows you to interactively write
-                            dgenerate config scripts as if dgenerate were a shell.
+                            dgenerate config scripts as if dgenerate were a shell / REPL.
       --plugin-modules PATH [PATH ...]
                             Specify one or more plugin module folder paths (folder containing __init__.py)
                             or python .py file paths to load as plugins. Plugin modules can currently
