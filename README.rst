@@ -3758,7 +3758,8 @@ Scroll back history in the output window is currently limited to 10000 lines.
 This can be configured by setting the environmental variable ``DGENERATE_CONSOLE_MAX_SCROLLBACK=10000``
 
 Command history is currently limited to 500 commands, multiline commands are also
-saved to command history.
+saved to command history.  The command history file is stored at ``-/.dgenerate_console_history``,
+on Windows this equates to ``%USERPROFILE%\.dgenerate_console_history``
 
 This can be configured by setting the environmental variable ``DGENERATE_CONSOLE_MAX_HISTORY=500``
 
@@ -3795,7 +3796,7 @@ File Cache Control
 ==================
 
 dgenerate will cache ``--image-seeds`` files downloaded from the web while it is running in the
-directory ``~/.cache/dgenerate/web``, on Windows this equates to ``%HOME%\.cache\dgenerate\web``
+directory ``~/.cache/dgenerate/web``, on Windows this equates to ``%USERPROFILE%\.cache\dgenerate\web``
 
 You can control where image seed files are cached with the environmental variable ``DGENERATE_WEB_CACHE``.
 
@@ -3806,7 +3807,7 @@ running in a manner that is multiprocess safe, the last running instance of dgen
 clean out the cache.
 
 Files downloaded from huggingface by the diffusers/huggingface_hub library will be cached under
-``~/.cache/huggingface/``, on Windows this equates to ``%HOME%\.cache\huggingface\``.
+``~/.cache/huggingface/``, on Windows this equates to ``%USERPROFILE%\.cache\huggingface\``.
 
 This is controlled by the environmental variable ``HF_HOME``
 
