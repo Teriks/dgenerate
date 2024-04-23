@@ -25,8 +25,9 @@ import sys
 
 if '--dgenerate-console' in sys.argv:
     import dgenerate.console as _console
-
-    _console.main()
+    args = sys.argv[1:]
+    args.remove('--dgenerate-console')
+    _console.main(args)
     exit(0)
 
 import collections.abc

@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import collections
 import json
 import pathlib
 import queue
@@ -408,6 +409,6 @@ class _DgenerateConsole(tk.Tk):
         super().destroy()
 
 
-def main():
+def main(args: collections.abc.Sequence[str]):
     app = _DgenerateConsole()
     app.mainloop()
