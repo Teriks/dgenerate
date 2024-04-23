@@ -1729,6 +1729,7 @@ Passing ``helpargs`` to a ``--scheduler`` related option will reveal configurati
 can be overridden via a URI syntax, for every possible scheduler.
 
 .. code-block:: bash
+
     dgenerate stabilityai/stable-diffusion-2 \
     --inference-steps 40 \
     --guidance-scales 8 \
