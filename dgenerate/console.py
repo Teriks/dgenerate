@@ -193,7 +193,7 @@ class _DgenerateConsole(tk.Tk):
         self._write_output('Restarting Shell Process...\n')
         self._start_dgenerate_process()
         self._write_output('Shell Process Started.\n'
-                           '======================')
+                           '======================\n')
 
     def _kill_sub_process(self):
         with self._termination_lock:
