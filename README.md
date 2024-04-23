@@ -94,7 +94,7 @@ For library documentation visit
 ## Help Output
 
 ``` text
-usage: dgenerate [-h] [-v] [--version] [--server SERVER] [--dgenerate-console DGENERATE_CONSOLE]
+usage: dgenerate [-h] [-v] [--version] [--server] [--dgenerate-console]
                  [--plugin-modules PATH [PATH ...]] [--sub-command SUB_COMMAND]
                  [--sub-command-help [SUB_COMMAND ...]] [-ofm] [--templates-help [VARIABLE_NAME ...]]   
                  [--directives-help [DIRECTIVE_NAME ...]] [--functions-help [FUNCTION_NAME ...]]        
@@ -153,11 +153,10 @@ options:
   -v, --verbose         Output information useful for debugging, such as pipeline call and model load   
                         parameters.
   --version             Show dgenerate's version and exit
-  --server SERVER       When reading configuration from STDIN (a pipe), read forever, even when
+  --server              When reading configuration from STDIN (a pipe), read forever, even when
                         configuration errors occur. This allows dgenerate to run in the background and  
                         be communicated with by another process sending it commands, like a server.     
-  --dgenerate-console DGENERATE_CONSOLE
-                        Launch a terminal like tkinter GUI that communicates with an instance of        
+  --dgenerate-console   Launch a terminal like tkinter GUI that communicates with an instance of        
                         dgenerate running in the background. This allows you to interactively write     
                         dgenerate config scripts as if dgenerate were a shell.
   --plugin-modules PATH [PATH ...]
