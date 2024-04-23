@@ -912,11 +912,14 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'{a_namer("vae_tiling")}/{a_namer("vae_slicing")} not supported for '
                     f'non torch model type, see: {a_namer("model_type")}.')
 
-        if self.scheduler == 'help' and self.sdxl_refiner_scheduler == 'help':
+        if _pipelinewrapper.scheduler_is_help(self.scheduler) and \
+                (_pipelinewrapper.scheduler_is_help(self.sdxl_refiner_scheduler) or
+                 _pipelinewrapper.scheduler_is_help(self.s_cascade_decoder_scheduler)):
             raise RenderLoopConfigError(
-                'cannot list compatible schedulers for the main model and the SDXL refiner at '
-                f'the same time. Do not use the scheduler "help" option for {a_namer("scheduler")} '
-                f'and {a_namer("sdxl_refiner_scheduler")} simultaneously.')
+                'cannot list compatible schedulers for the main model and the SDXL refiner or '
+                f'Stable Cascade decoder at the same time. Do not use the scheduler "help" / "helpargs" '
+                f'option for {a_namer("scheduler")} and {a_namer("sdxl_refiner_scheduler")} or '
+                f'{a_namer("s_cascade_decoder_scheduler")} simultaneously.')
 
         if self.image_seeds:
             no_seed_strength = (_pipelinewrapper.model_type_is_upscaler(self.model_type) or
