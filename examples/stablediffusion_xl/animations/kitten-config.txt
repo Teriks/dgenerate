@@ -1,4 +1,4 @@
-#! dgenerate 3.4.5
+#! dgenerate 3.5.0
 
 # Strange but interesting SDXL upscaling effect on a gif
 

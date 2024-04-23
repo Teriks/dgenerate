@@ -1,4 +1,4 @@
-#! dgenerate 3.4.5
+#! dgenerate 3.5.0
 
 # run the MiDaS depth detector
 

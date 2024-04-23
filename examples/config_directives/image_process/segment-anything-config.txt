@@ -1,4 +1,4 @@
-#! dgenerate 3.4.5
+#! dgenerate 3.5.0
 
 \set device_switch {{ '--device '+injected_device if injected_device else '' }}
 
