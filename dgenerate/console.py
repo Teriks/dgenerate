@@ -171,7 +171,7 @@ class _DgenerateConsole(tk.Tk):
             t.start()
 
         # max output scroll-back history
-        self._max_output_lines = int(os.environ.get('DGENERATE_CONSOLE_MAX_SCROLLBACK', 1000))
+        self._max_output_lines = int(os.environ.get('DGENERATE_CONSOLE_MAX_SCROLLBACK', 10000))
 
         # output (stdout) refresh rate (ms)
         self._output_refresh_rate = 100
