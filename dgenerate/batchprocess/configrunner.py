@@ -419,7 +419,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
     def _pushd_directive(self, args: collections.abc.Sequence[str]):
         """
-        Change the current working directory and push the last directory on to the directory stack.
+        Push the current working directory on to the directory stack and change to the specified directory.
 
         Takes one argument, the directory to change to.
         """
