@@ -163,7 +163,7 @@ class _DgenerateConsole(tk.Tk):
         # max output scroll-back history
         self._max_output_lines = 10000
 
-        # output (stdout) refresh rate
+        # output (stdout) refresh rate (ms)
         self._output_refresh_rate = 100
 
         # output lines per refresh
