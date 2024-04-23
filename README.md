@@ -3882,7 +3882,8 @@ image processor plugins.
 
 An example for writing config directives can be found in the
 [\"writing_plugins/config_directive\"](https://github.com/Teriks/dgenerate/tree/v3.5.0/examples/writing_plugins/config_directive)
-folder of the examples folder.
+folder of the examples folder. Config template functions can also be implemented by plugins, 
+see: [\"writing_plugins/template_function\"](https://github.com/Teriks/dgenerate/tree/v3.5.0/examples/writing_plugins/template_function)
 
 Currently the only internal directive that is implemented as a plugin is
 the `\image_process` directive, who\'s source file [can be located
