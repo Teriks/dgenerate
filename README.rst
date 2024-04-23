@@ -2935,6 +2935,7 @@ Available custom jinja2 functions/filters are:
 * ``{{ unquote('"unescape-me"') }}`` (shell unquote / split, works on strings and lists)
 * ``{{ quote('escape-me') }}`` (shell quote, works on strings and lists)
 * ``{{ format_prompt(prompt_object) }}`` (Format and quote one or more prompt objects with their delimiter, works on single prompts and lists)
+* ``{{ pwd() }}`` Return the current working directory as a string
 
 The above functions can be used as either a function or filter IE: ``{{ "quote_me" | quote }}``
 
