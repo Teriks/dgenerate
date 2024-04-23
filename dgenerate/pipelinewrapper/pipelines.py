@@ -159,8 +159,8 @@ def load_scheduler(pipeline: typing.Union[diffusers.DiffusionPipeline, diffusers
 
     if help_name == 'helpargs':
         help_string = f'Compatible schedulers for "{model_path}" are:' + '\n\n'
-        help_string += '\n\n'.join((" " * 4) + i.__name__+('\n'+' '*8)+('\n'+' '*8).join(
-            k[0]+('='+str(k[1]) if len(k) > 1 else '') for k in
+        help_string += '\n\n'.join((" " * 4) + i.__name__+(':\n'+' '*8)+('\n'+' '*8).join(
+            _textprocessing.dashup(k[0])+('='+str(k[1]) if len(k) > 1 else '') for k in
             list(_types.get_accepted_args_with_defaults(i.__init__.__wrapped__))[1:]) for i in compatibles) + '\n'
         _messages.log(help_string)
         raise SchedulerHelpException(help_string)

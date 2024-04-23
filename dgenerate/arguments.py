@@ -316,6 +316,18 @@ def _create_parser(add_model=True, add_help=True):
                             help="Show dgenerate's version and exit"))
 
     actions.append(
+        parser.add_argument('--server', dest=None,
+                            help="""When reading configuration from STDIN (a pipe), read forever, even when 
+                            configuration errors occur.  This allows dgenerate to run in the background and 
+                            be communicated with by another process sending it commands, like a server."""))
+
+    actions.append(
+        parser.add_argument('--dgenerate-console', dest=None,
+                            help="""Launch a terminal like tkinter GUI that communicates with an instance
+                            of dgenerate running in the background. This allows you to interactively write
+                            dgenerate config scripts as if dgenerate were a shell."""))
+
+    actions.append(
         parser.add_argument('--plugin-modules', action='store', default=[], nargs="+", dest='plugin_module_paths',
                             metavar="PATH",
                             help="""Specify one or more plugin module folder paths (folder containing __init__.py) or 

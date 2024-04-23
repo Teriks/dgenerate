@@ -1661,6 +1661,54 @@ Typically however, there will be many compatible schedulers:
     #    "KDPM2AncestralDiscreteScheduler"
     #    "LCMScheduler"
 
+Passing ``helpargs`` to a ``--scheduler`` related option will reveal configuration arguments that
+can be overridden via a URI syntax, for every possible scheduler.
+
+.. code-block:: bash
+    dgenerate stabilityai/stable-diffusion-2 \
+    --inference-steps 40 \
+    --guidance-scales 8 \
+    --output-size 1024 \
+    --gen-seeds 2 \
+    --prompts "none" \
+    --scheduler help
+
+    Compatible schedulers for "stabilityai/stable-diffusion-2" are:
+
+    # Outputs (shortened for brevity...):
+    #
+    #    ...
+    #
+    #    PNDMScheduler:
+    #        num-train-timesteps=1000
+    #        beta-start=0.0001
+    #        beta-end=0.02
+    #        beta-schedule=linear
+    #        trained-betas=None
+    #        skip-prk-steps=False
+    #        set-alpha-to-one=False
+    #        prediction-type=epsilon
+    #        timestep-spacing=leading
+    #        steps-offset=0
+    #
+    #   ...
+
+
+As an example, you may override the mentioned arguments for any scheduler in this manner:
+
+.. code-block:: bash
+
+    # Change prediction type of the scheduler to "v_prediction".
+    # for some models this may be necessary, not for this model
+    # this is just a syntax example
+
+    dgenerate stabilityai/stable-diffusion-2 \
+    --inference-steps 40 \
+    --guidance-scales 8 \
+    --output-size 1024 \
+    --gen-seeds 2 \
+    --prompts "none" \
+    --scheduler PNDMScheduler;prediction-type=v_prediction
 
 
 Specifying a VAE
@@ -2823,7 +2871,12 @@ Available custom jinja2 functions/filters are:
 * ``{{ quote('escape-me') }}`` (shell quote, works on strings and lists)
 * ``{{ format_prompt(prompt_object) }}`` (Format and quote one or more prompt objects with their delimiter, works on single prompts and lists)
 
-The above can be used as either a function or filter IE: ``{{ "quote_me" | quote }}``
+The above functions can be used as either a function or filter IE: ``{{ "quote_me" | quote }}``
+
+The option ``--functions-help`` and the directive ``\functions_help`` can be used to print
+documentation for template functions. When the option or directive is used alone all built
+in functions will be printed with their signature, specifying function names as arguments
+will print documentation for those specific functions.
 
 Empty lines and comments starting with ``#`` will be ignored, comments that occur at the end
 of lines will also be ignored.
