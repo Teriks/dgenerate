@@ -3706,12 +3706,12 @@ redirection operators supported by bash are supported. This can be useful
 for running other image processing utilities as subcommands from within a
 config script.
 
-.. code-block:: jinja
+.. code-block::
 
     #! dgenerate 3.5.0
 
     # run dgenerate as a subprocess, read a config
-    # and send stdout and stderr to file
+    # and send stdout and stderr to a file
 
     \exec dgenerate < my_config.txt &> log.txt
 
