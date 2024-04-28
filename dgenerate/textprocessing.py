@@ -750,7 +750,9 @@ def quote_spaces(
     return vals if isinstance(value_or_struct, list) else tuple(vals)
 
 
-def indent_text(text, initial_indent=' ' * 4, subsequent_indent=' ' * 4):
+def indent_text(text,
+                initial_indent: typing.Optional[str] = None,
+                subsequent_indent: typing.Optional[str] = None):
     """
     Indent consecutive lines of text.
 
@@ -759,6 +761,13 @@ def indent_text(text, initial_indent=' ' * 4, subsequent_indent=' ' * 4):
     :param subsequent_indent: String of characters to be used for the subsequent indentation
     :return: Indented text
     """
+
+    if initial_indent is None:
+        initial_indent = ''
+
+    if subsequent_indent is None:
+        subsequent_indent = ''
+
     lines = text.split('\n')
     indented_lines = [initial_indent + lines[0]] + [subsequent_indent + line for line in lines[1:]]
     return '\n'.join(indented_lines)
