@@ -217,9 +217,9 @@ class Plugin:
         if hasattr(cls, 'help'):
             help_str = cls.help(loaded_by_name)
             if help_str:
-                help_str = _textprocessing.justify_left(help_str).strip()
+                help_str = inspect.cleandoc(help_str).strip()
         elif cls.__doc__:
-            help_str = _textprocessing.justify_left(cls.__doc__).strip()
+            help_str = inspect.cleandoc(cls.__doc__).strip()
 
         args_with_defaults = cls.get_accepted_args(loaded_by_name)
         arg_descriptors = []

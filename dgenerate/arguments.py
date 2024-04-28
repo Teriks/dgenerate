@@ -315,15 +315,24 @@ def _create_parser(add_model=True, add_help=True):
         parser.add_argument('--version', action='version', version=f"dgenerate v{dgenerate.__version__}",
                             help="Show dgenerate's version and exit"))
 
+    popen_group = parser.add_mutually_exclusive_group()
     actions.append(
-        parser.add_argument('--server', dest=None, action='store_true', default=False,
-                            help="""When reading configuration from STDIN (a pipe), read forever, even when 
+        popen_group.add_argument('--server', dest=None, action='store_true', default=False,
+                                 help="""When reading configuration from STDIN (a pipe), read forever, even when 
                             configuration errors occur.  This allows dgenerate to run in the background and 
                             be communicated with by another process sending it commands, like a server."""))
 
     actions.append(
-        parser.add_argument('--dgenerate-console', action='store_true', default=False,
-                            help="""Launch a terminal-like tkinter GUI that communicates with an instance
+        popen_group.add_argument('--no-stdin', dest=None, action='store_true', default=False,
+                                 help="""Can be used to indicate to dgenerate that it will not receive any
+                                 piped in input. This is useful for running dgenerate via popen from python
+                                 or another application using normal arguments, where it would otherwise
+                                 try to read from STDIN and block forever because it is not attached to 
+                                 a terminal."""))
+
+    actions.append(
+        popen_group.add_argument('--dgenerate-console', action='store_true', default=False,
+                                 help="""Launch a terminal-like tkinter GUI that communicates with an instance
                             of dgenerate running in the background. This allows you to interactively write
                             dgenerate config scripts as if dgenerate were a shell / REPL."""))
 
