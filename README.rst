@@ -1750,10 +1750,10 @@ can be overridden via a URI syntax, for every possible scheduler.
     --prompts "none" \
     --scheduler helpargs
 
-    Compatible schedulers for "stabilityai/stable-diffusion-2" are:
 
     # Outputs (shortened for brevity...):
     #
+    # Compatible schedulers for "stabilityai/stable-diffusion-2" are:
     #    ...
     #
     #    PNDMScheduler:

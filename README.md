@@ -1790,10 +1790,10 @@ dgenerate stabilityai/stable-diffusion-2 \
 --prompts "none" \
 --scheduler helpargs
 
-Compatible schedulers for "stabilityai/stable-diffusion-2" are:
 
 # Outputs (shortened for brevity...):
 #
+# Compatible schedulers for "stabilityai/stable-diffusion-2" are:
 #    ...
 #
 #    PNDMScheduler:
