@@ -38,7 +38,7 @@ _sdxl_refiner_uri_parser = _textprocessing.ConceptUriParser('SDXL Refiner',
                                                             ['revision', 'variant', 'subfolder', 'dtype'])
 
 _s_cascade_decoder_uri_parser = _textprocessing.ConceptUriParser('Stable Cascade decoder',
-                                                                  ['revision', 'variant', 'subfolder', 'dtype'])
+                                                                 ['revision', 'variant', 'subfolder', 'dtype'])
 
 _torch_vae_uri_parser = _textprocessing.ConceptUriParser('VAE',
                                                          ['model', 'revision', 'variant', 'subfolder', 'dtype'])
@@ -1865,12 +1865,19 @@ class TextualInversionUri:
 
             # this is tricky because there is stupidly a positional argument named 'token'
             # as well as an accepted kwargs value with the key 'token'
-            pipeline.load_textual_inversion(self.model,
-                                            revision=self.revision,
-                                            subfolder=self.subfolder,
-                                            weight_name=self.weight_name,
-                                            local_files_only=local_files_only,
-                                            kwargs={'token': use_auth_token})
+
+            old_token = os.environ.get('HF_TOKEN', None)
+            if use_auth_token is not None:
+                os.environ['HF_TOKEN'] = use_auth_token
+            try:
+                pipeline.load_textual_inversion(self.model,
+                                                revision=self.revision,
+                                                subfolder=self.subfolder,
+                                                weight_name=self.weight_name,
+                                                local_files_only=local_files_only)
+            finally:
+                if old_token is not None:
+                    os.environ['HF_TOKEN'] = old_token
 
             _messages.debug_log(f'Added Textual Inversion: "{self}" to pipeline: "{pipeline.__class__.__name__}"')
 
