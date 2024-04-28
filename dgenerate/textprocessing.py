@@ -750,6 +750,20 @@ def quote_spaces(
     return vals if isinstance(value_or_struct, list) else tuple(vals)
 
 
+def indent_text(text, initial_indent=' ' * 4, subsequent_indent=' ' * 4):
+    """
+    Indent consecutive lines of text.
+
+    :param text: Text to be indented
+    :param initial_indent: String of characters to be used for the initial indentation
+    :param subsequent_indent: String of characters to be used for the subsequent indentation
+    :return: Indented text
+    """
+    lines = text.split('\n')
+    indented_lines = [initial_indent + lines[0]] + [subsequent_indent + line for line in lines[1:]]
+    return '\n'.join(indented_lines)
+
+
 def wrap_paragraphs(text: str,
                     width: int,
                     break_long_words=False,
@@ -758,6 +772,11 @@ def wrap_paragraphs(text: str,
     """
     Wrap text that may contain paragraphs without removing separating whitespace.
 
+    The directive ``NOWRAP!`` can be used to start a paragraph block with no word wrapping,
+    which is useful for manually formatting small blocks of text. ``NOWRAP!`` should exist on its
+    own line, immediately followed by the block of text which will have wrapping disabled.
+    The ``NOWRAP!`` directive line will not exist in the output text.
+
     :param text: Text containing paragraphs
     :param width: Wrap with in characters
     :param break_long_words: break on long words? default ``False``
@@ -765,27 +784,25 @@ def wrap_paragraphs(text: str,
     :param fill_args: extra keyword arguments to :py:func:`textwrap.fill` if desired
     :return: text wrapped string
     """
-    paragraphs = []
-    in_spacing = False
-    for line in text.splitlines():
-        if not line and not in_spacing:
-            in_spacing = True
-            paragraphs.append([])
-        elif line:
-            in_spacing = False
-            if len(paragraphs) == 0:
-                paragraphs.append([])
+    paragraphs = text.split('\n\n')
+    wrapped_text = ''
 
-            paragraphs[-1].append(line)
+    for paragraph in paragraphs:
+        # Check if the paragraph contains 'NOWRAP!' after leading whitespace
+        if paragraph.lstrip().startswith('NOWRAP!'):
+            # Add the paragraph to the wrapped text as is
+            wrapped_text += indent_text('\n'.join(paragraph.split('\n')[1:]),
+                                        initial_indent=fill_args.get('initial_indent', None),
+                                        subsequent_indent=fill_args.get('subsequent_indent', None)) + '\n\n'
+        else:
+            # Wrap the paragraph as before
+            wrapped_paragraph = textwrap.fill(paragraph, width=width,
+                                              break_long_words=break_long_words,
+                                              break_on_hyphens=break_on_hyphens,
+                                              **fill_args)
+            wrapped_text += wrapped_paragraph + '\n\n'
 
-    return '\n\n'.join(
-        textwrap.fill(
-            text,
-            width=width,
-            break_long_words=break_long_words,
-            break_on_hyphens=break_on_hyphens,
-            **fill_args) for
-        text in (' '.join(paragraph) for paragraph in paragraphs))
+    return wrapped_text.rstrip()
 
 
 def wrap(text: str,

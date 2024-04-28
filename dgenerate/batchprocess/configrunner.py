@@ -20,8 +20,12 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import collections.abc
 import glob
+import inspect
 import os
 import shlex
+import shutil
+import subprocess
+import threading
 import types
 import typing
 
@@ -36,6 +40,8 @@ import dgenerate.prompt as _prompt
 import dgenerate.renderloop as _renderloop
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+import time
+import stat
 
 
 def _format_prompt_single(prompt):
@@ -242,9 +248,14 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'clear_modules': self._clear_modules_directive,
             'gen_seeds': self._gen_seeds_directive,
             'pwd': self._pwd_directive,
+            'ls': self._ls_directive,
             'cd': self._cd_directive,
             'pushd': self._pushd_directive,
             'popd': self._popd_directive,
+            'exec': self._exec_directive,
+            'mv': self._mv_directive,
+            'cp': self._cp_directive,
+            'mkdir': self._mkdir_directive,
             'exit': self._exit_directive
         }
 
@@ -400,6 +411,268 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         _messages.log(os.getcwd())
         return 0
 
+    def _mv_directive(self, args: collections.abc.Sequence[str]):
+        """
+        Move a file or directory to a new location on disk.
+        """
+        if len(args) != 2:
+            raise _batchprocessor.BatchProcessError(
+                '\\mv directive takes two arguments, source and destination.')
+        shutil.move(args[0], args[1])
+        return 0
+
+    def _cp_directive(self, args: collections.abc.Sequence[str]):
+        """
+        Copy a file or directory to a new location on disk.
+        """
+        if len(args) != 2:
+            raise _batchprocessor.BatchProcessError(
+                '\\cp directive takes two arguments, source and destination.')
+        shutil.copy2(args[0], args[1])
+        return 0
+
+    def _mkdir_directive(self, args: collections.abc.Sequence[str]):
+        """
+        Make one or more directories, parent directories will be created if they do not exist.
+        """
+        if len(args) < 1:
+            raise _batchprocessor.BatchProcessError(
+                '\\mkdir directive must be provided at least one argument.')
+        for d in args:
+            os.makedirs(d, exist_ok=True)
+        return 0
+
+    def _exec_directive(self, args: collections.abc.Sequence[str]):
+        """
+        Execute a shell command line as a new process or processes.
+
+        The pipe | operator is supported for piping to standard input, as well as bash file redirection syntax.
+
+        The following redirection operators are supported:
+
+            NOWRAP!
+            '<'   : Read into stdin
+            '>'   : stdout to file
+            '1>'  : stdout to file
+            '2>'  : stderr to file
+            '&>'  : stdout & stderr to file
+            '>>'  : append stdout to file
+            '1>>' : append stdout to file
+            '2>>' : append stderr to file
+            '&>>' : append stout & stderr to file
+            '2>&1': redirect stderr to stdout
+            '1>&2': redirect stdout to stderr
+
+        Examples:
+
+            NOWRAP!
+            \exec dgenerate < my_config.txt &> log.txt
+            \exec dgenerate < my_config.txt > log.txt 2>&1
+            \exec dgenerate < my_config.txt > stdout.txt 2> stderr.txt
+
+        Windows cat pipe:
+
+            \exec cmd /c "type my_config.txt" | dgenerate &> test.log
+
+        Linux cat pipe:
+
+            \exec cat my_config.txt | dgenerate &> test.log
+        """
+
+        if len(args) == 0:
+            raise _batchprocessor.BatchProcessError(
+                '\\exec directive must be passed at least one argument.')
+
+        args = list(args)
+
+        open_files = []
+        open_processes = []
+
+        try:
+            stdin = None
+            if '<' in args:
+                index = args.index('<')
+                if index + 1 < len(args):
+                    stdin = open(args[index + 1], 'r')
+                    open_files.append(stdin)
+                    args = args[:index] + args[index + 2:]
+                else:
+                    raise _batchprocessor.BatchProcessError(
+                        'No input file specified for redirection.')
+
+            if '|' in args:
+                commands = []
+                current_command = []
+                for arg in args:
+                    if arg == '|':
+                        commands.append(current_command)
+                        current_command = []
+                    else:
+                        current_command.append(arg)
+                commands.append(current_command)
+            else:
+                commands = [args]
+
+            previous_process = None
+
+            for command in commands:
+                if not command:
+                    raise _batchprocessor.BatchProcessError(
+                        f'no command specified to pipe to.')
+
+                stdout = _messages.get_message_file()
+                stderr = _messages.get_error_file()
+
+                redirects = {'>', '1>', '2>', '&>', '>>', '1>>', '2>>', '&>>', '2>&1', '1>&2'}
+                _i = 0
+                while any(i in command for i in redirects):
+                    if command[_i] in redirects:
+                        remove_cnt = 1
+                        mode = 'a' if '>>' in command[_i] else 'w'
+                        if command[_i] == '2>&1':
+                            stderr = stdout
+                        elif command[_i] == '1>&2':
+                            stdout = stderr
+                        else:
+                            remove_cnt = 2
+                            try:
+                                file = open(command[_i + 1], mode, encoding='utf-8')
+                                open_files.append(file)
+                            except IndexError:
+                                raise _batchprocessor.BatchProcessError(
+                                    f'{command[_i]} no output file specified.')
+                            if command[_i][0] != '2':
+                                stdout = file
+                            if command[_i][0] != '1':
+                                stderr = file
+                        command = command[:_i] + command[_i + remove_cnt:]
+                        _i -= remove_cnt
+                    _i += 1
+
+                stdin = stdin if previous_process is None else previous_process.stdout
+
+                if command[0] == 'dgenerate' and stdin is None:
+                    command = list(command) + ['--no-stdin']
+
+                env = os.environ.copy()
+                env['PYTHONUNBUFFERED'] = '1'
+                env['PYTHONIOENCODING'] = 'utf-8'
+                try:
+                    process = subprocess.Popen(command,
+                                               stdin=stdin,
+                                               stdout=subprocess.PIPE,
+                                               stderr=subprocess.PIPE,
+                                               env=env)
+                    open_processes.append(process)
+                except FileNotFoundError:
+                    raise _batchprocessor.BatchProcessError(
+                        f'Command "{command[0]}" not found on system.')
+
+                previous_process = process
+
+            stop_threads = threading.Event()
+
+            def readlines_unbuffered(file):
+                line = []
+                while byte := file.read(1):
+                    line.append(byte)
+                    if byte in {b'\n', b'\r'}:
+                        yield b''.join(line).decode('utf-8')
+                        line = []
+                if line:
+                    yield b''.join(line).decode('utf-8')
+
+            def handle_stream(stream, out_stream):
+                for line in readlines_unbuffered(stream):
+                    if stop_threads.is_set():
+                        break
+                    text = line.rstrip()
+                    if text:
+                        print(text, file=out_stream)
+                        out_stream.flush()
+
+            thread1 = threading.Thread(
+                target=handle_stream,
+                args=(process.stdout, stdout))
+            thread1.daemon = True
+            thread1.start()
+
+            thread2 = threading.Thread(
+                target=handle_stream,
+                args=(process.stderr, stderr))
+            thread2.daemon = True
+            thread2.start()
+
+            return_code = process.wait()
+
+            stop_threads.set()
+            thread1.join()
+            thread2.join()
+
+        finally:
+
+            for f in open_files:
+                f.close()
+
+            for p in open_processes:
+                if p.poll() is None:
+                    p.terminate()
+                    return_code = p.wait()
+
+        return return_code
+
+    def _ls_directive(self, args: collections.abc.Sequence[str]):
+        """
+        List directory contents.
+
+        Basic implementation of the Unix 'ls' command, accepts the argument -l
+        """
+
+        long = '-l' in args
+        if long:
+            args = [a for a in args if a != '-l']
+
+        if len(args) == 1:
+            paths = [args[0]]
+        elif len(args) > 1:
+            paths = args
+        else:
+            paths = ['.']
+
+        _messages.log('')
+
+        for path in paths:
+            if not os.path.exists(path):
+                _messages.log(f'ls: {path}: No such file or directory')
+                continue
+            if len(paths) > 1:
+                _messages.log(f'{path}:')
+            if long:
+                max_size_length = \
+                    max(len(str(os.stat(os.path.join(path, filename)).st_size)) for filename in os.listdir(path)
+                        if all or not filename.startswith('.'))
+
+            for filename in sorted(os.listdir(path)):
+                if not all and filename.startswith('.'):
+                    continue
+
+                if long:
+                    file_stat = os.stat(os.path.join(path, filename))
+                    file_permissions = stat.filemode(file_stat.st_mode)
+                    num_links = file_stat.st_nlink
+                    file_size = file_stat.st_size
+                    mod_time = time.ctime(file_stat.st_mtime)
+                    _messages.log(
+                        f'{file_permissions:<11} {num_links:<3} '
+                        f'{file_size:<{max_size_length}} {mod_time:<25} {filename}')
+                else:
+                    _messages.log(
+                        f'{filename}')
+            if len(paths) > 1:
+                _messages.log('')
+
+        return 0
+
     def _cd_directive(self, args: collections.abc.Sequence[str]):
         """
         Change the current working directory.
@@ -452,7 +725,6 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         return 0
 
     def _config_generate_template_variables_with_types(self) -> dict[str, tuple[type, typing.Any]]:
-
         template_variables = {}
 
         variable_prefix = 'last_'
@@ -557,7 +829,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                     if isinstance(impl, str):
                         doc = impl
                     else:
-                        doc = _textprocessing.justify_left(impl.__doc__).strip() \
+                        doc = inspect.cleandoc(impl.__doc__).strip() \
                             if impl.__doc__ is not None else 'No documentation provided.'
                     doc = \
                         _textprocessing.wrap_paragraphs(
@@ -616,7 +888,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                     if isinstance(impl, str):
                         doc = impl
                     else:
-                        doc = _textprocessing.justify_left(impl.__doc__).strip() \
+                        doc = inspect.cleandoc(impl.__doc__).strip() \
                             if impl.__doc__ is not None else 'No documentation provided.'
                     doc = \
                         _textprocessing.wrap_paragraphs(

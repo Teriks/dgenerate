@@ -100,6 +100,24 @@ def set_message_file(file: typing.TextIO):
     _MESSAGE_FILE = file
 
 
+def get_error_file():
+    """
+    Get the file stream or file like object for dgenerates error output.
+
+    """
+    global _ERROR_FILE
+    return _ERROR_FILE
+
+
+def get_message_file():
+    """
+    Get the file stream or file like object for dgenerates normal (non error) output.
+
+    """
+    global _MESSAGE_FILE
+    return _MESSAGE_FILE
+
+
 def messages_to_null():
     """
     Force dgenerates normal output to a null file.

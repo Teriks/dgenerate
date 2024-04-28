@@ -18,12 +18,14 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
+import codecs
 import collections.abc
 import json
 import pathlib
 import queue
+import re
 import subprocess
+import sys
 import time
 import threading
 from tkinter import ttk
@@ -261,7 +263,10 @@ class _DgenerateConsole(tk.Tk):
         self._start_dgenerate_process()
 
         self._threads = [
-            threading.Thread(target=self._read_stdout_thread)
+            threading.Thread(target=self._read_sub_process_stream_thread,
+                             args=(lambda p: p.stdout, self._write_stdout_output)),
+            threading.Thread(target=self._read_sub_process_stream_thread,
+                             args=(lambda p: p.stderr, self._write_stderr_output))
         ]
 
         self._text_queue = queue.Queue()
@@ -284,7 +289,7 @@ class _DgenerateConsole(tk.Tk):
         # max terminal command history
         self._max_command_history = int(os.environ.get('DGENERATE_CONSOLE_MAX_HISTORY', 500))
 
-        self._write_output(
+        self._write_stdout_output(
             'This console supports sending dgenerate configuration into a dgenerate\n'
             'interpreter process running in the background, it functions similarly to a terminal.\n\n'
             'Enter configuration above and hit enter to submit, use the insert key to enter\n'
@@ -321,17 +326,17 @@ class _DgenerateConsole(tk.Tk):
             self._output_text.disable_word_wrap()
 
     def _restart_dgenerate_process(self):
-        self._write_output('Restarting Shell Process...\n')
+        self._write_stdout_output('Restarting Shell Process...\n')
         self._start_dgenerate_process()
-        self._write_output('Shell Process Started.\n'
-                           '======================\n')
+        self._write_stdout_output('Shell Process Started.\n'
+                                  '======================\n')
 
     def _kill_sub_process(self):
         with self._termination_lock:
             self._sub_process.terminate()
-            self._sub_process.communicate()
-            self._write_output(
-                f'\nShell Process Terminated, Exit Code: {self._sub_process.poll()}\n')
+            return_code = self._sub_process.wait()
+            self._write_stdout_output(
+                f'\nShell Process Terminated, Exit Code: {return_code}\n')
             self._restart_dgenerate_process()
 
     def _start_dgenerate_process(self):
@@ -342,7 +347,7 @@ class _DgenerateConsole(tk.Tk):
         self._sub_process = subprocess.Popen(
             ['dgenerate', '--server'],
             stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
+            stderr=subprocess.PIPE,
             stdin=subprocess.PIPE,
             text=True,
             encoding='utf-8',
@@ -413,6 +418,11 @@ class _DgenerateConsole(tk.Tk):
         self._output_text.text.delete('1.0', tk.END)
         self._output_text.text.config(state=tk.DISABLED)
 
+    def _is_tqdm_line(self, text):
+        pattern = r".*(\d+)%\|(.*)\| (\d+)/(\d+) \[(\d+:\d+|00:00)<(.*),\s+(.*s/it|\d+\.\d+it/s|\?it/s)\]"
+        return bool(re.match(pattern, text.strip()))
+
+
     def _text_update(self):
         lines = 0
 
@@ -429,7 +439,12 @@ class _DgenerateConsole(tk.Tk):
                 if output_lines > self._max_output_lines:
                     self._output_text.text.delete('1.0', f'{output_lines - self._max_output_lines}.0')
 
-                self._output_text.text.insert(tk.END, text)
+                if self._is_tqdm_line(text) and ' 0%' not in text:
+                    last_line_index = self._output_text.text.index("end-2c linestart")
+                    self._output_text.text.delete(last_line_index, "end-1c")
+                    self._output_text.text.insert("end", text)
+                else:
+                    self._output_text.text.insert(tk.END, text)
 
                 self._output_text.text.see(tk.END)
 
@@ -441,10 +456,17 @@ class _DgenerateConsole(tk.Tk):
 
         self.after(self._output_refresh_rate, self._text_update)
 
-    def _write_output(self, text):
+    def _write_stdout_output(self, text):
+        sys.stdout.write(text)
+        sys.stdout.flush()
         self._text_queue.put(text)
 
-    def _read_stdout_thread(self):
+    def _write_stderr_output(self, text):
+        sys.stderr.write(text)
+        sys.stderr.flush()
+        self._text_queue.put(text)
+
+    def _read_sub_process_stream_thread(self, get_read_stream, write_out_handler):
         exit_message = True
         while True:
             with self._termination_lock:
@@ -452,11 +474,11 @@ class _DgenerateConsole(tk.Tk):
 
             if return_code is None:
                 exit_message = True
-                self._write_output(self._sub_process.stdout.readline())
+                write_out_handler(get_read_stream(self._sub_process).readline())
             elif exit_message:
                 exit_message = False
                 with self._termination_lock:
-                    self._write_output(
+                    self._write_stdout_output(
                         f'\nShell Process Terminated, Exit Code: {return_code}\n')
                     self._restart_dgenerate_process()
             else:
@@ -509,7 +531,12 @@ class _DgenerateConsole(tk.Tk):
         self._input_text.text.delete(1.0, tk.END)
         self._sub_process.stdin.write(user_input + '\n\n')
 
-        self._command_history.append(user_input)
+        if self._command_history:
+            if self._command_history[-1] != user_input:
+                # ignoredups
+                self._command_history.append(user_input)
+        else:
+            self._command_history.append(user_input)
 
         self._current_command_index = len(self._command_history)
         self._save_command_history()
@@ -524,5 +551,8 @@ class _DgenerateConsole(tk.Tk):
 
 
 def main(args: collections.abc.Sequence[str]):
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
+
     app = _DgenerateConsole()
     app.mainloop()

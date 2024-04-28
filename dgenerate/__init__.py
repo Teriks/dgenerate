@@ -25,6 +25,7 @@ import sys
 
 if '--dgenerate-console' in sys.argv:
     import dgenerate.console as _console
+
     args = sys.argv[1:]
     args.remove('--dgenerate-console')
     _console.main(args)
@@ -124,16 +125,23 @@ def main(args: typing.Optional[collections.abc.Sequence[str]] = None):
         args = sys.argv[1:]
 
     server_mode = '--server' in args
-    if server_mode:
-        args.remove('--server')
-        dgenerate.messages.set_error_file(sys.stdout)
+    nostdin_mode = '--no-stdin' in args
+
+    if sys.stdin.isatty() and nostdin_mode:
+        dgenerate.messages.log(
+            'dgenerate: error: --no-stdin is not valid when stdin is a terminal (tty).')
+
+    if sys.stdin.isatty() and server_mode:
+        dgenerate.messages.log(
+            'dgenerate: error: --server is not valid when stdin is a terminal (tty).')
+
     try:
         render_loop = RenderLoop()
         render_loop.config = DgenerateArguments()
         # ^ this is necessary for --templates-help to
         # render all the correct values
 
-        if not sys.stdin.isatty():
+        if not sys.stdin.isatty() and not nostdin_mode:
             # Not a terminal, batch process STDIN
             runner = ConfigRunner(render_loop=render_loop,
                                   version=__version__,

@@ -448,7 +448,7 @@ class BatchProcessor:
                     # that is handled elsewhere
                     return False, string
 
-                # the left side was lexed and striped of leading and trailing whitespace
+                # the left side was lexed and stripped of leading and trailing whitespace
                 return True, new_value
             except _textprocessing.TokenizedSplitSyntaxError:
                 # could not lex this because of a syntax error, since unterminated
