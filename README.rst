@@ -3857,7 +3857,7 @@ be of reference as they are written as internal image processor plugins.
 An example for writing config directives can be found in the
 `"writing_plugins/config_directive" <https://github.com/Teriks/dgenerate/tree/v3.5.0/examples/writing_plugins/config_directive>`_ folder
 of the examples folder. Config template functions can also be implemented by plugins,
-see: `"writing_plugins/template_function" <>https://github.com/Teriks/dgenerate/tree/v3.5.0/examples/writing_plugins/template_function>`_
+see: `"writing_plugins/template_function" <https://github.com/Teriks/dgenerate/tree/v3.5.0/examples/writing_plugins/template_function>`_
 
 Currently the only internal directive that is implemented as a plugin is the ``\image_process`` directive,
 who's source file `can be located here <https://github.com/Teriks/dgenerate/blob/v3.5.0/dgenerate/batchprocess/image_process_directive.py>`_,
