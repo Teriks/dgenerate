@@ -1832,7 +1832,7 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
         * ``--image-seeds "img2img.png;mask.png"``
         * ``--image-seeds "img2img.png;mask.png;512x512"``
 
-    Additionally controlnet guidance resources are handled via the secondary syntax:
+    Additionally, controlnet guidance resources are handled via the secondary syntax:
 
         * ``--image-seeds "img2img.png;control=control1.png, control2.png"``
         * ``--image-seeds "img2img.png;control=control1.png, control2.png;resize=512x512"``
@@ -2184,7 +2184,7 @@ def get_image_seed_info(uri: typing.Union[_types.Uri, ImageSeedParseResult],
         * ``--image-seeds "img2img.png;mask.png"``
         * ``--image-seeds "img2img.png;mask.png;512x512"``
 
-    Additionally control net image sources are handled via the secondary syntax:
+    Additionally, control net image sources are handled via the secondary syntax:
 
         * ``--image-seeds "img2img.png;control=control1.png, control2.png"``
         * ``--image-seeds "img2img.png;control=control1.png, control2.png;resize=512x512"``
