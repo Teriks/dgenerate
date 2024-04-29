@@ -39,6 +39,8 @@ class ImageProcessDirective(_configrunnerplugin.ConfigRunnerPlugin):
         Allows access to "dgenerate --sub-command image-process" through a config directive.
 
         See: "dgenerate --sub-command image-process --help" for recognized arguments.
+
+        Or within a config file: "\image_process --help"
         """
 
         render_loop = _image_process.ImageProcessRenderLoop(
