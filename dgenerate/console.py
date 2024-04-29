@@ -299,7 +299,7 @@ class _DgenerateConsole(tk.Tk):
             'This console supports sending dgenerate configuration into a dgenerate\n'
             'interpreter process running in the background, it functions similarly to a terminal.\n\n'
             'Enter configuration above and hit enter to submit, use the insert key to enter\n'
-            'and exit multi-line input mode, you must exit multi-line input mode to submit configuration.\n\n'
+            'and exit multiline input mode, you must exit multiline input mode to submit configuration.\n\n'
             'Command history is supported via the up and down arrow keys.\n\n'
             'Enter --help to print dgenerates help text, all lines which are not directives or top level\n'
             'templates are processed as arguments to dgenerate.\n\n'
