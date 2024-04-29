@@ -3797,7 +3797,7 @@ The `\exec` directive can be used to run native system commands and
 supports bash pipe and file redirection syntax in a platform independent
 manner. All file redirection operators supported by bash are supported.
 This can be useful for running other image processing utilities as
-subcommands from within a config script.
+subprocesses from within a config script.
 
 ```
 #! dgenerate 3.5.0
