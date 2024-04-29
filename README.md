@@ -3793,17 +3793,6 @@ implementation.
 \print {{ quote(last_images) }}
 ```
 
-You can exit a config early if need be using the `\exit` directive
-
-``` jinja
-#! dgenerate 3.5.0
-
-# exit the process with return code 1, which indicates an error
-
-\print "some error occurred"
-\exit 1
-```
-
 The `\exec` directive can be used to run native system commands and
 supports bash pipe and file redirection syntax in a platform independent
 manner. All file redirection operators supported by bash are supported.
@@ -3826,6 +3815,17 @@ subcommands from within a config script.
 # on a Unix platform you could simply use cat
 
 \exec cat my_config.txt | dgenerate &> log.txt
+```
+
+You can exit a config early if need be using the `\exit` directive
+
+``` jinja
+#! dgenerate 3.5.0
+
+# exit the process with return code 1, which indicates an error
+
+\print "some error occurred"
+\exit 1
 ```
 
 To utilize configuration files on Linux, pipe them into the command or
