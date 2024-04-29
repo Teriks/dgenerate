@@ -21,41 +21,37 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import argparse
 import os
+import re
 import subprocess
 import sys
-import unittest
 
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
+args = sys.argv[1:]
 
-parser = argparse.ArgumentParser()
+script_path = os.path.dirname(os.path.abspath(__file__))
+image_working_dir = os.path.abspath(os.path.join(script_path, '..'))
 
-parser.add_argument('-d', '--device', default='cuda')
-parser.add_argument('-c', '--clean', default=False, action='store_true')
-parser.add_argument('-e', '--examples', default=False, action='store_true')
-parser.add_argument('-o', '--offline-mode', default=False, action='store_true')
+with open(os.path.join(image_working_dir, 'dgenerate', '__init__.py')) as _f:
+    container_version = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', _f.read(), re.MULTILINE).group(1)
 
-args = parser.parse_args()
+hf_cache_local = os.path.abspath(os.path.join(script_path, '..', 'docker_cache', 'huggingface'))
+dgenerate_cache_local = os.path.abspath(os.path.join(script_path, '..', 'docker_cache', 'dgenerate'))
 
-runner = unittest.TextTestRunner()
+print('hf_cache_local:', hf_cache_local)
+print('dgenerate_cache_local:', dgenerate_cache_local)
+print('image_working_dir:', image_working_dir)
 
-if runner.run(unittest.defaultTestLoader.discover("tests", pattern='*_test.py')).wasSuccessful():
+os.makedirs(hf_cache_local, exist_ok=True)
+os.makedirs(dgenerate_cache_local, exist_ok=True)
 
-    if not args.examples:
-        exit(0)
+if len(args) == 0:
+    args = ['bash']
 
-    print('unit tests passed, running examples..')
-
-    if args.clean:
-        os.chdir('examples')
-        print('running: git clean -f -d in examples folder...')
-        subprocess.run('git clean -f -d', shell=True)
-        os.chdir('..')
-
-    offline = ' --offline-mode' if args.offline_mode else ''
-    run_string = f'{sys.executable} examples/run.py --device {args.device} --short-animations --output-configs --output-metadata{offline} -v > examples/examples.log 2>&1'
-    print('running:', run_string)
-    subprocess.run(run_string, shell=True)
-else:
-    exit(1)
+subprocess.run(['docker', 'image', 'build', '-t', f'teriks/dgenerate:{container_version}', '.'])
+subprocess.run(['docker', 'rm', '-f', 'dgenerate'])
+subprocess.run(['docker', 'run', '--gpus', 'all', '--name', 'dgenerate',
+                '-v', f"{image_working_dir}:/opt/dgenerate",
+                '-v', f"{hf_cache_local}:/home/dgenerate/.cache/huggingface",
+                '-v', f"{dgenerate_cache_local}:/home/dgenerate/.cache/dgenerate",
+                '-it', f'teriks/dgenerate:{container_version}',
+                'bash', '-c', f"source docker/install.sh; {' '.join(args)}"])
