@@ -50,8 +50,8 @@ if runner.run(unittest.defaultTestLoader.discover("tests", pattern='*_test.py'))
 
     if args.clean:
         os.chdir('examples')
-        print('running: git clean -f -d in examples folder...')
-        subprocess.run('git clean -f -d', shell=True)
+        print('running: git clean -f -d -x in examples folder...')
+        subprocess.run('git clean -f -d -x', shell=True)
         os.chdir('..')
 
     offline = ' --offline-mode' if args.offline_mode else ''
