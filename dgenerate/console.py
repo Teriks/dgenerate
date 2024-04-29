@@ -250,7 +250,7 @@ class _DgenerateConsole(tk.Tk):
                                                   'Find In Output',
                                                   self._output_text.text))
         self._output_text_context.add_separator()
-        self._output_text_context.add_command(label='Copy Selection', command=self._copy_output_text_selection)
+        self._output_text_context.add_command(label='Copy', command=self._copy_output_text_selection)
         self._output_text_context.add_separator()
         self._output_text_context.add_command(label='Save Selection', command=self._save_output_text_selection)
         self._output_text_context.add_command(label='Save All', command=self._save_output_text)
