@@ -340,6 +340,7 @@ class _DgenerateConsole(tk.Tk):
     def _kill_sub_process(self):
         with self._termination_lock:
             self._sub_process.terminate()
+            self._sub_process.wait()
 
     def _start_dgenerate_process(self):
         env = os.environ.copy()
