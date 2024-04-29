@@ -340,10 +340,6 @@ class _DgenerateConsole(tk.Tk):
     def _kill_sub_process(self):
         with self._termination_lock:
             self._sub_process.terminate()
-            return_code = self._sub_process.wait()
-            self._write_stdout_output(
-                f'\nShell Process Terminated, Exit Code: {return_code}\n')
-            self._restart_dgenerate_process()
 
     def _start_dgenerate_process(self):
         env = os.environ.copy()
@@ -494,10 +490,12 @@ class _DgenerateConsole(tk.Tk):
                 exit_message = True
                 write_out_handler(get_read_stream(self._sub_process).readline())
             elif exit_message:
-                exit_message = False
                 with self._termination_lock:
+                    exit_message = False
+                    # immediately run all pending window events including text updates
+                    self.update()
                     self._write_stdout_output(
-                        f'\nShell Process Terminated, Exit Code: {return_code}\n')
+                            f'\nShell Process Terminated, Exit Code: {return_code}\n')
                     self._restart_dgenerate_process()
             else:
                 time.sleep(1)
@@ -539,10 +537,6 @@ class _DgenerateConsole(tk.Tk):
     def _handle_input(self, event):
         if self._multi_line_input_check_var.get():
             return
-
-        with self._termination_lock:
-            if self._sub_process.poll() is not None:
-                self._restart_dgenerate_process()
 
         user_input = self._input_text.text.get('1.0', 'end-1c')
 
