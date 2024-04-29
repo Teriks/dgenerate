@@ -685,8 +685,9 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         """
         if len(args) == 1:
             try:
-                os.chdir(args[0])
-                _messages.log(f'Working Directory Changed To: "{args[0]}"')
+                path = os.path.abspath(args[0])
+                os.chdir(path)
+                _messages.log(f'Working Directory Changed To: "{path}"')
             except OSError as e:
                 raise _batchprocessor.BatchProcessError(e)
         else:
@@ -702,9 +703,10 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         """
         if len(args) == 1:
             try:
+                path = os.path.abspath(args[0])
                 old_dir = os.getcwd()
-                os.chdir(args[0])
-                _messages.log(f'Working Directory Changed To: "{args[0]}"')
+                os.chdir(path)
+                _messages.log(f'Working Directory Changed To: "{path}"')
                 self._directory_stack.append(old_dir)
             except OSError as e:
                 raise _batchprocessor.BatchProcessError(e)
