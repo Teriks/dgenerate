@@ -3809,13 +3809,15 @@ which does not automatically recieve injected arguments, use the
 Console UI
 ==========
 
-You can launch a Tkinter GUI for interacting with a live dgenerate process using ``dgenerate --dgenerate-console``
+You can launch a Tkinter GUI for interacting with a live dgenerate
+process using ``dgenerate --dgenerate-console``
 
-This provides a basic REPL for the dgenerate config language.
+This provides a basic REPL for the dgenerate config language utilizing
+a ``dgenerate --server`` subprocess to act as the live interpreter.
 
-The console supports command history via the up and down arrow keys as a normal terminal would,
-as well as optional multiline input for sending multiline commands / configuration to the background
-dgenerate process.
+The GUI console supports command history via the up and down arrow keys as a
+normal terminal would, as well as optional multiline input for sending
+multiline commands / configuration to the background dgenerate process.
 
 It can be used to work with dgenerate without encountering the startup
 overhead of loading large python modules for every command line invocation.
