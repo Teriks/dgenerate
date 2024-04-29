@@ -214,15 +214,17 @@ class _DgenerateConsole(tk.Tk):
 
         self._input_text_context = tk.Menu(self._input_text, tearoff=0)
 
+        self._input_text_context.add_command(label='Load', command=self._load_input_entry_text)
+        self._input_text_context.add_command(label='Save', command=self._save_input_entry_text)
+        self._input_text_context.add_separator()
         self._input_text_context.add_command(label='Find',
                                              command=lambda:
                                              self._open_find_dialog(
                                                  'Find In Input',
                                                  self._input_text.text))
-
+        self._input_text_context.add_separator()
         self._input_text_context.add_command(label='Copy', command=self._copy_input_entry_selection)
         self._input_text_context.add_command(label='Paste', command=self._paste_input_entry)
-        self._input_text_context.add_command(label='Load', command=self._load_input_entry_text)
 
         self._paned_window.add(self._input_text)
 
@@ -239,13 +241,17 @@ class _DgenerateConsole(tk.Tk):
                                         self._output_text.text))
 
         self._output_text_context = tk.Menu(self._output_text, tearoff=0)
+
+        self._output_text_context.add_command(label='Clear', command=self._clear_output_text)
+        self._output_text_context.add_separator()
         self._output_text_context.add_command(label='Find',
                                               command=lambda:
                                               self._open_find_dialog(
                                                   'Find In Output',
                                                   self._output_text.text))
-        self._output_text_context.add_command(label='Clear', command=self._clear_output_text)
+        self._output_text_context.add_separator()
         self._output_text_context.add_command(label='Copy Selection', command=self._copy_output_text_selection)
+        self._output_text_context.add_separator()
         self._output_text_context.add_command(label='Save Selection', command=self._save_output_text_selection)
         self._output_text_context.add_command(label='Save All', command=self._save_output_text)
 
@@ -356,7 +362,7 @@ class _DgenerateConsole(tk.Tk):
     def _load_input_entry_text(self):
         f = tkinter.filedialog.askopenfile(
             mode='r',
-            initialfile='log.txt',
+            initialfile='config.txt',
             defaultextension='.txt',
             filetypes=[('Text Documents', '*.txt')])
 
@@ -365,6 +371,19 @@ class _DgenerateConsole(tk.Tk):
 
         self._input_text.text.delete('1.0', tk.END)
         self._input_text.text.insert('1.0', f.read())
+
+    def _save_input_entry_text(self):
+        f = tkinter.filedialog.asksaveasfile(
+            mode='w',
+            initialfile='config.txt',
+            defaultextension='.txt',
+            filetypes=[('Text Documents', '*.txt')])
+
+        if f is None:
+            return
+
+        f.write(self._input_text.text.get('1.0', tk.END))
+        f.close()
 
     def _copy_input_entry_selection(self):
         text = self._input_text.selection_get()
@@ -421,7 +440,6 @@ class _DgenerateConsole(tk.Tk):
     def _is_tqdm_line(self, text):
         pattern = r".*(\d+)%\|(.*)\| (\d+)/(\d+) \[(\d+:\d+|00:00)<(.*),\s+(.*s/it|\d+\.\d+it/s|\?it/s)\]"
         return bool(re.match(pattern, text.strip()))
-
 
     def _text_update(self):
         lines = 0
