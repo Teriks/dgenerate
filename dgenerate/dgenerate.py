@@ -64,5 +64,5 @@ try:
 
     main()
 except KeyboardInterrupt:
-    print('Aborting due to keyboard interrupt!', file=sys.stderr)
+    print('Exiting dgenerate due to keyboard interrupt!', file=sys.stderr)
     sys.exit(1)

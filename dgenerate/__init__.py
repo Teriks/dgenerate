@@ -110,7 +110,7 @@ try:
     transformers.logging.set_verbosity(transformers.logging.CRITICAL)
     diffusers.logging.set_verbosity(diffusers.logging.CRITICAL)
 except KeyboardInterrupt:
-    print('Aborting due to keyboard interrupt!')
+    print('Exiting dgenerate due to keyboard interrupt!', file=sys.stderr)
     sys.exit(1)
 
 
@@ -166,7 +166,7 @@ def main(args: typing.Optional[collections.abc.Sequence[str]] = None):
         else:
             sys.exit(invoke_dgenerate(args, render_loop=render_loop))
     except KeyboardInterrupt:
-        print('Aborting due to keyboard interrupt!', file=sys.stderr)
+        print('Exiting dgenerate due to keyboard interrupt!', file=sys.stderr)
         sys.exit(1)
 
 

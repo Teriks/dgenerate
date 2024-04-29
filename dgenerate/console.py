@@ -569,8 +569,13 @@ class _DgenerateConsole(tk.Tk):
 
 
 def main(args: collections.abc.Sequence[str]):
-    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
-    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
+    try:
+        sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+        sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
 
-    app = _DgenerateConsole()
-    app.mainloop()
+        app = _DgenerateConsole()
+        app.mainloop()
+    except KeyboardInterrupt:
+        print('Exiting dgenerate console UI due to keyboard interrupt!',
+              file=sys.stderr)
+        sys.exit(1)
