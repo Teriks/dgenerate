@@ -127,3 +127,23 @@
     :annotation: = 0
 
     Default RNG seed.
+
+.. data:: DEFAULT_S_CASCADE_DECODER_GUIDANCE_SCALE
+    :annotation: = 0
+
+    Default guidance scale for the Stable Cascade decoder.
+
+.. data:: DEFAULT_S_CASCADE_DECODER_INFERENCE_STEPS
+    :annotation: = 10
+
+    Default inference steps for the Stable Cascade decoder.
+
+.. data:: DEFAULT_S_CASCADE_OUTPUT_HEIGHT
+    :annotation: = 1024
+
+    Default output height for Stable Cascade.
+
+.. data:: DEFAULT_S_CASCADE_OUTPUT_WIDTH
+    :annotation: = 1024
+
+    Default output width for Stable Cascade.
