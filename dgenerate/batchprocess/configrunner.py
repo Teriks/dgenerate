@@ -414,6 +414,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
     def _mv_directive(self, args: collections.abc.Sequence[str]):
         """
         Move a file or directory to a new location on disk.
+
+        First argument is the source, second argument is the destination.
         """
         if len(args) != 2:
             raise _batchprocessor.BatchProcessError(
@@ -424,6 +426,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
     def _cp_directive(self, args: collections.abc.Sequence[str]):
         """
         Copy a file or directory to a new location on disk.
+
+        First argument is the source, second argument is the destination.
         """
         if len(args) != 2:
             raise _batchprocessor.BatchProcessError(
