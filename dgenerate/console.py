@@ -300,7 +300,12 @@ class _DgenerateConsole(tk.Tk):
             'interpreter process running in the background, it functions similarly to a terminal.\n\n'
             'Enter configuration above and hit enter to submit, use the insert key to enter\n'
             'and exit multi-line input mode, you must exit multi-line input mode to submit configuration.\n\n'
-            'Command history is supported via the up and down arrow keys.\n'
+            'Command history is supported via the up and down arrow keys.\n\n'
+            'Enter --help to print dgenerates help text, all lines which are not directives or top level\n'
+            'templates are processed as arguments to dgenerate.\n\n'
+            'See \\directives_help or \\directives_help (directive) for help with config directives.\n\n'
+            'See \\functions_help or \\functions_help (function) for help with template functions.\n\n'
+            'See \\templates_help or \\templates_help (variable name) for help with template variables.\n\n'
             '============================================================\n\n')
 
         self._text_update()

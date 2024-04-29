@@ -800,7 +800,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'set': 'Sets a template variable, accepts two arguments, the variable name and the value. '
                    'Attempting to set a reserved template variable such as those pre-defined by dgenerate '
                    'will result in an error. The second argument is accepted as a raw value, it is not shell '
-                   'parsed in any way, only striped of leading and trailing whitespace.',
+                   'parsed in any way, only stripped of leading and trailing whitespace.',
             'unset': 'Undefines a template variable previously set with \\set, accepts one argument, '
                      'the variable name. Attempting to unset a reserved variable such as those '
                      'pre-defined by dgenerate will result in an error.',
