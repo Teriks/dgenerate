@@ -370,8 +370,7 @@ class _DgenerateConsole(tk.Tk):
         self._input_text.text.insert('1.0', f.read())
 
     def _save_input_entry_text(self):
-        f = tkinter.filedialog.asksaveasfile(
-            mode='w',
+        f = tkinter.filedialog.asksaveasfilename(
             initialfile='config.txt',
             defaultextension='.txt',
             filetypes=[('Text Documents', '*.txt')])
@@ -379,11 +378,12 @@ class _DgenerateConsole(tk.Tk):
         if f is None:
             return
 
-        f.write(self._input_text.text.get('1.0', tk.END))
-        f.close()
+        with open(f, mode='w', encoding='utf-8') as f:
+            f.write(self._input_text.text.get('1.0', tk.END))
+            f.close()
 
     def _copy_input_entry_selection(self):
-        text = self._input_text.selection_get()
+        text = self._input_text.text.selection_get()
         self.clipboard_clear()
         self.clipboard_append(text)
 
@@ -399,35 +399,37 @@ class _DgenerateConsole(tk.Tk):
         self._input_text.text.insert(start, clipboard_content)
 
     def _copy_output_text_selection(self):
-        text = self._output_text.selection_get()
+        text = self._output_text.text.selection_get()
         self.clipboard_clear()
         self.clipboard_append(text)
 
     def _save_output_text(self):
-        f = tkinter.filedialog.asksaveasfile(
-            mode='w',
+        f = tkinter.filedialog.asksaveasfilename(
             initialfile='log.txt',
             defaultextension='.txt',
             filetypes=[('Text Documents', '*.txt')])
 
         if f is None:
             return
-        self._output_text.text.config(state=tk.NORMAL)
-        f.write(self._output_text.get('1.0', tk.END))
-        self._output_text.text.config(state=tk.DISABLED)
-        f.close()
+
+        with open(f, mode='w', encoding='utf-8') as f:
+            self._output_text.text.config(state=tk.NORMAL)
+            f.write(self._output_text.text.get('1.0', tk.END))
+            self._output_text.text.config(state=tk.DISABLED)
+            f.close()
 
     def _save_output_text_selection(self):
-        f = tkinter.filedialog.asksaveasfile(
-            mode='w',
+        f = tkinter.filedialog.asksaveasfilename(
             initialfile='log.txt',
             defaultextension='.txt',
             filetypes=[('Text Documents', '*.txt')])
 
         if f is None:
             return
-        f.write(self._output_text.selection_get())
-        f.close()
+
+        with open(f, mode='w', encoding='utf-8') as f:
+            f.write(self._output_text.text.selection_get())
+            f.close()
 
     def _clear_output_text(self):
         self._output_text.text.config(state=tk.NORMAL)
