@@ -165,7 +165,7 @@ class _DgenerateConsole(tk.Tk):
         self._multi_line_input_check_var = tk.BooleanVar(value=False)
         self._multi_line_input_checkbox = tk.Checkbutton(
             top_menu_frame,
-            text='Multi line input (insert key)',
+            text='Multiline input (insert key)',
             variable=self._multi_line_input_check_var)
         self._multi_line_input_checkbox.pack(side='right', anchor='e')
 
