@@ -320,7 +320,10 @@ def _create_parser(add_model=True, add_help=True):
         popen_group.add_argument('--server', dest=None, action='store_true', default=False,
                                  help="""When reading configuration from STDIN (a pipe), read forever, even when 
                             configuration errors occur.  This allows dgenerate to run in the background and 
-                            be communicated with by another process sending it commands, like a server."""))
+                            be communicated with by another process sending it commands, like a server. Launching
+                            dgenerate with this option and not piping it input will attach it to the terminal like
+                            a shell. Entering configuration into this shell will require two newlines to submit a
+                            a command due to parsing lookahead. IE: two presses of the enter key."""))
 
     actions.append(
         popen_group.add_argument('--no-stdin', dest=None, action='store_true', default=False,

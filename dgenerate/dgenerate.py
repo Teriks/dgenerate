@@ -18,7 +18,6 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import codecs
 import os
 import sys
 
@@ -52,9 +51,9 @@ try:
     if env_encoding is not None:
         env_encoding = env_encoding.lower()
         if sys.stdout.encoding.lower() != env_encoding:
-            sys.stdout = codecs.getwriter(env_encoding)(sys.stdout.buffer, 'strict')
+            sys.stdout.reconfigure(encoding=env_encoding)
         if sys.stderr.encoding.lower() != env_encoding:
-            sys.stderr = codecs.getwriter(env_encoding)(sys.stderr.buffer, 'strict')
+            sys.stderr.reconfigure(encoding=env_encoding)
 
     if unbuffered_io:
         sys.stdout = _Unbuffered(sys.stdout)

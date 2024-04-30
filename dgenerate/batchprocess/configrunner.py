@@ -223,9 +223,11 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             return wrap
 
         self.directives = {
+            'help': self._help_directive,
             'templates_help': self._templates_help_directive,
             'directives_help': self._directives_help_directive,
             'functions_help': self._functions_help_directive,
+            'image_processor_help': self._image_processor_help_directive,
             'clear_model_cache': return_zero(
                 _pipelinewrapper.clear_model_cache,
                 help='Clear all user specified models from the in memory cache.'),
@@ -994,6 +996,27 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         This does not cause the config to exit.
         """
         _messages.log(self.generate_functions_help(args) + '\n')
+        return 0
+
+    def _image_processor_help_directive(self, args: collections.abc.Sequence[str]):
+        """
+        Prints all image processor names. Alias for --image-processor-help
+
+        Providing processor names as arguments prints documentation for those processors.
+
+        This does not cause the config to exit.
+        """
+
+        self.run_string(shlex.join(['--image-processor-help']+list(args)))
+        return 0
+
+    def _help_directive(self, args: collections.abc.Sequence[str]):
+        """
+        dgenerate --help
+
+        Alias for --help
+        """
+        self.run_string('--help')
         return 0
 
 
