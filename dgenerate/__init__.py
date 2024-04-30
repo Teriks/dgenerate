@@ -24,10 +24,13 @@ __version__ = '3.5.0'
 import sys
 
 if '--dgenerate-console' in sys.argv:
+    # avoid a slow UI startup time
+
     import dgenerate.console as _console
 
     args = sys.argv[1:]
-    args.remove('--dgenerate-console')
+    while '--dgenerate-console' in args:
+        args.remove('--dgenerate-console')
     _console.main(args)
     sys.exit(0)
 
@@ -127,13 +130,22 @@ def main(args: typing.Optional[collections.abc.Sequence[str]] = None):
     server_mode = '--server' in args
     nostdin_mode = '--no-stdin' in args
 
+    while '--server' in args:
+        args.remove('--server')
+
+    while '--no-stdin' in args:
+        args.remove('--no-stdin')
+
+    if server_mode and nostdin_mode:
+        dgenerate.messages.log(
+            'dgenerate: error: --no-stdin cannot be used with --server.')
+        sys.exit(1)
+
     if sys.stdin.isatty() and nostdin_mode:
         dgenerate.messages.log(
             'dgenerate: error: --no-stdin is not valid when stdin is a terminal (tty).')
+        sys.exit(1)
 
-    if sys.stdin.isatty() and server_mode:
-        dgenerate.messages.log(
-            'dgenerate: error: --server is not valid when stdin is a terminal (tty).')
 
     try:
         render_loop = RenderLoop()
@@ -141,7 +153,7 @@ def main(args: typing.Optional[collections.abc.Sequence[str]] = None):
         # ^ this is necessary for --templates-help to
         # render all the correct values
 
-        if not sys.stdin.isatty() and not nostdin_mode:
+        if (not sys.stdin.isatty() or server_mode) and not nostdin_mode:
             # Not a terminal, batch process STDIN
             runner = ConfigRunner(render_loop=render_loop,
                                   version=__version__,

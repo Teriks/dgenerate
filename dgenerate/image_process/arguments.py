@@ -100,7 +100,8 @@ def _create_arg_parser(prog, description):
 
     actions.append(parser.add_argument(
         '-p', '--processors', nargs='+',
-        help='One or more image processor URIs, specifying multiple will chain them together.'))
+        help="""One or more image processor URIs, specifying multiple will chain them together.
+             See: dgenerate --image-processor-help"""))
 
     actions.append(
         parser.add_argument('--plugin-modules', action='store', default=[], nargs="+",

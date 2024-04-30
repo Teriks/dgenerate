@@ -18,7 +18,6 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import codecs
 import collections.abc
 import json
 import pathlib
@@ -34,6 +33,8 @@ import tkinter as tk
 import tkinter.filedialog
 import tkinter.scrolledtext
 import os
+
+import psutil
 
 
 class _ScrolledText(tk.Frame):
@@ -259,13 +260,9 @@ class _DgenerateConsole(tk.Tk):
 
         # config
 
-        self._command_history = []
-        self._current_command_index = -1
-
-        self._load_command_history()
-
         self._termination_lock = threading.Lock()
 
+        self._cwd = os.getcwd()
         self._start_dgenerate_process()
 
         self._threads = [
@@ -275,7 +272,7 @@ class _DgenerateConsole(tk.Tk):
                              args=(lambda p: p.stderr, self._write_stderr_output))
         ]
 
-        self._text_queue = queue.Queue()
+        self._output_text_queue = queue.Queue()
 
         self._find_dialog = None
 
@@ -283,30 +280,68 @@ class _DgenerateConsole(tk.Tk):
             t.daemon = True
             t.start()
 
-        # max output scroll-back history
-        self._max_output_lines = int(os.environ.get('DGENERATE_CONSOLE_MAX_SCROLLBACK', 10000))
-
-        # output (stdout) refresh rate (ms)
-        self._output_refresh_rate = 100
+        self._update_cwd()
 
         # output lines per refresh
         self._output_lines_per_refresh = 30
 
+        # output (stdout) refresh rate (ms)
+        self._output_refresh_rate = 100
+
+        # max output scroll-back history
+        max_output_lines = os.environ.get('DGENERATE_CONSOLE_MAX_SCROLLBACK', 10000)
+        try:
+            self._max_output_lines = int(max_output_lines)
+        except ValueError:
+            self._max_output_lines = 10000
+            print(
+                f'WARNING: environmental variable DGENERATE_CONSOLE_MAX_SCROLLBACK '
+                f'set to invalid value: "{max_output_lines}", defaulting to 10000',
+                file=sys.stderr)
+
+        if self._max_output_lines < self._output_lines_per_refresh:
+            self._max_output_lines = 10000
+            print(
+                f'WARNING: environmental variable DGENERATE_CONSOLE_MAX_SCROLLBACK '
+                f'set to invalid value: "{max_output_lines}", defaulting to 10000. '
+                f'Value must be greater than or equal to "{self._output_lines_per_refresh}"',
+                file=sys.stderr)
+
         # max terminal command history
-        self._max_command_history = int(os.environ.get('DGENERATE_CONSOLE_MAX_HISTORY', 500))
+        max_command_history = os.environ.get('DGENERATE_CONSOLE_MAX_HISTORY', 500)
+        try:
+            self._max_command_history = int(max_command_history)
+        except ValueError:
+            self._max_command_history = 500
+            print(
+                f'WARNING: environmental variable DGENERATE_CONSOLE_MAX_HISTORY '
+                f'set to invalid value: "{max_command_history}", defaulting to 500',
+                file=sys.stderr)
+
+        if self._max_command_history < 0:
+            self._max_command_history = 500
+            print(
+                f'WARNING: environmental variable DGENERATE_CONSOLE_MAX_HISTORY '
+                f'set to invalid value: "{max_command_history}", defaulting to 500. '
+                f'Value must be greater than or equal to "0"',
+                file=sys.stderr)
+
+        self._command_history = []
+        self._current_command_index = -1
+
+        self._load_command_history()
 
         self._write_stdout_output(
-            'This console supports sending dgenerate configuration into a dgenerate\n'
-            'interpreter process running in the background, it functions similarly to a terminal.\n\n'
+            'This console provides a REPL for dgenerates configuration language.\n\n'
             'Enter configuration above and hit enter to submit, use the insert key to enter\n'
             'and exit multiline input mode, you must exit multiline input mode to submit configuration.\n\n'
             'Command history is supported via the up and down arrow keys.\nRight clicking the input or output '
             'pane will reveal further menu options.\n\n'
-            'Enter --help to print dgenerates help text, all lines which are not directives or top level\n'
-            'templates are processed as arguments to dgenerate.\n\n'
-            'See \\directives_help or \\directives_help (directive) for help with config directives.\n\n'
-            'See \\functions_help or \\functions_help (function) for help with template functions.\n\n'
-            'See \\templates_help or \\templates_help (variable name) for help with template variables.\n\n'
+            'Enter --help or the alias \help to print dgenerates help text, all lines which\n'
+            'are not directives or top level templates are processed as arguments to dgenerate.\n\n'
+            'See: \\directives_help or \\directives_help (directive) for help with config directives.\n'
+            'See: \\functions_help or \\functions_help (function) for help with template functions.\n'
+            'See: \\templates_help or \\templates_help (variable name) for help with template variables.\n'
             '============================================================\n\n')
 
         self._text_update()
@@ -352,6 +387,7 @@ class _DgenerateConsole(tk.Tk):
         env = os.environ.copy()
         env['PYTHONIOENCODING'] = 'utf-8'
         env['PYTHONUNBUFFERED'] = '1'
+        env['DGENERATE_LONG_TEXT_WRAP_WIDTH'] = '80'
 
         self._sub_process = subprocess.Popen(
             ['dgenerate', '--server'],
@@ -360,7 +396,8 @@ class _DgenerateConsole(tk.Tk):
             stdin=subprocess.PIPE,
             text=True,
             encoding='utf-8',
-            env=env)
+            env=env,
+            cwd=self._cwd)
 
     def _load_input_entry_text(self):
         f = tkinter.filedialog.askopenfile(
@@ -455,11 +492,13 @@ class _DgenerateConsole(tk.Tk):
             if lines > self._output_lines_per_refresh:
                 break
             try:
-                text = self._text_queue.get_nowait()
+                text = self._output_text_queue.get_nowait()
+
+                scroll = self._output_text.text.yview()[1] == 1.0
 
                 output_lines = int(self._output_text.text.index('end-1c').split('.')[0])
 
-                if output_lines > self._max_output_lines:
+                if output_lines + 1 > self._max_output_lines:
                     self._output_text.text.delete('1.0', f'{output_lines - self._max_output_lines}.0')
 
                 if self._is_tqdm_line(text) and ' 0%' not in text:
@@ -469,25 +508,42 @@ class _DgenerateConsole(tk.Tk):
                 else:
                     self._output_text.text.insert(tk.END, text)
 
-                self._output_text.text.see(tk.END)
+                if scroll:
+                    self._output_text.text.see(tk.END)
 
             except queue.Empty:
                 break
             lines += 1
 
         self._output_text.text.config(state=tk.DISABLED)
-
         self.after(self._output_refresh_rate, self._text_update)
+
+    def _update_cwd(self):
+        with self._termination_lock:
+            try:
+                p = psutil.Process(self._sub_process.pid)
+                while p.children():
+                    p = p.children()[0]
+                self._cwd = p.cwd()
+                self.title(f'Dgenerate Console: {self._cwd}')
+            except KeyboardInterrupt:
+                pass
+            except IndexError:
+                pass
+            except psutil.NoSuchProcess:
+                pass
+            finally:
+                self.after(100, self._update_cwd)
 
     def _write_stdout_output(self, text):
         sys.stdout.write(text)
         sys.stdout.flush()
-        self._text_queue.put(text)
+        self._output_text_queue.put(text)
 
     def _write_stderr_output(self, text):
         sys.stderr.write(text)
         sys.stderr.flush()
-        self._text_queue.put(text)
+        self._output_text_queue.put(text)
 
     def _read_sub_process_stream_thread(self, get_read_stream, write_out_handler):
         exit_message = True
@@ -504,7 +560,7 @@ class _DgenerateConsole(tk.Tk):
                     # immediately run all pending window events including text updates
                     self.update()
                     self._write_stdout_output(
-                            f'\nShell Process Terminated, Exit Code: {return_code}\n')
+                        f'\nShell Process Terminated, Exit Code: {return_code}\n')
                     self._restart_dgenerate_process()
             else:
                 time.sleep(1)
@@ -532,13 +588,19 @@ class _DgenerateConsole(tk.Tk):
             return "break"
 
     def _load_command_history(self):
+        if self._max_command_history == 0:
+            return
+
         history_path = pathlib.Path(pathlib.Path.home(), '.dgenerate_console_history')
         if history_path.exists():
             with history_path.open('r') as file:
-                self._command_history = json.load(file)
+                self._command_history = json.load(file)[-self._max_command_history:]
                 self._current_command_index = len(self._command_history)
 
     def _save_command_history(self):
+        if self._max_command_history == 0:
+            return
+
         history_path = pathlib.Path(pathlib.Path.home(), '.dgenerate_console_history')
         with history_path.open('w') as file:
             json.dump(self._command_history[-self._max_command_history:], file)
@@ -573,8 +635,8 @@ class _DgenerateConsole(tk.Tk):
 
 def main(args: collections.abc.Sequence[str]):
     try:
-        sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
-        sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
 
         app = _DgenerateConsole()
         app.mainloop()
