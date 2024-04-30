@@ -666,7 +666,7 @@ def long_text_wrap_width() -> int:
             f'Invalid integer value "{env_width}" assigned to environmental '
             f'variable DGENERATE_LONG_TEXT_WRAP_WIDTH. Must be greater than or equal to 0.')
 
-    val = min(shutil.get_terminal_size(fallback=(150, 150))[0], env_width)
+    val = min(shutil.get_terminal_size(fallback=(env_width, 150))[0], env_width)
     if val == 0:
         # should not be able to happen, but it has, wonderful
         return 150
