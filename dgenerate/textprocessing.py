@@ -669,7 +669,7 @@ def long_text_wrap_width() -> int:
     val = min(shutil.get_terminal_size(fallback=(env_width, 150))[0], env_width)
     if val == 0:
         # should not be able to happen, but it has, wonderful
-        return 150
+        return env_width
     return val
 
 
