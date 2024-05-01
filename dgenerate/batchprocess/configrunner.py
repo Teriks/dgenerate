@@ -800,16 +800,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         directives: dict[str, typing.Union[str, typing.Callable]] = self.directives.copy()
 
-        directives.update({
-            'set': 'Sets a template variable, accepts two arguments, the variable name and the value. '
-                   'Attempting to set a reserved template variable such as those pre-defined by dgenerate '
-                   'will result in an error. The second argument is accepted as a raw value, it is not shell '
-                   'parsed in any way, only stripped of leading and trailing whitespace.',
-            'unset': 'Undefines a template variable previously set with \\set, accepts one argument, '
-                     'the variable name. Attempting to unset a reserved variable such as those '
-                     'pre-defined by dgenerate will result in an error.',
-            'print': 'Prints all content to the right to stdout, no shell parsing of the argument occurs.'
-        })
+        directives.update(self.directives_builtins_help)
 
         if len(directive_names) == 0:
             help_string = f'Available config directives:' + '\n\n'
@@ -866,14 +857,20 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         if function_names is None:
             function_names = []
 
-        functions: dict[str, typing.Union[str, typing.Callable]] = self.template_functions.copy()
+        functions: dict[str, typing.Union[str, typing.Callable]] = self.builtins.copy()
+        functions.update(self.template_functions)
+
+        functions = dict(sorted(functions.items()))
 
         if len(function_names) == 0:
 
             help_string = f'Available config template functions:' + '\n\n'
-            help_string += '\n\n'.join((' ' * 4) +
-                                       _types.format_function_signature(v, alternate_name=n)
-                                       for n, v in functions.items())
+            help_string += '\n\n'.join(
+                (' ' * 4) +
+                (_types.format_function_signature(v, alternate_name=n)
+                 if inspect.isfunction(v) else _types.format_function_signature(
+                    v.__init__, alternate_name=n, omit_params={'self'}))
+                for n, v in functions.items())
 
         else:
             help_string = ''
@@ -893,18 +890,19 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
             def docs():
                 for name, impl in functions.items():
-                    if isinstance(impl, str):
-                        doc = impl
-                    else:
-                        doc = inspect.cleandoc(impl.__doc__).strip() \
-                            if impl.__doc__ is not None else 'No documentation provided.'
+                    doc = inspect.cleandoc(impl.__doc__).strip() \
+                        if impl.__doc__ is not None else 'No documentation provided.'
+
                     doc = \
                         _textprocessing.wrap_paragraphs(
                             doc,
                             initial_indent=' ' * 4,
                             subsequent_indent=' ' * 4,
                             width=_textprocessing.long_text_wrap_width())
-                    yield _types.format_function_signature(impl, alternate_name=name) + \
+                    yield (_types.format_function_signature(impl, alternate_name=name) if inspect.isfunction(impl)
+                           else _types.format_function_signature(impl.__init__,
+                                                                 alternate_name=name,
+                                                                 omit_params={'self'})) + \
                         _textprocessing.underline(':\n\n' + doc + '\n')
 
             help_string += '\n'.join(docs())
@@ -956,7 +954,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         def wrap(val):
             return _textprocessing.wrap(
-                str(val),
+                repr(val),
                 width=_textprocessing.long_text_wrap_width(),
                 subsequent_indent=' ' * 17)
 
@@ -1007,7 +1005,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         This does not cause the config to exit.
         """
 
-        self.run_string(shlex.join(['--image-processor-help']+list(args)))
+        self.run_string(shlex.join(['--image-processor-help'] + list(args)))
         return 0
 
     def _help_directive(self, args: collections.abc.Sequence[str]):

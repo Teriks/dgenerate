@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import ast
+import asteval
 import collections.abc
 import os
 import typing
@@ -97,7 +98,7 @@ def memory_constraints(expressions: collections.abc.Iterable[str],
         * ``used_percent > 25`` (when the process has used more than 25 percent of virtual memory available to it)
         * ``available < gb(2)`` (when the available memory on the system is less than 2GB)
 
-    Expressions may not be longer than 128 characters. However multiple expressions may be provided.
+    Expressions may not be longer than 128 characters. However, multiple expressions may be provided.
 
     :raise ValueError: if extra_vars overwrites a reserved variable name
 
@@ -135,14 +136,16 @@ def memory_constraints(expressions: collections.abc.Iterable[str],
 
     used_percent = (used / (used + available)) * 100.0
 
-    eval_globals = {'gb': lambda x: x * 1000 ** 3,
-                    'mb': lambda x: x * 1000 ** 2,
-                    'kb': lambda x: x * 1000,
-                    'gib': lambda x: x * 1024 ** 3,
-                    'mib': lambda x: x * 1024 ** 2,
-                    'kib': lambda x: x * 1024}
+    functions = {
+        'gb': lambda x: x * 1000 ** 3,
+        'mb': lambda x: x * 1000 ** 2,
+        'kb': lambda x: x * 1000,
+        'gib': lambda x: x * 1024 ** 3,
+        'mib': lambda x: x * 1024 ** 2,
+        'kib': lambda x: x * 1024
+    }
 
-    eval_locals = {
+    variables = {
         'used': used,
         'u': used,
         'used_percent': used_percent,
@@ -157,18 +160,27 @@ def memory_constraints(expressions: collections.abc.Iterable[str],
 
     if extra_vars:
         for key, value in extra_vars.items():
-            if key in eval_locals:
+            if key in variables or key in functions:
                 raise ValueError(
                     f'extra_vars cannot redefine reserved attribute: {key}')
-            eval_locals[key] = value
+            variables[key] = value
+
+    interpreter = asteval.Interpreter(
+        minimal=True,
+        symtable=variables.copy())
+
+    if 'print' in interpreter.symtable:
+        del interpreter.symtable['print']
+
+    interpreter.symtable.update(functions)
 
     _messages.debug_log(
         f'{_types.fullname(memory_constraints)} constraint = '
         f'[{", ".join(_textprocessing.quote_spaces(expressions))}], '
-        f'vars = {str(eval_locals)}')
+        f'vars = {str(variables)}')
 
     try:
-        value = mode(eval(e, eval_globals, eval_locals) for e in expressions)
+        value = mode(interpreter(e) for e in expressions)
         if not isinstance(value, bool):
             raise MemoryConstraintSyntaxError('Memory constraint must return a boolean value.')
         return value

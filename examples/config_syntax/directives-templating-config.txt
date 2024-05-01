@@ -21,6 +21,28 @@
 \print {{ my_prompt }}
 
 
+# The \setp directive can be used to define python literal template variables
+
+\setp my_list [1, 2, 3, 4]
+
+\print {{ my_list | join(' ') }}
+
+
+# Literals defined by \setp can reference other template variables by name.
+# the following creates a nested list
+
+\setp my_list [1, 2, my_list, 4]
+
+\print {{ my_list }}
+
+
+# \setp can evaluate template functions
+
+\setp directory_content glob.glob('*')
+
+\setp current_directory cwd()
+
+
 # the \gen_seeds directive can be used to store a list of
 # random seed integers into a template variable.
 # (they are strings for convenience)

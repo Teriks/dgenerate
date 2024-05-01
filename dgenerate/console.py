@@ -27,9 +27,9 @@ import subprocess
 import sys
 import time
 import threading
-from tkinter import ttk
 
 import tkinter as tk
+import tkinter.font
 import tkinter.filedialog
 import tkinter.scrolledtext
 import os
@@ -43,10 +43,13 @@ class _ScrolledText(tk.Frame):
 
         self.text = tk.Text(self, wrap='word')
 
-        self.y_scrollbar = ttk.Scrollbar(self, orient='vertical', command=self.text.yview)
+        font = tkinter.font.Font(font=self.text['font'])
+        self.text.config(tabs=font.measure(' ' * 4))
+
+        self.y_scrollbar = tk.Scrollbar(self, orient='vertical', command=self.text.yview)
         self.y_scrollbar.pack(side='right', fill='y')
 
-        self.x_scrollbar = ttk.Scrollbar(self, orient='horizontal', command=self.text.xview)
+        self.x_scrollbar = tk.Scrollbar(self, orient='horizontal', command=self.text.xview)
         self.x_scrollbar.pack(side='bottom', fill='x')
 
         self.text['yscrollcommand'] = self.y_scrollbar.set
@@ -158,7 +161,7 @@ class _DgenerateConsole(tk.Tk):
                                       command=self._kill_sub_process)
         self._kill_button.pack(side='right', anchor='e')
 
-        self._paned_window = ttk.PanedWindow(self, orient=tk.VERTICAL)
+        self._paned_window = tk.PanedWindow(self, orient=tk.VERTICAL)
         self._paned_window.pack(fill=tk.BOTH, expand=True)
 
         # Create the Multi-line Input Checkbutton
@@ -519,21 +522,21 @@ class _DgenerateConsole(tk.Tk):
         self.after(self._output_refresh_rate, self._text_update)
 
     def _update_cwd(self):
-        with self._termination_lock:
-            try:
+        try:
+            with self._termination_lock:
                 p = psutil.Process(self._sub_process.pid)
                 while p.children():
                     p = p.children()[0]
                 self._cwd = p.cwd()
-                self.title(f'Dgenerate Console: {self._cwd}')
-            except KeyboardInterrupt:
-                pass
-            except IndexError:
-                pass
-            except psutil.NoSuchProcess:
-                pass
-            finally:
-                self.after(100, self._update_cwd)
+            self.title(f'Dgenerate Console: {self._cwd}')
+        except KeyboardInterrupt:
+            pass
+        except IndexError:
+            pass
+        except psutil.NoSuchProcess:
+            pass
+        finally:
+            self.after(100, self._update_cwd)
 
     def _write_stdout_output(self, text):
         sys.stdout.write(text)
