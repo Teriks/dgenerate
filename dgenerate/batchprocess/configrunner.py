@@ -196,7 +196,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'injected_verbose': _arguments.parse_verbose(self.injected_args)[0],
             'injected_plugin_modules': _arguments.parse_plugin_modules(self.injected_args)[0],
             'saved_modules': dict(),
-            'glob': glob
+            'glob': glob,
+            'path': os.path,
         }
 
         self.template_variables = self._generate_template_variables()
@@ -777,6 +778,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                                                self.template_variables.get('saved_modules'))
 
         template_variables['glob'] = (types.ModuleType, self.template_variables.get('glob'))
+
+        template_variables['path'] = (types.ModuleType, self.template_variables.get('path'))
 
         return template_variables
 

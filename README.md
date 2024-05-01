@@ -3462,6 +3462,9 @@ Config template variables are:
     Name: "glob"
         Type: <class 'module'>
         Value: <module 'glob'>
+    Name: "path"
+        Type: <class 'module'>
+        Value: <module 'ntpath' (frozen)>
 ```
 
 You can see all available config directives with the command
@@ -3788,9 +3791,9 @@ implementation.
 \print {{ quote(last_images) }}
 ````
 
-The entirety of pythons builtin `glob` module is also accessible during
-templating, you can glob directories using functions from the glob
-module like so:
+The entirety of pythons builtin `glob` and `os.path` module is also
+accessible during templating, you can glob directories using functions
+from the glob module like so:
 
 ``` jinja
 #! dgenerate 3.5.0
@@ -3808,6 +3811,10 @@ module like so:
     \print {{ quote(file) }}
 {% endfor %} !END
 
+# usage of os.path via path
+
+\print {{ path.abspath('.') }}
+
 # Simple inline usage
 
 stabilityai/stable-diffusion-2-1
@@ -3815,6 +3822,7 @@ stabilityai/stable-diffusion-2-1
 --dtype float16
 --prompts "In the style of picaso"
 --image-seeds {{ quote(glob.glob('my_images/*.png')) }}
+--output-path {{ quote(path.join(path.abspath('.'), 'output')) }}
 ```
 
 The dgenerate sub-command `image-process` has a config directive
