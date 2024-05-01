@@ -387,6 +387,9 @@ class BatchProcessor:
 
         interpreter = asteval.Interpreter(
             minimal=True,
+            with_listcomp=True,
+            with_dictcomp=True,
+            with_setcomp=True,
             symtable=self.template_variables.copy())
 
         if 'print' in interpreter.symtable:
