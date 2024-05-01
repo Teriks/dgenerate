@@ -349,6 +349,11 @@ class BatchProcessor:
                     , underline=True, level=_messages.WARNING)
 
     def _jinja_user_define(self, name, value):
+        if not name.isidentifier():
+            raise BatchProcessError(
+                f'Cannot define template variable "{name}" on line {self.current_line}, '
+                f'invalid identifier/name token, must be a valid python variable name / identifier.')
+
         if name in self.template_functions:
             raise BatchProcessError(
                 f'Cannot define template variable "{name}" on line {self.current_line}, '
@@ -364,6 +369,11 @@ class BatchProcessor:
         self.template_variables[name] = value
 
     def _jinja_user_undefine(self, name):
+        if not name.isidentifier():
+            raise BatchProcessError(
+                f'Cannot un-define template variable "{name}" on line {self.current_line}, '
+                f'invalid identifier/name token, must be a valid python variable name / identifier.')
+
         if name in self.template_functions:
             raise BatchProcessError(
                 f'Cannot un-define template variable "{name}" on line {self.current_line}, '
