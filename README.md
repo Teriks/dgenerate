@@ -93,6 +93,7 @@ For library documentation visit
 
 ## Help Output
 
+
 ``` text
 usage: dgenerate [-h] [-v] [--version] [--server | --no-stdin | --dgenerate-console]
                  [--plugin-modules PATH [PATH ...]] [--sub-command SUB_COMMAND]
@@ -3734,7 +3735,7 @@ stabilityai/stable-diffusion-x4-upscaler
 \clear_modules stage_1_modules
 ```
 
-The entirety of pythons builtin `glob` module are also accessible during
+The entirety of pythons builtin `glob` module is also accessible during
 templating, you can glob directories using functions from the glob
 module like so:
 
@@ -3791,7 +3792,7 @@ implementation.
 \print {{ quote(last_images) }}
 ````
 
-The entirety of pythons builtin `glob` and `os.path` module is also
+The entirety of pythons builtin `glob` and `os.path` module are also
 accessible during templating, you can glob directories using functions
 from the glob module like so:
 
