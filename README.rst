@@ -3626,62 +3626,6 @@ such as VAEs etc. outside of relying on the caching system.
     \clear_modules stage_1_modules
     ```
 
-    The entirety of pythons builtin `glob` module is also accessible during
-    templating, you can glob directories using functions from the glob
-    module like so:
-
-    ``` jinja
-    #! dgenerate 3.5.0
-
-    # The most basic usage is full expansion of every file
-
-    \set myfiles {{ quote(glob.glob('my_images/*.png')) }}
-
-    \print {{ myfiles }}
-
-    # If you have a LOT of files, you may want to
-    # process them using an iterator like so
-
-    {% for file in glob.iglob('my_images/*.png') %}
-        \print {{ quote(file) }}
-    {% endfor %} !END
-
-    # Simple inline usage
-
-    stabilityai/stable-diffusion-2-1
-    --variant fp16
-    --dtype float16
-    --prompts "In the style of picaso"
-    --image-seeds {{ quote(glob.glob('my_images/*.png')) }}
-    ```
-
-    The dgenerate sub-command `image-process` has a config directive
-    implementation.
-
-    ``` jinja
-    #! dgenerate 3.5.0
-
-    # print the help message of --sub-command image-process, this does
-    # not cause the config to exit
-
-    \image_process --help
-
-    \set myfiles {{ quote(glob.glob('my_images/*.png')) }}
-
-    # this will create the directory "upscaled"
-    # the files will be named "upscaled/FILENAME_processed_1.png" "upscaled/FILENAME_processed_2.png" ...
-
-    \image_process {{ myfiles }} \
-    --output upscaled/
-    --processors "upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth"
-
-
-    # the last_images template variable will be set, last_animations is also usable if
-    # animations were written. In the case that you have generated an animated output with frame
-    # output enabled, this will contain paths to the frames
-
-    \print {{ quote(last_images) }}
-
 The entirety of pythons builtin ``glob`` and ``os.path`` module are also accessible during templating, you
 can glob directories using functions from the glob module like so:
 
