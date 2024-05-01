@@ -318,7 +318,7 @@ class BatchProcessor:
             return self.expand_vars(
                 jinja_env.from_string(string).
                 render(**self.template_variables))
-        except jinja2.TemplateError as e:
+        except Exception as e:
             raise BatchProcessError(f'Template Syntax Error: {str(e).strip()}')
 
     def _look_for_version_mismatch(self, line_idx, line):
