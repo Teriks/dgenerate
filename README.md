@@ -3556,7 +3556,7 @@ caching system.
 
 \setp directory_content glob.glob('*')
 
-\setp current_directory cwd()
+\setp current_directory pwd()
 
 
 # the \gen_seeds directive can be used to store a list of
