@@ -118,7 +118,7 @@ def _first(iterable: collections.abc.Iterable[typing.Any]):
     return v
 
 
-def _pwd():
+def _cwd():
     """
     Return the current working directory as a string.
     """
@@ -211,7 +211,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'format_size': _format_size,
             'last': _last,
             'first': _first,
-            'pwd': _pwd
+            'cwd': _cwd
         }
 
         def return_zero(func, help):
