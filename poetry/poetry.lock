@@ -13,13 +13,13 @@ files = [
 
 [[package]]
 name = "accelerate"
-version = "0.29.2"
+version = "0.29.1"
 description = "Accelerate"
 optional = false
 python-versions = ">=3.8.0"
 files = [
-    {file = "accelerate-0.29.2-py3-none-any.whl", hash = "sha256:f34c23e891ed2c60051408aede93b56daa556a1a894bb8b991acfadb37aaee4c"},
-    {file = "accelerate-0.29.2.tar.gz", hash = "sha256:b7b1c5db790906a7c3a36ffc37a23491fa55ed862bfd4c4ad3c63bd4d23772a2"},
+    {file = "accelerate-0.29.1-py3-none-any.whl", hash = "sha256:7eda0c8bc62bc59129103310f1272a0fb7b3ebc55fc8920cfe1c102db30aca58"},
+    {file = "accelerate-0.29.1.tar.gz", hash = "sha256:d1d0e5a591177891812fd6d1bc843af191e1192c80e5180258f52fefcb653a9f"},
 ]
 
 [package.dependencies]
@@ -3319,4 +3319,4 @@ flax = ["flax", "jax"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<=3.11.6"
-content-hash = "ea4016550e69b3bb334637b12c8635eed54dfd4d6d5b549d903157af2747b4e5"
+content-hash = "adb70c88cf01cd53592451126bca18abeb02e3da65ea00dd5d5ae6fcbc21a2fe"
