@@ -3682,7 +3682,7 @@ such as VAEs etc. outside of relying on the caching system.
 
     \print {{ quote(last_images) }}
 
-The entirety of pythons builtin ``glob`` and ``os.path`` module is also accessible during templating, you
+The entirety of pythons builtin ``glob`` and ``os.path`` module are also accessible during templating, you
 can glob directories using functions from the glob module like so:
 
 .. code-block:: jinja
