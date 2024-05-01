@@ -3356,6 +3356,9 @@ The ``\templates_help`` output from the above example is:
         Name: "glob"
             Type: <class 'module'>
             Value: <module 'glob'>
+        Name: "path"
+            Type: <class 'module'>
+            Value: <module 'ntpath' (frozen)>
 
 
 You can see all available config directives with the command
@@ -3679,7 +3682,7 @@ such as VAEs etc. outside of relying on the caching system.
 
     \print {{ quote(last_images) }}
 
-The entirety of pythons builtin ``glob`` module is also accessible during templating, you
+The entirety of pythons builtin ``glob`` and ``os.path`` module is also accessible during templating, you
 can glob directories using functions from the glob module like so:
 
 .. code-block:: jinja
@@ -3699,6 +3702,10 @@ can glob directories using functions from the glob module like so:
         \print {{ quote(file) }}
     {% endfor %} !END
 
+    # usage of os.path via path
+
+    \print {{ path.abspath('.') }}
+
     # Simple inline usage
 
     stabilityai/stable-diffusion-2-1
@@ -3706,6 +3713,8 @@ can glob directories using functions from the glob module like so:
     --dtype float16
     --prompts "In the style of picaso"
     --image-seeds {{ quote(glob.glob('my_images/*.png')) }}
+    --output-path {{ quote(path.join(path.abspath('.'), 'output')) }}
+
 
 
 The dgenerate sub-command ``image-process`` has a config directive implementation.
