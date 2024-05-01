@@ -342,8 +342,15 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                 '\\save_modules directive cannot be used until a '
                 'dgenerate invocation has occurred.')
 
+        name = args[0]
+
+        if not name.isidentifier():
+            raise _batchprocessor.BatchProcessError(
+                f'Cannot save modules to "{name}" on line {self.current_line}, '
+                f'invalid identifier/name token, must be a valid python variable name / identifier.')
+
         creation_result = self.render_loop.pipeline_wrapper.recall_main_pipeline()
-        saved_modules[args[0]] = creation_result.get_pipeline_modules(args[1:])
+        saved_modules[name] = creation_result.get_pipeline_modules(args[1:])
         return 0
 
     def _use_modules_directive(self, args: collections.abc.Sequence[str]):
@@ -365,6 +372,16 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         saved_name = args[0]
 
+        if not saved_name.isidentifier():
+            raise _batchprocessor.BatchProcessError(
+                f'Cannot use modules from "{saved_name}" on line {self.current_line}, '
+                f'invalid identifier/name token, must be a valid python variable name / identifier.')
+
+        if saved_name not in saved_modules:
+            raise _batchprocessor.BatchProcessError(
+                f'Cannot use modules from "{saved_name}" on line {self.current_line}, '
+                f'there are no modules saved to this variable name.')
+
         self.render_loop.model_extra_modules = saved_modules[saved_name]
         return 0
 
@@ -377,6 +394,12 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         saved_modules = self.template_variables.get('saved_modules')
 
         if len(args) > 0:
+            for arg in args:
+                if not arg.isidentifier():
+                    raise _batchprocessor.BatchProcessError(
+                        f'Cannot clear modules from "{arg}" on line {self.current_line}, '
+                        f'invalid identifier/name token, must be a valid python variable name / identifier.')
+
             for arg in args:
                 try:
                     del saved_modules[arg]
@@ -395,8 +418,15 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         The first argument is the variable name, the second argument is the number of seeds to generate.
         """
         if len(args) == 2:
+            name = args[0]
+
+            if not name.isidentifier():
+                raise _batchprocessor.BatchProcessError(
+                    f'Cannot generate seeds into "{name}" on line {self.current_line}, '
+                    f'invalid identifier/name token, must be a valid python variable name / identifier.')
+
             try:
-                self.template_variables[args[0]] = \
+                self.template_variables[name] = \
                     [str(s) for s in _renderloop.gen_seeds(int(args[1]))]
             except ValueError:
                 raise _batchprocessor.BatchProcessError(
