@@ -118,6 +118,13 @@ def _first(iterable: collections.abc.Iterable[typing.Any]):
     return v
 
 
+def _gen_seeds(n: int):
+    """
+    Generate N random integer seeds (as strings) and return a list of them.
+    """
+    return [str(s) for s in _renderloop.gen_seeds(int(n))]
+
+
 def _cwd():
     """
     Return the current working directory as a string.
@@ -211,6 +218,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'format_size': _format_size,
             'last': _last,
             'first': _first,
+            'gen_seeds': _gen_seeds,
             'cwd': _cwd
         }
 
@@ -413,7 +421,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
     def _gen_seeds_directive(self, args: collections.abc.Sequence[str]):
         """
-        Generate N random integer seeds and store them as a list to a template variable name.
+        Generate N random integer seeds (as strings) and store them as a list to a template variable name.
 
         The first argument is the variable name, the second argument is the number of seeds to generate.
         """
