@@ -3019,7 +3019,7 @@ Available custom jinja2 functions/filters are:
 -   `{{ format_prompt(prompt_object) }}` (Format and quote one or more
     prompt objects with their delimiter, works on single prompts and
     lists)
--   `{{ pwd() }}` Return the current working directory as a string
+-   `{{ cwd() }}` Return the current working directory as a string
 
 The above functions which possess arguments can be used as either a
 function or filter IE: `{{ "quote_me" | quote }}`
@@ -3559,7 +3559,7 @@ caching system.
 
 \setp directory_content glob.glob('*')
 
-\setp current_directory pwd()
+\setp current_directory cwd()
 
 
 # the \gen_seeds directive can be used to store a list of

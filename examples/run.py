@@ -33,7 +33,7 @@ try:
 except ImportError:
     _batchprocess = None
 
-pwd = os.path.dirname(os.path.abspath(__file__))
+cwd = os.path.dirname(os.path.abspath(__file__))
 
 parser = argparse.ArgumentParser(prog='run')
 
@@ -61,11 +61,11 @@ if known_args.paths:
         else:
             if library_installed:
                 configs += glob.glob(
-                    os.path.join(pwd, *os.path.split(path), '**', '*main.py'),
+                    os.path.join(cwd, *os.path.split(path), '**', '*main.py'),
                     recursive=True)
 
             configs += glob.glob(
-                os.path.join(pwd, *os.path.split(path), '**', '*config.txt'),
+                os.path.join(cwd, *os.path.split(path), '**', '*config.txt'),
                 recursive=True)
 
 else:
@@ -73,11 +73,11 @@ else:
 
     if library_installed:
         configs = glob.glob(
-            os.path.join(pwd, '**', '*main.py'),
+            os.path.join(cwd, '**', '*main.py'),
             recursive=True)
 
     configs += glob.glob(
-        os.path.join(pwd, '**', '*config.txt'),
+        os.path.join(cwd, '**', '*config.txt'),
         recursive=True)
 
 
@@ -86,7 +86,7 @@ def log(*args):
 
 
 for config in configs:
-    c = os.path.relpath(config, pwd)
+    c = os.path.relpath(config, cwd)
 
     if known_args.skip_animations and 'animation' in c:
         log(f'SKIPPING ANIMATION: {config}')
