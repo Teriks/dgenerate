@@ -18,7 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
+import asteval
 import collections.abc
 import inspect
 import io
@@ -84,7 +84,8 @@ class BatchProcessor:
     Implements dgenerates batch processing scripts in a generified manner.
 
     This is the bare-bones implementation of the shell with nothing
-    implemented for you except the ``\\print``,  ``\\set`` and `\\unset`` directives.
+    implemented for you except the ``\\print``,  ``\\set``, ``\\setp``,
+    and `\\unset`` directives.
 
     If you wish to create this object to run a dgenerate configuration, use
     :py:class:`dgenerate.batchprocess.ConfigRunner`
@@ -112,13 +113,20 @@ class BatchProcessor:
 
     reserved_template_variables: set[str]
     """
-    These template variables cannot be set with the ``\\set`` directive, or 
-    un-defined with the ``\\unset`` directive.
+    These template variables cannot be set with the ``\\set`` or ``\\setp`` 
+    directive, or un-defined with the ``\\unset`` directive.
     """
 
     template_functions: dict[str, typing.Callable[[typing.Any], typing.Any]]
     """
     Functions available when templating is occurring.
+    """
+
+    builtins: dict[str, typing.Callable[[typing.Any], typing.Any]]
+    """
+    Safe python builtins that are always available as template functions and also usable with ``\\setp``
+    
+    They may be overridden by functions defined in :py:attr:`dgenerate.batchprocess.BatchProcessor.template_functions`
     """
 
     directives: dict[str, typing.Optional[typing.Callable[[collections.abc.Sequence[str]], int]]]
@@ -149,6 +157,7 @@ class BatchProcessor:
                  template_functions: typing.Optional[
                      dict[str, typing.Callable[[typing.Any], typing.Any]]] = None,
                  directives: dict[str, typing.Optional[typing.Callable[[list], None]]] = None,
+                 builtins: typing.Optional[dict[str, typing.Callable[[typing.Any], typing.Any]]] = None,
                  injected_args: typing.Optional[collections.abc.Sequence[str]] = None):
         """
         :param invoker: A function for invoking lines recognized as shell commands, should return a return code.
@@ -156,12 +165,15 @@ class BatchProcessor:
         :param version: Version for version check hash bang directive.
         :param template_variables: Live template variables, the initial environment, this dictionary will be
             modified during runtime.
-        :param reserved_template_variables: These template variable names cannot be set with the ``\\set`` directive,
-            or un-defined with the ``\\unset`` directive.
+        :param reserved_template_variables: These template variable names cannot be set with the
+            ``\\set`` or ``\\setp`` directive, or un-defined with the ``\\unset`` directive.
         :param template_functions: Functions available to Jinja2
         :param directives: batch processing directive handlers, for: ``\\directives``. This is a dictionary
             of names to functions which accept a single parameter, a list of directive arguments, and return
             a return code.
+        :param builtins: builtin functions available as template functions and ``\\setp`` functions.
+            A safe default collection of functions is used if this is not specified.  Builtins may
+            be overridden by functions defined in ``template_functions``
         :param injected_args: Arguments to be injected at the end of user specified arguments for every shell invocation.
             If ``-v/--verbose`` is present in ``injected_args`` debugging output will be enabled globally while the config
             runs, and not just for invocations. Passing ``-v/--verbose`` also disables handling of unhandled non
@@ -197,6 +209,83 @@ class BatchProcessor:
 
         self.expand_vars = os.path.expandvars
 
+        if builtins is None:
+            self.builtins = {
+                'abs': abs,
+                'all': all,
+                'any': any,
+                'ascii': ascii,
+                'bin': bin,
+                'bool': bool,
+                'bytearray': bytearray,
+                'bytes': bytes,
+                'callable': callable,
+                'chr': chr,
+                'complex': complex,
+                'dict': dict,
+                'divmod': divmod,
+                'enumerate': enumerate,
+                'filter': filter,
+                'float': float,
+                'format': format,
+                'frozenset': frozenset,
+                'getattr': getattr,
+                'hasattr': hasattr,
+                'hash': hash,
+                'hex': hex,
+                'int': int,
+                'iter': iter,
+                'len': len,
+                'list': list,
+                'map': map,
+                'max': max,
+                'min': min,
+                'next': next,
+                'object': object,
+                'oct': oct,
+                'ord': ord,
+                'pow': pow,
+                'range': range,
+                'repr': repr,
+                'reversed': reversed,
+                'round': round,
+                'set': set,
+                'slice': slice,
+                'sorted': sorted,
+                'str': str,
+                'sum': sum,
+                'tuple': tuple,
+                'type': type,
+                'zip': zip,
+            }
+        else:
+            self.builtins = builtins
+
+    @property
+    def directives_builtins_help(self):
+        """
+        Returns a dictionary of help strings for directives that are
+        built into the :py:class:`BatchProcessor` base class.
+        """
+
+        return {
+            'set': 'Sets a template variable, accepts two arguments, the variable name and the value. '
+                   'Attempting to set a reserved template variable such as those pre-defined by dgenerate '
+                   'will result in an error. The second argument is accepted as a raw value, it is not shell '
+                   'parsed in any way, only stripped of leading and trailing whitespace.',
+            'setp': 'Sets a template variable to an evaluated Python literal value, accepts two arguments, '
+                    'the variable name and the value. Attempting to set a reserved template variable such '
+                    'as those pre-defined by dgenerate will result in an error. Template variables can be '
+                    'referred to by name within a definition, EG: \\setp my_list [1, 2, my_var, 4]. Template '
+                    'functions are also available, EG: \\setp working_dir template_function(). Python unary '
+                    'and binary expression operators, python list slicing, and comprehensions are supported. '
+                    'This functionality is provided by the asteval package.',
+            'unset': 'Undefines a template variable previously set with \\set or \\setp, accepts one argument, '
+                     'the variable name. Attempting to unset a reserved variable such as those '
+                     'pre-defined by dgenerate will result in an error.',
+            'print': 'Prints all content to the right to stdout, no shell parsing of the argument occurs.'
+        }
+
     @property
     def current_line(self) -> int:
         """
@@ -214,6 +303,11 @@ class BatchProcessor:
 
         jinja_env = jinja2.Environment()
 
+        for name, func in self.builtins.items():
+            if name in jinja_env.globals:
+                continue
+            jinja_env.globals[name] = func
+
         for name, func in self.template_functions.items():
             jinja_env.globals[name] = func
 
@@ -224,7 +318,7 @@ class BatchProcessor:
             return self.expand_vars(
                 jinja_env.from_string(string).
                 render(**self.template_variables))
-        except jinja2.TemplateSyntaxError as e:
+        except jinja2.TemplateError as e:
             raise BatchProcessError(f'Template Syntax Error: {str(e).strip()}')
 
     def _look_for_version_mismatch(self, line_idx, line):
@@ -263,6 +357,10 @@ class BatchProcessor:
             raise BatchProcessError(
                 f'Cannot define template variable "{name}" on line {self.current_line}, '
                 f'as that name is a reserved variable name.')
+        if name in self.builtins:
+            raise BatchProcessError(
+                f'Cannot define template variable "{name}" on line {self.current_line}, '
+                f'as that name is the name of a builtin function.')
         self.template_variables[name] = value
 
     def _jinja_user_undefine(self, name):
@@ -274,6 +372,10 @@ class BatchProcessor:
             raise BatchProcessError(
                 f'Cannot un-define template variable "{name}" on line {self.current_line}, '
                 f'as that name is a reserved variable name.')
+        if name in self.builtins:
+            raise BatchProcessError(
+                f'Cannot un-define template variable "{name}" on line {self.current_line}, '
+                f'as that name is the name of a builtin function.')
         try:
             self.template_variables.pop(name)
         except KeyError:
@@ -281,11 +383,44 @@ class BatchProcessor:
                 f'Cannot un-define template variable "{name}" on line {self.current_line}, '
                 f'variable does not exist.')
 
+    def _intepret_setp_value(self, value):
+
+        interpreter = asteval.Interpreter(
+            minimal=True,
+            symtable=self.template_variables.copy())
+
+        if 'print' in interpreter.symtable:
+            del interpreter.symtable['print']
+
+        interpreter.symtable.update(self.builtins)
+        interpreter.symtable.update(self.template_functions)
+
+        try:
+            return interpreter.eval(value,
+                                    show_errors=False,
+                                    raise_errors=True)
+        except (RuntimeError, NameError, ValueError, SyntaxError) as e:
+            raise BatchProcessError(f'\\setp literal syntax error: {e}')
+
     def _directive_handlers(self, line):
-        if line.startswith('\\set'):
+        if line.startswith('\\setp'):
             directive_args = line.split(' ', 2)
             if len(directive_args) == 3:
-                self._jinja_user_define(directive_args[1].strip(), self.render_template(directive_args[2].strip()))
+                self._jinja_user_define(
+                    directive_args[1].strip(),
+                    self._intepret_setp_value(
+                        self.render_template(directive_args[2].strip())))
+                return True
+            else:
+                raise BatchProcessError(
+                    f'\\setp directive received less than 2 arguments, '
+                    f'syntax is: \\setp name value')
+        elif line.startswith('\\set'):
+            directive_args = line.split(' ', 2)
+            if len(directive_args) == 3:
+                self._jinja_user_define(
+                    directive_args[1].strip(),
+                    self.render_template(directive_args[2].strip()))
                 return True
             else:
                 raise BatchProcessError(

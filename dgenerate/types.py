@@ -496,9 +496,16 @@ def type_check_struct(obj,
                 _is(get_type(hint), attr, v)
 
 
-def format_function_signature(func: typing.Callable, alternate_name=None) -> str:
+def format_function_signature(func: typing.Callable,
+                              alternate_name: typing.Optional[str] = None,
+                              omit_params: typing.Optional[collections.abc.Container] = None) -> str:
     """
     Formats the signature of a given function to a string.
+
+    :param func: The function
+    :param alternate_name: Alternate function display name
+    :param omit_params: Omit parameters by name, this should be a container
+        filled with parameter names, such as a set or list.
     """
 
     signature = inspect.signature(func)
@@ -507,6 +514,8 @@ def format_function_signature(func: typing.Callable, alternate_name=None) -> str
 
     param_strs = []
     for param_name, param in parameters.items():
+        if omit_params is not None and param_name in omit_params:
+            continue
         param_type = param.annotation
         if param_type != inspect.Parameter.empty:
             param_strs.append(

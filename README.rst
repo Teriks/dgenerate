@@ -3029,7 +3029,7 @@ a dgenerate invocation in a config file for debugging purposes. You can specify 
 more template variable names as arguments to ``\templates_help`` to receive help for only
 the mentioned variable names.
 
-Template variables set with the ``\set`` directive will also be mentioned in this output.
+Template variables set with the ``\set`` and ``\setp`` directive will also be mentioned in this output.
 
 .. code-block:: jinja
 
@@ -3395,13 +3395,14 @@ Example output:
         "\image_process"
         "\import_plugins"
         "\set"
+        "\setp"
         "\unset"
         "\print"
 
-Here are examples of other available directives such as ``\set`` and ``\print`` as
-well as some basic Jinja2 templating usage. This example also covers the usage
-and purpose of ``\save_modules`` for saving and reusing pipeline modules such
-as VAEs etc. outside of relying on the caching system.
+Here are examples of other available directives such as ``\set``, ``\setp``, and
+``\print`` as well as some basic Jinja2 templating usage. This example also covers
+the usage and purpose of ``\save_modules`` for saving and reusing pipeline modules
+such as VAEs etc. outside of relying on the caching system.
 
 .. code-block:: jinja
 
@@ -3426,6 +3427,28 @@ as VAEs etc. outside of relying on the caching system.
     # for debugging purposes
 
     \print {{ my_prompt }}
+
+
+    # The \setp directive can be used to define python literal template variables
+
+    \setp my_list [1, 2, 3, 4]
+
+    \print {{ my_list | join(' ') }}
+
+
+    # Literals defined by \setp can reference other template variables by name.
+    # the following creates a nested list
+
+    \setp my_list [1, 2, my_list, 4]
+
+    \print {{ my_list }}
+
+
+    # \setp can evaluate template functions
+
+    \setp directory_content glob.glob('*')
+
+    \setp current_directory cwd()
 
 
     # the \gen_seeds directive can be used to store a list of
@@ -3527,8 +3550,8 @@ as VAEs etc. outside of relying on the caching system.
     # where they are necessary as you would do in the top level of
     # a config file. The whole of the template continuation is
     # processed by Jinja, from { to !END, so only one !END is
-    # ever necessary after the external template when dealing
-    # with nested templates
+    # ever necessary after the external template
+    # when dealing with nested templates
 
     {% for image in last_images %}
         stabilityai/stable-diffusion-2-1
@@ -3598,7 +3621,63 @@ as VAEs etc. outside of relying on the caching system.
     # like a server that reads from stdin :)
 
     \clear_modules stage_1_modules
+    ```
 
+    The entirety of pythons builtin `glob` module is also accessible during
+    templating, you can glob directories using functions from the glob
+    module like so:
+
+    ``` jinja
+    #! dgenerate 3.5.0
+
+    # The most basic usage is full expansion of every file
+
+    \set myfiles {{ quote(glob.glob('my_images/*.png')) }}
+
+    \print {{ myfiles }}
+
+    # If you have a LOT of files, you may want to
+    # process them using an iterator like so
+
+    {% for file in glob.iglob('my_images/*.png') %}
+        \print {{ quote(file) }}
+    {% endfor %} !END
+
+    # Simple inline usage
+
+    stabilityai/stable-diffusion-2-1
+    --variant fp16
+    --dtype float16
+    --prompts "In the style of picaso"
+    --image-seeds {{ quote(glob.glob('my_images/*.png')) }}
+    ```
+
+    The dgenerate sub-command `image-process` has a config directive
+    implementation.
+
+    ``` jinja
+    #! dgenerate 3.5.0
+
+    # print the help message of --sub-command image-process, this does
+    # not cause the config to exit
+
+    \image_process --help
+
+    \set myfiles {{ quote(glob.glob('my_images/*.png')) }}
+
+    # this will create the directory "upscaled"
+    # the files will be named "upscaled/FILENAME_processed_1.png" "upscaled/FILENAME_processed_2.png" ...
+
+    \image_process {{ myfiles }} \
+    --output upscaled/
+    --processors "upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth"
+
+
+    # the last_images template variable will be set, last_animations is also usable if
+    # animations were written. In the case that you have generated an animated output with frame
+    # output enabled, this will contain paths to the frames
+
+    \print {{ quote(last_images) }}
 
 The entirety of pythons builtin ``glob`` module is also accessible during templating, you
 can glob directories using functions from the glob module like so:
