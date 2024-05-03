@@ -313,7 +313,7 @@ class AnimatedImageReader(_imageprocessors.ImageProcessorMixin, AnimationReader)
 
         :param image_processor: optionally process every frame with this image processor
         
-        :raises MediaIdentificationError: If the animated image data is an unknown format or corrupt.
+        :raise MediaIdentificationError: If the animated image data is an unknown format or corrupt.
         """
 
         try:
@@ -1248,7 +1248,7 @@ def create_image(
     to ``align`` in every case, specifying ``None`` or ``1`` for ``align``
     disables alignment.
     
-    :raises MediaIdentificationError: If the image data is an unknown format or corrupt.
+    :raise MediaIdentificationError: If the image data is an unknown format or corrupt.
 
     :param path_or_file: file path or binary IO object
     :param file_source: :py:attr:`PIL.Image.Image.filename` is set to this value
@@ -1305,9 +1305,8 @@ def create_animation_reader(mimetype: str,
     :py:class:`.VideoReader` or :py:class:`.AnimatedImageReader` will be returned for Video
     files and Animated Images respectively.
 
-    :raise UnknownMimetypeError: on unknown ``mimetype`` value
-    
-    :raise MediaIdentificationError: If the file data is an unknown format or corrupt.
+    :raises UnknownMimetypeError: on unknown ``mimetype`` value
+    :raises MediaIdentificationError: If the file data is an unknown format or corrupt.
 
     :param mimetype: one of :py:func:`.get_supported_mimetypes`
 
