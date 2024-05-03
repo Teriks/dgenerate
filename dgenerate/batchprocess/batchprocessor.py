@@ -25,7 +25,6 @@ import io
 import itertools
 import os
 import re
-import shlex
 import typing
 
 import jinja2
@@ -197,6 +196,7 @@ class BatchProcessor:
         self.injected_args = injected_args if injected_args else []
 
         self._current_line = 0
+        self._executing_text = None
         self._running_template_continuation = False
 
         if isinstance(version, str):
@@ -273,6 +273,7 @@ class BatchProcessor:
                    'Attempting to set a reserved template variable such as those pre-defined by dgenerate '
                    'will result in an error. The second argument is accepted as a raw value, it is not shell '
                    'parsed in any way, only stripped of leading and trailing whitespace.',
+            'sete': 'Sets a template variable to an array of shell arguments using shell parsing and expansion.',
             'setp': 'Sets a template variable to an evaluated Python literal value, accepts two arguments, '
                     'the variable name and the value. Attempting to set a reserved template variable such '
                     'as those pre-defined by dgenerate will result in an error. Template variables can be '
@@ -283,15 +284,24 @@ class BatchProcessor:
             'unset': 'Undefines a template variable previously set with \\set or \\setp, accepts one argument, '
                      'the variable name. Attempting to unset a reserved variable such as those '
                      'pre-defined by dgenerate will result in an error.',
-            'print': 'Prints all content to the right to stdout, no shell parsing of the argument occurs.'
+            'print': 'Prints all content to the right to stdout, no shell parsing of the argument occurs.',
+            'echo': 'Echo shell arguments with shell parsing and expansion.'
         }
 
     @property
     def current_line(self) -> int:
         """
-        The current line in the file being processed.
+        The current line number in the file being processed.
         """
         return self._current_line
+
+    @property
+    def executing_text(self) -> typing.Union[None, str]:
+        """
+        The text / command line that is currently
+        being executed, or that was last executed.
+        """
+        return self._executing_text
 
     def render_template(self, string: str):
         """
@@ -319,7 +329,7 @@ class BatchProcessor:
                 jinja_env.from_string(string).
                 render(**self.template_variables))
         except Exception as e:
-            raise BatchProcessError(f'Template Syntax Error: {str(e).strip()}')
+            raise BatchProcessError(f'Template Render Error: {str(e).strip()}')
 
     def _look_for_version_mismatch(self, line_idx, line):
         versioning = re.match(r'#!\s+' + self.name + r'\s+([0-9]+\.[0-9]+\.[0-9]+)', line)
@@ -412,8 +422,8 @@ class BatchProcessor:
             return interpreter.eval(value,
                                     show_errors=False,
                                     raise_errors=True)
-        except (RuntimeError, NameError, ValueError, SyntaxError) as e:
-            raise BatchProcessError(f'\\setp literal syntax error: {e}')
+        except Exception as e:
+            raise BatchProcessError(f'\\setp eval error: {e}')
 
     def _directive_handlers(self, line):
         if line.startswith('\\setp'):
@@ -428,6 +438,21 @@ class BatchProcessor:
                 raise BatchProcessError(
                     f'\\setp directive received less than 2 arguments, '
                     f'syntax is: \\setp name value')
+        elif line.startswith('\\sete'):
+            directive_args = line.split(' ', 2)
+            if len(directive_args) == 3:
+                try:
+                    self._jinja_user_define(
+                        directive_args[1].strip(),
+                        _textprocessing.shell_parse(
+                            self.render_template(directive_args[2].strip())))
+                except _textprocessing.ShellParseSyntaxError as e:
+                    raise BatchProcessError(e)
+                return True
+            else:
+                raise BatchProcessError(
+                    f'\\sete directive received less than 2 arguments, '
+                    f'syntax is: \\sete name args...')
         elif line.startswith('\\set'):
             directive_args = line.split(' ', 2)
             if len(directive_args) == 3:
@@ -457,6 +482,20 @@ class BatchProcessor:
                 raise BatchProcessError(
                     f'\\print directive received no arguments, '
                     f'syntax is: \\print value')
+        elif line.startswith('\\echo'):
+            directive_args = line.split(' ', 1)
+            if len(directive_args) == 2:
+                try:
+                    _messages.log(*_textprocessing.shell_parse(
+                        self.render_template(directive_args[1].strip()),
+                        expand_vars=False))
+                except _textprocessing.ShellParseSyntaxError as e:
+                    raise BatchProcessError(e)
+                return True
+            else:
+                raise BatchProcessError(
+                    f'\\echo directive received no arguments, '
+                    f'syntax is: \\echo args...')
         if line.startswith('{'):
             try:
                 self._running_template_continuation = True
@@ -475,7 +514,9 @@ class BatchProcessor:
             try:
                 if directive_args:
                     return_code = impl(
-                        shlex.split(self.render_template(directive_args[0].strip())))
+                        _textprocessing.shell_parse(
+                            self.render_template(directive_args[0].strip()),
+                            expand_vars=False))
                 else:
                     return_code = impl([])
                 if return_code != 0:
@@ -492,8 +533,9 @@ class BatchProcessor:
         raw_templated_string = self.render_template(invocation_string)
 
         try:
-            shell_lexed = shlex.split(raw_templated_string)
-        except ValueError as e:
+            shell_lexed = _textprocessing.shell_parse(
+                raw_templated_string, expand_vars=False)
+        except _textprocessing.ShellParseSyntaxError as e:
             raise BatchProcessError(e)
 
         for arg in self.injected_args:
@@ -537,6 +579,8 @@ class BatchProcessor:
             template_continuation = False
             normal_continuation = False
             continuation = ''
+
+            self._executing_text = completed_continuation
 
             if self._directive_handlers(completed_continuation):
                 return

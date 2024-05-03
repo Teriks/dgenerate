@@ -3628,22 +3628,49 @@ such as VAEs etc. outside of relying on the caching system.
     ```
 
 The entirety of pythons builtin ``glob`` and ``os.path`` module are also accessible during templating, you
-can glob directories using functions from the glob module like so:
+can glob directories using functions from the glob module, you can also glob directory's using shell
+globbing.
 
 .. code-block:: jinja
 
     #! dgenerate 3.5.0
 
+    # globbing can be preformed via shell expansion or using
+    # the glob module inside jinja templates
+
+    # note that shell globbing and home directory expansion
+    # does not occur inside quoted strings
+
+    # \echo can be use to show the results of globbing that
+    # occurs during shell expansion. \print does not preform shell
+    # expansion nor does \set or \setp, all other directives do, as well
+    # as dgenerate invocations
+
+    # shell globs which produce 0 files are considered an error
+
+    \echo ../media/*.png
+
+    \echo ~
+
+    # \sete can be used to set a template variable to the result
+    # of one or more shell globs
+
+    \sete myfiles ../media/*.png
+
+
+    # with Jinja2:
+
+
     # The most basic usage is full expansion of every file
 
-    \set myfiles {{ quote(glob.glob('my_images/*.png')) }}
+    \set myfiles {{ quote(glob.glob('../media/*.png')) }}
 
     \print {{ myfiles }}
 
     # If you have a LOT of files, you may want to
     # process them using an iterator like so
 
-    {% for file in glob.iglob('my_images/*.png') %}
+    {% for file in glob.iglob('../media/*.png') %}
         \print {{ quote(file) }}
     {% endfor %} !END
 
@@ -3657,7 +3684,7 @@ can glob directories using functions from the glob module like so:
     --variant fp16
     --dtype float16
     --prompts "In the style of picaso"
-    --image-seeds {{ quote(glob.glob('my_images/*.png')) }}
+    --image-seeds {{ quote(glob.glob('../media/*.png')) }}
     --output-path {{ quote(path.join(path.abspath('.'), 'output')) }}
 
 

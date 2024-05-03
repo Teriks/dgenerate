@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import collections.abc
 import enum
+import glob
 import math
 import os
 import re
@@ -71,18 +72,30 @@ class TokenizedSplitSyntaxError(Exception):
     pass
 
 
+class ShellParseSyntaxError(Exception):
+    """
+    Raised by :py:func:`shell_parse` on syntax errors.
+    """
+    pass
+
+
 def tokenized_split(string: str,
                     separator: typing.Optional[str],
                     remove_quotes: bool = False,
                     strict: bool = False,
                     escapes_in_unquoted: bool = False,
                     escapes_in_quoted: bool = False,
+                    single_quotes_raw: bool = False,
+                    double_quotes_raw: bool = False,
+                    string_expander: typing.Callable[[str, str], str] = None,
+                    text_expander: typing.Callable[[str], list[str]] = None,
+                    remove_stray_separators: bool = False,
                     escapable_separator: bool = False,
                     allow_unterminated_strings: bool = False,
-                    first_string_halts: bool = False):
+                    first_string_halts: bool = False) -> list[str]:
     """
     Split a string by a separator and discard whitespace around tokens, avoid
-    splitting within single or double quoted strings. Empty fields may be used.
+    splitting within single or double-quoted strings. Empty fields may be used.
 
     Quotes can be always be escaped with a backslash to avoid the creation of a
     string type token. The backslash will remain in the output if ``escapes_in_unquoted``
@@ -102,6 +115,13 @@ def tokenized_split(string: str,
         The slash is retained by default when escaping quotes, this disables that, and also enables handling of the escapes ``n, r, t, b, f, and \\``.
         IE given ``separator = ";"`` parse ``token; "a \\" b"`` -> ``['token', 'a " b']``, instead of ``token; "a \\" b"``-> ``['token', 'a \\" b']``
 
+    :param single_quotes_raw: Never evaluate escape sequences in single-quoted strings?
+    :param double_quotes_raw: Never evaluate escape sequences in double-quoted strings?
+    :param string_expander: User post process string expansion hook ``string_expander(quote_char, string) -> str``
+    :param text_expander: User post process text token expansion hook ``text_expander(text_token) -> list[str]``.
+        should return a list of new tokens.
+    :param remove_stray_separators: Remove consecutive seperator characters with no inner content at the end of the string?
+        In effect, do not create entrys for empty seperators at the end of a string.
     :param escapable_separator: The seperator character may be escaped with a backslash where it would otherwise cause a split?
 
     :param allow_unterminated_strings: Allows the lex to end on an unterminated string without a syntax error being produced.
@@ -115,6 +135,14 @@ def tokenized_split(string: str,
     :return: parsed fields
     """
 
+    if string_expander is None:
+        def string_expander(q, s):
+            return s
+
+    if text_expander is None:
+        def text_expander(s):
+            return [s]
+
     class _States(enum.Enum):
         AWAIT_TEXT = 0
         TEXT_TOKEN = 1
@@ -123,8 +151,15 @@ def tokenized_split(string: str,
         STRING = 4
         STRING_ESCAPE = 5
         SEP_REQUIRED = 6
+        EOL = 7
 
     state = _States.AWAIT_TEXT
+    last_state = state
+
+    def state_change(new_state):
+        nonlocal state, last_state
+        last_state = state
+        state = new_state
 
     # tokens out
     parts = []
@@ -142,18 +177,34 @@ def tokenized_split(string: str,
     # recognized escape codes
     RECOGNIZED_ESCAPE_CODES = {'n', 'r', 't', 'b', 'f', '\\'}
 
+    back_expand = 0
+
     def append_text(t):
         # append text to the last token
-        if parts:
-            parts[-1] += t
+        if back_expand > 0:
+            for i in range(back_expand):
+                parts[-(i + 1)] += t
         else:
-            parts.append(t)
+            if parts:
+                parts[-1] += t
+            else:
+                parts.append(t)
 
-    def separate_here():
-        nonlocal state
-        parts[-1] = parts[-1].rstrip()
-        parts.append('')
-        state = _States.AWAIT_TEXT
+    def separate_here(idx):
+        nonlocal parts
+        if last_state != _States.STRING:
+            expanded = text_expander(parts[-1].rstrip())
+            if len(expanded) > 0:
+                parts[-1] = expanded[0]
+                parts += expanded[1:]
+        else:
+            parts[-1] = parts[-1].rstrip()
+
+        if remove_stray_separators and not string[idx:].strip(separator):
+            state_change(_States.EOL)
+        else:
+            parts.append('')
+            state_change(_States.AWAIT_TEXT)
 
     # returned to None upon encountering
     # a string termination condition during normal
@@ -181,6 +232,9 @@ def tokenized_split(string: str,
                             escapes_in_unquoted=escapes_in_unquoted,
                             escapes_in_quoted=escapes_in_quoted,
                             escapable_separator=escapable_separator,
+                            single_quotes_raw=single_quotes_raw,
+                            double_quotes_raw=double_quotes_raw,
+                            remove_stray_separators=remove_stray_separators,
                             first_string_halts=True)
             # syntactically valid string from this point on
             string_lookahead_terminated_memoize = True
@@ -195,6 +249,9 @@ def tokenized_split(string: str,
         return TokenizedSplitSyntaxError(f'{msg}: \'{string[:idx]}[ERROR HERE>]{string[idx:]}\'')
 
     for idx, c in enumerate(string):
+        if state == _States.EOL:
+            break
+
         if state == _States.STRING:
             # inside of a quoted string
 
@@ -209,21 +266,29 @@ def tokenized_split(string: str,
                     # the seperator is not quoted by a complete
                     # string and therefore separates
                     append_text(cur_string)
-                    separate_here()
+                    separate_here(idx)
                 else:
                     cur_string += c
             elif c == '\\':
 
                 # encountered an escape sequence start
-                state = _States.STRING_ESCAPE
-                if not escapes_in_quoted:
+                state_change(_States.STRING_ESCAPE)
+                if not escapes_in_quoted or \
+                        (single_quotes_raw and cur_quote == "'") or \
+                        (double_quotes_raw and cur_quote == '"'):
                     cur_string += c
             elif c == cur_quote:
                 # encountered the terminator quote
-                append_text(cur_string + (c if not remove_quotes else ''))
+                append_text(string_expander(cur_quote,
+                                            cur_string + (c if not remove_quotes else '')))
                 cur_string = ''
-                # Strict mode requires a separator after a quoted string token
-                state = _States.SEP_REQUIRED if strict else _States.TEXT_TOKEN
+
+                if idx == len(string) - 1:
+                    # safe to stop here entirely
+                    state_change(_States.EOL)
+                else:
+                    # Strict mode requires a separator after a quoted string token
+                    state_change(_States.SEP_REQUIRED if strict else _States.TEXT_TOKEN)
 
                 # we finished a string token, any memoized result
                 # of lookahead N for string termination is invalid now
@@ -241,10 +306,10 @@ def tokenized_split(string: str,
                 if not escapable_separator:
                     if escapes_in_unquoted:
                         append_text('\\')
-                    separate_here()
+                    separate_here(idx)
                     continue
 
-            state = _States.TEXT_TOKEN_STRICT if strict else _States.TEXT_TOKEN
+            state_change(_States.TEXT_TOKEN_STRICT if strict else _States.TEXT_TOKEN)
             # return to the appropriate state
 
             if c in QUOTE_CHARS:
@@ -268,7 +333,7 @@ def tokenized_split(string: str,
                 append_text(c)
         elif state == _States.STRING_ESCAPE:
             # after encountering an escape sequence start inside of a quoted string
-            state = _States.STRING
+            state_change(_States.STRING)
             # return to string state
 
             if c in QUOTE_CHARS:
@@ -277,7 +342,9 @@ def tokenized_split(string: str,
             elif c in RECOGNIZED_ESCAPE_CODES:
                 # this is a character that translates into utf-8 escape code
                 # that we have decided to support
-                if escapes_in_quoted:
+                if escapes_in_quoted and not \
+                        ((single_quotes_raw and cur_quote == "'") or
+                         (double_quotes_raw and cur_quote == '"')):
                     cur_string += fr'\{c}'.encode('utf-8').decode('unicode_escape')
                 else:
                     cur_string += c
@@ -306,21 +373,21 @@ def tokenized_split(string: str,
             # This state is only reached in strict mode
             # where separators are required after a string token
             if c == separator:
-                state = _States.AWAIT_TEXT
+                state_change(_States.AWAIT_TEXT)
                 parts.append('')
             elif not c.isspace():
                 raise syntax_error('Missing separator after string', idx)
         elif state == _States.AWAIT_TEXT:
             if c == '\\':
                 # started an escape sequence
-                state = _States.TEXT_ESCAPE
+                state_change(_States.TEXT_ESCAPE)
                 if not escapes_in_unquoted:
                     append_text(c)
             elif c in QUOTE_CHARS:
                 # started a string token
                 cur_quote = c
                 cur_string += (c if not remove_quotes else '')
-                state = _States.STRING
+                state_change(_States.STRING)
             elif c.isspace():
                 # ignore space until token starts
                 pass
@@ -332,14 +399,14 @@ def tokenized_split(string: str,
                     parts.append('')
             else:
                 # started a text token
-                state = _States.TEXT_TOKEN_STRICT if strict else _States.TEXT_TOKEN
+                state_change(_States.TEXT_TOKEN_STRICT if strict else _States.TEXT_TOKEN)
                 append_text(c)
         elif state == _States.TEXT_TOKEN:
             # this is the non strict mode parsing state inside a text token
             if c == '\\':
                 # started an escape sequence in a text token
 
-                state = _States.TEXT_ESCAPE
+                state_change(_States.TEXT_ESCAPE)
 
                 next_char_sep = (len(string) > idx + 1 and string[idx + 1] == separator)
 
@@ -354,7 +421,12 @@ def tokenized_split(string: str,
                 # started a string token intermixed with a text token
                 cur_quote = c
                 cur_string += (c if not remove_quotes else '')
-                state = _States.STRING
+                state_change(_States.STRING)
+                expanded = text_expander(parts[-1])
+                back_expand = len(expanded)
+                if back_expand > 0:
+                    parts[-1] = expanded[0]
+                    parts += expanded[1:]
             elif c == separator:
                 # encountered a separator
                 # the last element needs to be right stripped
@@ -362,7 +434,8 @@ def tokenized_split(string: str,
                 # and there is no way to differentiate 'inside' and
                 # 'outside' without lookahead, or until there occurs
                 # a separator
-                separate_here()
+                back_expand = 0
+                separate_here(idx)
             else:
                 # append text token character
                 append_text(c)
@@ -370,7 +443,7 @@ def tokenized_split(string: str,
             # This state is only reached in strict mode
             if c == '\\':
                 # encountered an escape sequence in a text token
-                state = _States.TEXT_ESCAPE
+                state_change(_States.TEXT_ESCAPE)
 
                 next_char_sep = (len(string) > idx + 1 and string[idx + 1] == separator)
 
@@ -391,7 +464,7 @@ def tokenized_split(string: str,
                 # and there is no way to differentiate 'inside' and
                 # 'outside' without lookahead, or until there occurs
                 # a separator
-                separate_here()
+                separate_here(idx)
             else:
                 # append text token character
                 append_text(c)
@@ -401,21 +474,28 @@ def tokenized_split(string: str,
         if not allow_unterminated_strings:
             raise syntax_error(f'un-terminated string: \'{cur_string}\'', len(string))
         else:
-
             if parts:
-                parts[-1] = parts[-1] + cur_string
+                parts[-1] = string_expander(cur_quote, parts[-1] + cur_string)
             else:
-                parts = [cur_string]
+                parts = [string_expander(cur_quote, cur_string)]
 
     if state == _States.TEXT_TOKEN_STRICT or state == _States.TEXT_TOKEN:
         # if we end on a text token, right strip the text token, as it is
         # considered 'outside' the token, and spaces are only allowed 'inside'
         # and this is ambiguous without lookahead
-        parts[-1] = parts[-1].rstrip()
+        expanded = text_expander(parts[-1].rstrip())
+        if len(expanded) > 0:
+            parts[-1] = expanded[0]
+            parts += expanded[1:]
 
     if state == _States.TEXT_ESCAPE and escapes_in_unquoted:
         # incomplete escapes are not allowed in text tokens
         raise syntax_error(f'un-finished escape sequence: \'{cur_string}\'', len(string))
+
+    if remove_stray_separators:
+        while parts and parts[-1] == "":
+            parts.pop()
+        return parts
 
     return parts
 
@@ -454,6 +534,87 @@ def unquote(string: str, escapes_in_quoted=True, escapes_in_unquoted=False) -> s
         if 'Missing separator' in str(e):
             raise UnquoteSyntaxError(str(e).replace('Missing separator', 'Extraneous text'))
         raise UnquoteSyntaxError(e)
+
+
+def shell_parse(string,
+                expand_home=True,
+                expand_vars=True,
+                expand_glob=True) -> list[str]:
+    """
+    Shell command line parsing, implements basic home directory expansion, globbing, and
+    environmental variable expansion.
+
+    Globbing and home directory expansion do not occur inside strings.
+
+    This can be used in place of ``shlex.split``
+
+    .. code-block:: python
+
+        # basic glob
+        shell_parse('command *.png')
+
+        # recursive glob
+        shell_parse('command dir/**/*.png')
+
+        # home directory
+        shell_parse('command ~')
+
+        # home directory of user test
+        shell_parse('command ~test')
+
+        # everything under home directory
+        shell_parse('command ~/*')
+
+        # append text to every glob result
+        shell_parse('command *".png"')
+
+        # append text to every glob result
+        shell_parse("command *'.png'")
+
+        # environmental variable syntax 1
+        shell_parse('command $ENVVAR')
+
+        # environmental variable syntax 2
+        shell_parse('command %ENVVAR%')
+
+    :param string: String to parse
+    :param expand_home: Expand ``~`` ?
+    :param expand_vars: Expand unix style ``$`` and windows style ``%`` environmental variables?
+    :param expand_glob: Expand ``*`` glob expressions including recursive globs?
+    :return: shell arguments
+    """
+
+    def text_expander(token):
+        if expand_home and '~' in token:
+            token = os.path.expanduser(token)
+
+        if expand_vars and ('$' in token or '%' in token):
+            token = os.path.expandvars(token)
+
+        if expand_glob and '*' in token:
+            globs = list(glob.glob(token, recursive=True))
+            if len(globs) == 0:
+                raise ShellParseSyntaxError(
+                    f'glob expression "{token}" returned zero files.')
+            return globs
+        return [token]
+
+    def string_expander(q, s):
+        if q == '"':
+            if expand_vars and ('$' in s or '%' in s):
+                return os.path.expandvars(s)
+            return s
+        return s
+
+    try:
+        return tokenized_split(string, ' ',
+                               remove_quotes=True,
+                               strict=False,
+                               text_expander=text_expander,
+                               string_expander=string_expander,
+                               remove_stray_separators=True)
+    except TokenizedSplitSyntaxError as e:
+        raise ShellParseSyntaxError(e)
 
 
 class ConceptUriParser:
@@ -744,7 +905,8 @@ def quote_spaces(
         value_or_struct: typing.Union[typing.Any, collections.abc.Iterable[typing.Union[typing.Any, list, tuple]]]) -> \
         typing.Union[list, tuple, typing.Any]:
     """
-    Quote any str(value) containing spaces, or str(value)s containing spaces within a list, or list of lists/tuples.
+    Quote any ``str`` type values containing spaces, or ``str`` type values containing
+    spaces within a list, or list of lists/tuples.
 
     The entire content of the data structure is stringified by this process.
 

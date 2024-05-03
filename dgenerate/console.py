@@ -108,6 +108,8 @@ class _FindDialog(tk.Toplevel):
         # Position the window
         self.geometry(f"+{position_left}+{position_top}")
 
+        self.find_entry.focus_set()
+
     def find_next(self):
         start_idx = '1.0' if not self.last_find else self.last_find + '+1c'
         s = self.find_entry.get()
@@ -353,7 +355,7 @@ class _DgenerateConsole(tk.Tk):
         if self._find_dialog is not None:
             if self._find_dialog.text_widget is text_box:
                 try:
-                    self._find_dialog.focus()
+                    self._find_dialog.find_entry.focus_set()
                     return
                 except tk.TclError:
                     pass

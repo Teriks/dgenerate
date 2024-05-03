@@ -362,9 +362,12 @@ def fetch_model_files_with_size(repo_id: str,
             api = huggingface_hub.HfApi(token=use_auth_token)
 
             try:
-                info_entries = list(api.list_files_info(repo_id,
-                                                        revision=revision,
-                                                        paths=subfolder))
+                info_entries = list(
+                    i for i in api.list_repo_tree(
+                        repo_id,
+                        revision=revision,
+                        path_in_repo=subfolder,
+                        recursive=True) if isinstance(i, huggingface_hub.hf_api.RepoFile))
             except (huggingface_hub.utils.HFValidationError,
                     huggingface_hub.utils.HfHubHTTPError) as e:
                 raise ModelNotFoundError(e)
