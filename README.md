@@ -51,14 +51,16 @@ For library documentation visit
 ## How to install
 
 <!--ts-->
+
 * [Windows Install](#windows-install)
 * [Linux or WSL Install](#linux-or-wsl-install)
-<!--te-->
 
+<!--te-->
 
 ## Usage Examples
 
 <!--ts-->
+
 * [Basic Usage](#basic-usage)
 * [Negative Prompt](#negative-prompt)
 * [Multiple Prompts](#multiple-prompts)
@@ -89,6 +91,7 @@ For library documentation visit
 * [Console UI](#console-ui)
 * [Writing Plugins](#writing-plugins)
 * [File Cache Control](#file-cache-control)
+
 <!--te-->
 
 ## Help Output
@@ -1271,8 +1274,8 @@ Animations](#inpainting-animations)
 
 Some possible definitions for inpainting are:
 
-> -   `--image-seeds "my-image-seed.png;my-mask-image.png"`
-> -   `--image-seeds "my-image-seed.png;mask=my-mask-image.png"`
+> - `--image-seeds "my-image-seed.png;my-mask-image.png"`
+> - `--image-seeds "my-image-seed.png;mask=my-mask-image.png"`
 
 The format is your image seed and mask image separated by `;`,
 optionally **mask** can be named argument. The alternate syntax is for
@@ -1289,8 +1292,8 @@ files on disk are used for brevity.
 
 You can download them here:
 
-> -   [my-image-seed.png](https://raw.githubusercontent.com/Teriks/dgenerate/v3.5.0/examples/media/dog-on-bench.png)
-> -   [my-mask-image.png](https://raw.githubusercontent.com/Teriks/dgenerate/v3.5.0/examples/media/dog-on-bench-mask.png)
+> - [my-image-seed.png](https://raw.githubusercontent.com/Teriks/dgenerate/v3.5.0/examples/media/dog-on-bench.png)
+> - [my-mask-image.png](https://raw.githubusercontent.com/Teriks/dgenerate/v3.5.0/examples/media/dog-on-bench-mask.png)
 
 The command below generates a cat sitting on a bench with the images
 from the links above, the mask image masks out areas over the dog in the
@@ -1320,12 +1323,12 @@ and guidance images for control nets.
 
 Here are some possible definitions:
 
-> -   `--image-seeds "my-image-seed.png;512x512"` (img2img)
-> -   `--image-seeds "my-image-seed.png;my-mask-image.png;512x512"`
->     (inpainting)
-> -   `--image-seeds "my-image-seed.png;resize=512x512"` (img2img)
-> -   `--image-seeds "my-image-seed.png;mask=my-mask-image.png;resize=512x512"`
->     (inpainting)
+> - `--image-seeds "my-image-seed.png;512x512"` (img2img)
+> - `--image-seeds "my-image-seed.png;my-mask-image.png;512x512"`
+    > (inpainting)
+> - `--image-seeds "my-image-seed.png;resize=512x512"` (img2img)
+> - `--image-seeds "my-image-seed.png;mask=my-mask-image.png;resize=512x512"`
+    > (inpainting)
 
 The alternate syntax with named arguments is for disambiguation when
 [Specifying Control Nets](#specifying-control-nets), or preforming per
@@ -1352,10 +1355,10 @@ arguments. `aspect=false` disables aspect correct resizing, and
 
 Some possible definitions:
 
-> -   `--image-seeds "my-image-seed.png;resize=512x512;aspect=false"`
->     (img2img)
-> -   `--image-seeds "my-image-seed.png;mask=my-mask-image.png;resize=512x512;aspect=false"`
->     (inpainting)
+> - `--image-seeds "my-image-seed.png;resize=512x512;aspect=false"`
+    > (img2img)
+> - `--image-seeds "my-image-seed.png;mask=my-mask-image.png;resize=512x512;aspect=false"`
+    > (inpainting)
 
 The following example preforms img2img generation, followed by
 inpainting generation using 2 image seed definitions. The involved
@@ -1434,7 +1437,7 @@ Animated inputs can be sliced by a frame range either globally using
 `--frame-start` and `--frame-end` or locally using the named argument
 syntax for `--image-seeds`, for example:
 
-> -   `--image-seeds "animated.gif;frame-start=3;frame-end=10"`.
+> - `--image-seeds "animated.gif;frame-start=3;frame-end=10"`.
 
 When using animation slicing at the `--image-seed` level, all image
 input definitions other than the main image must be specified using
@@ -1442,12 +1445,12 @@ keyword arguments.
 
 For example here are some possible definitions:
 
-> -   `--image-seeds "seed.gif;frame-start=3;frame-end=10"`
-> -   `--image-seeds "seed.gif;mask=mask.gif;frame-start=3;frame-end=10`
-> -   `--image-seeds "seed.gif;control=control-guidance.gif;frame-start=3;frame-end=10`
-> -   `--image-seeds "seed.gif;mask=mask.gif;control=control-guidance.gif;frame-start=3;frame-end=10`
-> -   `--image-seeds "seed.gif;floyd=stage1.gif;frame-start=3;frame-end=10"`
-> -   `--image-seeds "seed.gif;mask=mask.gif;floyd=stage1.gif;frame-start=3;frame-end=10"`
+> - `--image-seeds "seed.gif;frame-start=3;frame-end=10"`
+> - `--image-seeds "seed.gif;mask=mask.gif;frame-start=3;frame-end=10`
+> - `--image-seeds "seed.gif;control=control-guidance.gif;frame-start=3;frame-end=10`
+> - `--image-seeds "seed.gif;mask=mask.gif;control=control-guidance.gif;frame-start=3;frame-end=10`
+> - `--image-seeds "seed.gif;floyd=stage1.gif;frame-start=3;frame-end=10"`
+> - `--image-seeds "seed.gif;mask=mask.gif;floyd=stage1.gif;frame-start=3;frame-end=10"`
 
 Specifying a frame slice locally in an image seed overrides the global
 frame slice setting defined by `--frame-start` or `--frame-end`, and is
@@ -1826,16 +1829,16 @@ disk.
 
 Available encoder classes for torch models are:
 
--   AutoencoderKL
--   AsymmetricAutoencoderKL (Does not support `--vae-slicing` or
-    `--vae-tiling`)
--   AutoencoderTiny
--   ConsistencyDecoderVAE
+- AutoencoderKL
+- AsymmetricAutoencoderKL (Does not support `--vae-slicing` or
+  `--vae-tiling`)
+- AutoencoderTiny
+- ConsistencyDecoderVAE
 
 Available encoder classes for flax models are:
 
--   FlaxAutoencoderKL (Does not support `--vae-slicing` or
-    `--vae-tiling`)
+- FlaxAutoencoderKL (Does not support `--vae-slicing` or
+  `--vae-tiling`)
 
 The AutoencoderKL encoder class accepts huggingface repository
 slugs/blob links, .pt, .pth, .bin, .ckpt, and .safetensors files. Other
@@ -2338,20 +2341,20 @@ Control images for the Control Nets can be provided using
 When using `--control-nets` specifying control images via
 `--image-seeds` can be accomplished in these ways:
 
-> -   `--image-seeds "control-image.png"` (txt2img)
-> -   `--image-seeds "img2img-seed.png;control=control-image.png"`
->     (img2img)
-> -   `--image-seeds "img2img-seed.png;mask=mask.png;control=control-image.png"`
->     (inpainting)
+> - `--image-seeds "control-image.png"` (txt2img)
+> - `--image-seeds "img2img-seed.png;control=control-image.png"`
+    > (img2img)
+> - `--image-seeds "img2img-seed.png;mask=mask.png;control=control-image.png"`
+    > (inpainting)
 
 Multiple control image sources can be specified in these ways when using
 multiple control nets:
 
-> -   `--image-seeds "control-1.png, control-2.png"` (txt2img)
-> -   `--image-seeds "img2img-seed.png;control=control-1.png, control-2.png"`
->     (img2img)
-> -   `--image-seeds "img2img-seed.png;mask=mask.png;control=control-1.png, control-2.png"`
->     (inpainting)
+> - `--image-seeds "control-1.png, control-2.png"` (txt2img)
+> - `--image-seeds "img2img-seed.png;control=control-1.png, control-2.png"`
+    > (img2img)
+> - `--image-seeds "img2img-seed.png;mask=mask.png;control=control-1.png, control-2.png"`
+    > (inpainting)
 
 It is considered a syntax error if you specify a non-equal amount of
 control guidance images and `--control-nets` URIs and you will receive
@@ -2660,9 +2663,9 @@ delimiting the processor specification groups with + (the plus symbol)
 
 Like this:
 
-> -   `--control-nets "huggingface/controlnet1" "huggingface/controlnet2"`
-> -   `--image-seeds "image1.png, image2.png"`
-> -   `--control-image-processors "affect-image1" + "affect-image2"`
+> - `--control-nets "huggingface/controlnet1" "huggingface/controlnet2"`
+> - `--image-seeds "image1.png, image2.png"`
+> - `--control-image-processors "affect-image1" + "affect-image2"`
 
 Specifying a non-equal amount of control guidance images and
 `--control-nets` URIs is considered a syntax error and you will receive
@@ -2670,15 +2673,15 @@ an error message if you do so.
 
 You can use processor chaining as well:
 
-> -   `--control-nets "huggingface/controlnet1" "huggingface/controlnet2"`
-> -   `--image-seeds "image1.png, image2.png"`
-> -   `--control-image-processors "affect-image1" "affect-image1-again" + "affect-image2"`
+> - `--control-nets "huggingface/controlnet1" "huggingface/controlnet2"`
+> - `--image-seeds "image1.png, image2.png"`
+> - `--control-image-processors "affect-image1" "affect-image1-again" + "affect-image2"`
 
 In the case that you would only like the second image affected:
 
-> -   `--control-nets "huggingface/controlnet1" "huggingface/controlnet2"`
-> -   `--image-seeds "image1.png, image2.png"`
-> -   `--control-image-processors + "affect-image2"`
+> - `--control-nets "huggingface/controlnet1" "huggingface/controlnet2"`
+> - `--image-seeds "image1.png, image2.png"`
+> - `--control-image-processors + "affect-image2"`
 
 The plus symbol effectively creates a NULL processor as the first entry
 in the example above.
@@ -2692,9 +2695,9 @@ with the mechanism described above.
 This can be used with an arbitrary amount of control image sources and
 control nets, take for example the specification:
 
-> -   `--control-nets "huggingface/controlnet1" "huggingface/controlnet2" "huggingface/controlnet3"`
-> -   `--image-seeds "image1.png, image2.png, image3.png"`
-> -   `--control-image-processors + + "affect-image3"`
+> - `--control-nets "huggingface/controlnet1" "huggingface/controlnet2" "huggingface/controlnet3"`
+> - `--image-seeds "image1.png, image2.png, image3.png"`
+> - `--control-image-processors + + "affect-image3"`
 
 The two + (plus symbol) arguments indicate that the first two images
 mentioned in the control image specification in `--image-seeds` are not
@@ -2994,16 +2997,16 @@ There is also information about the previous file output of dgenerate
 that is available to use via Jinja2 templating which can be passed to
 `--image-seeds`, these include:
 
--   `{{ last_images }}` (An iterable of un-quoted filenames)
--   `{{ last_animations }}` (An iterable of un-quoted filenames)
+- `{{ last_images }}` (An iterable of un-quoted filenames)
+- `{{ last_animations }}` (An iterable of un-quoted filenames)
 
 There are templates for prompts, containing the previous prompt values:
 
--   `{{ last_prompts }}` (List of prompt objects with the un-quoted
-    attributes \'positive\' and \'negative\')
--   `{{ last_sdxl_second_prompts }}`
--   `{{ last_sdxl_refiner_prompts }}`
--   `{{ last_sdxl_refiner_second_prompts }}`
+- `{{ last_prompts }}` (List of prompt objects with the un-quoted
+  attributes \'positive\' and \'negative\')
+- `{{ last_sdxl_second_prompts }}`
+- `{{ last_sdxl_refiner_prompts }}`
+- `{{ last_sdxl_refiner_second_prompts }}`
 
 A list of template variables with their types and values that are
 assigned by a dgenerate invocation can be printed out using the
@@ -3011,17 +3014,17 @@ assigned by a dgenerate invocation can be printed out using the
 
 Available custom jinja2 functions/filters are:
 
--   `{{ first(list_of_items) }}` (First element in a list)
--   `{{ last(list_of_items) }}` (Last element in a list)
--   `{{ unquote('"unescape-me"') }}` (shell unquote / split, works on
-    strings and lists)
--   `{{ quote('escape-me') }}` (shell quote, works on strings and lists)
--   `{{ format_prompt(prompt_object) }}` (Format and quote one or more
-    prompt objects with their delimiter, works on single prompts and
-    lists)
--   `{{ gen_seeds(n) }}` (Return a list of random integer seeds in the
-    form of strings)
--   `{{ cwd() }}` (Return the current working directory as a string)
+- `{{ first(list_of_items) }}` (First element in a list)
+- `{{ last(list_of_items) }}` (Last element in a list)
+- `{{ unquote('"unescape-me"') }}` (shell unquote / split, works on
+  strings and lists)
+- `{{ quote('escape-me') }}` (shell quote, works on strings and lists)
+- `{{ format_prompt(prompt_object) }}` (Format and quote one or more
+  prompt objects with their delimiter, works on single prompts and
+  lists)
+- `{{ gen_seeds(n) }}` (Return a list of random integer seeds in the
+  form of strings)
+- `{{ cwd() }}` (Return the current working directory as a string)
 
 The above functions which possess arguments can be used as either a
 function or filter IE: `{{ "quote_me" | quote }}`
@@ -3739,21 +3742,48 @@ stabilityai/stable-diffusion-x4-upscaler
 
 The entirety of pythons builtin `glob` and `os.path` module are also
 accessible during templating, you can glob directories using functions
-from the glob module like so:
+from the glob module, you can also glob directory\'s using shell
+globbing.
 
 ``` jinja
 #! dgenerate 3.5.0
 
+# globbing can be preformed via shell expansion or using
+# the glob module inside jinja templates
+
+# note that shell globbing and home directory expansion
+# does not occur inside quoted strings
+
+# \echo can be use to show the results of globbing that
+# occurs during shell expansion. \print does not preform shell
+# expansion nor does \set or \setp, all other directives do, as well
+# as dgenerate invocations
+
+# shell globs which produce 0 files are considered an error
+
+\echo ../media/*.png
+
+\echo ~
+
+# \sete can be used to set a template variable to the result
+# of one or more shell globs
+
+\sete myfiles ../media/*.png
+
+
+# with Jinja2:
+
+
 # The most basic usage is full expansion of every file
 
-\set myfiles {{ quote(glob.glob('my_images/*.png')) }}
+\set myfiles {{ quote(glob.glob('../media/*.png')) }}
 
 \print {{ myfiles }}
 
 # If you have a LOT of files, you may want to
 # process them using an iterator like so
 
-{% for file in glob.iglob('my_images/*.png') %}
+{% for file in glob.iglob('../media/*.png') %}
     \print {{ quote(file) }}
 {% endfor %} !END
 
@@ -3767,7 +3797,7 @@ stabilityai/stable-diffusion-2-1
 --variant fp16
 --dtype float16
 --prompts "In the style of picaso"
---image-seeds {{ quote(glob.glob('my_images/*.png')) }}
+--image-seeds {{ quote(glob.glob('../media/*.png')) }}
 --output-path {{ quote(path.join(path.abspath('.'), 'output')) }}
 ```
 

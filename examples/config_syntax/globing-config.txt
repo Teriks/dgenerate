@@ -1,5 +1,29 @@
 #! dgenerate 3.5.0
 
+# globbing can be preformed via shell expansion or using
+# the glob module inside jinja templates
+
+# note that shell globbing and home directory expansion
+# does not occur inside quoted strings
+
+# \echo can be use to show the results of globbing that
+# occurs during shell expansion, \print does not preform shell expansion
+
+# shell globs which produce 0 files are considered an error
+
+\echo ../media/*.png
+
+\echo ~
+
+# \sete can be used to set a template variable to the result
+# of one or more shell globs
+
+\sete myfiles ../media/*.png
+
+
+# with Jinja2:
+
+
 # The most basic usage is full expansion of every file
 
 \set myfiles {{ quote(glob.glob('../media/*.png')) }}

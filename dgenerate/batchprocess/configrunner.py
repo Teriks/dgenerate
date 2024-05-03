@@ -18,10 +18,13 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import argparse
 import collections.abc
 import glob
 import inspect
+import itertools
 import os
+import pathlib
 import shlex
 import shutil
 import subprocess
@@ -79,17 +82,29 @@ def _quote(strings: typing.Union[str, collections.abc.Iterable[typing.Any]]):
     Shell quote a string or iterable of strings
     """
     if isinstance(strings, str):
-        return shlex.quote(str(strings))
+        return shlex.quote(strings)
     return ' '.join(shlex.quote(str(s)) for s in strings)
 
 
-def _unquote(strings: typing.Union[str, collections.abc.Iterable[typing.Any]]):
+def _unquote(strings: typing.Union[str, collections.abc.Iterable[typing.Any]], expand: bool = False):
     """
-    Un-Shell quote a string or iterable of strings
+    Un-Shell quote a string or iterable of strings (shell parse)
+
+    The expand argument can be used to indicate that you wish to expand
+    shell globs and the home directory operator
     """
     if isinstance(strings, str):
-        return shlex.split(str(strings))
-    return [shlex.split(str(s)) for s in strings]
+        return _textprocessing.shell_parse(strings,
+                                           expand_home=expand,
+                                           expand_glob=expand,
+                                           expand_vars=False)
+    return list(
+        itertools.chain.from_iterable(
+            _textprocessing.shell_parse(
+                str(s),
+                expand_home=expand,
+                expand_glob=expand,
+                expand_vars=False) for s in strings))
 
 
 def _last(iterable: typing.Union[list, collections.abc.Iterable[typing.Any]]):
@@ -528,10 +543,15 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             raise _batchprocessor.BatchProcessError(
                 '\\exec directive must be passed at least one argument.')
 
+        _messages.log(self.executing_text,
+                      underline=True)
+
         args = list(args)
 
         open_files = []
         open_processes = []
+
+        process = None
 
         try:
             stdin = None
@@ -563,10 +583,15 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             for command in commands:
                 if not command:
                     raise _batchprocessor.BatchProcessError(
-                        f'no command specified to pipe to.')
+                        f'no command specified to pipe to / from.')
 
-                stdout = _messages.get_message_file()
-                stderr = _messages.get_error_file()
+                def stdout_handler(line):
+                    _messages.log(line)
+                    _messages.get_message_file().flush()
+
+                def stderr_handler(line):
+                    _messages.log(line, level=_messages.ERROR)
+                    _messages.get_error_file().flush()
 
                 redirects = {'>', '1>', '2>', '&>', '>>', '1>>', '2>>', '&>>', '2>&1', '1>&2'}
                 _i = 0
@@ -575,9 +600,9 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                         remove_cnt = 1
                         mode = 'a' if '>>' in command[_i] else 'w'
                         if command[_i] == '2>&1':
-                            stderr = stdout
+                            stderr_handler = stdout_handler
                         elif command[_i] == '1>&2':
-                            stdout = stderr
+                            stdout_handler = stderr_handler
                         else:
                             remove_cnt = 2
                             try:
@@ -587,9 +612,13 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                                 raise _batchprocessor.BatchProcessError(
                                     f'{command[_i]} no output file specified.')
                             if command[_i][0] != '2':
-                                stdout = file
+                                def stdout_handler(line):
+                                    print(line, file=file)
+                                    file.flush()
                             if command[_i][0] != '1':
-                                stderr = file
+                                def stderr_handler(line):
+                                    print(line, file=file)
+                                    file.flush()
                         command = command[:_i] + command[_i + remove_cnt:]
                         _i -= remove_cnt
                     _i += 1
@@ -627,24 +656,23 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                 if line:
                     yield b''.join(line).decode('utf-8')
 
-            def handle_stream(stream, out_stream):
+            def handle_stream(stream, handler):
                 for line in readlines_unbuffered(stream):
                     if stop_threads.is_set():
                         break
                     text = line.rstrip()
                     if text:
-                        print(text, file=out_stream)
-                        out_stream.flush()
+                        handler(text)
 
             thread1 = threading.Thread(
                 target=handle_stream,
-                args=(process.stdout, stdout))
+                args=(process.stdout, stdout_handler))
             thread1.daemon = True
             thread1.start()
 
             thread2 = threading.Thread(
                 target=handle_stream,
-                args=(process.stderr, stderr))
+                args=(process.stderr, stderr_handler))
             thread2.daemon = True
             thread2.start()
 
@@ -670,51 +698,108 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         """
         List directory contents.
 
-        Basic implementation of the Unix 'ls' command, accepts the argument -l
+        Basic implementation of the Unix 'ls' command, accepts the argument -l and -a
+
+        Also accepts -la or -al
         """
 
-        long = '-l' in args
-        if long:
-            args = [a for a in args if a != '-l']
+        class LSParser(argparse.ArgumentParser):
 
-        if len(args) == 1:
-            paths = [args[0]]
-        elif len(args) > 1:
-            paths = args
-        else:
-            paths = ['.']
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self.return_code = None
 
-        _messages.log('')
+            def exit(self, status=0, message=None):
+                if message is not None:
+                    if status != 0:
+                        _messages.log(
+                            message.rstrip(),
+                            level=_messages.ERROR)
+                    else:
+                        _messages.log(
+                            message.rstrip())
+                self.return_code = status
 
-        for path in paths:
-            if not os.path.exists(path):
-                _messages.log(f'ls: {path}: No such file or directory')
+        parser = LSParser(prog='ls',
+                          description='List directory contents.')
+        parser.add_argument('paths', metavar='PATH', type=str, nargs='*', default=['.'],
+                            help='the path(s) to list')
+        parser.add_argument('-l', action='store_true',
+                            help='use a long listing format')
+        parser.add_argument('-a', '--all', action='store_true',
+                            help='do not ignore entries starting with .')
+
+        args = parser.parse_args(args)
+
+        if parser.return_code is not None:
+            return parser.return_code
+
+        _messages.log(self.executing_text,
+                      underline=True)
+
+        paths = args.paths
+        long_opt = args.l
+        all_opt = args.all
+
+        directories = []
+        files = []
+
+        for path in map(pathlib.Path, paths):
+            if not path.exists():
+                _messages.log(f'\ls: {path}: No such file or directory')
                 continue
-            if len(paths) > 1:
+
+            if path.is_file():
+                files.append(path)
+            if path.is_dir():
+                directories.append(path)
+
+        if long_opt and files:
+            max_size_length = max(len(str(file.stat().st_size)) for file in files)
+
+        for path in files:
+            if long_opt:
+                file_stat = path.stat()
+                file_permissions = stat.filemode(file_stat.st_mode)
+                num_links = file_stat.st_nlink
+                file_size = file_stat.st_size
+                mod_time = time.ctime(file_stat.st_mtime)
+                _messages.log(
+                    f'{file_permissions:<11} {num_links:<3} '
+                    f'{file_size:<{max_size_length}} {mod_time:<25} {path.name}')
+            else:
+                _messages.log(f'{path.name}')
+
+        if files and directories:
+            _messages.log()
+
+        for idx, path in enumerate(directories):
+            if len(directories) > 1 or len(files) > 0:
                 _messages.log(f'{path}:')
-            if long:
-                max_size_length = \
-                    max(len(str(os.stat(os.path.join(path, filename)).st_size)) for filename in os.listdir(path)
-                        if all or not filename.startswith('.'))
+            if long_opt:
+                lens = [len(str(p.stat().st_size))
+                        for p in path.iterdir() if all_opt or not
+                        p.name.startswith('.')]
+                max_size_length = max(lens) if lens else 0
 
-            for filename in sorted(os.listdir(path)):
-                if not all and filename.startswith('.'):
+            for sub_path in sorted(path.iterdir()):
+                if not all_opt and sub_path.name.startswith('.'):
                     continue
-
-                if long:
-                    file_stat = os.stat(os.path.join(path, filename))
+                if long_opt:
+                    file_stat = sub_path.stat()
                     file_permissions = stat.filemode(file_stat.st_mode)
                     num_links = file_stat.st_nlink
                     file_size = file_stat.st_size
                     mod_time = time.ctime(file_stat.st_mtime)
                     _messages.log(
                         f'{file_permissions:<11} {num_links:<3} '
-                        f'{file_size:<{max_size_length}} {mod_time:<25} {filename}')
+                        f'{file_size:<{max_size_length}} {mod_time:<25} '
+                        f'{sub_path.name}{"/" if sub_path.is_dir() else ""}')
                 else:
-                    _messages.log(
-                        f'{filename}')
-            if len(paths) > 1:
-                _messages.log('')
+                    _messages.log(f'{sub_path.name}{"/" if sub_path.is_dir() else ""}')
+
+            if len(directories) > 1 and idx < len(directories)-1:
+                _messages.log()
 
         return 0
 
