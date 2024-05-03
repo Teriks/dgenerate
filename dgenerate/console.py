@@ -200,7 +200,7 @@ class _DgenerateConsole(tk.Tk):
         self._auto_scroll_check_var.set(True)
         self._auto_scroll_checkbox = tk.Checkbutton(
             top_menu_frame,
-            text='Auto Scroll Output', variable=self._auto_scroll_check_var, tool)
+            text='Auto Scroll Output', variable=self._auto_scroll_check_var)
         self._auto_scroll_checkbox.pack(side='right', anchor='e')
 
         # Create the top text input pane
