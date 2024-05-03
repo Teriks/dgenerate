@@ -36,7 +36,6 @@ import os
 
 import psutil
 
-
 class _ScrolledText(tk.Frame):
     def __init__(self, master=None, **kwargs):
         super().__init__(master, **kwargs)
@@ -194,6 +193,15 @@ class _DgenerateConsole(tk.Tk):
             text='Word Wrap Input',
             command=self._toggle_input_wrap, variable=self._word_wrap_input_check_var)
         self._word_wrap_input_checkbox.pack(side='right', anchor='e')
+
+        # Create the auto scroll checkbox (scroll on input)
+
+        self._auto_scroll_check_var = tk.BooleanVar(value=False)
+        self._auto_scroll_check_var.set(True)
+        self._auto_scroll_checkbox = tk.Checkbutton(
+            top_menu_frame,
+            text='Auto Scroll Output', variable=self._auto_scroll_check_var, tool)
+        self._auto_scroll_checkbox.pack(side='right', anchor='e')
 
         # Create the top text input pane
 
@@ -617,7 +625,10 @@ class _DgenerateConsole(tk.Tk):
         user_input = self._input_text.text.get('1.0', 'end-1c')
 
         self._input_text.text.delete(1.0, tk.END)
-        self._output_text.text.see(tk.END)
+
+        if self._auto_scroll_check_var.get():
+            self._output_text.text.see(tk.END)
+
         self._sub_process.stdin.write(user_input + '\n\n')
 
         if self._command_history:
