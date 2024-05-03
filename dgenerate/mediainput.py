@@ -217,11 +217,17 @@ class VideoReader(_imageprocessors.ImageProcessorMixin, AnimationReader):
 
         :raises ValueError: if file_source lacks a file extension, it is needed
             to determine the video file format.
+            
+        :raises MediaIdentificationError: If the video data is an unknown format or corrupt.
         """
         self._filename = file
         self._file_source = file_source
         if isinstance(file, str):
-            self._container = av.open(file, 'r')
+            try:
+                self._container = av.open(file, 'r')
+            except av.error.InvalidDataError:
+                raise MediaIdentificationError(
+                    f'Error loading video file, unknown format or invalid data: "{file_source}"')
         else:
             _, ext = os.path.splitext(file_source)
             if not ext:
@@ -306,8 +312,16 @@ class AnimatedImageReader(_imageprocessors.ImageProcessorMixin, AnimationReader)
             or ``1`` disables alignment.
 
         :param image_processor: optionally process every frame with this image processor
+        
+        :raises MediaIdentificationError: If the animated image data is an unknown format or corrupt.
         """
-        self._img = PIL.Image.open(file)
+
+        try:
+            self._img = PIL.Image.open(file)
+        except PIL.UnidentifiedImageError:
+            raise MediaIdentificationError(
+                f'Error loading image file, unknown format or invalid data: "{file_source}"')
+
         self._file_source = file_source
 
         self._iter = PIL.ImageSequence.Iterator(self._img)
@@ -587,8 +601,8 @@ def mimetype_is_supported(mimetype: str) -> bool:
     :return: bool
     """
     return mimetype_is_static_image(mimetype) or \
-           mimetype_is_animated_image(mimetype) or \
-           mimetype_is_video(mimetype)
+        mimetype_is_animated_image(mimetype) or \
+        mimetype_is_video(mimetype)
 
 
 class ImageSeedParseResult:
@@ -1054,7 +1068,6 @@ def _create_web_cache_file(url,
                            mime_acceptable_desc: typing.Optional[str] = None,
                            mimetype_is_supported: typing.Optional[typing.Callable[[str], bool]] = mimetype_is_supported) \
         -> tuple[str, str]:
-
     cache_dir = get_web_cache_directory()
 
     def _mimetype_is_supported(mimetype):
@@ -1215,6 +1228,14 @@ def fetch_media_data_stream(uri: str) -> tuple[str, typing.BinaryIO]:
     return mime_type, open(uri, 'rb')
 
 
+class MediaIdentificationError(Exception):
+    """
+    Raised when a media file is being loaded and it fails to load
+    due to containing invalid or unexpected data.
+    """
+    pass
+
+
 def create_image(
         path_or_file: typing.Union[typing.BinaryIO, str],
         file_source: str,
@@ -1226,6 +1247,8 @@ def create_image(
     The image is oriented according to any EXIF directives. Image is aligned
     to ``align`` in every case, specifying ``None`` or ``1`` for ``align``
     disables alignment.
+    
+    :raises MediaIdentificationError: If the image data is an unknown format or corrupt.
 
     :param path_or_file: file path or binary IO object
     :param file_source: :py:attr:`PIL.Image.Image.filename` is set to this value
@@ -1240,24 +1263,29 @@ def create_image(
     else:
         file = path_or_file
 
-    if resize_resolution is None:
-        with PIL.Image.open(file) as img, _image.to_rgb(img) as rgb_img:
-            e_img = _exif_orient(rgb_img)
-            e_img.filename = file_source
-            if not _image.is_aligned(e_img.size, align=align):
-                with e_img:
-                    resized = _image.resize_image(e_img, size=None, align=align)
-                    return resized
-            else:
-                return e_img
-    else:
-        with PIL.Image.open(file) as img, _image.to_rgb(img) as rgb_img, _exif_orient(rgb_img) as o_img:
-            o_img.filename = file_source
-            resized = _image.resize_image(img=o_img,
-                                          size=resize_resolution,
-                                          aspect_correct=aspect_correct,
-                                          align=align)
-            return resized
+    try:
+
+        if resize_resolution is None:
+            with PIL.Image.open(file) as img, _image.to_rgb(img) as rgb_img:
+                e_img = _exif_orient(rgb_img)
+                e_img.filename = file_source
+                if not _image.is_aligned(e_img.size, align=align):
+                    with e_img:
+                        resized = _image.resize_image(e_img, size=None, align=align)
+                        return resized
+                else:
+                    return e_img
+        else:
+            with PIL.Image.open(file) as img, _image.to_rgb(img) as rgb_img, _exif_orient(rgb_img) as o_img:
+                o_img.filename = file_source
+                resized = _image.resize_image(img=o_img,
+                                              size=resize_resolution,
+                                              aspect_correct=aspect_correct,
+                                              align=align)
+                return resized
+    except PIL.UnidentifiedImageError:
+        raise MediaIdentificationError(
+            f'Error loading image file, unknown format or invalid data: "{file_source}"')
 
 
 def create_animation_reader(mimetype: str,
@@ -1278,6 +1306,8 @@ def create_animation_reader(mimetype: str,
     files and Animated Images respectively.
 
     :raise UnknownMimetypeError: on unknown ``mimetype`` value
+    
+    :raise MediaIdentificationError: If the file data is an unknown format or corrupt.
 
     :param mimetype: one of :py:func:`.get_supported_mimetypes`
 
@@ -1799,7 +1829,7 @@ def _flatten(xs):
 
 
 ControlProcessorSpec = typing.Union[_imageprocessors.ImageProcessor,
-                                    collections.abc.Sequence[_imageprocessors.ImageProcessor], None]
+collections.abc.Sequence[_imageprocessors.ImageProcessor], None]
 
 
 def _validate_control_image_processor_count(processors, guidance_images):
