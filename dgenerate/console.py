@@ -617,6 +617,7 @@ class _DgenerateConsole(tk.Tk):
         user_input = self._input_text.text.get('1.0', 'end-1c')
 
         self._input_text.text.delete(1.0, tk.END)
+        self._output_text.text.see(tk.END)
         self._sub_process.stdin.write(user_input + '\n\n')
 
         if self._command_history:
