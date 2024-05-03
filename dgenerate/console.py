@@ -36,6 +36,7 @@ import os
 
 import psutil
 
+
 class _ScrolledText(tk.Frame):
     def __init__(self, master=None, **kwargs):
         super().__init__(master, **kwargs)
@@ -343,6 +344,7 @@ class _DgenerateConsole(tk.Tk):
         self._current_command_index = -1
 
         self._load_command_history()
+        self._load_settings()
 
         self._write_stdout_output(
             'This console provides a REPL for dgenerates configuration language.\n\n'
@@ -600,6 +602,25 @@ class _DgenerateConsole(tk.Tk):
             self._input_text.text.mark_set(tk.INSERT, tk.END)
             return "break"
 
+    def _load_settings(self):
+        settings_path = pathlib.Path(pathlib.Path.home(), '.dgenerate_console_settings')
+        if settings_path.exists():
+            with settings_path.open('r') as file:
+                config = json.load(file)
+                self._auto_scroll_check_var.set(config.get('auto_scroll_on_input', True))
+                self._word_wrap_input_check_var.set(config.get('word_wrap_input', True))
+                self._word_wrap_output_check_var.set(config.get('word_wrap_output', True))
+
+    def save_settings(self):
+        settings_path = pathlib.Path(pathlib.Path.home(), '.dgenerate_console_settings')
+        with settings_path.open('w') as file:
+            config = {
+                'auto_scroll_on_input': self._auto_scroll_check_var.get(),
+                'word_wrap_input': self._word_wrap_input_check_var.get(),
+                'word_wrap_output': self._word_wrap_output_check_var.get()
+            }
+            json.dump(config, file)
+
     def _load_command_history(self):
         if self._max_command_history == 0:
             return
@@ -647,10 +668,12 @@ class _DgenerateConsole(tk.Tk):
 
     def destroy(self) -> None:
         self._sub_process.terminate()
+        self.save_settings()
         super().destroy()
 
 
 def main(args: collections.abc.Sequence[str]):
+    app = None
     try:
         sys.stdout.reconfigure(encoding='utf-8')
         sys.stderr.reconfigure(encoding='utf-8')
@@ -658,6 +681,8 @@ def main(args: collections.abc.Sequence[str]):
         app = _DgenerateConsole()
         app.mainloop()
     except KeyboardInterrupt:
+        if app is not None:
+            app.save_settings()
         print('Exiting dgenerate console UI due to keyboard interrupt!',
               file=sys.stderr)
         sys.exit(1)
