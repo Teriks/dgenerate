@@ -150,12 +150,12 @@ def invoke_dgenerate_events(
     if render_loop is None:
         render_loop = _renderloop.RenderLoop()
 
-    def rethrow_with_message(e):
+    def rethrow_with_message(error):
         if log_error:
-            _messages.log(f'dgenerate: error: {str(e).strip()}',
+            _messages.log(f'dgenerate: error: {str(error).strip()}',
                           level=_messages.ERROR)
         if throw:
-            raise _arguments.DgenerateUsageError(e)
+            raise _arguments.DgenerateUsageError(error)
         return DgenerateExitEvent(invoke_dgenerate_events, 1)
 
     try:

@@ -39,8 +39,8 @@ os.chdir(script_dir)
 
 # Remove old artifacts
 
-for dir in ['venv', 'build', 'dist', 'obj', 'bin']:
-    shutil.rmtree(dir, ignore_errors=True)
+for directory in ['venv', 'build', 'dist', 'obj', 'bin']:
+    shutil.rmtree(directory, ignore_errors=True)
 
 # Create and activate VENV
 

@@ -256,7 +256,7 @@ class VideoReader(_imageprocessors.ImageProcessorMixin, AnimationReader):
         if total_frames <= 0:
             # webm decode bug?
             total_frames = sum(1 for _ in self._container.decode(video=0))
-            self._container.seek(0, whence='time')
+            self._container.seek(0)
         self._iter = self._container.decode(video=0)
 
         super().__init__(width=width,

@@ -21,7 +21,6 @@
 
 import argparse
 import collections.abc
-import sys
 import typing
 
 import dgenerate.arguments as _arguments
