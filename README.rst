@@ -3625,7 +3625,6 @@ such as VAEs etc. outside of relying on the caching system.
     # like a server that reads from stdin :)
 
     \clear_modules stage_1_modules
-    ```
 
 The entirety of pythons builtin ``glob`` and ``os.path`` module are also accessible during templating, you
 can glob directories using functions from the glob module, you can also glob directory's using shell
