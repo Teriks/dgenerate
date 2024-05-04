@@ -160,27 +160,35 @@ class _DgenerateConsole(tk.Tk):
         options_menu = tk.Menu(menu_bar, tearoff=0)
         run_menu = tk.Menu(menu_bar, tearoff=0)
 
-        run_menu.add_command(label='Run', command=lambda: self._handle_input(None))
+        run_menu.add_command(label='Run', command=self._run_input_text)
         run_menu.add_command(label='Kill (ctrl-c)', command=self._kill_sub_process)
 
         # Create the Multi-line Input Checkbutton
 
         self._multi_line_input_check_var = tk.BooleanVar(value=False)
+
+        self._multi_line_input_check_var.trace_add('write',
+                                                   lambda *args: self._input_text.text.configure(
+                                                       insertbackground='red') if self._multi_line_input_check_var.get()
+                                                   else self._input_text.text.configure(insertbackground='black'))
+
         options_menu.add_checkbutton(label='Multiline input (insert key)',
                                      variable=self._multi_line_input_check_var)
 
         # Create the word wrap output checkbox
 
         self._word_wrap_output_check_var = tk.BooleanVar(value=True)
+        self._word_wrap_output_check_var.trace_add('write', self._toggle_output_wrap)
+
         options_menu.add_checkbutton(label='Word Wrap Output',
-                                     command=self._toggle_output_wrap,
                                      variable=self._word_wrap_output_check_var)
 
         # Create the word wrap input checkbox
 
         self._word_wrap_input_check_var = tk.BooleanVar(value=True)
+        self._word_wrap_input_check_var.trace_add('write', self._toggle_input_wrap)
+
         options_menu.add_checkbutton(label='Word Wrap Input',
-                                     command=self._toggle_input_wrap,
                                      variable=self._word_wrap_input_check_var)
 
         # Create the auto scroll checkbox (scroll on input)
@@ -200,7 +208,11 @@ class _DgenerateConsole(tk.Tk):
 
         self._input_text = _ScrolledText(self._paned_window)
 
-        self._input_text.text.bind('<Return>', self._handle_input)
+        self._input_text.text.bind('<Return>',
+                                   lambda e:
+                                   None if self._multi_line_input_check_var.get()
+                                   else self._run_input_text())
+
         self._input_text.text.bind('<Up>', self._show_previous_command)
         self._input_text.text.bind('<Down>', self._show_next_command)
         self._input_text.text.bind('<Button-3>',
@@ -377,14 +389,14 @@ class _DgenerateConsole(tk.Tk):
                 self._find_dialog.destroy()
         self._find_dialog = _FindDialog(self, name, text_box)
 
-    def _toggle_input_wrap(self):
+    def _toggle_input_wrap(self, *args):
         if self._word_wrap_input_check_var.get():
             self._input_text.enable_word_wrap()
 
         else:
             self._input_text.disable_word_wrap()
 
-    def _toggle_output_wrap(self):
+    def _toggle_output_wrap(self, *args):
         if self._word_wrap_output_check_var.get():
             self._output_text.enable_word_wrap()
 
@@ -587,7 +599,6 @@ class _DgenerateConsole(tk.Tk):
             return b''.join(line)
 
     def _read_sub_process_stream_thread(self, get_read_stream, write_out_handler):
-
         exit_message = True
         while True:
             with self._termination_lock:
@@ -640,16 +651,6 @@ class _DgenerateConsole(tk.Tk):
                 self._word_wrap_input_check_var.set(config.get('word_wrap_input', True))
                 self._word_wrap_output_check_var.set(config.get('word_wrap_output', True))
 
-            if self._word_wrap_input_check_var.get():
-                self._input_text.enable_word_wrap()
-            else:
-                self._input_text.disable_word_wrap()
-
-            if self._word_wrap_output_check_var.get():
-                self._output_text.enable_word_wrap()
-            else:
-                self._output_text.disable_word_wrap()
-
     def save_settings(self):
         settings_path = pathlib.Path(pathlib.Path.home(), '.dgenerate_console_settings')
         with settings_path.open('w') as file:
@@ -678,10 +679,7 @@ class _DgenerateConsole(tk.Tk):
         with history_path.open('w') as file:
             json.dump(self._command_history[-self._max_command_history:], file)
 
-    def _handle_input(self, event):
-        if self._multi_line_input_check_var.get():
-            return
-
+    def _run_input_text(self):
         user_input = self._input_text.text.get('1.0', 'end-1c')
 
         self._input_text.text.delete(1.0, tk.END)
