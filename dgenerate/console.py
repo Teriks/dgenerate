@@ -173,12 +173,14 @@ class _DgenerateConsole(tk.Tk):
 
         self._word_wrap_output_check_var = tk.BooleanVar(value=True)
         options_menu.add_checkbutton(label='Word Wrap Output',
+                                     command=self._toggle_output_wrap,
                                      variable=self._word_wrap_output_check_var)
 
         # Create the word wrap input checkbox
 
         self._word_wrap_input_check_var = tk.BooleanVar(value=True)
         options_menu.add_checkbutton(label='Word Wrap Input',
+                                     command=self._toggle_input_wrap,
                                      variable=self._word_wrap_input_check_var)
 
         # Create the auto scroll checkbox (scroll on input)
@@ -345,6 +347,16 @@ class _DgenerateConsole(tk.Tk):
 
         self._load_command_history()
         self._load_settings()
+
+        if self._word_wrap_input_check_var.get():
+            self._input_text.enable_word_wrap()
+        else:
+            self._input_text.disable_word_wrap()
+
+        if self._word_wrap_output_check_var.get():
+            self._output_text.enable_word_wrap()
+        else:
+            self._output_text.disable_word_wrap()
 
         self._write_stdout_output(
             'This console provides a REPL for dgenerates configuration language.\n\n'
