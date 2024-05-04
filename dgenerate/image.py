@@ -78,7 +78,6 @@ def is_power_of_two(iterable: typing.Iterable[int]) -> bool:
     Check if all elements are a power of 2.
 
     :param iterable: Elements to test
-    :param align: The alignment value, ``None`` indicates no alignment.
 
     :return: bool
     """
@@ -95,7 +94,6 @@ def nearest_power_of_two(iterable: typing.Iterable[int]) -> tuple:
     Round all elements to the nearest power of two and return a tuple.
 
     :param iterable: Elements to round
-    :param align: The alignment value, ``None`` indicates no alignment.
 
     :return: tuple(...)
     """

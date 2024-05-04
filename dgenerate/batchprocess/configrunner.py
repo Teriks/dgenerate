@@ -237,12 +237,12 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'cwd': _cwd
         }
 
-        def return_zero(func, help):
+        def return_zero(func, help_text):
             def wrap(args):
                 func()
                 return 0
 
-            wrap.__doc__ = help
+            wrap.__doc__ = help_text
 
             return wrap
 
@@ -254,21 +254,21 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'image_processor_help': self._image_processor_help_directive,
             'clear_model_cache': return_zero(
                 _pipelinewrapper.clear_model_cache,
-                help='Clear all user specified models from the in memory cache.'),
+                help_text='Clear all user specified models from the in memory cache.'),
             'clear_pipeline_cache': return_zero(
                 _pipelinewrapper.clear_pipeline_cache,
-                help='Clear all diffusers pipelines from the in memory cache, '
-                     'this will not clear user specified VAEs, UNets, and ControlNet models, '
-                     'just pipeline objects which may or may not have automatically loaded those for you.'),
+                help_text='Clear all diffusers pipelines from the in memory cache, '
+                          'this will not clear user specified VAEs, UNets, and ControlNet models, '
+                          'just pipeline objects which may or may not have automatically loaded those for you.'),
             'clear_unet_cache': return_zero(
                 _pipelinewrapper.clear_unet_cache,
-                help='Clear all user specified UNet models from the in memory cache.'),
+                help_text='Clear all user specified UNet models from the in memory cache.'),
             'clear_vae_cache': return_zero(
                 _pipelinewrapper.clear_vae_cache,
-                help='Clear all user specified VAE models from the in memory cache.'),
+                help_text='Clear all user specified VAE models from the in memory cache.'),
             'clear_control_net_cache': return_zero(
                 _pipelinewrapper.clear_control_net_cache,
-                help='Clear all user specified ControlNet models from the in memory cache.'),
+                help_text='Clear all user specified ControlNet models from the in memory cache.'),
             'save_modules': self._save_modules_directive,
             'use_modules': self._use_modules_directive,
             'clear_modules': self._clear_modules_directive,
@@ -580,18 +580,18 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
             previous_process = None
 
+            def stdout_handler(line):
+                _messages.get_message_file().buffer.write(line)
+                _messages.get_message_file().flush()
+
+            def stderr_handler(line):
+                _messages.get_error_file().buffer.write(line)
+                _messages.get_error_file().flush()
+
             for command in commands:
                 if not command:
                     raise _batchprocessor.BatchProcessError(
                         f'no command specified to pipe to / from.')
-
-                def stdout_handler(line):
-                    _messages.get_message_file().buffer.write(line)
-                    _messages.get_message_file().flush()
-
-                def stderr_handler(line):
-                    _messages.get_error_file().buffer.write(line)
-                    _messages.get_error_file().flush()
 
                 redirects = {'>', '1>', '2>', '&>', '>>', '1>>', '2>>', '&>>', '2>&1', '1>&2'}
                 _i = 0
@@ -856,13 +856,13 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         Pop the last directory of the directory stack and change to that directory.
         """
         try:
-            dir = self._directory_stack.pop()
-            os.chdir(dir)
-            _messages.log(f'Working Directory Changed To: "{dir}"')
+            directory = self._directory_stack.pop()
+            os.chdir(directory)
+            _messages.log(f'Working Directory Changed To: "{directory}"')
         except IndexError:
             raise _batchprocessor.BatchProcessError('\\popd failed, no directory on the stack.')
         except OSError as e:
-            self._directory_stack.append(dir)
+            self._directory_stack.append(directory)
             raise _batchprocessor.BatchProcessError(e)
         return 0
 

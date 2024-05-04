@@ -144,8 +144,8 @@ def supported_animation_writer_formats():
     """
     PIL.Image.init()
 
-    return ['mp4'] + [ext for ext in (ext.lstrip('.') for ext, format
-                                      in PIL.Image.EXTENSION.items() if format in PIL.Image.SAVE_ALL) if
+    return ['mp4'] + [ext for ext in (ext.lstrip('.') for ext, file_format
+                                      in PIL.Image.EXTENSION.items() if file_format in PIL.Image.SAVE_ALL) if
                       ext in {'gif', 'webp', 'apng', 'png'}]
 
 

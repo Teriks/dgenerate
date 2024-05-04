@@ -22,7 +22,6 @@ import collections.abc
 import json
 import pathlib
 import queue
-import re
 import subprocess
 import sys
 import time
@@ -33,6 +32,7 @@ import tkinter.font
 import tkinter.filedialog
 import tkinter.scrolledtext
 import os
+import typing
 
 import psutil
 
@@ -348,16 +348,6 @@ class _DgenerateConsole(tk.Tk):
         self._load_command_history()
         self._load_settings()
 
-        if self._word_wrap_input_check_var.get():
-            self._input_text.enable_word_wrap()
-        else:
-            self._input_text.disable_word_wrap()
-
-        if self._word_wrap_output_check_var.get():
-            self._output_text.enable_word_wrap()
-        else:
-            self._output_text.disable_word_wrap()
-
         self._write_stdout_output(
             'This console provides a REPL for dgenerates configuration language.\n\n'
             'Enter configuration above and hit enter to submit, use the insert key to enter\n'
@@ -560,7 +550,7 @@ class _DgenerateConsole(tk.Tk):
         finally:
             self.after(100, self._update_cwd)
 
-    def _write_stdout_output(self, text):
+    def _write_stdout_output(self, text: typing.Union[bytes, str]):
         if isinstance(text, str):
             text = text.encode('utf-8')
 
@@ -568,7 +558,7 @@ class _DgenerateConsole(tk.Tk):
         sys.stdout.flush()
         self._output_text_queue.put(text.decode('utf-8'))
 
-    def _write_stderr_output(self, text):
+    def _write_stderr_output(self, text: typing.Union[bytes, str]):
         if isinstance(text, str):
             text = text.encode('utf-8')
 
@@ -646,15 +636,25 @@ class _DgenerateConsole(tk.Tk):
         if settings_path.exists():
             with settings_path.open('r') as file:
                 config = json.load(file)
-                self._auto_scroll_on_run_check_var.set(config.get('auto_scroll_on_input', True))
+                self._auto_scroll_on_run_check_var.set(config.get('auto_scroll_on_run', True))
                 self._word_wrap_input_check_var.set(config.get('word_wrap_input', True))
                 self._word_wrap_output_check_var.set(config.get('word_wrap_output', True))
+
+            if self._word_wrap_input_check_var.get():
+                self._input_text.enable_word_wrap()
+            else:
+                self._input_text.disable_word_wrap()
+
+            if self._word_wrap_output_check_var.get():
+                self._output_text.enable_word_wrap()
+            else:
+                self._output_text.disable_word_wrap()
 
     def save_settings(self):
         settings_path = pathlib.Path(pathlib.Path.home(), '.dgenerate_console_settings')
         with settings_path.open('w') as file:
             config = {
-                'auto_scroll_on_input': self._auto_scroll_on_run_check_var.get(),
+                'auto_scroll_on_run': self._auto_scroll_on_run_check_var.get(),
                 'word_wrap_input': self._word_wrap_input_check_var.get(),
                 'word_wrap_output': self._word_wrap_output_check_var.get()
             }
