@@ -682,7 +682,8 @@ class _DgenerateConsole(tk.Tk):
     def _run_input_text(self):
         user_input = self._input_text.text.get('1.0', 'end-1c')
 
-        self._input_text.text.delete(1.0, tk.END)
+        if not self._multi_line_input_check_var.get():
+            self._input_text.text.delete(1.0, tk.END)
 
         if self._auto_scroll_on_run_check_var.get():
             self._output_text.text.see(tk.END)
