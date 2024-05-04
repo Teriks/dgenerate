@@ -152,7 +152,7 @@ def remove_logging_handler(callback: typing.Callable[[typing.ParamSpecArgs, int,
     _handlers.remove(callback)
 
 
-def log(*args: typing.Any, level=INFO, underline=False, underline_char='=', end='\n', flush=AUTO_FLUSH_MESSAGES):
+def log(*args: typing.Any, level=INFO, underline=False, underline_char='='):
     """
     Write a message to dgenerates log
 
@@ -180,9 +180,9 @@ def log(*args: typing.Any, level=INFO, underline=False, underline_char='=', end=
 
     if underline:
         print(_textprocessing.underline(prefix + ' '.join(str(a) for a in args),
-                                        underline_char=underline_char), file=file, end=end, flush=flush)
+                                        underline_char=underline_char), file=file, flush=AUTO_FLUSH_MESSAGES)
     else:
-        print(prefix + ' '.join(str(a) for a in args), file=file, end=end, flush=flush)
+        print(prefix + ' '.join(str(a) for a in args), file=file, flush=AUTO_FLUSH_MESSAGES)
 
     for handler in _handlers:
         handler(*args,
