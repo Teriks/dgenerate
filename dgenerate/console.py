@@ -159,6 +159,19 @@ class _DgenerateConsole(tk.Tk):
 
         options_menu = tk.Menu(menu_bar, tearoff=0)
         run_menu = tk.Menu(menu_bar, tearoff=0)
+        file_menu = tk.Menu(menu_bar, tearoff=0)
+
+        file_menu.add_command(label='Load',
+                              command=self._load_input_entry_text)
+        file_menu.add_command(label='Save',
+                              command=self._load_input_entry_text)
+        file_menu.add_separator()
+        file_menu.add_command(label='New Window',
+                              command=lambda:
+                              subprocess.Popen('dgenerate --dgenerate-console',
+                                               stdout=subprocess.DEVNULL,
+                                               stderr=subprocess.DEVNULL,
+                                               start_new_session=True))
 
         run_menu.add_command(label='Run', command=self._run_input_text)
         run_menu.add_command(label='Kill (ctrl-c)', command=self._kill_sub_process)
@@ -196,6 +209,7 @@ class _DgenerateConsole(tk.Tk):
         options_menu.add_checkbutton(label='Auto Scroll Output On Run',
                                      variable=self._auto_scroll_on_run_check_var)
 
+        menu_bar.add_cascade(label="File", menu=file_menu)
         menu_bar.add_cascade(label="Run", menu=run_menu)
         menu_bar.add_cascade(label="Options", menu=options_menu)
 
