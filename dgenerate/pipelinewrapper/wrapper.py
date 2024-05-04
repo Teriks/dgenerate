@@ -952,11 +952,13 @@ class DiffusionPipelineWrapper:
 
         opts = [(self.model_path,),
                 ('--model-type', self.model_type_string),
-                ('--dtype', self.dtype_string),
                 ('--device', self._device),
                 ('--inference-steps', args.inference_steps),
                 ('--guidance-scales', args.guidance_scale),
                 ('--seeds', args.seed)]
+
+        if self.dtype_string != 'auto':
+            opts.append(('--dtype', self.dtype_string))
 
         if args.batch_size is not None and args.batch_size > 1:
             opts.append(('--batch-size', args.batch_size))
@@ -1007,7 +1009,7 @@ class DiffusionPipelineWrapper:
             opts.append(('--s-cascade-decoder-scheduler',
                          self._s_cascade_decoder_scheduler))
 
-        if self._revision is not None:
+        if self._revision is not None and self._revision != 'main':
             opts.append(('--revision', self._revision))
 
         if self._variant is not None:
