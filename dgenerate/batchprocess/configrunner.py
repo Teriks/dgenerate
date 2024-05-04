@@ -586,11 +586,11 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                         f'no command specified to pipe to / from.')
 
                 def stdout_handler(line):
-                    _messages.log(line)
+                    _messages.get_message_file().buffer.write(line)
                     _messages.get_message_file().flush()
 
                 def stderr_handler(line):
-                    _messages.log(line, level=_messages.ERROR)
+                    _messages.get_error_file().buffer.write(line)
                     _messages.get_error_file().flush()
 
                 redirects = {'>', '1>', '2>', '&>', '>>', '1>>', '2>>', '&>>', '2>&1', '1>&2'}
@@ -598,7 +598,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                 while any(i in command for i in redirects):
                     if command[_i] in redirects:
                         remove_cnt = 1
-                        mode = 'a' if '>>' in command[_i] else 'w'
+                        mode = 'ab' if '>>' in command[_i] else 'wb'
                         if command[_i] == '2>&1':
                             stderr_handler = stdout_handler
                         elif command[_i] == '1>&2':
@@ -606,18 +606,18 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                         else:
                             remove_cnt = 2
                             try:
-                                file = open(command[_i + 1], mode, encoding='utf-8')
+                                file = open(command[_i + 1], mode)
                                 open_files.append(file)
                             except IndexError:
                                 raise _batchprocessor.BatchProcessError(
                                     f'{command[_i]} no output file specified.')
                             if command[_i][0] != '2':
                                 def stdout_handler(line):
-                                    print(line, file=file)
+                                    file.write(line)
                                     file.flush()
                             if command[_i][0] != '1':
                                 def stderr_handler(line):
-                                    print(line, file=file)
+                                    file.write(line)
                                     file.flush()
                         command = command[:_i] + command[_i + remove_cnt:]
                         _i -= remove_cnt
@@ -646,23 +646,33 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
             stop_threads = threading.Event()
 
-            def readlines_unbuffered(file):
+            def readline(file):
                 line = []
-                while byte := file.read(1):
+                while True:
+                    byte = file.read(1)
+                    if not byte:
+                        break
                     line.append(byte)
-                    if byte in {b'\n', b'\r'}:
-                        yield b''.join(line).decode('utf-8')
-                        line = []
+                    if byte == b'\n':
+                        return b''.join(line)
+                    elif byte == b'\r':
+                        next_byte = file.read(1)
+                        if next_byte == b'\n':
+                            line.append(next_byte)
+                            return b''.join(line)
+                        else:
+                            return b''.join(line)
                 if line:
-                    yield b''.join(line).decode('utf-8')
+                    return b''.join(line)
 
             def handle_stream(stream, handler):
-                for line in readlines_unbuffered(stream):
+                line = True
+                while line:
+                    line = readline(stream)
                     if stop_threads.is_set():
                         break
-                    text = line.rstrip()
-                    if text:
-                        handler(text)
+                    if line is not None:
+                        handler(line)
 
             thread1 = threading.Thread(
                 target=handle_stream,
@@ -798,7 +808,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                 else:
                     _messages.log(f'{sub_path.name}{"/" if sub_path.is_dir() else ""}')
 
-            if len(directories) > 1 and idx < len(directories)-1:
+            if len(directories) > 1 and idx < len(directories) - 1:
                 _messages.log()
 
         return 0
