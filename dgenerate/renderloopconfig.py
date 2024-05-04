@@ -1071,6 +1071,7 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.image_seeds,
             self.image_seed_strengths,
             self.clip_skips,
+            self.sdxl_refiner_clip_skips,
             self.upscaler_noise_levels,
             self.guidance_rescales,
             self.sdxl_high_noise_fractions,

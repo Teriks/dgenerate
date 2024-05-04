@@ -397,6 +397,12 @@ class RenderLoop:
 
         args += ['i', diffusion_args.inference_steps]
 
+        if diffusion_args.clip_skip is not None:
+            args += ['cs', diffusion_args.clip_skip]
+
+        if diffusion_args.sdxl_refiner_clip_skip is not None:
+            args += ['rcs', diffusion_args.sdxl_refiner_clip_skip]
+
         if diffusion_args.sdxl_high_noise_fraction is not None:
             args += ['hnf', diffusion_args.sdxl_high_noise_fraction]
 
