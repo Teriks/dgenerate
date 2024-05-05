@@ -79,7 +79,7 @@ a = Analysis(
     ['../dgenerate/dgenerate.py'],
     pathex=[],
     binaries=binaries,
-    datas=datas + ['../dgenerate/icon.ico'],
+    datas=datas + [('../dgenerate/icon.ico', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
