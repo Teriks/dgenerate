@@ -38,10 +38,16 @@ import psutil
 
 
 class _ScrolledText(tk.Frame):
-    def __init__(self, master=None, **kwargs):
+    def __init__(self, master=None, undo=False, **kwargs):
         super().__init__(master, **kwargs)
 
-        self.text = tk.Text(self, wrap='word')
+        text_args = {}
+        if undo:
+            text_args['undo'] = True
+            text_args['autoseparators'] = True
+            text_args['maxundo'] = -1
+
+        self.text = tk.Text(self, wrap='word', **text_args)
 
         font = tkinter.font.Font(font=self.text['font'])
         self.text.config(tabs=font.measure(' ' * 4))
@@ -157,61 +163,91 @@ class _DgenerateConsole(tk.Tk):
 
         menu_bar = tk.Menu(self)
 
-        options_menu = tk.Menu(menu_bar, tearoff=0)
-        run_menu = tk.Menu(menu_bar, tearoff=0)
-        file_menu = tk.Menu(menu_bar, tearoff=0)
+        # File menu
 
-        file_menu.add_command(label='Load',
-                              command=self._load_input_entry_text)
-        file_menu.add_command(label='Save',
-                              command=self._load_input_entry_text)
-        file_menu.add_separator()
-        file_menu.add_command(label='New Window',
-                              command=lambda:
-                              subprocess.Popen('dgenerate --dgenerate-console',
-                                               stdout=subprocess.DEVNULL,
-                                               stderr=subprocess.DEVNULL,
-                                               start_new_session=True))
+        self._file_menu = tk.Menu(menu_bar, tearoff=0)
+        self._file_menu.add_command(label='Load',
+                                    command=self._load_input_entry_text)
+        self._file_menu.add_command(label='Save',
+                                    command=self._load_input_entry_text)
+        self._file_menu.add_separator()
+        self._file_menu.add_command(label='New Window',
+                                    command=lambda:
+                                    subprocess.Popen('dgenerate --dgenerate-console',
+                                                     stdout=subprocess.DEVNULL,
+                                                     stderr=subprocess.DEVNULL,
+                                                     start_new_session=True))
 
-        run_menu.add_command(label='Run', command=self._run_input_text)
-        run_menu.add_command(label='Kill (ctrl-c)', command=self._kill_sub_process)
+        # Edit menu
+
+        self._edit_menu = tk.Menu(menu_bar, tearoff=0)
+        self._edit_menu.add_command(
+            label='Undo', accelerator='Ctrl+Z',
+            command=self._undo_input_entry)
+        self._edit_menu.add_command(
+            label='Redo', accelerator='Ctrl+Shift+Z',
+            command=self._redo_input_entry)
+
+        self._edit_menu.add_separator()
+
+        self._edit_menu.add_command(label='Cut', accelerator='Ctrl+X',
+                                    command=self._cut_input_entry_selection)
+        self._edit_menu.add_command(label='Copy', accelerator='Ctrl+Shift+C',
+                                    command=self._copy_input_entry_selection)
+        self._edit_menu.add_command(label='Paste', accelerator='Ctrl+V',
+                                    command=self._paste_input_entry)
+
+        # Run menu
+
+        self._run_menu = tk.Menu(menu_bar, tearoff=0)
+        self._run_menu.add_command(label='Run', command=self._run_input_text)
+        self._run_menu.add_command(label='Kill', accelerator='Ctrl+C',
+                                   command=self._kill_sub_process)
+
+        # Options menu
 
         # Create the Multi-line Input Checkbutton
 
         self._multi_line_input_check_var = tk.BooleanVar(value=False)
 
-        self._multi_line_input_check_var.trace_add('write',
-                                                   lambda *args: self._input_text.text.configure(
-                                                       insertbackground='red') if self._multi_line_input_check_var.get()
-                                                   else self._input_text.text.configure(insertbackground='black'))
+        self._multi_line_input_check_var.trace_add(
+            'write',
+            lambda *args: self._input_text.text.configure(
+                insertbackground='red') if self._multi_line_input_check_var.get()
+            else self._input_text.text.configure(insertbackground='black'))
 
-        options_menu.add_checkbutton(label='Multiline input (insert key)',
-                                     variable=self._multi_line_input_check_var)
+        self._options_menu = tk.Menu(menu_bar, tearoff=0)
+        self._options_menu.add_checkbutton(label='Multiline input',
+                                           accelerator='Insert Key',
+                                           variable=self._multi_line_input_check_var)
 
         # Create the word wrap output checkbox
 
         self._word_wrap_output_check_var = tk.BooleanVar(value=True)
         self._word_wrap_output_check_var.trace_add('write', self._toggle_output_wrap)
 
-        options_menu.add_checkbutton(label='Word Wrap Output',
-                                     variable=self._word_wrap_output_check_var)
+        self._options_menu.add_checkbutton(label='Word Wrap Output',
+                                           variable=self._word_wrap_output_check_var)
 
         # Create the word wrap input checkbox
 
         self._word_wrap_input_check_var = tk.BooleanVar(value=True)
         self._word_wrap_input_check_var.trace_add('write', self._toggle_input_wrap)
 
-        options_menu.add_checkbutton(label='Word Wrap Input',
-                                     variable=self._word_wrap_input_check_var)
+        self._options_menu.add_checkbutton(label='Word Wrap Input',
+                                           variable=self._word_wrap_input_check_var)
 
         # Create the auto scroll checkbox (scroll on input)
         self._auto_scroll_on_run_check_var = tk.BooleanVar(value=True)
-        options_menu.add_checkbutton(label='Auto Scroll Output On Run',
-                                     variable=self._auto_scroll_on_run_check_var)
+        self._options_menu.add_checkbutton(label='Auto Scroll Output On Run',
+                                           variable=self._auto_scroll_on_run_check_var)
 
-        menu_bar.add_cascade(label="File", menu=file_menu)
-        menu_bar.add_cascade(label="Run", menu=run_menu)
-        menu_bar.add_cascade(label="Options", menu=options_menu)
+        menu_bar.add_cascade(label="File", menu=self._file_menu)
+        menu_bar.add_cascade(label="Edit", menu=self._edit_menu)
+        menu_bar.add_cascade(label="Run", menu=self._run_menu)
+        menu_bar.add_cascade(label="Options", menu=self._options_menu)
+
+        # Split window
 
         self._paned_window = tk.PanedWindow(self, orient=tk.VERTICAL, sashwidth=4, bg="#808080")
         self._paned_window.pack(fill=tk.BOTH, expand=True)
@@ -220,7 +256,7 @@ class _DgenerateConsole(tk.Tk):
 
         # Create the top text input pane
 
-        self._input_text = _ScrolledText(self._paned_window)
+        self._input_text = _ScrolledText(self._paned_window, undo=True)
 
         self._input_text.text.bind('<Return>',
                                    lambda e:
@@ -241,6 +277,9 @@ class _DgenerateConsole(tk.Tk):
                                        'Find In Input',
                                        self._input_text.text))
 
+        self._input_text.text.bind('<Control-Z>', lambda e: self._redo_input_entry())
+        self._input_text.text.bind('<Control-C>', lambda e: self._copy_input_entry_selection())
+
         def bind_input_text_ctrl_c(event):
             if event.widget == self._input_text.text:
                 self._input_text.text.bind('<Control-c>',
@@ -257,17 +296,19 @@ class _DgenerateConsole(tk.Tk):
 
         self._input_text_context = tk.Menu(self._input_text, tearoff=0)
 
-        self._input_text_context.add_command(label='Load', command=self._load_input_entry_text)
-        self._input_text_context.add_command(label='Save', command=self._save_input_entry_text)
+        self._input_text_context.add_command(label='Cut', accelerator='Ctrl+X', command=self._cut_input_entry_selection)
+        self._input_text_context.add_command(label='Copy', accelerator='Ctrl+Shift+C', command=self._copy_input_entry_selection)
+        self._input_text_context.add_command(label='Paste', accelerator='Ctrl+V', command=self._paste_input_entry)
         self._input_text_context.add_separator()
         self._input_text_context.add_command(label='Find',
+                                             accelerator='Ctrl+F',
                                              command=lambda:
                                              self._open_find_dialog(
                                                  'Find In Input',
                                                  self._input_text.text))
         self._input_text_context.add_separator()
-        self._input_text_context.add_command(label='Copy', command=self._copy_input_entry_selection)
-        self._input_text_context.add_command(label='Paste', command=self._paste_input_entry)
+        self._input_text_context.add_command(label='Load', command=self._load_input_entry_text)
+        self._input_text_context.add_command(label='Save', command=self._save_input_entry_text)
 
         self._paned_window.add(self._input_text)
 
@@ -288,12 +329,15 @@ class _DgenerateConsole(tk.Tk):
         self._output_text_context.add_command(label='Clear', command=self._clear_output_text)
         self._output_text_context.add_separator()
         self._output_text_context.add_command(label='Find',
+                                              accelerator='Ctrl+F',
                                               command=lambda:
                                               self._open_find_dialog(
                                                   'Find In Output',
                                                   self._output_text.text))
         self._output_text_context.add_separator()
-        self._output_text_context.add_command(label='Copy', command=self._copy_output_text_selection)
+        self._output_text_context.add_command(label='Copy',
+                                              accelerator='Ctrl+C',
+                                              command=self._copy_output_text_selection)
         self._output_text_context.add_separator()
         self._output_text_context.add_command(label='Save Selection', command=self._save_output_text_selection)
         self._output_text_context.add_command(label='Save All', command=self._save_output_text)
@@ -468,26 +512,23 @@ class _DgenerateConsole(tk.Tk):
             f.write(self._input_text.text.get('1.0', tk.END))
             f.close()
 
+    def _undo_input_entry(self):
+        self._input_text.text.event_generate("<<Undo>>")
+
+    def _redo_input_entry(self):
+        self._input_text.text.event_generate("<<Redo>>")
+
+    def _cut_input_entry_selection(self):
+        self._input_text.text.event_generate("<<Cut>>")
+
     def _copy_input_entry_selection(self):
-        text = self._input_text.text.selection_get()
-        self.clipboard_clear()
-        self.clipboard_append(text)
+        self._input_text.text.event_generate("<<Copy>>")
 
     def _paste_input_entry(self):
-        try:
-            start = self._input_text.text.index(tk.SEL_FIRST)
-            end = self._input_text.text.index(tk.SEL_LAST)
-            self._input_text.text.delete(start, end)
-        except tk.TclError:
-            start = self._input_text.text.index(tk.INSERT)
-
-        clipboard_content = self.clipboard_get()
-        self._input_text.text.insert(start, clipboard_content)
+        self._input_text.text.event_generate("<<Paste>>")
 
     def _copy_output_text_selection(self):
-        text = self._output_text.text.selection_get()
-        self.clipboard_clear()
-        self.clipboard_append(text)
+        self._output_text.text.event_generate("<<Copy>>")
 
     def _save_output_text(self):
         f = tkinter.filedialog.asksaveasfilename(
