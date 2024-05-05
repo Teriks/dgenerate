@@ -3854,10 +3854,11 @@ overhead of loading large python modules for every command line invocation.
 The UI is very minimal, both the input and the output pane possess
 right click context menus which may not at first be apparent.
 
-Multiline input mode is activated via the insert key and indicated by a blinking red cursor,
-you must deactivate this mode to submit commands via the enter key, however you can use the run
-button from the run menu to run code in this mode. You cannot page through command history in
-this mode, and code will remain in the console input pane upon running it.
+The console always starts in single line entry mode (terminal mode), multiline input mode
+is activated via the insert key and indicated by a blinking red cursor, you must deactivate this mode
+to submit commands via the enter key, however you can use the run button from the run menu to run code
+in this mode. You cannot page through command history in this mode, and code will remain in the
+console input pane upon running it.
 
 Ctrl-C is supported in the input pane for killing and then restarting the background interpreter process.
 
