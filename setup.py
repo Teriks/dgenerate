@@ -246,11 +246,14 @@ if __name__ != 'setup_as_library':
           url='https://github.com/Teriks/dgenerate',
           version=VERSION,
           packages=find_packages(),
+          package_data={
+              'dgenerate': ['installer/icon.ico'],
+          },
+          include_package_data=True,
           license='BSD 3-Clause',
           description='Batch image generation and manipulation tool supporting Stable Diffusion and related techniques / '
                       'algorithms, with support for video and animated image processing.',
           long_description=README,
-          include_package_data=True,
           install_requires=pyproject_requirements,
           extras_require={
               'flax': lockfile_flax_requirements,

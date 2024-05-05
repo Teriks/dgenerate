@@ -146,7 +146,6 @@ def main(args: typing.Optional[collections.abc.Sequence[str]] = None):
             'dgenerate: error: --no-stdin is not valid when stdin is a terminal (tty).')
         sys.exit(1)
 
-
     try:
         render_loop = RenderLoop()
         render_loop.config = DgenerateArguments()

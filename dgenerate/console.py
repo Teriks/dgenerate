@@ -19,9 +19,13 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import collections.abc
+import importlib.resources
 import json
 import pathlib
 import queue
+import re
+import shlex
+import shutil
 import subprocess
 import sys
 import time
@@ -33,8 +37,17 @@ import tkinter.filedialog
 import tkinter.scrolledtext
 import os
 import typing
+import webbrowser
 
 import psutil
+import PIL.Image
+import PIL.ImageTk
+import platform
+import io
+
+
+def _get_icon():
+    return PIL.ImageTk.PhotoImage(PIL.Image.open(io.BytesIO(importlib.resources.read_binary('dgenerate', 'icon.ico'))))
 
 
 class _ScrolledText(tk.Frame):
@@ -73,6 +86,8 @@ class _ScrolledText(tk.Frame):
 class _FindDialog(tk.Toplevel):
     def __init__(self, master, name, text_widget):
         super().__init__(master=master)
+        self.iconphoto(False, _get_icon())
+
         self.master = master
         self.title(name)
         self.text_widget = text_widget
@@ -158,8 +173,9 @@ class _DgenerateConsole(tk.Tk):
 
         self.title('Dgenerate Console')
         self.geometry('800x800')
+        self.iconphoto(False, _get_icon())
 
-        # Create top menu
+        # Create main menu
 
         menu_bar = tk.Menu(self)
 
@@ -197,6 +213,13 @@ class _DgenerateConsole(tk.Tk):
         self._edit_menu.add_command(label='Paste', accelerator='Ctrl+V',
                                     command=self._paste_input_entry)
 
+        self._edit_menu.add_separator()
+
+        self._edit_menu.add_command(label='Insert File Path',
+                                    command=self._input_text_insert_file_name)
+        self._edit_menu.add_command(label='Insert Directory Path',
+                                    command=self._input_text_insert_directory_name)
+
         # Run menu
 
         self._run_menu = tk.Menu(menu_bar, tearoff=0)
@@ -224,7 +247,7 @@ class _DgenerateConsole(tk.Tk):
         # Create the word wrap output checkbox
 
         self._word_wrap_output_check_var = tk.BooleanVar(value=True)
-        self._word_wrap_output_check_var.trace_add('write', self._toggle_output_wrap)
+        self._word_wrap_output_check_var.trace_add('write', self._update_output_wrap)
 
         self._options_menu.add_checkbutton(label='Word Wrap Output',
                                            variable=self._word_wrap_output_check_var)
@@ -232,7 +255,7 @@ class _DgenerateConsole(tk.Tk):
         # Create the word wrap input checkbox
 
         self._word_wrap_input_check_var = tk.BooleanVar(value=True)
-        self._word_wrap_input_check_var.trace_add('write', self._toggle_input_wrap)
+        self._word_wrap_input_check_var.trace_add('write', self._update_input_wrap)
 
         self._options_menu.add_checkbutton(label='Word Wrap Input',
                                            variable=self._word_wrap_input_check_var)
@@ -242,21 +265,69 @@ class _DgenerateConsole(tk.Tk):
         self._options_menu.add_checkbutton(label='Auto Scroll Output On Run',
                                            variable=self._auto_scroll_on_run_check_var)
 
+        # View Menu
+
+        self._image_pane_visible_var = tk.BooleanVar(value=False)
+        self._view_menu = tk.Menu(menu_bar, tearoff=0)
+        self._view_menu.add_checkbutton(label='Latest Image Pane',
+                                        variable=self._image_pane_visible_var)
+
+        self._image_pane_visible_var.trace_add('write',
+                                               lambda *args: self._update_image_pane_visibility())
+
+        # Help menu
+
+        self._help_menu = tk.Menu(menu_bar, tearoff=0)
+
+        self._help_menu.add_command(
+            label='Documentation',
+            command=lambda:
+            webbrowser.open(
+                'https://dgenerate.readthedocs.io/en/v3.4.5/readme.html#writing-and-running-configs'))
+
+        self._help_menu.add_command(
+            label='Examples',
+            command=lambda:
+            webbrowser.open(
+                'https://github.com/Teriks/dgenerate/tree/v3.4.5/examples'))
+
+        self._help_menu.add_command(
+            label='Project Homepage',
+            command=lambda:
+            webbrowser.open(
+                'https://github.com/Teriks/dgenerate/tree/v3.4.5')
+        )
+
+        # Add sub menus to main menu
+
         menu_bar.add_cascade(label="File", menu=self._file_menu)
         menu_bar.add_cascade(label="Edit", menu=self._edit_menu)
         menu_bar.add_cascade(label="Run", menu=self._run_menu)
         menu_bar.add_cascade(label="Options", menu=self._options_menu)
-
-        # Split window
-
-        self._paned_window = tk.PanedWindow(self, orient=tk.VERTICAL, sashwidth=4, bg="#808080")
-        self._paned_window.pack(fill=tk.BOTH, expand=True)
+        menu_bar.add_cascade(label="View", menu=self._view_menu)
+        menu_bar.add_cascade(label="Help", menu=self._help_menu)
 
         self.config(menu=menu_bar)
 
-        # Create the top text input pane
+        # Split window layout
 
-        self._input_text = _ScrolledText(self._paned_window, undo=True)
+        self._paned_window_horizontal = tk.PanedWindow(self,
+                                                       orient=tk.HORIZONTAL,
+                                                       sashwidth=4,
+                                                       bg="#808080", bd=0)
+
+        self._paned_window_horizontal.pack(fill=tk.BOTH, expand=True)
+
+        self._paned_window_vertical = tk.PanedWindow(self._paned_window_horizontal,
+                                                     orient=tk.VERTICAL, sashwidth=4,
+                                                     bg="#808080")
+
+        self._paned_window_vertical.pack(fill=tk.BOTH, expand=True)
+        self._paned_window_horizontal.add(self._paned_window_vertical)
+
+        # Create the input text pane
+
+        self._input_text = _ScrolledText(self._paned_window_vertical, undo=True)
 
         self._input_text.text.bind('<Return>',
                                    lambda e:
@@ -281,23 +352,24 @@ class _DgenerateConsole(tk.Tk):
         self._input_text.text.bind('<Control-C>', lambda e: self._copy_input_entry_selection())
 
         def bind_input_text_ctrl_c(event):
-            if event.widget == self._input_text.text:
+            if event.widget == self:
                 self._input_text.text.bind('<Control-c>',
                                            lambda e: self._kill_sub_process())
 
         def unbind_input_text_ctrl_c(event):
-            if event.widget == self._input_text.text:
+            if event.widget == self:
                 self._input_text.unbind('<Control-c>')
 
-        self._input_text.text.bind('<FocusIn>', bind_input_text_ctrl_c)
-        self._input_text.text.bind('<FocusOut>', unbind_input_text_ctrl_c)
+        self.bind('<FocusIn>', bind_input_text_ctrl_c)
+        self.bind('<FocusOut>', unbind_input_text_ctrl_c)
 
         self._input_text.text.focus_set()
 
         self._input_text_context = tk.Menu(self._input_text, tearoff=0)
 
         self._input_text_context.add_command(label='Cut', accelerator='Ctrl+X', command=self._cut_input_entry_selection)
-        self._input_text_context.add_command(label='Copy', accelerator='Ctrl+Shift+C', command=self._copy_input_entry_selection)
+        self._input_text_context.add_command(label='Copy', accelerator='Ctrl+Shift+C',
+                                             command=self._copy_input_entry_selection)
         self._input_text_context.add_command(label='Paste', accelerator='Ctrl+V', command=self._paste_input_entry)
         self._input_text_context.add_separator()
         self._input_text_context.add_command(label='Find',
@@ -309,12 +381,17 @@ class _DgenerateConsole(tk.Tk):
         self._input_text_context.add_separator()
         self._input_text_context.add_command(label='Load', command=self._load_input_entry_text)
         self._input_text_context.add_command(label='Save', command=self._save_input_entry_text)
+        self._input_text_context.add_separator()
+        self._input_text_context.add_command(label='Insert File Path',
+                                             command=self._input_text_insert_file_name)
+        self._input_text_context.add_command(label='Insert Directory Path',
+                                             command=self._input_text_insert_directory_name)
 
-        self._paned_window.add(self._input_text)
+        self._paned_window_vertical.add(self._input_text)
 
-        # Create the bottom pane
+        # Create the output text pane
 
-        self._output_text = _ScrolledText(self._paned_window)
+        self._output_text = _ScrolledText(self._paned_window_vertical)
 
         self._output_text.text.bind('<Button-3>',
                                     lambda e: self._output_text_context.tk_popup(
@@ -341,10 +418,64 @@ class _DgenerateConsole(tk.Tk):
         self._output_text_context.add_separator()
         self._output_text_context.add_command(label='Save Selection', command=self._save_output_text_selection)
         self._output_text_context.add_command(label='Save All', command=self._save_output_text)
+        self._output_text_context.add_separator()
+        self._output_text_context.add_command(label='To Bottom',
+                                              command=
+                                              lambda: self._output_text.text.see(tk.END))
 
-        self._paned_window.add(self._output_text)
+        self._paned_window_vertical.add(self._output_text)
 
-        # config
+        # Optional latest image pane
+
+        self._displayed_image = None
+        self._displayed_image_path = None
+        self._image_pane = tk.Frame(self._paned_window_horizontal, bg='black')
+        self._image_label = tk.Label(self._image_pane, bg='black')
+        self._image_label.pack(fill=tk.BOTH, expand=True)
+        self._image_label.bind('<Configure>', self._resize_image_pane_image)
+
+        self._image_label_context = tk.Menu(self._input_text, tearoff=0)
+
+        open_file_explorer_support = platform.system() == 'Windows' or shutil.which('nautilus')
+
+        if open_file_explorer_support:
+
+            if platform.system() == 'Windows':
+                def open_image_pane_directory_in_explorer():
+                    subprocess.Popen(
+                        rf'explorer /select,"{self._displayed_image_path}"',
+                        start_new_session=True)
+            else:
+                def open_image_pane_directory_in_explorer():
+                    subprocess.Popen(
+                        rf'nautilus "{self._displayed_image_path}"',
+                        start_new_session=True)
+
+            self._image_label_context.add_command(label='Open Directory',
+                                                  command=open_image_pane_directory_in_explorer)
+
+            self._image_label_context.add_separator()
+
+        self._image_label_context.add_command(
+            label='Hide Image Pane',
+            command=lambda: self._image_pane_visible_var.set(False))
+
+        def show_image_pane_context(e):
+            if open_file_explorer_support:
+                if self._displayed_image_path is not None and \
+                        os.path.exists(self._displayed_image_path):
+                    self._image_label_context.entryconfigure(
+                        'Open Directory', state=tk.NORMAL)
+                else:
+                    self._image_label_context.entryconfigure(
+                        'Open Directory', state=tk.DISABLED)
+
+            self._image_label_context.tk_popup(
+                self.winfo_pointerx(), self.winfo_pointery())
+
+        self._image_label.bind('<Button-3>', show_image_pane_context)
+
+        # Misc Config
 
         self._termination_lock = threading.Lock()
 
@@ -435,6 +566,80 @@ class _DgenerateConsole(tk.Tk):
 
         self._text_update()
 
+    def _insert_or_replace_input_text(self, text):
+        try:
+            selection_start = self._input_text.text.index("sel.first")
+            selection_end = self._input_text.text.index("sel.last")
+        except tk.TclError:
+            selection_start = selection_end = None
+
+        if selection_start and selection_end:
+            self._input_text.text.delete(selection_start, selection_end)
+            self._input_text.text.insert(selection_start, text)
+        else:
+            self._input_text.text.insert("insert", text)
+
+    def _input_text_insert_directory_name(self):
+        d = tkinter.filedialog.askdirectory(
+            initialdir=self._cwd)
+
+        if d is None:
+            return
+
+        self._insert_or_replace_input_text(shlex.quote(d))
+
+    def _input_text_insert_file_name(self):
+        f = tkinter.filedialog.askopenfilename(
+            initialdir=self._cwd)
+
+        if f is None:
+            return
+
+        self._insert_or_replace_input_text(shlex.quote(f))
+
+    def _update_image_pane_visibility(self):
+        if not self._image_pane_visible_var.get():
+            self._paned_window_horizontal.remove(self._image_pane)
+        else:
+            self._paned_window_horizontal.add(self._image_pane)
+
+    def _image_pane_load_image(self, image_path):
+        if self._displayed_image is not None:
+            self._displayed_image.close()
+
+        self._displayed_image = PIL.Image.open(image_path)
+        self._displayed_image_path = image_path
+        if self._image_pane_visible_var.get():
+            self._resize_image_pane_image(None)
+
+    def _resize_image_pane_image(self, event):
+        if self._displayed_image is None:
+            return
+
+        label_width = self._image_label.winfo_width()
+        label_height = self._image_label.winfo_height()
+
+        image_width = self._displayed_image.width
+        image_height = self._displayed_image.height
+
+        image_aspect = image_width / image_height
+        label_aspect = label_width / label_height
+
+        if image_aspect > label_aspect:
+            width = label_width
+            height = int(width / image_aspect)
+        else:
+            height = label_height
+            width = int(height * image_aspect)
+
+        img = self._displayed_image.resize((width, height), PIL.Image.Resampling.LANCZOS)
+
+        photo_img = PIL.ImageTk.PhotoImage(img)
+
+        self._image_label.config(image=photo_img)
+
+        self._image_label.image = photo_img
+
     def _open_find_dialog(self, name, text_box):
         if self._find_dialog is not None:
             if self._find_dialog.text_widget is text_box:
@@ -447,14 +652,14 @@ class _DgenerateConsole(tk.Tk):
                 self._find_dialog.destroy()
         self._find_dialog = _FindDialog(self, name, text_box)
 
-    def _toggle_input_wrap(self, *args):
+    def _update_input_wrap(self, *args):
         if self._word_wrap_input_check_var.get():
             self._input_text.enable_word_wrap()
 
         else:
             self._input_text.disable_word_wrap()
 
-    def _toggle_output_wrap(self, *args):
+    def _update_output_wrap(self, *args):
         if self._word_wrap_output_check_var.get():
             self._output_text.enable_word_wrap()
 
@@ -563,6 +768,13 @@ class _DgenerateConsole(tk.Tk):
         self._output_text.text.delete('1.0', tk.END)
         self._output_text.text.config(state=tk.DISABLED)
 
+    def _check_text_for_latest_image(self, text):
+        match = re.match('Wrote Image File: "(.*?)"', text)
+        if match is not None:
+            path = os.path.join(self._cwd, match.group(1))
+            if os.path.exists(path):
+                self._image_pane_load_image(path)
+
     def _text_update(self):
         lines = 0
 
@@ -573,6 +785,8 @@ class _DgenerateConsole(tk.Tk):
                 break
             try:
                 text = self._output_text_queue.get_nowait()
+
+                self._check_text_for_latest_image(text)
 
                 scroll = self._output_text.text.yview()[1] == 1.0
 
