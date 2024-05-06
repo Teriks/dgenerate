@@ -25,6 +25,7 @@ import os
 import pathlib
 import sqlite3
 import typing
+import urllib.parse
 import uuid
 
 import fake_useragent
@@ -162,9 +163,13 @@ class FileCache:
             for k in self.kv_store.keys():
                 yield k
 
-    def _generate_unique_filename(self):
+    def _generate_unique_filename(self, ext):
+        if ext is None:
+            ext = ''
+        else:
+            ext = '.' + ext.lstrip('.')
         while True:
-            file_path = os.path.join(self.cache_dir, str(uuid.uuid4()))
+            file_path = os.path.join(self.cache_dir, str(uuid.uuid4())) + ext
             if not os.path.exists(file_path):
                 break
         return file_path
@@ -180,13 +185,13 @@ class FileCache:
         for key, value in self.kv_store.delete_older_than(timedelta):
             yield key, CachedFile(json.loads(value))
 
-    def add(self, key, file_data: bytes, metadata: typing.Dict[str, str] = None) -> typing.Optional[CachedFile]:
+    def add(self, key, file_data: bytes, metadata: typing.Dict[str, str] = None, ext=None) -> typing.Optional[CachedFile]:
 
         with self.kv_store as kv:
             if key in kv:
                 file_path = pathlib.Path(json.loads(kv.get(key))['path']).name
             else:
-                file_path = self._generate_unique_filename()
+                file_path = self._generate_unique_filename(ext)
 
         with open(file_path, 'wb') as f:
             f.write(file_data)
@@ -283,4 +288,12 @@ class WebFileCache(FileCache):
                 f'Expected: {mime_acceptable_desc}')
 
         metadata = {'mime-type': mime_type}
-        return self.add(url, response.content, metadata)
+
+        parsed = urllib.parse.urlparse(url)
+        path = os.path.splitext(parsed.path)
+        if len(path) > 1:
+            ext = path[1]
+        else:
+            ext = ''
+
+        return self.add(url, response.content, metadata, ext)
