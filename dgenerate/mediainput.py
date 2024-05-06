@@ -1001,7 +1001,8 @@ def create_web_cache_file(url,
     if mime_acceptable_desc is None:
         mime_acceptable_desc = _textprocessing.oxford_comma(get_supported_mimetypes(), conjunction='or')
 
-    return _web_cache.download(url, mime_acceptable_desc, mimetype_is_supported, UnknownMimetypeError)
+    cached_file = _web_cache.download(url, mime_acceptable_desc, mimetype_is_supported, UnknownMimetypeError)
+    return cached_file.metadata['mime-type'], cached_file.path
 
 
 def request_mimetype(url) -> str:
