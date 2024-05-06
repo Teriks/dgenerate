@@ -683,7 +683,7 @@ class _DgenerateConsole(tk.Tk):
         env['PYTHONUNBUFFERED'] = '1'
         env['DGENERATE_LONG_TEXT_WRAP_WIDTH'] = '80'
 
-        self._sub_process = subprocess.Popen(
+        self._sub_process = psutil.Popen(
             ['dgenerate', '--server'],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -817,7 +817,7 @@ class _DgenerateConsole(tk.Tk):
     def _update_cwd(self):
         try:
             with self._termination_lock:
-                p = psutil.Process(self._sub_process.pid)
+                p = self._sub_process
                 while p.children():
                     p = p.children()[0]
                 self._cwd = p.cwd()

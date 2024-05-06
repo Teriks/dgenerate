@@ -18,27 +18,21 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import atexit
 import collections.abc
-import contextlib
 import mimetypes
 import os
 import pathlib
 import re
-import sqlite3
 import typing
 
 import PIL.Image
 import PIL.ImageOps
 import PIL.ImageSequence
 import av
-import fake_useragent
-import requests
 
-import dgenerate.filelock as _filelock
+import dgenerate.filecache as _filecache
 import dgenerate.image as _image
 import dgenerate.imageprocessors as _imageprocessors
-import dgenerate.messages as _messages
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 
@@ -970,61 +964,14 @@ def get_web_cache_directory() -> str:
     return path
 
 
-@contextlib.contextmanager
-def _get_web_cache_db():
-    db_file = os.path.join(get_web_cache_directory(), 'cache.db')
-    lock_file = os.path.join(get_web_cache_directory(), 'cache.lock')
-    db = None
-    with _filelock.temp_file_lock(lock_file):
-        try:
-            db = sqlite3.connect(db_file)
-            db.execute(
-                'CREATE TABLE IF NOT EXISTS users (pid INTEGER, UNIQUE(pid))')
-            db.execute(
-                'CREATE TABLE IF NOT EXISTS files '
-                '(id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT_TOKEN_STRICT UNIQUE, '
-                'mime_type TEXT_TOKEN_STRICT, ext TEXT_TOKEN_STRICT)')
-            db.execute(
-                'INSERT OR IGNORE INTO users(pid) VALUES(?)', [os.getpid()])
-            yield db
-            db.commit()
-        except Exception:
-            if db is not None:
-                db.rollback()
-            raise
-        finally:
-            db.close()
+_web_cache = _filecache.WebFileCache(os.path.join(get_web_cache_directory(), 'cache.db'), get_web_cache_directory())
 
 
-def _wipe_web_cache_directory(force=False):
-    folder = get_web_cache_directory()
-
-    with _get_web_cache_db() as db:
-        db.execute('DELETE FROM users WHERE pid = (?)', [os.getpid()])
-        count = db.execute('SELECT COUNT(pid) FROM users').fetchone()[0]
-        if count != 0 and not force:
-            # Another instance is still using
-            return
-        db.execute('DROP TABLE users')
-        db.execute('DROP TABLE files')
-        # delete any cache files that existed
-        for filename in os.listdir(get_web_cache_directory()):
-            file_path = os.path.join(folder, filename)
-            if filename in {'cache.db', 'cache.db-journal', 'cache.lock'}:
-                # Do not delete database related files
-                continue
-
-            _messages.debug_log(f'Deleting File From Web Cache: "{file_path}"')
-            try:
-                if os.path.isfile(file_path) or os.path.islink(file_path):
-                    os.unlink(file_path)
-            except Exception as e:
-                _messages.log(
-                    f'Failed to delete cached web file "{file_path}", reason: {str(e).strip()}',
-                    level=_messages.ERROR)
-
-
-atexit.register(_wipe_web_cache_directory)
+class UnknownMimetypeError(Exception):
+    """
+    Raised when an unsupported mimetype is encountered
+    """
+    pass
 
 
 def create_web_cache_file(url,
@@ -1051,77 +998,10 @@ def create_web_cache_file(url,
     :return: tuple(mimetype_str, filepath)
     """
 
-    try:
-        if mime_acceptable_desc is None:
-            mime_acceptable_desc = _textprocessing.oxford_comma(get_supported_mimetypes(), conjunction='or')
+    if mime_acceptable_desc is None:
+        mime_acceptable_desc = _textprocessing.oxford_comma(get_supported_mimetypes(), conjunction='or')
 
-        return _create_web_cache_file(url, mime_acceptable_desc, mimetype_is_supported)
-    except sqlite3.OperationalError as e:
-        if 'column' in str(e):
-            _wipe_web_cache_directory(force=True)
-            return _create_web_cache_file(url, mime_acceptable_desc, mimetype_is_supported)
-        else:
-            raise
-
-
-def _create_web_cache_file(url,
-                           mime_acceptable_desc: typing.Optional[str] = None,
-                           mimetype_is_supported: typing.Optional[typing.Callable[[str], bool]] = mimetype_is_supported) \
-        -> tuple[str, str]:
-    cache_dir = get_web_cache_directory()
-
-    def _mimetype_is_supported(mimetype):
-        if mimetype_is_supported is not None:
-            return mimetype_is_supported(mimetype)
-        return True
-
-    _, ext = os.path.splitext(url)
-
-    with _get_web_cache_db() as db:
-        cursor = db.cursor()
-
-        exists = cursor.execute(
-            'SELECT mime_type, id, ext FROM files WHERE url = ?', [url]).fetchone()
-
-        # entry exists to a missing file on disk?
-        missing_file_only = False
-
-        if exists is not None:
-            path = os.path.join(cache_dir, f'web_{exists[1]}' + exists[2])
-
-            if os.path.exists(path):
-                return exists[0], path
-            else:
-                # file exists in the database but is missing on disk
-                missing_file_only = True
-
-        headers = {'User-Agent': fake_useragent.UserAgent().chrome}
-
-        with requests.get(url, headers=headers, stream=True) as req:
-            mime_type = req.headers['content-type']
-
-            if not _mimetype_is_supported(mime_type):
-                raise UnknownMimetypeError(
-                    f'Unknown mimetype "{mime_type}" from URL "{url}". '
-                    f'Expected: {mime_acceptable_desc}')
-
-            if not missing_file_only:
-                # no record of this file existed
-                cursor.execute(
-                    'INSERT INTO files(mime_type, url, ext) VALUES(?, ?, ?)', [mime_type, url, ext])
-                path = os.path.join(cache_dir, f'web_{cursor.lastrowid}' + ext)
-            else:
-                # a record of this file existed but
-                # the file was missing on disk
-                # make sure mime_type matches
-                cursor.execute(
-                    'UPDATE files SET mime_type = ?, ext = ? WHERE id = ?', [mime_type, ext, exists[1]])
-
-            with open(path, mode='wb') as new_file:
-                new_file.write(req.content)
-                new_file.flush()
-
-    return mime_type, path
+    return _web_cache.download(url, mime_acceptable_desc, mimetype_is_supported, UnknownMimetypeError)
 
 
 def request_mimetype(url) -> str:
@@ -1135,28 +1015,7 @@ def request_mimetype(url) -> str:
     :return: mimetype string
     """
 
-    with _get_web_cache_db() as db:
-        cursor = db.cursor()
-
-        exists = cursor.execute(
-            'SELECT mime_type, id FROM files WHERE url = ?', [url]).fetchone()
-
-        if exists is not None:
-            return exists[0]
-
-        headers = {'User-Agent': fake_useragent.UserAgent().chrome}
-
-        with requests.get(url, headers=headers, stream=True) as req:
-            mime_type = req.headers['content-type']
-
-    return mime_type
-
-
-class UnknownMimetypeError(Exception):
-    """
-    Raised when an unsupported mimetype is encountered
-    """
-    pass
+    return _web_cache.request_mimetype(url)
 
 
 _MIME_TYPES_GUESS_EXTRA = {
