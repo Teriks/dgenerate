@@ -34,7 +34,16 @@ import requests
 
 
 class KeyValueStore:
-    def __init__(self, db_path):
+    """
+    A key-value store using SQLite3 for storage.
+    """
+
+    def __init__(self, db_path: str):
+        """
+        Initialize the key-value store.
+
+        :param db_path: The path to the SQLite3 database file.
+        """
         db_dir = pathlib.Path(db_path).parent
         if not db_dir.exists():
             db_dir.mkdir(parents=True, exist_ok=True)
@@ -46,6 +55,11 @@ class KeyValueStore:
         self._lock_counter = 0
 
     def __enter__(self):
+        """
+        Enter a context managed by this key-value store.
+
+        :return: This key-value store.
+        """
         if self._lock_counter == 0:
             self.file_lock.acquire()
             try:
@@ -65,13 +79,23 @@ class KeyValueStore:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        Exit a context managed by this key-value store.
+        """
         self._lock_counter -= 1
         if self._lock_counter == 0:
             self.connection.commit()
             self.connection.close()
             self.file_lock.release()
 
-    def get(self, key, default=None):
+    def get(self, key: str, default=None):
+        """
+        Get the value associated with a key.
+
+        :param key: The key to get the value for.
+        :param default: The default value to return if the key is not found.
+        :return: The value associated with the key, or the default value if the key is not found.
+        """
         with self:
             self.cursor.execute("SELECT value FROM store WHERE key=?", (key,))
             result = self.cursor.fetchone()
@@ -79,7 +103,14 @@ class KeyValueStore:
                 return default
             return result[0]
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> str:
+        """
+        Get the value associated with a key.
+
+        :param key: The key to get the value for.
+        :return: The value associated with the key.
+        :raises KeyError: If the key is not found.
+        """
         with self:
             self.cursor.execute("SELECT value FROM store WHERE key=?", (key,))
             result = self.cursor.fetchone()
@@ -87,42 +118,81 @@ class KeyValueStore:
                 raise KeyError(key)
             return result[0]
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: str):
+        """
+        Set the value for a key.
+
+        :param key: The key to set the value for.
+        :param value: The value to set.
+        """
         with self:
             creation_date = datetime.datetime.now()
             self.cursor.execute("REPLACE INTO store (key, value, creation_date) VALUES (?, ?, ?)",
                                 (key, value, creation_date))
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: str):
+        """
+        Delete a key and its associated value.
+
+        :param key: The key to delete.
+        :raises KeyError: If the key is not found.
+        """
         with self:
             if key not in self:
                 raise KeyError(key)
             self.cursor.execute("DELETE FROM store WHERE key=?", (key,))
 
-    def __contains__(self, key):
+    def __contains__(self, key: str) -> bool:
+        """
+        Check if a key is in the store.
+
+        :param key: The key to check.
+        :return: ``True`` if the key is in the store, ``False`` otherwise.
+        """
         with self:
             self.cursor.execute("SELECT 1 FROM store WHERE key=?", (key,))
             return self.cursor.fetchone() is not None
 
-    def __iter__(self):
+    def __iter__(self) -> typing.Iterator[str]:
+        """
+        Iterate over the keys and values in the store.
+
+        :return: An iterator over the keys and values in the store.
+        """
         with self:
             self.cursor.execute("SELECT key, value FROM store")
             for row in self.cursor:
                 yield row
 
-    def keys(self):
+    def keys(self) -> typing.Iterator[str]:
+        """
+        Get all keys in the store.
+
+        :return: An iterator over the keys in the store.
+        """
         with self:
             self.cursor.execute("SELECT key FROM store")
             for row in self.cursor:
                 yield row[0]
 
-    def items(self):
+    def items(self) -> typing.Iterator[str]:
+        """
+        Get all values in the store.
+
+        :return: An iterator over the values in the store.
+        """
         with self:
             self.cursor.execute("SELECT value FROM store")
             for row in self.cursor:
                 yield row[0]
 
-    def delete_older_than(self, timedelta):
+    def delete_older_than(self, timedelta: datetime.timedelta) -> list[tuple[str, str]]:
+        """
+        Delete all keys and their associated values that were created more than a certain time ago.
+
+        :param timedelta: The age of the keys to delete.
+        :return: The keys and values that were deleted.
+        """
         with self:
             cutoff_date = datetime.datetime.now() - timedelta
             self.cursor.execute("SELECT key, value FROM store WHERE creation_date < ?", (cutoff_date,))
@@ -132,38 +202,81 @@ class KeyValueStore:
 
 
 class CachedFile:
+    """Represents the path of a file in a :py:class:`.FileCache`"""
+
+    path: str
+    """
+    The path to the file on disk.
+    """
+
+    metadata: dict[str, str]
+    """
+    Optional metadata for the file stored in the database.
+    """
+
     def __init__(self, data_dict):
+        """
+        :param data_dict: file data dict parsed from the cache database.
+        """
         self.path = data_dict['path']
         self.metadata = data_dict['metadata']
 
 
 class FileCache:
-    def __init__(self, db_path, cache_dir):
+    """
+    A cache system that stores files and their metadata.
+    """
+
+    def __init__(self, db_path: str, cache_dir: str):
+        """
+        Initializes the :py:class:`.FileCache` object with a key-value store located
+        at ``db_path`` and a cache directory at ``cache_dir``. If the cache directory
+        doesn't exist, it creates it.
+
+        :param db_path: The path to the key-value store database.
+        :param cache_dir: The directory where the cache files are stored.
+        """
         self.kv_store = KeyValueStore(db_path)
         self.cache_dir = cache_dir
         if not os.path.exists(cache_dir):
             os.makedirs(cache_dir, exist_ok=True)
 
-    def __iter__(self):
+    def __iter__(self) -> typing.Iterator[CachedFile]:
+        """
+        Allows iteration over the key-value pairs in the key-value store,
+        yielding each key and its corresponding :py:class:`.CachedFile` object.
+        """
         with self.kv_store:
             for k, v in self.kv_store:
                 yield k, CachedFile(json.loads(v))
 
     def __delitem__(self, key):
+        """
+        Deletes the item with the specified key from the key-value store.
+        """
         with self.kv_store:
             del self.kv_store[key]
 
-    def items(self):
+    def items(self) -> typing.Iterator[CachedFile]:
+        """
+        Yields all items in the key-value store as :py:class:`.CachedFile` objects.
+        """
         with self.kv_store:
             for k, v in self.kv_store:
                 yield CachedFile(json.loads(v))
 
-    def keys(self):
+    def keys(self) -> typing.Iterator[str]:
+        """
+        Yields all keys in the key-value store.
+        """
         with self.kv_store:
             for k in self.kv_store.keys():
                 yield k
 
     def _generate_unique_filename(self, ext):
+        """
+        Generates a unique filename with the specified extension in the cache directory.
+        """
         if ext is None:
             ext = ''
         else:
@@ -175,18 +288,43 @@ class FileCache:
         return file_path
 
     def __enter__(self):
+        """
+        Allows the :py:class:`.FileCache` object to be used in a with statement,
+        ensuring that the key-value store is properly opened.
+        """
         self.kv_store.__enter__()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        Ensures that the key-value store is properly closed after being used in a with statement.
+        """
         self.kv_store.__exit__(exc_type, exc_val, exc_tb)
 
-    def delete_older_than(self, timedelta):
+    def delete_older_than(self, timedelta: datetime.timedelta) -> typing.Iterator[CachedFile]:
+        """
+        Deletes items from the key-value store that are older than the specified timedelta,
+        yielding each key and its corresponding :py:class:`.CachedFile` object.
+        """
         for key, value in self.kv_store.delete_older_than(timedelta):
             yield key, CachedFile(json.loads(value))
 
-    def add(self, key, file_data: bytes, metadata: typing.Dict[str, str] = None, ext=None) -> typing.Optional[CachedFile]:
+    def add(self,
+            key: str,
+            file_data: bytes,
+            metadata: typing.Dict[str, str] = None,
+            ext: typing.Optional[str] = None) \
+            -> typing.Optional[CachedFile]:
+        """
+        Adds a file to the cache. If a file with the same key already exists, it overwrites the existing file.
+        Otherwise, it creates a new file with a unique filename.
 
+        :param key: The key associated with the file.
+        :param file_data: The data of the file in bytes.
+        :param metadata: The metadata of the file.
+        :param ext: The extension of the file.
+        :return: A :py:class:`.CachedFile` object representing the added file.
+        """
         with self.kv_store as kv:
             if key in kv:
                 file_path = pathlib.Path(json.loads(kv.get(key))['path']).name
@@ -204,6 +342,13 @@ class FileCache:
         return CachedFile(entry_data)
 
     def get(self, key) -> typing.Optional[CachedFile]:
+        """
+        Retrieves the :py:class:`.CachedFile` object for the specified key
+        from the  key-value store, or returns None if the key does not exist.
+
+        :param key: The key associated with the file.
+        :return: A :py:class:`.CachedFile` object representing the file, or ``None`` if the key does not exist.
+        """
         with self.kv_store as kv:
             if key in kv:
                 return CachedFile(json.loads(kv[key]))
@@ -212,7 +357,23 @@ class FileCache:
 
 
 class WebFileCache(FileCache):
-    def __init__(self, db_path, cache_dir, expiry_delta=datetime.timedelta(hours=12)):
+    """
+    A cache system that stores files and their metadata downloaded from the web.
+    """
+
+    def __init__(self,
+                 db_path: str,
+                 cache_dir: str,
+                 expiry_delta: datetime.timedelta = datetime.timedelta(hours=12)):
+        """
+        Initializes the :py:class:`.WebFileCache` object with a key-value store
+        located at ``db_path``, a cache directory at ``cache_dir``, and an expiry delta.
+        If the cache directory doesn't exist, it creates it. It also attempts to clear old files.
+
+        :param db_path: The path to the key-value store database.
+        :param cache_dir: The directory where the cache files are stored.
+        :param expiry_delta: The time delta for file expiry.
+        """
         super().__init__(db_path, cache_dir)
         self.expiry_delta = expiry_delta
         try:
@@ -221,6 +382,9 @@ class WebFileCache(FileCache):
             self._remove_cache_files_except_locks()
 
     def _remove_cache_files_except_locks(self):
+        """
+        Removes all cache files except for lock files.
+        """
         with self.kv_store.file_lock:
             os.unlink(self.kv_store.db_path)
             stack = [self.cache_dir]
@@ -236,18 +400,22 @@ class WebFileCache(FileCache):
                     os.rmdir(base)
 
     def _clear_old_files(self):
+        """
+        Clears files that are older than the expiry delta.
+        """
         for key, cached_file in self.delete_older_than(self.expiry_delta):
             os.unlink(cached_file.path)
 
     def request_mimetype(self, url) -> str:
         """
-        Request the mimetype of a file at a URL, if the file exists in the cache, a known mimetype
-        is returned without connecting to the internet. Otherwise connect to the internet
-        to retrieve the mimetype, this action does not update the cache.
+        Requests the mimetype of a file at a URL. If the file exists in the cache, a known mimetype
+        is returned without connecting to the internet. Otherwise, it connects to the internet
+        to retrieve the mimetype. This action does not update the cache.
 
-        :param url: The url
+        :raise HTTPError: On http status errors.
 
-        :return: mimetype string
+        :param url: The URL of the file.
+        :return: The mimetype of the file.
         """
         with self:
             exists = self.get(url)
@@ -257,6 +425,7 @@ class WebFileCache(FileCache):
         headers = {'User-Agent': fake_useragent.UserAgent().chrome}
 
         with requests.get(url, headers=headers, stream=True) as req:
+            req.raise_for_status()
             mime_type = req.headers['content-type']
 
         return mime_type
@@ -265,6 +434,18 @@ class WebFileCache(FileCache):
                  mime_acceptable_desc: typing.Optional[str] = None,
                  mimetype_is_supported: typing.Optional[typing.Callable[[str], bool]] = None,
                  unknown_mimetype_exception=ValueError):
+        """
+        Downloads a file and/or returns a file path from the cache. If the mimetype
+        of the file is not supported, it raises an exception.
+
+        :raise HTTPError: On http status errors.
+
+        :param url: The URL of the file.
+        :param mime_acceptable_desc: A description of acceptable mimetypes for use in exceptions.
+        :param mimetype_is_supported: A function that determines if a mimetype is supported for downloading.
+        :param unknown_mimetype_exception: The exception type to raise when an unknown mimetype is encountered.
+        :return: The path to the downloaded file.
+        """
         self._clear_old_files()
 
         def _mimetype_is_supported(mimetype):
@@ -277,23 +458,19 @@ class WebFileCache(FileCache):
             if cached_file is not None and os.path.exists(cached_file.path):
                 return cached_file
 
-        response = requests.get(url, headers={'User-Agent': fake_useragent.UserAgent().chrome}, stream=True)
-        response.raise_for_status()
+        with requests.get(url, headers={'User-Agent': fake_useragent.UserAgent().chrome}, stream=True) as response:
+            response.raise_for_status()
 
-        mime_type = response.headers.get('content-type', 'unknown')
+            mime_type = response.headers.get('content-type', 'unknown')
 
-        if not _mimetype_is_supported(mime_type):
-            raise unknown_mimetype_exception(
-                f'Unknown mimetype "{mime_type}" from URL "{url}". '
-                f'Expected: {mime_acceptable_desc}')
+            if not _mimetype_is_supported(mime_type):
+                raise unknown_mimetype_exception(
+                    f'Unknown mimetype "{mime_type}" from URL "{url}". '
+                    f'Expected: {mime_acceptable_desc}')
 
-        metadata = {'mime-type': mime_type}
+            metadata = {'mime-type': mime_type}
 
-        parsed = urllib.parse.urlparse(url)
-        path = os.path.splitext(parsed.path)
-        if len(path) > 1:
-            ext = path[1]
-        else:
-            ext = ''
+            parsed = urllib.parse.urlparse(url)
+            _, ext = os.path.splitext(parsed.path)
 
-        return self.add(url, response.content, metadata, ext)
+            return self.add(url, response.content, metadata, ext)
