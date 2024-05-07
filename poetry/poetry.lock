@@ -840,13 +840,13 @@ wcwidth = ">=0.2.12,<0.3.0"
 
 [[package]]
 name = "huggingface-hub"
-version = "0.22.2"
+version = "0.23.0"
 description = "Client library to download and publish models, datasets and other repos on the huggingface.co hub"
 optional = false
 python-versions = ">=3.8.0"
 files = [
-    {file = "huggingface_hub-0.22.2-py3-none-any.whl", hash = "sha256:3429e25f38ccb834d310804a3b711e7e4953db5a9e420cc147a5e194ca90fd17"},
-    {file = "huggingface_hub-0.22.2.tar.gz", hash = "sha256:32e9a9a6843c92f253ff9ca16b9985def4d80a93fb357af5353f770ef74a81be"},
+    {file = "huggingface_hub-0.23.0-py3-none-any.whl", hash = "sha256:075c30d48ee7db2bba779190dc526d2c11d422aed6f9044c5e2fdc2c432fdb91"},
+    {file = "huggingface_hub-0.23.0.tar.gz", hash = "sha256:7126dedd10a4c6fac796ced4d87a8cf004efc722a5125c2c09299017fa366fa9"},
 ]
 
 [package.dependencies]
@@ -859,16 +859,16 @@ tqdm = ">=4.42.1"
 typing-extensions = ">=3.7.4.3"
 
 [package.extras]
-all = ["InquirerPy (==0.3.4)", "Jinja2", "Pillow", "aiohttp", "gradio", "jedi", "minijinja (>=1.0)", "mypy (==1.5.1)", "numpy", "pytest", "pytest-asyncio", "pytest-cov", "pytest-env", "pytest-rerunfailures", "pytest-vcr", "pytest-xdist", "ruff (>=0.3.0)", "soundfile", "types-PyYAML", "types-requests", "types-simplejson", "types-toml", "types-tqdm", "types-urllib3", "typing-extensions (>=4.8.0)", "urllib3 (<2.0)"]
+all = ["InquirerPy (==0.3.4)", "Jinja2", "Pillow", "aiohttp", "fastapi", "gradio", "jedi", "minijinja (>=1.0)", "mypy (==1.5.1)", "numpy", "pytest", "pytest-asyncio", "pytest-cov", "pytest-env", "pytest-rerunfailures", "pytest-vcr", "pytest-xdist", "ruff (>=0.3.0)", "soundfile", "types-PyYAML", "types-requests", "types-simplejson", "types-toml", "types-tqdm", "types-urllib3", "typing-extensions (>=4.8.0)", "urllib3 (<2.0)"]
 cli = ["InquirerPy (==0.3.4)"]
-dev = ["InquirerPy (==0.3.4)", "Jinja2", "Pillow", "aiohttp", "gradio", "jedi", "minijinja (>=1.0)", "mypy (==1.5.1)", "numpy", "pytest", "pytest-asyncio", "pytest-cov", "pytest-env", "pytest-rerunfailures", "pytest-vcr", "pytest-xdist", "ruff (>=0.3.0)", "soundfile", "types-PyYAML", "types-requests", "types-simplejson", "types-toml", "types-tqdm", "types-urllib3", "typing-extensions (>=4.8.0)", "urllib3 (<2.0)"]
+dev = ["InquirerPy (==0.3.4)", "Jinja2", "Pillow", "aiohttp", "fastapi", "gradio", "jedi", "minijinja (>=1.0)", "mypy (==1.5.1)", "numpy", "pytest", "pytest-asyncio", "pytest-cov", "pytest-env", "pytest-rerunfailures", "pytest-vcr", "pytest-xdist", "ruff (>=0.3.0)", "soundfile", "types-PyYAML", "types-requests", "types-simplejson", "types-toml", "types-tqdm", "types-urllib3", "typing-extensions (>=4.8.0)", "urllib3 (<2.0)"]
 fastai = ["fastai (>=2.4)", "fastcore (>=1.3.27)", "toml"]
 hf-transfer = ["hf-transfer (>=0.1.4)"]
 inference = ["aiohttp", "minijinja (>=1.0)"]
 quality = ["mypy (==1.5.1)", "ruff (>=0.3.0)"]
 tensorflow = ["graphviz", "pydot", "tensorflow"]
 tensorflow-testing = ["keras (<3.0)", "tensorflow"]
-testing = ["InquirerPy (==0.3.4)", "Jinja2", "Pillow", "aiohttp", "gradio", "jedi", "minijinja (>=1.0)", "numpy", "pytest", "pytest-asyncio", "pytest-cov", "pytest-env", "pytest-rerunfailures", "pytest-vcr", "pytest-xdist", "soundfile", "urllib3 (<2.0)"]
+testing = ["InquirerPy (==0.3.4)", "Jinja2", "Pillow", "aiohttp", "fastapi", "gradio", "jedi", "minijinja (>=1.0)", "numpy", "pytest", "pytest-asyncio", "pytest-cov", "pytest-env", "pytest-rerunfailures", "pytest-vcr", "pytest-xdist", "soundfile", "urllib3 (<2.0)"]
 torch = ["safetensors", "torch"]
 typing = ["types-PyYAML", "types-requests", "types-simplejson", "types-toml", "types-tqdm", "types-urllib3", "typing-extensions (>=4.8.0)"]
 
@@ -1024,13 +1024,13 @@ reference = "jax"
 
 [[package]]
 name = "jinja2"
-version = "3.1.3"
+version = "3.1.4"
 description = "A very fast and expressive template engine."
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "Jinja2-3.1.3-py3-none-any.whl", hash = "sha256:7d6d50dd97d52cbc355597bd845fabfbac3f551e1f99619e39a35ce8c370b5fa"},
-    {file = "Jinja2-3.1.3.tar.gz", hash = "sha256:ac8bd6544d4bb2c9792bf3a159e80bba8fda7f07e81bc3aed565432d5925ba90"},
+    {file = "jinja2-3.1.4-py3-none-any.whl", hash = "sha256:bc5dd2abb727a5319567b7a813e6a2e7318c39f4f487cfe6c89c6f9c7d25197d"},
+    {file = "jinja2-3.1.4.tar.gz", hash = "sha256:4a3aee7acbbe7303aede8e9648d13b8bf88a429282aa6122a993f0ac800cb369"},
 ]
 
 [package.dependencies]
@@ -1173,13 +1173,13 @@ test = ["pytest (>=7.4)", "pytest-cov (>=4.1)"]
 
 [[package]]
 name = "lightning-fabric"
-version = "2.2.3"
+version = "2.2.4"
 description = ""
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "lightning-fabric-2.2.3.tar.gz", hash = "sha256:960f28610033b78be253e2226913fc738a931dec7a9c1da2b4aa30cd24c39210"},
-    {file = "lightning_fabric-2.2.3-py3-none-any.whl", hash = "sha256:bc116ff2d0b6702359eb015adead790a7b44dc01b55c3dac69b75df50ff048b6"},
+    {file = "lightning-fabric-2.2.4.tar.gz", hash = "sha256:18883f628063f325b6e09adf4d5804ddd3216a88967ccd3277a65595f1cd46c9"},
+    {file = "lightning_fabric-2.2.4-py3-none-any.whl", hash = "sha256:aaa7fc039f1bf730a04361580bf3fa51867ce362e95ad30d1af6335155a23e1f"},
 ]
 
 [package.dependencies]
@@ -2048,6 +2048,20 @@ typing = ["typing-extensions"]
 xmp = ["defusedxml"]
 
 [[package]]
+name = "pretty-errors"
+version = "1.2.25"
+description = "Prettifies Python exception output to make it legible."
+optional = false
+python-versions = "*"
+files = [
+    {file = "pretty_errors-1.2.25-py3-none-any.whl", hash = "sha256:8ce68ccd99e0f2a099265c8c1f1c23b7c60a15d69bb08816cb336e237d5dc983"},
+    {file = "pretty_errors-1.2.25.tar.gz", hash = "sha256:a16ba5c752c87c263bf92f8b4b58624e3b1e29271a9391f564f12b86e93c6755"},
+]
+
+[package.dependencies]
+colorama = "*"
+
+[[package]]
 name = "protobuf"
 version = "5.26.1"
 description = ""
@@ -2097,17 +2111,16 @@ test = ["enum34", "ipaddress", "mock", "pywin32", "wmi"]
 
 [[package]]
 name = "pygments"
-version = "2.17.2"
+version = "2.18.0"
 description = "Pygments is a syntax highlighting package written in Python."
 optional = true
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "pygments-2.17.2-py3-none-any.whl", hash = "sha256:b27c2826c47d0f3219f29554824c30c5e8945175d888647acd804ddd04af846c"},
-    {file = "pygments-2.17.2.tar.gz", hash = "sha256:da46cec9fd2de5be3a8a784f434e4c4ab670b4ff54d605c4c2717e9d49c4c367"},
+    {file = "pygments-2.18.0-py3-none-any.whl", hash = "sha256:b8e6aca0523f3ab76fee51799c488e38782ac06eafcf95e7ba832985c8e7b13a"},
+    {file = "pygments-2.18.0.tar.gz", hash = "sha256:786ff802f32e91311bff3889f6e9a86e81505fe99f2735bb6d60ae0c5004f199"},
 ]
 
 [package.extras]
-plugins = ["importlib-metadata"]
 windows-terminal = ["colorama (>=0.4.6)"]
 
 [[package]]
@@ -2140,13 +2153,13 @@ six = ">=1.5"
 
 [[package]]
 name = "pytorch-lightning"
-version = "2.2.3"
+version = "2.2.4"
 description = "PyTorch Lightning is the lightweight PyTorch wrapper for ML researchers. Scale your models. Write less boilerplate."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "pytorch-lightning-2.2.3.tar.gz", hash = "sha256:8bc606c3719b4546f122023ff47a146faf82a96a56cdfb79ac8a70b0ec905783"},
-    {file = "pytorch_lightning-2.2.3-py3-none-any.whl", hash = "sha256:7b80992367b95e9625457231b25c335d6b8a1f647c6bff10d09cc8a70050a7c5"},
+    {file = "pytorch-lightning-2.2.4.tar.gz", hash = "sha256:525b04ebad9900c3e3c2a12b3b462fe4f61ebe11fdb694716c3209f05b9b0fa8"},
+    {file = "pytorch_lightning-2.2.4-py3-none-any.whl", hash = "sha256:fd91d47e983a2cd743c5c8c3c3795bbd0f3b69d24be2172a2f9012d930701ff2"},
 ]
 
 [package.dependencies]
@@ -2669,12 +2682,12 @@ files = [
 
 [[package]]
 name = "spandrel"
-version = "0.3.1"
+version = "0.3.2"
 description = "Give your project support for a variety of PyTorch model architectures, including auto-detecting model architecture from just .pth files. spandrel gives you arch support."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "spandrel-0.3.1-py3-none-any.whl", hash = "sha256:688678a334813e69f46349120e4b57e2b2871c6d0815ec3a02cc67ba60a68099"},
+    {file = "spandrel-0.3.2-py3-none-any.whl", hash = "sha256:74c715e1557321debd806832ed877e7f01d22da7f5b86a59f9eb16c80fdae8ba"},
 ]
 
 [package.dependencies]
@@ -2719,28 +2732,28 @@ mpmath = ">=0.19"
 
 [[package]]
 name = "tensorstore"
-version = "0.1.58"
+version = "0.1.59"
 description = "Read and write large, multi-dimensional arrays"
 optional = true
 python-versions = ">=3.9"
 files = [
-    {file = "tensorstore-0.1.58-cp310-cp310-macosx_10_14_x86_64.whl", hash = "sha256:a1b26008c320c3be356c34779b468b7f9fcfdc4d0d366b733e6a77488f79251b"},
-    {file = "tensorstore-0.1.58-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:21c6dbbbf878bdaf8fccd8a71b13900954a0825279dd934651cdc59750556c69"},
-    {file = "tensorstore-0.1.58-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:5cfd53a159335d05f0a416c9a02b77f97d7e0fa929489d15ae6487061680f345"},
-    {file = "tensorstore-0.1.58-cp310-cp310-win_amd64.whl", hash = "sha256:6fd35bd5e1fe95fcfb4820d37153cfa2653ba7a9c391e9b9d7cf914b46692f0e"},
-    {file = "tensorstore-0.1.58-cp311-cp311-macosx_10_14_x86_64.whl", hash = "sha256:ba688c87e116c36d0839fe463688d5ea69c8e4597b6f1c6d3933a4bae1e41b7a"},
-    {file = "tensorstore-0.1.58-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:6fc95b0a25eec2450ee428aacf69e99529dd274317aa45795f79fde336fe2f7f"},
-    {file = "tensorstore-0.1.58-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:9118762d9f4e508e8675bf11e2bbf5ec6d061c2cd42154aa96195bd25156971d"},
-    {file = "tensorstore-0.1.58-cp311-cp311-win_amd64.whl", hash = "sha256:a144a86711639ddba4ec021e71bde9480ab234eed6f124352e167885f655524a"},
-    {file = "tensorstore-0.1.58-cp312-cp312-macosx_10_14_x86_64.whl", hash = "sha256:b999068aabab50ca96154783083a9efbdc0c5315745304b5a1ef543aa788c66e"},
-    {file = "tensorstore-0.1.58-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:2bb73015268f0894d23796f3384751fda3d40423d42e129469d91cca7728d4e0"},
-    {file = "tensorstore-0.1.58-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:e974d0f35d07cdfded317030caa08e18aa522bb950bcf345a0d34cc2ea9035aa"},
-    {file = "tensorstore-0.1.58-cp312-cp312-win_amd64.whl", hash = "sha256:6c8bbb75e0cb764325702771bb818f26cf9fb6f39178693174fbc6107d2df156"},
-    {file = "tensorstore-0.1.58-cp39-cp39-macosx_10_14_x86_64.whl", hash = "sha256:6a19dddeacac6dbf71eda9b39b25eeac56c06dad55e5abb511dc1b74e0bbd7e0"},
-    {file = "tensorstore-0.1.58-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:27031ad80c4c249ebfc83e0a12ef06efc48d1cc41340c2fb20fec6223912a9df"},
-    {file = "tensorstore-0.1.58-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:e821e914e0697a95fae107eccffa2b210aaf737f5e1c591af91f69d5957b02d4"},
-    {file = "tensorstore-0.1.58-cp39-cp39-win_amd64.whl", hash = "sha256:4fb7ac2a88c12bd8b59a6c5e67720fd228873a6e182a7873b01a0a8153ea40be"},
-    {file = "tensorstore-0.1.58.tar.gz", hash = "sha256:899bcf2fad09d78a886dc4a9ee70dba7dc9c1fb5a1d7d38f164a97046b5434d9"},
+    {file = "tensorstore-0.1.59-cp310-cp310-macosx_10_14_x86_64.whl", hash = "sha256:5d33b80b0bc5cfb03785ee646e206173e68e9655f7be2e2e7b359f1e8d2a8f67"},
+    {file = "tensorstore-0.1.59-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:5bf1afbe6040a28e4b0a04d6543c16a25f91bfebf70175feae8c03d3b679cb67"},
+    {file = "tensorstore-0.1.59-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d2fabd59aa771b9bce2348c1b81e71a4e677fd0706ba2831921b7d2e74567849"},
+    {file = "tensorstore-0.1.59-cp310-cp310-win_amd64.whl", hash = "sha256:670b422feba01ae2f6db1d2bbd6031d96fab95aa6bf8c11cf9523efc8b1eb24c"},
+    {file = "tensorstore-0.1.59-cp311-cp311-macosx_10_14_x86_64.whl", hash = "sha256:762c02c34b1d8c9221e86e0b27ca5def549e23f99039c0cd71930ab427995094"},
+    {file = "tensorstore-0.1.59-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:8408857b0c92d4e5054457b0a64d70c263f39e853faa9a9728dae95da5c5a44d"},
+    {file = "tensorstore-0.1.59-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:5cfe361fd9823687027fd376a2a860c4a24752b6f604b31720a8cc55945feb16"},
+    {file = "tensorstore-0.1.59-cp311-cp311-win_amd64.whl", hash = "sha256:c28bb9f2611a5f9acc87657cfd09d052aacbb336cfae5878aee8176da73d0941"},
+    {file = "tensorstore-0.1.59-cp312-cp312-macosx_10_14_x86_64.whl", hash = "sha256:d00085f35cbd9cfaf637a11066830eb5a602119c19550b3c743cf37dfaf81a5c"},
+    {file = "tensorstore-0.1.59-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:5663848784827404688ad95a3283f6ba0b9bbe9ed70ea349daecf76febee64e4"},
+    {file = "tensorstore-0.1.59-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a71f2ed8741666b16262a0738cb22c2e9464c543b2c3459ed07131bf99907e0d"},
+    {file = "tensorstore-0.1.59-cp312-cp312-win_amd64.whl", hash = "sha256:e54a6a61b9b8b6a64b5a71fb496bdcc9fbb75c029c3d3c152c565c7897b4736b"},
+    {file = "tensorstore-0.1.59-cp39-cp39-macosx_10_14_x86_64.whl", hash = "sha256:87979bcb35d616366e8a2296044bfdd0c2dc85aab454f42f1d91dcdf2d3370da"},
+    {file = "tensorstore-0.1.59-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:f1f032471d830cd03583f5cca4f3da42b2387a6f1b5d23194fb1b0007fd63393"},
+    {file = "tensorstore-0.1.59-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:e84162d126baa226105efd4fd57d3891bb4d97b544b1a23490ccb9418a35dea4"},
+    {file = "tensorstore-0.1.59-cp39-cp39-win_amd64.whl", hash = "sha256:8996b8d802f857d8777ca300b05f8386ea5a87233fe208d131f5586f952e3df4"},
+    {file = "tensorstore-0.1.59.tar.gz", hash = "sha256:16826e28f6282004932fde816b8b2677e89d2ad0e98a1a7f527f87596a3d4803"},
 ]
 
 [package.dependencies]
@@ -2749,13 +2762,13 @@ numpy = ">=1.16.0"
 
 [[package]]
 name = "tifffile"
-version = "2024.4.24"
+version = "2024.5.3"
 description = "Read and write TIFF files"
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "tifffile-2024.4.24-py3-none-any.whl", hash = "sha256:8d0b982f4b01ace358835ae6c2beb5a70cb7287f5d3a2e96c318bd5befa97b1f"},
-    {file = "tifffile-2024.4.24.tar.gz", hash = "sha256:e329f36ac8ff3bbe7dd04609340be26b03c4b9e9a69235fc3ab33434157c38ea"},
+    {file = "tifffile-2024.5.3-py3-none-any.whl", hash = "sha256:cac4d939156ff7f16d65fd689637808a7b5b3ad58f9c73327fc009b0aa32c7d5"},
+    {file = "tifffile-2024.5.3.tar.gz", hash = "sha256:44521508ecc51ebaf0e47e9748913e9c7331a4e32fb571ff4dfc05cb8f4d8896"},
 ]
 
 [package.dependencies]
@@ -2960,30 +2973,31 @@ reference = "pytorch"
 
 [[package]]
 name = "torchmetrics"
-version = "1.3.2"
+version = "1.4.0"
 description = "PyTorch native Metrics"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "torchmetrics-1.3.2-py3-none-any.whl", hash = "sha256:44ca3a9f86dc050cb3f554836ef291698ea797778457195b4f685fce8e2e64a3"},
-    {file = "torchmetrics-1.3.2.tar.gz", hash = "sha256:0a67694a4c4265eeb54cda741eaf5cb1f3a71da74b7e7e6215ad156c9f2379f6"},
+    {file = "torchmetrics-1.4.0-py3-none-any.whl", hash = "sha256:18599929a0fff7d4b840a3f9a7700054121850c378caaf7206f4161c0a5dc93c"},
+    {file = "torchmetrics-1.4.0.tar.gz", hash = "sha256:0b1e5acdcc9beb05bfe369d3d56cfa5b143f060ebfd6079d19ccc59ba46465b3"},
 ]
 
 [package.dependencies]
 lightning-utilities = ">=0.8.0"
 numpy = ">1.20.0"
 packaging = ">17.1"
+pretty-errors = "1.2.25"
 torch = ">=1.10.0"
 
 [package.extras]
-all = ["SciencePlots (>=2.0.0)", "ipadic (>=1.0.0)", "matplotlib (>=3.3.0)", "mecab-ko (>=1.0.0)", "mecab-ko-dic (>=1.0.0)", "mecab-python3 (>=1.0.6)", "mypy (==1.8.0)", "nltk (>=3.6)", "piq (<=0.8.0)", "pycocotools (>2.0.0)", "pystoi (>=0.3.0)", "regex (>=2021.9.24)", "scipy (>1.0.0)", "sentencepiece (>=0.2.0)", "torch (==2.2.1)", "torch-fidelity (<=0.4.0)", "torchaudio (>=0.10.0)", "torchvision (>=0.8)", "tqdm (>=4.41.0)", "transformers (>4.4.0)", "transformers (>=4.10.0)", "types-PyYAML", "types-emoji", "types-protobuf", "types-requests", "types-setuptools", "types-six", "types-tabulate"]
+all = ["SciencePlots (>=2.0.0)", "ipadic (>=1.0.0)", "matplotlib (>=3.3.0)", "mecab-python3 (>=1.0.6)", "mypy (==1.9.0)", "nltk (>=3.6)", "piq (<=0.8.0)", "pycocotools (>2.0.0)", "pystoi (>=0.3.0)", "regex (>=2021.9.24)", "scipy (>1.0.0)", "sentencepiece (>=0.2.0)", "torch (==2.3.0)", "torch-fidelity (<=0.4.0)", "torchaudio (>=0.10.0)", "torchvision (>=0.8)", "tqdm (>=4.41.0)", "transformers (>4.4.0)", "transformers (>=4.10.0)", "types-PyYAML", "types-emoji", "types-protobuf", "types-requests", "types-setuptools", "types-six", "types-tabulate"]
 audio = ["pystoi (>=0.3.0)", "torchaudio (>=0.10.0)"]
 detection = ["pycocotools (>2.0.0)", "torchvision (>=0.8)"]
-dev = ["SciencePlots (>=2.0.0)", "bert-score (==0.3.13)", "dython (<=0.7.5)", "fairlearn", "fast-bss-eval (>=0.1.0)", "faster-coco-eval (>=1.3.3)", "huggingface-hub (<0.22)", "ipadic (>=1.0.0)", "jiwer (>=2.3.0)", "kornia (>=0.6.7)", "lpips (<=0.1.4)", "matplotlib (>=3.3.0)", "mecab-ko (>=1.0.0)", "mecab-ko-dic (>=1.0.0)", "mecab-python3 (>=1.0.6)", "mir-eval (>=0.6)", "monai (==1.3.0)", "mypy (==1.8.0)", "netcal (>1.0.0)", "nltk (>=3.6)", "numpy (<1.25.0)", "pandas (>1.0.0)", "pandas (>=1.4.0)", "piq (<=0.8.0)", "pycocotools (>2.0.0)", "pystoi (>=0.3.0)", "pytorch-msssim (==1.0.0)", "regex (>=2021.9.24)", "rouge-score (>0.1.0)", "sacrebleu (>=2.3.0)", "scikit-image (>=0.19.0)", "scipy (>1.0.0)", "sentencepiece (>=0.2.0)", "sewar (>=0.4.4)", "statsmodels (>0.13.5)", "torch (==2.2.1)", "torch-complex (<=0.4.3)", "torch-fidelity (<=0.4.0)", "torchaudio (>=0.10.0)", "torchvision (>=0.8)", "tqdm (>=4.41.0)", "transformers (>4.4.0)", "transformers (>=4.10.0)", "types-PyYAML", "types-emoji", "types-protobuf", "types-requests", "types-setuptools", "types-six", "types-tabulate"]
+dev = ["SciencePlots (>=2.0.0)", "bert-score (==0.3.13)", "dython (<=0.7.5)", "fairlearn", "fast-bss-eval (>=0.1.0)", "faster-coco-eval (>=1.3.3)", "huggingface-hub (<0.23)", "ipadic (>=1.0.0)", "jiwer (>=2.3.0)", "kornia (>=0.6.7)", "lpips (<=0.1.4)", "matplotlib (>=3.3.0)", "mecab-ko (>=1.0.0)", "mecab-ko-dic (>=1.0.0)", "mecab-python3 (>=1.0.6)", "mir-eval (>=0.6)", "monai (==1.3.0)", "mypy (==1.9.0)", "netcal (>1.0.0)", "nltk (>=3.6)", "numpy (<1.25.0)", "pandas (>1.0.0)", "pandas (>=1.4.0)", "piq (<=0.8.0)", "pycocotools (>2.0.0)", "pystoi (>=0.3.0)", "pytorch-msssim (==1.0.0)", "regex (>=2021.9.24)", "rouge-score (>0.1.0)", "sacrebleu (>=2.3.0)", "scikit-image (>=0.19.0)", "scipy (>1.0.0)", "sentencepiece (>=0.2.0)", "sewar (>=0.4.4)", "statsmodels (>0.13.5)", "torch (==2.3.0)", "torch-complex (<=0.4.3)", "torch-fidelity (<=0.4.0)", "torchaudio (>=0.10.0)", "torchvision (>=0.8)", "tqdm (>=4.41.0)", "transformers (>4.4.0)", "transformers (>=4.10.0)", "types-PyYAML", "types-emoji", "types-protobuf", "types-requests", "types-setuptools", "types-six", "types-tabulate"]
 image = ["scipy (>1.0.0)", "torch-fidelity (<=0.4.0)", "torchvision (>=0.8)"]
 multimodal = ["piq (<=0.8.0)", "transformers (>=4.10.0)"]
-text = ["ipadic (>=1.0.0)", "mecab-ko (>=1.0.0)", "mecab-ko-dic (>=1.0.0)", "mecab-python3 (>=1.0.6)", "nltk (>=3.6)", "regex (>=2021.9.24)", "sentencepiece (>=0.2.0)", "tqdm (>=4.41.0)", "transformers (>4.4.0)"]
-typing = ["mypy (==1.8.0)", "torch (==2.2.1)", "types-PyYAML", "types-emoji", "types-protobuf", "types-requests", "types-setuptools", "types-six", "types-tabulate"]
+text = ["ipadic (>=1.0.0)", "mecab-python3 (>=1.0.6)", "nltk (>=3.6)", "regex (>=2021.9.24)", "sentencepiece (>=0.2.0)", "tqdm (>=4.41.0)", "transformers (>4.4.0)"]
+typing = ["mypy (==1.9.0)", "torch (==2.3.0)", "types-PyYAML", "types-emoji", "types-protobuf", "types-requests", "types-setuptools", "types-six", "types-tabulate"]
 visual = ["SciencePlots (>=2.0.0)", "matplotlib (>=3.3.0)"]
 
 [[package]]
@@ -3037,13 +3051,13 @@ reference = "pytorch"
 
 [[package]]
 name = "tqdm"
-version = "4.66.2"
+version = "4.66.4"
 description = "Fast, Extensible Progress Meter"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "tqdm-4.66.2-py3-none-any.whl", hash = "sha256:1ee4f8a893eb9bef51c6e35730cebf234d5d0b6bd112b0271e10ed7c24a02bd9"},
-    {file = "tqdm-4.66.2.tar.gz", hash = "sha256:6cd52cdf0fef0e0f543299cfc96fec90d7b8a7e88745f411ec33eb44d5ed3531"},
+    {file = "tqdm-4.66.4-py3-none-any.whl", hash = "sha256:b75ca56b413b030bc3f00af51fd2c1a1a5eac6a0c1cca83cbb37a5c52abce644"},
+    {file = "tqdm-4.66.4.tar.gz", hash = "sha256:e4d936c9de8727928f3be6079590e97d9abfe8d39a590be678eb5919ffc186bb"},
 ]
 
 [package.dependencies]
@@ -3067,13 +3081,13 @@ files = [
 
 [[package]]
 name = "transformers"
-version = "4.40.1"
+version = "4.40.2"
 description = "State-of-the-art Machine Learning for JAX, PyTorch and TensorFlow"
 optional = false
 python-versions = ">=3.8.0"
 files = [
-    {file = "transformers-4.40.1-py3-none-any.whl", hash = "sha256:9d5ee0c8142a60501faf9e49a0b42f8e9cb8611823bce4f195a9325a6816337e"},
-    {file = "transformers-4.40.1.tar.gz", hash = "sha256:55e1697e6f18b58273e7117bb469cdffc11be28995462d8d5e422fef38d2de36"},
+    {file = "transformers-4.40.2-py3-none-any.whl", hash = "sha256:71cb94301ec211a2e1d4b8c8d18dcfaa902dfa00a089dceca167a8aa265d6f2d"},
+    {file = "transformers-4.40.2.tar.gz", hash = "sha256:657b6054a2097671398d976ad46e60836e7e15f9ea9551631a96e33cb9240649"},
 ]
 
 [package.dependencies]
@@ -3319,4 +3333,4 @@ flax = ["flax", "jax"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<=3.11.6"
-content-hash = "90559f173dffaf38da324f233ed4719b8dbd53810685a3a2dcf01d70d9711c7f"
+content-hash = "08c578ba947694ae76a2d69fd3c1952815e605939f7abf3afba8c5c60eed4109"

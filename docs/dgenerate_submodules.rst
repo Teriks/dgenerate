@@ -28,6 +28,17 @@ dgenerate.renderloop module
    :show-inheritance:
    :special-members: __call__, __init__
 
+
+dgenerate.filecache module
+-------------------------
+
+.. automodule:: dgenerate.filecache
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :special-members: __call__, __init__
+
+
 dgenerate.filelock module
 -------------------------
 
