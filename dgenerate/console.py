@@ -20,30 +20,29 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import collections.abc
 import importlib.resources
+import io
 import json
+import os
 import pathlib
+import platform
 import queue
 import re
 import shlex
 import shutil
 import subprocess
 import sys
-import time
 import threading
-
+import time
 import tkinter as tk
-import tkinter.font
 import tkinter.filedialog
+import tkinter.font
 import tkinter.scrolledtext
-import os
 import typing
 import webbrowser
 
-import psutil
 import PIL.Image
 import PIL.ImageTk
-import platform
-import io
+import psutil
 
 
 def _get_icon():
@@ -477,7 +476,7 @@ class _DgenerateConsole(tk.Tk):
 
         # Misc Config
 
-        self._termination_lock = threading.RLock()
+        self._termination_lock = threading.Lock()
 
         self._cwd = os.getcwd()
         self._start_dgenerate_process()
@@ -565,6 +564,8 @@ class _DgenerateConsole(tk.Tk):
         self._next_text_update_line_return = False
 
         self._text_update()
+
+        self.bind("<<UpdateEvent>>", lambda *a: self.update())
 
     def _insert_or_replace_input_text(self, text):
         try:
@@ -885,8 +886,7 @@ class _DgenerateConsole(tk.Tk):
             elif exit_message:
                 with self._termination_lock:
                     exit_message = False
-                    # immediately run all pending window events including text updates
-                    self.update()
+                    self.event_generate('<<UpdateEvent>>', when="now")
                     self._write_stdout_output(
                         f'\nShell Process Terminated, Exit Code: {return_code}\n')
                     self._restart_dgenerate_process()
