@@ -144,7 +144,7 @@ def supported_animation_writer_formats():
     """
     PIL.Image.init()
 
-    return ['mp4'] + [ext for ext in (ext.lstrip('.') for ext, file_format
+    return ['mp4'] + [ext for ext in (ext.lstrip('.').lower() for ext, file_format
                                       in PIL.Image.EXTENSION.items() if file_format in PIL.Image.SAVE_ALL) if
                       ext in {'gif', 'webp', 'apng', 'png'}]
 
@@ -159,7 +159,7 @@ def supported_static_image_formats():
     """
     PIL.Image.init()
 
-    return [ext.lstrip('.') for ext, fmt in PIL.Image.EXTENSION.items() if fmt in PIL.Image.SAVE]
+    return [ext.lstrip('.').lower() for ext, fmt in PIL.Image.EXTENSION.items() if fmt in PIL.Image.SAVE]
 
 
 class UnknownAnimationFormatError(Exception):

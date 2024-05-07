@@ -24,6 +24,7 @@ import os
 import pathlib
 import re
 import typing
+import urllib.parse
 
 import PIL.Image
 import PIL.ImageOps
@@ -43,6 +44,47 @@ Also provides media download capabilities and temporary caching of web based fil
 
 Provides information about supported input formats.
 """
+
+
+def url_aware_normpath(path):
+    """
+    Only ``os.path.normpath`` a file path if it is not a URL.
+
+    :param path: the path
+    :return: normalized file path or unmodified URL
+    """
+    if is_downloadable_url(path):
+        return path
+    else:
+        return os.path.normpath(path)
+
+
+def url_aware_basename(path):
+    """
+    Get the ``os.path.basename`` of a file path or URL.
+
+    :param path: the path
+    :return: basename
+    """
+    if is_downloadable_url(path):
+        parsed = urllib.parse.urlparse(path)
+        return os.path.basename(parsed.path)
+    else:
+        return os.path.basename(path)
+
+
+def url_aware_splitext(path):
+    """
+    Get the ``os.path.splitext`` result for a file path or URL.
+
+    :param path: the path
+    :return: base, ext
+    """
+    if is_downloadable_url(path):
+        parsed = urllib.parse.urlparse(path)
+        return os.path.splitext(parsed.path)
+    else:
+        return os.path.splitext(path)
 
 
 def frame_slice_count(total_frames: int, frame_start: int, frame_end: _types.OptionalInteger = None) -> int:

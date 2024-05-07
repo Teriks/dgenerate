@@ -204,6 +204,7 @@ def _type_animation_format(val):
 
 
 def _type_image_format(val):
+    val = val.lower()
     if val not in _mediaoutput.supported_static_image_formats():
         raise argparse.ArgumentTypeError(
             f'Must be one of {_textprocessing.oxford_comma(_mediaoutput.supported_static_image_formats(), "or")}')
