@@ -449,12 +449,16 @@ class ImageProcessRenderLoop:
 
         if self.config.output and len(self.config.output) == 1 and self.config.output[0][-1] in '/\\':
             for idx, file in enumerate(self.config.input):
+                file = os.path.normpath(file)
                 base, ext = os.path.splitext(os.path.basename(file))
-                output_file = os.path.join(self.config.output[0], base + f'_processed_{idx + 1}{ext}')
+                output_file = os.path.normpath(
+                    os.path.join(self.config.output[0], base + f'_processed_{idx + 1}{ext}'))
                 yield from self._process_file(file, output_file, idx, total_generation_steps)
         else:
             for idx, file in enumerate(self.config.input):
-                output_file = self.config.output[idx] if self.config.output else file
+                file = os.path.normpath(file)
+                output_file = os.path.normpath(
+                    self.config.output[idx] if self.config.output else file)
 
                 if file == output_file and not self.config.output_overwrite:
                     base, ext = os.path.splitext(output_file)

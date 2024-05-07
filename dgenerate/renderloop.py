@@ -375,7 +375,7 @@ class RenderLoop:
 
         name = f'{prefix}' + '_'.join(components) + '.' + ext.lstrip('.')
         if with_output_path:
-            return os.path.join(self.config.output_path, name)
+            return os.path.normpath(os.path.join(self.config.output_path, name))
         return name
 
     @staticmethod

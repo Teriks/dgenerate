@@ -477,7 +477,7 @@ class _DgenerateConsole(tk.Tk):
 
         # Misc Config
 
-        self._termination_lock = threading.Lock()
+        self._termination_lock = threading.RLock()
 
         self._cwd = os.getcwd()
         self._start_dgenerate_process()
@@ -675,7 +675,11 @@ class _DgenerateConsole(tk.Tk):
     def _kill_sub_process(self):
         with self._termination_lock:
             self._sub_process.terminate()
-            self._sub_process.wait()
+            try:
+                self._sub_process.wait(timeout=5)
+            except psutil.TimeoutExpired:
+                self._sub_process.kill()
+                self._sub_process.wait()
 
     def _start_dgenerate_process(self):
         env = os.environ.copy()
