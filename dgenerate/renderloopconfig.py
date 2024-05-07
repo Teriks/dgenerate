@@ -764,8 +764,13 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         if self.animation_format not in _mediaoutput.supported_animation_writer_formats() + ['frames']:
             raise RenderLoopConfigError(
-                f'Unsupported {a_namer("animation_format")} value "{self.image_format}". Must be one of '
+                f'Unsupported {a_namer("animation_format")} value "{self.animation_format}". Must be one of '
                 f'{_textprocessing.oxford_comma(_mediaoutput.supported_animation_writer_formats(), "or")}')
+
+        if self.image_format not in _mediaoutput.supported_static_image_formats():
+            raise RenderLoopConfigError(
+                f'Unsupported {a_namer("image_format")} value "{self.image_format}". Must be one of '
+                f'{_textprocessing.oxford_comma(_mediaoutput.supported_static_image_formats(), "or")}')
 
         if self.image_format != "png" and self.output_metadata:
             raise RenderLoopConfigError(

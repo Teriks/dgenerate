@@ -151,13 +151,13 @@ class ImageFileSavedEvent(Event):
 
 
 RenderLoopEvent = typing.Union[ImageGeneratedEvent,
-                               StartingAnimationEvent,
-                               StartingAnimationFileEvent,
-                               AnimationFileFinishedEvent,
-                               ImageFileSavedEvent,
-                               AnimationFinishedEvent,
-                               StartingGenerationStepEvent,
-                               AnimationETAEvent]
+StartingAnimationEvent,
+StartingAnimationFileEvent,
+AnimationFileFinishedEvent,
+ImageFileSavedEvent,
+AnimationFinishedEvent,
+StartingGenerationStepEvent,
+AnimationETAEvent]
 """
 Possible events from the event stream created by :py:meth:`.ImageProcessRenderLoop.events`
 """
@@ -449,23 +449,27 @@ class ImageProcessRenderLoop:
 
         if self.config.output and len(self.config.output) == 1 and self.config.output[0][-1] in '/\\':
             for idx, file in enumerate(self.config.input):
-                file = os.path.normpath(file)
-                base, ext = os.path.splitext(os.path.basename(file))
+                file = _mediainput.url_aware_normpath(file)
+                base, ext = os.path.splitext(_mediainput.url_aware_basename(file))
                 output_file = os.path.normpath(
                     os.path.join(self.config.output[0], base + f'_processed_{idx + 1}{ext}'))
                 yield from self._process_file(file, output_file, idx, total_generation_steps)
         else:
             for idx, file in enumerate(self.config.input):
-                file = os.path.normpath(file)
-                output_file = os.path.normpath(
+                file = _mediainput.url_aware_normpath(file)
+                output_file = _mediainput.url_aware_normpath(
                     self.config.output[idx] if self.config.output else file)
 
                 if file == output_file and not self.config.output_overwrite:
-                    base, ext = os.path.splitext(output_file)
+                    if not _mediainput.is_downloadable_url(file):
+                        base, ext = os.path.splitext(output_file)
+                    else:
+                        base, ext = os.path.splitext(_mediainput.url_aware_basename(output_file))
                     output_file = base + f'_processed_{idx + 1}{ext}'
                 elif output_file[-1] in '/\\':
-                    base, ext = os.path.splitext(os.path.basename(file))
+                    base, ext = os.path.splitext(_mediainput.url_aware_basename(file))
                     output_file = os.path.join(output_file, base + f'_processed_{idx + 1}{ext}')
+
                 yield from self._process_file(file, output_file, idx, total_generation_steps)
 
     def run(self):

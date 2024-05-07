@@ -476,7 +476,7 @@ class _DgenerateConsole(tk.Tk):
 
         # Misc Config
 
-        self._termination_lock = threading.Lock()
+        self._termination_lock = threading.RLock()
 
         self._cwd = os.getcwd()
         self._start_dgenerate_process()
@@ -886,7 +886,6 @@ class _DgenerateConsole(tk.Tk):
             elif exit_message:
                 with self._termination_lock:
                     exit_message = False
-                    self.event_generate('<<UpdateEvent>>', when="now")
                     self._write_stdout_output(
                         f'\nShell Process Terminated, Exit Code: {return_code}\n')
                     self._restart_dgenerate_process()

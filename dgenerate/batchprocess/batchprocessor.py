@@ -660,12 +660,12 @@ class BatchProcessor:
             if not self._running_template_continuation:
                 self._current_line = line_idx
 
-            if line_strip == '':
+            if line_strip == '' and not template_continuation:
                 if continuation and last_line is not None:
                     if last_line.startswith('-') and \
                             not last_line.endswith('\\'):
                         run_continuation('')
-            elif line_strip.startswith('#'):
+            elif line_strip.startswith('#') and not template_continuation:
                 self._look_for_version_mismatch(line_idx, line)
             elif line_strip.startswith('{') and not template_continuation and not normal_continuation:
                 continuation += line
