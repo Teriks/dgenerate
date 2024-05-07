@@ -161,7 +161,7 @@ class ImageProcessRenderLoopConfig(_types.SetFromMixin):
                     # directory specification, input dictates the output format
                     continue
 
-                _, output_ext = _mediainput.url_aware_splitext(file)
+                _, output_ext = os.path.splitext(output_name)
                 output_ext = output_ext.lstrip('.').lower()
 
                 if not _mediainput.mimetype_is_static_image(input_mime_type):
