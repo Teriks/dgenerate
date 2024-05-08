@@ -3924,6 +3924,8 @@ seperated by semicolons.
 
 For example: ``DGENERATE_WEB_CACHE_EXPIRY_DELTA="days=5;hours=6"``
 
+Specifying "forever" or an empty string will disable cache expiration for every downloaded file.
+
 Files downloaded from huggingface by the diffusers/huggingface_hub library will be cached under
 ``~/.cache/huggingface/``, on Windows this equates to ``%USERPROFILE%\.cache\huggingface\``.
 
