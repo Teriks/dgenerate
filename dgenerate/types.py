@@ -27,7 +27,6 @@ import typing
 import PIL.Image
 
 import dgenerate.prompt as _prompt
-import dgenerate.textprocessing
 
 __doc__ = """
 Commonly used static type definitions and utilities for introspecting on objects, functions, types, etc.
@@ -458,19 +457,21 @@ def type_check_struct(obj,
                 f'{a_namer(name)} must be None or type {fullname(value_type)}, value was: {value}')
 
     def _is_optional_literal(name, value, type_hint):
+        import dgenerate.textprocessing as _textprocessing
         optional_type = [i for i in typing.get_args(type_hint) if is_type(i, typing.Literal)][0]
         args = typing.get_args(optional_type)
         if value is not None and value not in args:
             raise ValueError(
                 f'{a_namer(name)} must be None or one of these literal values: '
-                f'{dgenerate.textprocessing.oxford_comma(args, "or")}')
+                f'{_textprocessing.oxford_comma(args, "or")}')
 
     def _is_literal(name, value, type_hint):
+        import dgenerate.textprocessing as _textprocessing
         args = typing.get_args(type_hint)
         if value not in args:
             raise ValueError(
                 f'{a_namer(name)} must be one of these literal values: '
-                f'{dgenerate.textprocessing.oxford_comma(args, "or")}')
+                f'{_textprocessing.oxford_comma(args, "or")}')
 
     def _is(value_type, name, value):
         if not isinstance(value, value_type):
