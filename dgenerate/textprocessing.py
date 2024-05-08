@@ -1140,9 +1140,11 @@ class TimeDeltaParseError(Exception):
     pass
 
 
-def parse_timedelta(string) -> datetime.timedelta:
+def parse_timedelta(string: typing.Optional[str]) -> datetime.timedelta:
     """
     Parse a ``datetime.timedelta`` object from an arguments string.
+
+    Passing 'forever', an empty string, or ``None`` will result in this function returning ``datetime.timedelta.max``
 
     Accepts all named arguments of ``datetime.timedelta``
 
@@ -1159,7 +1161,7 @@ def parse_timedelta(string) -> datetime.timedelta:
         concept_name='timedelta',
         known_args=['days', 'seconds', 'microseconds', 'milliseconds', 'minutes', 'hours', 'weeks'])
 
-    if string.lower().strip() == 'forever' or not string.strip():
+    if string is None or string.lower().strip() == 'forever' or not string.strip():
         return datetime.timedelta.max
 
     try:
