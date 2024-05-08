@@ -18,7 +18,6 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import asteval
 import collections.abc
 import inspect
 import io
@@ -27,6 +26,7 @@ import os
 import re
 import typing
 
+import asteval
 import jinja2
 
 import dgenerate.arguments as _arguments
@@ -44,9 +44,9 @@ class PeekReader:
     **next_line** will be ``None`` if the next line is the end of the file.
     """
 
-    def __init__(self, file: typing.TextIO):
+    def __init__(self, file: typing.Iterator[str]):
         """
-        :param file: The ``TextIO`` reader to wrap.
+        :param file: The ``typing.Iterator`` capable reader to wrap.
         """
         self._file = file
         self._last_next_line = None
@@ -303,11 +303,12 @@ class BatchProcessor:
         """
         return self._executing_text
 
-    def render_template(self, string: str):
+    def render_template(self, string: str, stream: bool = False) -> typing.Union[str, typing.Iterator[str]]:
         """
         Render a template from a string
-        
+
         :param string: the string containing the Jinja2 template.
+        :param stream: Stream the results of generating this template line by line?
         :return: rendered string
         """
 
@@ -324,12 +325,27 @@ class BatchProcessor:
             if len(inspect.signature(func).parameters) > 0:
                 jinja_env.filters[name] = func
 
-        try:
-            return self.expand_vars(
-                jinja_env.from_string(string).
-                render(**self.template_variables))
-        except Exception as e:
-            raise BatchProcessError(f'Template Render Error: {str(e).strip()}')
+        if stream:
+            def stream_generator():
+                buffer = ""
+                try:
+                    for piece in jinja_env.from_string(string). \
+                            stream(**self.template_variables):
+                        buffer += piece
+                        while '\n' in buffer:
+                            line, buffer = buffer.split('\n', 1)
+                            yield os.path.expandvars(line)
+                except Exception as e:
+                    raise BatchProcessError(f'Template Render Error: {str(e).strip()}')
+
+            return stream_generator()
+        else:
+            try:
+                return self.expand_vars(
+                    jinja_env.from_string(string).
+                    render(**self.template_variables))
+            except Exception as e:
+                raise BatchProcessError(f'Template Render Error: {str(e).strip()}')
 
     def _look_for_version_mismatch(self, line_idx, line):
         versioning = re.match(r'#!\s+' + self.name + r'\s+([0-9]+\.[0-9]+\.[0-9]+)', line)
@@ -499,7 +515,7 @@ class BatchProcessor:
         if line.startswith('{'):
             try:
                 self._running_template_continuation = True
-                self.run_string(self.render_template(line))
+                self.run_file(self.render_template(line, stream=True))
             finally:
                 self._running_template_continuation = False
             return True
@@ -563,7 +579,7 @@ class BatchProcessor:
             raise BatchProcessError(
                 f'Invocation error return code: {return_code}')
 
-    def _run_file(self, stream: typing.TextIO):
+    def _run_file(self, stream: typing.Iterator[str]):
         continuation = ''
         template_continuation = False
         normal_continuation = False
@@ -587,7 +603,7 @@ class BatchProcessor:
 
             self._lex_and_run_invocation(completed_continuation)
 
-        def remove_tail_comments_unlexable(string):
+        def remove_tail_comments_unlexable(string) -> str:
             try:
                 # find the start of a possible comment
                 comment_start = string.index('#')
@@ -621,7 +637,7 @@ class BatchProcessor:
             # unescaped comment start, return the segment to the left
             return segment
 
-        def remove_tail_comments(string):
+        def remove_tail_comments(string) -> tuple[bool, str]:
             # this is a more difficult problem than I imagined.
             try:
                 parts = _textprocessing.tokenized_split(string, '#',
@@ -688,9 +704,11 @@ class BatchProcessor:
         if continuation:
             run_continuation('')
 
-    def run_file(self, stream: typing.TextIO):
+    def run_file(self, stream: typing.Iterator[str]):
         """
-        Process a batch processing script from a file stream
+        Process a batch processing script from a file stream.
+
+        Technically, from an iterator over lines of text.
 
         :raise BatchProcessError:
 
