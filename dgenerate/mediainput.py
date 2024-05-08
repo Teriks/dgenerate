@@ -23,6 +23,7 @@ import mimetypes
 import os
 import pathlib
 import re
+import sys
 import typing
 import urllib.parse
 
@@ -1006,7 +1007,16 @@ def get_web_cache_directory() -> str:
     return path
 
 
-_web_cache = _filecache.WebFileCache(os.path.join(get_web_cache_directory(), 'cache.db'), get_web_cache_directory())
+try:
+    _web_cache = _filecache.WebFileCache(
+        os.path.join(get_web_cache_directory(), 'cache.db'),
+        get_web_cache_directory(),
+        expiry_delta=_textprocessing.parse_timedelta(
+            os.environ.get('DGENERATE_WEB_CACHE_EXPIRY_DELTA', 'hours=12').strip('"\'')))
+except _textprocessing.TimeDeltaParseError as e:
+    print(f'DGENERATE_WEB_CACHE_EXPIRY_DELTA environmental variable not parseable: {e}',
+          file=sys.stderr, flush=True)
+    sys.exit(1)
 
 
 class UnknownMimetypeError(Exception):

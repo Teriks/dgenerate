@@ -3912,11 +3912,16 @@ directory ``~/.cache/dgenerate/web``, on Windows this equates to ``%USERPROFILE%
 
 You can control where image seed files are cached with the environmental variable ``DGENERATE_WEB_CACHE``.
 
-This directory is automatically cleared when all instances of dgenerate have finished running.
+Files are cleared from the web cache automatically after an expiry time upon running dgenerate,
+the default value is after 12 hours.
 
-If you start multiple dgenerate processes simultaneously they will share the cache while
-running in a manner that is multiprocess safe, the last running instance of dgenerate will
-clean out the cache.
+This can be controlled with the environmental variable ``DGENERATE_WEB_CACHE_EXPIRY_DELTA``.
+
+The value of ``DGENERATE_WEB_CACHE_EXPIRY_DELTA`` is that of the named arguments of pythons
+`datetime.timedelta <https://docs.python.org/3/library/datetime.html#timedelta-objects>`_ class
+seperated by semicolons.
+
+For example: ``DGENERATE_WEB_CACHE_EXPIRY_DELTA="days=5;hours=6"``
 
 Files downloaded from huggingface by the diffusers/huggingface_hub library will be cached under
 ``~/.cache/huggingface/``, on Windows this equates to ``%USERPROFILE%\.cache\huggingface\``.
