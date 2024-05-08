@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import collections.abc
+import datetime
 import enum
 import glob
 import math
@@ -1130,3 +1131,50 @@ def debug_format_args(args_dict: dict[str, typing.Any],
         {k: str(_value_transformer(k, v)) if
         len(str(_value_transformer(k, v))) < max_value_len
         else _types.class_and_id_string(v) for k, v in args_dict.items()})
+
+
+class TimeDeltaParseError(Exception):
+    """
+    Raised by :py:func:`.parse_timedelta` on parse errors.
+    """
+    pass
+
+
+def parse_timedelta(string) -> datetime.timedelta:
+    """
+    Parse a ``datetime.timedelta`` object from an arguments string.
+
+    Accepts all named arguments of ``datetime.timedelta``
+
+    .. code-block:: python
+
+        parse_time_delta('days=1; seconds=30')
+
+    :raise TimeDeltaParseError: on parse errors
+
+    :param string: the arguments string
+    :return: ``datetime.timedelta``
+    """
+    parser = ConceptUriParser(
+        concept_name='timedelta',
+        known_args=['days', 'seconds', 'microseconds', 'milliseconds', 'minutes', 'hours', 'weeks'])
+
+    if string.lower().strip() == 'forever' or not string.strip():
+        return datetime.timedelta.max
+
+    try:
+        result = parser.parse('timedelta;' + string)
+    except ConceptUriParseError as e:
+        raise TimeDeltaParseError(e)
+
+    args = dict()
+    for k, v in result.args.items():
+        try:
+            args[k] = float(v)
+        except ValueError:
+            raise TimeDeltaParseError(f'Argument "{k}" must be a floating point value or integer.')
+
+    try:
+        return datetime.timedelta(**args)
+    except Exception as e:
+        raise TimeDeltaParseError(e)
