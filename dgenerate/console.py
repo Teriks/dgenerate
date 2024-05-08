@@ -171,7 +171,7 @@ class _DgenerateConsole(tk.Tk):
         super().__init__()
 
         self.title('Dgenerate Console')
-        self.geometry('800x800')
+        self.geometry('1000x800')
         self.iconphoto(False, _get_icon())
 
         # Create main menu
@@ -215,9 +215,9 @@ class _DgenerateConsole(tk.Tk):
         self._edit_menu.add_separator()
 
         self._edit_menu.add_command(label='Insert File Path',
-                                    command=self._input_text_insert_file_name)
+                                    command=self._input_text_insert_file_path)
         self._edit_menu.add_command(label='Insert Directory Path',
-                                    command=self._input_text_insert_directory_name)
+                                    command=self._input_text_insert_directory_path)
 
         # Run menu
 
@@ -267,12 +267,19 @@ class _DgenerateConsole(tk.Tk):
         # View Menu
 
         self._image_pane_visible_var = tk.BooleanVar(value=False)
+        self._image_pane_window_visible_var = tk.BooleanVar(value=False)
+
         self._view_menu = tk.Menu(menu_bar, tearoff=0)
         self._view_menu.add_checkbutton(label='Latest Image Pane',
                                         variable=self._image_pane_visible_var)
+        self._view_menu.add_checkbutton(label='Latest Image Window',
+                                        variable=self._image_pane_window_visible_var)
 
         self._image_pane_visible_var.trace_add('write',
                                                lambda *args: self._update_image_pane_visibility())
+
+        self._image_pane_window_visible_var.trace_add('write',
+                                                      lambda *args: self._update_image_pane_window_visibility())
 
         # Help menu
 
@@ -382,9 +389,9 @@ class _DgenerateConsole(tk.Tk):
         self._input_text_context.add_command(label='Save', command=self._save_input_entry_text)
         self._input_text_context.add_separator()
         self._input_text_context.add_command(label='Insert File Path',
-                                             command=self._input_text_insert_file_name)
+                                             command=self._input_text_insert_file_path)
         self._input_text_context.add_command(label='Insert Directory Path',
-                                             command=self._input_text_insert_directory_name)
+                                             command=self._input_text_insert_directory_path)
 
         self._paned_window_vertical.add(self._input_text)
 
@@ -428,55 +435,35 @@ class _DgenerateConsole(tk.Tk):
 
         self._displayed_image = None
         self._displayed_image_path = None
+        self._image_pane_window = None
+        self._image_pane_window_last_pos = None
         self._image_pane = tk.Frame(self._paned_window_horizontal, bg='black')
-        self._image_label = tk.Label(self._image_pane, bg='black')
-        self._image_label.pack(fill=tk.BOTH, expand=True)
-        self._image_label.bind('<Configure>', self._resize_image_pane_image)
+        image_label = tk.Label(self._image_pane, bg='black')
+        image_label.pack(fill=tk.BOTH, expand=True)
+        image_label.bind('<Configure>',
+                         lambda e: self._resize_image_pane_image(image_label))
 
-        self._image_label_context = tk.Menu(self._input_text, tearoff=0)
+        self._image_pane_context = tk.Menu(self._image_pane, tearoff=0)
 
-        open_file_explorer_support = platform.system() == 'Windows' or shutil.which('nautilus')
+        if self._install_show_in_directory_entry(
+                self._image_pane_context, lambda: self._displayed_image_path):
+            self._image_pane_context.add_separator()
 
-        if open_file_explorer_support:
-
-            if platform.system() == 'Windows':
-                def open_image_pane_directory_in_explorer():
-                    subprocess.Popen(
-                        rf'explorer /select,"{self._displayed_image_path}"',
-                        start_new_session=True)
-            else:
-                def open_image_pane_directory_in_explorer():
-                    subprocess.Popen(
-                        rf'nautilus "{self._displayed_image_path}"',
-                        start_new_session=True)
-
-            self._image_label_context.add_command(label='Open Directory',
-                                                  command=open_image_pane_directory_in_explorer)
-
-            self._image_label_context.add_separator()
-
-        self._image_label_context.add_command(
+        self._image_pane_context.add_command(
             label='Hide Image Pane',
             command=lambda: self._image_pane_visible_var.set(False))
 
-        def show_image_pane_context(e):
-            if open_file_explorer_support:
-                if self._displayed_image_path is not None and \
-                        os.path.exists(self._displayed_image_path):
-                    self._image_label_context.entryconfigure(
-                        'Open Directory', state=tk.NORMAL)
-                else:
-                    self._image_label_context.entryconfigure(
-                        'Open Directory', state=tk.DISABLED)
+        self._image_pane_context.add_command(
+            label='Make Window',
+            command=lambda: self._image_pane_window_visible_var.set(True))
 
-            self._image_label_context.tk_popup(
-                self.winfo_pointerx(), self.winfo_pointery())
-
-        self._image_label.bind('<Button-3>', show_image_pane_context)
+        image_label.bind('<Button-3>',
+                         lambda e: self._image_pane_context.tk_popup(
+                             self.winfo_pointerx(), self.winfo_pointery()))
 
         # Misc Config
 
-        self._termination_lock = threading.RLock()
+        self._termination_lock = threading.Lock()
 
         self._cwd = os.getcwd()
         self._start_dgenerate_process()
@@ -567,6 +554,44 @@ class _DgenerateConsole(tk.Tk):
 
         self.bind("<<UpdateEvent>>", lambda *a: self.update())
 
+    def _install_show_in_directory_entry(self, menu: tk.Menu, get_path: typing.Callable[[], str]):
+        open_file_explorer_support = platform.system() == 'Windows' or shutil.which('nautilus')
+
+        if open_file_explorer_support:
+
+            if platform.system() == 'Windows':
+                def open_image_pane_directory_in_explorer():
+                    subprocess.Popen(
+                        rf'explorer /select,"{get_path()}"',
+                        start_new_session=True)
+            else:
+                def open_image_pane_directory_in_explorer():
+                    subprocess.Popen(
+                        rf'nautilus "{get_path()}"',
+                        start_new_session=True)
+
+            menu.add_command(label='Open In Directory',
+                             command=open_image_pane_directory_in_explorer)
+
+            og_popup = menu.tk_popup
+
+            def patch_tk_popup(*args, **kwargs):
+                path = get_path()
+
+                if path is not None and \
+                        os.path.exists(path):
+                    menu.entryconfigure(
+                        'Open In Directory', state=tk.NORMAL)
+                else:
+                    menu.entryconfigure(
+                        'Open In Directory', state=tk.DISABLED)
+                og_popup(*args, **kwargs)
+
+            menu.tk_popup = patch_tk_popup
+
+            return True
+        return False
+
     def _insert_or_replace_input_text(self, text):
         try:
             selection_start = self._input_text.text.index("sel.first")
@@ -580,20 +605,20 @@ class _DgenerateConsole(tk.Tk):
         else:
             self._input_text.text.insert("insert", text)
 
-    def _input_text_insert_directory_name(self):
+    def _input_text_insert_directory_path(self):
         d = tkinter.filedialog.askdirectory(
             initialdir=self._cwd)
 
-        if d is None:
+        if d is None or not d.strip():
             return
 
         self._insert_or_replace_input_text(shlex.quote(d))
 
-    def _input_text_insert_file_name(self):
+    def _input_text_insert_file_path(self):
         f = tkinter.filedialog.askopenfilename(
             initialdir=self._cwd)
 
-        if f is None:
+        if f is None or not f.strip():
             return
 
         self._insert_or_replace_input_text(shlex.quote(f))
@@ -602,7 +627,55 @@ class _DgenerateConsole(tk.Tk):
         if not self._image_pane_visible_var.get():
             self._paned_window_horizontal.remove(self._image_pane)
         else:
+            if self._image_pane_window_visible_var.get():
+                self._image_pane_window_visible_var.set(False)
             self._paned_window_horizontal.add(self._image_pane)
+
+    def _update_image_pane_window_visibility(self):
+        if not self._image_pane_window_visible_var.get():
+            if self._image_pane_window is not None:
+                self._image_pane_window_last_pos = (
+                    self._image_pane_window.winfo_x(), self._image_pane_window.winfo_y())
+                self._image_pane_window.destroy()
+        else:
+            if self._image_pane_visible_var.get():
+                self._image_pane_visible_var.set(False)
+
+            self._image_pane_window = tk.Toplevel(self, )
+
+            self._image_pane_window.geometry('512x512' + (
+                '+{}+{}'.format(*self._image_pane_window_last_pos) if
+                self._image_pane_window_last_pos is not None else ''))
+
+            self._image_pane_window.title('Latest Image')
+            image_pane = tk.Frame(self._image_pane_window, bg='black')
+            image_pane.pack(fill=tk.BOTH, expand=True)
+            image_label = tk.Label(image_pane, bg='black')
+            image_label.pack(fill=tk.BOTH, expand=True)
+            image_label.bind(
+                '<Configure>', lambda e: self._resize_image_pane_image(image_label))
+
+            image_window_context = tk.Menu(self._image_pane_window, tearoff=0)
+
+            if self._install_show_in_directory_entry(image_window_context,
+                                                     lambda: self._displayed_image_path):
+                image_window_context.add_separator()
+
+            image_window_context.add_command(label='Make Pane',
+                                             command=lambda: self._image_pane_visible_var.set(True))
+
+            image_label.bind(
+                '<Button-3>', lambda e:
+                image_window_context.tk_popup(self.winfo_pointerx(), self.winfo_pointery()))
+
+            def on_destroy():
+                self._image_pane_window_last_pos = (
+                    self._image_pane_window.winfo_x(), self._image_pane_window.winfo_y())
+                self._image_pane_window.destroy()
+                self._image_pane_window = None
+                self._image_pane_window_visible_var.set(False)
+
+            self._image_pane_window.protocol('WM_DELETE_WINDOW', on_destroy)
 
     def _image_pane_load_image(self, image_path):
         if self._displayed_image is not None:
@@ -611,14 +684,16 @@ class _DgenerateConsole(tk.Tk):
         self._displayed_image = PIL.Image.open(image_path)
         self._displayed_image_path = image_path
         if self._image_pane_visible_var.get():
-            self._resize_image_pane_image(None)
+            self._image_pane.winfo_children()[0].event_generate('<Configure>')
+        if self._image_pane_window_visible_var.get():
+            self._image_pane_window.winfo_children()[0].winfo_children()[0].event_generate('<Configure>')
 
-    def _resize_image_pane_image(self, event):
+    def _resize_image_pane_image(self, label: tk.Label):
         if self._displayed_image is None:
             return
 
-        label_width = self._image_label.winfo_width()
-        label_height = self._image_label.winfo_height()
+        label_width = label.winfo_width()
+        label_height = label.winfo_height()
 
         image_width = self._displayed_image.width
         image_height = self._displayed_image.height
@@ -637,9 +712,9 @@ class _DgenerateConsole(tk.Tk):
 
         photo_img = PIL.ImageTk.PhotoImage(img)
 
-        self._image_label.config(image=photo_img)
+        label.config(image=photo_img)
 
-        self._image_label.image = photo_img
+        label.image = photo_img
 
     def _open_find_dialog(self, name, text_box):
         if self._find_dialog is not None:
@@ -675,12 +750,23 @@ class _DgenerateConsole(tk.Tk):
 
     def _kill_sub_process(self):
         with self._termination_lock:
-            self._sub_process.terminate()
+            if self._sub_process is None:
+                return
+
+            try:
+                self._sub_process.terminate()
+            except psutil.NoSuchProcess:
+                return
+
             try:
                 self._sub_process.wait(timeout=5)
             except psutil.TimeoutExpired:
                 self._sub_process.kill()
-                self._sub_process.wait()
+                try:
+                    self._sub_process.wait(timeout=5)
+                except psutil.TimeoutExpired:
+                    self._write_stderr_output(
+                        'WARNING: Could not kill interpreter process, possible zombie process.')
 
     def _start_dgenerate_process(self):
         env = os.environ.copy()
@@ -715,7 +801,7 @@ class _DgenerateConsole(tk.Tk):
             defaultextension='.txt',
             filetypes=[('Text Documents', '*.txt')])
 
-        if f is None:
+        if f is None or not f.strip():
             return
 
         with open(f, mode='w', encoding='utf-8') as f:
@@ -746,7 +832,7 @@ class _DgenerateConsole(tk.Tk):
             defaultextension='.txt',
             filetypes=[('Text Documents', '*.txt')])
 
-        if f is None:
+        if f is None or not f.strip():
             return
 
         with open(f, mode='w', encoding='utf-8') as f:
@@ -761,7 +847,7 @@ class _DgenerateConsole(tk.Tk):
             defaultextension='.txt',
             filetypes=[('Text Documents', '*.txt')])
 
-        if f is None:
+        if f is None or not f.strip():
             return
 
         with open(f, mode='w', encoding='utf-8') as f:
@@ -789,7 +875,9 @@ class _DgenerateConsole(tk.Tk):
             if lines > self._output_lines_per_refresh:
                 break
             try:
-                text = self._output_text_queue.get_nowait()
+                with self._termination_lock:
+                    # wait for possible submission of an exit message
+                    text = self._output_text_queue.get_nowait()
 
                 self._check_text_for_latest_image(text)
 
@@ -960,7 +1048,9 @@ class _DgenerateConsole(tk.Tk):
         if self._auto_scroll_on_run_check_var.get():
             self._output_text.text.see(tk.END)
 
-        self._sub_process.stdin.write((user_input + '\n\n').encode('utf-8'))
+        with self._termination_lock:
+            self._sub_process.stdin.write((user_input + '\n\n').encode('utf-8'))
+            self._sub_process.stdin.flush()
 
         if self._command_history:
             if self._command_history[-1] != user_input:
@@ -971,8 +1061,6 @@ class _DgenerateConsole(tk.Tk):
 
         self._current_command_index = len(self._command_history)
         self._save_command_history()
-
-        self._sub_process.stdin.flush()
 
         return 'break'
 
