@@ -3907,13 +3907,14 @@ The behavior of ``\image_process`` which is also used for ``--sub-command image-
 File Cache Control
 ==================
 
-dgenerate will cache ``--image-seeds`` files downloaded from the web while it is running in the
-directory ``~/.cache/dgenerate/web``, on Windows this equates to ``%USERPROFILE%\.cache\dgenerate\web``
+dgenerate will cache ``--image-seeds`` files and files used by image processors that are downloaded from
+the web while it is running in the directory ``~/.cache/dgenerate/web``, on Windows this equates
+to ``%USERPROFILE%\.cache\dgenerate\web``
 
-You can control where image seed files are cached with the environmental variable ``DGENERATE_WEB_CACHE``.
+You can control where these files are cached with the environmental variable ``DGENERATE_WEB_CACHE``.
 
-Files are cleared from the web cache automatically after an expiry time upon running dgenerate,
-the default value is after 12 hours.
+Files are cleared from the web cache automatically after an expiry time upon running dgenerate or
+when downloading additional files, the default value is after 12 hours.
 
 This can be controlled with the environmental variable ``DGENERATE_WEB_CACHE_EXPIRY_DELTA``.
 
