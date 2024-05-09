@@ -18,9 +18,8 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 import collections.abc
-import importlib.resources
-import io
 import json
 import os
 import pathlib
@@ -44,12 +43,11 @@ import PIL.Image
 import PIL.ImageTk
 import psutil
 
+import dgenerate.console.recipesform
+import dgenerate.console.resources
 
-def _get_icon():
-    return PIL.ImageTk.PhotoImage(PIL.Image.open(io.BytesIO(importlib.resources.read_binary('dgenerate', 'icon.ico'))))
 
-
-class _ScrolledText(tk.Frame):
+class ScrolledText(tk.Frame):
     def __init__(self, master=None, undo=False, **kwargs):
         super().__init__(master, **kwargs)
 
@@ -82,15 +80,14 @@ class _ScrolledText(tk.Frame):
         self.text.config(wrap='none')
 
 
-class _FindDialog(tk.Toplevel):
+class FindDialog(tk.Toplevel):
     def __init__(self, master, name, text_widget):
         super().__init__(master=master)
-        self.iconphoto(False, _get_icon())
 
         self.master = master
         self.title(name)
         self.text_widget = text_widget
-        self.transient(self.master)
+        self.transient(master)
 
         self.find_entry = tk.Entry(self)
         self.find_entry.pack(side='top', fill='x', padx=2, pady=2)
@@ -113,6 +110,8 @@ class _FindDialog(tk.Toplevel):
         # self.geometry(f'{self.winfo_reqwidth()}x{self.winfo_reqheight()}')
         self.resizable(False, False)
 
+        self.withdraw()
+
         self.master.update_idletasks()
         self.update_idletasks()
 
@@ -129,6 +128,8 @@ class _FindDialog(tk.Toplevel):
         self.geometry(f"+{position_left}+{position_top}")
 
         self.find_entry.focus_set()
+
+        self.deiconify()
 
     def find_next(self):
         start_idx = '1.0' if not self.last_find else self.last_find + '+1c'
@@ -166,13 +167,13 @@ class _FindDialog(tk.Toplevel):
         super().destroy()
 
 
-class _DgenerateConsole(tk.Tk):
+class DgenerateConsole(tk.Tk):
     def __init__(self):
         super().__init__()
 
         self.title('Dgenerate Console')
         self.geometry('1000x800')
-        self.iconphoto(False, _get_icon())
+        self.iconphoto(True, dgenerate.console.resources.get_icon())
 
         # Create main menu
 
@@ -214,10 +215,17 @@ class _DgenerateConsole(tk.Tk):
 
         self._edit_menu.add_separator()
 
-        self._edit_menu.add_command(label='Insert File Path',
+        self._edit_menu.add_command(label='Insert File Path (Open)',
                                     command=self._input_text_insert_file_path)
+        self._edit_menu.add_command(label='Insert File Path (Save)',
+                                    command=self._input_text_insert_file_path_save)
         self._edit_menu.add_command(label='Insert Directory Path',
                                     command=self._input_text_insert_directory_path)
+
+        self._edit_menu.add_separator()
+
+        self._edit_menu.add_command(label='Insert Recipe',
+                                    command=self._input_text_insert_recipe)
 
         # Run menu
 
@@ -333,7 +341,7 @@ class _DgenerateConsole(tk.Tk):
 
         # Create the input text pane
 
-        self._input_text = _ScrolledText(self._paned_window_vertical, undo=True)
+        self._input_text = ScrolledText(self._paned_window_vertical, undo=True)
 
         self._input_text.text.bind('<Return>',
                                    lambda e:
@@ -388,16 +396,21 @@ class _DgenerateConsole(tk.Tk):
         self._input_text_context.add_command(label='Load', command=self._load_input_entry_text)
         self._input_text_context.add_command(label='Save', command=self._save_input_entry_text)
         self._input_text_context.add_separator()
-        self._input_text_context.add_command(label='Insert File Path',
+        self._input_text_context.add_command(label='Insert File Path (Open)',
                                              command=self._input_text_insert_file_path)
+        self._input_text_context.add_command(label='Insert File Path (Save)',
+                                             command=self._input_text_insert_file_path_save)
         self._input_text_context.add_command(label='Insert Directory Path',
                                              command=self._input_text_insert_directory_path)
+        self._input_text_context.add_separator()
+        self._input_text_context.add_command(label='Insert Recipe',
+                                             command=self._input_text_insert_recipe)
 
         self._paned_window_vertical.add(self._input_text)
 
         # Create the output text pane
 
-        self._output_text = _ScrolledText(self._paned_window_vertical)
+        self._output_text = ScrolledText(self._paned_window_vertical)
 
         self._output_text.text.bind('<Button-3>',
                                     lambda e: self._output_text_context.tk_popup(
@@ -605,6 +618,15 @@ class _DgenerateConsole(tk.Tk):
         else:
             self._input_text.text.insert("insert", text)
 
+    def _input_text_insert_recipe(self):
+        s = dgenerate.console.recipesform.RecipesForm(
+            master=self).get_recipe()
+
+        if s is None or not s.strip():
+            return
+
+        self._insert_or_replace_input_text(s)
+
     def _input_text_insert_directory_path(self):
         d = tkinter.filedialog.askdirectory(
             initialdir=self._cwd)
@@ -616,6 +638,15 @@ class _DgenerateConsole(tk.Tk):
 
     def _input_text_insert_file_path(self):
         f = tkinter.filedialog.askopenfilename(
+            initialdir=self._cwd)
+
+        if f is None or not f.strip():
+            return
+
+        self._insert_or_replace_input_text(shlex.quote(f))
+
+    def _input_text_insert_file_path_save(self):
+        f = tkinter.filedialog.asksaveasfilename(
             initialdir=self._cwd)
 
         if f is None or not f.strip():
@@ -726,7 +757,7 @@ class _DgenerateConsole(tk.Tk):
                     pass
             else:
                 self._find_dialog.destroy()
-        self._find_dialog = _FindDialog(self, name, text_box)
+        self._find_dialog = FindDialog(self, name, text_box)
 
     def _update_input_wrap(self, *args):
         if self._word_wrap_input_check_var.get():
@@ -772,7 +803,7 @@ class _DgenerateConsole(tk.Tk):
         env = os.environ.copy()
         env['PYTHONIOENCODING'] = 'utf-8'
         env['PYTHONUNBUFFERED'] = '1'
-        env['DGENERATE_LONG_TEXT_WRAP_WIDTH'] = '80'
+        env['DGENERATE_LONG_TEXT_WRAP_WIDTH'] = '100'
 
         self._sub_process = psutil.Popen(
             ['dgenerate', '--server'],
@@ -860,9 +891,10 @@ class _DgenerateConsole(tk.Tk):
         self._output_text.text.config(state=tk.DISABLED)
 
     def _check_text_for_latest_image(self, text):
-        match = re.match('Wrote Image File: "(.*?)"', text)
+        match = re.match(
+            r'Wrote Image File: "(.*?)"|\\image_process: Wrote Image "(.*?)"|\\image_process: Wrote Frame "(.*?)"', text)
         if match is not None:
-            path = os.path.join(self._cwd, match.group(1))
+            path = os.path.join(self._cwd, ''.join(filter(None, match.groups())))
             if os.path.exists(path):
                 self._image_pane_load_image(path)
 
@@ -1076,7 +1108,7 @@ def main(args: collections.abc.Sequence[str]):
         sys.stdout.reconfigure(encoding='utf-8')
         sys.stderr.reconfigure(encoding='utf-8')
 
-        app = _DgenerateConsole()
+        app = DgenerateConsole()
         app.mainloop()
     except KeyboardInterrupt:
         if app is not None:
