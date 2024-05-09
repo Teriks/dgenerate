@@ -208,7 +208,7 @@ class DgenerateConsole(tk.Tk):
 
         self._edit_menu.add_command(label='Cut', accelerator='Ctrl+X',
                                     command=self._cut_input_entry_selection)
-        self._edit_menu.add_command(label='Copy', accelerator='Ctrl+Shift+C',
+        self._edit_menu.add_command(label='Copy', accelerator='Ctrl+C',
                                     command=self._copy_input_entry_selection)
         self._edit_menu.add_command(label='Paste', accelerator='Ctrl+V',
                                     command=self._paste_input_entry)
@@ -230,8 +230,9 @@ class DgenerateConsole(tk.Tk):
         # Run menu
 
         self._run_menu = tk.Menu(menu_bar, tearoff=0)
-        self._run_menu.add_command(label='Run', command=self._run_input_text)
-        self._run_menu.add_command(label='Kill', accelerator='Ctrl+C',
+        self._run_menu.add_command(label='Run', accelerator='Ctrl+R',
+                                   command=self._run_input_text)
+        self._run_menu.add_command(label='Kill', accelerator='Ctrl+Q',
                                    command=self._kill_sub_process)
 
         # Options menu
@@ -363,26 +364,19 @@ class DgenerateConsole(tk.Tk):
                                        self._input_text.text))
 
         self._input_text.text.bind('<Control-Z>', lambda e: self._redo_input_entry())
-        self._input_text.text.bind('<Control-C>', lambda e: self._copy_input_entry_selection())
 
-        def bind_input_text_ctrl_c(event):
-            if event.widget == self:
-                self._input_text.text.bind('<Control-c>',
-                                           lambda e: self._kill_sub_process())
+        self._input_text.text.bind('<Control-q>',
+                                   lambda e: self._kill_sub_process())
 
-        def unbind_input_text_ctrl_c(event):
-            if event.widget == self:
-                self._input_text.unbind('<Control-c>')
-
-        self.bind('<FocusIn>', bind_input_text_ctrl_c)
-        self.bind('<FocusOut>', unbind_input_text_ctrl_c)
+        self._input_text.text.bind('<Control-r>',
+                                   lambda e: self._run_input_text())
 
         self._input_text.text.focus_set()
 
         self._input_text_context = tk.Menu(self._input_text, tearoff=0)
 
         self._input_text_context.add_command(label='Cut', accelerator='Ctrl+X', command=self._cut_input_entry_selection)
-        self._input_text_context.add_command(label='Copy', accelerator='Ctrl+Shift+C',
+        self._input_text_context.add_command(label='Copy', accelerator='Ctrl+C',
                                              command=self._copy_input_entry_selection)
         self._input_text_context.add_command(label='Paste', accelerator='Ctrl+V', command=self._paste_input_entry)
         self._input_text_context.add_separator()
@@ -892,7 +886,8 @@ class DgenerateConsole(tk.Tk):
 
     def _check_text_for_latest_image(self, text):
         match = re.match(
-            r'Wrote Image File: "(.*?)"|\\image_process: Wrote Image "(.*?)"|\\image_process: Wrote Frame "(.*?)"', text)
+            r'Wrote Image File: "(.*?)"|\\image_process: Wrote Image "(.*?)"|\\image_process: Wrote Frame "(.*?)"',
+            text)
         if match is not None:
             path = os.path.join(self._cwd, ''.join(filter(None, match.groups())))
             if os.path.exists(path):

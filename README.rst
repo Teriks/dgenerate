@@ -3844,27 +3844,30 @@ process using ``dgenerate --dgenerate-console``
 This provides a basic REPL for the dgenerate config language utilizing
 a ``dgenerate --server`` subprocess to act as the live interpreter.
 
-The GUI console supports command history via the up and down arrow keys as a
-normal terminal would, as well as optional multiline input for sending
-multiline commands / configuration to the background dgenerate process.
-
 It can be used to work with dgenerate without encountering the startup
 overhead of loading large python modules for every command line invocation.
 
-The UI is very minimal, both the input and the output pane possess
-right click context menus which may not at first be apparent.
+The GUI console supports command history via the up and down arrow keys as a
+normal terminal would, optional multiline input for sending
+multiline commands / configuration to the background dgenerate process,
+and various editing niceties such as GUI file / directory path insertion
+and the ability to insert templated command recipes.
+
+Also supported is the ability to view the latest image as it is produced.
 
 The console always starts in single line entry mode (terminal mode), multiline input mode
 is activated via the insert key and indicated by a blinking red cursor, you must deactivate this mode
-to submit commands via the enter key, however you can use the run button from the run menu to run code
-in this mode. You cannot page through command history in this mode, and code will remain in the
+to submit commands via the enter key, however you can use the run button from the run menu (Or Ctrl-R)
+to run code in this mode. You cannot page through command history in this mode, and code will remain in the
 console input pane upon running it.
 
-Ctrl-C is supported in the input pane for killing and then restarting the background interpreter process.
+Ctrl-Q can be used in input pane for killing and then restarting the background interpreter process.
 
 Ctrl-F (find) is supported for both the input and output panes.
 
-Scroll back history in the output window is currently limited to 10000 lines.
+Scroll back history in the output window is currently limited to 10000 lines however the terminal
+emulator itself echos all stdout and stderr of the interpreter, so you can save all output to a log
+file via file redirection if desired when launching the console from the terminal.
 
 This can be configured by setting the environmental variable ``DGENERATE_CONSOLE_MAX_SCROLLBACK=10000``
 
