@@ -127,9 +127,9 @@ class FindDialog(tk.Toplevel):
         # Position the window
         self.geometry(f"+{position_left}+{position_top}")
 
-        self.find_entry.focus_set()
-
         self.deiconify()
+
+        self.find_entry.focus_set()
 
     def find_next(self):
         start_idx = '1.0' if not self.last_find else self.last_find + '+1c'

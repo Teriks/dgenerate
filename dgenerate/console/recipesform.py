@@ -198,16 +198,20 @@ class RecipesForm(tk.Toplevel):
                 entry = tk.OptionMenu(self, text_var, *devices)
             elif ttype.endswith('scheduler'):
                 devices = self._get_schedulers(ttype.startswith('optional'))
-                text_var = tk.StringVar(value=devices[0])
+                text_var = tk.StringVar(value=default_value)
                 entry = tk.OptionMenu(self, text_var, *devices)
             elif ttype.endswith('predictiontype'):
                 devices = self._get_scheduler_prediction_types(ttype.startswith('optional'))
-                text_var = tk.StringVar(value=devices[0])
+                text_var = tk.StringVar(value=default_value)
                 entry = tk.OptionMenu(self, text_var, *devices)
-            elif ttype.startswith('int') or ttype.startswith('float'):
+            elif ttype.startswith('int'):
                 text_var = tk.StringVar(value=default_value)
                 entry = tk.Spinbox(self, from_=-10000, to=10000,
                                    textvariable=text_var)  # adjust the maximum value as needed
+            elif ttype.startswith('float'):
+                text_var = tk.StringVar(value=default_value)
+                entry = tk.Spinbox(self, from_=-10000, to=10000, format="%.2f", increment=0.01,
+                                   textvariable=text_var)
             elif ttype.endswith('string'):
                 text_var = tk.StringVar(value=default_value)
                 entry = tk.Entry(self, textvariable=text_var)
