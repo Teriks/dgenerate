@@ -310,8 +310,8 @@ class RenderLoop:
         self._generation_step = -1
         self._frame_time_sum = 0
         self._last_frame_time = 0
-        self._written_images: typing.Optional[typing.TextIO] = None
-        self._written_animations: typing.Optional[typing.TextIO] = None
+        self._written_images: typing.Optional[_types.GCFile] = None
+        self._written_animations: typing.Optional[_types.GCFile] = None
         self._pipeline_wrapper = None
 
         self.config = \
@@ -328,36 +328,38 @@ class RenderLoop:
         """
         Iterable over image filenames written by the last run
         """
-        loop = self
-
         class Iterable:
+            def __init__(self, images):
+                self.images = images
+
             def __iter__(self):
-                if loop._written_images is None:
+                if self.images is None:
                     return
 
-                loop._written_images.seek(0)
-                for line in loop._written_images:
+                self.images.seek(0)
+                for line in self.images:
                     yield line.rstrip('\n')
 
-        return Iterable()
+        return Iterable(self._written_images)
 
     @property
     def written_animations(self) -> collections.abc.Iterable[str]:
         """
         Iterable over animation filenames written by the last run
         """
-        loop = self
-
         class Iterable:
+            def __init__(self, animations):
+                self.animations = animations
+
             def __iter__(self):
-                if loop._written_animations is None:
+                if self.animations is None:
                     return
 
-                loop._written_animations.seek(0)
-                for line in loop._written_animations:
+                self.animations.seek(0)
+                for line in self.animations:
                     yield line.rstrip('\n')
 
-        return Iterable()
+        return Iterable(self._written_animations)
 
     @property
     def generation_step(self):
@@ -801,14 +803,10 @@ class RenderLoop:
 
         self._ensure_output_path()
 
-        if self._written_images is not None:
-            self._written_images.close()
-
-        if self._written_animations is not None:
-            self._written_animations.close()
-
-        self._written_images = tempfile.TemporaryFile('w+t')
-        self._written_animations = tempfile.TemporaryFile('w+t')
+        self._written_images = _types.GCFile(
+            tempfile.TemporaryFile('w+t'))
+        self._written_animations = _types.GCFile(
+            tempfile.TemporaryFile('w+t'))
 
         self._init_post_processor()
 
