@@ -23,6 +23,7 @@ RECIPES = {
     "Stable Diffusion":
         """
         @file[Model File / Slug]:[{}]:"stabilityai/stable-diffusion-2-1"
+        @optionalscheduler[Scheduler]:[--scheduler {}]:""@optionalpredictiontype[Scheduler Prediction Type]:[;prediction-type={}]:"epsilon"
         @optionalfile[VAE File / Slug]:[--vae AutoencoderKL;model={}]:""
         @optionalfile[LoRa File / URI]:[--loras {}]:""
         @optionalfile[ControlNet File / URI]:[--control-nets {}]:""
@@ -31,6 +32,7 @@ RECIPES = {
         @int[Inference Steps]:[--inference-steps {}]:"30"
         @int[Guidance Scale]:[--guidance-scales {}]:"5"
         @int[Clip Skip]:[--clip-skips {}]:"0"
+        @int[Number Of Seeds]:[--gen-seeds {}]:"1"
         @dir[Output Directory]:[--output-path {}]:"output"
         @optionalstring[Output Size]:[--output-size {}]:"512x512"
         @device[Device]:[--device {}]:"device"
@@ -42,6 +44,8 @@ RECIPES = {
         --model-type torch-sdxl
         --dtype float16
         --variant fp16
+        @optionalscheduler[Scheduler]:[--scheduler {}]:""@optionalpredictiontype[Scheduler Prediction Type]:[;prediction-type={}]:"epsilon"
+        @optionalscheduler[Refiner Scheduler]:[--sdxl-refiner-scheduler {}]:""@optionalpredictiontype[Refiner Scheduler Prediction Type]:[;prediction-type={}]:"epsilon"
         @optionalfile[Refiner File / URI]:[--sdxl-refiner {}\\n--sdxl-high-noise-fractions 0.8]:"stabilityai/stable-diffusion-xl-refiner-1.0"
         @optionalfile[VAE File / Slug]:[--vae AutoencoderKL;model={}]:""
         @optionalfile[LoRa File / URI]:[--loras {}]:""
@@ -52,6 +56,7 @@ RECIPES = {
         @int[Inference Steps]:[--inference-steps {}]:"30"
         @int[Guidance Scale]:[--guidance-scales {}]:"5"
         @int[Clip Skip]:[--clip-skips {}]:"0"
+        @int[Number Of Seeds]:[--gen-seeds {}]:"1"
         @dir[Output Directory]:[--output-path {}]:"output"
         @optionalstring[Output Size]:[--output-size {}]:"1024x1024"
         @device[Device]:[--device {}]:"device"
@@ -74,6 +79,29 @@ RECIPES = {
         @int[Decoder Inference Steps]:[--s-cascade-decoder-inference-steps {}]:"10"
         @int[Decoder Guidance Scale]:[--s-cascade-decoder-guidance-scales {}]:"0"
         @dir[Output Directory]:[--output-path {}]:"output"
+        @int[Number Of Seeds]:[--gen-seeds {}]:"1"
+        @optionalstring[Output Size]:[--output-size {}]:"1024x1024"
+        @device[Device]:[--device {}]:"device"
+        --prompts "add your prompt here"
+        """,
+    "Stable Cascade (UNet lite)":
+        """
+        @file[Model File / HF Slug]:[{}]:"stabilityai/stable-cascade-prior"
+        --model-type torch-s-cascade
+        --variant bf16
+        --dtype bfloat16
+        --model-cpu-offload
+        --s-cascade-decoder-cpu-offload
+        @file[Decoder File / URI]:[--s-cascade-decoder {}]:"stabilityai/stable-cascade;dtype=float16"
+        @optionalfile[UNet / URI]:[--unet {}]:"stabilityai/stable-cascade-prior;subfolder=prior_lite"
+        @optionalfile[Decoder UNet / URI]:[--unet2 {}]:"stabilityai/stable-cascade;subfolder=decoder_lite"
+        @optionalfile[Image Seed]:[--image-seeds {}\\n--image-seed-strengths 0.8]:""
+        @int[Inference Steps]:[--inference-steps {}]:"20"
+        @int[Guidance Scale]:[--guidance-scales {}]:"4"
+        @int[Decoder Inference Steps]:[--s-cascade-decoder-inference-steps {}]:"10"
+        @int[Decoder Guidance Scale]:[--s-cascade-decoder-guidance-scales {}]:"0"
+        @dir[Output Directory]:[--output-path {}]:"output"
+        @int[Number Of Seeds]:[--gen-seeds {}]:"1"
         @optionalstring[Output Size]:[--output-size {}]:"1024x1024"
         @device[Device]:[--device {}]:"device"
         --prompts "add your prompt here"

@@ -18,7 +18,6 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 import re
 import subprocess
 import tkinter as tk
@@ -107,8 +106,37 @@ class RecipesForm(tk.Toplevel):
         except FileNotFoundError:
             return ['cpu']
 
+    @staticmethod
+    def _get_schedulers(optional):
+        schedulers = [
+            "EulerDiscreteScheduler",
+            "HeunDiscreteScheduler",
+            "UniPCMultistepScheduler",
+            "DDPMScheduler",
+            "EulerDiscreteScheduler",
+            "DDIMScheduler",
+            "DEISMultistepScheduler",
+            "LMSDiscreteScheduler",
+            "DPMSolverMultistepScheduler",
+            "EulerAncestralDiscreteScheduler",
+            "DPMSolverSinglestepScheduler",
+            "DPMSolverSDEScheduler",
+            "KDPM2DiscreteScheduler",
+            "PNDMScheduler",
+            "KDPM2AncestralDiscreteScheduler",
+            "LCMScheduler"
+        ]
+        return [''] + schedulers if optional else schedulers
+
+    @staticmethod
+    def _get_scheduler_prediction_types(optional):
+        if optional:
+            return ['', 'epsilon', 'v_prediction']
+        return ['epsilon', 'v_prediction']
+
     def _apply_templates(self):
         missing_fields = False
+        have_scheduler = False
         for entry, template in zip(self._entries, self._templates):
             ttype = template[0]
             label = template[1]
@@ -118,6 +146,18 @@ class RecipesForm(tk.Toplevel):
             entry = entry[0]
             replace_str = f'@{ttype}[{label}]:[{opt}]:"{text}"'
             opt = opt.replace('\\n', '\n')
+
+            if 'scheduler' in ttype and entry_text:
+                have_scheduler = True
+
+            if 'predictiontype' in ttype:
+                if not have_scheduler:
+                    self._content = self._replace_txt(self._content,
+                                                      replace_str, '')
+                    continue
+                else:
+                    have_scheduler = False
+
             if ttype.startswith('optional'):
                 self._content = self._replace_txt(self._content,
                                                   replace_str, opt.format(entry_text) if entry_text else '')
@@ -154,6 +194,14 @@ class RecipesForm(tk.Toplevel):
             label_widget = tk.Label(self, text=label, anchor='e')
             if ttype == 'device':
                 devices = self._get_cuda_devices()
+                text_var = tk.StringVar(value=devices[0])
+                entry = tk.OptionMenu(self, text_var, *devices)
+            elif ttype.endswith('scheduler'):
+                devices = self._get_schedulers(ttype.startswith('optional'))
+                text_var = tk.StringVar(value=devices[0])
+                entry = tk.OptionMenu(self, text_var, *devices)
+            elif ttype.endswith('predictiontype'):
+                devices = self._get_scheduler_prediction_types(ttype.startswith('optional'))
                 text_var = tk.StringVar(value=devices[0])
                 entry = tk.OptionMenu(self, text_var, *devices)
             elif ttype.startswith('int') or ttype.startswith('float'):
