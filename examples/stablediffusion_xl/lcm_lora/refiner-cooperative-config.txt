@@ -4,7 +4,7 @@
 # In cooperative denoising mode but this seems to work somewhat, so dgenerate
 # does not default to refiner edit mode when you select the LCMScheduler scheduler
 # for the main model. If you want that, use --sdxl-refiner-edit, you are likely
-# to get a better result unless you know something that I dont :)
+# to get a better result unless you know something that I don't :)
 
 stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
 --variant fp16 --dtype float16
