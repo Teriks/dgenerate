@@ -21,6 +21,7 @@
 
 import importlib.resources
 import io
+import subprocess
 
 import PIL.Image
 import PIL.ImageTk
@@ -28,3 +29,40 @@ import PIL.ImageTk
 
 def get_icon():
     return PIL.ImageTk.PhotoImage(PIL.Image.open(io.BytesIO(importlib.resources.read_binary('dgenerate', 'icon.ico'))))
+
+
+def get_karras_schedulers():
+    return [
+        "EulerDiscreteScheduler",
+        "HeunDiscreteScheduler",
+        "UniPCMultistepScheduler",
+        "DDPMScheduler",
+        "EulerDiscreteScheduler",
+        "DDIMScheduler",
+        "DEISMultistepScheduler",
+        "LMSDiscreteScheduler",
+        "DPMSolverMultistepScheduler",
+        "EulerAncestralDiscreteScheduler",
+        "DPMSolverSinglestepScheduler",
+        "DPMSolverSDEScheduler",
+        "KDPM2DiscreteScheduler",
+        "PNDMScheduler",
+        "KDPM2AncestralDiscreteScheduler",
+        "LCMScheduler"
+    ]
+
+
+def get_cuda_devices():
+    try:
+        result = subprocess.run(['nvidia-smi',
+                                 '--query-gpu=index',
+                                 '--format=csv,noheader'],
+                                stdout=subprocess.PIPE)
+        devices = result.stdout.decode().strip().split('\n')
+        return ['cuda:' + device for device in devices]
+    except FileNotFoundError:
+        return ['cpu']
+
+
+def get_karras_scheduler_prediction_types():
+    return ['epsilon', 'v_prediction']

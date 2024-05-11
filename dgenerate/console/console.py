@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import collections.abc
+import ctypes
 import json
 import os
 import pathlib
@@ -43,128 +44,10 @@ import PIL.Image
 import PIL.ImageTk
 import psutil
 
-import dgenerate.console.recipesform
-import dgenerate.console.resources
-
-
-class ScrolledText(tk.Frame):
-    def __init__(self, master=None, undo=False, **kwargs):
-        super().__init__(master, **kwargs)
-
-        text_args = {}
-        if undo:
-            text_args['undo'] = True
-            text_args['autoseparators'] = True
-            text_args['maxundo'] = -1
-
-        self.text = tk.Text(self, wrap='word', **text_args)
-
-        font = tkinter.font.Font(font=self.text['font'])
-        self.text.config(tabs=font.measure(' ' * 4))
-
-        self.y_scrollbar = tk.Scrollbar(self, orient='vertical', command=self.text.yview)
-        self.y_scrollbar.pack(side='right', fill='y')
-
-        self.x_scrollbar = tk.Scrollbar(self, orient='horizontal', command=self.text.xview)
-        self.x_scrollbar.pack(side='bottom', fill='x')
-
-        self.text['yscrollcommand'] = self.y_scrollbar.set
-        self.text['xscrollcommand'] = self.x_scrollbar.set
-
-        self.text.pack(side='left', fill='both', expand=True)
-
-    def enable_word_wrap(self):
-        self.text.config(wrap='word')
-
-    def disable_word_wrap(self):
-        self.text.config(wrap='none')
-
-
-class FindDialog(tk.Toplevel):
-    def __init__(self, master, name, text_widget):
-        super().__init__(master=master)
-
-        self.master = master
-        self.title(name)
-        self.text_widget = text_widget
-        self.transient(master)
-
-        self.find_entry = tk.Entry(self)
-        self.find_entry.pack(side='top', fill='x', padx=2, pady=2)
-
-        find_frame = tk.Frame(self)
-        find_frame.pack(side='top', fill='x')
-
-        self.case_var = tk.IntVar()
-        self.case_check = tk.Checkbutton(find_frame, text="Case Sensitive", variable=self.case_var)
-        self.case_check.pack(side='left', padx=2, pady=2)
-
-        self.previous_button = tk.Button(find_frame, text='Previous', command=self.find_previous)
-        self.previous_button.pack(side='left', padx=2, pady=2)
-
-        self.next_button = tk.Button(find_frame, text='Next', command=self.find_next)
-        self.next_button.pack(side='left', padx=2, pady=2)
-
-        self.last_find = None
-
-        # self.geometry(f'{self.winfo_reqwidth()}x{self.winfo_reqheight()}')
-        self.resizable(False, False)
-
-        self.withdraw()
-
-        self.master.update_idletasks()
-        self.update_idletasks()
-
-        window_width = self.master.winfo_width()
-        window_height = self.master.winfo_height()
-        top_level_width = self.winfo_width()
-        top_level_height = self.winfo_height()
-
-        # Calculate position coordinates
-        position_top = self.master.winfo_y() + window_height // 2 - top_level_height // 2
-        position_left = self.master.winfo_x() + window_width // 2 - top_level_width // 2
-
-        # Position the window
-        self.geometry(f"+{position_left}+{position_top}")
-
-        self.deiconify()
-
-        self.find_entry.focus_set()
-
-    def find_next(self):
-        start_idx = '1.0' if not self.last_find else self.last_find + '+1c'
-        s = self.find_entry.get()
-        idx = self.text_widget.search(s, start_idx, nocase=1 - self.case_var.get(), stopindex=tk.END)
-        if idx:
-            end_idx = f'{idx}+{len(s)}c'
-            self.text_widget.tag_remove('found', '1.0', tk.END)
-            self.text_widget.tag_add('found', idx, end_idx)
-            self.text_widget.mark_set(tk.INSERT, end_idx)
-            self.text_widget.see(idx)
-            self.text_widget.tag_config('found', foreground='white', background='blue')
-            self.last_find = idx
-
-    def find_previous(self):
-        if not self.last_find:
-            return
-        s = self.find_entry.get()
-        idx = self.text_widget.search(s, '1.0', nocase=1 - self.case_var.get(), stopindex=self.last_find)
-        if idx:
-            end_idx = f'{idx}+{len(s)}c'
-            self.text_widget.tag_remove('found', '1.0', tk.END)
-            self.text_widget.tag_add('found', idx, end_idx)
-            self.text_widget.mark_set(tk.INSERT, idx)
-            self.text_widget.see(idx)
-            self.text_widget.tag_config('found', foreground='white', background='blue')
-            self.last_find = idx
-
-    def destroy(self) -> None:
-        try:
-            self.text_widget.tag_remove('found', '1.0', tk.END)
-        except tk.TclError:
-            # main window already destroyed
-            pass
-        super().destroy()
+import dgenerate.console.finddialog as _finddialog
+import dgenerate.console.recipesform as _recipesform
+from dgenerate.console.resources import get_icon
+from dgenerate.console.scrolledtext import ScrolledText
 
 
 class DgenerateConsole(tk.Tk):
@@ -173,7 +56,7 @@ class DgenerateConsole(tk.Tk):
 
         self.title('Dgenerate Console')
         self.geometry('1000x800')
-        self.iconphoto(True, dgenerate.console.resources.get_icon())
+        self.iconphoto(True, get_icon())
 
         # Create main menu
 
@@ -230,10 +113,10 @@ class DgenerateConsole(tk.Tk):
         # Run menu
 
         self._run_menu = tk.Menu(menu_bar, tearoff=0)
-        self._run_menu.add_command(label='Run', accelerator='Ctrl+R',
+        self._run_menu.add_command(label='Run', accelerator='Ctrl+Space',
                                    command=self._run_input_text)
         self._run_menu.add_command(label='Kill', accelerator='Ctrl+Q',
-                                   command=self._kill_sub_process)
+                                   command=lambda: self.kill_shell_process(restart=True))
 
         # Options menu
 
@@ -252,14 +135,6 @@ class DgenerateConsole(tk.Tk):
                                            accelerator='Insert Key',
                                            variable=self._multi_line_input_check_var)
 
-        # Create the word wrap output checkbox
-
-        self._word_wrap_output_check_var = tk.BooleanVar(value=True)
-        self._word_wrap_output_check_var.trace_add('write', self._update_output_wrap)
-
-        self._options_menu.add_checkbutton(label='Word Wrap Output',
-                                           variable=self._word_wrap_output_check_var)
-
         # Create the word wrap input checkbox
 
         self._word_wrap_input_check_var = tk.BooleanVar(value=True)
@@ -267,6 +142,14 @@ class DgenerateConsole(tk.Tk):
 
         self._options_menu.add_checkbutton(label='Word Wrap Input',
                                            variable=self._word_wrap_input_check_var)
+
+        # Create the word wrap output checkbox
+
+        self._word_wrap_output_check_var = tk.BooleanVar(value=True)
+        self._word_wrap_output_check_var.trace_add('write', self._update_output_wrap)
+
+        self._options_menu.add_checkbutton(label='Word Wrap Output',
+                                           variable=self._word_wrap_output_check_var)
 
         # Create the auto scroll checkbox (scroll on input)
         self._auto_scroll_on_run_check_var = tk.BooleanVar(value=True)
@@ -359,16 +242,21 @@ class DgenerateConsole(tk.Tk):
                                    self._multi_line_input_check_var.set(
                                        not self._multi_line_input_check_var.get()))
         self._input_text.text.bind('<Control-f>',
-                                   lambda e: self._open_find_dialog(
-                                       'Find In Input',
-                                       self._input_text.text))
+                                   lambda e: _finddialog.open_find_dialog(self,
+                                                                          'Find In Input',
+                                                                          self._input_text.text))
+
+        self._input_text.text.bind('<Control-r>',
+                                   lambda e: _finddialog.open_find_replace_dialog(self,
+                                                                                  'Replace In Input',
+                                                                                  self._input_text.text))
 
         self._input_text.text.bind('<Control-Z>', lambda e: self._redo_input_entry())
 
         self._input_text.text.bind('<Control-q>',
-                                   lambda e: self._kill_sub_process())
+                                   lambda e: self.kill_shell_process(restart=True))
 
-        self._input_text.text.bind('<Control-r>',
+        self._input_text.text.bind('<Control-space>',
                                    lambda e: self._run_input_text())
 
         self._input_text.text.focus_set()
@@ -380,11 +268,21 @@ class DgenerateConsole(tk.Tk):
                                              command=self._copy_input_entry_selection)
         self._input_text_context.add_command(label='Paste', accelerator='Ctrl+V', command=self._paste_input_entry)
         self._input_text_context.add_separator()
+
         self._input_text_context.add_command(label='Find',
                                              accelerator='Ctrl+F',
                                              command=lambda:
-                                             self._open_find_dialog(
+                                             _finddialog.open_find_dialog(
+                                                 self,
                                                  'Find In Input',
+                                                 self._input_text.text))
+
+        self._input_text_context.add_command(label='Replace',
+                                             accelerator='Ctrl+R',
+                                             command=lambda:
+                                             _finddialog.open_find_replace_dialog(
+                                                 self,
+                                                 'Replace In Input',
                                                  self._input_text.text))
         self._input_text_context.add_separator()
         self._input_text_context.add_command(label='Load', command=self._load_input_entry_text)
@@ -410,8 +308,8 @@ class DgenerateConsole(tk.Tk):
                                     lambda e: self._output_text_context.tk_popup(
                                         self.winfo_pointerx(), self.winfo_pointery()))
         self._output_text.text.bind('<Control-f>',
-                                    lambda e: self._open_find_dialog(
-                                        'Find In Output',
+                                    lambda e: _finddialog.open_find_dialog(
+                                        self, 'Find In Output',
                                         self._output_text.text))
 
         self._output_text_context = tk.Menu(self._output_text, tearoff=0)
@@ -421,8 +319,8 @@ class DgenerateConsole(tk.Tk):
         self._output_text_context.add_command(label='Find',
                                               accelerator='Ctrl+F',
                                               command=lambda:
-                                              self._open_find_dialog(
-                                                  'Find In Output',
+                                              _finddialog.open_find_dialog(
+                                                  self, 'Find In Output',
                                                   self._output_text.text))
         self._output_text_context.add_separator()
         self._output_text_context.add_command(label='Copy',
@@ -473,22 +371,14 @@ class DgenerateConsole(tk.Tk):
         self._termination_lock = threading.Lock()
 
         self._cwd = os.getcwd()
-        self._start_dgenerate_process()
-
-        self._threads = [
-            threading.Thread(target=self._read_sub_process_stream_thread,
-                             args=(lambda p: p.stdout, self._write_stdout_output)),
-            threading.Thread(target=self._read_sub_process_stream_thread,
-                             args=(lambda p: p.stderr, self._write_stderr_output))
-        ]
+        self._start_shell_process()
 
         self._output_text_queue = queue.Queue()
 
-        self._find_dialog = None
+        self._shell_reader_threads = []
+        self._start_shell_reader_threads()
 
-        for t in self._threads:
-            t.daemon = True
-            t.start()
+        self._find_dialog = None
 
         self._update_cwd()
 
@@ -561,6 +451,17 @@ class DgenerateConsole(tk.Tk):
 
         self.bind("<<UpdateEvent>>", lambda *a: self.update())
 
+    def _start_shell_reader_threads(self):
+        self._shell_reader_threads = [
+            threading.Thread(target=self._read_shell_output_stream_thread,
+                             args=(lambda p: p.stdout, self._write_stdout_output)),
+            threading.Thread(target=self._read_shell_output_stream_thread,
+                             args=(lambda p: p.stderr, self._write_stderr_output))
+        ]
+
+        for t in self._shell_reader_threads:
+            t.start()
+
     def _install_show_in_directory_entry(self, menu: tk.Menu, get_path: typing.Callable[[], str]):
         open_file_explorer_support = platform.system() == 'Windows' or shutil.which('nautilus')
 
@@ -606,15 +507,15 @@ class DgenerateConsole(tk.Tk):
         except tk.TclError:
             selection_start = selection_end = None
 
+        self._input_text.text.edit_separator()
         if selection_start and selection_end:
-            self._input_text.text.delete(selection_start, selection_end)
-            self._input_text.text.insert(selection_start, text)
+            self._input_text.text.replace(selection_start, selection_end, text)
         else:
             self._input_text.text.insert("insert", text)
 
     def _input_text_insert_recipe(self):
-        s = dgenerate.console.recipesform.RecipesForm(
-            master=self).get_recipe()
+        s = _recipesform.request_recipe(
+            master=self)
 
         if s is None or not s.strip():
             return
@@ -656,51 +557,53 @@ class DgenerateConsole(tk.Tk):
                 self._image_pane_window_visible_var.set(False)
             self._paned_window_horizontal.add(self._image_pane)
 
+    def _create_image_pane_window(self):
+        self._image_pane_window = tk.Toplevel(self)
+
+        self._image_pane_window.geometry('512x512' + (
+            '+{}+{}'.format(*self._image_pane_window_last_pos) if
+            self._image_pane_window_last_pos is not None else ''))
+
+        self._image_pane_window.title('Latest Image')
+        image_pane = tk.Frame(self._image_pane_window, bg='black')
+        image_pane.pack(fill=tk.BOTH, expand=True)
+        image_label = tk.Label(image_pane, bg='black')
+        image_label.pack(fill=tk.BOTH, expand=True)
+        image_label.bind(
+            '<Configure>', lambda e: self._resize_image_pane_image(image_label))
+
+        image_window_context = tk.Menu(self._image_pane_window, tearoff=0)
+
+        if self._install_show_in_directory_entry(image_window_context,
+                                                 lambda: self._displayed_image_path):
+            image_window_context.add_separator()
+
+        image_window_context.add_command(label='Make Pane',
+                                         command=lambda: self._image_pane_visible_var.set(True))
+
+        image_label.bind(
+            '<Button-3>', lambda e:
+            image_window_context.tk_popup(self.winfo_pointerx(), self.winfo_pointery()))
+
+        def on_closing():
+            self._image_pane_window_visible_var.set(False)
+            self._image_pane_window.withdraw()
+
+        self._image_pane_window.protocol("WM_DELETE_WINDOW", on_closing)
+
     def _update_image_pane_window_visibility(self):
         if not self._image_pane_window_visible_var.get():
             if self._image_pane_window is not None:
-                self._image_pane_window_last_pos = (
-                    self._image_pane_window.winfo_x(), self._image_pane_window.winfo_y())
-                self._image_pane_window.destroy()
+                self._image_pane_window.withdraw()
         else:
             if self._image_pane_visible_var.get():
                 self._image_pane_visible_var.set(False)
 
-            self._image_pane_window = tk.Toplevel(self, )
+            if self._image_pane_window is not None:
+                self._image_pane_window.deiconify()
+                return
 
-            self._image_pane_window.geometry('512x512' + (
-                '+{}+{}'.format(*self._image_pane_window_last_pos) if
-                self._image_pane_window_last_pos is not None else ''))
-
-            self._image_pane_window.title('Latest Image')
-            image_pane = tk.Frame(self._image_pane_window, bg='black')
-            image_pane.pack(fill=tk.BOTH, expand=True)
-            image_label = tk.Label(image_pane, bg='black')
-            image_label.pack(fill=tk.BOTH, expand=True)
-            image_label.bind(
-                '<Configure>', lambda e: self._resize_image_pane_image(image_label))
-
-            image_window_context = tk.Menu(self._image_pane_window, tearoff=0)
-
-            if self._install_show_in_directory_entry(image_window_context,
-                                                     lambda: self._displayed_image_path):
-                image_window_context.add_separator()
-
-            image_window_context.add_command(label='Make Pane',
-                                             command=lambda: self._image_pane_visible_var.set(True))
-
-            image_label.bind(
-                '<Button-3>', lambda e:
-                image_window_context.tk_popup(self.winfo_pointerx(), self.winfo_pointery()))
-
-            def on_destroy():
-                self._image_pane_window_last_pos = (
-                    self._image_pane_window.winfo_x(), self._image_pane_window.winfo_y())
-                self._image_pane_window.destroy()
-                self._image_pane_window = None
-                self._image_pane_window_visible_var.set(False)
-
-            self._image_pane_window.protocol('WM_DELETE_WINDOW', on_destroy)
+            self._create_image_pane_window()
 
     def _image_pane_load_image(self, image_path):
         if self._displayed_image is not None:
@@ -708,9 +611,10 @@ class DgenerateConsole(tk.Tk):
 
         self._displayed_image = PIL.Image.open(image_path)
         self._displayed_image_path = image_path
-        if self._image_pane_visible_var.get():
-            self._image_pane.winfo_children()[0].event_generate('<Configure>')
-        if self._image_pane_window_visible_var.get():
+
+        self._image_pane.winfo_children()[0].event_generate('<Configure>')
+
+        if self._image_pane_window is not None:
             self._image_pane_window.winfo_children()[0].winfo_children()[0].event_generate('<Configure>')
 
     def _resize_image_pane_image(self, label: tk.Label):
@@ -741,18 +645,6 @@ class DgenerateConsole(tk.Tk):
 
         label.image = photo_img
 
-    def _open_find_dialog(self, name, text_box):
-        if self._find_dialog is not None:
-            if self._find_dialog.text_widget is text_box:
-                try:
-                    self._find_dialog.find_entry.focus_set()
-                    return
-                except tk.TclError:
-                    pass
-            else:
-                self._find_dialog.destroy()
-        self._find_dialog = FindDialog(self, name, text_box)
-
     def _update_input_wrap(self, *args):
         if self._word_wrap_input_check_var.get():
             self._input_text.enable_word_wrap()
@@ -767,39 +659,68 @@ class DgenerateConsole(tk.Tk):
         else:
             self._output_text.disable_word_wrap()
 
-    def _restart_dgenerate_process(self):
-        self._write_stdout_output('Restarting Shell Process...\n')
-        self._start_dgenerate_process()
-        self._write_stdout_output('Shell Process Started.\n'
-                                  '======================\n')
-
-    def _kill_sub_process(self):
+    def kill_shell_process(self, restart=False):
         with self._termination_lock:
-            if self._sub_process is None:
+            if self._shell_process is None:
                 return
 
             try:
-                self._sub_process.terminate()
+                self._shell_process.terminate()
             except psutil.NoSuchProcess:
                 return
 
+            return_code = -1
+
             try:
-                self._sub_process.wait(timeout=5)
+                return_code = self._shell_process.wait(timeout=5)
             except psutil.TimeoutExpired:
-                self._sub_process.kill()
+                self._shell_process.kill()
                 try:
-                    self._sub_process.wait(timeout=5)
+                    return_code = self._shell_process.wait(timeout=5)
                 except psutil.TimeoutExpired:
                     self._write_stderr_output(
                         'WARNING: Could not kill interpreter process, possible zombie process.')
 
-    def _start_dgenerate_process(self):
+            self._shell_return_code_message(return_code)
+
+            del self._shell_process
+            self._shell_process = None
+
+            if restart:
+                self._shell_restarting_commence_message()
+                self._start_shell_process()
+
+            for thread in self._shell_reader_threads:
+                # there is no better way than to raise an exception on the thread,
+                # the threads will live forever if they are blocking on read even if they are daemon threads,
+                # and there is no platform independent non-blocking IO with a subprocess
+                res = ctypes.pythonapi.PyThreadState_SetAsyncExc(thread.native_id, ctypes.py_object(SystemExit))
+                if res > 1:
+                    ctypes.pythonapi.PyThreadState_SetAsyncExc(thread.native_id, 0)
+                    raise SystemError("PyThreadState_SetAsyncExc failed")
+
+            if restart:
+                self._start_shell_reader_threads()
+                self._shell_restarting_finish_message()
+
+    def _shell_return_code_message(self, return_code):
+        self._write_stdout_output(
+            f'\nShell Process Terminated, Exit Code: {return_code}\n')
+
+    def _shell_restarting_commence_message(self):
+        self._write_stdout_output('Restarting Shell Process...\n')
+
+    def _shell_restarting_finish_message(self):
+        self._write_stdout_output('Shell Process Started.\n'
+                                  '======================\n')
+
+    def _start_shell_process(self):
         env = os.environ.copy()
         env['PYTHONIOENCODING'] = 'utf-8'
         env['PYTHONUNBUFFERED'] = '1'
         env['DGENERATE_LONG_TEXT_WRAP_WIDTH'] = '100'
 
-        self._sub_process = psutil.Popen(
+        self._shell_process = psutil.Popen(
             ['dgenerate', '--server'],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -817,8 +738,7 @@ class DgenerateConsole(tk.Tk):
         if f is None:
             return
 
-        self._input_text.text.delete('1.0', tk.END)
-        self._input_text.text.insert('1.0', f.read())
+        self._input_text.text.replace('1.0', tk.END, f.read())
 
     def _save_input_entry_text(self):
         f = tkinter.filedialog.asksaveasfilename(
@@ -830,7 +750,7 @@ class DgenerateConsole(tk.Tk):
             return
 
         with open(f, mode='w', encoding='utf-8') as f:
-            f.write(self._input_text.text.get('1.0', tk.END))
+            f.write(self._input_text.text.get('1.0', 'end-1c'))
             f.close()
 
     def _undo_input_entry(self):
@@ -862,7 +782,7 @@ class DgenerateConsole(tk.Tk):
 
         with open(f, mode='w', encoding='utf-8') as f:
             self._output_text.text.config(state=tk.NORMAL)
-            f.write(self._output_text.text.get('1.0', tk.END))
+            f.write(self._output_text.text.get('1.0', 'end-1c'))
             self._output_text.text.config(state=tk.DISABLED)
             f.close()
 
@@ -917,8 +837,7 @@ class DgenerateConsole(tk.Tk):
                                                   f'{output_lines - self._max_output_lines}.0')
 
                 if self._next_text_update_line_return:
-                    self._output_text.text.delete("end-2c linestart", "end-1c")
-                    self._output_text.text.insert(tk.END, text)
+                    self._output_text.text.replace("end-2c linestart", "end-1c", text)
                 else:
                     self._output_text.text.insert(tk.END, text)
 
@@ -937,7 +856,7 @@ class DgenerateConsole(tk.Tk):
     def _update_cwd(self):
         try:
             with self._termination_lock:
-                p = self._sub_process
+                p = self._shell_process
                 while p.children():
                     p = p.children()[0]
                 self._cwd = p.cwd()
@@ -987,23 +906,28 @@ class DgenerateConsole(tk.Tk):
         if line:
             return b''.join(line)
 
-    def _read_sub_process_stream_thread(self, get_read_stream, write_out_handler):
+    def _read_shell_output_stream_thread(self, get_read_stream, write_out_handler):
         exit_message = True
         while True:
             with self._termination_lock:
-                return_code = self._sub_process.poll()
+                return_code = self._shell_process.poll()
 
             if return_code is None:
                 exit_message = True
-                line = self.readline(get_read_stream(self._sub_process))
+                line = self.readline(get_read_stream(self._shell_process))
                 if line is not None:
                     write_out_handler(line)
             elif exit_message:
                 with self._termination_lock:
                     exit_message = False
-                    self._write_stdout_output(
-                        f'\nShell Process Terminated, Exit Code: {return_code}\n')
-                    self._restart_dgenerate_process()
+                    self._shell_return_code_message(return_code)
+
+                    del self._shell_process
+                    self._shell_process = None
+
+                    self._shell_restarting_commence_message()
+                    self._start_shell_process()
+                    self._shell_restarting_finish_message()
             else:
                 time.sleep(1)
 
@@ -1012,8 +936,8 @@ class DgenerateConsole(tk.Tk):
             return
         if self._current_command_index > 0:
             self._current_command_index -= 1
-            self._input_text.text.delete('1.0', tk.END)
-            self._input_text.text.insert(tk.END, self._command_history[self._current_command_index])
+            self._input_text.text.edit_separator()
+            self._input_text.text.replace('1.0', tk.END, self._command_history[self._current_command_index])
             self._input_text.text.see(tk.END)
             self._input_text.text.mark_set(tk.INSERT, tk.END)
             return "break"
@@ -1023,8 +947,8 @@ class DgenerateConsole(tk.Tk):
             return
         if self._current_command_index < len(self._command_history) - 1:
             self._current_command_index += 1
-            self._input_text.text.delete('1.0', tk.END)
-            self._input_text.text.insert(tk.END, self._command_history[self._current_command_index])
+            self._input_text.text.edit_separator()
+            self._input_text.text.replace('1.0', tk.END, self._command_history[self._current_command_index])
             self._input_text.text.see(tk.END)
             self._input_text.text.mark_set(tk.INSERT, tk.END)
             return "break"
@@ -1076,8 +1000,8 @@ class DgenerateConsole(tk.Tk):
             self._output_text.text.see(tk.END)
 
         with self._termination_lock:
-            self._sub_process.stdin.write((user_input + '\n\n').encode('utf-8'))
-            self._sub_process.stdin.flush()
+            self._shell_process.stdin.write((user_input + '\n\n').encode('utf-8'))
+            self._shell_process.stdin.flush()
 
         if self._command_history:
             if self._command_history[-1] != user_input:
@@ -1092,7 +1016,7 @@ class DgenerateConsole(tk.Tk):
         return 'break'
 
     def destroy(self) -> None:
-        self._sub_process.terminate()
+        self.kill_shell_process()
         self.save_settings()
         super().destroy()
 
@@ -1108,6 +1032,7 @@ def main(args: collections.abc.Sequence[str]):
     except KeyboardInterrupt:
         if app is not None:
             app.save_settings()
+        app.kill_shell_process()
         print('Exiting dgenerate console UI due to keyboard interrupt!',
               file=sys.stderr)
         sys.exit(1)
