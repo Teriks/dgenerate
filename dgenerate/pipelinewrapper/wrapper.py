@@ -2184,6 +2184,7 @@ class DiffusionPipelineWrapper:
             any keyword arguments given here will override values derived from the
             :py:class:`.DiffusionArguments` object given to the *args* parameter.
 
+        :raises InvalidModelFileError:
         :raises UnsupportedPipelineConfigError:
         :raises InvalidModelUriError:
         :raises InvalidSchedulerNameError:

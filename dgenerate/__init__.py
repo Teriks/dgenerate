@@ -66,6 +66,7 @@ try:
         gen_seeds
 
     from dgenerate.pipelinewrapper import \
+        InvalidModelFileError, \
         InvalidModelUriError, \
         InvalidSchedulerNameError, \
         UnsupportedPipelineConfigError, \

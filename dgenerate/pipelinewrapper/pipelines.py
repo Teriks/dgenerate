@@ -59,6 +59,13 @@ class UnsupportedPipelineConfigError(Exception):
     pass
 
 
+class InvalidModelFileError(Exception):
+    """
+    Raised when a file is loaded from disk that is an invalid diffusers model format
+    """
+    pass
+
+
 class InvalidSchedulerNameError(Exception):
     """
     Unknown scheduler name used
@@ -159,8 +166,8 @@ def load_scheduler(pipeline: typing.Union[diffusers.DiffusionPipeline, diffusers
 
     if help_name == 'helpargs':
         help_string = f'Compatible schedulers for "{model_path}" are:' + '\n\n'
-        help_string += '\n\n'.join((" " * 4) + i.__name__+(':\n'+' '*8)+('\n'+' '*8).join(
-            _textprocessing.dashup(k[0])+('='+str(k[1]) if len(k) > 1 else '') for k in
+        help_string += '\n\n'.join((" " * 4) + i.__name__ + (':\n' + ' ' * 8) + ('\n' + ' ' * 8).join(
+            _textprocessing.dashup(k[0]) + ('=' + str(k[1]) if len(k) > 1 else '') for k in
             list(_types.get_accepted_args_with_defaults(i.__init__.__wrapped__))[1:]) for i in compatibles) + '\n'
         _messages.log(help_string)
         raise SchedulerHelpException(help_string)
@@ -772,6 +779,7 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     :param sequential_cpu_offload: This pipeline has sequential_cpu_offloading enabled?
     :param local_files_only: Only look in the huggingface cache and do not connect to download models?
 
+    :raises InvalidModelFileError:
     :raises ModelNotFoundError:
     :raises InvalidModelUriError:
     :raises InvalidSchedulerNameError:
@@ -825,6 +833,7 @@ class TorchPipelineFactory:
 
     def __call__(self) -> TorchPipelineCreationResult:
         """
+        :raises InvalidModelFileError:
         :raises ModelNotFoundError:
         :raises InvalidModelUriError:
         :raises InvalidSchedulerNameError:
@@ -1149,26 +1158,37 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         if subfolder is not None:
             raise UnsupportedPipelineConfigError(
                 'Single file model loads do not support the subfolder option.')
-
-        pipeline = pipeline_class.from_single_file(
-            model_path,
-            token=auth_token,
-            revision=revision,
-            variant=variant,
-            torch_dtype=torch_dtype,
-            use_safe_tensors=model_path.endswith('.safetensors'),
-            local_files_only=local_files_only,
-            **creation_kwargs)
+        try:
+            pipeline = pipeline_class.from_single_file(
+                model_path,
+                token=auth_token,
+                revision=revision,
+                variant=variant,
+                torch_dtype=torch_dtype,
+                use_safe_tensors=model_path.endswith('.safetensors'),
+                local_files_only=local_files_only,
+                **creation_kwargs)
+        except (ValueError, OSError) as e:
+            msg = str(e)
+            if model_path in msg:
+                raise InvalidModelFileError(f'invalid model file, unable to load: {model_path}')
+            raise InvalidModelFileError(e)
     else:
-        pipeline = pipeline_class.from_pretrained(
-            model_path,
-            token=auth_token,
-            revision=revision,
-            variant=variant,
-            torch_dtype=torch_dtype,
-            subfolder=subfolder,
-            local_files_only=local_files_only,
-            **creation_kwargs)
+        try:
+            pipeline = pipeline_class.from_pretrained(
+                model_path,
+                token=auth_token,
+                revision=revision,
+                variant=variant,
+                torch_dtype=torch_dtype,
+                subfolder=subfolder,
+                local_files_only=local_files_only,
+                **creation_kwargs)
+        except (ValueError, OSError) as e:
+            msg = str(e)
+            if model_path in msg:
+                raise InvalidModelFileError(f'invalid model file or repo slug: {model_path}')
+            raise InvalidModelFileError(e)
 
     # Select Scheduler
 

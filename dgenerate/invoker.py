@@ -87,6 +87,7 @@ def invoke_dgenerate(args: collections.abc.Sequence[str],
     :raises dgenerate.FrameStartOutOfBounds:
     :raises dgenerate.ImageProcessorArgumentError:
     :raises dgenerate.ImageProcessorNotFoundError:
+    :raises dgenerate.InvalidModelFileError:
     :raises dgenerate.InvalidModelUriError:
     :raises dgenerate.InvalidSchedulerNameError:
     :raises dgenerate.OutOfMemoryError:
@@ -136,6 +137,7 @@ def invoke_dgenerate_events(
     :raises dgenerate.FrameStartOutOfBounds:
     :raises dgenerate.ImageProcessorArgumentError:
     :raises dgenerate.ImageProcessorNotFoundError:
+    :raises dgenerate.InvalidModelFileError:
     :raises dgenerate.InvalidModelUriError:
     :raises dgenerate.InvalidSchedulerNameError:
     :raises dgenerate.OutOfMemoryError:
@@ -316,6 +318,7 @@ def invoke_dgenerate_events(
             _mediainput.MediaIdentificationError,
             _mediainput.FrameStartOutOfBounds,
             _pipelinewrapper.ModelNotFoundError,
+            _pipelinewrapper.InvalidModelFileError,
             _pipelinewrapper.InvalidModelUriError,
             _pipelinewrapper.InvalidSchedulerNameError,
             _pipelinewrapper.UnsupportedPipelineConfigError,
