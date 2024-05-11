@@ -19,50 +19,40 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import importlib.resources
-import io
-import subprocess
-
-import PIL.Image
-import PIL.ImageTk
+import tkinter as tk
+import tkinter.filedialog
+import tkinter.font
+import tkinter.scrolledtext
 
 
-def get_icon():
-    return PIL.ImageTk.PhotoImage(PIL.Image.open(io.BytesIO(importlib.resources.read_binary('dgenerate', 'icon.ico'))))
+class ScrolledText(tk.Frame):
+    def __init__(self, master=None, undo=False, **kwargs):
+        super().__init__(master, **kwargs)
 
+        text_args = {}
+        if undo:
+            text_args['undo'] = True
+            text_args['autoseparators'] = True
+            text_args['maxundo'] = -1
 
-def get_karras_schedulers():
-    return [
-        "EulerDiscreteScheduler",
-        "HeunDiscreteScheduler",
-        "UniPCMultistepScheduler",
-        "DDPMScheduler",
-        "EulerDiscreteScheduler",
-        "DDIMScheduler",
-        "DEISMultistepScheduler",
-        "LMSDiscreteScheduler",
-        "DPMSolverMultistepScheduler",
-        "EulerAncestralDiscreteScheduler",
-        "DPMSolverSinglestepScheduler",
-        "DPMSolverSDEScheduler",
-        "KDPM2DiscreteScheduler",
-        "PNDMScheduler",
-        "KDPM2AncestralDiscreteScheduler",
-        "LCMScheduler"
-    ]
+        self.text = tk.Text(self, wrap='word', **text_args)
 
+        font = tkinter.font.Font(font=self.text['font'])
+        self.text.config(tabs=font.measure(' ' * 4))
 
-def get_cuda_devices():
-    try:
-        result = subprocess.run(['nvidia-smi',
-                                 '--query-gpu=index',
-                                 '--format=csv,noheader'],
-                                stdout=subprocess.PIPE)
-        devices = result.stdout.decode().strip().split('\n')
-        return ['cuda:' + device for device in devices]
-    except FileNotFoundError:
-        return ['cpu']
+        self.y_scrollbar = tk.Scrollbar(self, orient='vertical', command=self.text.yview)
+        self.y_scrollbar.pack(side='right', fill='y')
 
+        self.x_scrollbar = tk.Scrollbar(self, orient='horizontal', command=self.text.xview)
+        self.x_scrollbar.pack(side='bottom', fill='x')
 
-def get_karras_scheduler_prediction_types():
-    return ['epsilon', 'v_prediction']
+        self.text['yscrollcommand'] = self.y_scrollbar.set
+        self.text['xscrollcommand'] = self.x_scrollbar.set
+
+        self.text.pack(side='left', fill='both', expand=True)
+
+    def enable_word_wrap(self):
+        self.text.config(wrap='word')
+
+    def disable_word_wrap(self):
+        self.text.config(wrap='none')

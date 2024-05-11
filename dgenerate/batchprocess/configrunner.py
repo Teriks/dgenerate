@@ -27,8 +27,10 @@ import os
 import pathlib
 import shlex
 import shutil
+import stat
 import subprocess
 import threading
+import time
 import types
 import typing
 
@@ -43,8 +45,6 @@ import dgenerate.prompt as _prompt
 import dgenerate.renderloop as _renderloop
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-import time
-import stat
 
 
 def _format_prompt_single(prompt):

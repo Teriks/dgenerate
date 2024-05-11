@@ -18,21 +18,22 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 import re
-import subprocess
 import tkinter as tk
 from tkinter import filedialog
 
-import dgenerate.console.recipes
+import dgenerate.console.recipes as _recipes
+import dgenerate.console.resources as _resources
 
 
-class RecipesForm(tk.Toplevel):
-    def __init__(self, master=None):
+class _RecipesForm(tk.Toplevel):
+    def __init__(self, master=None, position=None, width=None):
         super().__init__(master)
         self._templates = None
         self._dropdown = None
-        self._templates_dict = dgenerate.console.recipes.RECIPES
-        self._template_names = list(dgenerate.console.recipes.RECIPES.keys())
+        self._templates_dict = _recipes.RECIPES
+        self._template_names = list(_recipes.RECIPES.keys())
         self._current_template = tk.StringVar(value=self._template_names[0])
         self._entries = []
         self._content = None
@@ -43,41 +44,51 @@ class RecipesForm(tk.Toplevel):
         self.resizable(True, False)
 
         self.withdraw()
-
         self.update_idletasks()
 
-        parent_width = master.winfo_width()
-        parent_height = master.winfo_height()
-        parent_x = master.winfo_rootx()
-        parent_y = master.winfo_rooty()
+        if position is None:
+            window_width = self.master.winfo_width()
+            window_height = self.master.winfo_height()
+            top_level_width = self.winfo_width()
+            top_level_height = self.winfo_height()
 
-        child_width = self.winfo_width()
-        child_height = self.winfo_height()
+            position_top = self.master.winfo_y() + window_height // 2 - top_level_height // 2
+            position_left = self.master.winfo_x() + window_width // 2 - top_level_width // 2
 
-        center_x = parent_x + (parent_width // 2) - (child_width // 2)
-        center_y = parent_y + (parent_height // 2) - (child_height // 2)
+            if width is not None:
+                self.geometry(f"{width}x{self.winfo_height()}+{position_left}+{position_top}")
+            else:
+                self.geometry(f"+{position_left}+{position_top}")
 
-        self.geometry(f'+{center_x}+{center_y}')
+        else:
+            if width is not None:
+                self.geometry("{}x{}+{}+{}".format(width, self.winfo_height(), *position))
+            else:
+                self.geometry("+{}+{}".format(*position))
 
         self.deiconify()
 
-    def _read_template_string(self, template_string):
+    @staticmethod
+    def _read_template_string(template_string):
         templates = re.findall(r'@(.*?)\[(.*?)\]:\[(.*?)\]:"(.*?)"', template_string)
         return templates, template_string
 
-    def _open_file_dialog(self):
+    @staticmethod
+    def _open_file_dialog():
         f = filedialog.askopenfilename()
         if f is None or not f.strip():
             return None
         return f
 
-    def _open_file_save_dialog(self):
+    @staticmethod
+    def _open_file_save_dialog():
         f = filedialog.asksaveasfilename()
         if f is None or not f.strip():
             return None
         return f
 
-    def _open_directory_dialog(self):
+    @staticmethod
+    def _open_directory_dialog():
         d = filedialog.askdirectory()
         if d is None or not d.strip():
             return None
@@ -93,46 +104,6 @@ class RecipesForm(tk.Toplevel):
             if not line.strip():
                 out.append('')
         return '\n'.join(out)
-
-    @staticmethod
-    def _get_cuda_devices():
-        try:
-            result = subprocess.run(['nvidia-smi',
-                                     '--query-gpu=index',
-                                     '--format=csv,noheader'],
-                                    stdout=subprocess.PIPE)
-            devices = result.stdout.decode().strip().split('\n')
-            return ['cuda:' + device for device in devices]
-        except FileNotFoundError:
-            return ['cpu']
-
-    @staticmethod
-    def _get_schedulers(optional):
-        schedulers = [
-            "EulerDiscreteScheduler",
-            "HeunDiscreteScheduler",
-            "UniPCMultistepScheduler",
-            "DDPMScheduler",
-            "EulerDiscreteScheduler",
-            "DDIMScheduler",
-            "DEISMultistepScheduler",
-            "LMSDiscreteScheduler",
-            "DPMSolverMultistepScheduler",
-            "EulerAncestralDiscreteScheduler",
-            "DPMSolverSinglestepScheduler",
-            "DPMSolverSDEScheduler",
-            "KDPM2DiscreteScheduler",
-            "PNDMScheduler",
-            "KDPM2AncestralDiscreteScheduler",
-            "LCMScheduler"
-        ]
-        return [''] + schedulers if optional else schedulers
-
-    @staticmethod
-    def _get_scheduler_prediction_types(optional):
-        if optional:
-            return ['', 'epsilon', 'v_prediction']
-        return ['epsilon', 'v_prediction']
 
     def _apply_templates(self):
         missing_fields = False
@@ -177,14 +148,19 @@ class RecipesForm(tk.Toplevel):
             self.destroy()
 
     def _create_form(self):
-        self._dropdown = tk.OptionMenu(self, self._current_template, *self._template_names, command=self._update_form)
+        self._dropdown = tk.OptionMenu(self,
+                                       self._current_template, *self._template_names,
+                                       command=lambda s: self._update_form(s, preserve_width=True))
         self._dropdown.grid(row=0, column=0, columnspan=3, sticky='ew', padx=(5, 5), pady=(5, 5))
         self._update_form(self._current_template.get())
 
-    def _update_form(self, selection):
+    def _update_form(self, selection, preserve_width=False):
+        old_form_width = self.winfo_width()
+
         for widget in self.winfo_children():
             if widget != self._dropdown:
                 widget.destroy()
+
         self._entries = []
         self._templates, self._content = self._read_template_string(self._templates_dict[selection])
         for i, template in enumerate(self._templates):
@@ -193,17 +169,21 @@ class RecipesForm(tk.Toplevel):
             default_value = template[3]
             label_widget = tk.Label(self, text=label, anchor='e')
             if ttype == 'device':
-                devices = self._get_cuda_devices()
+                devices = _resources.get_cuda_devices()
                 text_var = tk.StringVar(value=devices[0])
                 entry = tk.OptionMenu(self, text_var, *devices)
             elif ttype.endswith('scheduler'):
-                devices = self._get_schedulers(ttype.startswith('optional'))
+                schedulers = _resources.get_karras_schedulers()
+                if ttype.startswith('optional'):
+                    schedulers = [''] + schedulers
                 text_var = tk.StringVar(value=default_value)
-                entry = tk.OptionMenu(self, text_var, *devices)
+                entry = tk.OptionMenu(self, text_var, *schedulers)
             elif ttype.endswith('predictiontype'):
-                devices = self._get_scheduler_prediction_types(ttype.startswith('optional'))
+                prediction_types = _resources.get_karras_scheduler_prediction_types()
+                if ttype.startswith('optional'):
+                    prediction_types = [''] + prediction_types
                 text_var = tk.StringVar(value=default_value)
-                entry = tk.OptionMenu(self, text_var, *devices)
+                entry = tk.OptionMenu(self, text_var, *prediction_types)
             elif ttype.startswith('int'):
                 text_var = tk.StringVar(value=default_value)
                 entry = tk.Spinbox(self, from_=-10000, to=10000,
@@ -260,8 +240,40 @@ class RecipesForm(tk.Toplevel):
 
         apply_button = tk.Button(self, text='Insert', command=self._apply_templates)
         apply_button.grid(row=len(self._templates) + 1, column=0, padx=(5, 5), pady=(5, 5), columnspan=3)
-        self.geometry("")
+
+        if preserve_width:
+            self.update_idletasks()
+            self.geometry(f"{old_form_width}x{self.winfo_reqheight()}")
+        else:
+            self.geometry('')
 
     def get_recipe(self):
         self.wait_window(self)
-        return '\n'.join(line.lstrip() for line in self._content.splitlines()) if self._ok else None
+        return ('\n'.join(line.lstrip() for line in self._content.splitlines())).strip() if self._ok else None
+
+
+_last_pos = None
+_last_width = None
+
+
+def request_recipe(master):
+    global _last_width, _last_pos
+
+    window = _RecipesForm(master, position=_last_pos, width=_last_width)
+
+    og_destroy = window.destroy
+
+    def destroy():
+        global _last_width, _last_pos
+        _last_width = window.winfo_width()
+        _last_pos = _last_size = (window.winfo_x(), window.winfo_y())
+        og_destroy()
+
+    window.destroy = destroy
+
+    def on_closing():
+        window.destroy()
+
+    window.protocol("WM_DELETE_WINDOW", on_closing)
+
+    return window.get_recipe()
