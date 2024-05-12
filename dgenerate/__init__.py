@@ -128,18 +128,18 @@ def main(args: typing.Optional[collections.abc.Sequence[str]] = None):
     if args is None:
         args = sys.argv[1:]
 
-    server_mode = '--server' in args
+    server_mode = '--shell' in args
     nostdin_mode = '--no-stdin' in args
 
-    while '--server' in args:
-        args.remove('--server')
+    while '--shell' in args:
+        args.remove('--shell')
 
     while '--no-stdin' in args:
         args.remove('--no-stdin')
 
     if server_mode and nostdin_mode:
         dgenerate.messages.log(
-            'dgenerate: error: --no-stdin cannot be used with --server.')
+            'dgenerate: error: --no-stdin cannot be used with --shell.')
         sys.exit(1)
 
     if sys.stdin.isatty() and nostdin_mode:
