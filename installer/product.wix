@@ -21,19 +21,18 @@
           <Component Id="Path" Guid="{D5C426B0-F916-4BD9-BD7C-2A5FBF81F4E3}" KeyPath="yes">
             <Environment Id="PATH" Name="PATH" Value="[INSTALLFOLDER]" Permanent="yes" Part="last" Action="set" System="yes" />
           </Component>
-          <Component Id="ApplicationShortcutDesktop" Guid="*">
-            <Shortcut Id="ApplicationStartMenuShortcut"
-                      Name="dgenerate"
-                      Description="Launch dgenerate Console UI"
-                      Target="[INSTALLFOLDER]dgenerate.exe"
-                      Arguments="--dgenerate-console"
-                      WorkingDirectory="DesktopFolder"
-                      Icon="dgenerate.ico"
-                      Directory="DesktopFolder"
-                      Advertise="yes" />
-            <RemoveFolder Id="DesktopFolder" On="uninstall"/>
-            <RegistryValue Root="HKCU" Key="Software\Microsoft\dgenerate" Name="installed" Type="integer" Value="1" KeyPath="yes"/>
-          </Component>
+        <Component Id="ApplicationShortcutDesktop" Guid="*">
+          <Shortcut Id="ApplicationStartMenuShortcut"
+                    Name="dgenerate"
+                    Description="Launch dgenerate Console UI"
+                    Target="[INSTALLFOLDER]dgenerate.exe"
+                    Arguments="--dgenerate-console"
+                    WorkingDirectory="DesktopFolder"
+                    Icon="dgenerate.ico"
+                    Directory="DesktopFolder" />
+          <RemoveFolder Id="DesktopFolder" On="uninstall"/>
+          <RegistryValue Root="HKCU" Key="Software\Microsoft\dgenerate" Name="installed" Type="integer" Value="1" KeyPath="yes"/>
+        </Component>
         </Directory>
       </Directory>
     </Directory>
