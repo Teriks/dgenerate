@@ -483,7 +483,7 @@ class DgenerateConsole(tk.Tk):
             'configuration via the enter key, or instead use Ctrl+Space / the run menu.\n\n'
             'Command history is supported via the up and down arrow keys when not in multiline\n'
             'input mode. Right clicking the input or output pane will reveal further menu options.\n\n'
-            'Enter --help or the alias \help to print dgenerates help text. All lines which\n'
+            'Enter --help or the alias \\help to print dgenerates help text. All lines which\n'
             'are not directives (starting with \\ ) or top level templates (starting with { )\n'
             'are processed as arguments to dgenerate.\n\n'
             'See: \\directives_help or \\directives_help (directive) for help with config directives.\n'
@@ -1088,6 +1088,11 @@ class DgenerateConsole(tk.Tk):
 
 
 def main(args: collections.abc.Sequence[str]):
+    if platform.system() == 'Windows':
+        # secret hack for Windows desktop shortcut
+        if os.getcwd() == r'C:\Program Files\dgenerate':
+            os.chdir(os.path.expanduser('~'))
+
     app = None
     try:
         sys.stdout.reconfigure(encoding='utf-8')

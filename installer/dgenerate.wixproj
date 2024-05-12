@@ -1,7 +1,8 @@
-<Project Sdk="WixToolset.Sdk/4.0.3" >
+<Project Sdk="WixToolset.Sdk/5.0.0" >
 
   <PropertyGroup>
     <InstallerPlatform>x64</InstallerPlatform>
+    <SuppressSpecificWarnings>1076;5151</SuppressSpecificWarnings>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,10 +16,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="WixToolset.UI.wixext" />
-    <PackageReference Include="WixToolset.Heat" />
+    <PackageReference Include="WixToolset.UI.wixext" Version="5.0.0" />
+    <PackageReference Include="WixToolset.Heat" Version="5.0.0" />
     <Compile Include="product.wix" />
   </ItemGroup>
 
-  <Import Project="$(WixTargetsPath)" />
 </Project>

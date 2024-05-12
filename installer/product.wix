@@ -1,42 +1,67 @@
-﻿<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui" xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
-  <Package UpgradeCode="CAA6E951-8C80-44A9-81CF-1F545DAA534C" Language="1033" Manufacturer="Teriks@github.com" Name="dgenerate" Version="3.5.0" InstallerVersion="301">
-    <MediaTemplate MaximumUncompressedMediaSize="2048" EmbedCab="no" />
+﻿<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+    <Package UpgradeCode="CAA6E951-8C80-44A9-81CF-1F545DAA534C" Language="1033" Manufacturer="Teriks@github.com"
+             Name="dgenerate" Version="3.5.0" InstallerVersion="301">
+        <MediaTemplate MaximumUncompressedMediaSize="2048" EmbedCab="no"/>
 
-    <Icon Id="dgenerate.ico" SourceFile="..\dgenerate\icon.ico"/>
+        <Icon Id="dgenerate.ico" SourceFile="..\dgenerate\icon.ico"/>
 
-    <MajorUpgrade AllowDowngrades="yes" />
-    <WixVariable Id="WixUILicenseRtf" Value="license.rtf" />
+        <MajorUpgrade AllowDowngrades="yes"/>
+        <WixVariable Id="WixUILicenseRtf" Value="license.rtf"/>
 
-    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
-    <ui:WixUI Id="WixUI_InstallDir" />
+        <ui:WixUI Id="WixUI_FeatureTree"/>
 
-    <Feature Id="Complete">
-      <ComponentGroupRef Id="DgenerateComponents" />
-      <ComponentRef Id="Path" />
-      <ComponentRef Id="ApplicationShortcutDesktop" />
-    </Feature>
+        <Feature Id="Tool"
+                 Title="Tool (dgenerate)"
+                 Level="1"
+                 Display="expand"
+                 AllowAdvertise="no"
+                 AllowAbsent="no"
+                 Description="Installs the dgenerate command line tool."
+                 ConfigurableDirectory="INSTALLFOLDER">
 
-    <Directory Id="TARGETDIR" Name="SourceDir">
-      <Directory Id="DesktopFolder" Name="Desktop" />
-      <Directory Id="ProgramFiles64Folder">
-        <Directory Id="INSTALLFOLDER" Name="dgenerate">
-          <Component Id="Path" Guid="{D5C426B0-F916-4BD9-BD7C-2A5FBF81F4E3}" KeyPath="yes">
-            <Environment Id="PATH" Name="PATH" Value="[INSTALLFOLDER]" Permanent="yes" Part="last" Action="set" System="yes" />
-          </Component>
-        <Component Id="ApplicationShortcutDesktop" Guid="*">
-          <Shortcut Id="ApplicationStartMenuShortcut"
-                    Name="dgenerate"
-                    Description="Launch dgenerate Console UI"
-                    Target="[INSTALLFOLDER]dgenerate.exe"
-                    Arguments="--dgenerate-console"
-                    WorkingDirectory="DesktopFolder"
-                    Icon="dgenerate.ico"
-                    Directory="DesktopFolder" />
-          <RemoveFolder Id="DesktopFolder" On="uninstall"/>
-          <RegistryValue Root="HKCU" Key="Software\Microsoft\dgenerate" Name="installed" Type="integer" Value="1" KeyPath="yes"/>
-        </Component>
-        </Directory>
-      </Directory>
-    </Directory>
-  </Package>
+            <ComponentGroupRef Id="DgenerateComponents" />
+        </Feature>
+
+        <Feature Id="Path"
+                 Title="PATH Variable"
+                 Level="1"
+                 AllowAdvertise="no"
+                 Description="Updates your system PATH variable so that dgenerate is immediately accessible from any terminal.">
+            <ComponentRef Id="Path"/>
+        </Feature>
+
+        <Feature Id="ApplicationShortcutDesktop"
+                 Title="Console UI Shortcut"
+                 Level="1"
+                 AllowAdvertise="no"
+                 Description="Installs a shortcut on your desktop that will launch the dgenerate console UI.">
+            <ComponentRef Id="ApplicationShortcutDesktop"/>
+        </Feature>
+
+        <StandardDirectory Id="DesktopFolder"/>
+        <StandardDirectory Id="ProgramFiles64Folder">
+            <Directory Id="INSTALLFOLDER" Name="dgenerate">
+                <Component Id="Path" Guid="{D5C426B0-F916-4BD9-BD7C-2A5FBF81F4E3}" KeyPath="yes">
+                    <Environment Id="PATH" Name="PATH" Value="[INSTALLFOLDER]" Permanent="yes" Part="last"
+                                 Action="set" System="yes"/>
+                </Component>
+                <Component Id="ApplicationShortcutDesktop" Guid="{F5C426B0-F916-4BD9-BD7C-2A5FBF81F4E3}">
+                    <Shortcut Id="ApplicationStartMenuShortcut"
+                              Name="dgenerate"
+                              Description="Launch dgenerate Console UI"
+                              Target="[INSTALLFOLDER]dgenerate.exe"
+                              Arguments="--dgenerate-console"
+                              WorkingDirectory="DesktopFolder"
+                              Icon="dgenerate.ico"
+                              Directory="DesktopFolder"
+                              Show="minimized"/>
+                    <RegistryValue Root="HKCU" Key="Software\Teriks\dgenerate"
+                                   Name="installed" Type="integer"
+                                   Value="1" KeyPath="yes"/>
+                    <RemoveFile Id="RemoveOldDesktopShortcut" On="install" Name="dgenerate.lnk"/>
+                </Component>
+            </Directory>
+        </StandardDirectory>
+    </Package>
 </Wix>
