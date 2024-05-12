@@ -31,57 +31,69 @@ if platform.system() != 'Windows':
     print('Windows installer build is not supported on non windows systems.')
     sys.exit(1)
 
+wix_only = '--wix-only' in sys.argv
+
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
 # Change to script directory
 
 os.chdir(script_dir)
 
+
+def create_portable_environment():
+    # Create and activate VENV
+
+    subprocess.run([sys.executable, '-m', 'venv', 'venv'])
+    venv_path = os.path.join(os.getcwd(), 'venv')
+
+    env = os.environ.copy()
+    env['VIRTUAL_ENV'] = venv_path
+    env['PATH'] = os.path.join(venv_path, 'Scripts') + os.pathsep + env['PATH']
+    env['PYTHONPATH'] = os.path.join(venv_path, 'Lib', 'site-packages')
+    env['DGENERATE_FORCE_LOCKFILE_REQUIRES'] = '1'
+    python_exe = os.path.join(venv_path, 'Scripts', 'python.exe')
+
+    # Install a dgenerate into VENV
+
+    os.chdir('..')
+    subprocess.run([python_exe,
+                    '-m', 'pip', 'install', '.[win-installer]',
+                    '--extra-index-url', 'https://download.pytorch.org/whl/cu121/'], env=env)
+    os.chdir(script_dir)
+
+    # Build a executable and distributable environment
+    subprocess.run([python_exe, '-m', 'PyInstaller', 'dgenerate.spec', '--clean'], env=env)
+
+
 # Remove old artifacts
 
-for directory in ['venv', 'build', 'dist', 'obj', 'bin']:
-    shutil.rmtree(directory, ignore_errors=True)
+if not wix_only:
+    for directory in ['venv', 'build', 'dist', 'obj', 'bin']:
+        shutil.rmtree(directory, ignore_errors=True)
 
-# Create and activate VENV
+    create_portable_environment()
 
-subprocess.run([sys.executable, '-m', 'venv', 'venv'])
-venv_path = os.path.join(os.getcwd(), 'venv')
-
-env = os.environ.copy()
-env['VIRTUAL_ENV'] = venv_path
-env['PATH'] = os.path.join(venv_path, 'Scripts') + os.pathsep + env['PATH']
-env['PYTHONPATH'] = os.path.join(venv_path, 'Lib', 'site-packages')
-env['DGENERATE_FORCE_LOCKFILE_REQUIRES'] = '1'
-python_exe = os.path.join(venv_path, 'Scripts', 'python.exe')
-
-# Install a dgenerate into VENV
-
-os.chdir('..')
-subprocess.run([python_exe,
-                '-m', 'pip', 'install', '.[win-installer]',
-                '--extra-index-url', 'https://download.pytorch.org/whl/cu121/'], env=env)
-os.chdir(script_dir)
-
-# Build a executable and distributable environment
-subprocess.run([python_exe, '-m', 'PyInstaller', 'dgenerate.spec', '--clean'], env=env)
-
-# Create a multi-part zip archive
-os.chdir('dist')
-subprocess.run(['C:\\Program Files\\7-Zip\\7z.exe', '-v1500m', 'a', 'dgenerate_portable.zip', 'dgenerate'])
-os.chdir(script_dir)
+    # Create a multi-part zip archive
+    os.chdir('dist')
+    subprocess.run(['C:\\Program Files\\7-Zip\\7z.exe', '-v1500m', 'a', 'dgenerate_portable.zip', 'dgenerate'])
+    os.chdir(script_dir)
+else:
+    if not os.path.exists('venv'):
+        create_portable_environment()
 
 # Build WiX installer
 subprocess.run(['dotnet', 'build', 'dgenerate.wixproj', '--configuration', 'Release'])
 
-# Create a multi-part zip archive
-os.chdir('bin\\Release')
-cab_files = [f for f in os.listdir() if f.endswith('.cab')]
-subprocess.run(
-    ['C:\\Program Files\\7-Zip\\7z.exe', '-v1500m', 'a', 'dgenerate_installer.zip', 'dgenerate.msi'] + cab_files)
-os.chdir(script_dir)
+if not wix_only:
+    # Create a multi-part zip archive
+    os.chdir('bin\\Release')
+    cab_files = [f for f in os.listdir() if f.endswith('.cab')]
+    subprocess.run(
+        ['C:\\Program Files\\7-Zip\\7z.exe', '-v1500m', 'a', 'dgenerate_installer.zip', 'dgenerate.msi'] + cab_files)
+    os.chdir(script_dir)
 
-# Move all parts of the multi-part zip archive to 'bin\\Release'
-for root, dirs, files in os.walk('dist'):
-    for file in files:
-        if file.startswith('dgenerate_portable.zip'):
-            shutil.move(os.path.join(root, file), 'bin\\Release')
+    # Move all parts of the multi-part zip archive to 'bin\\Release'
+    for root, dirs, files in os.walk('dist'):
+        for file in files:
+            if file.startswith('dgenerate_portable.zip'):
+                shutil.move(os.path.join(root, file), 'bin\\Release')
