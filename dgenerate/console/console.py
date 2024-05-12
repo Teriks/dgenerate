@@ -428,38 +428,42 @@ class DgenerateConsole(tk.Tk):
         # output (stdout) refresh rate (ms)
         self._output_refresh_rate = 100
 
+        max_scrollback_default = 10000
+
         # max output scroll-back history
-        max_output_lines = os.environ.get('DGENERATE_CONSOLE_MAX_SCROLLBACK', 10000)
+        max_output_lines = os.environ.get('DGENERATE_CONSOLE_MAX_SCROLLBACK', max_scrollback_default)
         try:
             self._max_output_lines = int(max_output_lines)
         except ValueError:
-            self._max_output_lines = 10000
+            self._max_output_lines = max_scrollback_default
             print(
                 f'WARNING: environmental variable DGENERATE_CONSOLE_MAX_SCROLLBACK '
                 f'set to invalid value: "{max_output_lines}", defaulting to 10000',
                 file=sys.stderr)
 
         if self._max_output_lines < self._output_lines_per_refresh:
-            self._max_output_lines = 10000
+            self._max_output_lines = max_scrollback_default
             print(
                 f'WARNING: environmental variable DGENERATE_CONSOLE_MAX_SCROLLBACK '
                 f'set to invalid value: "{max_output_lines}", defaulting to 10000. '
                 f'Value must be greater than or equal to "{self._output_lines_per_refresh}"',
                 file=sys.stderr)
 
+        max_history_default = 500
+
         # max terminal command history
-        max_command_history = os.environ.get('DGENERATE_CONSOLE_MAX_HISTORY', 500)
+        max_command_history = os.environ.get('DGENERATE_CONSOLE_MAX_HISTORY', max_history_default)
         try:
             self._max_command_history = int(max_command_history)
         except ValueError:
-            self._max_command_history = 500
+            self._max_command_history = max_history_default
             print(
                 f'WARNING: environmental variable DGENERATE_CONSOLE_MAX_HISTORY '
                 f'set to invalid value: "{max_command_history}", defaulting to 500',
                 file=sys.stderr)
 
         if self._max_command_history < 0:
-            self._max_command_history = 500
+            self._max_command_history = max_history_default
             print(
                 f'WARNING: environmental variable DGENERATE_CONSOLE_MAX_HISTORY '
                 f'set to invalid value: "{max_command_history}", defaulting to 500. '
@@ -476,7 +480,7 @@ class DgenerateConsole(tk.Tk):
             'This console provides a REPL for dgenerates configuration language.\n\n'
             'Enter configuration above and hit enter to submit, use the insert key to enter\n'
             'and exit multiline input mode, you must exit multiline input mode to submit\n'
-            'configuration via the enter key.\n\n'
+            'configuration via the enter key, or instead use Ctrl+Space or the run menu.\n\n'
             'Command history is supported via the up and down arrow keys when not in multiline\n'
             'input mode. Right clicking the input or output pane will reveal further menu options.\n\n'
             'Enter --help or the alias \help to print dgenerates help text. All lines which\n'

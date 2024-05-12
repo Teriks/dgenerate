@@ -3916,6 +3916,9 @@ on Windows this equates to ``%USERPROFILE%\.dgenerate_console_history``
 
 This can be configured by setting the environmental variable ``DGENERATE_CONSOLE_MAX_HISTORY=500``
 
+Any UI settings that persist on startup are stored in ``-/.dgenerate_console_settings`` or
+on Windows ``%USERPROFILE%\.dgenerate_console_settings``
+
 Writing Plugins
 ===============
 
