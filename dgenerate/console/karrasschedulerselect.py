@@ -27,6 +27,7 @@ import dgenerate.console.resources as _resources
 class _KarrasSchedulerSelect(tk.Toplevel):
     def __init__(self, master=None, position=None):
         super().__init__(master)
+        self.title('Insert Karras Scheduler')
         self._templates = None
         self._dropdown = None
         self._scheduler_names = _resources.get_karras_schedulers()
