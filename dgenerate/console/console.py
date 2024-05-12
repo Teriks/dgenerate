@@ -45,6 +45,7 @@ import PIL.ImageTk
 import psutil
 
 import dgenerate.console.finddialog as _finddialog
+import dgenerate.console.karrasschedulerselect as _karrasschedulerselect
 import dgenerate.console.recipesform as _recipesform
 from dgenerate.console.resources import get_icon
 from dgenerate.console.scrolledtext import ScrolledText
@@ -95,6 +96,28 @@ class DgenerateConsole(tk.Tk):
                                     command=self._copy_input_entry_selection)
         self._edit_menu.add_command(label='Paste', accelerator='Ctrl+V',
                                     command=self._paste_input_entry)
+        self._edit_menu.add_command(label='Delete', accelerator='DEL',
+                                    command=self._delete_input_entry_selection)
+        self._edit_menu.add_command(label='Select All', accelerator='Ctrl+A',
+                                    command=self._select_all_input_entry)
+
+        self._edit_menu.add_separator()
+
+        self._edit_menu.add_command(label='Find',
+                                    accelerator='Ctrl+F',
+                                    command=lambda:
+                                    _finddialog.open_find_dialog(
+                                        self,
+                                        'Find In Input',
+                                        self._input_text.text))
+
+        self._edit_menu.add_command(label='Replace',
+                                    accelerator='Ctrl+R',
+                                    command=lambda:
+                                    _finddialog.open_find_replace_dialog(
+                                        self,
+                                        'Replace In Input',
+                                        self._input_text.text))
 
         self._edit_menu.add_separator()
 
@@ -109,6 +132,8 @@ class DgenerateConsole(tk.Tk):
 
         self._edit_menu.add_command(label='Insert Recipe',
                                     command=self._input_text_insert_recipe)
+        self._edit_menu.add_command(label='Insert Karras Scheduler',
+                                    command=self._input_text_insert_karras_scheduler)
 
         # Run menu
 
@@ -263,10 +288,16 @@ class DgenerateConsole(tk.Tk):
 
         self._input_text_context = tk.Menu(self._input_text, tearoff=0)
 
-        self._input_text_context.add_command(label='Cut', accelerator='Ctrl+X', command=self._cut_input_entry_selection)
+        self._input_text_context.add_command(label='Cut', accelerator='Ctrl+X',
+                                             command=self._cut_input_entry_selection)
         self._input_text_context.add_command(label='Copy', accelerator='Ctrl+C',
                                              command=self._copy_input_entry_selection)
-        self._input_text_context.add_command(label='Paste', accelerator='Ctrl+V', command=self._paste_input_entry)
+        self._input_text_context.add_command(label='Paste', accelerator='Ctrl+V',
+                                             command=self._paste_input_entry)
+        self._input_text_context.add_command(label='Delete', accelerator='DEL',
+                                             command=self._delete_input_entry_selection)
+        self._input_text_context.add_command(label='Select All', accelerator='Ctrl+A',
+                                             command=self._select_all_input_entry)
         self._input_text_context.add_separator()
 
         self._input_text_context.add_command(label='Find',
@@ -297,6 +328,8 @@ class DgenerateConsole(tk.Tk):
         self._input_text_context.add_separator()
         self._input_text_context.add_command(label='Insert Recipe',
                                              command=self._input_text_insert_recipe)
+        self._input_text_context.add_command(label='Insert Karras Scheduler',
+                                             command=self._input_text_insert_karras_scheduler)
 
         self._paned_window_vertical.add(self._input_text)
 
@@ -312,6 +345,9 @@ class DgenerateConsole(tk.Tk):
                                         self, 'Find In Output',
                                         self._output_text.text))
 
+        self._output_text.text.bind('<Down>',
+                                    lambda e: self._output_text.text.see(tk.END))
+
         self._output_text_context = tk.Menu(self._output_text, tearoff=0)
 
         self._output_text_context.add_command(label='Clear', command=self._clear_output_text)
@@ -326,11 +362,15 @@ class DgenerateConsole(tk.Tk):
         self._output_text_context.add_command(label='Copy',
                                               accelerator='Ctrl+C',
                                               command=self._copy_output_text_selection)
+        self._output_text_context.add_command(label='Select All',
+                                              accelerator='Ctrl+A',
+                                              command=self._select_all_output_text)
         self._output_text_context.add_separator()
         self._output_text_context.add_command(label='Save Selection', command=self._save_output_text_selection)
         self._output_text_context.add_command(label='Save All', command=self._save_output_text)
         self._output_text_context.add_separator()
         self._output_text_context.add_command(label='To Bottom',
+                                              accelerator='Down Arrow',
                                               command=
                                               lambda: self._output_text.text.see(tk.END))
 
@@ -435,11 +475,13 @@ class DgenerateConsole(tk.Tk):
         self._write_stdout_output(
             'This console provides a REPL for dgenerates configuration language.\n\n'
             'Enter configuration above and hit enter to submit, use the insert key to enter\n'
-            'and exit multiline input mode, you must exit multiline input mode to submit configuration.\n\n'
-            'Command history is supported via the up and down arrow keys.\nRight clicking the input or output '
-            'pane will reveal further menu options.\n\n'
-            'Enter --help or the alias \help to print dgenerates help text, all lines which\n'
-            'are not directives or top level templates are processed as arguments to dgenerate.\n\n'
+            'and exit multiline input mode, you must exit multiline input mode to submit\n'
+            'configuration via the enter key.\n\n'
+            'Command history is supported via the up and down arrow keys when not in multiline\n'
+            'input mode. Right clicking the input or output pane will reveal further menu options.\n\n'
+            'Enter --help or the alias \help to print dgenerates help text. All lines which\n'
+            'are not directives (starting with \\ ) or top level templates (starting with { )\n'
+            'are processed as arguments to dgenerate.\n\n'
             'See: \\directives_help or \\directives_help (directive) for help with config directives.\n'
             'See: \\functions_help or \\functions_help (function) for help with template functions.\n'
             'See: \\templates_help or \\templates_help (variable name) for help with template variables.\n'
@@ -462,7 +504,8 @@ class DgenerateConsole(tk.Tk):
         for t in self._shell_reader_threads:
             t.start()
 
-    def _install_show_in_directory_entry(self, menu: tk.Menu, get_path: typing.Callable[[], str]):
+    @staticmethod
+    def _install_show_in_directory_entry(menu: tk.Menu, get_path: typing.Callable[[], str]):
         open_file_explorer_support = platform.system() == 'Windows' or shutil.which('nautilus')
 
         if open_file_explorer_support:
@@ -515,6 +558,15 @@ class DgenerateConsole(tk.Tk):
 
     def _input_text_insert_recipe(self):
         s = _recipesform.request_recipe(
+            master=self)
+
+        if s is None or not s.strip():
+            return
+
+        self._insert_or_replace_input_text(s)
+
+    def _input_text_insert_karras_scheduler(self):
+        s = _karrasschedulerselect.request_scheduler(
             master=self)
 
         if s is None or not s.strip():
@@ -721,7 +773,7 @@ class DgenerateConsole(tk.Tk):
         env['DGENERATE_LONG_TEXT_WRAP_WIDTH'] = '100'
 
         self._shell_process = psutil.Popen(
-            ['dgenerate', '--server'],
+            ['dgenerate', '--shell'],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             stdin=subprocess.PIPE,
@@ -768,8 +820,18 @@ class DgenerateConsole(tk.Tk):
     def _paste_input_entry(self):
         self._input_text.text.event_generate("<<Paste>>")
 
+    def _delete_input_entry_selection(self):
+        self._input_text.text.event_generate("<Delete>")
+
+    def _select_all_input_entry(self):
+        self._input_text.text.event_generate("<<SelectAll>>")
+
     def _copy_output_text_selection(self):
         self._output_text.text.event_generate("<<Copy>>")
+
+    def _select_all_output_text(self):
+        self._output_text.text.focus_set()
+        self._output_text.text.event_generate("<<SelectAll>>")
 
     def _save_output_text(self):
         f = tkinter.filedialog.asksaveasfilename(
