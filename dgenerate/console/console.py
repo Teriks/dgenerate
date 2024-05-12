@@ -480,7 +480,7 @@ class DgenerateConsole(tk.Tk):
             'This console provides a REPL for dgenerates configuration language.\n\n'
             'Enter configuration above and hit enter to submit, use the insert key to enter\n'
             'and exit multiline input mode, you must exit multiline input mode to submit\n'
-            'configuration via the enter key, or instead use Ctrl+Space or the run menu.\n\n'
+            'configuration via the enter key, or instead use Ctrl+Space / the run menu.\n\n'
             'Command history is supported via the up and down arrow keys when not in multiline\n'
             'input mode. Right clicking the input or output pane will reveal further menu options.\n\n'
             'Enter --help or the alias \help to print dgenerates help text. All lines which\n'
