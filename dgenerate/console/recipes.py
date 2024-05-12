@@ -285,7 +285,7 @@ RECIPES = {
         @device[Device]:[--device {}]:"device"
         --prompts "add your prompt here"
         """,
-    "Image Upscaling":
+    "Image Upscaling (Spandrel / chaiNNer)":
         """
         \\image_process @file[Image File]:[{}]:""
         @outputfile[Output File]:[--output {}]:"upscaled.png"
