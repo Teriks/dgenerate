@@ -30,6 +30,7 @@ import dgenerate.console.resources as _resources
 class _RecipesForm(tk.Toplevel):
     def __init__(self, master=None, position=None, width=None):
         super().__init__(master)
+        self.title('Insert Recipe')
         self._templates = None
         self._dropdown = None
         self._templates_dict = _recipes.RECIPES
