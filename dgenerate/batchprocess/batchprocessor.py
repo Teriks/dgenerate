@@ -274,12 +274,12 @@ class BatchProcessor:
                    'will result in an error. The second argument is accepted as a raw value, it is not shell '
                    'parsed in any way, only stripped of leading and trailing whitespace.',
             'sete': 'Sets a template variable to an array of shell arguments using shell parsing and expansion.',
-            'setp': 'Sets a template variable to an evaluated Python literal value, accepts two arguments, '
+            'setp': 'Sets a template variable to a (safely) evaluated Python expression, accepts two arguments, '
                     'the variable name and the value. Attempting to set a reserved template variable such '
                     'as those pre-defined by dgenerate will result in an error. Template variables can be '
                     'referred to by name within a definition, EG: \\setp my_list [1, 2, my_var, 4]. Template '
-                    'functions are also available, EG: \\setp working_dir template_function(). Python unary '
-                    'and binary expression operators, python list slicing, and comprehensions are supported. '
+                    'functions are also available, EG: \\setp working_dir cwd(). Python unary and binary '
+                    'expression operators, python list slicing, and comprehensions are supported. '
                     'This functionality is provided by the asteval package.',
             'unset': 'Undefines a template variable previously set with \\set or \\setp, accepts one argument, '
                      'the variable name. Attempting to unset a reserved variable such as those '
