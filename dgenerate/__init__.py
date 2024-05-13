@@ -21,6 +21,7 @@
 
 __version__ = '3.5.0'
 
+import os
 import sys
 
 if '--dgenerate-console' in sys.argv:
@@ -118,12 +119,40 @@ except KeyboardInterrupt:
     sys.exit(1)
 
 
+class __Unbuffered(object):
+    def __init__(self, stream):
+        self.stream = stream
+
+    def write(self, data):
+        self.stream.write(data)
+        self.stream.flush()
+
+    def writelines(self, datas):
+        self.stream.writelines(datas)
+        self.stream.flush()
+
+    def __getattr__(self, attr):
+        return getattr(self.stream, attr)
+
+
 def main(args: typing.Optional[collections.abc.Sequence[str]] = None):
     """
     Entry point for the dgenerate command line tool.
 
     :param args: program arguments, if ``None`` is provided they will be taken from ``sys.argv``
     """
+
+    unbuffered_io = os.environ.get('PYTHONUNBUFFERED', '0').strip() != '0'
+    encoding = 'utf-8'
+
+    if sys.stdout.encoding.lower() != encoding:
+        sys.stdout.reconfigure(encoding=encoding)
+    if sys.stderr.encoding.lower() != encoding:
+        sys.stderr.reconfigure(encoding=encoding)
+
+    if unbuffered_io:
+        sys.stdout = __Unbuffered(sys.stdout)
+        sys.stderr = __Unbuffered(sys.stderr)
 
     if args is None:
         args = sys.argv[1:]

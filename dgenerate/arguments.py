@@ -1284,11 +1284,11 @@ def _create_parser(add_model=True, add_help=True):
         image_seed_noise_opts.add_argument('-uns', '--upscaler-noise-levels', action='store', nargs='+', default=None,
                                            metavar="INTEGER",
                                            type=_type_upscaler_noise_levels,
-                                           help=f"""
-                                           One or more upscaler noise level values to try when using the super resolution upscaler 
-                                           --model-type torch-upscaler-x4. Specifying this option for --model-type torch-upscaler-x2
-                                           will produce an error message. The higher this value the more noise is added 
-                                           to the image before upscaling (similar to --image-seed-strengths). (default: [20])"""))
+                                           help=f"""One or more upscaler noise level values to try when using the super
+                                           resolution upscaler --model-type torch-upscaler-x4 or torch-ifs. Specifying 
+                                           this option for --model-type torch-upscaler-x2 will produce an error message.
+                                           The higher this value the more noise is added to the image before upscaling 
+                                           (similar to --image-seed-strengths). (default: [20 for x4, 250 for ifs])"""))
 
     actions.append(
         parser.add_argument('-gs', '--guidance-scales', action='store', nargs='+',

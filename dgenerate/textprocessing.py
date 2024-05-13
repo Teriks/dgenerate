@@ -807,26 +807,25 @@ def long_text_wrap_width() -> int:
     """
     Return the current terminal width or the default value of 150 characters for text-wrapping purposes.
 
-    This can be affected by the environmental variable ``DGENERATE_LONG_TEXT_WRAP_WIDTH=150`` when
-    the process is not attached to a terminal.
+    This can be affected by the environmental variable ``COLUMNS``.
 
     :raise ValueError: if the environmental variable
-        ``DGENERATE_LONG_TEXT_WRAP_WIDTH`` is not an integer value or is less than 0.
+        ``COLUMNS`` is not an integer value or is less than 0.
 
     :return: int
     """
-    env_width = os.environ.get('DGENERATE_LONG_TEXT_WRAP_WIDTH', 150)
+    env_width = os.environ.get('COLUMNS', 150)
     try:
         env_width = int(env_width)
     except ValueError:
         raise ValueError(
             f'Invalid non-integer value "{env_width}" assigned to environmental '
-            f'variable DGENERATE_LONG_TEXT_WRAP_WIDTH.')
+            f'variable COLUMNS.')
 
     if env_width < 0:
         raise ValueError(
             f'Invalid integer value "{env_width}" assigned to environmental '
-            f'variable DGENERATE_LONG_TEXT_WRAP_WIDTH. Must be greater than or equal to 0.')
+            f'variable COLUMNS. Must be greater than or equal to 0.')
 
     val = min(shutil.get_terminal_size(fallback=(env_width, 150))[0], env_width)
     if val == 0:
