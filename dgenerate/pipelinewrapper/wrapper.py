@@ -1391,24 +1391,33 @@ class DiffusionPipelineWrapper:
             else:
                 args['image'] = image
 
-            if _enums.model_type_is_upscaler(self._model_type):
-                if self._model_type == _enums.ModelType.TORCH_UPSCALER_X4:
-                    args['noise_level'] = int(
-                        _types.default(user_args.upscaler_noise_level, _constants.DEFAULT_X4_UPSCALER_NOISE_LEVEL))
-
+            def check_no_image_seed_strength():
                 if user_args.image_seed_strength is not None:
                     raise ValueError(
                         f'image_seed_strength is not supported by model_type '
                         f'"{_enums.get_model_type_string(self._model_type)}".')
 
-            elif not _enums.model_type_is_pix2pix(self._model_type) and \
-                    self._model_type != _enums.ModelType.TORCH_S_CASCADE and \
-                    self._model_type != _enums.ModelType.TORCH_IFS:
+            if _enums.model_type_is_upscaler(self._model_type):
+                if self._model_type == _enums.ModelType.TORCH_UPSCALER_X4:
+                    args['noise_level'] = int(
+                        _types.default(user_args.upscaler_noise_level, _constants.DEFAULT_X4_UPSCALER_NOISE_LEVEL))
+                check_no_image_seed_strength()
+
+            elif self._model_type == _enums.ModelType.TORCH_IFS:
+                args['noise_level'] = int(
+                    _types.default(user_args.upscaler_noise_level,
+                                   _constants.DEFAULT_FLOYD_SUPERRESOLUTION_NOISE_LEVEL))
+                check_no_image_seed_strength()
+            elif self._model_type == _enums.ModelType.TORCH_IFS_IMG2IMG:
+                args['noise_level'] = int(
+                    _types.default(user_args.upscaler_noise_level,
+                                   _constants.DEFAULT_FLOYD_SUPERRESOLUTION_NOISE_LEVEL))
                 set_strength()
-            elif user_args.image_seed_strength is not None:
-                raise ValueError(
-                    f'image_seed_strength is not supported by model_type '
-                    f'"{_enums.get_model_type_string(self._model_type)}".')
+            elif not _enums.model_type_is_pix2pix(self._model_type) and \
+                    self._model_type != _enums.ModelType.TORCH_S_CASCADE:
+                set_strength()
+            else:
+                check_no_image_seed_strength()
 
             mask_image = user_args.mask_image
 

@@ -929,7 +929,8 @@ class RenderLoopConfig(_types.SetFromMixin):
         if self.image_seeds:
             no_seed_strength = (_pipelinewrapper.model_type_is_upscaler(self.model_type) or
                                 _pipelinewrapper.model_type_is_pix2pix(self.model_type) or
-                                _pipelinewrapper.model_type_is_s_cascade(self.model_type))
+                                _pipelinewrapper.model_type_is_s_cascade(self.model_type) or
+                                self.model_type == _pipelinewrapper.ModelType.TORCH_IFS)
 
             image_seed_strengths_default_set = False
             if self.image_seed_strengths is None:
