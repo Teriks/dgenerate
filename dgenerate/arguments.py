@@ -239,8 +239,9 @@ def _type_image_seed_strengths(val):
     except ValueError:
         raise argparse.ArgumentTypeError('Must be a floating point number')
 
-    if val <= 0:
-        raise argparse.ArgumentTypeError('Must be greater than 0')
+    if val < 0 or val > 1:
+        raise argparse.ArgumentTypeError(
+            'Must be greater than or equal to zero, and less than or equal to one.')
     return val
 
 

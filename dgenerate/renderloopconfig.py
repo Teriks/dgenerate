@@ -928,7 +928,8 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         if self.image_seeds:
             no_seed_strength = (_pipelinewrapper.model_type_is_upscaler(self.model_type) or
-                                _pipelinewrapper.model_type_is_pix2pix(self.model_type))
+                                _pipelinewrapper.model_type_is_pix2pix(self.model_type) or
+                                _pipelinewrapper.model_type_is_s_cascade(self.model_type))
 
             image_seed_strengths_default_set = False
             if self.image_seed_strengths is None:
@@ -939,7 +940,8 @@ class RenderLoopConfig(_types.SetFromMixin):
             else:
                 if no_seed_strength:
                     raise RenderLoopConfigError(
-                        f'{a_namer("image_seed_strengths")} cannot be used with pix2pix or upscaler models.')
+                        f'{a_namer("image_seed_strengths")} '
+                        f'cannot be used with pix2pix, upscaler, or stablecascade models.')
 
             parsed_image_seeds = []
 

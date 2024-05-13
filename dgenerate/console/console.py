@@ -1091,7 +1091,7 @@ class DgenerateConsole(tk.Tk):
 def main(args: collections.abc.Sequence[str]):
     if platform.system() == 'Windows':
         # secret hack for Windows desktop shortcut
-        if os.getcwd() == r'C:\Program Files\dgenerate':
+        if os.path.abspath(os.getcwd()) == os.path.abspath(r'C:\Program Files\dgenerate'):
             os.chdir(os.path.expanduser('~'))
 
     app = None
