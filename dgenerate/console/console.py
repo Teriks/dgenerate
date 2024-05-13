@@ -1095,7 +1095,8 @@ def main(args: collections.abc.Sequence[str]):
             application_path = os.path.dirname(sys.executable)
 
             # hack for Windows desktop shortcut launch, would rather
-            # the working directory start in the users home directory
+            # the working directory be the users home directory
+            # than in the install directory of the program
             if os.path.abspath(os.getcwd()) == os.path.abspath(application_path):
                 os.chdir(os.path.expanduser('~'))
 
