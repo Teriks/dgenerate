@@ -25,7 +25,7 @@ import dgenerate.console.resources as _resources
 
 
 class _KarrasSchedulerSelect(tk.Toplevel):
-    def __init__(self, master=None, position=None):
+    def __init__(self, master=None, position: tuple[int, int] = None):
         super().__init__(master)
         self.title('Insert Karras Scheduler')
         self._templates = None

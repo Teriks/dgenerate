@@ -28,7 +28,7 @@ import dgenerate.console.resources as _resources
 
 
 class _RecipesForm(tk.Toplevel):
-    def __init__(self, master=None, position=None, width=None):
+    def __init__(self, master=None, position: tuple[int, int] = None, width: int = None):
         super().__init__(master)
         self.title('Insert Recipe')
         self._templates = None
