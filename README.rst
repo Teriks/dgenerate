@@ -7,7 +7,7 @@ Overview
 |Documentation Status|
 
 **dgenerate** is a command line tool and library for generating images and animation sequences
-using Stable Diffusion and related techniques / models. `Now Featuring a UI! <Console UI>`_ and
+using Stable Diffusion and related techniques / models. Now Featuring a `Console UI`_ and
 REPL shell mode for the dgenerate configuration / scripting language.
 
 You can use dgenerate to generate multiple images or animated outputs using multiple combinations of
