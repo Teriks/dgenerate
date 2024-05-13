@@ -49,6 +49,11 @@ DEFAULT_X4_UPSCALER_NOISE_LEVEL = 20
 Default x4 upscaler noise level.
 """
 
+DEFAULT_FLOYD_SUPERRESOLUTION_NOISE_LEVEL = 250
+"""
+Default noise level for floyd super resolution upscalers.
+"""
+
 DEFAULT_OUTPUT_WIDTH = 512
 """
 Default output width for txt2img.

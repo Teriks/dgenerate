@@ -93,6 +93,11 @@
 
     Default x4 upscaler noise level.
 
+.. data:: DEFAULT_FLOYD_SUPERRESOLUTION_NOISE_LEVEL
+    :annotation: = 250
+
+    Default noise level for floyd super resolution upscalers.
+
 .. data:: DEFAULT_OUTPUT_WIDTH
     :annotation: = 512
 
