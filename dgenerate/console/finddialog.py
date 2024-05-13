@@ -26,15 +26,21 @@ import typing
 
 
 class _FindDialog(tk.Toplevel):
-    def __init__(self, master, name, text_widget, position=None, size=None, find_text='', replace_text='',
-                 replace=False):
+    def __init__(self,
+                 master,
+                 name, text_widget: tk.Text,
+                 position: tuple[int, int] = None,
+                 size: tuple[int, int] = None,
+                 find_text='',
+                 replace_text='',
+                 replace_mode=False):
         super().__init__(master=master)
 
         self.master = master
         self.title(name)
         self.text_widget = text_widget
         self.transient(master)
-        self.replace_mode = replace
+        self.replace_mode = replace_mode
 
         self.find_entry = tk.Text(self, height=1, width=40)
         if find_text:
@@ -43,7 +49,7 @@ class _FindDialog(tk.Toplevel):
         self.find_entry.bind('<KeyRelease>', lambda e: self._validate_find())
 
         self.replace_entry = None
-        if replace:
+        if replace_mode:
             self.replace_entry = tk.Text(self, height=1, width=40)
             if replace_text:
                 self.replace_entry.insert('1.0', replace_text)
@@ -68,7 +74,7 @@ class _FindDialog(tk.Toplevel):
         self.next_button.pack(side='left', padx=2, pady=2)
 
         self.replace_button = None
-        if replace:
+        if replace_mode:
             self.replace_button = tk.Button(find_frame, text='Replace', command=self._replace_text)
             self.replace_button.pack(side='left', padx=2, pady=2)
 
@@ -76,7 +82,7 @@ class _FindDialog(tk.Toplevel):
         self.find_all_button.pack(side='left', padx=2, pady=2)
 
         self.replace_all_button = None
-        if replace:
+        if replace_mode:
             self.replace_all_button = tk.Button(find_frame, text='Replace All', command=self._replace_all_text)
             self.replace_all_button.pack(side='left', padx=2, pady=2)
 
