@@ -74,7 +74,7 @@ class DgenerateConsole(tk.Tk):
         self._file_menu.add_separator()
         self._file_menu.add_command(label='New Window',
                                     command=lambda:
-                                    subprocess.Popen('dgenerate --dgenerate-console',
+                                    subprocess.Popen('dgenerate --console',
                                                      stdout=subprocess.DEVNULL,
                                                      stderr=subprocess.DEVNULL,
                                                      start_new_session=True))
