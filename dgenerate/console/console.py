@@ -777,7 +777,7 @@ class DgenerateConsole(tk.Tk):
         env = os.environ.copy()
         env['PYTHONIOENCODING'] = 'utf-8'
         env['PYTHONUNBUFFERED'] = '1'
-        env['DGENERATE_LONG_TEXT_WRAP_WIDTH'] = '100'
+        env['COLUMNS'] = '100'
 
         self._shell_process = psutil.Popen(
             ['dgenerate', '--shell'],
