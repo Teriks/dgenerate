@@ -273,7 +273,9 @@ class BatchProcessor:
                    'Attempting to set a reserved template variable such as those pre-defined by dgenerate '
                    'will result in an error. The second argument is accepted as a raw value, it is not shell '
                    'parsed in any way, only stripped of leading and trailing whitespace.',
-            'sete': 'Sets a template variable to an array of shell arguments using shell parsing and expansion.',
+            'sete': 'Sets a template variable to an array of shell arguments using shell parsing and expansion. '
+                    'For example, this could be utilized for convenient shell globbing: '
+                    '\\setp my_files my_directory1/* my_directory2/*',
             'setp': 'Sets a template variable to a (safely) evaluated Python expression, accepts two arguments, '
                     'the variable name and the value. Attempting to set a reserved template variable such '
                     'as those pre-defined by dgenerate will result in an error. Template variables can be '
