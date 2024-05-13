@@ -21,14 +21,26 @@
 
 import importlib.resources
 import io
+import platform
 import subprocess
+import tkinter
+import typing
 
 import PIL.Image
 import PIL.ImageTk
 
 
-def get_icon():
-    return PIL.ImageTk.PhotoImage(PIL.Image.open(io.BytesIO(importlib.resources.read_binary('dgenerate', 'icon.ico'))))
+def set_window_icon(window: typing.Union[tkinter.Tk, tkinter.Toplevel]):
+    if platform.system() == 'Windows':
+        with importlib.resources.path('dgenerate', 'icon.ico') as path:
+            window.iconbitmap(default=path)
+    else:
+        # noinspection PyTypeChecker
+        window.iconphoto(
+            True,
+            PIL.ImageTk.PhotoImage(
+                PIL.Image.open(
+                    io.BytesIO(importlib.resources.read_binary('dgenerate', 'icon.ico')))))
 
 
 def get_karras_schedulers():

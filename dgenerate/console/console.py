@@ -47,7 +47,7 @@ import psutil
 import dgenerate.console.finddialog as _finddialog
 import dgenerate.console.karrasschedulerselect as _karrasschedulerselect
 import dgenerate.console.recipesform as _recipesform
-from dgenerate.console.resources import get_icon
+from dgenerate.console.resources import set_window_icon
 from dgenerate.console.scrolledtext import ScrolledText
 
 
@@ -57,7 +57,8 @@ class DgenerateConsole(tk.Tk):
 
         self.title('Dgenerate Console')
         self.geometry('1000x800')
-        self.iconphoto(True, get_icon())
+
+        set_window_icon(self)
 
         # Create main menu
 
