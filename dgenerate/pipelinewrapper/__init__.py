@@ -79,6 +79,7 @@ from .enums import \
     model_type_is_floyd_ifs, \
     model_type_is_floyd, \
     model_type_is_flax, \
+    model_type_is_s_cascade, \
     PipelineType, \
     get_model_type_enum, \
     get_flax_dtype, \

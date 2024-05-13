@@ -27,7 +27,6 @@ import typing
 import PIL.Image
 import diffusers
 import torch
-import torchvision.transforms
 
 import dgenerate.image as _image
 import dgenerate.messages as _messages
@@ -1396,10 +1395,20 @@ class DiffusionPipelineWrapper:
                 if self._model_type == _enums.ModelType.TORCH_UPSCALER_X4:
                     args['noise_level'] = int(
                         _types.default(user_args.upscaler_noise_level, _constants.DEFAULT_X4_UPSCALER_NOISE_LEVEL))
+
+                if user_args.image_seed_strength is not None:
+                    raise ValueError(
+                        f'image_seed_strength is not supported by model_type '
+                        f'"{_enums.get_model_type_string(self._model_type)}".')
+
             elif not _enums.model_type_is_pix2pix(self._model_type) and \
                     self._model_type != _enums.ModelType.TORCH_S_CASCADE and \
                     self._model_type != _enums.ModelType.TORCH_IFS:
                 set_strength()
+            elif user_args.image_seed_strength is not None:
+                raise ValueError(
+                    f'image_seed_strength is not supported by model_type '
+                    f'"{_enums.get_model_type_string(self._model_type)}".')
 
             mask_image = user_args.mask_image
 
