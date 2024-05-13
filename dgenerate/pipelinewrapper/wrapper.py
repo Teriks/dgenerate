@@ -1409,7 +1409,7 @@ class DiffusionPipelineWrapper:
                 args['noise_level'] = int(
                     _types.default(user_args.upscaler_noise_level,
                                    _constants.DEFAULT_FLOYD_SUPERRESOLUTION_NOISE_LEVEL))
-                if not self._pipeline_type == _enums.PipelineType.INPAINT:
+                if self._pipeline_type != _enums.PipelineType.INPAINT:
                     check_no_image_seed_strength()
                 else:
                     set_strength()
