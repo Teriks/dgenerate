@@ -1090,9 +1090,14 @@ class DgenerateConsole(tk.Tk):
 
 def main(args: collections.abc.Sequence[str]):
     if platform.system() == 'Windows':
-        # secret hack for Windows desktop shortcut
-        if os.path.abspath(os.getcwd()) == os.path.abspath(r'C:\Program Files\dgenerate'):
-            os.chdir(os.path.expanduser('~'))
+        if getattr(sys, 'frozen', False):
+            # The application is running as a bundled pyinstaller executable
+            application_path = os.path.dirname(sys.executable)
+
+            # hack for Windows desktop shortcut launch, would rather
+            # the working directory start in the users home directory
+            if os.path.abspath(os.getcwd()) == os.path.abspath(application_path):
+                os.chdir(os.path.expanduser('~'))
 
     app = None
     try:
