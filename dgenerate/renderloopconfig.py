@@ -929,10 +929,10 @@ class RenderLoopConfig(_types.SetFromMixin):
         if self.image_seeds:
             no_seed_strength = (_pipelinewrapper.model_type_is_upscaler(self.model_type) or
                                 _pipelinewrapper.model_type_is_pix2pix(self.model_type) or
-                                _pipelinewrapper.model_type_is_s_cascade(self.model_type) or
-                                self.model_type == _pipelinewrapper.ModelType.TORCH_IFS)
+                                _pipelinewrapper.model_type_is_s_cascade(self.model_type))
 
             image_seed_strengths_default_set = False
+            user_provided_image_seed_strengths = False
             if self.image_seed_strengths is None:
                 if not no_seed_strength:
                     image_seed_strengths_default_set = True
@@ -943,6 +943,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                     raise RenderLoopConfigError(
                         f'{a_namer("image_seed_strengths")} '
                         f'cannot be used with pix2pix, upscaler, or stablecascade models.')
+                user_provided_image_seed_strengths = True
 
             parsed_image_seeds = []
 
@@ -953,6 +954,16 @@ class RenderLoopConfig(_types.SetFromMixin):
                         attribute_namer=attribute_namer,
                         image_seed_strengths_default_set=image_seed_strengths_default_set,
                         upscaler_noise_levels_default_set=upscaler_noise_levels_default_set))
+
+            if all(p.mask_path is None for p in parsed_image_seeds):
+                if self.model_type == _pipelinewrapper.ModelType.TORCH_IFS:
+                    self.image_seed_strengths = None
+                    if user_provided_image_seed_strengths:
+                        raise RenderLoopConfigError(
+                            f'{a_namer("image_seed_strengths")} '
+                            f'cannot be used with {a_namer("model_type")} torch-ifs '
+                            f'when no inpainting is taking place in any image seed '
+                            f'specification.')
 
             self.parsed_image_seeds = parsed_image_seeds
 

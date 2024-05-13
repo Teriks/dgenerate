@@ -1393,9 +1393,11 @@ class DiffusionPipelineWrapper:
 
             def check_no_image_seed_strength():
                 if user_args.image_seed_strength is not None:
-                    raise ValueError(
+                    _messages.log(
                         f'image_seed_strength is not supported by model_type '
-                        f'"{_enums.get_model_type_string(self._model_type)}".')
+                        f'"{_enums.get_model_type_string(self._model_type)}" in '
+                        f'mode "{self._pipeline_type.name}" and is being ignored.',
+                        level=_messages.WARNING)
 
             if _enums.model_type_is_upscaler(self._model_type):
                 if self._model_type == _enums.ModelType.TORCH_UPSCALER_X4:
@@ -1407,7 +1409,10 @@ class DiffusionPipelineWrapper:
                 args['noise_level'] = int(
                     _types.default(user_args.upscaler_noise_level,
                                    _constants.DEFAULT_FLOYD_SUPERRESOLUTION_NOISE_LEVEL))
-                check_no_image_seed_strength()
+                if not self._pipeline_type == _enums.PipelineType.INPAINT:
+                    check_no_image_seed_strength()
+                else:
+                    set_strength()
             elif self._model_type == _enums.ModelType.TORCH_IFS_IMG2IMG:
                 args['noise_level'] = int(
                     _types.default(user_args.upscaler_noise_level,
