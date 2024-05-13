@@ -51,7 +51,7 @@
                               Name="dgenerate"
                               Description="Launch dgenerate Console UI"
                               Target="[INSTALLFOLDER]dgenerate.exe"
-                              Arguments="--dgenerate-console"
+                              Arguments="--console"
                               WorkingDirectory="INSTALLFOLDER"
                               Icon="dgenerate.ico"
                               Directory="DesktopFolder"

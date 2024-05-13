@@ -24,14 +24,17 @@ __version__ = '3.5.0'
 import os
 import sys
 
-if '--dgenerate-console' in sys.argv:
+if os.path.splitext(
+        os.path.basename(
+            os.path.realpath(sys.argv[0])))[0] == 'dgenerate' \
+        and '--console' in sys.argv:
     # avoid a slow UI startup time
-
+    
     import dgenerate.console as _console
 
     args = sys.argv[1:]
-    while '--dgenerate-console' in args:
-        args.remove('--dgenerate-console')
+    while '--console' in args:
+        args.remove('--console')
     _console.main(args)
     sys.exit(0)
 

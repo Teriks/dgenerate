@@ -81,7 +81,7 @@ Help Output
 
 .. code-block:: text
 
-    usage: dgenerate [-h] [-v] [--version] [--shell | --no-stdin | --dgenerate-console]
+    usage: dgenerate [-h] [-v] [--version] [--shell | --no-stdin | --console]
                      [--plugin-modules PATH [PATH ...]] [--sub-command SUB_COMMAND]
                      [--sub-command-help [SUB_COMMAND ...]] [-ofm]
                      [--templates-help [VARIABLE_NAME ...]] [--directives-help [DIRECTIVE_NAME ...]]
@@ -155,7 +155,7 @@ Help Output
                             another application using normal arguments, where it would otherwise try
                             to read from STDIN and block forever because it is not attached to a
                             terminal.
-      --dgenerate-console   Launch a terminal-like tkinter GUI that communicates with an instance of
+      --console   Launch a terminal-like tkinter GUI that communicates with an instance of
                             dgenerate running in the background. This allows you to interactively
                             write dgenerate config scripts as if dgenerate were a shell / REPL.
       --plugin-modules PATH [PATH ...]
@@ -3895,7 +3895,7 @@ Console UI
 ==========
 
 You can launch a Tkinter GUI for interacting with a live dgenerate
-process using ``dgenerate --dgenerate-console`` or via the optionally
+process using ``dgenerate --console`` or via the optionally
 installed desktop shortcut on Windows.
 
 This provides a basic REPL for the dgenerate config language utilizing

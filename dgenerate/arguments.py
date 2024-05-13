@@ -336,7 +336,7 @@ def _create_parser(add_model=True, add_help=True):
                                  a terminal."""))
 
     actions.append(
-        popen_group.add_argument('--dgenerate-console', action='store_true', default=False,
+        popen_group.add_argument('--console', action='store_true', default=False,
                                  help="""Launch a terminal-like tkinter GUI that communicates with an instance
                             of dgenerate running in the background. This allows you to interactively write
                             dgenerate config scripts as if dgenerate were a shell / REPL."""))
