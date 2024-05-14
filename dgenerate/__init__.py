@@ -32,75 +32,9 @@ __stderr_null = False
 __stdout_null = False
 __dev_null = None
 
-
-class __DevNull:
-    def write(self, *args, **kwargs):
-        pass
-
-    def flush(self, *args, **kwargs):
-        pass
-
-    def close(self, *args, **kwargs):
-        pass
-
-    def fileno(self, *args, **kwargs):
-        return 0
-
-    def isatty(self, *args, **kwargs):
-        return False
-
-    def read(self, *args, **kwargs):
-        return ''
-
-    def readline(self, *args, **kwargs):
-        return ''
-
-    def readlines(self, *args, **kwargs):
-        return []
-
-    def seek(self, *args, **kwargs):
-        pass
-
-    def tell(self, *args, **kwargs):
-        return 0
-
-    def truncate(self, *args, **kwargs):
-        pass
-
-    def detach(self, *args, **kwargs):
-        pass
-
-    def encoding(self, *args, **kwargs):
-        return 'utf-8'
-
-    def errors(self, *args, **kwargs):
-        return 'strict'
-
-    def buffer(self, *args, **kwargs):
-        return self
-
-    def line_buffering(self, *args, **kwargs):
-        return False
-
-    def newlines(self, *args, **kwargs):
-        return None
-
-    def __enter__(self, *args, **kwargs):
-        return self
-
-    def __exit__(self, *args, **kwargs):
-        pass
-
-    def __iter__(self, *args, **kwargs):
-        return self
-
-    def __next__(self, *args, **kwargs):
-        raise StopIteration
-
-
 if __am_dgenerate_app:
     if sys.stdout is None or sys.stderr is None:
-        __dev_null = __DevNull()
+        __dev_null = open(os.devnull, 'w', encoding='utf-8')
 
     if sys.stdout is None:
         sys.stdout = __dev_null
@@ -223,7 +157,7 @@ class __Unbuffered(object):
 
 
 def __stdin_is_tty():
-    return hasattr(sys.stdin, 'isatty') and sys.stdin.isatty()
+    return sys.stdin is not None and hasattr(sys.stdin, 'isatty') and sys.stdin.isatty()
 
 
 def main(args: typing.Optional[collections.abc.Sequence[str]] = None):
@@ -265,7 +199,7 @@ def main(args: typing.Optional[collections.abc.Sequence[str]] = None):
             'dgenerate: error: --no-stdin cannot be used with --shell.')
         sys.exit(1)
 
-    if sys.stdin.isatty() and nostdin_mode:
+    if __stdin_is_tty() and nostdin_mode:
         dgenerate.messages.log(
             'dgenerate: error: --no-stdin is not valid when stdin is a terminal (tty).')
         sys.exit(1)
@@ -276,7 +210,7 @@ def main(args: typing.Optional[collections.abc.Sequence[str]] = None):
         # ^ this is necessary for --templates-help to
         # render all the correct values
 
-        if (not sys.stdin.isatty() or server_mode) and not nostdin_mode:
+        if (not __stdin_is_tty() or server_mode) and not nostdin_mode:
             # Not a terminal, batch process STDIN
             runner = ConfigRunner(render_loop=render_loop,
                                   version=__version__,
