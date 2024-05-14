@@ -88,6 +88,6 @@ def get_karras_scheduler_prediction_types():
 
 
 def supported_torch_model_formats_open():
-    return ['safetensors', 'pth', 'cpkt', 'bin']
+    return ['safetensors', 'pt', 'pth', 'cpkt', 'bin']
 
 
