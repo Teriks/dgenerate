@@ -290,6 +290,9 @@ RECIPES = {
         @file[{"label":"Input Image File", "arg":"--image-seeds", "optional":false, "mode":"input"}]
         @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":30, "min":1}]
         @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":5, "min":0}]
+        @int[{"label":"Number Of Seeds", "arg":"--gen-seeds", "default":1, "min":1}]
+        @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+        @device[{}]
         --prompts "your prompt here"
         """,
     "Image Upscaling (Stable Diffusion x4)":
@@ -301,6 +304,9 @@ RECIPES = {
         @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":30, "min":1}]
         @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":5, "min":0}]
         @int[{"label":"Upscaler Noise Level", "arg":"--upscaler-noise-levels", "default":20, "min":0}]
+        @int[{"label":"Number Of Seeds", "arg":"--gen-seeds", "default":1, "min":1}]
+        @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+        @device[{}]
         --prompts "your prompt here"
         """,
     "Image Upscaling (Spandrel / chaiNNer)":
