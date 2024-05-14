@@ -64,6 +64,13 @@ def get_karras_schedulers():
     ]
 
 
+def get_torch_vae_types():
+    return ["AutoencoderKL",
+            "AsymmetricAutoencoderKL",
+            "AutoencoderTiny",
+            "ConsistencyDecoderVAE"]
+
+
 def get_cuda_devices():
     try:
         result = subprocess.run(['nvidia-smi',
@@ -78,3 +85,9 @@ def get_cuda_devices():
 
 def get_karras_scheduler_prediction_types():
     return ['epsilon', 'v_prediction']
+
+
+def supported_torch_model_formats_open():
+    return ['safetensors', 'pth', 'cpkt', 'bin']
+
+
