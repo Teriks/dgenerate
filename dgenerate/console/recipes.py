@@ -282,7 +282,7 @@ RECIPES = {
         @device[{}]
         --prompts "add your prompt here"
         """,
-    "Image Upscaling (Stable Diffusion x2)":
+    "Upscaling (Stable Diffusion x2)":
         """
         stabilityai/sd-x2-latent-upscaler 
         --dtype float16
@@ -295,7 +295,7 @@ RECIPES = {
         @device[{}]
         --prompts "your prompt here"
         """,
-    "Image Upscaling (Stable Diffusion x4)":
+    "Upscaling (Stable Diffusion x4)":
         """
         stabilityai/stable-diffusion-x4-upscaler 
         --variant fp16 --dtype float16
@@ -309,7 +309,7 @@ RECIPES = {
         @device[{}]
         --prompts "your prompt here"
         """,
-    "Image Upscaling (Spandrel / chaiNNer)":
+    "Upscaling (Spandrel / chaiNNer)":
         """
         \\image_process @file[{"label":"Input Image File", "optional":false, "mode":"input"}]
         @file[{"label":"Output Image File", "default":"output.png", "arg":"--output", "mode":"output"}]
