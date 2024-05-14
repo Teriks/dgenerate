@@ -21,15 +21,32 @@
 
 __version__ = '3.5.0'
 
-import os
 import sys
+import os
 
-if os.path.splitext(
-        os.path.basename(
-            os.path.realpath(sys.argv[0])))[0] == 'dgenerate' \
-        and '--console' in sys.argv:
+__am_dgenerate_app = \
+    os.path.splitext(
+        os.path.basename(os.path.realpath(sys.argv[0])))[0] == 'dgenerate'
+
+__stderr_null = False
+__stdout_null = False
+__dev_null = None
+
+if __am_dgenerate_app:
+    if sys.stdout is None or sys.stderr is None:
+        __dev_null = open(os.devnull, 'w', encoding='utf-8')
+
+    if sys.stdout is None:
+        sys.stdout = __dev_null
+        __stdout_null = True
+
+    if sys.stderr is None:
+        sys.stderr = __dev_null
+        __stderr_null = True
+
+if __am_dgenerate_app and '--console' in sys.argv:
     # avoid a slow UI startup time
-    
+
     import dgenerate.console as _console
 
     args = sys.argv[1:]
@@ -148,13 +165,16 @@ def main(args: typing.Optional[collections.abc.Sequence[str]] = None):
     unbuffered_io = os.environ.get('PYTHONUNBUFFERED', '0').strip() != '0'
     encoding = 'utf-8'
 
-    if sys.stdout.encoding.lower() != encoding:
+    if not __stdout_null and sys.stdout.encoding.lower() != encoding:
         sys.stdout.reconfigure(encoding=encoding)
-    if sys.stderr.encoding.lower() != encoding:
+
+    if not __stderr_null and sys.stderr.encoding.lower() != encoding:
         sys.stderr.reconfigure(encoding=encoding)
 
-    if unbuffered_io:
+    if not __stdout_null and unbuffered_io:
         sys.stdout = __Unbuffered(sys.stdout)
+
+    if not __stderr_null and unbuffered_io:
         sys.stderr = __Unbuffered(sys.stderr)
 
     if args is None:

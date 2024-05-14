@@ -54,8 +54,7 @@
                               Arguments="--console"
                               WorkingDirectory="INSTALLFOLDER"
                               Icon="dgenerate.ico"
-                              Directory="DesktopFolder"
-                              Show="minimized"/>
+                              Directory="DesktopFolder"/>
                     <RegistryValue Root="HKCU" Key="Software\Teriks\dgenerate"
                                    Name="installed" Type="integer"
                                    Value="1" KeyPath="yes"/>
