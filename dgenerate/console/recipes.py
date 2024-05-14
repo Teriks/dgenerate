@@ -282,6 +282,23 @@ RECIPES = {
         @device[{}]
         --prompts "add your prompt here"
         """,
+    "Image Upscaling (Stable Diffusion x2)":
+        """
+        stabilityai/sd-x2-latent-upscaler 
+        --dtype float16
+        --model-type torch-upscaler-x2
+        @file[{"label":"Input Image File", "arg":"--image-seeds", "optional":false, "mode":"input"}]
+        --prompts "your prompt here"
+        """,
+    "Image Upscaling (Stable Diffusion x4)":
+        """
+        stabilityai/stable-diffusion-x4-upscaler 
+        --variant fp16 --dtype float16
+        --model-type torch-upscaler-x4
+        @file[{"label":"Input Image File", "arg":"--image-seeds", "optional":false, "mode":"input"}]
+        @int[{"label":"Upscaler Noise Level", "arg":"--upscaler-noise-levels", "default":20, "min":0}]
+        --prompts "your prompt here"
+        """,
     "Image Upscaling (Spandrel / chaiNNer)":
         """
         \\image_process @file[{"label":"Input Image File", "optional":false, "mode":"input"}]
