@@ -214,6 +214,7 @@ class ImageProcessRenderLoop:
         """
         Iterable over image filenames written by the last run
         """
+
         class Iterable:
             def __init__(self, images):
                 self.images = images
@@ -233,6 +234,7 @@ class ImageProcessRenderLoop:
         """
         Iterable over animation filenames written by the last run
         """
+
         class Iterable:
             def __init__(self, animations):
                 self.animations = animations
@@ -445,7 +447,10 @@ class ImageProcessRenderLoop:
 
         total_generation_steps = len(self.config.input)
 
-        if self.config.output and len(self.config.output) == 1 and self.config.output[0][-1] in '/\\':
+        def _is_dir_spec(path):
+            return os.path.isdir(path) or path[-1] in '/\\'
+
+        if self.config.output and len(self.config.output) == 1 and _is_dir_spec(self.config.output[0]):
             for idx, file in enumerate(self.config.input):
                 file = _mediainput.url_aware_normpath(file)
                 base, ext = os.path.splitext(_mediainput.url_aware_basename(file))
@@ -464,7 +469,7 @@ class ImageProcessRenderLoop:
                     else:
                         base, ext = os.path.splitext(_mediainput.url_aware_basename(output_file))
                     output_file = base + f'_processed_{idx + 1}{ext}'
-                elif output_file[-1] in '/\\':
+                elif _is_dir_spec(output_file):
                     base, ext = os.path.splitext(_mediainput.url_aware_basename(file))
                     output_file = os.path.join(output_file, base + f'_processed_{idx + 1}{ext}')
 

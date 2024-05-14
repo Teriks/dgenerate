@@ -2737,10 +2737,10 @@ The help output of ``image-process`` is as follows:
 
 .. code-block:: text
 
-    usage: image-process [-h] [-p PROCESSORS [PROCESSORS ...]] [--plugin-modules PATH [PATH ...]]
-                         [-o OUTPUT [OUTPUT ...]] [-ff FRAME_FORMAT] [-ox] [-r RESIZE] [-na] [-al ALIGN]
-                         [-d DEVICE] [-fs FRAME_NUMBER] [-fe FRAME_NUMBER] [-nf | -naf]
-                         input [input ...]
+    usage: \image_process [-h] [-p PROCESSORS [PROCESSORS ...]] [--plugin-modules PATH [PATH ...]]
+                          [-o OUTPUT [OUTPUT ...]] [-ff FRAME_FORMAT] [-ox] [-r RESIZE] [-na]
+                          [-al ALIGN] [-d DEVICE] [-fs FRAME_NUMBER] [-fe FRAME_NUMBER] [-nf | -naf]
+                          input [input ...]
 
     This command allows you to use dgenerate image processors directly on files of your choosing.
 
@@ -2751,47 +2751,52 @@ The help output of ``image-process`` is as follows:
     options:
       -h, --help            show this help message and exit
       -p PROCESSORS [PROCESSORS ...], --processors PROCESSORS [PROCESSORS ...]
-                            One or more image processor URIs, specifying multiple will chain them together.
+                            One or more image processor URIs, specifying multiple will chain them
+                            together. See: dgenerate --image-processor-help
       --plugin-modules PATH [PATH ...]
-                            Specify one or more plugin module folder paths (folder containing __init__.py)
-                            or python .py file paths to load as plugins. Plugin modules can implement image
-                            processors.
+                            Specify one or more plugin module folder paths (folder containing
+                            __init__.py) or python .py file paths to load as plugins. Plugin modules
+                            can implement image processors.
       -o OUTPUT [OUTPUT ...], --output OUTPUT [OUTPUT ...]
-                            Output files, parent directories mentioned in output paths will be created for
-                            you if they do not exist. If you do not specify output files, the output file
-                            will be placed next to the input file with the added suffix '_processed_N'
-                            unless --output-overwrite is specified, in that case it will be overwritten. If
-                            you specify multiple input files and output files, you must specify an output
-                            file for every input file, or a directory (indicated with a trailing directory
-                            seperator character, for example "my_dir/" or "my_dir"). Failure to specify an
-                            output file with a URL as an input is considered an error. Supported file
-                            extensions for image output are equal to those listed under --frame-format.
+                            Output files, parent directories mentioned in output paths will be created
+                            for you if they do not exist. If you do not specify output files, the
+                            output file will be placed next to the input file with the added suffix
+                            '_processed_N' unless --output-overwrite is specified, in that case it
+                            will be overwritten. If you specify multiple input files and output files,
+                            you must specify an output file for every input file, or a directory
+                            (indicated with a trailing directory seperator character, for example
+                            "my_dir/" or "my_dir\" if the directory does not exist yet). Failure to
+                            specify an output file with a URL as an input is considered an error.
+                            Supported file extensions for image output are equal to those listed under
+                            --frame-format.
       -ff FRAME_FORMAT, --frame-format FRAME_FORMAT
-                            Image format for animation frames. Must be one of: png, apng, blp, bmp, dib,
-                            bufr, pcx, dds, ps, eps, gif, grib, h5, hdf, jp2, j2k, jpc, jpf, jpx, j2c,
-                            icns, ico, im, jfif, jpe, jpg, jpeg, tif, tiff, mpo, msp, palm, pdf, pbm, pgm,
-                            ppm, pnm, bw, rgb, rgba, sgi, tga, icb, vda, vst, webp, wmf, emf, or xbm.
+                            Image format for animation frames. Must be one of: png, apng, blp, bmp,
+                            dib, bufr, pcx, dds, ps, eps, gif, grib, h5, hdf, jp2, j2k, jpc, jpf, jpx,
+                            j2c, icns, ico, im, jfif, jpe, jpg, jpeg, tif, tiff, mpo, msp, palm, pdf,
+                            pbm, pgm, ppm, pnm, pfm, bw, rgb, rgba, sgi, tga, icb, vda, vst, webp,
+                            wmf, emf, or xbm.
       -ox, --output-overwrite
-                            Indicate that it is okay to overwrite files, instead of appending a duplicate
-                            suffix.
+                            Indicate that it is okay to overwrite files, instead of appending a
+                            duplicate suffix.
       -r RESIZE, --resize RESIZE
                             Preform naive image resizing (LANCZOS).
       -na, --no-aspect      Make --resize ignore aspect ratio.
       -al ALIGN, --align ALIGN
-                            Align images / videos to this value in pixels, default is 8. Specifying 1 will
-                            disable resolution alignment.
+                            Align images / videos to this value in pixels, default is 8. Specifying 1
+                            will disable resolution alignment.
       -d DEVICE, --device DEVICE
                             Processing device, for example "cuda", "cuda:1".
       -fs FRAME_NUMBER, --frame-start FRAME_NUMBER
-                            Starting frame slice point for animated files (zero-indexed), the specified
-                            frame will be included. (default: 0)
+                            Starting frame slice point for animated files (zero-indexed), the
+                            specified frame will be included. (default: 0)
       -fe FRAME_NUMBER, --frame-end FRAME_NUMBER
-                            Ending frame slice point for animated files (zero-indexed), the specified frame
-                            will be included.
+                            Ending frame slice point for animated files (zero-indexed), the specified
+                            frame will be included.
       -nf, --no-frames      Do not write frames, only an animation file. Cannot be used with --no-
                             animation-file.
       -naf, --no-animation-file
-                            Do not write an animation file, only frames. Cannot be used with --no-frames.
+                            Do not write an animation file, only frames. Cannot be used with --no-
+                            frames.
 
 
 Overview of specifying ``image-process`` inputs and outputs
