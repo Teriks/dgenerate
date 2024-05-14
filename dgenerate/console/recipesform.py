@@ -186,6 +186,9 @@ class _IntEntry(_Entry):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs, widget_rows=1)
 
+        self.min = self.config.get('min', float('-inf'))
+        self.max = self.config.get('max', float('inf'))
+
         self.text_var = tk.StringVar(
             value=self.config.get('default', ''))
 
@@ -193,10 +196,34 @@ class _IntEntry(_Entry):
             self.master,
             text=self.get_label('Int'), anchor='e')
 
+        def validate_input(event):
+            t = self.text_var.get()
+            if not t.isdigit():
+                self.text_var.set(self.min)
+            elif int(t) < self.min:
+                self.text_var.set(self.min)
+            elif int(t) > self.max:
+                self.text_var.set(self.max)
+
+        def increment(delta):
+            validate_input(None)
+            value = int(self.text_var.get())
+            value = max(self.min, min(self.max, value + delta))
+            self.text_var.set(value)
+
+        def on_mouse_wheel(event):
+            delta = -1 if event.delta < 0 else 1
+            increment(delta)
+
         self.entry = tk.Spinbox(self.master,
-                                from_=self.config.get('min', float('-inf')),
-                                to=self.config.get('max', float('inf')),
+                                from_=self.min,
+                                to=self.max,
                                 textvariable=self.text_var)
+
+        self.entry.bind('<Return>', validate_input)
+        self.entry.bind('<FocusOut>', validate_input)
+        self.entry.bind('<MouseWheel>', on_mouse_wheel)
+        self.master.on_submit(lambda: validate_input(None))
 
         self.label_widget.grid(row=self.row, column=0, padx=(5, 2), sticky='e')
         self.entry.grid(row=self.row, column=1, padx=(5, 2), sticky='ew')
@@ -221,6 +248,9 @@ class _FloatEntry(_Entry):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs, widget_rows=1)
 
+        self.min = self.config.get('min', float('-inf'))
+        self.max = self.config.get('max', float('inf'))
+
         self.text_var = tk.StringVar(
             value=self.config.get('default', ''))
 
@@ -228,11 +258,37 @@ class _FloatEntry(_Entry):
             self.master,
             text=self.get_label('Float'), anchor='e')
 
+        def validate_input(event):
+            t = self.text_var.get()
+            try:
+                if float(t) < self.min:
+                    self.text_var.set(self.min)
+                elif float(t) > self.max:
+                    self.text_var.set(self.max)
+            except ValueError:
+                self.text_var.set(self.min)
+
+        def increment(delta):
+            validate_input(None)
+            value = float(self.text_var.get())
+            value = max(self.min, min(self.max, round(value + (delta*0.01), 2)))
+            self.text_var.set(value)
+
+        def on_mouse_wheel(event):
+            delta = -1 if event.delta < 0 else 1
+            increment(delta)
+
         self.entry = tk.Spinbox(self.master,
-                                from_=self.config.get('min', float('-inf')),
-                                to=self.config.get('max', float('inf')),
+                                from_=self.min,
+                                to=self.max,
                                 format="%.2f", increment=0.01,
                                 textvariable=self.text_var)
+
+        self.entry.bind('<Return>', validate_input)
+        self.entry.bind('<FocusOut>', validate_input)
+        self.entry.bind('<MouseWheel>', on_mouse_wheel)
+        self.master.on_submit(lambda: validate_input(None))
+
 
         self.label_widget.grid(row=self.row, column=0, padx=(5, 2), sticky='e')
         self.entry.grid(row=self.row, column=1, padx=(5, 2), sticky='ew')
@@ -453,6 +509,8 @@ class _TorchVaeEntry(_Entry):
         self.vae_type_label.grid(row=self.row + 1, column=0, padx=(5, 2), sticky='e')
         self.vae_type_entry.grid(row=self.row + 1, column=1, padx=(5, 2), sticky='ew')
 
+        self.vae_uri_entry.bind('<Key>', lambda e: self.valid())
+
     def invalid(self):
         self.vae_uri_entry.config(
             highlightbackground="red",
@@ -502,6 +560,7 @@ class _RecipesForm(tk.Toplevel):
         self._current_template = tk.StringVar(value=self._template_names[0])
         self._entries: typing.List[_Entry] = []
         self._content: typing.Optional[str] = None
+
         self._ok: bool = False
         self.transient(master)
         self.grab_set()
@@ -533,9 +592,15 @@ class _RecipesForm(tk.Toplevel):
 
         self.deiconify()
 
+    def on_submit(self, callback):
+        self._on_submit.append(callback)
+
     def _apply_templates(self):
         content = self._content
         missing_fields = False
+
+        for callback in self._on_submit:
+            callback()
 
         for entry in self._entries:
             content = entry.template(content)
@@ -552,6 +617,7 @@ class _RecipesForm(tk.Toplevel):
             self.destroy()
 
     def _create_form(self):
+        self._on_submit = []
         self._dropdown = tk.OptionMenu(self,
                                        self._current_template, *self._template_names,
                                        command=lambda s: self._update_form(s, preserve_width=True))
