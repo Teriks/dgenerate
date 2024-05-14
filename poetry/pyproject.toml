@@ -9,9 +9,9 @@ license = "BSD 3-Clause"
 [tool.poetry.dependencies]
 python = ">=3.10,<=3.11.6"
 diffusers = "0.27.2"
-peft = "0.10.0"
-transformers = "^4.39.3"
-accelerate = "^0.29.3"
+gir = "0.10.0"
+transformers = "4.39.3"
+accelerate = "0.29.3"
 pytorch-lightning = "^2.2.1"
 lightning-utilities = "^0.11.2"
 lightning-fabric = "^2.2.1"
@@ -22,7 +22,7 @@ pillow = "^10.3.0"
 jinja2 = "^3.1.3"
 torch = { version = "2.2.2+cu121", source = "pytorch" }
 torchvision = {version = "0.17.2+cu121", source = "pytorch"}
-torchsde = "^0.2.6"
+torchsde = "0.2.6"
 fake-useragent = "1.4.0"
 flax = { version = "0.8.2", optional = true }
 jax = { version = "0.4.26", optional = true, extras = ["cuda12_pip"] }
