@@ -309,7 +309,7 @@ RECIPES = {
         @device[{}]
         --prompts "your prompt here"
         """,
-    "Upscaling (Spandrel / chaiNNer)":
+    "Upscaling [openmodeldb.info] (Spandrel / chaiNNer)":
         """
         \\image_process @file[{"label":"Input Image File", "optional":false, "mode":"input"}]
         @file[{"label":"Output Image File", "default":"output.png", "arg":"--output", "mode":"output"}]
