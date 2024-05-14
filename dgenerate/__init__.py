@@ -210,7 +210,7 @@ def main(args: typing.Optional[collections.abc.Sequence[str]] = None):
         # ^ this is necessary for --templates-help to
         # render all the correct values
 
-        if (not __stdin_is_tty() or server_mode) and not nostdin_mode:
+        if sys.stdin is not None and (not __stdin_is_tty() or server_mode) and not nostdin_mode:
             # Not a terminal, batch process STDIN
             runner = ConfigRunner(render_loop=render_loop,
                                   version=__version__,
