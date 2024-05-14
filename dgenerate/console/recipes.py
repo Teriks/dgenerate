@@ -22,275 +22,272 @@
 RECIPES = {
     "Stable Diffusion":
         """
-        @file[Model File / Slug]:[{}]:"stabilityai/stable-diffusion-2-1"
-        @optionalscheduler[Scheduler]:[--scheduler {}]:""@optionalpredictiontype[Scheduler Prediction Type]:[;prediction-type={}]:""
-        @optionalfile[VAE File / Slug]:[--vae AutoencoderKL;model={}]:""
-        @optionalfile[LoRa File / URI]:[--loras {};scale=1.0]:""
-        @optionalfile[ControlNet File / URI]:[--control-nets {};scale=1.0]:""
-        @optionalfile[UNet File / URI]:[--unet {}]:""
-        @optionalfile[Image Seed]:[--image-seeds {}\\n--image-seed-strengths 0.8]:""
-        @int[Inference Steps]:[--inference-steps {}]:"30"
-        @int[Guidance Scale]:[--guidance-scales {}]:"5"
-        @int[Clip Skip]:[--clip-skips {}]:"0"
-        @int[Number Of Seeds]:[--gen-seeds {}]:"1"
-        @dir[Output Directory]:[--output-path {}]:"output"
-        @optionalstring[Output Size]:[--output-size {}]:"512x512"
-        @device[Device]:[--device {}]:"device"
+        @file[{"label":"Model File / HF Slug", "default": "stabilityai/stable-diffusion-2-1", "optional":false, "file-types":"models"}]
+        @karrasscheduler[{}]
+        @torchvae[{"label":"VAE File / URI"}]
+        @file[{"label":"LoRa File / URI", "arg":"--loras", "after":";scale=1.0", "file-types":"models"}]
+        @file[{"label":"ControlNet File / URI", "arg":"--control-nets", "after":";scale=1.0", "file-types":"models"}]
+        @file[{"label":"UNet File / URI", "arg":"--unet", "file-types":"models"}]
+        @file[{"label":"Image Seed", "arg":"--image-seeds", "after":"\\n--image-seed-strengths 0.8"}]
+        @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":30}]
+        @int[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":5}]
+        @int[{"label":"Clip Skip", "arg":"--clip-skips", "default":0}]
+        @int[{"label":"Number Of Seeds", "arg":"--gen-seeds", "default":1}]
+        @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+        @string[{"label":"Output Size", "arg":"--output-size", "default":"512x512"}]
+        @device[{}]
         --prompts "add your prompt here"
         """,
     "Stable Diffusion XL":
         """
-        @file[Model File / HF Slug]:[{}]:"stabilityai/stable-diffusion-xl-base-1.0"
+        @file[{"label":"Model File / HF Slug", "default": "stabilityai/stable-diffusion-xl-base-1.0", "optional":false, "file-types":"models"}]
         --model-type torch-sdxl
         --dtype float16
         --variant fp16
-        @optionalscheduler[Scheduler]:[--scheduler {}]:""@optionalpredictiontype[Scheduler Prediction Type]:[;prediction-type={}]:""
-        @optionalscheduler[Refiner Scheduler]:[--sdxl-refiner-scheduler {}]:""@optionalpredictiontype[Refiner Scheduler Prediction Type]:[;prediction-type={}]:""
-        @optionalfile[Refiner File / URI]:[--sdxl-refiner {}]:"stabilityai/stable-diffusion-xl-refiner-1.0"
-        @optionalfile[VAE File / Slug]:[--vae AutoencoderKL;model={}]:""
-        @optionalfile[LoRa File / URI]:[--loras {};scale=1.0]:""
-        @optionalfile[ControlNet File / URI]:[--control-nets {};scale=1.0]:""
-        @optionalfile[UNet File / URI]:[--unet {}]:""
-        @optionalfile[Refiner UNet File / URI]:[--unet2 {}]:""
-        @optionalfile[Image Seed]:[--image-seeds {}\\n--image-seed-strengths 0.8]:""
-        @int[Inference Steps]:[--inference-steps {}]:"30"
-        @int[Guidance Scale]:[--guidance-scales {}]:"5"
-        @float[SDXL High Noise Fraction]:[--sdxl-high-noise-fractions {}]:"0.8"
-        @int[Clip Skip]:[--clip-skips {}]:"0"
-        @int[Number Of Seeds]:[--gen-seeds {}]:"1"
-        @dir[Output Directory]:[--output-path {}]:"output"
-        @optionalstring[Output Size]:[--output-size {}]:"1024x1024"
-        @device[Device]:[--device {}]:"device"
+        @karrasscheduler[{}]
+        @file[{"label":"Refiner File / URI", "arg":"--sdxl-refiner", "default":"stabilityai/stable-diffusion-xl-refiner-1.0", "file-types":"models"}]
+        @karrasscheduler[{"label":"Refiner Scheduler", "arg":"--sdxl-refiner-scheduler"}]
+        @torchvae[{"label":"VAE File / URI"}]
+        @file[{"label":"LoRa File / URI", "arg":"--loras", "after":";scale=1.0", "file-types":"models"}]
+        @file[{"label":"ControlNet File / URI", "arg":"--control-nets", "after":";scale=1.0", "file-types":"models"}]
+        @file[{"label":"UNet File / URI", "arg":"--unet", "file-types":"models"}]
+        @file[{"label":"Refiner UNet File / URI", "arg":"--unet2", "file-types":"models"}]
+        @file[{"label":"Image Seed", "arg":"--image-seeds", "after":"\\n--image-seed-strengths 0.8"}]
+        @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":30}]
+        @int[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":5}]
+        @float[{"label":"SDXL High Noise Fraction", "arg":"--sdxl-high-noise-fractions", "default":0.8}]
+        @int[{"label":"Clip Skip", "arg":"--clip-skips", "default":0}]
+        @int[{"label":"Number Of Seeds", "arg":"--gen-seeds", "default":1}]
+        @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+        @string[{"label":"Output Size", "arg":"--output-size", "default":"1024x1024"}]
+        @device[{}]
         --prompts "add your prompt here"
         """,
     "Stable Diffusion XL (no refiner)":
         """
-        @file[Model File / HF Slug]:[{}]:"stabilityai/stable-diffusion-xl-base-1.0"
+        @file[{"label":"Model File / HF Slug", "default": "stabilityai/stable-diffusion-xl-base-1.0", "optional":false, "file-types":"models"}]
         --model-type torch-sdxl
         --dtype float16
         --variant fp16
-        @optionalscheduler[Scheduler]:[--scheduler {}]:""@optionalpredictiontype[Scheduler Prediction Type]:[;prediction-type={}]:""
-        @optionalfile[VAE File / Slug]:[--vae AutoencoderKL;model={}]:""
-        @optionalfile[LoRa File / URI]:[--loras {};scale=1.0]:""
-        @optionalfile[ControlNet File / URI]:[--control-nets {};scale=1.0]:""
-        @optionalfile[UNet File / URI]:[--unet {}]:""
-        @optionalfile[Refiner UNet File / URI]:[--unet2 {}]:""
-        @optionalfile[Image Seed]:[--image-seeds {}\\n--image-seed-strengths 0.8]:""
-        @int[Inference Steps]:[--inference-steps {}]:"30"
-        @int[Guidance Scale]:[--guidance-scales {}]:"5"
-        @int[Clip Skip]:[--clip-skips {}]:"0"
-        @int[Number Of Seeds]:[--gen-seeds {}]:"1"
-        @dir[Output Directory]:[--output-path {}]:"output"
-        @optionalstring[Output Size]:[--output-size {}]:"1024x1024"
-        @device[Device]:[--device {}]:"device"
+        @karrasscheduler[{}]
+        @torchvae[{"label":"VAE File / URI"}]
+        @file[{"label":"LoRa File / URI", "arg":"--loras", "after":";scale=1.0", "file-types":"models"}]
+        @file[{"label":"ControlNet File / URI", "arg":"--control-nets", "after":";scale=1.0", "file-types":"models"}]
+        @file[{"label":"UNet File / URI", "arg":"--unet", "file-types":"models"}]
+        @file[{"label":"Image Seed", "arg":"--image-seeds", "after":"\\n--image-seed-strengths 0.8"}]
+        @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":30}]
+        @int[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":5}]
+        @int[{"label":"Clip Skip", "arg":"--clip-skips", "default":0}]
+        @int[{"label":"Number Of Seeds", "arg":"--gen-seeds", "default":1}]
+        @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+        @string[{"label":"Output Size", "arg":"--output-size", "default":"1024x1024"}]
+        @device[{}]
         --prompts "add your prompt here"
         """,
     "Stable Diffusion XL (LCM UNet no refiner)":
         """
-        @file[Model File / HF Slug]:[{}]:"stabilityai/stable-diffusion-xl-base-1.0"
+        @file[{"label":"Model File / HF Slug", "default": "stabilityai/stable-diffusion-xl-base-1.0", "optional":false, "file-types":"models"}]
         --model-type torch-sdxl
         --dtype float16
         --variant fp16
         --model-cpu-offload
         --scheduler LCMScheduler
-        @optionalfile[VAE File / Slug]:[--vae AutoencoderKL;model={}]:""
-        @optionalfile[LoRa File / URI]:[--loras {};scale=1.0]:""
-        @optionalfile[ControlNet File / URI]:[--control-nets {};scale=1.0]:""
-        @optionalfile[UNet File / URI]:[--unet {}]:"latent-consistency/lcm-sdxl"
-        @optionalfile[Refiner UNet File / URI]:[--unet2 {}]:""
-        @optionalfile[Image Seed]:[--image-seeds {}\\n--image-seed-strengths 0.8]:""
-        @int[Inference Steps]:[--inference-steps {}]:"4"
-        @int[Guidance Scale]:[--guidance-scales {}]:"8"
-        @int[Clip Skip]:[--clip-skips {}]:"0"
-        @int[Number Of Seeds]:[--gen-seeds {}]:"1"
-        @dir[Output Directory]:[--output-path {}]:"output"
-        @optionalstring[Output Size]:[--output-size {}]:"1024x1024"
-        @device[Device]:[--device {}]:"device"
+        @torchvae[{"label":"VAE File / URI"}]
+        @file[{"label":"LoRa File / URI", "arg":"--loras", "after":";scale=1.0", "file-types":"models"}]
+        @file[{"label":"ControlNet File / URI", "arg":"--control-nets", "after":";scale=1.0", "file-types":"models"}]
+        @file[{"label":"UNet File / URI", "arg":"--unet", "default":"latent-consistency/lcm-sdxl", "file-types":"models"}]
+        @file[{"label":"Image Seed", "arg":"--image-seeds", "after":"\\n--image-seed-strengths 0.8"}]
+        @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":4}]
+        @int[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":8}]
+        @int[{"label":"Clip Skip", "arg":"--clip-skips", "default":0}]
+        @int[{"label":"Number Of Seeds", "arg":"--gen-seeds", "default":1}]
+        @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+        @string[{"label":"Output Size", "arg":"--output-size", "default":"1024x1024"}]
+        @device[{}]
         --prompts "add your prompt here"
         """,
     "Stable Diffusion XL (LCM UNet cooperative refiner)":
         """
-        @file[Model File / HF Slug]:[{}]:"stabilityai/stable-diffusion-xl-base-1.0"
+        @file[{"label":"Model File / HF Slug", "default": "stabilityai/stable-diffusion-xl-base-1.0", "optional":false, "file-types":"models"}]
         --model-type torch-sdxl
         --dtype float16
         --variant fp16
         --model-cpu-offload
         --scheduler LCMScheduler
-        @optionalscheduler[Refiner Scheduler]:[--sdxl-refiner-scheduler {}]:"UniPCMultistepScheduler"@optionalpredictiontype[Refiner Scheduler Prediction Type]:[;prediction-type={}]:""
-        @optionalfile[Refiner File / URI]:[--sdxl-refiner {}]:"stabilityai/stable-diffusion-xl-refiner-1.0"
-        @optionalfile[VAE File / Slug]:[--vae AutoencoderKL;model={}]:""
-        @optionalfile[LoRa File / URI]:[--loras {};scale=1.0]:""
-        @optionalfile[ControlNet File / URI]:[--control-nets {};scale=1.0]:""
-        @optionalfile[UNet File / URI]:[--unet {}]:"latent-consistency/lcm-sdxl"
-        @optionalfile[Refiner UNet File / URI]:[--unet2 {}]:""
-        @optionalfile[Image Seed]:[--image-seeds {}\\n--image-seed-strengths 0.8]:""
-        @int[Inference Steps]:[--inference-steps {}]:"4"
-        @int[Guidance Scale]:[--guidance-scales {}]:"8"
-        @float[SDXL High Noise Fraction]:[--sdxl-high-noise-fractions {}]:"0.8"
-        @int[Refiner Inference Steps]:[--sdxl-refiner-inference-steps {}]:"50"
-        @int[Clip Skip]:[--clip-skips {}]:"0"
-        @int[Number Of Seeds]:[--gen-seeds {}]:"1"
-        @dir[Output Directory]:[--output-path {}]:"output"
-        @optionalstring[Output Size]:[--output-size {}]:"1024x1024"
-        @device[Device]:[--device {}]:"device"
+        @file[{"label":"Refiner File / URI", "arg":"--sdxl-refiner", "default":"stabilityai/stable-diffusion-xl-refiner-1.0", "file-types":"models"}]
+        @karrasscheduler[{"label":"Refiner Scheduler", "arg":"--sdxl-refiner-scheduler", "default":"UniPCMultistepScheduler"}]
+        @torchvae[{"label":"VAE File / URI"}]
+        @file[{"label":"LoRa File / URI", "arg":"--loras", "after":";scale=1.0", "file-types":"models"}]
+        @file[{"label":"ControlNet File / URI", "arg":"--control-nets", "after":";scale=1.0", "file-types":"models"}]
+        @file[{"label":"UNet File / URI", "arg":"--unet", "default":"latent-consistency/lcm-sdxl", "file-types":"models"}]
+        @file[{"label":"Refiner UNet File / URI", "arg":"--unet2", "file-types":"models"}]
+        @file[{"label":"Image Seed", "arg":"--image-seeds", "after":"\\n--image-seed-strengths 0.8"}]
+        @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":4}]
+        @int[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":8}]
+        @float[{"label":"SDXL High Noise Fraction", "arg":"--sdxl-high-noise-fractions", "default":0.8}]
+        @int[{"label":"Refiner Inference Steps", "arg":"--sdxl-refiner-inference-steps", "default":50}]
+        @int[{"label":"Clip Skip", "arg":"--clip-skips", "default":0}]
+        @int[{"label":"Number Of Seeds", "arg":"--gen-seeds", "default":1}]
+        @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+        @string[{"label":"Output Size", "arg":"--output-size", "default":"1024x1024"}]
+        @device[{}]
         --prompts "add your prompt here"
         """,
     "Stable Diffusion XL (LCM UNet refiner edit mode)":
         """
-        @file[Model File / HF Slug]:[{}]:"stabilityai/stable-diffusion-xl-base-1.0"
+        @file[{"label":"Model File / HF Slug", "default": "stabilityai/stable-diffusion-xl-base-1.0", "optional":false, "file-types":"models"}]
         --model-type torch-sdxl
         --dtype float16
         --variant fp16
         --model-cpu-offload
         --sdxl-refiner-edit
         --scheduler LCMScheduler
-        @optionalscheduler[Refiner Scheduler]:[--sdxl-refiner-scheduler {}]:"UniPCMultistepScheduler"@optionalpredictiontype[Refiner Scheduler Prediction Type]:[;prediction-type={}]:""
-        @optionalfile[Refiner File / URI]:[--sdxl-refiner {}]:"stabilityai/stable-diffusion-xl-refiner-1.0"
-        @optionalfile[VAE File / Slug]:[--vae AutoencoderKL;model={}]:""
-        @optionalfile[LoRa File / URI]:[--loras {};scale=1.0]:""
-        @optionalfile[ControlNet File / URI]:[--control-nets {};scale=1.0]:""
-        @optionalfile[UNet File / URI]:[--unet {}]:"latent-consistency/lcm-sdxl"
-        @optionalfile[Refiner UNet File / URI]:[--unet2 {}]:""
-        @optionalfile[Image Seed]:[--image-seeds {}\\n--image-seed-strengths 0.8]:""
-        @int[Inference Steps]:[--inference-steps {}]:"4"
-        @int[Guidance Scale]:[--guidance-scales {}]:"8"
-        @float[SDXL High Noise Fraction]:[--sdxl-high-noise-fractions {}]:"0.8"
-        @int[Refiner Inference Steps]:[--sdxl-refiner-inference-steps {}]:"100"
-        @int[Clip Skip]:[--clip-skips {}]:"0"
-        @int[Number Of Seeds]:[--gen-seeds {}]:"1"
-        @dir[Output Directory]:[--output-path {}]:"output"
-        @optionalstring[Output Size]:[--output-size {}]:"1024x1024"
-        @device[Device]:[--device {}]:"device"
+        @file[{"label":"Refiner File / URI", "arg":"--sdxl-refiner", "default":"stabilityai/stable-diffusion-xl-refiner-1.0", "file-types":"models"}]
+        @karrasscheduler[{"label":"Refiner Scheduler", "arg":"--sdxl-refiner-scheduler", "default":"UniPCMultistepScheduler"}]
+        @torchvae[{"label":"VAE File / URI"}]
+        @file[{"label":"LoRa File / URI", "arg":"--loras", "after":";scale=1.0", "file-types":"models"}]
+        @file[{"label":"ControlNet File / URI", "arg":"--control-nets", "after":";scale=1.0", "file-types":"models"}]
+        @file[{"label":"UNet File / URI", "arg":"--unet", "default":"latent-consistency/lcm-sdxl", "file-types":"models"}]
+        @file[{"label":"Refiner UNet File / URI", "arg":"--unet2", "file-types":"models"}]
+        @file[{"label":"Image Seed", "arg":"--image-seeds", "after":"\\n--image-seed-strengths 0.8"}]
+        @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":4}]
+        @int[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":8}]
+        @float[{"label":"SDXL High Noise Fraction", "arg":"--sdxl-high-noise-fractions", "default":0.8}]
+        @int[{"label":"Refiner Inference Steps", "arg":"--sdxl-refiner-inference-steps", "default":100}]
+        @int[{"label":"Clip Skip", "arg":"--clip-skips", "default":0}]
+        @int[{"label":"Number Of Seeds", "arg":"--gen-seeds", "default":1}]
+        @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+        @string[{"label":"Output Size", "arg":"--output-size", "default":"1024x1024"}]
+        @device[{}]
         --prompts "add your prompt here"
         """,
     "Stable Diffusion XL (LCM LoRA no refiner)":
         """
-        @file[Model File / HF Slug]:[{}]:"stabilityai/stable-diffusion-xl-base-1.0"
+        @file[{"label":"Model File / HF Slug", "default": "stabilityai/stable-diffusion-xl-base-1.0", "optional":false, "file-types":"models"}]
         --model-type torch-sdxl
         --dtype float16
         --variant fp16
         --model-cpu-offload
         --scheduler LCMScheduler
-        @optionalfile[VAE File / Slug]:[--vae AutoencoderKL;model={}]:""
-        @optionalfile[LoRa File / URI]:[--loras {};scale=1.0]:"latent-consistency/lcm-lora-sdxl"
-        @optionalfile[ControlNet File / URI]:[--control-nets {};scale=1.0]:""
-        @optionalfile[UNet File / URI]:[--unet {}]:""
-        @optionalfile[Refiner UNet File / URI]:[--unet2 {}]:""
-        @optionalfile[Image Seed]:[--image-seeds {}\\n--image-seed-strengths 0.8]:""
-        @int[Inference Steps]:[--inference-steps {}]:"4"
-        @int[Guidance Scale]:[--guidance-scales {}]:"1"
-        @int[Clip Skip]:[--clip-skips {}]:"0"
-        @int[Number Of Seeds]:[--gen-seeds {}]:"1"
-        @dir[Output Directory]:[--output-path {}]:"output"
-        @optionalstring[Output Size]:[--output-size {}]:"1024x1024"
-        @device[Device]:[--device {}]:"device"
+        @torchvae[{"label":"VAE File / URI"}]
+        @file[{"label":"LoRa File / URI", "arg":"--loras", "default":"latent-consistency/lcm-lora-sdxl", "after":";scale=1.0", "file-types":"models"}]
+        @file[{"label":"ControlNet File / URI", "arg":"--control-nets", "after":";scale=1.0", "file-types":"models"}]
+        @file[{"label":"UNet File / URI", "arg":"--unet", "file-types":"models"}]
+        @file[{"label":"Image Seed", "arg":"--image-seeds", "after":"\\n--image-seed-strengths 0.8"}]
+        @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":4}]
+        @int[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":1}]
+        @int[{"label":"Clip Skip", "arg":"--clip-skips", "default":0}]
+        @int[{"label":"Number Of Seeds", "arg":"--gen-seeds", "default":1}]
+        @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+        @string[{"label":"Output Size", "arg":"--output-size", "default":"1024x1024"}]
+        @device[{}]
         --prompts "add your prompt here"
         """,
     "Stable Diffusion XL (LCM LoRA cooperative refiner)":
         """
-        @file[Model File / HF Slug]:[{}]:"stabilityai/stable-diffusion-xl-base-1.0"
+        @file[{"label":"Model File / HF Slug", "default": "stabilityai/stable-diffusion-xl-base-1.0", "optional":false, "file-types":"models"}]
         --model-type torch-sdxl
         --dtype float16
         --variant fp16
         --model-cpu-offload
         --scheduler LCMScheduler
-        @optionalscheduler[Refiner Scheduler]:[--sdxl-refiner-scheduler {}]:"UniPCMultistepScheduler"@optionalpredictiontype[Refiner Scheduler Prediction Type]:[;prediction-type={}]:""
-        @optionalfile[Refiner File / URI]:[--sdxl-refiner {}]:"stabilityai/stable-diffusion-xl-refiner-1.0"
-        @optionalfile[VAE File / Slug]:[--vae AutoencoderKL;model={}]:""
-        @optionalfile[LoRa File / URI]:[--loras {};scale=1.0]:"latent-consistency/lcm-lora-sdxl"
-        @optionalfile[ControlNet File / URI]:[--control-nets {};scale=1.0]:""
-        @optionalfile[UNet File / URI]:[--unet {}]:""
-        @optionalfile[Refiner UNet File / URI]:[--unet2 {}]:""
-        @optionalfile[Image Seed]:[--image-seeds {}\\n--image-seed-strengths 0.8]:""
-        @int[Inference Steps]:[--inference-steps {}]:"8"
-        @int[Guidance Scale]:[--guidance-scales {}]:"1"
-        @float[SDXL High Noise Fraction]:[--sdxl-high-noise-fractions {}]:"0.8"
-        @int[Refiner Inference Steps]:[--sdxl-refiner-inference-steps {}]:"100"
-        @int[Clip Skip]:[--clip-skips {}]:"0"
-        @int[Number Of Seeds]:[--gen-seeds {}]:"1"
-        @dir[Output Directory]:[--output-path {}]:"output"
-        @optionalstring[Output Size]:[--output-size {}]:"1024x1024"
-        @device[Device]:[--device {}]:"device"
+        @file[{"label":"Refiner File / URI", "arg":"--sdxl-refiner", "default":"stabilityai/stable-diffusion-xl-refiner-1.0", "file-types":"models"}]
+        @karrasscheduler[{"label":"Refiner Scheduler", "arg":"--sdxl-refiner-scheduler", "default":"UniPCMultistepScheduler"}]
+        @torchvae[{"label":"VAE File / URI"}]
+        @file[{"label":"LoRa File / URI", "arg":"--loras", "default":"latent-consistency/lcm-lora-sdxl", "after":";scale=1.0", "file-types":"models"}]
+        @file[{"label":"ControlNet File / URI", "arg":"--control-nets", "after":";scale=1.0", "file-types":"models"}]
+        @file[{"label":"UNet File / URI", "arg":"--unet", "file-types":"models"}]
+        @file[{"label":"Refiner UNet File / URI", "arg":"--unet2", "file-types":"models"}]
+        @file[{"label":"Image Seed", "arg":"--image-seeds", "after":"\\n--image-seed-strengths 0.8"}]
+        @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":8}]
+        @int[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":1}]
+        @float[{"label":"SDXL High Noise Fraction", "arg":"--sdxl-high-noise-fractions", "default":0.8}]
+        @int[{"label":"Refiner Inference Steps", "arg":"--sdxl-refiner-inference-steps", "default":100}]
+        @int[{"label":"Clip Skip", "arg":"--clip-skips", "default":0}]
+        @int[{"label":"Number Of Seeds", "arg":"--gen-seeds", "default":1}]
+        @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+        @string[{"label":"Output Size", "arg":"--output-size", "default":"1024x1024"}]
+        @device[{}]
         --prompts "add your prompt here"
         """,
     "Stable Diffusion XL (LCM LoRA refiner edit mode)":
         """
-        @file[Model File / HF Slug]:[{}]:"stabilityai/stable-diffusion-xl-base-1.0"
+        @file[{"label":"Model File / HF Slug", "default": "stabilityai/stable-diffusion-xl-base-1.0", "optional":false, "file-types":"models"}]
         --model-type torch-sdxl
         --dtype float16
         --variant fp16
         --model-cpu-offload
         --sdxl-refiner-edit
         --scheduler LCMScheduler
-        @optionalscheduler[Refiner Scheduler]:[--sdxl-refiner-scheduler {}]:"UniPCMultistepScheduler"@optionalpredictiontype[Refiner Scheduler Prediction Type]:[;prediction-type={}]:""
-        @optionalfile[Refiner File / URI]:[--sdxl-refiner {}]:"stabilityai/stable-diffusion-xl-refiner-1.0"
-        @optionalfile[VAE File / Slug]:[--vae AutoencoderKL;model={}]:""
-        @optionalfile[LoRa File / URI]:[--loras {};scale=1.0]:"latent-consistency/lcm-lora-sdxl"
-        @optionalfile[ControlNet File / URI]:[--control-nets {};scale=1.0]:""
-        @optionalfile[UNet File / URI]:[--unet {}]:""
-        @optionalfile[Refiner UNet File / URI]:[--unet2 {}]:""
-        @optionalfile[Image Seed]:[--image-seeds {}\\n--image-seed-strengths 0.8]:""
-        @int[Inference Steps]:[--inference-steps {}]:"8"
-        @int[Guidance Scale]:[--guidance-scales {}]:"1"
-        @float[SDXL High Noise Fraction]:[--sdxl-high-noise-fractions {}]:"0.8"
-        @int[Refiner Inference Steps]:[--sdxl-refiner-inference-steps {}]:"100"
-        @int[Clip Skip]:[--clip-skips {}]:"0"
-        @int[Number Of Seeds]:[--gen-seeds {}]:"1"
-        @dir[Output Directory]:[--output-path {}]:"output"
-        @optionalstring[Output Size]:[--output-size {}]:"1024x1024"
-        @device[Device]:[--device {}]:"device"
+        @file[{"label":"Refiner File / URI", "arg":"--sdxl-refiner", "default":"stabilityai/stable-diffusion-xl-refiner-1.0", "file-types":"models"}]
+        @karrasscheduler[{"label":"Refiner Scheduler", "arg":"--sdxl-refiner-scheduler", "default":"UniPCMultistepScheduler"}]
+        @torchvae[{"label":"VAE File / URI"}]
+        @file[{"label":"LoRa File / URI", "arg":"--loras", "default":"latent-consistency/lcm-lora-sdxl", "after":";scale=1.0", "file-types":"models"}]
+        @file[{"label":"ControlNet File / URI", "arg":"--control-nets", "after":";scale=1.0", "file-types":"models"}]
+        @file[{"label":"UNet File / URI", "arg":"--unet", "file-types":"models"}]
+        @file[{"label":"Refiner UNet File / URI", "arg":"--unet2", "file-types":"models"}]
+        @file[{"label":"Image Seed", "arg":"--image-seeds", "after":"\\n--image-seed-strengths 0.8"}]
+        @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":8}]
+        @int[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":1}]
+        @float[{"label":"SDXL High Noise Fraction", "arg":"--sdxl-high-noise-fractions", "default":0.8}]
+        @int[{"label":"Refiner Inference Steps", "arg":"--sdxl-refiner-inference-steps", "default":100}]
+        @int[{"label":"Clip Skip", "arg":"--clip-skips", "default":0}]
+        @int[{"label":"Number Of Seeds", "arg":"--gen-seeds", "default":1}]
+        @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+        @string[{"label":"Output Size", "arg":"--output-size", "default":"1024x1024"}]
+        @device[{}]
         --prompts "add your prompt here"
         """,
     "Stable Cascade":
         """
-        @file[Model File / HF Slug]:[{}]:"stabilityai/stable-cascade-prior"
+        @file[{"label":"Model File / HF Slug", "default": "stabilityai/stable-cascade-prior", "optional":false, "file-types":"models"}]
         --model-type torch-s-cascade
         --variant bf16
         --dtype bfloat16
         --model-cpu-offload
         --s-cascade-decoder-cpu-offload
-        @file[Decoder File / URI]:[--s-cascade-decoder {}]:"stabilityai/stable-cascade;dtype=float16"
-        @optionalfile[UNet / URI]:[--unet {}]:""
-        @optionalfile[Decoder UNet / URI]:[--unet2 {}]:""
-        @optionalfile[Image Seed]:[--image-seeds {}]:""
-        @int[Inference Steps]:[--inference-steps {}]:"20"
-        @int[Guidance Scale]:[--guidance-scales {}]:"4"
-        @int[Decoder Inference Steps]:[--s-cascade-decoder-inference-steps {}]:"10"
-        @int[Decoder Guidance Scale]:[--s-cascade-decoder-guidance-scales {}]:"0"
-        @dir[Output Directory]:[--output-path {}]:"output"
-        @int[Number Of Seeds]:[--gen-seeds {}]:"1"
-        @optionalstring[Output Size]:[--output-size {}]:"1024x1024"
-        @device[Device]:[--device {}]:"device"
+        @file[{"label":"Decoder File / URI", "arg":"--s-cascade-decoder", "default":"stabilityai/stable-cascade;dtype=float16", "file-types":"models"}]
+        @file[{"label":"UNet File / URI", "arg":"--unet", "file-types":"models"}]
+        @file[{"label":"Decoder UNet / URI", "arg":"--unet2", "file-types":"models"}]
+        @file[{"label":"Image Seed", "arg":"--image-seeds"}]
+        @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":20}]
+        @int[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":4}]
+        @int[{"label":"Decoder Inference Steps", "arg":"--s-cascade-decoder-inference-steps", "default":10}]
+        @int[{"label":"Decoder Guidance Scale", "arg":"--s-cascade-decoder-guidance-scales", "default":0}]
+        @int[{"label":"Number Of Seeds", "arg":"--gen-seeds", "default":1}]
+        @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+        @string[{"label":"Output Size", "arg":"--output-size", "default":"1024x1024"}]
+        @device[{}]
         --prompts "add your prompt here"
         """,
     "Stable Cascade (UNet lite)":
         """
-        @file[Model File / HF Slug]:[{}]:"stabilityai/stable-cascade-prior"
+        @file[{"label":"Model File / HF Slug", "default": "stabilityai/stable-cascade-prior", "optional":false, "file-types":"models"}]
         --model-type torch-s-cascade
         --variant bf16
         --dtype bfloat16
         --model-cpu-offload
         --s-cascade-decoder-cpu-offload
-        @file[Decoder File / URI]:[--s-cascade-decoder {}]:"stabilityai/stable-cascade;dtype=float16"
-        @optionalfile[UNet / URI]:[--unet {}]:"stabilityai/stable-cascade-prior;subfolder=prior_lite"
-        @optionalfile[Decoder UNet / URI]:[--unet2 {}]:"stabilityai/stable-cascade;subfolder=decoder_lite"
-        @optionalfile[Image Seed]:[--image-seeds {}]:""
-        @int[Inference Steps]:[--inference-steps {}]:"20"
-        @int[Guidance Scale]:[--guidance-scales {}]:"4"
-        @int[Decoder Inference Steps]:[--s-cascade-decoder-inference-steps {}]:"10"
-        @int[Decoder Guidance Scale]:[--s-cascade-decoder-guidance-scales {}]:"0"
-        @dir[Output Directory]:[--output-path {}]:"output"
-        @int[Number Of Seeds]:[--gen-seeds {}]:"1"
-        @optionalstring[Output Size]:[--output-size {}]:"1024x1024"
-        @device[Device]:[--device {}]:"device"
+        @file[{"label":"Decoder File / URI", "arg":"--s-cascade-decoder", "default":"stabilityai/stable-cascade;dtype=float16", "file-types":"models"}]
+        @file[{"label":"UNet File / URI", "arg":"--unet", "default":"stabilityai/stable-cascade-prior;subfolder=prior_lite", "file-types":"models"}]
+        @file[{"label":"Decoder UNet / URI", "arg":"--unet2", "default":"stabilityai/stable-cascade;subfolder=decoder_lite", "file-types":"models"}]
+        @file[{"label":"Image Seed", "arg":"--image-seeds"}]
+        @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":20}]
+        @int[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":4}]
+        @int[{"label":"Decoder Inference Steps", "arg":"--s-cascade-decoder-inference-steps", "default":10}]
+        @int[{"label":"Decoder Guidance Scale", "arg":"--s-cascade-decoder-guidance-scales", "default":0}]
+        @int[{"label":"Number Of Seeds", "arg":"--gen-seeds", "default":1}]
+        @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+        @string[{"label":"Output Size", "arg":"--output-size", "default":"1024x1024"}]
+        @device[{}]
         --prompts "add your prompt here"
         """,
     "Image Upscaling (Spandrel / chaiNNer)":
         """
-        \\image_process @file[Image File]:[{}]:""
-        @outputfile[Output File]:[--output {}]:"upscaled.png"
-        @int[Image Alignment]:[--align {}]:"1"
-        @file[Upscaler Model / URL]:[--processors upscaler;model={}]:"https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth"
-        @device[Device]:[--device {}]:"device"
+        \\image_process @file[{"label":"Input Image File", "optional":false, "mode":"input"}]
+        @file[{"label":"Output Image File", "default":"output.png", "arg":"--output", "mode":"output"}]
+        @int[{"label":"Image Alignment", "arg":"--align", "default":1}]
+        @file[{"label":"Upscaler Model / URL", "arg":"--processors", "before":"upscaler;model=", "file-types":"models", "default": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth", "optional":false}]
+        @device[{}]
         """
 }
