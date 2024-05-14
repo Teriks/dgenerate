@@ -116,8 +116,9 @@ def _create_arg_parser(prog, description):
         input file with the added suffix '_processed_N' unless --output-overwrite is specified, in that case 
         it will be overwritten. If you specify multiple input files and output files, you must specify an output
         file for every input file, or a directory (indicated with a trailing directory seperator character, 
-        for example "my_dir/" or "my_dir\"). Failure to specify an output file with a URL as an input is 
-        considered an error. Supported file extensions for image output are equal to those listed under --frame-format."""))
+        for example "my_dir/" or "my_dir\\" if the directory does not exist yet). Failure to specify an 
+        output file with a URL as an input is considered an error. Supported file extensions for image 
+        output are equal to those listed under --frame-format."""))
 
     actions.append(parser.add_argument(
         '-ff', '--frame-format', default='png', type=_arguments._type_image_format,
