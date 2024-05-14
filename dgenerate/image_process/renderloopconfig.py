@@ -157,7 +157,7 @@ class ImageProcessRenderLoopConfig(_types.SetFromMixin):
             if self.output and len(self.output) == len(self.input):
                 output_name = self.output[idx]
 
-                if output_name[-1] in '/\\':
+                if os.path.isdir(output_name) or output_name[-1] in '/\\':
                     # directory specification, input dictates the output format
                     continue
 
