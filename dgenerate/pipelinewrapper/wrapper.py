@@ -1437,6 +1437,17 @@ class DiffusionPipelineWrapper:
                 args['width'] = image.size[0]
                 args['height'] = image.size[1]
 
+            if self._model_type == _enums.ModelType.TORCH_UPSCALER_X2:
+                if not _image.is_aligned(image.size, 64):
+                    size = _image.align_by(image.size, 64)
+                    _messages.log(
+                        f'Input image size {image.size} is not aligned by 64. '
+                        f'Output dimensions will be forcefully aligned to 64: {size}.',
+                        level=_messages.WARNING)
+                    args['image'] = image.resize(size, PIL.Image.Resampling.LANCZOS)
+                    image.close()
+                    image = args['image']
+
             if self._model_type == _enums.ModelType.TORCH_S_CASCADE:
                 if not _image.is_power_of_two(image.size):
                     size = _image.nearest_power_of_two(image.size)
