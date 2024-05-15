@@ -2,7 +2,7 @@
 
 \set image_to_vary ../../media/dog-on-bench.png
 
-DeepFloyd/IF-I-L-v1.0
+DeepFloyd/IF-I-M-v1.0
 --variant fp16
 --dtype float16
 --model-type torch-if
@@ -25,7 +25,7 @@ DeepFloyd/IF-I-L-v1.0
 # image input (the image from the last batch)
 
 
-DeepFloyd/IF-II-L-v1.0
+DeepFloyd/IF-II-M-v1.0
 --variant fp16
 --dtype float16
 --model-type torch-ifs-img2img
