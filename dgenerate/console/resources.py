@@ -28,6 +28,8 @@ import typing
 
 import PIL.Image
 import PIL.ImageTk
+import tkinter as tk
+import webbrowser
 
 
 def set_window_icon(window: typing.Union[tkinter.Tk, tkinter.Toplevel]):
@@ -89,5 +91,36 @@ def get_karras_scheduler_prediction_types():
 
 def supported_torch_model_formats_open():
     return ['safetensors', 'pt', 'pth', 'cpkt', 'bin']
+
+
+def add_help_menu_links(menu: tk.Menu):
+    import dgenerate
+    ver = dgenerate.__version__
+
+    menu.add_command(
+        label='Homepage',
+        command=lambda:
+        webbrowser.open(
+            f'https://github.com/Teriks/dgenerate/tree/{ver}'))
+
+    menu.add_separator()
+
+    menu.add_command(
+        label='Config Examples',
+        command=lambda:
+        webbrowser.open(
+            f'https://github.com/Teriks/dgenerate/tree/{ver}/examples'))
+
+    menu.add_command(
+        label='Config Documentation',
+        command=lambda:
+        webbrowser.open(
+            f'https://dgenerate.readthedocs.io/en/{ver}/readme.html#writing-and-running-configs'))
+
+    menu.add_command(
+        label='Project Documentation',
+        command=lambda:
+        webbrowser.open(
+            f'https://dgenerate.readthedocs.io/en/{ver}/readme.html'))
 
 
