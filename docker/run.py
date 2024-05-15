@@ -44,8 +44,18 @@ print('image_working_dir:', image_working_dir)
 os.makedirs(hf_cache_local, exist_ok=True)
 os.makedirs(dgenerate_cache_local, exist_ok=True)
 
+dev_mode = False
+
+while '--dev' in args:
+    args.remove('--dev')
+    dev_mode = True
+
 if len(args) == 0:
     args = ['bash']
+
+install_script = 'docker/install.sh'
+if dev_mode:
+    install_script = 'docker/install_dev.sh'
 
 subprocess.run(['docker', 'image', 'build', '-t', f'teriks/dgenerate:{container_version}', '.'])
 subprocess.run(['docker', 'rm', '-f', 'dgenerate'])
@@ -54,4 +64,4 @@ subprocess.run(['docker', 'run', '--gpus', 'all', '--name', 'dgenerate',
                 '-v', f"{hf_cache_local}:/home/dgenerate/.cache/huggingface",
                 '-v', f"{dgenerate_cache_local}:/home/dgenerate/.cache/dgenerate",
                 '-it', f'teriks/dgenerate:{container_version}',
-                'bash', '-c', f"source docker/install.sh; {' '.join(args)}"])
+                'bash', '-c', f"source {install_script}; {' '.join(args)}"])
