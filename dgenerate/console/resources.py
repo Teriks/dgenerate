@@ -101,7 +101,7 @@ def add_help_menu_links(menu: tk.Menu):
         label='Homepage',
         command=lambda:
         webbrowser.open(
-            f'https://github.com/Teriks/dgenerate/tree/{ver}'))
+            f'https://github.com/Teriks/dgenerate/tree/v{ver}'))
 
     menu.add_separator()
 
@@ -109,18 +109,18 @@ def add_help_menu_links(menu: tk.Menu):
         label='Config Examples',
         command=lambda:
         webbrowser.open(
-            f'https://github.com/Teriks/dgenerate/tree/{ver}/examples'))
+            f'https://github.com/Teriks/dgenerate/tree/v{ver}/examples'))
 
     menu.add_command(
         label='Config Documentation',
         command=lambda:
         webbrowser.open(
-            f'https://dgenerate.readthedocs.io/en/{ver}/readme.html#writing-and-running-configs'))
+            f'https://dgenerate.readthedocs.io/en/v{ver}/readme.html#writing-and-running-configs'))
 
     menu.add_command(
         label='Project Documentation',
         command=lambda:
         webbrowser.open(
-            f'https://dgenerate.readthedocs.io/en/{ver}/readme.html'))
+            f'https://dgenerate.readthedocs.io/en/v{ver}/readme.html'))
 
 
