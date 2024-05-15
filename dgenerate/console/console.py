@@ -38,8 +38,6 @@ import tkinter.filedialog
 import tkinter.font
 import tkinter.scrolledtext
 import typing
-import webbrowser
-
 import PIL.Image
 import PIL.ImageTk
 import psutil
@@ -47,9 +45,8 @@ import psutil
 import dgenerate.console.finddialog as _finddialog
 import dgenerate.console.karrasschedulerselect as _karrasschedulerselect
 import dgenerate.console.recipesform as _recipesform
-from dgenerate.console.resources import set_window_icon
 from dgenerate.console.scrolledtext import ScrolledText
-
+import dgenerate.console.resources as _resources
 
 class DgenerateConsole(tk.Tk):
     def __init__(self):
@@ -58,7 +55,7 @@ class DgenerateConsole(tk.Tk):
         self.title('Dgenerate Console')
         self.geometry('1000x800')
 
-        set_window_icon(self)
+        _resources.set_window_icon(self)
 
         # Create main menu
 
@@ -203,24 +200,7 @@ class DgenerateConsole(tk.Tk):
 
         self._help_menu = tk.Menu(menu_bar, tearoff=0)
 
-        self._help_menu.add_command(
-            label='Documentation',
-            command=lambda:
-            webbrowser.open(
-                'https://dgenerate.readthedocs.io/en/v3.4.5/readme.html#writing-and-running-configs'))
-
-        self._help_menu.add_command(
-            label='Examples',
-            command=lambda:
-            webbrowser.open(
-                'https://github.com/Teriks/dgenerate/tree/v3.4.5/examples'))
-
-        self._help_menu.add_command(
-            label='Project Homepage',
-            command=lambda:
-            webbrowser.open(
-                'https://github.com/Teriks/dgenerate/tree/v3.4.5')
-        )
+        _resources.add_help_menu_links(self._help_menu)
 
         # Add sub menus to main menu
 
