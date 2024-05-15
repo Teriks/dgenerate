@@ -5,7 +5,7 @@
 
 # The first stage can be invoked with the --model-type torch-ifs
 
-DeepFloyd/IF-I-L-v1.0
+DeepFloyd/IF-I-M-v1.0
 --variant fp16
 --dtype float16
 --model-type torch-if
@@ -41,7 +41,7 @@ DeepFloyd/IF-I-L-v1.0
 #  'unet'
 
 
-DeepFloyd/IF-II-L-v1.0
+DeepFloyd/IF-II-M-v1.0
 --variant fp16
 --dtype float16
 --model-type torch-ifs

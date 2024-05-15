@@ -2,7 +2,7 @@
 
 \set image_to_vary ../../media/rickroll-roll.gif
 
-DeepFloyd/IF-I-L-v1.0
+DeepFloyd/IF-I-M-v1.0
 --variant fp16
 --dtype float16
 --model-type torch-if
@@ -18,7 +18,7 @@ DeepFloyd/IF-I-L-v1.0
 \save_modules stage_1_modules feature_extractor
 
 
-DeepFloyd/IF-II-L-v1.0
+DeepFloyd/IF-II-M-v1.0
 --variant fp16
 --dtype float16
 --model-type torch-ifs-img2img
