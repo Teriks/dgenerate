@@ -12,6 +12,9 @@ python run.py "python3 run_tests.py --clean --examples"
 python run.py "python3 run_tests.py --clean --examples --subprocess-only"
 ```
 
+You can also use the ``--dev`` option to ``run.py`` to indicate that you want a development install
+from the current directory instead of building and then installing a wheel.
+
 Take note that the initial working directory of the environment is the top level directory of the dgenerate project.
 
 And that it is a linux environment, therefore the python executable is named python3.
