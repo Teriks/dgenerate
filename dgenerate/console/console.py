@@ -48,6 +48,7 @@ import dgenerate.console.recipesform as _recipesform
 from dgenerate.console.scrolledtext import ScrolledText
 import dgenerate.console.resources as _resources
 
+
 class DgenerateConsole(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -501,7 +502,7 @@ class DgenerateConsole(tk.Tk):
                 def open_image_pane_directory_in_explorer():
                     subprocess.Popen(
                         rf'explorer /select,"{get_path()}"',
-                        start_new_session=True)
+                        creationflags=subprocess.DETACHED_PROCESS)
             else:
                 def open_image_pane_directory_in_explorer():
                     subprocess.Popen(
