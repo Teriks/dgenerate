@@ -840,7 +840,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'you cannot specify {a_namer("control_net_uris")} without {a_namer("image_seeds")}.')
 
         upscaler_noise_levels_default_set = False
-        if not _pipelinewrapper.model_type_is_upscaler(self.model_type):
+        if not _pipelinewrapper.model_type_is_upscaler(self.model_type) \
+                and not _pipelinewrapper.model_type_is_floyd_ifs(self.model_type):
             if self.upscaler_noise_levels:
                 raise RenderLoopConfigError(
                     f'you cannot specify {a_namer("upscaler_noise_levels")} for a '
@@ -853,10 +854,12 @@ class RenderLoopConfig(_types.SetFromMixin):
             if self.model_type == _pipelinewrapper.ModelType.TORCH_UPSCALER_X4:
                 upscaler_noise_levels_default_set = True
                 self.upscaler_noise_levels = [_pipelinewrapper.DEFAULT_X4_UPSCALER_NOISE_LEVEL]
-        elif self.model_type != _pipelinewrapper.ModelType.TORCH_UPSCALER_X4:
+        elif self.model_type != _pipelinewrapper.ModelType.TORCH_UPSCALER_X4 and \
+                not _pipelinewrapper.model_type_is_floyd_ifs(self.model_type):
             raise RenderLoopConfigError(
                 f'you cannot specify {a_namer("upscaler_noise_levels")} for an upscaler '
-                f'model type that is not "torch-upscaler-x4", see: {a_namer("model_type")}.')
+                f'model type that is not "torch-upscaler-x4" or "torch-ifs-*", '
+                f'see: {a_namer("model_type")}.')
 
         if not _pipelinewrapper.model_type_is_pix2pix(self.model_type):
             if self.image_guidance_scales:

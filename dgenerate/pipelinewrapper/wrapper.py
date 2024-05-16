@@ -1402,21 +1402,28 @@ class DiffusionPipelineWrapper:
             if _enums.model_type_is_upscaler(self._model_type):
                 if self._model_type == _enums.ModelType.TORCH_UPSCALER_X4:
                     args['noise_level'] = int(
-                        _types.default(user_args.upscaler_noise_level, _constants.DEFAULT_X4_UPSCALER_NOISE_LEVEL))
+                        _types.default(
+                            user_args.upscaler_noise_level,
+                            _constants.DEFAULT_X4_UPSCALER_NOISE_LEVEL))
                 check_no_image_seed_strength()
-
             elif self._model_type == _enums.ModelType.TORCH_IFS:
-                args['noise_level'] = int(
-                    _types.default(user_args.upscaler_noise_level,
-                                   _constants.DEFAULT_FLOYD_SUPERRESOLUTION_NOISE_LEVEL))
                 if self._pipeline_type != _enums.PipelineType.INPAINT:
+                    args['noise_level'] = int(
+                        _types.default(
+                            user_args.upscaler_noise_level,
+                            _constants.DEFAULT_FLOYD_SUPERRESOLUTION_NOISE_LEVEL))
                     check_no_image_seed_strength()
                 else:
+                    args['noise_level'] = int(
+                        _types.default(
+                            user_args.upscaler_noise_level,
+                            _constants.DEFAULT_FLOYD_SUPERRESOLUTION_INPAINT_NOISE_LEVEL))
                     set_strength()
             elif self._model_type == _enums.ModelType.TORCH_IFS_IMG2IMG:
                 args['noise_level'] = int(
-                    _types.default(user_args.upscaler_noise_level,
-                                   _constants.DEFAULT_FLOYD_SUPERRESOLUTION_NOISE_LEVEL))
+                    _types.default(
+                        user_args.upscaler_noise_level,
+                        _constants.DEFAULT_FLOYD_SUPERRESOLUTION_IMG2IMG_NOISE_LEVEL))
                 set_strength()
             elif not _enums.model_type_is_pix2pix(self._model_type) and \
                     self._model_type != _enums.ModelType.TORCH_S_CASCADE:

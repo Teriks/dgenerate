@@ -1288,7 +1288,8 @@ def _create_parser(add_model=True, add_help=True):
                                            resolution upscaler --model-type torch-upscaler-x4 or torch-ifs. Specifying 
                                            this option for --model-type torch-upscaler-x2 will produce an error message.
                                            The higher this value the more noise is added to the image before upscaling 
-                                           (similar to --image-seed-strengths). (default: [20 for x4, 250 for ifs])"""))
+                                           (similar to --image-seed-strengths). (default: [20 for x4, 250 for
+                                           torch-ifs/torch-ifs-img2img, 0 for torch-ifs inpainting mode])"""))
 
     actions.append(
         parser.add_argument('-gs', '--guidance-scales', action='store', nargs='+',

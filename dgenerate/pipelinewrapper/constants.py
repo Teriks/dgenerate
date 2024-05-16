@@ -54,6 +54,16 @@ DEFAULT_FLOYD_SUPERRESOLUTION_NOISE_LEVEL = 250
 Default noise level for floyd super resolution upscalers.
 """
 
+DEFAULT_FLOYD_SUPERRESOLUTION_IMG2IMG_NOISE_LEVEL = 250
+"""
+Default noise level for floyd super resolution upscalers when preforming img2img.
+"""
+
+DEFAULT_FLOYD_SUPERRESOLUTION_INPAINT_NOISE_LEVEL = 0
+"""
+Default noise level for floyd super resolution upscalers when inpainting.
+"""
+
 DEFAULT_OUTPUT_WIDTH = 512
 """
 Default output width for txt2img.

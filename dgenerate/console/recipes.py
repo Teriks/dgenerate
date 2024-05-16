@@ -238,6 +238,72 @@ RECIPES = {
         @device[{}]
         --prompts "add your prompt here"
         """,
+    "Deep Floyd": r"""
+        # DeepFloyd requires a multistage generation process involving 
+        # multiple models and more advanced use of dgenerate
+        
+        # You need a huggingface account (http://huggingface.co) and to 
+        # request access to the models at (https://huggingface.co/DeepFloyd) 
+        # in order for dgenerate to be able to download the required models
+        
+        # once you have done this, provide your access token 
+        # from (https://huggingface.co/settings/tokens)
+        
+        # Or set the environmental variable HF_TOKEN on your system
+    
+        \set prompt "add your prompt here"
+        
+        \set auth_token @string[{"label": "Hugging Face Auth Token", "arg":"--auth-token", "default":"%HF_TOKEN%", "optional":false}]
+        
+        \set device @device[{"optional":false}]
+        
+        \set output_dir @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output", "optional":false}]
+        
+        @file[{"label":"Stage 1 Model File / HF Slug", "default": "DeepFloyd/IF-I-M-v1.0", "optional":false, "file-types":"models"}]
+        --variant fp16
+        --dtype float16
+        --model-type torch-if
+        --model-sequential-offload
+        @int[{"label":"Stage 1 Inference Steps", "arg":"--inference-steps", "default":60, "min":1}]
+        @float[{"label":"Stage 1 Guidance Scale", "arg":"--guidance-scales", "default":4, "min":0}]
+        --output-size 64
+        @int[{"label":"Number Of Seeds", "arg":"--gen-seeds", "default":1, "min":1}]
+        --prompts {{ prompt }}
+        --output-prefix stage1 {{ device }} {{ output_dir }} {{ auth_token }}
+        
+        \save_modules stage_1_modules feature_extractor
+        
+        @file[{"label":"Stage 2 Model File / HF Slug", "default": "DeepFloyd/IF-II-M-v1.0", "optional":false, "file-types":"models"}]
+        --variant fp16
+        --dtype float16
+        --model-type torch-ifs
+        --model-sequential-offload
+        @int[{"label":"Stage 2 Inference Steps", "arg":"--inference-steps", "default":30, "min":1}]
+        @float[{"label":"Stage 2 Guidance Scale", "arg":"--guidance-scales", "default":4, "min":0}]
+        @int[{"label":"Stage 2 Upscaler Noise Level", "arg":"--upscaler-noise-levels", "default":250, "min":1}]
+        --prompts {{ format_prompt(last_prompts) }}
+        --seeds {{ last_seeds | join(' ') }}
+        --seeds-to-images
+        --image-seeds {{ quote(last_images) }}
+        --output-prefix stage2 {{ device }} {{ output_dir }} {{ auth_token }}
+        
+        \use_modules stage_1_modules
+        
+        stabilityai/stable-diffusion-x4-upscaler
+        --variant fp16
+        --dtype float16
+        --model-type torch-upscaler-x4
+        @int[{"label":"Stage 3 Inference Steps", "arg":"--inference-steps", "default":30, "min":1}]
+        --prompts {{ format_prompt(last_prompts) }}
+        --seeds {{ last_seeds | join(' ') }}
+        --seeds-to-images
+        --image-seeds {{ quote(last_images) }}
+        @int[{"label":"Stage 3 Upscaler Noise Level", "arg":"--upscaler-noise-levels", "default":20, "min":1}]
+        --output-prefix stage3 {{ device }} {{ output_dir }} {{ auth_token }}
+        
+        \clear_modules stage_1_modules
+    """,
+
     "Stable Cascade":
         """
         @file[{"label":"Model File / HF Slug", "default": "stabilityai/stable-cascade-prior", "optional":false, "file-types":"models"}]
