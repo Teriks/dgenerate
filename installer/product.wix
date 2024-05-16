@@ -5,6 +5,7 @@
         <MediaTemplate MaximumUncompressedMediaSize="2048" EmbedCab="no"/>
 
         <Icon Id="dgenerate.ico" SourceFile="..\dgenerate\icon.ico"/>
+        <Property Id="ARPPRODUCTICON" Value="dgenerate.ico"/>
 
         <MajorUpgrade AllowDowngrades="yes"/>
         <WixVariable Id="WixUILicenseRtf" Value="license.rtf"/>
@@ -39,7 +40,7 @@
         </Feature>
 
         <Feature Id="ApplicationShortcutStartMenu"
-                 Title="Start Menu Shortcut"
+                 Title="Console UI Start Menu Shortcut"
                  Level="1"
                  AllowAdvertise="no"
                  Description="Installs a shortcut in your start menu that will launch the dgenerate console UI.">
