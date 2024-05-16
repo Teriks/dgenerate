@@ -19,8 +19,7 @@
                  AllowAbsent="no"
                  Description="Installs the dgenerate command line tool."
                  ConfigurableDirectory="INSTALLFOLDER">
-
-            <ComponentGroupRef Id="DgenerateComponents" />
+            <ComponentGroupRef Id="DgenerateComponents"/>
         </Feature>
 
         <Feature Id="Path"
@@ -39,7 +38,14 @@
             <ComponentRef Id="ApplicationShortcutDesktop"/>
         </Feature>
 
-        <StandardDirectory Id="DesktopFolder"/>
+        <Feature Id="ApplicationShortcutStartMenu"
+                 Title="Start Menu Shortcut"
+                 Level="1"
+                 AllowAdvertise="no"
+                 Description="Installs a shortcut in your start menu that will launch the dgenerate console UI.">
+            <ComponentRef Id="ApplicationShortcutStartMenu"/>
+        </Feature>
+
         <StandardDirectory Id="ProgramFiles64Folder">
             <Directory Id="INSTALLFOLDER" Name="dgenerate">
                 <Component Id="Path" Guid="{D5C426B0-F916-4BD9-BD7C-2A5FBF81F4E3}" KeyPath="yes">
@@ -47,18 +53,43 @@
                                  Action="set" System="yes"/>
                 </Component>
                 <Component Id="ApplicationShortcutDesktop" Guid="{F5C426B0-F916-4BD9-BD7C-2A5FBF81F4E3}">
-                    <Shortcut Id="ApplicationStartMenuShortcut"
-                              Name="dgenerate"
+                    <Shortcut Id="ApplicationShortcutDesktop"
+                              Name="Dgenerate Console"
                               Description="Launch dgenerate Console UI"
                               Target="[INSTALLFOLDER]dgenerate.exe"
                               Arguments="--console"
                               WorkingDirectory="INSTALLFOLDER"
                               Icon="dgenerate.ico"
                               Directory="DesktopFolder"/>
+                    <RemoveFile Id="RemoveDesktopShortcut"
+                                On="uninstall"
+                                Directory="DesktopFolder"
+                                Name="Dgenerate Console.lnk"/>
                     <RegistryValue Root="HKCU" Key="Software\Teriks\dgenerate"
-                                   Name="installed" Type="integer"
+                                   Name="desktopShortcut" Type="integer"
                                    Value="1" KeyPath="yes"/>
-                    <RemoveFile Id="RemoveOldDesktopShortcut" On="install" Name="dgenerate.lnk"/>
+                </Component>
+            </Directory>
+        </StandardDirectory>
+
+
+        <StandardDirectory Id="ProgramMenuFolder">
+            <Directory Id="ApplicationProgramsFolder" Name="dgenerate">
+                <Component Id="ApplicationShortcutStartMenu" Guid="{58DE6685-47DD-4705-BAA9-BF4D7BC5FF79}">
+                    <Shortcut Id="ApplicationStartMenuShortcut"
+                              Name="Dgenerate Console"
+                              Description="Launch dgenerate Console UI"
+                              Target="[INSTALLFOLDER]dgenerate.exe"
+                              Arguments="--console"
+                              WorkingDirectory="INSTALLFOLDER"
+                              Icon="dgenerate.ico"
+                              Directory="ApplicationProgramsFolder"/>
+                    <RemoveFolder Id="RemoveApplicationProgramsFolder"
+                                  Directory="ApplicationProgramsFolder"
+                                  On="uninstall"/>
+                    <RegistryValue Root="HKCU" Key="Software\Teriks\dgenerate"
+                                   Name="startMenuShortcut" Type="integer"
+                                   Value="1" KeyPath="yes"/>
                 </Component>
             </Directory>
         </StandardDirectory>
