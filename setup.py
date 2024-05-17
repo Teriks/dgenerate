@@ -247,7 +247,7 @@ if __name__ != 'setup_as_library':
           version=VERSION,
           packages=find_packages(),
           package_data={
-              'dgenerate': ['dgenerate/icon.ico'],
+              'dgenerate': ['icon.ico'],
           },
           include_package_data=True,
           license='BSD 3-Clause',

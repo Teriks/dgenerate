@@ -207,12 +207,12 @@ class DgenerateConsole(tk.Tk):
 
         # Add sub menus to main menu
 
-        menu_bar.add_cascade(label="File", menu=self._file_menu)
-        menu_bar.add_cascade(label="Edit", menu=self._edit_menu)
-        menu_bar.add_cascade(label="Run", menu=self._run_menu)
-        menu_bar.add_cascade(label="Options", menu=self._options_menu)
-        menu_bar.add_cascade(label="View", menu=self._view_menu)
-        menu_bar.add_cascade(label="Help", menu=self._help_menu)
+        menu_bar.add_cascade(label='File', menu=self._file_menu)
+        menu_bar.add_cascade(label='Edit', menu=self._edit_menu)
+        menu_bar.add_cascade(label='Run', menu=self._run_menu)
+        menu_bar.add_cascade(label='Options', menu=self._options_menu)
+        menu_bar.add_cascade(label='View', menu=self._view_menu)
+        menu_bar.add_cascade(label='Help', menu=self._help_menu)
 
         self.config(menu=menu_bar)
 
@@ -221,13 +221,13 @@ class DgenerateConsole(tk.Tk):
         self._paned_window_horizontal = tk.PanedWindow(self,
                                                        orient=tk.HORIZONTAL,
                                                        sashwidth=4,
-                                                       bg="#808080", bd=0)
+                                                       bg='#808080', bd=0)
 
         self._paned_window_horizontal.pack(fill=tk.BOTH, expand=True)
 
         self._paned_window_vertical = tk.PanedWindow(self._paned_window_horizontal,
                                                      orient=tk.VERTICAL, sashwidth=4,
-                                                     bg="#808080")
+                                                     bg='#808080')
 
         self._paned_window_vertical.pack(fill=tk.BOTH, expand=True)
         self._paned_window_horizontal.add(self._paned_window_vertical)
@@ -246,10 +246,16 @@ class DgenerateConsole(tk.Tk):
         self._input_text.text.bind('<Button-3>',
                                    lambda e: self._input_text_context.tk_popup(
                                        self.winfo_pointerx(), self.winfo_pointery()))
-        self._input_text.text.bind('<Insert>',
-                                   lambda e:
-                                   self._multi_line_input_check_var.set(
-                                       not self._multi_line_input_check_var.get()))
+
+        def handle_insert(e):
+            self._multi_line_input_check_var.set(
+                not self._multi_line_input_check_var.get())
+            # not safe to assume tkinter does not do something
+            # else with the insert key
+            return 'break'
+
+        self._input_text.text.bind('<Insert>', handle_insert)
+
         self._input_text.text.bind('<Control-f>',
                                    lambda e: _finddialog.open_find_dialog(self,
                                                                           'Find In Input',
@@ -479,7 +485,7 @@ class DgenerateConsole(tk.Tk):
 
         self._text_update()
 
-        self.bind("<<UpdateEvent>>", lambda *a: self.update())
+        self.bind('<<UpdateEvent>>', lambda *a: self.update())
 
     def _start_shell_reader_threads(self):
 
@@ -534,8 +540,8 @@ class DgenerateConsole(tk.Tk):
 
     def _insert_or_replace_input_text(self, text):
         try:
-            selection_start = self._input_text.text.index("sel.first")
-            selection_end = self._input_text.text.index("sel.last")
+            selection_start = self._input_text.text.index('sel.first')
+            selection_end = self._input_text.text.index('sel.last')
         except tk.TclError:
             selection_start = selection_end = None
 
@@ -543,7 +549,7 @@ class DgenerateConsole(tk.Tk):
         if selection_start and selection_end:
             self._input_text.text.replace(selection_start, selection_end, text)
         else:
-            self._input_text.text.insert("insert", text)
+            self._input_text.text.insert('insert', text)
 
     def _input_text_insert_recipe(self):
         s = _recipesform.request_recipe(
@@ -630,7 +636,7 @@ class DgenerateConsole(tk.Tk):
             self._image_pane_window_visible_var.set(False)
             self._image_pane_window.withdraw()
 
-        self._image_pane_window.protocol("WM_DELETE_WINDOW", on_closing)
+        self._image_pane_window.protocol('WM_DELETE_WINDOW', on_closing)
 
     def _update_image_pane_window_visibility(self):
         if not self._image_pane_window_visible_var.get():
@@ -745,7 +751,7 @@ class DgenerateConsole(tk.Tk):
             res = ctypes.pythonapi.PyThreadState_SetAsyncExc(thread.native_id, ctypes.py_object(SystemExit))
             if res > 1:
                 ctypes.pythonapi.PyThreadState_SetAsyncExc(thread.native_id, 0)
-                raise SystemError("PyThreadState_SetAsyncExc failed")
+                raise SystemError('PyThreadState_SetAsyncExc failed')
 
     def _shell_return_code_message(self, return_code):
         self._write_stdout_output(
@@ -799,32 +805,32 @@ class DgenerateConsole(tk.Tk):
             f.close()
 
     def _undo_input_entry(self):
-        self._input_text.text.event_generate("<<Undo>>")
+        self._input_text.text.event_generate('<<Undo>>')
 
     def _redo_input_entry(self):
-        self._input_text.text.event_generate("<<Redo>>")
+        self._input_text.text.event_generate('<<Redo>>')
 
     def _cut_input_entry_selection(self):
-        self._input_text.text.event_generate("<<Cut>>")
+        self._input_text.text.event_generate('<<Cut>>')
 
     def _copy_input_entry_selection(self):
-        self._input_text.text.event_generate("<<Copy>>")
+        self._input_text.text.event_generate('<<Copy>>')
 
     def _paste_input_entry(self):
-        self._input_text.text.event_generate("<<Paste>>")
+        self._input_text.text.event_generate('<<Paste>>')
 
     def _delete_input_entry_selection(self):
-        self._input_text.text.event_generate("<Delete>")
+        self._input_text.text.event_generate('<Delete>')
 
     def _select_all_input_entry(self):
-        self._input_text.text.event_generate("<<SelectAll>>")
+        self._input_text.text.event_generate('<<SelectAll>>')
 
     def _copy_output_text_selection(self):
-        self._output_text.text.event_generate("<<Copy>>")
+        self._output_text.text.event_generate('<<Copy>>')
 
     def _select_all_output_text(self):
         self._output_text.text.focus_set()
-        self._output_text.text.event_generate("<<SelectAll>>")
+        self._output_text.text.event_generate('<<SelectAll>>')
 
     def _save_output_text(self):
         f = tkinter.filedialog.asksaveasfilename(
@@ -898,10 +904,10 @@ class DgenerateConsole(tk.Tk):
                 clean_text = _textprocessing.remove_terminal_escape_sequences(text)
 
                 if self._next_text_update_line_return:
-                    self._output_text.text.replace("end-2c linestart", "end-1c", clean_text)
+                    self._output_text.text.replace('end-2c linestart', 'end-1c', clean_text)
                 elif self._next_text_update_line_escape:
                     if text.strip():
-                        self._output_text.text.replace("end-2c linestart", "end-1c", clean_text)
+                        self._output_text.text.replace('end-2c linestart', 'end-1c', clean_text)
                 else:
                     self._output_text.text.insert(tk.END, clean_text)
 
@@ -943,8 +949,9 @@ class DgenerateConsole(tk.Tk):
         while True:
             with self._termination_lock:
                 if self._shell_process is None:
-                    time.sleep(1)
-                    continue
+                    # occurs on shutdown when the shell is
+                    # killed without restarting
+                    break
                 return_code = self._shell_process.poll()
 
             if return_code is None:
@@ -976,7 +983,7 @@ class DgenerateConsole(tk.Tk):
             self._input_text.text.replace('1.0', tk.END, self._command_history[self._current_command_index])
             self._input_text.text.see(tk.END)
             self._input_text.text.mark_set(tk.INSERT, tk.END)
-            return "break"
+            return 'break'
 
     def _show_next_command(self, event):
         if self._multi_line_input_check_var.get():
@@ -987,7 +994,7 @@ class DgenerateConsole(tk.Tk):
             self._input_text.text.replace('1.0', tk.END, self._command_history[self._current_command_index])
             self._input_text.text.see(tk.END)
             self._input_text.text.mark_set(tk.INSERT, tk.END)
-            return "break"
+            return 'break'
 
     def _load_settings(self):
         settings_path = pathlib.Path(pathlib.Path.home(), '.dgenerate_console_settings')
