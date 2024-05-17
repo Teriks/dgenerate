@@ -160,7 +160,7 @@ class _FindDialog(tk.Toplevel):
                 else:
                     start_idx = '1.0'
             else:
-                idx = self.text_widget.search(s, start_idx, nocase=1 - self.case_var.get(), stopindex=tk.END)
+                idx = self.text_widget.search(s, start_idx, nocase=bool(1 - self.case_var.get()), stopindex=tk.END)
                 if idx:
                     end_idx = f'{idx}+{len(s)}c'
                     self.text_widget.tag_remove('found', '1.0', tk.END)
@@ -219,7 +219,7 @@ class _FindDialog(tk.Toplevel):
         else:
             start_idx = '1.0'
             while True:
-                idx = self.text_widget.search(s, start_idx, nocase=1 - self.case_var.get(), stopindex=tk.END)
+                idx = self.text_widget.search(s, start_idx, nocase=bool(1 - self.case_var.get()), stopindex=tk.END)
                 if idx:
                     end_idx = f'{idx}+{len(s)}c'
                     self.text_widget.tag_add('found', idx, end_idx)
@@ -397,7 +397,7 @@ def open_find_replace_dialog(master, name, text_box):
         replace_text=_replace_text,
         position=_last_pos,
         size=_last_find_replace_dialog_size,
-        replace=True)
+        replace_mode=True)
 
     def on_closing():
         global _find_dialog, _find_text, _replace_text, \

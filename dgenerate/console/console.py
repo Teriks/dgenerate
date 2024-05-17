@@ -34,9 +34,6 @@ import sys
 import threading
 import time
 import tkinter as tk
-import tkinter.filedialog
-import tkinter.font
-import tkinter.scrolledtext
 import typing
 import PIL.Image
 import PIL.ImageTk
@@ -47,7 +44,9 @@ import dgenerate.console.karrasschedulerselect as _karrasschedulerselect
 import dgenerate.console.recipesform as _recipesform
 from dgenerate.console.scrolledtext import ScrolledText
 import dgenerate.console.resources as _resources
+import dgenerate.console.filedialog as _filedialog
 import dgenerate.textprocessing as _textprocessing
+
 
 
 class DgenerateConsole(tk.Tk):
@@ -575,28 +574,28 @@ class DgenerateConsole(tk.Tk):
         self._insert_or_replace_input_text(s)
 
     def _input_text_insert_directory_path(self):
-        d = tkinter.filedialog.askdirectory(
+        d = _filedialog.open_directory_dialog(
             initialdir=self._get_cwd())
 
-        if d is None or not d.strip():
+        if d is None:
             return
 
         self._insert_or_replace_input_text(shlex.quote(d))
 
     def _input_text_insert_file_path(self):
-        f = tkinter.filedialog.askopenfilename(
+        f = _filedialog.open_file_dialog(
             initialdir=self._get_cwd())
 
-        if f is None or not f.strip():
+        if f is None:
             return
 
         self._insert_or_replace_input_text(shlex.quote(f))
 
     def _input_text_insert_file_path_save(self):
-        f = tkinter.filedialog.asksaveasfilename(
+        f = _filedialog.open_file_save_dialog(
             initialdir=self._get_cwd())
 
-        if f is None or not f.strip():
+        if f is None:
             return
 
         self._insert_or_replace_input_text(shlex.quote(f))
@@ -785,27 +784,28 @@ class DgenerateConsole(tk.Tk):
         self._update_cwd_title(cwd)
 
     def _load_input_entry_text(self):
-        f = tkinter.filedialog.askopenfile(
+        fn = _filedialog.open_file_dialog(
             mode='r',
             initialfile='config.txt',
             defaultextension='.txt',
             filetypes=[('Text Documents', '*.txt')])
 
-        if f is None:
+        if fn is None:
             return
 
-        self._input_text.text.replace('1.0', tk.END, f.read())
+        with open(fn, 'rt') as f:
+            self._input_text.text.replace('1.0', tk.END, f.read())
 
     def _save_input_entry_text(self):
-        f = tkinter.filedialog.asksaveasfilename(
+        fn = _filedialog.open_file_save_dialog(
             initialfile='config.txt',
             defaultextension='.txt',
             filetypes=[('Text Documents', '*.txt')])
 
-        if f is None or not f.strip():
+        if fn is None:
             return
 
-        with open(f, mode='w', encoding='utf-8') as f:
+        with open(fn, mode='w', encoding='utf-8') as f:
             f.write(self._input_text.text.get('1.0', 'end-1c'))
             f.close()
 
@@ -838,12 +838,12 @@ class DgenerateConsole(tk.Tk):
         self._output_text.text.event_generate('<<SelectAll>>')
 
     def _save_output_text(self):
-        f = tkinter.filedialog.asksaveasfilename(
+        f = _filedialog.open_file_save_dialog(
             initialfile='log.txt',
             defaultextension='.txt',
             filetypes=[('Text Documents', '*.txt')])
 
-        if f is None or not f.strip():
+        if f is None:
             return
 
         with open(f, mode='w', encoding='utf-8') as f:
@@ -853,12 +853,12 @@ class DgenerateConsole(tk.Tk):
             f.close()
 
     def _save_output_text_selection(self):
-        f = tkinter.filedialog.asksaveasfilename(
+        f = _filedialog.open_file_save_dialog(
             initialfile='log.txt',
             defaultextension='.txt',
             filetypes=[('Text Documents', '*.txt')])
 
-        if f is None or not f.strip():
+        if f is None:
             return
 
         with open(f, mode='w', encoding='utf-8') as f:
@@ -906,7 +906,7 @@ class DgenerateConsole(tk.Tk):
                     self._output_text.text.delete('1.0',
                                                   f'{output_lines - self._max_output_lines}.0')
 
-                clean_text = _textprocessing.remove_terminal_escape_sequences(text)
+                clean_text = _textprocessing.remove_terminal_escape_sequences(text).rstrip() + '\n'
 
                 if self._next_text_update_line_return:
                     self._output_text.text.replace('end-2c linestart', 'end-1c', clean_text)
@@ -916,7 +916,7 @@ class DgenerateConsole(tk.Tk):
                 else:
                     self._output_text.text.insert(tk.END, clean_text)
 
-                self._next_text_update_line_escape = text.endswith('\u001B[A\r') or text.endswith('\u001B[A\r\n')
+                self._next_text_update_line_escape = text.endswith('\u001B[A\r')
                 self._next_text_update_line_return = text.endswith('\r')
 
                 if scroll:
