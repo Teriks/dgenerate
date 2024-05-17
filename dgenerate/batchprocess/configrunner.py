@@ -646,29 +646,11 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
             stop_threads = threading.Event()
 
-            def readline(file):
-                line = []
-                while True:
-                    byte = file.read(1)
-                    if not byte:
-                        break
-                    line.append(byte)
-                    if byte == b'\n':
-                        return b''.join(line)
-                    elif byte == b'\r':
-                        next_byte = file.read(1)
-                        if next_byte == b'\n':
-                            line.append(next_byte)
-                            return b''.join(line)
-                        else:
-                            return b''.join(line)
-                if line:
-                    return b''.join(line)
-
             def handle_stream(stream, handler):
+                line_reader = _textprocessing.TerminalLineReader(stream)
                 line = True
                 while line:
-                    line = readline(stream)
+                    line = line_reader.readline()
                     if stop_threads.is_set():
                         break
                     if line is not None:

@@ -1179,3 +1179,55 @@ def parse_timedelta(string: typing.Optional[str]) -> datetime.timedelta:
         return datetime.timedelta(**args)
     except Exception as e:
         raise TimeDeltaParseError(e)
+
+
+class TerminalLineReader:
+    """
+    Breaks on newlines and carriage return, preserves newlines and carriage return in the output as is.
+    """
+
+    def __init__(self, file):
+        self.file = file
+        self.pushback_byte = None
+
+    def readline(self):
+        line = []
+        if self.pushback_byte:
+            line.append(self.pushback_byte)
+            self.pushback_byte = None
+
+        while True:
+            byte = self.file.read(1)
+            if not byte:
+                break
+            line.append(byte)
+            if byte == b'\n':
+                break
+            if byte == b'\r':
+                next_byte = self.file.read(1)
+                if next_byte == b'\n':
+                    line.append(next_byte)
+                else:
+                    self.pushback_byte = next_byte
+                break
+
+        if line:
+            return b''.join(line)
+        return b''
+
+
+def remove_terminal_escape_sequences(string):
+    """
+    Remove any terminal escape sequences from a string.
+    :param string: the string
+    :return: the clean string
+    """
+    ansi_escape = re.compile(r'''
+        \x1B  # ESC
+        (?:   # 7-bit C1 Fe (except CSI) [@-Z\\-_] | 
+              # or [ for CSI, followed by a control sequence
+            \[ [0-?]* [ -/]* [@-~]   
+        )
+    ''', re.VERBOSE)
+
+    return ansi_escape.sub('', string)

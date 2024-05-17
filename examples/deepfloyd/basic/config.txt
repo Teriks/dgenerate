@@ -10,12 +10,11 @@ DeepFloyd/IF-I-M-v1.0
 --dtype float16
 --model-type torch-if
 --model-sequential-offload
---inference-steps 100
---guidance-scales 10
+--inference-steps 60
+--guidance-scales 7
 --output-size 64
 --gen-seeds 2
---prompts "A billboard with the text 'diffusion', realistic photo, 4k; \
-          fake, artwork, cartoon, low quality"
+--prompts "ultra close-up color photo portrait of rainbow owl with deer horns in the woods"
 --output-prefix stage1
 --safety-checker
 
@@ -25,7 +24,7 @@ DeepFloyd/IF-I-M-v1.0
 # and we are saving the "feature_extractor" and "safety_checker" modules from the pipeline
 # used in the invocation above.
 
-\save_modules stage_1_modules feature_extractor safety_checker
+# \save_modules stage_1_modules feature_extractor safety_checker
 
 # valid module names are:
 #
@@ -41,45 +40,46 @@ DeepFloyd/IF-I-M-v1.0
 #  'unet'
 
 
-DeepFloyd/IF-II-M-v1.0
---variant fp16
---dtype float16
---model-type torch-ifs
---model-sequential-offload
---inference-steps 70
---guidance-scales 10
---prompts {{ format_prompt(last_prompts) }}
---seeds {{ last_seeds | join(' ') }}
---seeds-to-images
---image-seeds {{ quote(last_images) }}
---output-prefix stage2
---safety-checker
+# DeepFloyd/IF-II-M-v1.0
+# --variant fp16
+# --dtype float16
+# --model-type torch-ifs
+# --model-sequential-offload
+# --inference-steps 30
+# --guidance-scales 4
+# --prompts {{ format_prompt(last_prompts) }}
+# --seeds {{ last_seeds | join(' ') }}
+# --seeds-to-images
+# --image-seeds {{ quote(last_images) }}
+# --output-prefix stage2
+# --safety-checker
 
 
 # \use_modules can be used to indicate that the next invocation should
 # use a set of modules that we have saved to a variable name, in this case
 # modules from the first stage of Deep Floyd.
 
-\use_modules stage_1_modules
+# \use_modules stage_1_modules
 
-stabilityai/stable-diffusion-x4-upscaler
---variant fp16
---dtype float16
---model-type torch-upscaler-x4
---inference-steps 30
---prompts {{ format_prompt(last_prompts) }}
---seeds {{ last_seeds | join(' ') }}
---seeds-to-images
---image-seeds {{ quote(last_images) }}
---upscaler-noise-levels 100
---output-prefix stage3
+# stabilityai/stable-diffusion-x4-upscaler
+# --variant fp16
+# --dtype float16
+# --model-type torch-upscaler-x4
+# --inference-steps 30
+# --guidance-scales 9.00
+# --prompts {{ format_prompt(last_prompts) }}
+# --seeds {{ last_seeds | join(' ') }}
+# --seeds-to-images
+# --image-seeds {{ quote(last_images) }}
+# --upscaler-noise-levels 20
+# --output-prefix stage3
 
 # Notice that --safety-checker is not used on the invocation above,
 # it is not neccessary because we are using the saved "safety_checker" module from
 # stage 1, which implicitly enables it in the invocation above because it was
 # enabled and loaded for the stage 1 invocation.
 
-\clear_modules
+# \clear_modules
 
 # You should use \clear_modules when you are are sure you are not going to need the
 # modules for reuse any longer, because they are models and or objects that may consume a

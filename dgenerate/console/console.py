@@ -47,6 +47,7 @@ import dgenerate.console.karrasschedulerselect as _karrasschedulerselect
 import dgenerate.console.recipesform as _recipesform
 from dgenerate.console.scrolledtext import ScrolledText
 import dgenerate.console.resources as _resources
+import dgenerate.textprocessing as _textprocessing
 
 
 class DgenerateConsole(tk.Tk):
@@ -392,7 +393,6 @@ class DgenerateConsole(tk.Tk):
 
         self._termination_lock = threading.Lock()
 
-        self._cwd = os.getcwd()
         self._start_shell_process()
 
         self._output_text_queue = queue.Queue()
@@ -401,8 +401,6 @@ class DgenerateConsole(tk.Tk):
         self._start_shell_reader_threads()
 
         self._find_dialog = None
-
-        self._update_cwd()
 
         # output lines per refresh
         self._output_lines_per_refresh = 30
@@ -476,12 +474,14 @@ class DgenerateConsole(tk.Tk):
             '============================================================\n\n')
 
         self._next_text_update_line_return = False
+        self._next_text_update_line_escape = False
 
         self._text_update()
 
         self.bind("<<UpdateEvent>>", lambda *a: self.update())
 
     def _start_shell_reader_threads(self):
+
         self._shell_reader_threads = [
             threading.Thread(target=self._read_shell_output_stream_thread,
                              args=(lambda p: p.stdout, self._write_stdout_output)),
@@ -564,7 +564,7 @@ class DgenerateConsole(tk.Tk):
 
     def _input_text_insert_directory_path(self):
         d = tkinter.filedialog.askdirectory(
-            initialdir=self._cwd)
+            initialdir=self._get_cwd())
 
         if d is None or not d.strip():
             return
@@ -573,7 +573,7 @@ class DgenerateConsole(tk.Tk):
 
     def _input_text_insert_file_path(self):
         f = tkinter.filedialog.askopenfilename(
-            initialdir=self._cwd)
+            initialdir=self._get_cwd())
 
         if f is None or not f.strip():
             return
@@ -582,7 +582,7 @@ class DgenerateConsole(tk.Tk):
 
     def _input_text_insert_file_path_save(self):
         f = tkinter.filedialog.asksaveasfilename(
-            initialdir=self._cwd)
+            initialdir=self._get_cwd())
 
         if f is None or not f.strip():
             return
@@ -730,18 +730,21 @@ class DgenerateConsole(tk.Tk):
                 self._shell_restarting_commence_message()
                 self._start_shell_process()
 
-            for thread in self._shell_reader_threads:
-                # there is no better way than to raise an exception on the thread,
-                # the threads will live forever if they are blocking on read even if they are daemon threads,
-                # and there is no platform independent non-blocking IO with a subprocess
-                res = ctypes.pythonapi.PyThreadState_SetAsyncExc(thread.native_id, ctypes.py_object(SystemExit))
-                if res > 1:
-                    ctypes.pythonapi.PyThreadState_SetAsyncExc(thread.native_id, 0)
-                    raise SystemError("PyThreadState_SetAsyncExc failed")
+            self._terminate_shell_reader_threads()
 
             if restart:
                 self._start_shell_reader_threads()
                 self._shell_restarting_finish_message()
+
+    def _terminate_shell_reader_threads(self):
+        for thread in self._shell_reader_threads:
+            # there is no better way than to raise an exception on the thread,
+            # the threads will live forever if they are blocking on read even if they are daemon threads,
+            # and there is no platform independent non-blocking IO with a subprocess
+            res = ctypes.pythonapi.PyThreadState_SetAsyncExc(thread.native_id, ctypes.py_object(SystemExit))
+            if res > 1:
+                ctypes.pythonapi.PyThreadState_SetAsyncExc(thread.native_id, 0)
+                raise SystemError("PyThreadState_SetAsyncExc failed")
 
     def _shell_return_code_message(self, return_code):
         self._write_stdout_output(
@@ -759,14 +762,15 @@ class DgenerateConsole(tk.Tk):
         env['PYTHONIOENCODING'] = 'utf-8'
         env['PYTHONUNBUFFERED'] = '1'
         env['COLUMNS'] = '100'
-
+        cwd = os.getcwd()
         self._shell_process = psutil.Popen(
             ['dgenerate', '--shell'],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             stdin=subprocess.PIPE,
-            env=env,
-            cwd=self._cwd)
+            env=env)
+
+        self._update_cwd_title(cwd)
 
     def _load_input_entry_text(self):
         f = tkinter.filedialog.askopenfile(
@@ -859,7 +863,7 @@ class DgenerateConsole(tk.Tk):
             r'Wrote Image File: "(.*?)"|\\image_process: Wrote Image "(.*?)"|\\image_process: Wrote Frame "(.*?)"',
             text)
         if match is not None:
-            path = os.path.join(self._cwd, ''.join(filter(None, match.groups())))
+            path = os.path.join(self._get_cwd(deep=True), ''.join(filter(None, match.groups())))
             if os.path.exists(path):
                 self._image_pane_load_image(path)
 
@@ -876,6 +880,11 @@ class DgenerateConsole(tk.Tk):
                     # wait for possible submission of an exit message
                     text = self._output_text_queue.get_nowait()
 
+                if text is not None:
+                    if text.startswith('Working Directory Changed To: '):
+                        # update using shallow psutil query
+                        self._update_cwd_title()
+
                 self._check_text_for_latest_image(text)
 
                 scroll = self._output_text.text.yview()[1] == 1.0
@@ -886,11 +895,17 @@ class DgenerateConsole(tk.Tk):
                     self._output_text.text.delete('1.0',
                                                   f'{output_lines - self._max_output_lines}.0')
 
-                if self._next_text_update_line_return:
-                    self._output_text.text.replace("end-2c linestart", "end-1c", text)
-                else:
-                    self._output_text.text.insert(tk.END, text)
+                clean_text = _textprocessing.remove_terminal_escape_sequences(text)
 
+                if self._next_text_update_line_return:
+                    self._output_text.text.replace("end-2c linestart", "end-1c", clean_text)
+                elif self._next_text_update_line_escape:
+                    if text.strip():
+                        self._output_text.text.replace("end-2c linestart", "end-1c", clean_text)
+                else:
+                    self._output_text.text.insert(tk.END, clean_text)
+
+                self._next_text_update_line_escape = text.endswith('\u001B[A\r') or text.endswith('\u001B[A\r\n')
                 self._next_text_update_line_return = text.endswith('\r')
 
                 if scroll:
@@ -902,23 +917,6 @@ class DgenerateConsole(tk.Tk):
 
         self._output_text.text.config(state=tk.DISABLED)
         self.after(self._output_refresh_rate, self._text_update)
-
-    def _update_cwd(self):
-        try:
-            with self._termination_lock:
-                p = self._shell_process
-                while p.children():
-                    p = p.children()[0]
-                self._cwd = p.cwd()
-            self.title(f'Dgenerate Console: {self._cwd}')
-        except KeyboardInterrupt:
-            pass
-        except IndexError:
-            pass
-        except psutil.NoSuchProcess:
-            pass
-        finally:
-            self.after(100, self._update_cwd)
 
     def _write_stdout_output(self, text: typing.Union[bytes, str]):
         if isinstance(text, str):
@@ -936,35 +934,17 @@ class DgenerateConsole(tk.Tk):
         sys.stderr.flush()
         self._output_text_queue.put(text.decode('utf-8'))
 
-    @staticmethod
-    def readline(file):
-        line = []
-        while True:
-            byte = file.read(1)
-            if not byte:
-                break
-            line.append(byte)
-            if byte == b'\n':
-                return b''.join(line)
-            elif byte == b'\r':
-                next_byte = file.read(1)
-                if next_byte == b'\n':
-                    line.append(next_byte)
-                    return b''.join(line)
-                else:
-                    return b''.join(line)
-        if line:
-            return b''.join(line)
-
     def _read_shell_output_stream_thread(self, get_read_stream, write_out_handler):
         exit_message = True
+        line_reader = _textprocessing.TerminalLineReader(get_read_stream(self._shell_process))
+
         while True:
             with self._termination_lock:
                 return_code = self._shell_process.poll()
 
             if return_code is None:
                 exit_message = True
-                line = self.readline(get_read_stream(self._shell_process))
+                line = line_reader.readline()
                 if line is not None:
                     write_out_handler(line)
             elif exit_message:
@@ -977,6 +957,8 @@ class DgenerateConsole(tk.Tk):
 
                     self._shell_restarting_commence_message()
                     self._start_shell_process()
+                    del line_reader
+                    line_reader = _textprocessing.TerminalLineReader(get_read_stream(self._shell_process))
                     self._shell_restarting_finish_message()
             else:
                 time.sleep(1)
@@ -1040,7 +1022,33 @@ class DgenerateConsole(tk.Tk):
         with history_path.open('w') as file:
             json.dump(self._command_history[-self._max_command_history:], file)
 
+    def _get_cwd(self, deep=False):
+        try:
+            with self._termination_lock:
+                if deep:
+                    p = self._shell_process
+                    while p.children():
+                        p = p.children()[0]
+                    return p.cwd()
+                else:
+                    if platform.system() == 'Windows':
+                        return self._shell_process.children()[0].children()[0].cwd()
+                    else:
+                        return self._shell_process.cwd()
+        except KeyboardInterrupt:
+            pass
+        except IndexError:
+            pass
+        except psutil.NoSuchProcess:
+            pass
+
+    def _update_cwd_title(self, directory=None):
+        if directory is None:
+            directory = self._get_cwd()
+        self.title(f'Dgenerate Console: {directory}')
+
     def _run_input_text(self):
+
         user_input = self._input_text.text.get('1.0', 'end-1c')
 
         if not self._multi_line_input_check_var.get():

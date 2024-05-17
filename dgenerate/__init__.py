@@ -21,6 +21,7 @@
 
 __version__ = '3.5.0'
 
+import io
 import sys
 import os
 
@@ -140,7 +141,7 @@ except KeyboardInterrupt:
     sys.exit(1)
 
 
-class __Unbuffered(object):
+class __Unbuffered:
     def __init__(self, stream):
         self.stream = stream
 
@@ -167,6 +168,8 @@ def main(args: typing.Optional[collections.abc.Sequence[str]] = None):
     :param args: program arguments, if ``None`` is provided they will be taken from ``sys.argv``
     """
 
+    # pyinstaller bundled apps do not
+    # respect this automatically
     unbuffered_io = os.environ.get('PYTHONUNBUFFERED', '0').strip() != '0'
     encoding = 'utf-8'
 
@@ -178,9 +181,11 @@ def main(args: typing.Optional[collections.abc.Sequence[str]] = None):
 
     if not __stdout_null and unbuffered_io:
         sys.stdout = __Unbuffered(sys.stdout)
+        dgenerate.messages.set_message_file(sys.stdout)
 
     if not __stderr_null and unbuffered_io:
         sys.stderr = __Unbuffered(sys.stderr)
+        dgenerate.messages.set_error_file(sys.stderr)
 
     if args is None:
         args = sys.argv[1:]
