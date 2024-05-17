@@ -316,119 +316,104 @@ class _FindDialog(tk.Toplevel):
         super().destroy()
 
 
-_find_dialog: typing.Optional[_FindDialog] = None
-_find_text = ''
-_replace_text = ''
-_regex_mode = False
-_case_sensitive = False
-_last_pos = None
-_last_find_dialog_size = None
-_last_find_replace_dialog_size = None
+class _FindReplaceDialogState:
+    def __init__(self):
+        self.find_dialog = None
+        self.find_text = ''
+        self.replace_text = ''
+        self.regex_mode = False
+        self.case_sensitive = False
+        self.last_pos = None
+        self.last_find_dialog_size = None
+        self.last_find_replace_dialog_size = None
+
+    def open_find_dialog(self, master, name, text_box):
+        if self.find_dialog is not None:
+            last_size = (self.find_dialog.winfo_width(), self.find_dialog.winfo_height())
+            self.regex_mode = self.find_dialog.regex_var.get()
+            self.case_sensitive = self.find_dialog.case_var.get()
+            if self.find_dialog.text_widget is text_box and not self.find_dialog.replace_mode:
+                try:
+                    self.find_dialog.find_entry.focus_set()
+                    return
+                except tk.TclError:
+                    pass
+            else:
+                self.find_text = self.find_dialog.find_entry.get('1.0', 'end-1c')
+
+                if self.find_dialog.replace_mode:
+                    self.replace_text = self.find_dialog.replace_entry.get('1.0', 'end-1c')
+                    self.last_find_replace_dialog_size = last_size
+                else:
+                    self.last_find_dialog_size = last_size
+
+                self.last_pos = (self.find_dialog.winfo_x(), self.find_dialog.winfo_y())
+                self.find_dialog.destroy()
+                self.find_dialog = None
+
+        self.find_dialog = _FindDialog(
+            master, name, text_box,
+            position=self.last_pos,
+            size=self.last_find_dialog_size,
+            find_text=self.find_text,
+            regex_mode=self.regex_mode,
+            case_sensitive=self.case_sensitive)
+
+        self.find_dialog.protocol("WM_DELETE_WINDOW", self._on_closing)
+
+    def open_find_replace_dialog(self, master, name, text_box):
+        if self.find_dialog is not None:
+            last_size = (self.find_dialog.winfo_width(), self.find_dialog.winfo_height())
+            self.regex_mode = self.find_dialog.regex_var.get()
+            self.case_sensitive = self.find_dialog.case_var.get()
+            if self.find_dialog.text_widget is text_box and self.find_dialog.replace_mode:
+                try:
+                    self.find_dialog.find_entry.focus_set()
+                    return
+                except tk.TclError:
+                    pass
+            else:
+                self.find_text = self.find_dialog.find_entry.get('1.0', 'end-1c')
+                self.last_pos = (self.find_dialog.winfo_x(), self.find_dialog.winfo_y())
+
+                if self.find_dialog.replace_mode:
+                    self.last_find_replace_dialog_size = last_size
+                else:
+                    self.last_find_dialog_size = last_size
+
+                self.find_dialog.destroy()
+                self.find_dialog = None
+
+        self.find_dialog = _FindDialog(
+            master, name, text_box,
+            find_text=self.find_text,
+            replace_text=self.replace_text,
+            position=self.last_pos,
+            size=self.last_find_replace_dialog_size,
+            regex_mode=self.regex_mode,
+            case_sensitive=self.case_sensitive,
+            replace_mode=True)
+
+        self.find_dialog.protocol("WM_DELETE_WINDOW", self._on_closing)
+
+    def _on_closing(self):
+        self.regex_mode = self.find_dialog.regex_var.get()
+        self.case_sensitive = self.find_dialog.case_var.get()
+        self.last_pos = (self.find_dialog.winfo_x(), self.find_dialog.winfo_y())
+        self.last_find_dialog_size = (self.find_dialog.winfo_width(), self.find_dialog.winfo_height())
+        self.find_text = self.find_dialog.find_entry.get('1.0', 'end-1c')
+        if self.find_dialog.replace_mode:
+            self.replace_text = self.find_dialog.replace_entry.get('1.0', 'end-1c')
+        self.find_dialog.destroy()
+        self.find_dialog = None
+
+
+_dialog_state = _FindReplaceDialogState()
 
 
 def open_find_dialog(master, name, text_box):
-    global _find_dialog, _find_text, _replace_text, _last_pos, \
-        _last_find_dialog_size, _last_find_replace_dialog_size, \
-        _case_sensitive, _regex_mode
-
-    if _find_dialog is not None:
-        last_size = (_find_dialog.winfo_width(), _find_dialog.winfo_height())
-        _regex_mode = _find_dialog.regex_var.get()
-        _case_sensitive = _find_dialog.case_var.get()
-        if _find_dialog.text_widget is text_box and not _find_dialog.replace_mode:
-            try:
-                _find_dialog.find_entry.focus_set()
-                return
-            except tk.TclError:
-                pass
-        else:
-            _find_text = _find_dialog.find_entry.get(
-                '1.0', 'end-1c')
-
-            if _find_dialog.replace_mode:
-                _replace_text = _find_dialog.replace_entry.get(
-                    '1.0', 'end-1c')
-                _last_find_replace_dialog_size = last_size
-            else:
-                _last_find_dialog_size = last_size
-
-            _last_pos = (_find_dialog.winfo_x(), _find_dialog.winfo_y())
-            _find_dialog.destroy()
-            _find_dialog = None
-
-    _find_dialog = _FindDialog(
-        master, name, text_box,
-        position=_last_pos,
-        size=_last_find_dialog_size,
-        find_text=_find_text,
-        regex_mode=_regex_mode,
-        case_sensitive=_case_sensitive)
-
-    def on_closing():
-        global _find_dialog, _find_text, _last_pos, _last_find_dialog_size, _regex_mode, _case_sensitive
-        _regex_mode = _find_dialog.regex_var.get()
-        _case_sensitive = _find_dialog.case_var.get()
-        _last_pos = (_find_dialog.winfo_x(), _find_dialog.winfo_y())
-        _last_find_dialog_size = (_find_dialog.winfo_width(), _find_dialog.winfo_height())
-        _find_text = _find_dialog.find_entry.get(
-            '1.0', 'end-1c')
-        _find_dialog.destroy()
-        _find_dialog = None
-
-    _find_dialog.protocol("WM_DELETE_WINDOW", on_closing)
+    _dialog_state.open_find_dialog(master, name, text_box)
 
 
 def open_find_replace_dialog(master, name, text_box):
-    global _find_dialog, _find_text, _replace_text, _last_pos, \
-        _last_find_dialog_size, _last_find_replace_dialog_size, \
-        _case_sensitive, _regex_mode
-
-    if _find_dialog is not None:
-        last_size = (_find_dialog.winfo_width(), _find_dialog.winfo_height())
-        _regex_mode = _find_dialog.regex_var.get()
-        _case_sensitive = _find_dialog.case_var.get()
-        if _find_dialog.text_widget is text_box and _find_dialog.replace_mode:
-            try:
-                _find_dialog.find_entry.focus_set()
-                return
-            except tk.TclError:
-                pass
-        else:
-            _find_text = _find_dialog.find_entry.get('1.0', 'end-1c')
-            _last_pos = (_find_dialog.winfo_x(), _find_dialog.winfo_y())
-
-            if _find_dialog.replace_mode:
-                _last_find_replace_dialog_size = last_size
-            else:
-                _last_find_dialog_size = last_size
-
-            _find_dialog.destroy()
-            _find_dialog = None
-
-    _find_dialog = _FindDialog(
-        master, name, text_box,
-        find_text=_find_text,
-        replace_text=_replace_text,
-        position=_last_pos,
-        size=_last_find_replace_dialog_size,
-        regex_mode=_regex_mode,
-        case_sensitive=_case_sensitive,
-        replace_mode=True)
-
-    def on_closing():
-        global _find_dialog, _find_text, _replace_text, \
-            _last_pos, _last_find_replace_dialog_size, _regex_mode, \
-            _case_sensitive
-
-        _regex_mode = _find_dialog.regex_var.get()
-        _case_sensitive = _find_dialog.case_var.get()
-        _last_pos = (_find_dialog.winfo_x(), _find_dialog.winfo_y())
-        _last_find_replace_dialog_size = (_find_dialog.winfo_width(), _find_dialog.winfo_height())
-        _find_text = _find_dialog.find_entry.get(
-            '1.0', 'end-1c')
-        _replace_text = _find_dialog.replace_entry.get(
-            '1.0', 'end-1c')
-        _find_dialog.destroy()
-        _find_dialog = None
-
-    _find_dialog.protocol("WM_DELETE_WINDOW", on_closing)
+    _dialog_state.open_find_replace_dialog(master, name, text_box)
