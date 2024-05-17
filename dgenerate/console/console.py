@@ -181,8 +181,13 @@ class DgenerateConsole(tk.Tk):
 
         # Create the auto scroll checkbox (scroll on input)
         self._auto_scroll_on_run_check_var = tk.BooleanVar(value=True)
-        self._options_menu.add_checkbutton(label='Auto Scroll Output On Run',
+        self._options_menu.add_checkbutton(label='Scroll Output On Run',
                                            variable=self._auto_scroll_on_run_check_var)
+
+        # Create the auto scroll checkbox (scroll on output)
+        self._auto_scroll_on_output_check_var = tk.BooleanVar(value=True)
+        self._options_menu.add_checkbutton(label='Scroll Output On New Output',
+                                           variable=self._auto_scroll_on_output_check_var)
 
         # View Menu
 
@@ -411,11 +416,25 @@ class DgenerateConsole(tk.Tk):
 
         self._find_dialog = None
 
-        # output lines per refresh
-        self._output_lines_per_refresh = 30
+        if platform.system() == 'Windows':
+            # the windows tcl backend cannot handle
+            # rapid updates, it will block-up the event loop
+            # causing the window to be unresponsive
 
-        # output (stdout) refresh rate (ms)
-        self._output_refresh_rate = 100
+            # output lines per refresh
+            self._output_lines_per_refresh = 30
+
+            # output (stdout) refresh rate (ms)
+            self._output_refresh_rate = 100
+        else:
+            # linux tcl backend can handle the
+            # shell process output in near real time
+
+            # output lines per refresh
+            self._output_lines_per_refresh = 1000
+
+            # output (stdout) refresh rate (ms)
+            self._output_refresh_rate = 5
 
         max_scrollback_default = 10000
 
@@ -897,7 +916,8 @@ class DgenerateConsole(tk.Tk):
 
                 self._check_text_for_latest_image(text)
 
-                scroll = self._output_text.text.yview()[1] == 1.0
+                scroll = self._output_text.text.yview()[1] == 1.0 or \
+                         self._auto_scroll_on_output_check_var.get()
 
                 output_lines = int(self._output_text.text.index('end-1c').split('.')[0])
 
@@ -1006,6 +1026,7 @@ class DgenerateConsole(tk.Tk):
             with settings_path.open('r') as file:
                 config = json.load(file)
                 self._auto_scroll_on_run_check_var.set(config.get('auto_scroll_on_run', True))
+                self._auto_scroll_on_output_check_var.set(config.get('auto_scroll_on_output', False))
                 self._word_wrap_input_check_var.set(config.get('word_wrap_input', True))
                 self._word_wrap_output_check_var.set(config.get('word_wrap_output', True))
 
@@ -1014,6 +1035,7 @@ class DgenerateConsole(tk.Tk):
         with settings_path.open('w') as file:
             config = {
                 'auto_scroll_on_run': self._auto_scroll_on_run_check_var.get(),
+                'auto_scroll_on_output': self._auto_scroll_on_output_check_var.get(),
                 'word_wrap_input': self._word_wrap_input_check_var.get(),
                 'word_wrap_output': self._word_wrap_output_check_var.get()
             }
