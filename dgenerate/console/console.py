@@ -785,7 +785,6 @@ class DgenerateConsole(tk.Tk):
 
     def _load_input_entry_text(self):
         fn = _filedialog.open_file_dialog(
-            mode='r',
             initialfile='config.txt',
             defaultextension='.txt',
             filetypes=[('Text Documents', '*.txt')])
