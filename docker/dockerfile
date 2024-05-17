@@ -5,6 +5,7 @@ RUN ln -s /usr/local/cuda/lib64/libnvrtc.so.12 /usr/local/cuda/lib64/libnvrtc.so
 RUN useradd -ms /bin/bash dgenerate
 USER dgenerate
 RUN git config --global --add safe.directory /opt/dgenerate
+ENV DISPLAY=host.docker.internal:0.0
 ENV PATH "/usr/local/cuda/bin:/home/dgenerate/.local/bin:$PATH"
 ENV LD_LIBRARY_PATH "/usr/local/cuda/lib64:$LD_LIBRARY_PATH"
 WORKDIR "/opt/dgenerate"
