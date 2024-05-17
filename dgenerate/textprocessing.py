@@ -1183,12 +1183,30 @@ def parse_timedelta(string: typing.Optional[str]) -> datetime.timedelta:
 
 class TerminalLineReader:
     """
-    Breaks on newlines and carriage return, preserves newlines and carriage return in the output as is.
+    Breaks on newlines and carriage return, preserves
+    newlines and carriage return in the output as is.
     """
 
-    def __init__(self, file):
-        self.file = file
+    pushback_byte: typing.Optional[bytes]
+    """
+    Byte on the stack which will be prepended to the next line if needed.
+    
+    Should be set to ``None`` if file was provided a callable 
+    and the underlying reader has changed to a new instance.
+    """
+
+    def __init__(self, file: typing.Union[typing.IO, typing.Callable[[], typing.IO]]):
+        """
+        :param file: Binary IO object, or a function that returns one.
+        """
+        self._file = file
         self.pushback_byte = None
+
+    @property
+    def file(self):
+        if callable(self._file):
+            return self._file()
+        return self._file
 
     def readline(self):
         line = []

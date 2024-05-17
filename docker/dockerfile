@@ -1,5 +1,6 @@
 FROM nvidia/cuda:12.3.1-runtime-ubuntu22.04
-RUN apt update && apt install -y python3.10 python3-pip python3-wheel python3-venv git
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt update && apt install -y python3.10 python3-pip python3-wheel python3-venv python3-tk git
 RUN ln -s /usr/local/cuda/lib64/libnvrtc.so.12 /usr/local/cuda/lib64/libnvrtc.so
 RUN useradd -ms /bin/bash dgenerate
 USER dgenerate
