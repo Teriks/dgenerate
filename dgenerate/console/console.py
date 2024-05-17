@@ -51,6 +51,7 @@ import dgenerate.textprocessing as _textprocessing
 
 
 class DgenerateConsole(tk.Tk):
+
     def __init__(self):
         super().__init__()
 
@@ -880,10 +881,9 @@ class DgenerateConsole(tk.Tk):
                     # wait for possible submission of an exit message
                     text = self._output_text_queue.get_nowait()
 
-                if text is not None:
-                    if text.startswith('Working Directory Changed To: '):
-                        # update using shallow psutil query
-                        self._update_cwd_title()
+                if text.startswith('Working Directory Changed To: '):
+                    # update using shallow psutil query
+                    self._update_cwd_title()
 
                 self._check_text_for_latest_image(text)
 
@@ -936,10 +936,15 @@ class DgenerateConsole(tk.Tk):
 
     def _read_shell_output_stream_thread(self, get_read_stream, write_out_handler):
         exit_message = True
-        line_reader = _textprocessing.TerminalLineReader(get_read_stream(self._shell_process))
+
+        line_reader = _textprocessing.TerminalLineReader(
+            lambda: get_read_stream(self._shell_process))
 
         while True:
             with self._termination_lock:
+                if self._shell_process is None:
+                    time.sleep(1)
+                    continue
                 return_code = self._shell_process.poll()
 
             if return_code is None:
@@ -954,11 +959,10 @@ class DgenerateConsole(tk.Tk):
 
                     del self._shell_process
                     self._shell_process = None
+                    line_reader.pushback_byte = None
 
                     self._shell_restarting_commence_message()
                     self._start_shell_process()
-                    del line_reader
-                    line_reader = _textprocessing.TerminalLineReader(get_read_stream(self._shell_process))
                     self._shell_restarting_finish_message()
             else:
                 time.sleep(1)
