@@ -580,13 +580,13 @@ class _RecipesForm(tk.Toplevel):
             position_left = self.master.winfo_x() + window_width // 2 - top_level_width // 2
 
             if width is not None:
-                self.geometry(f"{width}x{self.winfo_height()}+{position_left}+{position_top}")
+                self.geometry(f"{width}x{self.winfo_reqheight()}+{position_left}+{position_top}")
             else:
                 self.geometry(f"+{position_left}+{position_top}")
 
         else:
             if width is not None:
-                self.geometry("{}x{}+{}+{}".format(width, self.winfo_height(), *position))
+                self.geometry("{}x{}+{}+{}".format(width, self.winfo_reqheight(), *position))
             else:
                 self.geometry("+{}+{}".format(*position))
 
