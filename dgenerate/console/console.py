@@ -79,7 +79,7 @@ class DgenerateConsole(tk.Tk):
         self._file_menu.add_command(label='Load',
                                     command=self._load_input_entry_text)
         self._file_menu.add_command(label='Save',
-                                    command=self._load_input_entry_text)
+                                    command=self._save_input_entry_text)
 
         # Edit menu
 
