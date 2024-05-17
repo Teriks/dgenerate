@@ -30,7 +30,7 @@ class _FindDialog(tk.Toplevel):
                  master,
                  name, text_widget: tk.Text,
                  position: tuple[int, int] = None,
-                 size: tuple[int, int] = None,
+                 width: typing.Optional[int] = None,
                  find_text='',
                  replace_text='',
                  replace_mode=False,
@@ -101,6 +101,8 @@ class _FindDialog(tk.Toplevel):
         self.master.update_idletasks()
         self.update_idletasks()
 
+        self.minsize(self.winfo_reqwidth(), 0)
+
         if position is None:
             window_width = self.master.winfo_width()
             window_height = self.master.winfo_height()
@@ -109,15 +111,15 @@ class _FindDialog(tk.Toplevel):
 
             position_top = self.master.winfo_y() + window_height // 2 - top_level_height // 2
             position_left = self.master.winfo_x() + window_width // 2 - top_level_width // 2
-            if size is None:
+            if width is None:
                 self.geometry(f"+{position_left}+{position_top}")
             else:
-                self.geometry("{}x{}".format(*size) + f"+{position_left}+{position_top}")
+                self.geometry(f"{width}x{self.winfo_reqheight()}+{position_left}+{position_top}")
         else:
-            if size is None:
+            if width is None:
                 self.geometry("+{}+{}".format(*position))
             else:
-                self.geometry("{}x{}+{}+{}".format(*size, *position))
+                self.geometry(f"{width}x{self.winfo_reqheight()}+{position[0]}+{position[1]}")
 
         self.deiconify()
 
@@ -324,12 +326,12 @@ class _FindReplaceDialogState:
         self.regex_mode = False
         self.case_sensitive = False
         self.last_pos = None
-        self.last_find_dialog_size = None
-        self.last_find_replace_dialog_size = None
+        self.last_find_dialog_width = None
+        self.last_find_replace_dialog_width = None
 
     def open_find_dialog(self, master, name, text_box):
         if self.find_dialog is not None:
-            last_size = (self.find_dialog.winfo_width(), self.find_dialog.winfo_height())
+            last_width = self.find_dialog.winfo_width()
             self.regex_mode = self.find_dialog.regex_var.get()
             self.case_sensitive = self.find_dialog.case_var.get()
             if self.find_dialog.text_widget is text_box and not self.find_dialog.replace_mode:
@@ -343,9 +345,9 @@ class _FindReplaceDialogState:
 
                 if self.find_dialog.replace_mode:
                     self.replace_text = self.find_dialog.replace_entry.get('1.0', 'end-1c')
-                    self.last_find_replace_dialog_size = last_size
+                    self.last_find_replace_dialog_width = last_width
                 else:
-                    self.last_find_dialog_size = last_size
+                    self.last_find_dialog_width = last_width
 
                 self.last_pos = (self.find_dialog.winfo_x(), self.find_dialog.winfo_y())
                 self.find_dialog.destroy()
@@ -354,7 +356,7 @@ class _FindReplaceDialogState:
         self.find_dialog = _FindDialog(
             master, name, text_box,
             position=self.last_pos,
-            size=self.last_find_dialog_size,
+            width=self.last_find_dialog_width,
             find_text=self.find_text,
             regex_mode=self.regex_mode,
             case_sensitive=self.case_sensitive)
@@ -363,7 +365,7 @@ class _FindReplaceDialogState:
 
     def open_find_replace_dialog(self, master, name, text_box):
         if self.find_dialog is not None:
-            last_size = (self.find_dialog.winfo_width(), self.find_dialog.winfo_height())
+            last_width = self.find_dialog.winfo_width()
             self.regex_mode = self.find_dialog.regex_var.get()
             self.case_sensitive = self.find_dialog.case_var.get()
             if self.find_dialog.text_widget is text_box and self.find_dialog.replace_mode:
@@ -377,9 +379,9 @@ class _FindReplaceDialogState:
                 self.last_pos = (self.find_dialog.winfo_x(), self.find_dialog.winfo_y())
 
                 if self.find_dialog.replace_mode:
-                    self.last_find_replace_dialog_size = last_size
+                    self.last_find_replace_dialog_width = last_width
                 else:
-                    self.last_find_dialog_size = last_size
+                    self.last_find_dialog_width = last_width
 
                 self.find_dialog.destroy()
                 self.find_dialog = None
@@ -389,7 +391,7 @@ class _FindReplaceDialogState:
             find_text=self.find_text,
             replace_text=self.replace_text,
             position=self.last_pos,
-            size=self.last_find_replace_dialog_size,
+            width=self.last_find_replace_dialog_width,
             regex_mode=self.regex_mode,
             case_sensitive=self.case_sensitive,
             replace_mode=True)
@@ -400,7 +402,12 @@ class _FindReplaceDialogState:
         self.regex_mode = self.find_dialog.regex_var.get()
         self.case_sensitive = self.find_dialog.case_var.get()
         self.last_pos = (self.find_dialog.winfo_x(), self.find_dialog.winfo_y())
-        self.last_find_dialog_size = (self.find_dialog.winfo_width(), self.find_dialog.winfo_height())
+
+        if self.find_dialog.replace_mode:
+            self.last_find_replace_dialog_width = self.find_dialog.winfo_width()
+        else:
+            self.last_find_dialog_width = self.find_dialog.winfo_width()
+
         self.find_text = self.find_dialog.find_entry.get('1.0', 'end-1c')
         if self.find_dialog.replace_mode:
             self.replace_text = self.find_dialog.replace_entry.get('1.0', 'end-1c')
