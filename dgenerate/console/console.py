@@ -72,12 +72,15 @@ class DgenerateConsole(tk.Tk):
         self._file_menu.add_command(label='Save',
                                     command=self._load_input_entry_text)
         self._file_menu.add_separator()
+
+        def handle_new_window():
+            subprocess.Popen(
+                ['dgenerate', '--console'],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL)
+
         self._file_menu.add_command(label='New Window',
-                                    command=lambda:
-                                    subprocess.Popen('dgenerate --console',
-                                                     stdout=subprocess.DEVNULL,
-                                                     stderr=subprocess.DEVNULL,
-                                                     start_new_session=True))
+                                    command=handle_new_window)
 
         # Edit menu
 
@@ -508,13 +511,15 @@ class DgenerateConsole(tk.Tk):
             if platform.system() == 'Windows':
                 def open_image_pane_directory_in_explorer():
                     subprocess.Popen(
-                        rf'explorer /select,"{get_path()}"',
-                        creationflags=subprocess.DETACHED_PROCESS)
+                        ['explorer', f'/select,"{get_path()}"'],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL)
             else:
                 def open_image_pane_directory_in_explorer():
                     subprocess.Popen(
-                        rf'nautilus "{get_path()}"',
-                        start_new_session=True)
+                        ['nautilus', get_path()],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL)
 
             menu.add_command(label='Open In Directory',
                              command=open_image_pane_directory_in_explorer)
