@@ -1207,7 +1207,7 @@ class TerminalLineReader:
     @property
     def file(self) -> typing.IO:
         """
-        The current file object being read
+        The current file object being read.
         """
         if callable(self._file):
             return self._file()
