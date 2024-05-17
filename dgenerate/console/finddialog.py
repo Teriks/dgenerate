@@ -33,7 +33,9 @@ class _FindDialog(tk.Toplevel):
                  size: tuple[int, int] = None,
                  find_text='',
                  replace_text='',
-                 replace_mode=False):
+                 replace_mode=False,
+                 case_sensitive=False,
+                 regex_mode=False):
         super().__init__(master=master)
 
         self.master = master
@@ -59,11 +61,11 @@ class _FindDialog(tk.Toplevel):
         find_frame = tk.Frame(self)
         find_frame.grid(row=2, column=0, sticky='ew')
 
-        self.case_var = tk.IntVar()
+        self.case_var = tk.BooleanVar(value=case_sensitive)
         self.case_check = tk.Checkbutton(find_frame, text="Case Sensitive", variable=self.case_var)
         self.case_check.pack(side='left', padx=2, pady=2)
 
-        self.regex_var = tk.IntVar()
+        self.regex_var = tk.BooleanVar(value=regex_mode)
         self.regex_check = tk.Checkbutton(find_frame, text="Regex Search", variable=self.regex_var)
         self.regex_check.pack(side='left', padx=2, pady=2)
 
@@ -142,7 +144,7 @@ class _FindDialog(tk.Toplevel):
         start_idx = '1.0' if not self.last_find else self.last_find + '+1c'
         while True:
             if self.regex_var.get():
-                pattern = re.compile(s, re.I if self.case_var.get() == 0 else 0)
+                pattern = re.compile(s, re.I if not self.case_var.get() else 0)
                 match = pattern.search(self.text_widget.get('1.0', tk.END), self._text_index_to_absolute(start_idx))
                 if match:
                     idx = self.text_widget.index(f'1.0 + {match.start()} chars')
@@ -160,7 +162,7 @@ class _FindDialog(tk.Toplevel):
                 else:
                     start_idx = '1.0'
             else:
-                idx = self.text_widget.search(s, start_idx, nocase=bool(1 - self.case_var.get()), stopindex=tk.END)
+                idx = self.text_widget.search(s, start_idx, nocase=not self.case_var.get(), stopindex=tk.END)
                 if idx:
                     end_idx = f'{idx}+{len(s)}c'
                     self.text_widget.tag_remove('found', '1.0', tk.END)
@@ -180,7 +182,7 @@ class _FindDialog(tk.Toplevel):
         if not self.last_find:
             return
         s = self.find_entry.get("1.0", "end-1c")
-        pattern = re.compile(re.escape(s) if not self.regex_var.get() else s, re.I if self.case_var.get() == 0 else 0)
+        pattern = re.compile(re.escape(s) if not self.regex_var.get() else s, re.I if not self.case_var.get() else 0)
         while True:
             text = self.text_widget.get('1.0', self.last_find)
             matches = [(m.start(), m.end(), m.group()) for m in pattern.finditer(text)]
@@ -209,7 +211,7 @@ class _FindDialog(tk.Toplevel):
 
         s = self.find_entry.get("1.0", "end-1c")
         if self.regex_var.get():
-            pattern = re.compile(s, re.I if self.case_var.get() == 0 else 0)
+            pattern = re.compile(s, re.I if not self.case_var.get() else 0)
             matches = pattern.finditer(self.text_widget.get('1.0', tk.END))
             for match in matches:
                 idx = self.text_widget.index(f'1.0 + {match.start()} chars')
@@ -219,7 +221,7 @@ class _FindDialog(tk.Toplevel):
         else:
             start_idx = '1.0'
             while True:
-                idx = self.text_widget.search(s, start_idx, nocase=bool(1 - self.case_var.get()), stopindex=tk.END)
+                idx = self.text_widget.search(s, start_idx, nocase=not self.case_var.get(), stopindex=tk.END)
                 if idx:
                     end_idx = f'{idx}+{len(s)}c'
                     self.text_widget.tag_add('found', idx, end_idx)
@@ -238,7 +240,7 @@ class _FindDialog(tk.Toplevel):
         self.text_widget.edit_separator()
 
         if self.regex_var.get():
-            pattern = re.compile(find, re.I if self.case_var.get() == 0 else 0)
+            pattern = re.compile(find, re.I if not self.case_var.get() else 0)
             self.text_widget.replace('1.0', tk.END, pattern.sub(replacement, in_text))
         else:
             self.text_widget.replace('1.0', tk.END, in_text.replace(find, replacement))
@@ -251,7 +253,7 @@ class _FindDialog(tk.Toplevel):
         replacement = self.replace_entry.get("1.0", "end-1c")
 
         if self.regex_var.get():
-            pattern = re.compile(find, re.I if self.case_var.get() == 0 else 0)
+            pattern = re.compile(find, re.I if not self.case_var.get() else 0)
             search_text = self.text_widget.get(self.last_find, self.last_find_end)
             match = pattern.search(search_text)
             if match:
@@ -279,7 +281,7 @@ class _FindDialog(tk.Toplevel):
         s = self.find_entry.get("1.0", "end-1c")
         replacement = self.replace_entry.get("1.0", "end-1c")
         if self.regex_var.get():
-            pattern = re.compile(s, re.I if self.case_var.get() == 0 else 0)
+            pattern = re.compile(s, re.I if not self.case_var.get() else 0)
             self.replace_entry.tag_remove("invalid", "1.0", tk.END)
             for match in re.finditer(r"\\(\d+)|\\{(\d+)}", replacement):
                 group_num = int(list(filter(None, match.groups()))[0])
@@ -317,6 +319,8 @@ class _FindDialog(tk.Toplevel):
 _find_dialog: typing.Optional[_FindDialog] = None
 _find_text = ''
 _replace_text = ''
+_regex_mode = False
+_case_sensitive = False
 _last_pos = None
 _last_find_dialog_size = None
 _last_find_replace_dialog_size = None
@@ -324,10 +328,13 @@ _last_find_replace_dialog_size = None
 
 def open_find_dialog(master, name, text_box):
     global _find_dialog, _find_text, _replace_text, _last_pos, \
-        _last_find_dialog_size, _last_find_replace_dialog_size
+        _last_find_dialog_size, _last_find_replace_dialog_size, \
+        _case_sensitive, _regex_mode
 
     if _find_dialog is not None:
         last_size = (_find_dialog.winfo_width(), _find_dialog.winfo_height())
+        _regex_mode = _find_dialog.regex_var.get()
+        _case_sensitive = _find_dialog.case_var.get()
         if _find_dialog.text_widget is text_box and not _find_dialog.replace_mode:
             try:
                 _find_dialog.find_entry.focus_set()
@@ -353,10 +360,14 @@ def open_find_dialog(master, name, text_box):
         master, name, text_box,
         position=_last_pos,
         size=_last_find_dialog_size,
-        find_text=_find_text)
+        find_text=_find_text,
+        regex_mode=_regex_mode,
+        case_sensitive=_case_sensitive)
 
     def on_closing():
-        global _find_dialog, _find_text, _last_pos, _last_find_dialog_size
+        global _find_dialog, _find_text, _last_pos, _last_find_dialog_size, _regex_mode, _case_sensitive
+        _regex_mode = _find_dialog.regex_var.get()
+        _case_sensitive = _find_dialog.case_var.get()
         _last_pos = (_find_dialog.winfo_x(), _find_dialog.winfo_y())
         _last_find_dialog_size = (_find_dialog.winfo_width(), _find_dialog.winfo_height())
         _find_text = _find_dialog.find_entry.get(
@@ -369,10 +380,13 @@ def open_find_dialog(master, name, text_box):
 
 def open_find_replace_dialog(master, name, text_box):
     global _find_dialog, _find_text, _replace_text, _last_pos, \
-        _last_find_dialog_size, _last_find_replace_dialog_size
+        _last_find_dialog_size, _last_find_replace_dialog_size, \
+        _case_sensitive, _regex_mode
 
     if _find_dialog is not None:
         last_size = (_find_dialog.winfo_width(), _find_dialog.winfo_height())
+        _regex_mode = _find_dialog.regex_var.get()
+        _case_sensitive = _find_dialog.case_var.get()
         if _find_dialog.text_widget is text_box and _find_dialog.replace_mode:
             try:
                 _find_dialog.find_entry.focus_set()
@@ -397,12 +411,17 @@ def open_find_replace_dialog(master, name, text_box):
         replace_text=_replace_text,
         position=_last_pos,
         size=_last_find_replace_dialog_size,
+        regex_mode=_regex_mode,
+        case_sensitive=_case_sensitive,
         replace_mode=True)
 
     def on_closing():
         global _find_dialog, _find_text, _replace_text, \
-            _last_pos, _last_find_replace_dialog_size
+            _last_pos, _last_find_replace_dialog_size, _regex_mode, \
+            _case_sensitive
 
+        _regex_mode = _find_dialog.regex_var.get()
+        _case_sensitive = _find_dialog.case_var.get()
         _last_pos = (_find_dialog.winfo_x(), _find_dialog.winfo_y())
         _last_find_replace_dialog_size = (_find_dialog.winfo_width(), _find_dialog.winfo_height())
         _find_text = _find_dialog.find_entry.get(
