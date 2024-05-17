@@ -48,7 +48,6 @@ import dgenerate.console.filedialog as _filedialog
 import dgenerate.textprocessing as _textprocessing
 
 
-
 class DgenerateConsole(tk.Tk):
 
     def __init__(self):
@@ -64,13 +63,7 @@ class DgenerateConsole(tk.Tk):
         menu_bar = tk.Menu(self)
 
         # File menu
-
         self._file_menu = tk.Menu(menu_bar, tearoff=0)
-        self._file_menu.add_command(label='Load',
-                                    command=self._load_input_entry_text)
-        self._file_menu.add_command(label='Save',
-                                    command=self._load_input_entry_text)
-        self._file_menu.add_separator()
 
         def handle_new_window():
             subprocess.Popen(
@@ -78,8 +71,15 @@ class DgenerateConsole(tk.Tk):
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL)
 
-        self._file_menu.add_command(label='New Window',
+        self._file_menu.add_command(label='New',
                                     command=handle_new_window)
+
+        self._file_menu.add_separator()
+
+        self._file_menu.add_command(label='Load',
+                                    command=self._load_input_entry_text)
+        self._file_menu.add_command(label='Save',
+                                    command=self._load_input_entry_text)
 
         # Edit menu
 
