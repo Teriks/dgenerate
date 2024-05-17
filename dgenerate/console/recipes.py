@@ -265,7 +265,7 @@ RECIPES = {
         --model-type torch-if
         --model-sequential-offload
         @int[{"label":"Stage 1 Inference Steps", "arg":"--inference-steps", "default":60, "min":1}]
-        @float[{"label":"Stage 1 Guidance Scale", "arg":"--guidance-scales", "default":4, "min":0}]
+        @float[{"label":"Stage 1 Guidance Scale", "arg":"--guidance-scales", "default":7, "min":0}]
         --output-size 64
         @int[{"label":"Number Of Seeds", "arg":"--gen-seeds", "default":1, "min":1}]
         --prompts {{ prompt }}
@@ -289,11 +289,14 @@ RECIPES = {
         
         \use_modules stage_1_modules
         
-        stabilityai/stable-diffusion-x4-upscaler
+        @file[{"label":"x4 Upscaler Model File / HF Slug", "default": "stabilityai/stable-diffusion-x4-upscaler", "optional":false, "file-types":"models"}]
         --variant fp16
         --dtype float16
         --model-type torch-upscaler-x4
+        @karrasscheduler[{"label":"Stage 3 Scheduler"}]
+        @torchvae[{"label":"Stage 3 VAE File / URI"}]
         @int[{"label":"Stage 3 Inference Steps", "arg":"--inference-steps", "default":30, "min":1}]
+        @float[{"label":"Stage 3 Guidance Scale", "arg":"--guidance-scales", "default":9, "min":0}]
         --prompts {{ format_prompt(last_prompts) }}
         --seeds {{ last_seeds | join(' ') }}
         --seeds-to-images

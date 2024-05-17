@@ -685,6 +685,11 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'{a_namer("s_cascade_decoder_cpu_offload")} and {a_namer("s_cascade_decoder_sequential_offload")} '
                 f'may not be enabled simultaneously.')
 
+        if _pipelinewrapper.model_type_is_floyd(self.model_type):
+            if self.vae_uri is not None:
+                raise RenderLoopConfigError(
+                    f'Deep Floyd model types cannot use a {a_namer("vae_uri")} value.')
+
         if self.model_type == _pipelinewrapper.ModelType.TORCH_S_CASCADE_DECODER:
             raise RenderLoopConfigError(
                 f'Stable Cascade decoder {a_namer("model_type")} may not be used as the primary model.')
@@ -697,7 +702,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
             if self.vae_uri is not None:
                 raise RenderLoopConfigError(
-                    f'Stable Cascade can not use a {a_namer("vae_uri")} value.')
+                    f'Stable Cascade cannot use a {a_namer("vae_uri")} value.')
 
             if not self.s_cascade_decoder_guidance_scales:
                 self.s_cascade_decoder_guidance_scales = [
@@ -809,19 +814,22 @@ class RenderLoopConfig(_types.SetFromMixin):
                                     _pipelinewrapper.DEFAULT_OUTPUT_HEIGHT)
 
         if not self.image_seeds:
-            if _pipelinewrapper.model_type_is_floyd_ifs(self.model_type):
+            if _pipelinewrapper.model_type_is_floyd_ifs(self.model_type) and \
+                    not _pipelinewrapper.scheduler_is_help(self.scheduler):
                 raise RenderLoopConfigError(
                     f'you cannot specify Deep Floyd IF super-resolution '
                     f'({a_namer("model_type")} "{self.model_type})" without {a_namer("image_seeds")}'
                 )
 
-            if _pipelinewrapper.model_type_is_upscaler(self.model_type):
+            if _pipelinewrapper.model_type_is_upscaler(self.model_type) and \
+                    not _pipelinewrapper.scheduler_is_help(self.scheduler):
                 raise RenderLoopConfigError(
                     f'you cannot specify an upscaler model '
                     f'({a_namer("model_type")} "{self.model_type})" without {a_namer("image_seeds")}.'
                 )
 
-            if _pipelinewrapper.model_type_is_pix2pix(self.model_type):
+            if _pipelinewrapper.model_type_is_pix2pix(self.model_type) and \
+                    not _pipelinewrapper.scheduler_is_help(self.scheduler):
                 raise RenderLoopConfigError(
                     f'you cannot specify a pix2pix model '
                     f'({a_namer("model_type")} "{self.model_type})" without {a_namer("image_seeds")}.'
@@ -833,7 +841,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
             if self.seeds_to_images:
                 raise RenderLoopConfigError(
-                    f'{a_namer("seeds_to_images")} can not be specified without {a_namer("image_seeds")}.')
+                    f'{a_namer("seeds_to_images")} cannot be specified without {a_namer("image_seeds")}.')
 
             if self.control_net_uris:
                 raise RenderLoopConfigError(
