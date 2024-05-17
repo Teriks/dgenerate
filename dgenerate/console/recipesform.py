@@ -23,31 +23,9 @@ import re
 import shlex
 import tkinter as tk
 import typing
-from tkinter import filedialog
-
+import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.recipes as _recipes
 import dgenerate.console.resources as _resources
-
-
-def _open_file_dialog(*args, **kwargs):
-    f = filedialog.askopenfilename(*args, **kwargs)
-    if f is None or not f.strip():
-        return None
-    return f
-
-
-def _open_file_save_dialog(*args, **kwargs):
-    f = filedialog.asksaveasfilename(*args, **kwargs)
-    if f is None or not f.strip():
-        return None
-    return f
-
-
-def _open_directory_dialog(*args, **kwargs):
-    d = filedialog.askdirectory(*args, **kwargs)
-    if d is None or not d.strip():
-        return None
-    return d
 
 
 def _replace_first(text, old, new):
@@ -271,7 +249,7 @@ class _FloatEntry(_Entry):
         def increment(delta):
             validate_input(None)
             value = float(self.text_var.get())
-            value = max(self.min, min(self.max, round(value + (delta*0.01), 2)))
+            value = max(self.min, min(self.max, round(value + (delta * 0.01), 2)))
             self.text_var.set(value)
 
         def on_mouse_wheel(event):
@@ -288,7 +266,6 @@ class _FloatEntry(_Entry):
         self.entry.bind('<FocusOut>', validate_input)
         self.entry.bind('<MouseWheel>', on_mouse_wheel)
         self.master.on_submit(lambda: validate_input(None))
-
 
         self.label_widget.grid(row=self.row, column=0, padx=(5, 2), sticky='e')
         self.entry.grid(row=self.row, column=1, padx=(5, 2), sticky='ew')
@@ -324,13 +301,14 @@ class _FileEntry(_Entry):
 
         dialog_args = dict()
         if self.file_types == 'models':
-            dialog_args['filetypes'] = [('Models', ' *.'.join(_resources.supported_torch_model_formats_open()))]
+            file_globs = ['*.'+ext for ext in _resources.supported_torch_model_formats_open()]
+            dialog_args['filetypes'] = [('Models', ' '.join(file_globs))]
 
         def select_command():
             if 'output' in self.select_mode:
-                r = _open_file_save_dialog(**dialog_args)
+                r = _filedialog.open_file_save_dialog(**dialog_args)
             else:
-                r = _open_file_dialog(**dialog_args)
+                r = _filedialog.open_file_dialog(**dialog_args)
             if r is not None:
                 self.text_var.set(r)
 
@@ -374,7 +352,7 @@ class _DirectoryEntry(_Entry):
         self.select_mode = self.config.get('mode', 'input')
 
         def select_command():
-            r = _open_directory_dialog()
+            r = _filedialog.open_directory_dialog()
             if r is not None:
                 self.text_var.set(r)
 
@@ -494,8 +472,9 @@ class _TorchVaeEntry(_Entry):
             self.master, self.vae_type_var, *vae_types)
 
         def select_command():
-            r = _open_file_dialog(
-                filetypes=[('Models', ' *.'.join(_resources.supported_torch_model_formats_open()))])
+            file_globs = ['*.'+ext for ext in _resources.supported_torch_model_formats_open()]
+            r = _filedialog.open_file_dialog(
+                filetypes=[('Models', ' *.'.join(file_globs))])
             if r is not None:
                 self.vae_uri_var.set(r)
 
