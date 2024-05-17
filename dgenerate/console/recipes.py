@@ -253,7 +253,7 @@ RECIPES = {
     
         \set prompt "add your prompt here"
         
-        \set auth_token @string[{"label": "Hugging Face Auth Token", "arg":"--auth-token", "default":"%HF_TOKEN%", "optional":false}]
+        \set auth_token @string[{"label": "Hugging Face Auth Token", "arg":"--auth-token", "default":"$HF_TOKEN", "optional":false}]
         
         \set device @device[{"optional":false}]
         

@@ -1183,6 +1183,8 @@ def parse_timedelta(string: typing.Optional[str]) -> datetime.timedelta:
 
 class TerminalLineReader:
     """
+    Reads lines from a binary stream, typically `stdout` or `stderr` of a subprocess.
+
     Breaks on newlines and carriage return, preserves
     newlines and carriage return in the output as is.
     """
@@ -1203,7 +1205,10 @@ class TerminalLineReader:
         self.pushback_byte = None
 
     @property
-    def file(self):
+    def file(self) -> typing.IO:
+        """
+        The current file object being read
+        """
         if callable(self._file):
             return self._file()
         return self._file
@@ -1237,6 +1242,7 @@ class TerminalLineReader:
 def remove_terminal_escape_sequences(string):
     """
     Remove any terminal escape sequences from a string.
+
     :param string: the string
     :return: the clean string
     """
