@@ -3899,8 +3899,11 @@ which does not automatically recieve injected arguments, use the
 Console UI
 ==========
 
-You can launch a Tkinter GUI for interacting with a live dgenerate
-process using ``dgenerate --console`` or via the optionally
+.. image:: https://raw.githubusercontent.com/Teriks/dgenerate/schedulerconfig/examples/media/ui.png
+   :alt: console ui
+
+You can launch a cross platform Tkinter GUI for interacting with a
+live dgenerate process using ``dgenerate --console`` or via the optionally
 installed desktop shortcut on Windows.
 
 This provides a basic REPL for the dgenerate config language utilizing
