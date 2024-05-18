@@ -891,8 +891,12 @@ class DgenerateConsole(tk.Tk):
             r'Wrote Image File: "(.*?)"|\\image_process: Wrote Image "(.*?)"|\\image_process: Wrote Frame "(.*?)"',
             text)
         if match is not None:
-            path = os.path.join(self._get_cwd(deep=True), ''.join(filter(None, match.groups())))
-            if os.path.exists(path):
+            mentioned_path = ''.join(filter(None, match.groups()))
+            if os.path.isabs(mentioned_path):
+                self._image_pane_load_image(mentioned_path)
+            else:
+                path = os.path.join(
+                    self._get_cwd(deep=True), mentioned_path)
                 self._image_pane_load_image(path)
 
     def _add_output_line(self, text):
