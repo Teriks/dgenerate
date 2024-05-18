@@ -1698,10 +1698,11 @@ Specifying a Scheduler (sampler)
 
 A scheduler (otherwise known as a sampler) for the main model can be selected via the use of ``--scheduler``.
 
-And in the case of SDXL the refiner's scheduler can be selected independently with ``--sdxl-refiner-scheduler``.
+And in the case of SDXL the refiner's scheduler can be selected independently with ``--sdxl-refiner-scheduler``,
+this also applies to stable cascade via the argument ``-s-cascade-decoder-scheduler`` however only one scheduler
+type is currently supported for Stable Cascade (``DDPMWuerstchenScheduler``).
 
-The refiner scheduler defaults to the value of ``--scheduler``, which in turn defaults to automatic selection.
-
+Both of these default to the value of ``--scheduler``, which in turn defaults to automatic selection.
 
 Available schedulers for a specific combination of dgenerate arguments can be
 queried using ``--scheduler help``, ``--sdxl-refiner-scheduler help``, or ``--s-cascade-decoder-scheduler help``
@@ -3899,7 +3900,7 @@ which does not automatically recieve injected arguments, use the
 Console UI
 ==========
 
-.. image:: https://raw.githubusercontent.com/Teriks/dgenerate/schedulerconfig/examples/media/ui.png
+.. image:: https://raw.githubusercontent.com/Teriks/dgenerate/v3.5.0/examples/media/ui.png
    :alt: console ui
 
 You can launch a cross platform Tkinter GUI for interacting with a
