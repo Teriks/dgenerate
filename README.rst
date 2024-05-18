@@ -1698,9 +1698,10 @@ Specifying a Scheduler (sampler)
 
 A scheduler (otherwise known as a sampler) for the main model can be selected via the use of ``--scheduler``.
 
-And in the case of SDXL the refiner's scheduler can be selected independently with ``--sdxl-refiner-scheduler``,
-this also applies to stable cascade via the argument ``-s-cascade-decoder-scheduler`` however only one scheduler
-type is currently supported for Stable Cascade (``DDPMWuerstchenScheduler``).
+And in the case of SDXL the refiner's scheduler can be selected independently with ``--sdxl-refiner-scheduler``.
+
+For Stable Cascade the decoder scheduler can be specified via the argument ``-s-cascade-decoder-scheduler``
+however only one scheduler type is supported for Stable Cascade (``DDPMWuerstchenScheduler``).
 
 Both of these default to the value of ``--scheduler``, which in turn defaults to automatic selection.
 
