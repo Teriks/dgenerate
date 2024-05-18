@@ -157,6 +157,15 @@ def load_scheduler(pipeline: typing.Union[diffusers.DiffusionPipeline, diffusers
         # Seems to only work with this scheduler
         compatibles = [c for c in compatibles if c.__name__ == 'EulerDiscreteScheduler']
 
+    if isinstance(pipeline, (diffusers.IFPipeline,
+                             diffusers.IFInpaintingPipeline,
+                             diffusers.IFImg2ImgPipeline,
+                             diffusers.IFSuperResolutionPipeline,
+                             diffusers.IFInpaintingSuperResolutionPipeline,
+                             diffusers.IFImg2ImgSuperResolutionPipeline)):
+        # same here
+        compatibles = [c for c in compatibles if c.__name__ == 'DDPMScheduler']
+
     help_name = scheduler_name.strip().lower()
     if help_name == 'help':
         help_string = f'Compatible schedulers for "{model_path}" are:' + '\n\n'

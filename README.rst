@@ -1704,8 +1704,8 @@ The refiner scheduler defaults to the value of ``--scheduler``, which in turn de
 
 
 Available schedulers for a specific combination of dgenerate arguments can be
-queried using ``--scheduler help``, or ``--sdxl-refiner-scheduler help``, though both cannot
-be queried simultaneously.
+queried using ``--scheduler help``, ``--sdxl-refiner-scheduler help``, or ``--s-cascade-decoder-scheduler help``
+though they cannot be queried simultaneously.
 
 In order to use the query feature it is ideal that you provide all the other arguments
 that you plan on using while making the query, as different combinations of arguments

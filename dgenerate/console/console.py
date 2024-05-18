@@ -409,29 +409,27 @@ class DgenerateConsole(tk.Tk):
 
         self._start_shell_process()
 
-        self._output_text_queue = queue.Queue()
+        self._output_text_stdout_queue = queue.Queue()
+        self._output_text_stderr_queue = queue.Queue()
 
         self._shell_reader_threads = []
         self._start_shell_reader_threads()
 
         self._find_dialog = None
 
+        # output lines per refresh
+        self._output_lines_per_refresh = 30
+
         if platform.system() == 'Windows':
             # the windows tcl backend cannot handle
             # rapid updates, it will block-up the event loop
             # causing the window to be unresponsive
-
-            # output lines per refresh
-            self._output_lines_per_refresh = 30
 
             # output (stdout) refresh rate (ms)
             self._output_refresh_rate = 100
         else:
             # linux tcl backend can handle the
             # shell process output in near real time
-
-            # output lines per refresh
-            self._output_lines_per_refresh = 1000
 
             # output (stdout) refresh rate (ms)
             self._output_refresh_rate = 5
@@ -897,6 +895,38 @@ class DgenerateConsole(tk.Tk):
             if os.path.exists(path):
                 self._image_pane_load_image(path)
 
+    def _add_output_line(self, text):
+        if text.startswith('Working Directory Changed To: '):
+            # update using shallow psutil query
+            self._update_cwd_title()
+
+        self._check_text_for_latest_image(text)
+
+        scroll = self._output_text.text.yview()[1] == 1.0 or \
+                 self._auto_scroll_on_output_check_var.get()
+
+        output_lines = int(self._output_text.text.index('end-1c').split('.')[0])
+
+        if output_lines + 1 > self._max_output_lines:
+            self._output_text.text.delete('1.0',
+                                          f'{output_lines - self._max_output_lines}.0')
+
+        clean_text = _textprocessing.remove_terminal_escape_sequences(text).rstrip() + '\n'
+
+        if self._next_text_update_line_return:
+            self._output_text.text.replace('end-2c linestart', 'end-1c', clean_text)
+        elif self._next_text_update_line_escape:
+            if text.strip():
+                self._output_text.text.replace('end-2c linestart', 'end-1c', clean_text)
+        else:
+            self._output_text.text.insert(tk.END, clean_text)
+
+        self._next_text_update_line_escape = text.endswith('\u001B[A\r')
+        self._next_text_update_line_return = text.endswith('\r')
+
+        if scroll:
+            self._output_text.text.see(tk.END)
+
     def _text_update(self):
         lines = 0
 
@@ -908,39 +938,18 @@ class DgenerateConsole(tk.Tk):
             try:
                 with self._termination_lock:
                     # wait for possible submission of an exit message
-                    text = self._output_text_queue.get_nowait()
+                    text = self._output_text_stdout_queue.get_nowait()
+                self._add_output_line(text)
+            except queue.Empty:
+                break
+            lines += 1
 
-                if text.startswith('Working Directory Changed To: '):
-                    # update using shallow psutil query
-                    self._update_cwd_title()
-
-                self._check_text_for_latest_image(text)
-
-                scroll = self._output_text.text.yview()[1] == 1.0 or \
-                         self._auto_scroll_on_output_check_var.get()
-
-                output_lines = int(self._output_text.text.index('end-1c').split('.')[0])
-
-                if output_lines + 1 > self._max_output_lines:
-                    self._output_text.text.delete('1.0',
-                                                  f'{output_lines - self._max_output_lines}.0')
-
-                clean_text = _textprocessing.remove_terminal_escape_sequences(text).rstrip() + '\n'
-
-                if self._next_text_update_line_return:
-                    self._output_text.text.replace('end-2c linestart', 'end-1c', clean_text)
-                elif self._next_text_update_line_escape:
-                    if text.strip():
-                        self._output_text.text.replace('end-2c linestart', 'end-1c', clean_text)
-                else:
-                    self._output_text.text.insert(tk.END, clean_text)
-
-                self._next_text_update_line_escape = text.endswith('\u001B[A\r')
-                self._next_text_update_line_return = text.endswith('\r')
-
-                if scroll:
-                    self._output_text.text.see(tk.END)
-
+        while True:
+            if lines > self._output_lines_per_refresh:
+                break
+            try:
+                with self._termination_lock:
+                    self._add_output_line(self._output_text_stderr_queue.get_nowait())
             except queue.Empty:
                 break
             lines += 1
@@ -954,7 +963,7 @@ class DgenerateConsole(tk.Tk):
 
         sys.stdout.buffer.write(text)
         sys.stdout.flush()
-        self._output_text_queue.put(text.decode('utf-8'))
+        self._output_text_stdout_queue.put(text.decode('utf-8'))
 
     def _write_stderr_output(self, text: typing.Union[bytes, str]):
         if isinstance(text, str):
@@ -962,7 +971,7 @@ class DgenerateConsole(tk.Tk):
 
         sys.stderr.buffer.write(text)
         sys.stderr.flush()
-        self._output_text_queue.put(text.decode('utf-8'))
+        self._output_text_stderr_queue.put(text.decode('utf-8'))
 
     def _read_shell_output_stream_thread(self, get_read_stream, write_out_handler):
         exit_message = True
