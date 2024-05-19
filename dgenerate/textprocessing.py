@@ -1197,7 +1197,7 @@ class TerminalLineReader:
     and the underlying reader has changed to a new instance.
     """
 
-    def __init__(self, file: typing.Union[typing.IO, typing.Callable[[], typing.IO]]):
+    def __init__(self, file: typing.Union[typing.BinaryIO, typing.Callable[[], typing.IO]]):
         """
         :param file: Binary IO object, or a function that returns one.
         """
@@ -1205,7 +1205,7 @@ class TerminalLineReader:
         self.pushback_byte = None
 
     @property
-    def file(self) -> typing.IO:
+    def file(self) -> typing.BinaryIO:
         """
         The current file object being read.
         """
@@ -1214,29 +1214,27 @@ class TerminalLineReader:
         return self._file
 
     def readline(self):
-        line = []
-        if self.pushback_byte:
-            line.append(self.pushback_byte)
+        line = bytearray()
+        if self.pushback_byte is not None:
+            line.append(ord(self.pushback_byte))
             self.pushback_byte = None
 
         while True:
             byte = self.file.read(1)
             if not byte:
                 break
-            line.append(byte)
+            line.append(ord(byte))
             if byte == b'\n':
                 break
             if byte == b'\r':
                 next_byte = self.file.read(1)
                 if next_byte == b'\n':
-                    line.append(next_byte)
+                    line.append(ord(next_byte))
                 else:
                     self.pushback_byte = next_byte
                 break
 
-        if line:
-            return b''.join(line)
-        return b''
+        return bytes(line) if line else b''
 
 
 def remove_terminal_escape_sequences(string):
