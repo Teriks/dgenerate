@@ -505,8 +505,6 @@ class DgenerateConsole(tk.Tk):
 
         self._text_update()
 
-        self.bind('<<UpdateEvent>>', lambda *a: self.update())
-
     def _start_shell_reader_threads(self):
 
         self._shell_reader_threads = [
