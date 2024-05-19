@@ -774,7 +774,12 @@ def _parse_image_seed_uri_legacy(uri: str, align: int = 8) -> ImageSeedParseResu
 
     result = ImageSeedParseResult()
 
-    first = next(parts_iter)
+    try:
+        first = next(parts_iter)
+    except StopIteration:
+        raise ImageSeedParseError(
+            f'Parsing error in image seed URI "{uri}": empty specification.')
+
     result.seed_path = first
 
     if len(parts) == 1:
