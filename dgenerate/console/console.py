@@ -482,7 +482,8 @@ class DgenerateConsole(tk.Tk):
         self._load_command_history()
         self._load_settings()
 
-        self._write_stdout_output(
+        self._output_text.text.insert(
+            '1.0',
             'This console provides a REPL for dgenerates configuration language.\n\n'
             'Enter configuration above and hit enter to submit, or use the insert key\n'
             'to enter multiline input mode (indicated by a red flashing cursor). You must\n'
