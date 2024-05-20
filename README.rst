@@ -3955,7 +3955,8 @@ on Windows ``%USERPROFILE%\.dgenerate_console_settings``
 Writing Plugins
 ===============
 
-dgenerate has the capability of loading in additional functionality through the use of the ``--plugin-modules`` option.
+dgenerate has the capability of loading in additional functionality through the use of
+the ``--plugin-modules`` option and ``\import_plugins`` directive.
 
 You simply specify one or more module directories on disk, or paths to python files, using this argument.
 
