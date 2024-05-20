@@ -325,7 +325,7 @@ def _create_parser(add_model=True, add_help=True):
                             be communicated with by another process sending it commands. Launching
                             dgenerate with this option and not piping it input will attach it to the terminal like
                             a shell. Entering configuration into this shell will require two newlines to submit a
-                            a command due to parsing lookahead. IE: two presses of the enter key."""))
+                            command due to parsing lookahead. IE: two presses of the enter key."""))
 
     actions.append(
         popen_group.add_argument('--no-stdin', dest=None, action='store_true', default=False,

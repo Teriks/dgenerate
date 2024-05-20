@@ -148,7 +148,7 @@ Help Output
                             and be communicated with by another process sending it commands. Launching
                             dgenerate with this option and not piping it input will attach it to the
                             terminal like a shell. Entering configuration into this shell will require
-                            two newlines to submit a a command due to parsing lookahead. IE: two
+                            two newlines to submit a command due to parsing lookahead. IE: two
                             presses of the enter key.
       --no-stdin            Can be used to indicate to dgenerate that it will not receive any piped in
                             input. This is useful for running dgenerate via popen from python or
