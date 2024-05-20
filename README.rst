@@ -3901,7 +3901,7 @@ which does not automatically recieve injected arguments, use the
 Console UI
 ==========
 
-.. image:: https://raw.githubusercontent.com/Teriks/dgenerate/v3.5.0/examples/media/ui.png
+.. image:: https://raw.githubusercontent.com/Teriks/dgenerate/schedulerconfig/examples/media/ui.gif
    :alt: console ui
 
 You can launch a cross platform Tkinter GUI for interacting with a
