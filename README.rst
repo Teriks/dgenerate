@@ -3956,7 +3956,7 @@ Writing Plugins
 ===============
 
 dgenerate has the capability of loading in additional functionality through the use of
-the ``--plugin-modules`` option and ``\import_plugins`` directive.
+the ``--plugin-modules`` option and ``\import_plugins`` config directive.
 
 You simply specify one or more module directories on disk, or paths to python files, using this argument.
 
