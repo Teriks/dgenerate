@@ -148,14 +148,14 @@ Help Output
                             and be communicated with by another process sending it commands. Launching
                             dgenerate with this option and not piping it input will attach it to the
                             terminal like a shell. Entering configuration into this shell will require
-                            two newlines to submit a command due to parsing lookahead. IE: two
-                            presses of the enter key.
+                            two newlines to submit a command due to parsing lookahead. IE: two presses
+                            of the enter key.
       --no-stdin            Can be used to indicate to dgenerate that it will not receive any piped in
                             input. This is useful for running dgenerate via popen from python or
                             another application using normal arguments, where it would otherwise try
                             to read from STDIN and block forever because it is not attached to a
                             terminal.
-      --console   Launch a terminal-like tkinter GUI that communicates with an instance of
+      --console             Launch a terminal-like tkinter GUI that communicates with an instance of
                             dgenerate running in the background. This allows you to interactively
                             write dgenerate config scripts as if dgenerate were a shell / REPL.
       --plugin-modules PATH [PATH ...]
@@ -839,7 +839,7 @@ Help Output
                             Specifying this option for --model-type torch-upscaler-x2 will produce an
                             error message. The higher this value the more noise is added to the image
                             before upscaling (similar to --image-seed-strengths). (default: [20 for
-                            x4, 250 for ifs])
+                            x4, 250 for torch-ifs/torch-ifs-img2img, 0 for torch-ifs inpainting mode])
       -gs FLOAT [FLOAT ...], --guidance-scales FLOAT [FLOAT ...]
                             One or more guidance scale values to try. Guidance scale effects how much
                             your text prompt is considered. Low values draw more data from images
