@@ -31,7 +31,6 @@ import stat
 import subprocess
 import threading
 import time
-import types
 import typing
 
 import dgenerate
@@ -45,6 +44,7 @@ import dgenerate.prompt as _prompt
 import dgenerate.renderloop as _renderloop
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+import types
 
 
 def _format_prompt_single(prompt):
@@ -145,6 +145,25 @@ def _cwd():
     Return the current working directory as a string.
     """
     return os.getcwd()
+
+
+class _DirectiveArgumentParser(argparse.ArgumentParser):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.return_code = None
+
+    def exit(self, status=0, message=None):
+        if self.return_code is not None:
+            return
+        if message is not None:
+            if status != 0:
+                _messages.log(
+                    message.rstrip(),
+                    level=_messages.ERROR)
+            else:
+                _messages.log(
+                    message.rstrip())
+        self.return_code = status
 
 
 class ConfigRunner(_batchprocessor.BatchProcessor):
@@ -282,6 +301,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'mv': self._mv_directive,
             'cp': self._cp_directive,
             'mkdir': self._mkdir_directive,
+            'rmdir': self._rmdir_directive,
+            'rm': self._rm_directive,
             'exit': self._exit_directive
         }
 
@@ -695,25 +716,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         Also accepts -la or -al
         """
 
-        class LSParser(argparse.ArgumentParser):
-
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
-                self.return_code = None
-
-            def exit(self, status=0, message=None):
-                if message is not None:
-                    if status != 0:
-                        _messages.log(
-                            message.rstrip(),
-                            level=_messages.ERROR)
-                    else:
-                        _messages.log(
-                            message.rstrip())
-                self.return_code = status
-
-        parser = LSParser(prog='ls',
-                          description='List directory contents.')
+        parser = _DirectiveArgumentParser(prog='\\ls',
+                                          description='List directory contents.')
         parser.add_argument('paths', metavar='PATH', type=str, nargs='*', default=['.'],
                             help='the path(s) to list')
         parser.add_argument('-l', action='store_true',
@@ -846,6 +850,83 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         except OSError as e:
             self._directory_stack.append(directory)
             raise _batchprocessor.BatchProcessError(e)
+        return 0
+
+    def _rmdir_directive(self, args: collections.abc.Sequence[str]):
+        """
+        Remove one or more directories.
+
+        Basic implementation of the Unix 'rmdir' command.
+
+        Supports basic POSIX arguments.
+
+        See: \\rmdir --help
+        """
+        parser = _DirectiveArgumentParser(prog='\\rmdir')
+        parser.add_argument('-p', '--parents', action='store_true',
+                            help='Remove directory and its parents')
+        parser.add_argument('directories', nargs='+')
+        parsed_args = parser.parse_args(args)
+
+        if parser.return_code is not None:
+            return parser.return_code
+
+        for d in parsed_args.directories:
+            if parsed_args.parents:
+                shutil.rmtree(d, ignore_errors=True)
+            else:
+                try:
+                    os.rmdir(d)
+                except OSError as e:
+                    raise _batchprocessor.BatchProcessError(
+                        f"Failed to remove directory {d}: {e.strerror}")
+        return 0
+
+    def _rm_directive(self, args: collections.abc.Sequence[str]):
+        """
+        Remove Files.
+
+        Basic implementation of the Unix 'rm' command.
+
+        Supports basic POSIX arguments.
+
+        See: \\rm --help
+        """
+        parser = _DirectiveArgumentParser(prog='\\rm')
+        parser.add_argument('-r', '--recursive', action='store_true',
+                            help='Remove directories and their contents recursively')
+        parser.add_argument('-f', '--force', action='store_true',
+                            help='Ignore nonexistent files and arguments, never prompt')
+        parser.add_argument('files', nargs='+')
+        parsed_args = parser.parse_args(args)
+
+        if parser.return_code is not None:
+            return parser.return_code
+
+        for f in parsed_args.files:
+            try:
+                if parsed_args.recursive:
+                    if os.path.isdir(f):
+                        shutil.rmtree(f, ignore_errors=parsed_args.force)
+                    else:
+                        if parsed_args.force:
+                            try:
+                                os.remove(f)
+                            except FileNotFoundError:
+                                pass
+                        else:
+                            os.remove(f)
+                else:
+                    if parsed_args.force:
+                        try:
+                            os.remove(f)
+                        except FileNotFoundError:
+                            pass
+                    else:
+                        os.remove(f)
+            except OSError as e:
+                raise _batchprocessor.BatchProcessError(
+                    f"Failed to remove {('directory' if os.path.isdir(f) else 'file')} {f}: {e.strerror}")
         return 0
 
     def _config_generate_template_variables_with_types(self) -> dict[str, tuple[type, typing.Any]]:
