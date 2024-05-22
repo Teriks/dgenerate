@@ -35,17 +35,19 @@ import threading
 import time
 import tkinter as tk
 import typing
+
 import PIL.Image
 import PIL.ImageTk
 import psutil
 
+import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.finddialog as _finddialog
 import dgenerate.console.karrasschedulerselect as _karrasschedulerselect
 import dgenerate.console.recipesform as _recipesform
-from dgenerate.console.scrolledtext import ScrolledText
 import dgenerate.console.resources as _resources
-import dgenerate.console.filedialog as _filedialog
+import dgenerate.files as _files
 import dgenerate.textprocessing as _textprocessing
+from dgenerate.console.scrolledtext import ScrolledText
 
 
 class DgenerateConsole(tk.Tk):
@@ -979,7 +981,7 @@ class DgenerateConsole(tk.Tk):
     def _read_shell_output_stream_thread(self, get_read_stream, write_out_handler):
         exit_message = True
 
-        line_reader = _textprocessing.TerminalLineReader(
+        line_reader = _files.TerminalLineReader(
             lambda: get_read_stream(self._shell_process))
 
         while True:

@@ -36,6 +36,7 @@ import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.messages as _messages
 import dgenerate.types as _types
+import dgenerate.files as _files
 from dgenerate.events import \
     Event, \
     AnimationFinishedEvent, \
@@ -205,8 +206,8 @@ class ImageProcessRenderLoop:
         else:
             self.image_processor_loader = image_processor_loader
 
-        self._written_animations = None
-        self._written_images = None
+        self._written_images: typing.Optional[_files.GCFile] = None
+        self._written_animations: typing.Optional[_files.GCFile] = None
         self._iterating = False
 
     @property
@@ -440,9 +441,9 @@ class ImageProcessRenderLoop:
     def _run(self) -> RenderLoopEventStream:
         self.config.check()
 
-        self._written_images = _types.GCFile(
+        self._written_images = _files.GCFile(
             tempfile.TemporaryFile('w+t'))
-        self._written_animations = _types.GCFile(
+        self._written_animations = _files.GCFile(
             tempfile.TemporaryFile('w+t'))
 
         total_generation_steps = len(self.config.input)

@@ -535,36 +535,3 @@ def format_function_signature(func: typing.Callable,
         name = alternate_name
 
     return f"{name}({', '.join(param_strs)}){return_type_str}"
-
-
-class GCFile:
-    """File object wrapper, close on garbage collect"""
-    def __init__(self, file):
-        self.file = file
-
-    def __del__(self):
-        self.file.close()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.file.close()
-
-    def __iter__(self):
-        return self.file.__iter__()
-
-    def __next__(self):
-        return self.file.__next__()
-
-    def __getattr__(self, item):
-        return getattr(self.file, item)
-
-    def __setattr__(self, key, value):
-        if key == "file":
-            self.__dict__[key] = value
-        else:
-            setattr(self.file, key, value)
-
-    def __delattr__(self, item):
-        delattr(self.file, item)
