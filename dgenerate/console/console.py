@@ -998,12 +998,12 @@ class DgenerateConsole(tk.Tk):
             elif exit_message:
                 with self._termination_lock:
                     exit_message = False
-                    self._shell_return_code_message(return_code)
 
                     del self._shell_process
                     self._shell_process = None
                     line_reader.pushback_byte = None
 
+                    self._shell_return_code_message(return_code)
                     self._shell_restarting_commence_message()
                     self._start_shell_process()
                     self._shell_restarting_finish_message()
