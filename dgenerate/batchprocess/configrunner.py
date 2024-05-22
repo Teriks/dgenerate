@@ -31,6 +31,7 @@ import stat
 import subprocess
 import threading
 import time
+import types
 import typing
 
 import dgenerate
@@ -44,7 +45,6 @@ import dgenerate.prompt as _prompt
 import dgenerate.renderloop as _renderloop
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-import types
 
 
 def _format_prompt_single(prompt):
@@ -512,15 +512,40 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         shutil.copy2(args[0], args[1])
         return 0
 
-    def _mkdir_directive(self, args: collections.abc.Sequence[str]):
+    def _mkdir_directive(self, command_line_args: collections.abc.Sequence[str]):
         """
-        Make one or more directories, parent directories will be created if they do not exist.
+        Create a directory or directory tree.
+
+        Basic implementation of the Unix 'mkdir' command.
+
+        Supports the -p / --parents argument.
+
+        See: \\mkdir --help
         """
-        if len(args) < 1:
-            raise _batchprocessor.BatchProcessError(
-                '\\mkdir directive must be provided at least one argument.')
-        for d in args:
-            os.makedirs(d, exist_ok=True)
+        parser = _DirectiveArgumentParser(
+            prog='\\mkdir', description='Create directories.')
+
+        parser.add_argument('-p', '--parents',
+                            action='store_true',
+                            help='No error if existing, make parent directories as needed.')
+
+        parser.add_argument('directories',
+                            nargs='+',
+                            help='List of directories to create')
+
+        args = parser.parse_args(command_line_args)
+
+        if parser.return_code is not None:
+            return parser.return_code
+
+        for directory in args.directories:
+            try:
+                if args.parents:
+                    os.makedirs(directory, exist_ok=True)
+                else:
+                    os.mkdir(directory)
+            except OSError as e:
+                raise _batchprocessor.BatchProcessError(f'Error creating directory "{directory}": {e.strerror}')
         return 0
 
     def _exec_directive(self, args: collections.abc.Sequence[str]):
