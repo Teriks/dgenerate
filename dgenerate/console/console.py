@@ -187,7 +187,7 @@ class DgenerateConsole(tk.Tk):
                                            variable=self._auto_scroll_on_run_check_var)
 
         # Create the auto scroll checkbox (scroll on output)
-        self._auto_scroll_on_output_check_var = tk.BooleanVar(value=True)
+        self._auto_scroll_on_output_check_var = tk.BooleanVar(value=False)
         self._options_menu.add_checkbutton(label='Scroll Output On New Output',
                                            variable=self._auto_scroll_on_output_check_var)
 
