@@ -7,7 +7,7 @@ readme = "README.rst"
 license = "BSD 3-Clause"
 
 [tool.poetry.dependencies]
-python = ">=3.10,<=3.11.6"
+python = ">=3.10,<4"
 diffusers = "0.27.2"
 peft = "0.10.0"
 transformers = "4.40.2"
