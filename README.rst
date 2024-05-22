@@ -940,7 +940,7 @@ https://www.rust-lang.org/tools/install
 
 Install Python:
 
-https://www.python.org/ftp/python/3.11.3/python-3.11.3-amd64.exe
+https://www.python.org/ftp/python/3.12.3/python-3.12.3-amd64.exe
 
 Make sure you select the option "Add to PATH" in the python installer,
 otherwise invoke python directly using it's full path while installing the tool.
