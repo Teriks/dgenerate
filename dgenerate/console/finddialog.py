@@ -159,7 +159,6 @@ class _FindDialog(tk.Toplevel):
                     self.text_widget.tag_config('found', foreground='white', background='blue')
                     self.last_find = idx
                     self.last_find_end = end_idx
-                    found_something = True
                     break
                 elif start_idx == '1.0':
                     break
@@ -175,7 +174,6 @@ class _FindDialog(tk.Toplevel):
                     self.text_widget.tag_config('found', foreground='white', background='blue')
                     self.last_find = idx
                     self.last_find_end = end_idx
-                    found_something = True
                     break
                 elif start_idx == '1.0':
                     break
