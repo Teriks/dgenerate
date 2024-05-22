@@ -49,6 +49,10 @@ import dgenerate.files as _files
 import dgenerate.textprocessing as _textprocessing
 from dgenerate.console.scrolledtext import ScrolledText
 
+DGENERATE_EXE = \
+    os.path.splitext(
+        os.path.basename(os.path.realpath(sys.argv[0])))[0]
+
 
 class DgenerateConsole(tk.Tk):
 
@@ -69,7 +73,7 @@ class DgenerateConsole(tk.Tk):
 
         def handle_new_window():
             subprocess.Popen(
-                ['dgenerate', '--console'],
+                [DGENERATE_EXE, '--console'],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL)
 
@@ -799,7 +803,7 @@ class DgenerateConsole(tk.Tk):
         env['COLUMNS'] = '100'
         cwd = os.getcwd()
         self._shell_process = psutil.Popen(
-            ['dgenerate', '--shell'],
+            [DGENERATE_EXE, '--shell'],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             stdin=subprocess.PIPE,

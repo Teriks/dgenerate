@@ -26,7 +26,7 @@ import sys
 
 __am_dgenerate_app = \
     os.path.splitext(
-        os.path.basename(os.path.realpath(sys.argv[0])))[0] == 'dgenerate'
+        os.path.basename(os.path.realpath(sys.argv[0])))[0] in {'dgenerate', 'dgenerate_windowed'}
 
 __stderr_null = False
 __stdout_null = False
