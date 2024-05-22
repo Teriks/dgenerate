@@ -144,6 +144,8 @@ class _FindDialog(tk.Toplevel):
     def _find_next(self):
         s = self.find_entry.get("1.0", "end-1c")
         start_idx = '1.0' if not self.last_find else self.last_find + '+1c'
+        self.text_widget.tag_remove('found', '1.0', tk.END)
+
         while True:
             if self.regex_var.get():
                 pattern = re.compile(s, re.I if not self.case_var.get() else 0)
@@ -151,13 +153,13 @@ class _FindDialog(tk.Toplevel):
                 if match:
                     idx = self.text_widget.index(f'1.0 + {match.start()} chars')
                     end_idx = f'{idx}+{len(match.group())}c'
-                    self.text_widget.tag_remove('found', '1.0', tk.END)
                     self.text_widget.tag_add('found', idx, end_idx)
                     self.text_widget.mark_set(tk.INSERT, end_idx)
                     self.text_widget.see(idx)
                     self.text_widget.tag_config('found', foreground='white', background='blue')
                     self.last_find = idx
                     self.last_find_end = end_idx
+                    found_something = True
                     break
                 elif start_idx == '1.0':
                     break
@@ -167,13 +169,13 @@ class _FindDialog(tk.Toplevel):
                 idx = self.text_widget.search(s, start_idx, nocase=not self.case_var.get(), stopindex=tk.END)
                 if idx:
                     end_idx = f'{idx}+{len(s)}c'
-                    self.text_widget.tag_remove('found', '1.0', tk.END)
                     self.text_widget.tag_add('found', idx, end_idx)
                     self.text_widget.mark_set(tk.INSERT, end_idx)
                     self.text_widget.see(idx)
                     self.text_widget.tag_config('found', foreground='white', background='blue')
                     self.last_find = idx
                     self.last_find_end = end_idx
+                    found_something = True
                     break
                 elif start_idx == '1.0':
                     break
@@ -185,6 +187,8 @@ class _FindDialog(tk.Toplevel):
             return
         s = self.find_entry.get("1.0", "end-1c")
         pattern = re.compile(re.escape(s) if not self.regex_var.get() else s, re.I if not self.case_var.get() else 0)
+        self.text_widget.tag_remove('found', '1.0', tk.END)
+
         while True:
             text = self.text_widget.get('1.0', self.last_find)
             matches = [(m.start(), m.end(), m.group()) for m in pattern.finditer(text)]
@@ -192,7 +196,6 @@ class _FindDialog(tk.Toplevel):
                 start, end, match = matches[-1]
                 idx = self.text_widget.index(f'1.0 + {start} chars')
                 end_idx = f'{idx}+{len(match)}c'
-                self.text_widget.tag_remove('found', '1.0', tk.END)
                 self.text_widget.tag_add('found', idx, end_idx)
                 self.text_widget.mark_set(tk.INSERT, idx)
                 self.text_widget.see(idx)
