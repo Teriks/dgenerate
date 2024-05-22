@@ -249,7 +249,6 @@ class DgenerateConsole(tk.Tk):
                                    lambda e:
                                    None if self._multi_line_input_check_var.get()
                                    else self._run_input_text())
-
         self._input_text.text.bind('<Up>', self._show_previous_command)
         self._input_text.text.bind('<Down>', self._show_next_command)
         self._input_text.text.bind('<Button-3>',
@@ -344,8 +343,11 @@ class DgenerateConsole(tk.Tk):
                                         self, 'Find In Output',
                                         self._output_text.text))
 
-        self._output_text.text.bind('<Down>',
-                                    lambda e: self._output_text.text.see(tk.END))
+        self.bind('<Control-Up>',
+                  lambda e: self._output_text.text.see('1.0'))
+
+        self.bind('<Control-Down>',
+                  lambda e: self._output_text.text.see(tk.END))
 
         self._output_text_context = tk.Menu(self._output_text, tearoff=0)
 
@@ -368,8 +370,12 @@ class DgenerateConsole(tk.Tk):
         self._output_text_context.add_command(label='Save Selection', command=self._save_output_text_selection)
         self._output_text_context.add_command(label='Save All', command=self._save_output_text)
         self._output_text_context.add_separator()
+        self._output_text_context.add_command(label='To Top',
+                                              accelerator='Ctrl+Up Arrow',
+                                              command=
+                                              lambda: self._output_text.text.see('1.0'))
         self._output_text_context.add_command(label='To Bottom',
-                                              accelerator='Down Arrow',
+                                              accelerator='Ctrl+Down Arrow',
                                               command=
                                               lambda: self._output_text.text.see(tk.END))
 
@@ -1013,6 +1019,10 @@ class DgenerateConsole(tk.Tk):
                 time.sleep(1)
 
     def _show_previous_command(self, event):
+        if event.state & 0x0004:
+            # ignore Ctrl modifier
+            return
+
         if self._multi_line_input_check_var.get():
             return
         if self._current_command_index > 0:
@@ -1024,6 +1034,10 @@ class DgenerateConsole(tk.Tk):
             return 'break'
 
     def _show_next_command(self, event):
+        if event.state & 0x0004:
+            # ignore Ctrl modifier
+            return
+
         if self._multi_line_input_check_var.get():
             return
         if self._current_command_index < len(self._command_history) - 1:
