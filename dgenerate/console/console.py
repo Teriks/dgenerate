@@ -1025,13 +1025,14 @@ class DgenerateConsole(tk.Tk):
 
         if self._multi_line_input_check_var.get():
             return
+
         if self._current_command_index > 0:
             self._current_command_index -= 1
             self._input_text.text.edit_separator()
             self._input_text.text.replace('1.0', tk.END, self._command_history[self._current_command_index])
             self._input_text.text.see(tk.END)
             self._input_text.text.mark_set(tk.INSERT, tk.END)
-            return 'break'
+        return 'break'
 
     def _show_next_command(self, event):
         if event.state & 0x0004:
@@ -1040,13 +1041,14 @@ class DgenerateConsole(tk.Tk):
 
         if self._multi_line_input_check_var.get():
             return
+
         if self._current_command_index < len(self._command_history) - 1:
             self._current_command_index += 1
             self._input_text.text.edit_separator()
             self._input_text.text.replace('1.0', tk.END, self._command_history[self._current_command_index])
             self._input_text.text.see(tk.END)
             self._input_text.text.mark_set(tk.INSERT, tk.END)
-            return 'break'
+        return 'break'
 
     def _load_settings(self):
         settings_path = pathlib.Path(pathlib.Path.home(), '.dgenerate_console_settings')
