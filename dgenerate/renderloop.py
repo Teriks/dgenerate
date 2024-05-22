@@ -31,6 +31,7 @@ import PIL.Image
 import PIL.PngImagePlugin
 
 import dgenerate.filelock as _filelock
+import dgenerate.files as _files
 import dgenerate.imageprocessors as _imageprocessors
 import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
@@ -310,8 +311,8 @@ class RenderLoop:
         self._generation_step = -1
         self._frame_time_sum = 0
         self._last_frame_time = 0
-        self._written_images: typing.Optional[_types.GCFile] = None
-        self._written_animations: typing.Optional[_types.GCFile] = None
+        self._written_images: typing.Optional[_files.GCFile] = None
+        self._written_animations: typing.Optional[_files.GCFile] = None
         self._pipeline_wrapper = None
 
         self.config = \
@@ -803,9 +804,9 @@ class RenderLoop:
 
         self._ensure_output_path()
 
-        self._written_images = _types.GCFile(
+        self._written_images = _files.GCFile(
             tempfile.TemporaryFile('w+t'))
-        self._written_animations = _types.GCFile(
+        self._written_animations = _files.GCFile(
             tempfile.TemporaryFile('w+t'))
 
         self._init_post_processor()

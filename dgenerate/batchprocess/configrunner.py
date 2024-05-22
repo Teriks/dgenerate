@@ -45,6 +45,7 @@ import dgenerate.prompt as _prompt
 import dgenerate.renderloop as _renderloop
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+import dgenerate.files as _files
 
 
 def _format_prompt_single(prompt):
@@ -693,7 +694,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             stop_threads = threading.Event()
 
             def handle_stream(stream, handler):
-                line_reader = _textprocessing.TerminalLineReader(stream)
+                line_reader = _files.TerminalLineReader(stream)
                 line = True
                 while line:
                     line = line_reader.readline()

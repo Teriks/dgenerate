@@ -49,6 +49,16 @@ dgenerate.filelock module
    :special-members: __call__, __init__
 
 
+dgenerate.files module
+-------------------------
+
+.. automodule:: dgenerate.files
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :special-members: __call__, __init__
+
+
 dgenerate.image module
 ----------------------
 

@@ -21,9 +21,8 @@
 
 __version__ = '3.5.0'
 
-import io
-import sys
 import os
+import sys
 
 __am_dgenerate_app = \
     os.path.splitext(
@@ -133,32 +132,13 @@ try:
 
     import dgenerate.messages
     import dgenerate.types
+    import dgenerate.files
 
     transformers.logging.set_verbosity(transformers.logging.CRITICAL)
     diffusers.logging.set_verbosity(diffusers.logging.CRITICAL)
 except KeyboardInterrupt:
     print('Exiting dgenerate due to keyboard interrupt!', file=sys.stderr)
     sys.exit(1)
-
-
-class __Unbuffered:
-    def __init__(self, stream):
-        self.stream = stream
-
-    def write(self, data):
-        self.stream.write(data)
-        self.stream.flush()
-
-    def writelines(self, datas):
-        self.stream.writelines(datas)
-        self.stream.flush()
-
-    def __getattr__(self, attr):
-        return getattr(self.stream, attr)
-
-
-def __stdin_is_tty():
-    return sys.stdin is not None and hasattr(sys.stdin, 'isatty') and sys.stdin.isatty()
 
 
 def main(args: typing.Optional[collections.abc.Sequence[str]] = None):
@@ -180,11 +160,11 @@ def main(args: typing.Optional[collections.abc.Sequence[str]] = None):
         sys.stderr.reconfigure(encoding=encoding)
 
     if not __stdout_null and unbuffered_io:
-        sys.stdout = __Unbuffered(sys.stdout)
+        sys.stdout = dgenerate.files.Unbuffered(sys.stdout)
         dgenerate.messages.set_message_file(sys.stdout)
 
     if not __stderr_null and unbuffered_io:
-        sys.stderr = __Unbuffered(sys.stderr)
+        sys.stderr = dgenerate.files.Unbuffered(sys.stderr)
         dgenerate.messages.set_error_file(sys.stderr)
 
     if args is None:
@@ -204,7 +184,7 @@ def main(args: typing.Optional[collections.abc.Sequence[str]] = None):
             'dgenerate: error: --no-stdin cannot be used with --shell.')
         sys.exit(1)
 
-    if __stdin_is_tty() and nostdin_mode:
+    if dgenerate.files.stdin_is_tty() and nostdin_mode:
         dgenerate.messages.log(
             'dgenerate: error: --no-stdin is not valid when stdin is a terminal (tty).')
         sys.exit(1)
@@ -215,7 +195,7 @@ def main(args: typing.Optional[collections.abc.Sequence[str]] = None):
         # ^ this is necessary for --templates-help to
         # render all the correct values
 
-        if sys.stdin is not None and (not __stdin_is_tty() or server_mode) and not nostdin_mode:
+        if sys.stdin is not None and (not dgenerate.files.stdin_is_tty() or server_mode) and not nostdin_mode:
             # Not a terminal, batch process STDIN
             runner = ConfigRunner(render_loop=render_loop,
                                   version=__version__,

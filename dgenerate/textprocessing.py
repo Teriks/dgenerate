@@ -1181,62 +1181,6 @@ def parse_timedelta(string: typing.Optional[str]) -> datetime.timedelta:
         raise TimeDeltaParseError(e)
 
 
-class TerminalLineReader:
-    """
-    Reads lines from a binary stream, typically `stdout` or `stderr` of a subprocess.
-
-    Breaks on newlines and carriage return, preserves
-    newlines and carriage return in the output as is.
-    """
-
-    pushback_byte: typing.Optional[bytes]
-    """
-    Byte on the stack which will be prepended to the next line if needed.
-    
-    Should be set to ``None`` if file was provided a callable 
-    and the underlying reader has changed to a new instance.
-    """
-
-    def __init__(self, file: typing.Union[typing.BinaryIO, typing.Callable[[], typing.IO]]):
-        """
-        :param file: Binary IO object, or a function that returns one.
-        """
-        self._file = file
-        self.pushback_byte = None
-
-    @property
-    def file(self) -> typing.BinaryIO:
-        """
-        The current file object being read.
-        """
-        if callable(self._file):
-            return self._file()
-        return self._file
-
-    def readline(self):
-        line = bytearray()
-        if self.pushback_byte is not None:
-            line.append(ord(self.pushback_byte))
-            self.pushback_byte = None
-
-        while True:
-            byte = self.file.read(1)
-            if not byte:
-                break
-            line.append(ord(byte))
-            if byte == b'\n':
-                break
-            if byte == b'\r':
-                next_byte = self.file.read(1)
-                if next_byte == b'\n':
-                    line.append(ord(next_byte))
-                else:
-                    self.pushback_byte = next_byte
-                break
-
-        return bytes(line) if line else b''
-
-
 def remove_terminal_escape_sequences(string):
     """
     Remove any terminal escape sequences from a string.
