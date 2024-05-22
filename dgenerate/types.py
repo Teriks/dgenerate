@@ -501,7 +501,7 @@ def format_function_signature(func: typing.Callable,
                               alternate_name: typing.Optional[str] = None,
                               omit_params: typing.Optional[collections.abc.Container] = None) -> str:
     """
-    Formats the signature of a given function to a string.
+    Formats the signature of a given function to a string, including default values for arguments.
 
     :param func: The function
     :param alternate_name: Alternate function display name
@@ -518,11 +518,16 @@ def format_function_signature(func: typing.Callable,
         if omit_params is not None and param_name in omit_params:
             continue
         param_type = param.annotation
+        param_default = param.default
+
+        param_str = f"{param_name}"
         if param_type != inspect.Parameter.empty:
-            param_strs.append(
-                f"{param_name}: {param_type.__name__ if str(param_type).startswith('<class') else param_type}")
-        else:
-            param_strs.append(param_name)
+            param_str += f": {param_type.__name__ if str(param_type).startswith('<class') else param_type}"
+        if param_default != inspect.Parameter.empty:
+            default_value = repr(param_default)
+            param_str += f" = {default_value}"
+
+        param_strs.append(param_str)
 
     if return_type != inspect.Signature.empty:
         return_type_str = f" -> {return_type.__name__ if str(return_type).startswith('<class') else return_type}"
