@@ -31,6 +31,7 @@ requires_extra_data_forced = [
     'bs4',
     'PIL',
     'dateutil',
+    'pkg_resources',
     'win32',
     'win32com',
     'win32comext',
@@ -103,6 +104,25 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
+    console=True,
+    disable_windowed_traceback=True,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    icon='../dgenerate/icon.ico'
+)
+
+exe2 = EXE(
+    pyz,
+    a.scripts,
+    [],
+    exclude_binaries=True,
+    name='dgenerate_windowed',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
@@ -111,8 +131,10 @@ exe = EXE(
     entitlements_file=None,
     icon='../dgenerate/icon.ico'
 )
+
 coll = COLLECT(
     exe,
+    exe2,
     a.binaries,
     a.zipfiles,
     a.datas,
