@@ -3437,9 +3437,11 @@ Example output:
 
     Available config directives:
 
+        "\help"
         "\templates_help"
         "\directives_help"
         "\functions_help"
+        "\image_processor_help"
         "\clear_model_cache"
         "\clear_pipeline_cache"
         "\clear_unet_cache"
@@ -3458,13 +3460,17 @@ Example output:
         "\mv"
         "\cp"
         "\mkdir"
+        "\rmdir"
+        "\rm"
         "\exit"
         "\image_process"
         "\import_plugins"
         "\set"
+        "\sete"
         "\setp"
         "\unset"
         "\print"
+        "\echo"
 
 Here are examples of other available directives such as ``\set``, ``\setp``, and
 ``\print`` as well as some basic Jinja2 templating usage. This example also covers
