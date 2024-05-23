@@ -78,7 +78,10 @@ def get_cuda_devices():
         result = subprocess.run(['nvidia-smi',
                                  '--query-gpu=index',
                                  '--format=csv,noheader'],
-                                stdout=subprocess.PIPE)
+                                stdin=None,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT,
+                                creationflags=subprocess.CREATE_NO_WINDOW)
         devices = result.stdout.decode().strip().split('\n')
         return ['cuda:' + device for device in devices]
     except FileNotFoundError:
