@@ -538,7 +538,7 @@ class DgenerateConsole(tk.Tk):
             if platform.system() == 'Windows':
                 def open_image_pane_directory_in_explorer():
                     subprocess.Popen(
-                        ['explorer', f'/select,"{get_path()}"'],
+                        ['explorer', '/select', ',', get_path()],
                         stdout=subprocess.DEVNULL,
                         stderr=subprocess.DEVNULL)
             else:
