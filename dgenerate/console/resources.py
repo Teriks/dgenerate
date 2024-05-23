@@ -24,12 +24,12 @@ import io
 import platform
 import subprocess
 import tkinter
+import tkinter as tk
 import typing
+import webbrowser
 
 import PIL.Image
 import PIL.ImageTk
-import tkinter as tk
-import webbrowser
 
 
 def set_window_icon(window: typing.Union[tkinter.Tk, tkinter.Toplevel]):
@@ -75,13 +75,17 @@ def get_torch_vae_types():
 
 def get_cuda_devices():
     try:
+        extra_kwargs = dict()
+        if platform.system() == 'Windows':
+            extra_kwargs = {'creationflags': subprocess.CREATE_NO_WINDOW}
+
         result = subprocess.run(['nvidia-smi',
                                  '--query-gpu=index',
                                  '--format=csv,noheader'],
                                 stdin=None,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT,
-                                creationflags=subprocess.CREATE_NO_WINDOW)
+                                **extra_kwargs)
         devices = result.stdout.decode().strip().split('\n')
         return ['cuda:' + device for device in devices]
     except FileNotFoundError:
@@ -125,5 +129,3 @@ def add_help_menu_links(menu: tk.Menu):
         command=lambda:
         webbrowser.open(
             f'https://dgenerate.readthedocs.io/en/v{ver}/readme.html'))
-
-
