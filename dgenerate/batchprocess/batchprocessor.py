@@ -329,7 +329,7 @@ class BatchProcessor:
 
         if stream:
             def stream_generator():
-                buffer = ""
+                buffer = ''
                 try:
                     for piece in jinja_env.from_string(string). \
                             stream(**self.template_variables):
@@ -337,6 +337,8 @@ class BatchProcessor:
                         while '\n' in buffer:
                             line, buffer = buffer.split('\n', 1)
                             yield os.path.expandvars(line)
+                    if buffer:
+                        yield os.path.expandvars(buffer)
                 except Exception as e:
                     raise BatchProcessError(f'Template Render Error: {str(e).strip()}')
 
