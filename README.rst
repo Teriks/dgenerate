@@ -878,7 +878,7 @@ Help Output
                             memory usage. If any of these constraint expressions are met all models
                             cached in memory will be cleared. Example, and default value:
                             "used_percent > 70" For Syntax See: [https://dgenerate.readthedocs.io/en/v
-                            3.5.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.CACHE_MEMORY_CON
+                            3.5.1/dgenerate_submodules.html#dgenerate.pipelinewrapper.CACHE_MEMORY_CON
                             STRAINTS]
       -pmc EXPR [EXPR ...], --pipeline-cache-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the in
@@ -912,7 +912,7 @@ Help Output
                             any of these constraint expressions are met all ControlNet models cached
                             in memory will be cleared. Example, and default value: "control_net_size >
                             (available * 0.75)" For Syntax See: [https://dgenerate.readthedocs.io/en/v
-                            3.5.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.CONTROL_NET_CACH
+                            3.5.1/dgenerate_submodules.html#dgenerate.pipelinewrapper.CONTROL_NET_CACH
                             E_MEMORY_CONSTRAINTS]
 
 
@@ -973,12 +973,12 @@ Install dgenerate:
 
     # If you want a specific version
 
-    pipx install dgenerate==3.5.0 ^
+    pipx install dgenerate==3.5.1 ^
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu121/"
 
     # You can install without pipx into your own environment like so
 
-    pip install dgenerate==3.5.0 --extra-index-url https://download.pytorch.org/whl/cu121/
+    pip install dgenerate==3.5.1 --extra-index-url https://download.pytorch.org/whl/cu121/
 
 
 It is recommended to install dgenerate with pipx if you are just intending
@@ -1095,22 +1095,22 @@ Install dgenerate
 
     # If you want a specific version
 
-    pipx install dgenerate==3.5.0 \
+    pipx install dgenerate==3.5.1 \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu121/"
 
     # Specific version with flax/jax support
 
-    pipx install dgenerate[flax]==3.5.0 \
+    pipx install dgenerate[flax]==3.5.1 \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu121/ \
     -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html"
 
     # You can install without pipx into your own environment like so
 
-    pip3 install dgenerate==3.5.0 --extra-index-url https://download.pytorch.org/whl/cu121/
+    pip3 install dgenerate==3.5.1 --extra-index-url https://download.pytorch.org/whl/cu121/
 
     # Or with flax
 
-    pip3 install dgenerate[flax]==3.5.0 --extra-index-url https://download.pytorch.org/whl/cu121/ \
+    pip3 install dgenerate[flax]==3.5.1 --extra-index-url https://download.pytorch.org/whl/cu121/ \
     -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 
@@ -3002,7 +3002,7 @@ The following is a config file example that covers very basic syntax concepts:
 
 .. code-block:: jinja
 
-    #! dgenerate 3.5.0
+    #! dgenerate 3.5.1
 
     # If a hash-bang version is provided in the format above
     # a warning will be produced if the version you are running
@@ -3097,7 +3097,7 @@ Template variables set with the ``\set`` and ``\setp`` directive will also be me
 
 .. code-block:: jinja
 
-    #! dgenerate 3.5.0
+    #! dgenerate 3.5.1
 
     # Invocation will proceed as normal
 
@@ -3479,7 +3479,7 @@ such as VAEs etc. outside of relying on the caching system.
 
 .. code-block:: jinja
 
-    #! dgenerate 3.5.0
+    #! dgenerate 3.5.1
 
     # You can define your own template variables with the \set directive
     # the \set directive does not do any shell args parsing on its value
@@ -3701,7 +3701,7 @@ globbing.
 
 .. code-block:: jinja
 
-    #! dgenerate 3.5.0
+    #! dgenerate 3.5.1
 
     # globbing can be preformed via shell expansion or using
     # the glob module inside jinja templates
@@ -3762,7 +3762,7 @@ The dgenerate sub-command ``image-process`` has a config directive implementatio
 
 .. code-block:: jinja
 
-    #! dgenerate 3.5.0
+    #! dgenerate 3.5.1
 
     # print the help message of --sub-command image-process, this does
     # not cause the config to exit
@@ -3795,7 +3795,7 @@ config script.
 
 .. code-block::
 
-    #! dgenerate 3.5.0
+    #! dgenerate 3.5.1
 
     # run dgenerate as a subprocess, read a config
     # and send stdout and stderr to a file
@@ -3817,7 +3817,7 @@ You can exit a config early if need be using the ``\exit`` directive
 
 .. code-block:: jinja
 
-    #! dgenerate 3.5.0
+    #! dgenerate 3.5.1
 
     # exit the process with return code 1, which indicates an error
 

@@ -1,4 +1,4 @@
-#! dgenerate 3.5.0
+#! dgenerate 3.5.1
 
 # Deep Floyd IF consist of 3 stages, an initial stage that produces a 64x64 image, a second stage that takes
 # that image and scales it to 256x265, and a third stage that takes that image and x4 scales it to 1024x1024
