@@ -1633,13 +1633,13 @@ with ImageMagick for example as so:
 
 .. code-block:: bash
 
-    magick identify -format "%[Property:DgenerateConfig] generated_file.png
+    magick identify -format "%[Property:DgenerateConfig]" generated_file.png
 
 Generated configuration can be read back into dgenerate via a pipe or file redirection.
 
 .. code-block:: bash
 
-    magick identify -format "%[Property:DgenerateConfig] generated_file.png | dgenerate
+    magick identify -format "%[Property:DgenerateConfig]" generated_file.png | dgenerate
 
     dgenerate < generated-config.txt
 
