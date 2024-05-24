@@ -1,4 +1,4 @@
-#! dgenerate 3.5.0
+#! dgenerate 3.5.1
 
 # globbing can be preformed via shell expansion or using
 # the glob module inside jinja templates
