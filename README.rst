@@ -1,5 +1,5 @@
-.. |Documentation Status| image:: https://readthedocs.org/projects/dgenerate/badge/?version=v3.5.0
-   :target: http://dgenerate.readthedocs.io/en/v3.5.0/
+.. |Documentation Status| image:: https://readthedocs.org/projects/dgenerate/badge/?version=v3.5.1
+   :target: http://dgenerate.readthedocs.io/en/v3.5.1/
 
 Overview
 ========
@@ -36,7 +36,7 @@ and more.
 This software requires an Nvidia GPU supporting CUDA 12.1+, CPU rendering is possible for
 some operations but extraordinarily slow.
 
-For library documentation visit `readthedocs <http://dgenerate.readthedocs.io/en/v3.5.0/>`_.
+For library documentation visit `readthedocs <http://dgenerate.readthedocs.io/en/v3.5.1/>`_.
 
 ----
 
@@ -887,7 +887,7 @@ Help Output
                             any of these constraint expressions are met all DiffusionPipeline objects
                             cached in memory will be cleared. Example, and default value:
                             "pipeline_size > (available * 0.75)" For Syntax See: [https://dgenerate.re
-                            adthedocs.io/en/v3.5.0/dgenerate_submodules.html#dgenerate.pipelinewrapper
+                            adthedocs.io/en/v3.5.1/dgenerate_submodules.html#dgenerate.pipelinewrapper
                             .PIPELINE_CACHE_MEMORY_CONSTRAINTS]
       -umc EXPR [EXPR ...], --unet-cache-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the in
@@ -895,7 +895,7 @@ Help Output
                             usage of new UNet models that are about to enter memory. If any of these
                             constraint expressions are met all UNet models cached in memory will be
                             cleared. Example, and default value: "unet_size > (available * 0.75)" For
-                            Syntax See: [https://dgenerate.readthedocs.io/en/v3.5.0/dgenerate_submodul
+                            Syntax See: [https://dgenerate.readthedocs.io/en/v3.5.1/dgenerate_submodul
                             es.html#dgenerate.pipelinewrapper.UNET_CACHE_MEMORY_CONSTRAINTS]
       -vmc EXPR [EXPR ...], --vae-cache-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the in
@@ -903,7 +903,7 @@ Help Output
                             usage of new VAE models that are about to enter memory. If any of these
                             constraint expressions are met all VAE models cached in memory will be
                             cleared. Example, and default value: "vae_size > (available * 0.75)" For
-                            Syntax See: [https://dgenerate.readthedocs.io/en/v3.5.0/dgenerate_submodul
+                            Syntax See: [https://dgenerate.readthedocs.io/en/v3.5.1/dgenerate_submodul
                             es.html#dgenerate.pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS]
       -cmc EXPR [EXPR ...], --control-net-cache-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the in
@@ -1336,8 +1336,8 @@ however for this example files on disk are used for brevity.
 
 You can download them here:
 
- * `my-image-seed.png <https://raw.githubusercontent.com/Teriks/dgenerate/v3.5.0/examples/media/dog-on-bench.png>`_
- * `my-mask-image.png <https://raw.githubusercontent.com/Teriks/dgenerate/v3.5.0/examples/media/dog-on-bench-mask.png>`_
+ * `my-image-seed.png <https://raw.githubusercontent.com/Teriks/dgenerate/v3.5.1/examples/media/dog-on-bench.png>`_
+ * `my-mask-image.png <https://raw.githubusercontent.com/Teriks/dgenerate/v3.5.1/examples/media/dog-on-bench-mask.png>`_
 
 The command below generates a cat sitting on a bench with the images from the links above, the mask image masks out
 areas over the dog in the original image, causing the dog to be replaced with an AI generated cat.
@@ -2397,7 +2397,7 @@ at which the control net model stops applying guidance. It defaults to 1.0, mean
 stop at the last inference step.
 
 
-These examples use: `vermeer_canny_edged.png <https://raw.githubusercontent.com/Teriks/dgenerate/v3.5.0/examples/media/vermeer_canny_edged.png>`_
+These examples use: `vermeer_canny_edged.png <https://raw.githubusercontent.com/Teriks/dgenerate/v3.5.1/examples/media/vermeer_canny_edged.png>`_
 
 
 .. code-block:: bash
@@ -2600,7 +2600,7 @@ CPU immediately when it is done, clearing up VRAM space before the diffusion mod
 For an example, images can be processed with the canny edge detection algorithm or OpenPose (rigging generation)
 before being used for generation with a model + a ControlNet.
 
-This image of a `horse <https://raw.githubusercontent.com/Teriks/dgenerate/v3.5.0/examples/media/horse2.jpeg>`_
+This image of a `horse <https://raw.githubusercontent.com/Teriks/dgenerate/v3.5.1/examples/media/horse2.jpeg>`_
 is used in the example below with a ControlNet that is trained to generate images from canny edge detected input.
 
 .. code-block:: bash
@@ -2680,7 +2680,7 @@ Upscaling with Diffusion Upscaler Models
 
 Stable diffusion image upscaling models can be used via the model types ``torch-upscaler-x2`` and ``torch-upscaler-x4``.
 
-The image used in the example below is this `low resolution cat <https://raw.githubusercontent.com/Teriks/dgenerate/v3.5.0/examples/media/low_res_cat.png>`_
+The image used in the example below is this `low resolution cat <https://raw.githubusercontent.com/Teriks/dgenerate/v3.5.1/examples/media/low_res_cat.png>`_
 
 .. code-block:: bash
 
@@ -3907,7 +3907,7 @@ which does not automatically recieve injected arguments, use the
 Console UI
 ==========
 
-.. image:: https://raw.githubusercontent.com/Teriks/dgenerate/v3.5.0/examples/media/ui.gif
+.. image:: https://raw.githubusercontent.com/Teriks/dgenerate/v3.5.1/examples/media/ui.gif
    :alt: console ui
 
 You can launch a cross platform Tkinter GUI for interacting with a
@@ -3969,25 +3969,25 @@ You simply specify one or more module directories on disk, or paths to python fi
 dgenerate supports implementing image processors and config directives through plugins.
 
 A code example as well as a usage example for image processor plugins can be found
-in the `"writing_plugins/image_processor" <https://github.com/Teriks/dgenerate/tree/v3.5.0/examples/writing_plugins/image_processor>`_
+in the `"writing_plugins/image_processor" <https://github.com/Teriks/dgenerate/tree/v3.5.1/examples/writing_plugins/image_processor>`_
 folder of the examples folder.
 
-The source code for the built in `canny <https://github.com/Teriks/dgenerate/blob/v3.5.0/dgenerate/imageprocessors/canny.py>`_ processor,
-the `openpose <https://github.com/Teriks/dgenerate/blob/v3.5.0/dgenerate/imageprocessors/openpose.py>`_ processor, and the simple
-`pillow image operations <https://github.com/Teriks/dgenerate/blob/v3.5.0/dgenerate/imageprocessors/imageops.py>`_ processors can also
+The source code for the built in `canny <https://github.com/Teriks/dgenerate/blob/v3.5.1/dgenerate/imageprocessors/canny.py>`_ processor,
+the `openpose <https://github.com/Teriks/dgenerate/blob/v3.5.1/dgenerate/imageprocessors/openpose.py>`_ processor, and the simple
+`pillow image operations <https://github.com/Teriks/dgenerate/blob/v3.5.1/dgenerate/imageprocessors/imageops.py>`_ processors can also
 be of reference as they are written as internal image processor plugins.
 
 An example for writing config directives can be found in the
-`"writing_plugins/config_directive" <https://github.com/Teriks/dgenerate/tree/v3.5.0/examples/writing_plugins/config_directive>`_ folder
+`"writing_plugins/config_directive" <https://github.com/Teriks/dgenerate/tree/v3.5.1/examples/writing_plugins/config_directive>`_ folder
 of the examples folder. Config template functions can also be implemented by plugins,
-see: `"writing_plugins/template_function" <https://github.com/Teriks/dgenerate/tree/v3.5.0/examples/writing_plugins/template_function>`_
+see: `"writing_plugins/template_function" <https://github.com/Teriks/dgenerate/tree/v3.5.1/examples/writing_plugins/template_function>`_
 
 Currently the only internal directive that is implemented as a plugin is the ``\image_process`` directive,
-who's source file `can be located here <https://github.com/Teriks/dgenerate/blob/v3.5.0/dgenerate/batchprocess/image_process_directive.py>`_,
+who's source file `can be located here <https://github.com/Teriks/dgenerate/blob/v3.5.1/dgenerate/batchprocess/image_process_directive.py>`_,
 the source file for this directive is terse as most of ``\image_process`` is implemented as reusable code as mentioned below.
 
 The behavior of ``\image_process`` which is also used for ``--sub-command image-process`` is
-`is implemented here <https://github.com/Teriks/dgenerate/blob/v3.5.0/dgenerate/image_process>`_.
+`is implemented here <https://github.com/Teriks/dgenerate/blob/v3.5.1/dgenerate/image_process>`_.
 
 File Cache Control
 ==================
