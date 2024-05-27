@@ -42,6 +42,8 @@ numpy = "^1.26.4"
 spandrel = "^0.3.3"
 spandrel_extra_arches = "^0.1.1"
 asteval = "^0.9.32"
+pygments = "^2.18.0"
+chlorophyll = "0.4.2"
 
 [tool.poetry.extras]
 flax = ["flax", "jax"]

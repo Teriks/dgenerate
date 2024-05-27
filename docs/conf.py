@@ -2,6 +2,10 @@ import os
 import sys
 from importlib.machinery import SourceFileLoader
 
+import sphinx.highlighting
+
+import dgenerate.pygments
+
 sys.path.insert(0, os.path.abspath('..'))
 
 __setup = SourceFileLoader('setup_as_library', '../setup.py').load_module()
@@ -39,3 +43,5 @@ html_static_path = ['_static']
 autodoc_member_order = 'groupwise'
 
 html_theme_options = {'navigation_depth': 4}
+
+sphinx.highlighting.lexers['jinja'] = dgenerate.pygments.DgenerateLexer()

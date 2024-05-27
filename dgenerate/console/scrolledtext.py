@@ -18,7 +18,6 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 import tkinter as tk
 import tkinter.filedialog
 import tkinter.font
@@ -35,10 +34,14 @@ class ScrolledText(tk.Frame):
             text_args['autoseparators'] = True
             text_args['maxundo'] = -1
 
-        self.text = tk.Text(self, wrap='word', **text_args)
+        self.text = tk.Text(self,
+                            wrap='word',
+                            **text_args)
 
         font = tkinter.font.Font(font=self.text['font'])
         self.text.config(tabs=font.measure(' ' * 4))
+
+        self.text.config(font=("monospace", 10))
 
         self.y_scrollbar = tk.Scrollbar(self, orient='vertical', command=self.text.yview)
         self.y_scrollbar.pack(side='right', fill='y')
