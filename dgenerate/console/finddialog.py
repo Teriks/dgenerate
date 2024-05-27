@@ -146,6 +146,10 @@ class _FindDialog(tk.Toplevel):
         start_idx = '1.0' if not self.last_find else self.last_find + '+1c'
         self.text_widget.tag_remove('found', '1.0', tk.END)
 
+        # Get the selection colors from the text_widget configuration
+        selection_fg_color = self.text_widget.cget('selectforeground')
+        selection_bg_color = self.text_widget.cget('selectbackground')
+
         while True:
             if self.regex_var.get():
                 pattern = re.compile(s, re.I if not self.case_var.get() else 0)
@@ -156,7 +160,7 @@ class _FindDialog(tk.Toplevel):
                     self.text_widget.tag_add('found', idx, end_idx)
                     self.text_widget.mark_set(tk.INSERT, end_idx)
                     self.text_widget.see(idx)
-                    self.text_widget.tag_config('found', foreground='white', background='blue')
+                    self.text_widget.tag_config('found', foreground=selection_fg_color, background=selection_bg_color)
                     self.last_find = idx
                     self.last_find_end = end_idx
                     break
@@ -171,7 +175,7 @@ class _FindDialog(tk.Toplevel):
                     self.text_widget.tag_add('found', idx, end_idx)
                     self.text_widget.mark_set(tk.INSERT, end_idx)
                     self.text_widget.see(idx)
-                    self.text_widget.tag_config('found', foreground='white', background='blue')
+                    self.text_widget.tag_config('found', foreground=selection_fg_color, background=selection_bg_color)
                     self.last_find = idx
                     self.last_find_end = end_idx
                     break
@@ -187,6 +191,10 @@ class _FindDialog(tk.Toplevel):
         pattern = re.compile(re.escape(s) if not self.regex_var.get() else s, re.I if not self.case_var.get() else 0)
         self.text_widget.tag_remove('found', '1.0', tk.END)
 
+        # Get the selection colors from the text_widget configuration
+        selection_fg_color = self.text_widget.cget('selectforeground')
+        selection_bg_color = self.text_widget.cget('selectbackground')
+
         while True:
             text = self.text_widget.get('1.0', self.last_find)
             matches = [(m.start(), m.end(), m.group()) for m in pattern.finditer(text)]
@@ -197,7 +205,7 @@ class _FindDialog(tk.Toplevel):
                 self.text_widget.tag_add('found', idx, end_idx)
                 self.text_widget.mark_set(tk.INSERT, idx)
                 self.text_widget.see(idx)
-                self.text_widget.tag_config('found', foreground='white', background='blue')
+                self.text_widget.tag_config('found', foreground=selection_fg_color, background=selection_bg_color)
                 self.last_find = idx
                 self.last_find_end = end_idx
                 break
@@ -213,6 +221,10 @@ class _FindDialog(tk.Toplevel):
         self.last_find_end = None
 
         s = self.find_entry.get("1.0", "end-1c")
+        # Get the selection colors from the text_widget configuration
+        selection_fg_color = self.text_widget.cget('selectforeground')
+        selection_bg_color = self.text_widget.cget('selectbackground')
+
         if self.regex_var.get():
             pattern = re.compile(s, re.I if not self.case_var.get() else 0)
             matches = pattern.finditer(self.text_widget.get('1.0', tk.END))
@@ -220,7 +232,7 @@ class _FindDialog(tk.Toplevel):
                 idx = self.text_widget.index(f'1.0 + {match.start()} chars')
                 end_idx = f'{idx}+{len(match.group())}c'
                 self.text_widget.tag_add('found', idx, end_idx)
-                self.text_widget.tag_config('found', foreground='white', background='blue')
+                self.text_widget.tag_config('found', foreground=selection_fg_color, background=selection_bg_color)
         else:
             start_idx = '1.0'
             while True:
@@ -228,7 +240,7 @@ class _FindDialog(tk.Toplevel):
                 if idx:
                     end_idx = f'{idx}+{len(s)}c'
                     self.text_widget.tag_add('found', idx, end_idx)
-                    self.text_widget.tag_config('found', foreground='white', background='blue')
+                    self.text_widget.tag_config('found', foreground=selection_fg_color, background=selection_bg_color)
                     start_idx = end_idx
                 else:
                     break

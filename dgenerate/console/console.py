@@ -47,6 +47,7 @@ import dgenerate.console.recipesform as _recipesform
 import dgenerate.console.resources as _resources
 import dgenerate.files as _files
 import dgenerate.textprocessing as _textprocessing
+from dgenerate.console.codeview import DgenerateCodeView
 from dgenerate.console.scrolledtext import ScrolledText
 
 DGENERATE_EXE = \
@@ -158,13 +159,41 @@ class DgenerateConsole(tk.Tk):
 
         self._multi_line_input_check_var = tk.BooleanVar(value=False)
 
+        def multiline_check_trace(*args):
+            if self._multi_line_input_check_var.get():
+                self._input_text.text.configure(insertbackground='red')
+                self._input_text.enable_line_numbers()
+            else:
+                self._input_text.text.configure(insertbackground='black')
+                self._input_text.disable_line_numbers()
+
         self._multi_line_input_check_var.trace_add(
             'write',
-            lambda *args: self._input_text.text.configure(
-                insertbackground='red') if self._multi_line_input_check_var.get()
-            else self._input_text.text.configure(insertbackground='black'))
+            multiline_check_trace)
 
         self._options_menu = tk.Menu(menu_bar, tearoff=0)
+        self._theme_menu = tk.Menu(menu_bar, tearoff=0)
+        self._theme_menu_var = tk.StringVar(value='dgenerate')
+
+        self._theme_menu_var.trace_add('write',
+                                       lambda *a:
+                                       self._set_theme(self._theme_menu_var.get()))
+
+        self._theme_menu.add_radiobutton(label='dgenerate', value='dgenerate',
+                                         variable=self._theme_menu_var)
+        self._theme_menu.add_radiobutton(label='readthedocs', value='readthedocs',
+                                         variable=self._theme_menu_var)
+        self._theme_menu.add_radiobutton(label='ayu-light', value='ayu-light',
+                                         variable=self._theme_menu_var)
+        self._theme_menu.add_radiobutton(label='ayu-dark', value='ayu-dark',
+                                         variable=self._theme_menu_var)
+        self._theme_menu.add_radiobutton(label='mariana', value='mariana',
+                                         variable=self._theme_menu_var)
+        self._theme_menu.add_radiobutton(label='dracula', value='dracula',
+                                         variable=self._theme_menu_var)
+
+        self._options_menu.add_cascade(label='Theme', menu=self._theme_menu)
+
         self._options_menu.add_checkbutton(label='Multiline input',
                                            accelerator='Insert Key',
                                            variable=self._multi_line_input_check_var)
@@ -247,7 +276,7 @@ class DgenerateConsole(tk.Tk):
 
         # Create the input text pane
 
-        self._input_text = ScrolledText(self._paned_window_vertical, undo=True)
+        self._input_text = DgenerateCodeView(self._paned_window_vertical, undo=True)
 
         self._input_text.text.bind('<Return>',
                                    lambda e:
@@ -516,6 +545,17 @@ class DgenerateConsole(tk.Tk):
         self._next_text_update_line_escape = False
 
         self._text_update()
+
+    def _set_theme(self, name):
+        self._input_text.set_theme(name)
+
+        bg = self._input_text.text.cget('bg')
+        fg = self._input_text.text.cget('fg')
+
+        self._output_text.text.configure(
+            bg=bg,
+            fg=fg
+        )
 
     def _start_shell_reader_threads(self):
 
@@ -1059,6 +1099,7 @@ class DgenerateConsole(tk.Tk):
         if settings_path.exists():
             with settings_path.open('r') as file:
                 config = json.load(file)
+                self._theme_menu_var.set(config.get('theme', 'dgenerate'))
                 self._auto_scroll_on_run_check_var.set(config.get('auto_scroll_on_run', True))
                 self._auto_scroll_on_output_check_var.set(config.get('auto_scroll_on_output', False))
                 self._word_wrap_input_check_var.set(config.get('word_wrap_input', True))
@@ -1068,6 +1109,7 @@ class DgenerateConsole(tk.Tk):
         settings_path = pathlib.Path(pathlib.Path.home(), '.dgenerate_console_settings')
         with settings_path.open('w') as file:
             config = {
+                'theme': self._theme_menu_var.get(),
                 'auto_scroll_on_run': self._auto_scroll_on_run_check_var.get(),
                 'auto_scroll_on_output': self._auto_scroll_on_output_check_var.get(),
                 'word_wrap_input': self._word_wrap_input_check_var.get(),
