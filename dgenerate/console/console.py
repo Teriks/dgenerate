@@ -161,10 +161,8 @@ class DgenerateConsole(tk.Tk):
 
         def multiline_check_trace(*args):
             if self._multi_line_input_check_var.get():
-                self._input_text.text.configure(insertbackground='red')
                 self._input_text.enable_line_numbers()
             else:
-                self._input_text.text.configure(insertbackground='black')
                 self._input_text.disable_line_numbers()
 
         self._multi_line_input_check_var.trace_add(
@@ -527,7 +525,7 @@ class DgenerateConsole(tk.Tk):
             '1.0',
             'This console provides a REPL for dgenerates configuration language.\n\n'
             'Enter configuration above and hit enter to submit, or use the insert key\n'
-            'to enter multiline input mode (indicated by a red flashing cursor). You must\n'
+            'to enter multiline input mode (indicated by the presence of line numbers). You must\n'
             'exit multiline input mode to submit configuration with the enter key, or instead\n'
             'use Ctrl+Space / the run menu.\n\n'
             'Command history is supported via the up and down arrow keys when not in multiline\n'
