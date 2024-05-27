@@ -3930,7 +3930,7 @@ Also supported is the ability to view the latest image as it is produced by ``dg
 ``\image_process`` via an image pane or standalone window.
 
 The console UI always starts in single line entry mode (terminal mode), multiline input mode
-is activated via the insert key and indicated by a blinking red cursor, you must deactivate this mode
+is activated via the insert key and indicated by the presence of line numbers, you must deactivate this mode
 to submit commands via the enter key, however you can use the run button from the run menu (Or ``Ctrl+Space``)
 to run code in this mode. You cannot page through command history in this mode, and code will remain in the
 console input pane upon running it making the UI function more like a code editor than a terminal.
