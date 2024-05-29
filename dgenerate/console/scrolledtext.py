@@ -41,8 +41,6 @@ class ScrolledText(tk.Frame):
         font = tkinter.font.Font(font=self.text['font'])
         self.text.config(tabs=font.measure(' ' * 4))
 
-        self.text.config(font=("monospace", 10))
-
         self.y_scrollbar = tk.Scrollbar(self, orient='vertical', command=self.text.yview)
         self.y_scrollbar.pack(side='right', fill='y')
 
