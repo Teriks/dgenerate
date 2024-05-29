@@ -264,7 +264,7 @@ class DgenerateCodeView(tk.Frame):
 
         self.text = tk.Text(self, **text_args)
 
-        self.indentation = '    '
+        self.indentation = " " * 4
 
         self._line_numbers = tklinenums.TkLineNumbers(
             self,
@@ -290,6 +290,7 @@ class DgenerateCodeView(tk.Frame):
         self.text.configure(
             yscrollcommand=self._vertical_scroll,
             xscrollcommand=self._horizontal_scroll,
+            font=kwargs['font'],
             tabs=tk.font.Font(font=kwargs["font"]).measure(" " * 4),
         )
 
