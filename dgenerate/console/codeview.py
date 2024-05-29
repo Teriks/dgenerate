@@ -218,6 +218,41 @@ class ColorSchemeParser:
                 self.text.tag_add(token, start_index, end_index)
             start_index = end_index
 
+    def highlight_block(self, index: str) -> None:
+        index = self.text.index(index).split('.')[0] + '.' + '0'
+
+        # Find the start of the block
+        start_index = index
+        while start_index != "1.0" and self.text.get(f"{start_index} - 1 line").strip():
+            start_index = self.text.index(f"{start_index} - 1 line")
+
+        # Find the end of the block
+        end_index = index
+        while end_index != self.text.index("end") and self.text.get(end_index).strip():
+            end_index = self.text.index(f"{end_index} + 1 line")
+
+        # Adjust end_index to exclude trailing empty line
+        if end_index != self.text.index("end"):
+            end_index = self.text.index(f"{end_index} - 1 line")
+
+        # Remove existing highlights in the block
+        for tag in self.text.tag_names(index=None):
+            if tag.startswith("Token"):
+                self.text.tag_remove(tag, start_index, end_index)
+
+        # Get the text of the block
+        lines = self.text.get(start_index, end_index)
+        line_offset = lines.count("\n") - lines.lstrip().count("\n")
+        start_index = str(self.text.index(f"{start_index} + {line_offset} lines"))
+
+        # Apply syntax highlighting to the block
+        for token, text in pygments.lex(lines, self.lexer):
+            token = str(token)
+            end_index = self.text.index(f"{start_index} + {len(text)} chars")
+            if token not in {"Token.Text.Whitespace", "Token.Text"}:
+                self.text.tag_add(token, start_index, end_index)
+            start_index = end_index
+
 
 class DgenerateCodeView(tk.Frame):
     THEMES = dict(_resources.get_themes())
@@ -260,27 +295,35 @@ class DgenerateCodeView(tk.Frame):
             tabs=tk.font.Font(font=kwargs["font"]).measure(" " * 4),
         )
 
-        def modified(e):
-            self.text.edit_modified(False)
+        def modified(event):
+            if len(event.char) == 1 and event.char.isprintable():
+                self._color_scheme.highlight_block('insert')
+
+        self.text.bind('<KeyRelease>', modified)
+
+        replace = self.text.replace
+
+        def replace_new(*a, **kwargs):
+            replace(*a, **kwargs)
             self._color_scheme.highlight_all()
 
-        self.text.bind('<<Modified>>', modified)
+        self.text.replace = replace_new
 
-        ors = self.text.replace
+        insert = self.text.insert
 
-        def replace(*a, **kwargs):
-            ors(*a, **kwargs)
+        def insert_new(*a, **kwargs):
+            insert(*a, **kwargs)
             self._color_scheme.highlight_all()
 
-        self.text.replace = replace
+        self.text.insert = insert_new
 
-        ors2 = self.text.insert
+        delete = self.text.delete
 
-        def insert(*a, **kwargs):
-            ors2(*a, **kwargs)
+        def delete_new(*a, **kwargs):
+            delete(*a, **kwargs)
             self._color_scheme.highlight_all()
 
-        self.text.insert = insert
+        self.text.delete = delete_new
 
     def _horizontal_scroll(self, first: str | float, last: str | float):
         self.x_scrollbar.set(first, last)
