@@ -264,6 +264,8 @@ class DgenerateCodeView(tk.Frame):
 
         self.text = tk.Text(self, **text_args)
 
+        self.indentation = '    '
+
         self._line_numbers = tklinenums.TkLineNumbers(
             self,
             self.text,
@@ -334,8 +336,11 @@ class DgenerateCodeView(tk.Frame):
 
             # Iterate over each line in the selection
             for line in range(int(start_line.split('.')[0]), int(end_line.split('.')[0]) + 1):
-                # Insert a tab at the start of the line
-                self.text.insert(f"{line}.0", '\t')
+                # Insert an indentation at the start of the line
+                self.text.insert(f"{line}.0", self.indentation)
+        else:
+            # If there is no selection, insert an indentation at the cursor position
+            self.text.insert('insert', self.indentation)
 
         # Prevent the default Tab behavior
         return 'break'
@@ -350,11 +355,18 @@ class DgenerateCodeView(tk.Frame):
 
             # Iterate over each line in the selection
             for line in range(int(start_line.split('.')[0]), int(end_line.split('.')[0]) + 1):
-                # Get the first character of the line
-                first_char = self.text.get(f"{line}.0", f"{line}.1")
-                # If it's a tab character, delete it
-                if first_char == '\t':
-                    self.text.delete(f"{line}.0", f"{line}.1")
+                # Get the start of the line
+                start_of_line = f"{line}.0"
+
+                # Get the indentation at the start of the line
+                indentation = self.text.get(start_of_line, f"{line}.{len(self.indentation)}")
+
+                # If it matches the indentation style, delete it
+                if indentation == self.indentation:
+                    self.text.delete(start_of_line, f"{line}.{len(self.indentation)}")
+                # If the first character is a tab, delete it
+                elif self.text.get(start_of_line, f"{line}.1") == '\t':
+                    self.text.delete(start_of_line, f"{line}.1")
 
         # Prevent the default Shift-Tab behavior
         return 'break'
