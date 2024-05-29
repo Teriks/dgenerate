@@ -301,6 +301,8 @@ class DgenerateCodeView(tk.Frame):
 
         self.text.bind('<<Modified>>', lambda e: (self._line_numbers.redraw(), self.text.edit_modified(False)))
         self.text.bind('<KeyRelease>', key_release)
+        self.text.bind('<Tab>', self._indent)
+        self.text.bind('<Shift-Tab>', self._unindent)
 
         replace = self.text.replace
 
@@ -325,6 +327,41 @@ class DgenerateCodeView(tk.Frame):
             self._color_scheme.highlight_all()
 
         self.text.delete = delete_new
+
+    def _indent(self, event):
+        # Get the current selection
+        sel = self.text.tag_ranges('sel')
+        if sel:
+            # If there is a selection, get the start and end lines
+            start_line = self.text.index("%s linestart" % sel[0])
+            end_line = self.text.index("%s lineend" % sel[1])
+
+            # Iterate over each line in the selection
+            for line in range(int(start_line.split('.')[0]), int(end_line.split('.')[0]) + 1):
+                # Insert a tab at the start of the line
+                self.text.insert(f"{line}.0", '\t')
+
+        # Prevent the default Tab behavior
+        return 'break'
+
+    def _unindent(self, event):
+        # Get the current selection
+        sel = self.text.tag_ranges('sel')
+        if sel:
+            # If there is a selection, get the start and end lines
+            start_line = self.text.index("%s linestart" % sel[0])
+            end_line = self.text.index("%s lineend" % sel[1])
+
+            # Iterate over each line in the selection
+            for line in range(int(start_line.split('.')[0]), int(end_line.split('.')[0]) + 1):
+                # Get the first character of the line
+                first_char = self.text.get(f"{line}.0", f"{line}.1")
+                # If it's a tab character, delete it
+                if first_char == '\t':
+                    self.text.delete(f"{line}.0", f"{line}.1")
+
+        # Prevent the default Shift-Tab behavior
+        return 'break'
 
     def _horizontal_scroll(self, first: str | float, last: str | float):
         self.x_scrollbar.set(first, last)
