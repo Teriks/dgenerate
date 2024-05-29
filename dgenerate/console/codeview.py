@@ -231,10 +231,6 @@ class ColorSchemeParser:
         while end_index != self.text.index("end") and self.text.get(end_index).strip():
             end_index = self.text.index(f"{end_index} + 1 line")
 
-        # Adjust end_index to exclude trailing empty line
-        if end_index != self.text.index("end"):
-            end_index = self.text.index(f"{end_index} - 1 line")
-
         # Remove existing highlights in the block
         for tag in self.text.tag_names(index=None):
             if tag.startswith("Token"):
