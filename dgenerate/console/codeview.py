@@ -21,195 +21,206 @@
 
 import tkinter as tk
 
-import chlorophyll
+import pygments
+import tklinenums
 import toml
 
+import dgenerate.console.resources as _resources
 import dgenerate.pygments
 
 
+class ColorSchemeParser:
+    def __init__(self, text_widget, lexer):
+        self.lexer = lexer
+        self.text = text_widget
+
+        self._editor_keys_map = {
+            "background": "bg",
+            "foreground": "fg",
+            "selectbackground": "select_bg",
+            "selectforeground": "select_fg",
+            "inactiveselectbackground": "inactive_select_bg",
+            "insertbackground": "caret",
+            "insertwidth": "caret_width",
+            "borderwidth": "border_width",
+            "highlightthickness": "focus_border_width",
+        }
+        self._extras = {
+            "Error": "error",
+            "Literal.Date": "date",
+        }
+        self._keywords = {
+            "Keyword.Constant": "constant",
+            "Keyword.Declaration": "declaration",
+            "Keyword.Namespace": "namespace",
+            "Keyword.Pseudo": "pseudo",
+            "Keyword.Reserved": "reserved",
+            "Keyword.Type": "type",
+        }
+        self._names = {
+            "Name.Attribute": "attr",
+            "Name.Builtin": "builtin",
+            "Name.Builtin.Pseudo": "builtin_pseudo",
+            "Name.Class": "class",
+            "Name.Constant": "constant",
+            "Name.Decorator": "decorator",
+            "Name.Entity": "entity",
+            "Name.Exception": "exception",
+            "Name.Function": "function",
+            "Name.Function.Magic": "magic_function",
+            "Name.Label": "label",
+            "Name.Namespace": "namespace",
+            "Name.Tag": "tag",
+            "Name.Variable": "variable",
+            "Name.Variable.Class": "class_variable",
+            "Name.Variable.Global": "global_variable",
+            "Name.Variable.Instance": "instance_variable",
+            "Name.Variable.Magic": "magic_variable",
+        }
+        self._strings = {
+            "Literal.String.Affix": "affix",
+            "Literal.String.Backtick": "backtick",
+            "Literal.String.Char": "char",
+            "Literal.String.Delimeter": "delimeter",
+            "Literal.String.Doc": "doc",
+            "Literal.String.Double": "double",
+            "Literal.String.Escape": "escape",
+            "Literal.String.Heredoc": "heredoc",
+            "Literal.String.Interpol": "interpol",
+            "Literal.String.Regex": "regex",
+            "Literal.String.Single": "single",
+            "Literal.String.Symbol": "symbol",
+        }
+        self._numbers = {
+            "Literal.Number.Bin": "binary",
+            "Literal.Number.Float": "float",
+            "Literal.Number.Hex": "hex",
+            "Literal.Number.Integer": "integer",
+            "Literal.Number.Integer.Long": "long",
+            "Literal.Number.Oct": "octal",
+        }
+        self._comments = {
+            "Comment.Hashbang": "hashbang",
+            "Comment.Multiline": "multiline",
+            "Comment.Preproc": "preproc",
+            "Comment.PreprocFile": "preprocfile",
+            "Comment.Single": "single",
+            "Comment.Special": "special",
+        }
+        self._generic = {
+            "Generic.Emph": "emphasis",
+            "Generic.Error": "error",
+            "Generic.Heading": "heading",
+            "Generic.Strong": "strong",
+            "Generic.Subheading": "subheading",
+        }
+
+    @staticmethod
+    def _parse_table(source, map_, fallback=None):
+        result = {}
+        if source is not None:
+            for token, key in map_.items():
+                value = source.get(key)
+                if value is None:
+                    value = fallback
+                result[token] = value
+        elif fallback is not None:
+            for token in map_:
+                result[token] = fallback
+        return result
+
+    def _parse_theme(self, color_scheme):
+        editor = {}
+        if "editor" in color_scheme:
+            editor_settings = color_scheme["editor"]
+            for tk_name, key in self._editor_keys_map.items():
+                editor[tk_name] = editor_settings.get(key)
+
+        assert "general" in color_scheme, "General table must present in color scheme"
+        general = color_scheme["general"]
+
+        error = general.get("error")
+        escape = general.get("escape")
+        punctuation = general.get("punctuation")
+        general_comment = general.get("comment")
+        general_keyword = general.get("keyword")
+        general_name = general.get("name")
+        general_string = general.get("string")
+
+        tags = {
+            "Error": error,
+            "Escape": escape,
+            "Punctuation": punctuation,
+            "Comment": general_comment,
+            "Keyword": general_keyword,
+            "Keyword.Other": general_keyword,
+            "Literal.String": general_string,
+            "Literal.String.Other": general_string,
+            "Name.Other": general_name,
+        }
+
+        tags.update(**self._parse_table(color_scheme.get("keyword"), self._keywords, general_keyword))
+        tags.update(**self._parse_table(color_scheme.get("name"), self._names, general_name))
+        tags.update(
+            **self._parse_table(
+                color_scheme.get("operator"),
+                {"Operator": "symbol", "Operator.Word": "word"},
+            )
+        )
+        tags.update(**self._parse_table(color_scheme.get("string"), self._strings, general_string))
+        tags.update(**self._parse_table(color_scheme.get("number"), self._numbers))
+        tags.update(**self._parse_table(color_scheme.get("comment"), self._comments, general_comment))
+        tags.update(**self._parse_table(color_scheme.get("generic"), self._generic))
+        tags.update(**self._parse_table(color_scheme.get("extras"), self._extras))
+
+        return editor, tags
+
+    def set_theme(self, color_theme: dict[str, dict[str, str | int]] | str):
+        if isinstance(color_theme, str):
+            color_theme = toml.load(color_theme)
+
+        editor, tags = self._parse_theme(color_theme)
+        self.text.configure(**editor)
+        for key, value in tags.items():
+            if isinstance(value, str):
+                self.text.tag_configure(f"Token.{key}", foreground=value)
+        self.highlight_all()
+
+    def highlight_all(self) -> None:
+        # Remove existing syntax highlighting tags
+        for tag in self.text.tag_names(index=None):
+            if tag.startswith("Token"):
+                self.text.tag_remove(tag, "1.0", "end")
+
+        # Get the index range of the visible lines
+        first_visible_index = self.text.index("@0,0")
+        last_visible_line_num = int(self.text.index("@0,%d" % self.text.winfo_height()).split(".")[0]) + 1
+        last_visible_index = f"{last_visible_line_num}.0"
+
+        # Extend the range to the start of the text or the first empty line above the visible text
+        while first_visible_index != "1.0" and self.text.get(f"{first_visible_index} - 1 line").strip():
+            first_visible_index = self.text.index(f"{first_visible_index} - 1 line")
+
+        # Extend the range to the end of the text or the first empty line below the visible text
+        while last_visible_index != self.text.index("end") and self.text.get(last_visible_index).strip():
+            last_visible_index = self.text.index(f"{last_visible_index} + 1 line")
+
+        # Get the text of the extended range
+        lines = self.text.get(first_visible_index, last_visible_index)
+        line_offset = lines.count("\n") - lines.lstrip().count("\n")
+        start_index = str(self.text.index(f"{first_visible_index} + {line_offset} lines"))
+
+        # Apply syntax highlighting to the extended range
+        for token, text in pygments.lex(lines, self.lexer):
+            token = str(token)
+            end_index = self.text.index(f"{start_index} + {len(text)} chars")
+            if token not in {"Token.Text.Whitespace", "Token.Text"}:
+                self.text.tag_add(token, start_index, end_index)
+            start_index = end_index
+
+
 class DgenerateCodeView(tk.Frame):
-    THEMES = {'dgenerate':
-                  '''
-                  # Editor colors
-                  [editor]
-                  bg = "#FFFFFF" # Background color: white
-                  fg = "#000000" # Foreground color: black
-                  select_bg = "#CCE8FF" # Selected text background: soft blue
-                  select_fg = "#4B4B4B" # Selected text background: medium gray
-                  inactive_select_bg = "#E0E0E0" # Inactive selected text background: light grey
-                  caret = "#000000" # Caret color: black
-                  caret_width = 1
-                  border_width = 0
-                  focus_border_width = 0
-                  
-                  # General syntax colors
-                  [general]
-                  comment = "#0000CD" # Comments: darker slate grey
-                  error = "#B22222" # Errors: dark red
-                  escape = "#5B5BFF" # Escapes: darker violet
-                  keyword = "#0000CD" # Keywords: dark pink
-                  name = "#1C608B" # Names: darker blue
-                  string = "#006400" # Strings: darker teal
-                  punctuation = "#404040" # Punctuation: dark grey
-                  
-                  # Keyword colors
-                  [keyword]
-                  constant = "#556B2F" # Constants: dark olive green
-                  declaration = "#8B4500" # Declarations: dark amber
-                  namespace = "#8B2500" # Namespaces: darker orange
-                  pseudo = "#BC8F8F" # Pseudo keywords: rosy brown
-                  reserved = "#696969" # Reserved keywords: dim grey
-                  type = "#483D8B" # Types: dark slate blue
-                  
-                  # Name colors
-                  [name]
-                  attr = "#1C608B" # Attributes: darker blue
-                  builtin = "#B22222" # Built-in functions: dark pink
-                  builtin_pseudo = "#B22222" # Built-in pseudo classes: dark red
-                  class = "#8B2500" # Classes: darker orange
-                  class_variable = "#5F9EA0" # Class variables: cadet blue
-                  constant = "#8B4500" # Constants: dark amber
-                  decorator = "#1C608B" # Decorators: darker blue
-                  entity = "#1B7B7B" # Entities: darker teal
-                  exception = "#556B2F" # Exceptions: dark olive green
-                  function = "#483D8B" # Functions: dark slate blue
-                  global_variable = "#696969" # Global variables: dim grey
-                  instance_variable = "#BC8F8F" # Instance variables: rosy brown
-                  label = "#1C608B" # Labels: darker blue
-                  magic_function = "#A00073" # Magic functions: dark pink
-                  magic_variable = "#B22222" # Magic variables: dark red
-                  namespace = "#8B2500" # Namespace: darker orange
-                  tag = "#556B2F" # Tags: dark olive green
-                  variable = "#8B4500" # Variables: dark amber
-                  
-                  # Operator colors
-                  [operator]
-                  symbol = "#614051" # Symbols: dim grey
-                  word = "#BC8F8F" # Word operators: rosy brown
-                  
-                  # String colors
-                  [string]
-                  affix = "#006400" # Affix: dark green
-                  char = "#006400" # Char: dark green
-                  delimeter = "#006400" # Delimeter: dark green
-                  doc = "#006400" # Doc: dark green
-                  double = "#006400" # Double: dark green
-                  escape = "#006400" # Escape: dark green
-                  heredoc = "#006400" # Heredoc: dark green
-                  interpol = "#696969" # Interpol: dim gray
-                  regex = "#006400" # Regex: dark green
-                  single = "#006400" # Single: dark green
-                  symbol = "#006400" # Symbol: dark green
-                  
-                  # Number colors
-                  [number]
-                  binary = "#FF6347" # Binary: tomato
-                  float = "#FF4500" # Float: gold
-                  hex = "#FF4500" # Integer: orange red
-                  integer = "#FF4500" # Integer: orange red
-                  long = "#FF8C00" # Long: dark orange
-                  octal = "#FF1493" # Octal: deep pink
-                  
-                  # Comment colors
-                  [comment]
-                  hashbang = "#5F9EA0" # Hashbang: medium blue
-                  multiline = "#5F9EA0" # Multiline: medium blue
-                  preproc = "#5F9EA0" # Preproc: rosy brown
-                  preprocfile = "#5F9EA0" # Preprocfile: darker teal
-                  single = "#5F9EA0" # Single: medium blue
-                  special = "#5F9EA0" # Special: dark amber
-                  ''',
-              'readthedocs':
-                  '''
-                  # Editor colors
-                  [editor]
-                  bg = "#f8f8f8" # Background color: light grey
-                  fg = "#000000" # Foreground color: black
-                  select_bg = "#ffffcc" # Selected text background: light yellow
-                  select_fg = "#000000" # Selected text foreground: black
-                  inactive_select_bg = "#efefef" # Inactive selected text background: very light grey
-                  caret = "#000000" # Caret color: black
-                  caret_width = 1
-                  border_width = 0
-                  focus_border_width = 0
-                  
-                  # General syntax colors
-                  [general]
-                  comment = "#3D7B7B" # Comments: teal, italic
-                  error = "#FF0000" # Errors: red, border
-                  keyword = "#008000" # Keywords: green, bold
-                  operator = "#666666" # Operators: dark grey
-                  name = "#000000" # Names: black
-                  string = "#BA2121" # Strings: red-brown
-                  punctuation = "#000000" # Punctuation: black
-                  
-                  # Keyword colors
-                  [keyword]
-                  constant = "#008000" # Constants: green, bold
-                  declaration = "#008000" # Declarations: green, bold
-                  namespace = "#008000" # Namespaces: green, bold
-                  pseudo = "#008000" # Pseudo keywords: green
-                  reserved = "#008000" # Reserved keywords: green, bold
-                  type = "#B00040" # Types: dark pink
-                  
-                  # Name colors
-                  [name]
-                  attr = "#687822" # Attributes: olive
-                  builtin = "#008000" # Built-in functions: green
-                  builtin_pseudo = "#008000" # Built-in pseudo classes: green
-                  class = "#0000FF" # Classes: blue, bold
-                  class_variable = "#19177C" # Class variables: dark blue
-                  constant = "#880000" # Constants: maroon
-                  decorator = "#AA22FF" # Decorators: violet
-                  entity = "#717171" # Entities: grey
-                  exception = "#CB3F38" # Exceptions: red
-                  function = "#0000FF" # Functions: blue
-                  global_variable = "#19177C" # Global variables: dark blue
-                  instance_variable = "#19177C" # Instance variables: dark blue
-                  label = "#767600" # Labels: dark yellow
-                  magic_function = "#0000FF" # Magic functions: blue
-                  magic_variable = "#19177C" # Magic variables: dark blue
-                  namespace = "#0000FF" # Namespace: blue, bold
-                  tag = "#008000" # Tags: green, bold
-                  variable = "#19177C" # Variables: dark blue
-                  
-                  # Operator colors
-                  [operator]
-                  symbol = "#666666" # Symbols: dark grey
-                  word = "#AA22FF" # Word operators: violet
-                  
-                  # String colors
-                  [string]
-                  affix = "#BA2121" # Affix: red-brown
-                  char = "#BA2121" # Char: red-brown
-                  delimeter = "#BA2121" # Delimeter: red-brown
-                  doc = "#BA2121" # Doc: red-brown, italic
-                  double = "#BA2121" # Double: red-brown
-                  escape = "#AA5D1F" # Escape: brown, bold
-                  heredoc = "#BA2121" # Heredoc: red-brown
-                  interpol = "#A45A77" # Interpol: pink, bold
-                  regex = "#A45A77" # Regex: pink
-                  single = "#BA2121" # Single: red-brown
-                  symbol = "#19177C" # Symbol: dark blue
-                  
-                  # Number colors
-                  [number]
-                  binary = "#666666" # Binary: dark grey
-                  float = "#666666" # Float: dark grey
-                  hex = "#666666" # Hex: dark grey
-                  integer = "#666666" # Integer: dark grey
-                  long = "#666666" # Long: dark grey
-                  octal = "#666666" # Octal: dark grey
-                  
-                  # Comment colors
-                  [comment]
-                  hashbang = "#3D7B7B" # Hashbang: teal, italic
-                  multiline = "#3D7B7B" # Multiline: teal, italic
-                  preproc = "#9C6500" # Preproc: brown
-                  preprocfile = "#3D7B7B" # Preprocfile: teal, italic
-                  single = "#3D7B7B" # Single: teal, italic
-                  special = "#3D7B7B" # Special: teal, italic
-                  '''}
+    THEMES = dict(_resources.get_themes())
 
     def __init__(self, master=None, undo=False, **kwargs):
         super().__init__(master, **kwargs)
@@ -220,20 +231,38 @@ class DgenerateCodeView(tk.Frame):
             text_args['autoseparators'] = True
             text_args['maxundo'] = -1
 
-        self.text = chlorophyll.CodeView(self, wrap='word',
-                                         autohide_scrollbar=False,
-                                         color_scheme=toml.loads(DgenerateCodeView.THEMES['dgenerate']),
-                                         lexer=dgenerate.pygments.DgenerateLexer(), **text_args)
-        font = tk.font.Font(font=self.text['font'])
-        self.text.config(tabs=font.measure(' ' * 4))
-        self.text.pack(side='left', fill='both', expand=True)
+        self.text = tk.Text(self, **text_args)
 
-        self.text._cmd_proxy = lambda *args: None
-        self.text.highlight_line = lambda *args: None
+        self._line_numbers = tklinenums.TkLineNumbers(
+            self,
+            self.text,
+            borderwidth=0,
+        )
+
+        self.y_scrollbar = tk.Scrollbar(self, orient='vertical', command=self.text.yview)
+        self.x_scrollbar = tk.Scrollbar(self, orient='horizontal', command=self.text.xview)
+
+        self.y_scrollbar.grid(row=0, column=2, sticky="ns")
+        self.x_scrollbar.grid(row=1, column=1, sticky="we")
+
+        self.text.grid(row=0, column=1, sticky='nsew')
+
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=1)
+
+        self._color_scheme = ColorSchemeParser(self.text, dgenerate.pygments.DgenerateLexer())
+
+        kwargs.setdefault('font', ('monospaced', 11))
+
+        self.text.configure(
+            yscrollcommand=self._vertical_scroll,
+            xscrollcommand=self._horizontal_scroll,
+            tabs=tk.font.Font(font=kwargs["font"]).measure(" " * 4),
+        )
 
         def modified(e):
             self.text.edit_modified(False)
-            self.text.highlight_all()
+            self._color_scheme.highlight_all()
 
         self.text.bind('<<Modified>>', modified)
 
@@ -241,7 +270,7 @@ class DgenerateCodeView(tk.Frame):
 
         def replace(*a, **kwargs):
             ors(*a, **kwargs)
-            self.text.highlight_all()
+            self._color_scheme.highlight_all()
 
         self.text.replace = replace
 
@@ -249,23 +278,29 @@ class DgenerateCodeView(tk.Frame):
 
         def insert(*a, **kwargs):
             ors2(*a, **kwargs)
-            self.text.highlight_all()
+            self._color_scheme.highlight_all()
 
         self.text.insert = insert
 
-        self.text._line_numbers.grid_forget()
+    def _horizontal_scroll(self, first: str | float, last: str | float):
+        self.x_scrollbar.set(first, last)
 
-    def set_theme(self, theme):
-        if theme in DgenerateCodeView.THEMES:
-            self.text._set_color_scheme(toml.loads(DgenerateCodeView.THEMES[theme]))
-        else:
-            self.text._set_color_scheme(theme)
+    def _vertical_scroll(self, first: str | float, last: str | float):
+        self.y_scrollbar.set(first, last)
+        self._line_numbers.redraw()
+        self._color_scheme.highlight_all()
+
+    def set_theme(self, color_theme: dict[str, dict[str, str | int]] | str | None) -> None:
+        if isinstance(color_theme, str):
+            color_theme = DgenerateCodeView.THEMES[color_theme]
+
+        self._color_scheme.set_theme(color_theme)
 
     def enable_line_numbers(self):
-        self.text._line_numbers.grid(row=0, column=0, sticky="ns")
+        self._line_numbers.grid(row=0, column=0, sticky='ns')
 
     def disable_line_numbers(self):
-        self.text._line_numbers.grid_forget()
+        self._line_numbers.grid_forget()
 
     def enable_word_wrap(self):
         self.text.config(wrap='word')
