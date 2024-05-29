@@ -295,11 +295,12 @@ class DgenerateCodeView(tk.Frame):
             tabs=tk.font.Font(font=kwargs["font"]).measure(" " * 4),
         )
 
-        def modified(event):
+        def key_release(event):
             if len(event.char) == 1 and event.char.isprintable():
                 self._color_scheme.highlight_block('insert')
 
-        self.text.bind('<KeyRelease>', modified)
+        self.text.bind('<<Modified>>', lambda e: (self._line_numbers.redraw(), self.text.edit_modified(False)))
+        self.text.bind('<KeyRelease>', key_release)
 
         replace = self.text.replace
 
