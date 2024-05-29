@@ -2,7 +2,7 @@
 [editor]
 bg = "#f8f8f8" # Background color: light grey
 fg = "#000000" # Foreground color: black
-select_bg = "#ffffcc" # Selected text background: light yellow
+select_bg = "#CCE8FF" # Selected text background: soft blue
 select_fg = "#000000" # Selected text foreground: black
 inactive_select_bg = "#efefef" # Inactive selected text background: very light grey
 caret = "#000000" # Caret color: black
