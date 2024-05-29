@@ -1,0 +1,88 @@
+# Editor colors
+[editor]
+bg = "#FFFFFF" # Background color: white
+fg = "#000000" # Foreground color: black
+select_bg = "#CCE8FF" # Selected text background: soft blue
+select_fg = "#4B4B4B" # Selected text color: medium gray
+inactive_select_bg = "#E0E0E0" # Inactive selected text background: light grey
+caret = "#000000" # Caret color: black
+caret_width = 1
+border_width = 0
+focus_border_width = 0
+
+# General syntax colors
+[general]
+comment = "#0000CD" # Comments: medium blue
+error = "#B22222" # Errors: dark red
+escape = "#5B5BFF" # Escapes: medium blue
+keyword = "#0000CD" # Keywords: medium blue
+name = "#1C608B" # Names: dark blue
+string = "#006400" # Strings: dark green
+punctuation = "#404040" # Punctuation: dark grey
+
+# Keyword colors
+[keyword]
+constant = "#556B2F" # Constants: dark olive green
+declaration = "#8B4500" # Declarations: dark orange
+namespace = "#8B2500" # Namespaces: dark red
+pseudo = "#BC8F8F" # Pseudo keywords: rosy brown
+reserved = "#696969" # Reserved keywords: dim grey
+type = "#483D8B" # Types: dark slate blue
+
+# Name colors
+[name]
+attr = "#1C608B" # Attributes: dark blue
+builtin = "#B22222" # Built-in functions: dark red
+builtin_pseudo = "#B22222" # Built-in pseudo classes: dark red
+class = "#8B2500" # Classes: dark red
+class_variable = "#5F9EA0" # Class variables: cadet blue
+constant = "#8B4500" # Constants: dark orange
+decorator = "#1C608B" # Decorators: dark blue
+entity = "#1B7B7B" # Entities: dark teal
+exception = "#556B2F" # Exceptions: dark olive green
+function = "#483D8B" # Functions: dark slate blue
+global_variable = "#696969" # Global variables: dim grey
+instance_variable = "#BC8F8F" # Instance variables: rosy brown
+label = "#1C608B" # Labels: dark blue
+magic_function = "#A00073" # Magic functions: dark magenta
+magic_variable = "#B22222" # Magic variables: dark red
+namespace = "#8B2500" # Namespace: dark red
+tag = "#556B2F" # Tags: dark olive green
+variable = "#8B4500" # Variables: dark orange
+
+# Operator colors
+[operator]
+symbol = "#614051" # Symbols: dark purple
+word = "#BC8F8F" # Word operators: rosy brown
+
+# String colors
+[string]
+affix = "#006400" # Affix: dark green
+char = "#006400" # Char: dark green
+delimeter = "#006400" # Delimeter: dark green
+doc = "#006400" # Doc: dark green
+double = "#006400" # Double: dark green
+escape = "#006400" # Escape: dark green
+heredoc = "#006400" # Heredoc: dark green
+interpol = "#696969" # Interpol: dim gray
+regex = "#006400" # Regex: dark green
+single = "#006400" # Single: dark green
+symbol = "#006400" # Symbol: dark green
+
+# Number colors
+[number]
+binary = "#FF6347" # Binary: tomato
+float = "#FF4500" # Float: orange red
+hex = "#FF4500" # Hex: orange red
+integer = "#FF4500" # Integer: orange red
+long = "#FF8C00" # Long: dark orange
+octal = "#FF1493" # Octal: deep pink
+
+# Comment colors
+[comment]
+hashbang = "#5F9EA0" # Hashbang: cadet blue
+multiline = "#5F9EA0" # Multiline: cadet blue
+preproc = "#5F9EA0" # Preproc: cadet blue
+preprocfile = "#5F9EA0" # Preprocfile: cadet blue
+single = "#5F9EA0" # Single: cadet blue
+special = "#5F9EA0" # Special: cadet blue

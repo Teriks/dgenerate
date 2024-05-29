@@ -96,7 +96,7 @@ class DgenerateLexer(_lexer.RegexLexer):
         'root': [
             comment_pattern,
             env_var_pattern,
-            (r'(\\set[e]?)(\s+)([a-zA-Z_][a-zA-Z0-9_]*)',
+            (r'(\\set[e]?|\\gen_seeds)(\s+)([a-zA-Z_][a-zA-Z0-9_]*)',
              _lexer.bygroups(_token.Name.Builtin, _token.Text.Whitespace, _token.Name.Variable), 'value'),
             (r'(\\setp)(\s+)([a-zA-Z_][a-zA-Z0-9_]*)',
              _lexer.bygroups(_token.Name.Builtin, _token.Text.Whitespace, _token.Name.Variable), 'setp_value'),

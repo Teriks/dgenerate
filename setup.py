@@ -248,6 +248,7 @@ if __name__ != 'setup_as_library':
           packages=find_packages(),
           package_data={
               'dgenerate': ['icon.ico'],
+              'dgenerate.console.themes': ['*.toml'],
           },
           include_package_data=True,
           license='BSD 3-Clause',

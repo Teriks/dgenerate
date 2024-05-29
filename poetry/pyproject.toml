@@ -43,7 +43,8 @@ spandrel = "^0.3.3"
 spandrel_extra_arches = "^0.1.1"
 asteval = "^0.9.32"
 pygments = "^2.18.0"
-chlorophyll = "0.4.2"
+toml = "^0.10.2"
+tklinenums = "^1.7.1"
 
 [tool.poetry.extras]
 flax = ["flax", "jax"]

@@ -76,6 +76,9 @@ for package_name in required_package_names:
 # need the browser data
 datas += collect_data_files('fake_useragent', include_py_files=False, includes=['**/*.json'])
 
+# themes
+datas += collect_data_files('dgenerate', subdir='console/themes', includes=['*.toml'])
+
 a = Analysis(
     ['../dgenerate/dgenerate.py'],
     pathex=[],

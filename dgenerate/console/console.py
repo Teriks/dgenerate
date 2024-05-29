@@ -176,19 +176,9 @@ class DgenerateConsole(tk.Tk):
         self._theme_menu_var.trace_add('write',
                                        lambda *a:
                                        self._set_theme(self._theme_menu_var.get()))
-
-        self._theme_menu.add_radiobutton(label='dgenerate', value='dgenerate',
-                                         variable=self._theme_menu_var)
-        self._theme_menu.add_radiobutton(label='readthedocs', value='readthedocs',
-                                         variable=self._theme_menu_var)
-        self._theme_menu.add_radiobutton(label='ayu-light', value='ayu-light',
-                                         variable=self._theme_menu_var)
-        self._theme_menu.add_radiobutton(label='ayu-dark', value='ayu-dark',
-                                         variable=self._theme_menu_var)
-        self._theme_menu.add_radiobutton(label='mariana', value='mariana',
-                                         variable=self._theme_menu_var)
-        self._theme_menu.add_radiobutton(label='dracula', value='dracula',
-                                         variable=self._theme_menu_var)
+        for theme_name in DgenerateCodeView.THEMES.keys():
+            self._theme_menu.add_radiobutton(label=theme_name, value=theme_name,
+                                             variable=self._theme_menu_var)
 
         self._options_menu.add_cascade(label='Theme', menu=self._theme_menu)
 

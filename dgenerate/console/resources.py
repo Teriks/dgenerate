@@ -21,6 +21,7 @@
 
 import importlib.resources
 import io
+import os
 import platform
 import subprocess
 import tkinter
@@ -30,6 +31,7 @@ import webbrowser
 
 import PIL.Image
 import PIL.ImageTk
+import toml
 
 
 def set_window_icon(window: typing.Union[tkinter.Tk, tkinter.Toplevel]):
@@ -43,6 +45,11 @@ def set_window_icon(window: typing.Union[tkinter.Tk, tkinter.Toplevel]):
             PIL.ImageTk.PhotoImage(
                 PIL.Image.open(
                     io.BytesIO(importlib.resources.read_binary('dgenerate', 'icon.ico')))))
+
+
+def get_themes():
+    for file in importlib.resources.files('dgenerate.console').joinpath('themes').iterdir():
+        yield os.path.splitext(file.name)[0], toml.loads(file.read_text())
 
 
 def get_karras_schedulers():

@@ -415,22 +415,6 @@ toolz = ">=0.9.0"
 typing-extensions = ">=4.2.0"
 
 [[package]]
-name = "chlorophyll"
-version = "0.4.2"
-description = "A module that fills your code with color - syntax highlighted text box widget for Tkinter."
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "chlorophyll-0.4.2.tar.gz", hash = "sha256:950c8f48cc5bd3bf201341d0f69e114d52156f9403e23132e1683ae6b5246ba8"},
-]
-
-[package.dependencies]
-pygments = "*"
-pyperclip = "*"
-tklinenums = "*"
-toml = "*"
-
-[[package]]
 name = "colorama"
 version = "0.4.6"
 description = "Cross-platform colored terminal text."
@@ -2159,16 +2143,6 @@ files = [
 diagrams = ["jinja2", "railroad-diagrams"]
 
 [[package]]
-name = "pyperclip"
-version = "1.8.2"
-description = "A cross-platform clipboard module for Python. (Only handles plain text for now.)"
-optional = false
-python-versions = "*"
-files = [
-    {file = "pyperclip-1.8.2.tar.gz", hash = "sha256:105254a8b04934f0bc84e9c24eb360a591aaf6535c9def5f29d92af107a9bf57"},
-]
-
-[[package]]
 name = "python-dateutil"
 version = "2.9.0.post0"
 description = "Extensions to the standard Python datetime module"
@@ -3385,4 +3359,4 @@ flax = ["flax", "jax"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<4"
-content-hash = "77bde03c951df8ebb0e828421e8cff497cf4bbffb8171a1953bdce9bf2934f3f"
+content-hash = "bb357a7770742efc42a1d54c22839e9d5eeaf37ddccff847c7338674855802a0"

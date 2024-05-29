@@ -1,0 +1,88 @@
+# Editor colors
+[editor]
+bg = "#f8f8f8" # Background color: light grey
+fg = "#000000" # Foreground color: black
+select_bg = "#ffffcc" # Selected text background: light yellow
+select_fg = "#000000" # Selected text foreground: black
+inactive_select_bg = "#efefef" # Inactive selected text background: very light grey
+caret = "#000000" # Caret color: black
+caret_width = 1
+border_width = 0
+focus_border_width = 0
+
+# General syntax colors
+[general]
+comment = "#3D7B7B" # Comments: teal, italic
+error = "#FF0000" # Errors: red, border
+keyword = "#008000" # Keywords: green, bold
+operator = "#666666" # Operators: dark grey
+name = "#000000" # Names: black
+string = "#BA2121" # Strings: red-brown
+punctuation = "#000000" # Punctuation: black
+
+# Keyword colors
+[keyword]
+constant = "#008000" # Constants: green, bold
+declaration = "#008000" # Declarations: green, bold
+namespace = "#008000" # Namespaces: green, bold
+pseudo = "#008000" # Pseudo keywords: green
+reserved = "#008000" # Reserved keywords: green, bold
+type = "#B00040" # Types: dark pink
+
+# Name colors
+[name]
+attr = "#687822" # Attributes: olive
+builtin = "#008000" # Built-in functions: green
+builtin_pseudo = "#008000" # Built-in pseudo classes: green
+class = "#0000FF" # Classes: blue, bold
+class_variable = "#19177C" # Class variables: dark blue
+constant = "#880000" # Constants: maroon
+decorator = "#AA22FF" # Decorators: violet
+entity = "#717171" # Entities: grey
+exception = "#CB3F38" # Exceptions: red
+function = "#0000FF" # Functions: blue
+global_variable = "#19177C" # Global variables: dark blue
+instance_variable = "#19177C" # Instance variables: dark blue
+label = "#767600" # Labels: dark yellow
+magic_function = "#0000FF" # Magic functions: blue
+magic_variable = "#19177C" # Magic variables: dark blue
+namespace = "#0000FF" # Namespace: blue, bold
+tag = "#008000" # Tags: green, bold
+variable = "#19177C" # Variables: dark blue
+
+# Operator colors
+[operator]
+symbol = "#666666" # Symbols: dark grey
+word = "#AA22FF" # Word operators: violet
+
+# String colors
+[string]
+affix = "#BA2121" # Affix: red-brown
+char = "#BA2121" # Char: red-brown
+delimeter = "#BA2121" # Delimeter: red-brown
+doc = "#BA2121" # Doc: red-brown, italic
+double = "#BA2121" # Double: red-brown
+escape = "#AA5D1F" # Escape: brown, bold
+heredoc = "#BA2121" # Heredoc: red-brown
+interpol = "#A45A77" # Interpol: pink, bold
+regex = "#A45A77" # Regex: pink
+single = "#BA2121" # Single: red-brown
+symbol = "#19177C" # Symbol: dark blue
+
+# Number colors
+[number]
+binary = "#666666" # Binary: dark grey
+float = "#666666" # Float: dark grey
+hex = "#666666" # Hex: dark grey
+integer = "#666666" # Integer: dark grey
+long = "#666666" # Long: dark grey
+octal = "#666666" # Octal: dark grey
+
+# Comment colors
+[comment]
+hashbang = "#3D7B7B" # Hashbang: teal, italic
+multiline = "#3D7B7B" # Multiline: teal, italic
+preproc = "#9C6500" # Preproc: brown
+preprocfile = "#3D7B7B" # Preprocfile: teal, italic
+single = "#3D7B7B" # Single: teal, italic
+special = "#3D7B7B" # Special: teal, italic
