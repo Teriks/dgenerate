@@ -33,41 +33,7 @@ import dgenerate.arguments as _arguments
 import dgenerate.messages as _messages
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-
-
-class PeekReader:
-    """
-    Read from a ``TextIO`` file object while peeking at the next line in the file.
-
-    This is an iterable reader wrapper that yields the tuple (current_line, next_line)
-
-    **next_line** will be ``None`` if the next line is the end of the file.
-    """
-
-    def __init__(self, file: typing.Iterator[str]):
-        """
-        :param file: The ``typing.Iterator`` capable reader to wrap.
-        """
-        self._file = file
-        self._last_next_line = None
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        if self._last_next_line is not None:
-            self._cur_line = self._last_next_line
-            self._last_next_line = None
-        else:
-            self._cur_line = next(self._file)
-
-        try:
-            self._next_line = next(self._file)
-            self._last_next_line = self._next_line
-        except StopIteration:
-            self._next_line = None
-
-        return self._cur_line, self._next_line
+import dgenerate.files as _files
 
 
 class BatchProcessError(Exception):
@@ -670,7 +636,7 @@ class BatchProcessor:
 
         last_line = None
 
-        for line_idx, line_and_next in enumerate(PeekReader(stream)):
+        for line_idx, line_and_next in enumerate(_files.PeekReader(stream)):
             line: str
             next_line: typing.Optional[str]
             line, next_line = line_and_next

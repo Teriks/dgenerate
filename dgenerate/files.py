@@ -28,6 +28,41 @@ Utilities for file like objects.
 """
 
 
+class PeekReader:
+    """
+    Read from a file like iterator object while peeking at the next line.
+
+    This is an iterable reader wrapper that yields the tuple ``(current_line, next_line)``
+
+    **next_line** will be ``None`` if the next line is the end of iterator / file.
+    """
+
+    def __init__(self, iterator: typing.Iterator[str]):
+        """
+        :param iterator: The ``typing.Iterator`` capable reader to wrap.
+        """
+        self._iterator = iterator
+        self._last_next_line = None
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self._last_next_line is not None:
+            self._cur_line = self._last_next_line
+            self._last_next_line = None
+        else:
+            self._cur_line = next(self._iterator)
+
+        try:
+            self._next_line = next(self._iterator)
+            self._last_next_line = self._next_line
+        except StopIteration:
+            self._next_line = None
+
+        return self._cur_line, self._next_line
+
+
 class Unbuffered:
     """File wrapper which auto flushes a stream on write"""
 

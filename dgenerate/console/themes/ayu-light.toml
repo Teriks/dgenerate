@@ -1,79 +1,79 @@
 [editor]
-bg = "#fafafa"
-fg = "#575f66"
-select_bg = "#d1e4f4"
-inactive_select_bg = "#e7e8e9"
-caret = "#575f66"
-caret_width = 1
-border_width = 0
-focus_border_width = 0
+bg = "#fafafa"  # Background (light gray)
+fg = "#575f66"  # Default text (dark gray)
+select_bg = "#d1e4f4"  # Selected text (light blue)
+inactive_select_bg = "#e7e8e9"  # Inactive selection (light gray)
+caret = "#575f66"  # Caret color (dark gray)
+caret_width = 1  # Caret width (1 pixel)
+border_width = 0  # No border
+focus_border_width = 0  # No focus border
 
 [general]
-comment = "#abb0b6"
-error = "#f51818"
-escape = "#575f66"
-keyword = "#fa8d3e"
-name = "#ff8f40"
-string = "#4cbf99"
-punctuation = "#575f66"
+comment = "#abb0b6"  # Comments (medium gray)
+error = "#f51818"  # Errors (bright red)
+escape = "#575f66"  # Escape sequences (dark gray)
+keyword = "#fa8d3e"  # Keywords (orange)
+name = "#ff8f40"  # Names (orange)
+string = "#4cbf99"  # Strings (green)
+punctuation = "#575f66"  # Punctuation (dark gray)
 
 [keyword]
-constant = "#fa8d3e"
-declaration = "#fa8d3e"
-namespace = "#fa8d3e"
-pseudo = "#fa8d3e"
-reserved = "#fa8d3e"
-type = "#fa8d3e"
+constant = "#fa8d3e"  # Constants (orange)
+declaration = "#fa8d3e"  # Declarations (orange)
+namespace = "#fa8d3e"  # Namespaces (orange)
+pseudo = "#fa8d3e"  # Pseudo-keywords (orange)
+reserved = "#fa8d3e"  # Reserved keywords (orange)
+type = "#fa8d3e"  # Types (orange)
 
 [name]
-attr = "#ff8f40"
-builtin = "#ff9940"
-builtin_pseudo = "#ff9940"
-class = "#ff8f40"
-class_variable = "#ff8f40"
-constant = "#a37acc"
-decorator = "#e6b673"
-entity = "#ff8f40"
-exception = "#ff8f40"
-function = "#f2ae49"
-global_variable = "#ff8f40"
-instance_variable = "#ff8f40"
-label = "#ff8f40"
-magic_function = "#ff8f40"
-magic_variable = "#ff8f40"
-namespace = "#575f66"
-tag = "#ff8f40"
-variable = "#ff8f40"
+attr = "#ff8f40"  # Attributes (orange)
+builtin = "#ff9940"  # Built-ins (orange)
+builtin_pseudo = "#ff9940"  # Built-in pseudo (orange)
+class = "#ff8f40"  # Classes (orange)
+class_variable = "#ff8f40"  # Class variables (orange)
+constant = "#a37acc"  # Constants (purple)
+decorator = "#e6b673"  # Decorators (light orange)
+entity = "#ff8f40"  # Entities (orange)
+exception = "#ff8f40"  # Exceptions (orange)
+function = "#f2ae49"  # Functions (yellow-orange)
+global_variable = "#ff8f40"  # Global variables (orange)
+instance_variable = "#ff8f40"  # Instance variables (orange)
+label = "#ff8f40"  # Labels (orange)
+magic_function = "#ff8f40"  # Magic functions (orange)
+magic_variable = "#ff8f40"  # Magic variables (orange)
+namespace = "#575f66"  # Namespaces (dark gray)
+tag = "#ff8f40"  # Tags (orange)
+variable = "#ff8f40"  # Variables (orange)
 
 [operator]
-symbol = "#ed9366"
-word = "#ed9366"
+symbol = "#ed9366"  # Operator symbols (light orange)
+word = "#ed9366"  # Operator words (light orange)
 
 [string]
-affix = "#86b300"
-char = "#4cbf99"
-delimeter = "#86b300"
-doc = "#86b300"
-double = "#86b300"
-escape = "#86b300"
-heredoc = "#86b300"
-interpol = "#86b300"
-regex = "#4cbf99"
-single = "#86b300"
-symbol = "#86b300"
+affix = "#86b300"  # String affixes (light green)
+char = "#4cbf99"  # Character literals (green)
+delimeter = "#86b300"  # String delimiters (light green)
+doc = "#86b300"  # Doc strings (light green)
+double = "#86b300"  # Double-quoted strings (light green)
+escape = "#86b300"  # Escape sequences (light green)
+heredoc = "#86b300"  # Heredoc strings (light green)
+interpol = "#86b300"  # Interpolated strings (light green)
+regex = "#4cbf99"  # Regex patterns (green)
+single = "#86b300"  # Single-quoted strings (light green)
+symbol = "#86b300"  # String symbols (light green)
 
 [number]
-binary = "#ff9940"
-float = "#ff9940"
-hex = "#ff9940"
-integer = "#ff9940"
-long = "#ff9940"
-octal = "#ff9940"
+binary = "#ff9940"  # Binary numbers (orange)
+float = "#ff9940"  # Floating-point numbers (orange)
+hex = "#ff9940"  # Hexadecimal numbers (orange)
+integer = "#ff9940"  # Integer numbers (orange)
+long = "#ff9940"  # Long integers (orange)
+octal = "#ff9940"  # Octal numbers (orange)
 
 [comment]
-hashbang = "#abb0b6"
-multiline = "#abb0b6"
-preproc = "#fa8d3e"
-preprocfile = "#86b300"
-single = "#abb0b6"
-special = "#abb0b6"
+hashbang = "#abb0b6"  # Hashbang comments (medium gray)
+multiline = "#abb0b6"  # Multiline comments (medium gray)
+preproc = "#fa8d3e"  # Preprocessor comments (orange)
+preprocfile = "#86b300"  # Preprocessor file comments (light green)
+single = "#abb0b6"  # Single-line comments (medium gray)
+special = "#abb0b6"  # Special comments (medium gray)

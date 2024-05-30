@@ -131,6 +131,11 @@ class DgenerateConsole(tk.Tk):
 
         self._edit_menu.add_separator()
 
+        self._edit_menu.add_command(label='Format Code',
+                                    command=lambda: self._input_text.format_code())
+
+        self._edit_menu.add_separator()
+
         self._edit_menu.add_command(label='Insert File Path (Open)',
                                     command=self._input_text_insert_file_path)
         self._edit_menu.add_command(label='Insert File Path (Save)',
@@ -334,7 +339,12 @@ class DgenerateConsole(tk.Tk):
                                                  self,
                                                  'Replace In Input',
                                                  self._input_text.text))
+
         self._input_text_context.add_separator()
+        self._input_text_context.add_command(label='Format Code',
+                                             command=self._input_text.format_code)
+        self._input_text_context.add_separator()
+
         self._input_text_context.add_command(label='Load', command=self._load_input_entry_text)
         self._input_text_context.add_command(label='Save', command=self._save_input_entry_text)
         self._input_text_context.add_separator()
