@@ -67,10 +67,9 @@ class DgenerateConsole(tk.Tk):
 
         # Create main menu
 
-        menu_bar = tk.Menu(self)
-
         # File menu
-        self._file_menu = tk.Menu(menu_bar, tearoff=0)
+        self._menu_bar = tk.Menu(self)
+        self._file_menu = tk.Menu(self._menu_bar, tearoff=0)
 
         def handle_new_window():
             subprocess.Popen(
@@ -90,7 +89,7 @@ class DgenerateConsole(tk.Tk):
 
         # Edit menu
 
-        self._edit_menu = tk.Menu(menu_bar, tearoff=0)
+        self._edit_menu = tk.Menu(self._menu_bar, tearoff=0)
         self._edit_menu.add_command(
             label='Undo', accelerator='Ctrl+Z',
             command=self._undo_input_entry)
@@ -152,7 +151,7 @@ class DgenerateConsole(tk.Tk):
 
         # Run menu
 
-        self._run_menu = tk.Menu(menu_bar, tearoff=0)
+        self._run_menu = tk.Menu(self._menu_bar, tearoff=0)
         self._run_menu.add_command(label='Run', accelerator='Ctrl+Space',
                                    command=self._run_input_text)
         self._run_menu.add_command(label='Kill', accelerator='Ctrl+Q',
@@ -174,8 +173,8 @@ class DgenerateConsole(tk.Tk):
             'write',
             multiline_check_trace)
 
-        self._options_menu = tk.Menu(menu_bar, tearoff=0)
-        self._theme_menu = tk.Menu(menu_bar, tearoff=0)
+        self._options_menu = tk.Menu(self._menu_bar, tearoff=0)
+        self._theme_menu = tk.Menu(self._menu_bar, tearoff=0)
         self._theme_menu_var = tk.StringVar(value='dgenerate')
 
         self._theme_menu_var.trace_add('write',
@@ -222,7 +221,7 @@ class DgenerateConsole(tk.Tk):
         self._image_pane_visible_var = tk.BooleanVar(value=False)
         self._image_pane_window_visible_var = tk.BooleanVar(value=False)
 
-        self._view_menu = tk.Menu(menu_bar, tearoff=0)
+        self._view_menu = tk.Menu(self._menu_bar, tearoff=0)
         self._view_menu.add_checkbutton(label='Latest Image Pane',
                                         variable=self._image_pane_visible_var)
         self._view_menu.add_checkbutton(label='Latest Image Window',
@@ -236,20 +235,20 @@ class DgenerateConsole(tk.Tk):
 
         # Help menu
 
-        self._help_menu = tk.Menu(menu_bar, tearoff=0)
+        self._help_menu = tk.Menu(self._menu_bar, tearoff=0)
 
         _resources.add_help_menu_links(self._help_menu)
 
         # Add sub menus to main menu
 
-        menu_bar.add_cascade(label='File', menu=self._file_menu)
-        menu_bar.add_cascade(label='Edit', menu=self._edit_menu)
-        menu_bar.add_cascade(label='Run', menu=self._run_menu)
-        menu_bar.add_cascade(label='Options', menu=self._options_menu)
-        menu_bar.add_cascade(label='View', menu=self._view_menu)
-        menu_bar.add_cascade(label='Help', menu=self._help_menu)
+        self._menu_bar.add_cascade(label='File', menu=self._file_menu)
+        self._menu_bar.add_cascade(label='Edit', menu=self._edit_menu)
+        self._menu_bar.add_cascade(label='Run', menu=self._run_menu)
+        self._menu_bar.add_cascade(label='Options', menu=self._options_menu)
+        self._menu_bar.add_cascade(label='View', menu=self._view_menu)
+        self._menu_bar.add_cascade(label='Help', menu=self._help_menu)
 
-        self.config(menu=menu_bar)
+        self.config(menu=self._menu_bar)
 
         # Split window layout
 
