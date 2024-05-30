@@ -18,9 +18,12 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import typing
 
 import pygments.lexer as _lexer
 import pygments.token as _token
+
+import dgenerate.files as _files
 
 
 class DgenerateLexer(_lexer.RegexLexer):
@@ -255,3 +258,77 @@ class DgenerateLexer(_lexer.RegexLexer):
             (r'\s+', _token.Whitespace),
         ],
     }
+
+
+def format_code(lines: typing.Iterator[str], indentation=' ' * 4) -> typing.Iterator[str]:
+    """
+    A very rudimentary code formatter for dgenerate configuration / script
+
+    :param lines: iterator over lines
+    :param indentation: level of indentation for top level jinja control blocks
+    :return: formatted code
+    """
+
+    lines = _files.PeekReader(lines)
+    indent_level = 0
+    in_continuation = False
+    continuation_lines = []
+
+    def add_continuation_lines():
+        if continuation_lines:
+            # Find the minimum indentation level among non-empty lines
+            min_indent = min((len(ln) - len(ln.lstrip())) for ln in continuation_lines if ln.strip())
+            # Remove the minimum indentation from all continuation lines
+            cleaned_lines = [ln[min_indent:] if ln.strip() else ln for ln in continuation_lines]
+            yield from [indentation * indent_level + ln for ln in cleaned_lines]
+            continuation_lines.clear()
+
+    def is_continuation_ended():
+        # Check backward through the continuation lines to see
+        # if the last non-comment, non-empty line ended with a backslash
+        for line in reversed(continuation_lines):
+            stripped_line = line.strip()
+            if stripped_line and not stripped_line.startswith('#'):
+                return not stripped_line.endswith('\\')
+        return True
+
+    for line, next_line in lines:
+        stripped = line.strip()
+
+        # Handle line continuation with backslash or hyphen
+        if in_continuation or line.endswith('\\') or (next_line is not None and next_line.strip().startswith('-')):
+            continuation_lines.append(line)
+            if next_line is None:
+                in_continuation = False
+                yield from add_continuation_lines()
+            elif not line.endswith('\\') and not (next_line.strip().startswith('-')):
+                if is_continuation_ended():
+                    in_continuation = False
+                    yield from add_continuation_lines()
+            else:
+                in_continuation = True
+            continue
+
+        # Handle Jinja2 control structures
+        if stripped.startswith('{% end') or stripped.startswith('{% else') or stripped.startswith('{% elif'):
+            indent_level = max(indent_level - 1, 0)
+
+        # Process any accumulated continuation lines before adding a new block line
+        yield from add_continuation_lines()
+
+        # Add the current line with the appropriate indentation
+        yield indentation * indent_level + stripped
+
+        # Increase indent level for starting control structures
+        if (stripped.startswith('{% for') or stripped.startswith('{% if') or
+                stripped.startswith('{% block') or stripped.startswith('{% macro') or
+                stripped.startswith('{% filter') or stripped.startswith('{% with') or
+                stripped.startswith('{% else') or stripped.startswith('{% elif')):
+            indent_level += 1
+
+        # Set continuation flag if the line ends with a backslash
+        if line.endswith('\\'):
+            in_continuation = True
+
+    # Handle any remaining continuation lines after the last line
+    yield from add_continuation_lines()

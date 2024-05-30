@@ -1,80 +1,88 @@
+# Editor colors
 [editor]
-bg = "#343d46"
-fg = "#d8dee9"
-select_bg = "#4e5a65"
-select_fg = "#d8dee9"
-inactive_select_bg = "#4e5a65"
-caret = "#f9ae58"
-caret_width = 1
-border_width = 0
-focus_border_width = 0
+bg = "#343d46"  # Background: dark gray
+fg = "#d8dee9"  # Foreground: light gray
+select_bg = "#4e5a65"  # Selection bg: blue-gray
+select_fg = "#d8dee9"  # Selection fg: light gray
+inactive_select_bg = "#4e5a65"  # Inactive selection bg: blue-gray
+caret = "#f9ae58"  # Caret: orange
+caret_width = 1  # Caret width: 1
+border_width = 0  # Border width: 0
+focus_border_width = 0  # Focus border width: 0
 
+# General syntax colors
 [general]
-comment = "#a6acb9"
-error = "#f9ae58"
-escape = "#d8dee9"
-keyword = "#c695c6"
-name = "#f9ae58"
-string = "#99c794"
-punctuation = "#5fb4b4"
+comment = "#a6acb9"  # Comments: light blue-gray
+error = "#f9ae58"  # Errors: orange
+escape = "#d8dee9"  # Escapes: light gray
+keyword = "#c695c6"  # Keywords: light purple
+name = "#f9ae58"  # Names: orange
+string = "#99c794"  # Strings: light green
+punctuation = "#5fb4b4"  # Punctuation: teal
 
+# Keyword colors
 [keyword]
-constant = "#c695c6"
-declaration = "#c695c6"
-namespace = "#c695c6"
-pseudo = "#c695c6"
-reserved = "#c695c6"
-type = "#c695c6"
+constant = "#c695c6"  # Constants: light purple
+declaration = "#c695c6"  # Declarations: light purple
+namespace = "#c695c6"  # Namespaces: light purple
+pseudo = "#c695c6"  # Pseudo keywords: light purple
+reserved = "#c695c6"  # Reserved keywords: light purple
+type = "#c695c6"  # Types: light purple
 
+# Name colors
 [name]
-attr = "#c695c6"
-builtin = "#6699cc"
-builtin_pseudo = "#ec5f66"
-class = "#f9ae58"
-class_variable = "#d8dee9"
-constant = "#d8dee9"
-decorator = "#6699cc"
-entity = "#6699cc"
-exception = "#6699cc"
-function = "#5fb4b4"
-global_variable = "#d8dee9"
-instance_variable = "#d8dee9"
-label = "#6699cc"
-magic_function = "#6699cc"
-magic_variable = "#d8dee9"
-namespace = "#d8dee9"
-tag = "#f97b58"
-variable = "#5fb4b4"
+attr = "#c695c6"  # Attributes: light purple
+builtin = "#6699cc"  # Built-ins: light blue
+builtin_pseudo = "#ec5f66"  # Built-in pseudo: red
+class = "#f9ae58"  # Classes: orange
+class_variable = "#d8dee9"  # Class variables: light gray
+constant = "#d8dee9"  # Constants: light gray
+decorator = "#6699cc"  # Decorators: light blue
+entity = "#6699cc"  # Entities: light blue
+exception = "#6699cc"  # Exceptions: light blue
+function = "#5fb4b4"  # Functions: teal
+global_variable = "#d8dee9"  # Global variables: light gray
+instance_variable = "#d8dee9"  # Instance variables: light gray
+label = "#6699cc"  # Labels: light blue
+magic_function = "#6699cc"  # Magic functions: light blue
+magic_variable = "#d8dee9"  # Magic variables: light gray
+namespace = "#d8dee9"  # Namespace: light gray
+tag = "#f97b58"  # Tags: orange-red
+variable = "#5fb4b4"  # Variables: teal
 
+# Operator colors
 [operator]
-symbol = "#f97b58"
-word = "#f97b58"
+symbol = "#f97b58"  # Symbols: orange-red
+word = "#f97b58"  # Words: orange-red
 
+# String colors
 [string]
-affix = "#99c794"
-char = "#99c794"
-delimeter = "#99c794"
-doc = "#99c794"
-double = "#99c794"
-escape = "#99c794"
-heredoc = "#99c794"
-interpol = "#99c794"
-regex = "#99c794"
-single = "#99c794"
-symbol = "#99c794"
+affix = "#99c794"  # Affix: light green
+char = "#99c794"  # Char: light green
+delimeter = "#99c794"  # Delimeter: light green
+doc = "#99c794"  # Doc: light green
+double = "#99c794"  # Double: light green
+escape = "#99c794"  # Escape: light green
+heredoc = "#99c794"  # Heredoc: light green
+interpol = "#99c794"  # Interpol: light green
+regex = "#99c794"  # Regex: light green
+single = "#99c794"  # Single: light green
+symbol = "#99c794"  # Symbol: light green
 
+# Number colors
 [number]
-binary = "#f9ae58"
-float = "#f9ae58"
-hex = "#f9ae58"
-integer = "#f9ae58"
-long = "#f9ae58"
-octal = "#f9ae58"
+binary = "#f9ae58"  # Binary: orange
+float = "#f9ae58"  # Float: orange
+hex = "#f9ae58"  # Hex: orange
+integer = "#f9ae58"  # Integer: orange
+long = "#f9ae58"  # Long: orange
+octal = "#f9ae58"  # Octal: orange
 
+# Comment colors
 [comment]
-hashbang = "#a6acb9"
-multiline = "#a6acb9"
-preproc = "#c695c6"
-preprocfile = "#99c794"
-single = "#a6acb9"
-special = "#a6acb9"
+hashbang = "#a6acb9"  # Hashbang: light blue-gray
+multiline = "#a6acb9"  # Multiline: light blue-gray
+preproc = "#c695c6"  # Preproc: light purple
+preprocfile = "#99c794"  # Preprocfile: light green
+single = "#a6acb9"  # Single: light blue-gray
+special = "#a6acb9"  # Special: light blue-gray

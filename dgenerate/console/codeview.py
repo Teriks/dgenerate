@@ -18,7 +18,6 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 import tkinter as tk
 
 import pygments
@@ -205,12 +204,10 @@ class ColorSchemeParser:
         while last_visible_index != self.text.index("end") and self.text.get(last_visible_index).strip():
             last_visible_index = self.text.index(f"{last_visible_index} + 1 line")
 
-        # Get the text of the extended range
         lines = self.text.get(first_visible_index, last_visible_index)
-        line_offset = lines.count("\n") - lines.lstrip().count("\n")
+        line_offset = len(lines) - len(lines.lstrip("\n"))
         start_index = str(self.text.index(f"{first_visible_index} + {line_offset} lines"))
 
-        # Apply syntax highlighting to the extended range
         for token, text in pygments.lex(lines, self.lexer):
             token = str(token)
             end_index = self.text.index(f"{start_index} + {len(text)} chars")
@@ -219,29 +216,38 @@ class ColorSchemeParser:
             start_index = end_index
 
     def highlight_block(self, index: str) -> None:
-        index = self.text.index(index).split('.')[0] + '.' + '0'
+        line_index = int(self.text.index(index).split('.')[0])
+        text_end_index = int(self.text.index('end').split('.')[0])
 
         # Find the start of the block
-        start_index = index
-        while start_index != "1.0" and self.text.get(f"{start_index} - 1 line").strip():
-            start_index = self.text.index(f"{start_index} - 1 line")
+        start_index = line_index
+        while start_index != 1:
+            content = self.text.get(f'{start_index}.0', f'{start_index}.end').strip()
+            if not content:
+                break
+            start_index = start_index - 1
 
         # Find the end of the block
-        end_index = index
-        while end_index != self.text.index("end") and self.text.get(end_index).strip():
-            end_index = self.text.index(f"{end_index} + 1 line")
+        end_index = line_index
+        while end_index != text_end_index:
+            content = self.text.get(f'{end_index}.0', f'{end_index}.end').strip()
+            if not content:
+                break
+            end_index = end_index + 1
+
+        start_index = f'{start_index}.0'
+        end_index = f'{end_index}.end'
 
         # Remove existing highlights in the block
         for tag in self.text.tag_names(index=None):
             if tag.startswith("Token"):
                 self.text.tag_remove(tag, start_index, end_index)
 
-        # Get the text of the block
+        # Get the text of the extended range
         lines = self.text.get(start_index, end_index)
-        line_offset = lines.count("\n") - lines.lstrip().count("\n")
+        line_offset = len(lines) - len(lines.lstrip("\n"))
         start_index = str(self.text.index(f"{start_index} + {line_offset} lines"))
 
-        # Apply syntax highlighting to the block
         for token, text in pygments.lex(lines, self.lexer):
             token = str(token)
             end_index = self.text.index(f"{start_index} + {len(text)} chars")
@@ -285,7 +291,7 @@ class DgenerateCodeView(tk.Frame):
 
         self._color_scheme = ColorSchemeParser(self.text, dgenerate.pygments.DgenerateLexer())
 
-        kwargs.setdefault('font', ('monospaced', 11))
+        kwargs.setdefault('font', ('Courier', 10))
 
         self.text.configure(
             yscrollcommand=self._vertical_scroll,
@@ -295,10 +301,13 @@ class DgenerateCodeView(tk.Frame):
         )
 
         def key_release(event):
-            if len(event.char) == 1 and event.char.isprintable():
+            if (len(event.char) == 1 and event.char.isprintable()) or \
+                    event.keysym == 'BackSpace' or event.keysym == 'Delete':
                 self._color_scheme.highlight_block('insert')
 
-        self.text.bind('<<Modified>>', lambda e: (self._line_numbers.redraw(), self.text.edit_modified(False)))
+        self.text.bind('<<Modified>>',
+                       lambda e: (self._line_numbers.redraw(),
+                                  self.text.edit_modified(False)))
         self.text.bind('<KeyRelease>', key_release)
         self.text.bind('<Tab>', self._indent)
         self.text.bind('<Shift-Tab>', self._unindent)
@@ -326,6 +335,13 @@ class DgenerateCodeView(tk.Frame):
             self._color_scheme.highlight_all()
 
         self.text.delete = delete_new
+
+    def format_code(self):
+        text = self.text.get("1.0", "end-1c")
+        self.text.replace("1.0", "end-1c",
+                          '\n'.join(dgenerate.pygments.format_code(
+                              iter(text.splitlines()),
+                              indentation=self.indentation)))
 
     def _indent(self, event):
         # Get the current selection

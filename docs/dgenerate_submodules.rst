@@ -153,6 +153,16 @@ dgenerate.plugin module
    :special-members: __call__, __init__
 
 
+dgenerate.pygments module
+-----------------------
+
+.. automodule:: dgenerate.pygments
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :special-members: __call__, __init__
+
+
 dgenerate.imageprocessors module
 --------------------------------
 
