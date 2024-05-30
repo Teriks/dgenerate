@@ -301,8 +301,12 @@ class DgenerateCodeView(tk.Frame):
         )
 
         def key_release(event):
-            if (len(event.char) == 1 and event.char.isprintable()) or \
-                    event.keysym == 'BackSpace' or event.keysym == 'Delete':
+            keysym = event.keysym.lower() if event.keysym else ''
+            char = event.char if event.char else ''
+            if (len(char) == 1 and char.isprintable()) or \
+               (len(keysym) == 1 and keysym.isprintable()) or \
+                    keysym == 'backspace' or\
+                    keysym == 'delete':
                 self._color_scheme.highlight_block('insert')
 
         self.text.bind('<<Modified>>',
