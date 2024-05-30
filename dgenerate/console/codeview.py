@@ -186,11 +186,6 @@ class ColorSchemeParser:
         self.highlight_all()
 
     def highlight_all(self) -> None:
-        # Remove existing syntax highlighting tags
-        for tag in self.text.tag_names(index=None):
-            if tag.startswith("Token"):
-                self.text.tag_remove(tag, "1.0", "end")
-
         # Get the index range of the visible lines
         first_visible_index = self.text.index("@0,0")
         last_visible_line_num = int(self.text.index("@0,%d" % self.text.winfo_height()).split(".")[0]) + 1
@@ -203,6 +198,11 @@ class ColorSchemeParser:
         # Extend the range to the end of the text or the first empty line below the visible text
         while last_visible_index != self.text.index("end") and self.text.get(last_visible_index).strip():
             last_visible_index = self.text.index(f"{last_visible_index} + 1 line")
+
+        # Remove existing syntax highlighting tags
+        for tag in self.text.tag_names(index=None):
+            if tag.startswith("Token"):
+                self.text.tag_remove(tag, first_visible_index, last_visible_index)
 
         lines = self.text.get(first_visible_index, last_visible_index)
         line_offset = len(lines) - len(lines.lstrip("\n"))
