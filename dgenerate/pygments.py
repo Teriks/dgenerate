@@ -85,15 +85,24 @@ class DgenerateLexer(_lexer.RegexLexer):
     jinja_comment_pattern = (r'(\{#)', _token.Comment.Multiline, 'jinja_comment')
     jinja_interpolate_pattern = (r'(\{\{)', _token.String.Interpol, 'jinja_interpolate')
     shell_globs_and_paths_pattern = (r'(~|(\.\.?|~)?/[^=\s\[\]{}()$"\'`\\<&|;]*)', _token.String.Other)
-    operators_punctuation_pattern = (r'[\[\]{}()=\\]', _token.Operator)
+    operators_punctuation_pattern = (r'[\[\]{}()=\\]', _token.Operator.Punctuation)
     operators_pattern = (r'\*\*|<<|>>|[-+*/%^|&<>!]', _token.Operator)
+    size_pattern = (r'(?<!\w)\d+[xX]\d+(?!\w)', _token.Number.Hex)
     number_float_pattern = (r'(?<!\w)(-?\d+(\.\d*)?([eE][-+]?\d+)?)(?!\w)', _token.Number.Float)
-    size_pattern = (r'\d+x\d+', _token.Number.Hex)
-    number_integer_pattern = (r'(?<!\w)\d+(?!\w)', _token.Number.Integer)
+    decimal_integer_pattern = (r'(?<!\w)-?\d+(?!\w)', _token.Number.Integer)
+    binary_integer_pattern = (r'(?<!\w)0[bB][01]+(?!\w)', _token.Number.Binary)
+    hexadecimal_integer_pattern = (r'(?<!\w)0[xX][0-9a-fA-F]+(?!\w)', _token.Number.Hex)
+    octal_integer_pattern = (r'(?<!\w)0[oO][0-7]+(?!\w)', _token.Number.Octal)
     text_pattern = (r'[^=\s\[\]{}()$"\'`\\<&|;]+', _token.Text)
     double_string_content_pattern = (r'((?:(?!\{\{|{#|\{%)[^"\\\n]|\\[^ \n]|\\[ \t]*(#.*?)?\n)+)', _token.String)
     single_string_content_pattern = (r'((?:(?!\{\{|{#|\{%)[^\'\\\n]|\\[^ \n]|\\[ \t]*(#.*?)?\n)+)', _token.String)
     variable_names_pattern = (r'\b[a-zA-Z_][a-zA-Z0-9_.]*\b', _token.Name.Variable)
+
+    number_patterns = (number_float_pattern,
+                       decimal_integer_pattern,
+                       binary_integer_pattern,
+                       hexadecimal_integer_pattern,
+                       octal_integer_pattern)
 
     tokens = {
         'root': [
@@ -111,18 +120,14 @@ class DgenerateLexer(_lexer.RegexLexer):
             jinja_block_pattern,
             jinja_comment_pattern,
             jinja_interpolate_pattern,
+            size_pattern,
+            *number_patterns,
             operators_punctuation_pattern,
             operators_pattern,
             (r'"', _token.String.Double, 'double_string'),
             (r"'", _token.String.Single, 'single_string'),
-            (r';', _token.Punctuation),
-            (r'\|', _token.Punctuation),
-            (r'\s+', _token.Whitespace),
-            number_float_pattern,
-            size_pattern,
-            number_integer_pattern,
             text_pattern,
-            (r'<', _token.Text),
+            (r'\s+', _token.Whitespace),
         ],
         'value': [
             (r'\n', _token.Whitespace, '#pop'),
@@ -133,13 +138,12 @@ class DgenerateLexer(_lexer.RegexLexer):
             jinja_block_pattern,
             jinja_comment_pattern,
             jinja_interpolate_pattern,
+            size_pattern,
+            *number_patterns,
             operators_punctuation_pattern,
             operators_pattern,
             (r'"', _token.String.Double, 'double_string'),
             (r"'", _token.String.Single, 'single_string'),
-            number_float_pattern,
-            size_pattern,
-            number_integer_pattern,
             text_pattern,
             (r'\s+', _token.Whitespace),
         ],
@@ -149,18 +153,16 @@ class DgenerateLexer(_lexer.RegexLexer):
             (r'!END', _token.Keyword.Pseudo),
             env_var_pattern,
             (r'\b(%s)\b' % '|'.join(SETP_KEYWORDS), _token.Keyword),
-            shell_globs_and_paths_pattern,
+            (r'\b(%s)\b' % '|'.join(DGENERATE_FUNCTIONS), _token.Name.Function),
+            variable_names_pattern,
             jinja_block_pattern,
             jinja_comment_pattern,
             jinja_interpolate_pattern,
+            *number_patterns,
             operators_punctuation_pattern,
             operators_pattern,
             (r'"', _token.String.Double, 'double_string'),
             (r"'", _token.String.Single, 'single_string'),
-            number_float_pattern,
-            size_pattern,
-            number_integer_pattern,
-            (r'\b(%s)\b' % '|'.join(DGENERATE_FUNCTIONS), _token.Name.Function),
             text_pattern,
             (r'\s+', _token.Whitespace),
         ],
@@ -205,9 +207,7 @@ class DgenerateLexer(_lexer.RegexLexer):
             (r"'", _token.String.Single, 'single_string'),
 
             # Numbers
-            number_float_pattern,
-            size_pattern,
-            number_integer_pattern,
+            *number_patterns,
 
             # Operators and punctuation
             operators_punctuation_pattern,
@@ -245,9 +245,7 @@ class DgenerateLexer(_lexer.RegexLexer):
             (r"'", _token.String.Single, 'single_string'),
 
             # Numbers
-            number_float_pattern,
-            size_pattern,
-            number_integer_pattern,
+            *number_patterns,
 
             # Operators and punctuation
             operators_punctuation_pattern,
