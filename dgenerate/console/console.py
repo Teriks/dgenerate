@@ -1102,6 +1102,8 @@ class DgenerateConsole(tk.Tk):
                 self._auto_scroll_on_output_check_var.set(config.get('auto_scroll_on_output', False))
                 self._word_wrap_input_check_var.set(config.get('word_wrap_input', True))
                 self._word_wrap_output_check_var.set(config.get('word_wrap_output', True))
+        else:
+            self._theme_menu_var.set('dgenerate')
 
     def save_settings(self):
         settings_path = pathlib.Path(pathlib.Path.home(), '.dgenerate_console_settings')
