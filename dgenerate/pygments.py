@@ -85,7 +85,7 @@ class DgenerateLexer(_lexer.RegexLexer):
     jinja_comment_pattern = (r'(\{#)', _token.Comment.Multiline, 'jinja_comment')
     jinja_interpolate_pattern = (r'(\{\{)', _token.String.Interpol, 'jinja_interpolate')
     shell_globs_and_paths_pattern = (r'(~|(\.\.?|~)?/[^=\s\[\]{}()$"\'`\\<&|;]*)', _token.String.Other)
-    operators_punctuation_pattern = (r'[\[\]{}()=\\]', _token.Operator.Punctuation)
+    operators_punctuation_pattern = (r'[\[\]{}()=\\]', _token.Operator)
     operators_pattern = (r'\*\*|<<|>>|[-+*/%^|&<>!]', _token.Operator)
     size_pattern = (r'(?<!\w)\d+[xX]\d+(?!\w)', _token.Number.Hex)
     number_float_pattern = (r'(?<!\w)(-?\d+(\.\d*)?([eE][-+]?\d+)?)(?!\w)', _token.Number.Float)
