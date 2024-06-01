@@ -186,6 +186,11 @@ class ColorSchemeParser:
                 self.text.tag_configure(f"Token.{key}", foreground=value)
         self.highlight_visible()
 
+    def remove_tags(self, start='1.0', end='end'):
+        for tag in self.text.tag_names(index=None):
+            if tag.startswith("Token"):
+                self.text.tag_remove(tag, start, end)
+
     def highlight_visible(self) -> None:
         last_visible_line_num = int(self.text.index("@0,%d" % self.text.winfo_height()).split(".")[0]) + 1
         last_visible_index = f"{last_visible_line_num}.0"
@@ -281,6 +286,7 @@ class DgenerateCodeView(tk.Frame):
             text_args['maxundo'] = -1
 
         self.text = tk.Text(self, **text_args)
+        self._highlighting = True
 
         self.indentation = " " * 4
 
@@ -320,7 +326,8 @@ class DgenerateCodeView(tk.Frame):
                     keysym == 'backspace' or \
                     keysym == 'delete' or \
                     keysym == 'return':
-                self._color_scheme.highlight_visible()
+                if self._highlighting:
+                    self._color_scheme.highlight_visible()
 
         self.text.bind('<<Modified>>',
                        lambda e: (self._line_numbers.redraw(),
@@ -333,7 +340,8 @@ class DgenerateCodeView(tk.Frame):
 
         def replace_new(*a, **kwargs):
             replace(*a, **kwargs)
-            self._color_scheme.highlight_visible()
+            if self._highlighting:
+                self._color_scheme.highlight_visible()
 
         self.text.replace = replace_new
 
@@ -341,7 +349,8 @@ class DgenerateCodeView(tk.Frame):
 
         def insert_new(*a, **kwargs):
             insert(*a, **kwargs)
-            self._color_scheme.highlight_visible()
+            if self._highlighting:
+                self._color_scheme.highlight_visible()
 
         self.text.insert = insert_new
 
@@ -349,7 +358,8 @@ class DgenerateCodeView(tk.Frame):
 
         def delete_new(*a, **kwargs):
             delete(*a, **kwargs)
-            self._color_scheme.highlight_visible()
+            if self._highlighting:
+                self._color_scheme.highlight_visible()
 
         self.text.delete = delete_new
 
@@ -411,13 +421,20 @@ class DgenerateCodeView(tk.Frame):
     def _vertical_scroll(self, first: str | float, last: str | float):
         self.y_scrollbar.set(first, last)
         self._line_numbers.redraw()
-        self._color_scheme.highlight_visible()
+        if self._highlighting:
+            self._color_scheme.highlight_visible()
 
     def set_theme(self, color_theme: dict[str, dict[str, str | int]] | str | None) -> None:
-        if isinstance(color_theme, str):
-            color_theme = DgenerateCodeView.THEMES[color_theme]
+        if color_theme is None or color_theme.lower() == 'none':
+            self._highlighting = False
+            self._color_scheme.remove_tags()
+            self.text.configure(fg='black', bg='white')
+        else:
+            self._highlighting = True
+            if isinstance(color_theme, str):
+                color_theme = DgenerateCodeView.THEMES[color_theme]
 
-        self._color_scheme.set_theme(color_theme)
+            self._color_scheme.set_theme(color_theme)
 
     def enable_line_numbers(self):
         self._line_numbers.grid(row=0, column=0, sticky='ns')
