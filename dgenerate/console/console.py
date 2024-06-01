@@ -180,6 +180,10 @@ class DgenerateConsole(tk.Tk):
         self._theme_menu_var.trace_add('write',
                                        lambda *a:
                                        self._set_theme(self._theme_menu_var.get()))
+
+        self._theme_menu.add_radiobutton(label='none', value='none',
+                                         variable=self._theme_menu_var)
+
         for theme_name in DgenerateCodeView.THEMES.keys():
             self._theme_menu.add_radiobutton(label=theme_name, value=theme_name,
                                              variable=self._theme_menu_var)
