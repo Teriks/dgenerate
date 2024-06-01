@@ -26,6 +26,7 @@ import toml
 
 import dgenerate.console.resources as _resources
 import dgenerate.pygments
+import dgenerate.textprocessing
 
 
 class ColorSchemeParser:
@@ -183,17 +184,28 @@ class ColorSchemeParser:
         for key, value in tags.items():
             if isinstance(value, str):
                 self.text.tag_configure(f"Token.{key}", foreground=value)
-        self.highlight_all()
+        self.highlight_visible()
 
-    def highlight_all(self) -> None:
-        # Get the index range of the visible lines
-        first_visible_index = self.text.index("@0,0")
+    def highlight_visible(self) -> None:
         last_visible_line_num = int(self.text.index("@0,%d" % self.text.winfo_height()).split(".")[0]) + 1
         last_visible_index = f"{last_visible_line_num}.0"
+        line_count = int(self.text.index('end-1c').split('.')[0])
 
-        # Extend the range to the start of the text or the first empty line above the visible text
-        while first_visible_index != "1.0" and self.text.get(f"{first_visible_index} - 1 line").strip():
-            first_visible_index = self.text.index(f"{first_visible_index} - 1 line")
+        if line_count > 500:
+            # give up accuracy for performance
+
+            first_visible_index = self.text.index("@0,0")
+
+            # provide a fighting chance of there not being an unfinished parse over 50 lines
+            first_visible_index = self.text.index(f'{first_visible_index} - 50 line')
+
+            # Extend the range to the start of the text or the first empty line above the visible text - 50 lines
+            while first_visible_index != "1.0" and self.text.get(f"{first_visible_index} - 1 line").strip():
+                first_visible_index = self.text.index(f"{first_visible_index} - 1 line")
+        else:
+            # The text length is small enough that it should not be too slow
+            # to parse it from the beginning to the end of what is visible
+            first_visible_index = "1.0"
 
         # Extend the range to the end of the text or the first empty line below the visible text
         while last_visible_index != self.text.index("end") and self.text.get(last_visible_index).strip():
@@ -304,10 +316,11 @@ class DgenerateCodeView(tk.Frame):
             keysym = event.keysym.lower() if event.keysym else ''
             char = event.char if event.char else ''
             if (len(char) == 1 and char.isprintable()) or \
-               (len(keysym) == 1 and keysym.isprintable()) or \
-                    keysym == 'backspace' or\
-                    keysym == 'delete':
-                self._color_scheme.highlight_block('insert')
+                    (len(keysym) == 1 and keysym.isprintable()) or \
+                    keysym == 'backspace' or \
+                    keysym == 'delete' or \
+                    keysym == 'return':
+                self._color_scheme.highlight_visible()
 
         self.text.bind('<<Modified>>',
                        lambda e: (self._line_numbers.redraw(),
@@ -320,7 +333,7 @@ class DgenerateCodeView(tk.Frame):
 
         def replace_new(*a, **kwargs):
             replace(*a, **kwargs)
-            self._color_scheme.highlight_all()
+            self._color_scheme.highlight_visible()
 
         self.text.replace = replace_new
 
@@ -328,7 +341,7 @@ class DgenerateCodeView(tk.Frame):
 
         def insert_new(*a, **kwargs):
             insert(*a, **kwargs)
-            self._color_scheme.highlight_all()
+            self._color_scheme.highlight_visible()
 
         self.text.insert = insert_new
 
@@ -336,14 +349,14 @@ class DgenerateCodeView(tk.Frame):
 
         def delete_new(*a, **kwargs):
             delete(*a, **kwargs)
-            self._color_scheme.highlight_all()
+            self._color_scheme.highlight_visible()
 
         self.text.delete = delete_new
 
     def format_code(self):
         text = self.text.get("1.0", "end-1c")
         self.text.replace("1.0", "end-1c",
-                          '\n'.join(dgenerate.pygments.format_code(
+                          '\n'.join(dgenerate.textprocessing.format_dgenerate_config(
                               iter(text.splitlines()),
                               indentation=self.indentation)))
 
@@ -398,7 +411,7 @@ class DgenerateCodeView(tk.Frame):
     def _vertical_scroll(self, first: str | float, last: str | float):
         self.y_scrollbar.set(first, last)
         self._line_numbers.redraw()
-        self._color_scheme.highlight_all()
+        self._color_scheme.highlight_visible()
 
     def set_theme(self, color_theme: dict[str, dict[str, str | int]] | str | None) -> None:
         if isinstance(color_theme, str):

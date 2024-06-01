@@ -22,6 +22,7 @@ import collections.abc
 import datetime
 import enum
 import glob
+import itertools
 import math
 import os
 import re
@@ -29,6 +30,7 @@ import shutil
 import textwrap
 import typing
 
+import dgenerate.files as _files
 import dgenerate.types as _types
 
 __doc__ = """
@@ -1197,3 +1199,154 @@ def remove_terminal_escape_sequences(string):
     ''', re.VERBOSE)
 
     return ansi_escape.sub('', string)
+
+
+def _remove_tail_comments_unlexable(string) -> str:
+    try:
+        # find the start of a possible comment
+        comment_start = string.index('#')
+    except ValueError:
+        # no comments, all good
+        return string
+
+    if comment_start == 0:
+        # it starts the string, ignore
+        return string
+
+    segment = string[:comment_start]
+    if segment.endswith('\\'):
+        # found a comment token, but it was escaped
+
+        next_spaces = ''.join(itertools.takewhile(lambda x: x.isspace(), string[comment_start + 1:]))
+        # record all space characters after the #, they may be taken by the lexer if
+        # it can make sense of what came after #
+
+        lexed, result = remove_tail_comments(string[comment_start + 1:])
+        # recursive decent to the right starting after the # (operator lol) to solve the rest of the string
+
+        if next_spaces and lexed:
+            # the spaces would have been consumed by lexing, add them back to the
+            # left side of the string where the user intended them to be
+            result = next_spaces + result
+
+        # return the left side minus the escape sequence + the comment # token, plus the evaluated right side
+        return segment.removesuffix('\\') + '#' + result
+
+    # unescaped comment start, return the segment to the left
+    return segment
+
+
+def remove_tail_comments(string) -> tuple[bool, str]:
+    """
+    Remove trailing comments from a dgenerate config line
+
+    Will not remove a comment if it is the only thing on the line.
+
+    Considers strings and comment escape sequences.
+
+    :param string: the string
+    :return: ``(removed anything?, stripped string)``
+    """
+    # this is a more difficult problem than I imagined.
+    try:
+        parts = tokenized_split(string, '#',
+                                escapable_separator=True,
+                                allow_unterminated_strings=True)
+        # attempt to split off the comment
+
+        if not parts:
+            # empty case, effectively un-lexed
+            return False, string
+
+        new_value = parts[0]
+
+        if not new_value.strip():
+            # do not remove if the comment is all that exists on the line
+            # that is handled elsewhere
+            return False, string
+
+        # the left side was lexed and stripped of leading and trailing whitespace
+        return True, new_value
+    except TokenizedSplitSyntaxError:
+        # could not lex this because of a syntax error, since unterminated
+        # strings are understandable by the lexer given our options, this
+        # is an uncommon if not near impossible occurrence
+        return False, _remove_tail_comments_unlexable(string)
+
+
+def format_dgenerate_config(lines: typing.Iterator[str], indentation=' ' * 4) -> typing.Iterator[str]:
+    """
+    A very rudimentary code formatter for dgenerate configuration / script.
+
+    Does not handle breaking jinja control blocks on to a new
+    line if multiple start blocks exist on the same line.
+
+    :param lines: iterator over lines
+    :param indentation: level of indentation for top level jinja control blocks
+    :return: formatted code
+    """
+
+    lines = _files.PeekReader(lines)
+    indent_level = 0
+    in_continuation = False
+    continuation_lines = []
+
+    def add_continuation_lines():
+        if continuation_lines:
+            # Find the minimum indentation level among non-empty lines
+            min_indent = min((len(ln) - len(ln.lstrip())) for _, ln in continuation_lines if ln.strip())
+            # Remove the minimum indentation from all continuation lines
+            cleaned_lines = [ln[min_indent:] if ln.strip() else ln for _, ln in continuation_lines]
+            yield from [indentation * indent_level + ln for ln in cleaned_lines]
+            continuation_lines.clear()
+
+    def is_continuation_ended():
+        # Check backward through the continuation lines to see
+        # if the last non-comment, non-empty line ended with a backslash
+        for stripped_line, line in reversed(continuation_lines):
+            if stripped_line:
+                return not stripped_line.endswith('\\')
+        return True
+
+    for line, next_line in lines:
+        comment_free_line = remove_tail_comments(line)[1].strip()
+
+        # Handle line continuation with backslash or hyphen
+        if in_continuation or comment_free_line.endswith('\\') or (
+                next_line is not None and next_line.strip().startswith('-')):
+            continuation_lines.append((comment_free_line, line))
+            if next_line is None:
+                in_continuation = False
+                yield from add_continuation_lines()
+            elif not comment_free_line.endswith('\\') and not (next_line.strip().startswith('-')):
+                if is_continuation_ended():
+                    in_continuation = False
+                    yield from add_continuation_lines()
+            else:
+                in_continuation = True
+            continue
+
+        # Handle Jinja2 control structures
+        if comment_free_line.startswith('{% end') or comment_free_line.startswith(
+                '{% else') or comment_free_line.startswith('{% elif'):
+            indent_level = max(indent_level - 1, 0)
+
+        # Process any accumulated continuation lines before adding a new block line
+        yield from add_continuation_lines()
+
+        # Add the current line with the appropriate indentation
+        yield indentation * indent_level + line.strip()
+
+        # Increase indent level for starting control structures
+        if (comment_free_line.startswith('{% for') or comment_free_line.startswith('{% if') or
+                comment_free_line.startswith('{% block') or comment_free_line.startswith('{% macro') or
+                comment_free_line.startswith('{% filter') or comment_free_line.startswith('{% with') or
+                comment_free_line.startswith('{% else') or comment_free_line.startswith('{% elif')):
+            indent_level += 1
+
+        # Set continuation flag if the line ends with a backslash
+        if line.endswith('\\'):
+            in_continuation = True
+
+    # Handle any remaining continuation lines after the last line
+    yield from add_continuation_lines()
