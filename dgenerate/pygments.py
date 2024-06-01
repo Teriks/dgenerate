@@ -23,6 +23,12 @@
 import pygments.lexer as _lexer
 import pygments.token as _token
 
+__doc__ = """
+This module provides a pygments lexer for the dgenerate config / shell language.
+
+This can be used for syntax highlighting.
+"""
+
 _DGENERATE_FUNCTIONS = (
     'abs', 'all', 'any', 'ascii', 'bin', 'bool', 'bytearray', 'bytes',
     'callable', 'chr', 'complex', 'cwd', 'dict', 'divmod', 'enumerate',
