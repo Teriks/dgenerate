@@ -185,7 +185,7 @@ class DgenerateConsole(tk.Tk):
         self._theme_menu.add_radiobutton(label='none', value='none',
                                          variable=self._theme_menu_var)
 
-        for theme_name in DgenerateCodeView.THEMES.keys():
+        for theme_name in sorted(DgenerateCodeView.THEMES.keys()):
             self._theme_menu.add_radiobutton(label=theme_name, value=theme_name,
                                              variable=self._theme_menu_var)
 
@@ -986,16 +986,20 @@ class DgenerateConsole(tk.Tk):
         output_lines = int(self._output_text.text.index('end-1c').split('.')[0])
 
         if output_lines + 1 > self._max_output_lines:
-            self._output_text.text.delete('1.0',
-                                          f'{output_lines - self._max_output_lines}.0')
+            remove_range = ('1.0', f'{output_lines - self._max_output_lines}.0')
+            self._output_text.text.tag_remove('error', *remove_range)
+            self._output_text.text.delete(*remove_range)
 
         clean_text = _textprocessing.remove_terminal_escape_sequences(text).rstrip() + '\n'
+        replace_range = ('end-2c linestart', 'end-1c')
 
         if self._next_text_update_line_return:
-            self._output_text.text.replace('end-2c linestart', 'end-1c', clean_text)
+            self._output_text.text.tag_remove('error', *replace_range)
+            self._output_text.text.replace(*replace_range, clean_text)
         elif self._next_text_update_line_escape:
             if text.strip():
-                self._output_text.text.replace('end-2c linestart', 'end-1c', clean_text)
+                self._output_text.text.tag_remove('error', *replace_range)
+                self._output_text.text.replace(*replace_range, clean_text)
         else:
             self._output_text.text.insert(tk.END, clean_text)
 
