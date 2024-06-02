@@ -131,7 +131,8 @@ class DgenerateConsole(tk.Tk):
         self._edit_menu.add_separator()
 
         self._edit_menu.add_command(label='Format Code',
-                                    command=lambda: self._input_text.format_code())
+                                    accelerator='Ctrl+Shift+F',
+                                    command=self._format_code)
 
         self._edit_menu.add_separator()
 
@@ -294,14 +295,16 @@ class DgenerateConsole(tk.Tk):
         self._input_text.text.bind('<Insert>', handle_insert)
 
         self._input_text.text.bind('<Control-f>',
-                                   lambda e: _finddialog.open_find_dialog(self,
-                                                                          'Find In Input',
-                                                                          self._input_text.text))
+                                   lambda e: _finddialog.open_find_dialog(
+                                       self,
+                                       'Find In Input',
+                                       self._input_text.text))
 
         self._input_text.text.bind('<Control-r>',
-                                   lambda e: _finddialog.open_find_replace_dialog(self,
-                                                                                  'Replace In Input',
-                                                                                  self._input_text.text))
+                                   lambda e: _finddialog.open_find_replace_dialog(
+                                       self,
+                                       'Replace In Input',
+                                       self._input_text.text))
 
         self._input_text.text.bind('<Control-Z>', lambda e: self._redo_input_entry())
 
@@ -310,6 +313,8 @@ class DgenerateConsole(tk.Tk):
 
         self._input_text.text.bind('<Control-space>',
                                    lambda e: self._run_input_text())
+
+        self._input_text.text.bind('<Control-F>', lambda e: self._format_code())
 
         self._input_text.text.focus_set()
 
@@ -345,7 +350,8 @@ class DgenerateConsole(tk.Tk):
 
         self._input_text_context.add_separator()
         self._input_text_context.add_command(label='Format Code',
-                                             command=self._input_text.format_code)
+                                             accelerator='Ctrl+Shift+F',
+                                             command=self._format_code)
         self._input_text_context.add_separator()
 
         self._input_text_context.add_command(label='Load', command=self._load_input_entry_text)
@@ -547,6 +553,9 @@ class DgenerateConsole(tk.Tk):
 
         self._text_update()
 
+    def _format_code(self):
+        self._input_text.format_code()
+
     def _set_theme(self, name):
         self._input_text.set_theme(name)
 
@@ -557,6 +566,15 @@ class DgenerateConsole(tk.Tk):
             bg=bg,
             fg=fg
         )
+
+        error_color = fg
+
+        if name in DgenerateCodeView.THEMES:
+            theme = DgenerateCodeView.THEMES[name]
+            error_color = theme['general']['error']
+
+        self._output_text.text.tag_configure(
+            'error', foreground=error_color)
 
     def _start_shell_reader_threads(self):
 
@@ -935,6 +953,10 @@ class DgenerateConsole(tk.Tk):
 
     def _clear_output_text(self):
         self._output_text.text.config(state=tk.NORMAL)
+
+        self._output_text.text.tag_remove(
+            'error', '1.0', 'end')
+
         self._output_text.text.delete('1.0', tk.END)
         self._output_text.text.config(state=tk.DISABLED)
 
@@ -951,7 +973,7 @@ class DgenerateConsole(tk.Tk):
                     self._get_cwd(deep=True), mentioned_path)
                 self._image_pane_load_image(path)
 
-    def _add_output_line(self, text):
+    def _add_output_line(self, text, tag=None):
         if text.startswith('Working Directory Changed To: '):
             # update using shallow psutil query
             self._update_cwd_title()
@@ -976,6 +998,9 @@ class DgenerateConsole(tk.Tk):
                 self._output_text.text.replace('end-2c linestart', 'end-1c', clean_text)
         else:
             self._output_text.text.insert(tk.END, clean_text)
+
+        if tag is not None:
+            self._output_text.text.tag_add(tag, f'end - {len(clean_text) + 1} chars', 'end-1c')
 
         self._next_text_update_line_escape = text.endswith('\u001B[A\r')
         self._next_text_update_line_return = text.endswith('\r')
@@ -1005,7 +1030,9 @@ class DgenerateConsole(tk.Tk):
                 break
             try:
                 with self._termination_lock:
-                    self._add_output_line(self._output_text_stderr_queue.get_nowait())
+                    self._add_output_line(
+                        self._output_text_stderr_queue.get_nowait(),
+                        tag='error')
             except queue.Empty:
                 break
             lines += 1
@@ -1174,7 +1201,8 @@ class DgenerateConsole(tk.Tk):
             self._output_text.text.see(tk.END)
 
         with self._termination_lock:
-            self._shell_process.stdin.write((user_input + '\n\n').encode('utf-8'))
+            self._shell_process.stdin.write(
+                (user_input + '\n\n').encode('utf-8'))
             self._shell_process.stdin.flush()
 
         if self._command_history:

@@ -13,7 +13,7 @@ focus_border_width = 0  # Focus border width: 0
 # General syntax colors
 [general]
 comment = "#6272a4"  # Comments: blue-gray
-error = "#f8f8f0"  # Errors: off-white
+error = "#ff3333"  # Errors: bright red
 escape = "#f8f8f2"  # Escapes: off-white
 keyword = "#ff79c6"  # Keywords: pink
 name = "#50fa7b"  # Names: green

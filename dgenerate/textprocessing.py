@@ -1294,41 +1294,34 @@ def format_dgenerate_config(lines: typing.Iterator[str], indentation=' ' * 4) ->
     def add_continuation_lines():
         if continuation_lines:
             # Find the minimum indentation level among non-empty lines
-            min_indent = min((len(ln) - len(ln.lstrip())) for _, ln in continuation_lines if ln.strip())
+            min_indent = min((len(ln) - len(ln.lstrip())) for ln in continuation_lines if ln.strip())
             # Remove the minimum indentation from all continuation lines
-            cleaned_lines = [ln[min_indent:] if ln.strip() else ln for _, ln in continuation_lines]
+            cleaned_lines = [ln[min_indent:] if ln.strip() else ln for ln in continuation_lines]
             yield from [indentation * indent_level + ln for ln in cleaned_lines]
             continuation_lines.clear()
 
-    def is_continuation_ended():
-        # Check backward through the continuation lines to see
-        # if the last non-comment, non-empty line ended with a backslash
-        for stripped_line, line in reversed(continuation_lines):
-            if stripped_line:
-                return not stripped_line.endswith('\\')
-        return True
-
     for line, next_line in lines:
-        comment_free_line = remove_tail_comments(line)[1].strip()
+        no_tail_comment_line = remove_tail_comments(line)[1].strip()
 
         # Handle line continuation with backslash or hyphen
-        if in_continuation or comment_free_line.endswith('\\') or (
+        if in_continuation or no_tail_comment_line.endswith('\\') or (
                 next_line is not None and next_line.strip().startswith('-')):
-            continuation_lines.append((comment_free_line, line))
+            continuation_lines.append(line)
             if next_line is None:
                 in_continuation = False
                 yield from add_continuation_lines()
-            elif not comment_free_line.endswith('\\') and not (next_line.strip().startswith('-')):
-                if is_continuation_ended():
-                    in_continuation = False
-                    yield from add_continuation_lines()
+            elif not no_tail_comment_line.endswith('\\') \
+                    and not (next_line.strip().startswith('-')) \
+                    and not (no_tail_comment_line.startswith('#') or not no_tail_comment_line.strip()):
+                in_continuation = False
+                yield from add_continuation_lines()
             else:
                 in_continuation = True
             continue
 
         # Handle Jinja2 control structures
-        if comment_free_line.startswith('{% end') or comment_free_line.startswith(
-                '{% else') or comment_free_line.startswith('{% elif'):
+        if no_tail_comment_line.startswith('{% end') or no_tail_comment_line.startswith(
+                '{% else') or no_tail_comment_line.startswith('{% elif'):
             indent_level = max(indent_level - 1, 0)
 
         # Process any accumulated continuation lines before adding a new block line
@@ -1338,10 +1331,10 @@ def format_dgenerate_config(lines: typing.Iterator[str], indentation=' ' * 4) ->
         yield indentation * indent_level + line.strip()
 
         # Increase indent level for starting control structures
-        if (comment_free_line.startswith('{% for') or comment_free_line.startswith('{% if') or
-                comment_free_line.startswith('{% block') or comment_free_line.startswith('{% macro') or
-                comment_free_line.startswith('{% filter') or comment_free_line.startswith('{% with') or
-                comment_free_line.startswith('{% else') or comment_free_line.startswith('{% elif')):
+        if (no_tail_comment_line.startswith('{% for') or no_tail_comment_line.startswith('{% if') or
+                no_tail_comment_line.startswith('{% block') or no_tail_comment_line.startswith('{% macro') or
+                no_tail_comment_line.startswith('{% filter') or no_tail_comment_line.startswith('{% with') or
+                no_tail_comment_line.startswith('{% else') or no_tail_comment_line.startswith('{% elif')):
             indent_level += 1
 
         # Set continuation flag if the line ends with a backslash
