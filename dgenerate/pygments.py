@@ -75,7 +75,7 @@ _jinja_block_pattern = (r'(\{%)(\s*)(\w+)',
                         _lexer.bygroups(_token.String.Interpol, _token.Text, _token.Keyword), 'jinja_block')
 _jinja_comment_pattern = (r'(\{#)', _token.Comment.Multiline, 'jinja_comment')
 _jinja_interpolate_pattern = (r'(\{\{)', _token.String.Interpol, 'jinja_interpolate')
-_shell_globs_and_paths_pattern = (r'(~|(\.\.?|~)?/[^=\s\[\]{}()$"\'`\\<&|;]*)', _token.String.Other)
+_shell_globs_and_paths_pattern = (r'([a-zA-Z]:)?(~|(\.\.?|~)?/[^=\s\[\]{}()$"\'`\\<&|;]*)', _token.String.Other)
 _operators_punctuation_pattern = (r'[\[\]{}()=\\]', _token.Operator)
 _operators_pattern = (r'\*\*|<<|>>|[-+*/%^|&<>!]', _token.Operator)
 _size_pattern = (r'(?<!\w)\d+[xX]\d+(?!\w)', _token.Number.Hex)
