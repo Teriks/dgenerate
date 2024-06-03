@@ -72,13 +72,14 @@ _SETP_KEYWORDS = sorted((
 ), key=lambda s: len(s), reverse=True)
 
 # Common patterns
+_ecos = r'(\\#|[^/\s\\#])'
 _comment_pattern = (r'(?<!\\)(#.*$)', _token.Comment.Single)
 _env_var_pattern = (r'\$(?:\w+|\{\w+\})|%[\w]+%', _token.Name.Constant)
 _jinja_block_pattern = (r'(\{%)(\s*)(\w+)',
                         _lexer.bygroups(_token.String.Interpol, _token.Text, _token.Keyword), 'jinja_block')
 _jinja_comment_pattern = (r'(\{#)', _token.Comment.Multiline, 'jinja_comment')
 _jinja_interpolate_pattern = (r'(\{\{)', _token.String.Interpol, 'jinja_interpolate')
-_operators_punctuation_pattern = (r'[\[\]{}()=\\]', _token.Operator)
+_operators_punctuation_pattern = (r'[\[\]{}()=\\;,:]', _token.Operator)
 _operators_pattern = (r'\*\*|<<|>>|[-+*/%^|&<>!]', _token.Operator)
 _size_pattern = (r'(?<!\w)\d+[xX]\d+(?!\w)', _token.Number.Hex)
 _number_float_pattern = (r'(?<!\w)(-?\d+(\.\d*)?([eE][-+]?\d+)?)(?!\w)', _token.Number.Float)
@@ -86,8 +87,10 @@ _decimal_integer_pattern = (r'(?<!\w)-?\d+(?!\w)', _token.Number.Integer)
 _binary_integer_pattern = (r'(?<!\w)0[bB][01]+(?!\w)', _token.Number.Binary)
 _hexa_decimal_integer_pattern = (r'(?<!\w)0[xX][0-9a-fA-F]+(?!\w)', _token.Number.Hex)
 _octal_integer_pattern = (r'(?<!\w)0[oO][0-7]+(?!\w)', _token.Number.Octal)
-_text_pattern = (r'[^=\s\[\]{}()$"\'`\\<&|;:]+', _token.Text)
-_variable_names_pattern = (r'\b[a-zA-Z_][a-zA-Z0-9_.]*\b', _token.Name.Variable)
+_text_pattern = (r'[^=\s\[\]{}()$"\'`\\<&|;:,]+', _token.Text)
+_variable_names_pattern = (r'(?<!\w)[a-zA-Z_][a-zA-Z0-9_.]*(?!\w)', _token.Name.Variable)
+_paths_pattern = (rf'(?<!\w)((?:[a-zA-Z]:)|(?:http:/|https:/))?(?:[/\\]|~?|\.?\.?|{_ecos}+[/\\]){_ecos}+(?:[/\\]{_ecos}+)+', _token.String)
+_files_pattern = (rf'(?<!\w){_ecos}+\.{_ecos}+', _token.String)
 
 _SCHEDULER_KEYWORDS = sorted((
     "DDIMScheduler",
@@ -137,7 +140,9 @@ _DTYPE_KEYWORDS = sorted((
     'float16',
     'bfloat16',
     'float32',
-    'float64'
+    'float64',
+    'fp16',
+    'bf16'
 ), key=lambda s: len(s), reverse=True)
 
 _number_patterns = (_number_float_pattern,
@@ -204,13 +209,13 @@ class DgenerateLexer(_lexer.RegexLexer):
         'root': [
             _comment_pattern,
             _env_var_pattern,
-            (r'(\\set[e]?|\\gen_seeds)(\s+)([a-zA-Z_][a-zA-Z0-9_]*)',
+            (r'(?<!\w)(\\set[e]?|\\gen_seeds)(\s+)([a-zA-Z_][a-zA-Z0-9_]*)',
              _lexer.bygroups(_token.Name.Builtin, _token.Text.Whitespace, _token.Name.Variable), 'value'),
-            (r'(\\setp)(\s+)([a-zA-Z_][a-zA-Z0-9_]*)',
+            (r'(?<!\w)(\\setp)(\s+)([a-zA-Z_][a-zA-Z0-9_]*)',
              _lexer.bygroups(_token.Name.Builtin, _token.Text.Whitespace, _token.Name.Variable), 'setp_value'),
-            (r'(\\unset|\\save_modules|\\use_modules|\\clear_modules)(\s+)([a-zA-Z_][a-zA-Z0-9_]*)',
+            (r'(?<!\w)(\\unset|\\save_modules|\\use_modules|\\clear_modules)(\s+)([a-zA-Z_][a-zA-Z0-9_]*)',
              _lexer.bygroups(_token.Name.Builtin, _token.Text.Whitespace, _token.Name.Variable)),
-            (r'(\\[a-zA-Z_][a-zA-Z0-9_]*)', _lexer.bygroups(_token.Name.Builtin)),
+            (r'(?<!\w)(\\[a-zA-Z_][a-zA-Z0-9_]*)', _lexer.bygroups(_token.Name.Builtin)),
             (r'\b(%s)\b' % '|'.join(_SCHEDULER_KEYWORDS), _token.Keyword),
             (r'\b(%s)\b' % '|'.join(_VAE_KEYWORDS), _token.Keyword),
             (r'\b(%s)\b' % '|'.join(_MODEL_TYPE_KEYWORDS), _token.Keyword),
@@ -228,6 +233,8 @@ class DgenerateLexer(_lexer.RegexLexer):
             _operators_pattern,
             (r'"', _token.String.Double, 'double_string'),
             (r"'", _token.String.Single, 'single_string'),
+            _paths_pattern,
+            _files_pattern,
             _text_pattern,
             (r'\s+', _token.Whitespace),
         ],
@@ -238,7 +245,6 @@ class DgenerateLexer(_lexer.RegexLexer):
             (r'\\\s*?\n', _token.Escape, 'value_escape'),
             (r'(\\\s+)(#[^\n]*)', _lexer.bygroups(_token.Whitespace, _token.Comment.Single), 'value_escape'),
             _comment_pattern,
-            (r'!END', _token.Keyword.Pseudo),
             _env_var_pattern,
             _jinja_block_pattern,
             _jinja_comment_pattern,
@@ -249,6 +255,8 @@ class DgenerateLexer(_lexer.RegexLexer):
             _operators_pattern,
             (r'"', _token.String.Double, 'double_string'),
             (r"'", _token.String.Single, 'single_string'),
+            _paths_pattern,
+            _files_pattern,
             _text_pattern,
             (r'\s+', _token.Whitespace),
         ],
@@ -260,7 +268,6 @@ class DgenerateLexer(_lexer.RegexLexer):
             (r'\\\s*?\n', _token.Escape, 'setp_value_escape'),
             (r'(\\\s+)(#[^\n]*)', _lexer.bygroups(_token.Whitespace, _token.Comment.Single), 'setp_value_escape'),
             _comment_pattern,
-            (r'!END', _token.Keyword.Pseudo),
             _env_var_pattern,
             (r'\b(%s)\b' % '|'.join(_SETP_KEYWORDS), _token.Keyword),
             (r'\b(%s)\b' % '|'.join(_DGENERATE_FUNCTIONS), _token.Name.Function),
