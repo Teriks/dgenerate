@@ -72,7 +72,7 @@ _SETP_KEYWORDS = sorted((
 ), key=lambda s: len(s), reverse=True)
 
 # Common patterns
-_ecos = r'(\\#|[^/\s\\#])'
+_ecos = r'(\\#|[^/\s\\#=;{}])'
 _comment_pattern = (r'(?<!\\)(#.*$)', _token.Comment.Single)
 _env_var_pattern = (r'\$(?:\w+|\{\w+\})|%[\w]+%', _token.Name.Constant)
 _jinja_block_pattern = (r'(\{%)(\s*)(\w+)',
@@ -223,6 +223,8 @@ class DgenerateLexer(_lexer.RegexLexer):
             (r'\bauto\b', _token.Keyword),
             (r'\bcpu\b', _token.Keyword),
             (r'\bcuda\b', _token.Keyword),
+            (r'\bTrue|true\b', _token.Keyword),
+            (r'\bFalse|false\b', _token.Keyword),
             (r'[!]END\b', _token.Keyword),
             _jinja_block_pattern,
             _jinja_comment_pattern,
