@@ -29,6 +29,7 @@ import shlex
 import shutil
 import stat
 import subprocess
+import sys
 import threading
 import time
 import types
@@ -355,7 +356,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         and 0 by default. It must be an integer value.
         """
         if (len(args)) == 0:
-            exit(0)
+            sys.exit(0)
 
         try:
             return_code = int(args[0])
@@ -363,7 +364,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             raise _batchprocessor.BatchProcessError(
                 f'\\exit return code must be an integer value, received: {args[0]}')
 
-        exit(return_code)
+        sys.exit(return_code)
 
     def _save_modules_directive(self, args: collections.abc.Sequence[str]):
         """
