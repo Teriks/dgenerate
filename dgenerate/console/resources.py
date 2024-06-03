@@ -54,22 +54,22 @@ def get_themes():
 
 def get_karras_schedulers():
     return [
+        "DDIMScheduler",
+        "DDPMScheduler",
+        "DEISMultistepScheduler",
+        "DPMSolverMultistepScheduler",
+        "DPMSolverSDEScheduler",
+        "DPMSolverSinglestepScheduler",
+        "EDMEulerScheduler",
+        "EulerAncestralDiscreteScheduler",
         "EulerDiscreteScheduler",
         "HeunDiscreteScheduler",
-        "UniPCMultistepScheduler",
-        "DDPMScheduler",
-        "EulerDiscreteScheduler",
-        "DDIMScheduler",
-        "DEISMultistepScheduler",
-        "LMSDiscreteScheduler",
-        "DPMSolverMultistepScheduler",
-        "EulerAncestralDiscreteScheduler",
-        "DPMSolverSinglestepScheduler",
-        "DPMSolverSDEScheduler",
-        "KDPM2DiscreteScheduler",
-        "PNDMScheduler",
         "KDPM2AncestralDiscreteScheduler",
-        "LCMScheduler"
+        "KDPM2DiscreteScheduler",
+        "LCMScheduler",
+        "LMSDiscreteScheduler",
+        "PNDMScheduler",
+        "UniPCMultistepScheduler"
     ]
 
 

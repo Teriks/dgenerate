@@ -29,7 +29,7 @@ This module provides a pygments lexer for the dgenerate config / shell language.
 This can be used for syntax highlighting.
 """
 
-_DGENERATE_FUNCTIONS = (
+_DGENERATE_FUNCTIONS = sorted((
     'abs', 'all', 'any', 'ascii', 'bin', 'bool', 'bytearray', 'bytes',
     'callable', 'chr', 'complex', 'cwd', 'dict', 'divmod', 'enumerate',
     'filter', 'first', 'float', 'format', 'format_prompt', 'format_size',
@@ -46,9 +46,9 @@ _DGENERATE_FUNCTIONS = (
     'path.normpath', 'path.realpath', 'path.relpath', 'path.samefile',
     'path.sameopenfile', 'path.samestat', 'path.split', 'path.splitdrive',
     'path.splitext', 'path.supports_unicode_filenames'
-)
+), key=lambda s: len(s), reverse=True)
 
-_JINJA2_FUNCTIONS = (
+_JINJA2_FUNCTIONS = sorted((
     # Functions
     'range', 'lipsum', 'cycler', 'joiner',
 
@@ -56,17 +56,20 @@ _JINJA2_FUNCTIONS = (
     'safe', 'capitalize', 'lower', 'upper', 'title', 'trim', 'striptags', 'urlencode',
     'wordcount', 'replace', 'format', 'escape', 'tojson', 'join', 'sort', 'reverse',
     'length', 'sum', 'random', 'batch', 'slice', 'first', 'last', 'default', 'groupby'
-)
+), key=lambda s: len(s), reverse=True)
 
 # Define Jinja2 keywords
-_JINJA2_KEYWORDS = (
+_JINJA2_KEYWORDS = sorted((
     'true', 'false', 'none', 'and', 'or', 'not', 'if', 'else', 'elif', 'for', 'endfor', 'in', 'do', 'async', 'await',
     'block', 'extends', 'include', 'import', 'from', 'macro', 'call', 'set', 'with', 'without', 'filter',
     'endfilter', 'capture', 'endcapture', 'spaceless', 'endspaceless', 'flush', 'load', 'url', 'static',
-    'trans', 'endtrans', 'as', 'safe', 'end', 'autoescape', 'endautoescape', 'raw', 'endraw')
+    'trans', 'endtrans', 'as', 'safe', 'end', 'autoescape', 'endautoescape', 'raw', 'endraw'
+), key=lambda s: len(s), reverse=True)
 
 # asteval keywords
-_SETP_KEYWORDS = ('for', 'in', 'if', 'else', 'elif', 'and', 'or', 'not', 'is', 'True', 'False')
+_SETP_KEYWORDS = sorted((
+    'for', 'in', 'if', 'else', 'elif', 'and', 'or', 'not', 'is', 'True', 'False'
+), key=lambda s: len(s), reverse=True)
 
 # Common patterns
 _comment_pattern = (r'(?<!\\)(#.*$)', _token.Comment.Single)
@@ -75,7 +78,7 @@ _jinja_block_pattern = (r'(\{%)(\s*)(\w+)',
                         _lexer.bygroups(_token.String.Interpol, _token.Text, _token.Keyword), 'jinja_block')
 _jinja_comment_pattern = (r'(\{#)', _token.Comment.Multiline, 'jinja_comment')
 _jinja_interpolate_pattern = (r'(\{\{)', _token.String.Interpol, 'jinja_interpolate')
-_shell_globs_and_paths_pattern = (r'([a-zA-Z]:)?(~|(\.\.?|~)?/[^=\s\[\]{}()$"\'`\\<&|;]*)', _token.String.Other)
+_shell_globs_and_paths_pattern = (r'([a-zA-Z]:)?(~|(\.\.?|~)?[/\\](\\#|[^=\s\[\]{}()$"\'`<&|;#])+)', _token.String.Other)
 _operators_punctuation_pattern = (r'[\[\]{}()=\\]', _token.Operator)
 _operators_pattern = (r'\*\*|<<|>>|[-+*/%^|&<>!]', _token.Operator)
 _size_pattern = (r'(?<!\w)\d+[xX]\d+(?!\w)', _token.Number.Hex)
@@ -84,8 +87,59 @@ _decimal_integer_pattern = (r'(?<!\w)-?\d+(?!\w)', _token.Number.Integer)
 _binary_integer_pattern = (r'(?<!\w)0[bB][01]+(?!\w)', _token.Number.Binary)
 _hexa_decimal_integer_pattern = (r'(?<!\w)0[xX][0-9a-fA-F]+(?!\w)', _token.Number.Hex)
 _octal_integer_pattern = (r'(?<!\w)0[oO][0-7]+(?!\w)', _token.Number.Octal)
-_text_pattern = (r'[^=\s\[\]{}()$"\'`\\<&|;]+', _token.Text)
+_text_pattern = (r'[^=\s\[\]{}()$"\'`\\<&|;:]+', _token.Text)
 _variable_names_pattern = (r'\b[a-zA-Z_][a-zA-Z0-9_.]*\b', _token.Name.Variable)
+
+_SCHEDULER_KEYWORDS = sorted((
+    "DDIMScheduler",
+    "DDPMScheduler",
+    "DEISMultistepScheduler",
+    "DPMSolverMultistepScheduler",
+    "DPMSolverSDEScheduler",
+    "DPMSolverSinglestepScheduler",
+    "EDMEulerScheduler",
+    "EulerAncestralDiscreteScheduler",
+    "EulerDiscreteScheduler",
+    "HeunDiscreteScheduler",
+    "KDPM2AncestralDiscreteScheduler",
+    "KDPM2DiscreteScheduler",
+    "LCMScheduler",
+    "LMSDiscreteScheduler",
+    "PNDMScheduler",
+    "UniPCMultistepScheduler"
+    "DDPMWuerstchenScheduler"),
+    key=lambda s: len(s), reverse=True)
+
+_VAE_KEYWORDS = sorted((
+    "AutoencoderKL",
+    "AsymmetricAutoencoderKL",
+    "AutoencoderTiny",
+    "ConsistencyDecoderVAE",
+    "FlaxAutoencoderKL"
+), key=lambda s: len(s), reverse=True)
+
+_MODEL_TYPE_KEYWORDS = sorted((
+    'torch',
+    'torch-pix2pix',
+    'torch-sdxl',
+    'torch-if',
+    'torch-ifs',
+    'torch-ifs-img2img',
+    'torch-sdxl-pix2pix',
+    'torch-upscaler-x2',
+    'torch-upscaler-x4',
+    'torch-s-cascade',
+    'flax',
+    'help',
+    'helpargs',
+), key=lambda s: len(s), reverse=True)
+
+_DTYPE_KEYWORDS = sorted((
+    'float16',
+    'bfloat16',
+    'float32',
+    'float64'
+), key=lambda s: len(s), reverse=True)
 
 _number_patterns = (_number_float_pattern,
                     _decimal_integer_pattern,
@@ -158,7 +212,14 @@ class DgenerateLexer(_lexer.RegexLexer):
             (r'(\\unset|\\save_modules|\\use_modules|\\clear_modules)(\s+)([a-zA-Z_][a-zA-Z0-9_]*)',
              _lexer.bygroups(_token.Name.Builtin, _token.Text.Whitespace, _token.Name.Variable)),
             (r'(\\[a-zA-Z_][a-zA-Z0-9_]*)', _token.Name.Builtin),
-            (r'!END', _token.Keyword.Pseudo),
+            (r'\b(%s)\b' % '|'.join(_SCHEDULER_KEYWORDS), _token.Keyword),
+            (r'\b(%s)\b' % '|'.join(_VAE_KEYWORDS), _token.Keyword),
+            (r'\b(%s)\b' % '|'.join(_MODEL_TYPE_KEYWORDS), _token.Keyword),
+            (r'\b(%s)\b' % '|'.join(_DTYPE_KEYWORDS), _token.Keyword),
+            (r'\bauto\b', _token.Keyword),
+            (r'\bcpu\b', _token.Keyword),
+            (r'\bcuda\b', _token.Keyword),
+            (r'!END', _token.Keyword),
             _shell_globs_and_paths_pattern,
             _jinja_block_pattern,
             _jinja_comment_pattern,
