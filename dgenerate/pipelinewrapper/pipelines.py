@@ -166,6 +166,8 @@ def load_scheduler(pipeline: typing.Union[diffusers.DiffusionPipeline, diffusers
         # same here
         compatibles = [c for c in compatibles if c.__name__ == 'DDPMScheduler']
 
+    compatibles = sorted(compatibles, key=lambda c: c.__name__)
+
     help_name = scheduler_name.strip().lower()
     if help_name == 'help':
         help_string = f'Compatible schedulers for "{model_path}" are:' + '\n\n'

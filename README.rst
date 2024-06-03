@@ -1748,22 +1748,23 @@ Typically however, there will be many compatible schedulers:
     #
     # Compatible schedulers for "stabilityai/stable-diffusion-2" are:
     #
-    #    "EulerDiscreteScheduler"
-    #    "HeunDiscreteScheduler"
-    #    "UniPCMultistepScheduler"
-    #    "DDPMScheduler"
-    #    "EulerDiscreteScheduler"
-    #    "DDIMScheduler"
-    #    "DEISMultistepScheduler"
-    #    "LMSDiscreteScheduler"
-    #    "DPMSolverMultistepScheduler"
-    #    "EulerAncestralDiscreteScheduler"
-    #    "DPMSolverSinglestepScheduler"
-    #    "DPMSolverSDEScheduler"
-    #    "KDPM2DiscreteScheduler"
-    #    "PNDMScheduler"
-    #    "KDPM2AncestralDiscreteScheduler"
-    #    "LCMScheduler"
+    #     "DDIMScheduler"
+    #     "DDPMScheduler"
+    #     "DEISMultistepScheduler"
+    #     "DPMSolverMultistepScheduler"
+    #     "DPMSolverSDEScheduler"
+    #     "DPMSolverSinglestepScheduler"
+    #     "EDMEulerScheduler"
+    #     "EulerAncestralDiscreteScheduler"
+    #     "EulerDiscreteScheduler"
+    #     "HeunDiscreteScheduler"
+    #     "KDPM2AncestralDiscreteScheduler"
+    #     "KDPM2DiscreteScheduler"
+    #     "LCMScheduler"
+    #     "LMSDiscreteScheduler"
+    #     "PNDMScheduler"
+    #     "UniPCMultistepScheduler"
+
 
 Passing ``helpargs`` to a ``--scheduler`` related option will reveal configuration arguments that
 can be overridden via a URI syntax, for every possible scheduler.
