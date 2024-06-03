@@ -1,4 +1,4 @@
-#! dgenerate 3.5.1
+#! dgenerate 3.6.0
 
 # This config forces the refiner into edit mode
 

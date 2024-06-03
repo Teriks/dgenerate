@@ -1,4 +1,4 @@
-#! dgenerate 3.5.1
+#! dgenerate 3.6.0
 
 # run the mlsd processor (Machine Learning Model for Detecting Wireframes)
 
