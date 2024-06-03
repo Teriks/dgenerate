@@ -72,7 +72,7 @@ _SETP_KEYWORDS = sorted((
 ), key=lambda s: len(s), reverse=True)
 
 # Common patterns
-_ecos = r'(\\#|[^/\s\\#=;{}])'
+_ecos = r'(\\#|[^/\s\\#=;{}"\'])'
 _comment_pattern = (r'(?<!\\)(#.*$)', _token.Comment.Single)
 _env_var_pattern = (r'\$(?:\w+|\{\w+\})|%[\w]+%', _token.Name.Constant)
 _jinja_block_pattern = (r'(\{%)(\s*)(\w+)',
@@ -89,8 +89,10 @@ _hexa_decimal_integer_pattern = (r'(?<!\w)0[xX][0-9a-fA-F]+(?!\w)', _token.Numbe
 _octal_integer_pattern = (r'(?<!\w)0[oO][0-7]+(?!\w)', _token.Number.Octal)
 _text_pattern = (r'[^=\s\[\]{}()$"\'`\\<&|;:,]+', _token.Text)
 _variable_names_pattern = (r'(?<!\w)[a-zA-Z_][a-zA-Z0-9_.]*(?!\w)', _token.Name.Variable)
-_paths_pattern = (rf'((?<!\w)((?:[a-zA-Z]:)|(?:http:/|https:/))?(?:[/\\]|~?|\.?\.?|{_ecos}+[/\\]){_ecos}+(?:[/\\]{_ecos}+)+|{_ecos}+[/\\])', _token.String)
-_files_pattern = (rf'(?<!\w){_ecos}+\.{_ecos}+', _token.String)
+_path_patterns = (
+    (rf'((?<!\w)((?:[a-zA-Z]:)|(?:http:/|https:/))?(?:[/\\]|~?|\.?\.?|{_ecos}+[/\\]){_ecos}+(?:[/\\]{_ecos}+)+|{_ecos}+/)', _token.String),
+    (rf'(?<!\w)(/{_ecos}+)([/\\]{_ecos}*)*', _token.String),
+    (rf'(?<!\w){_ecos}+\.{_ecos}+', _token.String))
 
 _SCHEDULER_KEYWORDS = sorted((
     "DDIMScheduler",
@@ -231,12 +233,11 @@ class DgenerateLexer(_lexer.RegexLexer):
             _jinja_interpolate_pattern,
             _size_pattern,
             *_number_patterns,
+            *_path_patterns,
             _operators_punctuation_pattern,
             _operators_pattern,
             (r'"', _token.String.Double, 'double_string'),
             (r"'", _token.String.Single, 'single_string'),
-            _paths_pattern,
-            _files_pattern,
             _text_pattern,
             (r'\s+', _token.Whitespace),
         ],
@@ -253,12 +254,11 @@ class DgenerateLexer(_lexer.RegexLexer):
             _jinja_interpolate_pattern,
             _size_pattern,
             *_number_patterns,
+            *_path_patterns,
             _operators_punctuation_pattern,
             _operators_pattern,
             (r'"', _token.String.Double, 'double_string'),
             (r"'", _token.String.Single, 'single_string'),
-            _paths_pattern,
-            _files_pattern,
             _text_pattern,
             (r'\s+', _token.Whitespace),
         ],
