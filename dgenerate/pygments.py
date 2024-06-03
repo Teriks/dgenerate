@@ -89,7 +89,7 @@ _hexa_decimal_integer_pattern = (r'(?<!\w)0[xX][0-9a-fA-F]+(?!\w)', _token.Numbe
 _octal_integer_pattern = (r'(?<!\w)0[oO][0-7]+(?!\w)', _token.Number.Octal)
 _text_pattern = (r'[^=\s\[\]{}()$"\'`\\<&|;:,]+', _token.Text)
 _variable_names_pattern = (r'(?<!\w)[a-zA-Z_][a-zA-Z0-9_.]*(?!\w)', _token.Name.Variable)
-_paths_pattern = (rf'(?<!\w)((?:[a-zA-Z]:)|(?:http:/|https:/))?(?:[/\\]|~?|\.?\.?|{_ecos}+[/\\]){_ecos}+(?:[/\\]{_ecos}+)+', _token.String)
+_paths_pattern = (rf'((?<!\w)((?:[a-zA-Z]:)|(?:http:/|https:/))?(?:[/\\]|~?|\.?\.?|{_ecos}+[/\\]){_ecos}+(?:[/\\]{_ecos}+)+|{_ecos}+[/\\])', _token.String)
 _files_pattern = (rf'(?<!\w){_ecos}+\.{_ecos}+', _token.String)
 
 _SCHEDULER_KEYWORDS = sorted((
