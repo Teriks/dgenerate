@@ -78,7 +78,6 @@ _jinja_block_pattern = (r'(\{%)(\s*)(\w+)',
                         _lexer.bygroups(_token.String.Interpol, _token.Text, _token.Keyword), 'jinja_block')
 _jinja_comment_pattern = (r'(\{#)', _token.Comment.Multiline, 'jinja_comment')
 _jinja_interpolate_pattern = (r'(\{\{)', _token.String.Interpol, 'jinja_interpolate')
-_shell_globs_and_paths_pattern = (r'([a-zA-Z]:)?(~|(\.\.?|~)?[/\\](\\#|[^=\s\[\]{}()$"\'`<&|;#])+)', _token.String.Other)
 _operators_punctuation_pattern = (r'[\[\]{}()=\\]', _token.Operator)
 _operators_pattern = (r'\*\*|<<|>>|[-+*/%^|&<>!]', _token.Operator)
 _size_pattern = (r'(?<!\w)\d+[xX]\d+(?!\w)', _token.Number.Hex)
@@ -205,13 +204,13 @@ class DgenerateLexer(_lexer.RegexLexer):
         'root': [
             _comment_pattern,
             _env_var_pattern,
-            (r'^(\s*?)(\\set[e]?|\\gen_seeds)(\s+)([a-zA-Z_][a-zA-Z0-9_]*)',
-             _lexer.bygroups(_token.Whitespace, _token.Name.Builtin, _token.Text.Whitespace, _token.Name.Variable), 'value'),
-            (r'^(\s*?)(\\setp)(\s+)([a-zA-Z_][a-zA-Z0-9_]*)',
-             _lexer.bygroups(_token.Whitespace, _token.Name.Builtin, _token.Text.Whitespace, _token.Name.Variable), 'setp_value'),
-            (r'^(\s*?)(\\unset|\\save_modules|\\use_modules|\\clear_modules)(\s+)([a-zA-Z_][a-zA-Z0-9_]*)',
-             _lexer.bygroups(_token.Whitespace, _token.Name.Builtin, _token.Text.Whitespace, _token.Name.Variable)),
-            (r'^(\s*?)(\\[a-zA-Z_][a-zA-Z0-9_]*)', _lexer.bygroups(_token.Whitespace, _token.Name.Builtin)),
+            (r'(\\set[e]?|\\gen_seeds)(\s+)([a-zA-Z_][a-zA-Z0-9_]*)',
+             _lexer.bygroups(_token.Name.Builtin, _token.Text.Whitespace, _token.Name.Variable), 'value'),
+            (r'(\\setp)(\s+)([a-zA-Z_][a-zA-Z0-9_]*)',
+             _lexer.bygroups(_token.Name.Builtin, _token.Text.Whitespace, _token.Name.Variable), 'setp_value'),
+            (r'(\\unset|\\save_modules|\\use_modules|\\clear_modules)(\s+)([a-zA-Z_][a-zA-Z0-9_]*)',
+             _lexer.bygroups(_token.Name.Builtin, _token.Text.Whitespace, _token.Name.Variable)),
+            (r'(\\[a-zA-Z_][a-zA-Z0-9_]*)', _lexer.bygroups(_token.Name.Builtin)),
             (r'\b(%s)\b' % '|'.join(_SCHEDULER_KEYWORDS), _token.Keyword),
             (r'\b(%s)\b' % '|'.join(_VAE_KEYWORDS), _token.Keyword),
             (r'\b(%s)\b' % '|'.join(_MODEL_TYPE_KEYWORDS), _token.Keyword),
@@ -219,8 +218,7 @@ class DgenerateLexer(_lexer.RegexLexer):
             (r'\bauto\b', _token.Keyword),
             (r'\bcpu\b', _token.Keyword),
             (r'\bcuda\b', _token.Keyword),
-            (r'!END', _token.Keyword),
-            _shell_globs_and_paths_pattern,
+            (r'[!]END\b', _token.Keyword),
             _jinja_block_pattern,
             _jinja_comment_pattern,
             _jinja_interpolate_pattern,
@@ -242,7 +240,6 @@ class DgenerateLexer(_lexer.RegexLexer):
             _comment_pattern,
             (r'!END', _token.Keyword.Pseudo),
             _env_var_pattern,
-            _shell_globs_and_paths_pattern,
             _jinja_block_pattern,
             _jinja_comment_pattern,
             _jinja_interpolate_pattern,
