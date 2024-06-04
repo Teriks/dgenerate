@@ -1179,14 +1179,16 @@ class DgenerateConsole(tk.Tk):
                     return p.cwd()
                 else:
                     if platform.system() == 'Windows':
-                        return self._shell_process.children()[0].children()[0].cwd()
+                        try:
+                            # pyinstaller console mode weirdness
+                            return self._shell_process.children()[0].children()[0].cwd()
+                        except IndexError:
+                            return self._shell_process.cwd()
                     else:
                         return self._shell_process.cwd()
         except KeyboardInterrupt:
             pass
-        except IndexError:
-            pass
-        except psutil.NoSuchProcess:
+        except psutil.NoSuchProcess as e:
             pass
 
     def _update_cwd_title(self, directory=None):
