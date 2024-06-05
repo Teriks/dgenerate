@@ -90,7 +90,9 @@ _octal_integer_pattern = (r'(?<!\w)0[oO][0-7]+(?!\w)', _token.Number.Octal)
 _text_pattern = (r'[^=\s\[\]{}()$"\'`\\<&|;:,]+', _token.Text)
 _variable_names_pattern = (r'(?<!\w)[a-zA-Z_][a-zA-Z0-9_.]*(?!\w)', _token.Name.Variable)
 _path_patterns = (
-    (rf'((?<!\w)((?:[a-zA-Z]:)|(?:http:/|https:/))?(?:[/\\]|~?|\.?\.?|{_ecos}+[/\\]){_ecos}+(?:[/\\]{_ecos}+)+|{_ecos}+/)', _token.String),
+    (
+    rf'((?<!\w)((?:[a-zA-Z]:)|(?:http:/|https:/))?(?:[/\\]|~?|\.?\.?|{_ecos}+[/\\]){_ecos}+(?:[/\\]{_ecos}+)+|{_ecos}+/)',
+    _token.String),
     (rf'(?<!\w)(/{_ecos}+)([/\\]{_ecos}*)*', _token.String),
     (rf'(?<!\w){_ecos}+\.{_ecos}+', _token.String))
 
@@ -205,7 +207,7 @@ class DgenerateLexer(_lexer.RegexLexer):
 
     name = 'DgenerateLexer'
     aliases = ['dgenerate']
-    filenames = ['*.dgen', '*.txt']
+    filenames = ['*.dgen']
 
     tokens = {
         'root': [
