@@ -292,6 +292,10 @@ class DgenerateConsole(tk.Tk):
             # else with the insert key
             return 'break'
 
+        def handle_ctrl_a(event):
+            event.widget.event_generate('<<SelectAll>>')
+            return 'break'
+
         self._input_text.text.bind('<Insert>', handle_insert)
 
         self._input_text.text.bind('<Control-f>',
@@ -315,6 +319,8 @@ class DgenerateConsole(tk.Tk):
                                    lambda e: self._run_input_text())
 
         self._input_text.text.bind('<Control-F>', lambda e: self._format_code())
+
+        self._input_text.text.bind('<Control-a>', handle_ctrl_a)
 
         self._input_text.text.focus_set()
 
@@ -388,6 +394,8 @@ class DgenerateConsole(tk.Tk):
 
         self.bind('<Control-Down>',
                   lambda e: self._output_text.text.see(tk.END))
+
+        self.bind('<Control-a>', handle_ctrl_a)
 
         self._output_text_context = tk.Menu(self._output_text, tearoff=0)
 
