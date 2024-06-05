@@ -1085,7 +1085,7 @@ class DgenerateConsole(tk.Tk):
             if return_code is None:
                 exit_message = True
                 line = line_reader.readline()
-                if line is not None and line != "":
+                if line is not None and line != b'':
                     write_out_handler(line)
             elif exit_message:
                 with self._termination_lock:
