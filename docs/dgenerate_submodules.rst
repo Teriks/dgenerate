@@ -157,10 +157,15 @@ dgenerate.pygments module
 -----------------------
 
 .. automodule:: dgenerate.pygments
+
+.. autoclass:: DgenerateLexer
    :members:
    :undoc-members:
+   :exclude-members: tokens
    :show-inheritance:
-   :special-members: __call__, __init__
+
+   .. automethod:: get_tokens_unprocessed
+
 
 
 dgenerate.imageprocessors module
