@@ -76,7 +76,7 @@ _ecos = r'(\\#|[^/\s\\#=;{}"\'])'
 _comment_pattern = (r'(?<!\\)(#.*$)', _token.Comment.Single)
 _env_var_pattern = (r'\$(?:\w+|\{\w+\})|%[\w]+%', _token.Name.Constant)
 _jinja_block_pattern = (r'(\{%)(\s*)(\w+)',
-                        _lexer.bygroups(_token.String.Interpol, _token.Text, _token.Keyword), 'jinja_block')
+                        _lexer.bygroups(_token.String.Interpol, _token.Whitespace, _token.Keyword), 'jinja_block')
 _jinja_comment_pattern = (r'(\{#)', _token.Comment.Multiline, 'jinja_comment')
 _jinja_interpolate_pattern = (r'(\{\{)', _token.String.Interpol, 'jinja_interpolate')
 _operators_punctuation_pattern = (r'[\[\]{}()=\\;,:]', _token.Operator)
@@ -165,7 +165,7 @@ def _create_string_continue(name, char, root_state):
             _jinja_comment_pattern,
             _jinja_interpolate_pattern,
             (r'\\[^\s]', _token.String.Escape),
-            (r'\\', _token.Escape, f"{name}_escape"),
+            (r'\\', _token.Operator, f"{name}_escape"),
             (rf'(?<!\\)(#[^{char}\n]*)(\s*\n\s*)(-)',
              _lexer.bygroups(_token.Comment.Single, _token.Whitespace, string_token), f'{name}_escape'),
             (rf'(?<!\\)(#[^{char}\n]*)(\s*\n)', _lexer.bygroups(_token.Comment.Single, _token.Whitespace), root_state),
@@ -188,7 +188,7 @@ def _create_string_continue(name, char, root_state):
             _jinja_comment_pattern,
             _jinja_interpolate_pattern,
             (r'\\[^\s]', _token.String.Escape),
-            (r'\\', _token.Escape, f"{name}_escape"),
+            (r'\\', _token.Operator, f"{name}_escape"),
             (rf'(?<!\\)(#[^\n]*)(\s*\n\s*)(-)',
              _lexer.bygroups(_token.Comment.Single, _token.Whitespace, string_token), f'{name}_escape'),
             (r'(?<!\\)(#[^\n]*)(\s*\n)', _lexer.bygroups(_token.Comment.Single, _token.Whitespace), root_state),
@@ -248,9 +248,9 @@ class DgenerateLexer(_lexer.RegexLexer):
         'value': [
             (r'(\s*?\n\s*?)(-)', _lexer.bygroups(_token.Whitespace, _token.Operator)),
             (r'\s*?\n', _token.Whitespace, 'root'),
-            (r'\\[^\s]', _token.Escape),
-            (r'\\\s*?\n', _token.Escape, 'value_escape'),
-            (r'(\\\s+)(#[^\n]*)', _lexer.bygroups(_token.Whitespace, _token.Comment.Single), 'value_escape'),
+            (r'\\[^\s]', _token.Operator),
+            (r'(\\)(\s*?\n)', _lexer.bygroups(_token.Operator, _token.Whitespace), 'value_escape'),
+            (r'(\\)(\s+)(#[^\n]*)', _lexer.bygroups(_token.Operator, _token.Whitespace, _token.Comment.Single), 'value_escape'),
             _comment_pattern,
             _env_var_pattern,
             _jinja_block_pattern,
@@ -269,10 +269,10 @@ class DgenerateLexer(_lexer.RegexLexer):
         'setp_value': [
             (r'(\s*?\n\s*?)(-)', _lexer.bygroups(_token.Whitespace, _token.Operator)),
             (r'\s*?\n', _token.Whitespace, 'root'),
-            (r'(\n\s*?)(-)', _lexer.bygroups(_token.Whitespace, _token.Number)),
-            (r'\\[^\s]', _token.Escape),
-            (r'\\\s*?\n', _token.Escape, 'setp_value_escape'),
-            (r'(\\\s+)(#[^\n]*)', _lexer.bygroups(_token.Whitespace, _token.Comment.Single), 'setp_value_escape'),
+            (r'(\n\s*?)(-)', _lexer.bygroups(_token.Whitespace, _token.Operator)),
+            (r'\\[^\s]', _token.Operator),
+            (r'(\\)(\s*?\n)', _lexer.bygroups(_token.Operator, _token.Whitespace), 'setp_value_escape'),
+            (r'(\\)(\s+)(#[^\n]*)', _lexer.bygroups(_token.Operator, _token.Whitespace, _token.Comment.Single), 'setp_value_escape'),
             _comment_pattern,
             _env_var_pattern,
             (r'\b(%s)\b' % '|'.join(_SETP_KEYWORDS), _token.Keyword),
