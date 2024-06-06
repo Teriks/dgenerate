@@ -1,4 +1,4 @@
-#! dgenerate 3.6.0
+#! dgenerate 3.6.1
 
 # run the MiDaS depth detector, but generate a normal map from the depth image.
 
