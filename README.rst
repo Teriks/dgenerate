@@ -224,8 +224,7 @@ Help Output
                             an animation then the image grid is used for the output frames. During
                             animation rendering each image in the batch will still be written to the
                             output directory along side the produced animation as either suffixed
-                            files or image grids depending on the options you choose. (Torch Default:
-                            1)
+                            files or image grids depending on the options you choose. (Torch Default: 1)
       -bgs SIZE, --batch-grid-size SIZE
                             Produce a single image containing a grid of images with the number of
                             COLUMNSxROWS given to this argument when --batch-size is greater than 1,
@@ -342,21 +341,22 @@ Help Output
                             these include: "token", "revision", "subfolder", and "weight-name". They
                             can be specified as so in any order, they are not positional:
                             "huggingface/ti_model;revision=main;subfolder=repo_subfolder;weight-
-                            name=lora.safetensors". The "token" argument can be used to override the
-                            prompt token used for the textual inversion prompt embedding. For normal
-                            Stable Diffusion the default token value is provided by the model itself,
-                            but for Stable Diffusion XL the default token value is equal to the model
-                            file name with no extension and all spaces replaced by underscores. The
-                            "revision" argument specifies the model revision to use for the Textual
-                            Inversion model when loading from huggingface repository, (The git branch
-                            / tag, default is "main"). The "subfolder" argument specifies the Textual
-                            Inversion model subfolder, if specified when loading from a huggingface
-                            repository or folder, weights from the specified subfolder. The "weight-
-                            name" argument indicates the name of the weights file to be loaded when
-                            loading from a huggingface repository or folder on disk. If you wish to
-                            load a weights file directly from disk, the simplest way is: --textual-
-                            inversions "my_ti_model.safetensors", all other loading arguments are
-                            unused in this case and may produce an error message if used.
+                            name=ti_model.safetensors". The "token" argument can be used to override
+                            the prompt token used for the textual inversion prompt embedding. For
+                            normal Stable Diffusion the default token value is provided by the model
+                            itself, but for Stable Diffusion XL the default token value is equal to
+                            the model file name with no extension and all spaces replaced by
+                            underscores. The "revision" argument specifies the model revision to use
+                            for the Textual Inversion model when loading from huggingface repository,
+                            (The git branch / tag, default is "main"). The "subfolder" argument
+                            specifies the Textual Inversion model subfolder, if specified when loading
+                            from a huggingface repository or folder, weights from the specified
+                            subfolder. The "weight-name" argument indicates the name of the weights
+                            file to be loaded when loading from a huggingface repository or folder on
+                            disk. If you wish to load a weights file directly from disk, the simplest
+                            way is: --textual-inversions "my_ti_model.safetensors", all other loading
+                            arguments are unused in this case and may produce an error message if
+                            used.
       -cn CONTROL_NET_URI [CONTROL_NET_URI ...], --control-nets CONTROL_NET_URI [CONTROL_NET_URI ...]
                             Specify one or more ControlNet models using URIs. This should be a
                             huggingface repository slug / blob link, path to model file on disk (for
