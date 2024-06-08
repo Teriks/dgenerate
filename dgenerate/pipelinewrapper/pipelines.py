@@ -917,6 +917,9 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         if textual_inversion_uris:
             raise UnsupportedPipelineConfigError(
                 'Deep Floyd --model-type values are not compatible with --textual-inversions.')
+        if vae_uri:
+            raise UnsupportedPipelineConfigError(
+                'Deep Floyd --model-type values are not compatible with --vae.')
 
     if _enums.model_type_is_s_cascade(model_type):
         if control_net_uris:
