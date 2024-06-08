@@ -339,20 +339,24 @@ Help Output
                             file), or model folder containing model files. huggingface blob links are
                             not supported, see "subfolder" and "weight-name" below instead. Optional
                             arguments can be provided after the Textual Inversion model specification,
-                            these include: "revision", "subfolder", and "weight-name". They can be
-                            specified as so in any order, they are not positional:
+                            these include: "token", "revision", "subfolder", and "weight-name". They
+                            can be specified as so in any order, they are not positional:
                             "huggingface/ti_model;revision=main;subfolder=repo_subfolder;weight-
-                            name=lora.safetensors". The "revision" argument specifies the model
-                            revision to use for the Textual Inversion model when loading from
-                            huggingface repository, (The git branch / tag, default is "main"). The
-                            "subfolder" argument specifies the Textual Inversion model subfolder, if
-                            specified when loading from a huggingface repository or folder, weights
-                            from the specified subfolder. The "weight-name" argument indicates the
-                            name of the weights file to be loaded when loading from a huggingface
-                            repository or folder on disk. If you wish to load a weights file directly
-                            from disk, the simplest way is: --textual-inversions
-                            "my_ti_model.safetensors", all other loading arguments are unused in this
-                            case and may produce an error message if used.
+                            name=lora.safetensors". The "token" argument can be used to override the
+                            prompt token used for the textual inversion prompt embedding. For normal
+                            Stable Diffusion the default token value is provided by the model itself,
+                            but for Stable Diffusion XL the default token value is equal to the model
+                            file name with no extension and all spaces replaced by underscores. The
+                            "revision" argument specifies the model revision to use for the Textual
+                            Inversion model when loading from huggingface repository, (The git branch
+                            / tag, default is "main"). The "subfolder" argument specifies the Textual
+                            Inversion model subfolder, if specified when loading from a huggingface
+                            repository or folder, weights from the specified subfolder. The "weight-
+                            name" argument indicates the name of the weights file to be loaded when
+                            loading from a huggingface repository or folder on disk. If you wish to
+                            load a weights file directly from disk, the simplest way is: --textual-
+                            inversions "my_ti_model.safetensors", all other loading arguments are
+                            unused in this case and may produce an error message if used.
       -cn CONTROL_NET_URI [CONTROL_NET_URI ...], --control-nets CONTROL_NET_URI [CONTROL_NET_URI ...]
                             Specify one or more ControlNet models using URIs. This should be a
                             huggingface repository slug / blob link, path to model file on disk (for
@@ -914,7 +918,6 @@ Help Output
                             (available * 0.75)" For Syntax See: [https://dgenerate.readthedocs.io/en/v
                             3.6.1/dgenerate_submodules.html#dgenerate.pipelinewrapper.CONTROL_NET_CACH
                             E_MEMORY_CONSTRAINTS]
-
 
 
 Windows Install
@@ -2276,11 +2279,21 @@ Blob links are not accepted, for that use ``subfolder`` and ``weight-name`` desc
 Arguments pertaining to the loading of each textual inversion model may be specified in the same
 way as when using ``--loras`` minus the scale argument.
 
-Available arguments are: ``revision``, ``subfolder``, and ``weight-name``
+Available arguments are: ``token``,  ``revision``, ``subfolder``, and ``weight-name``
 
 Named arguments are available when loading from a huggingface repository or folder
 that may or may not be a local git repository on disk, when loading directly from a .safetensors file
 or other file from a path on disk they should not be used.
+
+The ``token`` argument may be used to override the prompt token value, which is the text token
+in the prompt that triggers the inversion, textual inversions for stable diffusion usually
+include this token value in the model itself, for instance in the example below the token
+for ``Isometric_Dreams-1000.pt`` is ``Isometric_Dreams``.
+
+The token value used for SDXL (Stable Diffusion XL) models is a bit different, a default
+value is not provided in the model file, so if you do not provide a token, dgenerate will
+make the tokens default value be the filename of the model with any spaces converted to
+underscores, with the file extension removed.
 
 
 .. code-block:: bash
@@ -2294,6 +2307,21 @@ or other file from a path on disk they should not be used.
     --inference-steps 30 \
     --guidance-scales 7 \
     --prompts "a bright photo of the Isometric_Dreams, a tv and a stereo in it and a book shelf, a table, a couch,a room with a bed"
+
+
+You can change the ``token`` value to affect the prompt token used to trigger the embedding
+
+.. code-block:: bash
+
+    # Load a textual inversion from a huggingface repository specifying it's name in the repository
+    # as an argument
+
+    dgenerate Duskfallcrew/isometric-dreams-sd-1-5  \
+    --textual-inversions "Duskfallcrew/IsometricDreams_TextualInversions;weight-name=Isometric_Dreams-1000.pt;token=<MY_TOKEN>" \
+    --scheduler KDPM2DiscreteScheduler \
+    --inference-steps 30 \
+    --guidance-scales 7 \
+    --prompts "a bright photo of the <MY_TOKEN>, a tv and a stereo in it and a book shelf, a table, a couch,a room with a bed"
 
 
 If you want to select the repository revision, such as ``main`` etc, use the named argument ``revision``

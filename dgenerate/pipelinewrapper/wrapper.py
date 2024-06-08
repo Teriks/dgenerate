@@ -2005,9 +2005,6 @@ class DiffusionPipelineWrapper:
         self._recall_main_pipeline = None
         self._recall_refiner_pipeline = None
 
-        if _enums.model_type_is_sdxl(self._model_type) and self._textual_inversion_uris:
-            raise _pipelines.UnsupportedPipelineConfigError('Textual inversion not supported for SDXL.')
-
         if self._model_type == _enums.ModelType.FLAX:
             if not _enums.have_jax_flax():
                 raise _pipelines.UnsupportedPipelineConfigError('flax and jax are not installed.')

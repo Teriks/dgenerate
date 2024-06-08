@@ -61,7 +61,11 @@ class UnsupportedPipelineConfigError(Exception):
 
 class InvalidModelFileError(Exception):
     """
-    Raised when a file is loaded from disk that is an invalid diffusers model format
+    Raised when a file is loaded from disk that is an invalid diffusers model format.
+
+    This indicates that was a problem loading the primary diffusion model,
+    This could also refer to an SDXL refiner model or Stable Cascade decoder
+    model which are considered primary models.
     """
     pass
 

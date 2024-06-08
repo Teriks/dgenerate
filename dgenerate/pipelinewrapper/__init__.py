@@ -132,12 +132,18 @@ from .uris import \
     FlaxVAEUri, \
     FlaxControlNetUri, \
     SDXLRefinerUri, \
+    ModelUriLoadError, \
     InvalidControlNetUriError, \
+    ControlNetUriLoadError, \
     InvalidLoRAUriError, \
+    LoRAUriLoadError, \
     InvalidSDXLRefinerUriError, \
     InvalidTextualInversionUriError, \
+    TextualInversionUriLoadError, \
     InvalidUNetUriError, \
+    UNetUriLoadError, \
     InvalidVaeUriError, \
+    VAEUriLoadError, \
     TorchControlNetUri, \
     TorchVAEUri, \
     TorchUNetUri, \

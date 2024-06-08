@@ -906,11 +906,6 @@ class RenderLoopConfig(_types.SetFromMixin):
 
             self.sdxl_high_noise_fractions = None
         else:
-            if self.textual_inversion_uris:
-                raise RenderLoopConfigError(
-                    f'{a_namer("textual_inversion_uris")} is not supported for '
-                    f'SDXL, see: {a_namer("model_type")}.')
-
             if not self.sdxl_refiner_uri:
                 invalid_self = []
                 for sdxl_self in non_null_attr_that_start_with('sdxl_refiner'):
