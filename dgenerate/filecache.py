@@ -25,12 +25,16 @@ import os
 import pathlib
 import sqlite3
 import typing
-import urllib.parse
 import uuid
 
 import fake_useragent
 import filelock
+import pyrfc6266
 import requests
+import tqdm
+
+import dgenerate.memory as _memory
+import dgenerate.messages as _messages
 
 
 class KeyValueStore:
@@ -209,6 +213,11 @@ class CachedFile:
     The path to the file on disk.
     """
 
+    size: str
+    """
+    File size in bytes.
+    """
+
     metadata: dict[str, str]
     """
     Optional metadata for the file stored in the database.
@@ -219,6 +228,7 @@ class CachedFile:
         :param data_dict: file data dict parsed from the cache database.
         """
         self.path = data_dict['path']
+        self.size = data_dict.get('size', 0)
         self.metadata = data_dict['metadata']
 
 
@@ -277,7 +287,7 @@ class FileCache:
         """
         Generates a unique filename with the specified extension in the cache directory.
         """
-        if ext is None:
+        if ext is None or ext == '':
             ext = ''
         else:
             ext = '.' + ext.lstrip('.')
@@ -311,18 +321,22 @@ class FileCache:
 
     def add(self,
             key: str,
-            file_data: bytes,
+            file_data: bytes | typing.Iterable[bytes],
             metadata: typing.Dict[str, str] = None,
-            ext: typing.Optional[str] = None) \
+            ext: typing.Optional[str] = None,
+            total_size=None) \
             -> typing.Optional[CachedFile]:
         """
         Adds a file to the cache. If a file with the same key already exists, it overwrites the existing file.
         Otherwise, it creates a new file with a unique filename.
 
         :param key: The key associated with the file.
-        :param file_data: The data of the file in bytes.
+        :param file_data: The data of the file in bytes, or an iterable of binary chunks.
         :param metadata: The metadata of the file.
         :param ext: The extension of the file.
+        :param total_size: If the size of the file is known and an iterable
+            is being used, it should be supplied to allow for cache healing
+            in the event of an incomplete write.
         :return: A :py:class:`.CachedFile` object representing the added file.
         """
         with self.kv_store as kv:
@@ -330,13 +344,23 @@ class FileCache:
                 file_path = pathlib.Path(json.loads(kv.get(key))['path']).name
             else:
                 file_path = self._generate_unique_filename(ext)
-
-        with open(file_path, 'wb') as f:
-            f.write(file_data)
-            f.flush()
+        if isinstance(file_data, bytes):
+            written_amount = len(file_data)
+            with open(file_path, 'wb') as f:
+                f.write(file_data)
+                f.flush()
+        else:
+            written_amount = 0
+            with open(file_path, 'wb') as f:
+                iterable = iter(file_data)
+                for chunk in iterable:
+                    f.write(chunk)
+                    f.flush()
 
         with self.kv_store as kv:
-            entry_data = {'path': file_path, 'metadata': metadata}
+            entry_data = {'path': file_path,
+                          'size': written_amount if total_size is None else total_size,
+                          'metadata': metadata}
             kv[key] = json.dumps(entry_data)
 
         return CachedFile(entry_data)
@@ -351,7 +375,11 @@ class FileCache:
         """
         with self.kv_store as kv:
             if key in kv:
-                return CachedFile(json.loads(kv[key]))
+                value = CachedFile(json.loads(kv[key]))
+                if os.path.exists(value.path) and os.path.getsize(value.path) == value.size:
+                    return value
+                # cache corrupted, user needs to heal it
+                return None
             else:
                 return None
 
@@ -470,7 +498,30 @@ class WebFileCache(FileCache):
 
             metadata = {'mime-type': mime_type}
 
-            parsed = urllib.parse.urlparse(url)
-            _, ext = os.path.splitext(parsed.path)
+            filename = pyrfc6266.requests_response_to_filename(response)
+            _, ext = os.path.splitext(filename)
 
-            return self.add(url, response.content, metadata, ext)
+            # Get the total size of the file
+            total_size = int(response.headers.get('content-length', 0))
+
+            # Initialize tqdm progress bar
+            progress_bar = tqdm.tqdm(total=total_size, unit='iB', unit_scale=True)
+
+            # Create a generator that yields the file data
+            chunk_size = _memory.calculate_chunk_size(total_size)
+
+            def file_data_generator():
+                for chunk in response.iter_content(
+                        chunk_size=chunk_size):
+                    progress_bar.update(len(chunk))
+                    yield chunk
+
+                progress_bar.close()
+
+            _messages.log(f'Downloading: "{url}"',
+                          underline=True)
+
+            # Add the downloaded file to the cache
+            return self.add(url, file_data_generator(),
+                            metadata, ext,
+                            total_size=total_size)

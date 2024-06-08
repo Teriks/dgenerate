@@ -34,11 +34,20 @@ import threading
 import time
 import types
 import typing
+import urllib.parse
+
+import fake_useragent
+import pyrfc6266
+import requests
+import tqdm
 
 import dgenerate
 import dgenerate.arguments as _arguments
+import dgenerate.mediainput as _mediainput
+import dgenerate.memory as _memory
 import dgenerate.batchprocess.batchprocessor as _batchprocessor
 import dgenerate.batchprocess.configrunnerpluginloader as _configrunnerpluginloader
+import dgenerate.files as _files
 import dgenerate.invoker as _invoker
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
@@ -46,7 +55,6 @@ import dgenerate.prompt as _prompt
 import dgenerate.renderloop as _renderloop
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-import dgenerate.files as _files
 
 
 def _format_prompt_single(prompt):
@@ -294,6 +302,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'use_modules': self._use_modules_directive,
             'clear_modules': self._clear_modules_directive,
             'gen_seeds': self._gen_seeds_directive,
+            'download': self._download_directive,
             'pwd': self._pwd_directive,
             'ls': self._ls_directive,
             'cd': self._cd_directive,
@@ -548,6 +557,108 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                     os.mkdir(directory)
             except OSError as e:
                 raise _batchprocessor.BatchProcessError(f'Error creating directory "{directory}": {e.strerror}')
+        return 0
+
+    def _download_directive(self, command_line_args: collections.abc.Sequence[str]):
+        """
+        Download a file from a URL to a specified path or to the web cache.
+
+        Assign the file path to a template variable.
+
+        If the path ends with a slash, it is treated as a directory.
+        If no path is supplied, the file is downloaded to dgenerates web cache.
+        """
+        parser = _DirectiveArgumentParser(prog='\\download', description='Download a file.')
+
+        parser.add_argument('variable',
+                            help='Assign the path of the downloaded '
+                                 'file to this template variable name.')
+        parser.add_argument('url', help='URL of the file to download.')
+        parser.add_argument('path', nargs='?', default=None,
+                            help='Path to download the file to. '
+                                 'If none is provided the file is placed in dgenerates '
+                                 'web cache. If this path ends with a forward slash or '
+                                 'backslash it is considered to be a directory, the file '
+                                 'name will be determined by the URL or content disposition '
+                                 'of the http/https request if available.')
+        parser.add_argument('-x', '--overwrite',
+                            action='store_true',
+                            default=False,
+                            help='If an explicit path is specified always '
+                                 'overwrite existing files instead of reusing them.')
+
+        args = parser.parse_args(command_line_args)
+
+        if parser.return_code is not None:
+            return parser.return_code
+
+        file_path = None
+
+        if args.path:
+            # Send a GET request to the URL
+            response = requests.get(args.url, headers={
+                'User-Agent': fake_useragent.UserAgent().chrome},
+                stream=True)
+
+            # Check if the request was successful
+            if response.status_code == 200:
+
+                # If the path ends with a slash, treat it as a directory
+                if args.path.endswith('/') or args.path.endswith('\\'):
+                    os.makedirs(args.path, exist_ok=True)
+                    args.path = os.path.join(
+                        args.path, pyrfc6266.requests_response_to_filename(response))
+
+                # Get the total size of the file
+                total_size = int(response.headers.get('content-length', 0))
+
+                if not args.overwrite and (
+                        os.path.exists(args.path) and
+                        os.path.getsize(args.path) == total_size):
+                    _messages.log(f'Downloaded file already exists, using: {args.path}',
+                                  underline=True)
+                    return 0
+
+                _messages.log(f'Downloading: "{args.url}"\nDestination: "{args.path}"',
+                              underline=True)
+
+                # Create a progress bar with tqdm
+                progress_bar = tqdm.tqdm(total=total_size, unit='iB', unit_scale=True)
+
+                # Open the file in write mode and write the content
+                with open(args.path, 'wb') as file:
+                    for chunk in response.iter_content(
+                            chunk_size=_memory.calculate_chunk_size(total_size)):
+                        if chunk:
+                            progress_bar.update(len(chunk))
+                            file.write(chunk)
+                            file.flush()
+
+                progress_bar.close()
+                file_path = args.path
+
+                if total_size != 0 and progress_bar.n != total_size:
+                    _messages.log('Download failure, something went wrong '
+                                  'during the download.', level=_messages.ERROR)
+                    return 1
+            else:
+                _messages.log(f"Failed to download file. "
+                              f"HTTP status code: {response.status_code}",
+                              level=_messages.ERROR)
+                return 1
+        else:
+            try:
+                _, file_path =_mediainput.create_web_cache_file(
+                    args.url,
+                    mimetype_is_supported=None)
+            except requests.HTTPError as e:
+                _messages.log(f"Failed to download file. "
+                              f"HTTP status code: {e.response.status_code}",
+                              level=_messages.ERROR)
+                return 1
+
+        self._jinja_user_define(args.variable, file_path)
+
         return 0
 
     def _exec_directive(self, args: collections.abc.Sequence[str]):
