@@ -595,21 +595,17 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         file_path = None
 
         if args.path:
-            # Send a GET request to the URL
             response = requests.get(args.url, headers={
                 'User-Agent': fake_useragent.UserAgent().chrome},
                 stream=True)
 
-            # Check if the request was successful
             if response.status_code == 200:
 
-                # If the path ends with a slash, treat it as a directory
                 if args.path.endswith('/') or args.path.endswith('\\'):
                     os.makedirs(args.path, exist_ok=True)
                     args.path = os.path.join(
                         args.path, pyrfc6266.requests_response_to_filename(response))
 
-                # Get the total size of the file
                 total_size = int(response.headers.get('content-length', 0))
 
                 if not args.overwrite and (
@@ -622,17 +618,14 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                 _messages.log(f'Downloading: "{args.url}"\nDestination: "{args.path}"',
                               underline=True)
 
-                # Create a progress bar with tqdm
-                progress_bar = tqdm.tqdm(total=total_size, unit='iB', unit_scale=True)
-
-                # Open the file in write mode and write the content
-                with open(args.path, 'wb') as file:
-                    for chunk in response.iter_content(
-                            chunk_size=_memory.calculate_chunk_size(total_size)):
-                        if chunk:
-                            progress_bar.update(len(chunk))
-                            file.write(chunk)
-                            file.flush()
+                with tqdm.tqdm(total=total_size, unit='iB', unit_scale=True) as progress_bar:
+                    with open(args.path, 'wb') as file:
+                        for chunk in response.iter_content(
+                                chunk_size=_memory.calculate_chunk_size(total_size)):
+                            if chunk:
+                                progress_bar.update(len(chunk))
+                                file.write(chunk)
+                                file.flush()
 
                 progress_bar.close()
                 file_path = args.path
