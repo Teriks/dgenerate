@@ -588,10 +588,16 @@ def _create_parser(add_model=True, add_help=True):
                             huggingface blob links are not supported, see "subfolder" and "weight-name" below instead.
                             
                             Optional arguments can be provided after the Textual Inversion model specification, 
-                            these include: "revision", "subfolder", and "weight-name".
+                            these include: "token", "revision", "subfolder", and "weight-name".
                             
                             They can be specified as so in any order, they are not positional:
                             "huggingface/ti_model;revision=main;subfolder=repo_subfolder;weight-name=lora.safetensors".
+                            
+                            The "token" argument can be used to override the prompt token used for the 
+                            textual inversion prompt embedding. For normal Stable Diffusion the default 
+                            token value is provided by the model itself, but for Stable Diffusion XL the
+                            default token value is equal to the model file name with no extension and all
+                            spaces replaced by underscores. 
                             
                             The "revision" argument specifies the model revision to use for the Textual Inversion model
                             when loading from huggingface repository, (The git branch / tag, default is "main").

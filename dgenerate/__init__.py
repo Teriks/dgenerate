@@ -90,6 +90,7 @@ try:
     from dgenerate.pipelinewrapper import \
         InvalidModelFileError, \
         InvalidModelUriError, \
+        ModelUriLoadError, \
         InvalidSchedulerNameError, \
         UnsupportedPipelineConfigError, \
         ModelType, \

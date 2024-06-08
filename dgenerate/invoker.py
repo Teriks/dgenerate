@@ -139,6 +139,7 @@ def invoke_dgenerate_events(
     :raises dgenerate.ImageProcessorNotFoundError:
     :raises dgenerate.InvalidModelFileError:
     :raises dgenerate.InvalidModelUriError:
+    :raises dgenerate.ModelUriLoadError:
     :raises dgenerate.InvalidSchedulerNameError:
     :raises dgenerate.OutOfMemoryError:
     :raises dgenerate.ModelNotFoundError:
@@ -320,6 +321,7 @@ def invoke_dgenerate_events(
             _pipelinewrapper.ModelNotFoundError,
             _pipelinewrapper.InvalidModelFileError,
             _pipelinewrapper.InvalidModelUriError,
+            _pipelinewrapper.ModelUriLoadError,
             _pipelinewrapper.InvalidSchedulerNameError,
             _pipelinewrapper.UnsupportedPipelineConfigError,
             _pipelinewrapper.OutOfMemoryError,

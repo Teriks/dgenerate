@@ -23,6 +23,9 @@ import typing
 
 import diffusers
 import huggingface_hub
+import safetensors
+import safetensors.torch
+import torch
 
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
@@ -56,13 +59,25 @@ _flax_control_net_uri_parser = _textprocessing.ConceptUriParser('ControlNet',
 
 _lora_uri_parser = _textprocessing.ConceptUriParser('LoRA', ['scale', 'revision', 'subfolder', 'weight-name'])
 _textual_inversion_uri_parser = _textprocessing.ConceptUriParser('Textual Inversion',
-                                                                 ['revision', 'subfolder', 'weight-name'])
+                                                                 ['token', 'revision', 'subfolder', 'weight-name'])
 
 _flax_unet_uri_parser = _textprocessing.ConceptUriParser('UNet',
                                                          ['revision', 'subfolder', 'dtype'])
 
 _torch_unet_uri_parser = _textprocessing.ConceptUriParser('UNet',
                                                           ['revision', 'variant', 'subfolder', 'dtype'])
+
+
+class ModelUriLoadError(Exception):
+    """
+    Thrown when model fails to load from a URI for a
+    reason other than not being found, such as being
+    unsupported.
+
+    This exception refers to loadable sub models such as
+    VAEs, LoRAs, ControlNets, Textual Inversions etc.
+    """
+    pass
 
 
 class InvalidModelUriError(Exception):
@@ -117,6 +132,41 @@ class InvalidLoRAUriError(InvalidModelUriError):
 class InvalidTextualInversionUriError(InvalidModelUriError):
     """
     Error in ``--textual-inversions`` uri
+    """
+    pass
+
+
+class ControlNetUriLoadError(ModelUriLoadError):
+    """
+    Error while loading model file in ``--control-nets`` uri
+    """
+    pass
+
+
+class VAEUriLoadError(ModelUriLoadError):
+    """
+    Error while loading model file in ``--vae`` uri
+    """
+    pass
+
+
+class UNetUriLoadError(ModelUriLoadError):
+    """
+    Error while loading model file in ``--unet / --unet2`` uri
+    """
+    pass
+
+
+class LoRAUriLoadError(ModelUriLoadError):
+    """
+    Error while loading model file in ``--loras`` uri
+    """
+    pass
+
+
+class TextualInversionUriLoadError(ModelUriLoadError):
+    """
+    Error while loading model file in ``--textual-inversions`` uri
     """
     pass
 
@@ -227,6 +277,8 @@ class FlaxControlNetUri:
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
+        except Exception as e:
+            raise ControlNetUriLoadError(e)
 
     @_memoize(_cache._FLAX_CONTROL_NET_CACHE,
               exceptions={'local_files_only'},
@@ -456,6 +508,8 @@ class TorchControlNetUri:
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
+        except Exception as e:
+            ControlNetUriLoadError(e)
 
     @_memoize(_cache._TORCH_CONTROL_NET_CACHE,
               exceptions={'local_files_only'},
@@ -896,10 +950,12 @@ class TorchVAEUri:
              use_auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
              sequential_cpu_offload_member: bool = False,
-             model_cpu_offload_member: bool = False) -> typing.Union[diffusers.AutoencoderKL,
-    diffusers.AsymmetricAutoencoderKL,
-    diffusers.AutoencoderTiny,
-    diffusers.ConsistencyDecoderVAE]:
+             model_cpu_offload_member: bool = False) -> \
+            typing.Union[
+                diffusers.AutoencoderKL,
+                diffusers.AsymmetricAutoencoderKL,
+                diffusers.AutoencoderTiny,
+                diffusers.ConsistencyDecoderVAE]:
         """
         Load a VAE of type :py:class:`diffusers.AutoencoderKL`, :py:class:`diffusers.AsymmetricAutoencoderKL`,
         :py:class:`diffusers.AutoencoderKLTemporalDecoder`, or :py:class:`diffusers.AutoencoderTiny` from this URI
@@ -930,6 +986,8 @@ class TorchVAEUri:
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
+        except Exception as e:
+            raise VAEUriLoadError(e)
 
     @_memoize(_cache._TORCH_VAE_CACHE,
               exceptions={'local_files_only'},
@@ -941,10 +999,11 @@ class TorchVAEUri:
               use_auth_token: _types.OptionalString = None,
               local_files_only: bool = False,
               sequential_cpu_offload_member: bool = False,
-              model_cpu_offload_member: bool = False) -> typing.Union[diffusers.AutoencoderKL,
-    diffusers.AsymmetricAutoencoderKL,
-    diffusers.AutoencoderTiny,
-    diffusers.ConsistencyDecoderVAE]:
+              model_cpu_offload_member: bool = False) -> \
+            typing.Union[diffusers.AutoencoderKL,
+            diffusers.AsymmetricAutoencoderKL,
+            diffusers.AutoencoderTiny,
+            diffusers.ConsistencyDecoderVAE]:
 
         if sequential_cpu_offload_member and model_cpu_offload_member:
             # these are used for cache differentiation only
@@ -1163,6 +1222,8 @@ class TorchUNetUri:
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
+        except Exception as e:
+            raise UNetUriLoadError(e)
 
     @_memoize(_cache._TORCH_UNET_CACHE,
               exceptions={'local_files_only'},
@@ -1367,6 +1428,8 @@ class FlaxVAEUri:
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
+        except Exception as e:
+            raise VAEUriLoadError(e)
 
     @_memoize(_cache._FLAX_VAE_CACHE,
               exceptions={'local_files_only'},
@@ -1554,6 +1617,8 @@ class FlaxUNetUri:
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
+        except Exception as e:
+            raise UNetUriLoadError(e)
 
     @_memoize(_cache._FLAX_UNET_CACHE,
               exceptions={'local_files_only'},
@@ -1707,6 +1772,8 @@ class LoRAUri:
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
+        except Exception as e:
+            raise LoRAUriLoadError(e)
 
     def _load_on_pipeline(self,
                           pipeline: diffusers.DiffusionPipeline,
@@ -1742,8 +1809,9 @@ class LoRAUri:
                                                                        revision=self.revision)
 
                 if not isinstance(file_path, str):
-                    raise ModuleNotFoundError(
-                        f'LoRA model "{self.model}" was not available in the local huggingface cache.')
+                    raise RuntimeError(
+                        f'LoRA model "{self.model}" '
+                        'was not available in the local huggingface cache.')
 
                 load_path = os.path.dirname(file_path)
 
@@ -1757,6 +1825,9 @@ class LoRAUri:
             pipeline.fuse_lora(lora_scale=self.scale)
 
             _messages.debug_log(f'Added LoRA: "{self}" to pipeline: "{pipeline.__class__.__name__}"')
+        else:
+            raise RuntimeError(f'Pipeline: {pipeline.__class__.__name__} '
+                               f'does not support loading LoRAs.')
 
     @staticmethod
     def parse(uri: _types.Uri) -> 'LoRAUri':
@@ -1779,6 +1850,80 @@ class LoRAUri:
                            subfolder=r.args.get('subfolder', None))
         except _textprocessing.ConceptUriParseError as e:
             raise InvalidLoRAUriError(e)
+
+
+def _load_textual_inversion_state_dict(pretrained_model_name_or_path, **kwargs):
+    from diffusers.utils.hub_utils import _get_model_file
+
+    text_inversion_name = "learned_embeds.bin"
+    text_inversion_name_safe = "learned_embeds.safetensors"
+
+    cache_dir = kwargs.pop("cache_dir", None)
+    force_download = kwargs.pop("force_download", False)
+    resume_download = kwargs.pop("resume_download", False)
+    proxies = kwargs.pop("proxies", None)
+    local_files_only = kwargs.pop("local_files_only", None)
+    token = kwargs.pop("token", None)
+    revision = kwargs.pop("revision", None)
+    subfolder = kwargs.pop("subfolder", None)
+    weight_name = kwargs.pop("weight_name", None)
+    use_safetensors = kwargs.pop("use_safetensors", None)
+
+    allow_pickle = False
+    if use_safetensors is None:
+        use_safetensors = True
+        allow_pickle = True
+
+    user_agent = {
+        "file_type": "text_inversion",
+        "framework": "pytorch",
+    }
+
+    # 3.1. Load textual inversion file
+    state_dict = None
+    model_file = None
+
+    # Let's first try to load .safetensors weights
+    if (use_safetensors and weight_name is None) or (
+            weight_name is not None and weight_name.endswith(".safetensors")
+    ):
+        try:
+            model_file = _get_model_file(
+                pretrained_model_name_or_path,
+                weights_name=weight_name or text_inversion_name_safe,
+                cache_dir=cache_dir,
+                force_download=force_download,
+                resume_download=resume_download,
+                proxies=proxies,
+                local_files_only=local_files_only,
+                token=token,
+                revision=revision,
+                subfolder=subfolder,
+                user_agent=user_agent,
+            )
+            state_dict = safetensors.torch.load_file(model_file, device="cpu")
+        except Exception as e:
+            if not allow_pickle:
+                raise e
+
+            model_file = None
+
+    if model_file is None:
+        model_file = _get_model_file(
+            pretrained_model_name_or_path,
+            weights_name=weight_name or text_inversion_name,
+            cache_dir=cache_dir,
+            force_download=force_download,
+            resume_download=resume_download,
+            proxies=proxies,
+            local_files_only=local_files_only,
+            token=token,
+            revision=revision,
+            subfolder=subfolder,
+            user_agent=user_agent,
+        )
+        state_dict = torch.load(model_file, map_location="cpu")
+    return model_file, state_dict
 
 
 class TextualInversionUri:
@@ -1814,11 +1959,20 @@ class TextualInversionUri:
         """
         return self._weight_name
 
+    @property
+    def token(self) -> _types.OptionalString:
+        """
+        Prompt keyword
+        """
+        return self._token
+
     def __init__(self,
                  model: str,
+                 token: str | None,
                  revision: _types.OptionalString = None,
                  subfolder: _types.OptionalPath = None,
                  weight_name: _types.OptionalName = None):
+        self._token = token
         self._model = model
         self._revision = revision
         self._subfolder = subfolder
@@ -1851,6 +2005,8 @@ class TextualInversionUri:
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
+        except Exception as e:
+            raise TextualInversionUriLoadError(e)
 
     def _load_on_pipeline(self,
                           pipeline: diffusers.DiffusionPipeline,
@@ -1870,16 +2026,52 @@ class TextualInversionUri:
             if use_auth_token is not None:
                 os.environ['HF_TOKEN'] = use_auth_token
             try:
-                pipeline.load_textual_inversion(self.model,
-                                                revision=self.revision,
-                                                subfolder=self.subfolder,
-                                                weight_name=self.weight_name,
-                                                local_files_only=local_files_only)
+                if 'StableDiffusionXL' in pipeline.__class__.__name__:
+                    filename, dicts = _load_textual_inversion_state_dict(
+                        self.model,
+                        revision=self.revision,
+                        subfolder=self.subfolder,
+                        weight_name=self.weight_name,
+                        local_files_only=local_files_only
+                    )
+
+                    if 'clip_l' not in dicts or 'clip_g' not in dicts:
+                        raise RuntimeError(
+                            'clip_l or clip_g not found in SDXL textual '
+                            f'inversion model "{self.model}" state dict, '
+                            'unsupported model format.')
+
+                    # token is the file name (no extension) with spaces
+                    # replaced by underscores when the user does not provide
+                    # a prompt token
+                    token = os.path.splitext(
+                        os.path.basename(filename))[0].replace(' ', '_') \
+                        if self.token is None else self.token
+
+                    pipeline.load_textual_inversion(dicts['clip_l'],
+                                                    token=token,
+                                                    text_encoder=pipeline.text_encoder,
+                                                    tokenizer=pipeline.tokenizer)
+
+                    pipeline.load_textual_inversion(dicts['clip_g'],
+                                                    token=token,
+                                                    text_encoder=pipeline.text_encoder_2,
+                                                    tokenizer=pipeline.tokenizer_2)
+                else:
+                    pipeline.load_textual_inversion(self.model,
+                                                    token=self.token,
+                                                    revision=self.revision,
+                                                    subfolder=self.subfolder,
+                                                    weight_name=self.weight_name,
+                                                    local_files_only=local_files_only)
             finally:
                 if old_token is not None:
                     os.environ['HF_TOKEN'] = old_token
 
             _messages.debug_log(f'Added Textual Inversion: "{self}" to pipeline: "{pipeline.__class__.__name__}"')
+        else:
+            raise RuntimeError(f'Pipeline: {pipeline.__class__.__name__} '
+                               f'does not support loading textual inversions.')
 
     @staticmethod
     def parse(uri: _types.Uri) -> 'TextualInversionUri':
@@ -1896,6 +2088,7 @@ class TextualInversionUri:
             r = _textual_inversion_uri_parser.parse(uri)
 
             return TextualInversionUri(model=r.concept,
+                                       token=r.args.get('token', None),
                                        weight_name=r.args.get('weight-name', None),
                                        revision=r.args.get('revision', None),
                                        subfolder=r.args.get('subfolder', None))
