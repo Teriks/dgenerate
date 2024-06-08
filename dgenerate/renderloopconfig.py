@@ -22,13 +22,13 @@ import collections.abc
 import random
 import typing
 
+import dgenerate.image as _image
 import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.prompt as _prompt
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-import dgenerate.image as _image
 
 CONTROL_IMAGE_PROCESSOR_SEP = '+'
 """
@@ -689,12 +689,23 @@ class RenderLoopConfig(_types.SetFromMixin):
             if self.vae_uri is not None:
                 raise RenderLoopConfigError(
                     f'Deep Floyd model types cannot use a {a_namer("vae_uri")} value.')
+            if self.textual_inversion_uris is not None:
+                raise RenderLoopConfigError(
+                    f'Deep Floyd model types cannot use a {a_namer("textual_inversion_uris")} value.')
+            if self.control_net_uris is not None:
+                raise RenderLoopConfigError(
+                    f'Deep Floyd model types cannot use a {a_namer("control_net_uris")} value.')
 
         if self.model_type == _pipelinewrapper.ModelType.TORCH_S_CASCADE_DECODER:
             raise RenderLoopConfigError(
                 f'Stable Cascade decoder {a_namer("model_type")} may not be used as the primary model.')
 
         if self.model_type == _pipelinewrapper.ModelType.TORCH_S_CASCADE:
+            if self.textual_inversion_uris is not None:
+                raise RenderLoopConfigError(
+                    f'Stable Cascade does not currently support the '
+                    f'use of {a_namer("textual_inversion_uris")}.')
+
             if not self.s_cascade_decoder_uri:
                 raise RenderLoopConfigError(
                     f'You must specify a Stable Cascade decoder '
