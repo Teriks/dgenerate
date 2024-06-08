@@ -334,3 +334,27 @@ def memory_use_debug_string(pid=None):
             f'{bytes_best_human_unit(get_total_memory())}, '
             f'Used Total Percent: '
             f'{round(get_used_total_memory_percent(pid=pid), 2)}%')
+
+
+def calculate_chunk_size(file_size):
+    """
+    Calculate the chunk size for downloading / copying
+    a file based on the file size and available memory.
+
+    :param file_size: The size of the file to be downloaded / copied.
+    :return: The calculated chunk size.
+    """
+    # Get the total available virtual memory (in bytes)
+    total_memory = psutil.virtual_memory().available
+
+    # If the file size is less than 1% of the total memory, all in one chunk
+    if file_size <= total_memory * 0.01:
+        return file_size
+
+    # If the file size is between 1% and 10% of the total memory, use 1% of the total memory as the chunk size
+    elif file_size <= total_memory * 0.1:
+        return int(total_memory * 0.01)
+
+    # If the file size is larger than 10% of the total memory, use 0.1% of the total memory as the chunk size
+    else:
+        return int(total_memory * 0.001)

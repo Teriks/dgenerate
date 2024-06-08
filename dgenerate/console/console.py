@@ -1030,9 +1030,9 @@ class DgenerateConsole(tk.Tk):
                 break
             try:
                 with self._termination_lock:
-                    # wait for possible submission of an exit message
-                    text = self._output_text_stdout_queue.get_nowait()
-                self._add_output_line(text)
+                    self._add_output_line(
+                        self._output_text_stderr_queue.get_nowait(),
+                        tag='error')
             except queue.Empty:
                 break
             lines += 1
@@ -1042,9 +1042,9 @@ class DgenerateConsole(tk.Tk):
                 break
             try:
                 with self._termination_lock:
-                    self._add_output_line(
-                        self._output_text_stderr_queue.get_nowait(),
-                        tag='error')
+                    # wait for possible submission of an exit message
+                    text = self._output_text_stdout_queue.get_nowait()
+                self._add_output_line(text)
             except queue.Empty:
                 break
             lines += 1
