@@ -501,22 +501,16 @@ class WebFileCache(FileCache):
             filename = pyrfc6266.requests_response_to_filename(response)
             _, ext = os.path.splitext(filename)
 
-            # Get the total size of the file
             total_size = int(response.headers.get('content-length', 0))
 
-            # Initialize tqdm progress bar
-            progress_bar = tqdm.tqdm(total=total_size, unit='iB', unit_scale=True)
-
-            # Create a generator that yields the file data
             chunk_size = _memory.calculate_chunk_size(total_size)
 
             def file_data_generator():
-                for chunk in response.iter_content(
-                        chunk_size=chunk_size):
-                    progress_bar.update(len(chunk))
-                    yield chunk
-
-                progress_bar.close()
+                with tqdm.tqdm(total=total_size, unit='iB', unit_scale=True) as progress_bar:
+                    for chunk in response.iter_content(
+                            chunk_size=chunk_size):
+                        progress_bar.update(len(chunk))
+                        yield chunk
 
             _messages.log(f'Downloading: "{url}"',
                           underline=True)
