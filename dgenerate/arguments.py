@@ -591,7 +591,7 @@ def _create_parser(add_model=True, add_help=True):
                             these include: "token", "revision", "subfolder", and "weight-name".
                             
                             They can be specified as so in any order, they are not positional:
-                            "huggingface/ti_model;revision=main;subfolder=repo_subfolder;weight-name=lora.safetensors".
+                            "huggingface/ti_model;revision=main;subfolder=repo_subfolder;weight-name=ti_model.safetensors".
                             
                             The "token" argument can be used to override the prompt token used for the 
                             textual inversion prompt embedding. For normal Stable Diffusion the default 
