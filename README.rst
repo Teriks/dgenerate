@@ -72,7 +72,16 @@ For library documentation visit `readthedocs <http://dgenerate.readthedocs.io/en
     * `Sub Commands (image-process)`_
     * `Upscaling with chaiNNer Compatible Upscaler Models`_
     * `Writing and Running Configs`_
-    * `Config Argument Injection`_
+        * `Basic config syntax`_
+        * `Built in template variables`_
+        * `Directives and templating`_
+        * `Globbing and path manipulation`_
+        * `The \\image_process directive`_
+        * `The \\exec directive`_
+        * `The \\download directive`_
+        * `The \\exit directive`_
+        * `Running configs from the command line`_
+        * `Config argument injection`_
     * `Console UI`_
     * `Writing Plugins`_
     * `File Cache Control`_
@@ -1551,7 +1560,7 @@ them together.
     --output-path inpaint \
     --animation-format mp4
 
-    # Zip two videos together, masking the left video with corrisponding frames
+    # Zip two videos together, masking the left video with corresponding frames
     # from the right video. The two animated inputs do not have to be the same file format
     # you can mask videos with gif/webp and vice versa
 
@@ -2529,13 +2538,19 @@ inside of a URI or otherwise can be specified by a URL link to a model
 file itself. dgenerate will attempt to download the file from the link,
 store it in the web cache, and then use it.
 
-You may also use the `\\download` config directive to assist in pre
+You may also use the ``\download`` config directive to assist in pre
 downloading other resources from the internet. The directive has the ability
-to specify arbitrary storage locations. See: `Writing and Running Configs`_
+to specify arbitrary storage locations. See: `The \\download directive`_
 
 In the case of CivitAI you can use this to bake models into your script
 that will be automatically downloaded for you, you just need a CivitAI
 account and token to download models.
+
+If you plan to download many large models to the web cache in
+this manner you may wish to adjust the global cache expiry time
+so that they exist in the cache longer than the default of 12 hours.
+
+You can see how to do this in the section `File Cache Control`_
 
 .. code-block:: bash
 
@@ -2561,6 +2576,7 @@ account and token to download models.
 
 This method can be used for VAEs, LoRAs, ControlNets, and Textual Inversions
 as well whenever single file loads are supported by the argument.
+
 
 Specifying Generation Batch Size
 ================================
@@ -3068,6 +3084,9 @@ if the next line starts with ``-`` it is considered part of a continuation as we
 not been used previously. Comments cannot be interspersed with invocation or directive arguments
 without the use of ``\``, at least on the last line before whitespace and comments start.
 
+Basic config syntax
+-------------------
+
 The following is a config file example that covers very basic syntax concepts:
 
 .. code-block:: jinja
@@ -3154,6 +3173,8 @@ The following is a config file example that covers very basic syntax concepts:
     --output-path unique_output_4
 
 
+Built in template variables
+---------------------------
 
 To receive information about Jinja2 template variables that are set after a dgenerate invocation.
 You can use the ``\templates_help`` directive which is similar to the ``--templates-help`` option
@@ -3163,7 +3184,8 @@ a dgenerate invocation in a config file for debugging purposes. You can specify 
 more template variable names as arguments to ``\templates_help`` to receive help for only
 the mentioned variable names.
 
-Template variables set with the ``\set`` and ``\setp`` directive will also be mentioned in this output.
+Template variables set with the ``\set``, ``\setp``, and ``\sete`` directive will
+also be mentioned in this output.
 
 .. code-block:: jinja
 
@@ -3495,6 +3517,9 @@ The ``\templates_help`` output from the above example is:
             Value: <module 'ntpath' (frozen)>
 
 
+Directives and templating
+-------------------------
+
 You can see all available config directives with the command
 ``dgenerate --directives-help``, providing this option with a name, or multiple
 names such as: ``dgenerate --directives-help save_modules use_modules`` will print
@@ -3765,6 +3790,9 @@ such as VAEs etc. outside of relying on the caching system.
 
     \clear_modules stage_1_modules
 
+Globbing and path manipulation
+------------------------------
+
 The entirety of pythons builtin ``glob`` and ``os.path`` module are also accessible during templating, you
 can glob directories using functions from the glob module, you can also glob directory's using shell
 globbing.
@@ -3825,7 +3853,8 @@ globbing.
     --image-seeds {{ quote(glob.glob('../media/*.png')) }}
     --output-path {{ quote(path.join(path.abspath('.'), 'output')) }}
 
-
+The \\image_process directive
+-----------------------------
 
 The dgenerate sub-command ``image-process`` has a config directive implementation.
 
@@ -3855,6 +3884,8 @@ The dgenerate sub-command ``image-process`` has a config directive implementatio
 
     \print {{ quote(last_images) }}
 
+The \\exec directive
+--------------------
 
 The ``\exec`` directive can be used to run native system commands and supports bash
 pipe and file redirection syntax in a platform independent manner. All file
@@ -3882,6 +3913,67 @@ config script.
     \exec cat my_config.txt | dgenerate &> log.txt
 
 
+The \\download directive
+------------------------
+
+Arbitrary files can be downloaded via the ``\download`` directive.
+
+This directive can be used to download a file and assign its
+downloaded path to a template variable.
+
+Files can either be inserted into dgenerates web cache or
+downloaded to a specific directory or absolute path.
+
+This directive is designed with using cached files in mind,
+so it will reuse existing files by default when downloading
+to an explicit path.
+
+See the directives help output for more details: ``\download --help``
+
+If you plan to download many large models to the web cache in
+this manner you may wish to adjust the global cache expiry time
+so that they exist in the cache longer than the default of 12 hours.
+
+You can see how to do this in the section `File Cache Control`_
+
+.. code-block:: jinja
+
+    #! dgenerate 3.6.1
+
+    # download a model into the web cache,
+    # assign its path to the variable "path"
+
+    \download path https://modelhost.com/somemodel.safetensors
+
+    # download to the models folder in the current directory
+    # the models folder will be created if it does not exist
+    # if somemodel.safetensors already exists it will be reused
+    # instead of being downloaded again
+
+    \download path https://modelhost.com/somemodel.safetensors -o models/somemodel.safetensors
+
+    # download into the folder without specifying a name
+    # the name will be derived from the URL or content disposition
+    # header from the http request, if you are not careful you may
+    # end up with a file named in a way you were not expecting.
+    # only use this if you know how the service you are downloading
+    # from behaves in this regard
+
+    \download path https://modelhost.com/somemodel.safetensors -o models/
+
+
+    # Download to an explicit path without any cached file reuse
+    # using the -x/--overwrite argument. In effect, always freshly
+    # download the file
+
+    \download path https://modelhost.com/somemodel.safetensors -o models/somemodel.safetensors -x
+
+    \download path https://modelhost.com/somemodel.safetensors -o models/ -x
+
+
+The \\exit directive
+--------------------
+
 You can exit a config early if need be using the ``\exit`` directive
 
 
@@ -3894,6 +3986,8 @@ You can exit a config early if need be using the ``\exit`` directive
     \print "some error occurred"
     \exit 1
 
+Running configs from the command line
+-------------------------------------
 
 To utilize configuration files on Linux, pipe them into the command or use redirection:
 
@@ -3921,8 +4015,8 @@ On Windows Powershell:
     Get-Content my-config.txt | dgenerate
 
 
-Config Argument Injection
-=========================
+Config argument injection
+-------------------------
 
 You can inject arguments into every dgenerate invocation of a batch processing
 configuration by simply specifying them. The arguments will added to the end
