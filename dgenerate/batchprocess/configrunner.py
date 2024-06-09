@@ -611,6 +611,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                 if not args.overwrite and os.path.exists(args.path):
                     _messages.log(f'Downloaded file already exists, using: {args.path}',
                                   underline=True)
+                    self._jinja_user_define(args.variable, args.path)
                     return 0
 
                 _messages.log(f'Downloading: "{args.url}"\nDestination: "{args.path}"',
