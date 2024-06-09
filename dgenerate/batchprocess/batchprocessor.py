@@ -109,7 +109,7 @@ class BatchProcessor:
 
     expand_vars: typing.Callable[[str], str]
     """
-    A function for expanding environmental variables, defaults to :py:func:`os.path.expandvars`
+    A function for expanding environmental variables, defaults to :py:func:`dgenerate.textprocessing.shell_expandvars`
     """
 
     def __init__(self,
@@ -172,7 +172,7 @@ class BatchProcessor:
                 raise ValueError(
                     f'version tuple expected to contain three components: (major, minor, patch). received: {self.version}')
 
-        self.expand_vars = os.path.expandvars
+        self.expand_vars = _textprocessing.shell_expandvars
 
         if builtins is None:
             self.builtins = {
@@ -301,9 +301,9 @@ class BatchProcessor:
                         buffer += piece
                         while '\n' in buffer:
                             line, buffer = buffer.split('\n', 1)
-                            yield os.path.expandvars(line)
+                            yield self.expand_vars(line)
                     if buffer:
-                        yield os.path.expandvars(buffer)
+                        yield self.expand_vars(buffer)
                 except Exception as e:
                     raise BatchProcessError(f'Template Render Error: {str(e).strip()}')
 
@@ -430,7 +430,8 @@ class BatchProcessor:
                     self._jinja_user_define(
                         directive_args[1].strip(),
                         _textprocessing.shell_parse(
-                            self.render_template(directive_args[2].strip())))
+                            self.render_template(directive_args[2].strip()),
+                            expand_vars_func=self.expand_vars))
                 except _textprocessing.ShellParseSyntaxError as e:
                     raise BatchProcessError(e)
                 return True

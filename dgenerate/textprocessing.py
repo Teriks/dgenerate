@@ -539,10 +539,28 @@ def unquote(string: str, escapes_in_quoted=True, escapes_in_unquoted=False) -> s
         raise UnquoteSyntaxError(e)
 
 
+def shell_expandvars(string: str):
+    """
+    Expand shell variables of form $var, ${var}, %var% in a string.
+
+    Unknown variables expand to nothing.
+
+    :param string: input string
+    """
+
+    def replace_var(match):
+        var = match.group(1) or match.group(2) or match.group(3)
+        return os.environ.get(var, '')
+
+    re_var = re.compile(r'%(\w+)%|\$\{(\w+)}|\$(\w+)')
+    return re_var.sub(replace_var, string)
+
+
 def shell_parse(string,
-                expand_home=True,
-                expand_vars=True,
-                expand_glob=True) -> list[str]:
+                expand_home: bool = True,
+                expand_vars: bool = True,
+                expand_glob: bool = True,
+                expand_vars_func: typing.Callable[[str], str] = shell_expandvars) -> list[str]:
     """
     Shell command line parsing, implements basic home directory expansion, globbing, and
     environmental variable expansion.
@@ -580,10 +598,13 @@ def shell_parse(string,
         # environmental variable syntax 2
         shell_parse('command %ENVVAR%')
 
+
     :param string: String to parse
     :param expand_home: Expand ``~`` ?
     :param expand_vars: Expand unix style ``$`` and windows style ``%`` environmental variables?
     :param expand_glob: Expand ``*`` glob expressions including recursive globs?
+    :param expand_vars_func: This function is used to expand shell variables in a string,
+        analogous to `os.path.expandvars`
     :return: shell arguments
     """
 
@@ -592,7 +613,7 @@ def shell_parse(string,
             token = os.path.expanduser(token)
 
         if expand_vars and ('$' in token or '%' in token):
-            token = os.path.expandvars(token)
+            token = expand_vars_func(token)
 
         if expand_glob and '*' in token:
             globs = list(glob.glob(token, recursive=True))
@@ -605,7 +626,7 @@ def shell_parse(string,
     def string_expander(q, s):
         if q == '"':
             if expand_vars and ('$' in s or '%' in s):
-                return os.path.expandvars(s)
+                return expand_vars_func(s)
             return s
         return s
 

@@ -285,7 +285,7 @@ class FileCache:
         """
         Generates a unique filename with the specified extension in the cache directory.
         """
-        if ext is None or ext == '':
+        if ext is None or not ext.strip():
             ext = ''
         else:
             ext = '.' + ext.lstrip('.')
