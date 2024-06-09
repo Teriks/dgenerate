@@ -2538,6 +2538,7 @@ that will be automatically downloaded for you, you just need a CivitAI
 account and token to download models.
 
 .. code-block:: bash
+    #!/usr/bin/env bash
 
     # Download the main model from civitai using an api token
 
@@ -2553,7 +2554,7 @@ account and token to download models.
     --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
     --sdxl-high-noise-fractions 0.8 \
     --guidance-scales 8 \
-    --inference-steps 40
+    --inference-steps 40 \
     --prompts "a fluffy cat playing in the grass"
 
 
