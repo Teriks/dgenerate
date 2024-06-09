@@ -65,7 +65,7 @@ For library documentation visit `readthedocs <http://dgenerate.readthedocs.io/en
     * `Specifying LoRAs`_
     * `Specifying Textual Inversions`_
     * `Specifying Control Nets`_
-    * 'Utilizing CivitAI and Other Hosted Models'_
+    * `Utilizing CivitAI and Other Hosted Models`_
     * `Specifying Generation Batch Size`_
     * `Image Processors`_
     * `Upscaling with Diffusion Upscaler Models`_
