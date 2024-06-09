@@ -1042,7 +1042,7 @@ def create_web_cache_file(url,
 def request_mimetype(url) -> str:
     """
     Request the mimetype of a file at a URL, if the file exists in the cache, a known mimetype
-    is returned without connecting to the internet. Otherwise connect to the internet
+    is returned without connecting to the internet. Otherwise, connect to the internet
     to retrieve the mimetype, this action does not update the cache.
 
     :param url: The url
@@ -1050,7 +1050,7 @@ def request_mimetype(url) -> str:
     :return: mimetype string
     """
 
-    return _web_cache.request_mimetype(url)
+    return _webcache.request_mimetype(url)
 
 
 _MIME_TYPES_GUESS_EXTRA = {
