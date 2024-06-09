@@ -574,7 +574,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                             help='Assign the path of the downloaded '
                                  'file to this template variable name.')
         parser.add_argument('url', help='URL of the file to download.')
-        parser.add_argument('path', nargs='?', default=None,
+        parser.add_argument('-o', '--output', default=None,
                             help='Path to download the file to. '
                                  'If none is provided the file is placed in dgenerates '
                                  'web cache. If this path ends with a forward slash or '
@@ -594,30 +594,30 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         file_path = None
 
-        if args.path:
+        if args.output:
             response = requests.get(args.url, headers={
                 'User-Agent': fake_useragent.UserAgent().chrome},
                 stream=True)
 
             if response.status_code == 200:
 
-                if args.path.endswith('/') or args.path.endswith('\\'):
-                    os.makedirs(args.path, exist_ok=True)
-                    args.path = os.path.join(
-                        args.path, pyrfc6266.requests_response_to_filename(response))
+                if args.output.endswith('/') or args.output.endswith('\\'):
+                    os.makedirs(args.output, exist_ok=True)
+                    args.output = os.path.join(
+                        args.output, pyrfc6266.requests_response_to_filename(response))
 
                 total_size = int(response.headers.get('content-length', 0))
 
-                if not args.overwrite and os.path.exists(args.path):
-                    _messages.log(f'Downloaded file already exists, using: {args.path}',
+                if not args.overwrite and os.path.exists(args.output):
+                    _messages.log(f'Downloaded file already exists, using: {args.output}',
                                   underline=True)
-                    self._jinja_user_define(args.variable, args.path)
+                    self._jinja_user_define(args.variable, args.output)
                     return 0
 
-                _messages.log(f'Downloading: "{args.url}"\nDestination: "{args.path}"',
+                _messages.log(f'Downloading: "{args.url}"\nDestination: "{args.output}"',
                               underline=True)
                 chunk_size = _memory.calculate_chunk_size(total_size)
-                current_dl = args.path + '.unfinished'
+                current_dl = args.output + '.unfinished'
 
                 with open(current_dl, 'wb') as file:
                     if chunk_size != total_size:
@@ -634,14 +634,14 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                         file.write(response.content)
                         file.flush()
 
-                file_path = args.path
+                file_path = args.output
 
                 if total_size != 0 and progress_bar.n != total_size:
                     _messages.log('Download failure, something went wrong '
                                   'during the download.', level=_messages.ERROR)
                     return 1
 
-                os.rename(current_dl, args.path)
+                os.rename(current_dl, args.output)
             else:
                 _messages.log(f"Failed to download file. "
                               f"HTTP status code: {response.status_code}",
