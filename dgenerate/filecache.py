@@ -36,6 +36,10 @@ import tqdm
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 
+__doc__ = """
+On disk file cache implementation and primitives.
+"""
+
 
 class KeyValueStore:
     """
@@ -213,11 +217,6 @@ class CachedFile:
     The path to the file on disk.
     """
 
-    size: str
-    """
-    File size in bytes.
-    """
-
     metadata: dict[str, str]
     """
     Optional metadata for the file stored in the database.
@@ -228,7 +227,6 @@ class CachedFile:
         :param data_dict: file data dict parsed from the cache database.
         """
         self.path = data_dict['path']
-        self.size = data_dict.get('size', 0)
         self.metadata = data_dict['metadata']
 
 
@@ -323,8 +321,7 @@ class FileCache:
             key: str,
             file_data: bytes | typing.Iterable[bytes],
             metadata: typing.Dict[str, str] = None,
-            ext: typing.Optional[str] = None,
-            total_size=None) \
+            ext: typing.Optional[str] = None) \
             -> typing.Optional[CachedFile]:
         """
         Adds a file to the cache. If a file with the same key already exists, it overwrites the existing file.
@@ -334,9 +331,6 @@ class FileCache:
         :param file_data: The data of the file in bytes, or an iterable of binary chunks.
         :param metadata: The metadata of the file.
         :param ext: The extension of the file.
-        :param total_size: If the size of the file is known and an iterable
-            is being used, it should be supplied to allow for cache healing
-            in the event of an incomplete write.
         :return: A :py:class:`.CachedFile` object representing the added file.
         """
         with self.kv_store as kv:
@@ -359,7 +353,6 @@ class FileCache:
 
         with self.kv_store as kv:
             entry_data = {'path': file_path,
-                          'size': written_amount if total_size is None else total_size,
                           'metadata': metadata}
             kv[key] = json.dumps(entry_data)
 
@@ -375,11 +368,7 @@ class FileCache:
         """
         with self.kv_store as kv:
             if key in kv:
-                value = CachedFile(json.loads(kv[key]))
-                if os.path.exists(value.path) and os.path.getsize(value.path) == value.size:
-                    return value
-                # cache corrupted, user needs to heal it
-                return None
+                return CachedFile(json.loads(kv[key]))
             else:
                 return None
 
@@ -458,6 +447,16 @@ class WebFileCache(FileCache):
 
         return mime_type
 
+    @staticmethod
+    def is_downloadable_url(string) -> bool:
+        """
+        Does a string represent a URL that can be downloaded by this web cache implementation?
+
+        :param string: the string
+        :return: ``True`` or ``False``
+        """
+        return string.startswith('http://') or string.startswith('https://')
+
     def download(self, url,
                  mime_acceptable_desc: typing.Optional[str] = None,
                  mimetype_is_supported: typing.Optional[typing.Callable[[str], bool]] = None,
@@ -505,17 +504,22 @@ class WebFileCache(FileCache):
 
             chunk_size = _memory.calculate_chunk_size(total_size)
 
-            def file_data_generator():
-                with tqdm.tqdm(total=total_size, unit='iB', unit_scale=True) as progress_bar:
-                    for chunk in response.iter_content(
-                            chunk_size=chunk_size):
-                        progress_bar.update(len(chunk))
-                        yield chunk
+            if chunk_size != total_size:
+                def file_data_generator():
+                    with tqdm.tqdm(total=total_size,
+                                   unit='iB',
+                                   unit_scale=True) as progress_bar:
+                        for chunk in response.iter_content(
+                                chunk_size=chunk_size):
+                            progress_bar.update(len(chunk))
+                            yield chunk
+            else:
+                def file_data_generator():
+                    yield response.content
 
             _messages.log(f'Downloading: "{url}"',
                           underline=True)
 
             # Add the downloaded file to the cache
             return self.add(url, file_data_generator(),
-                            metadata, ext,
-                            total_size=total_size)
+                            metadata, ext)

@@ -1102,8 +1102,6 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.sdxl_refiner_prompts,
             self.sdxl_refiner_second_prompts,
             self.image_guidance_scales,
-            self.textual_inversion_uris,
-            self.control_net_uris,
             self.image_seeds,
             self.image_seed_strengths,
             self.clip_skips,

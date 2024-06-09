@@ -89,12 +89,24 @@ _hexa_decimal_integer_pattern = (r'(?<!\w)0[xX][0-9a-fA-F]+(?!\w)', _token.Numbe
 _octal_integer_pattern = (r'(?<!\w)0[oO][0-7]+(?!\w)', _token.Number.Octal)
 _text_pattern = (r'[^=\s\[\]{}()$"\'`\\<&|;:,]+', _token.Text)
 _variable_names_pattern = (r'(?<!\w)[a-zA-Z_][a-zA-Z0-9_.]*(?!\w)', _token.Name.Variable)
+
+_http_pattern = (r'(?<!\w)(https?://(?:'  # Protocol
+                 r'(?:[a-zA-Z0-9\-]+\.)+[a-zA-Z]{2,6}|'  # Domain
+                 r'localhost|'  # Localhost
+                 r'(?:\d{1,3}\.){3}\d{1,3}|'  # IPv4
+                 r'\[[a-fA-F0-9:]+\])'  # IPv6
+                 r'(?::\d+)?'  # Optional port
+                 r'(?:/[a-zA-Z0-9\-._~%!$&\'()*+,;=:@/]*)?'  # Path
+                 r'(?:\?[a-zA-Z0-9\-._~%!$&\'()*+,;=:@/?]*)?'  # Query parameters
+                 r')',
+                 _token.String)
+
 _path_patterns = (
-    (
-    rf'((?<!\w)((?:[a-zA-Z]:)|(?:http:/|https:/))?(?:[/\\]|~?|\.?\.?|{_ecos}+[/\\]){_ecos}+(?:[/\\]{_ecos}+)+|{_ecos}+/)',
-    _token.String),
+    _http_pattern,
+    (rf'((?<!\w)((?:[a-zA-Z]:))?(?:[/\\]|~?|\.?\.?|{_ecos}+[/\\]){_ecos}+(?:[/\\]{_ecos}+)+|{_ecos}+/)', _token.String),
     (rf'(?<!\w)(/{_ecos}+)([/\\]{_ecos}*)*', _token.String),
-    (rf'(?<!\w){_ecos}+\.{_ecos}+', _token.String))
+    (rf'(?<!\w){_ecos}+\.{_ecos}+', _token.String)
+)
 
 _SCHEDULER_KEYWORDS = sorted((
     "DDIMScheduler",
@@ -250,7 +262,8 @@ class DgenerateLexer(_lexer.RegexLexer):
             (r'\s*?\n', _token.Whitespace, 'root'),
             (r'\\[^\s]', _token.Operator),
             (r'(\\)(\s*?\n)', _lexer.bygroups(_token.Operator, _token.Whitespace), 'value_escape'),
-            (r'(\\)(\s+)(#[^\n]*)', _lexer.bygroups(_token.Operator, _token.Whitespace, _token.Comment.Single), 'value_escape'),
+            (r'(\\)(\s+)(#[^\n]*)', _lexer.bygroups(_token.Operator, _token.Whitespace, _token.Comment.Single),
+             'value_escape'),
             _comment_pattern,
             _env_var_pattern,
             _jinja_block_pattern,
@@ -272,7 +285,8 @@ class DgenerateLexer(_lexer.RegexLexer):
             (r'(\n\s*?)(-)', _lexer.bygroups(_token.Whitespace, _token.Operator)),
             (r'\\[^\s]', _token.Operator),
             (r'(\\)(\s*?\n)', _lexer.bygroups(_token.Operator, _token.Whitespace), 'setp_value_escape'),
-            (r'(\\)(\s+)(#[^\n]*)', _lexer.bygroups(_token.Operator, _token.Whitespace, _token.Comment.Single), 'setp_value_escape'),
+            (r'(\\)(\s+)(#[^\n]*)', _lexer.bygroups(_token.Operator, _token.Whitespace, _token.Comment.Single),
+             'setp_value_escape'),
             _comment_pattern,
             _env_var_pattern,
             (r'\b(%s)\b' % '|'.join(_SETP_KEYWORDS), _token.Keyword),

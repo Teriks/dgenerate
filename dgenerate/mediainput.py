@@ -21,9 +21,7 @@
 import collections.abc
 import mimetypes
 import os
-import pathlib
 import re
-import sys
 import typing
 import urllib.parse
 
@@ -32,11 +30,11 @@ import PIL.ImageOps
 import PIL.ImageSequence
 import av
 
-import dgenerate.filecache as _filecache
 import dgenerate.image as _image
 import dgenerate.imageprocessors as _imageprocessors
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+import dgenerate.webcache as _webcache
 
 __doc__ = """
 Media input, handles reading videos/animations and static images, and creating readers from image seed URIs.
@@ -1000,28 +998,8 @@ def get_web_cache_directory() -> str:
 
     :return: string (directory path)
     """
-    user_cache_path = os.environ.get('DGENERATE_WEB_CACHE')
 
-    if user_cache_path is not None:
-        path = user_cache_path
-    else:
-        path = os.path.expanduser(os.path.join('~', '.cache', 'dgenerate', 'web'))
-
-    pathlib.Path(path).mkdir(parents=True, exist_ok=True)
-
-    return path
-
-
-try:
-    _web_cache = _filecache.WebFileCache(
-        os.path.join(get_web_cache_directory(), 'cache.db'),
-        get_web_cache_directory(),
-        expiry_delta=_textprocessing.parse_timedelta(
-            os.environ.get('DGENERATE_WEB_CACHE_EXPIRY_DELTA', 'hours=12').strip('"\'')))
-except _textprocessing.TimeDeltaParseError as e:
-    print(f'DGENERATE_WEB_CACHE_EXPIRY_DELTA environmental variable not parseable: {e}',
-          file=sys.stderr, flush=True)
-    sys.exit(1)
+    return _webcache.get_web_cache_directory()
 
 
 class UnknownMimetypeError(Exception):
@@ -1058,8 +1036,7 @@ def create_web_cache_file(url,
     if mime_acceptable_desc is None:
         mime_acceptable_desc = _textprocessing.oxford_comma(get_supported_mimetypes(), conjunction='or')
 
-    cached_file = _web_cache.download(url, mime_acceptable_desc, mimetype_is_supported, UnknownMimetypeError)
-    return cached_file.metadata['mime-type'], cached_file.path
+    return _webcache.create_web_cache_file(url, mime_acceptable_desc, mimetype_is_supported, UnknownMimetypeError)
 
 
 def request_mimetype(url) -> str:

@@ -608,32 +608,39 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
                 total_size = int(response.headers.get('content-length', 0))
 
-                if not args.overwrite and (
-                        os.path.exists(args.path) and
-                        os.path.getsize(args.path) == total_size):
+                if not args.overwrite and os.path.exists(args.path):
                     _messages.log(f'Downloaded file already exists, using: {args.path}',
                                   underline=True)
                     return 0
 
                 _messages.log(f'Downloading: "{args.url}"\nDestination: "{args.path}"',
                               underline=True)
+                chunk_size = _memory.calculate_chunk_size(total_size)
+                current_dl = args.path + '.unfinished'
 
-                with tqdm.tqdm(total=total_size, unit='iB', unit_scale=True) as progress_bar:
-                    with open(args.path, 'wb') as file:
-                        for chunk in response.iter_content(
-                                chunk_size=_memory.calculate_chunk_size(total_size)):
-                            if chunk:
-                                progress_bar.update(len(chunk))
-                                file.write(chunk)
-                                file.flush()
+                with open(current_dl, 'wb') as file:
+                    if chunk_size != total_size:
+                        with tqdm.tqdm(total=total_size,
+                                       unit='iB',
+                                       unit_scale=True) as progress_bar:
+                            for chunk in response.iter_content(
+                                    chunk_size=chunk_size):
+                                if chunk:
+                                    progress_bar.update(len(chunk))
+                                    file.write(chunk)
+                                    file.flush()
+                    else:
+                        file.write(response.content)
+                        file.flush()
 
-                progress_bar.close()
                 file_path = args.path
 
                 if total_size != 0 and progress_bar.n != total_size:
                     _messages.log('Download failure, something went wrong '
                                   'during the download.', level=_messages.ERROR)
                     return 1
+
+                os.rename(current_dl, args.path)
             else:
                 _messages.log(f"Failed to download file. "
                               f"HTTP status code: {response.status_code}",

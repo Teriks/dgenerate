@@ -98,7 +98,9 @@ from .enums import \
     get_pipeline_type_string, \
     get_pipeline_type_enum, \
     supported_model_type_strings
-from .hfutil import ModelNotFoundError
+from .hfutil import \
+    ModelNotFoundError,\
+    NonHFModelDownloadError
 from .pipelines import \
     InvalidModelFileError, \
     InvalidSchedulerNameError, \

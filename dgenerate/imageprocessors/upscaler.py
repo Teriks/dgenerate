@@ -18,21 +18,21 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import math
 import typing
 
 import PIL.Image
+import PIL.Image
+import spandrel
+import spandrel_extra_arches
+import torch
 import torchvision
 import tqdm.auto
 
 import dgenerate.imageprocessors.imageprocessor as _imageprocessor
-import dgenerate.types as _types
-import dgenerate.mediainput as _mediainput
 import dgenerate.messages as _messages
-import math
-import PIL.Image
-import torch
-import spandrel
-import spandrel_extra_arches
+import dgenerate.types as _types
+import dgenerate.webcache as _webcache
 
 spandrel.MAIN_REGISTRY.add(*spandrel_extra_arches.EXTRA_REGISTRY)
 
@@ -49,10 +49,9 @@ def _load_upscaler_model(model_path) -> spandrel.ImageModelDescriptor:
     :param model_path: path
     :return: model
     """
-    if _mediainput.is_downloadable_url(model_path):
+    if _webcache.is_downloadable_url(model_path):
         # Any mimetype
-        _, model_path = _mediainput.create_web_cache_file(
-            model_path, mimetype_is_supported=None)
+        _, model_path = _webcache.create_web_cache_file(model_path)
 
     try:
         model = spandrel.ModelLoader().load_from_file(model_path).eval()
