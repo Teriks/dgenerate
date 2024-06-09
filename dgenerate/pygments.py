@@ -36,7 +36,10 @@ _DGENERATE_FUNCTIONS = sorted((
     'frozenset', 'gen_seeds', 'getattr', 'hasattr', 'hash', 'hex', 'int',
     'iter', 'last', 'len', 'list', 'map', 'max', 'min', 'next', 'object',
     'oct', 'ord', 'pow', 'quote', 'range', 'repr', 'reversed', 'round',
-    'set', 'slice', 'sorted', 'str', 'sum', 'tuple', 'type', 'unquote', 'zip',
+    'set', 'slice', 'sorted', 'str', 'sum', 'tuple', 'type', 'unquote', 'zip'
+), key=lambda s: len(s), reverse=True)
+
+_DGENERATE_FUNCTIONS_NS = sorted(map(lambda x: '({})(.)({})'.format(*x.split('.')), (
     'glob.glob', 'glob.iglob', 'glob.escape', 'path.abspath', 'path.basename',
     'path.commonpath', 'path.commonprefix',
     'path.dirname', 'path.exists', 'path.expanduser', 'path.expandvars',
@@ -46,7 +49,7 @@ _DGENERATE_FUNCTIONS = sorted((
     'path.normpath', 'path.realpath', 'path.relpath', 'path.samefile',
     'path.sameopenfile', 'path.samestat', 'path.split', 'path.splitdrive',
     'path.splitext', 'path.supports_unicode_filenames'
-), key=lambda s: len(s), reverse=True)
+)), key=lambda s: len(s), reverse=True)
 
 _JINJA2_FUNCTIONS = sorted((
     # Functions
@@ -80,7 +83,7 @@ _jinja_block_pattern = (r'(\{%)(\s*)(\w+)',
 _jinja_comment_pattern = (r'(\{#)', _token.Comment.Multiline, 'jinja_comment')
 _jinja_interpolate_pattern = (r'(\{\{)', _token.String.Interpol, 'jinja_interpolate')
 _operators_punctuation_pattern = (r'[\[\]{}()=\\;,:]', _token.Operator)
-_operators_pattern = (r'\*\*|<<|>>|[-+*/%^|&<>!]', _token.Operator)
+_operators_pattern = (r'\*\*|<<|>>|[-+*/%^|&<>!.]', _token.Operator)
 _size_pattern = (r'(?<!\w)\d+[xX]\d+(?!\w)', _token.Number.Hex)
 _number_float_pattern = (r'(?<!\w)(-?\d+(\.\d*)?([eE][-+]?\d+)?)(?!\w)', _token.Number.Float)
 _decimal_integer_pattern = (r'(?<!\w)-?\d+(?!\w)', _token.Number.Integer)
@@ -88,7 +91,8 @@ _binary_integer_pattern = (r'(?<!\w)0[bB][01]+(?!\w)', _token.Number.Binary)
 _hexa_decimal_integer_pattern = (r'(?<!\w)0[xX][0-9a-fA-F]+(?!\w)', _token.Number.Hex)
 _octal_integer_pattern = (r'(?<!\w)0[oO][0-7]+(?!\w)', _token.Number.Octal)
 _text_pattern = (r'[^=\s\[\]{}()$"\'`\\<&|;:,]+', _token.Text)
-_variable_names_pattern = (r'(?<!\w)[a-zA-Z_][a-zA-Z0-9_.]*(?!\w)', _token.Name.Variable)
+_variable_names_pattern = (r'(?<!\w)[a-zA-Z_][a-zA-Z0-9_]*(?!\w)', _token.Name.Variable)
+_function_call_generic = (r'(?<!\w)([a-zA-Z_][a-zA-Z0-9_]*)(\()', _lexer.bygroups(_token.Name, _token.Operator))
 
 _http_pattern = (r'(?<!\w)(https?://(?:'  # Protocol
                  r'(?:[a-zA-Z0-9\-]+\.)+[a-zA-Z]{2,6}|'  # Domain
@@ -291,6 +295,9 @@ class DgenerateLexer(_lexer.RegexLexer):
             _env_var_pattern,
             (r'\b(%s)\b' % '|'.join(_SETP_KEYWORDS), _token.Keyword),
             (r'\b(%s)\b' % '|'.join(_DGENERATE_FUNCTIONS), _token.Name.Function),
+            *((r'\b%s\b' % fun, _lexer.bygroups(_token.Name.Variable, _token.Operator, _token.Name.Function))
+              for fun in _DGENERATE_FUNCTIONS_NS),
+            _function_call_generic,
             _variable_names_pattern,
             _jinja_block_pattern,
             _jinja_comment_pattern,
@@ -322,6 +329,9 @@ class DgenerateLexer(_lexer.RegexLexer):
 
             # Function names
             (r'\b(%s)\b' % '|'.join(_DGENERATE_FUNCTIONS), _token.Name.Function),
+            *((r'\b%s\b' % fun, _lexer.bygroups(_token.Name.Variable, _token.Operator, _token.Name.Function))
+              for fun in _DGENERATE_FUNCTIONS_NS),
+            _function_call_generic,
 
             # Jinja2 Function names
             (r'\b(%s)\b' % '|'.join(_JINJA2_FUNCTIONS), _token.Name.Function),
@@ -360,6 +370,9 @@ class DgenerateLexer(_lexer.RegexLexer):
 
             # Function names
             (r'\b(%s)\b' % '|'.join(_DGENERATE_FUNCTIONS), _token.Name.Function),
+            *((r'\b%s\b' % fun, _lexer.bygroups(_token.Name.Variable, _token.Operator, _token.Name.Function))
+              for fun in _DGENERATE_FUNCTIONS_NS),
+            _function_call_generic,
 
             # Jinja2 Function names
             (r'\b(%s)\b' % '|'.join(_JINJA2_FUNCTIONS), _token.Name.Function),
