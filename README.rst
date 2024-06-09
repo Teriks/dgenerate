@@ -36,7 +36,8 @@ and more.
 This software requires an Nvidia GPU supporting CUDA 12.1+, CPU rendering is possible for
 some operations but extraordinarily slow.
 
-For library documentation visit `readthedocs <http://dgenerate.readthedocs.io/en/v3.6.1/>`_.
+For library documentation, and a better readme reading
+experience please visit `readthedocs <http://dgenerate.readthedocs.io/en/v3.6.1/>`_.
 
 ----
 
