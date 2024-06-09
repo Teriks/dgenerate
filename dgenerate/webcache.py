@@ -84,6 +84,20 @@ def create_web_cache_file(url,
     return cached_file.metadata['mime-type'], cached_file.path
 
 
+def request_mimetype(url) -> str:
+    """
+    Request the mimetype of a file at a URL, if the file exists in the cache, a known mimetype
+    is returned without connecting to the internet. Otherwise, connect to the internet
+    to retrieve the mimetype, this action does not update the cache.
+
+    :param url: The url
+
+    :return: mimetype string
+    """
+
+    return cache.request_mimetype(url)
+
+
 def is_downloadable_url(string) -> bool:
     """
     Does a string represent a URL that can be downloaded into the web cache?
