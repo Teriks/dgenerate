@@ -18,7 +18,6 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import argparse
 import collections.abc
 import glob
 import inspect
@@ -34,7 +33,6 @@ import threading
 import time
 import types
 import typing
-import urllib.parse
 
 import fake_useragent
 import pyrfc6266
@@ -43,12 +41,13 @@ import tqdm
 
 import dgenerate
 import dgenerate.arguments as _arguments
-import dgenerate.mediainput as _mediainput
-import dgenerate.memory as _memory
 import dgenerate.batchprocess.batchprocessor as _batchprocessor
 import dgenerate.batchprocess.configrunnerpluginloader as _configrunnerpluginloader
+import dgenerate.batchprocess.directiveutil as _directiveutil
 import dgenerate.files as _files
 import dgenerate.invoker as _invoker
+import dgenerate.mediainput as _mediainput
+import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.prompt as _prompt
@@ -155,25 +154,6 @@ def _cwd():
     Return the current working directory as a string.
     """
     return os.getcwd()
-
-
-class _DirectiveArgumentParser(argparse.ArgumentParser):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.return_code = None
-
-    def exit(self, status=0, message=None):
-        if self.return_code is not None:
-            return
-        if message is not None:
-            if status != 0:
-                _messages.log(
-                    message.rstrip(),
-                    level=_messages.ERROR)
-            else:
-                _messages.log(
-                    message.rstrip())
-        self.return_code = status
 
 
 class ConfigRunner(_batchprocessor.BatchProcessor):
@@ -533,7 +513,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         See: \\mkdir --help
         """
-        parser = _DirectiveArgumentParser(
+        parser = _directiveutil.DirectiveArgumentParser(
             prog='\\mkdir', description='Create directories.')
 
         parser.add_argument('-p', '--parents',
@@ -568,13 +548,14 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         If the path ends with a slash, it is treated as a directory.
         If no path is supplied, the file is downloaded to dgenerates web cache.
         """
-        parser = _DirectiveArgumentParser(prog='\\download', description='Download a file.')
+        parser = _directiveutil.DirectiveArgumentParser(
+            prog='\\download', description='Download a file.')
 
         parser.add_argument('variable',
                             help='Assign the path of the downloaded '
                                  'file to this template variable name.')
         parser.add_argument('url', help='URL of the file to download.')
-        parser.add_argument('-o', '--output', default=None,
+        parser.add_argument('-o', '--output', default=None, metavar='PATH',
                             help='Path to download the file to. '
                                  'If none is provided the file is placed in dgenerates '
                                  'web cache. If this path ends with a forward slash or '
@@ -597,7 +578,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         if args.output:
             response = requests.get(args.url, headers={
                 'User-Agent': fake_useragent.UserAgent().chrome},
-                stream=True)
+                                    stream=True)
 
             if response.status_code == 200:
 
@@ -649,7 +630,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                 return 1
         else:
             try:
-                _, file_path =_mediainput.create_web_cache_file(
+                _, file_path = _mediainput.create_web_cache_file(
                     args.url,
                     mimetype_is_supported=None)
             except requests.HTTPError as e:
@@ -855,8 +836,10 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         Also accepts -la or -al
         """
 
-        parser = _DirectiveArgumentParser(prog='\\ls',
-                                          description='List directory contents.')
+        parser = _directiveutil.DirectiveArgumentParser(
+            prog='\\ls',
+            description='List directory contents.')
+
         parser.add_argument('paths', metavar='PATH', type=str, nargs='*', default=['.'],
                             help='the path(s) to list')
         parser.add_argument('-l', action='store_true',
@@ -1001,7 +984,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         See: \\rmdir --help
         """
-        parser = _DirectiveArgumentParser(prog='\\rmdir')
+        parser = _directiveutil.DirectiveArgumentParser(prog='\\rmdir')
+
         parser.add_argument('-p', '--parents', action='store_true',
                             help='Remove directory and its parents')
         parser.add_argument('directories', nargs='+')
@@ -1031,7 +1015,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         See: \\rm --help
         """
-        parser = _DirectiveArgumentParser(prog='\\rm')
+        parser = _directiveutil.DirectiveArgumentParser(prog='\\rm')
+
         parser.add_argument('-r', '--recursive', action='store_true',
                             help='Remove directories and their contents recursively')
         parser.add_argument('-f', '--force', action='store_true',
