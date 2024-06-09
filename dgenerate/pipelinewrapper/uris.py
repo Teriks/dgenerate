@@ -1974,7 +1974,7 @@ class TextualInversionUri:
 
     def __init__(self,
                  model: str,
-                 token: str | None,
+                 token: str | None = None,
                  revision: _types.OptionalString = None,
                  subfolder: _types.OptionalPath = None,
                  weight_name: _types.OptionalName = None):
@@ -2025,16 +2025,17 @@ class TextualInversionUri:
             _messages.debug_log('pipeline.load_textual_inversion(' +
                                 str(_types.get_public_attributes(self) | debug_args) + ')')
 
+            model_path = _hfutil.download_non_hf_model(self.model)
+
             # this is tricky because there is stupidly a positional argument named 'token'
             # as well as an accepted kwargs value with the key 'token'
-
-            model_path = _hfutil.download_non_hf_model(self.model)
 
             old_token = os.environ.get('HF_TOKEN', None)
             if use_auth_token is not None:
                 os.environ['HF_TOKEN'] = use_auth_token
+
             try:
-                if 'StableDiffusionXL' in pipeline.__class__.__name__:
+                if pipeline.__class__.__name__.startswith('StableDiffusionXL'):
                     filename, dicts = _load_textual_inversion_state_dict(
                         model_path,
                         revision=self.revision,
