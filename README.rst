@@ -2529,7 +2529,7 @@ inside of a URI or otherwise can be specified by a URL link to a model
 file itself. dgenerate will attempt to download the file from the link,
 store it in the web cache, and then use it.
 
-You may also use the `\download` config directive to assist in pre
+You may also use the `\\download` config directive to assist in pre
 downloading other resources from the internet. The directive has the ability
 to specify arbitrary storage locations. See: `Writing and Running Configs`_
 
