@@ -543,10 +543,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         """
         Download a file from a URL to a specified path or to the web cache.
 
-        Assign the file path to a template variable.
-
-        If the path ends with a slash, it is treated as a directory.
-        If no path is supplied, the file is downloaded to dgenerates web cache.
+        See: \\download --help
         """
         parser = _directiveutil.DirectiveArgumentParser(
             prog='\\download', description='Download a file.')
