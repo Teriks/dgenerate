@@ -2524,10 +2524,10 @@ If you are loading a .safetensors or other file from a path on disk, simply do:
 Utilizing CivitAI and Other Hosted Models
 =========================================
 
-Any model accepted by dgenerate which is specified by URI or otherwise
-can be specified a direct URL link to a model, and dgenerate will attempt
-to download the file from the link, store it in the web cache, and
-then use it.
+Any model accepted by dgenerate that can be specified as a single file
+inside of a URI or otherwise can be specified by a URL link to a model
+file itself. dgenerate will attempt to download the file from the link,
+store it in the web cache, and then use it.
 
 You may also use the `\download` config directive to assist in pre
 downloading other resources from the internet. The directive has the ability
