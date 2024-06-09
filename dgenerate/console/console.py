@@ -584,6 +584,8 @@ class DgenerateConsole(tk.Tk):
         self._output_text.text.tag_configure(
             'error', foreground=error_color)
 
+        self.save_settings()
+
     def _start_shell_reader_threads(self):
 
         self._shell_reader_threads = [
