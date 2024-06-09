@@ -208,7 +208,7 @@ dgenerate.types module
 dgenerate.webcache module
 ----------------------
 
-.. automodule:: dgenerate.types
+.. automodule:: dgenerate.webcache
    :members:
    :undoc-members:
    :show-inheritance:
