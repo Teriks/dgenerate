@@ -166,6 +166,7 @@ def download_non_hf_model(model_path):
     Check for a non hugging face link or reference to a model that is possibly downloadable as a single file.
 
     If this is applicable, download it to the web cache and return its path.
+    If the file already exists in the web cache simply return a path to it.
 
     If this is not applicable, return the path unchanged.
 
