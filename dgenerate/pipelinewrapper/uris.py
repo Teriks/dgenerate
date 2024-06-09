@@ -527,7 +527,9 @@ class TorchControlNetUri:
             # these are used for cache differentiation only
             raise ValueError('sequential_cpu_offload_member and model_cpu_offload_member cannot both be True.')
 
-        single_file_load_path = _hfutil.is_single_file_model_load(self.model)
+        model_path = _hfutil.download_non_hf_model(self.model)
+
+        single_file_load_path = _hfutil.is_single_file_model_load(model_path)
 
         torch_dtype = _enums.get_torch_dtype(
             dtype_fallback if self.dtype is None else self.dtype)
@@ -535,7 +537,7 @@ class TorchControlNetUri:
         if single_file_load_path:
 
             estimated_memory_usage = _hfutil.estimate_model_memory_use(
-                repo_id=self.model,
+                repo_id=model_path,
                 revision=self.revision,
                 use_auth_token=use_auth_token,
                 local_files_only=local_files_only
@@ -546,7 +548,7 @@ class TorchControlNetUri:
 
             new_net: diffusers.ControlNetModel = \
                 diffusers.ControlNetModel.from_single_file(
-                    self.model,
+                    model_path,
                     revision=self.revision,
                     torch_dtype=torch_dtype,
                     token=use_auth_token,
@@ -554,7 +556,7 @@ class TorchControlNetUri:
         else:
 
             estimated_memory_usage = _hfutil.estimate_model_memory_use(
-                repo_id=self.model,
+                repo_id=model_path,
                 revision=self.revision,
                 variant=self.variant,
                 subfolder=self.subfolder,
@@ -567,7 +569,7 @@ class TorchControlNetUri:
 
             new_net: diffusers.ControlNetModel = \
                 diffusers.ControlNetModel.from_pretrained(
-                    self.model,
+                    model_path,
                     revision=self.revision,
                     variant=self.variant,
                     subfolder=self.subfolder,
@@ -1016,11 +1018,13 @@ class TorchVAEUri:
 
         encoder = self._encoders[self.encoder]
 
-        single_file_load_path = _hfutil.is_single_file_model_load(self.model)
+        model_path = _hfutil.download_non_hf_model(self.model)
+
+        single_file_load_path = _hfutil.is_single_file_model_load(model_path)
 
         if single_file_load_path:
             estimated_memory_use = _hfutil.estimate_model_memory_use(
-                repo_id=self.model,
+                repo_id=model_path,
                 revision=self.revision,
                 local_files_only=local_files_only,
                 use_auth_token=use_auth_token
@@ -1030,13 +1034,13 @@ class TorchVAEUri:
 
             if encoder is diffusers.AutoencoderKL:
                 # There is a bug in their cast
-                vae = encoder.from_single_file(self.model,
+                vae = encoder.from_single_file(model_path,
                                                token=use_auth_token,
                                                revision=self.revision,
                                                local_files_only=local_files_only) \
                     .to(dtype=torch_dtype, non_blocking=False)
             else:
-                vae = encoder.from_single_file(self.model,
+                vae = encoder.from_single_file(model_path,
                                                token=use_auth_token,
                                                revision=self.revision,
                                                torch_dtype=torch_dtype,
@@ -1045,7 +1049,7 @@ class TorchVAEUri:
         else:
 
             estimated_memory_use = _hfutil.estimate_model_memory_use(
-                repo_id=self.model,
+                repo_id=model_path,
                 revision=self.revision,
                 variant=self.variant,
                 subfolder=self.subfolder,
@@ -1056,7 +1060,7 @@ class TorchVAEUri:
             _cache.enforce_vae_cache_constraints(new_vae_size=estimated_memory_use)
 
             vae = encoder.from_pretrained(
-                self.model,
+                model_path,
                 revision=self.revision,
                 variant=self.variant,
                 torch_dtype=torch_dtype,
@@ -1448,12 +1452,14 @@ class FlaxVAEUri:
 
         encoder = self._encoders[self.encoder]
 
-        single_file_load_path = _hfutil.is_single_file_model_load(self.model)
+        model_path = _hfutil.download_non_hf_model(self.model)
+
+        single_file_load_path = _hfutil.is_single_file_model_load(model_path)
 
         if single_file_load_path:
 
             estimated_memory_use = _hfutil.estimate_model_memory_use(
-                repo_id=self.model,
+                repo_id=model_path,
                 revision=self.revision,
                 local_files_only=local_files_only,
                 use_auth_token=use_auth_token,
@@ -1463,7 +1469,7 @@ class FlaxVAEUri:
             _cache.enforce_vae_cache_constraints(new_vae_size=estimated_memory_use)
 
             vae = encoder.from_single_file(
-                self.model,
+                model_path,
                 revision=self.revision,
                 dtype=flax_dtype,
                 token=use_auth_token,
@@ -1471,7 +1477,7 @@ class FlaxVAEUri:
         else:
 
             estimated_memory_use = _hfutil.estimate_model_memory_use(
-                repo_id=self.model,
+                repo_id=model_path,
                 revision=self.revision,
                 subfolder=self.subfolder,
                 local_files_only=local_files_only,
@@ -1482,7 +1488,7 @@ class FlaxVAEUri:
             _cache.enforce_vae_cache_constraints(new_vae_size=estimated_memory_use)
 
             vae = encoder.from_pretrained(
-                self.model,
+                model_path,
                 revision=self.revision,
                 dtype=flax_dtype,
                 subfolder=self.subfolder,
@@ -1785,9 +1791,9 @@ class LoRAUri:
             _messages.debug_log('pipeline.load_lora_weights('
                                 + str(_types.get_public_attributes(self) | debug_args) + ')')
 
-            load_path = self.model
+            model_path = _hfutil.download_non_hf_model(self.model)
 
-            if local_files_only:
+            if local_files_only and not os.path.exists(model_path):
                 # Temporary fix for diffusers bug
 
                 subfolder = self.subfolder if self.subfolder else ''
@@ -1813,9 +1819,9 @@ class LoRAUri:
                         f'LoRA model "{self.model}" '
                         'was not available in the local huggingface cache.')
 
-                load_path = os.path.dirname(file_path)
+                model_path = os.path.dirname(file_path)
 
-            pipeline.load_lora_weights(load_path,
+            pipeline.load_lora_weights(model_path,
                                        revision=self.revision,
                                        subfolder=self.subfolder,
                                        weight_name=self.weight_name,
@@ -2022,13 +2028,15 @@ class TextualInversionUri:
             # this is tricky because there is stupidly a positional argument named 'token'
             # as well as an accepted kwargs value with the key 'token'
 
+            model_path = _hfutil.download_non_hf_model(self.model)
+
             old_token = os.environ.get('HF_TOKEN', None)
             if use_auth_token is not None:
                 os.environ['HF_TOKEN'] = use_auth_token
             try:
                 if 'StableDiffusionXL' in pipeline.__class__.__name__:
                     filename, dicts = _load_textual_inversion_state_dict(
-                        self.model,
+                        model_path,
                         revision=self.revision,
                         subfolder=self.subfolder,
                         weight_name=self.weight_name,
@@ -2058,7 +2066,7 @@ class TextualInversionUri:
                                                     text_encoder=pipeline.text_encoder_2,
                                                     tokenizer=pipeline.tokenizer_2)
                 else:
-                    pipeline.load_textual_inversion(self.model,
+                    pipeline.load_textual_inversion(model_path,
                                                     token=self.token,
                                                     revision=self.revision,
                                                     subfolder=self.subfolder,

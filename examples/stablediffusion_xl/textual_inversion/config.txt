@@ -1,0 +1,31 @@
+#! dgenerate 3.6.1
+
+# you need to have a civitai.com account and to set up an API token
+# in your account settings in order to be able to download these models
+
+\set civit_token %CIVIT_AI_TOKEN%
+
+{% if civit_token.strip() %}
+
+\set inversion https://civitai.com/api/download/models/371565?type=Model&format=SafeTensor&token={{civit_token}}
+\set inversion2 https://civitai.com/api/download/models/274855?token={{civit_token}}
+
+https://civitai.com/api/download/models/133832?type=Model&format=SafeTensor&size=full&fp=fp16&token={{civit_token}}
+--model-type torch-sdxl
+--variant fp16 --dtype float16
+--sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
+--sdxl-high-noise-fractions 0.8
+--guidance-scales 8
+--inference-steps 40
+--gen-seeds 5
+--vae-tiling
+--device cuda:1
+--scheduler DPMSolverMultistepScheduler
+--textual-inversions {{ '{{ inversion }}' }};token="cs-cr1stal-v2" {{ '{{ inversion2 }}' }};token="dw01-3400"
+--prompts "cs-cr1stal-v2 craquelure peridot merhorse, copper wire edging, dw01-3400"
+
+{% else %}
+
+\print Set CIVIT_AI_TOKEN environmental variable to run this example!
+
+{% endif %} !END

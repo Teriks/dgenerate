@@ -29,10 +29,15 @@ import huggingface_hub
 
 import dgenerate.messages as _messages
 import dgenerate.types as _types
+import dgenerate.webcache as _webcache
 
 
 class ModelNotFoundError(Exception):
     """Raised when a specified model can not be located either locally or remotely"""
+    pass
+
+
+class NonHFModelDownloadError(Exception):
     pass
 
 
@@ -154,6 +159,27 @@ def _hf_try_to_load_from_cache(repo_id: str,
         )
     except huggingface_hub.utils.HFValidationError as e:
         raise ModelNotFoundError(e)
+
+
+def download_non_hf_model(model_path):
+    """
+    Check for a non hugging face link or reference to a model that is possibly downloadable as a single file.
+
+    If this is applicable, download it to the web cache and return its path.
+
+    If this is not applicable, return the path unchanged.
+
+    :param model_path: proposed model path
+    :return: path to downloaded file or unchanged model path.
+    """
+    if _webcache.is_downloadable_url(model_path) and \
+            HFBlobLink.parse(model_path) is None:
+        _, model_path = _webcache.create_web_cache_file(
+            model_path,
+            mime_acceptable_desc='not text',
+            mimetype_is_supported=lambda m: m is not None and not m.startswith('text/'),
+            unknown_mimetype_exception=NonHFModelDownloadError)
+    return model_path
 
 
 def fetch_model_files_with_size(repo_id: str,

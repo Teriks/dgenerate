@@ -231,9 +231,7 @@ def estimate_pipeline_memory_use(
         extra_args: dict[str, typing.Any] = None,
         local_files_only: bool = False):
     """
-    Estimate the CPU side memory use of a model.
-
-
+    Estimate the CPU side memory use of a pipeline.
 
     :param pipeline_type: :py:class:`dgenerate.pipelinewrapper.PipelineType`
     :param model_path: huggingface slug, blob link, path to folder on disk, path to model file.
@@ -259,7 +257,7 @@ def estimate_pipeline_memory_use(
         extra_args = dict()
 
     usage = _hfutil.estimate_model_memory_use(
-        repo_id=model_path,
+        repo_id=_hfutil.download_non_hf_model(model_path),
         revision=revision,
         variant=variant,
         subfolder=subfolder,
@@ -279,7 +277,7 @@ def estimate_pipeline_memory_use(
             parsed = _uris.LoRAUri.parse(lora_uri)
 
             usage += _hfutil.estimate_model_memory_use(
-                repo_id=parsed.model,
+                repo_id=_hfutil.download_non_hf_model(parsed.model),
                 revision=parsed.revision,
                 subfolder=parsed.subfolder,
                 weight_name=parsed.weight_name,
@@ -293,7 +291,7 @@ def estimate_pipeline_memory_use(
             parsed = _uris.TextualInversionUri.parse(textual_inversion_uri)
 
             usage += _hfutil.estimate_model_memory_use(
-                repo_id=parsed.model,
+                repo_id=_hfutil.download_non_hf_model(parsed.model),
                 revision=parsed.revision,
                 subfolder=parsed.subfolder,
                 weight_name=parsed.weight_name,
@@ -1036,6 +1034,8 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     safety_checker_override = extra_modules and 'safety_checker' in extra_modules
     scheduler_override = extra_modules and 'scheduler' in extra_modules
 
+    model_path = _hfutil.download_non_hf_model(model_path)
+
     estimated_memory_usage = estimate_pipeline_memory_use(
         pipeline_type=pipeline_type,
         model_type=model_type,
@@ -1169,8 +1169,6 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
 
     if extra_modules is not None:
         creation_kwargs.update(extra_modules)
-
-    # Create Pipeline
 
     if _hfutil.is_single_file_model_load(model_path):
         if subfolder is not None:
