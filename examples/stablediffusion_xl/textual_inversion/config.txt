@@ -8,17 +8,17 @@
 
 # https://civitai.com/models/122822?modelVersionId=133832
 
-\set model https://civitai.com/api/download/models/133832?type=Model&format=SafeTensor&size=full&fp=fp16&token={{civit_token}}
+\set model https://civitai.com/api/download/models/133832?type=Model&format=SafeTensor&size=full&fp=fp16&token={{civit_ai_token}}
 
 # https://civitai.com/models/139230/crystalitixl
 
-\set inversion1 https://civitai.com/api/download/models/371565?type=Model&format=SafeTensor&token={{civit_token}}
+\set inversion1 https://civitai.com/api/download/models/371565?type=Model&format=SafeTensor&token={{civit_ai_token}}
 
 # https://civitai.com/models/243600/dark-world-dreams
 
-\set inversion2 https://civitai.com/api/download/models/274855?token={{civit_token}}
+\set inversion2 https://civitai.com/api/download/models/274855?token={{civit_ai_token}}
 
-\set prompt "cs-cr1stal-v2 craquelure peridot merhorse, copper wire edging, dw01-3400"
+\set prompt 'cs-cr1stal-v2 craquelure peridot merhorse, copper wire edging, dw01-3400'
 
 
 {% if civit_ai_token.strip() %}
@@ -32,6 +32,7 @@
     --inference-steps 40
     --seeds 3655753086
     --vae-tiling
+    --output-size 1600x1600
     --device cuda:1
     --scheduler DPMSolverMultistepScheduler
     --textual-inversions {{ inversion1 }};token="cs-cr1stal-v2" \
