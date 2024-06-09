@@ -2538,6 +2538,7 @@ that will be automatically downloaded for you, you just need a CivitAI
 account and token to download models.
 
 .. code-block:: bash
+
     #!/usr/bin/env bash
 
     # Download the main model from civitai using an api token
