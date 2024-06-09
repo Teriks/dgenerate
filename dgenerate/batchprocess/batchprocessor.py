@@ -21,7 +21,6 @@
 import collections.abc
 import inspect
 import io
-import os
 import re
 import typing
 
@@ -343,7 +342,7 @@ class BatchProcessor:
                     f'the required version: {".".join(config_file_version)}'
                     , underline=True, level=_messages.WARNING)
 
-    def _jinja_user_define(self, name, value):
+    def _jinja_user_define_check(self, name):
         if not name.isidentifier():
             raise BatchProcessError(
                 f'Cannot define template variable "{name}" on line {self.current_line}, '
@@ -361,9 +360,12 @@ class BatchProcessor:
             raise BatchProcessError(
                 f'Cannot define template variable "{name}" on line {self.current_line}, '
                 f'as that name is the name of a builtin function.')
+
+    def _jinja_user_define(self, name, value):
+        self._jinja_user_define_check(name)
         self.template_variables[name] = value
 
-    def _jinja_user_undefine(self, name):
+    def _jinja_user_undefine_check(self, name):
         if not name.isidentifier():
             raise BatchProcessError(
                 f'Cannot un-define template variable "{name}" on line {self.current_line}, '
@@ -381,12 +383,15 @@ class BatchProcessor:
             raise BatchProcessError(
                 f'Cannot un-define template variable "{name}" on line {self.current_line}, '
                 f'as that name is the name of a builtin function.')
-        try:
-            self.template_variables.pop(name)
-        except KeyError:
+
+        if name not in self.template_variables:
             raise BatchProcessError(
                 f'Cannot un-define template variable "{name}" on line {self.current_line}, '
                 f'variable does not exist.')
+
+    def _jinja_user_undefine(self, name):
+        self._jinja_user_undefine_check(name)
+        self.template_variables.pop(name)
 
     def _intepret_setp_value(self, value):
 

@@ -572,6 +572,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         file_path = None
 
+        self._jinja_user_define_check(args.variable)
+
         if args.output:
             response = requests.get(args.url, headers={
                 'User-Agent': fake_useragent.UserAgent().chrome},
@@ -589,7 +591,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                 if not args.overwrite and os.path.exists(args.output):
                     _messages.log(f'Downloaded file already exists, using: {args.output}',
                                   underline=True)
-                    self._jinja_user_define(args.variable, args.output)
+                    self.template_variables[args.variable] = args.output
                     return 0
 
                 _messages.log(f'Downloading: "{args.url}"\nDestination: "{args.output}"',
@@ -636,7 +638,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                               level=_messages.ERROR)
                 return 1
 
-        self._jinja_user_define(args.variable, file_path)
+        self.template_variables[args.variable] = file_path
 
         return 0
 
