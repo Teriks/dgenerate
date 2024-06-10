@@ -146,12 +146,8 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
 
     For example: "upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth"
 
-    Downloaded models are only cached during the life of the process and will always be downloaded even
-    when --offline-mode is specified, dgenerate processes that are alive simultaneously will share the
-    cached model file and will not need to re-download it.
-
-    Fresh executions of dgenerate will always download the model, it is recommended that you download your upscaler
-    models to some place on disk and provide a full path to them, and to use URLs only for examples and testing.
+    Downloaded models are cached in the dgenerate web cache on disk until the
+    cache expiry time for the file is met.
 
     The "tile" argument can be used to specify the tile size for tiled upscaling, it must be divisible by 2, and
     defaults to 512. Specifying 'auto' indicates that this value should be calculated based off available GPU
