@@ -1,0 +1,9 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.6.1
+
+CompVis/stable-diffusion-v1-4 
+--loras sayakpaul/sd-model-finetuned-lora-t4
+--inference-steps 40
+--guidance-scales 8
+--gen-seeds 2
+--prompts "Small electric mouse pokemon"

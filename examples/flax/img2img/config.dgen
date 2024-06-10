@@ -1,0 +1,17 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.6.1
+
+# The grid size in this example assumes that you have 2 GPUs visible
+# if this is not the case, adjust it
+
+stabilityai/stable-diffusion-2 --model-type flax
+--revision bf16
+--dtype float16
+--inference-steps 30
+--guidance-scales 10
+--batch-grid-size 1x2
+--image-seeds "../../media/earth.jpg"
+--image-seed-strengths 0.99
+--prompts "Earth being struck by an asteroid, real; fake, cgi"
+--output-size 768
+--gen-seeds 2

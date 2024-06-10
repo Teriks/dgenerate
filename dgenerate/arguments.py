@@ -318,28 +318,45 @@ def _create_parser(add_model=True, add_help=True):
                             help="Show dgenerate's version and exit"))
 
     popen_group = parser.add_mutually_exclusive_group()
-    actions.append(
-        popen_group.add_argument('--shell', dest=None, action='store_true', default=False,
-                                 help="""When reading configuration from STDIN (a pipe), read forever, even when 
-                            configuration errors occur.  This allows dgenerate to run in the background and 
-                            be communicated with by another process sending it commands. Launching
-                            dgenerate with this option and not piping it input will attach it to the terminal like
-                            a shell. Entering configuration into this shell will require two newlines to submit a
-                            command due to parsing lookahead. IE: two presses of the enter key."""))
 
     actions.append(
-        popen_group.add_argument('--no-stdin', dest=None, action='store_true', default=False,
-                                 help="""Can be used to indicate to dgenerate that it will not receive any
-                                 piped in input. This is useful for running dgenerate via popen from python
-                                 or another application using normal arguments, where it would otherwise
-                                 try to read from STDIN and block forever because it is not attached to 
-                                 a terminal."""))
+        popen_group.add_argument(
+            '--file', dest=None, action='store_true', default=False,
+            help="""Convenience argument for reading a configuration script from a file instead 
+                    of using a pipe. This is a meta argument which can not be used within a configuration 
+                    script and is only valid from the command line or during a popen invocation of dgenerate."""))
 
     actions.append(
-        popen_group.add_argument('--console', action='store_true', default=False,
-                                 help="""Launch a terminal-like tkinter GUI that communicates with an instance
-                            of dgenerate running in the background. This allows you to interactively write
-                            dgenerate config scripts as if dgenerate were a shell / REPL."""))
+        popen_group.add_argument(
+            '--shell', dest=None, action='store_true', default=False,
+            help="""When reading configuration from STDIN (a pipe), read forever, even when 
+                    configuration errors occur.  This allows dgenerate to run in the background and 
+                    be communicated with by another process sending it commands. Launching
+                    dgenerate with this option and not piping it input will attach it to the terminal like
+                    a shell. Entering configuration into this shell will require two newlines to submit a
+                    command due to parsing lookahead. IE: two presses of the enter key. This is a meta 
+                    argument which can not be used within a configuration script and is only valid from 
+                    the command line or during a popen invocation of dgenerate."""))
+
+    actions.append(
+        popen_group.add_argument(
+            '--no-stdin', dest=None, action='store_true', default=False,
+            help="""Can be used to indicate to dgenerate that it will not receive any
+                    piped in input. This is useful for running dgenerate via popen from python
+                    or another application using normal arguments, where it would otherwise
+                    try to read from STDIN and block forever because it is not attached to 
+                    a terminal. This is a meta argument which can not be used within a 
+                    configuration script and is only valid from the command line or during 
+                    a popen invocation of dgenerate."""))
+
+    actions.append(
+        popen_group.add_argument(
+            '--console', action='store_true', default=False,
+            help="""Launch a terminal-like tkinter GUI that communicates with an instance
+                    of dgenerate running in the background. This allows you to interactively write
+                    dgenerate config scripts as if dgenerate were a shell / REPL. This is a meta argument
+                    which can not be used within a configuration script and is only valid from the command
+                    line or during a popen invocation of dgenerate."""))
 
     actions.append(
         parser.add_argument('--plugin-modules', action='store', default=[], nargs="+", dest='plugin_module_paths',
@@ -1102,7 +1119,7 @@ def _create_parser(add_model=True, add_help=True):
         parser.add_argument('-oc', '--output-configs', action='store_true', default=False,
                             help="""Write a configuration text file for every output image or animation.
                             The text file can be used reproduce that particular output image or animation by piping
-                            it to dgenerate STDIN, for example "dgenerate < config.txt". These files will be written
+                            it to dgenerate STDIN, for example "dgenerate < config.dgen". These files will be written
                             to --output-path and are affected by --output-prefix and --output-overwrite as well. 
                             The files will be named after their corresponding image or animation file. Configuration 
                             files produced for animation frame images will utilize --frame-start and --frame-end to 

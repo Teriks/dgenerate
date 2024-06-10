@@ -65,7 +65,7 @@ if known_args.paths:
                     recursive=True)
 
             configs += glob.glob(
-                os.path.join(cwd, *os.path.split(path), '**', '*config.txt'),
+                os.path.join(cwd, *os.path.split(path), '**', '*config.dgen'),
                 recursive=True)
 
 else:
@@ -77,7 +77,7 @@ else:
             recursive=True)
 
     configs += glob.glob(
-        os.path.join(cwd, '**', '*config.txt'),
+        os.path.join(cwd, '**', '*config.dgen'),
         recursive=True)
 
 
@@ -110,7 +110,7 @@ for config in configs:
     with open(config, mode='rt' if _batchprocess else 'rb') as f:
         dirname = os.path.dirname(config)
         _, ext = os.path.splitext(config)
-        if ext == '.txt':
+        if ext == '.dgen':
             try:
                 if _batchprocess is not None and not known_args.subprocess_only:
                     log('ENTERING DIRECTORY:', dirname)

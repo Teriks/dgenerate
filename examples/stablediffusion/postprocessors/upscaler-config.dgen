@@ -1,0 +1,13 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.6.1
+
+\set upscaler_model https://github.com/JingyunLiang/SwinIR/releases/download/v0.0/001_classicalSR_DIV2K_s48w8_SwinIR-M_x4.pth
+
+stabilityai/stable-diffusion-2
+--inference-steps 40
+--guidance-scales 8
+--output-size 1024
+--gen-seeds 2
+--output-path upscaler
+--prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork"
+--post-processors "upscaler;model={{ upscaler_model }}"

@@ -1,0 +1,20 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.6.1
+
+# Generate 4 images simultaneously on the GPU and create a 2x2 grid for each frame of the animation
+# The kitten gif is 498x286, meaning the resized images will not be square
+# as the resize that occurs is aspect corrected
+
+Yntec/3DRendering
+--inference-steps 50
+--guidance-scales 8
+--prompts "3D rendering of a cat, high quality, animal; human, photo, real, bad quality"
+--image-seed-strengths 0.3
+--seeds 12345678
+--image-seeds "../../media/kitten.gif"
+--animation-format mp4
+--batch-size 4
+--batch-grid-size 2
+--vae-slicing
+--output-size 800
+--output-path animation-grid

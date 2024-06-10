@@ -1,0 +1,11 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.6.1
+
+# run the MiDaS depth detector
+
+\set device_switch {{ '--device '+injected_device if injected_device else '' }}
+
+\image_process "../../media/horse2.jpeg"
+-o horse2-midas-depth.png
+--processors midas
+--align 64 {{ device_switch }}

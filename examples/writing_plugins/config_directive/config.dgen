@@ -1,0 +1,12 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.6.1
+
+# the import_plugins directive can receive multiple plugin paths as arguments
+
+\import_plugins demo_plugin
+
+\my_directive Hello World!
+
+\my_directive_1 Implementation One
+
+\my_directive_2 Implementation Two

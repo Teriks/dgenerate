@@ -1,9 +1,0 @@
-#! dgenerate 3.6.1
-
-stabilityai/stable-diffusion-2-inpainting 
---inference-steps 30
---guidance-scales 7
---image-seeds "../../media/horse1.jpg; ../../media/horse1-mask.jpg"
---image-seed-strengths 0.9
---seeds 39877139643371
---prompts "Horse standing on the surface of mars, real, photo, high resolution; artwork, fake, imaginary"

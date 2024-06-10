@@ -1,0 +1,46 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.6.1
+
+# you need to have a civitai.com account and to set up an API token
+# in your account settings in order to be able to download these models
+
+\set civit_ai_token %CIVIT_AI_TOKEN%
+
+
+# https://civitai.com/models/122822?modelVersionId=133832
+
+\set model https://civitai.com/api/download/models/133832?type=Model&format=SafeTensor&size=full&fp=fp16&token={{civit_ai_token}}
+
+# https://civitai.com/models/139230/crystalitixl
+
+\set inversion1 https://civitai.com/api/download/models/371565?type=Model&format=SafeTensor&token={{civit_ai_token}}
+
+# https://civitai.com/models/243600/dark-world-dreams
+
+\set inversion2 https://civitai.com/api/download/models/274855?token={{civit_ai_token}}
+
+\set prompt 'cs-cr1stal-v2 craquelure peridot merhorse, copper wire edging, dw01-3400'
+
+
+{% if civit_ai_token.strip() %}
+
+    {{ model }}
+    --model-type torch-sdxl
+    --variant fp16 --dtype float16
+    --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
+    --sdxl-high-noise-fractions 0.8
+    --guidance-scales 8
+    --inference-steps 40
+    --seeds 3655753086
+    --vae-tiling
+    --output-size 1600x1600
+    --scheduler DPMSolverMultistepScheduler
+    --textual-inversions {{ inversion1 }};token="cs-cr1stal-v2" \
+                         {{ inversion2 }};token="dw01-3400"
+    --prompts {{ prompt }}
+
+{% else %}
+
+    \print Set CIVIT_AI_TOKEN environmental variable to run this example!
+
+{% endif %} !END

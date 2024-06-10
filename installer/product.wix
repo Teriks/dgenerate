@@ -47,6 +47,14 @@
             <ComponentRef Id="ApplicationShortcutStartMenu"/>
         </Feature>
 
+        <Feature Id="FileAssociations"
+                 Title="Console UI File Association"
+                 Level="1"
+                 AllowAdvertise="no"
+                 Description="Installs a file association for the .dgen extension which launches the Console UI when a file having this extension is clicked on.">
+            <ComponentRef Id="DgenFileAssociation"/>
+        </Feature>
+
         <StandardDirectory Id="ProgramFiles64Folder">
             <Directory Id="INSTALLFOLDER" Name="dgenerate">
                 <Component Id="Path" Guid="{D5C426B0-F916-4BD9-BD7C-2A5FBF81F4E3}" KeyPath="yes">
@@ -69,6 +77,21 @@
                     <RegistryValue Root="HKCU" Key="Software\Teriks\dgenerate"
                                    Name="desktopShortcut" Type="integer"
                                    Value="1" KeyPath="yes"/>
+                </Component>
+                <Component Id="DgenFileAssociation" Directory="INSTALLFOLDER" Guid="{6F490D74-8A92-4C2F-939D-14BD253C8C10}">
+                    <RegistryValue Root="HKCR"
+                                   Key=".dgen"
+                                   Type="string"
+                                   Value="dgeneratefile"
+                                   KeyPath="yes"/>
+                    <RegistryValue Root="HKCR"
+                                   Key="dgeneratefile\DefaultIcon"
+                                   Type="string"
+                                   Value="[INSTALLFOLDER]_internal\dgenerate\icon.ico"/>
+                    <RegistryValue Root="HKCR"
+                                   Key="dgeneratefile\shell\open\command"
+                                   Type="string"
+                                   Value="&quot;[INSTALLFOLDER]dgenerate_windowed.exe&quot; --console &quot;%1&quot;"/>
                 </Component>
             </Directory>
         </StandardDirectory>

@@ -1,0 +1,4 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.6.1
+
+\print Hello World!

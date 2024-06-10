@@ -1,0 +1,8 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.6.1
+
+# the import_plugins directive can receive multiple plugin paths as arguments
+
+\import_plugins demo_plugin
+
+\print {{ my_template_function('Hello World!') }}

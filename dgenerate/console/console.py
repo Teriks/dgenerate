@@ -882,21 +882,25 @@ class DgenerateConsole(tk.Tk):
 
     def _load_input_entry_text(self):
         fn = _filedialog.open_file_dialog(
-            initialfile='config.txt',
-            defaultextension='.txt',
-            filetypes=[('Text Documents', '*.txt')])
+            initialfile='config.dgen',
+            defaultextension='.dgen',
+            filetypes=[('Config Script', '*.dgen')])
 
         if fn is None:
             return
 
-        with open(fn, 'rt') as f:
+        self.load_file(fn)
+
+    def load_file(self, file_name):
+        with open(file_name, 'rt') as f:
             self._input_text.text.replace('1.0', tk.END, f.read())
+        self._input_text.text.mark_set('insert', '1.0')
 
     def _save_input_entry_text(self):
         fn = _filedialog.open_file_save_dialog(
-            initialfile='config.txt',
-            defaultextension='.txt',
-            filetypes=[('Text Documents', '*.txt')])
+            initialfile='config.dgen',
+            defaultextension='.dgen',
+            filetypes=[('Config Script', '*.dgen')])
 
         if fn is None:
             return
@@ -1233,6 +1237,9 @@ class DgenerateConsole(tk.Tk):
 
         return 'break'
 
+    def multiline_mode(self, state: bool):
+        self._multi_line_input_check_var.set(state)
+
     def destroy(self) -> None:
         self.kill_shell_process()
         self.save_settings()
@@ -1257,6 +1264,9 @@ def main(args: collections.abc.Sequence[str]):
         sys.stderr.reconfigure(encoding='utf-8')
 
         app = DgenerateConsole()
+        if args:
+            app.multiline_mode(True)
+            app.load_file(args[0])
         app.mainloop()
     except KeyboardInterrupt:
         if app is not None:
