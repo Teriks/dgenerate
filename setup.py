@@ -247,7 +247,7 @@ if __name__ != 'setup_as_library':
           version=VERSION,
           packages=find_packages(),
           package_data={
-              'dgenerate': ['icon.ico'],
+              'dgenerate': ['icon.ico', 'config_icon.ico'],
               'dgenerate.console.themes': ['*.toml'],
           },
           include_package_data=True,

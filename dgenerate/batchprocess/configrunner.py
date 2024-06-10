@@ -43,7 +43,7 @@ import dgenerate
 import dgenerate.arguments as _arguments
 import dgenerate.batchprocess.batchprocessor as _batchprocessor
 import dgenerate.batchprocess.configrunnerpluginloader as _configrunnerpluginloader
-import dgenerate.batchprocess.directiveutil as _directiveutil
+import dgenerate.batchprocess.util as _util
 import dgenerate.files as _files
 import dgenerate.invoker as _invoker
 import dgenerate.mediainput as _mediainput
@@ -513,7 +513,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         See: \\mkdir --help
         """
-        parser = _directiveutil.DirectiveArgumentParser(
+        parser = _util.DirectiveArgumentParser(
             prog='\\mkdir', description='Create directories.')
 
         parser.add_argument('-p', '--parents',
@@ -545,7 +545,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         See: \\download --help
         """
-        parser = _directiveutil.DirectiveArgumentParser(
+        parser = _util.DirectiveArgumentParser(
             prog='\\download', description='Download a file.')
 
         parser.add_argument('variable',
@@ -835,7 +835,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         Also accepts -la or -al
         """
 
-        parser = _directiveutil.DirectiveArgumentParser(
+        parser = _util.DirectiveArgumentParser(
             prog='\\ls',
             description='List directory contents.')
 
@@ -983,7 +983,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         See: \\rmdir --help
         """
-        parser = _directiveutil.DirectiveArgumentParser(prog='\\rmdir')
+        parser = _util.DirectiveArgumentParser(prog='\\rmdir')
 
         parser.add_argument('-p', '--parents', action='store_true',
                             help='Remove directory and its parents')
@@ -1014,7 +1014,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         See: \\rm --help
         """
-        parser = _directiveutil.DirectiveArgumentParser(prog='\\rm')
+        parser = _util.DirectiveArgumentParser(prog='\\rm')
 
         parser.add_argument('-r', '--recursive', action='store_true',
                             help='Remove directories and their contents recursively')
