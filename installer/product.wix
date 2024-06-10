@@ -82,14 +82,14 @@
                     <RegistryValue Root="HKCR"
                                    Key=".dgen"
                                    Type="string"
-                                   Value="dgeneratefile"
+                                   Value="dgenerate.dgenfile"
                                    KeyPath="yes"/>
                     <RegistryValue Root="HKCR"
-                                   Key="dgeneratefile\DefaultIcon"
+                                   Key="dgenerate.dgenfile\DefaultIcon"
                                    Type="string"
                                    Value="[INSTALLFOLDER]_internal\dgenerate\icon.ico"/>
                     <RegistryValue Root="HKCR"
-                                   Key="dgeneratefile\shell\open\command"
+                                   Key="dgenerate.dgenfile\shell\open\command"
                                    Type="string"
                                    Value="&quot;[INSTALLFOLDER]dgenerate_windowed.exe&quot; --console &quot;%1&quot;"/>
                 </Component>
