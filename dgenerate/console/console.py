@@ -895,6 +895,7 @@ class DgenerateConsole(tk.Tk):
         with open(file_name, 'rt') as f:
             self._input_text.text.replace('1.0', tk.END, f.read())
         self._input_text.text.mark_set('insert', '1.0')
+        self.multiline_mode(True)
 
     def _save_input_entry_text(self):
         fn = _filedialog.open_file_save_dialog(
@@ -1265,7 +1266,6 @@ def main(args: collections.abc.Sequence[str]):
 
         app = DgenerateConsole()
         if args:
-            app.multiline_mode(True)
             app.load_file(args[0])
         app.mainloop()
     except KeyboardInterrupt:
