@@ -1,0 +1,11 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.6.1
+
+wavymulder/collage-diffusion
+--loras latent-consistency/lcm-lora-sdv1-5
+--scheduler LCMScheduler
+--model-cpu-offload
+--inference-steps 4
+--guidance-scales 1
+--gen-seeds 2
+--prompts "collage style kid sits looking at the night sky, full of stars"

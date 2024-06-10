@@ -25,9 +25,9 @@ runner = dgenerate.batchprocess.ConfigRunner(injected_args=sys.argv[1:])
 # Run the config from the string above
 runner.run_string(config)
 
-# the example input file is not named 'config.txt' because the example runner
+# the example input file is not named 'config.dgen' because the example runner
 # would pick it up and run it if it were named that :)
 
-with open('example-input.txt', mode='rt') as input_file:
+with open('example-input.dgen', mode='rt') as input_file:
     # run file wants a TextIO object so you need to use mode='t'
     runner.run_file(input_file)

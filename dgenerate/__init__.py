@@ -44,6 +44,8 @@ if __am_dgenerate_app:
         sys.stderr = __dev_null
         __stderr_null = True
 
+# handle --console meta argument
+
 if __am_dgenerate_app and '--console' in sys.argv:
     # avoid a slow UI startup time
 
@@ -171,8 +173,27 @@ def main(args: typing.Optional[collections.abc.Sequence[str]] = None):
     if args is None:
         args = sys.argv[1:]
 
-    server_mode = '--shell' in args
+    # handle meta arguments
+
+    input_file = None
+    shell_mode = '--shell' in args
     nostdin_mode = '--no-stdin' in args
+
+    while '--file' in args:
+        try:
+            pos = args.index('--file')
+        except ValueError:
+            break
+
+        try:
+            input_file = args[pos + 1]
+            if input_file.startswith('-'):
+                raise IndexError
+            args = args[:pos] + args[pos + 2:]
+        except IndexError:
+            dgenerate.messages.log(
+                'dgenerate: error: --file missing argument.')
+            sys.exit(1)
 
     while '--shell' in args:
         args.remove('--shell')
@@ -180,9 +201,19 @@ def main(args: typing.Optional[collections.abc.Sequence[str]] = None):
     while '--no-stdin' in args:
         args.remove('--no-stdin')
 
-    if server_mode and nostdin_mode:
+    if shell_mode and nostdin_mode:
         dgenerate.messages.log(
             'dgenerate: error: --no-stdin cannot be used with --shell.')
+        sys.exit(1)
+
+    if input_file and nostdin_mode:
+        dgenerate.messages.log(
+            'dgenerate: error: --no-stdin cannot be used with --file.')
+        sys.exit(1)
+
+    if input_file and shell_mode:
+        dgenerate.messages.log(
+            'dgenerate: error: --shell cannot be used with --file.')
         sys.exit(1)
 
     if dgenerate.files.stdin_is_tty() and nostdin_mode:
@@ -195,8 +226,25 @@ def main(args: typing.Optional[collections.abc.Sequence[str]] = None):
         render_loop.config = DgenerateArguments()
         # ^ this is necessary for --templates-help to
         # render all the correct values
+        if input_file:
+            runner = ConfigRunner(render_loop=render_loop,
+                                  version=__version__,
+                                  injected_args=args)
+            try:
+                with open(input_file, 'rt') as file:
+                    runner.run_file(file)
+            except ModuleFileNotFoundError as e:
+                # missing plugin file parsed by ConfigRunner out of injected args
+                dgenerate.messages.log(f'dgenerate: error: {str(e).strip()}',
+                                       level=dgenerate.messages.ERROR)
+                sys.exit(1)
 
-        if sys.stdin is not None and (not dgenerate.files.stdin_is_tty() or server_mode) and not nostdin_mode:
+            except BatchProcessError as e:
+                dgenerate.messages.log(f'Config Error: {str(e).strip()}',
+                                       level=dgenerate.messages.ERROR)
+                sys.exit(1)
+
+        elif sys.stdin is not None and (not dgenerate.files.stdin_is_tty() or shell_mode) and not nostdin_mode:
             # Not a terminal, batch process STDIN
             runner = ConfigRunner(render_loop=render_loop,
                                   version=__version__,
@@ -204,19 +252,19 @@ def main(args: typing.Optional[collections.abc.Sequence[str]] = None):
             while True:
                 try:
                     runner.run_file(sys.stdin)
-                    if not server_mode:
+                    if not shell_mode:
                         sys.exit(0)
                 except ModuleFileNotFoundError as e:
                     # missing plugin file parsed by ConfigRunner out of injected args
                     dgenerate.messages.log(f'dgenerate: error: {str(e).strip()}',
                                            level=dgenerate.messages.ERROR)
-                    if not server_mode:
+                    if not shell_mode:
                         sys.exit(1)
 
                 except BatchProcessError as e:
                     dgenerate.messages.log(f'Config Error: {str(e).strip()}',
                                            level=dgenerate.messages.ERROR)
-                    if not server_mode:
+                    if not shell_mode:
                         sys.exit(1)
         else:
             sys.exit(invoke_dgenerate(args, render_loop=render_loop))

@@ -1,0 +1,14 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.6.1
+
+stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
+--variant fp16 --dtype float16
+--sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
+--sdxl-high-noise-fractions 0.8
+--loras goofyai/SDXL-Lora-Collection;weight-name=leonardo_illustration.safetensors
+--inference-steps 40
+--guidance-scales 8
+--gen-seeds 2
+--output-size 1024
+--output-path single
+--prompts "Sketch of a horse by Leonardo da Vinci; wrong, anatomically incorrect, extra limbs"

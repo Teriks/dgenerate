@@ -1,0 +1,10 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.6.1
+
+stabilityai/stable-diffusion-2
+--inference-steps 30
+--guidance-scales 8
+--image-seeds "../../media/beach.jpg"
+--image-seed-strengths 0.9
+--seeds 70466855166895
+--prompts "A huge tsunami wave about to impact a tropical beach, high resolution, photo, real; fake, artwork, imaginary, watermark"

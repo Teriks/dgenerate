@@ -705,7 +705,7 @@ Help Output
       -oc, --output-configs
                             Write a configuration text file for every output image or animation. The
                             text file can be used reproduce that particular output image or animation
-                            by piping it to dgenerate STDIN, for example "dgenerate < config.txt".
+                            by piping it to dgenerate STDIN, for example "dgenerate < config.dgen".
                             These files will be written to --output-path and are affected by --output-
                             prefix and --output-overwrite as well. The files will be named after their
                             corresponding image or animation file. Configuration files produced for
@@ -1655,7 +1655,7 @@ Generated configuration can be read back into dgenerate via a pipe or file redir
 
     magick identify -format "%[Property:DgenerateConfig]" generated_file.png | dgenerate
 
-    dgenerate < generated-config.txt
+    dgenerate < generated-config.dgen
 
 Specifying a seed directly and changing the prompt slightly, or parameters such as image seed strength
 if using a seed image, guidance scale, or inference steps, will allow for generating variations close
@@ -3135,7 +3135,7 @@ The following is a config file example that covers very basic syntax concepts:
     # not end in \ or start with -
 
     # the ability to use tail comments means that escaping of the # is sometimes
-    # necessary when you want it to appear literally, see: examples/config_syntax/tail-comments-config.txt
+    # necessary when you want it to appear literally, see: examples/config_syntax/tail-comments-config.dgen
     # for examples.
 
 
@@ -3902,16 +3902,16 @@ config script.
     # run dgenerate as a subprocess, read a config
     # and send stdout and stderr to a file
 
-    \exec dgenerate < my_config.txt &> log.txt
+    \exec dgenerate < my_config.dgen &> log.txt
 
     # chaining processes together with pipes is supported
     # this example emulates 'cat' on Windows using cmd
 
-    \exec cmd /c "type my_config.txt" | dgenerate &> log.txt
+    \exec cmd /c "type my_config.dgen" | dgenerate &> log.txt
 
     # on a Unix platform you could simply use cat
 
-    \exec cat my_config.txt | dgenerate &> log.txt
+    \exec cat my_config.dgen | dgenerate &> log.txt
 
 
 The \\download directive
@@ -3990,30 +3990,40 @@ You can exit a config early if need be using the ``\exit`` directive
 Running configs from the command line
 -------------------------------------
 
-To utilize configuration files on Linux, pipe them into the command or use redirection:
+To utilize configuration files use the ``--file`` option,
+or pipe them into the command, or use file redirection:
 
+
+Use the ``--file`` option
+
+.. code-block:: bash
+
+    dgenerate --file my-config.dgen
+
+
+Piping or redirection in Bash:
 
 .. code-block:: bash
 
     # Pipe
-    cat my-config.txt | dgenerate
+    cat my-config.dgen | dgenerate
 
     # Redirection
-    dgenerate < my-config.txt
+    dgenerate < my-config.dgen
 
 
-On Windows CMD:
+Redirection in Windows CMD:
 
 .. code-block:: bash
 
-    dgenerate < my-config.txt
+    dgenerate < my-config.dgen
 
 
-On Windows Powershell:
+Piping Windows Powershell:
 
 .. code-block:: powershell
 
-    Get-Content my-config.txt | dgenerate
+    Get-Content my-config.dgen | dgenerate
 
 
 Config argument injection
@@ -4026,24 +4036,24 @@ of the argument specification of every call.
 .. code-block:: bash
 
     # Pipe
-    cat my-animations-config.txt | dgenerate --frame-start 0 --frame-end 10
+    cat my-animations-config.dgen | dgenerate --frame-start 0 --frame-end 10
 
     # Redirection
-    dgenerate --frame-start 0 --frame-end 10 < my-animations-config.txt
+    dgenerate --frame-start 0 --frame-end 10 < my-animations-config.dgen
 
 
 On Windows CMD:
 
 .. code-block:: bash
 
-    dgenerate  --frame-start 0 --frame-end 10 < my-animations-config.txt
+    dgenerate  --frame-start 0 --frame-end 10 < my-animations-config.dgen
 
 
 On Windows Powershell:
 
 .. code-block:: powershell
 
-    Get-Content my-animations-config.txt | dgenerate --frame-start 0 --frame-end 10
+    Get-Content my-animations-config.dgen | dgenerate --frame-start 0 --frame-end 10
 
 
 If you need arguments injected from the command line within the config for
@@ -4099,6 +4109,9 @@ is activated via the insert key and indicated by the presence of line numbers, y
 to submit commands via the enter key, however you can use the run button from the run menu (Or ``Ctrl+Space``)
 to run code in this mode. You cannot page through command history in this mode, and code will remain in the
 console input pane upon running it making the UI function more like a code editor than a terminal.
+
+The console can be opened with a file loaded in multiline input mode
+by using the command: ``dgenerate --console filename.dgen``
 
 ``Ctrl+Q`` can be used in input pane for killing and then restarting the background interpreter process.
 
@@ -4157,9 +4170,10 @@ The behavior of ``\image_process`` which is also used for ``--sub-command image-
 File Cache Control
 ==================
 
-dgenerate will cache ``--image-seeds`` files and files used by image processors that are downloaded from
-the web while it is running in the directory ``~/.cache/dgenerate/web``, on Windows this equates
-to ``%USERPROFILE%\.cache\dgenerate\web``
+dgenerate will cache downloaded non hugging face models, downloaded ``--image-seeds`` files,
+files downloaded by the `\download <The \\download directive>`_ directive, and downloaded
+files used by image processors in the directory ``~/.cache/dgenerate/web``, on Windows
+this equates to ``%USERPROFILE%\.cache\dgenerate\web``
 
 You can control where these files are cached with the environmental variable ``DGENERATE_WEB_CACHE``.
 

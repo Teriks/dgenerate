@@ -666,17 +666,17 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         Examples:
 
             NOWRAP!
-            \\exec dgenerate < my_config.txt &> log.txt
-            \\exec dgenerate < my_config.txt > log.txt 2>&1
-            \\exec dgenerate < my_config.txt > stdout.txt 2> stderr.txt
+            \\exec dgenerate < my_config.dgen &> log.txt
+            \\exec dgenerate < my_config.dgen > log.txt 2>&1
+            \\exec dgenerate < my_config.dgen > stdout.txt 2> stderr.txt
 
         Windows cat pipe:
 
-            \\exec cmd /c "type my_config.txt" | dgenerate &> test.log
+            \\exec cmd /c "type my_config.dgen" | dgenerate &> test.log
 
         Linux cat pipe:
 
-            \\exec cat my_config.txt | dgenerate &> test.log
+            \\exec cat my_config.dgen | dgenerate &> test.log
         """
 
         if len(args) == 0:

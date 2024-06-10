@@ -562,7 +562,7 @@ class RenderLoop:
                     self.config.output_path,
                     path_maker=_filelock.suffix_path_maker(
                         [self._join_output_filename(filename_components, ext=self.config.image_format),
-                         self._join_output_filename(filename_components, ext='txt')],
+                         self._join_output_filename(filename_components, ext='dgen')],
                         suffix='_duplicate_'))
         else:
             image_filename = _filelock.touch_avoid_duplicate(
@@ -1103,7 +1103,7 @@ class RenderLoop:
                                         for idx, filename in enumerate(anim_writer.filenames):
                                             config_filenames.append(
                                                 self._write_animation_config_file(
-                                                    filename=os.path.splitext(filename)[0] + '.txt',
+                                                    filename=os.path.splitext(filename)[0] + '.dgen',
                                                     batch_index=idx,
                                                     diffusion_args=diffusion_args,
                                                     generation_result=generation_result))
