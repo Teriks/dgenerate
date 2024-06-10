@@ -460,7 +460,8 @@ class WebFileCache(FileCache):
     def download(self, url,
                  mime_acceptable_desc: typing.Optional[str] = None,
                  mimetype_is_supported: typing.Optional[typing.Callable[[str], bool]] = None,
-                 unknown_mimetype_exception=ValueError):
+                 unknown_mimetype_exception=ValueError,
+                 tqdm_pbar=tqdm.tqdm):
         """
         Downloads a file and/or returns a file path from the cache. If the mimetype
         of the file is not supported, it raises an exception.
@@ -471,6 +472,7 @@ class WebFileCache(FileCache):
         :param mime_acceptable_desc: A description of acceptable mimetypes for use in exceptions.
         :param mimetype_is_supported: A function that determines if a mimetype is supported for downloading.
         :param unknown_mimetype_exception: The exception type to raise when an unknown mimetype is encountered.
+        :param tqdm_pbar: tqdm progress bar type, if set to `None` no progress bar will be used. Defaults to `tqdm.tqdm`
         :return: The path to the downloaded file.
         """
         self._clear_old_files()
@@ -505,20 +507,25 @@ class WebFileCache(FileCache):
             chunk_size = _memory.calculate_chunk_size(total_size)
 
             if chunk_size != total_size:
-                def file_data_generator():
-                    with tqdm.tqdm(total=total_size,
-                                   unit='iB',
-                                   unit_scale=True) as progress_bar:
+
+                if tqdm_pbar is None:
+                    def file_data_generator():
                         for chunk in response.iter_content(
                                 chunk_size=chunk_size):
-                            progress_bar.update(len(chunk))
                             yield chunk
+                else:
+                    def file_data_generator():
+                        _messages.log(f'Downloading: "{url}"', underline=True)
+                        with tqdm_pbar(total=total_size,
+                                       unit='iB',
+                                       unit_scale=True) as progress_bar:
+                            for chunk in response.iter_content(
+                                    chunk_size=chunk_size):
+                                progress_bar.update(len(chunk))
+                                yield chunk
             else:
                 def file_data_generator():
                     yield response.content
-
-            _messages.log(f'Downloading: "{url}"',
-                          underline=True)
 
             # Add the downloaded file to the cache
             return self.add(url, file_data_generator(),

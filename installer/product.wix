@@ -96,7 +96,6 @@
             </Directory>
         </StandardDirectory>
 
-
         <StandardDirectory Id="ProgramMenuFolder">
             <Directory Id="ApplicationProgramsFolder" Name="dgenerate">
                 <Component Id="ApplicationShortcutStartMenu" Guid="{58DE6685-47DD-4705-BAA9-BF4D7BC5FF79}">
