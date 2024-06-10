@@ -5,6 +5,7 @@
         <MediaTemplate MaximumUncompressedMediaSize="2048" EmbedCab="no"/>
 
         <Icon Id="dgenerate.ico" SourceFile="..\dgenerate\icon.ico"/>
+        <Icon Id="dgenerate_config.ico" SourceFile="..\dgenerate\config_icon.ico"/>
         <Property Id="ARPPRODUCTICON" Value="dgenerate.ico"/>
 
         <MajorUpgrade AllowDowngrades="yes"/>
@@ -87,7 +88,7 @@
                     <RegistryValue Root="HKCR"
                                    Key="dgenerate.dgenfile\DefaultIcon"
                                    Type="string"
-                                   Value="[INSTALLFOLDER]_internal\dgenerate\icon.ico"/>
+                                   Value="[INSTALLFOLDER]_internal\dgenerate\config_icon.ico"/>
                     <RegistryValue Root="HKCR"
                                    Key="dgenerate.dgenfile\shell\open\command"
                                    Type="string"
