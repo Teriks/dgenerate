@@ -516,7 +516,7 @@ class WebFileCache(FileCache):
                 else:
                     def file_data_generator():
                         _messages.log(f'Downloading: "{url}"', underline=True)
-                        with tqdm_pbar(total=total_size,
+                        with tqdm_pbar(total=total_size if total_size != 0 else None,
                                        unit='iB',
                                        unit_scale=True) as progress_bar:
                             for chunk in response.iter_content(

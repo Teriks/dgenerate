@@ -601,7 +601,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
                 with open(current_dl, 'wb') as file:
                     if chunk_size != total_size:
-                        with tqdm.tqdm(total=total_size,
+                        with tqdm.tqdm(total=total_size if total_size != 0 else None,
                                        unit='iB',
                                        unit_scale=True) as progress_bar:
                             for chunk in response.iter_content(
