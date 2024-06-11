@@ -421,7 +421,10 @@ class WebFileCache(FileCache):
         Clears files that are older than the expiry delta.
         """
         for key, cached_file in self.delete_older_than(self.expiry_delta):
-            os.unlink(cached_file.path)
+            try:
+                os.unlink(cached_file.path)
+            except FileNotFoundError:
+                pass
 
     def request_mimetype(self, url) -> str:
         """
