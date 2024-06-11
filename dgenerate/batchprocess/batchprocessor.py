@@ -342,7 +342,17 @@ class BatchProcessor:
                     f'the required version: {".".join(config_file_version)}'
                     , underline=True, level=_messages.WARNING)
 
-    def _jinja_user_define_check(self, name):
+    def user_define_check(self, name: str):
+        """
+        Check if a template variable can be defined by the user, raise if not.
+
+        :raises BatchProcessError: if the specified variable name cannot be defined
+            by the user due to not being a valid identifier string, being the name of
+            a template function, being the name of a reserved template variable, or
+            being the name of a builtin function.
+
+        :param name: Variable name
+        """
         if not name.isidentifier():
             raise BatchProcessError(
                 f'Cannot define template variable "{name}" on line {self.current_line}, '
@@ -361,11 +371,33 @@ class BatchProcessor:
                 f'Cannot define template variable "{name}" on line {self.current_line}, '
                 f'as that name is the name of a builtin function.')
 
-    def _jinja_user_define(self, name, value):
-        self._jinja_user_define_check(name)
+    def user_define(self, name: str, value):
+        """
+        Define a template variable as if you were the user.
+
+        :raises BatchProcessError: if the specified variable name cannot be defined
+            by the user due to not being a valid identifier string, being the name of
+            a template function, being the name of a reserved template variable, or
+            being the name of a builtin function.
+
+        :param name: Variable name
+        :param value: Assigned value
+        """
+        self.user_define_check(name)
         self.template_variables[name] = value
 
-    def _jinja_user_undefine_check(self, name):
+    def user_undefine_check(self, name: str):
+        """
+        Check if a template variable can be undefined by the user, raise if not.
+
+        :raises BatchProcessError: if the specified variable name cannot be undefined
+            by the user due to not being a valid identifier string, being the name of
+            a template function, being the name of a reserved template variable,
+            being the name of a builtin function, or a non existing
+            template variable.
+
+        :param name: Variable name
+        """
         if not name.isidentifier():
             raise BatchProcessError(
                 f'Cannot un-define template variable "{name}" on line {self.current_line}, '
@@ -389,8 +421,19 @@ class BatchProcessor:
                 f'Cannot un-define template variable "{name}" on line {self.current_line}, '
                 f'variable does not exist.')
 
-    def _jinja_user_undefine(self, name):
-        self._jinja_user_undefine_check(name)
+    def user_undefine(self, name: str):
+        """
+        Undefine a template variable as if you were the user.
+
+        :raises BatchProcessError: if the specified variable name cannot be undefined
+            by the user due to not being a valid identifier string, being the name of
+            a template function, being the name of a reserved template variable,
+            being the name of a builtin function, or a non existing
+            template variable.
+
+        :param name: Variable name
+        """
+        self.user_undefine_check(name)
         self.template_variables.pop(name)
 
     def _intepret_setp_value(self, value):
@@ -419,7 +462,7 @@ class BatchProcessor:
         if line.startswith('\\setp'):
             directive_args = line.split(' ', 2)
             if len(directive_args) == 3:
-                self._jinja_user_define(
+                self.user_define(
                     directive_args[1].strip(),
                     self._intepret_setp_value(
                         self.render_template(directive_args[2].strip())))
@@ -432,7 +475,7 @@ class BatchProcessor:
             directive_args = line.split(' ', 2)
             if len(directive_args) == 3:
                 try:
-                    self._jinja_user_define(
+                    self.user_define(
                         directive_args[1].strip(),
                         _textprocessing.shell_parse(
                             self.render_template(directive_args[2].strip()),
@@ -447,7 +490,7 @@ class BatchProcessor:
         elif line.startswith('\\set'):
             directive_args = line.split(' ', 2)
             if len(directive_args) == 3:
-                self._jinja_user_define(
+                self.user_define(
                     directive_args[1].strip(),
                     self.render_template(directive_args[2].strip()))
                 return True
@@ -458,7 +501,7 @@ class BatchProcessor:
         elif line.startswith('\\unset'):
             directive_args = line.split(' ', 1)
             if len(directive_args) == 2:
-                self._jinja_user_undefine(directive_args[1].strip())
+                self.user_undefine(directive_args[1].strip())
                 return True
             else:
                 raise BatchProcessError(
