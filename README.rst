@@ -3097,6 +3097,7 @@ The following is a config file example that covers very basic syntax concepts:
 
 .. code-block:: jinja
 
+    #! /usr/bin/env dgenerate --file
     #! dgenerate 3.6.1
 
     # If a hash-bang version is provided in the format above
@@ -3195,6 +3196,7 @@ also be mentioned in this output.
 
 .. code-block:: jinja
 
+    #! /usr/bin/env dgenerate --file
     #! dgenerate 3.6.1
 
     # Invocation will proceed as normal
@@ -3581,6 +3583,7 @@ such as VAEs etc. outside of relying on the caching system.
 
 .. code-block:: jinja
 
+    #! /usr/bin/env dgenerate --file
     #! dgenerate 3.6.1
 
     # You can define your own template variables with the \set directive
@@ -3806,6 +3809,7 @@ globbing.
 
 .. code-block:: jinja
 
+    #! /usr/bin/env dgenerate --file
     #! dgenerate 3.6.1
 
     # globbing can be preformed via shell expansion or using
@@ -3868,6 +3872,7 @@ The dgenerate sub-command ``image-process`` has a config directive implementatio
 
 .. code-block:: jinja
 
+    #! /usr/bin/env dgenerate --file
     #! dgenerate 3.6.1
 
     # print the help message of --sub-command image-process, this does
@@ -3903,6 +3908,7 @@ config script.
 
 .. code-block:: jinja
 
+    #! /usr/bin/env dgenerate --file
     #! dgenerate 3.6.1
 
     # run dgenerate as a subprocess, read a config
@@ -3949,6 +3955,7 @@ a text mimetype. This  behavior can be overridden with the `-t/--text` argument.
 
 .. code-block:: jinja
 
+    #! /usr/bin/env dgenerate --file
     #! dgenerate 3.6.1
 
     # download a model into the web cache,
@@ -3993,6 +4000,7 @@ You can exit a config early if need be using the ``\exit`` directive
 
 .. code-block:: jinja
 
+    #! /usr/bin/env dgenerate --file
     #! dgenerate 3.6.1
 
     # exit the process with return code 0, which indicates success
@@ -4006,6 +4014,7 @@ An explicit return code can be provided as well
 
 .. code-block:: jinja
 
+    #! /usr/bin/env dgenerate --file
     #! dgenerate 3.6.1
 
     # exit the process with return code 1, which indicates an error
