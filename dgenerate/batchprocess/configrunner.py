@@ -610,18 +610,21 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                                     progress_bar.update(len(chunk))
                                     file.write(chunk)
                                     file.flush()
+                            downloaded_size = progress_bar.n
                     else:
-                        file.write(response.content)
+                        content = response.content
+                        downloaded_size = len(content)
+                        file.write(content)
                         file.flush()
 
                 file_path = args.output
 
-                if total_size != 0 and progress_bar.n != total_size:
+                if total_size != 0 and downloaded_size != total_size:
                     _messages.log('Download failure, something went wrong '
                                   'during the download.', level=_messages.ERROR)
                     return 1
 
-                os.rename(current_dl, args.output)
+                os.replace(current_dl, args.output)
             else:
                 _messages.log(f"Failed to download file. "
                               f"HTTP status code: {response.status_code}",
