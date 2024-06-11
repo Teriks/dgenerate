@@ -31,6 +31,16 @@ pip-delete-this-directory.txt
 nosetests.xml
 coverage.xml
 
+# environment
+venv/
+
+# ide
+.idea/
+
+# docker env cache
+
+docker_cache/
+
 # Translations
 *.mo
 
