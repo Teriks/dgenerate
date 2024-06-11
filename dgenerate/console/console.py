@@ -153,10 +153,21 @@ class DgenerateConsole(tk.Tk):
         # Run menu
 
         self._run_menu = tk.Menu(self._menu_bar, tearoff=0)
+
         self._run_menu.add_command(label='Run', accelerator='Ctrl+Space',
                                    command=self._run_input_text)
         self._run_menu.add_command(label='Kill', accelerator='Ctrl+Q',
                                    command=lambda: self.kill_shell_process(restart=True))
+
+        self._run_menu.add_separator()
+
+        self._debug_mode_var = tk.BooleanVar(value=False)
+
+        self._debug_mode_var.trace_add('write',
+                                       lambda *a: self.kill_shell_process(restart=True))
+
+        self._run_menu.add_checkbutton(label='Debug Mode',
+                                       variable=self._debug_mode_var)
 
         # Options menu
 
@@ -872,7 +883,8 @@ class DgenerateConsole(tk.Tk):
         env['COLUMNS'] = '100'
         cwd = os.getcwd()
         self._shell_process = psutil.Popen(
-            [DGENERATE_EXE, '--shell'],
+            [DGENERATE_EXE, '--shell'] +
+            (['-v'] if self._debug_mode_var.get() else []),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             stdin=subprocess.PIPE,

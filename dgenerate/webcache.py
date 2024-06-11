@@ -24,6 +24,8 @@ import pathlib
 import sys
 import typing
 
+import tqdm
+
 import dgenerate.filecache as _filecache
 import dgenerate.textprocessing as _textprocessing
 
@@ -65,7 +67,9 @@ except _textprocessing.TimeDeltaParseError as e:
 def create_web_cache_file(url,
                           mime_acceptable_desc: typing.Optional[str] = None,
                           mimetype_is_supported: typing.Optional[typing.Callable[[str], bool]] = None,
-                          unknown_mimetype_exception=ValueError) \
+                          unknown_mimetype_exception=ValueError,
+                          overwrite: bool = False,
+                          tqdm_pbar=tqdm.tqdm) \
         -> tuple[str, str]:
     """
     Download a file from a url and add it to dgenerates temporary web cache that is
@@ -73,14 +77,26 @@ def create_web_cache_file(url,
 
     If the file exists in the cache already, return information for the existing file.
 
+    :raise requests.RequestException: Can raise any exception
+    raised by ``requests.get`` for request related errors.
+
     :param url: The url
     :param mime_acceptable_desc: A description of acceptable mimetypes for use in exceptions.
     :param mimetype_is_supported: A function that determines if a mimetype is supported for downloading.
     :param unknown_mimetype_exception: The exception type to raise when an unknown mimetype is encountered.
+    :param overwrite: Always overwrite any previously cached file?
+    :param tqdm_pbar: tqdm progress bar type, if set to `None` no progress bar will be used. Defaults to `tqdm.tqdm`
     :return: tuple(mimetype_str, filepath)
     """
 
-    cached_file = cache.download(url, mime_acceptable_desc, mimetype_is_supported, unknown_mimetype_exception)
+    cached_file = cache.download(
+        url,
+        mime_acceptable_desc,
+        mimetype_is_supported,
+        unknown_mimetype_exception,
+        overwrite,
+        tqdm_pbar)
+
     return cached_file.metadata['mime-type'], cached_file.path
 
 

@@ -461,17 +461,20 @@ class WebFileCache(FileCache):
                  mime_acceptable_desc: typing.Optional[str] = None,
                  mimetype_is_supported: typing.Optional[typing.Callable[[str], bool]] = None,
                  unknown_mimetype_exception=ValueError,
+                 overwrite: bool = False,
                  tqdm_pbar=tqdm.tqdm):
         """
         Downloads a file and/or returns a file path from the cache. If the mimetype
         of the file is not supported, it raises an exception.
 
-        :raise HTTPError: On http status errors.
+        :raise requests.RequestException: Can raise any exception
+        raised by ``requests.get`` for request related errors.
 
         :param url: The URL of the file.
         :param mime_acceptable_desc: A description of acceptable mimetypes for use in exceptions.
         :param mimetype_is_supported: A function that determines if a mimetype is supported for downloading.
         :param unknown_mimetype_exception: The exception type to raise when an unknown mimetype is encountered.
+        :param overwrite: Always overwrite any previously cached file?
         :param tqdm_pbar: tqdm progress bar type, if set to `None` no progress bar will be used. Defaults to `tqdm.tqdm`
         :return: The path to the downloaded file.
         """
@@ -482,10 +485,11 @@ class WebFileCache(FileCache):
                 return mimetype_is_supported(mimetype)
             return True
 
-        with self:
-            cached_file = self.get(url)
-            if cached_file is not None and os.path.exists(cached_file.path):
-                return cached_file
+        if not overwrite:
+            with self:
+                cached_file = self.get(url)
+                if cached_file is not None and os.path.exists(cached_file.path):
+                    return cached_file
 
         with requests.get(url, headers={'User-Agent': fake_useragent.UserAgent().chrome}, stream=True) as response:
             response.raise_for_status()
