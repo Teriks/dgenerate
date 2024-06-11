@@ -278,7 +278,8 @@ class FlaxControlNetUri:
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
         except Exception as e:
-            raise ControlNetUriLoadError(e)
+            raise ControlNetUriLoadError(
+                f'error loading controlnet "{self.model}": {e}')
 
     @_memoize(_cache._FLAX_CONTROL_NET_CACHE,
               exceptions={'local_files_only'},
@@ -509,7 +510,8 @@ class TorchControlNetUri:
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
         except Exception as e:
-            ControlNetUriLoadError(e)
+            raise ControlNetUriLoadError(
+                f'error loading controlnet "{self.model}": {e}')
 
     @_memoize(_cache._TORCH_CONTROL_NET_CACHE,
               exceptions={'local_files_only'},
@@ -989,7 +991,8 @@ class TorchVAEUri:
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
         except Exception as e:
-            raise VAEUriLoadError(e)
+            raise VAEUriLoadError(
+                f'error loading vae "{self.model}": {e}')
 
     @_memoize(_cache._TORCH_VAE_CACHE,
               exceptions={'local_files_only'},
@@ -1227,7 +1230,8 @@ class TorchUNetUri:
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
         except Exception as e:
-            raise UNetUriLoadError(e)
+            raise UNetUriLoadError(
+                f'error loading unet "{self.model}": {e}')
 
     @_memoize(_cache._TORCH_UNET_CACHE,
               exceptions={'local_files_only'},
@@ -1433,7 +1437,8 @@ class FlaxVAEUri:
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
         except Exception as e:
-            raise VAEUriLoadError(e)
+            raise VAEUriLoadError(
+                f'error loading vae "{self.model}": {e}')
 
     @_memoize(_cache._FLAX_VAE_CACHE,
               exceptions={'local_files_only'},
@@ -1624,7 +1629,8 @@ class FlaxUNetUri:
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
         except Exception as e:
-            raise UNetUriLoadError(e)
+            raise UNetUriLoadError(
+                f'error loading unet "{self.model}": {e}')
 
     @_memoize(_cache._FLAX_UNET_CACHE,
               exceptions={'local_files_only'},
@@ -1779,7 +1785,8 @@ class LoRAUri:
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
         except Exception as e:
-            raise LoRAUriLoadError(e)
+            raise LoRAUriLoadError(
+                f'error loading lora "{self.model}": {e}')
 
     def _load_on_pipeline(self,
                           pipeline: diffusers.DiffusionPipeline,
@@ -2012,7 +2019,8 @@ class TextualInversionUri:
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
         except Exception as e:
-            raise TextualInversionUriLoadError(e)
+            raise TextualInversionUriLoadError(
+                f'error loading textual inversion "{self.model}": {e}')
 
     def _load_on_pipeline(self,
                           pipeline: diffusers.DiffusionPipeline,

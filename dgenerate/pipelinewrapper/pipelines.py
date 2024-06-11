@@ -923,11 +923,21 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         if control_net_uris:
             raise UnsupportedPipelineConfigError(
                 'Stable Cascade --model-type values are not compatible with --control-nets.')
+        if textual_inversion_uris:
+            raise UnsupportedPipelineConfigError(
+                'Stable Cascade --model-type values are not compatible with --textual-inversions.')
+        if lora_uris:
+            raise UnsupportedPipelineConfigError(
+                'Stable Cascade --model-type values are not compatible with --loras')
         if vae_uri:
             raise UnsupportedPipelineConfigError(
                 'Stable Cascade --model-type values are not compatible with --vae.')
 
     if _enums.model_type_is_upscaler(model_type):
+        if control_net_uris:
+            raise UnsupportedPipelineConfigError(
+                'Upscaler models are not compatible with --control-nets.')
+
         if pipeline_type != _enums.PipelineType.IMG2IMG and not scheduler_is_help(scheduler):
             raise UnsupportedPipelineConfigError(
                 'Upscaler models only work with img2img generation, IE: --image-seeds (with no image masks).')

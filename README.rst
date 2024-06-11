@@ -2282,6 +2282,10 @@ If you are loading a .safetensors or other file from a path on disk, only the ``
 Specifying Textual Inversions
 =============================
 
+Textual inversions, otherwise known as embeddings, are supported for
+Stable Diffusion and Stable Diffusion XL. `--model-type torch` and
+`--model-type torch-sdxl` respectively.
+
 One or more Textual Inversion models may be specified with ``--textual-inversions``
 
 You can provide a huggingface repository slug, .pt, .pth, .bin, .ckpt, or .safetensors files.
@@ -3547,6 +3551,7 @@ Example output:
         "\use_modules"
         "\clear_modules"
         "\gen_seeds"
+        "\download"
         "\pwd"
         "\ls"
         "\cd"
@@ -3937,6 +3942,10 @@ so that they exist in the cache longer than the default of 12 hours.
 
 You can see how to do this in the section `File Cache Control`_
 
+This directive is primarily intended to download models and or other
+binary file formats such as images and will raise an error if it encounters
+a text mimetype. This  behavior can be overridden with the `-t/--text` argument.
+
 .. code-block:: jinja
 
     #! dgenerate 3.6.1
@@ -3963,6 +3972,10 @@ You can see how to do this in the section `File Cache Control`_
     \download path https://modelhost.com/somemodel.safetensors -o models/
 
 
+    # download a model into the web cache an overwrite any cached model using -x
+
+    \download path https://modelhost.com/somemodel.safetensors -x
+
     # Download to an explicit path without any cached file reuse
     # using the -x/--overwrite argument. In effect, always freshly
     # download the file
@@ -3977,6 +3990,18 @@ The \\exit directive
 
 You can exit a config early if need be using the ``\exit`` directive
 
+.. code-block:: jinja
+
+    #! dgenerate 3.6.1
+
+    # exit the process with return code 0, which indicates success
+
+    \print "success"
+    \exit
+
+
+An explicit return code can be provided as well
+
 
 .. code-block:: jinja
 
@@ -3986,6 +4011,7 @@ You can exit a config early if need be using the ``\exit`` directive
 
     \print "some error occurred"
     \exit 1
+
 
 Running configs from the command line
 -------------------------------------

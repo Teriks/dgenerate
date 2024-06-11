@@ -715,6 +715,14 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(
                     f'Stable Cascade cannot use a {a_namer("vae_uri")} value.')
 
+            if self.lora_uris is not None:
+                raise RenderLoopConfigError(
+                    f'Stable Cascade does not currently support the use of {a_namer("lora_uris")}.')
+
+            if self.textual_inversion_uris is not None:
+                raise RenderLoopConfigError(
+                    f'Stable Cascade does not currently support the use of {a_namer("textual_inversion_uris")}.')
+
             if not self.s_cascade_decoder_guidance_scales:
                 self.s_cascade_decoder_guidance_scales = [
                     _pipelinewrapper.DEFAULT_S_CASCADE_DECODER_GUIDANCE_SCALE]
@@ -749,7 +757,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
             if self.lora_uris:
                 raise RenderLoopConfigError(
-                    f'{a_namer("loras")} is not supported for '
+                    f'{a_namer("lora_uris")} is not supported for '
                     f'flax, see: {a_namer("model_type")}.')
 
             if self.guidance_rescales:
@@ -857,6 +865,12 @@ class RenderLoopConfig(_types.SetFromMixin):
             if self.control_net_uris:
                 raise RenderLoopConfigError(
                     f'you cannot specify {a_namer("control_net_uris")} without {a_namer("image_seeds")}.')
+
+        if self.model_type == _pipelinewrapper.ModelType.TORCH_UPSCALER_X2:
+            if self.lora_uris or self.textual_inversion_uris:
+                raise RenderLoopConfigError(
+                    f'--model-type {_pipelinewrapper.get_model_type_string(self.model_type)} '
+                    f'is not compatible with {a_namer("lora_uris")} or {a_namer("textual_inversion_uris")}.')
 
         upscaler_noise_levels_default_set = False
         if not _pipelinewrapper.model_type_is_upscaler(self.model_type) \
