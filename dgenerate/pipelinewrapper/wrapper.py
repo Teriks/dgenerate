@@ -1253,7 +1253,7 @@ class DiffusionPipelineWrapper:
 
         from dgenerate import __version__
 
-        config = f'#! dgenerate {__version__}\n\n'
+        config = f'#! /usr/bin/env dgenerate --file\n#! dgenerate {__version__}\n\n'
 
         if extra_comments:
             wrote_comments = False
