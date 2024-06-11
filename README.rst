@@ -2283,8 +2283,9 @@ Specifying Textual Inversions
 =============================
 
 Textual inversions, otherwise known as embeddings, are supported for
-Stable Diffusion and Stable Diffusion XL. `--model-type torch` and
-`--model-type torch-sdxl` respectively.
+Stable Diffusion, the Stable Diffusion x4 Upscaler, and Stable Diffusion XL.
+
+IE: `--model-type torch`, `--model-type torch-upscaler-x4`, and `--model-type torch-sdxl` respectively.
 
 One or more Textual Inversion models may be specified with ``--textual-inversions``
 
