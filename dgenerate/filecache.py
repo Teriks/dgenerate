@@ -506,6 +506,9 @@ class WebFileCache(FileCache):
 
             chunk_size = _memory.calculate_chunk_size(total_size)
 
+            if tqdm_pbar is not None:
+                _messages.log(f'Downloading: "{url}"', underline=True)
+
             if chunk_size != total_size:
 
                 if tqdm_pbar is None:
@@ -515,7 +518,6 @@ class WebFileCache(FileCache):
                             yield chunk
                 else:
                     def file_data_generator():
-                        _messages.log(f'Downloading: "{url}"', underline=True)
                         with tqdm_pbar(total=total_size if total_size != 0 else None,
                                        unit='iB',
                                        unit_scale=True) as progress_bar:
