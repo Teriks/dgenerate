@@ -46,7 +46,6 @@ import dgenerate.batchprocess.configrunnerpluginloader as _configrunnerpluginloa
 import dgenerate.batchprocess.util as _util
 import dgenerate.files as _files
 import dgenerate.invoker as _invoker
-import dgenerate.mediainput as _mediainput
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
@@ -54,6 +53,7 @@ import dgenerate.prompt as _prompt
 import dgenerate.renderloop as _renderloop
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+import dgenerate.webcache as _webcache
 
 
 def _format_prompt_single(prompt):
@@ -541,9 +541,26 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
     def _download_directive(self, command_line_args: collections.abc.Sequence[str]):
         """
-        Download a file from a URL to a specified path or to the web cache.
+        Download a file from a URL to the web cache or a specified path,
+        and assign the file path to a template variable.
 
-        See: \\download --help
+        \\download my_variable https://modelhost.com/model.safetensors
+
+        \\download my_variable https://modelhost.com/model.safetensors -o model.safetensors
+
+        \\download my_variable https://modelhost.com/model.safetensors -o directory/
+
+        When a path is specified, if the file already exists it will be reused
+        by default (simple caching behavior), this can be disabled with
+        -x/--overwrite indicating that the file should always be downloaded.
+
+        -x/--overwrite can also be used to overwrite cached
+        files in the dgenerate web cache.
+
+        An error will be raised by default if a text mimetype is encountered,
+        this can be overridden with -t/--text
+
+        For usage see: \\download --help
         """
         parser = _util.DirectiveArgumentParser(
             prog='\\download', description='Download a file.')
@@ -562,8 +579,16 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         parser.add_argument('-x', '--overwrite',
                             action='store_true',
                             default=False,
-                            help='If an explicit path is specified always '
-                                 'overwrite existing files instead of reusing them.')
+                            help='Always overwrite existing files instead of reusing them.')
+        parser.add_argument('-t', '--text',
+                            action='store_true',
+                            default=False,
+                            help='Allow for downloading text/* mimetypes without raising an error. '
+                                 'This is not typically what this directive should be used for. '
+                                 'It should be used for binary files such as images and models. '
+                                 'By default it will error when it encounters a text mimetype because '
+                                 'that likely indicates you have hit a login page while attempting '
+                                 'to download a model or an image.')
 
         args = parser.parse_args(command_line_args)
 
@@ -574,70 +599,97 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         self._jinja_user_define_check(args.variable)
 
+        def mimetype_supported(mimetype):
+            if args.text:
+                return True
+            return mimetype is None or not mimetype.startswith('text/')
+
         if args.output:
-            response = requests.get(args.url, headers={
-                'User-Agent': fake_useragent.UserAgent().chrome},
-                                    stream=True)
+            try:
+                with requests.get(args.url, headers={
+                    'User-Agent': fake_useragent.UserAgent().chrome},
+                                        stream=True) as response:
+                    response.raise_for_status()
 
-            if response.status_code == 200:
+                    content_type = response.headers.get('content-type', 'unknown')
 
-                if args.output.endswith('/') or args.output.endswith('\\'):
-                    os.makedirs(args.output, exist_ok=True)
-                    args.output = os.path.join(
-                        args.output, pyrfc6266.requests_response_to_filename(response))
+                    if not mimetype_supported(content_type):
+                        _messages.log(
+                            f'Downloaded text/* mimetype from "{args.url}" '
+                            'without specifying the -t/--text argument.',
+                            level=_messages.ERROR)
+                        return 1
 
-                total_size = int(response.headers.get('content-length', 0))
+                    if args.output.endswith('/') or args.output.endswith('\\'):
+                        os.makedirs(args.output, exist_ok=True)
+                        args.output = os.path.join(
+                            args.output, pyrfc6266.requests_response_to_filename(response))
 
-                if not args.overwrite and os.path.exists(args.output):
-                    _messages.log(f'Downloaded file already exists, using: {args.output}',
+                    total_size = int(response.headers.get('content-length', 0))
+
+                    if not args.overwrite and os.path.exists(args.output):
+                        _messages.log(f'Downloaded file already exists, using: {args.output}',
+                                      underline=True)
+                        self.template_variables[args.variable] = args.output
+                        return 0
+
+                    _messages.log(f'Downloading: "{args.url}"\n'
+                                  f'Destination: "{args.output}"',
                                   underline=True)
-                    self.template_variables[args.variable] = args.output
-                    return 0
 
-                _messages.log(f'Downloading: "{args.url}"\nDestination: "{args.output}"',
-                              underline=True)
-                chunk_size = _memory.calculate_chunk_size(total_size)
-                current_dl = args.output + '.unfinished'
+                    chunk_size = _memory.calculate_chunk_size(total_size)
+                    current_dl = args.output + '.unfinished'
 
-                with open(current_dl, 'wb') as file:
-                    if chunk_size != total_size:
-                        with tqdm.tqdm(total=total_size if total_size != 0 else None,
-                                       unit='iB',
-                                       unit_scale=True) as progress_bar:
-                            for chunk in response.iter_content(
-                                    chunk_size=chunk_size):
-                                if chunk:
-                                    progress_bar.update(len(chunk))
-                                    file.write(chunk)
-                                    file.flush()
-                            downloaded_size = progress_bar.n
-                    else:
-                        content = response.content
-                        downloaded_size = len(content)
-                        file.write(content)
-                        file.flush()
+                    with open(current_dl, 'wb') as file:
+                        if chunk_size != total_size:
+                            with tqdm.tqdm(total=total_size if total_size != 0 else None,
+                                           unit='iB',
+                                           unit_scale=True) as progress_bar:
+                                for chunk in response.iter_content(
+                                        chunk_size=chunk_size):
+                                    if chunk:
+                                        progress_bar.update(len(chunk))
+                                        file.write(chunk)
+                                        file.flush()
+                                downloaded_size = progress_bar.n
+                        else:
+                            content = response.content
+                            downloaded_size = len(content)
+                            file.write(content)
+                            file.flush()
 
-                file_path = args.output
+                    file_path = args.output
 
-                if total_size != 0 and downloaded_size != total_size:
-                    _messages.log('Download failure, something went wrong '
-                                  'during the download.', level=_messages.ERROR)
-                    return 1
+                    if total_size != 0 and downloaded_size != total_size:
+                        _messages.log('Download failure, something went wrong '
+                                      f'downloading "{args.url}".',
+                                      level=_messages.ERROR)
+                        return 1
 
-                os.replace(current_dl, args.output)
-            else:
-                _messages.log(f"Failed to download file. "
-                              f"HTTP status code: {response.status_code}",
+                    os.replace(current_dl, args.output)
+            except requests.RequestException as e:
+                _messages.log(f'Failed to download "{args.url}": {e}',
                               level=_messages.ERROR)
                 return 1
         else:
+            class _MimeExcept(Exception):
+                pass
+
             try:
-                _, file_path = _mediainput.create_web_cache_file(
+                _, file_path = _webcache.create_web_cache_file(
                     args.url,
-                    mimetype_is_supported=None)
-            except requests.HTTPError as e:
-                _messages.log(f"Failed to download file. "
-                              f"HTTP status code: {e.response.status_code}",
+                    mime_acceptable_desc=None if args.text else 'not text',
+                    mimetype_is_supported=mimetype_supported,
+                    unknown_mimetype_exception=_MimeExcept,
+                    overwrite=args.overwrite)
+            except _MimeExcept:
+                _messages.log(
+                    f'Downloaded text/* mimetype from "{args.url}" '
+                    'without specifying the -t/--text argument.',
+                    level=_messages.ERROR)
+                return 1
+            except requests.RequestException as e:
+                _messages.log(f'Failed to download "{args.url}": {e}',
                               level=_messages.ERROR)
                 return 1
 

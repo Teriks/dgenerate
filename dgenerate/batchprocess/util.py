@@ -46,7 +46,7 @@ class DirectiveArgumentParser(argparse.ArgumentParser):
         try:
             return super().parse_args(args)
         except self._ExitException:
-            pass
+            return argparse.Namespace()
 
     def parse_known_args(
             self, args: typing.Sequence[str] | None = ...,
@@ -55,7 +55,7 @@ class DirectiveArgumentParser(argparse.ArgumentParser):
         try:
             return super().parse_known_args(args, namespace)
         except self._ExitException:
-            pass
+            return argparse.Namespace(), []
 
     def parse_intermixed_args(self,
                               args: typing.Sequence[str] | None = ...,
@@ -63,7 +63,7 @@ class DirectiveArgumentParser(argparse.ArgumentParser):
         try:
             return super().parse_intermixed_args(args, namespace)
         except self._ExitException:
-            pass
+            return argparse.Namespace()
 
     def parse_known_intermixed_args(
             self, args: typing.Sequence[str] | None = ..., namespace: argparse.Namespace | None = ...
@@ -71,7 +71,7 @@ class DirectiveArgumentParser(argparse.ArgumentParser):
         try:
             return super().parse_known_intermixed_args(args, namespace)
         except self._ExitException:
-            pass
+            return argparse.Namespace(), []
 
     def exit(self, status=0, message=None):
         if self.return_code is not None:
