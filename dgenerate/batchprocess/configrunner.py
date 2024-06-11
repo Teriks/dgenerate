@@ -597,7 +597,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         file_path = None
 
-        self._jinja_user_define_check(args.variable)
+        self.user_define_check(args.variable)
 
         def mimetype_supported(mimetype):
             if args.text:
