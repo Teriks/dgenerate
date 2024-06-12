@@ -4048,7 +4048,7 @@ The \\print and \\echo directive
 
 The ``\print`` and ``\echo`` directive can both be used to output text to the console.
 
-The difference between the two directives is that ``\\print`` only ever prints
+The difference between the two directives is that ``\print`` only ever prints
 the raw value with templating and environmental variable expansion applied,
 similar to the behavior of ``\set``
 
