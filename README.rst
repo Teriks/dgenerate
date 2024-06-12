@@ -4186,7 +4186,7 @@ as a template function. See: `The download() template function`_
 The download() template function
 --------------------------------
 
-The template function ``download`` is analogous to the ``\\download`` directive
+The template function ``download`` is analogous to the ``\download`` directive
 
 And can be used to download a file with the same behaviour and return its
 path as a string, this may be easier to use inside of certain jinja flow
