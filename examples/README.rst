@@ -1,45 +1,47 @@
 You can use run.py to run all of the examples at once, or a specific folder, or a specific config file.
 
-# Run every example (flax is ignored on windows)
-# Use python3 on linux
+.. code-block:: bash
 
-# See python run.py --help
+    # Run every example (flax is ignored on windows)
+    # Use python3 on linux
 
-python run.py
+    # See python run.py --help
 
-# Run every stable diffusion example
+    python run.py
 
-python run.py --paths stablediffusion
+    # Run every stable diffusion example
 
-# Run every stable diffusion example, do not
-# run examples that generate animations
+    python run.py --paths stablediffusion
 
-python run.py --paths stablediffusion --skip-animations
+    # Run every stable diffusion example, do not
+    # run examples that generate animations
 
-
-# Run the stablediffusion/basic example
-
-python run.py --paths stablediffusion/basic
+    python run.py --paths stablediffusion --skip-animations
 
 
-# Run the stablediffusion/animations/kitten-config.dgen configuration
+    # Run the stablediffusion/basic example
 
-python run.py --paths stablediffusion/animations/kitten-config.dgen
-
-
-# Pass arguments to dgenerate, run all examples with debugging output
-
-python run.py -v
-
-# Passing arguments works for specific examples as well
-
-python run.py --paths stablediffusion/basic -v
-python run.py --paths stablediffusion/animations/kitten-config.dgen -v
+    python run.py --paths stablediffusion/basic
 
 
-# you can run library_usage examples but arguments
-# will be ignored for them
+    # Run the stablediffusion/animations/kitten-config.dgen configuration
 
-python run.py --paths library_usage/basic
+    python run.py --paths stablediffusion/animations/kitten-config.dgen
+
+
+    # Pass arguments to dgenerate, run all examples with debugging output
+
+    python run.py -v
+
+    # Passing arguments works for specific examples as well
+
+    python run.py --paths stablediffusion/basic -v
+    python run.py --paths stablediffusion/animations/kitten-config.dgen -v
+
+
+    # you can run library_usage examples but arguments
+    # will be ignored for them
+
+    python run.py --paths library_usage/basic
 
 
