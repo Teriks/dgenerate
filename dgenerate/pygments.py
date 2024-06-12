@@ -108,8 +108,9 @@ _http_pattern = (r'(?<!\w)(https?://(?:'  # Protocol
 
 _path_patterns = (
     _http_pattern,
-    (rf'(?<!\w)([a-zA-Z]:(([/]|\\\\){_ecos}*)+)', _token.String),
-    (rf'(?<!\w)(~|..?)?(([/]|\\\\){_ecos}+)(([/]|\\\\){_ecos}*)*', _token.String),
+    (rf'(?<!\w)([a-zA-Z]:(([/]|\\\\){_ecos}*)+)', _token.String), # Drive letters
+    (rf'(?<!\w)(~|..?)?(([/]|\\\\){_ecos}+)(([/]|\\\\){_ecos}*)*', _token.String),  # absolute paths with relative components
+    (rf'(?<!\w)({_ecos}+)(([/]|\\\\){_ecos}*)+', _token.String),  # relative paths with relative components
     (rf'(?<!\w){_ecos}+\.{_ecos}+', _token.String)
 )
 
