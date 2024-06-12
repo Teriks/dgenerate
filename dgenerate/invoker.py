@@ -50,7 +50,7 @@ class DgenerateExitEvent(_event.Event):
         self.return_code = return_code
 
 
-InvokeDgenerateEvents = typing.Union[_renderloop.RenderLoopEvent, DgenerateExitEvent]
+InvokeDgenerateEvents = _renderloop.RenderLoopEvent | DgenerateExitEvent
 """
 Events yield-able by :py:func:`.invoke_dgenerate_events`
 """
@@ -62,7 +62,7 @@ Event stream produced by :py:func:`.invoke_dgenerate_events`
 
 
 def invoke_dgenerate(args: collections.abc.Sequence[str],
-                     render_loop: typing.Optional[_renderloop.RenderLoop] = None,
+                     render_loop: _renderloop.RenderLoop | None = None,
                      throw: bool = False,
                      log_error: bool = True,
                      help_raises: bool = False) -> int:
@@ -107,7 +107,7 @@ def invoke_dgenerate(args: collections.abc.Sequence[str],
 
 def invoke_dgenerate_events(
         args: collections.abc.Sequence[str],
-        render_loop: typing.Optional[_renderloop.RenderLoop] = None,
+        render_loop: _renderloop.RenderLoop | None = None,
         throw: bool = False,
         log_error: bool = True,
         help_raises: bool = False) -> InvokeDgenerateEventStream:

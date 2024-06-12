@@ -144,7 +144,7 @@ except KeyboardInterrupt:
     sys.exit(1)
 
 
-def main(args: typing.Optional[collections.abc.Sequence[str]] = None):
+def main(args: collections.abc.Sequence[str] | None = None):
     """
     Entry point for the dgenerate command line tool.
 

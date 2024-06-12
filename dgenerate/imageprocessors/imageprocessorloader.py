@@ -48,9 +48,8 @@ class ImageProcessorLoader(_plugin.PluginLoader):
 
         self.add_search_module_string('dgenerate.imageprocessors')
 
-    def load(self, uri: typing.Union[_types.Uri, collections.abc.Iterable[_types.Uri]], device: str = 'cpu',
-             **kwargs) -> \
-            typing.Union[_imageprocessor.ImageProcessor, _imageprocessorchain.ImageProcessorChain, None]:
+    def load(self, uri: _types.Uri | collections.abc.Iterable[_types.Uri], device: str = 'cpu',
+             **kwargs) -> _imageprocessor.ImageProcessor | _imageprocessorchain.ImageProcessorChain | None:
         """
         Load an image processor or multiple image processors. They are loaded by URI, which
         is their name and any module arguments, for example: ``canny;lower=50;upper=100``

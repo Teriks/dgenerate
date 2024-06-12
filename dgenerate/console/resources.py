@@ -34,7 +34,7 @@ import PIL.ImageTk
 import toml
 
 
-def set_window_icon(window: typing.Union[tkinter.Tk, tkinter.Toplevel]):
+def set_window_icon(window: tkinter.Tk | tkinter.Toplevel):
     if platform.system() == 'Windows':
         with importlib.resources.path('dgenerate', 'icon.ico') as path:
             window.iconbitmap(default=path)

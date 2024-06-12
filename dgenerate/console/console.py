@@ -65,6 +65,8 @@ class DgenerateConsole(tk.Tk):
 
         _resources.set_window_icon(self)
 
+        self._shell_process = None
+
         # Create main menu
 
         # File menu
@@ -1071,7 +1073,7 @@ class DgenerateConsole(tk.Tk):
         self._output_text.text.config(state=tk.DISABLED)
         self.after(self._output_refresh_rate, self._text_update)
 
-    def _write_stdout_output(self, text: typing.Union[bytes, str]):
+    def _write_stdout_output(self, text: bytes | str):
         if isinstance(text, str):
             text = text.encode('utf-8')
 
@@ -1079,7 +1081,7 @@ class DgenerateConsole(tk.Tk):
         sys.stdout.flush()
         self._output_text_stdout_queue.put(text.decode('utf-8'))
 
-    def _write_stderr_output(self, text: typing.Union[bytes, str]):
+    def _write_stderr_output(self, text: bytes | str):
         if isinstance(text, str):
             text = text.encode('utf-8')
 

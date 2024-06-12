@@ -31,8 +31,8 @@ class Prompt:
     """
 
     def __init__(self,
-                 positive: typing.Optional[str] = None,
-                 negative: typing.Optional[str] = None,
+                 positive: str | None = None,
+                 negative: str | None = None,
                  delimiter: str = ';'):
         """
         :param positive: positive prompt component

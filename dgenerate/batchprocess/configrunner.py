@@ -69,8 +69,7 @@ def _format_prompt_single(prompt):
 
 
 def _format_prompt(
-        prompts: typing.Union[_prompt.Prompt,
-        collections.abc.Iterable[_prompt.Prompt]]):
+        prompts: _prompt.Prompt | collections.abc.Iterable[_prompt.Prompt]):
     """
     Format a prompt object, or a list of prompt objects, into quoted string(s)
     """
@@ -86,7 +85,7 @@ def _format_size(size: collections.abc.Iterable[int]):
     return _textprocessing.format_size(size)
 
 
-def _quote(strings: typing.Union[str, collections.abc.Iterable[typing.Any]]):
+def _quote(strings: str | collections.abc.Iterable[typing.Any]):
     """
     Shell quote a string or iterable of strings
     """
@@ -95,7 +94,7 @@ def _quote(strings: typing.Union[str, collections.abc.Iterable[typing.Any]]):
     return ' '.join(shlex.quote(str(s)) for s in strings)
 
 
-def _unquote(strings: typing.Union[str, collections.abc.Iterable[typing.Any]], expand: bool = False):
+def _unquote(strings: str | collections.abc.Iterable[typing.Any], expand: bool = False):
     """
     Un-Shell quote a string or iterable of strings (shell parse)
 
@@ -116,7 +115,7 @@ def _unquote(strings: typing.Union[str, collections.abc.Iterable[typing.Any]], e
                 expand_vars=False) for s in strings))
 
 
-def _last(iterable: typing.Union[list, collections.abc.Iterable[typing.Any]]):
+def _last(iterable: list | collections.abc.Iterable[typing.Any]):
     """
     Return the last element in an iterable collection.
     """
@@ -156,6 +155,126 @@ def _cwd():
     return os.getcwd()
 
 
+def _download(url: str,
+              output: str | None = None,
+              overwrite: bool = False,
+              text: bool = False) -> str:
+    """
+    Download a file from a URL to the web cache or a specified path,
+    and return the file path to the downloaded file.
+
+    \\set my_variable {{ download('https://modelhost.com/model.safetensors' }}
+
+    \\set my_variable {{ download('https://modelhost.com/model.safetensors', output='model.safetensors') }}
+
+    \\set my_variable {{ download('https://modelhost.com/model.safetensors', output='directory/' }}
+
+    When an "output" path is specified, if the file already exists it
+    will be reused by default (simple caching behavior), this can be disabled
+    with the argument "overwrite=True" indicating that the file should
+    always be downloaded.
+
+    "overwrite=True" can also be used to overwrite cached
+    files in the dgenerate web cache.
+
+    An error will be raised by default if a text mimetype is encountered,
+    this can be overridden with "text=True"
+
+    Be weary that if you have a long-running loop in your config using
+    a top level jinja template, which refers to your template variable,
+    cache expiry may invalidate the file stored in your variable.
+
+    You can rectify this by using the template function inside of your loop.
+    """
+
+    def mimetype_supported(mimetype):
+        if text:
+            return True
+        return mimetype is None or not mimetype.startswith('text/')
+
+    if output:
+        try:
+            with requests.get(url, headers={
+                'User-Agent': fake_useragent.UserAgent().chrome},
+                              stream=True) as response:
+                response.raise_for_status()
+
+                content_type = response.headers.get('content-type', 'unknown')
+
+                if not mimetype_supported(content_type):
+                    raise _batchprocessor.BatchProcessError(
+                        f'Downloaded text/* mimetype from "{url}" '
+                        'without specifying the -t/--text argument.')
+
+                if output.endswith('/') or output.endswith('\\'):
+                    os.makedirs(output, exist_ok=True)
+                    output = os.path.join(
+                        output, pyrfc6266.requests_response_to_filename(response))
+
+                total_size = int(response.headers.get('content-length', 0))
+
+                if not overwrite and os.path.exists(output):
+                    _messages.log(f'Downloaded file already exists, using: {output}',
+                                  underline=True)
+                    return output
+
+                _messages.log(f'Downloading: "{url}"\n'
+                              f'Destination: "{output}"',
+                              underline=True)
+
+                chunk_size = _memory.calculate_chunk_size(total_size)
+                current_dl = output + '.unfinished'
+
+                with open(current_dl, 'wb') as file:
+                    if chunk_size != total_size:
+                        with tqdm.tqdm(total=total_size if total_size != 0 else None,
+                                       unit='iB',
+                                       unit_scale=True) as progress_bar:
+                            for chunk in response.iter_content(
+                                    chunk_size=chunk_size):
+                                if chunk:
+                                    progress_bar.update(len(chunk))
+                                    file.write(chunk)
+                                    file.flush()
+                            downloaded_size = progress_bar.n
+                    else:
+                        content = response.content
+                        downloaded_size = len(content)
+                        file.write(content)
+                        file.flush()
+
+                file_path = output
+
+                if total_size != 0 and downloaded_size != total_size:
+                    raise _batchprocessor.BatchProcessError(
+                        'Download failure, something went wrong '
+                        f'downloading "{url}".', )
+
+                os.replace(current_dl, output)
+        except requests.RequestException as e:
+            raise _batchprocessor.BatchProcessError(
+                f'Failed to download "{url}": {e}')
+    else:
+        class _MimeExcept(Exception):
+            pass
+
+        try:
+            _, file_path = _webcache.create_web_cache_file(
+                url,
+                mime_acceptable_desc=None if text else 'not text',
+                mimetype_is_supported=mimetype_supported,
+                unknown_mimetype_exception=_MimeExcept,
+                overwrite=overwrite)
+        except _MimeExcept:
+            raise _batchprocessor.BatchProcessError(
+                f'Downloaded text/* mimetype from "{url}" '
+                'without specifying the -t/--text argument.')
+        except requests.RequestException as e:
+            raise _batchprocessor.BatchProcessError(f'Failed to download "{url}": {e}')
+
+    return file_path
+
+
 class ConfigRunner(_batchprocessor.BatchProcessor):
     """
     A :py:class:`.BatchProcessor` that can run dgenerate batch processing configs from a string or file.
@@ -172,10 +291,10 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         return frozenset(self._plugin_module_paths)
 
     def __init__(self,
-                 injected_args: typing.Optional[collections.abc.Sequence[str]] = None,
-                 render_loop: typing.Optional[_renderloop.RenderLoop] = None,
+                 injected_args: collections.abc.Sequence[str] | None = None,
+                 render_loop: _renderloop.RenderLoop | None = None,
                  plugin_loader: _configrunnerpluginloader.ConfigRunnerPluginLoader = None,
-                 version: typing.Union[_types.Version, str] = dgenerate.__version__,
+                 version: _types.Version | str = dgenerate.__version__,
                  throw: bool = False):
         """
 
@@ -243,7 +362,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'last': _last,
             'first': _first,
             'gen_seeds': _gen_seeds,
-            'cwd': _cwd
+            'cwd': _cwd,
+            'download': _download
         }
 
         def return_zero(func, help_text):
@@ -321,7 +441,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         """
         Imports plugins from within a config, this imports config plugins as well as image processor plugins.
         This has an identical effect to the --plugin-modules argument. You may specify multiple plugin
-        module directories or python files containing plugin implementations.
+        module directories or python files containing plugin implementations, you may also specify
+        modules that are installed in the python environment by name.
         """
 
         if len(plugin_paths) == 0:
@@ -550,8 +671,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         \\download my_variable https://modelhost.com/model.safetensors -o directory/
 
-        When a path is specified, if the file already exists it will be reused
-        by default (simple caching behavior), this can be disabled with
+        When an --output path is specified, if the file already exists it will
+        be reused by default (simple caching behavior), this can be disabled with
         -x/--overwrite indicating that the file should always be downloaded.
 
         -x/--overwrite can also be used to overwrite cached
@@ -559,6 +680,16 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         An error will be raised by default if a text mimetype is encountered,
         this can be overridden with -t/--text
+
+        Be weary that if you have a long-running loop in your config using
+        a top level jinja template, which refers to your template variable,
+        cache expiry may invalidate the file stored in your variable.
+
+        You can rectify this by putting the download directive inside of
+        your processing loop so that the file is simply re-downloaded.
+
+        Or you may be better off using the download
+        template function which provides this functionality as a template function.
 
         For usage see: \\download --help
         """
@@ -595,103 +726,13 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         if parser.return_code is not None:
             return parser.return_code
 
-        file_path = None
-
         self.user_define_check(args.variable)
 
-        def mimetype_supported(mimetype):
-            if args.text:
-                return True
-            return mimetype is None or not mimetype.startswith('text/')
-
-        if args.output:
-            try:
-                with requests.get(args.url, headers={
-                    'User-Agent': fake_useragent.UserAgent().chrome},
-                                        stream=True) as response:
-                    response.raise_for_status()
-
-                    content_type = response.headers.get('content-type', 'unknown')
-
-                    if not mimetype_supported(content_type):
-                        _messages.log(
-                            f'Downloaded text/* mimetype from "{args.url}" '
-                            'without specifying the -t/--text argument.',
-                            level=_messages.ERROR)
-                        return 1
-
-                    if args.output.endswith('/') or args.output.endswith('\\'):
-                        os.makedirs(args.output, exist_ok=True)
-                        args.output = os.path.join(
-                            args.output, pyrfc6266.requests_response_to_filename(response))
-
-                    total_size = int(response.headers.get('content-length', 0))
-
-                    if not args.overwrite and os.path.exists(args.output):
-                        _messages.log(f'Downloaded file already exists, using: {args.output}',
-                                      underline=True)
-                        self.template_variables[args.variable] = args.output
-                        return 0
-
-                    _messages.log(f'Downloading: "{args.url}"\n'
-                                  f'Destination: "{args.output}"',
-                                  underline=True)
-
-                    chunk_size = _memory.calculate_chunk_size(total_size)
-                    current_dl = args.output + '.unfinished'
-
-                    with open(current_dl, 'wb') as file:
-                        if chunk_size != total_size:
-                            with tqdm.tqdm(total=total_size if total_size != 0 else None,
-                                           unit='iB',
-                                           unit_scale=True) as progress_bar:
-                                for chunk in response.iter_content(
-                                        chunk_size=chunk_size):
-                                    if chunk:
-                                        progress_bar.update(len(chunk))
-                                        file.write(chunk)
-                                        file.flush()
-                                downloaded_size = progress_bar.n
-                        else:
-                            content = response.content
-                            downloaded_size = len(content)
-                            file.write(content)
-                            file.flush()
-
-                    file_path = args.output
-
-                    if total_size != 0 and downloaded_size != total_size:
-                        _messages.log('Download failure, something went wrong '
-                                      f'downloading "{args.url}".',
-                                      level=_messages.ERROR)
-                        return 1
-
-                    os.replace(current_dl, args.output)
-            except requests.RequestException as e:
-                _messages.log(f'Failed to download "{args.url}": {e}',
-                              level=_messages.ERROR)
-                return 1
-        else:
-            class _MimeExcept(Exception):
-                pass
-
-            try:
-                _, file_path = _webcache.create_web_cache_file(
-                    args.url,
-                    mime_acceptable_desc=None if args.text else 'not text',
-                    mimetype_is_supported=mimetype_supported,
-                    unknown_mimetype_exception=_MimeExcept,
-                    overwrite=args.overwrite)
-            except _MimeExcept:
-                _messages.log(
-                    f'Downloaded text/* mimetype from "{args.url}" '
-                    'without specifying the -t/--text argument.',
-                    level=_messages.ERROR)
-                return 1
-            except requests.RequestException as e:
-                _messages.log(f'Failed to download "{args.url}": {e}',
-                              level=_messages.ERROR)
-                return 1
+        try:
+            file_path = _download(args.url, args.output, args.overwrite, args.text)
+        except _batchprocessor.BatchProcessError as e:
+            _messages.log(str(e), level=_messages.ERROR)
+            return 1
 
         self.template_variables[args.variable] = file_path
 
@@ -1160,7 +1201,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
     def _generate_template_variables(self) -> dict[str, typing.Any]:
         return {k: v[1] for k, v in self._generate_template_variables_with_types().items()}
 
-    def generate_directives_help(self, directive_names: typing.Optional[typing.Collection[str]] = None):
+    def generate_directives_help(self, directive_names: typing.Collection[str] | None = None):
         """
         Generate the help string for ``--directives-help``
 
@@ -1175,7 +1216,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         if directive_names is None:
             directive_names = []
 
-        directives: dict[str, typing.Union[str, typing.Callable]] = self.directives.copy()
+        directives: dict[str, str | typing.Callable] = self.directives.copy()
 
         directives.update(self.directives_builtins_help)
 
@@ -1219,7 +1260,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         return help_string
 
-    def generate_functions_help(self, function_names: typing.Optional[typing.Collection[str]] = None):
+    def generate_functions_help(self, function_names: typing.Collection[str] | None = None):
         """
         Generate the help string for ``--functions-help``
 
@@ -1234,7 +1275,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         if function_names is None:
             function_names = []
 
-        functions: dict[str, typing.Union[str, typing.Callable]] = self.builtins.copy()
+        functions: dict[str, str | typing.Callable] = self.builtins.copy()
         functions.update(self.template_functions)
 
         functions = dict(sorted(functions.items()))
@@ -1242,7 +1283,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         if len(function_names) == 0:
 
             help_string = f'Available config template functions:' + '\n\n'
-            help_string += '\n\n'.join(
+            help_string += '\n'.join(
                 (' ' * 4) +
                 (_types.format_function_signature(v, alternate_name=n)
                  if inspect.isfunction(v) else _types.format_function_signature(
@@ -1287,7 +1328,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         return help_string
 
     def generate_template_variables_help(self,
-                                         variable_names: typing.Optional[typing.Collection[str]] = None,
+                                         variable_names: typing.Collection[str] | None = None,
                                          show_values: bool = True):
         """
         Generate a help string describing available template variables, their types, and values for use in batch processing.

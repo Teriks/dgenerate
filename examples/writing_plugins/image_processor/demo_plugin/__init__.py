@@ -24,13 +24,19 @@ class FooBarImageProcessor(dgenerate.imageprocessors.ImageProcessor):
     # is verified by dgenerate, adding type hints will cause the argument values
     # to be parsed into that type automatically with validation when parsed from a URI,
     # arguments without type hints will be parsed as python literals unless they cannot
-    # be parsed into a python literal, in which case they will be passed straight through as a raw string.
+    # be parsed into a python literal, in which case they will be passed straight through
+    # as a raw string.
+
     # The type hint typing.Optional[...] is supported to indicate that an argument is optional,
     # when a value is passed to an optional argument that value will be validated against the
     # specified optional type, if you do not provide a default None value in the constructor
     # (which you should), dgenerate will pass None for you. The type hints (list, dict, set) are
     # are supported as type hints, and they will be parsed into their respective types when
     # defined in the URI with their python literal syntax, this is also supported for optionals
+
+    # The type hint typing.Union[...] may also be used with multiple types present
+
+    # Python type hint syntax using the | operator to declare type hints is not supported
     def __init__(self,
                  my_argument: str,
                  my_argument_2: bool = False,
@@ -48,7 +54,7 @@ class FooBarImageProcessor(dgenerate.imageprocessors.ImageProcessor):
 
         # raise self.argument_error('My argument error message')
 
-    def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: typing.Union[None, tuple]):
+    def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: tuple | None):
 
         # This step runs before dgenerate resizes an image to the value of --output-size
         # "resize_resolution" is the resolution that the image is going to be resized to
@@ -134,7 +140,7 @@ class BooFabImageProcessor(dgenerate.imageprocessors.ImageProcessor):
             self._my_argument_2 = kwargs['my_argument_2']
             self._my_argument_3 = kwargs['my_argument_3']
 
-    def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: typing.Union[None, tuple]):
+    def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: tuple | None):
         print(f'{self.loaded_by_name}:', self._my_argument, self._my_argument_2, self._my_argument_3)
         return image
 

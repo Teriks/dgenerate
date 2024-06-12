@@ -602,8 +602,9 @@ def vae_to_cpu_update_cache_info(vae):
                             f'({_memory.bytes_best_human_unit(vae.DGENERATE_SIZE_ESTIMATE)})')
 
 
-def controlnet_to_cpu_update_cache_info(controlnet: typing.Union[diffusers.models.ControlNetModel,
-                                                                 diffusers.pipelines.controlnet.MultiControlNetModel]):
+def controlnet_to_cpu_update_cache_info(
+        controlnet: diffusers.models.ControlNetModel |
+                    diffusers.pipelines.controlnet.MultiControlNetModel):
     """
     Update CPU side cache size information when a ControlNet module is moved to the CPU
 
@@ -645,7 +646,7 @@ def controlnet_to_cpu_update_cache_info(controlnet: typing.Union[diffusers.model
 
 
 def pipeline_off_cpu_update_cache_info(
-        pipeline: typing.Union[diffusers.DiffusionPipeline, diffusers.FlaxDiffusionPipeline]):
+        pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusionPipeline):
     """
     Update CPU side cache size information when a diffusers pipeline is moved to a device that is not the CPU
 
@@ -712,8 +713,9 @@ def vae_off_cpu_update_cache_info(vae):
                             f'({_memory.bytes_best_human_unit(vae_cache_size())})')
 
 
-def controlnet_off_cpu_update_cache_info(controlnet: typing.Union[diffusers.models.ControlNetModel,
-diffusers.pipelines.controlnet.MultiControlNetModel]):
+def controlnet_off_cpu_update_cache_info(
+        controlnet: diffusers.models.ControlNetModel |
+                    diffusers.pipelines.controlnet.MultiControlNetModel):
     """
     Update CPU side cache size information when a ControlNet module is moved to a device that is not the CPU
 

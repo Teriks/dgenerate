@@ -48,14 +48,14 @@ class ImageProcessorMixin:
     Images will still be resized as needed/requested with this disabled.
     """
 
-    image_processor: typing.Optional[_imageprocessor.ImageProcessor] = None
+    image_processor: _imageprocessor.ImageProcessor | None = None
     """
     Current image processor.
     
     Images will still be resized as needed/requested if this is not assigned.
     """
 
-    def __init__(self, image_processor: typing.Optional[_imageprocessor.ImageProcessor] = None, *args, **kwargs):
+    def __init__(self, image_processor: _imageprocessor.ImageProcessor | None = None, *args, **kwargs):
         """
         :param processor: the processor implementation that will be doing
             the image processing.
@@ -71,7 +71,7 @@ class ImageProcessorMixin:
                       image: PIL.Image.Image,
                       resize_resolution: _types.OptionalSize = None,
                       aspect_correct: bool = True,
-                      align: typing.Optional[int] = 8):
+                      align: int | None = 8):
         """
         Preform image processing on an image, including the requested resizing step.
 

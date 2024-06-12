@@ -121,7 +121,7 @@ class ConfigRunnerPlugin(_plugin.Plugin):
         return []
 
     @property
-    def render_loop(self) -> typing.Optional[_renderloop.RenderLoop]:
+    def render_loop(self) -> _renderloop.RenderLoop | None:
         """
         Provides access to the currently instantiated :py:class:`dgenerate.renderloop.RenderLoop` object.
 

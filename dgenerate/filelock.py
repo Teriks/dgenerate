@@ -30,11 +30,10 @@ __doc__ = """
 Thread / Multiprocess safe file locking utilities.
 """
 
-PathMaker = typing.Callable[
-    [typing.Optional[str], typing.Optional[int]], typing.Union[str, collections.abc.Iterable[str]]]
+PathMaker = typing.Callable[[str | None, int | None], str | collections.abc.Iterable[str]]
 
 
-def suffix_path_maker(filenames: typing.Union[str, collections.abc.Iterable[str]], suffix: str) -> PathMaker:
+def suffix_path_maker(filenames: str | collections.abc.Iterable[str], suffix: str) -> PathMaker:
     """
     To be used with :py:func:`.touch_avoid_duplicate`, a pathmaker implementation that
     appends a suffix and a number to a filename or list of files when a duplicate is detected for

@@ -98,7 +98,7 @@ class HFBlobLink:
         return None
 
 
-def variant_match(filename: str, variant: typing.Optional[str] = None):
+def variant_match(filename: str, variant: str | None = None):
     """
     Match a model filename against a huggingface variant specifier such as "fp16"
 
@@ -146,9 +146,9 @@ def variant_match(filename: str, variant: typing.Optional[str] = None):
 
 def _hf_try_to_load_from_cache(repo_id: str,
                                filename: str,
-                               cache_dir: typing.Union[str, pathlib.Path, None] = None,
-                               revision: typing.Optional[str] = None,
-                               repo_type: typing.Optional[str] = None):
+                               cache_dir: str | pathlib.Path | None = None,
+                               revision: str | None = None,
+                               repo_type: str | None = None):
     try:
         return huggingface_hub.try_to_load_from_cache(
             repo_id=repo_id,
@@ -184,12 +184,12 @@ def download_non_hf_model(model_path):
 
 
 def fetch_model_files_with_size(repo_id: str,
-                                revision: typing.Optional[str] = 'main',
-                                variant: typing.Optional[str] = None,
-                                subfolder: typing.Optional[str] = None,
-                                weight_name: typing.Optional[str] = None,
-                                use_auth_token: typing.Optional[str] = None,
-                                extensions: typing.Optional[collections.abc.Iterable] = None,
+                                revision: str | None = 'main',
+                                variant: str | None = None,
+                                subfolder: str | None = None,
+                                weight_name: str | None = None,
+                                use_auth_token: str | None = None,
+                                extensions: collections.abc.Iterable | None = None,
                                 local_files_only: bool = False,
                                 flax: bool = False,
                                 sentencepiece: bool = False,
@@ -426,10 +426,10 @@ def fetch_model_files_with_size(repo_id: str,
 
 
 def estimate_model_memory_use(repo_id: str,
-                              revision: typing.Optional[str] = 'main',
-                              variant: typing.Optional[str] = None,
-                              subfolder: typing.Optional[str] = None,
-                              weight_name: typing.Optional[str] = None,
+                              revision: str | None = 'main',
+                              variant: str | None = None,
+                              subfolder: str | None = None,
+                              weight_name: str | None = None,
                               safety_checker: bool = False,
                               include_unet: bool = True,
                               include_vae: bool = True,
@@ -439,7 +439,7 @@ def estimate_model_memory_use(repo_id: str,
                               flax: bool = False,
                               sentencepiece: bool = False,
                               watermarker: bool = False,
-                              use_auth_token: typing.Optional[str] = None,
+                              use_auth_token: str | None = None,
                               local_files_only: bool = False) -> int:
     """
     Attempt to estimate the CPU side memory consumption of a model before it is loaded into memory.

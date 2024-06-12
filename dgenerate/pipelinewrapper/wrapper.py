@@ -58,7 +58,7 @@ class PipelineWrapperResult:
     """
     The result of calling :py:class:`.DiffusionPipelineWrapper`
     """
-    images: typing.Optional[_types.MutableImages]
+    images: _types.MutableImages | None
 
     @property
     def image_count(self):
@@ -105,7 +105,7 @@ class PipelineWrapperResult:
             grid.paste(img, box=(i % cols * w, i // cols * h))
         return grid
 
-    def __init__(self, images: typing.Optional[_types.Images]):
+    def __init__(self, images: _types.Images | None):
         self.images = images
         self.dgenerate_opts = list()
 
@@ -129,21 +129,21 @@ class DiffusionArguments(_types.SetFromMixin):
     Primary prompt
     """
 
-    image: typing.Optional[PIL.Image.Image] = None
+    image: PIL.Image.Image | None = None
     """
     Image for img2img operations, or the base for inpainting operations.
     
     All input images involved in a generation must match in dimension and be aligned by 8 pixels.
     """
 
-    mask_image: typing.Optional[PIL.Image.Image] = None
+    mask_image: PIL.Image.Image | None = None
     """
     Mask image for inpainting operations.
     
     All input images involved in a generation must match in dimension and be aligned by 8 pixels.
     """
 
-    control_images: typing.Optional[_types.Images] = None
+    control_images: _types.Images | None = None
     """
     ControlNet guidance images to use if ``control_net_uris`` were given to the 
     constructor of :py:class:`.DiffusionPipelineWrapper`.
@@ -151,7 +151,7 @@ class DiffusionArguments(_types.SetFromMixin):
     All input images involved in a generation must match in dimension and be aligned by 8 pixels.
     """
 
-    floyd_image: typing.Optional[PIL.Image.Image] = None
+    floyd_image: PIL.Image.Image | None = None
     """
     The output image of the last stage when preforming img2img or 
     inpainting generation with Deep Floyd. When preforming txt2img 
@@ -599,11 +599,11 @@ class DiffusionPipelineWrapper:
 
     def __init__(self,
                  model_path: _types.Path,
-                 model_type: typing.Union[_enums.ModelType, str] = _enums.ModelType.TORCH,
+                 model_type: _enums.ModelType | str = _enums.ModelType.TORCH,
                  revision: _types.OptionalName = None,
                  variant: _types.OptionalName = None,
                  subfolder: _types.OptionalName = None,
-                 dtype: typing.Union[_enums.DataType, str] = _enums.DataType.AUTO,
+                 dtype: _enums.DataType | str = _enums.DataType.AUTO,
                  unet_uri: _types.OptionalUri = None,
                  second_unet_uri: _types.OptionalUri = None,
                  vae_uri: _types.OptionalUri = None,
@@ -916,13 +916,13 @@ class DiffusionPipelineWrapper:
         return self._s_cascade_decoder_cpu_offload
 
     def reconstruct_dgenerate_opts(self,
-                                   args: typing.Optional[DiffusionArguments] = None,
-                                   extra_opts: typing.Optional[
+                                   args: DiffusionArguments | None = None,
+                                   extra_opts:
                                        collections.abc.Sequence[
-                                           typing.Union[tuple[str], tuple[str, typing.Any]]]] = None,
+                                           tuple[str] | tuple[str, typing.Any]] | None = None,
                                    shell_quote=True,
                                    **kwargs) -> \
-            list[typing.Union[tuple[str], tuple[str, typing.Any]]]:
+            list[tuple[str] | tuple[str, typing.Any]]:
         """
         Reconstruct dgenerates command line arguments from a particular set of pipeline wrapper call arguments.
 
@@ -1231,10 +1231,10 @@ class DiffusionPipelineWrapper:
         return shlex.quote(solo_val)
 
     def gen_dgenerate_config(self,
-                             args: typing.Optional[DiffusionArguments] = None,
-                             extra_opts: typing.Optional[
-                                 collections.abc.Sequence[typing.Union[tuple[str], tuple[str, typing.Any]]]] = None,
-                             extra_comments: typing.Optional[collections.abc.Iterable[str]] = None,
+                             args: DiffusionArguments | None = None,
+                             extra_opts:
+                                 collections.abc.Sequence[tuple[str] | tuple[str, typing.Any]] | None = None,
+                             extra_comments: collections.abc.Iterable[str] | None = None,
                              **kwargs):
         """
         Generate a valid dgenerate config file with a single invocation that reproduces this result.
@@ -1280,9 +1280,9 @@ class DiffusionPipelineWrapper:
         return config + self._format_option_pair(last)
 
     def gen_dgenerate_command(self,
-                              args: typing.Optional[DiffusionArguments] = None,
-                              extra_opts: typing.Optional[
-                                  collections.abc.Sequence[typing.Union[tuple[str], tuple[str, typing.Any]]]] = None,
+                              args: DiffusionArguments | None = None,
+                              extra_opts:
+                                  collections.abc.Sequence[tuple[str] | tuple[str, typing.Any]] | None = None,
                               **kwargs):
         """
         Generate a valid dgenerate command line invocation that reproduces this result.
@@ -2221,7 +2221,7 @@ class DiffusionPipelineWrapper:
 
         return True
 
-    def __call__(self, args: typing.Optional[DiffusionArguments] = None, **kwargs) -> PipelineWrapperResult:
+    def __call__(self, args: DiffusionArguments | None = None, **kwargs) -> PipelineWrapperResult:
         """
         Call the pipeline and generate a result.
 

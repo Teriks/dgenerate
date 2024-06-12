@@ -65,8 +65,8 @@ except _textprocessing.TimeDeltaParseError as e:
 
 
 def create_web_cache_file(url,
-                          mime_acceptable_desc: typing.Optional[str] = None,
-                          mimetype_is_supported: typing.Optional[typing.Callable[[str], bool]] = None,
+                          mime_acceptable_desc: str | None = None,
+                          mimetype_is_supported: typing.Callable[[str], bool] | None = None,
                           unknown_mimetype_exception=ValueError,
                           overwrite: bool = False,
                           tqdm_pbar=tqdm.tqdm) \

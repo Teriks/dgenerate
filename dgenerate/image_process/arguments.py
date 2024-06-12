@@ -181,12 +181,12 @@ def config_attribute_name_to_option(name):
     return {a.dest: a.option_strings[-1] if a.option_strings else a.dest for a in actions}[name]
 
 
-def parse_args(args: typing.Optional[collections.abc.Sequence[str]] = None,
+def parse_args(args: collections.abc.Sequence[str] | None = None,
                help_name='image-process',
                help_desc=None,
                throw: bool = True,
                log_error: bool = True,
-               help_raises: bool = False) -> typing.Optional[ImageProcessArgs]:
+               help_raises: bool = False) -> ImageProcessArgs | None:
     """
     Parse and validate the arguments used for ``image-process``, which is a dgenerate
     sub-command as well as config directive.

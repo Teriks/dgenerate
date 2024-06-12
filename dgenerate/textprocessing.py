@@ -55,7 +55,7 @@ class ConceptUri:
     The primary concept mentioned in the URI.
     """
 
-    args: dict[str, typing.Union[str, list[str]]]
+    args: dict[str, str | list[str]]
     """
     Provided keyword arguments with their (string) values.
     """
@@ -83,7 +83,7 @@ class ShellParseSyntaxError(Exception):
 
 
 def tokenized_split(string: str,
-                    separator: typing.Optional[str],
+                    separator: str | None,
                     remove_quotes: bool = False,
                     strict: bool = False,
                     escapes_in_unquoted: bool = False,
@@ -658,7 +658,7 @@ class ConceptUriParser:
     Unique recognized keyword arguments
     """
 
-    args_raw: typing.Union[None, bool, set[str]]
+    args_raw: bool | set[str] | None
     """
     ``True`` indicates all argument values are returned without any unquoting or processing into lists.
     
@@ -668,7 +668,7 @@ class ConceptUriParser:
     arguments skip extended processing (unquoting or splitting).
     """
 
-    args_lists: typing.Union[None, bool, set[str]]
+    args_lists: bool | set[str] | None
     """
     ``True`` indicates all arguments can accept a comma separated list.
     
@@ -684,8 +684,8 @@ class ConceptUriParser:
     def __init__(self,
                  concept_name: _types.Name,
                  known_args: collections.abc.Iterable[str],
-                 args_lists: typing.Union[None, bool, collections.abc.Iterable[str]] = None,
-                 args_raw: typing.Union[None, bool, collections.abc.Iterable[str]] = None):
+                 args_lists: bool | collections.abc.Iterable[str] | None = None,
+                 args_raw: bool | collections.abc.Iterable[str] | None = None):
         """
         :raises ValueError: if duplicate argument names are specified.
 
@@ -925,8 +925,7 @@ def contains_space(string: str) -> bool:
 
 
 def quote_spaces(
-        value_or_struct: typing.Union[typing.Any, collections.abc.Iterable[typing.Union[typing.Any, list, tuple]]]) -> \
-        typing.Union[list, tuple, typing.Any]:
+        value_or_struct: typing.Any | collections.abc.Iterable[typing.Any | list | tuple]) -> list | tuple | typing.Any:
     """
     Quote any ``str`` type values containing spaces, or ``str`` type values containing
     spaces within a list, or list of lists/tuples.
@@ -956,8 +955,8 @@ def quote_spaces(
 
 
 def indent_text(text,
-                initial_indent: typing.Optional[str] = None,
-                subsequent_indent: typing.Optional[str] = None):
+                initial_indent: str | None = None,
+                subsequent_indent: str | None = None):
     """
     Indent consecutive lines of text.
 
@@ -1133,7 +1132,7 @@ def parse_image_size(string):
 
 
 def debug_format_args(args_dict: dict[str, typing.Any],
-                      value_transformer: typing.Optional[typing.Callable[[str, typing.Any], str]] = None,
+                      value_transformer: typing.Callable[[str, typing.Any], str] | None = None,
                       max_value_len: int = 256):
     """
     Format function arguments in a way that can be printed for debug messages.
@@ -1162,7 +1161,7 @@ class TimeDeltaParseError(Exception):
     pass
 
 
-def parse_timedelta(string: typing.Optional[str]) -> datetime.timedelta:
+def parse_timedelta(string: str | None) -> datetime.timedelta:
     """
     Parse a ``datetime.timedelta`` object from an arguments string.
 

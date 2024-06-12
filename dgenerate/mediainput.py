@@ -222,11 +222,11 @@ class VideoReader(_imageprocessors.ImageProcessorMixin, AnimationReader):
     """
 
     def __init__(self,
-                 file: typing.Union[str, typing.BinaryIO],
+                 file: str | typing.BinaryIO,
                  file_source: str,
                  resize_resolution: _types.OptionalSize = None,
                  aspect_correct: bool = True,
-                 align: typing.Optional[int] = 8,
+                 align: int | None = 8,
                  image_processor: _imageprocessors.ImageProcessor = None):
         """
         :param file: a file path or binary file stream
@@ -321,11 +321,11 @@ class AnimatedImageReader(_imageprocessors.ImageProcessorMixin, AnimationReader)
     """
 
     def __init__(self,
-                 file: typing.Union[str, typing.BinaryIO],
+                 file: str | typing.BinaryIO,
                  file_source: str,
                  resize_resolution: _types.OptionalSize = None,
                  aspect_correct: bool = True,
-                 align: typing.Optional[int] = 8,
+                 align: int | None = 8,
                  image_processor: _imageprocessors.ImageProcessor = None):
         """
         :param file: a file path or binary file stream
@@ -413,7 +413,7 @@ class MockImageAnimationReader(_imageprocessors.ImageProcessorMixin, AnimationRe
                  img: PIL.Image.Image,
                  resize_resolution: _types.OptionalSize = None,
                  aspect_correct: bool = True,
-                 align: typing.Optional[int] = 8,
+                 align: int | None = 8,
                  image_repetitions: int = 1,
                  image_processor: _imageprocessors.ImageProcessor = None):
         """
@@ -645,7 +645,7 @@ class ImageSeedParseResult:
     The result of parsing an ``--image-seeds`` uri
     """
 
-    seed_path: typing.Union[_types.Path, _types.Paths]
+    seed_path: _types.Path | _types.Paths
     """
     The seed path, contains an image path that will be used for img2img operations
     or the base image in inpaint operations. Or a controlnet guidance path, or a sequence of controlnet guidance paths. 
@@ -657,7 +657,7 @@ class ImageSeedParseResult:
     Optional path to an inpaint mask, may be an HTTP/HTTPS URL or file path.
     """
 
-    control_path: typing.Union[_types.Path, _types.Paths, None] = None
+    control_path: _types.Path | _types.Paths | None = None
     """
     Optional controlnet guidance path, or a sequence of controlnet guidance paths. 
     This field is only used when the secondary syntax of ``--image-seeds`` is encountered.
@@ -718,7 +718,7 @@ class ImageSeedParseResult:
     Optional end frame specification for per-image seed slicing.
     """
 
-    def get_control_image_paths(self) -> typing.Optional[_types.Paths]:
+    def get_control_image_paths(self) -> _types.Paths | None:
         """
         Return :py:attr:`.ImageSeedParseResult.seed_path` if :py:attr:`.ImageSeedParseResult.is_single_spec` is ``True``.
 
@@ -838,7 +838,7 @@ def _parse_image_seed_uri_legacy(uri: str, align: int = 8) -> ImageSeedParseResu
     return result
 
 
-def parse_image_seed_uri(uri: str, align: typing.Optional[int] = 8) -> ImageSeedParseResult:
+def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResult:
     """
     Parse an ``--image-seeds`` uri into its constituents
 
@@ -1010,8 +1010,8 @@ class UnknownMimetypeError(Exception):
 
 
 def create_web_cache_file(url,
-                          mime_acceptable_desc: typing.Optional[str] = None,
-                          mimetype_is_supported: typing.Optional[typing.Callable[[str], bool]] = mimetype_is_supported) \
+                          mime_acceptable_desc: str | None = None,
+                          mimetype_is_supported: typing.Callable[[str], bool] | None = mimetype_is_supported) \
         -> tuple[str, str]:
     """
     Download a file from a url and add it to dgenerates temporary web cache that is
@@ -1067,7 +1067,7 @@ _MIME_TYPES_GUESS_EXTRA = {
 }
 
 
-def guess_mimetype(filename) -> typing.Optional[str]:
+def guess_mimetype(filename) -> str | None:
     """
     Guess the mimetype of a filename.
 
@@ -1134,11 +1134,11 @@ class MediaIdentificationError(Exception):
 
 
 def create_image(
-        path_or_file: typing.Union[typing.BinaryIO, str],
+        path_or_file: typing.BinaryIO | str,
         file_source: str,
         resize_resolution: _types.OptionalSize = None,
         aspect_correct: bool = True,
-        align: typing.Optional[int] = 8) -> PIL.Image.Image:
+        align: int | None = 8) -> PIL.Image.Image:
     """
     Create an RGB format PIL image from a file path or binary file stream.
     The image is oriented according to any EXIF directives. Image is aligned
@@ -1190,8 +1190,8 @@ def create_animation_reader(mimetype: str,
                             file: typing.BinaryIO,
                             resize_resolution: _types.OptionalSize = None,
                             aspect_correct: bool = True,
-                            align: typing.Optional[int] = 8,
-                            image_processor: typing.Optional[_imageprocessors.ImageProcessor] = None,
+                            align: int | None = 8,
+                            image_processor: _imageprocessors.ImageProcessor | None = None,
                             ) -> AnimationReader:
     """
     Create an animation reader object from mimetype specification and binary file stream.
@@ -1270,7 +1270,7 @@ class MediaReaderSpec:
     File path (or HTTP/HTTPS URL with default ``path_opener``)
     """
 
-    image_processor: typing.Optional[_imageprocessors.ImageProcessor] = None
+    image_processor: _imageprocessors.ImageProcessor | None = None
     """
     Optional image image processor associated with the file
     """
@@ -1280,7 +1280,7 @@ class MediaReaderSpec:
     Aspect correct resize enabled?
     """
 
-    align: typing.Optional[int] = 8
+    align: int | None = 8
     """
     Images which are read are aligned to this amount of pixels, ``None`` or ``1`` will disable alignment.
     """
@@ -1291,10 +1291,10 @@ class MediaReaderSpec:
     """
 
     def __init__(self, path: str,
-                 image_processor: typing.Optional[_imageprocessors.ImageProcessor] = None,
+                 image_processor: _imageprocessors.ImageProcessor | None = None,
                  resize_resolution: _types.OptionalSize = None,
                  aspect_correct: bool = True,
-                 align: typing.Optional[int] = 8):
+                 align: int | None = 8):
         """
         :param path: File path or URL
         :param resize_resolution: Resize resolution
@@ -1563,10 +1563,10 @@ class MediaReader(AnimationReader):
 
     def __init__(self,
                  path: str,
-                 image_processor: typing.Optional[_imageprocessors.ImageProcessor] = None,
+                 image_processor: _imageprocessors.ImageProcessor | None = None,
                  resize_resolution: _types.OptionalSize = None,
                  aspect_correct: bool = True,
-                 align: typing.Optional[int] = 8,
+                 align: int | None = 8,
                  frame_start: int = 0,
                  frame_end: _types.OptionalInteger = None,
                  path_opener: typing.Callable[[str], typing.BinaryIO] = fetch_media_data_stream):
@@ -1642,22 +1642,22 @@ class ImageSeed:
     Duration of a frame in milliseconds in the case that :py:attr:`.ImageSeed.is_animation_frame` is True
     """
 
-    image: typing.Optional[PIL.Image.Image]
+    image: PIL.Image.Image | None
     """
     An optional image used for img2img mode, or inpainting mode in combination with :py:attr:`.ImageSeed.mask_image`
     """
 
-    mask_image: typing.Optional[PIL.Image.Image]
+    mask_image: PIL.Image.Image | None
     """
     An optional inpaint mask image, may be None
     """
 
-    control_images: typing.Optional[_types.Images]
+    control_images: _types.Images | None
     """
     Control guidance images, or None.
     """
 
-    floyd_image: typing.Optional[PIL.Image.Image]
+    floyd_image: PIL.Image.Image | None
     """
     An optional image from a Deep Floyd IF stage, used for disambiguation in the case 
     of using Deep Floyd for img2img and inpainting, where the un-varied input image
@@ -1675,10 +1675,10 @@ class ImageSeed:
     """
 
     def __init__(self,
-                 image: typing.Optional[PIL.Image.Image] = None,
-                 mask_image: typing.Optional[PIL.Image.Image] = None,
-                 control_images: typing.Optional[_types.Images] = None,
-                 floyd_image: typing.Optional[PIL.Image.Image] = None):
+                 image: PIL.Image.Image | None = None,
+                 mask_image: PIL.Image.Image | None = None,
+                 control_images: _types.Images | None = None,
+                 floyd_image: PIL.Image.Image | None = None):
         self.image = image
         self.mask_image = mask_image
 
@@ -1724,8 +1724,8 @@ def _flatten(xs):
             yield x
 
 
-ControlProcessorSpec = typing.Union[_imageprocessors.ImageProcessor,
-collections.abc.Sequence[_imageprocessors.ImageProcessor], None]
+ControlProcessorSpec = _imageprocessors.ImageProcessor | \
+                       collections.abc.Sequence[_imageprocessors.ImageProcessor] | None
 
 
 def _validate_control_image_processor_count(processors, guidance_images):
@@ -1737,14 +1737,14 @@ def _validate_control_image_processor_count(processors, guidance_images):
                          f'{num_guidance_images} control guidance image sources.')
 
 
-def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
+def iterate_image_seed(uri: str | ImageSeedParseResult,
                        frame_start: int = 0,
                        frame_end: _types.OptionalInteger = None,
                        resize_resolution: _types.OptionalSize = None,
                        aspect_correct: bool = True,
-                       align: typing.Optional[int] = 8,
-                       seed_image_processor: typing.Optional[_imageprocessors.ImageProcessor] = None,
-                       mask_image_processor: typing.Optional[_imageprocessors.ImageProcessor] = None,
+                       align: int | None = 8,
+                       seed_image_processor: _imageprocessors.ImageProcessor | None = None,
+                       mask_image_processor: _imageprocessors.ImageProcessor | None = None,
                        control_image_processor: ControlProcessorSpec = None) -> \
         collections.abc.Iterator[ImageSeed]:
     """
@@ -1929,12 +1929,12 @@ def iterate_image_seed(uri: typing.Union[str, ImageSeedParseResult],
             yield image_seed
 
 
-def iterate_control_image(uri: typing.Union[str, ImageSeedParseResult],
+def iterate_control_image(uri: str | ImageSeedParseResult,
                           frame_start: int = 0,
                           frame_end: _types.OptionalInteger = None,
                           resize_resolution: _types.OptionalSize = None,
                           aspect_correct: bool = True,
-                          align: typing.Optional[int] = 8,
+                          align: int | None = 8,
                           image_processor: ControlProcessorSpec = None) -> \
         collections.abc.Iterator[ImageSeed]:
     """
@@ -2098,7 +2098,7 @@ class ImageSeedInfo:
         self.total_frames = total_frames
 
 
-def get_image_seed_info(uri: typing.Union[_types.Uri, ImageSeedParseResult],
+def get_image_seed_info(uri: _types.Uri | ImageSeedParseResult,
                         frame_start: int = 0,
                         frame_end: _types.OptionalInteger = None) -> ImageSeedInfo:
     """
@@ -2126,7 +2126,7 @@ def get_image_seed_info(uri: typing.Union[_types.Uri, ImageSeedParseResult],
         return ImageSeedInfo(seed.is_animation_frame, seed.total_frames, seed.fps, seed.frame_duration)
 
 
-def get_control_image_info(uri: typing.Union[_types.Path, ImageSeedParseResult],
+def get_control_image_info(uri: _types.Path | ImageSeedParseResult,
                            frame_start: int = 0,
                            frame_end: _types.OptionalInteger = None) -> ImageSeedInfo:
     """

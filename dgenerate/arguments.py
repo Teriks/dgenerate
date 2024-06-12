@@ -362,8 +362,8 @@ def _create_parser(add_model=True, add_help=True):
         parser.add_argument('--plugin-modules', action='store', default=[], nargs="+", dest='plugin_module_paths',
                             metavar="PATH",
                             help="""Specify one or more plugin module folder paths (folder containing __init__.py) or 
-                            python .py file paths to load as plugins. Plugin modules can currently implement 
-                            image processors and config directives."""))
+                            python .py file paths, or python module names to load as plugins. Plugin modules can currently 
+                            implement image processors and config directives."""))
 
     actions.append(
         parser.add_argument('--sub-command', action='store', default=None,
@@ -1502,7 +1502,7 @@ def _parse_args(args=None) -> DgenerateArguments:
 
 
 def parse_templates_help(
-        args: typing.Optional[collections.abc.Sequence[str]] = None) -> tuple[list[str], list[str]]:
+        args: collections.abc.Sequence[str] | None = None) -> tuple[list[str], list[str]]:
     """
     Retrieve the ``--templates-help`` argument value
 
@@ -1517,7 +1517,7 @@ def parse_templates_help(
 
 
 def parse_directives_help(
-        args: typing.Optional[collections.abc.Sequence[str]] = None) -> tuple[list[str], list[str]]:
+        args: collections.abc.Sequence[str] | None = None) -> tuple[list[str], list[str]]:
     """
     Retrieve the ``--directives-help`` argument value
 
@@ -1532,7 +1532,7 @@ def parse_directives_help(
 
 
 def parse_functions_help(
-        args: typing.Optional[collections.abc.Sequence[str]] = None) -> tuple[list[str], list[str]]:
+        args: collections.abc.Sequence[str] | None = None) -> tuple[list[str], list[str]]:
     """
     Retrieve the ``--functions-help`` argument value
 
@@ -1547,7 +1547,7 @@ def parse_functions_help(
 
 
 def parse_plugin_modules(
-        args: typing.Optional[collections.abc.Sequence[str]] = None) -> tuple[list[str], list[str]]:
+        args: collections.abc.Sequence[str] | None = None) -> tuple[list[str], list[str]]:
     """
     Retrieve the ``--plugin-modules`` argument value
 
@@ -1569,7 +1569,7 @@ def parse_plugin_modules(
 
 
 def parse_image_processor_help(
-        args: typing.Optional[collections.abc.Sequence[str]] = None) -> tuple[list[str], list[str]]:
+        args: collections.abc.Sequence[str] | None = None) -> tuple[list[str], list[str]]:
     """
     Retrieve the ``--image-processor-help`` argument value
 
@@ -1585,7 +1585,7 @@ def parse_image_processor_help(
 
 
 def parse_sub_command(
-        args: typing.Optional[collections.abc.Sequence[str]] = None) -> tuple[str, list[str]]:
+        args: collections.abc.Sequence[str] | None = None) -> tuple[str, list[str]]:
     """
     Retrieve the ``--sub-command`` argument value
 
@@ -1607,7 +1607,7 @@ def parse_sub_command(
 
 
 def parse_sub_command_help(
-        args: typing.Optional[collections.abc.Sequence[str]] = None) -> tuple[list[str], list[str]]:
+        args: collections.abc.Sequence[str] | None = None) -> tuple[list[str], list[str]]:
     """
     Retrieve the ``--sub-command-help`` argument value
 
@@ -1623,7 +1623,7 @@ def parse_sub_command_help(
 
 
 def parse_device(
-        args: typing.Optional[collections.abc.Sequence[str]] = None) -> tuple[str, list[str]]:
+        args: collections.abc.Sequence[str] | None = None) -> tuple[str, list[str]]:
     """
     Retrieve the ``-d/--device`` argument value
 
@@ -1645,7 +1645,7 @@ def parse_device(
 
 
 def parse_verbose(
-        args: typing.Optional[collections.abc.Sequence[str]] = None) -> tuple[bool, list[str]]:
+        args: collections.abc.Sequence[str] | None = None) -> tuple[bool, list[str]]:
     """
     Retrieve the ``-v/--verbose`` argument value
 
@@ -1659,12 +1659,12 @@ def parse_verbose(
     return parsed.verbose, unknown
 
 
-def parse_known_args(args: typing.Optional[collections.abc.Sequence[str]] = None,
+def parse_known_args(args: collections.abc.Sequence[str] | None = None,
                      throw: bool = True,
                      log_error: bool = True,
                      no_model: bool = True,
                      no_help: bool = True,
-                     help_raises: bool = False) -> typing.Optional[tuple[DgenerateArguments, list[str]]]:
+                     help_raises: bool = False) -> tuple[DgenerateArguments, list[str]] | None:
     """
     Parse only known arguments off the command line.
 
@@ -1717,10 +1717,10 @@ def parse_known_args(args: typing.Optional[collections.abc.Sequence[str]] = None
         return None
 
 
-def parse_args(args: typing.Optional[collections.abc.Sequence[str]] = None,
+def parse_args(args: collections.abc.Sequence[str] | None = None,
                throw: bool = True,
                log_error: bool = True,
-               help_raises: bool = False) -> typing.Optional[DgenerateArguments]:
+               help_raises: bool = False) -> DgenerateArguments | None:
     """
     Parse dgenerates command line arguments and return a configuration object.
 

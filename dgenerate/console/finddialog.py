@@ -30,7 +30,7 @@ class _FindDialog(tk.Toplevel):
                  master,
                  name, text_widget: tk.Text,
                  position: tuple[int, int] = None,
-                 width: typing.Optional[int] = None,
+                 width: int | None = None,
                  find_text='',
                  replace_text='',
                  replace_mode=False,

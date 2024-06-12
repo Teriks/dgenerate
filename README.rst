@@ -80,6 +80,7 @@ experience please visit `readthedocs <http://dgenerate.readthedocs.io/en/v3.7.0/
         * `The \\image_process directive`_
         * `The \\exec directive`_
         * `The \\download directive`_
+        * `The download() template function`_
         * `The \\exit directive`_
         * `Running configs from the command line`_
         * `Config argument injection`_
@@ -1836,6 +1837,14 @@ Specifying a VAE
 
 To specify a VAE directly use ``--vae``.
 
+VAEs are supported for Stable Diffusion, Stable Diffusion Flax, Stable Diffusion Pix2Pix,
+the Stable Diffusion x4 Upscaler, the Stable Diffusion x2 Upscaler, Stable Diffusion XL,
+and Stable Diffusion XL Pix2Pix.
+
+IE: ``--model-type torch``, ``--model-type flax``, ``--model-type torch-pix2pix``,
+``--model-type torch-upscaler-x2``, ``--model-type torch-upscaler-x4``, ``--model-type torch-sdxl``,
+and ``--model-type torch-sdxl-pix2pix`` respectively.
+
 The URI syntax for ``--vae`` is ``AutoEncoderClass;model=(huggingface repository slug/blob link or file/folder path)``
 
 Named arguments when loading a VAE are separated by the ``;`` character and are not positional,
@@ -2002,6 +2011,8 @@ Specifying a UNet
 
 An alternate UNet model can be specified via a URI with the ``--unet`` option, in a
 similar fashion to ``--vae`` and other model arguments that accept URIs.
+
+Specifying a ``--unet`` value is supported for all model types which support ``--vae``
 
 This is useful in particular for using the latent consistency scheduler.
 
@@ -2188,6 +2199,12 @@ Specifying LoRAs
 
 It is possible to specify one or more LoRA models using ``--loras``
 
+LoRAs are supported for Stable Diffusion, Stable Diffusion Pix2Pix,
+the Stable Diffusion x4 Upscaler, Stable Diffusion XL, and Stable Diffusion XL Pix2Pix.
+
+IE: ``--model-type torch``, ``--model-type torch-pix2pix``, ``--model-type torch-upscaler-x4``,
+``--model-type torch-sdxl``,  and ``--model-type torch-sdxl-pix2pix`` respectively.
+
 When multiple specifications are given, all mentioned models will be fused into
 the main model at a given scale.
 
@@ -2282,12 +2299,13 @@ If you are loading a .safetensors or other file from a path on disk, only the ``
 Specifying Textual Inversions
 =============================
 
-Textual inversions, otherwise known as embeddings, are supported for
-Stable Diffusion, the Stable Diffusion x4 Upscaler, and Stable Diffusion XL.
-
-IE: ``--model-type torch``, ``--model-type torch-upscaler-x4``, and ``--model-type torch-sdxl`` respectively.
-
 One or more Textual Inversion models may be specified with ``--textual-inversions``
+
+Textual inversions, otherwise known as embeddings, are supported for Stable Diffusion, Stable Diffusion Pix2Pix,
+the Stable Diffusion x4 Upscaler, Stable Diffusion XL, and Stable Diffusion XL Pix2Pix.
+
+IE: ``--model-type torch``, ``--model-type torch-pix2pix``, ``--model-type torch-upscaler-x4``,
+``--model-type torch-sdxl``,  and ``--model-type torch-sdxl-pix2pix`` respectively.
 
 You can provide a huggingface repository slug, .pt, .pth, .bin, .ckpt, or .safetensors files.
 Blob links are not accepted, for that use ``subfolder`` and ``weight-name`` described below.
@@ -2383,6 +2401,10 @@ One or more ControlNet models may be specified with ``--control-nets``, and mult
 net guidance images can be specified via ``--image-seeds`` in the case that you specify
 multiple control net models.
 
+ControlNet models are supported for Stable Diffusion, Stable Diffusion Flax, and Stable Diffusion XL.
+
+IE: ``--model-type torch``, ``--model-type flax``,  and ``--model-type torch-sdxl`` respectively.
+
 You can provide a huggingface repository slug / blob link, .pt, .pth, .bin, .ckpt, or .safetensors files.
 
 Control images for the Control Nets can be provided using ``--image-seeds``
@@ -2426,16 +2448,13 @@ that may or may not be a local git repository on disk, when loading directly fro
 or other file from a path on disk the available arguments are ``scale``, ``start``, ``end``, and ``from_torch``.
 ``from_torch`` can be used with flax for loading pytorch models from .pt or other files designed for torch from a repo or file/folder on disk.
 
-
 The ``scale`` argument indicates the affect scale of the control net model.
-
 
 For torch, the ``start`` argument indicates at what fraction of the total inference steps
 at which the control net model starts to apply guidance. If you have multiple
 control net models specified, they can apply guidance over different segments
 of the inference steps using this option, it defaults to 0.0, meaning start at the
 first inference step.
-
 
 for torch, the ``end`` argument indicates at what fraction of the total inference steps
 at which the control net model stops applying guidance. It defaults to 1.0, meaning
@@ -2547,6 +2566,9 @@ store it in the web cache, and then use it.
 You may also use the ``\download`` config directive to assist in pre
 downloading other resources from the internet. The directive has the ability
 to specify arbitrary storage locations. See: `The \\download directive`_
+
+You can also use the ``download()`` template function for similar
+purposes: See: `The download() template function`_
 
 In the case of CivitAI you can use this to bake models into your script
 that will be automatically downloaded for you, you just need a CivitAI
@@ -3074,6 +3096,7 @@ Available custom jinja2 functions/filters are:
 * ``{{ format_prompt(prompt_object) }}`` (Format and quote one or more prompt objects with their delimiter, works on single prompts and lists)
 * ``{{ gen_seeds(n) }}`` (Return a list of random integer seeds in the form of strings)
 * ``{{ cwd() }}`` (Return the current working directory as a string)
+* ``{{ download(url) }}`` (Download from a url to the web cache and return the file path)
 
 The above functions which possess arguments can be used as either a function or filter IE: ``{{ "quote_me" | quote }}``
 
@@ -3953,6 +3976,18 @@ This directive is primarily intended to download models and or other
 binary file formats such as images and will raise an error if it encounters
 a text mimetype. This  behavior can be overridden with the `-t/--text` argument.
 
+Be weary that if you have a long-running loop in your config using
+a top level jinja template, which refers to your template variable,
+cache expiry may invalidate the file stored in your variable.
+
+You can rectify this by putting the download directive inside of
+your processing loop so that the file is simply re-downloaded.
+
+Or you may be better off using the ``download``
+template function which provides this functionality
+as a template function.
+
+
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
@@ -3991,6 +4026,31 @@ a text mimetype. This  behavior can be overridden with the `-t/--text` argument.
     \download path https://modelhost.com/somemodel.safetensors -o models/somemodel.safetensors -x
 
     \download path https://modelhost.com/somemodel.safetensors -o models/ -x
+
+
+The download() template function
+--------------------------------
+
+The template function ``download`` is analogous to the ``\\download`` directive
+
+And can be used to download a file with the same behaviour and return its
+path as a string, this may be easier to use inside of certain jinja flow
+control constructs.
+
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 3.7.0
+
+    \\set my_variable {{ download('https://modelhost.com/model.safetensors' }}
+
+    \\set my_variable {{ download('https://modelhost.com/model.safetensors', output='model.safetensors') }}
+
+    \\set my_variable {{ download('https://modelhost.com/model.safetensors', output='directory/' }}
+
+
+The signature for this template function is: ``download(url: str, output: str | None = None, overwrite: bool = False, text: bool = False) -> str``
 
 
 The \\exit directive

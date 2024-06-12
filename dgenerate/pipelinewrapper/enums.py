@@ -58,7 +58,7 @@ class PipelineType(enum.Enum):
     """
 
 
-def get_pipeline_type_enum(id_str: typing.Union[PipelineType, str, None]) -> PipelineType:
+def get_pipeline_type_enum(id_str: PipelineType | str | None) -> PipelineType:
     """
     Get a :py:class:`.PipelineType` enum value from a string.
 
@@ -127,7 +127,7 @@ def supported_data_type_enums() -> list[DataType]:
     return [get_data_type_enum(i) for i in supported_data_type_strings()]
 
 
-def get_data_type_enum(id_str: typing.Union[DataType, str, None]) -> DataType:
+def get_data_type_enum(id_str: DataType | str | None) -> DataType:
     """
     Convert a ``--dtype`` string to its :py:class:`.DataType` enum value
 
@@ -242,7 +242,7 @@ def supported_model_type_enums() -> list[ModelType]:
     return [get_model_type_enum(i) for i in supported_model_type_strings()]
 
 
-def get_model_type_enum(id_str: typing.Union[ModelType, str]) -> ModelType:
+def get_model_type_enum(id_str: ModelType | str) -> ModelType:
     """
     Convert a ``--model-type`` string to its :py:class:`.ModelType` enum value
 
@@ -296,7 +296,7 @@ def get_model_type_string(model_type_enum: ModelType) -> str:
             ModelType.FLAX: 'flax'}[model_type]
 
 
-def model_type_is_upscaler(model_type: typing.Union[ModelType, str]) -> bool:
+def model_type_is_upscaler(model_type: ModelType | str) -> bool:
     """
     Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an upscaler model?
 
@@ -308,7 +308,7 @@ def model_type_is_upscaler(model_type: typing.Union[ModelType, str]) -> bool:
     return 'upscaler' in model_type
 
 
-def model_type_is_sdxl(model_type: typing.Union[ModelType, str]) -> bool:
+def model_type_is_sdxl(model_type: ModelType | str) -> bool:
     """
     Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an SDXL model?
 
@@ -320,7 +320,7 @@ def model_type_is_sdxl(model_type: typing.Union[ModelType, str]) -> bool:
     return 'sdxl' in model_type
 
 
-def model_type_is_s_cascade(model_type: typing.Union[ModelType, str]) -> bool:
+def model_type_is_s_cascade(model_type: ModelType | str) -> bool:
     """
     Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent a Stable Cascade related model?
 
@@ -332,7 +332,7 @@ def model_type_is_s_cascade(model_type: typing.Union[ModelType, str]) -> bool:
     return 's-cascade' in model_type
 
 
-def model_type_is_torch(model_type: typing.Union[ModelType, str]) -> bool:
+def model_type_is_torch(model_type: ModelType | str) -> bool:
     """
     Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an Torch model?
 
@@ -344,7 +344,7 @@ def model_type_is_torch(model_type: typing.Union[ModelType, str]) -> bool:
     return 'torch' in model_type
 
 
-def model_type_is_flax(model_type: typing.Union[ModelType, str]) -> bool:
+def model_type_is_flax(model_type: ModelType | str) -> bool:
     """
     Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an Flax model?
 
@@ -356,7 +356,7 @@ def model_type_is_flax(model_type: typing.Union[ModelType, str]) -> bool:
     return 'flax' in model_type
 
 
-def model_type_is_pix2pix(model_type: typing.Union[ModelType, str]) -> bool:
+def model_type_is_pix2pix(model_type: ModelType | str) -> bool:
     """
     Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an pix2pix type model?
 
@@ -368,7 +368,7 @@ def model_type_is_pix2pix(model_type: typing.Union[ModelType, str]) -> bool:
     return 'pix2pix' in model_type
 
 
-def model_type_is_floyd(model_type: typing.Union[ModelType, str]) -> bool:
+def model_type_is_floyd(model_type: ModelType | str) -> bool:
     """
     Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an floyd "if" of "ifs" type model?
 
@@ -382,7 +382,7 @@ def model_type_is_floyd(model_type: typing.Union[ModelType, str]) -> bool:
         model_type == ModelType.TORCH_IFS_IMG2IMG
 
 
-def model_type_is_floyd_if(model_type: typing.Union[ModelType, str]) -> bool:
+def model_type_is_floyd_if(model_type: ModelType | str) -> bool:
     """
     Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an floyd "if" type model?
 
@@ -394,7 +394,7 @@ def model_type_is_floyd_if(model_type: typing.Union[ModelType, str]) -> bool:
     return model_type == ModelType.TORCH_IF
 
 
-def model_type_is_floyd_ifs(model_type: typing.Union[ModelType, str]) -> bool:
+def model_type_is_floyd_ifs(model_type: ModelType | str) -> bool:
     """
     Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an floyd "ifs" type model?
 
@@ -415,7 +415,7 @@ def have_jax_flax():
     return jax is not None
 
 
-def get_flax_dtype(dtype: typing.Union[DataType, str, typing.Any, None]):
+def get_flax_dtype(dtype: DataType | str | typing.Any | None):
     """
     Return a :py:class:`jax.numpy.dtype` datatype from a :py:class:`.DataType` value,
     or a string, or a :py:class:`jax.numpy.dtype` datatype itself.
@@ -449,7 +449,7 @@ def get_flax_dtype(dtype: typing.Union[DataType, str, typing.Any, None]):
         raise ValueError('invalid DataType string')
 
 
-def get_torch_dtype(dtype: typing.Union[DataType, torch.dtype, str, None]) -> typing.Union[torch.dtype, None]:
+def get_torch_dtype(dtype: DataType | torch.dtype | str | None) -> torch.dtype | None:
     """
     Return a :py:class:`torch.dtype` datatype from a :py:class:`.DataType` value, or a string,
     or a :py:class:`torch.dtype` datatype itself.
