@@ -2617,7 +2617,7 @@ Your API token can be created on this page: https://civitai.com/user/account
 Near the bottom of the page in the section: ``API Keys``
 
 To get a direct link to a CivitAI model, in your browser
-(`right click -> Copy link address...`) on the download link for the
+(``right click -> Copy link address...``) on the download link for the
 specific file on the model page. This will yield a link that points
 directly at the model file, which is what dgenerate needs.
 
