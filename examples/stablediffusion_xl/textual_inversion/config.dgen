@@ -33,7 +33,6 @@
     --inference-steps 40
     --seeds 3655753086
     --vae-tiling
-    --output-size 1600x1600
     --scheduler DPMSolverMultistepScheduler
     --textual-inversions {{ inversion1 }};token="cs-cr1stal-v2" \
                          {{ inversion2 }};token="dw01-3400"
