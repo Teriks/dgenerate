@@ -2339,9 +2339,9 @@ include this token value in the model itself, for instance in the example below 
 for ``Isometric_Dreams-1000.pt`` is ``Isometric_Dreams``.
 
 The token value used for SDXL (Stable Diffusion XL) models is a bit different, a default
-value is not provided in the model file, so if you do not provide a token, dgenerate will
-make the tokens default value be the filename of the model with any spaces converted to
-underscores, with the file extension removed.
+value is not provided in the model file. If you do not provide a token value, dgenerate
+will assign the tokens default value to the filename of the model with any spaces converted to
+underscores, and with the file extension removed.
 
 
 .. code-block:: bash
