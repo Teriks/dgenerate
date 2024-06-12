@@ -71,6 +71,8 @@ def invoke_dgenerate(args: collections.abc.Sequence[str],
 
     dgenerate is invoked in the current process, this method does not spawn a subprocess.
 
+    Meta arguments such as ``--file``, ``--shell``, ``--no-sdtin``, and ``--console`` are not supported
+
     :param args: dgenerate command line arguments in the form of a list, see: shlex module, or sys.argv
     :param render_loop: :py:class:`dgenerate.renderloop.RenderLoop` instance,
         if ``None`` is provided one will be created.
@@ -117,6 +119,8 @@ def invoke_dgenerate_events(
     dgenerate.
 
     dgenerate is invoked in the current process, this method does not spawn a subprocess.
+
+    Meta arguments such as ``--file``, ``--shell``, ``--no-sdtin``, and ``--console`` are not supported
 
     The exceptions mentioned here are those you may encounter upon iterating,
     they will not occur upon simple acquisition of the event stream iterator.
