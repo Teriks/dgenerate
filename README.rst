@@ -1841,9 +1841,14 @@ VAEs are supported for Stable Diffusion, Stable Diffusion Flax, Stable Diffusion
 the Stable Diffusion x2 Upscaler, the Stable Diffusion x4 Upscaler, Stable Diffusion XL,
 and Stable Diffusion XL Pix2Pix.
 
-IE: ``--model-type torch``, ``--model-type flax``, ``--model-type torch-pix2pix``,
-``--model-type torch-upscaler-x2``, ``--model-type torch-upscaler-x4``, ``--model-type torch-sdxl``,
-and ``--model-type torch-sdxl-pix2pix`` respectively.
+IE:
+    * ``--model-type torch``
+    * ``--model-type flax``
+    * ``--model-type torch-pix2pix``
+    * ``--model-type torch-upscaler-x2``
+    * ``--model-type torch-upscaler-x4``
+    * ``--model-type torch-sdxl``
+    * ``--model-type torch-sdxl-pix2pix``
 
 The URI syntax for ``--vae`` is ``AutoEncoderClass;model=(huggingface repository slug/blob link or file/folder path)``
 
@@ -2202,8 +2207,12 @@ It is possible to specify one or more LoRA models using ``--loras``
 LoRAs are supported for Stable Diffusion, Stable Diffusion Pix2Pix,
 the Stable Diffusion x4 Upscaler, Stable Diffusion XL, and Stable Diffusion XL Pix2Pix.
 
-IE: ``--model-type torch``, ``--model-type torch-pix2pix``, ``--model-type torch-upscaler-x4``,
-``--model-type torch-sdxl``,  and ``--model-type torch-sdxl-pix2pix`` respectively.
+IE:
+    * ``--model-type torch``
+    * ``--model-type torch-pix2pix``
+    * ``--model-type torch-upscaler-x4``
+    * ``--model-type torch-sdxl``
+    * ``--model-type torch-sdxl-pix2pix``
 
 When multiple specifications are given, all mentioned models will be fused into
 the main model at a given scale.
@@ -2301,11 +2310,16 @@ Specifying Textual Inversions
 
 One or more Textual Inversion models may be specified with ``--textual-inversions``
 
-Textual inversions, otherwise known as embeddings, are supported for Stable Diffusion, Stable Diffusion Pix2Pix,
-the Stable Diffusion x4 Upscaler, Stable Diffusion XL, and Stable Diffusion XL Pix2Pix.
+Textual inversions, otherwise known as embeddings, are supported for Stable Diffusion,
+Stable Diffusion Pix2Pix, the Stable Diffusion x4 Upscaler, Stable Diffusion XL, and
+Stable Diffusion XL Pix2Pix.
 
-IE: ``--model-type torch``, ``--model-type torch-pix2pix``, ``--model-type torch-upscaler-x4``,
-``--model-type torch-sdxl``,  and ``--model-type torch-sdxl-pix2pix`` respectively.
+IE:
+    * ``--model-type torch``
+    * ``--model-type torch-pix2pix``
+    * ``--model-type torch-upscaler-x4``
+    * ``--model-type torch-sdxl``
+    * ``--model-type torch-sdxl-pix2pix``
 
 You can provide a huggingface repository slug, .pt, .pth, .bin, .ckpt, or .safetensors files.
 Blob links are not accepted, for that use ``subfolder`` and ``weight-name`` described below.
@@ -2403,7 +2417,10 @@ multiple control net models.
 
 ControlNet models are supported for Stable Diffusion, Stable Diffusion Flax, and Stable Diffusion XL.
 
-IE: ``--model-type torch``, ``--model-type flax``,  and ``--model-type torch-sdxl`` respectively.
+IE:
+    * ``--model-type torch``
+    * ``--model-type flax``
+    * ``--model-type torch-sdxl``
 
 You can provide a huggingface repository slug / blob link, .pt, .pth, .bin, .ckpt, or .safetensors files.
 
