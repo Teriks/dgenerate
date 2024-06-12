@@ -3120,7 +3120,7 @@ Environmental variables will be expanded in config scripts using both UNIX and W
     # if the variable is not set, they expand to nothing
 
     \print $VARIABLE
-    \print {VARIABLE}
+    \print ${VARIABLE}
     \print %VARIABLE%
 
 Empty lines and comments starting with ``#`` will be ignored, comments that occur at the end of lines will also be ignored.
