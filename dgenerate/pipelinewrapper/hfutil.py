@@ -23,7 +23,6 @@ import glob
 import os
 import pathlib
 import re
-import typing
 
 import huggingface_hub
 

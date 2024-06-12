@@ -1,6 +1,3 @@
-from tkinter import filedialog
-
-
 # Copyright (c) 2023, Teriks
 #
 # dgenerate is distributed under the following BSD 3-Clause License
@@ -22,6 +19,7 @@ from tkinter import filedialog
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from tkinter import filedialog
 
 def open_file_dialog(*args, **kwargs):
     f = filedialog.askopenfilename(*args, **kwargs)

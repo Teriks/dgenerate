@@ -26,7 +26,6 @@ import platform
 import subprocess
 import tkinter
 import tkinter as tk
-import typing
 import webbrowser
 
 import PIL.Image

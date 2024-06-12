@@ -94,6 +94,7 @@ def invoke_dgenerate(args: collections.abc.Sequence[str],
     :raises dgenerate.InvalidSchedulerNameError:
     :raises dgenerate.OutOfMemoryError:
     :raises dgenerate.ModelNotFoundError:
+    :raises dgenerate.NonHFModelDownloadError:
     :raises dgenerate.ModuleFileNotFoundError:
     :raises dgenerate.UnsupportedPipelineConfigError:
     :raises EnvironmentError:
@@ -147,6 +148,7 @@ def invoke_dgenerate_events(
     :raises dgenerate.InvalidSchedulerNameError:
     :raises dgenerate.OutOfMemoryError:
     :raises dgenerate.ModelNotFoundError:
+    :raises dgenerate.NonHFModelDownloadError:
     :raises dgenerate.ModuleFileNotFoundError:
     :raises dgenerate.UnsupportedPipelineConfigError:
     :raises EnvironmentError:

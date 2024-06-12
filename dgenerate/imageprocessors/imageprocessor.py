@@ -20,7 +20,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import itertools
 import os
-import typing
 
 import PIL.Image
 import torch
@@ -29,8 +28,8 @@ import dgenerate.filelock as _filelock
 import dgenerate.image as _image
 import dgenerate.imageprocessors.exceptions as _exceptions
 import dgenerate.messages as _messages
-import dgenerate.plugin as _plugin
 import dgenerate.pipelinewrapper.util as _util
+import dgenerate.plugin as _plugin
 import dgenerate.types
 
 

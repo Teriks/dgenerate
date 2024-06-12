@@ -22,7 +22,6 @@
 
 import re
 import tkinter as tk
-import typing
 
 
 class _FindDialog(tk.Toplevel):

@@ -58,7 +58,6 @@ if __am_dgenerate_app and '--console' in sys.argv:
     sys.exit(0)
 
 import collections.abc
-import typing
 import warnings
 
 warnings.filterwarnings('ignore', module='dgenerate.extras.controlnet_aux')
@@ -93,6 +92,7 @@ try:
         InvalidModelFileError, \
         InvalidModelUriError, \
         ModelUriLoadError, \
+        NonHFModelDownloadError, \
         InvalidSchedulerNameError, \
         UnsupportedPipelineConfigError, \
         ModelType, \
@@ -122,7 +122,8 @@ try:
     from dgenerate.mediainput import \
         ImageSeedError, \
         UnknownMimetypeError, \
-        FrameStartOutOfBounds
+        FrameStartOutOfBounds, \
+        MediaIdentificationError
 
     from dgenerate.imageprocessors import \
         ImageProcessorArgumentError, \
