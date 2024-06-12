@@ -4285,7 +4285,8 @@ a top level jinja template, which refers to your template variable,
 cache expiry may invalidate the file stored in your variable.
 
 You can rectify this by putting the download directive inside of
-your processing loop so that the file is simply re-downloaded.
+your processing loop so that the file is simply re-downloaded if
+it expires in the cache.
 
 Or you may be better off using the ``download``
 template function which provides this functionality
