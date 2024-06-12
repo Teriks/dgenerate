@@ -323,9 +323,9 @@ class DgenerateLexer(_lexer.RegexLexer):
              'import_plugins_value_escape'),
             _comment_pattern,
             _env_var_pattern,
-            *((p[0], _token.Keyword) for p in _path_patterns[1:3]),
-            (_variable_names_pattern[0], _token.Keyword),
-            (r'[.]', _token.Operator),
+            *((p[0], _token.Keyword) for p in _path_patterns[1:4]),  # everything except http and file.ext
+            (_variable_names_pattern[0], _token.Keyword),  # module names are keywords
+            (r'[.]', _token.Operator),  # namespace operator
             _jinja_block_pattern,
             _jinja_comment_pattern,
             _jinja_interpolate_pattern,
