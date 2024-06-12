@@ -3870,7 +3870,7 @@ and nothing else aside from the value being striped of leading and trailing whit
 set to the template variables is essentially the text that you supply as the value, as is. Or the text that
 the templates or environment variables in the value expand to, unmodified or parsed in any way.
 
-This is for assigning literal text values to a template variable
+This is for assigning literal text values to a template variable.
 
 .. code-block:: jinja
 
