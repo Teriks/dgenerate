@@ -1194,8 +1194,8 @@ It utilizes the ``stabilityai/stable-diffusion-2-1`` model repo on `Hugging Face
 
 Also Adjust output size to ``512x512`` and output generated images to the ``astronaut`` folder in the current working directory.
 
-When ``--output-path`` is not specified, the default output location is the "output" folder in the current working directory,
-if the path that is specified does not exist then it will be created.
+When ``--output-path`` is not specified, the default output location is the ``output`` folder
+in the current working directory, if the path that is specified does not exist then it will be created.
 
 .. code-block:: bash
 
