@@ -1838,7 +1838,7 @@ Specifying a VAE
 To specify a VAE directly use ``--vae``.
 
 VAEs are supported for Stable Diffusion, Stable Diffusion Flax, Stable Diffusion Pix2Pix,
-the Stable Diffusion x4 Upscaler, the Stable Diffusion x2 Upscaler, Stable Diffusion XL,
+the Stable Diffusion x2 Upscaler, the Stable Diffusion x4 Upscaler, Stable Diffusion XL,
 and Stable Diffusion XL Pix2Pix.
 
 IE: ``--model-type torch``, ``--model-type flax``, ``--model-type torch-pix2pix``,
