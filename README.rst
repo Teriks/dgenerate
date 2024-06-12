@@ -3991,7 +3991,7 @@ You can see how to do this in the section `File Cache Control`_
 
 This directive is primarily intended to download models and or other
 binary file formats such as images and will raise an error if it encounters
-a text mimetype. This  behavior can be overridden with the `-t/--text` argument.
+a text mimetype. This  behavior can be overridden with the ``-t/--text`` argument.
 
 Be weary that if you have a long-running loop in your config using
 a top level jinja template, which refers to your template variable,
