@@ -93,7 +93,7 @@ Help Output
 
 .. code-block:: text
 
-    usage: dgenerate [-h] [-v] [--version] [--shell | --no-stdin | --console]
+    usage: dgenerate [-h] [-v] [--version] [--file | --shell | --no-stdin | --console]
                      [--plugin-modules PATH [PATH ...]] [--sub-command SUB_COMMAND]
                      [--sub-command-help [SUB_COMMAND ...]] [-ofm]
                      [--templates-help [VARIABLE_NAME ...]] [--directives-help [DIRECTIVE_NAME ...]]
@@ -155,25 +155,37 @@ Help Output
       -v, --verbose         Output information useful for debugging, such as pipeline call and model
                             load parameters.
       --version             Show dgenerate's version and exit
+      --file                Convenience argument for reading a configuration script from a file
+                            instead of using a pipe. This is a meta argument which can not be used
+                            within a configuration script and is only valid from the command line or
+                            during a popen invocation of dgenerate.
       --shell               When reading configuration from STDIN (a pipe), read forever, even when
                             configuration errors occur. This allows dgenerate to run in the background
                             and be communicated with by another process sending it commands. Launching
                             dgenerate with this option and not piping it input will attach it to the
                             terminal like a shell. Entering configuration into this shell will require
                             two newlines to submit a command due to parsing lookahead. IE: two presses
-                            of the enter key.
+                            of the enter key. This is a meta argument which can not be used within a
+                            configuration script and is only valid from the command line or during a
+                            popen invocation of dgenerate.
       --no-stdin            Can be used to indicate to dgenerate that it will not receive any piped in
                             input. This is useful for running dgenerate via popen from python or
                             another application using normal arguments, where it would otherwise try
                             to read from STDIN and block forever because it is not attached to a
-                            terminal.
+                            terminal. This is a meta argument which can not be used within a
+                            configuration script and is only valid from the command line or during a
+                            popen invocation of dgenerate.
       --console             Launch a terminal-like tkinter GUI that communicates with an instance of
                             dgenerate running in the background. This allows you to interactively
-                            write dgenerate config scripts as if dgenerate were a shell / REPL.
+                            write dgenerate config scripts as if dgenerate were a shell / REPL. This
+                            is a meta argument which can not be used within a configuration script and
+                            is only valid from the command line or during a popen invocation of
+                            dgenerate.
       --plugin-modules PATH [PATH ...]
                             Specify one or more plugin module folder paths (folder containing
-                            __init__.py) or python .py file paths to load as plugins. Plugin modules
-                            can currently implement image processors and config directives.
+                            __init__.py) or python .py file paths, or python module names to load as
+                            plugins. Plugin modules can currently implement image processors and
+                            config directives.
       --sub-command SUB_COMMAND
                             Specify the name a sub-command to invoke. dgenerate exposes some extra
                             image processing functionality through the use of sub-commands. Sub
@@ -236,7 +248,8 @@ Help Output
                             an animation then the image grid is used for the output frames. During
                             animation rendering each image in the batch will still be written to the
                             output directory along side the produced animation as either suffixed
-                            files or image grids depending on the options you choose. (Torch Default: 1)
+                            files or image grids depending on the options you choose. (Torch Default:
+                            1)
       -bgs SIZE, --batch-grid-size SIZE
                             Produce a single image containing a grid of images with the number of
                             COLUMNSxROWS given to this argument when --batch-size is greater than 1,
@@ -930,6 +943,7 @@ Help Output
                             (available * 0.75)" For Syntax See: [https://dgenerate.readthedocs.io/en/v
                             3.7.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.CONTROL_NET_CACH
                             E_MEMORY_CONSTRAINTS]
+
 
 
 Windows Install
