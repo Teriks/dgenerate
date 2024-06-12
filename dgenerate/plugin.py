@@ -352,33 +352,48 @@ class ModuleFileNotFoundError(FileNotFoundError):
 
 def load_modules(paths: collections.abc.Iterable[str]) -> list[types.ModuleType]:
     """
-    Load python modules from a folder or directly from a .py file.
-    Cache them so that repeat requests for loading return an already loaded module.
+    Load python modules from a folder, directly from a .py file, or from a python module
+    installed in the environment. Cache them so that repeat requests for loading return
+    an already loaded module.
 
-    :raises ModuleFileNotFoundError: If a module path could not be found on disk.
+    :raises ModuleFileNotFoundError: If a module path could not be found on disk,
+        or when a module could not be loaded from the python environment.
 
-    :param paths: list of folder/file paths
+    :param paths: list of folder/file paths, or references to python modules installed
+        in the environment
+
     :return: list of :py:class:`types.ModuleType`
     """
     r = []
     for plugin_path in paths:
-        plugin_path, ext = os.path.splitext(os.path.abspath(plugin_path))
 
-        if not ext:
-            plugin_path = os.path.join(plugin_path, '__init__.py')
-        else:
-            plugin_path += ext
+        if os.path.exists(plugin_path):
+            plugin_path, ext = os.path.splitext(os.path.abspath(plugin_path))
 
-        if plugin_path in LOADED_PLUGIN_MODULES:
-            mod = LOADED_PLUGIN_MODULES[plugin_path]
+            if not ext:
+                plugin_path = os.path.join(plugin_path, '__init__.py')
+            else:
+                plugin_path += ext
+
+            if plugin_path in LOADED_PLUGIN_MODULES:
+                mod = LOADED_PLUGIN_MODULES[plugin_path]
+            else:
+                try:
+                    mod = importlib.machinery.SourceFileLoader(plugin_path, plugin_path).load_module()
+                except FileNotFoundError as e:
+                    raise ModuleFileNotFoundError(e)
+                LOADED_PLUGIN_MODULES[plugin_path] = mod
+
+            r.append(mod)
         else:
+
             try:
-                mod = importlib.machinery.SourceFileLoader(plugin_path, plugin_path).load_module()
-            except FileNotFoundError as e:
+                mod = importlib.import_module(plugin_path)
+            except Exception as e:
                 raise ModuleFileNotFoundError(e)
             LOADED_PLUGIN_MODULES[plugin_path] = mod
+            r.append(mod)
 
-        r.append(mod)
     return r
 
 
@@ -482,15 +497,19 @@ class PluginLoader:
 
     def load_plugin_modules(self, paths: collections.abc.Iterable[str]) -> list[type[Plugin]]:
         """
-        Modules that will be loaded from disk and searched for implementations.
+        Modules that will be loaded from disk, or the python environment, and searched for implementations.
 
-        Either python files, or module directory containing __init__.py
+        Either python files, or module directories containing __init__.py, or
+        names of python modules installed in the environment.
 
         It can be a mix of these.
 
-        :raises ModuleFileNotFoundError: If a module could not be found on disk.
+        :raises ModuleFileNotFoundError: If a module path could not be found on disk,
+            or when a module could not be loaded from the python environment.
 
-        :param paths: python files or module directories
+        :param paths: list of folder/file paths, or references to python modules installed
+            in the environment
+
         :return: list of classes that were newly discovered
         """
 
