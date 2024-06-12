@@ -3227,7 +3227,8 @@ Built in template variables and functions
 -----------------------------------------
 
 There is valuable information about the previous invocation of dgenerate that
-is set in the environment and available to use via Jinja2 templating, some of these include:
+is set in the environment and available to use via Jinja2 templating or in
+the ``\setp`` directive, some of these include:
 
 * ``{{ last_images }}`` (An iterable of un-quoted filenames which were generated)
 * ``{{ last_animations }}`` (An iterable of un-quoted filenames which were generated)
