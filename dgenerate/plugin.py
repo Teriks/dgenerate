@@ -528,8 +528,12 @@ class PluginLoader:
 
         for mod in modules:
             def _excluded(cls):
-                if cls in self.__classes:
-                    return True
+                try:
+                    if cls in self.__classes:
+                        return True
+                except TypeError:
+                    # handle un-hashable
+                    return False
 
                 if not inspect.isclass(cls):
                     return True
