@@ -1188,11 +1188,11 @@ Basic Usage
 The example below attempts to generate an astronaut riding a horse using 5 different
 random seeds, 3 different inference steps values, and 3 different guidance scale values.
 
-It utilizes the "stabilityai/stable-diffusion-2-1" model repo on `Hugging Face <https://huggingface.co/stabilityai/stable-diffusion-2-1>`_.
+It utilizes the ``stabilityai/stable-diffusion-2-1`` model repo on `Hugging Face <https://huggingface.co/stabilityai/stable-diffusion-2-1>`_.
 
-45 uniquely named images will be generated (5 x 3 x 3)
+45 uniquely named images will be generated ``(5 x 3 x 3)``
 
-Also Adjust output size to 512x512 and output generated images to the "astronaut" folder in the current working directory.
+Also Adjust output size to ``512x512`` and output generated images to the ``astronaut`` folder in the current working directory.
 
 When ``--output-path`` is not specified, the default output location is the "output" folder in the current working directory,
 if the path that is specified does not exist then it will be created.
@@ -1225,7 +1225,7 @@ SDXL is supported and can be used to generate highly realistic images.
 
 Prompt only generation, img2img, and inpainting is supported for SDXL.
 
-Refiner models can be specified, fp16 model variant and a datatype of float16 is
+Refiner models can be specified, ``fp16`` model variant and a datatype of ``float16`` is
 recommended to prevent out of memory conditions on the average GPU :)
 
 .. code-block:: bash
@@ -1250,8 +1250,8 @@ into two parts separated by ``;``
 The prompt text occurring after ``;`` is the negative influence prompt.
 
 To attempt to avoid rendering of a saddle on the horse being ridden, you
-could for example add the negative prompt "saddle" or "wearing a saddle"
-or "horse wearing a saddle" etc.
+could for example add the negative prompt ``saddle`` or ``wearing a saddle``
+or ``horse wearing a saddle`` etc.
 
 
 .. code-block:: bash
@@ -1272,7 +1272,7 @@ Multiple prompts can be specified one after another in quotes in order
 to generate images using multiple prompt variations.
  
 The following command generates 10 uniquely named images using two 
-prompts and five random seeds (2x5)
+prompts and five random seeds ``(2x5)``
  
 5 of them will be from the first prompt and 5 of them from the second prompt.
  
@@ -1853,11 +1853,8 @@ Specifying a VAE
 
 To specify a VAE directly use ``--vae``.
 
-VAEs are supported for Stable Diffusion, Stable Diffusion Flax, Stable Diffusion Pix2Pix,
-the Stable Diffusion x2 Upscaler, the Stable Diffusion x4 Upscaler, Stable Diffusion XL,
-and Stable Diffusion XL Pix2Pix.
+VAEs are supported for these model types:
 
-IE:
     * ``--model-type torch``
     * ``--model-type flax``
     * ``--model-type torch-pix2pix``
@@ -2220,10 +2217,8 @@ Specifying LoRAs
 
 It is possible to specify one or more LoRA models using ``--loras``
 
-LoRAs are supported for Stable Diffusion, Stable Diffusion Pix2Pix,
-the Stable Diffusion x4 Upscaler, Stable Diffusion XL, and Stable Diffusion XL Pix2Pix.
+LoRAs are supported for these model types:
 
-IE:
     * ``--model-type torch``
     * ``--model-type torch-pix2pix``
     * ``--model-type torch-upscaler-x4``
@@ -2324,13 +2319,10 @@ If you are loading a .safetensors or other file from a path on disk, only the ``
 Specifying Textual Inversions
 =============================
 
-One or more Textual Inversion models may be specified with ``--textual-inversions``
+One or more Textual Inversion models (otherwise known as embeddings) may be specified with ``--textual-inversions``
 
-Textual inversions, otherwise known as embeddings, are supported for Stable Diffusion,
-Stable Diffusion Pix2Pix, the Stable Diffusion x4 Upscaler, Stable Diffusion XL, and
-Stable Diffusion XL Pix2Pix.
+Textual inversions are supported for these model types:
 
-IE:
     * ``--model-type torch``
     * ``--model-type torch-pix2pix``
     * ``--model-type torch-upscaler-x4``
@@ -2431,9 +2423,8 @@ One or more ControlNet models may be specified with ``--control-nets``, and mult
 net guidance images can be specified via ``--image-seeds`` in the case that you specify
 multiple control net models.
 
-ControlNet models are supported for Stable Diffusion, Stable Diffusion Flax, and Stable Diffusion XL.
+ControlNet models are supported for these model types:
 
-IE:
     * ``--model-type torch``
     * ``--model-type flax``
     * ``--model-type torch-sdxl``
