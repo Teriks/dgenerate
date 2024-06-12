@@ -162,7 +162,7 @@ class Plugin:
         :param argument_error_type: This exception type will be raised upon argument errors (invalid arguments)
             when loading a plugin using a :py:class:`.PluginLoader` implementation. It should match the
             ``argument_error_type`` given to the :py:class:`.PluginLoader` implementation being used
-             to load the inheritor of this class.
+            to load the inheritor of this class.
         :param kwargs: Additional arguments that may arise when using an ``ARGS`` static signature definition
             with multiple ``NAMES`` in your implementation.
         """
