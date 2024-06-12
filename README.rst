@@ -74,7 +74,7 @@ syntax highlighting for examples, please visit `readthedocs <http://dgenerate.re
     * `Upscaling with chaiNNer Compatible Upscaler Models`_
     * `Writing and Running Configs`_
         * `Basic config syntax`_
-        * `Built in template variables`_
+        * `Built in template variables and functions`_
         * `Directives and templating`_
         * `Setting template variables, in depth`_
         * `Globbing and path manipulation`_
@@ -3065,87 +3065,78 @@ will work with any named image processor implemented by dgenerate.
 Writing and Running Configs
 ===========================
 
-Program configuration can be read from STDIN and processed in batch with model caching,
-in order to increase speed when many invocations with different arguments are desired.
+Config scripts can be read from ``stdin`` using a shell pipe or file redirection, or by
+using the ``--file`` argument to specify a file to interpret.
 
-Loading the necessary libraries and bringing models into memory is quite slow, so using the program this
-way allows for multiple invocations using different arguments, without needing to load the libraries and
-models multiple times, only the first time, or in the case of models the first time the model is encountered.
+Config scripts are processed with model caching and other optimizations, in order
+to increase speed when many dgenerate invocations with different arguments are desired.
 
-When a model is loaded dgenerate caches it in memory with it's creation parameters, which includes among other things
-the pipeline mode (basic, img2img, inpaint), user specified UNets, VAEs, LoRAs, Textual Inversions, and ControlNets.
-If another invocation of the model occurs with creation parameters that are identical, it will be loaded out of
-an in memory cache.
+Loading the necessary libraries and bringing models into memory is quite slow, so using dgenerate
+this way allows for multiple invocations using different arguments, without needing to load the
+machine learning libraries and models multiple times in a row.
+
+When a model is loaded dgenerate caches it in memory with it's creation parameters, which includes
+among other things the pipeline mode (basic, img2img, inpaint), user specified UNets, VAEs, LoRAs,
+Textual Inversions, and ControlNets.
+
+If another invocation of the model occurs with creation parameters that are identical, it will be
+loaded out of an in memory cache, which greatly increases the speed of the invocation.
 
 Diffusion Pipelines, user specified UNets, VAEs, and ControlNet models are cached individually.
 
-UNets, VAEs and ControlNet model objects can be reused by diffusion pipelines in certain situations when
-specified explicitly and this is taken advantage of by using an in memory cache of these objects.
+UNets, VAEs, and ControlNet model objects can be reused by diffusion pipelines in certain
+situations when specified explicitly and this is taken advantage of by using an in
+memory cache of these objects.
 
-In effect, creation of a pipeline is memoized, as well as the creation of any pipeline subcomponents
-when you have specified them explicitly with a URI.
+In effect, the creation of a diffusion pipeline is memoized, as well as the creation of
+any pipeline subcomponents when you have specified them explicitly with a URI.
 
 A number of things effect cache hit or miss upon a dgenerate invocation, extensive information
-regarding runtime caching behavior of a pipelines and other models can be observed using
-``-v/--verbose``
+regarding runtime caching behavior of a pipelines and other models can be observed using ``-v/--verbose``
 
 When loading multiple different models be aware that they will all be retained in memory for
 the duration of program execution, unless all models are flushed using the ``\clear_model_cache`` directive or
 individually using one of: ``\clear_pipeline_cache``, ``\clear_unet_cache``, ``\clear_vae_cache``, or ``\clear_control_net_cache``.
+
 dgenerate uses heuristics to clear the in memory cache automatically when needed, including a size estimation
 of models before they enter system memory, however by default it will use system memory very aggressively
 and it is not entirely impossible to run your system out of memory if you are not careful.
 
-Environmental variables will be expanded in the provided input to **STDIN** when using this feature,
-you may use Unix style notation for environmental variables even on Windows.
-
-There is also information about the previous file output of dgenerate that is available to use
-via Jinja2 templating which can be passed to ``--image-seeds``, these include:
-
-* ``{{ last_images }}`` (An iterable of un-quoted filenames)
-* ``{{ last_animations }}`` (An iterable of un-quoted filenames)
-
-There are templates for prompts, containing the previous prompt values:
-
-* ``{{ last_prompts }}`` (List of prompt objects with the un-quoted attributes 'positive' and 'negative')
-* ``{{ last_sdxl_second_prompts }}``
-* ``{{ last_sdxl_refiner_prompts }}``
-* ``{{ last_sdxl_refiner_second_prompts }}``
-
-A list of template variables with their types and values that are assigned
-by a dgenerate invocation can be printed out using the ``\templates_help``
-directive mentioned in an example further down.
-
-Available custom jinja2 functions/filters are:
-
-* ``{{ first(list_of_items) }}`` (First element in a list)
-* ``{{ last(list_of_items) }}`` (Last element in a list)
-* ``{{ unquote('"unescape-me"') }}`` (shell unquote / split, works on strings and lists)
-* ``{{ quote('escape-me') }}`` (shell quote, works on strings and lists)
-* ``{{ format_prompt(prompt_object) }}`` (Format and quote one or more prompt objects with their delimiter, works on single prompts and lists)
-* ``{{ gen_seeds(n) }}`` (Return a list of random integer seeds in the form of strings)
-* ``{{ cwd() }}`` (Return the current working directory as a string)
-* ``{{ download(url) }}`` (Download from a url to the web cache and return the file path)
-
-The above functions which possess arguments can be used as either a function or filter IE: ``{{ "quote_me" | quote }}``
-
-The option ``--functions-help`` and the directive ``\functions_help`` can be used to print
-documentation for template functions. When the option or directive is used alone all built
-in functions will be printed with their signature, specifying function names as arguments
-will print documentation for those specific functions.
-
-Empty lines and comments starting with ``#`` will be ignored, comments that occur at the end
-of lines will also be ignored.
-
-You can create a multiline continuation using ``\`` to indicate that a line continues,
-if the next line starts with ``-`` it is considered part of a continuation as well even if ``\`` had
-not been used previously. Comments cannot be interspersed with invocation or directive arguments
-without the use of ``\``, at least on the last line before whitespace and comments start.
-
 Basic config syntax
 -------------------
 
-The following is a config file example that covers very basic syntax concepts.
+The basic idea of the dgenerate config syntax is that it is a pseudo UNIX shell mixed with Jinja2 templating.
+
+The config language provides many niceties for batch processing large amounts of images
+and image output in a UNIX shell like environment with Jinja2 control constructs.
+
+Shell builtins, known as directives, are prefixed with ``\``, for example: ``\print``
+
+Environmental variables will be expanded in config scripts using both UNIX and Windows CMD syntax
+
+.. code-block:: jinja
+
+    # these all expand from your system environment
+    # if the variable is not set, they expand to nothing
+
+    \print $VARIABLE
+    \print {VARIABLE}
+    \print %VARIABLE%
+
+Empty lines and comments starting with ``#`` will be ignored, comments that occur at the end of lines will also be ignored.
+
+You can create a multiline continuation using ``\`` to indicate that a line continues similar to bash.
+
+Unlike bash, if the next line starts with ``-`` it is considered part of a continuation as well
+even if ``\`` had not been used previously. This allows you to list out many Posix style shell
+options starting with ``-`` without having to end every line with ``\``.
+
+Comments can be interspersed with invocation or directive arguments
+on their own line with the use of ``\`` on the last line before
+comments and whitespace begin. This can be used to add documentation
+above individual arguments instead of at the tail end of them.
+
+The following is a config file example that covers the most basic syntax concepts.
 
 .. code-block:: jinja
 
@@ -3232,8 +3223,39 @@ The following is a config file example that covers very basic syntax concepts.
     --output-path unique_output_4
 
 
-Built in template variables
----------------------------
+Built in template variables and functions
+-----------------------------------------
+
+There is valuable information about the previous file output of dgenerate that
+is set in the environment and available to use via Jinja2 templating, some of these include:
+
+* ``{{ last_images }}`` (An iterable of un-quoted filenames)
+* ``{{ last_animations }}`` (An iterable of un-quoted filenames)
+
+There are template variables for prompts, containing the previous prompt values:
+
+* ``{{ last_prompts }}`` (List of prompt objects with the un-quoted attributes 'positive' and 'negative')
+* ``{{ last_sdxl_second_prompts }}``
+* ``{{ last_sdxl_refiner_prompts }}``
+* ``{{ last_sdxl_refiner_second_prompts }}``
+
+Some available custom jinja2 functions/filters are:
+
+* ``{{ first(list_of_items) }}`` (First element in a list)
+* ``{{ last(list_of_items) }}`` (Last element in a list)
+* ``{{ unquote('"unescape-me"') }}`` (shell unquote / split, works on strings and lists)
+* ``{{ quote('escape-me') }}`` (shell quote, works on strings and lists)
+* ``{{ format_prompt(prompt_object) }}`` (Format and quote one or more prompt objects with their delimiter, works on single prompts and lists)
+* ``{{ gen_seeds(n) }}`` (Return a list of random integer seeds in the form of strings)
+* ``{{ cwd() }}`` (Return the current working directory as a string)
+* ``{{ download(url) }}`` (Download from a url to the web cache and return the file path)
+
+The above functions which possess arguments can be used as either a function or filter IE: ``{{ "quote_me" | quote }}``
+
+The option ``--functions-help`` and the directive ``\functions_help`` can be used to print
+documentation for template functions. When the option or directive is used alone all built
+in functions will be printed with their signature, specifying function names as arguments
+will print documentation for those specific functions.
 
 To receive information about Jinja2 template variables that are set after a dgenerate invocation.
 You can use the ``\templates_help`` directive which is similar to the ``--templates-help`` option
