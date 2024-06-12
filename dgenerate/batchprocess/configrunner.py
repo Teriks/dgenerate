@@ -169,6 +169,8 @@ def _download(url: str,
 
     \\set my_variable {{ download('https://modelhost.com/model.safetensors', output='directory/' }}
 
+    \\setp my_variable download('https://modelhost.com/model.safetensors')
+
     When an "output" path is specified, if the file already exists it
     will be reused by default (simple caching behavior), this can be disabled
     with the argument "overwrite=True" indicating that the file should

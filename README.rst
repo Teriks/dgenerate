@@ -4074,15 +4074,15 @@ control constructs.
     #! /usr/bin/env dgenerate --file
     #! dgenerate 3.7.0
 
-    \\set my_variable {{ download('https://modelhost.com/model.safetensors') }}
+    \set my_variable {{ download('https://modelhost.com/model.safetensors') }}
 
-    \\set my_variable {{ download('https://modelhost.com/model.safetensors', output='model.safetensors') }}
+    \set my_variable {{ download('https://modelhost.com/model.safetensors', output='model.safetensors') }}
 
-    \\set my_variable {{ download('https://modelhost.com/model.safetensors', output='directory/' }}
+    \set my_variable {{ download('https://modelhost.com/model.safetensors', output='directory/' }}
 
     # you can also use any template function with \setp (python expression evaluation)
 
-    \\setp my_variable download('https://modelhost.com/model.safetensors')
+    \setp my_variable download('https://modelhost.com/model.safetensors')
 
 
 The signature for this template function is: ``download(url: str, output: str | None = None, overwrite: bool = False, text: bool = False) -> str``
