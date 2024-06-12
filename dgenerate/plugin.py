@@ -533,7 +533,7 @@ class PluginLoader:
                         return True
                 except TypeError:
                     # handle un-hashable
-                    return False
+                    return True
 
                 if not inspect.isclass(cls):
                     return True
