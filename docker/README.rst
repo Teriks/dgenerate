@@ -4,13 +4,14 @@ To start a shell use: ``python run.py``
 
 To run a command in a fresh environment use for example:
 
-```
-python run.py "python3 examples/run.py --short-animations --subprocess-only &> examples/examples-docker.log"
+.. code-block:: bash
 
-python run.py "python3 run_tests.py --clean --examples"
+    python run.py "python3 examples/run.py --short-animations --subprocess-only &> examples/examples-docker.log"
 
-python run.py "python3 run_tests.py --clean --examples --subprocess-only"
-```
+    python run.py "python3 run_tests.py --clean --examples"
+
+    python run.py "python3 run_tests.py --clean --examples --subprocess-only"
+
 
 You can also use the ``--dev`` option to ``run.py`` to indicate that you want a development install
 from the current directory instead of building and then installing a wheel.
