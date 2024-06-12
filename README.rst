@@ -4495,7 +4495,9 @@ live dgenerate process using ``dgenerate --console`` or via the optionally
 installed desktop shortcut on Windows.
 
 This provides a basic REPL for the dgenerate config language utilizing
-a ``dgenerate --shell`` subprocess to act as the live interpreter.
+a ``dgenerate --shell`` subprocess to act as the live interpreter, it
+also features full context aware syntax highlighting for the dgenerate
+config language.
 
 It can be used to work with dgenerate without encountering the startup
 overhead of loading large python modules for every command line invocation.
