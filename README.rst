@@ -2585,7 +2585,7 @@ downloading other resources from the internet. The directive has the ability
 to specify arbitrary storage locations. See: `The \\download directive`_
 
 You can also use the ``download()`` template function for similar
-purposes: See: `The download() template function`_
+purposes. See: `The download() template function`_
 
 In the case of CivitAI you can use this to bake models into your script
 that will be automatically downloaded for you, you just need a CivitAI
@@ -4002,7 +4002,7 @@ your processing loop so that the file is simply re-downloaded.
 
 Or you may be better off using the ``download``
 template function which provides this functionality
-as a template function.
+as a template function. See: `The download() template function`_
 
 
 .. code-block:: jinja
