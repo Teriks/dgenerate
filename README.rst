@@ -3910,7 +3910,7 @@ feature to assign template variables.
 
     \print {{ my_variable }}
 
-    # Templates and environment variables references
+    # Templates and environmental variable references
     # are also parsed in the \sete directive, just as they are with \set
 
     \set directory my_files
