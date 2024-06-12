@@ -66,7 +66,7 @@ experience please visit `readthedocs <http://dgenerate.readthedocs.io/en/v3.7.0/
     * `Specifying LoRAs`_
     * `Specifying Textual Inversions`_
     * `Specifying Control Nets`_
-    * `Utilizing CivitAI and Other Hosted Models`_
+    * `Utilizing CivitAI links and Other Hosted Models`_
     * `Specifying Generation Batch Size`_
     * `Image Processors`_
     * `Upscaling with Diffusion Upscaler Models`_
@@ -2579,8 +2579,8 @@ If you are loading a .safetensors or other file from a path on disk, simply do:
     --control-nets "my_cn_model.safetensors"
 
 
-Utilizing CivitAI and Other Hosted Models
-=========================================
+Utilizing CivitAI links and Other Hosted Models
+===============================================
 
 Any model accepted by dgenerate that can be specified as a single file
 inside of a URI or otherwise can be specified by a URL link to a model
@@ -2598,11 +2598,16 @@ In the case of CivitAI you can use this to bake models into your script
 that will be automatically downloaded for you, you just need a CivitAI
 account and token to download models.
 
+To get a direct link to a CivitAI model, in your browser
+(`right click -> Copy link address...`) on the download link for the
+specific file on the model page. This will yield a link that points
+directly at the model file, which is what dgenerate needs.
+
 If you plan to download many large models to the web cache in
 this manner you may wish to adjust the global cache expiry time
 so that they exist in the cache longer than the default of 12 hours.
 
-You can see how to do this in the section `File Cache Control`_
+You can see how to change the cache expiry time in this section `File Cache Control`_
 
 .. code-block:: bash
 
