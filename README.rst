@@ -204,20 +204,22 @@ Help Output
                             Referencing a model on huggingface that has not been cached because it was
                             not previously downloaded will result in a failure when using this option.
       --templates-help [VARIABLE_NAME ...]
-                            Print a list of template variables available in dgenerate configs during
-                            batch processing from STDIN. When used as a command option, their values
-                            are not presented, just their names and types. Specifying names will print
-                            type information for those variable names.
+                            Print a list of template variables available in the interpreter
+                            environment used for dgenerate config scripts, particularly the variables
+                            set after a dgenerate invocation occurs. When used as a command line
+                            option, their values are not presented, just their names and types.
+                            Specifying names will print type information for those variable names.
       --directives-help [DIRECTIVE_NAME ...]
-                            Print a list of directives available in dgenerate configs during batch
-                            processing from STDIN. Providing names will print documentation for the
-                            specified directive names. When used with --plugin-modules, directives
+                            Print a list of directives available in the interpreter environment used
+                            for dgenerate config scripts. Providing names will print documentation for
+                            the specified directive names. When used with --plugin-modules, directives
                             implemented by the specified plugins will also be listed.
       --functions-help [FUNCTION_NAME ...]
-                            Print a list of template functions available in dgenerate configs during
-                            batch processing from STDIN. Providing names will print documentation for
-                            the specified function names. When used with --plugin-modules, functions
-                            implemented by the specified plugins will also be listed.
+                            Print a list of template functions available in the interpreter
+                            environment used for dgenerate config scripts. Providing names will print
+                            documentation for the specified function names. When used with --plugin-
+                            modules, functions implemented by the specified plugins will also be
+                            listed.
       -mt MODEL_TYPE, --model-type MODEL_TYPE
                             Use when loading different model types. Currently supported: torch, torch-
                             pix2pix, torch-sdxl, torch-sdxl-pix2pix, torch-upscaler-x2, torch-
@@ -251,8 +253,7 @@ Help Output
                             an animation then the image grid is used for the output frames. During
                             animation rendering each image in the batch will still be written to the
                             output directory along side the produced animation as either suffixed
-                            files or image grids depending on the options you choose. (Torch Default:
-                            1)
+                            files or image grids depending on the options you choose. (Torch Default:1)
       -bgs SIZE, --batch-grid-size SIZE
                             Produce a single image containing a grid of images with the number of
                             COLUMNSxROWS given to this argument when --batch-size is greater than 1,
@@ -297,17 +298,20 @@ Help Output
                             accepts huggingface repository slugs/blob links, .pt, .pth, .bin, .ckpt,
                             and .safetensors files. Other encoders can only accept huggingface
                             repository slugs/blob links, or a path to a folder on disk with the model
-                            configuration and model file(s). Aside from the "model" argument, there
-                            are four other optional arguments that can be specified, these include
-                            "revision", "variant", "subfolder", "dtype". They can be specified as so
-                            in any order, they are not positional: "AutoencoderKL;model=huggingface/va
-                            e;revision=main;variant=fp16;subfolder=sub_folder;dtype=float16". The
-                            "revision" argument specifies the model revision to use for the VAE when
-                            loading from huggingface repository or blob link, (The git branch / tag,
-                            default is "main"). The "variant" argument specifies the VAE model
-                            variant, it is only supported for torch type models it is not supported
-                            for flax. If "variant" is specified when loading from a huggingface
-                            repository or folder, weights will be loaded from "variant" filename, e.g.
+                            configuration and model file(s). If an AutoencoderKL VAE model file exists
+                            at a URL which serves the file as a raw download, you may provide an
+                            http/https link to it and it will be downloaded to dgenerates web cache.
+                            Aside from the "model" argument, there are four other optional arguments
+                            that can be specified, these include "revision", "variant", "subfolder",
+                            "dtype". They can be specified as so in any order, they are not
+                            positional: "AutoencoderKL;model=huggingface/vae;revision=main;variant=fp1
+                            6;subfolder=sub_folder;dtype=float16". The "revision" argument specifies
+                            the model revision to use for the VAE when loading from huggingface
+                            repository or blob link, (The git branch / tag, default is "main"). The
+                            "variant" argument specifies the VAE model variant, it is only supported
+                            for torch type models it is not supported for flax. If "variant" is
+                            specified when loading from a huggingface repository or folder, weights
+                            will be loaded from "variant" filename, e.g.
                             "pytorch_model.<variant>.safetensors. "variant" in the case of --vae does
                             not default to the value of --variant to prevent failures during common
                             use cases. The "subfolder" argument specifies the VAE model subfolder, if
@@ -341,11 +345,13 @@ Help Output
                             Specify one or more LoRA models using URIs (flax not supported). These
                             should be a huggingface repository slug, path to model file on disk (for
                             example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model folder
-                            containing model files. huggingface blob links are not supported, see
-                            "subfolder" and "weight-name" below instead. Optional arguments can be
-                            provided after a LoRA model specification, these include: "scale",
-                            "revision", "subfolder", and "weight-name". They can be specified as so in
-                            any order, they are not positional:
+                            containing model files. If a LoRA model file exists at a URL which serves
+                            the file as a raw download, you may provide an http/https link to it and
+                            it will be downloaded to dgenerates web cache. huggingface blob links are
+                            not supported, see "subfolder" and "weight-name" below instead. Optional
+                            arguments can be provided after a LoRA model specification, these include:
+                            "scale", "revision", "subfolder", and "weight-name". They can be specified
+                            as so in any order, they are not positional:
                             "huggingface/lora;scale=1.0;revision=main;subfolder=repo_subfolder;weight-
                             name=lora.safetensors". The "scale" argument indicates the scale factor of
                             the LoRA. The "revision" argument specifies the model revision to use for
@@ -363,11 +369,14 @@ Help Output
                             Specify one or more Textual Inversion models using URIs (flax and SDXL not
                             supported). These should be a huggingface repository slug, path to model
                             file on disk (for example, a .pt, .pth, .bin, .ckpt, or .safetensors
-                            file), or model folder containing model files. huggingface blob links are
-                            not supported, see "subfolder" and "weight-name" below instead. Optional
-                            arguments can be provided after the Textual Inversion model specification,
-                            these include: "token", "revision", "subfolder", and "weight-name". They
-                            can be specified as so in any order, they are not positional:
+                            file), or model folder containing model files. If a Textual Inversion
+                            model file exists at a URL which serves the file as a raw download, you
+                            may provide an http/https link to it and it will be downloaded to
+                            dgenerates web cache. huggingface blob links are not supported, see
+                            "subfolder" and "weight-name" below instead. Optional arguments can be
+                            provided after the Textual Inversion model specification, these include:
+                            "token", "revision", "subfolder", and "weight-name". They can be specified
+                            as so in any order, they are not positional:
                             "huggingface/ti_model;revision=main;subfolder=repo_subfolder;weight-
                             name=ti_model.safetensors". The "token" argument can be used to override
                             the prompt token used for the textual inversion prompt embedding. For
@@ -389,42 +398,45 @@ Help Output
                             Specify one or more ControlNet models using URIs. This should be a
                             huggingface repository slug / blob link, path to model file on disk (for
                             example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model folder
-                            containing model files. Optional arguments can be provided after the
-                            ControlNet model specification, for torch these include: "scale", "start",
-                            "end", "revision", "variant", "subfolder", and "dtype". For flax: "scale",
-                            "revision", "subfolder", "dtype", "from_torch" (bool) They can be
-                            specified as so in any order, they are not positional: "huggingface/contro
-                            lnet;scale=1.0;start=0.0;end=1.0;revision=main;variant=fp16;subfolder=repo
-                            _subfolder;dtype=float16". The "scale" argument specifies the scaling
-                            factor applied to the ControlNet model, the default value is 1.0. The
-                            "start" (only for --model-type "torch*") argument specifies at what
-                            fraction of the total inference steps to begin applying the ControlNet,
-                            defaults to 0.0, IE: the very beginning. The "end" (only for --model-type
-                            "torch*") argument specifies at what fraction of the total inference steps
-                            to stop applying the ControlNet, defaults to 1.0, IE: the very end. The
-                            "revision" argument specifies the model revision to use for the ControlNet
-                            model when loading from huggingface repository, (The git branch / tag,
-                            default is "main"). The "variant" (only for --model-type "torch*")
-                            argument specifies the ControlNet model variant, if "variant" is specified
-                            when loading from a huggingface repository or folder, weights will be
-                            loaded from "variant" filename, e.g. "pytorch_model.<variant>.safetensors.
-                            "variant" defaults to automatic selection and is ignored if using flax.
-                            "variant" in the case of --control-nets does not default to the value of
-                            --variant to prevent failures during common use cases. The "subfolder"
-                            argument specifies the ControlNet model subfolder, if specified when
-                            loading from a huggingface repository or folder, weights from the
-                            specified subfolder. The "dtype" argument specifies the ControlNet model
-                            precision, it defaults to the value of -t/--dtype and should be one of:
-                            auto, bfloat16, float16, or float32. The "from_torch" (only for --model-
-                            type flax) this argument specifies that the ControlNet is to be loaded and
-                            converted from a huggingface repository or file that is designed for
-                            pytorch. (Defaults to false) If you wish to load a weights file directly
-                            from disk, the simplest way is: --control-nets "my_controlnet.safetensors"
-                            or --control-nets "my_controlnet.safetensors;scale=1.0;dtype=float16", all
-                            other loading arguments aside from "scale" and "dtype" are unused in this
-                            case and may produce an error message if used ("from_torch" is available
-                            when using flax). If you wish to load a specific weight file from a
-                            huggingface repository, use the blob link loading syntax: --control-nets
+                            containing model files. If a ControlNet model file exists at a URL which
+                            serves the file as a raw download, you may provide an http/https link to
+                            it and it will be downloaded to dgenerates web cache. Optional arguments
+                            can be provided after the ControlNet model specification, for torch these
+                            include: "scale", "start", "end", "revision", "variant", "subfolder", and
+                            "dtype". For flax: "scale", "revision", "subfolder", "dtype", "from_torch"
+                            (bool) They can be specified as so in any order, they are not positional:
+                            "huggingface/controlnet;scale=1.0;start=0.0;end=1.0;revision=main;variant=
+                            fp16;subfolder=repo_subfolder;dtype=float16". The "scale" argument
+                            specifies the scaling factor applied to the ControlNet model, the default
+                            value is 1.0. The "start" (only for --model-type "torch*") argument
+                            specifies at what fraction of the total inference steps to begin applying
+                            the ControlNet, defaults to 0.0, IE: the very beginning. The "end" (only
+                            for --model-type "torch*") argument specifies at what fraction of the
+                            total inference steps to stop applying the ControlNet, defaults to 1.0,
+                            IE: the very end. The "revision" argument specifies the model revision to
+                            use for the ControlNet model when loading from huggingface repository,
+                            (The git branch / tag, default is "main"). The "variant" (only for
+                            --model-type "torch*") argument specifies the ControlNet model variant, if
+                            "variant" is specified when loading from a huggingface repository or
+                            folder, weights will be loaded from "variant" filename, e.g.
+                            "pytorch_model.<variant>.safetensors. "variant" defaults to automatic
+                            selection and is ignored if using flax. "variant" in the case of
+                            --control-nets does not default to the value of --variant to prevent
+                            failures during common use cases. The "subfolder" argument specifies the
+                            ControlNet model subfolder, if specified when loading from a huggingface
+                            repository or folder, weights from the specified subfolder. The "dtype"
+                            argument specifies the ControlNet model precision, it defaults to the
+                            value of -t/--dtype and should be one of: auto, bfloat16, float16, or
+                            float32. The "from_torch" (only for --model-type flax) this argument
+                            specifies that the ControlNet is to be loaded and converted from a
+                            huggingface repository or file that is designed for pytorch. (Defaults to
+                            false) If you wish to load a weights file directly from disk, the simplest
+                            way is: --control-nets "my_controlnet.safetensors" or --control-nets
+                            "my_controlnet.safetensors;scale=1.0;dtype=float16", all other loading
+                            arguments aside from "scale" and "dtype" are unused in this case and may
+                            produce an error message if used ("from_torch" is available when using
+                            flax). If you wish to load a specific weight file from a huggingface
+                            repository, use the blob link loading syntax: --control-nets
                             "https://huggingface.co/UserName/repository-
                             name/blob/main/controlnet.safetensors", the "revision" argument may be
                             used with this syntax.
@@ -722,9 +734,10 @@ Help Output
       -oc, --output-configs
                             Write a configuration text file for every output image or animation. The
                             text file can be used reproduce that particular output image or animation
-                            by piping it to dgenerate STDIN, for example "dgenerate < config.dgen".
-                            These files will be written to --output-path and are affected by --output-
-                            prefix and --output-overwrite as well. The files will be named after their
+                            by piping it to dgenerate STDIN or by using the --file option, for example
+                            "dgenerate < config.dgen" or "dgenerate --file config.dgen". These files
+                            will be written to --output-path and are affected by --output-prefix and
+                            --output-overwrite as well. The files will be named after their
                             corresponding image or animation file. Configuration files produced for
                             animation frame images will utilize --frame-start and --frame-end to
                             specify the frame number.

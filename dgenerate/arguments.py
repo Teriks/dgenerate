@@ -390,26 +390,25 @@ def _create_parser(add_model=True, add_help=True):
     # This argument is handled in dgenerate.invoker.invoke_dgenerate
     actions.append(
         parser.add_argument('--templates-help', nargs='*', dest=None, default=None, metavar='VARIABLE_NAME',
-                            help="""Print a list of template variables available in dgenerate configs 
-                            during batch processing from STDIN. When used as a command option, their values
-                            are not presented, just their names and types. Specifying names will print 
-                            type information for those variable names."""))
+                            help="""Print a list of template variables available in the interpreter environment
+                            used for dgenerate config scripts, particularly the variables set after a dgenerate 
+                            invocation occurs. When used as a command line option, their values are not presented, 
+                            just their names and types. Specifying names will print type information for 
+                            those variable names."""))
 
     actions.append(
         parser.add_argument('--directives-help', nargs='*', dest=None, default=None, metavar='DIRECTIVE_NAME',
-                            help="""Print a list of directives available in dgenerate configs 
-                            during batch processing from STDIN. Providing names will print 
-                            documentation for the specified directive names. When used with 
-                            --plugin-modules, directives implemented by the specified plugins
-                             will also be listed."""))
+                            help="""Print a list of directives available in the interpreter environment used for
+                            dgenerate config scripts. Providing names will print documentation for the specified 
+                            directive names. When used with --plugin-modules, directives implemented by the 
+                            specified plugins will also be listed."""))
 
     actions.append(
         parser.add_argument('--functions-help', nargs='*', dest=None, default=None, metavar='FUNCTION_NAME',
-                            help="""Print a list of template functions available in dgenerate configs 
-                            during batch processing from STDIN. Providing names will print 
-                            documentation for the specified function names. When used with 
-                            --plugin-modules, functions implemented by the specified plugins
-                             will also be listed."""))
+                            help="""Print a list of template functions available in the interpreter environment
+                            used for dgenerate config scripts. Providing names will print documentation for the
+                            specified function names. When used with --plugin-modules, functions implemented 
+                            by the specified plugins will also be listed."""))
 
     actions.append(
         parser.add_argument('-mt', '--model-type', action='store', default='torch', type=_model_type,
@@ -510,9 +509,14 @@ def _create_parser(add_model=True, add_help=True):
                             encoder class: "FlaxAutoencoderKL;model=huggingface/vae".
                             
                             The AutoencoderKL encoder class accepts huggingface repository slugs/blob links, 
-                            .pt, .pth, .bin, .ckpt, and .safetensors files. Other encoders can only accept huggingface 
-                            repository slugs/blob links, or a path to a folder on disk with the model 
-                            configuration and model file(s). 
+                            .pt, .pth, .bin, .ckpt, and .safetensors files.
+                             
+                            Other encoders can only accept huggingface repository slugs/blob links, or a path to
+                            a folder on disk with the model configuration and model file(s).
+                            
+                            If an AutoencoderKL VAE model file exists at a URL which serves the file as
+                            a raw download, you may provide an http/https link to it and it will be
+                            downloaded to dgenerates web cache.
                             
                             Aside from the "model" argument, there are four other optional arguments that can be specified,
                             these include "revision", "variant", "subfolder", "dtype".
@@ -569,6 +573,10 @@ def _create_parser(add_model=True, add_help=True):
                             huggingface repository slug, path to model file on disk (for example, a .pt, .pth, .bin,
                             .ckpt, or .safetensors file), or model folder containing model files.
                             
+                            If a LoRA model file exists at a URL which serves the file as
+                            a raw download, you may provide an http/https link to it and it will be
+                            downloaded to dgenerates web cache.
+                            
                             huggingface blob links are not supported, see "subfolder" and "weight-name" below instead.
                             
                             Optional arguments can be provided after a LoRA model specification, 
@@ -600,7 +608,11 @@ def _create_parser(add_model=True, add_help=True):
                             """Specify one or more Textual Inversion models using URIs (flax and SDXL not supported). 
                             These should be a huggingface repository slug, path to model file on disk 
                             (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model folder 
-                            containing model files. 
+                            containing model files.
+                            
+                            If a Textual Inversion model file exists at a URL which serves the file as
+                            a raw download, you may provide an http/https link to it and it will be
+                            downloaded to dgenerates web cache.
                             
                             huggingface blob links are not supported, see "subfolder" and "weight-name" below instead.
                             
@@ -637,6 +649,10 @@ def _create_parser(add_model=True, add_help=True):
                             huggingface repository slug / blob link, path to model file on disk 
                             (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model 
                             folder containing model files.
+                            
+                            If a ControlNet model file exists at a URL which serves the file as
+                            a raw download, you may provide an http/https link to it and it will be
+                            downloaded to dgenerates web cache.
                             
                             Optional arguments can be provided after the ControlNet model specification, for torch
                             these include: "scale", "start", "end", "revision", "variant", "subfolder", and "dtype".
@@ -1119,11 +1135,12 @@ def _create_parser(add_model=True, add_help=True):
         parser.add_argument('-oc', '--output-configs', action='store_true', default=False,
                             help="""Write a configuration text file for every output image or animation.
                             The text file can be used reproduce that particular output image or animation by piping
-                            it to dgenerate STDIN, for example "dgenerate < config.dgen". These files will be written
-                            to --output-path and are affected by --output-prefix and --output-overwrite as well. 
-                            The files will be named after their corresponding image or animation file. Configuration 
-                            files produced for animation frame images will utilize --frame-start and --frame-end to 
-                            specify the frame number."""))
+                            it to dgenerate STDIN or by using the --file option, for example "dgenerate < config.dgen" 
+                            or "dgenerate --file config.dgen".  These files will be written to --output-path and are 
+                            affected by --output-prefix and --output-overwrite as well. The files will be named 
+                            after their corresponding image or animation file. Configuration files produced for 
+                            animation frame images will utilize --frame-start and --frame-end to specify the 
+                            frame number."""))
 
     actions.append(
         parser.add_argument('-om', '--output-metadata', action='store_true', default=False,
