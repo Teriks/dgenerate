@@ -2610,7 +2610,11 @@ purposes. See: `The download() template function`_
 
 In the case of CivitAI you can use this to bake models into your script
 that will be automatically downloaded for you, you just need a CivitAI
-account and token to download models.
+account and API token to download models.
+
+Your API token can be created on this page: https://civitai.com/user/account
+
+Near the bottom of the page in the section: ``API Keys``
 
 To get a direct link to a CivitAI model, in your browser
 (`right click -> Copy link address...`) on the download link for the
