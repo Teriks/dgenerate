@@ -76,7 +76,7 @@ _SETP_KEYWORDS = sorted((
 ), key=lambda s: len(s), reverse=True)
 
 # Common patterns
-_ecos = r'(\\#|[^/\s\\#=;{}"\'])'
+_ecos = r'(\\#|[^/\s\\#=;:{}"\'])'
 _comment_pattern = (r'(?<!\\)(#.*$)', _token.Comment.Single)
 _env_var_pattern = (r'\$(?:\w+|\{\w+\})|%[\w]+%', _token.Name.Constant)
 _jinja_block_pattern = (r'(\{%)(\s*)(\w+)',
@@ -108,8 +108,8 @@ _http_pattern = (r'(?<!\w)(https?://(?:'  # Protocol
 
 _path_patterns = (
     _http_pattern,
-    (rf'((?<!\w)((?:[a-zA-Z]:))?(?:[/\\]|~?|\.?\.?|{_ecos}+[/\\]){_ecos}+(?:[/\\]{_ecos}+)+|{_ecos}+/)', _token.String),
-    (rf'(?<!\w)(/{_ecos}+)([/\\]{_ecos}*)*', _token.String),
+    (rf'(?<!\w)([a-zA-Z]:(([/]|\\\\){_ecos}*)+)', _token.String),
+    (rf'(?<!\w)(([/]|\\\\){_ecos}+)(([/]|\\\\){_ecos}*)*', _token.String),
     (rf'(?<!\w){_ecos}+\.{_ecos}+', _token.String)
 )
 
@@ -236,6 +236,8 @@ class DgenerateLexer(_lexer.RegexLexer):
              _lexer.bygroups(_token.Name.Builtin, _token.Text.Whitespace, _token.Name.Variable), 'value'),
             (r'(?<!\w)(\\setp)(\s+)([a-zA-Z_][a-zA-Z0-9_]*)',
              _lexer.bygroups(_token.Name.Builtin, _token.Text.Whitespace, _token.Name.Variable), 'setp_value'),
+            (r'(?<!\w)(\\import_plugins)(\s+)',
+             _lexer.bygroups(_token.Name.Builtin, _token.Text.Whitespace), 'import_plugins_value'),
             (r'(?<!\w)(\\unset|\\save_modules|\\use_modules|\\clear_modules)(\s+)([a-zA-Z_][a-zA-Z0-9_]*)',
              _lexer.bygroups(_token.Name.Builtin, _token.Text.Whitespace, _token.Name.Variable)),
             (r'(?<!\w)(\\[a-zA-Z_][a-zA-Z0-9_]*)', _lexer.bygroups(_token.Name.Builtin)),
@@ -310,6 +312,31 @@ class DgenerateLexer(_lexer.RegexLexer):
             (r"'", _token.String.Single, 'single_string_setp_value'),
             (r'\s+', _token.Whitespace),
         ],
+        'import_plugins_value': [
+            (r'(\s*?\n\s*?)(-)', _lexer.bygroups(_token.Whitespace, _token.Operator)),
+            (r'\s*?\n', _token.Whitespace, 'root'),
+            (r'(\n\s*?)(-)', _lexer.bygroups(_token.Whitespace, _token.Operator)),
+            (r'\\[^\s]', _token.Operator),
+            (r'(\\)(\s*?\n)', _lexer.bygroups(_token.Operator, _token.Whitespace), 'import_plugins_value_escape'),
+            (r'(\\)(\s+)(#[^\n]*)', _lexer.bygroups(_token.Operator, _token.Whitespace, _token.Comment.Single),
+             'import_plugins_value_escape'),
+            _comment_pattern,
+            _env_var_pattern,
+            *((p[0], _token.Keyword) for p in _path_patterns[1:3]),
+            (_variable_names_pattern[0], _token.Keyword),
+            (r'[.]', _token.Operator),
+            _jinja_block_pattern,
+            _jinja_comment_pattern,
+            _jinja_interpolate_pattern,
+            (r'"', _token.String.Double, 'double_string_import_plugins_value'),
+            (r"'", _token.String.Single, 'single_string_import_plugins_value'),
+            (r'\s+', _token.Whitespace),
+        ],
+        f'import_plugins_value_escape': [
+            (r'(#[^\n]*)(\s*\n)', _lexer.bygroups(_token.Comment.Single, _token.Whitespace)),
+            (r'(\s|\n)+', _token.Whitespace),
+            (r'(?<=[-\n\s.])', _token.Whitespace, 'import_plugins_value')
+        ],
         f'setp_value_escape': [
             (r'(#[^\n]*)(\s*\n)', _lexer.bygroups(_token.Comment.Single, _token.Whitespace)),
             (r'(\s|\n)+', _token.Whitespace),
@@ -324,6 +351,8 @@ class DgenerateLexer(_lexer.RegexLexer):
         **_create_string_continue('single_string', "'", 'root'),
         **_create_string_continue('double_string_setp_value', '"', 'setp_value'),
         **_create_string_continue('single_string_setp_value', "'", 'setp_value'),
+        **_create_string_continue('double_string_import_plugins_value', '"', 'import_plugins_value'),
+        **_create_string_continue('single_string_import_plugins_value', "'", 'import_plugins_value'),
         'jinja_block': [
             # End of Jinja2 block statement
             (r'(\s*)(%\})', _lexer.bygroups(_token.Text, _token.String.Interpol), '#pop'),
