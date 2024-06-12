@@ -3226,11 +3226,11 @@ The following is a config file example that covers the most basic syntax concept
 Built in template variables and functions
 -----------------------------------------
 
-There is valuable information about the previous file output of dgenerate that
+There is valuable information about the previous invocation of dgenerate that
 is set in the environment and available to use via Jinja2 templating, some of these include:
 
-* ``{{ last_images }}`` (An iterable of un-quoted filenames)
-* ``{{ last_animations }}`` (An iterable of un-quoted filenames)
+* ``{{ last_images }}`` (An iterable of un-quoted filenames which were generated)
+* ``{{ last_animations }}`` (An iterable of un-quoted filenames which were generated)
 
 There are template variables for prompts, containing the previous prompt values:
 
