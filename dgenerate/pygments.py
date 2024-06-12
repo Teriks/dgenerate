@@ -109,7 +109,7 @@ _http_pattern = (r'(?<!\w)(https?://(?:'  # Protocol
 _path_patterns = (
     _http_pattern,
     (rf'(?<!\w)([a-zA-Z]:(([/]|\\\\){_ecos}*)+)', _token.String),
-    (rf'(?<!\w)(([/]|\\\\){_ecos}+)(([/]|\\\\){_ecos}*)*', _token.String),
+    (rf'(?<!\w)(~|..?)?(([/]|\\\\){_ecos}+)(([/]|\\\\){_ecos}*)*', _token.String),
     (rf'(?<!\w){_ecos}+\.{_ecos}+', _token.String)
 )
 
