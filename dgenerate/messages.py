@@ -191,7 +191,7 @@ def log(*args: typing.Any, level=INFO, underline=False, underline_char='='):
                 underline_char=underline_char)
 
 
-def debug_log(*func_or_str: typing.Union[typing.Callable[[], typing.Any], typing.Any],
+def debug_log(*func_or_str: typing.Callable[[], typing.Any] | typing.Any,
               underline=False, underline_char='='):
     """
     Conditionally log strings or possibly expensive functions if :py:attr:`.LEVEL` is

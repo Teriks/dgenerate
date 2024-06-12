@@ -245,7 +245,7 @@ class ImageProcessor(_plugin.Plugin):
         _messages.debug_log(f'Finished Image Process - {self}.post_resize')
         return processed
 
-    def get_alignment(self) -> typing.Optional[int]:
+    def get_alignment(self) -> int | None:
         """
         Get required input image alignment, which will be forcefully applied.
 
@@ -259,7 +259,7 @@ class ImageProcessor(_plugin.Plugin):
                 image: PIL.Image.Image,
                 resize_resolution: dgenerate.types.OptionalSize = None,
                 aspect_correct: bool = True,
-                align: typing.Optional[int] = 8):
+                align: int | None = 8):
         """
         Preform image processing on an image, including the requested resizing step.
 
@@ -360,7 +360,7 @@ class ImageProcessor(_plugin.Plugin):
         """
         self.__modules.append(module)
 
-    def to(self, device: typing.Union[torch.device, str]):
+    def to(self, device: torch.device | str):
         """
         Move all :py:class:`torch.nn.Module` modules registered
         to this image processor to a specific device.

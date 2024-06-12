@@ -38,7 +38,7 @@ class MyProcessor(ImageProcessor):
                  **kwargs):
         super().__init__(**kwargs)
 
-    def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: typing.Optional[tuple[int, int]]):
+    def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: tuple[int, int] | None):
         return PIL.ImageOps.invert(image)
 
     def impl_post_resize(self, image: PIL.Image.Image):

@@ -120,7 +120,7 @@ def _set_floyd_safety_checker(pipeline: diffusers.DiffusionPipeline, safety_chec
             pipeline.safety_checker = _floyd_disabled_safety_checker
 
 
-def scheduler_is_help(name: typing.Optional[str]):
+def scheduler_is_help(name: str | None):
     """
     This scheduler name is simply a request for help?, IE: "help"?
 
@@ -134,8 +134,8 @@ def scheduler_is_help(name: typing.Optional[str]):
     return lname == 'help' or lname == 'helpargs'
 
 
-def load_scheduler(pipeline: typing.Union[diffusers.DiffusionPipeline, diffusers.FlaxDiffusionPipeline],
-                   scheduler_name=None, model_path: typing.Optional[str] = None):
+def load_scheduler(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusionPipeline,
+                   scheduler_name=None, model_path: str | None = None):
     """
     Load a specific compatible scheduler class name onto a huggingface diffusers pipeline object.
 
@@ -303,7 +303,7 @@ def estimate_pipeline_memory_use(
     return usage
 
 
-def set_vae_slicing_tiling(pipeline: typing.Union[diffusers.DiffusionPipeline, diffusers.FlaxDiffusionPipeline],
+def set_vae_slicing_tiling(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusionPipeline,
                            vae_tiling: bool,
                            vae_slicing: bool):
     """
@@ -369,21 +369,21 @@ def get_torch_pipeline_modules(pipeline: diffusers.DiffusionPipeline):
     return {k: v for k, v in pipeline.components.items() if isinstance(v, torch.nn.Module)}
 
 
-def _set_sequential_cpu_offload_flag(module: typing.Union[diffusers.DiffusionPipeline, torch.nn.Module], value: bool):
+def _set_sequential_cpu_offload_flag(module: diffusers.DiffusionPipeline | torch.nn.Module, value: bool):
     module.DGENERATE_SEQUENTIAL_CPU_OFFLOAD = bool(value)
 
     _messages.debug_log(
         f'setting DGENERATE_SEQUENTIAL_CPU_OFFLOAD={value} on module "{module.__class__.__name__}"')
 
 
-def _set_cpu_offload_flag(module: typing.Union[diffusers.DiffusionPipeline, torch.nn.Module], value: bool):
+def _set_cpu_offload_flag(module: diffusers.DiffusionPipeline | torch.nn.Module, value: bool):
     module.DGENERATE_MODEL_CPU_OFFLOAD = bool(value)
 
     _messages.debug_log(
         f'setting DGENERATE_MODEL_CPU_OFFLOAD={value} on module "{module.__class__.__name__}"')
 
 
-def is_sequential_cpu_offload_enabled(module: typing.Union[diffusers.DiffusionPipeline, torch.nn.Module]):
+def is_sequential_cpu_offload_enabled(module: diffusers.DiffusionPipeline | torch.nn.Module):
     """
     Test if a pipeline or torch neural net module created by dgenerate has sequential offload enabled.
 
@@ -393,7 +393,7 @@ def is_sequential_cpu_offload_enabled(module: typing.Union[diffusers.DiffusionPi
     return hasattr(module, 'DGENERATE_SEQUENTIAL_CPU_OFFLOAD') and bool(module.DGENERATE_SEQUENTIAL_CPU_OFFLOAD)
 
 
-def is_model_cpu_offload_enabled(module: typing.Union[diffusers.DiffusionPipeline, torch.nn.Module]):
+def is_model_cpu_offload_enabled(module: diffusers.DiffusionPipeline | torch.nn.Module):
     """
     Test if a pipeline or torch neural net module created by dgenerate has model cpu offload enabled.
 
@@ -412,7 +412,7 @@ def _disable_to(module):
 
 
 def enable_sequential_cpu_offload(pipeline: diffusers.DiffusionPipeline,
-                                  device: typing.Union[torch.device, str] = "cuda"):
+                                  device: torch.device | str = "cuda"):
     """
     Enable sequential offloading on a torch pipeline, in a way dgenerate can keep track of.
 
@@ -433,7 +433,7 @@ def enable_sequential_cpu_offload(pipeline: diffusers.DiffusionPipeline,
 
 
 def enable_model_cpu_offload(pipeline: diffusers.DiffusionPipeline,
-                             device: typing.Union[torch.device, str] = "cuda"):
+                             device: torch.device | str = "cuda"):
     """
     Enable sequential model cpu offload on a torch pipeline, in a way dgenerate can keep track of.
 
@@ -486,7 +486,7 @@ def enable_model_cpu_offload(pipeline: diffusers.DiffusionPipeline,
             pipeline._all_hooks.append(hook)
 
 
-def get_torch_device(component: typing.Union[diffusers.DiffusionPipeline, torch.nn.Module]) -> torch.device:
+def get_torch_device(component: diffusers.DiffusionPipeline | torch.nn.Module) -> torch.device:
     """
     Get the device that a pipeline or pipeline component exists on.
 
@@ -502,7 +502,7 @@ def get_torch_device(component: typing.Union[diffusers.DiffusionPipeline, torch.
                      f'device attribute or the function get_device()')
 
 
-def get_torch_device_string(component: typing.Union[diffusers.DiffusionPipeline, torch.nn.Module]) -> str:
+def get_torch_device_string(component: diffusers.DiffusionPipeline | torch.nn.Module) -> str:
     """
     Get the device string that a pipeline or pipeline component exists on.
 
@@ -512,7 +512,7 @@ def get_torch_device_string(component: typing.Union[diffusers.DiffusionPipeline,
     return str(get_torch_device(component))
 
 
-def pipeline_to(pipeline, device: typing.Union[torch.device, str, None]):
+def pipeline_to(pipeline, device: torch.device | str | None):
     """
     Move a diffusers pipeline to a device if possible, in a way that dgenerate can keep track of.
 
@@ -576,8 +576,8 @@ _LAST_CALLED_PIPELINE = None
 
 
 # noinspection PyCallingNonCallable
-def call_pipeline(pipeline: typing.Union[diffusers.DiffusionPipeline, diffusers.FlaxDiffusionPipeline],
-                  device: typing.Union[torch.device, str, None] = 'cuda', *args, **kwargs):
+def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusionPipeline,
+                  device: torch.device | str | None = 'cuda', *args, **kwargs):
     """
     Call a diffusers pipeline, offload the last called pipeline to CPU before
     doing so if the last pipeline is not being called in succession
@@ -693,12 +693,12 @@ class TorchPipelineCreationResult(PipelineCreationResult):
         """
         return super().pipeline
 
-    parsed_unet_uri: typing.Optional[_uris.TorchUNetUri]
+    parsed_unet_uri: _uris.TorchUNetUri | None
     """
     Parsed UNet URI if one was present
     """
 
-    parsed_vae_uri: typing.Optional[_uris.TorchVAEUri]
+    parsed_vae_uri: _uris.TorchVAEUri | None
     """
     Parsed VAE URI if one was present
     """
@@ -720,8 +720,8 @@ class TorchPipelineCreationResult(PipelineCreationResult):
 
     def __init__(self,
                  pipeline: diffusers.DiffusionPipeline,
-                 parsed_unet_uri: typing.Optional[_uris.TorchUNetUri],
-                 parsed_vae_uri: typing.Optional[_uris.TorchVAEUri],
+                 parsed_unet_uri: _uris.TorchUNetUri | None,
+                 parsed_vae_uri: _uris.TorchVAEUri | None,
                  parsed_lora_uris: collections.abc.Sequence[_uris.LoRAUri],
                  parsed_textual_inversion_uris: collections.abc.Sequence[_uris.TextualInversionUri],
                  parsed_control_net_uris: collections.abc.Sequence[_uris.TorchControlNetUri]):
@@ -760,7 +760,7 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                                     safety_checker: bool = False,
                                     auth_token: _types.OptionalString = None,
                                     device: str = 'cuda',
-                                    extra_modules: typing.Optional[dict[str, typing.Any]] = None,
+                                    extra_modules: dict[str, typing.Any] | None = None,
                                     model_cpu_offload: bool = False,
                                     sequential_cpu_offload: bool = False,
                                     local_files_only: bool = False) -> TorchPipelineCreationResult:
@@ -831,7 +831,7 @@ class TorchPipelineFactory:
                  safety_checker: bool = False,
                  auth_token: _types.OptionalString = None,
                  device: str = 'cuda',
-                 extra_modules: typing.Optional[dict[str, typing.Any]] = None,
+                 extra_modules: dict[str, typing.Any] | None = None,
                  model_cpu_offload: bool = False,
                  sequential_cpu_offload: bool = False,
                  local_files_only: bool = False,
@@ -900,13 +900,12 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                                      safety_checker: bool = False,
                                      auth_token: _types.OptionalString = None,
                                      device: str = 'cuda',
-                                     extra_modules: typing.Optional[dict[str, typing.Any]] = None,
+                                     extra_modules: dict[str, typing.Any] | None = None,
                                      model_cpu_offload: bool = False,
                                      sequential_cpu_offload: bool = False,
                                      local_files_only: bool = False) -> TorchPipelineCreationResult:
     if not _enums.model_type_is_torch(model_type):
         raise ValueError('model_type must be a TORCH ModelType enum value.')
-    # Pipeline class selection
 
     if _enums.model_type_is_floyd(model_type):
         if control_net_uris:
@@ -933,6 +932,8 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             raise UnsupportedPipelineConfigError(
                 'Stable Cascade --model-type values are not compatible with --vae.')
 
+    # Pipeline class selection
+
     if _enums.model_type_is_upscaler(model_type):
         if control_net_uris:
             raise UnsupportedPipelineConfigError(
@@ -947,8 +948,9 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                 raise UnsupportedPipelineConfigError(
                     '--model-type torch-upscaler-x2 is not compatible with --loras or --textual-inversions.')
 
-        pipeline_class = (diffusers.StableDiffusionUpscalePipeline if model_type == _enums.ModelType.TORCH_UPSCALER_X4
-                          else diffusers.StableDiffusionLatentUpscalePipeline)
+        pipeline_class = (
+            diffusers.StableDiffusionUpscalePipeline if model_type == _enums.ModelType.TORCH_UPSCALER_X4
+            else diffusers.StableDiffusionLatentUpscalePipeline)
     else:
         sdxl = _enums.model_type_is_sdxl(model_type)
         pix2pix = _enums.model_type_is_pix2pix(model_type)
@@ -1069,18 +1071,6 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
 
     _cache.enforce_pipeline_cache_constraints(
         new_pipeline_size=estimated_memory_usage)
-
-    # Block invalid Textual Inversion and LoRA usage
-
-    if textual_inversion_uris:
-        if model_type == _enums.ModelType.TORCH_UPSCALER_X2:
-            raise UnsupportedPipelineConfigError(
-                '--model-type torch-upscaler-x2 cannot be used with textual inversion models.')
-
-    if lora_uris:
-        if _enums.model_type_is_upscaler(model_type):
-            raise UnsupportedPipelineConfigError(
-                'LoRA models cannot be used with upscaler models.')
 
     # ControlNet and VAE loading
 
@@ -1287,22 +1277,22 @@ class FlaxPipelineCreationResult(PipelineCreationResult):
     Flax specific Pipeline params object
     """
 
-    parsed_unet_uri: typing.Optional[_uris.FlaxUNetUri]
+    parsed_unet_uri: _uris.FlaxUNetUri | None
     """
     Parsed UNet URI if one was present
     """
 
-    flax_unet_params: typing.Optional[dict[str, typing.Any]]
+    flax_unet_params: dict[str, typing.Any] | None
     """
     Flax specific UNet params object
     """
 
-    parsed_vae_uri: typing.Optional[_uris.FlaxVAEUri]
+    parsed_vae_uri: _uris.FlaxVAEUri | None
     """
     Parsed VAE URI if one was present
     """
 
-    flax_vae_params: typing.Optional[dict[str, typing.Any]]
+    flax_vae_params: dict[str, typing.Any] | None
     """
     Flax specific VAE params object
     """
@@ -1312,7 +1302,7 @@ class FlaxPipelineCreationResult(PipelineCreationResult):
     Parsed ControlNet URIs if any were present
     """
 
-    flax_control_net_params: typing.Optional[dict[str, typing.Any]]
+    flax_control_net_params: dict[str, typing.Any] | None
     """
     Flax specific ControlNet params object
     """
@@ -1320,12 +1310,12 @@ class FlaxPipelineCreationResult(PipelineCreationResult):
     def __init__(self,
                  pipeline: diffusers.FlaxDiffusionPipeline,
                  flax_params: dict[str, typing.Any],
-                 parsed_unet_uri: typing.Optional[_uris.FlaxUNetUri],
-                 flax_unet_params: typing.Optional[dict[str, typing.Any]],
-                 parsed_vae_uri: typing.Optional[_uris.FlaxVAEUri],
-                 flax_vae_params: typing.Optional[dict[str, typing.Any]],
+                 parsed_unet_uri: _uris.FlaxUNetUri | None,
+                 flax_unet_params: dict[str, typing.Any] | None,
+                 parsed_vae_uri: _uris.FlaxVAEUri | None,
+                 flax_vae_params: dict[str, typing.Any] | None,
                  parsed_control_net_uris: collections.abc.Sequence[_uris.FlaxControlNetUri],
-                 flax_control_net_params: typing.Optional[dict[str, typing.Any]]):
+                 flax_control_net_params: dict[str, typing.Any] | None):
         super().__init__(pipeline)
 
         self.flax_params = flax_params
@@ -1359,7 +1349,7 @@ def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                                    scheduler: _types.OptionalString = None,
                                    safety_checker: bool = False,
                                    auth_token: _types.OptionalString = None,
-                                   extra_modules: typing.Optional[dict[str, typing.Any]] = None,
+                                   extra_modules: dict[str, typing.Any] | None = None,
                                    local_files_only: bool = False) -> FlaxPipelineCreationResult:
     """
     Create a :py:class:`diffusers.FlaxDiffusionPipeline` in dgenerates in memory cacheing system.
@@ -1414,7 +1404,7 @@ class FlaxPipelineFactory:
                  scheduler: _types.OptionalString = None,
                  safety_checker: bool = False,
                  auth_token: _types.OptionalString = None,
-                 extra_modules: typing.Optional[dict[str, typing.Any]] = None,
+                 extra_modules: dict[str, typing.Any] | None = None,
                  local_files_only: bool = False):
         self._args = {k: v for k, v in _types.partial_deep_copy_container(locals()).items() if k not in {'self'}}
 
@@ -1462,7 +1452,7 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                                     scheduler: _types.OptionalString = None,
                                     safety_checker: bool = False,
                                     auth_token: _types.OptionalString = None,
-                                    extra_modules: typing.Optional[dict[str, typing.Any]] = None,
+                                    extra_modules: dict[str, typing.Any] | None = None,
                                     local_files_only: bool = False) -> FlaxPipelineCreationResult:
     if not _enums.model_type_is_flax(model_type):
         raise ValueError('model_type must be a FLAX ModelType enum value.')

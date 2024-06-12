@@ -151,14 +151,15 @@ class ImageFileSavedEvent(Event):
         self.path = path
 
 
-RenderLoopEvent = typing.Union[ImageGeneratedEvent,
-StartingAnimationEvent,
-StartingAnimationFileEvent,
-AnimationFileFinishedEvent,
-ImageFileSavedEvent,
-AnimationFinishedEvent,
-StartingGenerationStepEvent,
-AnimationETAEvent]
+RenderLoopEvent = \
+    typing.Union[ImageGeneratedEvent,
+                 StartingAnimationEvent,
+                 StartingAnimationFileEvent,
+                 AnimationFileFinishedEvent,
+                 ImageFileSavedEvent,
+                 AnimationFinishedEvent,
+                 StartingGenerationStepEvent,
+                 AnimationETAEvent]
 """
 Possible events from the event stream created by :py:meth:`.ImageProcessRenderLoop.events`
 """
@@ -194,7 +195,7 @@ class ImageProcessRenderLoop:
     """
 
     def __init__(self, config: _renderloopconfig.ImageProcessRenderLoopConfig = None,
-                 image_processor_loader: typing.Optional[_imageprocessors.ImageProcessorLoader] = None):
+                 image_processor_loader: _imageprocessors.ImageProcessorLoader | None = None):
 
         if config is None:
             self.config = _renderloopconfig.ImageProcessRenderLoopConfig()
@@ -206,8 +207,8 @@ class ImageProcessRenderLoop:
         else:
             self.image_processor_loader = image_processor_loader
 
-        self._written_images: typing.Optional[_files.GCFile] = None
-        self._written_animations: typing.Optional[_files.GCFile] = None
+        self._written_images: _files.GCFile | None = None
+        self._written_animations: _files.GCFile | None = None
         self._iterating = False
 
     @property

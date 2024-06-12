@@ -321,8 +321,8 @@ class FileCache:
             key: str,
             file_data: bytes | typing.Iterable[bytes],
             metadata: typing.Dict[str, str] = None,
-            ext: typing.Optional[str] = None) \
-            -> typing.Optional[CachedFile]:
+            ext: str | None = None) \
+            -> CachedFile | None:
         """
         Adds a file to the cache. If a file with the same key already exists, it overwrites the existing file.
         Otherwise, it creates a new file with a unique filename.
@@ -358,7 +358,7 @@ class FileCache:
 
         return CachedFile(entry_data)
 
-    def get(self, key) -> typing.Optional[CachedFile]:
+    def get(self, key) -> CachedFile | None:
         """
         Retrieves the :py:class:`.CachedFile` object for the specified key
         from the  key-value store, or returns None if the key does not exist.
@@ -461,8 +461,8 @@ class WebFileCache(FileCache):
         return string.startswith('http://') or string.startswith('https://')
 
     def download(self, url,
-                 mime_acceptable_desc: typing.Optional[str] = None,
-                 mimetype_is_supported: typing.Optional[typing.Callable[[str], bool]] = None,
+                 mime_acceptable_desc: str | None = None,
+                 mimetype_is_supported: typing.Callable[[str], bool] | None = None,
                  unknown_mimetype_exception=ValueError,
                  overwrite: bool = False,
                  tqdm_pbar=tqdm.tqdm):

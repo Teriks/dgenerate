@@ -262,7 +262,7 @@ def is_typing_hint(obj):
     return obj.__module__ == 'typing'
 
 
-def parse_bool(string_or_bool: typing.Union[str, bool]):
+def parse_bool(string_or_bool: str | bool):
     """
     Parse a case insensitive boolean value from a string, for example "true" or "false"
 
@@ -311,7 +311,7 @@ class SetFromMixin:
     """
 
     def set_from(self,
-                 obj: typing.Union[typing.Any, dict],
+                 obj: typing.Any | dict,
                  missing_value_throws: bool = True):
         """
         Set the attributes in this configuration obj from a dictionary or another obj
@@ -339,7 +339,7 @@ class SetFromMixin:
 
 
 def get_accepted_args_with_defaults(func) -> \
-        collections.abc.Iterator[typing.Union[tuple[str], tuple[str, typing.Any]]]:
+        collections.abc.Iterator[tuple[str] | tuple[str, typing.Any]]:
     """
     Get the argument signature of a simple function with any default values present.
 
@@ -402,7 +402,7 @@ def module_all():
     return all_names
 
 
-def partial_deep_copy_container(container: typing.Union[list, dict, set]):
+def partial_deep_copy_container(container: list | dict | set):
     """
     Partially copy nested containers, handles lists, dicts, and sets.
 
@@ -421,7 +421,7 @@ def partial_deep_copy_container(container: typing.Union[list, dict, set]):
 
 
 def type_check_struct(obj,
-                      attribute_namer: typing.Optional[typing.Callable[[str], str]] = None):
+                      attribute_namer: typing.Callable[[str], str] | None = None):
     """
     Preform some basic type checks on a struct like objects attributes using their type hints.
 

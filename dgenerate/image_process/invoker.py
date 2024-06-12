@@ -46,7 +46,7 @@ class ImageProcessExitEvent(_event.Event):
         self.return_code = return_code
 
 
-InvokeImageProcessEvent = typing.Union[ImageProcessExitEvent, _renderloop.RenderLoopEvent]
+InvokeImageProcessEvent = ImageProcessExitEvent | _renderloop.RenderLoopEvent
 """
 Events yield-able by :py:func:`.invoke_image_process_events`
 """
@@ -59,12 +59,12 @@ Event stream produced by :py:func:`.invoke_image_process_events`
 
 def invoke_image_process(
         args: collections.abc.Sequence[str],
-        render_loop: typing.Optional[_renderloop.ImageProcessRenderLoop] = None,
+        render_loop: _renderloop.ImageProcessRenderLoop | None = None,
         throw: bool = False,
         log_error: bool = True,
         help_raises: bool = False,
         help_name: str = 'image-process',
-        help_desc: typing.Optional[str] = None) -> int:
+        help_desc: str | None = None) -> int:
     """
     Invoke image-process using its command line arguments and return a return code.
 
@@ -99,12 +99,12 @@ def invoke_image_process(
 
 def invoke_image_process_events(
         args: collections.abc.Sequence[str],
-        render_loop: typing.Optional[_renderloop.ImageProcessRenderLoop] = None,
+        render_loop: _renderloop.ImageProcessRenderLoop | None = None,
         throw: bool = False,
         log_error: bool = True,
         help_raises: bool = False,
         help_name: str = 'image-process',
-        help_desc: typing.Optional[str] = None) -> InvokeImageProcessEventStream:
+        help_desc: str | None = None) -> InvokeImageProcessEventStream:
     """
     Invoke image-process using its command line arguments and return a stream of events.
 

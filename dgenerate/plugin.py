@@ -81,7 +81,7 @@ class PluginArg:
             return self.type.__name__
         return str(self.type).replace('typing.', '')
 
-    def parse_by_type(self, value: typing.Union[str, typing.Any]):
+    def parse_by_type(self, value: str | typing.Any):
         if not isinstance(value, str):
             return value
 
@@ -382,7 +382,7 @@ def load_modules(paths: collections.abc.Iterable[str]) -> list[types.ModuleType]
     return r
 
 
-PluginArgumentsDef = typing.Optional[list[PluginArg]]
+PluginArgumentsDef = list[PluginArg] | None
 
 
 class PluginNotFoundError(Exception):

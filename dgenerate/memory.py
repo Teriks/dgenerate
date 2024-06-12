@@ -70,9 +70,9 @@ def memory_constraint_syntax_check(expression: str):
 
 
 def memory_constraints(expressions: collections.abc.Iterable[str],
-                       extra_vars: typing.Optional[dict[str, typing.Union[int, float]]] = None,
+                       extra_vars: dict[str, int | float] | None = None,
                        mode=any,
-                       pid: typing.Optional[int] = None) -> bool:
+                       pid: int | None = None) -> bool:
     """
     Evaluate a user boolean expression involving the processes used memory in bytes,
     used memory percent, and available system memory in bytes.
@@ -199,7 +199,7 @@ _MEM_FACTORS = {
 }
 
 
-def get_used_memory(unit='b', pid: typing.Optional[int] = None) -> int:
+def get_used_memory(unit='b', pid: int | None = None) -> int:
     """
     Get the memory used by a process in a selectable unit.
 
@@ -218,7 +218,7 @@ def get_used_memory(unit='b', pid: typing.Optional[int] = None) -> int:
     return psutil.Process(pid).memory_info().rss / _MEM_FACTORS[unit.strip().lower()]
 
 
-def get_used_total_memory_percent(pid: typing.Optional[int] = None) -> float:
+def get_used_total_memory_percent(pid: int | None = None) -> float:
     """
     Get the percentage of memory used by a process as a percentage of total system memory.
 
@@ -232,7 +232,7 @@ def get_used_total_memory_percent(pid: typing.Optional[int] = None) -> float:
     return psutil.Process(pid).memory_percent()
 
 
-def get_used_memory_percent(pid: typing.Optional[int] = None) -> float:
+def get_used_memory_percent(pid: int | None = None) -> float:
     """
     Get the percentage of memory used by a process as a percentage of
     already used memory plus available virtual memory.

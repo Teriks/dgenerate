@@ -36,7 +36,8 @@ _DGENERATE_FUNCTIONS = sorted((
     'frozenset', 'gen_seeds', 'getattr', 'hasattr', 'hash', 'hex', 'int',
     'iter', 'last', 'len', 'list', 'map', 'max', 'min', 'next', 'object',
     'oct', 'ord', 'pow', 'quote', 'range', 'repr', 'reversed', 'round',
-    'set', 'slice', 'sorted', 'str', 'sum', 'tuple', 'type', 'unquote', 'zip'
+    'set', 'slice', 'sorted', 'str', 'sum', 'tuple', 'type', 'unquote',
+    'zip', 'download'
 ), key=lambda s: len(s), reverse=True)
 
 _DGENERATE_FUNCTIONS_NS = sorted(map(lambda x: '({})(.)({})'.format(*x.split('.')), (

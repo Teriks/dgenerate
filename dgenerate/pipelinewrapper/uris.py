@@ -198,7 +198,7 @@ class FlaxControlNetUri:
         return self._subfolder
 
     @property
-    def dtype(self) -> typing.Optional[_enums.DataType]:
+    def dtype(self) -> _enums.DataType | None:
         """
         Model dtype (precision)
         """
@@ -222,7 +222,7 @@ class FlaxControlNetUri:
                  model: str,
                  revision: _types.OptionalString = None,
                  subfolder: _types.OptionalPath = None,
-                 dtype: typing.Union[_enums.DataType, str, None] = None,
+                 dtype: _enums.DataType | str | None = None,
                  scale: float = 1.0,
                  from_torch: bool = False):
         """
@@ -407,7 +407,7 @@ class TorchControlNetUri:
         return self._subfolder
 
     @property
-    def dtype(self) -> typing.Optional[_enums.DataType]:
+    def dtype(self) -> _enums.DataType | None:
         """
         Model dtype (precision)
         """
@@ -439,7 +439,7 @@ class TorchControlNetUri:
                  revision: _types.OptionalString,
                  variant: _types.OptionalString,
                  subfolder: _types.OptionalPath,
-                 dtype: typing.Union[_enums.DataType, str, None] = None,
+                 dtype: _enums.DataType | str | None = None,
                  scale: float = 1.0,
                  start: float = 0.0,
                  end: float = 1.0):
@@ -682,7 +682,7 @@ class SDXLRefinerUri:
         return self._subfolder
 
     @property
-    def dtype(self) -> typing.Optional[_enums.DataType]:
+    def dtype(self) -> _enums.DataType | None:
         """
         Model dtype (precision)
         """
@@ -693,7 +693,7 @@ class SDXLRefinerUri:
                  revision: _types.OptionalString = None,
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalPath = None,
-                 dtype: typing.Union[_enums.DataType, str, None] = None):
+                 dtype: _enums.DataType | str | None = None):
         """
         :param model: model path
         :param revision: model revision (branch name)
@@ -782,7 +782,7 @@ class SCascadeDecoderUri:
         return self._subfolder
 
     @property
-    def dtype(self) -> typing.Optional[_enums.DataType]:
+    def dtype(self) -> _enums.DataType | None:
         """
         Model dtype (precision)
         """
@@ -793,7 +793,7 @@ class SCascadeDecoderUri:
                  revision: _types.OptionalString = None,
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalPath = None,
-                 dtype: typing.Union[_enums.DataType, str, None] = None):
+                 dtype: _enums.DataType | str | None = None):
         """
         :param model: model path
         :param revision: model revision (branch name)
@@ -885,7 +885,7 @@ class TorchVAEUri:
         return self._subfolder
 
     @property
-    def dtype(self) -> typing.Optional[_enums.DataType]:
+    def dtype(self) -> _enums.DataType | None:
         """
         Model dtype (precision)
         """
@@ -908,7 +908,7 @@ class TorchVAEUri:
                  revision: _types.OptionalString = None,
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
-                 dtype: typing.Union[_enums.DataType, str, None] = None):
+                 dtype: _enums.DataType | str | None = None):
         """
         :param encoder: encoder class name, for example ``AutoencoderKL``
         :param model: model path
@@ -1005,10 +1005,11 @@ class TorchVAEUri:
               local_files_only: bool = False,
               sequential_cpu_offload_member: bool = False,
               model_cpu_offload_member: bool = False) -> \
-            typing.Union[diffusers.AutoencoderKL,
-            diffusers.AsymmetricAutoencoderKL,
-            diffusers.AutoencoderTiny,
-            diffusers.ConsistencyDecoderVAE]:
+            typing.Union[
+                diffusers.AutoencoderKL,
+                diffusers.AsymmetricAutoencoderKL,
+                diffusers.AutoencoderTiny,
+                diffusers.ConsistencyDecoderVAE]:
 
         if sequential_cpu_offload_member and model_cpu_offload_member:
             # these are used for cache differentiation only
@@ -1149,7 +1150,7 @@ class TorchUNetUri:
         return self._subfolder
 
     @property
-    def dtype(self) -> typing.Optional[_enums.DataType]:
+    def dtype(self) -> _enums.DataType | None:
         """
         Model dtype (precision)
         """
@@ -1160,7 +1161,7 @@ class TorchUNetUri:
                  revision: _types.OptionalString = None,
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
-                 dtype: typing.Union[_enums.DataType, str, None] = None):
+                 dtype: _enums.DataType | str | None = None):
         """
         :param model: model path
         :param revision: model revision (branch name)
@@ -1357,7 +1358,7 @@ class FlaxVAEUri:
         return self._subfolder
 
     @property
-    def dtype(self) -> typing.Optional[_enums.DataType]:
+    def dtype(self) -> _enums.DataType | None:
         """
         Model dtype (precision)
         """
@@ -1372,7 +1373,7 @@ class FlaxVAEUri:
                  model: str,
                  revision: _types.OptionalString,
                  subfolder: _types.OptionalPath,
-                 dtype: typing.Optional[_enums.DataType]):
+                 dtype: _enums.DataType | None):
         """
         :param encoder: Encoder class name
         :param model: model path
@@ -1570,7 +1571,7 @@ class FlaxUNetUri:
         return self._subfolder
 
     @property
-    def dtype(self) -> typing.Optional[_enums.DataType]:
+    def dtype(self) -> _enums.DataType | None:
         """
         Model dtype (precision)
         """
@@ -1580,7 +1581,7 @@ class FlaxUNetUri:
                  model: str,
                  revision: _types.OptionalString,
                  subfolder: _types.OptionalPath,
-                 dtype: typing.Optional[_enums.DataType]):
+                 dtype: _enums.DataType | None):
         """
         :param model: model path
         :param revision: model revision (branch name)

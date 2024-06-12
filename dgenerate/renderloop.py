@@ -70,7 +70,7 @@ class AnimationFileFinishedEvent(_Event):
     Path on disk where the video/animated image was saved.
     """
 
-    config_filename: typing.Optional[str]
+    config_filename: str | None
     """
     Path to a dgenerate config file if ``output_configs`` is enabled.
     """
@@ -134,7 +134,7 @@ class ImageGeneratedEvent(_Event):
     arguments used to produce this image.
     """
 
-    image_seed: typing.Optional[_mediainput.ImageSeed]
+    image_seed: _mediainput.ImageSeed | None
     """
     If an ``--image-seeds`` specification was used in the generation of this image,
     this object represents that image seed and contains the images that contributed
@@ -172,7 +172,7 @@ class ImageGeneratedEvent(_Event):
         return None
 
     def __init__(self, origin: 'RenderLoop',
-                 image: typing.Optional[PIL.Image.Image],
+                 image: PIL.Image.Image | None,
                  generation_step: int,
                  batch_index: int,
                  suggested_directory: str,
@@ -211,7 +211,7 @@ class ImageFileSavedEvent(_Event):
     Path to the saved image.
     """
 
-    config_filename: typing.Optional[str] = None
+    config_filename: str | None = None
     """
     Path to a dgenerate config file if ``output_configs`` is enabled.
     """
@@ -220,7 +220,7 @@ class ImageFileSavedEvent(_Event):
                  origin: 'RenderLoop',
                  generated_event: ImageGeneratedEvent,
                  path: str,
-                 config_filename: typing.Optional[str] = None):
+                 config_filename: str | None = None):
         super().__init__(origin)
         self.generated_event = generated_event
         self.path = path
@@ -296,8 +296,8 @@ class RenderLoop:
 
         return self._pipeline_wrapper
 
-    def __init__(self, config: typing.Optional[RenderLoopConfig] = None,
-                 image_processor_loader: typing.Optional[_imageprocessors.ImageProcessorLoader] = None):
+    def __init__(self, config: RenderLoopConfig | None = None,
+                 image_processor_loader: _imageprocessors.ImageProcessorLoader | None = None):
         """
         :param config: :py:class:`.RenderLoopConfig` or :py:class:`dgenerate.arguments.DgenerateArguments`.
             If ``None`` is provided, a :py:class:`.RenderLoopConfig` instance will be created and
@@ -311,8 +311,8 @@ class RenderLoop:
         self._generation_step = -1
         self._frame_time_sum = 0
         self._last_frame_time = 0
-        self._written_images: typing.Optional[_files.GCFile] = None
-        self._written_animations: typing.Optional[_files.GCFile] = None
+        self._written_images: _files.GCFile | None = None
+        self._written_animations: _files.GCFile | None = None
         self._pipeline_wrapper = None
 
         self.config = \
@@ -459,8 +459,7 @@ class RenderLoop:
 
     def _setup_batch_size_config_opts(self,
                                       file_title: str,
-                                      extra_opts_out: list[
-                                          typing.Union[tuple[str, typing.Any], tuple[str]]],
+                                      extra_opts_out: list[tuple[str, typing.Any] | tuple[str]],
                                       extra_comments_out: list[str],
                                       batch_index: int,
                                       generation_result: _pipelinewrapper.PipelineWrapperResult):
@@ -478,10 +477,10 @@ class RenderLoop:
                     f'{file_title} {batch_index + 1} from a batch of {generation_result.image_count}')
 
     def _gen_dgenerate_config(self,
-                              args: typing.Optional[_pipelinewrapper.DiffusionArguments] = None,
-                              extra_opts: typing.Optional[
-                                  collections.abc.Sequence[typing.Union[tuple[str], tuple[str, typing.Any]]]] = None,
-                              extra_comments: typing.Optional[collections.abc.Iterable[str]] = None,
+                              args: _pipelinewrapper.DiffusionArguments | None = None,
+                              extra_opts:
+                                  collections.abc.Sequence[tuple[str] | tuple[str, typing.Any]] | None = None,
+                              extra_comments: collections.abc.Iterable[str] | None = None,
                               **kwargs) -> str:
 
         return self._pipeline_wrapper.gen_dgenerate_config(args,
@@ -490,10 +489,9 @@ class RenderLoop:
                                                            extra_comments=extra_comments, **kwargs)
 
     def _gen_dgenerate_command(self,
-                               args: typing.Optional[_pipelinewrapper.DiffusionArguments] = None,
-                               extra_opts: typing.Optional[
-                                   collections.abc.Sequence[typing.Union[tuple[str], tuple[str, typing.Any]]]] = None,
-                               extra_comments: typing.Optional[collections.abc.Sequence[str]] = None,
+                               args: _pipelinewrapper.DiffusionArguments | None = None,
+                               extra_opts: collections.abc.Sequence[tuple[str] | tuple[str, typing.Any]] | None = None,
+                               extra_comments: collections.abc.Sequence[str] | None = None,
                                **kwargs) -> str:
 
         return self._pipeline_wrapper.gen_dgenerate_command(args,
@@ -507,7 +505,7 @@ class RenderLoop:
                      batch_index: int,
                      diffusion_args: _pipelinewrapper.DiffusionArguments,
                      generation_result: _pipelinewrapper.PipelineWrapperResult,
-                     image_seed: typing.Optional[_mediainput.ImageSeed] = None) -> RenderLoopEventStream:
+                     image_seed: _mediainput.ImageSeed | None = None) -> RenderLoopEventStream:
 
         self._ensure_output_path()
 
@@ -613,7 +611,7 @@ class RenderLoop:
                                  filename_components: list[str],
                                  diffusion_args: _pipelinewrapper.DiffusionArguments,
                                  generation_result: _pipelinewrapper.PipelineWrapperResult,
-                                 image_seed: typing.Optional[_mediainput.ImageSeed] = None) -> RenderLoopEventStream:
+                                 image_seed: _mediainput.ImageSeed | None = None) -> RenderLoopEventStream:
         if self.config.batch_grid_size is None:
 
             for batch_idx, image in enumerate(generation_result.images):

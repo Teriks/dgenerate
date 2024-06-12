@@ -223,7 +223,7 @@ class MultiAnimationWriter(AnimationWriter):
         else:
             return f'{base}{ext}'
 
-    def write(self, img: typing.Union[PIL.Image.Image, collections.abc.Iterable[PIL.Image.Image]]):
+    def write(self, img: PIL.Image.Image | collections.abc.Iterable[PIL.Image.Image]):
         if not isinstance(img, collections.abc.Iterable):
             img = [img]
 

@@ -538,7 +538,7 @@ class _RecipesForm(tk.Toplevel):
 
         self._current_template = tk.StringVar(value=self._template_names[0])
         self._entries: typing.List[_Entry] = []
-        self._content: typing.Optional[str] = None
+        self._content: str | None = None
 
         self._ok: bool = False
         self.transient(master)

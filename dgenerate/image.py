@@ -33,7 +33,7 @@ Image operations commonly used by dgenerate.
 def resize_image_calc(old_size: _types.Size,
                       new_size: _types.OptionalSize,
                       aspect_correct: bool = True,
-                      align: typing.Optional[int] = 8):
+                      align: int | None = 8):
     """
     Calculate the new dimensions for a requested resize of an image..
 
@@ -171,7 +171,7 @@ def copy_img(img: PIL.Image.Image):
 def resize_image(img: PIL.Image.Image,
                  size: _types.OptionalSize,
                  aspect_correct: bool = True,
-                 align: typing.Optional[int] = 8):
+                 align: int | None = 8):
     """
     Resize a :py:class:`PIL.Image.Image` and return a copy.
 

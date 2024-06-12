@@ -132,7 +132,7 @@ class TerminalLineReader:
     newlines and carriage return in the output as is.
     """
 
-    pushback_byte: typing.Optional[bytes]
+    pushback_byte: bytes | None
     """
     Byte on the stack which will be prepended to the next line if needed.
     
@@ -140,7 +140,7 @@ class TerminalLineReader:
     and the underlying reader has changed to a new instance.
     """
 
-    def __init__(self, file: typing.Union[typing.BinaryIO, typing.Callable[[], typing.IO]]):
+    def __init__(self, file: typing.BinaryIO | typing.Callable[[], typing.IO]):
         """
         :param file: Binary IO object, or a function that returns one.
         """

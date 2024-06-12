@@ -92,7 +92,7 @@ class BatchProcessor:
     They may be overridden by functions defined in :py:attr:`dgenerate.batchprocess.BatchProcessor.template_functions`
     """
 
-    directives: dict[str, typing.Optional[typing.Callable[[collections.abc.Sequence[str]], int]]]
+    directives: dict[str, typing.Callable[[collections.abc.Sequence[str]], int]] | None
     """
     Batch process directives, shell commands starting with a backslash.
     
@@ -114,14 +114,13 @@ class BatchProcessor:
     def __init__(self,
                  invoker: typing.Callable[[collections.abc.Sequence[str]], int],
                  name: _types.Name,
-                 version: typing.Union[_types.Version, str],
-                 template_variables: typing.Optional[dict[str, typing.Any]] = None,
-                 reserved_template_variables: typing.Optional[set[str]] = None,
-                 template_functions: typing.Optional[
-                     dict[str, typing.Callable[[typing.Any], typing.Any]]] = None,
-                 directives: dict[str, typing.Optional[typing.Callable[[list], None]]] = None,
-                 builtins: typing.Optional[dict[str, typing.Callable[[typing.Any], typing.Any]]] = None,
-                 injected_args: typing.Optional[collections.abc.Sequence[str]] = None):
+                 version: _types.Version | str,
+                 template_variables: dict[str, typing.Any] | None = None,
+                 reserved_template_variables: set[str] | None = None,
+                 template_functions: dict[str, typing.Callable[[typing.Any], typing.Any]] | None = None,
+                 directives: dict[str, typing.Callable[[list], None]] | None = None,
+                 builtins: dict[str, typing.Callable[[typing.Any], typing.Any]] | None = None,
+                 injected_args: collections.abc.Sequence[str] | None = None):
         """
         :param invoker: A function for invoking lines recognized as shell commands, should return a return code.
         :param name: The name of this batch processor, currently used in the version check directive and messages
@@ -262,14 +261,14 @@ class BatchProcessor:
         return self._current_line
 
     @property
-    def executing_text(self) -> typing.Union[None, str]:
+    def executing_text(self) -> None | str:
         """
         The text / command line that is currently
         being executed, or that was last executed.
         """
         return self._executing_text
 
-    def render_template(self, string: str, stream: bool = False) -> typing.Union[str, typing.Iterator[str]]:
+    def render_template(self, string: str, stream: bool = False) -> str | typing.Iterator[str]:
         """
         Render a template from a string
 
@@ -625,7 +624,7 @@ class BatchProcessor:
 
         for line_idx, line_and_next in enumerate(_files.PeekReader(stream)):
             line: str
-            next_line: typing.Optional[str]
+            next_line: str | None
             line, next_line = line_and_next
 
             line_strip = _textprocessing.remove_tail_comments(line)[1].strip()
