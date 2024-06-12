@@ -1031,7 +1031,7 @@ def create_web_cache_file(url,
     :raise UnknownMimetypeError: if a mimetype is considered not supported
 
     :raise requests.RequestException: Can raise any exception
-    raised by ``requests.get`` for request related errors.
+        raised by ``requests.get`` for request related errors.
 
     :return: tuple(mimetype_str, filepath)
     """

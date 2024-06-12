@@ -30,7 +30,7 @@ dgenerate.renderloop module
 
 
 dgenerate.filecache module
--------------------------
+--------------------------
 
 .. automodule:: dgenerate.filecache
    :members:
@@ -154,7 +154,7 @@ dgenerate.plugin module
 
 
 dgenerate.pygments module
------------------------
+-------------------------
 
 .. automodule:: dgenerate.pygments
 
@@ -206,7 +206,7 @@ dgenerate.types module
    :special-members: __call__, __init__
 
 dgenerate.webcache module
-----------------------
+-------------------------
 
 .. automodule:: dgenerate.webcache
    :members:

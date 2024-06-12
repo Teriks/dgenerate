@@ -78,7 +78,7 @@ def create_web_cache_file(url,
     If the file exists in the cache already, return information for the existing file.
 
     :raise requests.RequestException: Can raise any exception
-    raised by ``requests.get`` for request related errors.
+        raised by ``requests.get`` for request related errors.
 
     :param url: The url
     :param mime_acceptable_desc: A description of acceptable mimetypes for use in exceptions.

@@ -310,7 +310,7 @@ def set_vae_slicing_tiling(pipeline: diffusers.DiffusionPipeline | diffusers.Fla
     Set the vae_slicing and vae_tiling status on a created huggingface diffusers pipeline.
 
     :raises UnsupportedPipelineConfigError: if the pipeline does not support one or both
-    of the provided values for ``vae_tiling`` and ``vae_slicing``
+        of the provided values for ``vae_tiling`` and ``vae_slicing``
 
     :param pipeline: pipeline object
     :param vae_tiling: tiling status

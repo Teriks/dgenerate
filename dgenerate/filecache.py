@@ -471,7 +471,7 @@ class WebFileCache(FileCache):
         of the file is not supported, it raises an exception.
 
         :raise requests.RequestException: Can raise any exception
-        raised by ``requests.get`` for request related errors.
+            raised by ``requests.get`` for request related errors.
 
         :param url: The URL of the file.
         :param mime_acceptable_desc: A description of acceptable mimetypes for use in exceptions.
