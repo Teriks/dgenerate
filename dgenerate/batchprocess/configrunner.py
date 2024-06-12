@@ -69,7 +69,7 @@ def _format_prompt_single(prompt):
 
 
 def _format_prompt(
-        prompts: _prompt.Prompt | collections.abc.Iterable[_prompt.Prompt]):
+        prompts: _prompt.Prompt | collections.abc.Iterable[_prompt.Prompt]) -> str:
     """
     Format a prompt object, or a list of prompt objects, into quoted string(s)
     """
@@ -78,14 +78,14 @@ def _format_prompt(
     return ' '.join(_format_prompt_single(p) for p in prompts)
 
 
-def _format_size(size: collections.abc.Iterable[int]):
+def _format_size(size: collections.abc.Iterable[int]) -> str:
     """
     Join an iterable of integers into a string seperated by the character 'x', for example (512, 512) -> "512x512"
     """
     return _textprocessing.format_size(size)
 
 
-def _quote(strings: str | collections.abc.Iterable[typing.Any]):
+def _quote(strings: str | collections.abc.Iterable[typing.Any]) -> str:
     """
     Shell quote a string or iterable of strings
     """
@@ -94,7 +94,7 @@ def _quote(strings: str | collections.abc.Iterable[typing.Any]):
     return ' '.join(shlex.quote(str(s)) for s in strings)
 
 
-def _unquote(strings: str | collections.abc.Iterable[typing.Any], expand: bool = False):
+def _unquote(strings: str | collections.abc.Iterable[typing.Any], expand: bool = False) -> list:
     """
     Un-Shell quote a string or iterable of strings (shell parse)
 
@@ -115,7 +115,7 @@ def _unquote(strings: str | collections.abc.Iterable[typing.Any], expand: bool =
                 expand_vars=False) for s in strings))
 
 
-def _last(iterable: list | collections.abc.Iterable[typing.Any]):
+def _last(iterable: list | collections.abc.Iterable[typing.Any]) -> typing.Any:
     """
     Return the last element in an iterable collection.
     """
@@ -129,7 +129,7 @@ def _last(iterable: list | collections.abc.Iterable[typing.Any]):
     return last_item
 
 
-def _first(iterable: collections.abc.Iterable[typing.Any]):
+def _first(iterable: collections.abc.Iterable[typing.Any]) -> typing.Any:
     """
     Return the first element in an iterable collection.
     """
@@ -141,14 +141,14 @@ def _first(iterable: collections.abc.Iterable[typing.Any]):
     return v
 
 
-def _gen_seeds(n: int):
+def _gen_seeds(n: int) -> list[str]:
     """
     Generate N random integer seeds (as strings) and return a list of them.
     """
     return [str(s) for s in _renderloop.gen_seeds(int(n))]
 
 
-def _cwd():
+def _cwd() -> str:
     """
     Return the current working directory as a string.
     """
