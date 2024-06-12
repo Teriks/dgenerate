@@ -4142,6 +4142,16 @@ globbing.
     --image-seeds {{ quote(glob.glob('../media/*.png')) }}
     --output-path {{ quote(path.join(path.abspath('.'), 'output')) }}
 
+    # equivalent
+
+    stabilityai/stable-diffusion-2-1
+    --variant fp16
+    --dtype float16
+    --prompts "In the style of picaso"
+    --image-seeds ../media/*.png
+    --output-path ./output
+
+
 The \\print and \\echo directive
 --------------------------------
 
