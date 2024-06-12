@@ -4527,7 +4527,7 @@ as well as python regex support for find / replace, with group substitution supp
 ``\n`` or ``\{n}`` where ``n`` is the match group number.
 
 Scroll back history in the output window is currently limited to 10000 lines however the console
-app itself echos all stdout and stderr of the interpreter, so you can save all output to a log
+app itself echos all ``stdout`` and ``stderr`` of the interpreter, so you can save all output to a log
 file via file redirection if desired when launching the console from the terminal.
 
 This can be configured by setting the environmental variable ``DGENERATE_CONSOLE_MAX_SCROLLBACK=10000``
