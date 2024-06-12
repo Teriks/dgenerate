@@ -3149,7 +3149,7 @@ without the use of ``\``, at least on the last line before whitespace and commen
 Basic config syntax
 -------------------
 
-The following is a config file example that covers very basic syntax concepts:
+The following is a config file example that covers very basic syntax concepts.
 
 .. code-block:: jinja
 
