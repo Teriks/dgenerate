@@ -78,6 +78,7 @@ experience please visit `readthedocs <http://dgenerate.readthedocs.io/en/v3.7.0/
         * `Directives and templating`_
         * `Setting template variables, in depth`_
         * `Globbing and path manipulation`_
+        * `The \\print and \\echo directive`_
         * `The \\image_process directive`_
         * `The \\exec directive`_
         * `The \\download directive`_
@@ -4041,6 +4042,55 @@ globbing.
     --prompts "In the style of picaso"
     --image-seeds {{ quote(glob.glob('../media/*.png')) }}
     --output-path {{ quote(path.join(path.abspath('.'), 'output')) }}
+
+The \\print and \\echo directive
+--------------------------------
+
+The ``\print`` and ``\echo`` directive can both be used to output text to the console.
+
+The difference between the two directives is that ``\\print`` only ever prints
+the raw value with templating and environmental variable expansion applied,
+similar to the behavior of ``\set``
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 3.7.0
+
+    # the text after \print(space) will be printed verbatim
+
+    \print I am a raw value, I have no ability to * glob
+
+    # Print the PATH environmental variable
+
+    \set header Path Elements:
+
+    \print {{ header }} $PATH
+    \print {{ header }} ${PATH}
+    \print {{ header }} %PATH%
+
+The ``\echo`` directive preforms shell expansion into tokens before printing, like ``\sete``,
+This can be usefully for debugging / displaying the results of a shell expansion
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 3.7.0
+
+    # lets pretend "directory" is full of files
+
+    # this prints: directory/file1 directory/file2 ...
+
+    \echo directory/*
+
+    # Templates and environmental variables are expanded
+
+    # this prints: Files: directory/file1 directory/file2 ...
+
+    \set header Files:
+
+    \echo {{ header }} directory/*
+
 
 The \\image_process directive
 -----------------------------
