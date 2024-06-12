@@ -75,7 +75,7 @@ syntax highlighting for examples, please visit `readthedocs <http://dgenerate.re
     * `Writing and Running Configs`_
         * `Basic config syntax`_
         * `Built in template variables and functions`_
-        * `Directives and templating`_
+        * `Directives, and applying templating`_
         * `Setting template variables, in depth`_
         * `Globbing and path manipulation`_
         * `The \\print and \\echo directive`_
@@ -3662,8 +3662,8 @@ The following is output from ``\functions_help`` showing every implemented templ
         zip(args, kwargs)
 
 
-Directives and templating
--------------------------
+Directives, and applying templating
+-----------------------------------
 
 You can see all available config directives with the command
 ``dgenerate --directives-help``, providing this option with a name, or multiple
