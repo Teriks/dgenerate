@@ -3854,6 +3854,127 @@ such as VAEs etc. outside of relying on the caching system.
 
     \clear_modules stage_1_modules
 
+
+Setting variables in depth
+--------------------------
+
+The directives ``\set``, ``\sete``, and ``\setp`` can be used to set the value
+of template variables within a configuration.  The directive ``\unset`` can be
+used to undefine template variables.
+
+All three of the assignment directives have unique behavior.
+
+The ``\set`` directive sets a value with templating and environmental variable expansion applied to it,
+and nothing else aside from the value being striped of leading and trailing whitespace. The value that is
+set to the template variables is essentially the text that you supply as the value, as is. Or the text that
+the templates or environment variables in the value expand to unmodified or parsed in any way.
+
+This is for assigning literal text values to a template variable
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 3.7.0
+
+    \set my_variable "I am an incomplete string and this is completely fine because I am a raw value
+
+    # prints exactly what is above, including the quote at the beginning
+
+    \print {{ my_variable }}
+
+    # add a quote to the end of the string using templates
+
+    \set my_variable {{ my_variable }}"
+
+    # prints a fully quoted string
+
+    \print {{ my_variable }}
+
+
+The ``\sete`` directive can be used to assign the result of shell parsing and expansion to a
+template variable, the value provided will be shell parsed into tokens as if it were a line of
+dgenerate config. This is useful because you can use the config languages built in shell globbing
+feature to assign template variables.
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 3.7.0
+
+    # lets pretend the directory "my_files" is full of files
+
+    \sete my_variable --argument my_files/*
+
+    # prints the python array ['--argument', 'my_files/file1', 'my_files/file2', ...]
+
+    \print {{ my_variable }}
+
+    # Templates are also parsed in the \sete directive, just as they are with \set
+
+    \set directory my_files
+
+    \sete my_variable --argument {{ directory }}/*
+
+
+The ``\setp`` directive can be used to assign the result of evaluating a limited subset of python
+expressions to a template variable.  This can be used to set a template variable to the result
+of a mathematical expression, python literal value such as a list, dictionary, set, etc...
+python comprehension, or python ternary statement.  In addition, all template functions
+implemented by dgenerate are available for use in the evaluated expressions.
+
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 3.7.0
+
+    \setp my_variable 10*10
+
+    # prints 100
+
+    \print {{ my_variable }}
+
+    # you can reference variables defined in the environment
+
+    \setp my_variable [my_variable, my_variable*2]
+
+    # prints [100, 200]
+
+    \print {{ my_variable }}
+
+    # all forms of python comprehensions are supported
+    # such as list, dict, and set comprehensions
+
+    \setp my_variable [i for i in range(0,5)]
+
+    # prints [0, 1, 2, 3, 4]
+
+    \print {{ my_variable }}
+
+    # declare a literal string value
+
+    \setp my_variable "my string value"
+
+    # prints the string without quotes included, the string was parsed
+
+    \print {{ my_variable }}
+
+    # templates are expanded in \setp values
+
+    \setp my_variable [my_variable, "{{ my_variable }}"]
+
+    # prints ["my string value", "my string value"]
+
+    \print {{ my_variable }}
+
+    # my_variable is a literal list so it can be
+    # looped over with a jinja template continuation
+
+    {% for value in my_variable %}
+        \print {{ value }}
+    {% endfor %} !END
+
+
 Globbing and path manipulation
 ------------------------------
 
