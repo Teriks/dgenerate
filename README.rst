@@ -76,6 +76,7 @@ experience please visit `readthedocs <http://dgenerate.readthedocs.io/en/v3.7.0/
         * `Basic config syntax`_
         * `Built in template variables`_
         * `Directives and templating`_
+        * `Setting template variables, in depth`_
         * `Globbing and path manipulation`_
         * `The \\image_process directive`_
         * `The \\exec directive`_
@@ -3855,8 +3856,8 @@ such as VAEs etc. outside of relying on the caching system.
     \clear_modules stage_1_modules
 
 
-Setting variables in depth
---------------------------
+Setting template variables, in depth
+------------------------------------
 
 The directives ``\set``, ``\sete``, and ``\setp`` can be used to set the value
 of template variables within a configuration.  The directive ``\unset`` can be
