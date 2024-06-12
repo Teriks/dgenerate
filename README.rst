@@ -3868,7 +3868,7 @@ All three of the assignment directives have unique behavior.
 The ``\set`` directive sets a value with templating and environmental variable expansion applied to it,
 and nothing else aside from the value being striped of leading and trailing whitespace. The value that is
 set to the template variables is essentially the text that you supply as the value, as is. Or the text that
-the templates or environment variables in the value expand to unmodified or parsed in any way.
+the templates or environment variables in the value expand to, unmodified or parsed in any way.
 
 This is for assigning literal text values to a template variable
 
@@ -3910,7 +3910,8 @@ feature to assign template variables.
 
     \print {{ my_variable }}
 
-    # Templates are also parsed in the \sete directive, just as they are with \set
+    # Templates and environment variables references
+    # are also parsed in the \sete directive, just as they are with \set
 
     \set directory my_files
 
@@ -3960,7 +3961,8 @@ implemented by dgenerate are available for use in the evaluated expressions.
 
     \print {{ my_variable }}
 
-    # templates are expanded in \setp values
+    # templates and environmental variable references
+    # are also expanded in \setp values
 
     \setp my_variable [my_variable, "{{ my_variable }}"]
 
