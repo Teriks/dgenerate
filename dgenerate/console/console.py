@@ -898,7 +898,8 @@ class DgenerateConsole(tk.Tk):
         fn = _filedialog.open_file_dialog(
             initialfile='config.dgen',
             defaultextension='.dgen',
-            filetypes=[('Config Script', '*.dgen')])
+            filetypes=[('Config Script', '*.dgen'),
+                       ('Text File', '*.txt')])
 
         if fn is None:
             return
@@ -915,7 +916,8 @@ class DgenerateConsole(tk.Tk):
         fn = _filedialog.open_file_save_dialog(
             initialfile='config.dgen',
             defaultextension='.dgen',
-            filetypes=[('Config Script', '*.dgen')])
+            filetypes=[('Config Script', '*.dgen'),
+                       ('Text File', '*.txt')])
 
         if fn is None:
             return
