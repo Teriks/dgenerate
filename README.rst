@@ -4576,9 +4576,10 @@ File Cache Control
 ==================
 
 dgenerate will cache downloaded non hugging face models, downloaded ``--image-seeds`` files,
-files downloaded by the `\download <The \\download directive>`_ directive, and downloaded
-files used by image processors in the directory ``~/.cache/dgenerate/web``, on Windows
-this equates to ``%USERPROFILE%\.cache\dgenerate\web``
+files downloaded by the ``\download`` directive, ``download`` template function, and downloaded
+files used by image processors in the directory ``~/.cache/dgenerate/web``
+
+On Windows this equates to ``%USERPROFILE%\.cache\dgenerate\web``
 
 You can control where these files are cached with the environmental variable ``DGENERATE_WEB_CACHE``.
 
