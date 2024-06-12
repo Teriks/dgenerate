@@ -77,11 +77,10 @@ class DgenerateCodeView(tk.Frame):
         def key_release(event):
             keysym = event.keysym.lower() if event.keysym else ''
             char = event.char if event.char else ''
-            if (len(char) == 1 and char.isprintable()) or \
-                    (len(keysym) == 1 and keysym.isprintable()) or \
-                    keysym == 'backspace' or \
-                    keysym == 'delete' or \
-                    keysym == 'return':
+
+            if keysym or char:
+                # cannot be picky here for proper
+                # cross platform behavior, any key triggers
                 if self._highlighting:
                     self._syntax_highlighter.highlight_visible()
 
