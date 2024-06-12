@@ -3286,7 +3286,7 @@ also be mentioned in this output.
 
 The ``\templates_help`` output from the above example is:
 
-.. code-block::
+.. code-block:: text
 
     Config template variables are:
 
@@ -3602,7 +3602,7 @@ The ``\templates_help`` output from the above example is:
 
 The following is output from ``\functions_help`` showing every implemented template function signature.
 
-.. code-block::
+.. code-block:: text
 
     Available config template functions:
 
@@ -3617,26 +3617,26 @@ The following is output from ``\functions_help`` showing every implemented templ
         callable(args, kwargs)
         chr(args, kwargs)
         complex(args, kwargs)
-        cwd()
+        cwd() -> str
         dict(args, kwargs)
         divmod(args, kwargs)
         download(url: str, output: str | None = None, overwrite: bool = False, text: bool = False) -> str
         enumerate(args, kwargs)
         filter(args, kwargs)
-        first(iterable: collections.abc.Iterable[typing.Any])
+        first(iterable: collections.abc.Iterable[typing.Any]) -> typing.Any
         float(args, kwargs)
         format(args, kwargs)
-        format_prompt(prompts: dgenerate.prompt.Prompt | collections.abc.Iterable[dgenerate.prompt.Prompt])
-        format_size(size: collections.abc.Iterable[int])
+        format_prompt(prompts: dgenerate.prompt.Prompt | collections.abc.Iterable[dgenerate.prompt.Prompt]) -> str
+        format_size(size: collections.abc.Iterable[int]) -> str
         frozenset(args, kwargs)
-        gen_seeds(n: int)
+        gen_seeds(n: int) -> list[str]
         getattr(args, kwargs)
         hasattr(args, kwargs)
         hash(args, kwargs)
         hex(args, kwargs)
         int(args, kwargs)
         iter(args, kwargs)
-        last(iterable: list | collections.abc.Iterable[typing.Any])
+        last(iterable: list | collections.abc.Iterable[typing.Any]) -> typing.Any
         len(args, kwargs)
         list(args, kwargs)
         map(args, kwargs)
@@ -3647,7 +3647,7 @@ The following is output from ``\functions_help`` showing every implemented templ
         oct(args, kwargs)
         ord(args, kwargs)
         pow(args, kwargs)
-        quote(strings: str | collections.abc.Iterable[typing.Any])
+        quote(strings: str | collections.abc.Iterable[typing.Any]) -> str
         range(args, kwargs)
         repr(args, kwargs)
         reversed(args, kwargs)
@@ -3659,7 +3659,7 @@ The following is output from ``\functions_help`` showing every implemented templ
         sum(args, kwargs)
         tuple(args, kwargs)
         type(args, kwargs)
-        unquote(strings: str | collections.abc.Iterable[typing.Any], expand: bool = False)
+        unquote(strings: str | collections.abc.Iterable[typing.Any], expand: bool = False) -> list
         zip(args, kwargs)
 
 
@@ -3674,7 +3674,7 @@ This option is also available as the config directive ``\directives_help``.
 
 Example output:
 
-.. code-block::
+.. code-block:: txt
 
     Available config directives:
 
