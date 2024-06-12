@@ -4352,7 +4352,7 @@ control constructs.
 
     \set my_variable {{ download('https://modelhost.com/model.safetensors', output='model.safetensors') }}
 
-    \set my_variable {{ download('https://modelhost.com/model.safetensors', output='directory/' }}
+    \set my_variable {{ download('https://modelhost.com/model.safetensors', output='directory/') }}
 
     # you can also use any template function with \setp (python expression evaluation)
 
