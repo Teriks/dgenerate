@@ -1,5 +1,7 @@
 Very basic environment for testing flax and nix features on Windows, this should also work on *nix platforms.
 
+This is broken on the 555.99 nvidia driver for Windows, downgrade to 551.23 for guaranteed success.
+
 To start a shell use: ``python run.py``
 
 To run a command in a fresh environment use for example:
