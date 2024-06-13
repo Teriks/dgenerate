@@ -19,3 +19,11 @@ from the current directory instead of building and then installing a wheel.
 Take note that the initial working directory of the environment is the top level directory of the dgenerate project.
 
 And that it is a linux environment, therefore the python executable is named python3.
+
+The value of ``DISPLAY`` in the container is set to ``host.docker.internal:0.0``
+
+You may run ``dgenerate --console`` (the Console UI) on Windows for cross platform testing using
+Xming (X Server for windows), see: http://www.straightrunning.com/XmingNotes/
+
+(Yes, that website has no certificate, it is fine)
+
