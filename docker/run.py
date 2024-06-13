@@ -44,6 +44,25 @@ print('image_working_dir:', image_working_dir)
 os.makedirs(hf_cache_local, exist_ok=True)
 os.makedirs(dgenerate_cache_local, exist_ok=True)
 
+env_defs = []
+
+while '-e' in args:
+    try:
+        pos = args.index('-e')
+    except ValueError:
+        break
+
+    try:
+        env_def = args[pos + 1]
+        env_defs += ['-e', env_def]
+        if env_def.startswith('-'):
+            raise IndexError
+        args = args[:pos] + args[pos + 2:]
+    except IndexError:
+        print(
+            'run: error: -e missing argument.')
+        sys.exit(1)
+
 dev_mode = False
 
 while '--dev' in args:
@@ -59,7 +78,8 @@ if dev_mode:
 
 subprocess.run(['docker', 'image', 'build', '-t', f'teriks/dgenerate:{container_version}', '.'])
 subprocess.run(['docker', 'rm', '-f', 'dgenerate'])
-subprocess.run(['docker', 'run', '--gpus', 'all', '--name', 'dgenerate',
+subprocess.run(['docker', 'run', *env_defs,
+                '--gpus', 'all', '--name', 'dgenerate',
                 '-v', f"{image_working_dir}:/opt/dgenerate",
                 '-v', f"{hf_cache_local}:/home/dgenerate/.cache/huggingface",
                 '-v', f"{dgenerate_cache_local}:/home/dgenerate/.cache/dgenerate",

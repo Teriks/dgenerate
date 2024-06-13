@@ -8,11 +8,11 @@ To run a command in a fresh environment use for example:
 
 .. code-block:: bash
 
-    python run.py "python3 examples/run.py --short-animations --subprocess-only &> examples/examples-docker.log"
+    python run.py -e CIVIT_AI_TOKEN=tokenhere -e HF_TOKEN=tokenhere "python3 examples/run.py --short-animations --subprocess-only &> examples/examples-docker.log"
 
-    python run.py "python3 run_tests.py --clean --examples"
+    python run.py -e CIVIT_AI_TOKEN=tokenhere -e HF_TOKEN=tokenhere "python3 run_tests.py --clean --examples"
 
-    python run.py "python3 run_tests.py --clean --examples --subprocess-only"
+    python run.py -e CIVIT_AI_TOKEN=tokenhere -e HF_TOKEN=tokenhere "python3 run_tests.py --clean --examples --subprocess-only"
 
 
 You can also use the ``--dev`` option to ``run.py`` to indicate that you want a development install
