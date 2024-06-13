@@ -205,7 +205,7 @@ def _download(url: str,
 
                 if not mimetype_supported(content_type):
                     raise _batchprocessor.BatchProcessError(
-                        f'Downloaded text/* mimetype from "{url}" '
+                        f'Encountered text/* mimetype at "{url}" '
                         'without specifying the -t/--text argument.')
 
                 if output.endswith('/') or output.endswith('\\'):
@@ -269,7 +269,7 @@ def _download(url: str,
                 overwrite=overwrite)
         except _MimeExcept:
             raise _batchprocessor.BatchProcessError(
-                f'Downloaded text/* mimetype from "{url}" '
+                f'Encountered text/* mimetype at "{url}" '
                 'without specifying the -t/--text argument.')
         except requests.RequestException as e:
             raise _batchprocessor.BatchProcessError(f'Failed to download "{url}": {e}')
