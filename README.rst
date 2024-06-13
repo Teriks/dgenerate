@@ -3123,14 +3123,14 @@ and it is not entirely impossible to run your system out of memory if you are no
 Basic config syntax
 -------------------
 
-The basic idea of the dgenerate config syntax is that it is a pseudo UNIX shell mixed with Jinja2 templating.
+The basic idea of the dgenerate config syntax is that it is a pseudo Unix shell mixed with Jinja2 templating.
 
 The config language provides many niceties for batch processing large amounts of images
-and image output in a UNIX shell like environment with Jinja2 control constructs.
+and image output in a Unix shell like environment with Jinja2 control constructs.
 
 Shell builtins, known as directives, are prefixed with ``\``, for example: ``\print``
 
-Environmental variables will be expanded in config scripts using both UNIX and Windows CMD syntax
+Environmental variables will be expanded in config scripts using both Unix and Windows CMD syntax
 
 .. code-block:: jinja
 
