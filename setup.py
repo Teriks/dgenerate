@@ -245,7 +245,7 @@ if __name__ != 'setup_as_library':
           author_email='Teriks@users.noreply.github.com',
           url='https://github.com/Teriks/dgenerate',
           version=VERSION,
-          packages=find_packages(),
+          packages=find_packages() + ['dgenerate.console.themes'],
           package_data={
               'dgenerate': ['icon.ico', 'config_icon.ico'],
               'dgenerate.console.themes': ['*.toml'],
