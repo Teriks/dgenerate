@@ -864,24 +864,34 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
                 stdin = stdin if previous_process is None else previous_process.stdout
 
-                if command[0] == 'dgenerate' and stdin is None:
+                if command[0] == 'dgenerate' and stdin is None and '--shell' not in command:
                     command = list(command) + ['--no-stdin']
 
                 env = os.environ.copy()
                 env['PYTHONUNBUFFERED'] = '1'
                 env['PYTHONIOENCODING'] = 'utf-8'
                 try:
-                    if platform.system() == 'Windows':
+                    executable = \
+                        os.path.splitext(
+                            os.path.basename(os.path.realpath(sys.argv[0])))[0]
+
+                    # This is a ridiculous hack for the windowed variant of the
+                    # dgenerate executable on windows that allows proper behavior
+                    # for sub-shells executed in a config from a terminal using
+                    # the standard dgenerate executable compiled for console mode
+
+                    if platform.system() == 'Windows' and executable.startswith('dgenerate_windowed'):
                         extra_kwargs = {'creationflags': subprocess.CREATE_NO_WINDOW}
                     else:
                         extra_kwargs = dict()
 
                     process = subprocess.Popen(command,
-                                               stdin=stdin,
+                                               stdin=sys.stdin if stdin is None else stdin,
                                                stdout=subprocess.PIPE,
                                                stderr=subprocess.PIPE,
                                                env=env,
                                                **extra_kwargs)
+
                     open_processes.append(process)
                 except FileNotFoundError:
                     raise _batchprocessor.BatchProcessError(
