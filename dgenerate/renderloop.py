@@ -456,7 +456,7 @@ class RenderLoop:
             render_loop_opts.append(('--no-aspect',))
 
         if self.config.output_prefix:
-            render_loop_opts.append(('--output-prefix',))
+            render_loop_opts.append(('--output-prefix', self.config.output_prefix))
 
         return render_loop_opts
 
