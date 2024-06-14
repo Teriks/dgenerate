@@ -881,7 +881,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                     # the standard dgenerate executable compiled for console mode
                     # as well as the executable compiled for windowed mode
 
-                    if platform.system() == 'Windows' and executable.startswith('dgenerate_windowed'):
+                    if platform.system() == 'Windows' and executable == 'dgenerate_windowed':
                         extra_kwargs = {'creationflags': subprocess.CREATE_NO_WINDOW}
                     else:
                         extra_kwargs = dict()
