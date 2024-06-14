@@ -1131,10 +1131,6 @@ class DiffusionPipelineWrapper:
             opts.append(('--output-size', f'{args.width}x{args.height}'))
         elif args.width is not None:
             opts.append(('--output-size', f'{args.width}'))
-        elif args.image is not None:
-            opts.append(('--output-size', _textprocessing.format_size(args.image.size)))
-        elif args.control_images:
-            opts.append(('--output-size', _textprocessing.format_size(args.control_images[0].size)))
 
         if args.image is not None:
             seed_args = []
