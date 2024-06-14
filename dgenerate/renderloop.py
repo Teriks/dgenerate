@@ -455,6 +455,9 @@ class RenderLoop:
         if self.config.no_aspect:
             render_loop_opts.append(('--no-aspect',))
 
+        if self.config.output_prefix:
+            render_loop_opts.append(('--output-prefix',))
+
         return render_loop_opts
 
     def _setup_batch_size_config_opts(self,
@@ -834,13 +837,15 @@ class RenderLoop:
                     sdxl_high_noise_fraction=sdxl_high_noise_fractions,
                     image_seed_strength=None,
                     upscaler_noise_level=None):
+
+                diffusion_arguments.width = self.config.output_size[0]
+                diffusion_arguments.height = self.config.output_size[1]
+                diffusion_arguments.batch_size = self.config.batch_size
+                diffusion_arguments.sdxl_refiner_edit = self.config.sdxl_refiner_edit
+
                 yield from self._pre_generation_step(diffusion_arguments)
 
-                with pipeline_wrapper(diffusion_arguments,
-                                      width=self.config.output_size[0],
-                                      height=self.config.output_size[1],
-                                      batch_size=self.config.batch_size,
-                                      sdxl_refiner_edit=self.config.sdxl_refiner_edit) as generation_result:
+                with pipeline_wrapper(diffusion_arguments) as generation_result:
                     self._run_postprocess(generation_result)
                     yield from self._write_prompt_only_image(diffusion_arguments, generation_result)
 
@@ -974,6 +979,9 @@ class RenderLoop:
                 continue
 
             for diffusion_arguments in arg_iterator:
+                diffusion_arguments.batch_size = self.config.batch_size
+                diffusion_arguments.sdxl_refiner_edit = self.config.sdxl_refiner_edit
+
                 yield from self._pre_generation_step(diffusion_arguments)
                 with next(image_seed_iterator()) as image_seed:
                     with image_seed:
@@ -989,9 +997,7 @@ class RenderLoop:
                         elif image_seed.floyd_image:
                             diffusion_arguments.floyd_image = image_seed.floyd_image
 
-                        with image_seed, pipeline_wrapper(diffusion_arguments,
-                                                          batch_size=self.config.batch_size,
-                                                          sdxl_refiner_edit=self.config.sdxl_refiner_edit) as generation_result:
+                        with image_seed, pipeline_wrapper(diffusion_arguments) as generation_result:
                             self._run_postprocess(generation_result)
                             yield from self._write_image_seed_gen_image(diffusion_arguments, image_seed,
                                                                         generation_result)
@@ -1068,14 +1074,14 @@ class RenderLoop:
                         yield starting_animation_event
 
                     with image_seed_frame:
+                        diffusion_args.batch_size = self.config.batch_size
+                        diffusion_args.sdxl_refiner_edit = self.config.sdxl_refiner_edit
 
                         yield from self._animation_frame_pre_generation(image_seed_frame)
 
                         set_extra_wrapper_args(diffusion_args, image_seed_frame)
 
-                        with pipeline_wrapper(diffusion_args,
-                                              batch_size=self.config.batch_size,
-                                              sdxl_refiner_edit=self.config.sdxl_refiner_edit) as generation_result:
+                        with pipeline_wrapper(diffusion_args) as generation_result:
                             self._run_postprocess(generation_result)
                             self._ensure_output_path()
 
