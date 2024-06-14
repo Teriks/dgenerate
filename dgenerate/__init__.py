@@ -202,19 +202,9 @@ def main(args: collections.abc.Sequence[str] | None = None):
     while '--no-stdin' in args:
         args.remove('--no-stdin')
 
-    if shell_mode and nostdin_mode:
-        dgenerate.messages.log(
-            'dgenerate: error: --no-stdin cannot be used with --shell.')
-        sys.exit(1)
-
     if input_file and shell_mode:
         dgenerate.messages.log(
             'dgenerate: error: --shell cannot be used with --file.')
-        sys.exit(1)
-
-    if dgenerate.files.stdin_is_tty() and nostdin_mode:
-        dgenerate.messages.log(
-            'dgenerate: error: --no-stdin is not valid when stdin is a terminal (tty).')
         sys.exit(1)
 
     try:
