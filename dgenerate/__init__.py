@@ -207,11 +207,6 @@ def main(args: collections.abc.Sequence[str] | None = None):
             'dgenerate: error: --no-stdin cannot be used with --shell.')
         sys.exit(1)
 
-    if input_file and nostdin_mode:
-        dgenerate.messages.log(
-            'dgenerate: error: --no-stdin cannot be used with --file.')
-        sys.exit(1)
-
     if input_file and shell_mode:
         dgenerate.messages.log(
             'dgenerate: error: --shell cannot be used with --file.')

@@ -33,6 +33,7 @@ import threading
 import time
 import types
 import typing
+import platform
 
 import fake_useragent
 import pyrfc6266
@@ -870,11 +871,17 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                 env['PYTHONUNBUFFERED'] = '1'
                 env['PYTHONIOENCODING'] = 'utf-8'
                 try:
+                    if platform.system() == 'Windows':
+                        extra_kwargs = {'creationflags': subprocess.CREATE_NO_WINDOW}
+                    else:
+                        extra_kwargs = dict()
+
                     process = subprocess.Popen(command,
                                                stdin=stdin,
                                                stdout=subprocess.PIPE,
                                                stderr=subprocess.PIPE,
-                                               env=env)
+                                               env=env,
+                                               **extra_kwargs)
                     open_processes.append(process)
                 except FileNotFoundError:
                     raise _batchprocessor.BatchProcessError(
