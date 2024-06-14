@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 3.7.1
+#! dgenerate 3.7.2
 
 # Complete transformation with canny edge detection
 

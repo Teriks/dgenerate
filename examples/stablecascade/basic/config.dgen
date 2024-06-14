@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 3.7.1
+#! dgenerate 3.7.2
 
 stabilityai/stable-cascade-prior
 --model-type torch-s-cascade

@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 3.7.1
+#! dgenerate 3.7.2
 
 # Deep Floyd IF consist of 3 stages, an initial stage that produces a 64x64 image, a second stage that takes
 # that image and scales it to 256x265, and a third stage that takes that image and x4 scales it to 1024x1024
