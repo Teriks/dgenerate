@@ -1684,6 +1684,10 @@ Generated configuration can be read back into dgenerate via a pipe or file redir
 
 .. code-block:: bash
 
+    # DO NOT DO THIS IF THE IMAGE IS UNTRUSTED, SUCH AS IF IT IS SOMEONE ELSE'S IMAGE!
+    # VERIFY THAT THE METADATA CONTENT OF THE IMAGE IS NOT MALICIOUS FIRST,
+    # USING THE IDENTIFY COMMAND ALONE
+
     magick identify -format "%[Property:DgenerateConfig]" generated_file.png | dgenerate
 
     dgenerate < generated-config.dgen

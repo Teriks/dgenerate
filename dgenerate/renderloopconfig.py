@@ -648,9 +648,10 @@ class RenderLoopConfig(_types.SetFromMixin):
         except ValueError as e:
             raise RenderLoopConfigError(e)
 
-        if '/' in self.output_prefix or '\\' in self.output_prefix:
-            raise RenderLoopConfigError(
-                f'{a_namer("output_prefix")} value may not contain slash characters.')
+        if self.output_prefix:
+            if '/' in self.output_prefix or '\\' in self.output_prefix:
+                raise RenderLoopConfigError(
+                    f'{a_namer("output_prefix")} value may not contain slash characters.')
 
         # Detect logically incorrect config and set certain defaults
         def non_null_attr_that_start_with(s):
