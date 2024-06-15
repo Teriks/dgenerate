@@ -848,8 +848,10 @@ class RenderLoop:
                     image_seed_strength=None,
                     upscaler_noise_level=None):
 
-                diffusion_arguments.width = self.config.output_size[0]
-                diffusion_arguments.height = self.config.output_size[1]
+                if self.config.output_size is not None:
+                    diffusion_arguments.width = self.config.output_size[0]
+                    diffusion_arguments.height = self.config.output_size[1]
+
                 diffusion_arguments.batch_size = self.config.batch_size
                 diffusion_arguments.sdxl_refiner_edit = self.config.sdxl_refiner_edit
 
