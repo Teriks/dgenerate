@@ -426,7 +426,7 @@ class RenderLoop:
 
         return args
 
-    def _get_base_extra_config_opts(self):
+    def _get_base_extra_config_opts(self, args: _pipelinewrapper.DiffusionArguments | None = None):
         render_loop_opts = []
 
         if self.config.seed_image_processors:
@@ -458,6 +458,14 @@ class RenderLoop:
         if self.config.output_prefix:
             render_loop_opts.append(('--output-prefix', self.config.output_prefix))
 
+        if self.config.output_size is not None and args.width is None:
+            # sometimes, output size can be specified with effects (such as resizing input images)
+            # even when it does not get passed as a parameter to the diffusion
+            # pipeline wrapper, without this statement, the command line will not be accurately
+            # reproduced in entirety for those cases
+            render_loop_opts.append(('--output-size',
+                                     _textprocessing.format_size(self.config.output_size)))
+
         return render_loop_opts
 
     def _setup_batch_size_config_opts(self,
@@ -487,7 +495,7 @@ class RenderLoop:
                               **kwargs) -> str:
 
         return self._pipeline_wrapper.gen_dgenerate_config(args,
-                                                           extra_opts=self._get_base_extra_config_opts() + (
+                                                           extra_opts=self._get_base_extra_config_opts(args) + (
                                                                extra_opts if extra_opts else []),
                                                            extra_comments=extra_comments, **kwargs)
 
@@ -498,7 +506,7 @@ class RenderLoop:
                                **kwargs) -> str:
 
         return self._pipeline_wrapper.gen_dgenerate_command(args,
-                                                            extra_opts=self._get_base_extra_config_opts() + (
+                                                            extra_opts=self._get_base_extra_config_opts(args) + (
                                                                 extra_opts if extra_opts else []),
                                                             extra_comments=extra_comments, **kwargs)
 
@@ -837,15 +845,13 @@ class RenderLoop:
                     sdxl_high_noise_fraction=sdxl_high_noise_fractions,
                     image_seed_strength=None,
                     upscaler_noise_level=None):
-
-                diffusion_arguments.width = self.config.output_size[0]
-                diffusion_arguments.height = self.config.output_size[1]
-                diffusion_arguments.batch_size = self.config.batch_size
-                diffusion_arguments.sdxl_refiner_edit = self.config.sdxl_refiner_edit
-
                 yield from self._pre_generation_step(diffusion_arguments)
 
-                with pipeline_wrapper(diffusion_arguments) as generation_result:
+                with pipeline_wrapper(diffusion_arguments,
+                                      width=self.config.output_size[0],
+                                      height=self.config.output_size[1],
+                                      batch_size=self.config.batch_size,
+                                      sdxl_refiner_edit=self.config.sdxl_refiner_edit) as generation_result:
                     self._run_postprocess(generation_result)
                     yield from self._write_prompt_only_image(diffusion_arguments, generation_result)
 
@@ -979,9 +985,6 @@ class RenderLoop:
                 continue
 
             for diffusion_arguments in arg_iterator:
-                diffusion_arguments.batch_size = self.config.batch_size
-                diffusion_arguments.sdxl_refiner_edit = self.config.sdxl_refiner_edit
-
                 yield from self._pre_generation_step(diffusion_arguments)
                 with next(image_seed_iterator()) as image_seed:
                     with image_seed:
@@ -1074,14 +1077,14 @@ class RenderLoop:
                         yield starting_animation_event
 
                     with image_seed_frame:
-                        diffusion_args.batch_size = self.config.batch_size
-                        diffusion_args.sdxl_refiner_edit = self.config.sdxl_refiner_edit
 
                         yield from self._animation_frame_pre_generation(image_seed_frame)
 
                         set_extra_wrapper_args(diffusion_args, image_seed_frame)
 
-                        with pipeline_wrapper(diffusion_args) as generation_result:
+                        with pipeline_wrapper(diffusion_args,
+                                              batch_size=self.config.batch_size,
+                                              sdxl_refiner_edit=self.config.sdxl_refiner_edit) as generation_result:
                             self._run_postprocess(generation_result)
                             self._ensure_output_path()
 
