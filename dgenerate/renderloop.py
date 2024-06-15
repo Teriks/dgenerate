@@ -982,7 +982,7 @@ class RenderLoop:
                             args.floyd_image = ims_obj.floyd_image
 
                 yield from self._render_animation(pipeline_wrapper=pipeline_wrapper,
-                                                  set_extra_wrapper_args=set_extra_args,
+                                                  set_wrapper_args_per_image_seed=set_extra_args,
                                                   arg_iterator=arg_iterator,
                                                   image_seed_iterator=image_seed_iterator,
                                                   fps=seed_info.fps)
@@ -1024,7 +1024,7 @@ class RenderLoop:
 
     def _render_animation(self,
                           pipeline_wrapper: _pipelinewrapper.DiffusionPipelineWrapper,
-                          set_extra_wrapper_args:
+                          set_wrapper_args_per_image_seed:
                           typing.Callable[[_pipelinewrapper.DiffusionArguments, _mediainput.ImageSeed], None],
                           arg_iterator:
                           collections.abc.Iterator[_pipelinewrapper.DiffusionArguments],
@@ -1091,7 +1091,7 @@ class RenderLoop:
 
                         yield from self._animation_frame_pre_generation(image_seed_frame)
 
-                        set_extra_wrapper_args(diffusion_args, image_seed_frame)
+                        set_wrapper_args_per_image_seed(diffusion_args, image_seed_frame)
 
                         with pipeline_wrapper(diffusion_args) as generation_result:
                             self._run_postprocess(generation_result)
