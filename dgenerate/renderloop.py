@@ -969,16 +969,10 @@ class RenderLoop:
                 if is_control_guidance_spec:
                     def set_extra_args(args: _pipelinewrapper.DiffusionArguments,
                                        ci_obj: _mediainput.ImageSeed):
-                        args.batch_size = self.config.batch_size
-                        args.sdxl_refiner_edit = self.config.sdxl_refiner_edit
-
                         args.control_images = ci_obj.control_images
                 else:
                     def set_extra_args(args: _pipelinewrapper.DiffusionArguments,
                                        ims_obj: _mediainput.ImageSeed):
-                        args.batch_size = self.config.batch_size
-                        args.sdxl_refiner_edit = self.config.sdxl_refiner_edit
-
                         args.image = ims_obj.image
                         if ims_obj.mask_image is not None:
                             args.mask_image = ims_obj.mask_image
@@ -1063,6 +1057,8 @@ class RenderLoop:
         with anim_writer:
 
             for diffusion_args in itertools.chain([first_diffusion_args], arg_iterator):
+                diffusion_args.batch_size = self.config.batch_size
+                diffusion_args.sdxl_refiner_edit = self.config.sdxl_refiner_edit
 
                 yield from self._pre_generation_step(diffusion_args)
 
