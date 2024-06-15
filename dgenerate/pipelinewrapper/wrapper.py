@@ -920,6 +920,7 @@ class DiffusionPipelineWrapper:
                                    extra_opts:
                                        collections.abc.Sequence[
                                            tuple[str] | tuple[str, typing.Any]] | None = None,
+                                   omit_device=False,
                                    shell_quote=True,
                                    **kwargs) -> \
             list[tuple[str] | tuple[str, typing.Any]]:
@@ -930,6 +931,10 @@ class DiffusionPipelineWrapper:
 
         :param extra_opts: Extra option pairs to be added to the end of reconstructed options,
             this should be a sequence of tuples of length 1 (switch only) or length 2 (switch with args)
+            
+        :param omit_device: Omit the ``--device`` option? For a shareable configuration it might not
+            make sense to include the device specification. And instead simply fallback to whatever 
+            the default device is, which is generally ``cuda``
 
         :param shell_quote: Shell quote and format the argument values? or return them raw.
 
@@ -950,11 +955,14 @@ class DiffusionPipelineWrapper:
         args = copy_args
 
         opts = [(self.model_path,),
-                ('--model-type', self.model_type_string),
-                ('--device', self._device),
-                ('--inference-steps', args.inference_steps),
-                ('--guidance-scales', args.guidance_scale),
-                ('--seeds', args.seed)]
+                ('--model-type', self.model_type_string)]
+
+        if not omit_device:
+            opts.append(('--device', self._device))
+
+        opts.append(('--inference-steps', args.inference_steps))
+        opts.append(('--guidance-scales', args.guidance_scale))
+        opts.append(('--seeds', args.seed))
 
         if self.dtype_string != 'auto':
             opts.append(('--dtype', self.dtype_string))
@@ -1262,7 +1270,9 @@ class DiffusionPipelineWrapper:
                 config += '\n\n'
 
         opts = \
-            self.reconstruct_dgenerate_opts(args, **kwargs, shell_quote=False)
+            self.reconstruct_dgenerate_opts(args, **kwargs,
+                                            shell_quote=False,
+                                            omit_device=True,)
 
         if extra_opts is not None:
             for opt in extra_opts:
@@ -1297,6 +1307,7 @@ class DiffusionPipelineWrapper:
             ' '.join(f"{self._format_option_pair(opt)}"
                      for opt in self.reconstruct_dgenerate_opts(args, **kwargs,
                                                                 extra_opts=extra_opts,
+                                                                omit_device=True,
                                                                 shell_quote=False))
 
         return f'dgenerate {opt_string}'
