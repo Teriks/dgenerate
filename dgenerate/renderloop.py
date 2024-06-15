@@ -432,7 +432,7 @@ class RenderLoop:
 
         return args
 
-    def _get_base_extra_config_opts(self, args: _pipelinewrapper.DiffusionArguments | None = None):
+    def _get_base_extra_config_opts(self, args: _pipelinewrapper.DiffusionArguments):
         render_loop_opts = []
 
         if self.config.seed_image_processors:
