@@ -144,11 +144,15 @@ class ImageGeneratedEvent(_Event):
     command_string: str
     """
     Reproduction of a command line that can be used to reproduce this image.
+    
+    This does not include the ``--device`` argument.
     """
 
     config_string: str
     """
     Reproduction of a dgenerate config file that can be used to reproduce this image.
+    
+    This does not include the ``--device`` argument.
     """
 
     @property
