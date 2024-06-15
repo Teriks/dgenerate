@@ -823,20 +823,6 @@ class RenderLoopConfig(_types.SetFromMixin):
             raise RenderLoopConfigError(f'you cannot specify {a_namer("clip_skips")} for '
                                         f'{a_namer("model_type")} values other than "torch" or "torch-sdxl"')
 
-        if self.output_size is None and not self.image_seeds:
-            if _pipelinewrapper.model_type_is_sdxl(self.model_type):
-                self.output_size = (_pipelinewrapper.DEFAULT_SDXL_OUTPUT_WIDTH,
-                                    _pipelinewrapper.DEFAULT_SDXL_OUTPUT_HEIGHT)
-            elif _pipelinewrapper.model_type_is_floyd_if(self.model_type):
-                self.output_size = (_pipelinewrapper.DEFAULT_FLOYD_IF_OUTPUT_WIDTH,
-                                    _pipelinewrapper.DEFAULT_FLOYD_IF_OUTPUT_HEIGHT)
-            elif self.model_type == _pipelinewrapper.ModelType.TORCH_S_CASCADE:
-                self.output_size = (_pipelinewrapper.DEFAULT_S_CASCADE_OUTPUT_WIDTH,
-                                    _pipelinewrapper.DEFAULT_S_CASCADE_OUTPUT_HEIGHT)
-            else:
-                self.output_size = (_pipelinewrapper.DEFAULT_OUTPUT_WIDTH,
-                                    _pipelinewrapper.DEFAULT_OUTPUT_HEIGHT)
-
         if not self.image_seeds:
             if _pipelinewrapper.model_type_is_floyd_ifs(self.model_type) and \
                     not _pipelinewrapper.scheduler_is_help(self.scheduler):
