@@ -499,18 +499,20 @@ class RenderLoop:
         return self._pipeline_wrapper.gen_dgenerate_config(args,
                                                            extra_opts=self._get_base_extra_config_opts(args) + (
                                                                extra_opts if extra_opts else []),
-                                                           extra_comments=extra_comments, **kwargs)
+                                                           extra_comments=extra_comments,
+                                                           omit_device=True,
+                                                           **kwargs)
 
     def _gen_dgenerate_command(self,
                                args: _pipelinewrapper.DiffusionArguments | None = None,
                                extra_opts: collections.abc.Sequence[tuple[str] | tuple[str, typing.Any]] | None = None,
-                               extra_comments: collections.abc.Sequence[str] | None = None,
                                **kwargs) -> str:
 
         return self._pipeline_wrapper.gen_dgenerate_command(args,
                                                             extra_opts=self._get_base_extra_config_opts(args) + (
                                                                 extra_opts if extra_opts else []),
-                                                            extra_comments=extra_comments, **kwargs)
+                                                            omit_device=True,
+                                                            **kwargs)
 
     def _write_image(self,
                      filename_components: list[str],
