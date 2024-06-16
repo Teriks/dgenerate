@@ -2051,6 +2051,7 @@ similar fashion to ``--vae`` and other model arguments that accept URIs.
 UNets are supported for these model types:
 
     * ``--model-type torch``
+    * ``--model-type flax``
     * ``--model-type torch-if``
     * ``--model-type torch-ifs``
     * ``--model-type torch-ifs-img2img``
