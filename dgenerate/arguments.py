@@ -1101,10 +1101,10 @@ def _create_parser(add_model=True, add_help=True):
                             size to the inputs, except in the case of upscalers and Deep Floyd --model-type values (torch-if*). If only 
                             one integer value is provided, that is the value for both dimensions. X/Y dimension values should be 
                             separated by "x".  This value defaults to 512x512 for Stable Diffusion when no --image-seeds are 
-                            specified (IE txt2img mode), 1024x1024 for Stable Diffusion XL (SDXL) model types, and 64x64 for 
-                            --model-type torch-if (Deep Floyd stage 1). Deep Floyd stage 1 images passed to superscaler models 
-                            (--model-type torch-ifs*) that are specified with the 'floyd' keyword argument in an --image-seeds 
-                            definition are never resized or processed in any way."""))
+                            specified (IE txt2img mode), 1024x1024 for Stable Cascade and Stable Diffusion 3/XL (SD3 or SDXL)
+                            model types, and 64x64 for --model-type torch-if (Deep Floyd stage 1). Deep Floyd stage 1 images 
+                            passed to superscaler models (--model-type torch-ifs*) that are specified with the 'floyd' keyword 
+                            argument in an --image-seeds definition are never resized or processed in any way."""))
 
     actions.append(
         parser.add_argument('-na', '--no-aspect', action='store_true',
