@@ -208,6 +208,20 @@ class DiffusionArguments(_types.SetFromMixin):
     a value.
     """
 
+    sd3_second_prompt: _types.OptionalPrompt = None
+    """
+    Secondary prompt for the SD3 main pipeline. Usually the **prompt**
+    attribute of this object is used, unless you override it by giving 
+    this attribute a value.
+    """
+
+    sd3_third_prompt: _types.OptionalPrompt = None
+    """
+    Tertiary (T5) prompt for the SD3 main pipeline. Usually the **prompt**
+    attribute of this object is used, unless you override it by giving 
+    this attribute a value.
+    """
+
     sdxl_refiner_edit: _types.OptionalBoolean = None
     """
     Force the SDXL refiner to operate in edit mode instead of cooperative denoising mode.
@@ -517,6 +531,16 @@ class DiffusionArguments(_types.SetFromMixin):
             prompt_format, self.prompt,
             "Prompt",
             "Negative Prompt")
+
+        DiffusionArguments._describe_prompt(
+            prompt_format, self.sd3_second_prompt,
+            "SD3 Second Prompt",
+            "SD3 Second Negative Prompt")
+
+        DiffusionArguments._describe_prompt(
+            prompt_format, self.sd3_third_prompt,
+            "SD3 Third Prompt",
+            "SD3 Third Negative Prompt")
 
         DiffusionArguments._describe_prompt(
             prompt_format, self.s_cascade_decoder_prompt,
@@ -1490,6 +1514,9 @@ class DiffusionPipelineWrapper:
             elif self._model_type == _enums.ModelType.TORCH_S_CASCADE:
                 args['height'] = _types.default(user_args.height, _constants.DEFAULT_S_CASCADE_OUTPUT_HEIGHT)
                 args['width'] = _types.default(user_args.width, _constants.DEFAULT_S_CASCADE_OUTPUT_WIDTH)
+            elif self._model_type == _enums.ModelType.TORCH_SD3:
+                args['height'] = _types.default(user_args.height, _constants.DEFAULT_SD3_OUTPUT_HEIGHT)
+                args['width'] = _types.default(user_args.width, _constants.DEFAULT_SD3_OUTPUT_WIDTH)
             else:
                 args['height'] = _types.default(user_args.height, _constants.DEFAULT_OUTPUT_HEIGHT)
                 args['width'] = _types.default(user_args.width, _constants.DEFAULT_OUTPUT_WIDTH)
@@ -1777,17 +1804,44 @@ class DiffusionPipelineWrapper:
 
         self._get_sdxl_conditioning_args(self._pipeline, pipeline_args, user_args)
 
-        self._set_non_universal_pipeline_arg(self._pipeline,
-                                             pipeline_args, user_args,
-                                             'prompt_2', 'sdxl_second_prompt',
-                                             '--sdxl-second-prompts',
-                                             transform=lambda p: p.positive)
+        if _enums.model_type_is_sd3(self.model_type):
 
-        self._set_non_universal_pipeline_arg(self._pipeline,
-                                             pipeline_args, user_args,
-                                             'negative_prompt_2', 'sdxl_second_prompt',
-                                             '--sdxl-second-prompts',
-                                             transform=lambda p: p.negative)
+            self._set_non_universal_pipeline_arg(self._pipeline,
+                                                 pipeline_args, user_args,
+                                                 'prompt_2', 'sd3_second_prompt',
+                                                 '--sd3-second-prompts',
+                                                 transform=lambda p: p.positive)
+
+            self._set_non_universal_pipeline_arg(self._pipeline,
+                                                 pipeline_args, user_args,
+                                                 'prompt_3', 'sd3_third_prompt',
+                                                 '--sd3-third-prompts',
+                                                 transform=lambda p: p.positive)
+
+            self._set_non_universal_pipeline_arg(self._pipeline,
+                                                 pipeline_args, user_args,
+                                                 'negative_prompt_2', 'sd3_second_prompt',
+                                                 '--sd3-second-prompts',
+                                                 transform=lambda p: p.negative)
+
+            self._set_non_universal_pipeline_arg(self._pipeline,
+                                                 pipeline_args, user_args,
+                                                 'negative_prompt_3', 'sd3_third_prompt',
+                                                 '--sd3-third-prompts',
+                                                 transform=lambda p: p.negative)
+
+        else:
+            self._set_non_universal_pipeline_arg(self._pipeline,
+                                                 pipeline_args, user_args,
+                                                 'prompt_2', 'sdxl_second_prompt',
+                                                 '--sdxl-second-prompts',
+                                                 transform=lambda p: p.positive)
+
+            self._set_non_universal_pipeline_arg(self._pipeline,
+                                                 pipeline_args, user_args,
+                                                 'negative_prompt_2', 'sdxl_second_prompt',
+                                                 '--sdxl-second-prompts',
+                                                 transform=lambda p: p.negative)
 
         self._set_non_universal_pipeline_arg(self._pipeline,
                                              pipeline_args, user_args,

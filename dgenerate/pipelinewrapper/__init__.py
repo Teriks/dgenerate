@@ -75,6 +75,7 @@ from .constants import \
 from .enums import \
     ModelType, \
     DataType, \
+    model_type_is_sd3, \
     model_type_is_sdxl, \
     model_type_is_floyd_if, \
     model_type_is_pix2pix, \

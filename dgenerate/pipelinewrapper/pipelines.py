@@ -932,6 +932,17 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             raise UnsupportedPipelineConfigError(
                 'Stable Cascade --model-type values are not compatible with --vae.')
 
+    if model_type == model_type.TORCH_SD3:
+        if control_net_uris:
+            raise UnsupportedPipelineConfigError(
+                '--model-type torch-sd3 is not compatible with --control-nets.')
+        if textual_inversion_uris:
+            raise UnsupportedPipelineConfigError(
+                '--model-type torch-sd3 is not compatible with --textual-inversions.')
+        if lora_uris and pipeline_type == _enums.PipelineType.IMG2IMG:
+            raise UnsupportedPipelineConfigError(
+                '--model-type torch-sd3 is not compatible with --loras in img2img mode.')
+
     # Pipeline class selection
 
     if _enums.model_type_is_upscaler(model_type):
@@ -970,6 +981,8 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                 pipeline_class = diffusers.StableCascadePriorPipeline
             elif model_type == _enums.ModelType.TORCH_S_CASCADE_DECODER:
                 pipeline_class = diffusers.StableCascadeDecoderPipeline
+            elif model_type == _enums.ModelType.TORCH_SD3:
+                pipeline_class = diffusers.StableDiffusion3Pipeline
             elif control_net_uris:
                 pipeline_class = diffusers.StableDiffusionXLControlNetPipeline if sdxl \
                     else diffusers.StableDiffusionControlNetPipeline
@@ -999,6 +1012,8 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             elif model_type == _enums.ModelType.TORCH_S_CASCADE_DECODER:
                 raise UnsupportedPipelineConfigError(
                     'Stable Cascade decoder models do not support img2img.')
+            elif model_type == _enums.ModelType.TORCH_SD3:
+                pipeline_class = diffusers.StableDiffusion3Img2ImgPipeline
             elif control_net_uris:
                 if sdxl:
                     pipeline_class = diffusers.StableDiffusionXLControlNetImg2ImgPipeline
@@ -1013,6 +1028,10 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             if _enums.model_type_is_s_cascade(model_type):
                 raise UnsupportedPipelineConfigError(
                     'Stable Cascade model types do not currently support inpainting.')
+            if model_type == _enums.ModelType.TORCH_SD3:
+                raise UnsupportedPipelineConfigError(
+                    'Stable Diffusion 3 model types do not currently support inpainting.')
+
             if model_type == _enums.ModelType.TORCH_IF:
                 pipeline_class = diffusers.IFInpaintingPipeline
             elif model_type == _enums.ModelType.TORCH_IFS:

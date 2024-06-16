@@ -1,0 +1,22 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.7.2
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %} !END
+
+
+stabilityai/stable-diffusion-3-medium-diffusers
+--model-type torch-sd3
+--inference-steps 30
+--guidance-scales 8
+--image-seeds "../../media/beach.jpg"
+--image-seed-strengths 0.9
+--seeds 70466855166895
+--clip-skips 0
+--output-path output
+--model-sequential-offload
+--prompts "A huge tsunami wave about to impact a tropical beach, high resolution, photo, real; fake, artwork, imaginary, watermark"

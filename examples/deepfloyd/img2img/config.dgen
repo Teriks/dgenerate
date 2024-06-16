@@ -3,6 +3,14 @@
 
 \set image_to_vary ../../media/dog-on-bench.png
 
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %} !END
+
+
 DeepFloyd/IF-I-M-v1.0
 --variant fp16
 --dtype float16

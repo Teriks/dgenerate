@@ -1161,6 +1161,24 @@ def _create_parser(add_model=True, add_help=True):
                             (default: [(empty string)])"""))
 
     actions.append(
+        parser.add_argument('--sd3-second-prompts', nargs='+', action='store', metavar="PROMPT",
+                            default=None,
+                            type=_type_prompts,
+                            help="""One or more secondary prompts to try using the torch-sd3 (Stable Diffusion 3) 
+                            secondary text encoder. By default the model is passed the primary prompt for this value, 
+                            this option allows you to choose a different prompt. The negative prompt component can be
+                            specified with the same syntax as --prompts"""))
+
+    actions.append(
+        parser.add_argument('--sd3-third-prompts', nargs='+', action='store', metavar="PROMPT",
+                            default=None,
+                            type=_type_prompts,
+                            help="""One or more tertiary prompts to try using the torch-sd3 (Stable Diffusion 3) 
+                            tertiary (T5) text encoder. By default the model is passed the primary prompt for this value, 
+                            this option allows you to choose a different prompt. The negative prompt component can be
+                            specified with the same syntax as --prompts"""))
+
+    actions.append(
         parser.add_argument('-cs', '--clip-skips', nargs='+', action='store', metavar="INTEGER",
                             default=None,
                             type=_type_clip_skip,

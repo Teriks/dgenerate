@@ -213,6 +213,11 @@ class ModelType(enum.Enum):
     Stable Cascade decoder
     """
 
+    TORCH_SD3 = 12
+    """
+    Stable Diffusion 3
+    """
+
 
 def supported_model_type_strings():
     """
@@ -227,7 +232,8 @@ def supported_model_type_strings():
                 'torch-if',
                 'torch-ifs',
                 'torch-ifs-img2img',
-                'torch-s-cascade']
+                'torch-s-cascade',
+                'torch-sd3']
 
     if have_jax_flax():
         return base_set + ['flax']
@@ -267,6 +273,7 @@ def get_model_type_enum(id_str: ModelType | str) -> ModelType:
                 'torch-upscaler-x2': ModelType.TORCH_UPSCALER_X2,
                 'torch-upscaler-x4': ModelType.TORCH_UPSCALER_X4,
                 'torch-s-cascade': ModelType.TORCH_S_CASCADE,
+                'torch-sd3': ModelType.TORCH_SD3,
                 'flax': ModelType.FLAX}[id_str.strip().lower()]
     except KeyError:
         raise ValueError('invalid ModelType string')
@@ -293,6 +300,7 @@ def get_model_type_string(model_type_enum: ModelType) -> str:
             ModelType.TORCH_UPSCALER_X4: 'torch-upscaler-x4',
             ModelType.TORCH_S_CASCADE: 'torch-s-cascade',
             ModelType.TORCH_S_CASCADE_DECODER: 'torch-s-cascade-decoder',
+            ModelType.TORCH_SD3: 'torch-sd3',
             ModelType.FLAX: 'flax'}[model_type]
 
 
@@ -318,6 +326,18 @@ def model_type_is_sdxl(model_type: ModelType | str) -> bool:
     model_type = get_model_type_string(model_type)
 
     return 'sdxl' in model_type
+
+
+def model_type_is_sd3(model_type: ModelType | str) -> bool:
+    """
+    Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an SD3 model?
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
+    :return: bool
+    """
+    model_type = get_model_type_string(model_type)
+
+    return 'sd3' in model_type
 
 
 def model_type_is_s_cascade(model_type: ModelType | str) -> bool:
