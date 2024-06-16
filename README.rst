@@ -2048,7 +2048,18 @@ Specifying a UNet
 An alternate UNet model can be specified via a URI with the ``--unet`` option, in a
 similar fashion to ``--vae`` and other model arguments that accept URIs.
 
-Specifying a ``--unet`` value is supported for all model types which support ``--vae``
+UNets are supported for these model types:
+
+    * ``--model-type torch``
+    * ``--model-type torch-if``
+    * ``--model-type torch-ifs``
+    * ``--model-type torch-ifs-img2img``
+    * ``--model-type torch-pix2pix``
+    * ``--model-type torch-upscaler-x2``
+    * ``--model-type torch-upscaler-x4``
+    * ``--model-type torch-sdxl``
+    * ``--model-type torch-sdxl-pix2pix``
+    * ``--model-type torch-s-cascade``
 
 This is useful in particular for using the latent consistency scheduler.
 

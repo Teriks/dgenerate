@@ -934,6 +934,10 @@ class RenderLoopConfig(_types.SetFromMixin):
             if invalid_self:
                 raise RenderLoopConfigError('\n'.join(invalid_self))
         else:
+            if self.unet_uri or self.second_unet_uri:
+                raise RenderLoopConfigError(
+                    f'Stable Diffusion 3 does not support the '
+                    f'use of {a_namer("unet_uri")}/{a_namer("second_unet_uri")}.')
             if self.textual_inversion_uris:
                 raise RenderLoopConfigError(
                     f'Stable Diffusion 3 does not currently support the '
@@ -1044,8 +1048,10 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         if _pipelinewrapper.model_type_is_sd3(self.model_type) and not parsed.is_single_spec:
             # inpainting is not currently supported for Stable Diffusion 3
+
             raise RenderLoopConfigError(
-                f'inpainting is currently not supported for {a_namer("model_type")} '
+                f'{a_namer("image_seeds")} configurations other than plain img2img are '
+                f'currently not supported for {a_namer("model_type")} '
                 f'{_pipelinewrapper.get_model_type_string(self.model_type)}')
 
         if self.control_net_uris:
