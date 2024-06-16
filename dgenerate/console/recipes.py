@@ -38,6 +38,25 @@ RECIPES = {
         @device[{}]
         --prompts "add your prompt here"
         """,
+    "Stable Diffusion 3":
+        """
+        @file[{"label":"Model File / HF Slug", "default": "stabilityai/stable-diffusion-3-medium-diffusers", "optional":false, "file-types":"models"}]
+        --model-type torch-sd3
+        --dtype float16
+        @karrasscheduler[{}]
+        @torchvae[{"label":"VAE File / URI"}]
+        @file[{"label":"LoRa File / URI", "arg":"--loras", "after":";scale=1.0", "file-types":"models"}]
+        @file[{"label":"Image Seed", "arg":"--image-seeds", "after":"\\n--image-seed-strengths 0.8"}]
+        @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":30, "min":1}]
+        @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":5, "min":0}]
+        @int[{"label":"Clip Skip", "arg":"--clip-skips", "default":0, "min":0}]
+        @int[{"label":"Number Of Seeds", "arg":"--gen-seeds", "default":1, "min":1}]
+        @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+        @string[{"label":"Output Size", "arg":"--output-size", "default":"1024x1024"}]
+        --model-sequential-offload
+        @device[{}]
+        --prompts "add your prompt here"
+        """,
     "Stable Diffusion XL":
         """
         @file[{"label":"Model File / HF Slug", "default": "stabilityai/stable-diffusion-xl-base-1.0", "optional":false, "file-types":"models"}]
