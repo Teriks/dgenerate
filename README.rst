@@ -2293,6 +2293,7 @@ LoRAs are supported for these model types:
     * ``--model-type torch-upscaler-x4``
     * ``--model-type torch-sdxl``
     * ``--model-type torch-sdxl-pix2pix``
+    * ``--model-type torch-sd3``
 
 When multiple specifications are given, all mentioned models will be fused into
 the main model at a given scale.
