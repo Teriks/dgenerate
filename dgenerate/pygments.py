@@ -145,7 +145,7 @@ _VAE_KEYWORDS = sorted((
 _MODEL_TYPE_KEYWORDS = sorted((
     'torch',
     'torch-pix2pix',
-    'torch-sd3'
+    'torch-sd3',
     'torch-sdxl',
     'torch-if',
     'torch-ifs',
