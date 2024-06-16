@@ -109,6 +109,18 @@ class RenderLoopConfig(_types.SetFromMixin):
     command line tool.
     """
 
+    sd3_second_prompts: _types.OptionalPrompts = None
+    """
+    Optional list of SD3 secondary prompts, this corresponds to the ``--sd3-secondary-prompts`` argument
+    of the dgenerate command line tool.
+    """
+
+    sd3_third_prompts: _types.OptionalPrompts = None
+    """
+    Optional list of SD3 tertiary prompts, this corresponds to the ``--sd3-secondary-prompts`` argument
+    of the dgenerate command line tool.
+    """
+
     sdxl_second_prompts: _types.OptionalPrompts = None
     """
     Optional list of SDXL secondary prompts, this corresponds to the ``--sdxl-secondary-prompts`` argument
@@ -819,9 +831,11 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.batch_size = 1
 
         if self.clip_skips and not (self.model_type == _pipelinewrapper.ModelType.TORCH or
-                                    self.model_type == _pipelinewrapper.ModelType.TORCH_SDXL):
+                                    self.model_type == _pipelinewrapper.ModelType.TORCH_SDXL or
+                                    self.model_type == _pipelinewrapper.ModelType.TORCH_SD3):
             raise RenderLoopConfigError(f'you cannot specify {a_namer("clip_skips")} for '
-                                        f'{a_namer("model_type")} values other than "torch" or "torch-sdxl"')
+                                        f'{a_namer("model_type")} values other than '
+                                        f'"torch", "torch-sdxl", or "torch-sd3"')
 
         if not self.image_seeds:
             if _pipelinewrapper.model_type_is_floyd_ifs(self.model_type) and \
@@ -911,6 +925,23 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'without {a_namer("image_seeds")}.')
             if invalid_self:
                 raise RenderLoopConfigError('\n'.join(invalid_self))
+
+        if not _pipelinewrapper.model_type_is_sd3(self.model_type):
+            invalid_self = []
+            for sd3_self in non_null_attr_that_start_with('sd3'):
+                invalid_self.append(f'you cannot specify {a_namer(sd3_self)} '
+                                    f'for a non SD3 model type, see: {a_namer("model_type")}.')
+            if invalid_self:
+                raise RenderLoopConfigError('\n'.join(invalid_self))
+        else:
+            if self.textual_inversion_uris:
+                raise RenderLoopConfigError(
+                    f'Stable Diffusion 3 does not currently support the '
+                    f'use of {a_namer("textual_inversion_uris")}.')
+            if self.control_net_uris:
+                raise RenderLoopConfigError(
+                    f'Stable Diffusion 3 does not currently support the '
+                    f'use of {a_namer("control_net_uris")}.')
 
         if not _pipelinewrapper.model_type_is_sdxl(self.model_type):
             invalid_self = []
@@ -1011,6 +1042,12 @@ class RenderLoopConfig(_types.SetFromMixin):
         mask_part = 'mask=my-mask.png;' if parsed.mask_path else ''
         # ^ Used for nice messages about image seed keyword argument misuse
 
+        if _pipelinewrapper.model_type_is_sd3(self.model_type) and not parsed.is_single_spec:
+            # inpainting is not currently supported for Stable Diffusion 3
+            raise RenderLoopConfigError(
+                f'inpainting is currently not supported for {a_namer("model_type")} '
+                f'{_pipelinewrapper.get_model_type_string(self.model_type)}')
+
         if self.control_net_uris:
             control_image_paths = parsed.get_control_image_paths()
             num_control_images = len(control_image_paths) if control_image_paths is not None else 0
@@ -1106,6 +1143,8 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.sdxl_second_prompts,
             self.sdxl_refiner_prompts,
             self.sdxl_refiner_second_prompts,
+            self.sd3_second_prompts,
+            self.sd3_third_prompts,
             self.image_guidance_scales,
             self.image_seeds,
             self.image_seed_strengths,
@@ -1162,6 +1201,10 @@ class RenderLoopConfig(_types.SetFromMixin):
                 if n.startswith('sdxl_refiner') and not self.sdxl_refiner_uri:
                     return None
 
+            if not _pipelinewrapper.model_type_is_sd3(self.model_type):
+                if n.startswith('sd3'):
+                    return None
+
             if n in overrides:
                 return overrides[n]
             return v
@@ -1174,6 +1217,10 @@ class RenderLoopConfig(_types.SetFromMixin):
                                    self.sdxl_refiner_prompts),
             sdxl_refiner_second_prompt=ov('sdxl_refiner_second_prompt',
                                           self.sdxl_refiner_second_prompts),
+            sd3_second_prompt=ov('sd3_second_prompt',
+                                 self.sd3_second_prompts),
+            sd3_third_prompt=ov('sd3_third_prompt',
+                                self.sd3_third_prompts),
             seed=ov('seed', self.seeds),
             clip_skip=ov('clip_skip', self.clip_skips),
             sdxl_refiner_clip_skip=ov('sdxl_refiner_clip_skip', self.sdxl_refiner_clip_skips),

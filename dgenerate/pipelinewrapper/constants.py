@@ -118,3 +118,13 @@ DEFAULT_S_CASCADE_OUTPUT_WIDTH = 1024
 """
 Default output width for Stable Cascade.
 """
+
+DEFAULT_SD3_OUTPUT_HEIGHT = 1024
+"""
+Default output height for Stable Diffusion 3.
+"""
+
+DEFAULT_SD3_OUTPUT_WIDTH = 1024
+"""
+Default output width for Stable Diffusion 3.
+"""
