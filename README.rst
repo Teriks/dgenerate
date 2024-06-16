@@ -133,10 +133,12 @@ Help Output
                      [-hnf FLOAT [FLOAT ...]] [-ri INT [INT ...]] [-rg FLOAT [FLOAT ...]]
                      [-rgr FLOAT [FLOAT ...]] [-sc] [-d DEVICE] [-t DTYPE] [-s SIZE] [-na] [-o PATH]
                      [-op PREFIX] [-ox] [-oc] [-om] [-p PROMPT [PROMPT ...]]
-                     [-cs INTEGER [INTEGER ...]] [-se SEED [SEED ...]] [-sei] [-gse COUNT]
-                     [-af FORMAT] [-if FORMAT] [-nf] [-fs FRAME_NUMBER] [-fe FRAME_NUMBER]
-                     [-is SEED [SEED ...]] [-sip PROCESSOR_URI [PROCESSOR_URI ...]]
-                     [-mip PROCESSOR_URI [PROCESSOR_URI ...]] [-cip PROCESSOR_URI [PROCESSOR_URI ...]]
+                     [--sd3-second-prompts PROMPT [PROMPT ...]]
+                     [--sd3-third-prompts PROMPT [PROMPT ...]] [-cs INTEGER [INTEGER ...]]
+                     [-se SEED [SEED ...]] [-sei] [-gse COUNT] [-af FORMAT] [-if FORMAT] [-nf]
+                     [-fs FRAME_NUMBER] [-fe FRAME_NUMBER] [-is SEED [SEED ...]]
+                     [-sip PROCESSOR_URI [PROCESSOR_URI ...]] [-mip PROCESSOR_URI [PROCESSOR_URI ...]]
+                     [-cip PROCESSOR_URI [PROCESSOR_URI ...]]
                      [--image-processor-help [PROCESSOR_NAME ...]]
                      [-pp PROCESSOR_URI [PROCESSOR_URI ...]] [-iss FLOAT [FLOAT ...] | -uns INTEGER
                      [INTEGER ...]] [-gs FLOAT [FLOAT ...]] [-igs FLOAT [FLOAT ...]]
@@ -223,8 +225,8 @@ Help Output
       -mt MODEL_TYPE, --model-type MODEL_TYPE
                             Use when loading different model types. Currently supported: torch, torch-
                             pix2pix, torch-sdxl, torch-sdxl-pix2pix, torch-upscaler-x2, torch-
-                            upscaler-x4, torch-if, torch-ifs, torch-ifs-img2img, or torch-s-cascade.
-                            (default: torch)
+                            upscaler-x4, torch-if, torch-ifs, torch-ifs-img2img, torch-s-cascade, or
+                            torch-sd3. (default: torch)
       -rev BRANCH, --revision BRANCH
                             The model revision to use when loading from a huggingface repository, (The
                             git branch / tag, default is "main")
@@ -253,7 +255,8 @@ Help Output
                             an animation then the image grid is used for the output frames. During
                             animation rendering each image in the batch will still be written to the
                             output directory along side the produced animation as either suffixed
-                            files or image grids depending on the options you choose. (Torch Default:1)
+                            files or image grids depending on the options you choose. (Torch Default:
+                            1)
       -bgs SIZE, --batch-grid-size SIZE
                             Produce a single image containing a grid of images with the number of
                             COLUMNSxROWS given to this argument when --batch-size is greater than 1,
@@ -709,11 +712,12 @@ Help Output
                             values (torch-if*). If only one integer value is provided, that is the
                             value for both dimensions. X/Y dimension values should be separated by
                             "x". This value defaults to 512x512 for Stable Diffusion when no --image-
-                            seeds are specified (IE txt2img mode), 1024x1024 for Stable Diffusion XL
-                            (SDXL) model types, and 64x64 for --model-type torch-if (Deep Floyd stage
-                            1). Deep Floyd stage 1 images passed to superscaler models (--model-type
-                            torch-ifs*) that are specified with the 'floyd' keyword argument in an
-                            --image-seeds definition are never resized or processed in any way.
+                            seeds are specified (IE txt2img mode), 1024x1024 for Stable Cascade and
+                            Stable Diffusion 3/XL (SD3 or SDXL) model types, and 64x64 for --model-
+                            type torch-if (Deep Floyd stage 1). Deep Floyd stage 1 images passed to
+                            superscaler models (--model-type torch-ifs*) that are specified with the
+                            'floyd' keyword argument in an --image-seeds definition are never resized
+                            or processed in any way.
       -na, --no-aspect      This option disables aspect correct resizing of images provided to
                             --image-seeds globally. Seed, Mask, and Control guidance images will be
                             resized to the closest dimension specified by --output-size that is
@@ -754,6 +758,18 @@ Help Output
                             influence IE. things you don't want to see. Example: --prompts "shrek
                             flying a tesla over detroit; clouds, rain, missiles". (default: [(empty
                             string)])
+      --sd3-second-prompts PROMPT [PROMPT ...]
+                            One or more secondary prompts to try using the torch-sd3 (Stable Diffusion
+                            3) secondary text encoder. By default the model is passed the primary
+                            prompt for this value, this option allows you to choose a different
+                            prompt. The negative prompt component can be specified with the same
+                            syntax as --prompts
+      --sd3-third-prompts PROMPT [PROMPT ...]
+                            One or more tertiary prompts to try using the torch-sd3 (Stable Diffusion
+                            3) tertiary (T5) text encoder. By default the model is passed the primary
+                            prompt for this value, this option allows you to choose a different
+                            prompt. The negative prompt component can be specified with the same
+                            syntax as --prompts
       -cs INTEGER [INTEGER ...], --clip-skips INTEGER [INTEGER ...]
                             One or more clip skip values to try. Clip skip is the number of layers to
                             be skipped from CLIP while computing the prompt embeddings, it must be a
