@@ -87,6 +87,20 @@ class InvalidTextualInversionUriError(InvalidModelUriError):
     pass
 
 
+class InvalidTextEncoderUriError(InvalidModelUriError):
+    """
+    Error in ``--text-encoder*`` uri
+    """
+    pass
+
+
+class TextEncoderUriLoadError(InvalidModelUriError):
+    """
+    Error loading ``--text-encoder*`` uri
+    """
+    pass
+
+
 class ControlNetUriLoadError(ModelUriLoadError):
     """
     Error while loading model file in ``--control-nets`` uri

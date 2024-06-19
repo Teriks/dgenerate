@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import dgenerate.types as _types
 from .exceptions import \
     ModelUriLoadError, \
     ControlNetUriLoadError, \
@@ -33,8 +34,9 @@ from .exceptions import \
     UNetUriLoadError, \
     InvalidVaeUriError, \
     InvalidLoRAUriError, \
-    InvalidUNetUriError
-
+    InvalidUNetUriError, \
+    TextEncoderUriLoadError, \
+    InvalidTextEncoderUriError
 from .flaxcontrolneturi import FlaxControlNetUri
 from .flaxuneturi import FlaxUNetUri
 from .flaxvaeuri import FlaxVAEUri
@@ -43,5 +45,8 @@ from .scascadedecoderuri import SCascadeDecoderUri
 from .sdxlrefineruri import SDXLRefinerUri
 from .textualinversionuri import TextualInversionUri
 from .torchcontrolneturi import TorchControlNetUri
+from .torchtextencoderuri import TorchTextEncoderUri
 from .torchuneturi import TorchUNetUri
 from .torchvaeuri import TorchVAEUri
+
+__all__ = _types.module_all()

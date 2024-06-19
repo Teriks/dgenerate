@@ -27,6 +27,12 @@ import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.types as _types
 
+_TORCH_TEXT_ENCODER_CACHE = dict()
+"""Global in memory cache for torch text encoders"""
+
+_FLAX_TEXT_ENCODER_CACHE = dict()
+"""Global in memory cache for flax text encoders"""
+
 _TORCH_PIPELINE_CACHE = dict()
 """Global in memory cache for torch diffusers pipelines"""
 
@@ -63,6 +69,9 @@ _VAE_CACHE_SIZE = 0
 _UNET_CACHE_SIZE = 0
 """Estimated memory consumption in bytes of all UNet models cached in memory"""
 
+_TEXT_ENCODER_CACHE_SIZE = 0
+"""Estimated memory consumption in bytes of all Text Encoder models cached in memory"""
+
 
 def pipeline_cache_size() -> int:
     """
@@ -98,6 +107,15 @@ def control_net_cache_size() -> int:
     :return:  memory usage in bytes.
     """
     return _CONTROL_NET_CACHE_SIZE
+
+
+def text_encoder_cache_size() -> int:
+    """
+    Return the estimated memory usage in bytes of all user specified Text Encoder models currently cached in memory.
+
+    :return:  memory usage in bytes.
+    """
+    return _TEXT_ENCODER_CACHE_SIZE
 
 
 CACHE_MEMORY_CONSTRAINTS: list[str] = ['used_percent > 70']
@@ -155,6 +173,18 @@ If any of these constraints are met, a call to :py:func:`.enforce_control_net_ca
 
 Extra variables include: ``cache_size`` (the current estimated cache size in bytes), 
 and ``control_net_size`` (the estimated size of the new ControlNet before it is brought into memory, in bytes)
+"""
+
+TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS: list[str] = ['text_encoder_size > (available * 0.75)']
+"""
+Cache constraint expressions for when to clear the Text Encoder cache, 
+syntax provided via :py:func:`dgenerate.memory.memory_constraints`
+
+If any of these constraints are met, a call to :py:func:`.enforce_text_encoder_cache_constraints` will call
+:py:func:`.clear_text_encoder_cache` and force a garbage collection.
+
+Extra variables include: ``cache_size`` (the current estimated cache size in bytes), 
+and ``text_encoder_size`` (the estimated size of the new Text Encoder before it is brought into memory, in bytes)
 """
 
 
@@ -223,6 +253,28 @@ def clear_vae_cache(collect=True):
         gc.collect()
 
 
+def clear_text_encoder_cache(collect=True):
+    """
+    Clear Text Encoder cache and then garbage collect.
+
+    :param collect: Call :py:func:`gc.collect` ?
+    """
+    global _TORCH_TEXT_ENCODER_CACHE, \
+        _FLAX_TEXT_ENCODER_CACHE, \
+        _TEXT_ENCODER_CACHE_SIZE
+
+    _TORCH_TEXT_ENCODER_CACHE.clear()
+    _FLAX_TEXT_ENCODER_CACHE.clear()
+
+    _TEXT_ENCODER_CACHE_SIZE = 0
+
+    if collect:
+        _messages.debug_log(
+            f'{_types.fullname(clear_text_encoder_cache)} calling gc.collect() by request')
+
+        gc.collect()
+
+
 def clear_unet_cache(collect=True):
     """
     Clear UNet cache and then garbage collect.
@@ -263,7 +315,10 @@ def clear_model_cache(collect=True):
         _PIPELINE_CACHE_SIZE, \
         _CONTROL_NET_CACHE_SIZE, \
         _UNET_CACHE_SIZE, \
-        _VAE_CACHE_SIZE
+        _VAE_CACHE_SIZE, \
+        _FLAX_TEXT_ENCODER_CACHE, \
+        _TORCH_TEXT_ENCODER_CACHE, \
+        _TEXT_ENCODER_CACHE_SIZE
 
     _TORCH_PIPELINE_CACHE.clear()
     _FLAX_PIPELINE_CACHE.clear()
@@ -273,11 +328,14 @@ def clear_model_cache(collect=True):
     _FLAX_UNET_CACHE.clear()
     _TORCH_VAE_CACHE.clear()
     _FLAX_VAE_CACHE.clear()
+    _TORCH_TEXT_ENCODER_CACHE.clear()
+    _FLAX_TEXT_ENCODER_CACHE.clear()
 
     _PIPELINE_CACHE_SIZE = 0
     _CONTROL_NET_CACHE_SIZE = 0
     _UNET_CACHE_SIZE = 0
     _VAE_CACHE_SIZE = 0
+    _TEXT_ENCODER_CACHE_SIZE = 0
 
     if collect:
         _messages.debug_log(
@@ -369,6 +427,37 @@ def enforce_vae_cache_constraints(new_vae_size, collect=True):
                             f'calling {_types.fullname(clear_vae_cache)}.')
 
         clear_vae_cache(collect=collect)
+        return True
+    return False
+
+
+def enforce_text_encoder_cache_constraints(new_text_encoder_size, collect=True):
+    """
+    Enforce :py:attr:`dgenerate.pipelinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS` and clear the
+    Text Encoder cache if needed.
+
+    :param new_text_encoder_size: estimated size in bytes of any new text encoder that is about to enter memory
+    :param collect: Call :py:func:`gc.collect` after a cache clear ?
+    :return: Whether the cache was cleared due to constraint expressions.
+    """
+
+    m_name = __name__
+
+    _messages.debug_log(f'Enforcing {m_name}.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS =',
+                        TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS,
+                        f'(cache_size = {_memory.bytes_best_human_unit(text_encoder_cache_size())},',
+                        f'text_encoder_size = {_memory.bytes_best_human_unit(new_text_encoder_size)})')
+
+    _messages.debug_log(_memory.memory_use_debug_string())
+
+    if _memory.memory_constraints(TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS,
+                                  extra_vars={'cache_size': text_encoder_cache_size(),
+                                              'text_encoder_size': new_text_encoder_size}):
+        _messages.debug_log(f'{m_name}.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS '
+                            f'{TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS} met, '
+                            f'calling {_types.fullname(clear_text_encoder_cache)}.')
+
+        clear_text_encoder_cache(collect=collect)
         return True
     return False
 
@@ -522,6 +611,22 @@ def vae_create_update_cache_info(vae, estimated_size: int):
     vae.DGENERATE_SIZE_ESTIMATE = estimated_size
 
 
+def text_encoder_create_update_cache_info(text_encoder, estimated_size: int):
+    """
+    Add additional information about the size of a newly created Text Encoder model to the cache.
+
+    Tag the object with an internal tag.
+
+    :param text_encoder: the Text Encoder object
+    :param estimated_size: size bytes
+    """
+    global _TEXT_ENCODER_CACHE_SIZE
+    _TEXT_ENCODER_CACHE_SIZE += estimated_size
+
+    # Tag for internal use
+    text_encoder.DGENERATE_SIZE_ESTIMATE = estimated_size
+
+
 def unet_create_update_cache_info(unet, estimated_size: int):
     """
     Add additional information about the size of a newly created UNet model to the cache.
@@ -599,6 +704,27 @@ def vae_to_cpu_update_cache_info(vae):
                             f'is entering CPU side memory, {_types.fullname(vae_cache_size)}() '
                             f'is now {vae_cache_size()} Bytes '
                             f'({_memory.bytes_best_human_unit(vae.DGENERATE_SIZE_ESTIMATE)})')
+
+
+def text_encoder_to_cpu_update_cache_info(text_encoder):
+    """
+    Update CPU side cache size information when a Text Encoder module is moved to the CPU
+
+    :param text_encoder: the Text Encoder
+    """
+
+    global _TEXT_ENCODER_CACHE_SIZE
+    if hasattr(text_encoder, 'DGENERATE_SIZE_ESTIMATE'):
+        # text_encoder returning to CPU side memory
+        enforce_text_encoder_cache_constraints(text_encoder.DGENERATE_SIZE_ESTIMATE)
+        _TEXT_ENCODER_CACHE_SIZE += text_encoder.DGENERATE_SIZE_ESTIMATE
+
+        _messages.debug_log(f'Cached TextEncoder {_types.class_and_id_string(text_encoder)} '
+                            f'Size = {text_encoder.DGENERATE_SIZE_ESTIMATE} Bytes '
+                            f'({_memory.bytes_best_human_unit(text_encoder.DGENERATE_SIZE_ESTIMATE)}) '
+                            f'is entering CPU side memory, {_types.fullname(text_encoder_cache_size)}() '
+                            f'is now {text_encoder_cache_size()} Bytes '
+                            f'({_memory.bytes_best_human_unit(text_encoder.DGENERATE_SIZE_ESTIMATE)})')
 
 
 def controlnet_to_cpu_update_cache_info(
@@ -710,6 +836,28 @@ def vae_off_cpu_update_cache_info(vae):
                             f'is leaving CPU side memory, {_types.fullname(vae_cache_size)}() '
                             f'is now {vae_cache_size()} Bytes '
                             f'({_memory.bytes_best_human_unit(vae_cache_size())})')
+
+
+def text_encoder_off_cpu_update_cache_info(text_encoder):
+    """
+    Update CPU side cache size information when a Text Encoder module is moved to a device that is not the CPU
+
+    :param text_encoder: the Text Encoder
+    """
+    global _TEXT_ENCODER_CACHE_SIZE
+
+    if hasattr(text_encoder, 'DGENERATE_SIZE_ESTIMATE'):
+        _TEXT_ENCODER_CACHE_SIZE -= text_encoder.DGENERATE_SIZE_ESTIMATE
+
+        if _TEXT_ENCODER_CACHE_SIZE < 0:
+            _TEXT_ENCODER_CACHE_SIZE = 0
+
+        _messages.debug_log(f'Cached TextEncoder {_types.class_and_id_string(text_encoder)} '
+                            f'Size = {text_encoder.DGENERATE_SIZE_ESTIMATE} Bytes '
+                            f'({_memory.bytes_best_human_unit(text_encoder.DGENERATE_SIZE_ESTIMATE)}) '
+                            f'is leaving CPU side memory, {_types.fullname(text_encoder_cache_size)}() '
+                            f'is now {text_encoder_cache_size()} Bytes '
+                            f'({_memory.bytes_best_human_unit(text_encoder_cache_size())})')
 
 
 def controlnet_off_cpu_update_cache_info(
