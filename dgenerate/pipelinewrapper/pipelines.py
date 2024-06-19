@@ -565,6 +565,22 @@ def pipeline_to(pipeline, device: torch.device | str | None):
         if is_model_cpu_offload_enabled(value) and to_device.type != 'cpu':
             continue
 
+        cache_meth = None
+        if current_device == 'cpu' and to_device != 'cpu':
+            cache_meth = '_off_cpu_update_cache_info'
+        elif current_device != 'cpu' and to_device == 'cpu':
+            cache_meth = '_to_cpu_update_cache_info'
+
+        if cache_meth:
+            if name.startswith('text_encoder'):
+                getattr(_cache, 'text_encoder' + cache_meth)(value)
+            else:
+                try:
+                    getattr(_cache, name + cache_meth)(value)
+                except NameError:
+                    _messages.debug_log(
+                        f'No cache update method for module "{name}".')
+
         _messages.debug_log(
             f'Moving module "{name}" of pipeline {_types.fullname(pipeline)} '
             f'from device "{current_device}" to device "{to_device}"')

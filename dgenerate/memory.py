@@ -179,12 +179,14 @@ def memory_constraints(expressions: collections.abc.Iterable[str],
         f'vars = {str(variables)}')
 
     try:
-        value = mode(interpreter(e) for e in expressions)
+        value = mode(interpreter(
+            e, raise_errors=True, show_errors=False) for e in expressions)
         if not isinstance(value, bool):
             raise MemoryConstraintSyntaxError('Memory constraint must return a boolean value.')
         return value
-    except Exception as e:
-        raise MemoryConstraintSyntaxError(e)
+    except (Exception, NameError):
+        raise MemoryConstraintSyntaxError(
+            f'Memory constraint syntax error: {e}')
 
 
 _MEM_FACTORS = {
