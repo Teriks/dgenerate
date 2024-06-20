@@ -40,10 +40,14 @@ RECIPES = {
         """,
     "Stable Diffusion 3":
         """
+        # Stable Diffusion 3 requires a huggingface auth token to access
+        # you must request access to the repository
+        
+        \\set auth_token @string[{"label": "Hugging Face Auth Token", "arg":"--auth-token", "default":"$HF_TOKEN", "optional":false}]
+        
         @file[{"label":"Model File / HF Slug", "default": "stabilityai/stable-diffusion-3-medium-diffusers", "optional":false, "file-types":"models"}]
         --model-type torch-sd3
         --dtype float16
-        @karrasscheduler[{}]
         @torchvae[{"label":"VAE File / URI"}]
         @file[{"label":"LoRa File / URI", "arg":"--loras", "after":";scale=1.0", "file-types":"models"}]
         @file[{"label":"Image Seed", "arg":"--image-seeds", "after":"\\n--image-seed-strengths 0.8"}]
@@ -54,7 +58,7 @@ RECIPES = {
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
         @string[{"label":"Output Size", "arg":"--output-size", "default":"1024x1024"}]
         --model-sequential-offload
-        @device[{}]
+        @device[{}] {{ auth_token }}
         --prompts "add your prompt here"
         """,
     "Stable Diffusion XL":
