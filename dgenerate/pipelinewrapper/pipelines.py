@@ -954,6 +954,10 @@ def _text_encoder_help(pipeline_class):
     raise ArgumentHelpException()
 
 
+def _text_encoder_not_null(uri):
+    return uri and uri != '+'
+
+
 def _torch_args_hasher(args):
     custom_hashes = {
         'unet_uri': _cache.uri_hash_with_parser(_uris.TorchUNetUri.parse),
@@ -1254,13 +1258,16 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                     sequential_cpu_offload_member=sequential_cpu_offload,
                     model_cpu_offload_member=model_cpu_offload)
 
-            if not text_encoder_override and (len(text_encoder_uris) > 0) and text_encoder_uris[0]:
+            if not text_encoder_override and (len(text_encoder_uris) > 0) and \
+                    _text_encoder_not_null(text_encoder_uris[0]):
                 creation_kwargs['text_encoder'] = load_text_encoder(
                     _uris.TorchTextEncoderUri.parse(text_encoder_uris[0]))
-            if not text_encoder_2_override and (len(text_encoder_uris) > 1) and text_encoder_uris[1]:
+            if not text_encoder_2_override and (len(text_encoder_uris) > 1) and \
+                    _text_encoder_not_null(text_encoder_uris[1]):
                 creation_kwargs['text_encoder_2'] = load_text_encoder(
                     _uris.TorchTextEncoderUri.parse(text_encoder_uris[1]))
-            if not text_encoder_3_override and (len(text_encoder_uris) > 2) and text_encoder_uris[2]:
+            if not text_encoder_3_override and (len(text_encoder_uris) > 2) and \
+                    _text_encoder_not_null(text_encoder_uris[2]):
                 creation_kwargs['text_encoder_3'] = load_text_encoder(
                     _uris.TorchTextEncoderUri.parse(text_encoder_uris[2]))
 
@@ -1755,13 +1762,16 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                     use_auth_token=auth_token,
                     local_files_only=local_files_only)
 
-            if not text_encoder_override and (len(text_encoder_uris) > 0) and text_encoder_uris[0]:
+            if not text_encoder_override and (len(text_encoder_uris) > 0) and \
+                    _text_encoder_not_null(text_encoder_uris[0]):
                 creation_kwargs['text_encoder'], text_encoder_params = load_text_encoder(
                     _uris.FlaxTextEncoderUri.parse(text_encoder_uris[0]))
-            if not text_encoder_2_override and (len(text_encoder_uris) > 1) and text_encoder_uris[1]:
+            if not text_encoder_2_override and (len(text_encoder_uris) > 1) and \
+                    _text_encoder_not_null(text_encoder_uris[1]):
                 creation_kwargs['text_encoder_2'], text_encoder_2_params = load_text_encoder(
                     _uris.FlaxTextEncoderUri.parse(text_encoder_uris[1]))
-            if not text_encoder_3_override and (len(text_encoder_uris) > 2) and text_encoder_uris[2]:
+            if not text_encoder_3_override and (len(text_encoder_uris) > 2) and \
+                    _text_encoder_not_null(text_encoder_uris[2]):
                 creation_kwargs['text_encoder_3'], text_encoder_3_params = load_text_encoder(
                     _uris.FlaxTextEncoderUri.parse(text_encoder_uris[2]))
 
