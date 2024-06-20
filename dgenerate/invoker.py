@@ -309,6 +309,10 @@ def invoke_dgenerate_events(
             constraint_lists.append(_pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS)
             _pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS = arguments.control_net_cache_memory_constraints
 
+        if arguments.text_encoder_cache_memory_constraints:
+            constraint_lists.append(_pipelinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS)
+            _pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS = arguments.text_encoder_cache_memory_constraints
+
         render_loop.config = arguments
         render_loop.image_processor_loader.load_plugin_modules(arguments.plugin_module_paths)
 
@@ -341,6 +345,9 @@ def invoke_dgenerate_events(
         _messages.pop_level()
 
         if arguments is not None:
+            if arguments.text_encoder_cache_memory_constraints:
+                _pipelinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()
+
             if arguments.control_net_cache_memory_constraints:
                 _pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()
 

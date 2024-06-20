@@ -29,6 +29,7 @@ from .cache import \
     VAE_CACHE_MEMORY_CONSTRAINTS, \
     UNET_CACHE_MEMORY_CONSTRAINTS, \
     CONTROL_NET_CACHE_MEMORY_CONSTRAINTS, \
+    TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS, \
     clear_vae_cache, \
     clear_unet_cache, \
     vae_cache_size, \
@@ -110,13 +111,16 @@ from .pipelines import \
     TorchPipelineCreationResult, \
     PipelineCreationResult, \
     FlaxPipelineFactory, \
+    ArgumentHelpException, \
     SchedulerHelpException, \
+    TextEncodersHelpException, \
     create_flax_diffusion_pipeline, \
     set_vae_slicing_tiling, \
     create_torch_diffusion_pipeline, \
     estimate_pipeline_memory_use, \
     load_scheduler, \
     scheduler_is_help, \
+    text_encoder_is_help, \
     UnsupportedPipelineConfigError, \
     get_torch_pipeline_modules, \
     is_model_cpu_offload_enabled, \

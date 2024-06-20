@@ -462,6 +462,58 @@ def _create_parser(add_model=True, add_help=True):
                             --batch-size greater than 1, images will be written individually with an image number suffix
                             (image_N) in the filename signifying which image in the batch they are."""))
 
+    def _type_text_encoder(val):
+        if val == '+':
+            return None
+        return val
+
+    actions.append(parser.add_argument(
+        '--text-encoders', nargs='+', type=_type_text_encoder,
+        action='store', default=None, metavar='TEXT_ENCODER_URIS', dest='text_encoder_uris',
+        help=
+        f"""Specify Text Encoders for the main model using URIs, main models 
+            may use one or more text encoders depending on on the --model-type value and other
+            dgenerate arguments. See: --text-encoders help for information 
+            about what text encoders are needed for your invocation.
+            
+            Examples: "CLIPTextModel;model=huggingface/text_encoder", 
+            "CLIPTextModelWithProjection;model=huggingface/text_encoder;revision=main", 
+            "T5TextModel;model=text_encoder_folder_on_disk". 
+            
+            Or For Flax: "FlaxCLIPTextModel;model=huggingface/text_encoder", 
+            "FlaxCLIPTextModelWithProjection;model=huggingface/text_encoder;revision=main", 
+            "FlaxT5TextModel;model=text_encoder_folder_on_disk". 
+            
+            For main models which require multiple text encoders, the + symbol may be used
+            to indicate that a default value should be used for a particular text encoder,
+            for example: --text-encoders + + huggingface/encoder3.  Any trailing text 
+            encoders which are not specified are given their default value.
+            
+            Blob links / single file loads are not supported for Text Encoders.
+            
+            The "revision" argument specifies the model revision to use for the Text Encoder
+            when loading from huggingface repository, (The git branch / tag, default is "main").
+            
+            The "variant" argument specifies the Text Encoder model variant, it is only supported for torch type models
+            it is not supported for flax. If "variant" is specified when loading from a huggingface repository or 
+            folder, weights will be loaded from "variant" filename, e.g. "pytorch_model.<variant>.safetensors. 
+            "variant" defaults to the value of --variant if it is not specified in the URI.
+            
+            The "subfolder" argument specifies the UNet model subfolder, if specified when loading from a 
+            huggingface repository or folder, weights from the specified subfolder.
+            
+            The "dtype" argument specifies the Text Encoder model precision, it defaults to the value of -t/--dtype
+            and should be one of: {_SUPPORTED_DATA_TYPES_PRETTY}.
+            
+            If you wish to load weights directly from a path on disk, you must point this argument at the folder
+            they exist in, which should also contain the config.json file for the Text Encoder. 
+            For example, a downloaded repository folder from huggingface."""))
+
+    actions.append(parser.add_argument(
+        '--text-encoders2', nargs='+', type=_type_text_encoder,
+        action='store', default=None, metavar='TEXT_ENCODER_URIS', dest='second_text_encoder_uris',
+        help="""--text-encoders but for the SDXL refiner or Stable Cascade decoder model."""))
+
     actions.append(
         parser.add_argument('-un', '--unet', action='store', default=None, metavar="UNET_URI", dest='unet_uri',
                             help=
@@ -1459,6 +1511,19 @@ def _create_parser(add_model=True, add_help=True):
                                  f' For Syntax See: [https://dgenerate.readthedocs.io/en/v{dgenerate.__version__}/'
                                  f'dgenerate_submodules.html#dgenerate.pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS]'))
 
+    actions.append(
+        parser.add_argument('-tmc', '--text-encoder-cache-memory-constraints', action='store', nargs='+',
+                            default=None,
+                            type=_type_expression,
+                            metavar="EXPR",
+                            help=f"""Cache constraint expressions describing when to automatically clear the in memory Text Encoder
+                                    cache considering current memory usage, and estimated memory usage of new Text Encoder models that 
+                                    are about to enter memory. If any of these constraint expressions are met all Text Encoder
+                                    models cached in memory will be cleared. Example, and default 
+                                    value: {' '.join(_textprocessing.quote_spaces(_pipelinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS))}"""
+                                 f' For Syntax See: [https://dgenerate.readthedocs.io/en/v{dgenerate.__version__}/'
+                                 f'dgenerate_submodules.html#dgenerate.pipelinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS]'))
+
     return parser, actions
 
 
@@ -1508,6 +1573,11 @@ class DgenerateArguments(dgenerate.RenderLoopConfig):
     control_net_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
     """
     See: :py:attr:`dgenerate.pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS`
+    """
+
+    text_encoder_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
+    """
+    See: :py:attr:`dgenerate.pipelinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS`
     """
 
     def __init__(self):

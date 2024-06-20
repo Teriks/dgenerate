@@ -102,10 +102,11 @@ Help Output
                      [--templates-help [VARIABLE_NAME ...]] [--directives-help [DIRECTIVE_NAME ...]]
                      [--functions-help [FUNCTION_NAME ...]] [-mt MODEL_TYPE] [-rev BRANCH]
                      [-var VARIANT] [-sbf SUBFOLDER] [-atk TOKEN] [-bs INTEGER] [-bgs SIZE]
-                     [-un UNET_URI] [-un2 UNET_URI] [-vae VAE_URI] [-vt] [-vs]
-                     [-lra LORA_URI [LORA_URI ...]] [-ti URI [URI ...]]
-                     [-cn CONTROL_NET_URI [CONTROL_NET_URI ...]] [-sch SCHEDULER_URI] [-mqo | -mco]
-                     [--s-cascade-decoder MODEL_URI] [-dqo] [-dco]
+                     [--text-encoders TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]]
+                     [--text-encoders2 TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]] [-un UNET_URI]
+                     [-un2 UNET_URI] [-vae VAE_URI] [-vt] [-vs] [-lra LORA_URI [LORA_URI ...]]
+                     [-ti URI [URI ...]] [-cn CONTROL_NET_URI [CONTROL_NET_URI ...]]
+                     [-sch SCHEDULER_URI] [-mqo | -mco] [--s-cascade-decoder MODEL_URI] [-dqo] [-dco]
                      [--s-cascade-decoder-prompts PROMPT [PROMPT ...]]
                      [--s-cascade-decoder-inference-steps INTEGER [INTEGER ...]]
                      [--s-cascade-decoder-guidance-scales INTEGER [INTEGER ...]]
@@ -144,7 +145,7 @@ Help Output
                      [INTEGER ...]] [-gs FLOAT [FLOAT ...]] [-igs FLOAT [FLOAT ...]]
                      [-gr FLOAT [FLOAT ...]] [-ifs INTEGER [INTEGER ...]] [-mc EXPR [EXPR ...]]
                      [-pmc EXPR [EXPR ...]] [-umc EXPR [EXPR ...]] [-vmc EXPR [EXPR ...]]
-                     [-cmc EXPR [EXPR ...]]
+                     [-cmc EXPR [EXPR ...]] [-tmc EXPR [EXPR ...]]
                      model_path
 
     Batch image generation and manipulation tool supporting Stable Diffusion and related techniques /
@@ -265,6 +266,40 @@ Help Output
                             greater than 1, images will be written individually with an image number
                             suffix (image_N) in the filename signifying which image in the batch they
                             are.
+      --text-encoders TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]
+                            Specify Text Encoders for the main model using URIs, main models may use
+                            one or more text encoders depending on on the --model-type value and other
+                            dgenerate arguments. See: --text-encoders help for information about what
+                            text encoders are needed for your invocation. Examples:
+                            "CLIPTextModel;model=huggingface/text_encoder", "CLIPTextModelWithProjecti
+                            on;model=huggingface/text_encoder;revision=main",
+                            "T5TextModel;model=text_encoder_folder_on_disk". Or For Flax:
+                            "FlaxCLIPTextModel;model=huggingface/text_encoder", "FlaxCLIPTextModelWith
+                            Projection;model=huggingface/text_encoder;revision=main",
+                            "FlaxT5TextModel;model=text_encoder_folder_on_disk". For main models which
+                            require multiple text encoders, the + symbol may be used to indicate that
+                            a default value should be used for a particular text encoder, for example:
+                            --text-encoders + + huggingface/encoder3. Any trailing text encoders which
+                            are not specified are given their default value. Blob links / single file
+                            loads are not supported for Text Encoders. The "revision" argument
+                            specifies the model revision to use for the Text Encoder when loading from
+                            huggingface repository, (The git branch / tag, default is "main"). The
+                            "variant" argument specifies the Text Encoder model variant, it is only
+                            supported for torch type models it is not supported for flax. If "variant"
+                            is specified when loading from a huggingface repository or folder, weights
+                            will be loaded from "variant" filename, e.g.
+                            "pytorch_model.<variant>.safetensors. "variant" defaults to the value of
+                            --variant if it is not specified in the URI. The "subfolder" argument
+                            specifies the UNet model subfolder, if specified when loading from a
+                            huggingface repository or folder, weights from the specified subfolder.
+                            The "dtype" argument specifies the Text Encoder model precision, it
+                            defaults to the value of -t/--dtype and should be one of: auto, bfloat16,
+                            float16, or float32. If you wish to load weights directly from a path on
+                            disk, you must point this argument at the folder they exist in, which
+                            should also contain the config.json file for the Text Encoder. For
+                            example, a downloaded repository folder from huggingface.
+      --text-encoders2 TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]
+                            --text-encoders but for the SDXL refiner or Stable Cascade decoder model.
       -un UNET_URI, --unet UNET_URI
                             Specify a UNet using a URI. Examples: "huggingface/unet",
                             "huggingface/unet;revision=main", "unet_folder_on_disk". Blob links /
@@ -975,7 +1010,15 @@ Help Output
                             (available * 0.75)" For Syntax See: [https://dgenerate.readthedocs.io/en/v
                             3.7.2/dgenerate_submodules.html#dgenerate.pipelinewrapper.CONTROL_NET_CACH
                             E_MEMORY_CONSTRAINTS]
-
+      -tmc EXPR [EXPR ...], --text-encoder-cache-memory-constraints EXPR [EXPR ...]
+                            Cache constraint expressions describing when to automatically clear the in
+                            memory Text Encoder cache considering current memory usage, and estimated
+                            memory usage of new Text Encoder models that are about to enter memory. If
+                            any of these constraint expressions are met all Text Encoder models cached
+                            in memory will be cleared. Example, and default value: "text_encoder_size
+                            > (available * 0.75)" For Syntax See: [https://dgenerate.readthedocs.io/en
+                            /v3.7.2/dgenerate_submodules.html#dgenerate.pipelinewrapper.TEXT_ENCODER_C
+                            ACHE_MEMORY_CONSTRAINTS]
 
 
 Windows Install

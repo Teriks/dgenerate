@@ -406,6 +406,19 @@ class RenderLoopConfig(_types.SetFromMixin):
     argument of the dgenerate command line tool.
     """
 
+    text_encoder_uris: _types.OptionalUris = None
+    """
+    Optional user specified Text Encoder URIs, this corresponds to the ``--text-encoders``
+    argument of the dgenerate command line tool.
+    """
+
+    second_text_encoder_uris: _types.OptionalUris = None
+    """
+    Optional user specified Text Encoder URIs, this corresponds to the ``--text-encoders2``
+    argument of the dgenerate command line tool. This specifies text encoders for the SDXL
+    refiner or Stable Cascade decoder.
+    """
+
     control_net_uris: _types.OptionalUris = None
     """
     Optional user specified ControlNet URIs, this corresponds to the ``--control-nets`` argument
@@ -838,22 +851,25 @@ class RenderLoopConfig(_types.SetFromMixin):
                                         f'"torch", "torch-sdxl", or "torch-sd3"')
 
         if not self.image_seeds:
+            args_help = _pipelinewrapper.scheduler_is_help(self.scheduler) or \
+                        _pipelinewrapper.text_encoder_is_help(self.text_encoder_uris)
+
             if _pipelinewrapper.model_type_is_floyd_ifs(self.model_type) and \
-                    not _pipelinewrapper.scheduler_is_help(self.scheduler):
+                    not args_help:
                 raise RenderLoopConfigError(
                     f'you cannot specify Deep Floyd IF super-resolution '
                     f'({a_namer("model_type")} "{self.model_type})" without {a_namer("image_seeds")}'
                 )
 
             if _pipelinewrapper.model_type_is_upscaler(self.model_type) and \
-                    not _pipelinewrapper.scheduler_is_help(self.scheduler):
+                    not args_help:
                 raise RenderLoopConfigError(
                     f'you cannot specify an upscaler model '
                     f'({a_namer("model_type")} "{self.model_type})" without {a_namer("image_seeds")}.'
                 )
 
             if _pipelinewrapper.model_type_is_pix2pix(self.model_type) and \
-                    not _pipelinewrapper.scheduler_is_help(self.scheduler):
+                    not args_help:
                 raise RenderLoopConfigError(
                     f'you cannot specify a pix2pix model '
                     f'({a_namer("model_type")} "{self.model_type})" without {a_namer("image_seeds")}.'
@@ -974,14 +990,59 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'{a_namer("vae_tiling")}/{a_namer("vae_slicing")} not supported for '
                     f'non torch model type, see: {a_namer("model_type")}.')
 
-        if _pipelinewrapper.scheduler_is_help(self.scheduler) and \
-                (_pipelinewrapper.scheduler_is_help(self.sdxl_refiner_scheduler) or
-                 _pipelinewrapper.scheduler_is_help(self.s_cascade_decoder_scheduler)):
+        # help args
+
+        if self.second_text_encoder_uris and not \
+                (_pipelinewrapper.model_type_is_sdxl(self.model_type) or
+                 _pipelinewrapper.model_type_is_s_cascade(self.model_type)):
+            raise RenderLoopConfigError(f'Cannot use {a_namer("second_text_encoder_uris")} with '
+                                        f'{a_namer("model_type")} '
+                                        f'{_pipelinewrapper.get_model_type_string(self.model_type)}')
+
+        if _pipelinewrapper.scheduler_is_help(self.sdxl_refiner_scheduler) and not self.sdxl_refiner_uri:
+            raise RenderLoopConfigError(f'Cannot use {a_namer("sdxl_refiner_scheduler")} value '
+                                        f'"help" / "helpargs" if no refiner is specified.')
+
+        if _pipelinewrapper.scheduler_is_help(self.s_cascade_decoder_scheduler) and not self.s_cascade_decoder_uri:
+            raise RenderLoopConfigError(f'Cannot use {a_namer("s_cascade_decoder_scheduler")} value '
+                                        f'"help" / "helpargs" if no decoder is specified.')
+
+        if _pipelinewrapper.scheduler_is_help(self.sdxl_refiner_scheduler) and not self.sdxl_refiner_uri:
+            raise RenderLoopConfigError(f'Cannot use {a_namer("sdxl_refiner_scheduler")} value '
+                                        f'"help" / "helpargs" if no refiner is specified.')
+
+        if _pipelinewrapper.scheduler_is_help(self.s_cascade_decoder_scheduler) and not self.s_cascade_decoder_uri:
+            raise RenderLoopConfigError(f'Cannot use {a_namer("s_cascade_decoder_scheduler")} value '
+                                        f'"help" / "helpargs" if no decoder is specified.')
+
+        if _pipelinewrapper.model_type_is_sdxl(self.model_type):
+            if _pipelinewrapper.text_encoder_is_help(self.second_text_encoder_uris) \
+                    and not self.sdxl_refiner_uri:
+                raise RenderLoopConfigError(
+                    f'Cannot use {a_namer("second_text_encoder_uris")} value '
+                    f'"help" if no refiner is specified.')
+
+        if _pipelinewrapper.model_type_is_s_cascade(self.model_type):
+            if _pipelinewrapper.text_encoder_is_help(self.second_text_encoder_uris) \
+                    and not self.s_cascade_decoder_uri:
+                raise RenderLoopConfigError(
+                    f'Cannot use {a_namer("second_text_encoder_uris")} value '
+                    f'"help" if no decoder is specified.')
+
+        helps_used = [
+            _pipelinewrapper.scheduler_is_help(self.scheduler),
+            _pipelinewrapper.scheduler_is_help(self.sdxl_refiner_scheduler),
+            _pipelinewrapper.scheduler_is_help(self.s_cascade_decoder_scheduler),
+            _pipelinewrapper.text_encoder_is_help(self.text_encoder_uris),
+            _pipelinewrapper.text_encoder_is_help(self.second_text_encoder_uris)
+        ]
+
+        if helps_used.count(True) > 1:
             raise RenderLoopConfigError(
-                'cannot list compatible schedulers for the main model and the SDXL refiner or '
-                f'Stable Cascade decoder at the same time. Do not use the scheduler "help" / "helpargs" '
-                f'option for {a_namer("scheduler")} and {a_namer("sdxl_refiner_scheduler")} or '
-                f'{a_namer("s_cascade_decoder_scheduler")} simultaneously.')
+                'Cannot use the "help" / "helpargs" option value '
+                'with multiple arguments simultaneously.')
+
+        # ===
 
         if self.image_seeds:
             no_seed_strength = (_pipelinewrapper.model_type_is_upscaler(self.model_type) or

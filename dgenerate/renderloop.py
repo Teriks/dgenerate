@@ -748,7 +748,7 @@ class RenderLoop:
         try:
             for _ in self._run():
                 continue
-        except _pipelinewrapper.SchedulerHelpException:
+        except _pipelinewrapper.ArgumentHelpException:
             pass
 
     def events(self) -> RenderLoopEventStream:
@@ -768,7 +768,7 @@ class RenderLoop:
         """
         try:
             yield from self._run()
-        except _pipelinewrapper.SchedulerHelpException:
+        except _pipelinewrapper.ArgumentHelpException:
             pass
 
     def _create_pipeline_wrapper(self):
@@ -787,6 +787,8 @@ class RenderLoop:
             vae_slicing=self.config.vae_slicing,
             lora_uris=self.config.lora_uris,
             textual_inversion_uris=self.config.textual_inversion_uris,
+            text_encoder_uris=self.config.text_encoder_uris,
+            second_text_encoder_uris=self.config.second_text_encoder_uris,
             control_net_uris=
             self.config.control_net_uris if self.config.image_seeds else [],
             sdxl_refiner_uri=self.config.sdxl_refiner_uri,

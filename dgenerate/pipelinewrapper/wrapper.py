@@ -635,6 +635,8 @@ class DiffusionPipelineWrapper:
                  vae_slicing: bool = False,
                  lora_uris: _types.OptionalUris = None,
                  textual_inversion_uris: _types.OptionalUris = None,
+                 text_encoder_uris: _types.OptionalUris = None,
+                 second_text_encoder_uris: _types.OptionalUris = None,
                  control_net_uris: _types.OptionalUris = None,
                  scheduler: _types.OptionalName = None,
                  sdxl_refiner_uri: _types.OptionalUri = None,
@@ -653,6 +655,60 @@ class DiffusionPipelineWrapper:
                  sdxl_refiner_sequential_offload: bool = False,
                  s_cascade_decoder_cpu_offload: bool = False,
                  s_cascade_decoder_sequential_offload: bool = False):
+
+        if second_text_encoder_uris and not \
+                (_enums.model_type_is_sdxl(model_type) or
+                 _enums.model_type_is_s_cascade(model_type)):
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'Cannot use "second_text_encoder_uris" with "model_type" '
+                f'{_enums.get_model_type_string(model_type)}')
+
+        if _pipelines.scheduler_is_help(sdxl_refiner_scheduler) and not sdxl_refiner_uri:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'Cannot use "sdxl_refiner_scheduler" value "help" / "helpargs" '
+                f'if no refiner is specified.')
+
+        if _pipelines.scheduler_is_help(s_cascade_decoder_scheduler) and not s_cascade_decoder_uri:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'Cannot use "s_cascade_decoder_scheduler" value "help" / "helpargs" '
+                f'if no decoder is specified.')
+
+        if _pipelines.scheduler_is_help(sdxl_refiner_scheduler) and not sdxl_refiner_uri:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'Cannot use "sdxl_refiner_scheduler" value "help" / "helpargs" '
+                f'if no refiner is specified.')
+
+        if _pipelines.scheduler_is_help(s_cascade_decoder_scheduler) and not s_cascade_decoder_uri:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'Cannot use "s_cascade_decoder_scheduler" value "help" / "helpargs" '
+                f'if no decoder is specified.')
+
+        if _enums.model_type_is_sdxl(model_type):
+            if _pipelines.text_encoder_is_help(second_text_encoder_uris) \
+                    and not sdxl_refiner_uri:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    f'Cannot use "second_text_encoder_uris" value '
+                    f'"help" if no refiner is specified.')
+
+        if _enums.model_type_is_s_cascade(model_type):
+            if _pipelines.text_encoder_is_help(second_text_encoder_uris) \
+                    and not s_cascade_decoder_uri:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    f'Cannot use "second_text_encoder_uris" value '
+                    f'"help" if no decoder is specified.')
+
+        helps_used = [
+            _pipelines.scheduler_is_help(scheduler),
+            _pipelines.scheduler_is_help(sdxl_refiner_scheduler),
+            _pipelines.scheduler_is_help(s_cascade_decoder_scheduler),
+            _pipelines.text_encoder_is_help(text_encoder_uris),
+            _pipelines.text_encoder_is_help(second_text_encoder_uris)
+        ]
+
+        if helps_used.count(True) > 1:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'Cannot use the "help" / "helpargs" option value '
+                'with multiple arguments simultaneously.')
 
         self._subfolder = subfolder
         self._device = device
@@ -679,6 +735,8 @@ class DiffusionPipelineWrapper:
 
         self._lora_uris = lora_uris
         self._textual_inversion_uris = textual_inversion_uris
+        self._text_encoder_uris = text_encoder_uris
+        self._second_text_encoder_uris = second_text_encoder_uris
         self._control_net_uris = control_net_uris
         self._parsed_control_net_uris = []
         self._sdxl_refiner_pipeline = None
@@ -777,6 +835,20 @@ class DiffusionPipelineWrapper:
         List of supplied ``--control-nets`` uri strings or an empty list
         """
         return list(self._control_net_uris) if self._control_net_uris else []
+
+    @property
+    def text_encoder_uris(self) -> _types.OptionalUris:
+        """
+        List of supplied ``--text-encoders`` uri strings or an empty list
+        """
+        return list(self._text_encoder_uris) if self._text_encoder_uris else []
+
+    @property
+    def second_text_encoder_uris(self) -> _types.OptionalUris:
+        """
+        List of supplied ``--text-encoders2`` uri strings or an empty list
+        """
+        return list(self._second_text_encoder_uris) if self._second_text_encoder_uris else []
 
     @property
     def device(self) -> _types.Name:
@@ -942,8 +1014,8 @@ class DiffusionPipelineWrapper:
     def reconstruct_dgenerate_opts(self,
                                    args: DiffusionArguments | None = None,
                                    extra_opts:
-                                       collections.abc.Sequence[
-                                           tuple[str] | tuple[str, typing.Any]] | None = None,
+                                   collections.abc.Sequence[
+                                       tuple[str] | tuple[str, typing.Any]] | None = None,
                                    omit_device=False,
                                    shell_quote=True,
                                    **kwargs) -> \
@@ -1017,6 +1089,12 @@ class DiffusionPipelineWrapper:
 
         if args.sdxl_refiner_second_prompt is not None:
             opts.append(('--sdxl-refiner-second-prompts', args.sdxl_refiner_second_prompt))
+
+        if self._text_encoder_uris:
+            opts.append(('--text-encoders', ['+' if x is None else x for x in self._text_encoder_uris]))
+
+        if self._second_text_encoder_uris:
+            opts.append(('--text-encoders2', ['+' if x is None else x for x in self._second_text_encoder_uris]))
 
         if self._s_cascade_decoder_uri is not None:
             opts.append(('--s-cascade-decoder', self._s_cascade_decoder_uri))
@@ -1261,7 +1339,7 @@ class DiffusionPipelineWrapper:
     def gen_dgenerate_config(self,
                              args: DiffusionArguments | None = None,
                              extra_opts:
-                                 collections.abc.Sequence[tuple[str] | tuple[str, typing.Any]] | None = None,
+                             collections.abc.Sequence[tuple[str] | tuple[str, typing.Any]] | None = None,
                              extra_comments: collections.abc.Iterable[str] | None = None,
                              omit_device: bool = False,
                              **kwargs):
@@ -1316,7 +1394,7 @@ class DiffusionPipelineWrapper:
     def gen_dgenerate_command(self,
                               args: DiffusionArguments | None = None,
                               extra_opts:
-                                  collections.abc.Sequence[tuple[str] | tuple[str, typing.Any]] | None = None,
+                              collections.abc.Sequence[tuple[str] | tuple[str, typing.Any]] | None = None,
                               omit_device=False,
                               **kwargs):
         """
@@ -1336,11 +1414,13 @@ class DiffusionPipelineWrapper:
         """
 
         opt_string = \
-            ' '.join(f"{self._format_option_pair(opt)}"
-                     for opt in self.reconstruct_dgenerate_opts(args, **kwargs,
-                                                                extra_opts=extra_opts,
-                                                                omit_device=omit_device,
-                                                                shell_quote=False))
+            ' '.join(
+                f"{self._format_option_pair(opt)}"
+                for opt in self.reconstruct_dgenerate_opts(
+                    args, **kwargs,
+                    extra_opts=extra_opts,
+                    omit_device=omit_device,
+                    shell_quote=False))
 
         return f'dgenerate {opt_string}'
 
@@ -2109,6 +2189,7 @@ class DiffusionPipelineWrapper:
                 unet_uri=self._unet_uri,
                 vae_uri=self._vae_uri,
                 control_net_uris=self._control_net_uris,
+                text_encoder_uris=self._text_encoder_uris,
                 scheduler=self._scheduler,
                 safety_checker=self._safety_checker,
                 auth_token=self._auth_token,
@@ -2126,7 +2207,8 @@ class DiffusionPipelineWrapper:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'Stable Cascade must be used with a decoder model.')
 
-            if not _pipelines.scheduler_is_help(self._s_cascade_decoder_scheduler):
+            if not (_pipelines.scheduler_is_help(self._s_cascade_decoder_scheduler)
+                    or _pipelines.text_encoder_is_help(self._second_text_encoder_uris)):
                 # Don't load this up if were just going to be getting
                 # information about compatible schedulers for the refiner
                 self._recall_main_pipeline = _pipelines.TorchPipelineFactory(
@@ -2159,7 +2241,8 @@ class DiffusionPipelineWrapper:
                 model_type=_enums.ModelType.TORCH_S_CASCADE_DECODER,
                 subfolder=self._parsed_s_cascade_decoder_uri.subfolder,
                 revision=self._parsed_s_cascade_decoder_uri.revision,
-                unet_uri=self.second_unet_uri,
+                unet_uri=self._second_unet_uri,
+                text_encoder_uris=self._second_text_encoder_uris,
 
                 variant=self._parsed_s_cascade_decoder_uri.variant if
                 self._parsed_s_cascade_decoder_uri.variant is not None else self._variant,
@@ -2187,7 +2270,8 @@ class DiffusionPipelineWrapper:
                     'Only Stable Diffusion XL models support refiners, '
                     'please use model_type "torch-sdxl" if you are trying to load an sdxl model.')
 
-            if not _pipelines.scheduler_is_help(self._sdxl_refiner_scheduler):
+            if not (_pipelines.scheduler_is_help(self._sdxl_refiner_scheduler)
+                    or _pipelines.text_encoder_is_help(self._second_text_encoder_uris)):
                 # Don't load this up if were just going to be getting
                 # information about compatible schedulers for the refiner
                 self._recall_main_pipeline = _pipelines.TorchPipelineFactory(
@@ -2202,6 +2286,7 @@ class DiffusionPipelineWrapper:
                     vae_uri=self._vae_uri,
                     lora_uris=self._lora_uris,
                     textual_inversion_uris=self._textual_inversion_uris,
+                    text_encoder_uris=self._text_encoder_uris,
                     control_net_uris=self._control_net_uris,
                     scheduler=self._scheduler,
                     safety_checker=self._safety_checker,
@@ -2237,7 +2322,8 @@ class DiffusionPipelineWrapper:
                 model_type=_enums.ModelType.TORCH_SDXL,
                 subfolder=self._parsed_sdxl_refiner_uri.subfolder,
                 revision=self._parsed_sdxl_refiner_uri.revision,
-                unet_uri=self.second_unet_uri,
+                unet_uri=self._second_unet_uri,
+                text_encoder_uris=self._second_text_encoder_uris,
 
                 variant=self._parsed_sdxl_refiner_uri.variant if
                 self._parsed_sdxl_refiner_uri.variant is not None else self._variant,
@@ -2272,6 +2358,7 @@ class DiffusionPipelineWrapper:
                 vae_uri=self._vae_uri,
                 lora_uris=self._lora_uris,
                 textual_inversion_uris=self._textual_inversion_uris,
+                text_encoder_uris=self._text_encoder_uris,
                 control_net_uris=self._control_net_uris,
                 scheduler=self._scheduler,
                 safety_checker=self._safety_checker,

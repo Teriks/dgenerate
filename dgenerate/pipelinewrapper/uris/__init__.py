@@ -38,6 +38,7 @@ from .exceptions import \
     TextEncoderUriLoadError, \
     InvalidTextEncoderUriError
 from .flaxcontrolneturi import FlaxControlNetUri
+from .flaxtextencoderuri import FlaxTextEncoderUri
 from .flaxuneturi import FlaxUNetUri
 from .flaxvaeuri import FlaxVAEUri
 from .lorauri import LoRAUri
