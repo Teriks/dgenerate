@@ -25,3 +25,4 @@ https://huggingface.co/stabilityai/stable-diffusion-3-medium/blob/main/sd3_mediu
 --output-path output
 --model-sequential-offload
 --prompts "a horse outside a barn"
+--auth-token {{ token }}

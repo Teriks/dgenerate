@@ -19,3 +19,4 @@ stabilityai/stable-diffusion-3-medium-diffusers
 --output-path output
 --model-sequential-offload
 --prompts "a horse outside a barn"
+--auth-token {{ token }}
