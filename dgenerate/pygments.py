@@ -134,12 +134,16 @@ _SCHEDULER_KEYWORDS = sorted((
     "DDPMWuerstchenScheduler"),
     key=lambda s: len(s), reverse=True)
 
-_VAE_KEYWORDS = sorted((
+_CLASS_KEYWORDS = sorted((
     "AutoencoderKL",
     "AsymmetricAutoencoderKL",
     "AutoencoderTiny",
     "ConsistencyDecoderVAE",
-    "FlaxAutoencoderKL"
+    "FlaxAutoencoderKL",
+    "CLIPTextModel",
+    "CLIPTextModelWithProjection",
+    "T5EncoderModel",
+    "FlaxCLIPTextModel"
 ), key=lambda s: len(s), reverse=True)
 
 _MODEL_TYPE_KEYWORDS = sorted((
@@ -244,7 +248,7 @@ class DgenerateLexer(_lexer.RegexLexer):
              _lexer.bygroups(_token.Name.Builtin, _token.Text.Whitespace, _token.Name.Variable)),
             (r'(?<!\w)(\\[a-zA-Z_][a-zA-Z0-9_]*)', _lexer.bygroups(_token.Name.Builtin)),
             (r'\b(%s)\b' % '|'.join(_SCHEDULER_KEYWORDS), _token.Keyword),
-            (r'\b(%s)\b' % '|'.join(_VAE_KEYWORDS), _token.Keyword),
+            (r'\b(%s)\b' % '|'.join(_CLASS_KEYWORDS), _token.Keyword),
             (r'\b(%s)\b' % '|'.join(_MODEL_TYPE_KEYWORDS), _token.Keyword),
             (r'\b(%s)\b' % '|'.join(_DTYPE_KEYWORDS), _token.Keyword),
             (r'\bauto\b', _token.Keyword),
