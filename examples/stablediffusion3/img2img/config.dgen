@@ -21,3 +21,4 @@ stabilityai/stable-diffusion-3-medium-diffusers
 --output-path output
 --model-sequential-offload
 --prompts "A huge tsunami wave about to impact a tropical beach, high resolution, photo, real; fake, artwork, imaginary, watermark"
+--auth-token {{ token }}
