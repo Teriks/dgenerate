@@ -346,7 +346,7 @@ def estimate_pipeline_memory_use(
             uri_parser_class = _uris.FlaxTextEncoderUri
 
         for text_encoder_uri in text_encoder_uris:
-            if text_encoder_uri is None or text_encoder_uri == '+':
+            if not _text_encoder_not_null(text_encoder_uri):
                 continue
 
             parsed = uri_parser_class.parse(text_encoder_uri)
