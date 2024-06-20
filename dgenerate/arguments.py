@@ -480,9 +480,7 @@ def _create_parser(add_model=True, add_help=True):
             "CLIPTextModelWithProjection;model=huggingface/text_encoder;revision=main", 
             "T5TextModel;model=text_encoder_folder_on_disk". 
             
-            Or For Flax: "FlaxCLIPTextModel;model=huggingface/text_encoder", 
-            "FlaxCLIPTextModelWithProjection;model=huggingface/text_encoder;revision=main", 
-            "FlaxT5TextModel;model=text_encoder_folder_on_disk". 
+            Or for Flax: "FlaxCLIPTextModel;model=huggingface/text_encoder". 
             
             For main models which require multiple text encoders, the + symbol may be used
             to indicate that a default value should be used for a particular text encoder,
