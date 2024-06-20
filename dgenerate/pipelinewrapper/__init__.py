@@ -33,6 +33,8 @@ from .cache import \
     clear_vae_cache, \
     clear_unet_cache, \
     vae_cache_size, \
+    clear_text_encoder_cache, \
+    text_encoder_cache_size, \
     unet_cache_size, \
     clear_model_cache, \
     clear_pipeline_cache, \
@@ -45,13 +47,15 @@ from .cache import \
     enforce_vae_cache_constraints, \
     enforce_unet_cache_constraints, \
     enforce_control_net_cache_constraints, \
+    enforce_text_encoder_cache_constraints, \
     pipeline_create_update_cache_info, \
     pipeline_off_cpu_update_cache_info, \
     pipeline_to_cpu_update_cache_info, \
     vae_create_update_cache_info, \
     unet_create_update_cache_info, \
     uri_list_hash_with_parser, \
-    controlnet_create_update_cache_info
+    controlnet_create_update_cache_info, \
+    text_encoder_create_update_cache_info
 from .constants import \
     DEFAULT_SDXL_OUTPUT_WIDTH, \
     DEFAULT_OUTPUT_HEIGHT, \
@@ -101,7 +105,7 @@ from .enums import \
     get_pipeline_type_enum, \
     supported_model_type_strings
 from .hfutil import \
-    ModelNotFoundError,\
+    ModelNotFoundError, \
     NonHFModelDownloadError
 from .pipelines import \
     InvalidModelFileError, \

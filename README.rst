@@ -3108,9 +3108,9 @@ Textual Inversions, and ControlNets.
 If another invocation of the model occurs with creation parameters that are identical, it will be
 loaded out of an in memory cache, which greatly increases the speed of the invocation.
 
-Diffusion Pipelines, user specified UNets, VAEs, and ControlNet models are cached individually.
+Diffusion Pipelines, user specified UNets, VAEs, Text Encoders, and ControlNet models are cached individually.
 
-UNets, VAEs, and ControlNet model objects can be reused by diffusion pipelines in certain
+UNets, VAEs, Text Encoder, and ControlNet model objects can be reused by diffusion pipelines in certain
 situations when specified explicitly and this is taken advantage of by using an in
 memory cache of these objects.
 
@@ -3122,7 +3122,8 @@ regarding runtime caching behavior of a pipelines and other models can be observ
 
 When loading multiple different models be aware that they will all be retained in memory for
 the duration of program execution, unless all models are flushed using the ``\clear_model_cache`` directive or
-individually using one of: ``\clear_pipeline_cache``, ``\clear_unet_cache``, ``\clear_vae_cache``, or ``\clear_control_net_cache``.
+individually using one of: ``\clear_pipeline_cache``, ``\clear_unet_cache``, ``\clear_vae_cache``,
+``\clear_text_encoder_cache``, or ``\clear_control_net_cache``.
 
 dgenerate uses heuristics to clear the in memory cache automatically when needed, including a size estimation
 of models before they enter system memory, however by default it will use system memory very aggressively
@@ -3236,6 +3237,10 @@ The following is a config file example that covers the most basic syntax concept
     # Clear specifically user specified VAE models
 
     \clear_vae_cache
+
+    # Clear specifically user specified Text Encoder models
+
+    \clear_text_encoder_cache
 
     # Clear specifically ControlNet models
 

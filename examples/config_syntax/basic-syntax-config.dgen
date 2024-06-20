@@ -69,6 +69,10 @@ stabilityai/stable-diffusion-2-1 --prompts "a martian riding a horse"
 
 \clear_vae_cache
 
+# Clear specifically user specified Text Encoder models
+
+\clear_text_encoder_cache
+
 # Clear specifically ControlNet models
 
 \clear_control_net_cache
