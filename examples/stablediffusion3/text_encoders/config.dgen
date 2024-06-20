@@ -9,16 +9,18 @@
 {% endif %} !END
 
 # This is an example of individually specifying text encoders
-# specifically for stable diffusion 3
+# specifically for stable diffusion 3, this model from the blob
+# link includes the clip encoders, so we only need to specify
+# the T5 encoder, which is encoder number 3, the + symbols indicate
+# the first 2 encoders are assigned their default value, they are
+# loaded from the checkpoint file
 
-https://huggingface.co/stabilityai/stable-diffusion-3-medium/blob/main/sd3_medium.safetensors
+https://huggingface.co/stabilityai/stable-diffusion-3-medium/blob/main/sd3_medium_incl_clips.safetensors
 --model-type torch-sd3
 --dtype float16
 --inference-steps 30
 --guidance-scales 5.00
---text-encoders \
-    CLIPTextModelWithProjection;model=stabilityai/stable-diffusion-3-medium-diffusers;subfolder=text_encoder \
-    CLIPTextModelWithProjection;model=stabilityai/stable-diffusion-3-medium-diffusers;subfolder=text_encoder_2 \
+--text-encoders + + \
     T5EncoderModel;model=stabilityai/stable-diffusion-3-medium-diffusers;subfolder=text_encoder_3 \
 --clip-skips 0
 --gen-seeds 1
