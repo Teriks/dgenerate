@@ -398,6 +398,9 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'clear_vae_cache': return_zero(
                 _pipelinewrapper.clear_vae_cache,
                 help_text='Clear all user specified VAE models from the in memory cache.'),
+            'clear_text_encoder_cache': return_zero(
+                _pipelinewrapper.clear_text_encoder_cache,
+                help_text='Clear all user specified Text Encoder models from the in memory cache.'),
             'clear_control_net_cache': return_zero(
                 _pipelinewrapper.clear_control_net_cache,
                 help_text='Clear all user specified ControlNet models from the in memory cache.'),
