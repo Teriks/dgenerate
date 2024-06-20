@@ -46,7 +46,7 @@ RECIPES = {
         \\set auth_token @string[{"label": "Hugging Face Auth Token", "arg":"--auth-token", "default":"$HF_TOKEN", "optional":false}]
         
         @file[{"label":"Model File / HF Slug", "default": "stabilityai/stable-diffusion-3-medium-diffusers", "optional":false, "file-types":"models"}]
-        --model-type torch-sd3
+        --model-type torch-sd3 {{ auth_token }}
         --dtype float16
         @torchvae[{"label":"VAE File / URI"}]
         @file[{"label":"LoRa File / URI", "arg":"--loras", "after":";scale=1.0", "file-types":"models"}]
@@ -58,7 +58,7 @@ RECIPES = {
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
         @string[{"label":"Output Size", "arg":"--output-size", "default":"1024x1024"}]
         --model-sequential-offload
-        @device[{}] {{ auth_token }}
+        @device[{}]
         --prompts "add your prompt here"
         """,
     "Stable Diffusion XL":
