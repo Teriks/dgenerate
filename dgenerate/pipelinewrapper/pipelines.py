@@ -341,31 +341,23 @@ def estimate_pipeline_memory_use(
 
     if text_encoder_uris:
         if _enums.model_type_is_torch(model_type):
-            for text_encoder_uri in text_encoder_uris:
-                if text_encoder_uri is None or text_encoder_uri == '+':
-                    continue
-
-                parsed = _uris.TorchTextEncoderUri.parse(text_encoder_uri)
-
-                usage += _hfutil.estimate_model_memory_use(
-                    repo_id=_hfutil.download_non_hf_model(parsed.model),
-                    revision=parsed.revision,
-                    subfolder=parsed.subfolder,
-                    use_auth_token=auth_token,
-                    local_files_only=local_files_only)
+            uri_parser_class = _uris.TorchTextEncoderUri
         else:
-            for text_encoder_uri in text_encoder_uris:
-                if text_encoder_uri is None or text_encoder_uri == '+':
-                    continue
+            uri_parser_class = _uris.FlaxTextEncoderUri
 
-                parsed = _uris.FlaxTextEncoderUri.parse(text_encoder_uri)
+        for text_encoder_uri in text_encoder_uris:
+            if text_encoder_uri is None or text_encoder_uri == '+':
+                continue
 
-                usage += _hfutil.estimate_model_memory_use(
-                    repo_id=_hfutil.download_non_hf_model(parsed.model),
-                    revision=parsed.revision,
-                    subfolder=parsed.subfolder,
-                    use_auth_token=auth_token,
-                    local_files_only=local_files_only)
+            parsed = uri_parser_class.parse(text_encoder_uri)
+
+            usage += _hfutil.estimate_model_memory_use(
+                repo_id=parsed.model,
+                revision=parsed.revision,
+                subfolder=parsed.subfolder,
+                use_auth_token=auth_token,
+                local_files_only=local_files_only,
+                flax=_enums.model_type_is_flax(model_type))
 
     return usage
 
