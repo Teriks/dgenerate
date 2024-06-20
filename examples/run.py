@@ -118,6 +118,9 @@ for config in configs:
                     content = f.read()
                     try:
                         _batchprocess.ConfigRunner(injected_args + extra_args).run_string(content)
+                    except SystemExit as e:
+                        if e.code != 0:
+                            raise
                     except _batchprocess.BatchProcessError as e:
                         log(e)
                         sys.exit(1)

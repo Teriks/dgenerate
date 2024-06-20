@@ -1,0 +1,27 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.7.2
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %} !END
+
+# This is an example of individually specifying text encoders
+# specifically for stable diffusion 3
+
+https://huggingface.co/stabilityai/stable-diffusion-3-medium/blob/main/sd3_medium.safetensors
+--model-type torch-sd3
+--dtype float16
+--inference-steps 30
+--guidance-scales 5.00
+--text-encoders \
+    CLIPTextModelWithProjection;model=stabilityai/stable-diffusion-3-medium-diffusers;subfolder=text_encoder \
+    CLIPTextModelWithProjection;model=stabilityai/stable-diffusion-3-medium-diffusers;subfolder=text_encoder_2 \
+    T5EncoderModel;model=stabilityai/stable-diffusion-3-medium-diffusers;subfolder=text_encoder_3 \
+--clip-skips 0
+--gen-seeds 1
+--output-path output
+--model-sequential-offload
+--prompts "a horse outside a barn"

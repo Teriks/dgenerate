@@ -434,6 +434,7 @@ def estimate_model_memory_use(repo_id: str,
                               include_vae: bool = True,
                               include_text_encoder: bool = True,
                               include_text_encoder_2: bool = True,
+                              include_text_encoder_3: bool = True,
                               safetensors: bool = True,
                               flax: bool = False,
                               sentencepiece: bool = False,
@@ -458,6 +459,7 @@ def estimate_model_memory_use(repo_id: str,
     :param include_vae: include the vae model if it exists?
     :param include_text_encoder: include the text encoder model if it exists?
     :param include_text_encoder_2: include the second text encoder model if it exists?
+    :param include_text_encoder_3: include the third text encoder model if it exists?
     :param safetensors: Use safetensors if available?
     :param flax: Only look for msgpack files?
     :param sentencepiece: Forcibly include tokenizer/spiece.model for models with a unet?
@@ -539,6 +541,9 @@ def estimate_model_memory_use(repo_id: str,
 
             if not forced_only and include_text_encoder_2:
                 important_directories.add('text_encoder_2')
+
+            if not forced_only and include_text_encoder_3:
+                important_directories.add('text_encoder_3')
 
             if forced_only and sentencepiece:
                 important_directories.add('tokenizer')

@@ -34,19 +34,26 @@ import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 
-_torch_text_encoder_uri_parser = _textprocessing.ConceptUriParser(
-    'TextEncoder', ['model', 'revision', 'variant', 'subfolder', 'dtype'])
+_flax_text_encoder_uri_parser = _textprocessing.ConceptUriParser(
+    'TextEncoder', ['model', 'revision', 'subfolder', 'dtype'])
+
+try:
+    import flax
+
+    _have_flax = True
+except ImportError:
+    _have_flax = False
 
 
-class TorchTextEncoderUri:
+class FlaxTextEncoderUri:
     """
-    Representation of ``--text-encoder*`` uri when ``--model-type`` torch*
+    Representation of ``--text-encoder*`` uri when ``--model-type`` flax*
     """
 
     @property
     def encoder(self) -> str:
         """
-        Encoder class name such as "CLIPTextModel"
+        Encoder class name such as "FlaxCLIPTextModel"
         """
         return self._encoder
 
@@ -65,13 +72,6 @@ class TorchTextEncoderUri:
         return self._revision
 
     @property
-    def variant(self) -> _types.OptionalString:
-        """
-        Model repo revision
-        """
-        return self._variant
-
-    @property
     def subfolder(self) -> _types.OptionalPath:
         """
         Model repo subfolder
@@ -86,27 +86,23 @@ class TorchTextEncoderUri:
         return self._dtype
 
     _encoders = {
-        'CLIPTextModel': transformers.models.clip.CLIPTextModel,
-        'CLIPTextModelWithProjection': transformers.models.clip.CLIPTextModelWithProjection,
-        'T5EncoderModel': transformers.models.t5.T5EncoderModel
+        'FlaxCLIPTextModel': getattr(transformers.models.clip, 'FlaxCLIPTextModel', None)
     }
 
     @staticmethod
     def supported_encoder_names() -> list[str]:
-        return list(TorchTextEncoderUri._encoders.keys())
+        return list(FlaxTextEncoderUri._encoders.keys())
 
     def __init__(self,
                  encoder: str,
                  model: str,
                  revision: _types.OptionalString = None,
-                 variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
                  dtype: _enums.DataType | str | None = None):
         """
-        :param encoder: encoder class name, for example ``CLIPTextModel``
+        :param encoder: encoder class name, for example ``FlaxCLIPTextModel``
         :param model: model path
         :param revision: model revision (branch name)
-        :param variant: model variant, for example ``fp16``
         :param subfolder: model subfolder
         :param dtype: model data type (precision)
 
@@ -114,6 +110,10 @@ class TorchTextEncoderUri:
             ``model`` points to a single file and the specified ``encoder`` class name does not
             support loading from a single file.
         """
+
+        if not _have_flax:
+            raise _exceptions.InvalidTextEncoderUriError(
+                'FlaxTextEncoderUri cannot be used without flax installed.')
 
         if encoder not in self._encoders:
             raise _exceptions.InvalidTextEncoderUriError(
@@ -135,7 +135,6 @@ class TorchTextEncoderUri:
         self._encoder = encoder
         self._model = model
         self._revision = revision
-        self._variant = variant
         self._subfolder = subfolder
 
         try:
@@ -149,15 +148,11 @@ class TorchTextEncoderUri:
              use_auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
              sequential_cpu_offload_member: bool = False,
-             model_cpu_offload_member: bool = False) -> \
-            typing.Union[
-                transformers.models.clip.CLIPTextModel,
-                transformers.models.clip.CLIPTextModelWithProjection,
-                transformers.models.t5.T5EncoderModel]:
+             model_cpu_offload_member: bool = False) -> tuple['transformers.models.clip.FlaxCLIPTextModel', typing.Any]:
         """
-        Load a torch Text Encoder of type :py:class:`transformers.models.clip.CLIPTextModel`,
-        :py:class:`transformers.models.clip.CLIPTextModelWithProjection`, or
-        :py:class:`transformers.models.t5.T5EncoderModel` from this URI
+        Load a flax Text Encoder of type :py:class:`transformers.models.clip.FlaxCLIPTextModel`,
+        :py:class:`transformers.models.clip.FlaxCLIPTextModelWithProjection`, or
+        :py:class:`transformers.models.t5.FlaxT5EncoderModel` from this URI
 
         :param dtype_fallback: If the URI does not specify a dtype, use this dtype.
         :param use_auth_token: optional huggingface auth token.
@@ -172,9 +167,7 @@ class TorchTextEncoderUri:
 
         :raises ModelNotFoundError: If the model could not be found.
 
-        :return: :py:class:`transformers.models.clip.CLIPTextModel`,
-            :py:class:`transformers.models.clip.CLIPTextModelWithProjection`, or
-            :py:class:`transformers.models.t5.T5EncoderModel`
+        :return: (:py:class:`transformers.models.clip.FlaxCLIPTextModel`, ``params``)
         """
 
         try:
@@ -191,30 +184,20 @@ class TorchTextEncoderUri:
             raise _exceptions.TextEncoderUriLoadError(
                 f'error loading text encoder "{self.model}": {e}')
 
-    @_memoize(_cache._TORCH_TEXT_ENCODER_CACHE,
+    @_memoize(_cache._FLAX_TEXT_ENCODER_CACHE,
               exceptions={'local_files_only'},
               hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _d_memoize.struct_hasher}),
-              on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Torch TextEncoder", key, hit),
-              on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Torch TextEncoder", key, new))
+              on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Flax TextEncoder", key, hit),
+              on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Flax TextEncoder", key, new))
     def _load(self,
               dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
               use_auth_token: _types.OptionalString = None,
-              local_files_only: bool = False,
-              sequential_cpu_offload_member: bool = False,
-              model_cpu_offload_member: bool = False) -> \
-            typing.Union[
-                transformers.models.clip.CLIPTextModel,
-                transformers.models.clip.CLIPTextModelWithProjection,
-                transformers.models.t5.T5EncoderModel]:
-
-        if sequential_cpu_offload_member and model_cpu_offload_member:
-            # these are used for cache differentiation only
-            raise ValueError('sequential_cpu_offload_member and model_cpu_offload_member cannot both be True.')
+              local_files_only: bool = False) -> tuple['transformers.models.clip.FlaxCLIPTextModel', typing.Any]:
 
         if self.dtype is None:
-            torch_dtype = _enums.get_torch_dtype(dtype_fallback)
+            flax_dtype = _enums.get_flax_dtype(dtype_fallback)
         else:
-            torch_dtype = _enums.get_torch_dtype(self.dtype)
+            flax_dtype = _enums.get_flax_dtype(self.dtype)
 
         encoder = self._encoders[self.encoder]
 
@@ -227,7 +210,8 @@ class TorchTextEncoderUri:
                 repo_id=model_path,
                 revision=self.revision,
                 local_files_only=local_files_only,
-                use_auth_token=use_auth_token
+                use_auth_token=use_auth_token,
+                flax=True
             )
 
             _cache.enforce_text_encoder_cache_constraints(
@@ -236,7 +220,7 @@ class TorchTextEncoderUri:
             text_encoder = encoder.from_single_file(model_path,
                                                     token=use_auth_token,
                                                     revision=self.revision,
-                                                    torch_dtype=torch_dtype,
+                                                    dtype=flax_dtype,
                                                     local_files_only=local_files_only)
 
         else:
@@ -244,10 +228,10 @@ class TorchTextEncoderUri:
             estimated_memory_use = _hfutil.estimate_model_memory_use(
                 repo_id=model_path,
                 revision=self.revision,
-                variant=self.variant,
                 subfolder=self.subfolder,
                 local_files_only=local_files_only,
-                use_auth_token=use_auth_token
+                use_auth_token=use_auth_token,
+                flax=True
             )
 
             _cache.enforce_text_encoder_cache_constraints(
@@ -256,53 +240,51 @@ class TorchTextEncoderUri:
             text_encoder = encoder.from_pretrained(
                 model_path,
                 revision=self.revision,
-                variant=self.variant,
-                torch_dtype=torch_dtype,
+                dtype=flax_dtype,
                 subfolder=self.subfolder if self.subfolder else "",
                 token=use_auth_token,
                 local_files_only=local_files_only)
 
-        _messages.debug_log('Estimated Torch TextEncoder Memory Use:',
+        _messages.debug_log('Estimated Flax TextEncoder Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_use))
 
         _cache.text_encoder_create_update_cache_info(
             text_encoder=text_encoder,
             estimated_size=estimated_memory_use)
 
-        return text_encoder
+        return text_encoder, text_encoder.params
 
     @staticmethod
-    def parse(uri: _types.Uri) -> 'TorchTextEncoderUri':
+    def parse(uri: _types.Uri) -> 'FlaxTextEncoderUri':
         """
-        Parse a ``--model-type`` torch* ``--text-encoder*`` uri and return an object representing its constituents
+        Parse a ``--model-type`` flax* ``--text-encoder*`` uri and return an object representing its constituents
 
         :param uri: string with ``--text-encoder*`` uri syntax
 
         :raise InvalidTextEncoderUriError:
 
-        :return: :py:class:`.TorchTextEncoderUri`
+        :return: :py:class:`.FlaxTextEncoderUri`
         """
         try:
-            r = _torch_text_encoder_uri_parser.parse(uri)
+            r = _flax_text_encoder_uri_parser.parse(uri)
 
             model = r.args.get('model')
             if model is None:
                 raise _exceptions.InvalidTextEncoderUriError(
-                    'model argument for torch TextEncoder specification must be defined.')
+                    'model argument for flax TextEncoder specification must be defined.')
 
             dtype = r.args.get('dtype')
 
             supported_dtypes = _enums.supported_data_type_strings()
             if dtype is not None and dtype not in supported_dtypes:
                 raise _exceptions.InvalidTextEncoderUriError(
-                    f'Torch TextEncoder "dtype" must be {", ".join(supported_dtypes)}, '
+                    f'Flax TextEncoder "dtype" must be {", ".join(supported_dtypes)}, '
                     f'or left undefined, received: {dtype}')
 
-            return TorchTextEncoderUri(encoder=r.concept,
-                                       model=model,
-                                       revision=r.args.get('revision', None),
-                                       variant=r.args.get('variant', None),
-                                       dtype=dtype,
-                                       subfolder=r.args.get('subfolder', None))
+            return FlaxTextEncoderUri(encoder=r.concept,
+                                      model=model,
+                                      revision=r.args.get('revision', None),
+                                      dtype=dtype,
+                                      subfolder=r.args.get('subfolder', None))
         except _textprocessing.ConceptUriParseError as e:
             raise _exceptions.InvalidTextEncoderUriError(e)

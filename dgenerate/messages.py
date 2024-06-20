@@ -165,12 +165,11 @@ def log(*args: typing.Any, level=INFO, underline=False, underline_char='='):
     """
     global _MESSAGE_FILE, _ERROR_FILE
 
-    file = _MESSAGE_FILE
+    file = _ERROR_FILE if level == ERROR else _MESSAGE_FILE
+
     if level != INFO and LEVEL == INFO:
         if level != ERROR and level != WARNING:
             return
-        else:
-            file = _ERROR_FILE
 
     prefix = ''
     if level == DEBUG:
