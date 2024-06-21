@@ -1,0 +1,19 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.8.0
+
+stabilityai/stable-cascade-prior
+--model-type torch-s-cascade
+--variant bf16
+--dtype bfloat16
+--model-cpu-offload
+--batch-size 4
+--batch-grid-size 2x2
+--output-size 512
+--s-cascade-decoder-cpu-offload
+--s-cascade-decoder "stabilityai/stable-cascade;dtype=float16"
+--inference-steps 20
+--guidance-scales 4
+--s-cascade-decoder-inference-steps 10
+--s-cascade-decoder-guidance-scales 0
+--gen-seeds 2
+--prompts "a sign that says test"

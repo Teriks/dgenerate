@@ -1,0 +1,27 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.8.0
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %} !END
+
+
+stabilityai/stable-diffusion-3-medium-diffusers
+--model-type torch-sd3
+--variant fp16
+--dtype float16
+--batch-size 4
+--batch-grid-size 2x2
+--inference-steps 30
+--guidance-scales 5.00
+--output-size 512
+--clip-skips 0
+--gen-seeds 2
+--vae-tiling
+--vae-slicing
+--output-path output
+--model-sequential-offload
+--prompts "a sign that says test"
