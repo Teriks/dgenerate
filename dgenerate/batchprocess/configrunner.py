@@ -156,7 +156,7 @@ def _cwd() -> str:
     return os.getcwd()
 
 
-def _format_model_type(model_type: _pipelinewrapper.ModelType):
+def _format_model_type(model_type: _pipelinewrapper.ModelType) -> str:
     """
     Return the string representation of a ModelType enum.
     This can be used to get command line compatible --model-type
@@ -165,7 +165,7 @@ def _format_model_type(model_type: _pipelinewrapper.ModelType):
     return _pipelinewrapper.get_model_type_string(model_type)
 
 
-def _format_dtype(dtype: _pipelinewrapper.DataType):
+def _format_dtype(dtype: _pipelinewrapper.DataType) -> str:
     """
     Return the string representation of a DataType enum.
     This can be used to get command line compatible --dtype

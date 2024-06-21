@@ -3278,6 +3278,9 @@ Some available custom jinja2 functions/filters are:
 * ``{{ unquote('"unescape-me"') }}`` (shell unquote / split, works on strings and lists)
 * ``{{ quote('escape-me') }}`` (shell quote, works on strings and lists)
 * ``{{ format_prompt(prompt_object) }}`` (Format and quote one or more prompt objects with their delimiter, works on single prompts and lists)
+* ``{{ format_size(size_tuple) }}`` (Format a size tuple / iterable, join with "x" character)
+* ``{{ format_model_type(last_model_type) }}`` (Format a ModelType enum to a value compatible with --model-type)
+* ``{{ format_dtype(last_dtype) }}`` (Format a DataType enum to a value compatible with --dtype)
 * ``{{ gen_seeds(n) }}`` (Return a list of random integer seeds in the form of strings)
 * ``{{ cwd() }}`` (Return the current working directory as a string)
 * ``{{ download(url) }}`` (Download from a url to the web cache and return the file path)
@@ -3656,6 +3659,8 @@ The following is output from ``\functions_help`` showing every implemented templ
         first(iterable: collections.abc.Iterable[typing.Any]) -> typing.Any
         float(args, kwargs)
         format(args, kwargs)
+        format_dtype(dtype: <enum 'DataType'>) -> str
+        format_model_type(model_type: <enum 'ModelType'>) -> str
         format_prompt(prompts: dgenerate.prompt.Prompt | collections.abc.Iterable[dgenerate.prompt.Prompt]) -> str
         format_size(size: collections.abc.Iterable[int]) -> str
         frozenset(args, kwargs)
