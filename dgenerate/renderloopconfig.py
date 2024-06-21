@@ -1107,7 +1107,8 @@ class RenderLoopConfig(_types.SetFromMixin):
             # inpainting is not currently supported for Stable Diffusion 3
 
             raise RenderLoopConfigError(
-                f'{a_namer("image_seeds")} configurations other than plain img2img are '
+                f'{a_namer("image_seeds")} configurations other than plain img2img and '
+                f'control net guidance image specification are '
                 f'currently not supported for {a_namer("model_type")} '
                 f'{_pipelinewrapper.get_model_type_string(self.model_type)}')
 
