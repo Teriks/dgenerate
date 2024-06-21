@@ -225,6 +225,25 @@ def _create_string_continue(name, char, root_state):
         ]}
 
 
+def _create_wait_for_var(name, next_state):
+    return {
+        name: [
+            ('([a-zA-Z_][a-zA-Z0-9_]*)',  _token.Name.Variable, next_state),
+            (r'(?<=\}\})\s', _token.Whitespace, next_state),
+            (r'(?<=%\})\s', _token.Whitespace, next_state),
+            (r'(?<=#\})\s', _token.Whitespace, next_state),
+            _comment_pattern,
+            _jinja_block_pattern,
+            _jinja_comment_pattern,
+            _jinja_interpolate_pattern,
+            _operators_punctuation_pattern,
+            _operators_pattern,
+            _text_pattern,
+            (r'\s+', _token.Whitespace),
+        ]
+    }
+
+
 class DgenerateLexer(_lexer.RegexLexer):
     """
     pygments lexer for dgenerate configuration / script
@@ -235,17 +254,20 @@ class DgenerateLexer(_lexer.RegexLexer):
     filenames = ['*.dgen']
 
     tokens = {
+        **_create_wait_for_var('var_then_value', 'value'),
+        **_create_wait_for_var('var_then_setp_value', 'setp_value'),
+        **_create_wait_for_var('var_then_root', 'root'),
         'root': [
             _comment_pattern,
             _env_var_pattern,
-            (r'(?<!\w)(\\set[e]?|\\gen_seeds|\\download)(\s+)([a-zA-Z_][a-zA-Z0-9_]*)',
-             _lexer.bygroups(_token.Name.Builtin, _token.Text.Whitespace, _token.Name.Variable), 'value'),
-            (r'(?<!\w)(\\setp)(\s+)([a-zA-Z_][a-zA-Z0-9_]*)',
-             _lexer.bygroups(_token.Name.Builtin, _token.Text.Whitespace, _token.Name.Variable), 'setp_value'),
+            (r'(?<!\w)(\\set[e]?|\\gen_seeds|\\download)(\s+)',
+             _lexer.bygroups(_token.Name.Builtin, _token.Text.Whitespace), 'var_then_value'),
+            (r'(?<!\w)(\\setp)(\s+)',
+             _lexer.bygroups(_token.Name.Builtin, _token.Text.Whitespace), 'var_then_setp_value'),
             (r'(?<!\w)(\\import_plugins)(\s+)',
              _lexer.bygroups(_token.Name.Builtin, _token.Text.Whitespace), 'import_plugins_value'),
-            (r'(?<!\w)(\\unset|\\save_modules|\\use_modules|\\clear_modules)(\s+)([a-zA-Z_][a-zA-Z0-9_]*)',
-             _lexer.bygroups(_token.Name.Builtin, _token.Text.Whitespace, _token.Name.Variable)),
+            (r'(?<!\w)(\\unset|\\save_modules|\\use_modules|\\clear_modules)(\s+)',
+             _lexer.bygroups(_token.Name.Builtin, _token.Text.Whitespace), 'var_then_root'),
             (r'(?<!\w)(\\[a-zA-Z_][a-zA-Z0-9_]*)', _lexer.bygroups(_token.Name.Builtin)),
             (r'\b(%s)\b' % '|'.join(_SCHEDULER_KEYWORDS), _token.Keyword),
             (r'\b(%s)\b' % '|'.join(_CLASS_KEYWORDS), _token.Keyword),
