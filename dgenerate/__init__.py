@@ -219,8 +219,7 @@ def main(args: collections.abc.Sequence[str] | None = None):
             try:
                 with open(input_file, 'rt') as file:
                     runner.run_file(file)
-            except ModuleFileNotFoundError as e:
-                # missing plugin file parsed by ConfigRunner out of injected args
+            except (ModuleFileNotFoundError, FileNotFoundError) as e:
                 dgenerate.messages.log(f'dgenerate: error: {str(e).strip()}',
                                        level=dgenerate.messages.ERROR)
                 sys.exit(1)
