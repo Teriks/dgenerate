@@ -113,6 +113,7 @@ class LoRAUri:
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
         except Exception as e:
+            raise
             raise _exceptions.LoRAUriLoadError(
                 f'error loading lora "{self.model}": {e}')
 
@@ -161,9 +162,14 @@ class LoRAUri:
                                        subfolder=self.subfolder,
                                        weight_name=self.weight_name,
                                        local_files_only=local_files_only,
+                                       use_safetensors=True,
                                        token=use_auth_token)
 
-            pipeline.fuse_lora(lora_scale=self.scale)
+            if hasattr(pipeline, 'fuse_lora'):
+                pipeline.fuse_lora(lora_scale=self.scale)
+            elif self.scale != 1.0:
+                _messages.log('lora scale argument not supported, ignored.',
+                              level=_messages.WARNING)
 
             _messages.debug_log(f'Added LoRA: "{self}" to pipeline: "{pipeline.__class__.__name__}"')
         else:
