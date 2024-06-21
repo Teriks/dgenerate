@@ -15,8 +15,9 @@
 
 stabilityai/stable-diffusion-3-medium-diffusers
 --model-type torch-sd3
---loras linoyts/yarn_style_sd3_lora_2500
+--variant fp16
 --dtype float16
+--loras linoyts/yarn_style_sd3_lora_2500
 --inference-steps 30
 --guidance-scales 5.00
 --clip-skips 0
