@@ -633,9 +633,9 @@ def pipeline_to(pipeline, device: torch.device | str | None):
             continue
 
         cache_meth = None
-        if current_device == 'cpu' and to_device != 'cpu':
+        if current_device.type == 'cpu' and to_device.type != 'cpu':
             cache_meth = '_off_cpu_update_cache_info'
-        elif current_device != 'cpu' and to_device == 'cpu':
+        elif current_device.type != 'cpu' and to_device.type == 'cpu':
             cache_meth = '_to_cpu_update_cache_info'
 
         if cache_meth:
