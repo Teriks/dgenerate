@@ -24,6 +24,8 @@ stabilityai/stable-diffusion-3-medium-diffusers
 --inference-steps 30
 --guidance-scales 8
 --output-path boxer
+--output-size 1024x512
+--no-aspect
 --model-sequential-offload
 --vae-tiling
 --vae-slicing
