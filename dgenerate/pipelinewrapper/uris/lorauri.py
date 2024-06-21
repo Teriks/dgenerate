@@ -113,7 +113,6 @@ class LoRAUri:
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
         except Exception as e:
-            raise
             raise _exceptions.LoRAUriLoadError(
                 f'error loading lora "{self.model}": {e}')
 
