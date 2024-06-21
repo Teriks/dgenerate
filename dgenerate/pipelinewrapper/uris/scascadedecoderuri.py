@@ -101,7 +101,7 @@ class SCascadeDecoderUri:
 
         :param uri: string with ``--s-cascade-decoder`` uri syntax
 
-        :return: :py:class:`.SDCascadeDecoderUri`
+        :return: :py:class:`.SCascadeDecoderUri`
         """
         try:
             r = _s_cascade_decoder_uri_parser.parse(uri)
