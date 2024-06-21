@@ -1103,14 +1103,19 @@ class RenderLoopConfig(_types.SetFromMixin):
         mask_part = 'mask=my-mask.png;' if parsed.mask_path else ''
         # ^ Used for nice messages about image seed keyword argument misuse
 
-        if _pipelinewrapper.model_type_is_sd3(self.model_type) and not parsed.is_single_spec:
-            # inpainting is not currently supported for Stable Diffusion 3
+        if _pipelinewrapper.model_type_is_sd3(self.model_type):
 
-            raise RenderLoopConfigError(
-                f'{a_namer("image_seeds")} configurations other than plain img2img and '
-                f'control net guidance image specification are '
-                f'currently not supported for {a_namer("model_type")} '
-                f'{_pipelinewrapper.get_model_type_string(self.model_type)}')
+            if not parsed.is_single_spec:
+                # inpainting is not currently supported for Stable Diffusion 3
+                raise RenderLoopConfigError(
+                    f'{a_namer("image_seeds")} configurations other than plain img2img and '
+                    f'control net guidance image specification are '
+                    f'currently not supported for {a_namer("model_type")} '
+                    f'{_pipelinewrapper.get_model_type_string(self.model_type)}')
+            if self.lora_uris:
+                raise RenderLoopConfigError(
+                    f'{a_namer("image_seeds")} are currently not supported with {a_namer("lora_uris")} for {a_namer("model_type")} '
+                    f'{_pipelinewrapper.get_model_type_string(self.model_type)}')
 
         if self.control_net_uris:
             control_image_paths = parsed.get_control_image_paths()
