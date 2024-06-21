@@ -472,7 +472,7 @@ def _create_parser(add_model=True, add_help=True):
         action='store', default=None, metavar='TEXT_ENCODER_URIS', dest='text_encoder_uris',
         help=
         f"""Specify Text Encoders for the main model using URIs, main models 
-            may use one or more text encoders depending on on the --model-type value and other
+            may use one or more text encoders depending on the --model-type value and other
             dgenerate arguments. See: --text-encoders help for information 
             about what text encoders are needed for your invocation.
             
