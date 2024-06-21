@@ -729,7 +729,9 @@ def text_encoder_to_cpu_update_cache_info(text_encoder):
 
 def controlnet_to_cpu_update_cache_info(
         controlnet: diffusers.models.ControlNetModel |
-                    diffusers.pipelines.controlnet.MultiControlNetModel):
+                    diffusers.pipelines.controlnet.MultiControlNetModel |
+                    diffusers.SD3ControlNetModel |
+                    diffusers.SD3MultiControlNetModel):
     """
     Update CPU side cache size information when a ControlNet module is moved to the CPU
 
@@ -739,7 +741,9 @@ def controlnet_to_cpu_update_cache_info(
     global _CONTROL_NET_CACHE_SIZE
 
     if isinstance(controlnet,
-                  diffusers.pipelines.controlnet.MultiControlNetModel):
+                  (diffusers.pipelines.controlnet.MultiControlNetModel,
+                   diffusers.SD3MultiControlNetModel)):
+
         total_size = 0
         for control_net in controlnet.nets:
             total_size += control_net.DGENERATE_SIZE_ESTIMATE
@@ -757,7 +761,9 @@ def controlnet_to_cpu_update_cache_info(
                             f'is now {control_net_cache_size()} Bytes '
                             f'({_memory.bytes_best_human_unit(control_net_cache_size())})')
 
-    else:
+    elif isinstance(controlnet, (diffusers.models.ControlNetModel,
+                                 diffusers.SD3ControlNetModel)):
+
         # ControlNet returning to CPU side memory
         enforce_control_net_cache_constraints(controlnet.DGENERATE_SIZE_ESTIMATE)
         _CONTROL_NET_CACHE_SIZE += controlnet.DGENERATE_SIZE_ESTIMATE
@@ -862,7 +868,9 @@ def text_encoder_off_cpu_update_cache_info(text_encoder):
 
 def controlnet_off_cpu_update_cache_info(
         controlnet: diffusers.models.ControlNetModel |
-                    diffusers.pipelines.controlnet.MultiControlNetModel):
+                    diffusers.pipelines.controlnet.MultiControlNetModel |
+                    diffusers.SD3ControlNetModel |
+                    diffusers.SD3MultiControlNetModel):
     """
     Update CPU side cache size information when a ControlNet module is moved to a device that is not the CPU
 
@@ -870,7 +878,9 @@ def controlnet_off_cpu_update_cache_info(
     """
     global _CONTROL_NET_CACHE_SIZE
 
-    if isinstance(controlnet, diffusers.pipelines.controlnet.MultiControlNetModel):
+    if isinstance(controlnet, (diffusers.pipelines.controlnet.MultiControlNetModel,
+                               diffusers.SD3MultiControlNetModel)):
+
         for control_net in controlnet.nets:
             _CONTROL_NET_CACHE_SIZE -= control_net.DGENERATE_SIZE_ESTIMATE
 
@@ -885,7 +895,9 @@ def controlnet_off_cpu_update_cache_info(
                                 f'{control_net_cache_size()} Bytes '
                                 f'({_memory.bytes_best_human_unit(control_net_cache_size())})')
 
-    elif isinstance(controlnet, diffusers.models.ControlNetModel):
+    elif isinstance(controlnet, (diffusers.models.ControlNetModel,
+                                 diffusers.SD3ControlNetModel)):
+
         _CONTROL_NET_CACHE_SIZE -= controlnet.DGENERATE_SIZE_ESTIMATE
 
         if _CONTROL_NET_CACHE_SIZE < 0:
