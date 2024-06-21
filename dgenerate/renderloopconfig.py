@@ -111,19 +111,19 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     sd3_second_prompts: _types.OptionalPrompts = None
     """
-    Optional list of SD3 secondary prompts, this corresponds to the ``--sd3-secondary-prompts`` argument
+    Optional list of SD3 secondary prompts, this corresponds to the ``--sd3-second-prompts`` argument
     of the dgenerate command line tool.
     """
 
     sd3_third_prompts: _types.OptionalPrompts = None
     """
-    Optional list of SD3 tertiary prompts, this corresponds to the ``--sd3-secondary-prompts`` argument
+    Optional list of SD3 tertiary prompts, this corresponds to the ``--sd3-third-prompts`` argument
     of the dgenerate command line tool.
     """
 
     sdxl_second_prompts: _types.OptionalPrompts = None
     """
-    Optional list of SDXL secondary prompts, this corresponds to the ``--sdxl-secondary-prompts`` argument
+    Optional list of SDXL secondary prompts, this corresponds to the ``--sdxl-second-prompts`` argument
     of the dgenerate command line tool.
     """
 

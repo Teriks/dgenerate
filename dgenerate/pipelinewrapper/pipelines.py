@@ -80,6 +80,12 @@ class InvalidSchedulerNameError(Exception):
 
 
 class ArgumentHelpException(Exception):
+    """
+    Not an error, runtime argument help was requested by
+    passing "help" or a special value to an argument of
+    :py:meth:`.DiffusionPipelineWrapper.__init__` which
+    supports a help query.
+    """
     pass
 
 
@@ -95,7 +101,7 @@ class SchedulerHelpException(ArgumentHelpException):
 
 class TextEncodersHelpException(ArgumentHelpException):
     """
-    Not an error, runtime scheduler help was requested by passing "help" to a text encoder URI
+    Not an error, runtime text encoder help was requested by passing "help" to a text encoder URI
     argument of :py:meth:`.DiffusionPipelineWrapper.__init__` such as ``text_encoder_uris`` or ``second_text_encoder_uris``.
     Upon calling :py:meth:`.DiffusionPipelineWrapper.__call__` info was printed using :py:meth:`dgenerate.messages.log`,
     then this exception raised to get out of the call stack.
