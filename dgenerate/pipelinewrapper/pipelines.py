@@ -1172,6 +1172,8 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     if extra_modules is not None:
         _messages.debug_log('Checking extra_modules for meta tensors...')
         for module in extra_modules.items():
+            if module is None:
+                continue
             _messages.debug_log(f'Checking extra module {module[0]} = {module[1].__class__}...')
             try:
                 if get_torch_device(module[1]).type == 'meta':
