@@ -958,10 +958,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(
                     f'Stable Diffusion 3 does not currently support the '
                     f'use of {a_namer("textual_inversion_uris")}.')
-            if self.control_net_uris:
-                raise RenderLoopConfigError(
-                    f'Stable Diffusion 3 does not currently support the '
-                    f'use of {a_namer("control_net_uris")}.')
 
         if not _pipelinewrapper.model_type_is_sdxl(self.model_type):
             invalid_self = []

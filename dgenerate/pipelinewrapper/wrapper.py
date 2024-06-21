@@ -1476,7 +1476,32 @@ class DiffusionPipelineWrapper:
             args['height'] = _types.default(user_args.height, control_images[0].height)
 
             if self._pipeline_type == _enums.PipelineType.TXT2IMG:
-                args['image'] = control_images
+                if _enums.model_type_is_sd3(self._model_type):
+                    # There is a problem in the diffusers library
+                    # That causes any control image that is not power
+                    # of two dimensions to cause an exception with SD3
+
+                    processed_control_images = list(control_images)
+
+                    for idx, img in enumerate(processed_control_images):
+                        if not _image.is_power_of_two(img.size):
+                            size = _image.nearest_power_of_two(img.size)
+
+                            # this must be adjusted, all control image
+                            # sizes must be the same dimension
+                            args['width'] = _types.default(user_args.width, size[0])
+                            args['height'] = _types.default(user_args.height, size[1])
+
+                            _messages.log(
+                                f'Control image size {img.size} is not a power of 2. '
+                                f'Output dimensions will be forced to the nearest power of 2: {size}.',
+                                level=_messages.WARNING)
+
+                            processed_control_images[idx] = img.resize(size, PIL.Image.Resampling.LANCZOS)
+
+                    args['control_image'] = processed_control_images
+                else:
+                    args['image'] = control_images
             elif self._pipeline_type == _enums.PipelineType.IMG2IMG or \
                     self._pipeline_type == _enums.PipelineType.INPAINT:
 
