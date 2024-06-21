@@ -44,6 +44,11 @@ parser.add_argument('--subprocess-only', action='store_true', default=False,
 parser.add_argument('--skip-animations', action='store_true', default=False, help='Entirely skip rendering animations.')
 parser.add_argument('--skip-library', action='store_true', default=False, help='Entirely skip library usage examples.')
 parser.add_argument('--skip-flax', action='store_true', default=False, help='Entirely skip flax examples on linux.')
+
+parser.add_argument('--skip-deepfloyd', action='store_true', default=False,
+                    help='Entirely skip deep floyd examples '
+                         '(they use a lot of memory and may cause problems occasionally).')
+
 parser.add_argument('--short-animations', action='store_true', default=False,
                     help='Reduce animation examples to rendering only 3 frames.')
 
@@ -99,6 +104,11 @@ for config in configs:
         if known_args.skip_flax:
             log(f'SKIPPING FLAX: {config}')
             continue
+
+    if 'deepfloyd' in c:
+        if known_args.skip_deepfloyd:
+            log(f'SKIPPING DEEPFLOYD: {config}')
+        continue
 
     extra_args = []
     if known_args.short_animations and 'animation' in c:
