@@ -1366,19 +1366,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         if subfolder is not None:
             raise UnsupportedPipelineConfigError(
                 'Single file model loads do not support the subfolder option.')
-
-        old_accelerate_ctx_mgr_empty_weights = diffusers.loaders.single_file_utils.init_empty_weights
         try:
-            # are we going to supply separate user specified modules?
-            accelerate_patch_req = len(
-                [i for i in creation_kwargs.items() if i[0]
-                 not in {'watermarker', 'safety_checker'} and i[1] is not None]) > 0
-
-            # diffusers bug workaround, prevent meta tensor creation
-            # for the other pipeline components we did not specify
-            if accelerate_patch_req:
-                diffusers.loaders.single_file_utils.init_empty_weights = contextlib.nullcontext
-
             pipeline = pipeline_class.from_single_file(
                 model_path,
                 token=auth_token,
@@ -1402,9 +1390,6 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             if model_path in msg:
                 raise InvalidModelFileError(f'invalid model file, unable to load: {model_path}')
             raise InvalidModelFileError(e)
-        finally:
-            # remove any temporary monkey patch
-            diffusers.loaders.single_file_utils.init_empty_weights = old_accelerate_ctx_mgr_empty_weights
     else:
         try:
             pipeline = pipeline_class.from_pretrained(
