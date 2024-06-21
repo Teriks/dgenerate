@@ -24,6 +24,7 @@ import inspect
 import itertools
 import os
 import pathlib
+import platform
 import shlex
 import shutil
 import stat
@@ -33,7 +34,6 @@ import threading
 import time
 import types
 import typing
-import platform
 
 import fake_useragent
 import pyrfc6266
@@ -156,6 +156,24 @@ def _cwd() -> str:
     return os.getcwd()
 
 
+def _format_model_type(model_type: _pipelinewrapper.ModelType):
+    """
+    Return the string representation of a ModelType enum.
+    This can be used to get command line compatible --model-type
+    string from the last_model_type template variable.
+    """
+    return _pipelinewrapper.get_model_type_string(model_type)
+
+
+def _format_dtype(dtype: _pipelinewrapper.DataType):
+    """
+    Return the string representation of a DataType enum.
+    This can be used to get command line compatible --dtype
+    string from the last_dtype template variable.
+    """
+    return _pipelinewrapper.get_data_type_string(dtype)
+
+
 def _download(url: str,
               output: str | None = None,
               overwrite: bool = False,
@@ -164,12 +182,16 @@ def _download(url: str,
     Download a file from a URL to the web cache or a specified path,
     and return the file path to the downloaded file.
 
+    NOWRAP!
     \\set my_variable {{ download('https://modelhost.com/model.safetensors' }}
 
+    NOWRAP!
     \\set my_variable {{ download('https://modelhost.com/model.safetensors', output='model.safetensors') }}
 
+    NOWRAP!
     \\set my_variable {{ download('https://modelhost.com/model.safetensors', output='directory/' }}
 
+    NOWRAP!
     \\setp my_variable download('https://modelhost.com/model.safetensors')
 
     When an "output" path is specified, if the file already exists it
@@ -362,6 +384,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'quote': _quote,
             'format_prompt': _format_prompt,
             'format_size': _format_size,
+            'format_model_type': _format_model_type,
+            'format_dtype': _format_dtype,
             'last': _last,
             'first': _first,
             'gen_seeds': _gen_seeds,
@@ -671,10 +695,13 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         Download a file from a URL to the web cache or a specified path,
         and assign the file path to a template variable.
 
+        NOWRAP!
         \\download my_variable https://modelhost.com/model.safetensors
 
+        NOWRAP!
         \\download my_variable https://modelhost.com/model.safetensors -o model.safetensors
 
+        NOWRAP!
         \\download my_variable https://modelhost.com/model.safetensors -o directory/
 
         When an --output path is specified, if the file already exists it will
