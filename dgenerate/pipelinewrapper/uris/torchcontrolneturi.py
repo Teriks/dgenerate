@@ -142,10 +142,12 @@ class TorchControlNetUri:
              use_auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
              sequential_cpu_offload_member: bool = False,
-             model_cpu_offload_member: bool = False) -> diffusers.ControlNetModel:
+             model_cpu_offload_member: bool = False,
+             model_class: type[diffusers.ControlNetModel] | type[
+                 diffusers.SD3ControlNetModel] = diffusers.ControlNetModel) -> \
+            diffusers.ControlNetModel | diffusers.SD3ControlNetModel:
         """
         Load a :py:class:`diffusers.ControlNetModel` from this URI.
-
 
 
         :param dtype_fallback: Fallback datatype if ``dtype`` was not specified in the URI.
@@ -162,16 +164,22 @@ class TorchControlNetUri:
         :param model_cpu_offload_member: This model will be attached to a pipeline
             which will have model cpu offload enabled?
 
+        :param model_class: What class of control net model should be loaded?
+            :py:class:`diffusers.ControlNetModel` or :py:class:`diffusers.SD3ControlNetModel`.
+            The first class is for Stable Diffusion 1 & 2, and the second class is used for
+            Stable Diffusion 3.
+
         :raises ModelNotFoundError: If the model could not be found.
 
-        :return: :py:class:`diffusers.ControlNetModel`
+        :return: :py:class:`diffusers.ControlNetModel` or :py:class:`diffusers.SD3ControlNetModel`
         """
         try:
             return self._load(dtype_fallback,
                               use_auth_token,
                               local_files_only,
                               sequential_cpu_offload_member,
-                              model_cpu_offload_member)
+                              model_cpu_offload_member,
+                              model_class)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
@@ -189,7 +197,9 @@ class TorchControlNetUri:
               use_auth_token: _types.OptionalString = None,
               local_files_only: bool = False,
               sequential_cpu_offload_member: bool = False,
-              model_cpu_offload_member: bool = False) -> diffusers.ControlNetModel:
+              model_cpu_offload_member: bool = False,
+              model_class: type[diffusers.ControlNetModel] | type[
+                  diffusers.SD3ControlNetModel] = diffusers.ControlNetModel) -> diffusers.ControlNetModel | diffusers.SD3ControlNetModel:
 
         if sequential_cpu_offload_member and model_cpu_offload_member:
             # these are used for cache differentiation only
@@ -214,13 +224,12 @@ class TorchControlNetUri:
             _cache.enforce_control_net_cache_constraints(
                 new_control_net_size=estimated_memory_usage)
 
-            new_net: diffusers.ControlNetModel = \
-                diffusers.ControlNetModel.from_single_file(
-                    model_path,
-                    revision=self.revision,
-                    torch_dtype=torch_dtype,
-                    token=use_auth_token,
-                    local_files_only=local_files_only)
+            new_net = model_class.from_single_file(
+                model_path,
+                revision=self.revision,
+                torch_dtype=torch_dtype,
+                token=use_auth_token,
+                local_files_only=local_files_only)
         else:
 
             estimated_memory_usage = _hfutil.estimate_model_memory_use(
@@ -235,21 +244,21 @@ class TorchControlNetUri:
             _cache.enforce_control_net_cache_constraints(
                 new_control_net_size=estimated_memory_usage)
 
-            new_net: diffusers.ControlNetModel = \
-                diffusers.ControlNetModel.from_pretrained(
-                    model_path,
-                    revision=self.revision,
-                    variant=self.variant,
-                    subfolder=self.subfolder,
-                    torch_dtype=torch_dtype,
-                    token=use_auth_token,
-                    local_files_only=local_files_only)
+            new_net = model_class.from_pretrained(
+                model_path,
+                revision=self.revision,
+                variant=self.variant,
+                subfolder=self.subfolder,
+                torch_dtype=torch_dtype,
+                token=use_auth_token,
+                local_files_only=local_files_only)
 
         _messages.debug_log('Estimated Torch ControlNet Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_usage))
 
-        _cache.controlnet_create_update_cache_info(controlnet=new_net,
-                                                   estimated_size=estimated_memory_usage)
+        _cache.controlnet_create_update_cache_info(
+            controlnet=new_net,
+            estimated_size=estimated_memory_usage)
 
         return new_net
 

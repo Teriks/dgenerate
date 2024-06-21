@@ -1037,15 +1037,9 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             raise UnsupportedPipelineConfigError(
                 '--model-type torch-sd3 is not compatible with --unet.'
             )
-        if control_net_uris:
-            raise UnsupportedPipelineConfigError(
-                '--model-type torch-sd3 is not compatible with --control-nets.')
         if textual_inversion_uris:
             raise UnsupportedPipelineConfigError(
                 '--model-type torch-sd3 is not compatible with --textual-inversions.')
-        if lora_uris and pipeline_type == _enums.PipelineType.IMG2IMG:
-            raise UnsupportedPipelineConfigError(
-                '--model-type torch-sd3 is not compatible with --loras in img2img mode.')
 
     # Pipeline class selection
 
@@ -1094,7 +1088,8 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             elif model_type == _enums.ModelType.TORCH_S_CASCADE_DECODER:
                 pipeline_class = diffusers.StableCascadeDecoderPipeline
             elif model_type == _enums.ModelType.TORCH_SD3:
-                pipeline_class = diffusers.StableDiffusion3Pipeline
+                pipeline_class = diffusers.StableDiffusion3Pipeline if not \
+                    control_net_uris else diffusers.StableDiffusion3ControlNetPipeline
             elif control_net_uris:
                 pipeline_class = diffusers.StableDiffusionXLControlNetPipeline if sdxl \
                     else diffusers.StableDiffusionControlNetPipeline
@@ -1106,9 +1101,6 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                 if pix2pix:
                     raise UnsupportedPipelineConfigError(
                         'pix2pix models are not compatible with --control-nets.')
-                if _enums.model_type_is_s_cascade(model_type):
-                    raise UnsupportedPipelineConfigError(
-                        'Stable Cascade does not support the use of --control-nets.')
 
             if pix2pix:
                 pipeline_class = diffusers.StableDiffusionXLInstructPix2PixPipeline if sdxl \
@@ -1125,6 +1117,13 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                 raise UnsupportedPipelineConfigError(
                     'Stable Cascade decoder models do not support img2img.')
             elif model_type == _enums.ModelType.TORCH_SD3:
+                if control_net_uris:
+                    raise UnsupportedPipelineConfigError(
+                        '--model-type torch-sd3 does not currently '
+                        'support img2img mode with ControlNet models.')
+                if lora_uris:
+                    raise UnsupportedPipelineConfigError(
+                        '--model-type torch-sd3 does not currently support --loras in img2img mode.')
                 pipeline_class = diffusers.StableDiffusion3Img2ImgPipeline
             elif control_net_uris:
                 if sdxl:
@@ -1320,6 +1319,8 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             )
 
         control_nets = None
+        control_net_model_class = diffusers.ControlNetModel if not \
+            _enums.model_type_is_sd3(model_type) else diffusers.SD3ControlNetModel
 
         for control_net_uri in control_net_uris:
             parsed_control_net_uri = _uris.TorchControlNetUri.parse(control_net_uri)
@@ -1331,7 +1332,8 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                 dtype_fallback=dtype,
                 local_files_only=local_files_only,
                 sequential_cpu_offload_member=sequential_cpu_offload,
-                model_cpu_offload_member=model_cpu_offload)
+                model_cpu_offload_member=model_cpu_offload,
+                model_class=control_net_model_class)
 
             _messages.debug_log(lambda:
                                 f'Added Torch ControlNet: "{control_net_uri}" '
@@ -1345,7 +1347,11 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             else:
                 control_nets = new_net
 
-        creation_kwargs['controlnet'] = control_nets
+        if _enums.model_type_is_sd3(model_type) and isinstance(control_nets, list):
+            # not handled internally for whatever reason like the other pipelines
+            creation_kwargs['controlnet'] = diffusers.SD3MultiControlNetModel(control_nets)
+        else:
+            creation_kwargs['controlnet'] = control_nets
 
     if _enums.model_type_is_floyd(model_type):
         creation_kwargs['watermarker'] = None
