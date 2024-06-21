@@ -1630,6 +1630,10 @@ class DiffusionPipelineWrapper:
             elif self._model_type == _enums.ModelType.TORCH_S_CASCADE:
                 args['height'] = _types.default(user_args.height, _constants.DEFAULT_S_CASCADE_OUTPUT_HEIGHT)
                 args['width'] = _types.default(user_args.width, _constants.DEFAULT_S_CASCADE_OUTPUT_WIDTH)
+
+                if not _image.is_power_of_two((args['width'], args['height'])):
+                    raise ValueError('Stable Cascade requires an output width and height that is a power of 2.')
+
             elif self._model_type == _enums.ModelType.TORCH_SD3:
                 args['height'] = _types.default(user_args.height, _constants.DEFAULT_SD3_OUTPUT_HEIGHT)
                 args['width'] = _types.default(user_args.width, _constants.DEFAULT_SD3_OUTPUT_WIDTH)
