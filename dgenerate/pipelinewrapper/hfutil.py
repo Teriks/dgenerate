@@ -518,7 +518,8 @@ def estimate_model_memory_use(repo_id: str,
         size_sum = 0
         if 'unet' in directories \
                 or 'prior' in directories \
-                or 'decoder' in directories:
+                or 'decoder' in directories \
+                or 'transformer' in directories:
 
             important_directories = set()
 
@@ -532,6 +533,7 @@ def estimate_model_memory_use(repo_id: str,
                 important_directories.add('unet')
                 important_directories.add('prior')
                 important_directories.add('decoder')
+                important_directories.add('transformer')
 
             if not forced_only and include_vae:
                 important_directories.add('vae')
