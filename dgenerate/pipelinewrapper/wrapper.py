@@ -648,7 +648,7 @@ class DiffusionPipelineWrapper:
                  auth_token: _types.OptionalString = None,
                  local_files_only: bool = False,
                  model_extra_modules=None,
-                 refiner_extra_modules=None,
+                 second_model_extra_modules=None,
                  model_cpu_offload=False,
                  model_sequential_offload: bool = False,
                  sdxl_refiner_cpu_offload: bool = False,
@@ -747,7 +747,7 @@ class DiffusionPipelineWrapper:
         self._recall_main_pipeline = None
         self._recall_refiner_pipeline = None
         self._model_extra_modules = model_extra_modules
-        self._refiner_extra_modules = refiner_extra_modules
+        self._second_model_extra_modules = second_model_extra_modules
 
         if model_cpu_offload and model_sequential_offload:
             raise _pipelines.UnsupportedPipelineConfigError(
@@ -2279,6 +2279,7 @@ class DiffusionPipelineWrapper:
                 self._s_cascade_decoder_scheduler is None else self._s_cascade_decoder_scheduler,
 
                 safety_checker=self._safety_checker,
+                extra_modules=self._second_model_extra_modules,
                 auth_token=self._auth_token,
                 local_files_only=self._local_files_only,
                 vae_tiling=self._vae_tiling,
@@ -2335,11 +2336,11 @@ class DiffusionPipelineWrapper:
                 refiner_extra_modules = {'vae': self._pipeline.vae,
                                          'text_encoder_2': self._pipeline.text_encoder_2}
 
-                if self._refiner_extra_modules is not None:
-                    refiner_extra_modules.update(self._refiner_extra_modules)
+                if self._second_model_extra_modules is not None:
+                    refiner_extra_modules.update(self._second_model_extra_modules)
 
             else:
-                refiner_extra_modules = self._refiner_extra_modules
+                refiner_extra_modules = self._second_model_extra_modules
 
             self._recall_refiner_pipeline = _pipelines.TorchPipelineFactory(
                 pipeline_type=refiner_pipeline_type,

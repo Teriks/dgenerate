@@ -273,9 +273,9 @@ class RenderLoop:
     Extra raw diffusers modules to use in the creation of the main model pipeline.
     """
 
-    refiner_extra_modules: dict[str, typing.Any] = None
+    second_model_extra_modules: dict[str, typing.Any] = None
     """
-    Extra raw diffusers modules to use in the creation of any refiner model pipeline.
+    Extra raw diffusers modules to use in the creation of any refiner or stable cascade decoder model pipeline.
     """
 
     image_processor_loader: _imageprocessors.ImageProcessorLoader
@@ -803,7 +803,7 @@ class RenderLoop:
             auth_token=self.config.auth_token,
             local_files_only=self.config.offline_mode,
             model_extra_modules=self.model_extra_modules,
-            refiner_extra_modules=self.refiner_extra_modules,
+            second_model_extra_modules=self.second_model_extra_modules,
             model_cpu_offload=self.config.model_cpu_offload,
             model_sequential_offload=self.config.model_sequential_offload,
             sdxl_refiner_cpu_offload=bool(self.config.sdxl_refiner_cpu_offload),

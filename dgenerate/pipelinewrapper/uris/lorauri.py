@@ -156,13 +156,22 @@ class LoRAUri:
 
                 model_path = os.path.dirname(file_path)
 
-            pipeline.load_lora_weights(model_path,
-                                       revision=self.revision,
-                                       subfolder=self.subfolder,
-                                       weight_name=self.weight_name,
-                                       local_files_only=local_files_only,
-                                       use_safetensors=True,
-                                       token=use_auth_token)
+            try:
+                pipeline.load_lora_weights(model_path,
+                                           revision=self.revision,
+                                           subfolder=self.subfolder,
+                                           weight_name=self.weight_name,
+                                           local_files_only=local_files_only,
+                                           use_safetensors=True,
+                                           token=use_auth_token)
+            except EnvironmentError:
+                # brute force, try for .bin files
+                pipeline.load_lora_weights(model_path,
+                                           revision=self.revision,
+                                           subfolder=self.subfolder,
+                                           weight_name=self.weight_name,
+                                           local_files_only=local_files_only,
+                                           token=use_auth_token)
 
             if hasattr(pipeline, 'fuse_lora'):
                 pipeline.fuse_lora(lora_scale=self.scale)
