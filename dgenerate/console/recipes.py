@@ -49,7 +49,8 @@ RECIPES = {
         --model-type torch-sd3 {{ auth_token }}
         --dtype float16
         @torchvae[{"label":"VAE File / URI"}]
-        @file[{"label":"LoRa File / URI", "arg":"--loras", "after":";scale=1.0", "file-types":"models"}]
+        @file[{"label":"LoRa File / URI", "arg":"--loras", "file-types":"models"}]
+        @file[{"label":"ControlNet File / URI", "arg":"--control-nets", "after":";scale=1.0", "file-types":"models"}]
         @file[{"label":"Image Seed", "arg":"--image-seeds", "after":"\\n--image-seed-strengths 0.8"}]
         @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":30, "min":1}]
         @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":5, "min":0}]
