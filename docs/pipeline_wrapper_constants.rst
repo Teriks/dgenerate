@@ -175,3 +175,13 @@
     :annotation: = 1024
 
     Default output width for Stable Cascade.
+
+.. data:: DEFAULT_SD3_OUTPUT_HEIGHT
+    :annotation: = 1024
+
+    Default output height for Stable Diffusion 3.
+
+.. data:: DEFAULT_SD3_OUTPUT_WIDTH
+    :annotation: = 1024
+
+    Default output width for Stable Diffusion 3.
