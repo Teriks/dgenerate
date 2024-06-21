@@ -67,6 +67,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v3.8.0/>`_.
     * `Specifying LoRAs`_
     * `Specifying Textual Inversions`_
     * `Specifying Control Nets`_
+    * `Specifying Text Encoders`_
     * `Utilizing CivitAI links and Other Hosted Models`_
     * `Specifying Generation Batch Size`_
     * `Image Processors`_
@@ -250,7 +251,7 @@ Help Output
                             batch they are.
       --text-encoders TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]
                             Specify Text Encoders for the main model using URIs, main models may use one or more
-                            text encoders depending on on the --model-type value and other dgenerate arguments.
+                            text encoders depending on the --model-type value and other dgenerate arguments.
                             See: --text-encoders help for information about what text encoders are needed for
                             your invocation. Examples: "CLIPTextModel;model=huggingface/text_encoder",
                             "CLIPTextModelWithProjection;model=huggingface/text_encoder;revision=main",
@@ -2450,6 +2451,7 @@ ControlNet models are supported for these model types:
     * ``--model-type torch``
     * ``--model-type flax``
     * ``--model-type torch-sdxl``
+    * ``--model-type torch-sd3`` (Limited to power of 2 sized images, img2img and inpainting not supported)
 
 You can provide a huggingface repository slug / blob link, .pt, .pth, .bin, .ckpt, or .safetensors files.
 
@@ -2599,6 +2601,105 @@ If you are loading a .safetensors or other file from a path on disk, simply do:
     dgenerate runwayml/stable-diffusion-v1-5 \
     --prompts "Syntax example" \
     --control-nets "my_cn_model.safetensors"
+
+
+Specifying Text Encoders
+========================
+
+Diffusion pipelines supported by dgenerate may use a varying number of
+text encoder sub models, currently up to 3. ``--model-type torch-sd3``
+for instance uses 3 text encoder sub models, all of which can be
+individually specified from the command line if desired.
+
+To specify a Text Encoder models directly use ``--text-encoders`` for
+the primary model and ``--text-encoders2`` for the SDXL Refiner or
+Stable Cascade decoder.
+
+Text Encoder URIs do not support loading from blob links or a single file,
+text encoders must be loaded from a huggingface slug or a folder on disk
+containing the models and configuration.
+
+The URI syntax for ``--text-encoders`` is ``TextEncoderClass;model=(huggingface repository slug or folder path)``
+
+Loading arguments available when specifying a Text Encoder for torch ``--model-type`` values
+are: ``model``, ``revision``, ``variant``, ``subfolder``, and ``dtype``
+
+Loading arguments available when specifying Text Encoder for flax ``--model-type`` values
+are: ``model``, ``revision``, ``subfolder``, ``dtype``
+
+The other named arguments are available when loading from a huggingface repository or folder
+that may or may not be a local git repository on disk.
+
+Available encoder classes for torch models are:
+
+* CLIPTextModel
+* CLIPTextModelWithProjection
+* T5EncoderModel
+
+Available encoder classes for flax models are:
+
+* FlaxCLIPTextModel
+
+You can query the text encoder types and position for a model by passing ``help``
+as an argument to ``--text-encoders`` or ``--text-encoders2``. This feature
+may not be used for both arguments simultaneously, and also may not be used
+when passing ``help`` or ``helpargs`` to any ``--scheduler`` type argument.
+
+.. code-block:: bash
+
+    # ask for text encoder help on the main model that is mentioned
+
+    dgenerate https://huggingface.co/stabilityai/stable-diffusion-3-medium/blob/main/sd3_medium_incl_clips.safetensors \
+    --model-type torch-sd3 \
+    --variant fp16 \
+    --dtype float16 \
+    --text-encoders help
+
+    # outputs:
+
+    # Text encoder type help:
+    #
+    #     0 = CLIPTextModelWithProjection
+    #     1 = CLIPTextModelWithProjection
+    #     2 = T5EncoderModel
+
+    # this means that there are 3 text encoders that we
+    # could potentially specify manually in the order
+    # displayed for this model
+
+When specifying multiple text encoders, a special syntax is allowed to indicate that
+a text encoder should be loaded from defaults, this syntax involves the plus
+symbol. When a plus symbol is encountered it is regarded as "use default".
+
+For instance in the example below, only the last of the three text encoders
+involved in the Stable Diffusion 3 pipeline is specified, as it is the only
+one not included with the main model file.
+
+This text encoder is loaded from a subfolder of the Stable Diffusion 3
+repository on huggingface.
+
+.. code-block:: bash
+
+    # This is an example of individually specifying text encoders
+    # specifically for stable diffusion 3, this model from the blob
+    # link includes the clip encoders, so we only need to specify
+    # the T5 encoder, which is encoder number 3, the + symbols indicate
+    # the first 2 encoders are assigned their default value, they are
+    # loaded from the checkpoint file for the main model
+
+    dgenerate https://huggingface.co/stabilityai/stable-diffusion-3-medium/blob/main/sd3_medium_incl_clips.safetensors \
+    --model-type torch-sd3 \
+    --variant fp16 \
+    --dtype float16 \
+    --inference-steps 30 \
+    --guidance-scales 5.00 \
+    --text-encoders + + \
+        T5EncoderModel;model=stabilityai/stable-diffusion-3-medium-diffusers;subfolder=text_encoder_3 \
+    --clip-skips 0 \
+    --gen-seeds 2 \
+    --output-path output \
+    --model-sequential-offload \
+    --prompts "a horse outside a barn"
 
 
 Utilizing CivitAI links and Other Hosted Models
