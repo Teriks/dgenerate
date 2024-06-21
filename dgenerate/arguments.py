@@ -468,7 +468,7 @@ def _create_parser(add_model=True, add_help=True):
         return val
 
     actions.append(parser.add_argument(
-        '--text-encoders', nargs='+', type=_type_text_encoder,
+        '-te', '--text-encoders', nargs='+', type=_type_text_encoder,
         action='store', default=None, metavar='TEXT_ENCODER_URIS', dest='text_encoder_uris',
         help=
         f"""Specify Text Encoders for the main model using URIs, main models 
@@ -508,7 +508,7 @@ def _create_parser(add_model=True, add_help=True):
             For example, a downloaded repository folder from huggingface."""))
 
     actions.append(parser.add_argument(
-        '--text-encoders2', nargs='+', type=_type_text_encoder,
+        '-te2', '--text-encoders2', nargs='+', type=_type_text_encoder,
         action='store', default=None, metavar='TEXT_ENCODER_URIS', dest='second_text_encoder_uris',
         help="""--text-encoders but for the SDXL refiner or Stable Cascade decoder model."""))
 
