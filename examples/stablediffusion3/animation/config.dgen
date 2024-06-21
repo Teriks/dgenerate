@@ -1,0 +1,25 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.8.0
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %} !END
+
+
+stabilityai/stable-diffusion-3-medium-diffusers
+--model-type torch-sd3
+--dtype float16
+--inference-steps 30
+--guidance-scales 8
+--image-seeds "../../media/kitten.gif"
+--image-seed-strengths 0.35
+--output-size 496x272
+--no-aspect
+--gen-seeds 2
+--clip-skips 0
+--output-path output
+--model-sequential-offload
+--prompts "A 3D rendering of a small orange cat"
