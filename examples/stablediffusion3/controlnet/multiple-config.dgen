@@ -13,6 +13,8 @@
 
 stabilityai/stable-diffusion-3-medium-diffusers
 --model-type torch-sd3
+--variant fp16
+--dtype float16
 --inference-steps 40
 --guidance-scales 8
 --output-path multiple

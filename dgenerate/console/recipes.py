@@ -47,6 +47,7 @@ RECIPES = {
         
         @file[{"label":"Model File / HF Slug", "default": "stabilityai/stable-diffusion-3-medium-diffusers", "optional":false, "file-types":"models"}]
         --model-type torch-sd3 {{ auth_token }}
+        --variant fp16
         --dtype float16
         @torchvae[{"label":"VAE File / URI"}]
         @file[{"label":"LoRa File / URI", "arg":"--loras", "file-types":"models"}]

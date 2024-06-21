@@ -17,6 +17,7 @@
 
 https://huggingface.co/stabilityai/stable-diffusion-3-medium/blob/main/sd3_medium_incl_clips.safetensors
 --model-type torch-sd3
+--variant fp16
 --dtype float16
 --inference-steps 30
 --guidance-scales 5.00
