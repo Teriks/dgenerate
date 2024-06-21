@@ -314,6 +314,15 @@ def fetch_model_files_with_size(repo_id: str,
         unet = find_diffuser_weights(
             os.path.join(subfolder, 'unet') if subfolder else 'unet')
 
+        transformer = find_diffuser_weights(
+            os.path.join(subfolder, 'transformer') if subfolder else 'transformer')
+
+        prior = find_diffuser_weights(
+            os.path.join(subfolder, 'prior') if subfolder else 'prior')
+
+        decoder = find_diffuser_weights(
+            os.path.join(subfolder, 'decoder') if subfolder else 'decoder')
+
         lora_search_dir = subfolder if subfolder else ''
 
         lora = _hf_try_to_load_from_cache(
@@ -364,6 +373,15 @@ def fetch_model_files_with_size(repo_id: str,
             # found in the unet folder, IE, top level
             yield from yield_with_check(
                 enumerate_directory(str(pathlib.Path(unet).parents[1])))
+        elif transformer:
+            yield from yield_with_check(
+                enumerate_directory(str(pathlib.Path(transformer).parents[1])))
+        elif prior:
+            yield from yield_with_check(
+                enumerate_directory(str(pathlib.Path(prior).parents[1])))
+        elif decoder:
+            yield from yield_with_check(
+                enumerate_directory(str(pathlib.Path(decoder).parents[1])))
         elif lora:
             # One file probably a lora
             yield from yield_with_check(
