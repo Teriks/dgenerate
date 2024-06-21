@@ -8,19 +8,20 @@
     \exit
 {% endif %} !END
 
-# multiple loras can be loaded with SD3 but lora scale
-# is currently not supported, there are very few loras
-# for SD3 on huggingface at the moment. This generates
-# a dog made out of yarn.
 
 stabilityai/stable-diffusion-3-medium-diffusers
 --model-type torch-sd3
---loras linoyts/yarn_style_sd3_lora_2500
+--variant fp16
 --dtype float16
+--batch-size 4
+--batch-grid-size 2x2
 --inference-steps 30
 --guidance-scales 5.00
+--output-size 512
 --clip-skips 0
 --gen-seeds 2
+--vae-tiling
+--vae-slicing
 --output-path output
 --model-sequential-offload
---prompts "a photo of TOK yarn art dog"
+--prompts "a sign that says test"
