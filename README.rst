@@ -4049,8 +4049,10 @@ such as VAEs etc. outside of relying on the caching system.
     # vae
     # text_encoder
     # text_encoder_2
+    # text_encoder_3
     # tokenizer
     # tokenizer_2
+    # tokenizer_3
     # safety_checker
     # feature_extractor
     # controlnet
