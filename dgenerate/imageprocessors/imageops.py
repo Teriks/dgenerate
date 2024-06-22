@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import re
+import typing
 
 import PIL.Image
 import PIL.ImageOps
@@ -282,8 +283,8 @@ class LetterboxProcessor(_imageprocessor.ImageProcessor):
     def __init__(self,
                  box_size: str,
                  box_is_padding: bool = False,
-                 box_color: str | None = None,
-                 inner_size: str | None = None,
+                 box_color: typing.Optional[str] = None,
+                 inner_size: typing.Optional[str] = None,
                  aspect_correct: bool = True,
                  pre_resize: bool = False,
                  **kwargs):
