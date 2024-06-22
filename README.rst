@@ -102,8 +102,8 @@ Help Output
                      [--sub-command-help [SUB_COMMAND ...]] [-ofm] [--templates-help [VARIABLE_NAME ...]]
                      [--directives-help [DIRECTIVE_NAME ...]] [--functions-help [FUNCTION_NAME ...]]
                      [-mt MODEL_TYPE] [-rev BRANCH] [-var VARIANT] [-sbf SUBFOLDER] [-atk TOKEN] [-bs INTEGER]
-                     [-bgs SIZE] [--text-encoders TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]]
-                     [--text-encoders2 TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]] [-un UNET_URI] [-un2 UNET_URI]
+                     [-bgs SIZE] [-te TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]]
+                     [-te2 TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]] [-un UNET_URI] [-un2 UNET_URI]
                      [-vae VAE_URI] [-vt] [-vs] [-lra LORA_URI [LORA_URI ...]] [-ti URI [URI ...]]
                      [-cn CONTROL_NET_URI [CONTROL_NET_URI ...]] [-sch SCHEDULER_URI] [-mqo | -mco]
                      [--s-cascade-decoder MODEL_URI] [-dqo] [-dco]
@@ -249,7 +249,7 @@ Help Output
                             specified with a --batch-size greater than 1, images will be written individually
                             with an image number suffix (image_N) in the filename signifying which image in the
                             batch they are.
-      --text-encoders TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]
+      -te TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...], --text-encoders TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]
                             Specify Text Encoders for the main model using URIs, main models may use one or more
                             text encoders depending on the --model-type value and other dgenerate arguments.
                             See: --text-encoders help for information about what text encoders are needed for
@@ -275,7 +275,7 @@ Help Output
                             you wish to load weights directly from a path on disk, you must point this argument
                             at the folder they exist in, which should also contain the config.json file for the
                             Text Encoder. For example, a downloaded repository folder from huggingface.
-      --text-encoders2 TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]
+      -te2 TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...], --text-encoders2 TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]
                             --text-encoders but for the SDXL refiner or Stable Cascade decoder model.
       -un UNET_URI, --unet UNET_URI
                             Specify a UNet using a URI. Examples: "huggingface/unet",
@@ -2619,13 +2619,19 @@ Text Encoder URIs do not support loading from blob links or a single file,
 text encoders must be loaded from a huggingface slug or a folder on disk
 containing the models and configuration.
 
+The syntax for specifying text encoders is similar to that of ``--vae``
+
 The URI syntax for ``--text-encoders`` is ``TextEncoderClass;model=(huggingface repository slug or folder path)``
 
 Loading arguments available when specifying a Text Encoder for torch ``--model-type`` values
 are: ``model``, ``revision``, ``variant``, ``subfolder``, and ``dtype``
 
+The ``variant`` argument defaults to the value of ``--variant``
+
 Loading arguments available when specifying Text Encoder for flax ``--model-type`` values
 are: ``model``, ``revision``, ``subfolder``, ``dtype``
+
+In both cases, the ``dtype`` argument defaults to the value of ``--dtype``
 
 The other named arguments are available when loading from a huggingface repository or folder
 that may or may not be a local git repository on disk.
