@@ -16,8 +16,8 @@ runwayml/stable-diffusion-v1-5
 --control-nets "lllyasviel/sd-controlnet-openpose;scale=1.0;end=0.5" "lllyasviel/sd-controlnet-canny;scale=0.5;start=0.5"
 --image-seeds "../../media/man-fighting-pose.jpg, ../../media/man-fighting-pose.jpg"
 --control-image-processors \
-"openpose;include-hand=true;include-face=true;output-file=multiple/boxer-openpose.png" + \
-"canny;lower=50;upper=100;output-file=multiple/boxer-canny.png"
+    "openpose;include-hand=true;include-face=true;output-file=multiple/boxer-openpose.png" + \
+    "canny;lower=50;upper=100;output-file=multiple/boxer-canny.png"
 
 
 # If you were to specify "../../media/man-fighting-pose.jpg" only once in the --image-seeds specification,
