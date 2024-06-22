@@ -207,7 +207,7 @@ def resize_image(img: PIL.Image.Image,
 def letterbox_image(img,
                     box_size: _types.Size,
                     box_is_padding: bool = False,
-                    box_color: str | None = None,
+                    box_color: str | int | float | tuple[int, int, int] | tuple[float, float, float] | None = None,
                     inner_size: _types.Size = None,
                     aspect_correct=True):
     """
@@ -217,7 +217,8 @@ def letterbox_image(img,
     :param box_size: Size of the outer letterbox
     :param box_is_padding: The ``letterbox_size`` argument should be interpreted as padding?
     :param box_color: What color to use for the letter box background, the default is black.
-        This should be specified as a HEX color code.
+        This should be specified as a HEX color code, or as a 3 tuple of integer or floating
+        point RGB values, or as a single integer or float representing all color channels.
     :param inner_size: The size of the inner image
     :param aspect_correct: Should the size of the inner image be aspect correct?
     :return: The letterboxed image
