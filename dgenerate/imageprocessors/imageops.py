@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import re
 
 import PIL.Image
 import PIL.ImageOps
@@ -64,6 +65,8 @@ class MirrorFlipProcessor(_imageprocessor.ImageProcessor):
         Mirrors or flips the image depending on what name was used to invoke this
         imageprocessor implementation.
 
+        Executes if ``pre_resize`` constructor argument was ``True``.
+
         :param image: image to process
         :param resize_resolution: purely informational, is unused by this imageprocessor
         :return: the mirrored or flipped image.
@@ -76,6 +79,8 @@ class MirrorFlipProcessor(_imageprocessor.ImageProcessor):
         """
         Mirrors or flips the image depending on what name was used to invoke this
         imageprocessor implementation.
+
+        Executes if ``pre_resize`` constructor argument was ``False``.
 
         :param image: image to process
         :return: the mirrored or flipped image.
@@ -119,6 +124,8 @@ class SimpleColorProcessor(_imageprocessor.ImageProcessor):
         """
         Invert or grayscale the image depending on which name was used to invoke this imageprocessor.
 
+        Executes if ``pre_resize`` constructor argument was ``True``.
+
         :param image: image to process
         :param resize_resolution: purely informational, is unused by this imageprocessor
         :return: the inverted or grayscale image
@@ -130,6 +137,8 @@ class SimpleColorProcessor(_imageprocessor.ImageProcessor):
     def impl_post_resize(self, image: PIL.Image.Image):
         """
         Invert or grayscale the image depending on which name was used to invoke this imageprocessor.
+
+        Executes if ``pre_resize`` constructor argument was ``False``.
 
         :param image: image to process
         :return: the inverted or grayscale image
@@ -168,7 +177,7 @@ class PosterizeProcessor(_imageprocessor.ImageProcessor):
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         """
-        Posterize operation is preformed by this method.
+        Posterize operation is preformed by this method if ``pre_resize`` constructor argument was ``True``.
 
         :param image: image to process
         :param resize_resolution: purely informational, is unused by this imageprocessor
@@ -180,7 +189,7 @@ class PosterizeProcessor(_imageprocessor.ImageProcessor):
 
     def impl_post_resize(self, image: PIL.Image.Image):
         """
-        Posterize operation is preformed by this method.
+        Posterize operation is preformed by this method if ``pre_resize`` constructor argument was ``False``.
 
         :param image: image to process
         :return: the posterized image
@@ -218,7 +227,7 @@ class SolarizeProcessor(_imageprocessor.ImageProcessor):
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         """
-        Solarize operation is preformed by this method.
+        Solarize operation is preformed by this method if ``pre_resize`` constructor argument was ``True``.
 
         :param image: image to process
         :param resize_resolution: purely informational, is unused by this imageprocessor
@@ -230,7 +239,7 @@ class SolarizeProcessor(_imageprocessor.ImageProcessor):
 
     def impl_post_resize(self, image: PIL.Image.Image):
         """
-        Solarize operation is preformed by this method.
+        Solarize operation is preformed by this method if ``pre_resize`` constructor argument was ``False``.
 
         :param image: image to process
         :return: the solarized image
@@ -262,6 +271,14 @@ class LetterboxProcessor(_imageprocessor.ImageProcessor):
 
     NAMES = ['letterbox']
 
+    @staticmethod
+    def _match_hex_color(color):
+        pattern = r'^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$'
+        if re.match(pattern, color):
+            return True
+        else:
+            return False
+
     def __init__(self,
                  box_size: str,
                  box_is_padding: bool = False,
@@ -279,6 +296,9 @@ class LetterboxProcessor(_imageprocessor.ImageProcessor):
         :param aspect_correct: Should the size of the inner image be aspect correct?
         """
         super().__init__(**kwargs)
+
+        if box_color is not None and not self._match_hex_color(box_color):
+            raise self.argument_error('box-color must be a HEX color code.')
 
         try:
             self._box_size = _textprocessing.parse_image_size(box_size)
@@ -298,7 +318,7 @@ class LetterboxProcessor(_imageprocessor.ImageProcessor):
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         """
-        Letterbox operation is preformed by this method.
+        Letterbox operation is preformed by this method if ``pre_resize`` constructor argument was ``True``.
 
         :param image: image to process
         :param resize_resolution: purely informational, is unused by this imageprocessor
@@ -315,7 +335,7 @@ class LetterboxProcessor(_imageprocessor.ImageProcessor):
 
     def impl_post_resize(self, image: PIL.Image.Image):
         """
-        Letterbox operation is preformed by this method.
+        Letterbox operation is preformed by this method if ``pre_resize`` constructor argument was ``False``.
 
         :param image: image to process
         :return: the solarized image
