@@ -1948,7 +1948,7 @@ If your weights file exists in a subfolder of the repository, use the named argu
 
 
 If you want to specify the model precision, use the named argument ``dtype``,
-accepted values are the same as ``--dtype``, IE: 'float32', 'float16', 'auto'
+accepted values are the same as ``--dtype``, IE: ``float32``, ``float16``, ``auto``
 
 .. code-block:: bash
 
