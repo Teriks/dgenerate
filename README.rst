@@ -2628,7 +2628,7 @@ are: ``model``, ``revision``, ``variant``, ``subfolder``, and ``dtype``
 
 The ``variant`` argument defaults to the value of ``--variant``
 
-Loading arguments available when specifying Text Encoder for flax ``--model-type`` values
+Loading arguments available when specifying a Text Encoder for flax ``--model-type`` values
 are: ``model``, ``revision``, ``subfolder``, ``dtype``
 
 In both cases, the ``dtype`` argument defaults to the value of ``--dtype``
