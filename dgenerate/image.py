@@ -209,7 +209,7 @@ def letterbox_image(img,
                     box_is_padding: bool = False,
                     box_color: str | int | float | tuple[int, int, int] | tuple[float, float, float] | None = None,
                     inner_size: _types.Size = None,
-                    aspect_correct=True):
+                    aspect_correct: bool = True):
     """
     Letterbox an image on to a colored background.
 
