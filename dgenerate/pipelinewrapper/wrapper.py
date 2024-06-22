@@ -1435,7 +1435,6 @@ class DiffusionPipelineWrapper:
 
         args = dict()
         args['guidance_scale'] = float(_types.default(user_args.guidance_scale, _constants.DEFAULT_GUIDANCE_SCALE))
-
         args['num_inference_steps'] = int(_types.default(user_args.inference_steps, _constants.DEFAULT_INFERENCE_STEPS))
 
         def set_strength():
@@ -1455,7 +1454,7 @@ class DiffusionPipelineWrapper:
             control_images = user_args.control_images
 
             if not control_images:
-                raise ValueError(
+                raise _pipelines.UnsupportedPipelineConfigError(
                     'Must provide control_images argument when using ControlNet models.')
 
             control_images_cnt = len(control_images)
@@ -1464,15 +1463,22 @@ class DiffusionPipelineWrapper:
             if control_images_cnt != control_net_uris_cnt:
                 # User provided a mismatched number of ControlNet models and control_images, behavior is undefined.
 
-                raise ValueError(
+                raise _pipelines.UnsupportedPipelineConfigError(
                     f'You specified {control_images_cnt} control guidance images and '
                     f'only {control_net_uris_cnt} ControlNet URIs. The amount of '
                     f'control guidance images must be equal to the amount of ControlNet URIs.')
 
+            first_control_image_size = control_images[0].size
+
+            # Check if all control images have the same size
+            for img in control_images[1:]:
+                if img.size != first_control_image_size:
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        "All control guidance images must have the same dimension.")
+
             # They should always be of equal dimension, anything
             # else results in an error down the line.
             args['width'] = _types.default(user_args.width, control_images[0].width)
-
             args['height'] = _types.default(user_args.height, control_images[0].height)
 
             if self._pipeline_type == _enums.PipelineType.TXT2IMG:
@@ -1525,8 +1531,9 @@ class DiffusionPipelineWrapper:
 
             if floyd_og_image_needed:
                 if user_args.floyd_image is None:
-                    raise ValueError('must specify "floyd_image" to disambiguate this operation, '
-                                     '"floyd_image" being the output of a previous floyd stage.')
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        'must specify "floyd_image" to disambiguate this operation, '
+                        '"floyd_image" being the output of a previous floyd stage.')
 
                 args['original_image'] = image
                 args['image'] = user_args.floyd_image
@@ -1632,7 +1639,8 @@ class DiffusionPipelineWrapper:
                 args['width'] = _types.default(user_args.width, _constants.DEFAULT_S_CASCADE_OUTPUT_WIDTH)
 
                 if not _image.is_power_of_two((args['width'], args['height'])):
-                    raise ValueError('Stable Cascade requires an output width and height that is a power of 2.')
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        'Stable Cascade requires an output width and height that is a power of 2.')
 
             elif self._model_type == _enums.ModelType.TORCH_SD3:
                 args['height'] = _types.default(user_args.height, _constants.DEFAULT_SD3_OUTPUT_HEIGHT)
