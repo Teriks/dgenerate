@@ -22,7 +22,9 @@
 import PIL.Image
 import PIL.ImageOps
 
+import dgenerate.image as _image
 import dgenerate.imageprocessors.imageprocessor as _imageprocessor
+import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 
 
@@ -30,6 +32,9 @@ class MirrorFlipProcessor(_imageprocessor.ImageProcessor):
     """
     Implements the "mirror" and "flip" PIL.ImageOps operations
     as an image imageprocessor
+
+    The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
+    This defaults to False, meaning the image is processed after dgenerate is done resizing it.
     """
 
     NAMES = ['mirror', 'flip']
@@ -41,7 +46,7 @@ class MirrorFlipProcessor(_imageprocessor.ImageProcessor):
         if loaded_by_name == 'flip':
             return 'Flip the input image vertically.'
 
-    def __init__(self, **kwargs):
+    def __init__(self, pre_resize: bool = False, **kwargs):
         """
         :param kwargs: forwarded to base class
         """
@@ -52,6 +57,8 @@ class MirrorFlipProcessor(_imageprocessor.ImageProcessor):
         elif self.loaded_by_name == 'mirror':
             self._func = PIL.ImageOps.mirror
 
+        self._pre_resize = pre_resize
+
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         """
         Mirrors or flips the image depending on what name was used to invoke this
@@ -61,15 +68,20 @@ class MirrorFlipProcessor(_imageprocessor.ImageProcessor):
         :param resize_resolution: purely informational, is unused by this imageprocessor
         :return: the mirrored or flipped image.
         """
-        return self._func(image)
+        if self._pre_resize:
+            return self._func(image)
+        return image
 
     def impl_post_resize(self, image: PIL.Image.Image):
         """
-        Post resize, for this imageprocessor nothing happens post-resize.
+        Mirrors or flips the image depending on what name was used to invoke this
+        imageprocessor implementation.
 
         :param image: image to process
-        :return: the same image
+        :return: the mirrored or flipped image.
         """
+        if not self._pre_resize:
+            return self._func(image)
         return image
 
 
@@ -77,6 +89,9 @@ class SimpleColorProcessor(_imageprocessor.ImageProcessor):
     """
     Implements the "grayscale" and "invert" PIL.ImageOps operations
     as an image imageprocessor.
+
+    The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
+    This defaults to False, meaning the image is processed after dgenerate is done resizing it.
     """
 
     NAMES = ['grayscale', 'invert']
@@ -88,7 +103,7 @@ class SimpleColorProcessor(_imageprocessor.ImageProcessor):
         if loaded_by_name == 'invert':
             return 'Invert the colors of the input image.'
 
-    def __init__(self, **kwargs):
+    def __init__(self, pre_resize: bool = False, **kwargs):
         """
         :param kwargs: forwarded to base class
         """
@@ -98,14 +113,18 @@ class SimpleColorProcessor(_imageprocessor.ImageProcessor):
         elif self.loaded_by_name == 'invert':
             self._func = PIL.ImageOps.invert
 
+        self._pre_resize = pre_resize
+
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         """
-        Pre resize, for this imageprocessor nothing happens pre-resize.
+        Invert or grayscale the image depending on which name was used to invoke this imageprocessor.
 
         :param image: image to process
         :param resize_resolution: purely informational, is unused by this imageprocessor
-        :return: the same image
+        :return: the inverted or grayscale image
         """
+        if self._pre_resize:
+            return self._func(image)
         return image
 
     def impl_post_resize(self, image: PIL.Image.Image):
@@ -115,7 +134,10 @@ class SimpleColorProcessor(_imageprocessor.ImageProcessor):
         :param image: image to process
         :return: the inverted or grayscale image
         """
-        return self._func(image)
+
+        if not self._pre_resize:
+            return self._func(image)
+        return image
 
 
 class PosterizeProcessor(_imageprocessor.ImageProcessor):
@@ -123,11 +145,14 @@ class PosterizeProcessor(_imageprocessor.ImageProcessor):
     Posterize the input image with PIL.ImageOps.posterize.
 
     Accepts the argument 'bits', an integer value from 1 to 8.
+
+    The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
+    This defaults to False, meaning the image is processed after dgenerate is done resizing it.
     """
 
     NAMES = ['posterize']
 
-    def __init__(self, bits: int, **kwargs):
+    def __init__(self, bits: int, pre_resize: bool = False, **kwargs):
         """
         :param bits: required argument, integer value from 1 to 8
         :param kwargs: forwarded to base class
@@ -135,6 +160,7 @@ class PosterizeProcessor(_imageprocessor.ImageProcessor):
         super().__init__(**kwargs)
 
         self._bits = bits
+        self._pre_resize = pre_resize
 
         if self._bits < 1 or self._bits > 8:
             raise self.argument_error(
@@ -148,15 +174,19 @@ class PosterizeProcessor(_imageprocessor.ImageProcessor):
         :param resize_resolution: purely informational, is unused by this imageprocessor
         :return: the posterized image
         """
-        return PIL.ImageOps.posterize(image, self._bits)
+        if self._pre_resize:
+            return PIL.ImageOps.posterize(image, self._bits)
+        return image
 
     def impl_post_resize(self, image: PIL.Image.Image):
         """
-        Post resize, for this imageprocessor nothing happens post-resize.
+        Posterize operation is preformed by this method.
 
         :param image: image to process
-        :return: the same image
+        :return: the posterized image
         """
+        if not self._pre_resize:
+            return PIL.ImageOps.posterize(image, self._bits)
         return image
 
 
@@ -165,11 +195,14 @@ class SolarizeProcessor(_imageprocessor.ImageProcessor):
     Solarize the input image with PIL.ImageOps.solarize.
 
     Accepts the argument "threshold" which is an integer value from 0 to 255.
+
+    The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
+    This defaults to False, meaning the image is processed after dgenerate is done resizing it.
     """
 
     NAMES = ['solarize']
 
-    def __init__(self, threshold: int = 128, **kwargs):
+    def __init__(self, threshold: int = 128, pre_resize: bool = False, **kwargs):
         """
         :param threshold: integer value from 0 to 255, default is 128
         :param kwargs: forwarded to base class
@@ -177,6 +210,7 @@ class SolarizeProcessor(_imageprocessor.ImageProcessor):
         super().__init__(**kwargs)
 
         self._threshold = threshold
+        self._pre_resize = pre_resize
 
         if self._threshold < 0 or self._threshold > 255:
             raise self.argument_error(
@@ -190,15 +224,109 @@ class SolarizeProcessor(_imageprocessor.ImageProcessor):
         :param resize_resolution: purely informational, is unused by this imageprocessor
         :return: the solarized image
         """
-        return PIL.ImageOps.solarize(image, self._threshold)
+        if self._pre_resize:
+            return PIL.ImageOps.solarize(image, self._threshold)
+        return image
 
     def impl_post_resize(self, image: PIL.Image.Image):
         """
-        Post resize, for this imageprocessor nothing happens post-resize.
+        Solarize operation is preformed by this method.
 
         :param image: image to process
-        :return: the same image
+        :return: the solarized image
         """
+        if not self._pre_resize:
+            return PIL.ImageOps.solarize(image, self._threshold)
+        return image
+
+
+class LetterboxProcessor(_imageprocessor.ImageProcessor):
+    """
+    Letterbox an image.
+
+    The "box-size" argument is the size of the outer letterbox
+
+    The "box-is-padding" argument can be used to indicate that "letterbox_size" should be interpreted as padding.
+
+    The "box-color" argument specifies the color to use for the letter box background, the default is black.
+    This should be specified in as a HEX color code.
+
+    The "inner-size" argument specifies the size of the inner image.
+
+    The "aspect-correct" argument can be used to determine if the aspect ratio
+    of the inner image is maintained or not.
+
+    The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
+    This defaults to False, meaning the image is processed after dgenerate is done resizing it.
+    """
+
+    NAMES = ['letterbox']
+
+    def __init__(self,
+                 box_size: str,
+                 box_is_padding: bool = False,
+                 box_color: str | None = None,
+                 inner_size: str | None = None,
+                 aspect_correct: bool = True,
+                 pre_resize: bool = False,
+                 **kwargs):
+        """
+        :param box_size: Size of the outer letterbox
+        :param box_is_padding: The ``letterbox_size`` argument should be interpreted as padding?
+        :param box_color: What color to use for the letter box background, the default is black.
+            This should be specified in as a HEX color code.
+        :param inner_size: The size of the inner image
+        :param aspect_correct: Should the size of the inner image be aspect correct?
+        """
+        super().__init__(**kwargs)
+
+        try:
+            self._box_size = _textprocessing.parse_image_size(box_size)
+
+            self._box_is_padding = box_is_padding
+            self._box_color = box_color
+
+            if inner_size:
+                self._inner_size = _textprocessing.parse_image_size(inner_size)
+            else:
+                self._inner_size = None
+        except ValueError as e:
+            raise self.argument_error(str(e))
+
+        self._aspect_correct = aspect_correct
+        self._pre_resize = pre_resize
+
+    def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
+        """
+        Letterbox operation is preformed by this method.
+
+        :param image: image to process
+        :param resize_resolution: purely informational, is unused by this imageprocessor
+        :return: the solarized image
+        """
+        if self._pre_resize:
+            return _image.letterbox_image(image,
+                                          box_size=self._box_size,
+                                          box_is_padding=self._box_is_padding,
+                                          box_color=self._box_color,
+                                          inner_size=self._inner_size,
+                                          aspect_correct=self._aspect_correct)
+        return image
+
+    def impl_post_resize(self, image: PIL.Image.Image):
+        """
+        Letterbox operation is preformed by this method.
+
+        :param image: image to process
+        :return: the solarized image
+        """
+        if not self._pre_resize:
+            return _image.letterbox_image(image,
+                                          box_size=self._box_size,
+                                          box_is_padding=self._box_is_padding,
+                                          box_color=self._box_color,
+                                          inner_size=self._inner_size,
+                                          aspect_correct=self._aspect_correct)
         return image
 
 

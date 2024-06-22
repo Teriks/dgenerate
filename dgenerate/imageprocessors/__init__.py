@@ -30,7 +30,8 @@ from .imageops import \
     PosterizeProcessor, \
     SolarizeProcessor, \
     MirrorFlipProcessor, \
-    SimpleColorProcessor
+    SimpleColorProcessor, \
+    LetterboxProcessor
 from .imageprocessor import ImageProcessor
 from .imageprocessorchain import ImageProcessorChain
 from .imageprocessorloader import ImageProcessorLoader

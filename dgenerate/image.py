@@ -204,6 +204,50 @@ def resize_image(img: PIL.Image.Image,
     return r
 
 
+def letterbox_image(img,
+                    box_size: _types.Size,
+                    box_is_padding: bool = False,
+                    box_color: str | None = None,
+                    inner_size: _types.Size = None,
+                    aspect_correct=True):
+    """
+    Letterbox an image on to a colored background.
+
+    :param img: The image to letterbox
+    :param box_size: Size of the outer letterbox
+    :param box_is_padding: The ``letterbox_size`` argument should be interpreted as padding?
+    :param box_color: What color to use for the letter box background, the default is black.
+        This should be specified as a HEX color code.
+    :param inner_size: The size of the inner image
+    :param aspect_correct: Should the size of the inner image be aspect correct?
+    :return: The letterboxed image
+    """
+    if inner_size is None:
+        inner_size = img.size
+
+    if box_is_padding:
+        box_size = (inner_size[0] + 2 * box_size[0], inner_size[1] + 2 * box_size[1])
+
+    inner_size = (min(inner_size[0], box_size[0]), min(inner_size[1], box_size[1]))
+
+    if box_color is None:
+        box_color = 0
+
+    letterbox = PIL.Image.new('RGB', box_size, box_color)
+
+    img = resize_image(img, inner_size, aspect_correct=aspect_correct)
+
+    x = (box_size[0] - img.size[0]) // 2
+    y = (box_size[1] - img.size[1]) // 2
+
+    letterbox.paste(img, (x, y))
+
+    if hasattr(img, 'filename'):
+        letterbox.filename = img.filename
+
+    return letterbox
+
+
 def to_rgb(img: PIL.Image.Image):
     """
     Convert a :py:class:`PIL.Image.Image` to RGB format while preserving its filename attribute.
