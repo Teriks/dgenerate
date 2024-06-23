@@ -182,7 +182,7 @@ def simple_cache_miss_debug(title: str, cache_key: str, new: typing.Any):
 
 def struct_hasher(obj: typing.Any,
                   custom_hashes: dict[str, typing.Callable[[typing.Any], str]] = None,
-                  exclude=set[str] | None) -> str:
+                  exclude: set[str] | None = None) -> str:
     """
     Create a hash string from a simple objects public attributes.
 
