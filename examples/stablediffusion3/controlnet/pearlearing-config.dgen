@@ -18,7 +18,7 @@ stabilityai/stable-diffusion-3-medium-diffusers
 --guidance-scales 8
 --gen-seeds 2
 --model-sequential-offload
---prompts "Painting, Girl with a pearl earing by Leonardo Da Vinci, masterpiece; low quality, low resolution, blank eyeballs"
+--prompts "Painting, Girl with a pearl earring by Leonardo Da Vinci, masterpiece; low quality, low resolution, blank eyeballs"
 --control-nets InstantX/SD3-Controlnet-Canny;scale=0.5
 --image-seeds "../../media/vermeer_canny_edged.png"
---output-path pearlearing
+--output-path pearlearring
