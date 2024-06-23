@@ -120,7 +120,7 @@ def text_encoder_cache_size() -> int:
 
 CACHE_MEMORY_CONSTRAINTS: list[str] = ['used_percent > 70']
 """
-Cache constraint expressions for when to clear all model caches (DiffusionPipeline, VAE, and ControlNet), 
+Cache constraint expressions for when to clear all model caches (DiffusionPipeline, VAE, ControlNet, and Text Encoder), 
 syntax provided via :py:func:`dgenerate.memory.memory_constraints`
 
 If any of these constraints are met, a call to :py:func:`.enforce_cache_constraints` will call
