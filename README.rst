@@ -462,11 +462,11 @@ Help Output
                             specification, these include: "revision", "variant", "subfolder", and "dtype". They
                             can be specified as so in any order, they are not positional: "huggingface/decoder_m
                             odel;revision=main;variant=fp16;subfolder=repo_subfolder;dtype=float16". The
-                            "revision" argument specifies the model revision to use for the Textual Inversion
-                            model when loading from huggingface repository, (The git branch / tag, default is
-                            "main"). The "variant" argument specifies the decoder model variant and defaults to
-                            the value of --variant. When "variant" is specified when loading from a huggingface
-                            repository or folder, weights will be loaded from "variant" filename, e.g.
+                            "revision" argument specifies the model revision to use for the decoder model when
+                            loading from huggingface repository, (The git branch / tag, default is "main"). The
+                            "variant" argument specifies the decoder model variant and defaults to the value of
+                            --variant. When "variant" is specified when loading from a huggingface repository or
+                            folder, weights will be loaded from "variant" filename, e.g.
                             "pytorch_model.<variant>.safetensors. The "subfolder" argument specifies the decoder
                             model subfolder, if specified when loading from a huggingface repository or folder,
                             weights from the specified subfolder. The "dtype" argument specifies the Stable
@@ -513,17 +513,17 @@ Help Output
                             specification, these include: "revision", "variant", "subfolder", and "dtype". They
                             can be specified as so in any order, they are not positional: "huggingface/refiner_m
                             odel_xl;revision=main;variant=fp16;subfolder=repo_subfolder;dtype=float16". The
-                            "revision" argument specifies the model revision to use for the Textual Inversion
-                            model when loading from huggingface repository, (The git branch / tag, default is
-                            "main"). The "variant" argument specifies the SDXL refiner model variant and
-                            defaults to the value of --variant. When "variant" is specified when loading from a
-                            huggingface repository or folder, weights will be loaded from "variant" filename,
-                            e.g. "pytorch_model.<variant>.safetensors. The "subfolder" argument specifies the
-                            SDXL refiner model subfolder, if specified when loading from a huggingface
-                            repository or folder, weights from the specified subfolder. The "dtype" argument
-                            specifies the SDXL refiner model precision, it defaults to the value of -t/--dtype
-                            and should be one of: auto, bfloat16, float16, or float32. If you wish to load a
-                            weights file directly from disk, the simplest way is: --sdxl-refiner
+                            "revision" argument specifies the model revision to use for the refiner model when
+                            loading from huggingface repository, (The git branch / tag, default is "main"). The
+                            "variant" argument specifies the SDXL refiner model variant and defaults to the
+                            value of --variant. When "variant" is specified when loading from a huggingface
+                            repository or folder, weights will be loaded from "variant" filename, e.g.
+                            "pytorch_model.<variant>.safetensors. The "subfolder" argument specifies the SDXL
+                            refiner model subfolder, if specified when loading from a huggingface repository or
+                            folder, weights from the specified subfolder. The "dtype" argument specifies the
+                            SDXL refiner model precision, it defaults to the value of -t/--dtype and should be
+                            one of: auto, bfloat16, float16, or float32. If you wish to load a weights file
+                            directly from disk, the simplest way is: --sdxl-refiner
                             "my_sdxl_refiner.safetensors" or --sdxl-refiner
                             "my_sdxl_refiner.safetensors;dtype=float16", all other loading arguments aside from
                             "dtype" are unused in this case and may produce an error message if used. If you
@@ -883,11 +883,11 @@ Help Output
                             (default: [30])
       -mc EXPR [EXPR ...], --cache-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to clear all model caches automatically
-                            (DiffusionPipeline, VAE, and ControlNet) considering current memory usage. If any of
-                            these constraint expressions are met all models cached in memory will be cleared.
-                            Example, and default value: "used_percent > 70" For Syntax See: [https://dgenerate.r
-                            eadthedocs.io/en/v3.8.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.CACHE_ME
-                            MORY_CONSTRAINTS]
+                            (DiffusionPipeline, UNet, VAE, ControlNet, and Text Encoder) considering current
+                            memory usage. If any of these constraint expressions are met all models cached in
+                            memory will be cleared. Example, and default value: "used_percent > 70" For Syntax
+                            See: [https://dgenerate.readthedocs.io/en/v3.8.0/dgenerate_submodules.html#dgenerate
+                            .pipelinewrapper.CACHE_MEMORY_CONSTRAINTS]
       -pmc EXPR [EXPR ...], --pipeline-cache-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the in memory
                             DiffusionPipeline cache considering current memory usage, and estimated memory usage
@@ -928,6 +928,7 @@ Help Output
                             Example, and default value: "text_encoder_size > (available * 0.75)" For Syntax See:
                             [https://dgenerate.readthedocs.io/en/v3.8.0/dgenerate_submodules.html#dgenerate.pipe
                             linewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS]
+
 
 
 
