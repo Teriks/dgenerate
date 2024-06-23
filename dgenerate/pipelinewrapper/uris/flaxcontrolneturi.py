@@ -152,7 +152,9 @@ class FlaxControlNetUri:
 
     @_memoize(_cache._FLAX_CONTROL_NET_CACHE,
               exceptions={'local_files_only'},
-              hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _d_memoize.struct_hasher}),
+              hasher=lambda args: _d_memoize.args_cache_key(
+                  args, {'self': lambda o: _d_memoize.struct_hasher(
+                      o, exclude={'scale'})}),
               on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Flax ControlNet", key, hit[0]),
               on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Flax ControlNet", key, new[0]))
     def _load(self,

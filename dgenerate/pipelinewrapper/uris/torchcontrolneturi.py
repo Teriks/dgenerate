@@ -189,7 +189,9 @@ class TorchControlNetUri:
 
     @_memoize(_cache._TORCH_CONTROL_NET_CACHE,
               exceptions={'local_files_only'},
-              hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _d_memoize.struct_hasher}),
+              hasher=lambda args: _d_memoize.args_cache_key(
+                  args, {'self': lambda o: _d_memoize.struct_hasher(
+                      o, exclude={'scale', 'start', 'end'})}),
               on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Torch ControlNet", key, hit),
               on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Torch ControlNet", key, new))
     def _load(self,
