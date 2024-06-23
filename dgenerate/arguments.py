@@ -794,7 +794,7 @@ def _create_parser(add_model=True, add_help=True):
                             They can be specified as so in any order, they are not positional:
                             "huggingface/decoder_model;revision=main;variant=fp16;subfolder=repo_subfolder;dtype=float16".
                             
-                            The "revision" argument specifies the model revision to use for the Textual Inversion model
+                            The "revision" argument specifies the model revision to use for the decoder model
                             when loading from huggingface repository, (The git branch / tag, default is "main").
                             
                             The "variant" argument specifies the decoder model variant and defaults to the value of 
@@ -881,7 +881,7 @@ def _create_parser(add_model=True, add_help=True):
                             They can be specified as so in any order, they are not positional:
                             "huggingface/refiner_model_xl;revision=main;variant=fp16;subfolder=repo_subfolder;dtype=float16".
                             
-                            The "revision" argument specifies the model revision to use for the Textual Inversion model
+                            The "revision" argument specifies the model revision to use for the refiner model
                             when loading from huggingface repository, (The git branch / tag, default is "main").
                             
                             The "variant" argument specifies the SDXL refiner model variant and defaults to the value of 
