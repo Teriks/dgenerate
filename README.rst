@@ -2520,7 +2520,7 @@ These examples use: `vermeer_canny_edged.png <https://raw.githubusercontent.com/
     dgenerate runwayml/stable-diffusion-v1-5 \
     --inference-steps 40 \
     --guidance-scales 8 \
-    --prompts "Painting, Girl with a pearl earing by Leonardo Da Vinci, masterpiece; low quality, low resolution, blank eyeballs" \
+    --prompts "Painting, Girl with a pearl earring by Leonardo Da Vinci, masterpiece; low quality, low resolution, blank eyeballs" \
     --control-nets "lllyasviel/sd-controlnet-canny;scale=0.5" \
     --image-seeds "vermeer_canny_edged.png"
 
@@ -2530,7 +2530,7 @@ These examples use: `vermeer_canny_edged.png <https://raw.githubusercontent.com/
     dgenerate runwayml/stable-diffusion-v1-5 \
     --inference-steps 40 \
     --guidance-scales 8 \
-    --prompts "Painting, Girl with a pearl earing by Leonardo Da Vinci, masterpiece; low quality, low resolution, blank eyeballs" \
+    --prompts "Painting, Girl with a pearl earring by Leonardo Da Vinci, masterpiece; low quality, low resolution, blank eyeballs" \
     --control-nets "lllyasviel/sd-controlnet-canny;scale=0.5" \
     --image-seeds "my-image-seed.png;control=vermeer_canny_edged.png"
 
@@ -2540,7 +2540,7 @@ These examples use: `vermeer_canny_edged.png <https://raw.githubusercontent.com/
     dgenerate runwayml/stable-diffusion-v1-5 \
     --inference-steps 40 \
     --guidance-scales 8 \
-    --prompts "Painting, Girl with a pearl earing by Leonardo Da Vinci, masterpiece; low quality, low resolution, blank eyeballs" \
+    --prompts "Painting, Girl with a pearl earring by Leonardo Da Vinci, masterpiece; low quality, low resolution, blank eyeballs" \
     --control-nets "lllyasviel/sd-controlnet-canny;scale=0.5" \
     --image-seeds "my-image-seed.png;mask=my-inpaint-mask.png;control=vermeer_canny_edged.png"
 
@@ -2551,7 +2551,7 @@ These examples use: `vermeer_canny_edged.png <https://raw.githubusercontent.com/
     --dtype float16 \
     --inference-steps 40 \
     --guidance-scales 8 \
-    --prompts "Painting, Girl with a pearl earing by Leonardo Da Vinci, masterpiece; low quality, low resolution, blank eyeballs" \
+    --prompts "Painting, Girl with a pearl earring by Leonardo Da Vinci, masterpiece; low quality, low resolution, blank eyeballs" \
     --control-nets "lllyasviel/sd-controlnet-canny;scale=0.5;from_torch=true" \
     --image-seeds "vermeer_canny_edged.png"
 
