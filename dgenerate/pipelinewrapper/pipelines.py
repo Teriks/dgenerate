@@ -967,12 +967,18 @@ def _text_encoder_not_null(uri):
 
 
 def _torch_args_hasher(args):
+    def text_encoder_uri_parse(uri):
+        if uri is None or uri == '+':
+            return None
+
+        return _uris.TorchTextEncoderUri.parse(uri)
+
     custom_hashes = {
         'unet_uri': _cache.uri_hash_with_parser(_uris.TorchUNetUri.parse),
         'vae_uri': _cache.uri_hash_with_parser(_uris.TorchVAEUri.parse),
         'lora_uris': _cache.uri_list_hash_with_parser(_uris.LoRAUri.parse),
         'textual_inversion_uris': _cache.uri_list_hash_with_parser(_uris.TextualInversionUri.parse),
-        'text_encoder_uris': _cache.uri_list_hash_with_parser(_uris.TorchTextEncoderUri.parse),
+        'text_encoder_uris': _cache.uri_list_hash_with_parser(text_encoder_uri_parse),
         'control_net_uris': _cache.uri_list_hash_with_parser(_uris.TorchControlNetUri.parse)}
     return _d_memoize.args_cache_key(args, custom_hashes=custom_hashes)
 
@@ -1634,10 +1640,17 @@ class FlaxPipelineFactory:
 
 
 def _flax_args_hasher(args):
+
+    def text_encoder_uri_parse(uri):
+        if uri is None or uri == '+':
+            return None
+
+        return _uris.FlaxTextEncoderUri.parse(uri)
+
     custom_hashes = {'unet_uri': _cache.uri_hash_with_parser(_uris.FlaxUNetUri.parse),
                      'vae_uri': _cache.uri_hash_with_parser(_uris.FlaxVAEUri.parse),
                      'control_net_uris': _cache.uri_list_hash_with_parser(_uris.FlaxControlNetUri.parse),
-                     'text_encoder_uris': _cache.uri_list_hash_with_parser(_uris.FlaxTextEncoderUri.parse)}
+                     'text_encoder_uris': _cache.uri_list_hash_with_parser(text_encoder_uri_parse)}
     return _d_memoize.args_cache_key(args, custom_hashes=custom_hashes)
 
 
