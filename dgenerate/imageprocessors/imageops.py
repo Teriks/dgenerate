@@ -323,7 +323,7 @@ class LetterboxProcessor(_imageprocessor.ImageProcessor):
 
         :param image: image to process
         :param resize_resolution: purely informational, is unused by this imageprocessor
-        :return: the solarized image
+        :return: the letterboxed image
         """
         if self._pre_resize:
             return _image.letterbox_image(image,
@@ -339,7 +339,7 @@ class LetterboxProcessor(_imageprocessor.ImageProcessor):
         Letterbox operation is preformed by this method if ``pre_resize`` constructor argument was ``False``.
 
         :param image: image to process
-        :return: the solarized image
+        :return: the letterboxed image
         """
         if not self._pre_resize:
             return _image.letterbox_image(image,
