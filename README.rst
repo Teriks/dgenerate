@@ -3832,6 +3832,7 @@ Example output:
         "\clear_pipeline_cache"
         "\clear_unet_cache"
         "\clear_vae_cache"
+        "\clear_text_encoder_cache"
         "\clear_control_net_cache"
         "\save_modules"
         "\use_modules"
@@ -3858,6 +3859,7 @@ Example output:
         "\unset"
         "\print"
         "\echo"
+
 
 Here are examples of other available directives such as ``\set``, ``\setp``, and
 ``\print`` as well as some basic Jinja2 templating usage. This example also covers
