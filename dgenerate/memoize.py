@@ -195,5 +195,6 @@ def struct_hasher(obj: typing.Any,
     if exclude is None:
         exclude = set()
 
-    return '{' + args_cache_key(args_dict={k: v for k, v in _types.get_public_attributes(obj) if k not in exclude},
+    return '{' + args_cache_key(args_dict={k: v for k, v in _types.get_public_attributes(obj).items()
+                                           if k not in exclude},
                                 custom_hashes=custom_hashes) + '}'
