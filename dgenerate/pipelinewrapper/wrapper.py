@@ -638,9 +638,9 @@ class DiffusionPipelineWrapper:
                  text_encoder_uris: _types.OptionalUris = None,
                  second_text_encoder_uris: _types.OptionalUris = None,
                  control_net_uris: _types.OptionalUris = None,
-                 scheduler: _types.OptionalName = None,
+                 scheduler: _types.OptionalUri = None,
                  sdxl_refiner_uri: _types.OptionalUri = None,
-                 sdxl_refiner_scheduler: _types.OptionalName = None,
+                 sdxl_refiner_scheduler: _types.OptionalUri = None,
                  s_cascade_decoder_uri: _types.OptionalUri = None,
                  s_cascade_decoder_scheduler: _types.OptionalUri = None,
                  device: str = 'cuda',
@@ -865,23 +865,23 @@ class DiffusionPipelineWrapper:
         return self._model_path
 
     @property
-    def scheduler(self) -> _types.OptionalName:
+    def scheduler(self) -> _types.OptionalUri:
         """
-        Selected scheduler name for the main model or ``None``
+        Selected scheduler URI for the main model or ``None``
         """
         return self._scheduler
 
     @property
-    def sdxl_refiner_scheduler(self) -> _types.OptionalName:
+    def sdxl_refiner_scheduler(self) -> _types.OptionalUri:
         """
-        Selected scheduler name for the SDXL refiner or ``None``
+        Selected scheduler URI for the SDXL refiner or ``None``
         """
         return self._sdxl_refiner_scheduler
 
     @property
-    def s_cascade_decoder_scheduler(self) -> _types.OptionalName:
+    def s_cascade_decoder_scheduler(self) -> _types.OptionalUri:
         """
-        Selected scheduler name for the Stable Cascade decoder or ``None``
+        Selected scheduler URI for the Stable Cascade decoder or ``None``
         """
         return self._s_cascade_decoder_scheduler
 
@@ -995,7 +995,7 @@ class DiffusionPipelineWrapper:
         """
         Current ``--sdxl-refiner-cpu-offload`` value
         """
-        return self._sdxl_refiner_sequential_offload
+        return self._sdxl_refiner_cpu_offload
 
     @property
     def s_cascade_decoder_sequential_offload(self) -> bool:
