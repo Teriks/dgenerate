@@ -1451,7 +1451,7 @@ def _create_parser(add_model=True, add_help=True):
                             type=_type_expression,
                             metavar="EXPR",
                             help=f"""Cache constraint expressions describing when to clear all model caches
-                                    automatically (DiffusionPipeline, VAE, and ControlNet) considering current memory
+                                    automatically (DiffusionPipeline, UNet, VAE, ControlNet, and Text Encoder) considering current memory
                                     usage. If any of these constraint expressions are met all models cached in memory will be cleared. 
                                     Example, and default value: {' '.join(_textprocessing.quote_spaces(_pipelinewrapper.CACHE_MEMORY_CONSTRAINTS))}"""
                                  f' For Syntax See: [https://dgenerate.readthedocs.io/en/v{dgenerate.__version__}/'
