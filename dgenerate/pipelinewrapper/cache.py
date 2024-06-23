@@ -537,7 +537,8 @@ def uri_hash_with_parser(parser):
 
     def hasher(path):
         if not path:
-            return path
+            # None gets hashed to 'None' stringcd
+            return str(path)
 
         return _d_memoize.struct_hasher(parser(path))
 
@@ -550,6 +551,7 @@ def uri_list_hash_with_parser(parser):
 
     :param parser: The URI parser function
     :return: a hash function compatible with :py:func:`dgenerate.memoize.memoize`
+
     """
 
     def hasher(paths):
