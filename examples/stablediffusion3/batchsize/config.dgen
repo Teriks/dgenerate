@@ -20,8 +20,6 @@ stabilityai/stable-diffusion-3-medium-diffusers
 --output-size 512
 --clip-skips 0
 --gen-seeds 2
---vae-tiling
---vae-slicing
 --output-path output
 --model-sequential-offload
 --prompts "a sign that says test"

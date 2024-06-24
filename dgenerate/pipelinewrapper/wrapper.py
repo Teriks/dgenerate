@@ -1433,7 +1433,7 @@ class DiffusionPipelineWrapper:
         :return: kwargs dictionary
         """
 
-        args = dict()
+        args: dict[str, typing.Any] = dict()
         args['guidance_scale'] = float(_types.default(user_args.guidance_scale, _constants.DEFAULT_GUIDANCE_SCALE))
         args['num_inference_steps'] = int(_types.default(user_args.inference_steps, _constants.DEFAULT_INFERENCE_STEPS))
 
@@ -1450,7 +1450,7 @@ class DiffusionPipelineWrapper:
 
             args['strength'] = strength
 
-        if self._control_net_uris:
+        def set_controlnet_defaults():
             control_images = user_args.control_images
 
             if not control_images:
@@ -1486,35 +1486,15 @@ class DiffusionPipelineWrapper:
                     # There is a problem in the diffusers library
                     # That causes any control image that is not power
                     # of two dimensions to cause an exception with SD3
+                    # with VAE tiling, and in the normal case, when not
+                    # aligned by 16
 
-                    processed_control_images = list(control_images)
-
-                    for idx, img in enumerate(processed_control_images):
-                        if not _image.is_aligned(img.size, 16):
-                            size = _image.align_by(img.size, 16)
-
-                            # this must be adjusted, all control image
-                            # sizes must be the same dimension
-
-                            if user_args.width:
-                                if not (user_args.width % 16) == 0:
-                                    raise _pipelines.UnsupportedPipelineConfigError(
-                                        'Stable Diffusion 3 requires an output dimension aligned by 16.')
-
-                            if user_args.height:
-                                if not (user_args.height % 16) == 0:
-                                    raise _pipelines.UnsupportedPipelineConfigError(
-                                        'Stable Diffusion 3 requires an output dimension aligned by 16.')
-
-                            args['width'] = _types.default(user_args.width, size[0])
-                            args['height'] = _types.default(user_args.height, size[1])
-
-                            _messages.log(
-                                f'Control image size {img.size} is not aligned by 16. '
-                                f'Output dimensions will be forcefully aligned by 16: {size}.',
-                                level=_messages.WARNING)
-
-                            processed_control_images[idx] = img.resize(size, PIL.Image.Resampling.LANCZOS)
+                    if self.vae_slicing or self.vae_tiling:
+                        processed_control_images = self._sd3_force_control_to_p2(
+                            args, control_images, user_args)
+                    else:
+                        processed_control_images = self._sd3_force_control_to_a16(
+                            args, control_images, user_args)
 
                     args['control_image'] = processed_control_images
                 else:
@@ -1530,7 +1510,7 @@ class DiffusionPipelineWrapper:
             if mask_image is not None:
                 args['mask_image'] = mask_image
 
-        elif user_args.image is not None:
+        def set_img2img_defaults():
             image = user_args.image
 
             floyd_og_image_needed = \
@@ -1648,7 +1628,8 @@ class DiffusionPipelineWrapper:
                         f'Output dimensions will be forcefully aligned to 16: {size}.',
                         level=_messages.WARNING)
                     args['image'] = image.resize(size, PIL.Image.Resampling.LANCZOS)
-        else:
+
+        def set_txt2img_defaults():
             if _enums.model_type_is_sdxl(self._model_type):
                 args['height'] = _types.default(user_args.height, _constants.DEFAULT_SDXL_OUTPUT_HEIGHT)
                 args['width'] = _types.default(user_args.width, _constants.DEFAULT_SDXL_OUTPUT_WIDTH)
@@ -1674,7 +1655,73 @@ class DiffusionPipelineWrapper:
                 args['height'] = _types.default(user_args.height, _constants.DEFAULT_OUTPUT_HEIGHT)
                 args['width'] = _types.default(user_args.width, _constants.DEFAULT_OUTPUT_WIDTH)
 
+        if self.control_net_uris:
+            set_controlnet_defaults()
+        elif user_args.image is not None:
+            set_img2img_defaults()
+        else:
+            set_txt2img_defaults()
+
         return args
+
+    @staticmethod
+    def _sd3_force_control_to_a16(args, control_images, user_args):
+        processed_control_images = list(control_images)
+        for idx, img in enumerate(processed_control_images):
+            if not _image.is_aligned(img.size, 16):
+                size = _image.align_by(img.size, 16)
+
+                if user_args.width:
+                    if not (user_args.width % 16) == 0:
+                        raise _pipelines.UnsupportedPipelineConfigError(
+                            'Stable Diffusion 3 requires an output dimension aligned by 16.')
+
+                if user_args.height:
+                    if not (user_args.height % 16) == 0:
+                        raise _pipelines.UnsupportedPipelineConfigError(
+                            'Stable Diffusion 3 requires an output dimension aligned by 16.')
+
+                args['width'] = _types.default(user_args.width, size[0])
+                args['height'] = _types.default(user_args.height, size[1])
+
+                _messages.log(
+                    f'Control image size {img.size} is not aligned by 16. '
+                    f'Output dimensions will be forcefully aligned by 16: {size}.',
+                    level=_messages.WARNING)
+
+                processed_control_images[idx] = img.resize(size, PIL.Image.Resampling.LANCZOS)
+        return processed_control_images
+
+    @staticmethod
+    def _sd3_force_control_to_p2(args, control_images, user_args):
+        processed_control_images = list(control_images)
+        for idx, img in enumerate(processed_control_images):
+            if not _image.is_power_of_two(img.size):
+                size = _image.nearest_power_of_two(img.size)
+
+                if user_args.width and user_args.width > 0:
+                    if not (user_args.width & (user_args.width - 1)) == 0:
+                        raise _pipelines.UnsupportedPipelineConfigError(
+                            'Stable diffusion 3 requires an output dimension that is a power of 2 '
+                            'when --vae-tiling or --vae-slicing is enabled.')
+
+                if user_args.height and user_args.height > 0:
+                    if not (user_args.height & (user_args.height - 1)) == 0:
+                        raise _pipelines.UnsupportedPipelineConfigError(
+                            'Stable diffusion 3 requires an output dimension that is a power of 2 '
+                            'when --vae-tiling or --vae-slicing is enabled.')
+
+                args['width'] = _types.default(user_args.width, size[0])
+                args['height'] = _types.default(user_args.height, size[1])
+
+                _messages.log(
+                    f'Control image size {img.size} is not a power of 2. '
+                    f'Output dimensions will be forcefully resized to the nearest power of 2: {size}. '
+                    f'This is due to usage of --vae-tiling or --vae-slicing.',
+                    level=_messages.WARNING)
+
+                processed_control_images[idx] = img.resize(size, PIL.Image.Resampling.LANCZOS)
+        return processed_control_images
 
     def _get_control_net_conditioning_scale(self):
         if not self._parsed_control_net_uris:

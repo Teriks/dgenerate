@@ -26,13 +26,10 @@ stabilityai/stable-diffusion-3-medium-diffusers
 --gen-seeds 2
 --no-aspect
 --model-sequential-offload
---vae-tiling
---vae-slicing
 --prompts "Detailed watercolor painting of a woman sitting, facing the viewer, bright; dark"
 --control-nets InstantX/SD3-Controlnet-Canny;scale=0.8
 --image-seeds "../../media/monalisa.png"
 --output-path monalisa
 --control-image-processors \
     "mirror" \
-    "canny;lower=50;upper=100;output-file=monalisa/monalisa-canny.png" \
-    "letterbox;box-size=512;output-file=monalisa/monalisa-canny-letterbox.png"
+    "canny;lower=50;upper=100;output-file=monalisa/monalisa-canny.png"
