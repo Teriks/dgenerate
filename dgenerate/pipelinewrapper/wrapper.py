@@ -1642,7 +1642,7 @@ class DiffusionPipelineWrapper:
 
                 if not _image.is_power_of_two((args['width'], args['height'])):
                     raise _pipelines.UnsupportedPipelineConfigError(
-                        'Stable Cascade requires an output width and height that is a power of 2.')
+                        'Stable Cascade requires an output dimension that is a power of 2.')
 
             elif self._model_type == _enums.ModelType.TORCH_SD3:
                 args['height'] = _types.default(user_args.height, _constants.DEFAULT_SD3_OUTPUT_HEIGHT)
@@ -1650,7 +1650,7 @@ class DiffusionPipelineWrapper:
 
                 if not _image.is_aligned((args['width'], args['height']), 16):
                     raise _pipelines.UnsupportedPipelineConfigError(
-                        'Stable Diffusion 3 requires an output width and height that is aligned by 16.')
+                        'Stable Diffusion 3 requires an output dimension that is aligned by 16.')
             else:
                 args['height'] = _types.default(user_args.height, _constants.DEFAULT_OUTPUT_HEIGHT)
                 args['width'] = _types.default(user_args.width, _constants.DEFAULT_OUTPUT_WIDTH)
