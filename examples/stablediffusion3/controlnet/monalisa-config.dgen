@@ -12,11 +12,6 @@
 # the image for you before using it for generation. This mirrors
 # the image horizontally and then runs canny edge detection on it
 
-# Control Nets with SD3 currently only work with power of two images, so
-# we use the letterbox image processor to letterbox the image result of
-# canny edge detection to 512, the default background color of the letterbox
-# is black, which works well with the canny edge detection image
-
 stabilityai/stable-diffusion-3-medium-diffusers
 --model-type torch-sd3
 --variant fp16
@@ -24,7 +19,6 @@ stabilityai/stable-diffusion-3-medium-diffusers
 --inference-steps 40
 --guidance-scales 8
 --gen-seeds 2
---no-aspect
 --model-sequential-offload
 --prompts "Detailed watercolor painting of a woman sitting, facing the viewer, bright; dark"
 --control-nets InstantX/SD3-Controlnet-Canny;scale=0.8
