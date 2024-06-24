@@ -1438,8 +1438,7 @@ class DiffusionPipelineWrapper:
         args['num_inference_steps'] = int(_types.default(user_args.inference_steps, _constants.DEFAULT_INFERENCE_STEPS))
 
         def set_strength():
-            strength = float(_types.default(user_args.image_seed_strength,
-                                            _constants.DEFAULT_IMAGE_SEED_STRENGTH))
+            strength = float(_types.default(user_args.image_seed_strength, _constants.DEFAULT_IMAGE_SEED_STRENGTH))
 
             if (strength * user_args.inference_steps) < 1.0:
                 strength = 1.0 / user_args.inference_steps
@@ -1462,7 +1461,6 @@ class DiffusionPipelineWrapper:
 
             if control_images_cnt != control_net_uris_cnt:
                 # User provided a mismatched number of ControlNet models and control_images, behavior is undefined.
-
                 raise _pipelines.UnsupportedPipelineConfigError(
                     f'You specified {control_images_cnt} control guidance images and '
                     f'only {control_net_uris_cnt} ControlNet URIs. The amount of '
@@ -1476,32 +1474,21 @@ class DiffusionPipelineWrapper:
                     raise _pipelines.UnsupportedPipelineConfigError(
                         "All control guidance images must have the same dimension.")
 
-            # They should always be of equal dimension, anything
-            # else results in an error down the line.
+            # Set width and height based on control images
             args['width'] = _types.default(user_args.width, control_images[0].width)
             args['height'] = _types.default(user_args.height, control_images[0].height)
 
             if self._pipeline_type == _enums.PipelineType.TXT2IMG:
                 if _enums.model_type_is_sd3(self._model_type):
-                    # There is a problem in the diffusers library
-                    # That causes any control image that is not power
-                    # of two dimensions to cause an exception with SD3
-                    # with VAE tiling, and in the normal case, when not
-                    # aligned by 16
-
+                    # Handle SD3 model specifics for control images
                     if self.vae_slicing or self.vae_tiling:
-                        processed_control_images = self._sd3_force_control_to_p2(
-                            args, control_images, user_args)
+                        processed_control_images = self._sd3_force_control_to_p2(args, control_images, user_args)
                     else:
-                        processed_control_images = self._sd3_force_control_to_a16(
-                            args, control_images, user_args)
-
+                        processed_control_images = self._sd3_force_control_to_a16(args, control_images, user_args)
                     args['control_image'] = processed_control_images
                 else:
                     args['image'] = control_images
-            elif self._pipeline_type == _enums.PipelineType.IMG2IMG or \
-                    self._pipeline_type == _enums.PipelineType.INPAINT:
-
+            elif self._pipeline_type in [_enums.PipelineType.IMG2IMG, _enums.PipelineType.INPAINT]:
                 args['image'] = user_args.image
                 args['control_image'] = control_images
                 set_strength()
@@ -1513,19 +1500,15 @@ class DiffusionPipelineWrapper:
         def set_img2img_defaults():
             image = user_args.image
 
-            floyd_og_image_needed = \
-                self._pipeline_type == _enums.PipelineType.INPAINT and \
-                _enums.model_type_is_floyd_ifs(self._model_type)
-
-            floyd_og_image_needed |= \
-                self._model_type == _enums.ModelType.TORCH_IFS_IMG2IMG
+            floyd_og_image_needed = (self._pipeline_type == _enums.PipelineType.INPAINT and
+                                     _enums.model_type_is_floyd_ifs(self._model_type)
+                                     ) or (self._model_type == _enums.ModelType.TORCH_IFS_IMG2IMG)
 
             if floyd_og_image_needed:
                 if user_args.floyd_image is None:
                     raise _pipelines.UnsupportedPipelineConfigError(
                         'must specify "floyd_image" to disambiguate this operation, '
                         '"floyd_image" being the output of a previous floyd stage.')
-
                 args['original_image'] = image
                 args['image'] = user_args.floyd_image
             elif self._model_type == _enums.ModelType.TORCH_S_CASCADE:
@@ -1546,26 +1529,34 @@ class DiffusionPipelineWrapper:
                     args['noise_level'] = int(
                         _types.default(
                             user_args.upscaler_noise_level,
-                            _constants.DEFAULT_X4_UPSCALER_NOISE_LEVEL))
+                            _constants.DEFAULT_X4_UPSCALER_NOISE_LEVEL
+                        )
+                    )
                 check_no_image_seed_strength()
             elif self._model_type == _enums.ModelType.TORCH_IFS:
                 if self._pipeline_type != _enums.PipelineType.INPAINT:
                     args['noise_level'] = int(
                         _types.default(
                             user_args.upscaler_noise_level,
-                            _constants.DEFAULT_FLOYD_SUPERRESOLUTION_NOISE_LEVEL))
+                            _constants.DEFAULT_FLOYD_SUPERRESOLUTION_NOISE_LEVEL
+                        )
+                    )
                     check_no_image_seed_strength()
                 else:
                     args['noise_level'] = int(
                         _types.default(
                             user_args.upscaler_noise_level,
-                            _constants.DEFAULT_FLOYD_SUPERRESOLUTION_INPAINT_NOISE_LEVEL))
+                            _constants.DEFAULT_FLOYD_SUPERRESOLUTION_INPAINT_NOISE_LEVEL
+                        )
+                    )
                     set_strength()
             elif self._model_type == _enums.ModelType.TORCH_IFS_IMG2IMG:
                 args['noise_level'] = int(
                     _types.default(
                         user_args.upscaler_noise_level,
-                        _constants.DEFAULT_FLOYD_SUPERRESOLUTION_IMG2IMG_NOISE_LEVEL))
+                        _constants.DEFAULT_FLOYD_SUPERRESOLUTION_IMG2IMG_NOISE_LEVEL
+                    )
+                )
                 set_strength()
             elif not _enums.model_type_is_pix2pix(self._model_type) and \
                     self._model_type != _enums.ModelType.TORCH_S_CASCADE:
@@ -1582,11 +1573,8 @@ class DiffusionPipelineWrapper:
                     args['height'] = image.size[1]
 
             if self._model_type == _enums.ModelType.TORCH_SDXL_PIX2PIX:
-                # Required
                 args['width'] = image.size[0]
                 args['height'] = image.size[1]
-
-            # non-standard image alignments
 
             if self._model_type == _enums.ModelType.TORCH_UPSCALER_X2:
                 if not _image.is_aligned(image.size, 64):
@@ -1643,7 +1631,6 @@ class DiffusionPipelineWrapper:
                 if not _image.is_power_of_two((args['width'], args['height'])):
                     raise _pipelines.UnsupportedPipelineConfigError(
                         'Stable Cascade requires an output dimension that is a power of 2.')
-
             elif self._model_type == _enums.ModelType.TORCH_SD3:
                 args['height'] = _types.default(user_args.height, _constants.DEFAULT_SD3_OUTPUT_HEIGHT)
                 args['width'] = _types.default(user_args.width, _constants.DEFAULT_SD3_OUTPUT_WIDTH)
@@ -1655,7 +1642,7 @@ class DiffusionPipelineWrapper:
                 args['height'] = _types.default(user_args.height, _constants.DEFAULT_OUTPUT_HEIGHT)
                 args['width'] = _types.default(user_args.width, _constants.DEFAULT_OUTPUT_WIDTH)
 
-        if self.control_net_uris:
+        if self._control_net_uris:
             set_controlnet_defaults()
         elif user_args.image is not None:
             set_img2img_defaults()
@@ -1702,13 +1689,13 @@ class DiffusionPipelineWrapper:
                 if user_args.width and user_args.width > 0:
                     if not (user_args.width & (user_args.width - 1)) == 0:
                         raise _pipelines.UnsupportedPipelineConfigError(
-                            'Stable diffusion 3 requires an output dimension that is a power of 2 '
+                            'Stable Diffusion 3 requires an output dimension that is a power of 2 '
                             'when --vae-tiling or --vae-slicing is enabled.')
 
                 if user_args.height and user_args.height > 0:
                     if not (user_args.height & (user_args.height - 1)) == 0:
                         raise _pipelines.UnsupportedPipelineConfigError(
-                            'Stable diffusion 3 requires an output dimension that is a power of 2 '
+                            'Stable Diffusion 3 requires an output dimension that is a power of 2 '
                             'when --vae-tiling or --vae-slicing is enabled.')
 
                 args['width'] = _types.default(user_args.width, size[0])
