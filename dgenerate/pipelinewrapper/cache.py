@@ -537,7 +537,7 @@ def uri_hash_with_parser(parser):
 
     def hasher(path):
         if not path:
-            # None gets hashed to 'None' stringcd
+            # None gets hashed to 'None' string
             return str(path)
 
         return _d_memoize.struct_hasher(parser(path))
