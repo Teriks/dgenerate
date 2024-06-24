@@ -951,11 +951,11 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError('\n'.join(invalid_self))
         else:
             if self.output_size is not None:
-                if self.vae_tiling or self.vae_slicing:
+                if self.vae_tiling:
                     if not _image.is_power_of_two(self.output_size):
                         raise RenderLoopConfigError(
                             f'Stable Diffusion 3 requires {a_namer("output_size")} to be a power of 2 '
-                            f'when {a_namer("vae_slicing")} or {a_namer("vae_tiling")} is enabled.')
+                            f'when {a_namer("vae_tiling")} is enabled.')
                 else:
                     if not _image.is_aligned(self.output_size, 16):
                         raise RenderLoopConfigError(
