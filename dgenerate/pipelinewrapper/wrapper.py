@@ -158,7 +158,7 @@ class DiffusionArguments(_types.SetFromMixin):
     generation :py:attr:`DiffusionArguments.image` is used.
     """
 
-    width: _types.OptionalSize = None
+    width: _types.OptionalInteger = None
     """
     Output image width.
     
@@ -169,7 +169,7 @@ class DiffusionArguments(_types.SetFromMixin):
     Output image width, must be aligned by 8
     """
 
-    height: _types.OptionalSize = None
+    height: _types.OptionalInteger = None
     """
     Output image height.
     
@@ -1490,17 +1490,28 @@ class DiffusionPipelineWrapper:
                     processed_control_images = list(control_images)
 
                     for idx, img in enumerate(processed_control_images):
-                        if not _image.is_power_of_two(img.size):
-                            size = _image.nearest_power_of_two(img.size)
+                        if not _image.is_aligned(img.size, 16):
+                            size = _image.align_by(img.size, 16)
 
                             # this must be adjusted, all control image
                             # sizes must be the same dimension
+
+                            if user_args.width:
+                                if not (user_args.width % 16) == 0:
+                                    raise _pipelines.UnsupportedPipelineConfigError(
+                                        'Stable Diffusion 3 requires an output dimension aligned by 16.')
+
+                            if user_args.height:
+                                if not (user_args.height % 16) == 0:
+                                    raise _pipelines.UnsupportedPipelineConfigError(
+                                        'Stable Diffusion 3 requires an output dimension aligned by 16.')
+
                             args['width'] = _types.default(user_args.width, size[0])
                             args['height'] = _types.default(user_args.height, size[1])
 
                             _messages.log(
-                                f'Control image size {img.size} is not a power of 2. '
-                                f'Output dimensions will be forced to the nearest power of 2: {size}.',
+                                f'Control image size {img.size} is not aligned by 16. '
+                                f'Output dimensions will be forcefully aligned by 16: {size}.',
                                 level=_messages.WARNING)
 
                             processed_control_images[idx] = img.resize(size, PIL.Image.Resampling.LANCZOS)
@@ -1616,6 +1627,16 @@ class DiffusionPipelineWrapper:
                 else:
                     size = image.size
 
+                if user_args.width and user_args.width > 0:
+                    if not (user_args.width & (user_args.width - 1)) == 0:
+                        raise _pipelines.UnsupportedPipelineConfigError(
+                            'Stable Cascade requires an output dimension that is a power of 2.')
+
+                if user_args.height and user_args.height > 0:
+                    if not (user_args.height & (user_args.height - 1)) == 0:
+                        raise _pipelines.UnsupportedPipelineConfigError(
+                            'Stable Cascade requires an output dimension that is a power of 2.')
+
                 args['width'] = _types.default(user_args.width, size[0])
                 args['height'] = _types.default(user_args.height, size[1])
 
@@ -1645,6 +1666,10 @@ class DiffusionPipelineWrapper:
             elif self._model_type == _enums.ModelType.TORCH_SD3:
                 args['height'] = _types.default(user_args.height, _constants.DEFAULT_SD3_OUTPUT_HEIGHT)
                 args['width'] = _types.default(user_args.width, _constants.DEFAULT_SD3_OUTPUT_WIDTH)
+
+                if not _image.is_aligned((args['width'], args['height']), 16):
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        'Stable Diffusion 3 requires an output width and height that is aligned by 16.')
             else:
                 args['height'] = _types.default(user_args.height, _constants.DEFAULT_OUTPUT_HEIGHT)
                 args['width'] = _types.default(user_args.width, _constants.DEFAULT_OUTPUT_WIDTH)
