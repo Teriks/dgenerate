@@ -50,11 +50,11 @@ class _FindDialog(tk.Toplevel):
 
         self.find_entry.bind('<KeyRelease>', lambda e: self._validate_find())
 
-        def find_entry_entry_key(e):
+        def find_entry_return_key(e):
             self._find_next()
             return "break"
 
-        self.find_entry.bind('<Return>', find_entry_entry_key)
+        self.find_entry.bind('<Return>', find_entry_return_key)
 
         self.replace_entry = None
         if replace_mode:
