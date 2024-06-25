@@ -960,6 +960,11 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError('\n'.join(invalid_self))
         else:
             if self.sd3_max_sequence_length is not None:
+                if self.control_net_uris:
+                    raise RenderLoopConfigError(
+                        f'{a_namer("sd3_max_sequence_length")} is not supported when '
+                        f'{a_namer("control_net_uris")} is specified.')
+
                 if self.sd3_max_sequence_length < 1 or self.sd3_max_sequence_length > 512:
                     raise RenderLoopConfigError(
                         f'{a_namer("sd3_max_sequence_length")} must be greater than or equal '
