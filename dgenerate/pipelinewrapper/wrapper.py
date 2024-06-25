@@ -1489,7 +1489,7 @@ class DiffusionPipelineWrapper:
                     args['control_image'] = processed_control_images
                 else:
                     args['image'] = control_images
-            elif self._pipeline_type in [_enums.PipelineType.IMG2IMG, _enums.PipelineType.INPAINT]:
+            elif self._pipeline_type in {_enums.PipelineType.IMG2IMG, _enums.PipelineType.INPAINT}:
                 args['image'] = user_args.image
                 args['control_image'] = control_images
                 set_strength()
