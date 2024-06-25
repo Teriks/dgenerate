@@ -212,7 +212,7 @@ class DiffusionArguments(_types.SetFromMixin):
     """
     Max number of prompt tokens that the T5EncoderModel (text encoder 3) of Stable Diffusion can handle.
     
-    This defaults to 256 when not specified, and the maximum value is 512 and the minimum value is 77.
+    This defaults to 256 when not specified, and the maximum value is 512 and the minimum value is 1.
     
     High values result in more resource usage and processing time.
     """
