@@ -90,6 +90,21 @@ def _type_prompts(prompt):
             f'Prompt parse error: {str(e).strip()}')
 
 
+def _sd3_max_sequence_length(val):
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+
+    if val < 77:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 77')
+
+    if val > 512:
+        raise argparse.ArgumentTypeError('Must be less than or equal to 512')
+
+    return val
+
+
 def _type_clip_skip(val):
     try:
         val = int(val)
@@ -1209,6 +1224,14 @@ def _create_parser(add_model=True, add_help=True):
                             influence IE. things you don't want to see.
                             Example: --prompts "shrek flying a tesla over detroit; clouds, rain, missiles".
                             (default: [(empty string)])"""))
+
+    actions.append(
+        parser.add_argument('--sd3-max-sequence-length', action='store', metavar='INTEGER',
+                            default=None, type=_sd3_max_sequence_length,
+                            help="""The maximum amount of prompt tokens that the T5EncoderModel 
+                            (third text encoder) of Stable Diffusion 3 can handle. This should be 
+                            an integer value between 77 and 512 inclusive. The higher the value
+                            the more resources and time are required for processing. (default: 256)"""))
 
     actions.append(
         parser.add_argument('--sd3-second-prompts', nargs='+', action='store', metavar="PROMPT",

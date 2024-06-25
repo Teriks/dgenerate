@@ -131,16 +131,16 @@ Help Output
                      [--sdxl-refiner-negative-crops-coords-top-left COORD [COORD ...]] [-hnf FLOAT [FLOAT ...]]
                      [-ri INT [INT ...]] [-rg FLOAT [FLOAT ...]] [-rgr FLOAT [FLOAT ...]] [-sc] [-d DEVICE]
                      [-t DTYPE] [-s SIZE] [-na] [-o PATH] [-op PREFIX] [-ox] [-oc] [-om]
-                     [-p PROMPT [PROMPT ...]] [--sd3-second-prompts PROMPT [PROMPT ...]]
-                     [--sd3-third-prompts PROMPT [PROMPT ...]] [-cs INTEGER [INTEGER ...]] [-se SEED [SEED ...]]
-                     [-sei] [-gse COUNT] [-af FORMAT] [-if FORMAT] [-nf] [-fs FRAME_NUMBER] [-fe FRAME_NUMBER]
-                     [-is SEED [SEED ...]] [-sip PROCESSOR_URI [PROCESSOR_URI ...]]
-                     [-mip PROCESSOR_URI [PROCESSOR_URI ...]] [-cip PROCESSOR_URI [PROCESSOR_URI ...]]
-                     [--image-processor-help [PROCESSOR_NAME ...]] [-pp PROCESSOR_URI [PROCESSOR_URI ...]]
-                     [-iss FLOAT [FLOAT ...] | -uns INTEGER [INTEGER ...]] [-gs FLOAT [FLOAT ...]]
-                     [-igs FLOAT [FLOAT ...]] [-gr FLOAT [FLOAT ...]] [-ifs INTEGER [INTEGER ...]]
-                     [-mc EXPR [EXPR ...]] [-pmc EXPR [EXPR ...]] [-umc EXPR [EXPR ...]] [-vmc EXPR [EXPR ...]]
-                     [-cmc EXPR [EXPR ...]] [-tmc EXPR [EXPR ...]]
+                     [-p PROMPT [PROMPT ...]] [--sd3-max-sequence-length INTEGER]
+                     [--sd3-second-prompts PROMPT [PROMPT ...]] [--sd3-third-prompts PROMPT [PROMPT ...]]
+                     [-cs INTEGER [INTEGER ...]] [-se SEED [SEED ...]] [-sei] [-gse COUNT] [-af FORMAT]
+                     [-if FORMAT] [-nf] [-fs FRAME_NUMBER] [-fe FRAME_NUMBER] [-is SEED [SEED ...]]
+                     [-sip PROCESSOR_URI [PROCESSOR_URI ...]] [-mip PROCESSOR_URI [PROCESSOR_URI ...]]
+                     [-cip PROCESSOR_URI [PROCESSOR_URI ...]] [--image-processor-help [PROCESSOR_NAME ...]]
+                     [-pp PROCESSOR_URI [PROCESSOR_URI ...]] [-iss FLOAT [FLOAT ...] | -uns INTEGER
+                     [INTEGER ...]] [-gs FLOAT [FLOAT ...]] [-igs FLOAT [FLOAT ...]] [-gr FLOAT [FLOAT ...]]
+                     [-ifs INTEGER [INTEGER ...]] [-mc EXPR [EXPR ...]] [-pmc EXPR [EXPR ...]]
+                     [-umc EXPR [EXPR ...]] [-vmc EXPR [EXPR ...]] [-cmc EXPR [EXPR ...]] [-tmc EXPR [EXPR ...]]
                      model_path
 
     Batch image generation and manipulation tool supporting Stable Diffusion and related techniques /
@@ -722,6 +722,11 @@ Help Output
                             you want to see. The Second value is negative influence IE. things you don't want to
                             see. Example: --prompts "shrek flying a tesla over detroit; clouds, rain, missiles".
                             (default: [(empty string)])
+      --sd3-max-sequence-length INTEGER
+                            The maximum amount of prompt tokens that the T5EncoderModel (third text encoder) of
+                            Stable Diffusion 3 can handle. This should be an integer value between 77 and 512
+                            inclusive. The higher the value the more resources and time are required for
+                            processing. (default: 256)
       --sd3-second-prompts PROMPT [PROMPT ...]
                             One or more secondary prompts to try using the torch-sd3 (Stable Diffusion 3)
                             secondary text encoder. By default the model is passed the primary prompt for this
@@ -928,6 +933,7 @@ Help Output
                             Example, and default value: "text_encoder_size > (available * 0.75)" For Syntax See:
                             [https://dgenerate.readthedocs.io/en/v3.8.0/dgenerate_submodules.html#dgenerate.pipe
                             linewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS]
+
 
 
 
