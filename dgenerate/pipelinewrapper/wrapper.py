@@ -2028,16 +2028,10 @@ class DiffusionPipelineWrapper:
 
         if _enums.model_type_is_sd3(self.model_type):
 
-            pipeline_args['max_sequence_length'] = _types.default(
-                user_args.sd3_max_sequence_length, 256)
-
-            if pipeline_args['max_sequence_length'] > 512:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'sd3_max_sequence_length may not be greater than 512.')
-
-            if pipeline_args['max_sequence_length'] < 77:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'sd3_max_sequence_length may not be less than 77.')
+            self._set_non_universal_pipeline_arg(self._pipeline,
+                                                 pipeline_args, user_args,
+                                                 'max_sequence_length', 'sd3_max_sequence_length',
+                                                 '--sd3-max-sequence-length')
 
             self._set_non_universal_pipeline_arg(self._pipeline,
                                                  pipeline_args, user_args,
