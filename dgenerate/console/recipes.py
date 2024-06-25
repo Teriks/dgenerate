@@ -39,11 +39,13 @@ RECIPES = {
         --prompts "add your prompt here"
         """,
     "Stable Diffusion 3":
-        """
+        r"""
         # Stable Diffusion 3 requires a huggingface auth token to access
         # you must request access to the repository
         
-        \\set auth_token @string[{"label": "Hugging Face Auth Token", "arg":"--auth-token", "default":"$HF_TOKEN", "optional":false}]
+        \setp auth_token @string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]
+        
+        \set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
         
         @file[{"label":"Model File / HF Slug", "default": "stabilityai/stable-diffusion-3-medium-diffusers", "optional":false, "file-types":"models"}]
         --model-type torch-sd3 {{ auth_token }}
@@ -52,7 +54,7 @@ RECIPES = {
         @torchvae[{"label":"VAE File / URI"}]
         @file[{"label":"LoRa File / URI", "arg":"--loras", "file-types":"models"}]
         @file[{"label":"ControlNet File / URI", "arg":"--control-nets", "after":";scale=1.0", "file-types":"models"}]
-        @file[{"label":"Image Seed", "arg":"--image-seeds", "after":"\\n--image-seed-strengths 0.8"}]
+        @file[{"label":"Image Seed", "arg":"--image-seeds", "after":"\n--image-seed-strengths 0.8"}]
         @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":30, "min":1}]
         @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":5, "min":0}]
         @int[{"label":"Clip Skip", "arg":"--clip-skips", "default":0, "min":0}]
@@ -278,11 +280,13 @@ RECIPES = {
     
         \set prompt "add your prompt here"
         
-        \set auth_token @string[{"label": "Hugging Face Auth Token", "arg":"--auth-token", "default":"$HF_TOKEN", "optional":false}]
+        \setp auth_token @string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]
         
         \set device @device[{"optional":false}]
         
         \set output_dir @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output", "optional":false}]
+        
+        \set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
         
         @file[{"label":"Stage 1 Model File / HF Slug", "default": "DeepFloyd/IF-I-M-v1.0", "optional":false, "file-types":"models"}]
         --variant fp16
