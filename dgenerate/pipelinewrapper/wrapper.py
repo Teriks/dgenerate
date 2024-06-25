@@ -1084,6 +1084,15 @@ class DiffusionPipelineWrapper:
         if args.prompt is not None:
             opts.append(('--prompts', args.prompt))
 
+        if args.sd3_max_sequence_length is not None:
+            opts.append(('--sd3-max-sequence-length', args.sd3_max_sequence_length))
+
+        if args.sd3_second_prompt is not None:
+            opts.append(('--sd3-second-prompts', args.sd3_second_prompt))
+
+        if args.sd3_third_prompt is not None:
+            opts.append(('--sd3-third-prompts', args.sd3_third_prompt))
+
         if args.clip_skip is not None:
             opts.append(('--clip-skips', args.clip_skip))
 
