@@ -47,7 +47,14 @@ class _FindDialog(tk.Toplevel):
         if find_text:
             self.find_entry.insert('1.0', find_text)
         self.find_entry.grid(row=0, column=0, sticky='ew', padx=2, pady=2)
+
         self.find_entry.bind('<KeyRelease>', lambda e: self._validate_find())
+
+        def find_entry_entry_key(e):
+            self._find_next()
+            return "break"
+
+        self.find_entry.bind('<Return>', find_entry_entry_key)
 
         self.replace_entry = None
         if replace_mode:
@@ -56,6 +63,7 @@ class _FindDialog(tk.Toplevel):
                 self.replace_entry.insert('1.0', replace_text)
             self.replace_entry.grid(row=1, column=0, sticky='ew', padx=2, pady=2)
             self.replace_entry.bind('<KeyRelease>', lambda e: self._validate_replacement())
+            self.replace_entry.bind('<Return>', lambda e: "break")
 
         find_frame = tk.Frame(self)
         find_frame.grid(row=2, column=0, sticky='ew')
