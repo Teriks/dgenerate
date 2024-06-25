@@ -109,6 +109,15 @@ class RenderLoopConfig(_types.SetFromMixin):
     command line tool.
     """
 
+    sd3_max_sequence_length: _types.OptionalInteger = None
+    """
+    Max number of prompt tokens that the T5EncoderModel (text encoder 3) of Stable Diffusion can handle.
+    
+    This defaults to 256 when not specified, and the maximum value is 512 and the minimum value is 77.
+    
+    High values result in more resource usage and processing time.
+    """
+
     sd3_second_prompts: _types.OptionalPrompts = None
     """
     Optional list of SD3 secondary prompts, this corresponds to the ``--sd3-second-prompts`` argument
@@ -950,6 +959,13 @@ class RenderLoopConfig(_types.SetFromMixin):
             if invalid_self:
                 raise RenderLoopConfigError('\n'.join(invalid_self))
         else:
+            if self.sd3_max_sequence_length is not None:
+                if self.sd3_max_sequence_length < 77 or self.sd3_max_sequence_length > 512:
+                    raise RenderLoopConfigError(
+                        f'{a_namer("sd3_max_sequence_length")} must be greater than or equal '
+                        f'to 77 and less than or equal to 512.'
+                    )
+
             if self.output_size is not None:
                 if self.vae_tiling:
                     if not _image.is_power_of_two(self.output_size):
@@ -1297,6 +1313,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                                    self.sdxl_refiner_prompts),
             sdxl_refiner_second_prompt=ov('sdxl_refiner_second_prompt',
                                           self.sdxl_refiner_second_prompts),
+            sd3_max_sequence_length=ov('sd3_max_sequence_length', [self.sd3_max_sequence_length]),
             sd3_second_prompt=ov('sd3_second_prompt',
                                  self.sd3_second_prompts),
             sd3_third_prompt=ov('sd3_third_prompt',
