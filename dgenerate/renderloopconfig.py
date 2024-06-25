@@ -113,7 +113,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     """
     Max number of prompt tokens that the T5EncoderModel (text encoder 3) of Stable Diffusion can handle.
     
-    This defaults to 256 when not specified, and the maximum value is 512 and the minimum value is 77.
+    This defaults to 256 when not specified, and the maximum value is 512 and the minimum value is 1.
     
     High values result in more resource usage and processing time.
     """
@@ -960,10 +960,10 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError('\n'.join(invalid_self))
         else:
             if self.sd3_max_sequence_length is not None:
-                if self.sd3_max_sequence_length < 77 or self.sd3_max_sequence_length > 512:
+                if self.sd3_max_sequence_length < 1 or self.sd3_max_sequence_length > 512:
                     raise RenderLoopConfigError(
                         f'{a_namer("sd3_max_sequence_length")} must be greater than or equal '
-                        f'to 77 and less than or equal to 512.'
+                        f'to 1 and less than or equal to 512.'
                     )
 
             if self.output_size is not None:

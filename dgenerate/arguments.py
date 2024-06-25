@@ -96,8 +96,8 @@ def _sd3_max_sequence_length(val):
     except ValueError:
         raise argparse.ArgumentTypeError('Must be an integer')
 
-    if val < 77:
-        raise argparse.ArgumentTypeError('Must be greater than or equal to 77')
+    if val < 1:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 1')
 
     if val > 512:
         raise argparse.ArgumentTypeError('Must be less than or equal to 512')
@@ -1230,7 +1230,7 @@ def _create_parser(add_model=True, add_help=True):
                             default=None, type=_sd3_max_sequence_length,
                             help="""The maximum amount of prompt tokens that the T5EncoderModel 
                             (third text encoder) of Stable Diffusion 3 can handle. This should be 
-                            an integer value between 77 and 512 inclusive. The higher the value
+                            an integer value between 1 and 512 inclusive. The higher the value
                             the more resources and time are required for processing. (default: 256)"""))
 
     actions.append(
