@@ -971,6 +971,9 @@ def _torch_args_hasher(args):
         if uri is None or uri == '+':
             return None
 
+        if uri == 'help':
+            return 'help'
+
         return _uris.TorchTextEncoderUri.parse(uri)
 
     custom_hashes = {
@@ -1644,6 +1647,9 @@ def _flax_args_hasher(args):
     def text_encoder_uri_parse(uri):
         if uri is None or uri == '+':
             return None
+
+        if uri == 'help':
+            return 'help'
 
         return _uris.FlaxTextEncoderUri.parse(uri)
 
