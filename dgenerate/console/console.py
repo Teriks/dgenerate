@@ -1280,14 +1280,22 @@ def main(args: collections.abc.Sequence[str]):
         sys.stdout.reconfigure(encoding='utf-8')
         sys.stderr.reconfigure(encoding='utf-8')
 
+        if args:
+            if not os.path.exists(args[0]):
+                print(f'File not found: {args[0]}',
+                      file=sys.stderr)
+                sys.exit(1)
+
         app = DgenerateConsole()
+
         if args:
             app.load_file(args[0])
+
         app.mainloop()
     except KeyboardInterrupt:
         if app is not None:
             app.save_settings()
-        app.kill_shell_process()
-        print('Exiting dgenerate console UI due to keyboard interrupt!',
-              file=sys.stderr)
+            app.kill_shell_process()
+            print('Exiting dgenerate console UI due to keyboard interrupt!',
+                  file=sys.stderr)
         sys.exit(1)
