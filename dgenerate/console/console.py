@@ -29,6 +29,7 @@ import queue
 import re
 import shlex
 import shutil
+import signal
 import subprocess
 import sys
 import threading
@@ -1258,8 +1259,8 @@ class DgenerateConsole(tk.Tk):
         self._multi_line_input_check_var.set(state)
 
     def destroy(self) -> None:
-        self.kill_shell_process()
         self.save_settings()
+        self.kill_shell_process()
         super().destroy()
 
 
@@ -1276,25 +1277,34 @@ def main(args: collections.abc.Sequence[str]):
                 os.chdir(os.path.expanduser('~'))
 
     app = None
-    try:
-        sys.stdout.reconfigure(encoding='utf-8')
-        sys.stderr.reconfigure(encoding='utf-8')
 
-        if args:
-            if not os.path.exists(args[0]):
-                print(f'File not found: {args[0]}',
-                      file=sys.stderr)
-                sys.exit(1)
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
 
-        app = DgenerateConsole()
+    if args:
+        if not os.path.exists(args[0]):
+            print(f'File not found: {args[0]}',
+                  file=sys.stderr)
+            sys.exit(1)
 
-        if args:
-            app.load_file(args[0])
+    app = DgenerateConsole()
 
-        app.mainloop()
-    except KeyboardInterrupt:
-        if app is not None:
-            app.destroy()
+    def signal_handler(sig, frame):
         print('Exiting dgenerate console UI due to keyboard interrupt!',
               file=sys.stderr)
+        app.destroy()
         sys.exit(1)
+
+    signal.signal(signal.SIGINT, signal_handler)
+
+    if args:
+        try:
+            app.load_file(args[0])
+        except FileNotFoundError:
+            app.destroy()
+
+    app.mainloop()
+
+
+
+
