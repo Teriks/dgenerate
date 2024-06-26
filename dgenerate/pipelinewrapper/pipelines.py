@@ -968,10 +968,10 @@ def _text_encoder_not_null(uri):
 
 def _torch_args_hasher(args):
     def text_encoder_uri_parse(uri):
-        if uri is None or uri == '+':
+        if uri is None or uri.strip() == '+':
             return None
 
-        if uri == 'help':
+        if uri.strip() == 'help':
             return 'help'
 
         return _uris.TorchTextEncoderUri.parse(uri)
@@ -1645,10 +1645,10 @@ class FlaxPipelineFactory:
 def _flax_args_hasher(args):
 
     def text_encoder_uri_parse(uri):
-        if uri is None or uri == '+':
+        if uri is None or uri.strip() == '+':
             return None
 
-        if uri == 'help':
+        if uri.strip() == 'help':
             return 'help'
 
         return _uris.FlaxTextEncoderUri.parse(uri)
