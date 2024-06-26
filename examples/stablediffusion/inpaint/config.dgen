@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 3.8.0
+#! dgenerate 3.8.1
 
 stabilityai/stable-diffusion-2-inpainting 
 --inference-steps 30
