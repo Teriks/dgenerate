@@ -1294,8 +1294,6 @@ def main(args: collections.abc.Sequence[str]):
         app.mainloop()
     except KeyboardInterrupt:
         if app is not None:
-            app.save_settings()
-            app.kill_shell_process()
             app.destroy()
         print('Exiting dgenerate console UI due to keyboard interrupt!',
               file=sys.stderr)
