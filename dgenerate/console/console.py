@@ -1301,7 +1301,12 @@ def main(args: collections.abc.Sequence[str]):
         try:
             app.load_file(args[0])
         except FileNotFoundError:
+            # the original check could 'technically' race,
+            # cache here, with uglier console output
+            print(f'File not found: {args[0]}',
+                  file=sys.stderr)
             app.destroy()
+            sys.exit(1)
 
     app.mainloop()
 
