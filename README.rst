@@ -724,7 +724,7 @@ Help Output
                             (default: [(empty string)])
       --sd3-max-sequence-length INTEGER
                             The maximum amount of prompt tokens that the T5EncoderModel (third text encoder) of
-                            Stable Diffusion 3 can handle. This should be an integer value between 77 and 512
+                            Stable Diffusion 3 can handle. This should be an integer value between 1 and 512
                             inclusive. The higher the value the more resources and time are required for
                             processing. (default: 256)
       --sd3-second-prompts PROMPT [PROMPT ...]
