@@ -1276,8 +1276,6 @@ def main(args: collections.abc.Sequence[str]):
             if os.path.abspath(os.getcwd()) == os.path.abspath(application_path):
                 os.chdir(os.path.expanduser('~'))
 
-    app = None
-
     sys.stdout.reconfigure(encoding='utf-8')
     sys.stderr.reconfigure(encoding='utf-8')
 
