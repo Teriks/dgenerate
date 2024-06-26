@@ -2459,7 +2459,7 @@ ControlNet models are supported for these model types:
     * ``--model-type torch``
     * ``--model-type flax``
     * ``--model-type torch-sdxl``
-    * ``--model-type torch-sd3`` (Limited to power of 2 sized images, img2img and inpainting not supported)
+    * ``--model-type torch-sd3`` (img2img and inpainting not supported)
 
 You can provide a huggingface repository slug / blob link, .pt, .pth, .bin, .ckpt, or .safetensors files.
 
