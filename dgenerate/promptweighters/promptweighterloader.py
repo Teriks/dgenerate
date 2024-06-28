@@ -19,51 +19,32 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import dgenerate.pipelinewrapper.enums as _enums
-import dgenerate.pipelinewrapper.promptweighters.exceptions as _exceptions
+import dgenerate.promptweighters.promptweighter as _promptweighter
+import dgenerate.promptweighters.exceptions as _exceptions
 import dgenerate.plugin as _plugin
+from dgenerate.plugin import PluginArg as _Pa
+import dgenerate.pipelinewrapper.enums as _enums
+import dgenerate.types as _types
+import typing
 
 
-class PromptWeighter(_plugin.Plugin):
+class PromptWeighterLoader(_plugin.PluginLoader):
     """
-    Abstract base class for prompt weighter implementations.
+    Loads :py:class:`dgenerate.promptweighters.PromptWeighter` plugins.
     """
 
-    def __init__(self,
-                 loaded_by_name: str,
-                 model_type: _enums.ModelType,
-                 pipeline_type: _enums.PipelineType,
-                 **kwargs):
-        super().__init__(loaded_by_name=loaded_by_name,
+    def __init__(self):
+        """"""
+
+        # The empty string above disables sphinx inherited doc
+        super().__init__(base_class=_promptweighter.PromptWeighter,
+                         description='prompt weighter',
+                         reserved_args=[_Pa('model-type', type=_enums.ModelType, default=None),
+                                        _Pa('pipeline-type', type=_enums.PipelineType, default=False)],
                          argument_error_type=_exceptions.PromptWeighterArgumentError,
-                         **kwargs)
+                         not_found_error_type=_exceptions.PromptWeighterNotFoundError)
 
-        self._model_type = model_type
-        self._pipeline_type = pipeline_type
+        self.add_search_module_string('dgenerate.promptweighters')
 
-    @property
-    def model_type(self) -> _enums.ModelType:
-        return self._model_type
-
-    @property
-    def pipeline_type(self) -> _enums.PipelineType:
-        return self._pipeline_type
-
-    def translate_to_embeds(self,
-                            pipeline,
-                            device: str,
-                            args: dict[str, any]):
-        """
-        Translate the pipeline prompt arguments to ``prompt_embeds`` and ``pooled_prompt_embeds`` as needed.
-        :param pipeline: The pipeline object
-        :param device: The device the pipeline modules are on
-        :param args: Call arguments to the pipeline
-        :return: ``args``, supplemented with prompt embedding arguments
-        """
-        pass
-
-    def cleanup(self):
-        """
-        Preform any cleanup required after translating the pipeline arguments to embeds
-        """
-        pass
+    def load(self, uri: _types.Uri, **kwargs) -> _promptweighter.PromptWeighter:
+        return typing.cast(_promptweighter.PromptWeighter, super().load(uri, **kwargs))

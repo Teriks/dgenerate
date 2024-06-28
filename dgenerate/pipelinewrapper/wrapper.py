@@ -34,7 +34,7 @@ import dgenerate.pipelinewrapper.cache as _cache
 import dgenerate.pipelinewrapper.constants as _constants
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.pipelines as _pipelines
-import dgenerate.pipelinewrapper.promptweighter as _promptweighter
+import dgenerate.promptweighters as _promptweighters
 import dgenerate.pipelinewrapper.uris as _uris
 import dgenerate.prompt as _prompt
 import dgenerate.textprocessing as _textprocessing
@@ -294,7 +294,7 @@ class DiffusionPipelineWrapper:
                     'LoRA loading is not implemented for flax.')
 
         self._prompt_weighter_name = prompt_weighter
-        self._prompt_weighter: _promptweighter.PromptWeighter | None = None
+        self._prompt_weighter: _promptweighters.PromptWeighter | None = None
 
     @property
     def prompt_weighter(self) -> _types.OptionalName:
@@ -2084,7 +2084,7 @@ class DiffusionPipelineWrapper:
             copy_args.determine_pipeline_type())
 
         if self._prompt_weighter_name:
-            self._prompt_weighter = _promptweighter.create_prompt_weighter(
+            self._prompt_weighter = _promptweighters.create_prompt_weighter(
                 self._prompt_weighter_name,
                 self.model_type,
                 self._pipeline_type)

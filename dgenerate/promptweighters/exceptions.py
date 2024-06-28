@@ -19,30 +19,29 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import dgenerate.pipelinewrapper.enums as _enums
 
-from dgenerate.pipelinewrapper.promptweighters import\
-    PromptWeighterLoader, \
-    PromptWeighter, \
-    PromptWeightingUnsupported
+import dgenerate.plugin as _plugin
 
 
-def prompt_weighter_names():
+class PromptWeighterNotFoundError(_plugin.PluginNotFoundError):
     """
-    Implementation names.
-    :return: a list of prompt weighter implementation names.
+    Thrown when a :py:class:`dgenerate.promptweighters.PromptWeighter`
+    implementation could not be found for a given name.
     """
-
-    return list(PromptWeighterLoader().get_all_names())
-
-
-def prompt_weighter_name_from_uri(uri):
-    return uri.split(';')[0].strip()
+    pass
 
 
-def is_valid_prompt_weighter_uri(uri):
-    return prompt_weighter_name_from_uri(uri) in prompt_weighter_names()
+class PromptWeighterArgumentError(_plugin.PluginArgumentError):
+    """
+    Thrown when a :py:class:`dgenerate.promptweighters.PromptWeighter`
+    implementation is loaded with an invalid argument.
+    """
+    pass
 
 
-def create_prompt_weighter(uri, model_type: _enums.ModelType, pipeline_type: _enums.PipelineType) -> PromptWeighter:
-    return PromptWeighterLoader().load(uri, model_type=model_type, pipeline_type=pipeline_type)
+class PromptWeightingUnsupported(Exception):
+    """
+    Thrown when a :py:class:`dgenerate.promptweighters.PromptWeighter`
+    implementation cannot handle a specific pipeline or combination of pipeline arguments.
+    """
+    pass

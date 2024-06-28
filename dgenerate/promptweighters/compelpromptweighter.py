@@ -28,8 +28,8 @@ import torch
 
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.enums as _enums
-import dgenerate.pipelinewrapper.promptweighters.exceptions as _exceptions
-import dgenerate.pipelinewrapper.promptweighters.promptweighter as _promptweighter
+import dgenerate.promptweighters.exceptions as _exceptions
+import dgenerate.promptweighters.promptweighter as _promptweighter
 
 _Attention = typing.List[typing.Tuple[str, float]]
 

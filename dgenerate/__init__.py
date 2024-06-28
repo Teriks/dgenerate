@@ -95,12 +95,14 @@ try:
         NonHFModelDownloadError, \
         InvalidSchedulerNameError, \
         UnsupportedPipelineConfigError, \
-        PromptWeightingUnsupported, \
         ModelType, \
         DataType, \
         OutOfMemoryError, \
         ModelNotFoundError, \
         PipelineType
+
+    from dgenerate.promptweighters \
+        import PromptWeightingUnsupported
 
     from dgenerate.prompt import Prompt
 

@@ -26,6 +26,7 @@ import dgenerate.image as _image
 import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.pipelinewrapper as _pipelinewrapper
+import dgenerate.promptweighters as _promptweighters
 import dgenerate.prompt as _prompt
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
@@ -709,10 +710,10 @@ class RenderLoopConfig(_types.SetFromMixin):
         def non_null_attr_that_end_with(s):
             return (a for a in dir(self) if a.endswith(s) and getattr(self, a) is not None)
 
-        if self.prompt_weighter is not None and not _pipelinewrapper.is_valid_prompt_weighter_uri(self.prompt_weighter):
+        if self.prompt_weighter is not None and not _promptweighters.is_valid_prompt_weighter_uri(self.prompt_weighter):
             raise RenderLoopConfigError(
-                f'Unknown prompt weighter implementation: {_pipelinewrapper.prompt_weighter_name_from_uri(self.prompt_weighter)}, '
-                f'must be one of: {_textprocessing.oxford_comma(_pipelinewrapper.prompt_weighter_names(), "or")}')
+                f'Unknown prompt weighter implementation: {_promptweighters.prompt_weighter_name_from_uri(self.prompt_weighter)}, '
+                f'must be one of: {_textprocessing.oxford_comma(_promptweighters.prompt_weighter_names(), "or")}')
 
         supported_dtypes = _pipelinewrapper.supported_data_type_strings()
         if self.dtype not in _pipelinewrapper.supported_data_type_enums():
