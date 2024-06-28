@@ -408,6 +408,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'directives_help': self._directives_help_directive,
             'functions_help': self._functions_help_directive,
             'image_processor_help': self._image_processor_help_directive,
+            'prompt_weighter_help': self._prompt_weighter_help_directive,
             'clear_model_cache': return_zero(
                 _pipelinewrapper.clear_model_cache,
                 help_text='Clear all user specified models from the in memory cache.'),
@@ -1474,6 +1475,18 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         """
 
         self.run_string(shlex.join(['--image-processor-help'] + list(args)))
+        return 0
+
+    def _prompt_weighter_help_directive(self, args: collections.abc.Sequence[str]):
+        """
+        Prints all prompt weighter names. Alias for --prompt-weighter-help
+
+        Providing prompt weighter names as arguments prints documentation for those prompt weighters.
+
+        This does not cause the config to exit.
+        """
+
+        self.run_string(shlex.join(['--prompt-weighter-help'] + list(args)))
         return 0
 
     def _help_directive(self, args: collections.abc.Sequence[str]):
