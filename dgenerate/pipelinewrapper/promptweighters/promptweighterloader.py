@@ -19,30 +19,32 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import dgenerate.pipelinewrapper.promptweighters.promptweighter as _promptweighter
+import dgenerate.pipelinewrapper.promptweighters.exceptions as _exceptions
+import dgenerate.plugin as _plugin
+from dgenerate.plugin import PluginArg as _Pa
 import dgenerate.pipelinewrapper.enums as _enums
-
-from dgenerate.pipelinewrapper.promptweighters import\
-    PromptWeighterLoader, \
-    PromptWeighter, \
-    PromptWeightingUnsupported
+import dgenerate.types as _types
+import typing
 
 
-def prompt_weighter_names():
+class PromptWeighterLoader(_plugin.PluginLoader):
     """
-    Implementation names.
-    :return: a list of prompt weighter implementation names.
+    Loads :py:class:`dgenerate.pipelinewrapper.promptweighters.PromptWeighter` plugins.
     """
 
-    return list(PromptWeighterLoader().get_all_names())
+    def __init__(self):
+        """"""
 
+        # The empty string above disables sphinx inherited doc
+        super().__init__(base_class=_promptweighter.PromptWeighter,
+                         description='prompt weighter',
+                         reserved_args=[_Pa('model-type', type=_enums.ModelType, default=None),
+                                        _Pa('pipeline-type', type=_enums.PipelineType, default=False)],
+                         argument_error_type=_exceptions.PromptWeighterArgumentError,
+                         not_found_error_type=_exceptions.PromptWeighterNotFoundError)
 
-def prompt_weighter_name_from_uri(uri):
-    return uri.split(';')[0].strip()
+        self.add_search_module_string('dgenerate.pipelinewrapper.promptweighters')
 
-
-def is_valid_prompt_weighter_uri(uri):
-    return prompt_weighter_name_from_uri(uri) in prompt_weighter_names()
-
-
-def create_prompt_weighter(uri, model_type: _enums.ModelType, pipeline_type: _enums.PipelineType) -> PromptWeighter:
-    return PromptWeighterLoader().load(uri, model_type=model_type, pipeline_type=pipeline_type)
+    def load(self, uri: _types.Uri, **kwargs) -> _promptweighter.PromptWeighter:
+        return typing.cast(_promptweighter.PromptWeighter, super().load(uri, **kwargs))

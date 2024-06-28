@@ -19,30 +19,14 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import dgenerate.pipelinewrapper.enums as _enums
 
-from dgenerate.pipelinewrapper.promptweighters import\
-    PromptWeighterLoader, \
-    PromptWeighter, \
+import dgenerate.types as _types
+from .exceptions import \
+    PromptWeighterArgumentError, \
+    PromptWeighterNotFoundError, \
     PromptWeightingUnsupported
+from .promptweighter import PromptWeighter
+from .promptweighterloader import PromptWeighterLoader
+from .compelpromptweighter import CompelPromptWeighter
 
-
-def prompt_weighter_names():
-    """
-    Implementation names.
-    :return: a list of prompt weighter implementation names.
-    """
-
-    return list(PromptWeighterLoader().get_all_names())
-
-
-def prompt_weighter_name_from_uri(uri):
-    return uri.split(';')[0].strip()
-
-
-def is_valid_prompt_weighter_uri(uri):
-    return prompt_weighter_name_from_uri(uri) in prompt_weighter_names()
-
-
-def create_prompt_weighter(uri, model_type: _enums.ModelType, pipeline_type: _enums.PipelineType) -> PromptWeighter:
-    return PromptWeighterLoader().load(uri, model_type=model_type, pipeline_type=pipeline_type)
+__all__ = _types.module_all()

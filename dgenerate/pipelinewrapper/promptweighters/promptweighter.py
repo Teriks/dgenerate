@@ -20,29 +20,50 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import dgenerate.pipelinewrapper.enums as _enums
-
-from dgenerate.pipelinewrapper.promptweighters import\
-    PromptWeighterLoader, \
-    PromptWeighter, \
-    PromptWeightingUnsupported
+import dgenerate.pipelinewrapper.promptweighters.exceptions as _exceptions
+import dgenerate.plugin as _plugin
 
 
-def prompt_weighter_names():
+class PromptWeighter(_plugin.Plugin):
     """
-    Implementation names.
-    :return: a list of prompt weighter implementation names.
+    Abstract base class for prompt weighter implementations.
     """
 
-    return list(PromptWeighterLoader().get_all_names())
+    def __init__(self,
+                 loaded_by_name: str,
+                 model_type: _enums.ModelType,
+                 pipeline_type: _enums.PipelineType,
+                 **kwargs):
+        super().__init__(loaded_by_name=loaded_by_name,
+                         argument_error_type=_exceptions.PromptWeighterArgumentError,
+                         **kwargs)
 
+        self._model_type = model_type
+        self._pipeline_type = pipeline_type
 
-def prompt_weighter_name_from_uri(uri):
-    return uri.split(';')[0].strip()
+    @property
+    def model_type(self) -> _enums.ModelType:
+        return self._model_type
 
+    @property
+    def pipeline_type(self) -> _enums.PipelineType:
+        return self._pipeline_type
 
-def is_valid_prompt_weighter_uri(uri):
-    return prompt_weighter_name_from_uri(uri) in prompt_weighter_names()
+    def translate_to_embeds(self,
+                            pipeline,
+                            device: str,
+                            args: dict[str, any]):
+        """
+        Translate the pipeline prompt arguments to ``prompt_embeds`` and ``pooled_prompt_embeds`` as needed.
+        :param pipeline: The pipeline object
+        :param device: The device the pipeline modules are on
+        :param args: Call arguments to the pipeline
+        :return: ``args``, supplemented with prompt embedding arguments
+        """
+        pass
 
-
-def create_prompt_weighter(uri, model_type: _enums.ModelType, pipeline_type: _enums.PipelineType) -> PromptWeighter:
-    return PromptWeighterLoader().load(uri, model_type=model_type, pipeline_type=pipeline_type)
+    def cleanup(self):
+        """
+        Preform any cleanup required after translating the pipeline arguments to embeds
+        """
+        pass
