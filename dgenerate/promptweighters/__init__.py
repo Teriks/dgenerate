@@ -31,6 +31,41 @@ from .promptweighter import PromptWeighter
 from .promptweighterloader import PromptWeighterLoader
 
 
+class PromptWeighterHelpUsageError(Exception):
+    """
+    Raised on argument parse errors in :py:func:`.prompt_weighters_help`
+    """
+    pass
+
+
+def prompt_weighter_help(names: _types.Names,
+                         throw=False,
+                         log_error=True):
+    """
+    Implements ``--prompt-weighter-help`` command line option
+
+    :param names: arguments (prompt weighter names, or empty list)
+    :param throw: throw on error? or simply print to stderr and return a return code.
+    :param log_error: log errors to stderr?
+
+    :raises PromptWeighterHelpUsageError:
+
+    :return: return-code, anything other than 0 is failure
+    """
+
+    try:
+        return PromptWeighterLoader().loader_help(
+            names=names,
+            title='prompt weighter',
+            title_plural='prompt weighters',
+            throw=True,
+            log_error=log_error)
+    except PromptWeighterNotFoundError as e:
+        if throw:
+            raise PromptWeighterHelpUsageError(str(e).strip())
+        return 1
+
+
 def prompt_weighter_names():
     """
     Implementation names.

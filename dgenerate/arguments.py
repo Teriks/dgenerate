@@ -32,8 +32,8 @@ import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
-import dgenerate.promptweighters as _promptweighters
 import dgenerate.prompt as _prompt
+import dgenerate.promptweighters as _promptweighters
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 
@@ -1231,11 +1231,20 @@ def _create_parser(add_model=True, add_help=True):
                  'By default, no prompt weighting syntax is enabled, meaning you cannot adjust token weights as '
                  'you may be able to do in software such as ComfyUI, Automatic1111, CivitAI etc. Currently the only '
                  'prompt weighting implementation is "compel", which supports prompt token weighting syntax for '
-                 'Stable Diffusion 1/2 and Stable Diffusion XL. Compel allows adjusting the weight of individual'
+                 'Stable Diffusion 1/2 and Stable Diffusion XL. Compel allows adjusting the weight of individual '
                  'tokens in your prompt using a special syntax. You can read about Compel here: '
                  'https://github.com/damian0815/compel. Note that secondary prompts such as --sdxl-second-prompts '
                  'are ignored when prompt weighting is enabled. If prompt weighting is not supported '
-                 'for your combination of arguments a helpful error will be raised.'))
+                 'for your combination of arguments a helpful error will be raised. '
+                 'See also: --prompt-weighter-help'))
+
+    actions.append(
+        parser.add_argument(
+            '--prompt-weighter-help', metavar='PROMPT_WEIGHTER_NAMES', dest=None, nargs='*',
+            help="""Use this option and with no model specification in order to list available
+                 prompt weighter module names. Specifying one or more module names after this option
+                 will cause usage  documentation for the specified modules to be printed."""
+        ))
 
     actions.append(
         parser.add_argument('-p', '--prompts', nargs='+', action='store', metavar="PROMPT",
@@ -1731,6 +1740,22 @@ def parse_image_processor_help(
     parsed, unknown = parser.parse_known_args(args)
 
     return parsed.image_processor_help, unknown
+
+
+def parse_prompt_weighter_help(
+        args: collections.abc.Sequence[str] | None = None) -> tuple[list[str], list[str]]:
+    """
+    Retrieve the ``--prompt-weighter-help`` argument value
+
+    :param args: command line arguments
+    :return: (values, unknown_args_list)
+    """
+
+    parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
+    parser.add_argument('--prompt-weighter-help', action='store', nargs='*', default=None)
+    parsed, unknown = parser.parse_known_args(args)
+
+    return parsed.prompt_weighter_help, unknown
 
 
 def parse_sub_command(

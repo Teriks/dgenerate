@@ -176,6 +176,21 @@ def invoke_dgenerate_events(
         yield rethrow_with_message(e)
         return
 
+    prompt_weighter_help, _ = _arguments.parse_prompt_weighter_help(args)
+
+    if prompt_weighter_help is not None:
+        try:
+            yield DgenerateExitEvent(
+                origin=invoke_dgenerate_events,
+                return_code=_promptweighters.prompt_weighter_help(
+                    names=prompt_weighter_help,
+                    log_error=False,
+                    throw=True))
+
+        except _promptweighters.PromptWeighterHelpUsageError as e:
+            yield rethrow_with_message(e)
+        return
+
     image_processor_help, _ = _arguments.parse_image_processor_help(args)
 
     if image_processor_help is not None:
