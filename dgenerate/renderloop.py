@@ -772,7 +772,6 @@ class RenderLoop:
             pass
 
     def _create_pipeline_wrapper(self):
-        print('Weighter:', self.config.prompt_weighter)
         self._pipeline_wrapper = _pipelinewrapper.DiffusionPipelineWrapper(
             self.config.model_path,
             dtype=self.config.dtype,

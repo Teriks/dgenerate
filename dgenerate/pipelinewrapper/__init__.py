@@ -139,7 +139,7 @@ from .pipelines import \
 from .promptweighter import \
     prompt_weighter_names, \
     prompt_weighter_name_from_uri, \
-    is_valid_prompt_weighter, \
+    is_valid_prompt_weighter_uri, \
     create_prompt_weighter, \
     PromptWeighter, \
     PromptWeightingUnsupported

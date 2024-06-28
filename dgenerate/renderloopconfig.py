@@ -709,7 +709,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         def non_null_attr_that_end_with(s):
             return (a for a in dir(self) if a.endswith(s) and getattr(self, a) is not None)
 
-        if self.prompt_weighter is not None and not _pipelinewrapper.is_valid_prompt_weighter(self.prompt_weighter):
+        if self.prompt_weighter is not None and not _pipelinewrapper.is_valid_prompt_weighter_uri(self.prompt_weighter):
             raise RenderLoopConfigError(
                 f'Unknown prompt weighter implementation: {_pipelinewrapper.prompt_weighter_name_from_uri(self.prompt_weighter)}, '
                 f'must be one of: {_textprocessing.oxford_comma(_pipelinewrapper.prompt_weighter_names(), "or")}')

@@ -303,7 +303,7 @@ def prompt_weighter_name_from_uri(uri):
     return uri.split(';')[0].strip()
 
 
-def is_valid_prompt_weighter(uri):
+def is_valid_prompt_weighter_uri(uri):
     return prompt_weighter_name_from_uri(uri) in prompt_weighter_names()
 
 
