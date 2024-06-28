@@ -32,6 +32,7 @@ import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
+import dgenerate.promptweighters as _promptweighters
 import dgenerate.prompt as _prompt
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
@@ -92,10 +93,10 @@ def _type_prompts(prompt):
 
 def _type_prompt_weighter(uri):
     uri = str(uri)
-    if not _pipelinewrapper.is_valid_prompt_weighter_uri(uri):
+    if not _promptweighters.is_valid_prompt_weighter_uri(uri):
         raise argparse.ArgumentTypeError(
-            f'Unknown prompt weighter implementation: {_pipelinewrapper.prompt_weighter_name_from_uri(uri)}, '
-            f'must be one of: {_textprocessing.oxford_comma(_pipelinewrapper.prompt_weighter_names(), "or")}')
+            f'Unknown prompt weighter implementation: {_promptweighters.prompt_weighter_name_from_uri(uri)}, '
+            f'must be one of: {_textprocessing.oxford_comma(_promptweighters.prompt_weighter_names(), "or")}')
     return uri
 
 

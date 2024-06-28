@@ -27,6 +27,7 @@ import dgenerate.imageprocessors as _imageprocessors
 import dgenerate.mediainput as _mediainput
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
+import dgenerate.promptweighters as _promptweighters
 import dgenerate.plugin as _plugin
 import dgenerate.renderloop as _renderloop
 import dgenerate.subcommands as _subcommands
@@ -338,7 +339,7 @@ def invoke_dgenerate_events(
             _pipelinewrapper.InvalidSchedulerNameError,
             _pipelinewrapper.UnsupportedPipelineConfigError,
             _pipelinewrapper.OutOfMemoryError,
-            _pipelinewrapper.PromptWeightingUnsupported,
+            _promptweighters.PromptWeightingUnsupported,
             _plugin.PluginNotFoundError,
             _plugin.PluginArgumentError,
             EnvironmentError) as e:

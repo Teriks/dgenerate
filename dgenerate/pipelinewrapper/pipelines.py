@@ -37,7 +37,7 @@ import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.cache as _cache
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.hfutil as _hfutil
-import dgenerate.pipelinewrapper.promptweighter as _promptweighter
+import dgenerate.promptweighters as _promptweighters
 import dgenerate.pipelinewrapper.uris as _uris
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
@@ -661,7 +661,7 @@ _LAST_CALLED_PIPELINE = None
 # noinspection PyCallingNonCallable
 def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusionPipeline,
                   device: torch.device | str | None = 'cuda',
-                  prompt_weighter: _promptweighter.PromptWeighter = None,
+                  prompt_weighter: _promptweighters.PromptWeighter = None,
                   **kwargs):
     """
     Call a diffusers pipeline, offload the last called pipeline to CPU before
