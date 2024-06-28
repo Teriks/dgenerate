@@ -97,7 +97,7 @@ def _parse_sdwui_attention_from_prompt(text: str) -> _Attention:
     return res
 
 
-def _attention_to_invoke_prompt(attention: _Attention) -> str:
+def _attention_to_compel_prompt(attention: _Attention) -> str:
     tokens: typing.List[str] = []
     for text, weight in attention:
         weight = round(weight, 2)
@@ -112,7 +112,7 @@ def _attention_to_invoke_prompt(attention: _Attention) -> str:
 
 def _translate_sdwui_to_compel(text: str) -> str:
     attention = _parse_sdwui_attention_from_prompt(text)
-    return _attention_to_invoke_prompt(attention)
+    return _attention_to_compel_prompt(attention)
 
 
 class CompelPromptWeighter(_promptweighter.PromptWeighter):
