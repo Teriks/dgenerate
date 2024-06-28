@@ -18,15 +18,18 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
+import ast
 import gc
+import inspect
 import re
+import typing
 
 import compel
 import torch
 
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.enums as _enums
+import dgenerate.textprocessing as _textprocessing
 
 
 class PromptWeightingUnsupported(Exception):
@@ -67,12 +70,99 @@ class PromptWeighter:
         pass
 
 
+_Attention = typing.List[typing.Tuple[str, float]]
+
+_reAttention = re.compile(
+    r'\\\\\(|\\\\\)|\\\\\[|\\\\\]|\\\\\\\\|\||\(|\[|:([+-]?[\.\d]+)\)|\)|\]|[^\[\\\(\)\[\]:]+|:'
+)
+
+_reBreak = re.compile(r'\s*\bBREAK\b\s*', re.M)
+
+
+def _parse_sdwui_attention_from_prompt(text: str) -> _Attention:
+    res: _Attention = []
+    round_brackets: typing.List[int] = []
+    square_brackets: typing.List[int] = []
+
+    round_bracket_multiplier = 1.1
+    square_bracket_multiplier = 1 / 1.1
+
+    def multiply_range(start_position: int, multiplier: float) -> None:
+        for p in range(start_position, len(res)):
+            res[p] = (res[p][0], res[p][1] * multiplier)
+
+    match_iterator = _reAttention.finditer(text)
+
+    for m in match_iterator:
+        match_text = m.group(0)
+        weight = m.group(1)
+
+        if match_text.startswith('\\'):
+            res.append((match_text[1:], 1.0))
+        elif match_text == '(':
+            round_brackets.append(len(res))
+        elif match_text == '[':
+            square_brackets.append(len(res))
+        elif weight and round_brackets:
+            multiply_range(round_brackets.pop(), float(weight))
+        elif match_text == ')' and round_brackets:
+            multiply_range(round_brackets.pop(), round_bracket_multiplier)
+        elif match_text == ']' and square_brackets:
+            multiply_range(square_brackets.pop(), square_bracket_multiplier)
+        else:
+            parts = _reBreak.split(match_text)
+            for i, part in enumerate(parts):
+                if i > 0:
+                    res.append(('BREAK', -1))
+                res.append((part, 1.0))
+
+    for pos in round_brackets:
+        multiply_range(pos, round_bracket_multiplier)
+
+    for pos in square_brackets:
+        multiply_range(pos, square_bracket_multiplier)
+
+    if not res:
+        res = [('', 1.0)]
+
+    i = 0
+    while i + 1 < len(res):
+        if res[i][1] == res[i + 1][1]:
+            res[i] = (res[i][0] + res[i + 1][0], res[i][1])
+            del res[i + 1]
+        else:
+            i += 1
+
+    return res
+
+
+def _attention_to_invoke_prompt(attention: _Attention) -> str:
+    tokens: typing.List[str] = []
+    for text, weight in attention:
+        weight = round(weight, 2)
+        if weight == 1.0:
+            tokens.append(text)
+        else:
+            pad = '-' if weight < 1.0 else '+'
+            sign = pad * round(abs(weight - 1.0) / 0.1)
+            tokens.append(f'({text}){sign}')
+    return ''.join(tokens)
+
+
+def _translate_sdwui_to_compel(text: str) -> str:
+    attention = _parse_sdwui_attention_from_prompt(text)
+    return _attention_to_invoke_prompt(attention)
+
+
 class CompelPromptWeighter(PromptWeighter):
 
-    def __init__(self, model_type: _enums.ModelType, pipeline_type: _enums.PipelineType):
-
+    def __init__(self, model_type: _enums.ModelType, pipeline_type: _enums.PipelineType, syntax='compel'):
         super().__init__(model_type, pipeline_type)
         self._tensors = list()
+        self._syntax = syntax
+
+        if syntax not in {'compel', 'sdwui'}:
+            raise PromptWeightingUnsupported(f'Compel prompt weighter does not support syntax: {syntax}')
 
     @torch.no_grad()
     def translate_to_embeds(self,
@@ -139,6 +229,10 @@ class CompelPromptWeighter(PromptWeighter):
                         level=_messages.WARNING)
 
         if positive:
+            if self._syntax == 'sdwui':
+                positive = _translate_sdwui_to_compel(positive)
+                _messages.log(f'Positive prompt translated to compel: {positive}', level=_messages.DEBUG)
+
             if hasattr(pipeline, 'maybe_convert_prompt') and pipeline.tokenizer is not None:
                 pos_conditioning, pos_pooled = c(pipeline.maybe_convert_prompt(positive, tokenizer=pipeline.tokenizer))
             else:
@@ -156,6 +250,10 @@ class CompelPromptWeighter(PromptWeighter):
             })
 
         else:
+            if self._syntax == 'sdwui':
+                negative = _translate_sdwui_to_compel(negative)
+                _messages.log(f'Negative prompt translated to compel: {negative}', level=_messages.DEBUG)
+
             if hasattr(pipeline, 'maybe_convert_prompt') and pipeline.tokenizer is not None:
                 neg_conditioning, neg_pooled = c(pipeline.maybe_convert_prompt(negative, tokenizer=pipeline.tokenizer))
             else:
@@ -199,8 +297,48 @@ def prompt_weighter_names():
     return ['compel']
 
 
-def create_prompt_weighter(name, model_type: _enums.ModelType, pipeline_type: _enums.PipelineType) -> PromptWeighter:
-    if name == 'compel':
-        return CompelPromptWeighter(model_type, pipeline_type)
+def prompt_weighter_name_from_uri(uri):
+    return uri.split(';')[0].strip()
 
-    raise ValueError(f'Unknown prompt weighter implementation: {name}')
+
+def is_valid_prompt_weighter(uri):
+    return prompt_weighter_name_from_uri(uri) in prompt_weighter_names()
+
+
+_IMPL = {
+    'compel': CompelPromptWeighter
+}
+
+
+def create_prompt_weighter(uri, model_type: _enums.ModelType, pipeline_type: _enums.PipelineType) -> PromptWeighter:
+    name = prompt_weighter_name_from_uri(uri)
+
+    implementation = _IMPL.get(name, None)
+
+    if implementation is None:
+        raise PromptWeightingUnsupported(f'Unknown prompt weighter implementation: {name}')
+
+    parser = _textprocessing.ConceptUriParser(
+        'Prompt Weighter',
+        known_args=[_textprocessing.dashup(a) for a in inspect.getfullargspec(implementation.__init__).args[3:]])
+
+    try:
+        result = parser.parse(uri)
+    except _textprocessing.ConceptUriParseError as e:
+        raise PromptWeightingUnsupported(e)
+
+    def _get_value(v):
+        try:
+            return ast.literal_eval(v)
+        except (ValueError, SyntaxError):
+            return v
+
+    if result.args:
+        return implementation(
+            model_type=model_type,
+            pipeline_type=pipeline_type,
+            **{_textprocessing.dashdown(k): _get_value(v) for k, v in result.args.items()})
+    else:
+        return implementation(
+            model_type=model_type,
+            pipeline_type=pipeline_type)

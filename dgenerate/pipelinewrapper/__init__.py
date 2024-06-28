@@ -138,6 +138,8 @@ from .pipelines import \
     get_torch_device_string
 from .promptweighter import \
     prompt_weighter_names, \
+    prompt_weighter_name_from_uri, \
+    is_valid_prompt_weighter, \
     create_prompt_weighter, \
     PromptWeighter, \
     PromptWeightingUnsupported

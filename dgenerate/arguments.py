@@ -90,14 +90,13 @@ def _type_prompts(prompt):
             f'Prompt parse error: {str(e).strip()}')
 
 
-def _type_prompt_weighter(name):
-    name = str(name)
-    implementation_names = _pipelinewrapper.prompt_weighter_names()
-    if name not in implementation_names:
+def _type_prompt_weighter(uri):
+    uri = str(uri)
+    if not _pipelinewrapper.is_valid_prompt_weighter(uri):
         raise argparse.ArgumentTypeError(
-            f'Unknown prompt weighter implementation: {name}, '
-            f'must be one of: {_textprocessing.oxford_comma(implementation_names, "or")}')
-    return name
+            f'Unknown prompt weighter implementation: {_pipelinewrapper.prompt_weighter_name_from_uri(uri)}, '
+            f'must be one of: {_textprocessing.oxford_comma(_pipelinewrapper.prompt_weighter_names(), "or")}')
+    return uri
 
 
 def _sd3_max_sequence_length(val):
