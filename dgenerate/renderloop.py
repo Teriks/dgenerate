@@ -772,6 +772,7 @@ class RenderLoop:
             pass
 
     def _create_pipeline_wrapper(self):
+        print('Weighter:', self.config.prompt_weighter)
         self._pipeline_wrapper = _pipelinewrapper.DiffusionPipelineWrapper(
             self.config.model_path,
             dtype=self.config.dtype,
@@ -807,7 +808,8 @@ class RenderLoop:
             model_cpu_offload=self.config.model_cpu_offload,
             model_sequential_offload=self.config.model_sequential_offload,
             sdxl_refiner_cpu_offload=bool(self.config.sdxl_refiner_cpu_offload),
-            sdxl_refiner_sequential_offload=bool(self.config.sdxl_refiner_sequential_offload))
+            sdxl_refiner_sequential_offload=bool(self.config.sdxl_refiner_sequential_offload),
+            prompt_weighter=self.config.prompt_weighter)
         return self._pipeline_wrapper
 
     def _ensure_output_path(self):

@@ -20,7 +20,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import ast
 import collections.abc
-import contextlib
 import inspect
 import typing
 
@@ -38,6 +37,7 @@ import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.cache as _cache
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.hfutil as _hfutil
+import dgenerate.pipelinewrapper.promptweighter as _promptweighter
 import dgenerate.pipelinewrapper.uris as _uris
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
@@ -660,19 +660,23 @@ _LAST_CALLED_PIPELINE = None
 
 # noinspection PyCallingNonCallable
 def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusionPipeline,
-                  device: torch.device | str | None = 'cuda', *args, **kwargs):
+                  device: torch.device | str | None = 'cuda',
+                  prompt_weighter: _promptweighter.PromptWeighter = None,
+                  **kwargs):
     """
     Call a diffusers pipeline, offload the last called pipeline to CPU before
     doing so if the last pipeline is not being called in succession
 
+
     :param pipeline: The pipeline
+
+    :param prompt_weighter: Optional prompt weighter for weighted prompt syntaxes
 
     :param device: The device to move the pipeline to before calling, it will be
         moved to this device if it is not already on the device. If the pipeline
         does not support moving to a device, such as with flax pipelines,
         this argument is ignored.
 
-    :param args: diffusers pipeline arguments
     :param kwargs: diffusers pipeline keyword arguments
     :return: the result of calling the diffusers pipeline
     """
@@ -688,7 +692,12 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
                                                                   if isinstance(value, torch.Generator) else value))
 
     if pipeline is _LAST_CALLED_PIPELINE:
-        return pipeline(*args, **kwargs)
+        if prompt_weighter is None:
+            return pipeline(**kwargs)
+        else:
+            result = pipeline(**prompt_weighter.translate_to_embeds(pipeline, device, kwargs))
+            prompt_weighter.cleanup()
+            return result
 
     if hasattr(_LAST_CALLED_PIPELINE, 'to'):
         _messages.debug_log(
@@ -701,7 +710,11 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
 
     pipeline_to(pipeline, device)
 
-    result = pipeline(*args, **kwargs)
+    if prompt_weighter is None:
+        result = pipeline(**kwargs)
+    else:
+        result = pipeline(**prompt_weighter.translate_to_embeds(pipeline, device, kwargs))
+        prompt_weighter.cleanup()
 
     _LAST_CALLED_PIPELINE = pipeline
     return result
@@ -1643,7 +1656,6 @@ class FlaxPipelineFactory:
 
 
 def _flax_args_hasher(args):
-
     def text_encoder_uri_parse(uri):
         if uri is None or uri.strip() == '+':
             return None

@@ -95,6 +95,7 @@ try:
         NonHFModelDownloadError, \
         InvalidSchedulerNameError, \
         UnsupportedPipelineConfigError, \
+        PromptWeightingUnsupported, \
         ModelType, \
         DataType, \
         OutOfMemoryError, \
