@@ -136,6 +136,11 @@ from .pipelines import \
     enable_sequential_cpu_offload, \
     enable_model_cpu_offload, \
     get_torch_device_string
+from .promptweighter import \
+    prompt_weighter_names, \
+    create_prompt_weighter, \
+    PromptWeighter, \
+    PromptWeightingUnsupported
 from .uris import \
     InvalidModelUriError, \
     LoRAUri, \

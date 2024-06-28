@@ -97,6 +97,7 @@ def invoke_dgenerate(args: collections.abc.Sequence[str],
     :raises dgenerate.NonHFModelDownloadError:
     :raises dgenerate.ModuleFileNotFoundError:
     :raises dgenerate.UnsupportedPipelineConfigError:
+    :raises dgenerate.PromptWeightingUnsupported:
     :raises EnvironmentError:
 
     :return: integer return-code, anything other than 0 is failure
@@ -151,6 +152,7 @@ def invoke_dgenerate_events(
     :raises dgenerate.NonHFModelDownloadError:
     :raises dgenerate.ModuleFileNotFoundError:
     :raises dgenerate.UnsupportedPipelineConfigError:
+    :raises dgenerate.PromptWeightingUnsupported:
     :raises EnvironmentError:
 
 
@@ -336,6 +338,7 @@ def invoke_dgenerate_events(
             _pipelinewrapper.InvalidSchedulerNameError,
             _pipelinewrapper.UnsupportedPipelineConfigError,
             _pipelinewrapper.OutOfMemoryError,
+            _pipelinewrapper.PromptWeightingUnsupported,
             _plugin.PluginNotFoundError,
             _plugin.PluginArgumentError,
             EnvironmentError) as e:

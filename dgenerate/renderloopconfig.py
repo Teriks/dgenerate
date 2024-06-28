@@ -103,6 +103,21 @@ class RenderLoopConfig(_types.SetFromMixin):
     This is the ``--batch-grid-size`` argument of the dgenerate command line tool.
     """
 
+    prompt_weighter: _types.OptionalName = None
+    """
+    The name of a prompt weighter implementation supported by dgenerate.
+    
+    Currently the only supported value is "compel"
+    
+    Compel supports prompt weighting syntax for Stable Diffusion 1/2 and SDXL.
+    
+    See: https://github.com/damian0815/compel
+    
+    And: https://huggingface.co/docs/diffusers/v0.16.0/en/using-diffusers/weighted_prompts
+    
+    Note that secondary prompts such as ``sdxl_second_prompts`` are ignored when prompt weighting syntax is enabled.
+    """
+
     prompts: _types.Prompts
     """
     List of prompt objects, this corresponds to the ``--prompts`` argument of the dgenerate
@@ -693,6 +708,13 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         def non_null_attr_that_end_with(s):
             return (a for a in dir(self) if a.endswith(s) and getattr(self, a) is not None)
+
+        supported_prompt_weighters = _pipelinewrapper.prompt_weighter_names()
+
+        if self.prompt_weighter is not None and self.prompt_weighter not in supported_prompt_weighters:
+            raise RenderLoopConfigError(
+                f'Unknown prompt weighter implementation: {self.prompt_weighter}, '
+                f'must be one of: {_textprocessing.oxford_comma(supported_prompt_weighters, "or")}')
 
         supported_dtypes = _pipelinewrapper.supported_data_type_strings()
         if self.dtype not in _pipelinewrapper.supported_data_type_enums():

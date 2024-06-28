@@ -90,6 +90,16 @@ def _type_prompts(prompt):
             f'Prompt parse error: {str(e).strip()}')
 
 
+def _type_prompt_weighter(name):
+    name = str(name)
+    implementation_names = _pipelinewrapper.prompt_weighter_names()
+    if name not in implementation_names:
+        raise argparse.ArgumentTypeError(
+            f'Unknown prompt weighter implementation: {name}, '
+            f'must be one of: {_textprocessing.oxford_comma(implementation_names, "or")}')
+    return name
+
+
 def _sd3_max_sequence_length(val):
     try:
         val = int(val)
@@ -1213,6 +1223,19 @@ def _create_parser(add_model=True, add_help=True):
                             Metadata will not be written to animated files (yet). The data is written to a 
                             PNG metadata property named DgenerateConfig and can be read using ImageMagick like so: 
                             "magick identify -format "%%[Property:DgenerateConfig] generated_file.png"."""))
+
+    actions.append(
+        parser.add_argument(
+            '-pw', '--prompt-weighter', metavar='NAME', action='store', default=None, type=_type_prompt_weighter,
+            help='Specify a prompt weighter implementation by name, example: --prompt-weighter compel. '
+                 'By default prompt weighting syntax is not enabled. Currently the only prompt weighting '
+                 'implementation is "compel", which supports prompt weighting syntax for Stable Diffusion 1/2 '
+                 'and Stable Diffusion XL. Compel allows adjusting the weight of certain tokens in your prompt. '
+                 'You can read about Compel here: https://github.com/damian0815/compel, and also here: '
+                 'https://huggingface.co/docs/diffusers/v0.16.0/en/using-diffusers/weighted_prompts. '
+                 'Note that secondary prompts such as --sdxl-second-prompts are ignored when prompt '
+                 'weighting is enabled. If prompt weighting is not supported for your combination '
+                 'of arguments a helpful error will be raised.'))
 
     actions.append(
         parser.add_argument('-p', '--prompts', nargs='+', action='store', metavar="PROMPT",
