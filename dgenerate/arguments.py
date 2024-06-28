@@ -1228,14 +1228,14 @@ def _create_parser(add_model=True, add_help=True):
         parser.add_argument(
             '-pw', '--prompt-weighter', metavar='NAME', action='store', default=None, type=_type_prompt_weighter,
             help='Specify a prompt weighter implementation by name, example: --prompt-weighter compel. '
-                 'By default prompt weighting syntax is not enabled. Currently the only prompt weighting '
-                 'implementation is "compel", which supports prompt weighting syntax for Stable Diffusion 1/2 '
-                 'and Stable Diffusion XL. Compel allows adjusting the weight of certain tokens in your prompt. '
-                 'You can read about Compel here: https://github.com/damian0815/compel, and also here: '
-                 'https://huggingface.co/docs/diffusers/v0.16.0/en/using-diffusers/weighted_prompts. '
-                 'Note that secondary prompts such as --sdxl-second-prompts are ignored when prompt '
-                 'weighting is enabled. If prompt weighting is not supported for your combination '
-                 'of arguments a helpful error will be raised.'))
+                 'By default, no prompt weighting syntax is enabled, meaning you cannot adjust token weights as '
+                 'you may be able to do in software such as ComfyUI, Automatic1111, CivitAI etc. Currently the only '
+                 'prompt weighting implementation is "compel", which supports prompt token weighting syntax for '
+                 'Stable Diffusion 1/2 and Stable Diffusion XL. Compel allows adjusting the weight of individual'
+                 'tokens in your prompt using a special syntax. You can read about Compel here: '
+                 'https://github.com/damian0815/compel. Note that secondary prompts such as --sdxl-second-prompts '
+                 'are ignored when prompt weighting is enabled. If prompt weighting is not supported '
+                 'for your combination of arguments a helpful error will be raised.'))
 
     actions.append(
         parser.add_argument('-p', '--prompts', nargs='+', action='store', metavar="PROMPT",
