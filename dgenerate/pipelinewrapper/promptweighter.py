@@ -176,7 +176,7 @@ class CompelPromptWeighter(PromptWeighter):
 
         def debug_string():
             debug_args = ", ".join(
-                f"{k}={v if not isinstance(v, torch.Tensor) else f'torch.Tensor{v.shape}'}" for k, v in
+                f"{k}={v if not isinstance(v, torch.Tensor) else f'torch.Tensor({v.shape})'}" for k, v in
                 output.items())
             return 'CompelPromptWeighter translated pipeline args: {' + debug_args + '}'
 
