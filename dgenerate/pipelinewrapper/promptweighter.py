@@ -99,10 +99,11 @@ class CompelPromptWeighter(PromptWeighter):
                                   compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
                                   requires_pooled=[False, True],
                                   device=device,
-                                  textual_inversion_manager=compel.DiffusersTextualInversionManager(pipeline))
+                                  truncate_long_prompts=False)
             else:
                 c = compel.Compel(tokenizer=pipeline.tokenizer_2,
                                   text_encoder=pipeline.text_encoder_2,
+                                  truncate_long_prompts=False,
                                   returned_embeddings_type=
                                   compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
                                   requires_pooled=True, device=device)
@@ -110,12 +111,12 @@ class CompelPromptWeighter(PromptWeighter):
         elif pipeline.__class__.__name__.startswith('StableDiffusion'):
             c = compel.Compel(tokenizer=pipeline.tokenizer,
                               text_encoder=pipeline.text_encoder,
+                              truncate_long_prompts=False,
                               returned_embeddings_type=
                               compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NORMALIZED
                               if clip_skip > 0 and pipeline.text_encoder.hidden_act == 'quick_gelu'
                               else compel.ReturnedEmbeddingsType.LAST_HIDDEN_STATES_NORMALIZED,
-                              device=device,
-                              textual_inversion_manager=compel.DiffusersTextualInversionManager(pipeline))
+                              device=device)
         else:
             raise PromptWeightingUnsupported(
                 f'Prompt weighting not supported for --model-type: {_enums.get_model_type_string(self.model_type)}, '
@@ -138,26 +139,39 @@ class CompelPromptWeighter(PromptWeighter):
                         level=_messages.WARNING)
 
         if positive:
-            conditioning, pooled = c(positive)
+            if hasattr(pipeline, 'maybe_convert_prompt') and pipeline.tokenizer is not None:
+                pos_conditioning, pos_pooled = c(pipeline.maybe_convert_prompt(positive, tokenizer=pipeline.tokenizer))
+            else:
+                pos_conditioning, pos_pooled = c(positive)
         else:
-            conditioning, pooled = c("")
+            pos_conditioning, pos_pooled = c("")
 
-        self._tensors.append(conditioning)
-        self._tensors.append(pooled)
+        self._tensors.append(pos_conditioning)
+        self._tensors.append(pos_pooled)
 
-        output.update({
-            'prompt_embeds': conditioning,
-            'pooled_prompt_embeds': pooled
-        })
+        if not negative:
+            output.update({
+                'prompt_embeds': pos_conditioning,
+                'pooled_prompt_embeds': pos_pooled
+            })
 
-        if negative:
-            conditioning, pooled = c(negative)
-            self._tensors.append(conditioning)
-            self._tensors.append(pooled)
+        else:
+            if hasattr(pipeline, 'maybe_convert_prompt') and pipeline.tokenizer is not None:
+                neg_conditioning, neg_pooled = c(pipeline.maybe_convert_prompt(negative, tokenizer=pipeline.tokenizer))
+            else:
+                neg_conditioning, neg_pooled = c(negative)
+
+            pos_conditioning, neg_conditioning, = c.pad_conditioning_tensors_to_same_length(
+                [pos_conditioning, neg_conditioning])
+
+            self._tensors.append(neg_conditioning)
+            self._tensors.append(neg_pooled)
 
             output.update({
-                'negative_prompt_embeds': conditioning,
-                'negative_pooled_prompt_embeds': pooled
+                'prompt_embeds': pos_conditioning,
+                'pooled_prompt_embeds': pos_pooled,
+                'negative_prompt_embeds': neg_conditioning,
+                'negative_pooled_prompt_embeds': neg_pooled
             })
 
         def debug_string():
