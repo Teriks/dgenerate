@@ -124,7 +124,9 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
         self._syntax = syntax
 
         if syntax not in {'compel', 'sdwui'}:
-            raise self.argument_error(f'Compel prompt weighter does not support syntax: {syntax}')
+            raise self.argument_error(
+                f'Compel prompt weighter does not support the syntax: "{syntax}", '
+                f'must be one of: "compel" or "sdwui".')
 
     @torch.no_grad()
     def translate_to_embeds(self,
