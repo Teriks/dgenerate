@@ -130,7 +130,7 @@ Help Output
                      [--sdxl-refiner-negative-target-sizes SIZE [SIZE ...]]
                      [--sdxl-refiner-negative-crops-coords-top-left COORD [COORD ...]] [-hnf FLOAT [FLOAT ...]]
                      [-ri INT [INT ...]] [-rg FLOAT [FLOAT ...]] [-rgr FLOAT [FLOAT ...]] [-sc] [-d DEVICE]
-                     [-t DTYPE] [-s SIZE] [-na] [-o PATH] [-op PREFIX] [-ox] [-oc] [-om]
+                     [-t DTYPE] [-s SIZE] [-na] [-o PATH] [-op PREFIX] [-ox] [-oc] [-om] [-pw NAME]
                      [-p PROMPT [PROMPT ...]] [--sd3-max-sequence-length INTEGER]
                      [--sd3-second-prompts PROMPT [PROMPT ...]] [--sd3-third-prompts PROMPT [PROMPT ...]]
                      [-cs INTEGER [INTEGER ...]] [-se SEED [SEED ...]] [-sei] [-gse COUNT] [-af FORMAT]
@@ -716,6 +716,17 @@ Help Output
                             image. Metadata will not be written to animated files (yet). The data is written to
                             a PNG metadata property named DgenerateConfig and can be read using ImageMagick like
                             so: "magick identify -format "%[Property:DgenerateConfig] generated_file.png".
+      -pw NAME, --prompt-weighter NAME
+                            Specify a prompt weighter implementation by name, example: --prompt-weighter compel.
+                            By default, no prompt weighting syntax is enabled, meaning you cannot adjust token
+                            weights as you may be able to do in software such as ComfyUI, Automatic1111, CivitAI
+                            etc. Currently the only prompt weighting implementation is "compel", which supports
+                            prompt token weighting syntax for Stable Diffusion 1/2 and Stable Diffusion XL.
+                            Compel allows adjusting the weight of individualtokens in your prompt using a
+                            special syntax. You can read about Compel here:
+                            https://github.com/damian0815/compel. Note that secondary prompts such as --sdxl-
+                            second-prompts are ignored when prompt weighting is enabled. If prompt weighting is
+                            not supported for your combination of arguments a helpful error will be raised.
       -p PROMPT [PROMPT ...], --prompts PROMPT [PROMPT ...]
                             One or more prompts to try, an image group is generated for each prompt, prompt data
                             is split by ; (semi-colon). The first value is the positive text influence, things
@@ -933,9 +944,6 @@ Help Output
                             Example, and default value: "text_encoder_size > (available * 0.75)" For Syntax See:
                             [https://dgenerate.readthedocs.io/en/v3.8.1/dgenerate_submodules.html#dgenerate.pipe
                             linewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS]
-
-
-
 
 
 Windows Install

@@ -167,7 +167,7 @@ class DiffusionPipelineWrapper:
                  sdxl_refiner_sequential_offload: bool = False,
                  s_cascade_decoder_cpu_offload: bool = False,
                  s_cascade_decoder_sequential_offload: bool = False,
-                 prompt_weighter: str | None = None):
+                 prompt_weighter: _types.OptionalName = None):
 
         if second_text_encoder_uris and not \
                 (_enums.model_type_is_sdxl(model_type) or
@@ -294,7 +294,14 @@ class DiffusionPipelineWrapper:
                     'LoRA loading is not implemented for flax.')
 
         self._prompt_weighter_name = prompt_weighter
-        self._prompt_weighter = None
+        self._prompt_weighter: _promptweighter.PromptWeighter | None = None
+
+    @property
+    def prompt_weighter(self) -> _types.OptionalName:
+        """
+        Current prompt weighter implementation name
+        """
+        return self._prompt_weighter_name
 
     @property
     def local_files_only(self) -> bool:
@@ -587,6 +594,9 @@ class DiffusionPipelineWrapper:
 
         if args.image_guidance_scale is not None:
             opts.append(('--image-guidance-scales', args.image_guidance_scale))
+
+        if self.prompt_weighter:
+            opts.append(('--prompt-weighter', self.prompt_weighter))
 
         if args.prompt is not None:
             opts.append(('--prompts', args.prompt))
@@ -1608,12 +1618,10 @@ class DiffusionPipelineWrapper:
                 images = []
                 for i in range(0, batch_size):
                     images.append(
-                        _pipelines.call_pipeline(prompt_weighter=self._prompt_weighter,
-                                                 **kwargs).images[0])
+                        _pipelines.call_pipeline(**kwargs).images[0])
                 return images
             else:
-                return _pipelines.call_pipeline(prompt_weighter=self._prompt_weighter,
-                                                **kwargs).images
+                return _pipelines.call_pipeline(**kwargs).images
 
         pipeline_args['generator'] = \
             torch.Generator(device=self._device).manual_seed(
@@ -1643,7 +1651,9 @@ class DiffusionPipelineWrapper:
         if self._sdxl_refiner_pipeline is None:
             return PipelineWrapperResult(generate_images(
                 pipeline=self._pipeline,
-                device=self._device, **pipeline_args))
+                prompt_weighter=self._prompt_weighter,
+                device=self._device,
+                **pipeline_args))
 
         high_noise_fraction = _types.default(user_args.sdxl_high_noise_fraction,
                                              _constants.DEFAULT_SDXL_HIGH_NOISE_FRACTION)
