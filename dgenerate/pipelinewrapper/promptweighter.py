@@ -180,33 +180,40 @@ class CompelPromptWeighter(PromptWeighter):
 
         clip_skip = args.get('clip_skip', 0)
 
+        needs_pooled = False
+
         if pipeline.__class__.__name__.startswith('StableDiffusionXL'):
 
             if pipeline.text_encoder is not None:
-                c = compel.Compel(tokenizer=[pipeline.tokenizer, pipeline.tokenizer_2],
-                                  text_encoder=[pipeline.text_encoder, pipeline.text_encoder_2],
-                                  returned_embeddings_type=
-                                  compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
-                                  requires_pooled=[False, True],
-                                  device=device,
-                                  truncate_long_prompts=False)
+                compel_compiler = compel.Compel(
+                    tokenizer=[pipeline.tokenizer, pipeline.tokenizer_2],
+                    text_encoder=[pipeline.text_encoder, pipeline.text_encoder_2],
+                    returned_embeddings_type=
+                    compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
+                    requires_pooled=[False, True],
+                    device=device,
+                    truncate_long_prompts=False)
+                needs_pooled = True
             else:
-                c = compel.Compel(tokenizer=pipeline.tokenizer_2,
-                                  text_encoder=pipeline.text_encoder_2,
-                                  truncate_long_prompts=False,
-                                  returned_embeddings_type=
-                                  compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
-                                  requires_pooled=True, device=device)
+                compel_compiler = compel.Compel(
+                    tokenizer=pipeline.tokenizer_2,
+                    text_encoder=pipeline.text_encoder_2,
+                    truncate_long_prompts=False,
+                    returned_embeddings_type=
+                    compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
+                    requires_pooled=True, device=device)
+                needs_pooled = True
 
         elif pipeline.__class__.__name__.startswith('StableDiffusion'):
-            c = compel.Compel(tokenizer=pipeline.tokenizer,
-                              text_encoder=pipeline.text_encoder,
-                              truncate_long_prompts=False,
-                              returned_embeddings_type=
-                              compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NORMALIZED
-                              if clip_skip > 0 and pipeline.text_encoder.hidden_act == 'quick_gelu'
-                              else compel.ReturnedEmbeddingsType.LAST_HIDDEN_STATES_NORMALIZED,
-                              device=device)
+            compel_compiler = compel.Compel(
+                tokenizer=pipeline.tokenizer,
+                text_encoder=pipeline.text_encoder,
+                truncate_long_prompts=False,
+                returned_embeddings_type=
+                compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NORMALIZED
+                if clip_skip > 0 and pipeline.text_encoder.hidden_act == 'quick_gelu'
+                else compel.ReturnedEmbeddingsType.LAST_HIDDEN_STATES_NORMALIZED,
+                device=device)
         else:
             raise PromptWeightingUnsupported(
                 f'Prompt weighting not supported for --model-type: {_enums.get_model_type_string(self.model_type)}, '
@@ -228,28 +235,37 @@ class CompelPromptWeighter(PromptWeighter):
                         f'Diffusion argument {name} ignored by compel prompt weighting implementation.',
                         level=_messages.WARNING)
 
-        if positive:
-            if self._syntax == 'sdwui':
-                positive = _translate_sdwui_to_compel(positive)
-                _messages.log(f'Positive prompt translated to compel: "{positive}"',
-                              level=_messages.DEBUG)
+        positive = positive if positive else ""
 
-            if hasattr(pipeline, 'maybe_convert_prompt') and pipeline.tokenizer is not None:
-                pos_conditioning, pos_pooled = c(pipeline.maybe_convert_prompt(positive, tokenizer=pipeline.tokenizer))
-            else:
-                pos_conditioning, pos_pooled = c(positive)
+        if positive and self._syntax == 'sdwui':
+            positive = _translate_sdwui_to_compel(positive)
+            _messages.log(f'Positive prompt translated to compel: "{positive}"',
+                          level=_messages.DEBUG)
+
+        if positive and hasattr(pipeline, 'maybe_convert_prompt') and pipeline.tokenizer is not None:
+            positive = pipeline.maybe_convert_prompt(positive, tokenizer=pipeline.tokenizer)
+
+        pos_pooled = None
+        if needs_pooled:
+            pos_conditioning, pos_pooled = compel_compiler(positive)
         else:
-            pos_conditioning, pos_pooled = c("")
+            pos_conditioning = compel_compiler(positive)
 
         self._tensors.append(pos_conditioning)
-        self._tensors.append(pos_pooled)
+
+        if pos_pooled is not None:
+            self._tensors.append(pos_pooled)
 
         if not negative:
-            output.update({
-                'prompt_embeds': pos_conditioning,
-                'pooled_prompt_embeds': pos_pooled
-            })
-
+            if pos_pooled is not None:
+                output.update({
+                    'prompt_embeds': pos_conditioning,
+                    'pooled_prompt_embeds': pos_pooled
+                })
+            else:
+                output.update({
+                    'prompt_embeds': pos_conditioning
+                })
         else:
             if self._syntax == 'sdwui':
                 negative = _translate_sdwui_to_compel(negative)
@@ -257,22 +273,36 @@ class CompelPromptWeighter(PromptWeighter):
                               level=_messages.DEBUG)
 
             if hasattr(pipeline, 'maybe_convert_prompt') and pipeline.tokenizer is not None:
-                neg_conditioning, neg_pooled = c(pipeline.maybe_convert_prompt(negative, tokenizer=pipeline.tokenizer))
-            else:
-                neg_conditioning, neg_pooled = c(negative)
+                negative = pipeline.maybe_convert_prompt(negative, tokenizer=pipeline.tokenizer)
 
-            pos_conditioning, neg_conditioning, = c.pad_conditioning_tensors_to_same_length(
+            neg_pooled = None
+            if needs_pooled:
+                neg_conditioning, neg_pooled = compel_compiler(negative)
+            else:
+                neg_conditioning = compel_compiler(negative)
+
+            pos_conditioning, neg_conditioning, = compel_compiler.pad_conditioning_tensors_to_same_length(
                 [pos_conditioning, neg_conditioning])
 
             self._tensors.append(neg_conditioning)
-            self._tensors.append(neg_pooled)
+
+            if neg_pooled is not None:
+                self._tensors.append(neg_pooled)
 
             output.update({
                 'prompt_embeds': pos_conditioning,
-                'pooled_prompt_embeds': pos_pooled,
                 'negative_prompt_embeds': neg_conditioning,
-                'negative_pooled_prompt_embeds': neg_pooled
             })
+
+            if pos_pooled is not None:
+                output.update({
+                    'pooled_prompt_embeds': pos_pooled,
+                })
+
+            if neg_pooled is not None:
+                output.update({
+                    'negative_pooled_prompt_embeds': neg_pooled,
+                })
 
         def debug_string():
             debug_args = ", ".join(
