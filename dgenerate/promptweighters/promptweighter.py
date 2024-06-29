@@ -55,6 +55,7 @@ class PromptWeighter(_plugin.Plugin):
                             args: dict[str, any]):
         """
         Translate the pipeline prompt arguments to ``prompt_embeds`` and ``pooled_prompt_embeds`` as needed.
+
         :param pipeline: The pipeline object
         :param device: The device the pipeline modules are on
         :param args: Call arguments to the pipeline
