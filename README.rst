@@ -2749,10 +2749,10 @@ may also use the config directive ``\\prompt_weighter_help`` inside of a config,
 you are working in the `Console UI`_ shell.
 
 At the moment the only supported prompt weighter implementation is the ``compel`` prompt weighter, which uses
-the [compel](https://github.com/damian0815/compel) library to support [InvokeAI](https://github.com/invoke-ai/InvokeAI)
+the `compel <https://github.com/damian0815/compel>`_ library to support `InvokeAI <https://github.com/invoke-ai/InvokeAI>`_
 style prompt token weighting syntax.
 
-You can read about InvokeAI prompt syntax here: https://invoke-ai.github.io/InvokeAI/features/PROMPTS/
+You can read about InvokeAI prompt syntax here: `Invoke AI prompting documentation <https://invoke-ai.github.io/InvokeAI/features/PROMPTS/>`_
 
 It is a bit different than Stable Diffusion Web UI syntax, which is a syntax used by the
 majority of other image generation software. It possesses some neat features not mentioned
