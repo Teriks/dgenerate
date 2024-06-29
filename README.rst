@@ -68,7 +68,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v3.8.1/>`_.
     * `Specifying Textual Inversions`_
     * `Specifying Control Nets`_
     * `Specifying Text Encoders`_
-    * `Prompt Weighting and Enhancement`
+    * `Prompt Weighting and Enhancement`_
     * `Utilizing CivitAI links and Other Hosted Models`_
     * `Specifying Generation Batch Size`_
     * `Image Processors`_
