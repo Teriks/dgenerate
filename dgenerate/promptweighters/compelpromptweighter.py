@@ -30,6 +30,7 @@ import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.promptweighters.exceptions as _exceptions
 import dgenerate.promptweighters.promptweighter as _promptweighter
+import dgenerate.pipelinewrapper.pipelines as _pipelines
 
 _Attention = typing.List[typing.Tuple[str, float]]
 
@@ -154,15 +155,31 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
                             device: str,
                             args: dict[str, any]):
 
-        if 'prompt_embeds' in args or \
-                'pooled_prompt_embeds' in args or \
-                'negative_prompt_embeds' in args or \
-                'negative_pooled_prompt_embeds' in args:
+        # we are responsible for generating these arguments
+        # if they exist already then we cannot do our job
+
+        forbidden_call_args = {
+            'prompt_embeds',
+            'pooled_prompt_embeds',
+            'negative_prompt_embeds',
+            'negative_pooled_prompt_embeds'
+        }
+
+        if any(a in forbidden_call_args for a in args.keys()):
             raise _exceptions.PromptWeightingUnsupported(
                 f'Prompt weighting not supported for --model-type: {_enums.get_model_type_string(self.model_type)}, '
                 f'in mode: {_enums.get_pipeline_type_string(self.pipeline_type)}')
 
         clip_skip = args.get('clip_skip', 0)
+
+        pipeline_sig = _pipelines.get_pipeline_call_args(pipeline)
+
+        if 'prompt_embeds' not in pipeline_sig:
+            # pipeline does not support passing prompt embeddings directly
+
+            raise _exceptions.PromptWeightingUnsupported(
+                f'Prompt weighting not supported for --model-type: {_enums.get_model_type_string(self.model_type)}, '
+                f'in mode: {_enums.get_pipeline_type_string(self.pipeline_type)}')
 
         needs_pooled = False
 
