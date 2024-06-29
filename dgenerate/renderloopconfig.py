@@ -716,7 +716,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         def non_null_attr_that_end_with(s):
             return (a for a in dir(self) if a.endswith(s) and getattr(self, a) is not None)
 
-        if self.prompt_weighter_uri is not None and not _promptweighters.is_valid_prompt_weighter_uri(self.prompt_weighter_uri):
+        if self.prompt_weighter_uri is not None and not _promptweighters.prompt_weighter_exists(self.prompt_weighter_uri):
             raise RenderLoopConfigError(
                 f'Unknown prompt weighter implementation: {_promptweighters.prompt_weighter_name_from_uri(self.prompt_weighter_uri)}, '
                 f'must be one of: {_textprocessing.oxford_comma(_promptweighters.prompt_weighter_names(), "or")}')

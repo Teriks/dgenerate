@@ -68,7 +68,8 @@ def prompt_weighter_help(names: _types.Names,
 
 def prompt_weighter_names():
     """
-    Implementation names.
+    Implementation names for all prompt weighters implemented by dgenerate
+
     :return: a list of prompt weighter implementation names.
     """
 
@@ -76,14 +77,35 @@ def prompt_weighter_names():
 
 
 def prompt_weighter_name_from_uri(uri):
+    """
+    Extract just the implementation name from a prompt weighter URI.
+
+    :param uri: the URI
+    :return: the implementation name.
+    """
+
     return uri.split(';')[0].strip()
 
 
-def is_valid_prompt_weighter_uri(uri):
+def prompt_weighter_exists(uri):
+    """
+    Check if a prompt weighter implementation exists for a given URI.
+
+    :param uri: The prompt weighter URI
+    :return: ``True`` or ``False``
+    """
     return prompt_weighter_name_from_uri(uri) in prompt_weighter_names()
 
 
 def create_prompt_weighter(uri, model_type: _enums.ModelType, pipeline_type: _enums.PipelineType) -> PromptWeighter:
+    """
+    Create a prompt weighter implementation using the default loader instance.
+
+    :param uri: The prompt weighter URI
+    :param model_type: Model type the prompt weighter is expected to handle
+    :param pipeline_type: Pipeline type the prompt weighter is expected to handle
+    :return: A :py:class:`PromptWeighter` implementation
+    """
     return PromptWeighterLoader().load(uri, model_type=model_type, pipeline_type=pipeline_type)
 
 
