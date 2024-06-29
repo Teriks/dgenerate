@@ -2735,7 +2735,7 @@ repository on huggingface.
 Prompt Weighting and Enhancement
 ================================
 
-By default prompt token weighting syntax that you may be familiar with from other software such as
+By default, the prompt token weighting syntax that you may be familiar with from other software such as
 ComfyUI, Stable Diffusion Web UI, CivitAI etc. is not enabled.  Meaning your prompts are processed
 in the most basic way when being turned into embeddings and special token weighting syntax is not
 supported.
