@@ -42,7 +42,7 @@ def prompt_weighter_help(names: _types.Names,
                          throw=False,
                          log_error=True):
     """
-    Implements ``--prompt-weighter-help`` command line option
+    Implements ``--prompt-weighter-help`` command line option.
 
     :param names: arguments (prompt weighter names, or empty list)
     :param throw: throw on error? or simply print to stderr and return a return code.
