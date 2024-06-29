@@ -136,6 +136,19 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
     You can read about compel here: https://github.com/damian0815/compel
 
     And InvokeAI here: https://github.com/invoke-ai/InvokeAI
+
+    This prompt weighter supports the model types:
+
+    NOWRAP!
+    --model-type torch
+    --model-type torch-pix2pix
+    --model-type torch-upscaler-x4
+    --model-type torch-sdxl
+    --model-type torch-sdxl-pix2pix
+
+    Secondary prompt options for SDXL such as --sdxl-second-prompts or --sdxl-refiner-second-prompts
+    will be ignored, a warning will be printed mentioning this. Only the primary prompt is processed
+    for SDXL.
     """
 
     NAMES = ['compel']

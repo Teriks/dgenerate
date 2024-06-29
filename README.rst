@@ -68,6 +68,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v3.8.1/>`_.
     * `Specifying Textual Inversions`_
     * `Specifying Control Nets`_
     * `Specifying Text Encoders`_
+    * `Prompt Weighting and Enhancement`
     * `Utilizing CivitAI links and Other Hosted Models`_
     * `Specifying Generation Batch Size`_
     * `Image Processors`_
@@ -2729,6 +2730,152 @@ repository on huggingface.
     --output-path output \
     --model-sequential-offload \
     --prompts "a horse outside a barn"
+
+
+Prompt Weighting and Enhancement
+================================
+
+By default prompt token weighting syntax that you may be familiar with from other software such as
+ComfyUI, Stable Diffusion Web UI, CivitAI etc. is not enabled.  Meaning your prompts are processed
+in the most basic way when being turned into embeddings and special token weighting syntax is not
+supported.
+
+dgenerate implements prompt weighting and prompt enhancements through internal plugins
+called prompt weighters, which can be selectively enabled to process your prompts.
+
+The names of all prompt weighter implementations can be seen by using the argument ``--prompt-weighter-help``,
+and specific documentation for a prompt weighter can be printed py passing its name to this argument. You
+may also use the config directive ``\\prompt_weighter_help`` inside of a config, or more likely when
+you are working in the `Console UI`_ shell.
+
+At the moment the only supported prompt weighter implementation is the ``compel`` prompt weighter, which uses
+the [compel](https://github.com/damian0815/compel) library to support [InvokeAI](https://github.com/invoke-ai/InvokeAI)
+style prompt token weighting syntax.
+
+You can read about InvokeAI prompt syntax here: https://invoke-ai.github.io/InvokeAI/features/PROMPTS/
+
+It is a bit different than Stable Diffusion Web UI syntax, which is a syntax used by the
+majority of other image generation software. It possesses some neat features not mentioned
+in this documentation, that are worth reading about in the links provided above.
+
+.. code-block:: bash
+
+    # print out the documentation for the compel prompt weighter
+
+    dgenerate --prompt-weighter-help compel
+
+
+.. code-block::
+
+    compel:
+        arguments:
+            syntax: str = "compel"
+
+        Implements prompt weighting syntax for Stable Diffusion 1/2 and Stable Diffusion XL using
+        compel. The default syntax is "compel" which is analogous to the syntax used by InvokeAI.
+
+        Specifying the syntax "sdwui" will translate your prompt from Stable Diffusion Web UI syntax
+        into compel / InvokeAI syntax before generating the prompt embeddings.
+
+        If you wish to use prompt syntax for weighting tokens that is similar to ComfyUI, Automatic1111,
+        or CivitAI for example, use: 'compel;syntax=sdwui'
+
+        The underlying weighting behavior for tokens is not exactly the same as other software that uses
+        the more common "sdwui" syntax, so your prompt may need adjusting if you are reusing a prompt
+        from those other pieces of software.
+
+        You can read about compel here: https://github.com/damian0815/compel
+
+        And InvokeAI here: https://github.com/invoke-ai/InvokeAI
+
+        This prompt weighter supports the model types:
+
+        --model-type torch
+        --model-type torch-pix2pix
+        --model-type torch-upscaler-x4
+        --model-type torch-sdxl
+        --model-type torch-sdxl-pix2pix
+
+        Secondary prompt options for SDXL such as --sdxl-second-prompts or --sdxl-refiner-second-prompts
+        will be ignored, a warning will be printed mentioning this. Only the primary prompt is processed
+        for SDXL.
+
+    ====================================================================================================
+
+
+You can enable the ``compel`` prompt weigher by specifying it with the ``--prompt-weighter`` argument.
+
+Please note that if you are using the secondary prompt options for SDXL such as ``--sdxl-second-prompts``
+or ``--sdxl-refiner-second-prompts`` they are going to be ignored by the prompt weighter.  The compel
+weighter implementation only uses the primary prompt text for SDXL, it will warn you that they are being
+ignored.
+
+
+.. code-block:: bash
+
+    # Some very simple examples
+
+    # Increase the weight of (picking apricots)
+
+    dgenerate stabilityai/stable-diffusion-2-1 \
+    --inference-steps 30 \
+    --guidance-scales 5.00 \
+    --clip-skips 0 \
+    --gen-seeds 1 \
+    --output-path output \
+    --output-size 1024 \
+    --prompt-weighter compel \
+    --prompts 'a tall man (picking apricots)++'
+
+    # Specify a weight
+
+    dgenerate stabilityai/stable-diffusion-2-1 \
+    --inference-steps 30 \
+    --guidance-scales 5.00 \
+    --clip-skips 0 \
+    --gen-seeds 1 \
+    --output-path output \
+    --output-size 1024 \
+    --prompt-weighter compel \
+    --prompts 'a tall man (picking apricots)1.3'
+
+
+If you prefer the prompt weighting syntax used by Stable Diffusion Web UI, you can specify
+the plugin argument ``syntax=sdwui`` which will translate your prompt from that syntax into
+compel / invoke AI syntax for you.
+
+
+.. code-block:: bash
+
+    # Some very simple examples
+
+    # Increase the weight of (picking apricots)
+
+    dgenerate stabilityai/stable-diffusion-2-1 \
+    --inference-steps 30 \
+    --guidance-scales 5.00 \
+    --clip-skips 0 \
+    --gen-seeds 1 \
+    --output-path output \
+    --output-size 1024 \
+    --prompt-weighter compel;syntax=sdwui \
+    --prompts 'a tall man ((picking apricots))'
+
+    # Specify a weight
+
+    dgenerate stabilityai/stable-diffusion-2-1 \
+    --inference-steps 30 \
+    --guidance-scales 5.00 \
+    --clip-skips 0 \
+    --gen-seeds 1 \
+    --output-path output \
+    --output-size 1024 \
+    --prompt-weighter compel;syntax=sdwui \
+    --prompts 'a tall man (picking apricots:1.3)'
+
+
+The weighting algorithm is not entirely identical to other pieces of software, so if you are
+migrating prompts they will likely require some adjustment.
 
 
 Utilizing CivitAI links and Other Hosted Models
