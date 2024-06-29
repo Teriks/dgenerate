@@ -658,23 +658,6 @@ def pipeline_to(pipeline, device: torch.device | str | None):
 _LAST_CALLED_PIPELINE = None
 
 
-def get_pipeline_call_args(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusionPipeline) -> list[str]:
-    """
-    Get the names of a pipelines call method arguments.
-
-    The names of the arguments used to call the pipeline.
-
-    :param pipeline: the pipeline
-    :return: list of argument names
-    """
-
-    p = pipeline.__call__
-    while hasattr(p, '__wrapper__'):
-        p = p.__wrapper__
-
-    return inspect.getfullargspec(p).args
-
-
 # noinspection PyCallingNonCallable
 def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusionPipeline,
                   device: torch.device | str | None = 'cuda',

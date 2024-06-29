@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import gc
+import inspect
 import re
 import typing
 
@@ -172,7 +173,7 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
 
         clip_skip = args.get('clip_skip', 0)
 
-        pipeline_sig = _pipelines.get_pipeline_call_args(pipeline)
+        pipeline_sig = set(inspect.signature(pipeline.__call__).parameters.keys())
 
         if 'prompt_embeds' not in pipeline_sig:
             # pipeline does not support passing prompt embeddings directly
