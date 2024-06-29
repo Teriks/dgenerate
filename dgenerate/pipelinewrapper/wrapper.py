@@ -177,8 +177,8 @@ class DiffusionPipelineWrapper:
         Pipelines and user specified sub models are memoized and their lifetimes are managed via
         heuristics based on system memory and available resources.
 
-        All arguments to this interface should be provided as keyword arguments, using this
-        interface in any other fashion could result in breakage inbetween semver compatible
+        All arguments to this constructor should be provided as keyword arguments, using this
+        constructor in any other fashion could result in breakage inbetween semver compatible
         versions.
 
         :param model_path: main model path
