@@ -2825,7 +2825,7 @@ ignored.
     --output-path output \
     --output-size 1024 \
     --prompt-weighter compel \
-    --prompts 'a tall man (picking apricots)++'
+    --prompts "a tall man (picking apricots)++"
 
     # Specify a weight
 
@@ -2837,7 +2837,7 @@ ignored.
     --output-path output \
     --output-size 1024 \
     --prompt-weighter compel \
-    --prompts 'a tall man (picking apricots)1.3'
+    --prompts "a tall man (picking apricots)1.3"
 
 
 If you prefer the prompt weighting syntax used by Stable Diffusion Web UI, you can specify
@@ -2858,8 +2858,8 @@ compel / InvokeAI syntax for you.
     --gen-seeds 1 \
     --output-path output \
     --output-size 1024 \
-    --prompt-weighter compel;syntax=sdwui \
-    --prompts 'a tall man ((picking apricots))'
+    --prompt-weighter "compel;syntax=sdwui" \
+    --prompts "a tall man ((picking apricots))"
 
     # Specify a weight
 
@@ -2870,8 +2870,8 @@ compel / InvokeAI syntax for you.
     --gen-seeds 1 \
     --output-path output \
     --output-size 1024 \
-    --prompt-weighter compel;syntax=sdwui \
-    --prompts 'a tall man (picking apricots:1.3)'
+    --prompt-weighter "compel;syntax=sdwui" \
+    --prompts "a tall man (picking apricots:1.3)"
 
 
 The weighting algorithm is not entirely identical to other pieces of software, so if
