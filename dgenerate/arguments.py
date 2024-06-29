@@ -1226,7 +1226,8 @@ def _create_parser(add_model=True, add_help=True):
 
     actions.append(
         parser.add_argument(
-            '-pw', '--prompt-weighter', metavar='NAME', action='store', default=None, type=_type_prompt_weighter,
+            '-pw', '--prompt-weighter', metavar='PROMPT_WEIGHTER_URI',
+            dest='prompt_weighter_uri', action='store', default=None, type=_type_prompt_weighter,
             help='Specify a prompt weighter implementation by name, example: --prompt-weighter compel. '
                  'By default, no prompt weighting syntax is enabled, meaning you cannot adjust token weights as '
                  'you may be able to do in software such as ComfyUI, Automatic1111, CivitAI etc. Currently the only '
