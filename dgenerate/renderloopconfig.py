@@ -104,13 +104,19 @@ class RenderLoopConfig(_types.SetFromMixin):
     This is the ``--batch-grid-size`` argument of the dgenerate command line tool.
     """
 
-    prompt_weighter: _types.OptionalName = None
+    prompt_weighter_uri: _types.OptionalUri = None
     """
-    The name of a prompt weighter implementation supported by dgenerate.
+    The URI of a prompt weighter implementation supported by dgenerate.
     
-    Currently the only supported value is "compel"
+    Currently the only supported value is "compel" and its 
+    sole optional argument "compel;syntax=sdwui"
     
-    Compel supports prompt weighting syntax for Stable Diffusion 1/2 and SDXL.
+    Compel supports InvokeAI prompt weighting syntax for Stable Diffusion 1/2 and SDXL.
+    
+    Using the "sdwui" syntax translates Stable Diffusion Web UI prompt weighting syntax
+    to compel syntax for you.
+     
+    This alternate syntax is used by software such as ComfyUI, Automatic1111, and CivitAI.
     
     See: https://github.com/damian0815/compel
     
@@ -710,9 +716,9 @@ class RenderLoopConfig(_types.SetFromMixin):
         def non_null_attr_that_end_with(s):
             return (a for a in dir(self) if a.endswith(s) and getattr(self, a) is not None)
 
-        if self.prompt_weighter is not None and not _promptweighters.is_valid_prompt_weighter_uri(self.prompt_weighter):
+        if self.prompt_weighter_uri is not None and not _promptweighters.is_valid_prompt_weighter_uri(self.prompt_weighter_uri):
             raise RenderLoopConfigError(
-                f'Unknown prompt weighter implementation: {_promptweighters.prompt_weighter_name_from_uri(self.prompt_weighter)}, '
+                f'Unknown prompt weighter implementation: {_promptweighters.prompt_weighter_name_from_uri(self.prompt_weighter_uri)}, '
                 f'must be one of: {_textprocessing.oxford_comma(_promptweighters.prompt_weighter_names(), "or")}')
 
         supported_dtypes = _pipelinewrapper.supported_data_type_strings()

@@ -34,9 +34,9 @@ import dgenerate.pipelinewrapper.cache as _cache
 import dgenerate.pipelinewrapper.constants as _constants
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.pipelines as _pipelines
-import dgenerate.promptweighters as _promptweighters
 import dgenerate.pipelinewrapper.uris as _uris
 import dgenerate.prompt as _prompt
+import dgenerate.promptweighters as _promptweighters
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.pipelinewrapper.wrapperarguments import DiffusionArguments
@@ -167,7 +167,56 @@ class DiffusionPipelineWrapper:
                  sdxl_refiner_sequential_offload: bool = False,
                  s_cascade_decoder_cpu_offload: bool = False,
                  s_cascade_decoder_sequential_offload: bool = False,
-                 prompt_weighter: _types.OptionalName = None):
+                 prompt_weighter_uri: _types.OptionalUri = None,
+                 prompt_weighter_loader: _promptweighters.PromptWeighterLoader | None = None):
+        """
+        This is a monolithic wrapper around all supported diffusion pipelines which handles
+        txt2img, img2img, and inpainting on demand. It spins up the correct pipelines as needed
+        in order to handle provided pipeline arguments using lazy initialization.
+
+        Pipelines and user specified sub models are memoized and their lifetimes are managed via
+        heuristics based on system memory and available resources.
+
+        All arguments to this interface should be provided as keyword arguments, using this
+        interface in any other fashion could result in breakage inbetween semver compatible
+        versions.
+
+        :param model_path: main model path
+        :param model_type: main model type
+        :param revision: main model revision
+        :param variant: main model variant
+        :param subfolder: main model subfolder (huggingface or disk)
+        :param dtype: main model dtype
+        :param unet_uri: main model UNet URI string
+        :param second_unet_uri: secondary model unet uri (SDXL Refiner, Stable Cascade decoder)
+        :param vae_uri: main model VAE URI string
+        :param vae_tiling: use VAE tiling?
+        :param vae_slicing: use VAE slicing?
+        :param lora_uris: One or more LoRA URI strings
+        :param textual_inversion_uris: One or more Textual Inversion URI strings
+        :param text_encoder_uris: One or more Text Encoder URIs (or "+", or None) for the main model
+        :param second_text_encoder_uris:  One or more Text Encoder URIs (or "+", or None) for the secondary model (SDXL Refiner or Stable Cascade decoder)
+        :param control_net_uris: One or more ControlNet URI strings
+        :param scheduler: Scheduler URI string for the main model
+        :param sdxl_refiner_uri: SDXL Refiner model URI string
+        :param sdxl_refiner_scheduler: Scheduler URI string for the SDXL Refiner
+        :param s_cascade_decoder_uri: Stable Cascade decoder URI string
+        :param s_cascade_decoder_scheduler: Scheduler URI string for the Stable Cascade decoder
+        :param device: Rendering device string, example: ``cuda:0`` or ``cuda``
+        :param safety_checker: Use safety checker model if available? (antiquated, for SD 1/2, Deep Floyd etc.)
+        :param auth_token: huggingface authentication token.
+        :param local_files_only: Do not attempt to download files from huggingface?
+        :param model_extra_modules: Raw extra diffusers modules for the main pipeline
+        :param second_model_extra_modules: Raw extra diffusers modules for the secondary pipeline (SDXL Refiner, Stable Cascade decoder)
+        :param model_cpu_offload: Use model CPU offloading for the main pipeline via the accelerate module?
+        :param model_sequential_offload: Use sequential CPU offloading for the main pipeline via the accelerate module?
+        :param sdxl_refiner_cpu_offload: Use CPU offloading for the SDXL Refiner via the accelerate module?
+        :param sdxl_refiner_sequential_offload: Use sequential CPU offloading for the SDXL Refiner via the accelerate module?
+        :param s_cascade_decoder_cpu_offload: Use CPU offloading for the Stable Cascade decoder via the accelerate module?
+        :param s_cascade_decoder_sequential_offload: Use sequential CPU offloading for the Stable Cascade decoder via the accelerate module?
+        :param prompt_weighter_uri: Prompt weighter implementation URI, to be loaded from ``prompt_weighter_loader``
+        :param prompt_weighter_loader: Plugin loader for prompt weighter implementations, if you pass ``None`` a default instance will be created.
+        """
 
         if second_text_encoder_uris and not \
                 (_enums.model_type_is_sdxl(model_type) or
@@ -293,15 +342,26 @@ class DiffusionPipelineWrapper:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'LoRA loading is not implemented for flax.')
 
-        self._prompt_weighter_name = prompt_weighter
+        self._prompt_weighter_loader = \
+            prompt_weighter_loader if prompt_weighter_loader is not None \
+                else _promptweighters.PromptWeighterLoader()
+
+        self._prompt_weighter_uri = prompt_weighter_uri
         self._prompt_weighter: _promptweighters.PromptWeighter | None = None
 
     @property
-    def prompt_weighter(self) -> _types.OptionalName:
+    def prompt_weighter_loader(self) -> _promptweighters.PromptWeighterLoader:
         """
-        Current prompt weighter implementation name
+        Current prompt weighter loader
         """
-        return self._prompt_weighter_name
+        return self._prompt_weighter_loader
+
+    @property
+    def prompt_weighter_uri(self) -> _types.OptionalUri:
+        """
+        Current prompt weighter implementation uri
+        """
+        return self._prompt_weighter_uri
 
     @property
     def local_files_only(self) -> bool:
@@ -595,8 +655,8 @@ class DiffusionPipelineWrapper:
         if args.image_guidance_scale is not None:
             opts.append(('--image-guidance-scales', args.image_guidance_scale))
 
-        if self.prompt_weighter:
-            opts.append(('--prompt-weighter', self.prompt_weighter))
+        if self.prompt_weighter_uri:
+            opts.append(('--prompt-weighter', self.prompt_weighter_uri))
 
         if args.prompt is not None:
             opts.append(('--prompts', args.prompt))
@@ -2083,11 +2143,11 @@ class DiffusionPipelineWrapper:
         loaded_new = self._lazy_init_pipeline(
             copy_args.determine_pipeline_type())
 
-        if self._prompt_weighter_name:
-            self._prompt_weighter = _promptweighters.create_prompt_weighter(
-                self._prompt_weighter_name,
-                self.model_type,
-                self._pipeline_type)
+        if self._prompt_weighter_uri:
+            self._prompt_weighter = self._prompt_weighter_loader.load(
+                self._prompt_weighter_uri,
+                model_type=self.model_type,
+                pipeline_type=self._pipeline_type)
 
         if loaded_new:
             _cache.enforce_cache_constraints()

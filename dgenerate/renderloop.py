@@ -808,7 +808,7 @@ class RenderLoop:
             model_sequential_offload=self.config.model_sequential_offload,
             sdxl_refiner_cpu_offload=bool(self.config.sdxl_refiner_cpu_offload),
             sdxl_refiner_sequential_offload=bool(self.config.sdxl_refiner_sequential_offload),
-            prompt_weighter=self.config.prompt_weighter)
+            prompt_weighter_uri=self.config.prompt_weighter_uri)
         return self._pipeline_wrapper
 
     def _ensure_output_path(self):
