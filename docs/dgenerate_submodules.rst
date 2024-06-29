@@ -153,6 +153,16 @@ dgenerate.plugin module
    :special-members: __call__, __init__
 
 
+dgenerate.promptweighters module
+-----------------------
+
+.. automodule:: dgenerate.promptweighters
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :special-members: __call__, __init__
+
+
 dgenerate.pygments module
 -------------------------
 
