@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 3.8.1
+#! dgenerate 3.9.0
 
 # The grid size in this example assumes that you have 2 GPUs visible
 # if this is not the case, adjust it

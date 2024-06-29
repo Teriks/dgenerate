@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 3.8.1
+#! dgenerate 3.9.0
 
 # generate a normal map
 
