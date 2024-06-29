@@ -2803,7 +2803,7 @@ in this documentation, that are worth reading about in the links provided above.
     ====================================================================================================
 
 
-You can enable the ``compel`` prompt weigher by specifying it with the ``--prompt-weighter`` argument.
+You can enable the ``compel`` prompt weighter by specifying it with the ``--prompt-weighter`` argument.
 
 Please note that if you are using the secondary prompt options for SDXL such as ``--sdxl-second-prompts``
 or ``--sdxl-refiner-second-prompts`` they are going to be ignored by the prompt weighter.  The compel
