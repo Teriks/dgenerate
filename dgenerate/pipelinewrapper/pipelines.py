@@ -37,8 +37,8 @@ import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.cache as _cache
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.hfutil as _hfutil
-import dgenerate.promptweighters as _promptweighters
 import dgenerate.pipelinewrapper.uris as _uris
+import dgenerate.promptweighters as _promptweighters
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
@@ -656,6 +656,23 @@ def pipeline_to(pipeline, device: torch.device | str | None):
 
 
 _LAST_CALLED_PIPELINE = None
+
+
+def get_pipeline_call_args(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusionPipeline) -> list[str]:
+    """
+    Get the names of a pipelines call method arguments.
+
+    The names of the arguments used to call the pipeline.
+
+    :param pipeline: the pipeline
+    :return: list of argument names
+    """
+
+    p = pipeline.__call__
+    while hasattr(p, '__wrapper__'):
+        p = p.__wrapper__
+
+    return inspect.getfullargspec(p).args
 
 
 # noinspection PyCallingNonCallable
