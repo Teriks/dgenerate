@@ -116,6 +116,26 @@ def _translate_sdwui_to_compel(text: str) -> str:
 
 
 class CompelPromptWeighter(_promptweighter.PromptWeighter):
+    """
+    Implements prompt weighting syntax for Stable Diffusion 1/2 and Stable Diffusion XL
+    using compel. The default syntax is "compel" which is analogous to the syntax
+    used by InvokeAI.
+
+    Specifying the syntax "sdwui" will translate your prompt from Stable Diffusion Web UI
+    syntax into compel / InvokeAI syntax before generating the prompt embeddings.
+
+    If you wish to use prompt syntax for weighting tokens that is similar to ComfyUI,
+    Automatic1111, or CivitAI for example, use: 'compel;syntax=sdwui'
+
+    The underlying weighting behavior for tokens is not exactly the same as other software
+    that uses the more common "sdwui" syntax, so your prompt may need adjusting if you are
+    reusing a prompt from those other pieces of software.
+
+    You can read about compel here: https://github.com/damian0815/compel
+
+    And InvokeAI here: https://github.com/invoke-ai/InvokeAI
+    """
+
     NAMES = ['compel']
 
     def __init__(self, syntax: str = 'compel', **kwargs):
