@@ -2842,7 +2842,7 @@ ignored.
 
 If you prefer the prompt weighting syntax used by Stable Diffusion Web UI, you can specify
 the plugin argument ``syntax=sdwui`` which will translate your prompt from that syntax into
-compel / invoke AI syntax for you.
+compel / InvokeAI syntax for you.
 
 
 .. code-block:: bash
@@ -2874,8 +2874,8 @@ compel / invoke AI syntax for you.
     --prompts 'a tall man (picking apricots:1.3)'
 
 
-The weighting algorithm is not entirely identical to other pieces of software, so if you are
-migrating prompts they will likely require some adjustment.
+The weighting algorithm is not entirely identical to other pieces of software, so if
+you are migrating prompts they will likely require some adjustment.
 
 
 Utilizing CivitAI links and Other Hosted Models
