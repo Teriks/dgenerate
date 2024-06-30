@@ -135,9 +135,9 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
             if pipeline.tokenizer is not None:
                 # refiner not supported for secondary prompt
                 if positive_2:
-                    positive_2 = pipeline.maybe_convert_prompt(positive_2, tokenizer=pipeline.tokenizer)
+                    positive_2 = pipeline.maybe_convert_prompt(positive_2, tokenizer=pipeline.tokenizer_2)
                 if negative_2:
-                    negative_2 = pipeline.maybe_convert_prompt(negative_2, tokenizer=pipeline.tokenizer)
+                    negative_2 = pipeline.maybe_convert_prompt(negative_2, tokenizer=pipeline.tokenizer_2)
 
         pos_conditioning = None
         neg_conditioning = None
