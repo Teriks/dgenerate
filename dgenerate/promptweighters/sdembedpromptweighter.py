@@ -183,9 +183,13 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
                 device=device)
 
         self._tensors.append(pos_conditioning)
-        self._tensors.append(pos_pooled)
         self._tensors.append(neg_conditioning)
-        self._tensors.append(neg_pooled)
+
+        if pos_pooled is not None:
+            self._tensors.append(pos_pooled)
+
+        if neg_pooled is not None:
+            self._tensors.append(neg_pooled)
 
         output.update({
             'prompt_embeds': pos_conditioning,

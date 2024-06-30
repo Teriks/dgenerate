@@ -733,17 +733,15 @@ Help Output
                             a PNG metadata property named DgenerateConfig and can be read using ImageMagick like
                             so: "magick identify -format "%[Property:DgenerateConfig] generated_file.png".
       -pw PROMPT_WEIGHTER_URI, --prompt-weighter PROMPT_WEIGHTER_URI
-                            Specify a prompt weighter implementation by name, example: --prompt-weighter compel.
-                            By default, no prompt weighting syntax is enabled, meaning you cannot adjust token
-                            weights as you may be able to do in software such as ComfyUI, Automatic1111, CivitAI
-                            etc. Currently the only prompt weighting implementation is "compel", which supports
-                            prompt token weighting syntax for Stable Diffusion 1/2 and Stable Diffusion XL.
-                            Compel allows adjusting the weight of individual tokens in your prompt using a
-                            special syntax. You can read about Compel here:
-                            https://github.com/damian0815/compel. Note that secondary prompts such as --sdxl-
-                            second-prompts are ignored when prompt weighting is enabled. If prompt weighting is
-                            not supported for your combination of arguments a helpful error will be raised. See
-                            also: --prompt-weighter-help
+                            Specify a prompt weighter implementation by URI, for example: --prompt-weighter
+                            compel, or --prompt-weighter sd_embed. By default, no prompt weighting syntax is
+                            enabled, meaning that you cannot adjust token weights as you may be able to do in
+                            software such as ComfyUI, Automatic1111, CivitAI etc. And in some cases the length
+                            of your prompt is limited. Prompt weighters support these special token weighting
+                            syntaxes and long prompts, currently there are two implementations "compel" and
+                            "sd_embed". See: --prompt-weighter-help for a list of implementation names. You may
+                            also use --prompt-weighter-help "name" to see comprehensive documentation for a
+                            specific prompt weighter implementation.
       --prompt-weighter-help [PROMPT_WEIGHTER_NAMES ...]
                             Use this option and with no model specification in order to list available prompt
                             weighter module names. Specifying one or more module names after this option will
