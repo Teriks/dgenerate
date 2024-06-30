@@ -9,9 +9,8 @@ stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
 --sdxl-high-noise-fractions 0.8
 --inference-steps 40
 --gen-seeds 1
---output-size 800
---model-sequential-offload
+--output-size 1024
 --prompt-weighter sd_embed
---prompts "(Artwork) of a (horse) standing near the (open door) of a (red barn), (high resolution:1.2); (Photo)"
+--prompts "(Photo) of a (horse) standing near the (open door) of a (red barn), (high resolution:1.2); artwork"
 --sdxl-second-prompts "In the style of (picasso:1.3)"
 --output-path sd_embed
