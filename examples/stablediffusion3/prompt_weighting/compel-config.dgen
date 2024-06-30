@@ -1,0 +1,40 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.9.0
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %} !END
+
+
+stabilityai/stable-diffusion-3-medium-diffusers
+--model-type torch-sd3
+--variant fp16
+--dtype float16
+--inference-steps 30
+--guidance-scales 5.00
+--clip-skips 0
+--gen-seeds 1
+--output-path output
+--model-sequential-offload
+--prompt-weighter compel
+--prompts "Photo+ of a horse+ standing near the (open door)+ of a (red barn)+, (high resolution)++; artwork"
+--output-path compel
+
+# Translate our prompt into compel from Stable Diffusion Web UI syntax
+
+stabilityai/stable-diffusion-3-medium-diffusers
+--model-type torch-sd3
+--variant fp16
+--dtype float16
+--inference-steps 30
+--guidance-scales 5.00
+--clip-skips 0
+--gen-seeds 1
+--output-path output
+--model-sequential-offload
+--prompt-weighter compel;syntax=sdwui
+--prompts "(Photo) of a (horse) standing near the (open door) of a (red barn), (high resolution:1.2); artwork"
+--output-path compel
