@@ -246,7 +246,8 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
                 output.pop(name)
                 if extra_prompt_args.match(name):
                     _messages.log(
-                        f'Diffusion argument {name} ignored by compel prompt weighting implementation.',
+                        f'Diffusion argument {name} ignored by --prompt-weighter "compel". '
+                        f'--sdxl-second-prompts / --sdxl-refiner-second-prompts is not supported.',
                         level=_messages.WARNING)
 
         positive = positive if positive else ""
