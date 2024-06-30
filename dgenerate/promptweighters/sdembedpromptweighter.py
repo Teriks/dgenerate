@@ -124,15 +124,20 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
         negative_2 = negative_2 if negative_2 else ""
 
         if hasattr(pipeline, 'maybe_convert_prompt'):
-            if positive:
-                positive = pipeline.maybe_convert_prompt(positive, tokenizer=pipeline.tokenizer)
-            if negative:
-                negative = pipeline.maybe_convert_prompt(negative, tokenizer=pipeline.tokenizer)
+            # support refiner, which only has tokenizer_2
+            tk = pipeline.tokenizer if pipeline.tokenizer is not None else pipeline.tokenizer_2
 
-            if positive_2:
-                positive_2 = pipeline.maybe_convert_prompt(positive_2, tokenizer=pipeline.tokenizer)
-            if negative_2:
-                negative_2 = pipeline.maybe_convert_prompt(negative_2, tokenizer=pipeline.tokenizer)
+            if positive:
+                positive = pipeline.maybe_convert_prompt(positive, tokenizer=tk)
+            if negative:
+                negative = pipeline.maybe_convert_prompt(negative, tokenizer=tk)
+
+            if pipeline.tokenizer is not None:
+                # refiner not supported for secondary prompt
+                if positive_2:
+                    positive_2 = pipeline.maybe_convert_prompt(positive_2, tokenizer=pipeline.tokenizer)
+                if negative_2:
+                    negative_2 = pipeline.maybe_convert_prompt(negative_2, tokenizer=pipeline.tokenizer)
 
         pos_conditioning = None
         neg_conditioning = None
@@ -180,7 +185,7 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
                 if positive_2 or negative_2:
                     _messages.log(
                         f'Prompt weighting is not supported by --prompt-weighter '
-                        f'"sd_embed" for --sdxl-refiner-second-prompts, it is being ignored.',
+                        f'"sd_embed" for --sdxl-refiner-second-prompts, that prompt is being ignored.',
                         level=_messages.WARNING)
 
                 pos_conditioning, \
