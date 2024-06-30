@@ -145,18 +145,18 @@ Help Output
                      [--sdxl-refiner-negative-target-sizes SIZE [SIZE ...]]
                      [--sdxl-refiner-negative-crops-coords-top-left COORD [COORD ...]] [-hnf FLOAT [FLOAT ...]]
                      [-ri INT [INT ...]] [-rg FLOAT [FLOAT ...]] [-rgr FLOAT [FLOAT ...]] [-sc] [-d DEVICE]
-                     [-t DTYPE] [-s SIZE] [-na] [-o PATH] [-op PREFIX] [-ox] [-oc] [-om] [-pw NAME]
-                     [--prompt-weighter-help [PROMPT_WEIGHTER_NAMES ...]] [-p PROMPT [PROMPT ...]]
-                     [--sd3-max-sequence-length INTEGER] [--sd3-second-prompts PROMPT [PROMPT ...]]
-                     [--sd3-third-prompts PROMPT [PROMPT ...]] [-cs INTEGER [INTEGER ...]] [-se SEED [SEED ...]]
-                     [-sei] [-gse COUNT] [-af FORMAT] [-if FORMAT] [-nf] [-fs FRAME_NUMBER] [-fe FRAME_NUMBER]
-                     [-is SEED [SEED ...]] [-sip PROCESSOR_URI [PROCESSOR_URI ...]]
-                     [-mip PROCESSOR_URI [PROCESSOR_URI ...]] [-cip PROCESSOR_URI [PROCESSOR_URI ...]]
-                     [--image-processor-help [PROCESSOR_NAME ...]] [-pp PROCESSOR_URI [PROCESSOR_URI ...]]
-                     [-iss FLOAT [FLOAT ...] | -uns INTEGER [INTEGER ...]] [-gs FLOAT [FLOAT ...]]
-                     [-igs FLOAT [FLOAT ...]] [-gr FLOAT [FLOAT ...]] [-ifs INTEGER [INTEGER ...]]
-                     [-mc EXPR [EXPR ...]] [-pmc EXPR [EXPR ...]] [-umc EXPR [EXPR ...]] [-vmc EXPR [EXPR ...]]
-                     [-cmc EXPR [EXPR ...]] [-tmc EXPR [EXPR ...]]
+                     [-t DTYPE] [-s SIZE] [-na] [-o PATH] [-op PREFIX] [-ox] [-oc] [-om]
+                     [-pw PROMPT_WEIGHTER_URI] [--prompt-weighter-help [PROMPT_WEIGHTER_NAMES ...]]
+                     [-p PROMPT [PROMPT ...]] [--sd3-max-sequence-length INTEGER]
+                     [--sd3-second-prompts PROMPT [PROMPT ...]] [--sd3-third-prompts PROMPT [PROMPT ...]]
+                     [-cs INTEGER [INTEGER ...]] [-se SEED [SEED ...]] [-sei] [-gse COUNT] [-af FORMAT]
+                     [-if FORMAT] [-nf] [-fs FRAME_NUMBER] [-fe FRAME_NUMBER] [-is SEED [SEED ...]]
+                     [-sip PROCESSOR_URI [PROCESSOR_URI ...]] [-mip PROCESSOR_URI [PROCESSOR_URI ...]]
+                     [-cip PROCESSOR_URI [PROCESSOR_URI ...]] [--image-processor-help [PROCESSOR_NAME ...]]
+                     [-pp PROCESSOR_URI [PROCESSOR_URI ...]] [-iss FLOAT [FLOAT ...] | -uns INTEGER
+                     [INTEGER ...]] [-gs FLOAT [FLOAT ...]] [-igs FLOAT [FLOAT ...]] [-gr FLOAT [FLOAT ...]]
+                     [-ifs INTEGER [INTEGER ...]] [-mc EXPR [EXPR ...]] [-pmc EXPR [EXPR ...]]
+                     [-umc EXPR [EXPR ...]] [-vmc EXPR [EXPR ...]] [-cmc EXPR [EXPR ...]] [-tmc EXPR [EXPR ...]]
                      model_path
 
     Batch image generation and manipulation tool supporting Stable Diffusion and related techniques /
@@ -965,6 +965,7 @@ Help Output
                             Example, and default value: "text_encoder_size > (available * 0.75)" For Syntax See:
                             [https://dgenerate.readthedocs.io/en/v3.9.0/dgenerate_submodules.html#dgenerate.pipe
                             linewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS]
+
 
 
 
@@ -4093,6 +4094,7 @@ Example output:
         "\directives_help"
         "\functions_help"
         "\image_processor_help"
+        "\prompt_weighter_help"
         "\clear_model_cache"
         "\clear_pipeline_cache"
         "\clear_unet_cache"
