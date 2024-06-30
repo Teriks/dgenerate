@@ -178,9 +178,10 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
                         device=device)
             else:
                 if positive_2 or negative_2:
-                    raise _exceptions.PromptWeightingUnsupported(
+                    _messages.log(
                         f'Prompt weighting is not supported by --prompt-weighter '
-                        f'"sd_embed" when using --sdxl-refiner-second-prompts.')
+                        f'"sd_embed" for --sdxl-refiner-second-prompts, it is being ignored.',
+                        level=_messages.WARNING)
 
                 pos_conditioning, \
                     neg_conditioning, \
