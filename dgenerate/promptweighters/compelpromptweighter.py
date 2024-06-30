@@ -31,7 +31,6 @@ import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.promptweighters.exceptions as _exceptions
 import dgenerate.promptweighters.promptweighter as _promptweighter
-import dgenerate.pipelinewrapper.pipelines as _pipelines
 
 _Attention = typing.List[typing.Tuple[str, float]]
 
