@@ -1,10 +1,22 @@
-.. |Documentation Status| image:: https://readthedocs.org/projects/dgenerate/badge/?version=v3.9.0
+.. |Documentation| image:: https://readthedocs.org/projects/dgenerate/badge/?version=v3.9.0
    :target: http://dgenerate.readthedocs.io/en/v3.9.0/
+
+.. |Latest Release| image:: https://img.shields.io/github/v/release/Teriks/dgenerate
+   :target: https://github.com/Teriks/dgenerate/releases/latest
+   :alt: GitHub Latest Release
+
+.. |License| image:: https://img.shields.io/github/license/Teriks/dgenerate
+   :target: ./LICENSE
+   :alt: License
+
+.. |Support Dgenerate| image:: https://img.shields.io/badge/Ko–fi-support%20dgenerate%20-hotpink?logo=kofi&logoColor=white
+   :target: https://ko-fi.com/teriks
+   :alt: ko-fi
 
 Overview
 ========
 
-|Documentation Status|
+|Documentation| |Latest Release| |License| |Support Dgenerate|
 
 ``dgenerate`` is a command line tool and library for generating images and animation sequences
 using Stable Diffusion and related techniques / models. Now Featuring a `Console UI`_ and
