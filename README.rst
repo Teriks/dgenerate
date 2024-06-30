@@ -69,6 +69,8 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v3.9.0/>`_.
     * `Specifying Control Nets`_
     * `Specifying Text Encoders`_
     * `Prompt Weighting and Enhancement`_
+        * `The compel prompt weighter`_
+        * `The sd_embed prompt weighter`_
     * `Utilizing CivitAI links and Other Hosted Models`_
     * `Specifying Generation Batch Size`_
     * `Image Processors`_
@@ -2748,15 +2750,23 @@ and specific documentation for a prompt weighter can be printed py passing its n
 may also use the config directive ``\\prompt_weighter_help`` inside of a config, or more likely when
 you are working in the `Console UI`_ shell.
 
-At the moment the only supported prompt weighter implementation is the ``compel`` prompt weighter, which uses
-the `compel <https://github.com/damian0815/compel>`_ library to support `InvokeAI <https://github.com/invoke-ai/InvokeAI>`_
-style prompt token weighting syntax.
+There are currently two prompt weighter implementations, the ``compel`` prompt weighter, and
+the ``sd_embed`` prompt weighter.
+
+
+The compel prompt weighter
+--------------------------
+
+The ``compel`` prompt weighter uses the `compel <https://github.com/damian0815/compel>`_ library to
+support `InvokeAI <https://github.com/invoke-ai/InvokeAI>`_ style prompt token weighting syntax for
+Stable Diffusion 1/2, and Stable Diffusion XL.
 
 You can read about InvokeAI prompt syntax here: `Invoke AI prompting documentation <https://invoke-ai.github.io/InvokeAI/features/PROMPTS/>`_
 
-It is a bit different than Stable Diffusion Web UI syntax, which is a syntax used by the
-majority of other image generation software. It possesses some neat features not mentioned
-in this documentation, that are worth reading about in the links provided above.
+It is a bit different than `Stable Diffusion Web UI <https://github.com/AUTOMATIC1111/stable-diffusion-webui>`_ syntax,
+which is a syntax used by the majority of other image generation software. It possesses some neat
+features not mentioned in this documentation, that are worth reading about in the links provided above.
+
 
 .. code-block:: bash
 
@@ -2804,12 +2814,6 @@ in this documentation, that are worth reading about in the links provided above.
 
 
 You can enable the ``compel`` prompt weighter by specifying it with the ``--prompt-weighter`` argument.
-
-Please note that if you are using the secondary prompt options for SDXL such as ``--sdxl-second-prompts``
-or ``--sdxl-refiner-second-prompts`` they are going to be ignored by the prompt weighter.  The compel
-weighter implementation only uses the primary prompt text for SDXL, it will warn you that they are being
-ignored.
-
 
 .. code-block:: bash
 
@@ -2876,6 +2880,83 @@ compel / InvokeAI syntax for you.
 
 The weighting algorithm is not entirely identical to other pieces of software, so if
 you are migrating prompts they will likely require some adjustment.
+
+
+The sd_embed prompt weighter
+----------------------------
+
+The ``sd_embed`` prompt weighter uses the `sd_embed <https://github.com/xhinker/sd_embed>`_ to support
+`Stable Diffusion Web UI <https://github.com/AUTOMATIC1111/stable-diffusion-webui>`_ style prompt token
+weighting syntax for Stable Diffusion 1/2, and Stable Diffusion XL, and Stable Diffusion 3.
+
+
+The syntax that ``sd_embed`` uses is the more wide spread prompt syntax used by software such as
+`Stable Diffusion Web UI <https://github.com/AUTOMATIC1111/stable-diffusion-webui>`_ and `CivitAI <https://civitai.com/>`_
+
+
+.. code-block:: bash
+
+    # print out the documentation for the sd_embed prompt weighter
+
+    dgenerate --prompt-weighter-help sd_embed
+
+
+.. code-block::
+
+    sd_embed:
+
+        Implements prompt weighting syntax for Stable Diffusion 1/2, Stable Diffusion XL, and Stable Diffusion
+        3 using sd_embed.
+
+        sd_embed uses a Stable Diffusion Web UI compatible prompt syntax.
+
+        See: https://github.com/xhinker/sd_embed
+
+        @misc{sd_embed_2024,
+          author       = {Shudong Zhu(Andrew Zhu)},
+          title        = {Long Prompt Weighted Stable Diffusion Embedding},
+          howpublished = {\url{https://github.com/xhinker/sd_embed}},
+          year         = {2024},
+        }
+
+        --model-type torch
+        --model-type torch-pix2pix
+        --model-type torch-upscaler-x4
+        --model-type torch-sdxl
+        --model-type torch-sdxl-pix2pix
+        --model-type torch-sd3
+
+        Secondary prompt options for SDXL such as --sdxl-second-prompts or --sdxl-refiner-second-prompts will be
+        ignored, a warning will be printed mentioning this. Only the primary prompt is processed for SDXL.
+
+    =============================================================================================================
+
+
+
+You can enable the ``sd_embed`` prompt weighter by specifying it with the ``--prompt-weighter`` argument.
+
+Quite notably, the ``sd_embed`` prompt weighter is compatible with Stable Diffusion 3, where
+as the ``compel`` prompt weighter is currently not.
+
+
+.. code-block:: bash
+
+    # You need a huggingface API token to run this example
+
+    dgenerate stabilityai/stable-diffusion-3-medium-diffusers \
+    --model-type torch-sd3 \
+    --variant fp16 \
+    --dtype float16 \
+    --inference-steps 30 \
+    --guidance-scales 5.00 \
+    --clip-skips 0 \
+    --gen-seeds 1 \
+    --output-path output \
+    --output-size 1024x1024 \
+    --model-sequential-offload \
+    --prompt-weighter sd_embed \
+    --auth_token $HF_TOKEN \
+    --prompts "a (man:1.2) standing on the (beach:1.2) looking out in to the water during a (sunset)"
 
 
 Utilizing CivitAI links and Other Hosted Models

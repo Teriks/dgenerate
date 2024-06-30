@@ -34,7 +34,7 @@ import dgenerate.promptweighters.promptweighter as _promptweighter
 
 class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
     r"""
-    Implements prompt weighting syntax for Stable Diffusion 1/2 and Stable Diffusion XL,
+    Implements prompt weighting syntax for Stable Diffusion 1/2, Stable Diffusion XL,
     and Stable Diffusion 3 using sd_embed.
 
     sd_embed uses a Stable Diffusion Web UI compatible prompt syntax.
