@@ -2739,7 +2739,7 @@ Prompt Weighting and Enhancement
 
 By default, the prompt token weighting syntax that you may be familiar with from other software such as
 `ComfyUI <https://github.com/comfyanonymous/ComfyUI>`_, `Stable Diffusion Web UI <https://github.com/AUTOMATIC1111/stable-diffusion-webui>`_,
-`CivitAI <https://civitai.com/>`_ etc. is not enabled.
+and `CivitAI <https://civitai.com/>`_ etc. is not enabled.
 
 And prompts over ``77`` tokens in length are not supported, except in the case of Stable Diffusion 3
 where the max sequence length defaults to ``256`` and is adjustable via ``--sd3-max-sequence-length``.
