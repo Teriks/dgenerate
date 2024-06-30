@@ -2891,7 +2891,7 @@ The sd_embed prompt weighter
 
 The ``sd_embed`` prompt weighter uses the `sd_embed <https://github.com/xhinker/sd_embed>`_ library to support
 `Stable Diffusion Web UI <https://github.com/AUTOMATIC1111/stable-diffusion-webui>`_ style prompt token
-weighting syntax for Stable Diffusion 1/2, and Stable Diffusion XL, and Stable Diffusion 3.
+weighting syntax for Stable Diffusion 1/2, Stable Diffusion XL, and Stable Diffusion 3.
 
 
 The syntax that ``sd_embed`` uses is the more wide spread prompt syntax used by software such as
