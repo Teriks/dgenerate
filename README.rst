@@ -6,7 +6,7 @@ Overview
 
 |Documentation Status|
 
-**dgenerate** is a command line tool and library for generating images and animation sequences
+``dgenerate`` is a command line tool and library for generating images and animation sequences
 using Stable Diffusion and related techniques / models. Now Featuring a `Console UI`_ and
 REPL shell mode for the dgenerate configuration / scripting language.
 
@@ -1037,7 +1037,7 @@ a cloned repository like this:
     pip install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu121/
 
 
-Run **dgenerate** to generate images:
+Run ``dgenerate`` to generate images:
 
 .. code-block:: bash
 
@@ -1175,7 +1175,7 @@ a cloned repository like this:
     -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 
-Run **dgenerate** to generate images:
+Run ``dgenerate`` to generate images:
 
 .. code-block:: bash
 
@@ -1365,10 +1365,10 @@ Some possible definitions for inpainting are:
     * ``--image-seeds "my-image-seed.png;my-mask-image.png"``
     * ``--image-seeds "my-image-seed.png;mask=my-mask-image.png"``
 
-The format is your image seed and mask image separated by ``;``, optionally **mask** can be named argument.
+The format is your image seed and mask image separated by ``;``, optionally ``mask`` can be named argument.
 The alternate syntax is for disambiguation when preforming img2img or inpainting operations while `Specifying Control Nets`_
 or other operations where keyword arguments might be necessary for disambiguation such as per image seed `Animation Slicing`_,
-and the specification of the image from a previous Deep Floyd stage using the **floyd** argument.
+and the specification of the image from a previous Deep Floyd stage using the ``floyd`` argument.
 
 Mask images can be downloaded from URL's just like any other resource mentioned in an ``--image-seeds`` definition,
 however for this example files on disk are used for brevity.
@@ -1411,19 +1411,19 @@ Here are some possible definitions:
 
 The alternate syntax with named arguments is for disambiguation when `Specifying Control Nets`_, or
 preforming per image seed `Animation Slicing`_, or specifying the previous Deep Floyd stage output
-with the **floyd** keyword argument.
+with the ``floyd`` keyword argument.
 
 When one dimension is specified, that dimension is the width, and the height.
 
 The height of an image is calculated to be aspect correct by default for all resizing
 methods unless ``--no-aspect`` has been given as an argument on the command line or the
-**aspect** keyword argument is used in the ``--image-seeds`` definition.
+``aspect`` keyword argument is used in the ``--image-seeds`` definition.
 
 The the aspect correct resize behavior can be controlled on a per image seed definition basis
-using the **aspect** keyword argument.  Any value given to this argument overrides the presence
+using the ``aspect`` keyword argument.  Any value given to this argument overrides the presence
 or absense of the ``--no-aspect`` command line argument.
 
-the **aspect** keyword argument can only be used when all other components of the image seed
+the ``aspect`` keyword argument can only be used when all other components of the image seed
 definition are defined using keyword arguments. ``aspect=false`` disables aspect correct resizing,
 and ``aspect=true`` enables it.
 
@@ -1449,7 +1449,7 @@ The involved images are resized using the basic syntax with no keyword arguments
 Animated Output
 ===============
 
-**dgenerate** supports many video formats through the use of PyAV (ffmpeg), as well as GIF & WebP.
+``dgenerate`` supports many video formats through the use of PyAV (ffmpeg), as well as GIF & WebP.
 
 See ``--help`` for information about all formats supported for the ``--animation-format`` option.
 
@@ -3034,9 +3034,9 @@ When not writing to image grids the files in the batch will be written to disk
 with the suffix ``_image_N`` where N is index of the image in the batch of images
 that were generated.
 
-When producing an animation, you can either write **N** animation output files
-with the filename suffixes ``_animation_N`` where **N** is the index of the image
-in the batch which makes up the frames.  Or you can use ```--batch-grid-size`` to
+When producing an animation, you can either write ``N`` animation output files
+with the filename suffixes ``_animation_N`` where ``N`` is the index of the image
+in the batch which makes up the frames.  Or you can use ``--batch-grid-size`` to
 write frames to a single animated output where the frames are all image grids
 produced from the images in the batch.
 
