@@ -2948,7 +2948,8 @@ The ``sd_embded`` prompt weighter also supports the use of ``--sdxl-second-promp
         --model-type torch-sd3
 
         The secondary prompt option for SDXL --sdxl-second-prompts is supported by this prompt weighter
-        implementation. However, --sdxl-refiner-second-prompts is not supported.
+        implementation. However, --sdxl-refiner-second-prompts is not supported and will be ignored
+        with a warning message.
 
     =============================================================================================================
 
