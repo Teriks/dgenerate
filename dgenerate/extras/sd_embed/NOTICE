@@ -2,6 +2,8 @@ This code is vendored from: https://github.com/xhinker/sd_embed
 
 It does not currently have a PyPI package, it is under the Apache License
 
+This code has been modified as so: https://github.com/Teriks/sd_embed
+
 @misc{sd_embed_2024,
   author       = {Shudong Zhu(Andrew Zhu)},
   title        = {Long Prompt Weighted Stable Diffusion Embedding},
