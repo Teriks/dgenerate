@@ -168,10 +168,11 @@ def group_tokens_and_weights(
 
 def get_weighted_text_embeddings_sd15(
         pipe: StableDiffusionPipeline
-        , prompt : str      = ""
-        , neg_prompt: str   = ""
-        , pad_last_block    = False
-        , clip_skip:int     = 0
+        , prompt : str          = ""
+        , neg_prompt: str       = ""
+        , pad_last_block: bool  = False
+        , clip_skip: int        = 0
+        , device: str | None    = None
 ):
     """
     This function can process long prompt with weights, no length limitation
@@ -203,6 +204,8 @@ def get_weighted_text_embeddings_sd15(
             , generator = torch.Generator(text2img_pipe.device).manual_seed(2)
         ).images[0]
     """
+    device = device if device else pipe.device
+
     original_clip_layers = pipe.text_encoder.text_model.encoder.layers
     if clip_skip > 0:
         pipe.text_encoder.text_model.encoder.layers = original_clip_layers[:-clip_skip]
@@ -260,12 +263,12 @@ def get_weighted_text_embeddings_sd15(
         # get positive prompt embeddings with weights
         token_tensor = torch.tensor(
             [prompt_token_groups[i]]
-            ,dtype = torch.long, device = pipe.device
+            ,dtype = torch.long, device = device
         )
         weight_tensor = torch.tensor(
             prompt_weight_groups[i]
             , dtype     = torch.float16
-            , device    = pipe.device
+            , device    = device
         )
 
         token_embedding = pipe.text_encoder(token_tensor)[0].squeeze(0)
@@ -277,12 +280,12 @@ def get_weighted_text_embeddings_sd15(
         # get negative prompt embeddings with weights
         neg_token_tensor = torch.tensor(
             [neg_prompt_token_groups[i]]
-            , dtype = torch.long, device = pipe.device
+            , dtype = torch.long, device = device
         )
         neg_weight_tensor = torch.tensor(
             neg_prompt_weight_groups[i]
             , dtype     = torch.float16
-            , device    = pipe.device
+            , device    = device
         )
         neg_token_embedding = pipe.text_encoder(neg_token_tensor)[0].squeeze(0)
         for z in range(len(neg_weight_tensor)):
@@ -304,9 +307,10 @@ def get_weighted_text_embeddings_sd15(
 
 def get_weighted_text_embeddings_sdxl(
         pipe: StableDiffusionXLPipeline
-        , prompt : str      = ""
-        , neg_prompt: str   = ""
-        , pad_last_block    = True
+        , prompt : str          = ""
+        , neg_prompt: str       = ""
+        , pad_last_block: bool  = True
+        , device: str | None    = None
 ):
     """
     This function can process long prompt with weights, no length limitation
@@ -340,6 +344,8 @@ def get_weighted_text_embeddings_sdxl(
     """
     import math
     eos = pipe.tokenizer.eos_token_id
+
+    device = device if device else pipe.device
 
     # tokenizer 1
     prompt_tokens, prompt_weights = get_prompts_tokens_with_weights(
@@ -441,29 +447,29 @@ def get_weighted_text_embeddings_sdxl(
         # get positive prompt embeddings with weights
         token_tensor = torch.tensor(
             [prompt_token_groups[i]]
-            ,dtype = torch.long, device = pipe.device
+            ,dtype = torch.long, device = device
         )
         weight_tensor = torch.tensor(
             prompt_weight_groups[i]
             , dtype     = torch.float16
-            , device    = pipe.device
+            , device    = device
         )
 
         token_tensor_2 = torch.tensor(
             [prompt_token_groups_2[i]]
-            ,dtype = torch.long, device = pipe.device
+            ,dtype = torch.long, device = device
         )
 
         # use first text encoder
         prompt_embeds_1 = pipe.text_encoder(
-            token_tensor.to(pipe.device)
+            token_tensor.to(device)
             , output_hidden_states = True
         )
         prompt_embeds_1_hidden_states = prompt_embeds_1.hidden_states[-2]
 
         # use second text encoder
         prompt_embeds_2 = pipe.text_encoder_2(
-            token_tensor_2.to(pipe.device)
+            token_tensor_2.to(device)
             , output_hidden_states = True
         )
         prompt_embeds_2_hidden_states = prompt_embeds_2.hidden_states[-2]
@@ -473,7 +479,7 @@ def get_weighted_text_embeddings_sdxl(
         # print(prompt_embeds_1_hidden_states.shape)
         # print(prompt_embeds_2_hidden_states.shape)
         prompt_embeds_list = [prompt_embeds_1_hidden_states, prompt_embeds_2_hidden_states]
-        token_embedding = torch.concat(prompt_embeds_list, dim=-1).squeeze(0).to(pipe.device)
+        token_embedding = torch.concat(prompt_embeds_list, dim=-1).squeeze(0).to(device)
 
         for j in range(len(weight_tensor)):
             if weight_tensor[j] != 1.0:
@@ -504,35 +510,35 @@ def get_weighted_text_embeddings_sdxl(
         # get negative prompt embeddings with weights
         neg_token_tensor = torch.tensor(
             [neg_prompt_token_groups[i]]
-            , dtype = torch.long, device = pipe.device
+            , dtype = torch.long, device = device
         )
         neg_token_tensor_2 = torch.tensor(
             [neg_prompt_token_groups_2[i]]
-            , dtype = torch.long, device = pipe.device
+            , dtype = torch.long, device = device
         )
         neg_weight_tensor = torch.tensor(
             neg_prompt_weight_groups[i]
             , dtype     = torch.float16
-            , device    = pipe.device
+            , device    = device
         )
 
         # use first text encoder
         neg_prompt_embeds_1 = pipe.text_encoder(
-            neg_token_tensor.to(pipe.device)
+            neg_token_tensor.to(device)
             , output_hidden_states=True
         )
         neg_prompt_embeds_1_hidden_states = neg_prompt_embeds_1.hidden_states[-2]
 
         # use second text encoder
         neg_prompt_embeds_2 = pipe.text_encoder_2(
-            neg_token_tensor_2.to(pipe.device)
+            neg_token_tensor_2.to(device)
             , output_hidden_states=True
         )
         neg_prompt_embeds_2_hidden_states = neg_prompt_embeds_2.hidden_states[-2]
         negative_pooled_prompt_embeds = neg_prompt_embeds_2[0]
 
         neg_prompt_embeds_list = [neg_prompt_embeds_1_hidden_states, neg_prompt_embeds_2_hidden_states]
-        neg_token_embedding = torch.concat(neg_prompt_embeds_list, dim=-1).squeeze(0).to(pipe.device)
+        neg_token_embedding = torch.concat(neg_prompt_embeds_list, dim=-1).squeeze(0).to(device)
 
         for z in range(len(neg_weight_tensor)):
             if neg_weight_tensor[z] != 1.0:
@@ -564,8 +570,9 @@ def get_weighted_text_embeddings_sdxl(
 
 def get_weighted_text_embeddings_sdxl_refiner(
         pipe: StableDiffusionXLPipeline
-        , prompt : str      = ""
-        , neg_prompt: str   = ""
+        , prompt : str       = ""
+        , neg_prompt: str    = ""
+        , device: str | None = None
 ):
     """
     This function can process long prompt with weights, no length limitation
@@ -599,6 +606,8 @@ def get_weighted_text_embeddings_sdxl_refiner(
     """
     import math
     eos = 49407 #pipe.tokenizer.eos_token_id
+
+    device = device if device else pipe.device
 
     # tokenizer 2
     prompt_tokens_2, prompt_weights_2 = get_prompts_tokens_with_weights(
@@ -652,18 +661,18 @@ def get_weighted_text_embeddings_sdxl_refiner(
         # get positive prompt embeddings with weights
         token_tensor_2 = torch.tensor(
             [prompt_token_groups_2[i]]
-            ,dtype = torch.long, device = pipe.device
+            ,dtype = torch.long, device = device
         )
 
         weight_tensor_2 = torch.tensor(
             prompt_weight_groups_2[i]
             , dtype     = torch.float16
-            , device    = pipe.device
+            , device    = device
         )
 
         # use second text encoder
         prompt_embeds_2 = pipe.text_encoder_2(
-            token_tensor_2.to(pipe.device)
+            token_tensor_2.to(device)
             , output_hidden_states = True
         )
         prompt_embeds_2_hidden_states = prompt_embeds_2.hidden_states[-2]
@@ -698,17 +707,17 @@ def get_weighted_text_embeddings_sdxl_refiner(
         # get negative prompt embeddings with weights
         neg_token_tensor_2 = torch.tensor(
             [neg_prompt_token_groups_2[i]]
-            , dtype = torch.long, device = pipe.device
+            , dtype = torch.long, device = device
         )
         neg_weight_tensor_2 = torch.tensor(
             neg_prompt_weight_groups_2[i]
             , dtype     = torch.float16
-            , device    = pipe.device
+            , device    = device
         )
 
         # use second text encoder
         neg_prompt_embeds_2 = pipe.text_encoder_2(
-            neg_token_tensor_2.to(pipe.device)
+            neg_token_tensor_2.to(device)
             , output_hidden_states=True
         )
         neg_prompt_embeds_2_hidden_states = neg_prompt_embeds_2.hidden_states[-2]
@@ -744,10 +753,11 @@ def get_weighted_text_embeddings_sdxl_refiner(
 
 def get_weighted_text_embeddings_sdxl_2p(
         pipe: StableDiffusionXLPipeline
-        , prompt : str      = ""
-        , prompt_2 : str    = None
-        , neg_prompt: str   = ""
-        , neg_prompt_2: str = None
+        , prompt : str       = ""
+        , prompt_2 : str     = None
+        , neg_prompt: str    = ""
+        , neg_prompt_2: str  = None
+        , device: str | None = None
 ):
     """
     This function can process long prompt with weights, no length limitation
@@ -784,6 +794,8 @@ def get_weighted_text_embeddings_sdxl_2p(
 
     import math
     eos = pipe.tokenizer.eos_token_id
+
+    device = device if device else pipe.device
 
     # tokenizer 1
     prompt_tokens, prompt_weights = get_prompts_tokens_with_weights(
@@ -908,33 +920,33 @@ def get_weighted_text_embeddings_sdxl_2p(
         # get positive prompt embeddings with weights
         token_tensor = torch.tensor(
             [prompt_token_groups[i]]
-            ,dtype = torch.long, device = pipe.device
+            ,dtype = torch.long, device = device
         )
         weight_tensor = torch.tensor(
             prompt_weight_groups[i]
-            , device    = pipe.device
+            , device    = device
         )
 
         token_tensor_2 = torch.tensor(
             [prompt_token_groups_2[i]]
-            , device = pipe.device
+            , device = device
         )
 
         weight_tensor_2 = torch.tensor(
             prompt_weight_groups_2[i]
-            , device    = pipe.device
+            , device    = device
         )
 
         # use first text encoder
         prompt_embeds_1 = pipe.text_encoder(
-            token_tensor.to(pipe.device)
+            token_tensor.to(device)
             , output_hidden_states = True
         )
         prompt_embeds_1_hidden_states = prompt_embeds_1.hidden_states[-2]
 
         # use second text encoder
         prompt_embeds_2 = pipe.text_encoder_2(
-            token_tensor_2.to(pipe.device)
+            token_tensor_2.to(device)
             , output_hidden_states = True
         )
         prompt_embeds_2_hidden_states = prompt_embeds_2.hidden_states[-2]
@@ -965,31 +977,31 @@ def get_weighted_text_embeddings_sdxl_2p(
         # get negative prompt embeddings with weights
         neg_token_tensor = torch.tensor(
             [neg_prompt_token_groups[i]]
-            , device = pipe.device
+            , device = device
         )
         neg_token_tensor_2 = torch.tensor(
             [neg_prompt_token_groups_2[i]]
-            , device = pipe.device
+            , device = device
         )
         neg_weight_tensor = torch.tensor(
             neg_prompt_weight_groups[i]
-            , device    = pipe.device
+            , device    = device
         )
         neg_weight_tensor_2 = torch.tensor(
             neg_prompt_weight_groups_2[i]
-            , device    = pipe.device
+            , device    = device
         )
 
         # use first text encoder
         neg_prompt_embeds_1 = pipe.text_encoder(
-            neg_token_tensor.to(pipe.device)
+            neg_token_tensor.to(device)
             , output_hidden_states=True
         )
         neg_prompt_embeds_1_hidden_states = neg_prompt_embeds_1.hidden_states[-2]
 
         # use second text encoder
         neg_prompt_embeds_2 = pipe.text_encoder_2(
-            neg_token_tensor_2.to(pipe.device)
+            neg_token_tensor_2.to(device)
             , output_hidden_states=True
         )
         neg_prompt_embeds_2_hidden_states = neg_prompt_embeds_2.hidden_states[-2]
@@ -1025,10 +1037,11 @@ def get_weighted_text_embeddings_sdxl_2p(
 
 def get_weighted_text_embeddings_sd3(
         pipe: StableDiffusion3Pipeline
-        , prompt : str      = ""
-        , neg_prompt: str   = ""
-        , pad_last_block    = True
-        , use_t5_encoder    = True
+        , prompt : str          = ""
+        , neg_prompt: str       = ""
+        , pad_last_block: bool  = True
+        , use_t5_encoder: bool  = True
+        , device: str | None    = None
 ):
     """
     This function can process long prompt with weights, no length limitation
@@ -1062,6 +1075,8 @@ def get_weighted_text_embeddings_sd3(
     """
     import math
     eos = pipe.tokenizer.eos_token_id
+
+    device = device if device else pipe.device
 
     # tokenizer 1
     prompt_tokens, prompt_weights = get_prompts_tokens_with_weights(
@@ -1172,22 +1187,22 @@ def get_weighted_text_embeddings_sd3(
         # get positive prompt embeddings with weights
         token_tensor = torch.tensor(
             [prompt_token_groups[i]]
-            ,dtype = torch.long, device = pipe.device
+            ,dtype = torch.long, device = device
         )
         weight_tensor = torch.tensor(
             prompt_weight_groups[i]
             , dtype     = torch.float16
-            , device    = pipe.device
+            , device    = device
         )
 
         token_tensor_2 = torch.tensor(
             [prompt_token_groups_2[i]]
-            ,dtype = torch.long, device = pipe.device
+            ,dtype = torch.long, device = device
         )
 
         # use first text encoder
         prompt_embeds_1 = pipe.text_encoder(
-            token_tensor.to(pipe.device)
+            token_tensor.to(device)
             , output_hidden_states = True
         )
         prompt_embeds_1_hidden_states = prompt_embeds_1.hidden_states[-2]
@@ -1195,7 +1210,7 @@ def get_weighted_text_embeddings_sd3(
 
         # use second text encoder
         prompt_embeds_2 = pipe.text_encoder_2(
-            token_tensor_2.to(pipe.device)
+            token_tensor_2.to(device)
             , output_hidden_states = True
         )
         prompt_embeds_2_hidden_states = prompt_embeds_2.hidden_states[-2]
@@ -1205,7 +1220,7 @@ def get_weighted_text_embeddings_sd3(
         # print(prompt_embeds_1_hidden_states.shape)
         # print(prompt_embeds_2_hidden_states.shape)
         prompt_embeds_list = [prompt_embeds_1_hidden_states, prompt_embeds_2_hidden_states]
-        token_embedding = torch.concat(prompt_embeds_list, dim=-1).squeeze(0).to(pipe.device)
+        token_embedding = torch.concat(prompt_embeds_list, dim=-1).squeeze(0).to(device)
 
         for j in range(len(weight_tensor)):
             if weight_tensor[j] != 1.0:
@@ -1236,21 +1251,21 @@ def get_weighted_text_embeddings_sd3(
         # get negative prompt embeddings with weights
         neg_token_tensor = torch.tensor(
             [neg_prompt_token_groups[i]]
-            , dtype = torch.long, device = pipe.device
+            , dtype = torch.long, device = device
         )
         neg_token_tensor_2 = torch.tensor(
             [neg_prompt_token_groups_2[i]]
-            , dtype = torch.long, device = pipe.device
+            , dtype = torch.long, device = device
         )
         neg_weight_tensor = torch.tensor(
             neg_prompt_weight_groups[i]
             , dtype     = torch.float16
-            , device    = pipe.device
+            , device    = device
         )
 
         # use first text encoder
         neg_prompt_embeds_1 = pipe.text_encoder(
-            neg_token_tensor.to(pipe.device)
+            neg_token_tensor.to(device)
             , output_hidden_states=True
         )
         neg_prompt_embeds_1_hidden_states = neg_prompt_embeds_1.hidden_states[-2]
@@ -1258,14 +1273,14 @@ def get_weighted_text_embeddings_sd3(
 
         # use second text encoder
         neg_prompt_embeds_2 = pipe.text_encoder_2(
-            neg_token_tensor_2.to(pipe.device)
+            neg_token_tensor_2.to(device)
             , output_hidden_states=True
         )
         neg_prompt_embeds_2_hidden_states = neg_prompt_embeds_2.hidden_states[-2]
         negative_pooled_prompt_embeds_2 = neg_prompt_embeds_2[0]
 
         neg_prompt_embeds_list = [neg_prompt_embeds_1_hidden_states, neg_prompt_embeds_2_hidden_states]
-        neg_token_embedding = torch.concat(neg_prompt_embeds_list, dim=-1).squeeze(0).to(pipe.device)
+        neg_token_embedding = torch.concat(neg_prompt_embeds_list, dim=-1).squeeze(0).to(device)
 
         for z in range(len(neg_weight_tensor)):
             if neg_weight_tensor[z] != 1.0:
@@ -1300,8 +1315,8 @@ def get_weighted_text_embeddings_sd3(
         # ----------------- generate positive t5 embeddings --------------------
         prompt_tokens_3 = torch.tensor([prompt_tokens_3],dtype=torch.long)
 
-        t5_prompt_embeds    = pipe.text_encoder_3(prompt_tokens_3.to(pipe.device))[0].squeeze(0)
-        t5_prompt_embeds    = t5_prompt_embeds.to(device=pipe.device)
+        t5_prompt_embeds    = pipe.text_encoder_3(prompt_tokens_3.to(device))[0].squeeze(0)
+        t5_prompt_embeds    = t5_prompt_embeds.to(device=device)
 
         # add weight to t5 prompt
         for z in range(len(prompt_weights_3)):
@@ -1318,8 +1333,8 @@ def get_weighted_text_embeddings_sd3(
         # ---------------------- get neg t5 embeddings -------------------------
         neg_prompt_tokens_3 = torch.tensor([neg_prompt_tokens_3],dtype=torch.long)
 
-        t5_neg_prompt_embeds    = pipe.text_encoder_3(neg_prompt_tokens_3.to(pipe.device))[0].squeeze(0)
-        t5_neg_prompt_embeds    = t5_neg_prompt_embeds.to(device=pipe.device)
+        t5_neg_prompt_embeds    = pipe.text_encoder_3(neg_prompt_tokens_3.to(device))[0].squeeze(0)
+        t5_neg_prompt_embeds    = t5_neg_prompt_embeds.to(device=device)
 
         # add weight to neg t5 embeddings
         for z in range(len(neg_prompt_weights_3)):
