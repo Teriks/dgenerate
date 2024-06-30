@@ -2945,8 +2945,8 @@ as the ``compel`` prompt weighter currently does not.
         --model-type torch-sdxl-pix2pix
         --model-type torch-sd3
 
-        Secondary prompt options for SDXL such as --sdxl-second-prompts or --sdxl-refiner-second-prompts will be
-        ignored, a warning will be printed mentioning this. Only the primary prompt is processed for SDXL.
+        Secondary prompt options for SDXL such as --sdxl-second-prompts or --sdxl-refiner-second-prompts
+        are supported by this prompt weighter implementation.
 
     =============================================================================================================
 
