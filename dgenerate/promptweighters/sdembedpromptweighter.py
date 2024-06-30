@@ -117,7 +117,7 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
                 output.pop(name)
                 if extra_prompt_args.match(name):
                     _messages.log(
-                        f'Diffusion argument {name} ignored by compel prompt weighting implementation.',
+                        f'Diffusion argument {name} ignored by sd_embed prompt weighting implementation.',
                         level=_messages.WARNING)
 
         positive = positive if positive else ""
@@ -201,7 +201,7 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
             debug_args = ", ".join(
                 f"{k}={v if not isinstance(v, torch.Tensor) else f'torch.Tensor({v.shape})'}" for k, v in
                 output.items())
-            return 'CompelPromptWeighter translated pipeline args: {' + debug_args + '}'
+            return 'SdEmbedPromptWeighter translated pipeline args: {' + debug_args + '}'
 
         _messages.debug_log(debug_string)
 
