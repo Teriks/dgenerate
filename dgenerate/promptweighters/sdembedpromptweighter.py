@@ -216,3 +216,4 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
             tensor.to('cpu')
         self._tensors.clear()
         gc.collect()
+        torch.cuda.empty_cache()
