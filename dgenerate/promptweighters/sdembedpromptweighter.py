@@ -41,6 +41,7 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
 
     See: https://github.com/xhinker/sd_embed
 
+    NOWRAP!
     @misc{sd_embed_2024,
       author       = {Shudong Zhu(Andrew Zhu)},
       title        = {Long Prompt Weighted Stable Diffusion Embedding},
