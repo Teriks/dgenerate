@@ -108,21 +108,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     """
     The URI of a prompt weighter implementation supported by dgenerate.
     
-    Currently the only supported value is "compel" and its 
-    sole optional argument "compel;syntax=sdwui"
-    
-    Compel supports InvokeAI prompt weighting syntax for Stable Diffusion 1/2 and SDXL.
-    
-    Using the "sdwui" syntax translates Stable Diffusion Web UI prompt weighting syntax
-    to compel syntax for you.
-     
-    This alternate syntax is used by software such as ComfyUI, Automatic1111, and CivitAI.
-    
-    See: https://github.com/damian0815/compel
-    
-    And: https://huggingface.co/docs/diffusers/v0.16.0/en/using-diffusers/weighted_prompts
-    
-    Note that secondary prompts such as ``sdxl_second_prompts`` are ignored when prompt weighting syntax is enabled.
+    This corresponds to the ``--prompt-weighter`` argument of the dgenerate command line tool.
     """
 
     prompts: _types.Prompts
