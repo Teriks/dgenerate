@@ -2912,7 +2912,7 @@ The syntax that ``sd_embed`` uses is the more wide spread prompt syntax used by 
 Quite notably, the ``sd_embed`` prompt weighter supports Stable Diffusion 3, where
 as the ``compel`` prompt weighter currently does not.
 
-The ``sd_embded`` prompt weighter also supports the use of ``--sdxl-second-prompts``
+The ``sd_embded`` prompt weighter also supports the use of ``--sdxl-second-prompts``.
 
 
 .. code-block:: bash
@@ -2926,8 +2926,8 @@ The ``sd_embded`` prompt weighter also supports the use of ``--sdxl-second-promp
 
     sd_embed:
 
-        Implements prompt weighting syntax for Stable Diffusion 1/2, Stable Diffusion XL, and Stable Diffusion
-        3 using sd_embed.
+        Implements prompt weighting syntax for Stable Diffusion 1/2, Stable Diffusion XL, and Stable
+        Diffusion 3 using sd_embed.
 
         sd_embed uses a Stable Diffusion Web UI compatible prompt syntax.
 
@@ -2948,10 +2948,10 @@ The ``sd_embded`` prompt weighter also supports the use of ``--sdxl-second-promp
         --model-type torch-sd3
 
         The secondary prompt option for SDXL --sdxl-second-prompts is supported by this prompt weighter
-        implementation. However, --sdxl-refiner-second-prompts is not supported and will be ignored
-        with a warning message.
+        implementation. However, --sdxl-refiner-second-prompts is not supported and will be ignored with
+        a warning message.
 
-    =============================================================================================================
+    ====================================================================================================
 
 
 You can enable the ``sd_embed`` prompt weighter by specifying it with the ``--prompt-weighter`` argument.
