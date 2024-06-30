@@ -332,6 +332,7 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
     def cleanup(self):
         for tensor in self._tensors:
             tensor.to('cpu')
+            del tensor
         self._tensors.clear()
         gc.collect()
         torch.cuda.empty_cache()
