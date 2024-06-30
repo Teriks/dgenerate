@@ -1,0 +1,10 @@
+This code is vendored from: https://github.com/xhinker/sd_embed
+
+It does not currently have a PyPI package, it is under the Apache License
+
+@misc{sd_embed_2024,
+  author       = {Shudong Zhu(Andrew Zhu)},
+  title        = {Long Prompt Weighted Stable Diffusion Embedding},
+  howpublished = {\url{https://github.com/xhinker/sd_embed}},
+  year         = {2024},
+}
