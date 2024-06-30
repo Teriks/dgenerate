@@ -137,45 +137,49 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
         if pipeline.__class__.__name__.startswith('StableDiffusion3'):
 
             pos_conditioning, \
-            neg_conditioning, \
-            pos_pooled, \
-            neg_pooled = _sd_embed.get_weighted_text_embeddings_sd3(
+                neg_conditioning, \
+                pos_pooled, \
+                neg_pooled = _sd_embed.get_weighted_text_embeddings_sd3(
                 pipe=pipeline,
                 prompt=positive,
                 neg_prompt=negative,
                 pad_last_block=True,
-                use_t5_encoder=pipeline.tokenizer_3 is not None)
+                use_t5_encoder=pipeline.tokenizer_3 is not None,
+                device=device)
 
         elif pipeline.__class__.__name__.startswith('StableDiffusionXL'):
 
             if pipeline.tokenizer is not None:
 
                 pos_conditioning, \
-                neg_conditioning, \
-                pos_pooled, \
-                neg_pooled = _sd_embed.get_weighted_text_embeddings_sdxl(
+                    neg_conditioning, \
+                    pos_pooled, \
+                    neg_pooled = _sd_embed.get_weighted_text_embeddings_sdxl(
                     pipe=pipeline,
                     prompt=positive,
-                    neg_prompt=negative)
+                    neg_prompt=negative,
+                    device=device)
             else:
 
-                pos_conditioning,\
-                neg_conditioning,\
-                pos_pooled, \
-                neg_pooled = _sd_embed.get_weighted_text_embeddings_sdxl_refiner(
+                pos_conditioning, \
+                    neg_conditioning, \
+                    pos_pooled, \
+                    neg_pooled = _sd_embed.get_weighted_text_embeddings_sdxl_refiner(
                     pipe=pipeline,
                     prompt=positive,
-                    neg_prompt=negative)
+                    neg_prompt=negative,
+                    device=device)
 
         elif pipeline.__class__.__name__.startswith('StableDiffusion'):
 
             pos_conditioning, \
-            neg_conditioning = _sd_embed.get_weighted_text_embeddings_sd15(
+                neg_conditioning = _sd_embed.get_weighted_text_embeddings_sd15(
                 pipe=pipeline,
                 prompt=positive,
                 neg_prompt=negative,
                 pad_last_block=False,
-                clip_skip=args.get('clip_skip', 0))
+                clip_skip=args.get('clip_skip', 0),
+                device=device)
 
         self._tensors.append(pos_conditioning)
         self._tensors.append(pos_pooled)
