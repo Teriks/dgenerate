@@ -57,8 +57,8 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
     --model-type torch-sdxl-pix2pix
     --model-type torch-sd3
 
-    Secondary prompt options for SDXL such as --sdxl-second-prompts or --sdxl-refiner-second-prompts
-    are supported by this prompt weighter implementation.
+    The secondary prompt option for SDXL --sdxl-second-prompts is supported by this prompt weighter
+    implementation. However, --sdxl-refiner-second-prompts is not supported.
     """
 
     NAMES = ['sd_embed']
@@ -177,6 +177,11 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
                         neg_prompt=negative,
                         device=device)
             else:
+                if positive_2 or negative_2:
+                    raise _exceptions.PromptWeightingUnsupported(
+                        f'Prompt weighting is not supported by --prompt-weighter '
+                        f'"sd_embed" when using --sdxl-refiner-second-prompts.')
+
                 pos_conditioning, \
                     neg_conditioning, \
                     pos_pooled, \
