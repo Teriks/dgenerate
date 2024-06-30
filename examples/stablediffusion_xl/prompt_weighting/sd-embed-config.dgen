@@ -1,0 +1,15 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.9.0
+
+# The sd_embed prompt weighter natively supports Stable Diffusion Web UI syntax
+
+stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
+--variant fp16 --dtype float16
+--sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
+--sdxl-high-noise-fractions 0.8
+--inference-steps 40
+--gen-seeds 1
+--output-size 1024
+--prompt-weighter sd_embed
+--prompts "(Photo) of a (horse) standing near the (open door) of a (red barn), (high resolution:1.2); artwork"
+--output-path sd_embed
