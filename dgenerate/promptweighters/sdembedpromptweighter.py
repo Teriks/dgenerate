@@ -58,8 +58,7 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
     --model-type torch-sd3
 
     Secondary prompt options for SDXL such as --sdxl-second-prompts or --sdxl-refiner-second-prompts
-    will be ignored, a warning will be printed mentioning this. Only the primary prompt is processed
-    for SDXL.
+    are supported by this prompt weighter implementation.
     """
 
     NAMES = ['sd_embed']
@@ -110,25 +109,30 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
         positive = args.get('prompt')
         negative = args.get('negative_prompt')
 
+        positive_2 = args.get('prompt_2')
+        negative_2 = args.get('negative_prompt_2')
+
         prompt_args = re.compile(r'^(prompt|negative_prompt)(_\d+)?$')
-        extra_prompt_args = re.compile(r'^(prompt|negative_prompt)(_\d+)$')
 
         for name in args.keys():
             if prompt_args.match(name):
                 output.pop(name)
-                if extra_prompt_args.match(name):
-                    _messages.log(
-                        f'Diffusion argument {name} ignored by sd_embed prompt weighting implementation.',
-                        level=_messages.WARNING)
 
         positive = positive if positive else ""
         negative = negative if negative else ""
+        positive_2 = positive_2 if positive_2 else ""
+        negative_2 = negative_2 if negative_2 else ""
 
-        if positive and hasattr(pipeline, 'maybe_convert_prompt') and pipeline.tokenizer is not None:
-            positive = pipeline.maybe_convert_prompt(positive, tokenizer=pipeline.tokenizer)
+        if hasattr(pipeline, 'maybe_convert_prompt'):
+            if positive:
+                positive = pipeline.maybe_convert_prompt(positive, tokenizer=pipeline.tokenizer)
+            if negative:
+                negative = pipeline.maybe_convert_prompt(negative, tokenizer=pipeline.tokenizer)
 
-        if negative and hasattr(pipeline, 'maybe_convert_prompt') and pipeline.tokenizer is not None:
-            negative = pipeline.maybe_convert_prompt(negative, tokenizer=pipeline.tokenizer)
+            if positive_2:
+                positive_2 = pipeline.maybe_convert_prompt(positive_2, tokenizer=pipeline.tokenizer)
+            if negative_2:
+                negative_2 = pipeline.maybe_convert_prompt(negative_2, tokenizer=pipeline.tokenizer)
 
         pos_conditioning = None
         neg_conditioning = None
@@ -152,16 +156,27 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
 
             if pipeline.tokenizer is not None:
 
-                pos_conditioning, \
-                    neg_conditioning, \
-                    pos_pooled, \
-                    neg_pooled = _sd_embed.get_weighted_text_embeddings_sdxl(
-                    pipe=pipeline,
-                    prompt=positive,
-                    neg_prompt=negative,
-                    device=device)
+                if positive_2 or negative_2:
+                    pos_conditioning, \
+                        neg_conditioning, \
+                        pos_pooled, \
+                        neg_pooled = _sd_embed.get_weighted_text_embeddings_sdxl_2p(
+                        pipe=pipeline,
+                        prompt=positive,
+                        prompt_2=positive_2,
+                        neg_prompt=negative,
+                        neg_prompt_2=negative_2,
+                        device=device)
+                else:
+                    pos_conditioning, \
+                        neg_conditioning, \
+                        pos_pooled, \
+                        neg_pooled = _sd_embed.get_weighted_text_embeddings_sdxl(
+                        pipe=pipeline,
+                        prompt=positive,
+                        neg_prompt=negative,
+                        device=device)
             else:
-
                 pos_conditioning, \
                     neg_conditioning, \
                     pos_pooled, \
