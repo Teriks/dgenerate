@@ -2973,7 +2973,7 @@ You can enable the ``sd_embed`` prompt weighter by specifying it with the ``--pr
     --output-size 1024x1024 \
     --model-sequential-offload \
     --prompt-weighter sd_embed \
-    --auth_token $HF_TOKEN \
+    --auth-token $HF_TOKEN \
     --prompts "a (man:1.2) standing on the (beach:1.2) looking out in to the water during a (sunset)"
 
 
