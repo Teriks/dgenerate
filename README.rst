@@ -2751,7 +2751,7 @@ special token weighting syntaxes, and overcome limitations on prompt length.
 The names of all prompt weighter implementations can be seen by using the argument ``--prompt-weighter-help``,
 and specific documentation for a prompt weighter can be printed py passing its name to this argument.
 
-You may also use the config directive ``\\prompt_weighter_help`` inside of a config, or
+You may also use the config directive ``\prompt_weighter_help`` inside of a config, or
 more likely when you are working inside the `Console UI`_ shell.
 
 There are currently two prompt weighter implementations, the ``compel`` prompt weighter, and
