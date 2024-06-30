@@ -2738,17 +2738,21 @@ Prompt Weighting and Enhancement
 ================================
 
 By default, the prompt token weighting syntax that you may be familiar with from other software such as
-ComfyUI, Stable Diffusion Web UI, CivitAI etc. is not enabled.  Meaning your prompts are processed
-in the most basic way when being turned into embeds, and special token weighting syntax is not
-supported.
+`ComfyUI <https://github.com/comfyanonymous/ComfyUI>_`, `Stable Diffusion Web UI <https://github.com/AUTOMATIC1111/stable-diffusion-webui>`_,
+`CivitAI <https://civitai.com/>`_ etc. is not enabled.
 
-dgenerate implements prompt weighting and prompt enhancements through internal plugins
-called prompt weighters, which can be selectively enabled to process your prompts.
+And prompts over ``77`` tokens in length are not supported, except in the case of Stable Diffusion 3
+where the max sequence length defaults to ``256`` and is adjustable via ``--sd3-max-sequence-length``.
+
+However! dgenerate implements prompt weighting and prompt enhancements through internal plugins
+called prompt weighters, which can be selectively enabled to process your prompts. They support
+special token weighting syntaxes, and overcome limitations on prompt length.
 
 The names of all prompt weighter implementations can be seen by using the argument ``--prompt-weighter-help``,
-and specific documentation for a prompt weighter can be printed py passing its name to this argument. You
-may also use the config directive ``\\prompt_weighter_help`` inside of a config, or more likely when
-you are working in the `Console UI`_ shell.
+and specific documentation for a prompt weighter can be printed py passing its name to this argument.
+
+You may also use the config directive ``\\prompt_weighter_help`` inside of a config, or
+more likely when you are working inside the `Console UI`_ shell.
 
 There are currently two prompt weighter implementations, the ``compel`` prompt weighter, and
 the ``sd_embed`` prompt weighter.
@@ -2894,6 +2898,10 @@ The syntax that ``sd_embed`` uses is the more wide spread prompt syntax used by 
 `Stable Diffusion Web UI <https://github.com/AUTOMATIC1111/stable-diffusion-webui>`_ and `CivitAI <https://civitai.com/>`_
 
 
+Quite notably, the ``sd_embed`` prompt weighter supports Stable Diffusion 3, where
+as the ``compel`` prompt weighter currently does not.
+
+
 .. code-block:: bash
 
     # print out the documentation for the sd_embed prompt weighter
@@ -2932,11 +2940,7 @@ The syntax that ``sd_embed`` uses is the more wide spread prompt syntax used by 
     =============================================================================================================
 
 
-
 You can enable the ``sd_embed`` prompt weighter by specifying it with the ``--prompt-weighter`` argument.
-
-Quite notably, the ``sd_embed`` prompt weighter is compatible with Stable Diffusion 3, where
-as the ``compel`` prompt weighter is currently not.
 
 
 .. code-block:: bash
