@@ -1733,7 +1733,8 @@ def parse_templates_help(
 
     :param throw_unknown: Raise :py:class:`DgenerateUsageError` if any other
      specified argument is not a valid dgenerate argument? This treats the
-     primary model argument as optional.
+     primary model argument as optional, and only goes into effect if the
+     specific argument is detected.
 
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
 
@@ -1760,7 +1761,8 @@ def parse_directives_help(
 
     :param throw_unknown: Raise :py:class:`DgenerateUsageError` if any other
      specified argument is not a valid dgenerate argument? This treats the
-     primary model argument as optional.
+     primary model argument as optional, and only goes into effect if the
+     specific argument is detected.
 
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
 
@@ -1787,7 +1789,8 @@ def parse_functions_help(
 
     :param throw_unknown: Raise :py:class:`DgenerateUsageError` if any other
      specified argument is not a valid dgenerate argument? This treats the
-     primary model argument as optional.
+     primary model argument as optional, and only goes into effect if the specific
+     argument is detected.
 
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
 
@@ -1814,7 +1817,8 @@ def parse_plugin_modules(
 
     :param throw_unknown: Raise :py:class:`DgenerateUsageError` if any other
      specified argument is not a valid dgenerate argument? This treats the
-     primary model argument as optional.
+     primary model argument as optional, and only goes into effect if the
+     specific argument is detected.
 
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
 
@@ -1847,7 +1851,8 @@ def parse_image_processor_help(
 
     :param throw_unknown: Raise :py:class:`DgenerateUsageError` if any other
      specified argument is not a valid dgenerate argument? This treats the
-     primary model argument as optional.
+     primary model argument as optional, and only goes into effect if the specific
+     argument is detected.
 
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
 
@@ -1875,7 +1880,8 @@ def parse_prompt_weighter_help(
 
     :param throw_unknown: Raise :py:class:`DgenerateUsageError` if any other
      specified argument is not a valid dgenerate argument? This treats the
-     primary model argument as optional.
+     primary model argument as optional, and only goes into effect if the
+     specific argument is detected.
 
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
 
@@ -1925,7 +1931,8 @@ def parse_sub_command_help(
 
     :param throw_unknown: Raise :py:class:`DgenerateUsageError` if any other
      specified argument is not a valid dgenerate argument? This treats the
-     primary model argument as optional.
+     primary model argument as optional, and only goes into effect if the
+     specific argument is detected.
 
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
 
@@ -1953,7 +1960,8 @@ def parse_device(
 
     :param throw_unknown: Raise :py:class:`DgenerateUsageError` if any other
      specified argument is not a valid dgenerate argument? This treats the
-     primary model argument as optional.
+     primary model argument as optional, and only goes into effect if the
+     specific argument is detected.
 
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
 
@@ -1986,7 +1994,8 @@ def parse_verbose(
 
     :param throw_unknown: Raise :py:class:`DgenerateUsageError` if any other
      specified argument is not a valid dgenerate argument? This treats the
-     primary model argument as optional.
+     primary model argument as optional, and only goes into effect if the
+     specific argument is detected.
 
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
 
