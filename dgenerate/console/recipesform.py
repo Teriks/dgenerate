@@ -23,6 +23,7 @@ import re
 import shlex
 import tkinter as tk
 import typing
+
 import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.recipes as _recipes
 import dgenerate.console.resources as _resources
@@ -141,6 +142,47 @@ class _DeviceEntry(_Entry):
         self.entry = tk.OptionMenu(self.master,
                                    self.text_var,
                                    *devices)
+
+        self.label_widget.grid(row=self.row, column=0, padx=(5, 2), sticky='e')
+        self.entry.grid(row=self.row, column=1, padx=(5, 2), sticky='ew')
+
+    def invalid(self):
+        self.entry.config(highlightbackground="red",
+                          highlightcolor="red",
+                          highlightthickness=2)
+
+    def valid(self):
+        self.entry.config(highlightthickness=0)
+
+    def is_empty(self):
+        return self.text_var.get().strip() == ''
+
+    def template(self, content):
+        return self._template(content, self.text_var.get().strip())
+
+
+class _PromptWeighterEntry(_Entry):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs, widget_rows=1)
+
+        if self.arg is None:
+            self.arg = '--prompt-weighter'
+
+        weighters = ['sd-embed', 'compel', 'compel;syntax=sdwui']
+
+        if self.optional:
+            weighters = [''] + weighters
+
+        self.text_var = tk.StringVar(
+            value=self.config.get('default', weighters[0]))
+
+        self.label_widget = tk.Label(
+            self.master,
+            text=self.get_label('Prompt Weighter'), anchor='e')
+
+        self.entry = tk.OptionMenu(self.master,
+                                   self.text_var,
+                                   *weighters)
 
         self.label_widget.grid(row=self.row, column=0, padx=(5, 2), sticky='e')
         self.entry.grid(row=self.row, column=1, padx=(5, 2), sticky='ew')
@@ -301,7 +343,7 @@ class _FileEntry(_Entry):
 
         dialog_args = dict()
         if self.file_types == 'models':
-            file_globs = ['*.'+ext for ext in _resources.supported_torch_model_formats_open()]
+            file_globs = ['*.' + ext for ext in _resources.supported_torch_model_formats_open()]
             dialog_args['filetypes'] = [('Models', ' '.join(file_globs))]
 
         def select_command():
@@ -472,7 +514,7 @@ class _TorchVaeEntry(_Entry):
             self.master, self.vae_type_var, *vae_types)
 
         def select_command():
-            file_globs = ['*.'+ext for ext in _resources.supported_torch_model_formats_open()]
+            file_globs = ['*.' + ext for ext in _resources.supported_torch_model_formats_open()]
             r = _filedialog.open_file_dialog(
                 filetypes=[('Models', ' *.'.join(file_globs))])
             if r is not None:
@@ -526,7 +568,8 @@ class _RecipesForm(tk.Toplevel):
             'string': _StringEntry,
             'int': _IntEntry,
             'float': _FloatEntry,
-            'device': _DeviceEntry
+            'device': _DeviceEntry,
+            'promptweighter': _PromptWeighterEntry
         }
 
         self.minsize(600, 0)
