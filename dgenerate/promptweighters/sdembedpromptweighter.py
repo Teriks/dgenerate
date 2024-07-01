@@ -146,8 +146,6 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
         neg_pooled = None
 
         if pipeline.__class__.__name__.startswith('StableDiffusion3'):
-            print(pipeline.tokenizer_3 is not None)
-            print(device)
 
             pos_conditioning, \
                 neg_conditioning, \
