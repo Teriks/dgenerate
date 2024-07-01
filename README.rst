@@ -2821,9 +2821,9 @@ features not mentioned in this documentation, that are worth reading about in th
         --model-type torch-sdxl
         --model-type torch-sdxl-pix2pix
 
-        Secondary prompt options for SDXL such as --sdxl-second-prompts or --sdxl-refiner-second-prompts
-        will be ignored, a warning will be printed mentioning this. Only the primary prompt is processed
-        for SDXL.
+        The secondary prompt option for SDXL --sdxl-second-prompts is supported by this prompt weighter
+        implementation. However, --sdxl-refiner-second-prompts is not supported and will be ignored
+        with a warning message.
 
     ====================================================================================================
 
