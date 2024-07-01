@@ -145,9 +145,9 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
     --model-type torch-sdxl
     --model-type torch-sdxl-pix2pix
 
-    Secondary prompt options for SDXL such as --sdxl-second-prompts or --sdxl-refiner-second-prompts
-    will be ignored, a warning will be printed mentioning this. Only the primary prompt is processed
-    for SDXL.
+    The secondary prompt option for SDXL --sdxl-second-prompts is supported by this prompt weighter
+    implementation. However, --sdxl-refiner-second-prompts is not supported and will be ignored
+    with a warning message.
     """
 
     NAMES = ['compel']
@@ -183,8 +183,6 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
                 f'Prompt weighting not supported for --model-type: {_enums.get_model_type_string(self.model_type)}, '
                 f'in mode: {_enums.get_pipeline_type_string(self.pipeline_type)}')
 
-        clip_skip = args.get('clip_skip', 0)
-
         pipeline_sig = set(inspect.signature(pipeline.__call__).parameters.keys())
 
         if 'prompt_embeds' not in pipeline_sig:
@@ -194,41 +192,8 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
                 f'Prompt weighting not supported for --model-type: {_enums.get_model_type_string(self.model_type)}, '
                 f'in mode: {_enums.get_pipeline_type_string(self.pipeline_type)}')
 
-        needs_pooled = False
-
-        if pipeline.__class__.__name__.startswith('StableDiffusionXL'):
-
-            if pipeline.text_encoder is not None:
-                compel_compiler = compel.Compel(
-                    tokenizer=[pipeline.tokenizer, pipeline.tokenizer_2],
-                    text_encoder=[pipeline.text_encoder, pipeline.text_encoder_2],
-                    returned_embeddings_type=
-                    compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
-                    requires_pooled=[False, True],
-                    device=device,
-                    truncate_long_prompts=False)
-                needs_pooled = True
-            else:
-                compel_compiler = compel.Compel(
-                    tokenizer=pipeline.tokenizer_2,
-                    text_encoder=pipeline.text_encoder_2,
-                    truncate_long_prompts=False,
-                    returned_embeddings_type=
-                    compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
-                    requires_pooled=True, device=device)
-                needs_pooled = True
-
-        elif pipeline.__class__.__name__.startswith('StableDiffusion'):
-            compel_compiler = compel.Compel(
-                tokenizer=pipeline.tokenizer,
-                text_encoder=pipeline.text_encoder,
-                truncate_long_prompts=False,
-                returned_embeddings_type=
-                compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NORMALIZED
-                if clip_skip > 0 and pipeline.text_encoder.hidden_act == 'quick_gelu'
-                else compel.ReturnedEmbeddingsType.LAST_HIDDEN_STATES_NORMALIZED,
-                device=device)
-        else:
+        if not (pipeline.__class__.__name__.startswith('StableDiffusionXL')
+                or pipeline.__class__.__name__.startswith('StableDiffusion')):
             raise _exceptions.PromptWeightingUnsupported(
                 f'Prompt weighting not supported for --model-type: {_enums.get_model_type_string(self.model_type)}, '
                 f'in mode: {_enums.get_pipeline_type_string(self.pipeline_type)}')
@@ -238,86 +203,176 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
         positive = args.get('prompt')
         negative = args.get('negative_prompt')
 
+        positive_2 = args.get('prompt_2')
+        negative_2 = args.get('negative_prompt_2')
+
         prompt_args = re.compile(r'^(prompt|negative_prompt)(_\d+)?$')
-        extra_prompt_args = re.compile(r'^(prompt|negative_prompt)(_\d+)$')
 
         for name in args.keys():
             if prompt_args.match(name):
                 output.pop(name)
-                if extra_prompt_args.match(name):
-                    _messages.log(
-                        f'Diffusion argument {name} ignored by --prompt-weighter "compel". '
-                        f'--sdxl-second-prompts / --sdxl-refiner-second-prompts is not supported.',
-                        level=_messages.WARNING)
 
         positive = positive if positive else ""
+        negative = negative if negative else ""
+        positive_2 = positive_2 if positive_2 else ""
+        negative_2 = negative_2 if negative_2 else ""
 
-        if positive and self._syntax == 'sdwui':
-            positive = _translate_sdwui_to_compel(positive)
-            _messages.log(f'Positive prompt translated to compel: "{positive}"',
-                          level=_messages.DEBUG)
+        if self._syntax == 'sdwui':
+            if positive:
+                positive = _translate_sdwui_to_compel(positive)
+                _messages.log(f'Positive prompt translated to compel: "{positive}"')
+            if negative:
+                negative = _translate_sdwui_to_compel(negative)
+                _messages.log(f'Negative prompt translated to compel: "{negative}"')
+            if positive_2:
+                positive_2 = _translate_sdwui_to_compel(positive_2)
+                _messages.log(f'Positive prompt 2 translated to compel: "{positive_2}"')
+            if negative_2:
+                negative_2 = _translate_sdwui_to_compel(negative_2)
+                _messages.log(f'Negative prompt 2 translated to compel: "{negative_2}"')
 
-        if positive and hasattr(pipeline, 'maybe_convert_prompt') and pipeline.tokenizer is not None:
-            positive = pipeline.maybe_convert_prompt(positive, tokenizer=pipeline.tokenizer)
+        if hasattr(pipeline, 'maybe_convert_prompt'):
+            # support refiner, which only has tokenizer_2
+            tk = pipeline.tokenizer if pipeline.tokenizer is not None else pipeline.tokenizer_2
 
+            if positive:
+                positive = pipeline.maybe_convert_prompt(positive, tokenizer=tk)
+            if negative:
+                negative = pipeline.maybe_convert_prompt(negative, tokenizer=tk)
+
+            if pipeline.tokenizer is not None:
+                # refiner not supported for secondary prompt
+                if positive_2:
+                    positive_2 = pipeline.maybe_convert_prompt(positive_2, tokenizer=pipeline.tokenizer_2)
+                if negative_2:
+                    negative_2 = pipeline.maybe_convert_prompt(negative_2, tokenizer=pipeline.tokenizer_2)
+
+        pos_conditioning = None
+        neg_conditioning = None
         pos_pooled = None
-        if needs_pooled:
-            pos_conditioning, pos_pooled = compel_compiler(positive)
-        else:
-            pos_conditioning = compel_compiler(positive)
+        neg_pooled = None
+
+        if pipeline.__class__.__name__.startswith('StableDiffusionXL'):
+
+            if pipeline.tokenizer is not None:
+
+                if positive_2 or negative_2:
+                    compel1 = compel.Compel(
+                        tokenizer=pipeline.tokenizer,
+                        text_encoder=pipeline.text_encoder,
+                        returned_embeddings_type=compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
+                        requires_pooled=False,
+                        truncate_long_prompts=False,
+                        device=device
+                    )
+
+                    torch.cuda.empty_cache()
+
+                    compel2 = compel.Compel(
+                        tokenizer=pipeline.tokenizer_2,
+                        text_encoder=pipeline.text_encoder_2,
+                        returned_embeddings_type=compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
+                        requires_pooled=True,
+                        truncate_long_prompts=False,
+                        device=device
+                    )
+
+                    torch.cuda.empty_cache()
+
+                    conditioning1 = compel1(positive)
+                    conditioning2, pos_pooled = compel2(positive_2)
+                    pos_conditioning = torch.cat((conditioning1, conditioning2), dim=-1)
+
+                    conditioning1 = compel1(negative)
+                    conditioning2, neg_pooled = compel2(negative_2)
+                    neg_conditioning = torch.cat((conditioning1, conditioning2), dim=-1)
+
+                    pos_conditioning, neg_conditioning = compel1.pad_conditioning_tensors_to_same_length(
+                        [pos_conditioning, neg_conditioning])
+                else:
+                    compel1 = compel.Compel(
+                        tokenizer=[pipeline.tokenizer, pipeline.tokenizer_2],
+                        text_encoder=[pipeline.text_encoder, pipeline.text_encoder_2],
+                        returned_embeddings_type=compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
+                        requires_pooled=[False, True],
+                        truncate_long_prompts=False,
+                        device=device
+                    )
+
+                    torch.cuda.empty_cache()
+
+                    pos_conditioning, pos_pooled = compel1(positive)
+                    neg_conditioning, neg_pooled = compel1(negative)
+
+                    pos_conditioning, neg_conditioning = compel1.pad_conditioning_tensors_to_same_length(
+                        [pos_conditioning, neg_conditioning])
+
+            else:
+                if positive_2 or negative_2:
+                    _messages.log(
+                        f'Prompt weighting is not supported by --prompt-weighter '
+                        f'"compel" for --sdxl-refiner-second-prompts, that prompt is being ignored.',
+                        level=_messages.WARNING)
+
+                compel2 = compel.Compel(
+                    tokenizer=pipeline.tokenizer_2,
+                    text_encoder=pipeline.text_encoder_2,
+                    returned_embeddings_type=compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
+                    requires_pooled=True,
+                    truncate_long_prompts=False,
+                    device=device
+                )
+
+                torch.cuda.empty_cache()
+
+                pos_conditioning, pos_pooled = compel2(positive)
+                neg_conditioning, neg_pooled = compel2(negative)
+
+                pos_conditioning, neg_conditioning = compel2.pad_conditioning_tensors_to_same_length(
+                    [pos_conditioning, neg_conditioning])
+
+        elif pipeline.__class__.__name__.startswith('StableDiffusion'):
+            compel1 = compel.Compel(
+                tokenizer=pipeline.tokenizer,
+                text_encoder=pipeline.text_encoder,
+                truncate_long_prompts=False,
+                returned_embeddings_type=
+                compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NORMALIZED
+                if args.get('clip_skip', 0) > 0 and pipeline.text_encoder.hidden_act == 'quick_gelu'
+                else compel.ReturnedEmbeddingsType.LAST_HIDDEN_STATES_NORMALIZED,
+                device=device)
+
+            torch.cuda.empty_cache()
+
+            pos_conditioning = compel1(positive)
+            neg_conditioning = compel1(negative)
+
+            pos_conditioning, neg_conditioning = compel1.pad_conditioning_tensors_to_same_length(
+                [pos_conditioning, neg_conditioning])
 
         self._tensors.append(pos_conditioning)
+        self._tensors.append(neg_conditioning)
 
         if pos_pooled is not None:
             self._tensors.append(pos_pooled)
 
-        if not negative:
-            if pos_pooled is not None:
-                output.update({
-                    'prompt_embeds': pos_conditioning,
-                    'pooled_prompt_embeds': pos_pooled
-                })
-            else:
-                output.update({
-                    'prompt_embeds': pos_conditioning
-                })
-        else:
-            if self._syntax == 'sdwui':
-                negative = _translate_sdwui_to_compel(negative)
-                _messages.log(f'Negative prompt translated to compel: "{negative}"',
-                              level=_messages.DEBUG)
+        if neg_pooled is not None:
+            self._tensors.append(neg_pooled)
 
-            if hasattr(pipeline, 'maybe_convert_prompt') and pipeline.tokenizer is not None:
-                negative = pipeline.maybe_convert_prompt(negative, tokenizer=pipeline.tokenizer)
+        output.update({
+            'prompt_embeds': pos_conditioning,
+            'negative_prompt_embeds': neg_conditioning,
+        })
 
-            neg_pooled = None
-            if needs_pooled:
-                neg_conditioning, neg_pooled = compel_compiler(negative)
-            else:
-                neg_conditioning = compel_compiler(negative)
-
-            pos_conditioning, neg_conditioning, = compel_compiler.pad_conditioning_tensors_to_same_length(
-                [pos_conditioning, neg_conditioning])
-
-            self._tensors.append(neg_conditioning)
-
-            if neg_pooled is not None:
-                self._tensors.append(neg_pooled)
-
+        if pos_pooled is not None:
             output.update({
-                'prompt_embeds': pos_conditioning,
-                'negative_prompt_embeds': neg_conditioning,
+                'pooled_prompt_embeds': pos_pooled,
             })
 
-            if pos_pooled is not None:
-                output.update({
-                    'pooled_prompt_embeds': pos_pooled,
-                })
-
-            if neg_pooled is not None:
-                output.update({
-                    'negative_pooled_prompt_embeds': neg_pooled,
-                })
+        if neg_pooled is not None:
+            output.update({
+                'negative_pooled_prompt_embeds': neg_pooled,
+            })
 
         def debug_string():
             debug_args = ", ".join(
