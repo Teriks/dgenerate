@@ -4963,6 +4963,8 @@ to modules installed in the python environment using the argument or import dire
 dgenerate supports implementing image processors, config directives, config template functions,
 prompt weighters, and sub-commands through plugins.
 
+~~~~
+
 Image processor plugins
 -----------------------
 
