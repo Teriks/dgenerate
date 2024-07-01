@@ -1743,7 +1743,7 @@ def parse_templates_help(
     parser.add_argument('--templates-help', nargs='*', default=None)
     parsed, unknown = parser.parse_known_args(args)
 
-    if throw_unknown:
+    if parsed.templates_help and throw_unknown:
         _check_unknown_args(unknown, log_error)
 
     return parsed.templates_help, unknown
@@ -1770,7 +1770,7 @@ def parse_directives_help(
     parser.add_argument('--directives-help', nargs='*', default=None)
     parsed, unknown = parser.parse_known_args(args)
 
-    if throw_unknown:
+    if parsed.directives_help and throw_unknown:
         _check_unknown_args(unknown, log_error)
 
     return parsed.directives_help, unknown
@@ -1797,7 +1797,7 @@ def parse_functions_help(
     parser.add_argument('--functions-help', nargs='*', default=None)
     parsed, unknown = parser.parse_known_args(args)
 
-    if throw_unknown:
+    if parsed.functions_help and throw_unknown:
         _check_unknown_args(unknown, log_error)
 
     return parsed.functions_help, unknown
@@ -1830,7 +1830,7 @@ def parse_plugin_modules(
     except argparse.ArgumentError as e:
         raise DgenerateUsageError(e)
 
-    if throw_unknown:
+    if parsed.plugin_modules and throw_unknown:
         _check_unknown_args(unknown, log_error)
 
     return parsed.plugin_modules, unknown
@@ -1858,7 +1858,7 @@ def parse_image_processor_help(
     parser.add_argument('--image-processor-help', action='store', nargs='*', default=None)
     parsed, unknown = parser.parse_known_args(args)
 
-    if throw_unknown:
+    if parsed.image_processor_help and throw_unknown:
         _check_unknown_args(unknown, log_error)
 
     return parsed.image_processor_help, unknown
@@ -1886,7 +1886,7 @@ def parse_prompt_weighter_help(
     parser.add_argument('--prompt-weighter-help', action='store', nargs='*', default=None)
     parsed, unknown = parser.parse_known_args(args)
 
-    if throw_unknown:
+    if parsed.prompt_weighter_help and throw_unknown:
         _check_unknown_args(unknown, log_error)
 
     return parsed.prompt_weighter_help, unknown
@@ -1936,7 +1936,7 @@ def parse_sub_command_help(
     parser.add_argument('--sub-command-help', action='store', nargs='*', default=None)
     parsed, unknown = parser.parse_known_args(args)
 
-    if throw_unknown:
+    if parsed.sub_command_help and throw_unknown:
         _check_unknown_args(unknown, log_error)
 
     return parsed.sub_command_help, unknown
@@ -1969,7 +1969,7 @@ def parse_device(
     except argparse.ArgumentError as e:
         raise DgenerateUsageError(e)
 
-    if throw_unknown:
+    if parsed.device and throw_unknown:
         _check_unknown_args(unknown, log_error)
 
     return parsed.device, unknown
@@ -1997,7 +1997,7 @@ def parse_verbose(
     parser.add_argument('-v', '--verbose', action='store_true')
     parsed, unknown = parser.parse_known_args(args)
 
-    if throw_unknown:
+    if parsed.verbose and throw_unknown:
         _check_unknown_args(unknown, log_error)
 
     return parsed.verbose, unknown
