@@ -104,16 +104,23 @@ def prompt_weighter_exists(uri):
     return prompt_weighter_name_from_uri(uri) in prompt_weighter_names()
 
 
-def create_prompt_weighter(uri, model_type: _enums.ModelType, pipeline_type: _enums.PipelineType) -> PromptWeighter:
+def create_prompt_weighter(uri,
+                           model_type: _enums.ModelType,
+                           pipeline_type: _enums.PipelineType,
+                           dtype: _enums.DataType) -> PromptWeighter:
     """
     Create a prompt weighter implementation using the default :py:class:`PromptWeighterLoader` instance.
 
     :param uri: The prompt weighter URI
     :param model_type: Model type the prompt weighter is expected to handle
     :param pipeline_type: Pipeline type the prompt weighter is expected to handle
+    :param dtype: The dtype of the pipeline
     :return: A :py:class:`PromptWeighter` implementation
     """
-    return PromptWeighterLoader().load(uri, model_type=model_type, pipeline_type=pipeline_type)
+    return PromptWeighterLoader().load(
+        uri,
+        model_type=model_type,
+        pipeline_type=pipeline_type, dtype=dtype)
 
 
 __all__ = _types.module_all()

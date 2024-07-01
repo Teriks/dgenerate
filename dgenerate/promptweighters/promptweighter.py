@@ -33,6 +33,7 @@ class PromptWeighter(_plugin.Plugin):
                  loaded_by_name: str,
                  model_type: _enums.ModelType,
                  pipeline_type: _enums.PipelineType,
+                 dtype: _enums.DataType,
                  **kwargs):
         super().__init__(loaded_by_name=loaded_by_name,
                          argument_error_type=_exceptions.PromptWeighterArgumentError,
@@ -40,6 +41,11 @@ class PromptWeighter(_plugin.Plugin):
 
         self._model_type = model_type
         self._pipeline_type = pipeline_type
+        self._dtype = dtype
+
+    @property
+    def dtype(self) -> _enums.DataType:
+        return self._dtype
 
     @property
     def model_type(self) -> _enums.ModelType:

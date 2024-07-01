@@ -2147,7 +2147,8 @@ class DiffusionPipelineWrapper:
             self._prompt_weighter = self._prompt_weighter_loader.load(
                 self._prompt_weighter_uri,
                 model_type=self.model_type,
-                pipeline_type=self._pipeline_type)
+                pipeline_type=self._pipeline_type,
+                dtype=self._dtype)
 
         if loaded_new:
             _cache.enforce_cache_constraints()
