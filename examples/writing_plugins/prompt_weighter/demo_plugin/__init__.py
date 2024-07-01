@@ -1,5 +1,6 @@
 import dgenerate.promptweighters.promptweighter as _promptweighter
 
+
 class MyPromptWeighter(_promptweighter.PromptWeighter):
     """
     Demo prompt weighter extensibility
