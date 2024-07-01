@@ -35,7 +35,7 @@ class MyPromptWeighter(_promptweighter.PromptWeighter):
 
         # print the pipeline type enum, txt2img, img2img, or inpaint
         print(self.pipeline_type)
-        
+
         # print the dgenerate dtype enum for the pipeline
         # you can convert this to its torch equivalent
         # dgenerate.pipelinewrapper.get_torch_dtype()
