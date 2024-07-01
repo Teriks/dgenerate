@@ -407,6 +407,23 @@ class PluginNotFoundError(Exception):
     pass
 
 
+PLUGIN_PATHS = set()
+"""
+Plugin paths that are considered by all :py:class:`PluginLoader` instances.
+
+This should be updated with :py:func:`import_plugins`
+"""
+
+
+def import_plugins(paths: collections.abc.Iterable[str]):
+    """
+    Set plugin paths that will be considered by all plugin loader instances.
+
+    :param paths: environment modules, python script paths, directory paths
+    """
+    PLUGIN_PATHS.update(paths)
+
+
 class PluginLoader:
     def __init__(self,
                  base_class=Plugin,
@@ -435,6 +452,8 @@ class PluginLoader:
         self.__description = description
         self.__base_class = base_class
 
+        self.load_plugin_modules(PLUGIN_PATHS)
+
     @property
     def plugin_module_paths(self) -> frozenset[str]:
         """
@@ -442,6 +461,8 @@ class PluginLoader:
 
         :return: frozen set
         """
+        self.load_plugin_modules(PLUGIN_PATHS)
+
         return frozenset(self.__plugin_module_paths)
 
     def add_class(self, cls: type[Plugin]):
@@ -513,6 +534,9 @@ class PluginLoader:
         :return: list of classes that were newly discovered
         """
 
+        paths = set(paths)
+        paths.update(PLUGIN_PATHS)
+
         classes = self._load_classes(load_modules(
             [path for path in paths if path not in self.__plugin_module_paths]))
 
@@ -559,6 +583,7 @@ class PluginLoader:
 
         :return: list of classes (types)
         """
+        self.load_plugin_modules(PLUGIN_PATHS)
 
         return list(self.__classes)
 
@@ -575,6 +600,8 @@ class PluginLoader:
         :return: class (type)
         """
 
+        self.load_plugin_modules(PLUGIN_PATHS)
+
         cls = self.__classes_by_name.get(plugin_name)
 
         if cls is None:
@@ -589,6 +616,8 @@ class PluginLoader:
 
         :return: list of names (strings)
         """
+
+        self.load_plugin_modules(PLUGIN_PATHS)
 
         return list(self.__classes_by_name.keys())
 
@@ -622,6 +651,8 @@ class PluginLoader:
 
         if uri is None:
             raise ValueError('uri must not be None')
+
+        self.load_plugin_modules(PLUGIN_PATHS)
 
         call_by_name = uri.split(';', 1)[0].strip()
 
@@ -742,7 +773,7 @@ class PluginLoader:
 
 
         :param names: arguments (sub-command names, or empty list)
-        :param plugin_module_paths: plugin module paths to search
+        :param plugin_module_paths: extra plugin module paths to search
         :param title: plugin title, used in messages
         :param title_plural: plural plugin title, used in messages
         :param throw: throw on error?
@@ -753,6 +784,8 @@ class PluginLoader:
 
         :return: return-code, anything other than 0 is failure
         """
+
+        self.load_plugin_modules(PLUGIN_PATHS)
 
         if plugin_module_paths is not None:
             try:

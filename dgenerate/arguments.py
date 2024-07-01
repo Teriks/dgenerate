@@ -29,6 +29,7 @@ import diffusers.schedulers
 
 import dgenerate
 import dgenerate.mediaoutput as _mediaoutput
+import dgenerate.memoize as _memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
@@ -311,7 +312,11 @@ def _type_expression(arg):
         raise argparse.ArgumentTypeError(f'Syntax error: {str(e).strip()}')
 
 
-def _create_parser(add_model=True, add_help=True):
+_ARG_PARSER_CACHE = dict()
+
+
+@_memoize.memoize(cache=_ARG_PARSER_CACHE)
+def _create_parser(add_model=True, add_help=True, prints_usage=True):
     parser = argparse.ArgumentParser(
         prog='dgenerate', exit_on_error=False, allow_abbrev=False, add_help=add_help,
         description="""Batch image generation and manipulation tool supporting Stable Diffusion 
@@ -323,7 +328,13 @@ def _create_parser(add_model=True, add_help=True):
             raise DgenerateHelpException('dgenerate --help used.')
         raise _DgenerateUnknownArgumentError(message)
 
+    def _usage(file):
+        if prints_usage:
+            _messages.log(parser.format_usage().rstrip())
+
     parser.exit = _exit
+
+    parser.print_usage = _usage
 
     actions: list[Action] = []
 
@@ -1229,11 +1240,11 @@ def _create_parser(add_model=True, add_help=True):
             '-pw', '--prompt-weighter', metavar='PROMPT_WEIGHTER_URI',
             dest='prompt_weighter_uri', action='store', default=None, type=_type_prompt_weighter,
             help='Specify a prompt weighter implementation by URI, for example: --prompt-weighter compel, or '
-                 '--prompt-weighter sd_embed. By default, no prompt weighting syntax is enabled, '
+                 '--prompt-weighter sd-embed. By default, no prompt weighting syntax is enabled, '
                  'meaning that you cannot adjust token weights as you may be able to do in software such as '
                  'ComfyUI, Automatic1111, CivitAI etc. And in some cases the length of your prompt is limited. '
                  'Prompt weighters support these special token weighting syntaxes and long prompts, '
-                 'currently there are two implementations "compel" and "sd_embed". See: --prompt-weighter-help '
+                 'currently there are two implementations "compel" and "sd-embed". See: --prompt-weighter-help '
                  'for a list of implementation names. You may also use --prompt-weighter-help "name" to '
                  'see comprehensive documentation for a specific prompt weighter implementation.'))
 
@@ -1637,9 +1648,25 @@ class DgenerateArguments(dgenerate.RenderLoopConfig):
         self.plugin_module_paths = []
 
 
-_parser, _actions = _create_parser()
+_, _actions = _create_parser()
 
 _attr_name_to_option = {a.dest: a.option_strings[-1] if a.option_strings else a.dest for a in _actions}
+
+_all_valid_options = set()
+
+for action in _actions:
+    if action.option_strings:
+        _all_valid_options.update(action.option_strings)
+
+
+def is_valid_option(option: str):
+    """
+    Check if an option string is a valid option name in the parser.
+
+    :param option: The option name, short or long opt.
+    :return: ``True`` or ``False``
+    """
+    return option in _all_valid_options
 
 
 def config_attribute_name_to_option(name):
@@ -1652,63 +1679,144 @@ def config_attribute_name_to_option(name):
     return _attr_name_to_option[name]
 
 
-def _parse_args(args=None) -> DgenerateArguments:
-    args = _parser.parse_args(args, namespace=DgenerateArguments())
+def _parse_args(args=None, print_usage=True) -> DgenerateArguments:
+    parser = _create_parser(prints_usage=print_usage)[0]
+    args = parser.parse_args(args, namespace=DgenerateArguments())
     args.check(config_attribute_name_to_option)
     return args
 
 
+def _check_unknown_args(args: typing.Sequence[str], log_error: bool):
+    # this treats the model argument as optional
+
+    parser = _create_parser(add_model=True, add_help=False, prints_usage=False)[0]
+    try:
+        # try first to parse without adding a fake model argument
+        parser.parse_args(args)
+    except (argparse.ArgumentTypeError,
+            argparse.ArgumentError,
+            _DgenerateUnknownArgumentError) as e:
+
+        if isinstance(e, _DgenerateUnknownArgumentError):
+            # an argument is missing?
+
+            try:
+                # try again one more time with a fake model argument
+                parser.parse_args(['fake_model'] + list(args))
+            except (argparse.ArgumentTypeError,
+                    argparse.ArgumentError,
+                    _DgenerateUnknownArgumentError) as e:
+
+                # truly erroneous command line
+                if log_error:
+                    _messages.log(parser.format_usage().rstrip())
+                    _messages.log(str(e).strip(), level=_messages.ERROR)
+
+                raise DgenerateUsageError(str(e))
+        else:
+            # something other than a missing argument
+            if log_error:
+                _messages.log(parser.format_usage().rstrip())
+                _messages.log(str(e).strip(), level=_messages.ERROR)
+
+            raise DgenerateUsageError(str(e))
+
+
 def parse_templates_help(
-        args: collections.abc.Sequence[str] | None = None) -> tuple[list[str], list[str]]:
+        args: collections.abc.Sequence[str] | None = None,
+        throw_unknown: bool = False,
+        log_error: bool = False) -> tuple[list[str], list[str]]:
     """
     Retrieve the ``--templates-help`` argument value
 
     :param args: command line arguments
+
+    :param throw_unknown: Raise :py:class:`DgenerateUsageError` if any other
+     specified argument is not a valid dgenerate argument? This treats the
+     primary model argument as optional.
+
+    :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
+
     :return: (value, unknown_args_list)
     """
     parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
     parser.add_argument('--templates-help', nargs='*', default=None)
     parsed, unknown = parser.parse_known_args(args)
 
+    if throw_unknown:
+        _check_unknown_args(unknown, log_error)
+
     return parsed.templates_help, unknown
 
 
 def parse_directives_help(
-        args: collections.abc.Sequence[str] | None = None) -> tuple[list[str], list[str]]:
+        args: collections.abc.Sequence[str] | None = None,
+        throw_unknown: bool = False,
+        log_error: bool = False) -> tuple[list[str], list[str]]:
     """
     Retrieve the ``--directives-help`` argument value
 
     :param args: command line arguments
+
+    :param throw_unknown: Raise :py:class:`DgenerateUsageError` if any other
+     specified argument is not a valid dgenerate argument? This treats the
+     primary model argument as optional.
+
+    :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
+
     :return: (value, unknown_args_list)
     """
     parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
     parser.add_argument('--directives-help', nargs='*', default=None)
     parsed, unknown = parser.parse_known_args(args)
 
+    if throw_unknown:
+        _check_unknown_args(unknown, log_error)
+
     return parsed.directives_help, unknown
 
 
 def parse_functions_help(
-        args: collections.abc.Sequence[str] | None = None) -> tuple[list[str], list[str]]:
+        args: collections.abc.Sequence[str] | None = None,
+        throw_unknown: bool = False,
+        log_error: bool = False) -> tuple[list[str], list[str]]:
     """
     Retrieve the ``--functions-help`` argument value
 
     :param args: command line arguments
+
+    :param throw_unknown: Raise :py:class:`DgenerateUsageError` if any other
+     specified argument is not a valid dgenerate argument? This treats the
+     primary model argument as optional.
+
+    :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
+
     :return: (value, unknown_args_list)
     """
     parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
     parser.add_argument('--functions-help', nargs='*', default=None)
     parsed, unknown = parser.parse_known_args(args)
 
+    if throw_unknown:
+        _check_unknown_args(unknown, log_error)
+
     return parsed.functions_help, unknown
 
 
 def parse_plugin_modules(
-        args: collections.abc.Sequence[str] | None = None) -> tuple[list[str], list[str]]:
+        args: collections.abc.Sequence[str] | None = None,
+        throw_unknown: bool = False,
+        log_error: bool = False) -> tuple[list[str], list[str]]:
     """
     Retrieve the ``--plugin-modules`` argument value
 
     :param args: command line arguments
+
+    :param throw_unknown: Raise :py:class:`DgenerateUsageError` if any other
+     specified argument is not a valid dgenerate argument? This treats the
+     primary model argument as optional.
+
+    :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
 
     :raise DgenerateUsageError: If no argument values were provided.
 
@@ -1722,15 +1830,27 @@ def parse_plugin_modules(
     except argparse.ArgumentError as e:
         raise DgenerateUsageError(e)
 
+    if throw_unknown:
+        _check_unknown_args(unknown, log_error)
+
     return parsed.plugin_modules, unknown
 
 
 def parse_image_processor_help(
-        args: collections.abc.Sequence[str] | None = None) -> tuple[list[str], list[str]]:
+        args: collections.abc.Sequence[str] | None = None,
+        throw_unknown: bool = False,
+        log_error: bool = False) -> tuple[list[str], list[str]]:
     """
     Retrieve the ``--image-processor-help`` argument value
 
     :param args: command line arguments
+
+    :param throw_unknown: Raise :py:class:`DgenerateUsageError` if any other
+     specified argument is not a valid dgenerate argument? This treats the
+     primary model argument as optional.
+
+    :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
+
     :return: (values, unknown_args_list)
     """
 
@@ -1738,21 +1858,36 @@ def parse_image_processor_help(
     parser.add_argument('--image-processor-help', action='store', nargs='*', default=None)
     parsed, unknown = parser.parse_known_args(args)
 
+    if throw_unknown:
+        _check_unknown_args(unknown, log_error)
+
     return parsed.image_processor_help, unknown
 
 
 def parse_prompt_weighter_help(
-        args: collections.abc.Sequence[str] | None = None) -> tuple[list[str], list[str]]:
+        args: collections.abc.Sequence[str] | None = None,
+        throw_unknown: bool = False,
+        log_error: bool = False) -> tuple[list[str], list[str]]:
     """
     Retrieve the ``--prompt-weighter-help`` argument value
 
     :param args: command line arguments
+
+    :param throw_unknown: Raise :py:class:`DgenerateUsageError` if any other
+     specified argument is not a valid dgenerate argument? This treats the
+     primary model argument as optional.
+
+    :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
+
     :return: (values, unknown_args_list)
     """
 
     parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
     parser.add_argument('--prompt-weighter-help', action='store', nargs='*', default=None)
     parsed, unknown = parser.parse_known_args(args)
+
+    if throw_unknown:
+        _check_unknown_args(unknown, log_error)
 
     return parsed.prompt_weighter_help, unknown
 
@@ -1780,11 +1915,20 @@ def parse_sub_command(
 
 
 def parse_sub_command_help(
-        args: collections.abc.Sequence[str] | None = None) -> tuple[list[str], list[str]]:
+        args: collections.abc.Sequence[str] | None = None,
+        throw_unknown: bool = False,
+        log_error: bool = False) -> tuple[list[str], list[str]]:
     """
     Retrieve the ``--sub-command-help`` argument value
 
     :param args: command line arguments
+
+    :param throw_unknown: Raise :py:class:`DgenerateUsageError` if any other
+     specified argument is not a valid dgenerate argument? This treats the
+     primary model argument as optional.
+
+    :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
+
     :return: (values, unknown_args_list)
     """
 
@@ -1792,15 +1936,26 @@ def parse_sub_command_help(
     parser.add_argument('--sub-command-help', action='store', nargs='*', default=None)
     parsed, unknown = parser.parse_known_args(args)
 
+    if throw_unknown:
+        _check_unknown_args(unknown, log_error)
+
     return parsed.sub_command_help, unknown
 
 
 def parse_device(
-        args: collections.abc.Sequence[str] | None = None) -> tuple[str, list[str]]:
+        args: collections.abc.Sequence[str] | None = None,
+        throw_unknown: bool = False,
+        log_error: bool = False) -> tuple[str, list[str]]:
     """
     Retrieve the ``-d/--device`` argument value
 
     :param args: command line arguments
+
+    :param throw_unknown: Raise :py:class:`DgenerateUsageError` if any other
+     specified argument is not a valid dgenerate argument? This treats the
+     primary model argument as optional.
+
+    :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
 
     :raise DgenerateUsageError: If no argument value was provided.
 
@@ -1814,21 +1969,37 @@ def parse_device(
     except argparse.ArgumentError as e:
         raise DgenerateUsageError(e)
 
+    if throw_unknown:
+        _check_unknown_args(unknown, log_error)
+
     return parsed.device, unknown
 
 
 def parse_verbose(
-        args: collections.abc.Sequence[str] | None = None) -> tuple[bool, list[str]]:
+        args: collections.abc.Sequence[str] | None = None,
+        throw_unknown: bool = False,
+        log_error: bool = False) -> tuple[bool, list[str]]:
     """
     Retrieve the ``-v/--verbose`` argument value
 
     :param args: command line arguments
+
+    :param throw_unknown: Raise :py:class:`DgenerateUsageError` if any other
+     specified argument is not a valid dgenerate argument? This treats the
+     primary model argument as optional.
+
+    :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
+
     :return: (value, unknown_args_list)
     """
 
     parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
     parser.add_argument('-v', '--verbose', action='store_true')
     parsed, unknown = parser.parse_known_args(args)
+
+    if throw_unknown:
+        _check_unknown_args(unknown, log_error)
+
     return parsed.verbose, unknown
 
 
@@ -1897,8 +2068,6 @@ def parse_args(args: collections.abc.Sequence[str] | None = None,
     """
     Parse dgenerates command line arguments and return a configuration object.
 
-
-
     :param args: arguments list, as in args taken from sys.argv, or in that format
     :param throw: throw :py:exc:`.DgenerateUsageError` on error? defaults to ``True``
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
@@ -1913,7 +2082,7 @@ def parse_args(args: collections.abc.Sequence[str] | None = None,
     """
 
     try:
-        return _parse_args(args)
+        return _parse_args(args, print_usage=log_error)
     except DgenerateHelpException:
         if help_raises:
             raise

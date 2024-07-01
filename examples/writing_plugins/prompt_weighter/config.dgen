@@ -1,0 +1,8 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.9.0
+
+\import_plugins demo_plugin
+
+"runwayml/stable-diffusion-v1-5"
+--prompt-weighter my-weighter
+--prompts "hello world"

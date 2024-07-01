@@ -39,7 +39,7 @@ class SubCommandHelpUsageError(Exception):
 
 
 def sub_command_help(names: _types.Names,
-                     plugin_module_paths: _types.Paths,
+                     plugin_module_paths: _types.OptionalPaths = None,
                      throw=False,
                      log_error=True):
     """
@@ -47,7 +47,7 @@ def sub_command_help(names: _types.Names,
 
 
     :param names: arguments (sub-command names, or empty list)
-    :param plugin_module_paths: plugin module paths to search
+    :param plugin_module_paths: extra plugin module paths to search
     :param throw: throw on error? or simply print to stderr and return a return code.
     :param log_error: log errors to stderr?
 

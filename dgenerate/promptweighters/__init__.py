@@ -23,13 +23,13 @@
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.types as _types
 from .compelpromptweighter import CompelPromptWeighter
-from .sdembedpromptweighter import SdEmbedPromptWeighter
 from .exceptions import \
     PromptWeighterArgumentError, \
     PromptWeighterNotFoundError, \
     PromptWeightingUnsupported
 from .promptweighter import PromptWeighter
 from .promptweighterloader import PromptWeighterLoader
+from .sdembedpromptweighter import SdEmbedPromptWeighter
 
 
 class PromptWeighterHelpUsageError(Exception):
@@ -40,12 +40,14 @@ class PromptWeighterHelpUsageError(Exception):
 
 
 def prompt_weighter_help(names: _types.Names,
+                         plugin_module_paths: _types.OptionalPaths = None,
                          throw=False,
                          log_error=True):
     """
-    Implements ``--prompt-weighter-help`` command line option.
+    Implements ``--prompt-weighter-help`` command line option
 
     :param names: arguments (prompt weighter names, or empty list)
+    :param plugin_module_paths: extra plugin module paths to search
     :param throw: throw on error? or simply print to stderr and return a return code.
     :param log_error: log errors to stderr?
 
@@ -59,6 +61,7 @@ def prompt_weighter_help(names: _types.Names,
             names=names,
             title='prompt weighter',
             title_plural='prompt weighters',
+            plugin_module_paths=plugin_module_paths,
             throw=True,
             log_error=log_error)
     except PromptWeighterNotFoundError as e:

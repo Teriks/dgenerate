@@ -10,19 +10,19 @@
 \import_plugins demo_plugin
 
 
-"runwayml/stable-diffusion-v1-5" \
---prompts "hello world" \
---image-seeds "../../media/earth.jpg" \
---vae-slicing \
+"runwayml/stable-diffusion-v1-5"
+--prompts "hello world"
+--image-seeds "../../media/earth.jpg"
+--vae-slicing
 --seed-image-processors foobar;my-argument=1;output-file=output/foobar-debug.png
 
 
 # Run the BooFabImageProcessor plugin
 
-"runwayml/stable-diffusion-v1-5" \
---prompts "hello world" \
---vae-slicing \
---image-seeds "../../media/earth.jpg" \
+"runwayml/stable-diffusion-v1-5"
+--prompts "hello world"
+--vae-slicing
+--image-seeds "../../media/earth.jpg"
 --seed-image-processors boo;my-argument=1 fab;my-argument=2
 
 

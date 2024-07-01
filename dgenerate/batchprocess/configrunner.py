@@ -55,6 +55,7 @@ import dgenerate.renderloop as _renderloop
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 import dgenerate.webcache as _webcache
+import dgenerate.plugin as _plugin
 
 
 def _format_prompt_single(prompt):
@@ -456,8 +457,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         if injected_args:
             self._plugin_module_paths.update(_arguments.parse_plugin_modules(injected_args)[0])
-            self.plugin_loader.load_plugin_modules(self._plugin_module_paths)
-            self.render_loop.image_processor_loader.load_plugin_modules(self._plugin_module_paths)
+            _plugin.import_plugins(self._plugin_module_paths)
 
         for plugin_class in self.plugin_loader.get_available_classes():
             self.plugin_loader.load(plugin_class.get_names()[0],
@@ -481,7 +481,9 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                 '\\import_plugins must be used with at least one argument.')
 
         self._plugin_module_paths.update(plugin_paths)
-        self.render_loop.image_processor_loader.load_plugin_modules(plugin_paths)
+
+        _plugin.import_plugins(self._plugin_module_paths)
+
         new_classes = self.plugin_loader.load_plugin_modules(plugin_paths)
         for cls in new_classes:
             self.plugin_loader.load(cls.get_names()[0],

@@ -1,0 +1,10 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.9.0
+
+\import_plugins demo_plugin
+
+# you can omit the model for certain options
+# where the model is optional, such as --sub-command
+# this basically just runs: dgenerate --sub-command my-subcommand
+
+--sub-command my-subcommand
