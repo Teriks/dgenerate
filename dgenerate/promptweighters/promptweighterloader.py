@@ -39,8 +39,9 @@ class PromptWeighterLoader(_plugin.PluginLoader):
         # The empty string above disables sphinx inherited doc
         super().__init__(base_class=_promptweighter.PromptWeighter,
                          description='prompt weighter',
-                         reserved_args=[_Pa('model-type', type=_enums.ModelType, default=None),
-                                        _Pa('pipeline-type', type=_enums.PipelineType, default=False)],
+                         reserved_args=[_Pa('model-type', type=_enums.ModelType),
+                                        _Pa('pipeline-type', type=_enums.PipelineType),
+                                        _Pa('dtype', type=_enums.DataType)],
                          argument_error_type=_exceptions.PromptWeighterArgumentError,
                          not_found_error_type=_exceptions.PromptWeighterNotFoundError)
 
