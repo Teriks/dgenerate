@@ -397,9 +397,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument('--plugin-modules', action='store', default=[], nargs="+", dest='plugin_module_paths',
                             metavar="PATH",
-                            help="""Specify one or more plugin module folder paths (folder containing __init__.py) or 
-                            python .py file paths, or python module names to load as plugins. Plugin modules can currently 
-                            implement image processors and config directives."""))
+                            help="""Specify one or more plugin module folder paths (folder containing __init__.py) or
+                            python .py file paths, or python module names to load as plugins. Plugin modules can
+                            currently implement image processors, config directives, config template functions,
+                            prompt weighters, and sub-commands."""))
 
     actions.append(
         parser.add_argument('--sub-command', action='store', default=None,

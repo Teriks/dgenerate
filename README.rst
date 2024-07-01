@@ -99,8 +99,12 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v3.9.0/>`_.
         * `The \\exit directive`_
         * `Running configs from the command line`_
         * `Config argument injection`_
-    * `Console UI`_
     * `Writing Plugins`_
+        * `Image processor plugins`_
+        * `Config directive and template function plugins`_
+        * `Sub-command plugins`_
+        * `Prompt weighter plugins`_
+    * `Console UI`_
     * `File Cache Control`_
 
 Help Output
@@ -4956,7 +4960,11 @@ the ``--plugin-modules`` option and ``\import_plugins`` config directive.
 You simply specify one or more module directories on disk, paths to python files, or references
 to modules installed in the python environment using the argument or import directive.
 
-dgenerate supports implementing image processors and config directives through plugins.
+dgenerate supports implementing image processors, config directives, config template functions,
+prompt weighters, and sub-commands through plugins.
+
+Image processor plugins
+-----------------------
 
 A code example as well as a usage example for image processor plugins can be found
 in the `"writing_plugins/image_processor" <https://github.com/Teriks/dgenerate/tree/v3.9.0/examples/writing_plugins/image_processor>`_
@@ -4967,17 +4975,40 @@ the `openpose <https://github.com/Teriks/dgenerate/blob/v3.9.0/dgenerate/imagepr
 `pillow image operations <https://github.com/Teriks/dgenerate/blob/v3.9.0/dgenerate/imageprocessors/imageops.py>`_ processors can also
 be of reference as they are written as internal image processor plugins.
 
-An example for writing config directives can be found in the
-`"writing_plugins/config_directive" <https://github.com/Teriks/dgenerate/tree/v3.9.0/examples/writing_plugins/config_directive>`_ folder
-of the examples folder. Config template functions can also be implemented by plugins,
-see: `"writing_plugins/template_function" <https://github.com/Teriks/dgenerate/tree/v3.9.0/examples/writing_plugins/template_function>`_
+Config directive and template function plugins
+----------------------------------------------
 
-Currently the only internal directive that is implemented as a plugin is the ``\image_process`` directive,
-who's source file `can be located here <https://github.com/Teriks/dgenerate/blob/v3.9.0/dgenerate/batchprocess/image_process_directive.py>`_,
-the source file for this directive is terse as most of ``\image_process`` is implemented as reusable code as mentioned below.
+An example for writing config directives can be found in the `"writing_plugins/config_directive" <https://github.com/Teriks/dgenerate/tree/v3.9.0/examples/writing_plugins/config_directive>`_  example folder. 
+
+Config template functions can also be implemented by plugins, see: `"writing_plugins/template_function" <https://github.com/Teriks/dgenerate/tree/v3.9.0/examples/writing_plugins/template_function>`_
+
+Currently the only internal directive that is implemented as a plugin is the ``\image_process`` directive, who's source file 
+`can be located here <https://github.com/Teriks/dgenerate/blob/v3.9.0/dgenerate/batchprocess/image_process_directive.py>`_.
+
+The source file for the ``\image_process`` directive is terse as most of it is implemented as reusable code.
 
 The behavior of ``\image_process`` which is also used for ``--sub-command image-process`` is
 `is implemented here <https://github.com/Teriks/dgenerate/blob/v3.9.0/dgenerate/image_process>`_.
+
+
+Sub-command plugins
+-------------------
+
+Referencing for writing sub-commands can be found in the `image-process <https://github.com/Teriks/dgenerate/blob/v3.9.0/dgenerate/subcommands/image_process.py>`_ 
+sub-command implementation, and a plugin skeleton file for sub-commands can be found in the 
+`"writing_plugins/sub_command" <https://github.com/Teriks/dgenerate/tree/v3.9.0/examples/writing_plugins/sub_command>`_ example folder.
+
+
+Prompt weighter plugins
+-----------------------
+
+Referencing for writing prompt weighters can be found in the `compel <https://github.com/Teriks/dgenerate/blob/v3.9.0/dgenerate/promptweighters/compelpromptweighter.py>`_
+and `sd-embed <https://github.com/Teriks/dgenerate/blob/v3.9.0/dgenerate/promptweighters/sdembedpromptweighter.py>`_ internal prompt weighter implementations.
+ 
+A plugin skeleton file for prompt weighters can be found in the 
+`"writing_plugins/prompt_weighters" <https://github.com/Teriks/dgenerate/tree/v3.9.0/examples/writing_plugins/prompt_weighters>`_
+example folder.
+
 
 File Cache Control
 ==================
