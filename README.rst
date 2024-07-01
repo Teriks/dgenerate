@@ -82,7 +82,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v3.9.0/>`_.
     * `Specifying Text Encoders`_
     * `Prompt Weighting and Enhancement`_
         * `The compel prompt weighter`_
-        * `The sd_embed prompt weighter`_
+        * `The sd-embed prompt weighter`_
     * `Utilizing CivitAI links and Other Hosted Models`_
     * `Specifying Generation Batch Size`_
     * `Image Processors`_
@@ -734,12 +734,12 @@ Help Output
                             so: "magick identify -format "%[Property:DgenerateConfig] generated_file.png".
       -pw PROMPT_WEIGHTER_URI, --prompt-weighter PROMPT_WEIGHTER_URI
                             Specify a prompt weighter implementation by URI, for example: --prompt-weighter
-                            compel, or --prompt-weighter sd_embed. By default, no prompt weighting syntax is
+                            compel, or --prompt-weighter sd-embed. By default, no prompt weighting syntax is
                             enabled, meaning that you cannot adjust token weights as you may be able to do in
                             software such as ComfyUI, Automatic1111, CivitAI etc. And in some cases the length
                             of your prompt is limited. Prompt weighters support these special token weighting
                             syntaxes and long prompts, currently there are two implementations "compel" and
-                            "sd_embed". See: --prompt-weighter-help for a list of implementation names. You may
+                            "sd-embed". See: --prompt-weighter-help for a list of implementation names. You may
                             also use --prompt-weighter-help "name" to see comprehensive documentation for a
                             specific prompt weighter implementation.
       --prompt-weighter-help [PROMPT_WEIGHTER_NAMES ...]
@@ -2766,7 +2766,7 @@ You may also use the config directive ``\prompt_weighter_help`` inside of a conf
 more likely when you are working inside the `Console UI`_ shell.
 
 There are currently two prompt weighter implementations, the ``compel`` prompt weighter, and
-the ``sd_embed`` prompt weighter.
+the ``sd-embed`` prompt weighter.
 
 
 The compel prompt weighter
@@ -2897,19 +2897,19 @@ The weighting algorithm is not entirely identical to other pieces of software, s
 you are migrating prompts they will likely require some adjustment.
 
 
-The sd_embed prompt weighter
+The sd-embed prompt weighter
 ----------------------------
 
-The ``sd_embed`` prompt weighter uses the `sd_embed <https://github.com/xhinker/sd_embed>`_ library to support
+The ``sd-embed`` prompt weighter uses the `sd_embed <https://github.com/xhinker/sd_embed>`_ library to support
 `Stable Diffusion Web UI <https://github.com/AUTOMATIC1111/stable-diffusion-webui>`_ style prompt token
 weighting syntax for Stable Diffusion 1/2, Stable Diffusion XL, and Stable Diffusion 3.
 
 
-The syntax that ``sd_embed`` uses is the more wide spread prompt syntax used by software such as
+The syntax that ``sd-embed`` uses is the more wide spread prompt syntax used by software such as
 `Stable Diffusion Web UI <https://github.com/AUTOMATIC1111/stable-diffusion-webui>`_ and `CivitAI <https://civitai.com/>`_
 
 
-Quite notably, the ``sd_embed`` prompt weighter supports Stable Diffusion 3, where
+Quite notably, the ``sd-embed`` prompt weighter supports Stable Diffusion 3, where
 as the ``compel`` prompt weighter currently does not.
 
 The ``sd_embded`` prompt weighter also supports the use of ``--sdxl-second-prompts``.
@@ -2917,14 +2917,14 @@ The ``sd_embded`` prompt weighter also supports the use of ``--sdxl-second-promp
 
 .. code-block:: bash
 
-    # print out the documentation for the sd_embed prompt weighter
+    # print out the documentation for the sd-embed prompt weighter
 
-    dgenerate --prompt-weighter-help sd_embed
+    dgenerate --prompt-weighter-help sd-embed
 
 
 .. code-block::
 
-    sd_embed:
+    sd-embed:
 
         Implements prompt weighting syntax for Stable Diffusion 1/2, Stable Diffusion XL, and Stable
         Diffusion 3 using sd_embed.
@@ -2954,7 +2954,7 @@ The ``sd_embded`` prompt weighter also supports the use of ``--sdxl-second-promp
     ====================================================================================================
 
 
-You can enable the ``sd_embed`` prompt weighter by specifying it with the ``--prompt-weighter`` argument.
+You can enable the ``sd-embed`` prompt weighter by specifying it with the ``--prompt-weighter`` argument.
 
 
 .. code-block:: bash
@@ -2972,7 +2972,7 @@ You can enable the ``sd_embed`` prompt weighter by specifying it with the ``--pr
     --output-path output \
     --output-size 1024x1024 \
     --model-sequential-offload \
-    --prompt-weighter sd_embed \
+    --prompt-weighter sd-embed \
     --auth-token $HF_TOKEN \
     --prompts "a (man:1.2) standing on the (beach:1.2) looking out in to the water during a (sunset)"
 

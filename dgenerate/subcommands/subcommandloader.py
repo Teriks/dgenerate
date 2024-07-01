@@ -45,7 +45,7 @@ class SubCommandLoader(_plugin.PluginLoader):
 
         self.add_search_module_string('dgenerate.subcommands')
 
-    def load(self, uri: _types.Uri, **kwargs) -> _subcommand.SubCommand:
+    def load(self, uri: _types.Uri,  **kwargs) -> _subcommand.SubCommand:
         return typing.cast(_subcommand.SubCommand, super().load(uri, **kwargs))
 
 

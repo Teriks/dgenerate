@@ -1,7 +1,7 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 3.9.0
 
-# The sd_embed prompt weighter natively supports Stable Diffusion Web UI syntax
+# The sd-embed prompt weighter natively supports Stable Diffusion Web UI syntax
 
 stabilityai/stable-diffusion-3-medium-diffusers
 --model-type torch-sd3
@@ -13,6 +13,6 @@ stabilityai/stable-diffusion-3-medium-diffusers
 --gen-seeds 1
 --output-path output
 --model-sequential-offload
---prompt-weighter sd_embed
+--prompt-weighter sd-embed
 --prompts "(Photo) of a (horse) standing near the (open door) of a (red barn), (high resolution:1.2); artwork"
---output-path sd_embed
+--output-path sd-embed

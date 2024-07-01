@@ -176,7 +176,16 @@ def invoke_dgenerate_events(
         yield rethrow_with_message(e)
         return
 
-    prompt_weighter_help, _ = _arguments.parse_prompt_weighter_help(args)
+    _plugin.import_plugins(plugin_module_paths)
+
+    try:
+        prompt_weighter_help, _ = _arguments.parse_prompt_weighter_help(
+            args, throw_unknown=True, log_error=log_error)
+    except _arguments.DgenerateUsageError:
+        if throw:
+            raise
+        yield DgenerateExitEvent(invoke_dgenerate_events, 1)
+        return
 
     if prompt_weighter_help is not None:
         try:
@@ -191,7 +200,14 @@ def invoke_dgenerate_events(
             yield rethrow_with_message(e)
         return
 
-    image_processor_help, _ = _arguments.parse_image_processor_help(args)
+    try:
+        image_processor_help, _ = _arguments.parse_image_processor_help(
+            args, throw_unknown=True, log_error=log_error)
+    except _arguments.DgenerateUsageError:
+        if throw:
+            raise
+        yield DgenerateExitEvent(invoke_dgenerate_events, 1)
+        return
 
     if image_processor_help is not None:
         try:
@@ -199,7 +215,6 @@ def invoke_dgenerate_events(
                 origin=invoke_dgenerate_events,
                 return_code=_imageprocessors.image_processor_help(
                     names=image_processor_help,
-                    plugin_module_paths=plugin_module_paths,
                     log_error=False,
                     throw=True))
 
@@ -207,14 +222,21 @@ def invoke_dgenerate_events(
             yield rethrow_with_message(e)
         return
 
-    sub_command_help, _ = _arguments.parse_sub_command_help(args)
+    try:
+        sub_command_help, _ = _arguments.parse_sub_command_help(
+            args, throw_unknown=True, log_error=log_error)
+    except _arguments.DgenerateUsageError:
+        if throw:
+            raise
+        yield DgenerateExitEvent(invoke_dgenerate_events, 1)
+        return
+
     if sub_command_help is not None:
         try:
             yield DgenerateExitEvent(
                 origin=invoke_dgenerate_events,
                 return_code=_subcommands.sub_command_help(
                     names=sub_command_help,
-                    plugin_module_paths=plugin_module_paths,
                     log_error=False,
                     throw=True))
         except _subcommands.SubCommandHelpUsageError as e:
@@ -237,9 +259,10 @@ def invoke_dgenerate_events(
         try:
             yield DgenerateExitEvent(
                 origin=invoke_dgenerate_events,
-                return_code=_subcommands.SubCommandLoader().load(uri=sub_command_name,
-                                                                 plugin_module_paths=plugin_module_paths,
-                                                                 args=verbose_rest)())
+                return_code=_subcommands.SubCommandLoader().load(
+                    plugin_module_paths=plugin_module_paths,
+                    uri=sub_command_name,
+                    args=verbose_rest)())
         except (_plugin.PluginNotFoundError,
                 _plugin.PluginArgumentError) as e:
             yield rethrow_with_message(e)
@@ -247,9 +270,18 @@ def invoke_dgenerate_events(
             _messages.pop_level()
         return
 
-    template_help_variable_names, _ = _arguments.parse_templates_help(args)
-    directives_help_variable_names, _ = _arguments.parse_directives_help(args)
-    functions_help_variable_names, _ = _arguments.parse_functions_help(args)
+    try:
+        template_help_variable_names, _ = _arguments.parse_templates_help(
+            args, throw_unknown=True, log_error=log_error)
+        directives_help_variable_names, _ = _arguments.parse_directives_help(
+            args, throw_unknown=True, log_error=log_error)
+        functions_help_variable_names, _ = _arguments.parse_functions_help(
+            args, throw_unknown=True, log_error=log_error)
+    except _arguments.DgenerateUsageError:
+        if throw:
+            raise
+        yield DgenerateExitEvent(invoke_dgenerate_events, 1)
+        return
 
     if template_help_variable_names is not None \
             or directives_help_variable_names is not None \
@@ -261,7 +293,12 @@ def invoke_dgenerate_events(
         if plugin_module_paths:
             config_runner_args['injected_args'] = ['--plugin-modules'] + plugin_module_paths
 
-        config_runner = dgenerate.batchprocess.ConfigRunner(**config_runner_args)
+        try:
+            config_runner = dgenerate.batchprocess.ConfigRunner(**config_runner_args)
+        except _plugin.ModuleFileNotFoundError as e:
+            yield rethrow_with_message(e)
+            return
+
         if template_help_variable_names is not None:
             try:
                 _messages.log(
@@ -300,9 +337,9 @@ def invoke_dgenerate_events(
             raise
         yield DgenerateExitEvent(invoke_dgenerate_events, 0)
         return
-    except _arguments.DgenerateUsageError as e:
+    except _arguments.DgenerateUsageError:
         if throw:
-            raise e
+            raise
         yield DgenerateExitEvent(invoke_dgenerate_events, 1)
         return
 
@@ -332,7 +369,6 @@ def invoke_dgenerate_events(
             _pipelinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS = arguments.text_encoder_cache_memory_constraints
 
         render_loop.config = arguments
-        render_loop.image_processor_loader.load_plugin_modules(arguments.plugin_module_paths)
 
         if arguments.verbose:
             _messages.push_level(_messages.DEBUG)

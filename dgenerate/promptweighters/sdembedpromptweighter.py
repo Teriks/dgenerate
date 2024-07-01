@@ -62,7 +62,7 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
     with a warning message.
     """
 
-    NAMES = ['sd_embed']
+    NAMES = ['sd-embed']
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -186,7 +186,7 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
                 if positive_2 or negative_2:
                     _messages.log(
                         f'Prompt weighting is not supported by --prompt-weighter '
-                        f'"sd_embed" for --sdxl-refiner-second-prompts, that prompt is being ignored.',
+                        f'"sd-embed" for --sdxl-refiner-second-prompts, that prompt is being ignored.',
                         level=_messages.WARNING)
 
                 pos_conditioning, \
