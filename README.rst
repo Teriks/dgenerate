@@ -4966,8 +4966,6 @@ prompt weighters, and sub-commands through plugins.
 Image processor plugins
 -----------------------
 
----
-
 A code example as well as a usage example for image processor plugins can be found
 in the `"writing_plugins/image_processor" <https://github.com/Teriks/dgenerate/tree/v3.9.0/examples/writing_plugins/image_processor>`_
 folder of the examples folder.
@@ -4977,10 +4975,11 @@ the `openpose <https://github.com/Teriks/dgenerate/blob/v3.9.0/dgenerate/imagepr
 `pillow image operations <https://github.com/Teriks/dgenerate/blob/v3.9.0/dgenerate/imageprocessors/imageops.py>`_ processors can also
 be of reference as they are written as internal image processor plugins.
 
+~~~~
+
+
 Config directive and template function plugins
 ----------------------------------------------
-
----
 
 An example for writing config directives can be found in the `"writing_plugins/config_directive" <https://github.com/Teriks/dgenerate/tree/v3.9.0/examples/writing_plugins/config_directive>`_  example folder. 
 
@@ -4994,21 +4993,21 @@ The source file for the ``\image_process`` directive is terse as most of it is i
 The behavior of ``\image_process`` which is also used for ``--sub-command image-process`` is
 `is implemented here <https://github.com/Teriks/dgenerate/blob/v3.9.0/dgenerate/image_process>`_.
 
+~~~~
+
 
 Sub-command plugins
 -------------------
-
----
 
 Referencing for writing sub-commands can be found in the `image-process <https://github.com/Teriks/dgenerate/blob/v3.9.0/dgenerate/subcommands/image_process.py>`_ 
 sub-command implementation, and a plugin skeleton file for sub-commands can be found in the 
 `"writing_plugins/sub_command" <https://github.com/Teriks/dgenerate/tree/v3.9.0/examples/writing_plugins/sub_command>`_ example folder.
 
+~~~~
+
 
 Prompt weighter plugins
 -----------------------
-
----
 
 Referencing for writing prompt weighters can be found in the `compel <https://github.com/Teriks/dgenerate/blob/v3.9.0/dgenerate/promptweighters/compelpromptweighter.py>`_
 and `sd-embed <https://github.com/Teriks/dgenerate/blob/v3.9.0/dgenerate/promptweighters/sdembedpromptweighter.py>`_ internal prompt weighter implementations.
@@ -5016,6 +5015,8 @@ and `sd-embed <https://github.com/Teriks/dgenerate/blob/v3.9.0/dgenerate/promptw
 A plugin skeleton file for prompt weighters can be found in the 
 `"writing_plugins/prompt_weighters" <https://github.com/Teriks/dgenerate/tree/v3.9.0/examples/writing_plugins/prompt_weighters>`_
 example folder.
+
+~~~~
 
 
 File Cache Control
