@@ -158,14 +158,14 @@ Help Output
                      [-ifs INTEGER [INTEGER ...]] [-mc EXPR [EXPR ...]] [-pmc EXPR [EXPR ...]]
                      [-umc EXPR [EXPR ...]] [-vmc EXPR [EXPR ...]] [-cmc EXPR [EXPR ...]] [-tmc EXPR [EXPR ...]]
                      model_path
-
+    
     Batch image generation and manipulation tool supporting Stable Diffusion and related techniques /
     algorithms, with support for video and animated image processing.
-
+    
     positional arguments:
       model_path            huggingface model repository slug, huggingface blob link to a model file, path to
                             folder on disk, or path to a .pt, .pth, .bin, .ckpt, or .safetensors file.
-
+    
     options:
       -h, --help            show this help message and exit
       -v, --verbose         Output information useful for debugging, such as pipeline call and model load
@@ -196,7 +196,8 @@ Help Output
       --plugin-modules PATH [PATH ...]
                             Specify one or more plugin module folder paths (folder containing __init__.py) or
                             python .py file paths, or python module names to load as plugins. Plugin modules can
-                            currently implement image processors and config directives.
+                            currently implement image processors, config directives, config template functions,
+                            prompt weighters, and sub-commands.
       --sub-command SUB_COMMAND
                             Specify the name a sub-command to invoke. dgenerate exposes some extra image
                             processing functionality through the use of sub-commands. Sub commands essentially
@@ -204,9 +205,11 @@ Help Output
                             implements additional functionality. See --sub-command-help for a list of sub-
                             commands and help.
       --sub-command-help [SUB_COMMAND ...]
-                            List available sub-commands, providing sub-command names will produce their
-                            documentation. Calling a subcommand with "--sub-command name --help" will produce
-                            argument help output for that subcommand.
+                            Use this option alone (or with --plugin-modules) and no model specification in order
+                            to list available sub-command names. Calling a subcommand with "--sub-command name
+                            --help" will produce argument help output for that subcommand. When used with
+                            --plugin-modules, sub-commands implemented by the specified plugins will also be
+                            listed.
       -ofm, --offline-mode  Whether dgenerate should try to download huggingface models that do not exist in the
                             disk cache, or only use what is available in the cache. Referencing a model on
                             huggingface that has not been cached because it was not previously downloaded will
@@ -218,15 +221,15 @@ Help Output
                             presented, just their names and types. Specifying names will print type information
                             for those variable names.
       --directives-help [DIRECTIVE_NAME ...]
-                            Print a list of directives available in the interpreter environment used for
-                            dgenerate config scripts. Providing names will print documentation for the specified
-                            directive names. When used with --plugin-modules, directives implemented by the
-                            specified plugins will also be listed.
+                            Use this option alone (or with --plugin-modules) and no model specification in order
+                            to list available config directive names. Providing names will print documentation
+                            for the specified directive names. When used with --plugin-modules, directives
+                            implemented by the specified plugins will also be listed.
       --functions-help [FUNCTION_NAME ...]
-                            Print a list of template functions available in the interpreter environment used for
-                            dgenerate config scripts. Providing names will print documentation for the specified
-                            function names. When used with --plugin-modules, functions implemented by the
-                            specified plugins will also be listed.
+                            Use this option alone (or with --plugin-modules) and no model specification in order
+                            to list available config template function names. Providing names will print
+                            documentation for the specified function names. When used with --plugin-modules,
+                            functions implemented by the specified plugins will also be listed.
       -mt MODEL_TYPE, --model-type MODEL_TYPE
                             Use when loading different model types. Currently supported: torch, torch-pix2pix,
                             torch-sdxl, torch-sdxl-pix2pix, torch-upscaler-x2, torch-upscaler-x4, torch-if,
@@ -738,14 +741,16 @@ Help Output
                             enabled, meaning that you cannot adjust token weights as you may be able to do in
                             software such as ComfyUI, Automatic1111, CivitAI etc. And in some cases the length
                             of your prompt is limited. Prompt weighters support these special token weighting
-                            syntaxes and long prompts, currently there are two implementations "compel" and
-                            "sd-embed". See: --prompt-weighter-help for a list of implementation names. You may
-                            also use --prompt-weighter-help "name" to see comprehensive documentation for a
-                            specific prompt weighter implementation.
+                            syntaxes and long prompts, currently there are two implementations "compel" and "sd-
+                            embed". See: --prompt-weighter-help for a list of implementation names. You may also
+                            use --prompt-weighter-help "name" to see comprehensive documentation for a specific
+                            prompt weighter implementation.
       --prompt-weighter-help [PROMPT_WEIGHTER_NAMES ...]
-                            Use this option and with no model specification in order to list available prompt
-                            weighter module names. Specifying one or more module names after this option will
-                            cause usage documentation for the specified modules to be printed.
+                            Use this option alone (or with --plugin-modules) and no model specification in order
+                            to list available prompt weighter names. Specifying one or more prompt weighter
+                            names after this option will cause usage documentation for the specified prompt
+                            weighters to be printed. When used with --plugin-modules, prompt weighters
+                            implemented by the specified plugins will also be listed.
       -p PROMPT [PROMPT ...], --prompts PROMPT [PROMPT ...]
                             One or more prompts to try, an image group is generated for each prompt, prompt data
                             is split by ; (semi-colon). The first value is the positive text influence, things
@@ -866,9 +871,10 @@ Help Output
                             processors are available and how to use them, see: --image-processor-help.
       --image-processor-help [PROCESSOR_NAME ...]
                             Use this option alone (or with --plugin-modules) and no model specification in order
-                            to list available image processor module names. Specifying one or more module names
-                            after this option will cause usage documentation for the specified modules to be
-                            printed.
+                            to list available image processor names. Specifying one or more image processor
+                            names after this option will cause usage documentation for the specified image
+                            processors to be printed. When used with --plugin-modules, image processors
+                            implemented by the specified plugins will also be listed.
       -pp PROCESSOR_URI [PROCESSOR_URI ...], --post-processors PROCESSOR_URI [PROCESSOR_URI ...]
                             Specify one or more image processor actions to preform on generated output before it
                             is saved. For example: --post-processors "upcaler;model=4x_ESRGAN.pth". To obtain
@@ -963,8 +969,6 @@ Help Output
                             Example, and default value: "text_encoder_size > (available * 0.75)" For Syntax See:
                             [https://dgenerate.readthedocs.io/en/v3.9.0/dgenerate_submodules.html#dgenerate.pipe
                             linewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS]
-
-
 
 
 Windows Install
@@ -5001,7 +5005,7 @@ The behavior of ``\image_process`` which is also used for ``--sub-command image-
 Sub-command plugins
 -------------------
 
-Referencing for writing sub-commands can be found in the `image-process <https://github.com/Teriks/dgenerate/blob/v3.9.0/dgenerate/subcommands/image_process.py>`_ 
+Reference for writing sub-commands can be found in the `image-process <https://github.com/Teriks/dgenerate/blob/v3.9.0/dgenerate/subcommands/image_process.py>`_ 
 sub-command implementation, and a plugin skeleton file for sub-commands can be found in the 
 `"writing_plugins/sub_command" <https://github.com/Teriks/dgenerate/tree/v3.9.0/examples/writing_plugins/sub_command>`_ example folder.
 
@@ -5011,7 +5015,7 @@ sub-command implementation, and a plugin skeleton file for sub-commands can be f
 Prompt weighter plugins
 -----------------------
 
-Referencing for writing prompt weighters can be found in the `compel <https://github.com/Teriks/dgenerate/blob/v3.9.0/dgenerate/promptweighters/compelpromptweighter.py>`_
+Reference for writing prompt weighters can be found in the `compel <https://github.com/Teriks/dgenerate/blob/v3.9.0/dgenerate/promptweighters/compelpromptweighter.py>`_
 and `sd-embed <https://github.com/Teriks/dgenerate/blob/v3.9.0/dgenerate/promptweighters/sdembedpromptweighter.py>`_ internal prompt weighter implementations.
  
 A plugin skeleton file for prompt weighters can be found in the 

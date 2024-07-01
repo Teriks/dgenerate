@@ -413,9 +413,11 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument('--sub-command-help', action='store', nargs='*', default=None,
                             metavar="SUB_COMMAND",
-                            help="""List available sub-commands, providing sub-command names will 
-                                    produce their documentation. Calling a subcommand with "--sub-command name --help" 
-                                    will produce argument help output for that subcommand."""))
+                            help="""Use this option alone (or with --plugin-modules) and no model specification
+                                    in order to list available sub-command names. Calling a subcommand with
+                                    "--sub-command name --help" will produce argument help output for that subcommand.
+                                    When used with --plugin-modules, sub-commands implemented by the specified plugins
+                                    will also be listed."""))
 
     actions.append(
         parser.add_argument('-ofm', '--offline-mode', action='store_true', default=False,
@@ -435,17 +437,17 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument('--directives-help', nargs='*', dest=None, default=None, metavar='DIRECTIVE_NAME',
-                            help="""Print a list of directives available in the interpreter environment used for
-                            dgenerate config scripts. Providing names will print documentation for the specified 
-                            directive names. When used with --plugin-modules, directives implemented by the 
-                            specified plugins will also be listed."""))
+                            help="""Use this option alone (or with --plugin-modules) and no model specification
+                            in order to list available config directive names. Providing names will print documentation
+                            for the specified directive names. When used with --plugin-modules, directives implemented
+                            by the specified plugins will also be listed."""))
 
     actions.append(
         parser.add_argument('--functions-help', nargs='*', dest=None, default=None, metavar='FUNCTION_NAME',
-                            help="""Print a list of template functions available in the interpreter environment
-                            used for dgenerate config scripts. Providing names will print documentation for the
-                            specified function names. When used with --plugin-modules, functions implemented 
-                            by the specified plugins will also be listed."""))
+                            help="""Use this option alone (or with --plugin-modules) and no model specification
+                            in order to list available config template function names. Providing names will print
+                            documentation for the specified function names. When used with --plugin-modules,
+                            functions implemented by the specified plugins will also be listed."""))
 
     actions.append(
         parser.add_argument('-mt', '--model-type', action='store', default='torch', type=_model_type,
@@ -1252,9 +1254,11 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '--prompt-weighter-help', metavar='PROMPT_WEIGHTER_NAMES', dest=None, nargs='*',
-            help="""Use this option and with no model specification in order to list available
-                 prompt weighter module names. Specifying one or more module names after this option
-                 will cause usage documentation for the specified modules to be printed."""
+            help="""Use this option alone (or with --plugin-modules) and no model specification
+                 in order to list available prompt weighter names. Specifying one or more
+                 prompt weighter names after this option will cause usage documentation for the specified
+                 prompt weighters to be printed. When used with --plugin-modules, prompt weighters
+                 implemented by the specified plugins will also be listed."""
         ))
 
     actions.append(
@@ -1432,10 +1436,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument('--image-processor-help', action='store', nargs='*', default=None,
                             metavar="PROCESSOR_NAME",
                             dest=None,
-                            help="""Use this option alone (or with --plugin-modules) and no model 
-                            specification in order to list available image processor module names. 
-                            Specifying one or more module names after this option will cause usage 
-                            documentation for the specified modules to be printed."""))
+                            help="""Use this option alone (or with --plugin-modules) and no model
+                            specification in order to list available image processor names.
+                            Specifying one or more image processor names after this option will cause usage
+                            documentation for the specified image processors to be printed. When used with
+                            --plugin-modules, image processors implemented by the specified plugins
+                            will also be listed."""))
 
     actions.append(
         parser.add_argument('-pp', '--post-processors', action='store', nargs='+', default=None,
