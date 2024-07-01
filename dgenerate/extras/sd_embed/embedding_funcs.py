@@ -273,8 +273,7 @@ def get_weighted_text_embeddings_sd15(
         token_embedding = pipe.text_encoder(token_tensor)[0].squeeze(0) 
         for j in range(len(weight_tensor)):
             token_embedding[j] = token_embedding[j] * weight_tensor[j]
-        token_embedding = token_embedding.unsqueeze(0)
-        embeds.append(token_embedding)
+        embeds.append(token_embedding.unsqueeze(0).cpu())
         
         # get negative prompt embeddings with weights
         neg_token_tensor = torch.tensor(
@@ -291,16 +290,28 @@ def get_weighted_text_embeddings_sd15(
             neg_token_embedding[z] = (
                 neg_token_embedding[z] * neg_weight_tensor[z]
             )
-        neg_token_embedding = neg_token_embedding.unsqueeze(0)
-        neg_embeds.append(neg_token_embedding)
+        neg_embeds.append(neg_token_embedding.unsqueeze(0).cpu())
+
+        # Free VRAM & RAM
+        token_tensor.cpu()
+        weight_tensor.cpu()
+        neg_token_tensor.cpu()
+        neg_weight_tensor.cpu()
+        del token_tensor, \
+            weight_tensor, \
+            token_embedding, \
+            neg_token_tensor, \
+            neg_weight_tensor, \
+            neg_token_embedding
+        torch.cuda.empty_cache()
     
-    prompt_embeds       = torch.cat(embeds, dim = 1)
-    neg_prompt_embeds   = torch.cat(neg_embeds, dim = 1)
+    prompt_embeds = torch.cat(embeds, dim = 1).to(device)
+    neg_prompt_embeds = torch.cat(neg_embeds, dim = 1).to(device)
     
     # recover clip layers
     if clip_skip > 0:
         pipe.text_encoder.text_model.encoder.layers = original_clip_layers
-    
+
     return prompt_embeds, neg_prompt_embeds
 
 @torch.no_grad()
@@ -464,15 +475,15 @@ def get_weighted_text_embeddings_sdxl(
             token_tensor.to(device)
             , output_hidden_states = True
         )
-        prompt_embeds_1_hidden_states = prompt_embeds_1.hidden_states[-2]
+        prompt_embeds_1_hidden_states = prompt_embeds_1.hidden_states[-2].cpu()
 
         # use second text encoder
         prompt_embeds_2 = pipe.text_encoder_2(
             token_tensor_2.to(device)
             , output_hidden_states = True
         )
-        prompt_embeds_2_hidden_states = prompt_embeds_2.hidden_states[-2]
-        pooled_prompt_embeds = prompt_embeds_2[0]
+        prompt_embeds_2_hidden_states = prompt_embeds_2.hidden_states[-2].cpu()
+        pooled_prompt_embeds = prompt_embeds_2[0].cpu()
 
         # print(prompt_embeds_1_hidden_states.shape)
         # print(prompt_embeds_2_hidden_states.shape)
@@ -503,7 +514,7 @@ def get_weighted_text_embeddings_sdxl(
                 token_embedding[j] = token_embedding[j] * weight_tensor[j]
 
         token_embedding = token_embedding.unsqueeze(0)
-        embeds.append(token_embedding)
+        embeds.append(token_embedding.cpu())
         
         # get negative prompt embeddings with weights
         neg_token_tensor = torch.tensor(
@@ -525,15 +536,15 @@ def get_weighted_text_embeddings_sdxl(
             neg_token_tensor.to(device)
             , output_hidden_states=True
         )
-        neg_prompt_embeds_1_hidden_states = neg_prompt_embeds_1.hidden_states[-2]
+        neg_prompt_embeds_1_hidden_states = neg_prompt_embeds_1.hidden_states[-2].cpu()
 
         # use second text encoder
         neg_prompt_embeds_2 = pipe.text_encoder_2(
             neg_token_tensor_2.to(device)
             , output_hidden_states=True
         )
-        neg_prompt_embeds_2_hidden_states = neg_prompt_embeds_2.hidden_states[-2]
-        negative_pooled_prompt_embeds = neg_prompt_embeds_2[0]
+        neg_prompt_embeds_2_hidden_states = neg_prompt_embeds_2.hidden_states[-2].cpu()
+        negative_pooled_prompt_embeds = neg_prompt_embeds_2[0].cpu()
 
         neg_prompt_embeds_list = [neg_prompt_embeds_1_hidden_states, neg_prompt_embeds_2_hidden_states]
         neg_token_embedding = torch.concat(neg_prompt_embeds_list, dim=-1).squeeze(0).to(device)
@@ -559,10 +570,21 @@ def get_weighted_text_embeddings_sdxl(
                 neg_token_embedding[z] = neg_token_embedding[z] * neg_weight_tensor[z]
                 
         neg_token_embedding = neg_token_embedding.unsqueeze(0)
-        neg_embeds.append(neg_token_embedding)
+        neg_embeds.append(neg_token_embedding.cpu())
+
+        # Free VRAM & RAM
+        del prompt_embeds_1_hidden_states, \
+            prompt_embeds_2_hidden_states, \
+            neg_prompt_embeds_1_hidden_states, \
+            neg_prompt_embeds_2_hidden_states, \
+            prompt_embeds_1, \
+            prompt_embeds_2, \
+            neg_prompt_embeds_1, \
+            neg_prompt_embeds_2
+        torch.cuda.empty_cache()
     
-    prompt_embeds           = torch.cat(embeds, dim = 1)
-    negative_prompt_embeds  = torch.cat(neg_embeds, dim = 1)
+    prompt_embeds           = torch.cat(embeds, dim = 1).to(device)
+    negative_prompt_embeds  = torch.cat(neg_embeds, dim = 1).to(device)
     
     return prompt_embeds, negative_prompt_embeds, pooled_prompt_embeds, negative_pooled_prompt_embeds
 
@@ -701,8 +723,20 @@ def get_weighted_text_embeddings_sdxl_refiner(
                 )
 
         token_embedding = token_embedding.unsqueeze(0)
-        embeds.append(token_embedding)
         
+        # Free VRAM
+        embeds.append(token_embedding.cpu())
+        token_tensor_2.cpu()
+        weight_tensor_2.cpu()
+        prompt_embeds_2_hidden_states.cpu()
+        token_embedding.cpu()
+        del token_tensor_2, \
+            weight_tensor_2, \
+            prompt_embeds_2, \
+            prompt_embeds_2_hidden_states, \
+            token_embedding
+        torch.cuda.empty_cache()
+
         # get negative prompt embeddings with weights
         neg_token_tensor_2 = torch.tensor(
             [neg_prompt_token_groups_2[i]]
@@ -743,11 +777,35 @@ def get_weighted_text_embeddings_sdxl_refiner(
                 )
                 
         neg_token_embedding = neg_token_embedding.unsqueeze(0)
-        neg_embeds.append(neg_token_embedding)
+        
+        # Free VRAM
+        neg_embeds.append(neg_token_embedding.cpu())
+        neg_token_tensor_2.cpu()
+        neg_weight_tensor_2.cpu()
+        neg_prompt_embeds_2_hidden_states.cpu()
+        neg_token_embedding.cpu()
+        del neg_token_tensor_2, \
+            neg_weight_tensor_2, \
+            neg_prompt_embeds_2, \
+            neg_prompt_embeds_2_hidden_states,\
+            neg_token_embedding
+        torch.cuda.empty_cache()
+
+    # Free VRAM as needed
+    prompt_embeds = torch.cat([e.to(device) for e in embeds], dim = 1)
     
-    prompt_embeds           = torch.cat(embeds, dim = 1)
-    negative_prompt_embeds  = torch.cat(neg_embeds, dim = 1)
+    for t in embeds:
+        t.cpu()
+    del embeds
     
+    negative_prompt_embeds = torch.cat([e.to(device) for e in neg_embeds], dim = 1)
+    
+    for t in neg_embeds:
+        t.cpu()
+    del neg_embeds
+    
+    torch.cuda.empty_cache()
+
     return prompt_embeds, negative_prompt_embeds, pooled_prompt_embeds, negative_pooled_prompt_embeds
 
 @torch.no_grad()
@@ -886,8 +944,8 @@ def get_weighted_text_embeddings_sdxl_2p(
         neg_prompt_weights      = neg_prompt_weights    + [1.0] * abs(neg_prompt_token_len - neg_prompt_token_len_2)
     
     # print("prompt_token_len:", len(prompt_tokens))
-    # print("prompt_token_len_2:", len(prompt_tokens))
-    
+    # print("prompt_token_len_2:", len(prompt_tokens_2))
+
     # print("neg_prompt_token_len:", len(neg_prompt_tokens))
     # print("neg_prompt_token_len_2:", len(neg_prompt_tokens_2))
     
@@ -971,7 +1029,7 @@ def get_weighted_text_embeddings_sdxl_2p(
         prompt_embeds_list = [prompt_embeds_1_hidden_states, prompt_embeds_2_hidden_states]
         token_embedding = torch.cat(prompt_embeds_list, dim=-1)
         
-        embeds.append(token_embedding)
+        embeds.append(token_embedding.cpu())
         
         # get negative prompt embeddings with weights
         neg_token_tensor = torch.tensor(
@@ -1026,21 +1084,34 @@ def get_weighted_text_embeddings_sdxl_2p(
         neg_prompt_embeds_list = [neg_prompt_embeds_1_hidden_states, neg_prompt_embeds_2_hidden_states]
         neg_token_embedding = torch.cat(neg_prompt_embeds_list, dim=-1)
         
-        neg_embeds.append(neg_token_embedding)
+        neg_embeds.append(neg_token_embedding.cpu())
+
+        # Free VRAM
+        token_tensor.cpu()
+        weight_tensor.cpu()
+        neg_token_tensor.cpu()
+        neg_weight_tensor.cpu()
+        del token_tensor,\
+            weight_tensor,\
+            token_embedding, \
+            neg_token_tensor,\
+            neg_weight_tensor,\
+            neg_token_embedding
+        torch.cuda.empty_cache()
     
-    prompt_embeds           = torch.cat(embeds, dim = 1)
-    negative_prompt_embeds  = torch.cat(neg_embeds, dim = 1)
+    prompt_embeds           = torch.cat(embeds, dim=1).to(device)
+    negative_prompt_embeds  = torch.cat(neg_embeds, dim=1).to(device)
     
     return prompt_embeds, negative_prompt_embeds, pooled_prompt_embeds, negative_pooled_prompt_embeds
 
 @torch.no_grad()
 def get_weighted_text_embeddings_sd3(
-        pipe: StableDiffusion3Pipeline
-        , prompt : str          = ""
-        , neg_prompt: str       = ""
-        , pad_last_block: bool  = True
-        , use_t5_encoder: bool  = True
-        , device: str           = None
+        pipe: StableDiffusion3Pipeline,
+        prompt: str = "",
+        neg_prompt: str = "",
+        pad_last_block: bool = True,
+        use_t5_encoder: bool = True,
+        device: str = None
 ):
     """
     This function can process long prompt with weights, no length limitation 
@@ -1057,8 +1128,8 @@ def get_weighted_text_embeddings_sd3(
         negative_pooled_prompt_embeds (torch.Tensor)
     """
     import math
-    eos = pipe.tokenizer.eos_token_id 
-    
+    eos = pipe.tokenizer.eos_token_id
+
     device = device if device else pipe.device
 
     # tokenizer 1
@@ -1106,11 +1177,11 @@ def get_weighted_text_embeddings_sd3(
         # padding the prompt
         prompt_tokens       = (
             prompt_tokens  
-            + [eos] * abs(prompt_token_len - neg_prompt_token_len)
+            + [eos] * abs(neg_prompt_token_len - prompt_token_len)
         )
         prompt_weights      = (
             prompt_weights 
-            + [1.0] * abs(prompt_token_len - neg_prompt_token_len)
+            + [1.0] * abs(neg_prompt_token_len - prompt_token_len)
         )
     
     # padding the shorter one for token set 2
@@ -1131,11 +1202,11 @@ def get_weighted_text_embeddings_sd3(
         # padding the prompt
         prompt_tokens_2       = (
             prompt_tokens_2  
-            + [eos] * abs(prompt_token_len_2 - neg_prompt_token_len_2)
+            + [eos] * abs(neg_prompt_token_len_2 - prompt_token_len_2)
         )
         prompt_weights_2      = (
             prompt_weights_2 
-            + [1.0] * abs(prompt_token_len_2 - neg_prompt_token_len_2)
+            + [1.0] * abs(neg_prompt_token_len_2 - prompt_token_len_2)
         )
     
     embeds = []
@@ -1170,7 +1241,7 @@ def get_weighted_text_embeddings_sd3(
         # get positive prompt embeddings with weights
         token_tensor = torch.tensor(
             [prompt_token_groups[i]]
-            ,dtype = torch.long, device = device
+            , dtype = torch.long, device = device
         )
         weight_tensor = torch.tensor(
             prompt_weight_groups[i]
@@ -1180,13 +1251,13 @@ def get_weighted_text_embeddings_sd3(
         
         token_tensor_2 = torch.tensor(
             [prompt_token_groups_2[i]]
-            ,dtype = torch.long, device = device
+            , dtype = torch.long, device = device
         )
         
         # use first text encoder
         prompt_embeds_1 = pipe.text_encoder(
             token_tensor.to(device)
-            , output_hidden_states = True
+            , output_hidden_states=True
         )
         prompt_embeds_1_hidden_states = prompt_embeds_1.hidden_states[-2]
         pooled_prompt_embeds_1 = prompt_embeds_1[0]
@@ -1194,13 +1265,13 @@ def get_weighted_text_embeddings_sd3(
         # use second text encoder
         prompt_embeds_2 = pipe.text_encoder_2(
             token_tensor_2.to(device)
-            , output_hidden_states = True
+            , output_hidden_states=True
         )
         prompt_embeds_2_hidden_states = prompt_embeds_2.hidden_states[-2]
         pooled_prompt_embeds_2 = prompt_embeds_2[0]
 
         prompt_embeds_list = [prompt_embeds_1_hidden_states, prompt_embeds_2_hidden_states]
-        token_embedding = torch.concat(prompt_embeds_list, dim=-1).squeeze(0).to(device)
+        token_embedding = torch.cat(prompt_embeds_list, dim=-1).squeeze(0).to(device)
         
         for j in range(len(weight_tensor)):
             if weight_tensor[j] != 1.0:
@@ -1226,8 +1297,25 @@ def get_weighted_text_embeddings_sd3(
                 token_embedding[j] = token_embedding[j] * weight_tensor[j]
 
         token_embedding = token_embedding.unsqueeze(0)
-        embeds.append(token_embedding)
         
+        # Free VRAM
+        embeds.append(token_embedding.cpu())
+        token_tensor.cpu()
+        weight_tensor.cpu()
+        token_tensor_2.cpu()
+        prompt_embeds_1_hidden_states.cpu()
+        prompt_embeds_2_hidden_states.cpu()
+        token_embedding.cpu()
+        del token_tensor,\
+            weight_tensor, \
+            token_tensor_2, \
+            prompt_embeds_1, \
+            prompt_embeds_2, \
+            prompt_embeds_1_hidden_states, \
+            prompt_embeds_2_hidden_states, \
+            token_embedding
+        torch.cuda.empty_cache()
+
         # get negative prompt embeddings with weights
         neg_token_tensor = torch.tensor(
             [neg_prompt_token_groups[i]]
@@ -1260,8 +1348,8 @@ def get_weighted_text_embeddings_sd3(
         negative_pooled_prompt_embeds_2 = neg_prompt_embeds_2[0]
 
         neg_prompt_embeds_list = [neg_prompt_embeds_1_hidden_states, neg_prompt_embeds_2_hidden_states]
-        neg_token_embedding = torch.concat(neg_prompt_embeds_list, dim=-1).squeeze(0).to(device)
-        
+        neg_token_embedding = torch.cat(neg_prompt_embeds_list, dim=-1).squeeze(0).to(device)
+
         for z in range(len(neg_weight_tensor)):
             if neg_weight_tensor[z] != 1.0:
                 
@@ -1281,60 +1369,101 @@ def get_weighted_text_embeddings_sd3(
                 
                 # add weight method 3:
                 neg_token_embedding[z] = neg_token_embedding[z] * neg_weight_tensor[z]
-                
+
         neg_token_embedding = neg_token_embedding.unsqueeze(0)
-        neg_embeds.append(neg_token_embedding)
+
+        # Free VRAM
+        neg_embeds.append(neg_token_embedding.cpu())
+        neg_token_tensor.cpu()
+        neg_weight_tensor.cpu()
+        neg_token_tensor_2.cpu()
+        neg_prompt_embeds_1_hidden_states.cpu()
+        neg_prompt_embeds_2_hidden_states.cpu()
+        neg_token_embedding.cpu()
+        del neg_token_tensor, \
+            neg_weight_tensor, \
+            neg_token_tensor_2, \
+            neg_prompt_embeds_1, \
+            neg_prompt_embeds_2,\
+            neg_prompt_embeds_1_hidden_states, \
+            neg_prompt_embeds_2_hidden_states, \
+            neg_token_embedding
+        torch.cuda.empty_cache()
+
+    prompt_embeds = torch.cat([e.to(device) for e in embeds], dim=1)
     
-    prompt_embeds           = torch.cat(embeds, dim = 1)
-    negative_prompt_embeds  = torch.cat(neg_embeds, dim = 1)
+    # Free VRAM as needed
+    for t in embeds:
+        t.cpu()
+    del embeds
     
+    negative_prompt_embeds = torch.cat([e.to(device) for e in neg_embeds], dim=1)
+    
+    for t in neg_embeds:
+        t.cpu()
+    del neg_embeds
+    
+    torch.cuda.empty_cache()
+
     pooled_prompt_embeds = torch.cat([pooled_prompt_embeds_1, pooled_prompt_embeds_2], dim=-1)
     negative_pooled_prompt_embeds = torch.cat([negative_pooled_prompt_embeds_1, negative_pooled_prompt_embeds_2], dim=-1)
-    
-    if use_t5_encoder and pipe.text_encoder_3:        
+
+    if use_t5_encoder and pipe.text_encoder_3:
         # ----------------- generate positive t5 embeddings --------------------
-        prompt_tokens_3 = torch.tensor([prompt_tokens_3],dtype=torch.long)
-        
+        prompt_tokens_3 = torch.tensor([prompt_tokens_3], dtype=torch.long)
+
         t5_prompt_embeds    = pipe.text_encoder_3(prompt_tokens_3.to(device))[0].squeeze(0)
         t5_prompt_embeds    = t5_prompt_embeds.to(device=device)
         # print('t5 embedding shape:', t5_prompt_embeds.shape)
-        
+
         # add weight to t5 prompt
         for z in range(len(prompt_weights_3)):
             if prompt_weights_3[z] != 1.0:
                 t5_prompt_embeds[z] = t5_prompt_embeds[z] * prompt_weights_3[z]
-        t5_prompt_embeds = t5_prompt_embeds.unsqueeze(0)
+        t5_prompt_embeds = t5_prompt_embeds.unsqueeze(0).cpu()
     else:
-        t5_prompt_embeds    = torch.zeros(1, 4096, dtype = prompt_embeds.dtype).unsqueeze(0)
-        t5_prompt_embeds    = t5_prompt_embeds.to(device=device)
-        
+        t5_prompt_embeds    = torch.zeros(1, 4096, dtype=prompt_embeds.dtype).unsqueeze(0).cpu()
+
     # merge with the clip embedding 1 and clip embedding 2
     clip_prompt_embeds = torch.nn.functional.pad(
-        prompt_embeds, (0, t5_prompt_embeds.shape[-1] - prompt_embeds.shape[-1])
+        prompt_embeds.cpu(), (0, t5_prompt_embeds.shape[-1] - prompt_embeds.shape[-1])
     )
-    sd3_prompt_embeds = torch.cat([clip_prompt_embeds, t5_prompt_embeds], dim=-2)
-    
-    if use_t5_encoder and pipe.text_encoder_3:
+    sd3_prompt_embeds = torch.cat([clip_prompt_embeds.to(device), t5_prompt_embeds.to(device)], dim=-2)
+
+    # Free VRAM
+    clip_prompt_embeds.cpu()
+    t5_prompt_embeds.cpu()
+    del clip_prompt_embeds, \
+        t5_prompt_embeds
+    torch.cuda.empty_cache()
+
+    if use_t5_encoder and pipe.text_encoder_3:  
         # ---------------------- get neg t5 embeddings -------------------------
-        neg_prompt_tokens_3 = torch.tensor([neg_prompt_tokens_3],dtype=torch.long)
-        
+        neg_prompt_tokens_3 = torch.tensor([neg_prompt_tokens_3], dtype=torch.long)
+
         t5_neg_prompt_embeds    = pipe.text_encoder_3(neg_prompt_tokens_3.to(device))[0].squeeze(0)
         t5_neg_prompt_embeds    = t5_neg_prompt_embeds.to(device=device)
-        
+
         # add weight to neg t5 embeddings
         for z in range(len(neg_prompt_weights_3)):
             if neg_prompt_weights_3[z] != 1.0:
                 t5_neg_prompt_embeds[z] = t5_neg_prompt_embeds[z] * neg_prompt_weights_3[z]
-        t5_neg_prompt_embeds = t5_neg_prompt_embeds.unsqueeze(0)
-    else: 
-        t5_neg_prompt_embeds    = torch.zeros(1, 4096, dtype = prompt_embeds.dtype).unsqueeze(0)
-        t5_neg_prompt_embeds    = t5_neg_prompt_embeds.to(device=device)
+        t5_neg_prompt_embeds = t5_neg_prompt_embeds.unsqueeze(0).cpu()
+    else:
+        t5_neg_prompt_embeds    = torch.zeros(1, 4096, dtype=prompt_embeds.dtype).unsqueeze(0).cpu()
 
     clip_neg_prompt_embeds = torch.nn.functional.pad(
-        negative_prompt_embeds, (0, t5_neg_prompt_embeds.shape[-1] - negative_prompt_embeds.shape[-1])
+        negative_prompt_embeds.cpu(), (0, t5_neg_prompt_embeds.shape[-1] - negative_prompt_embeds.shape[-1])
     )
-    sd3_neg_prompt_embeds = torch.cat([clip_neg_prompt_embeds, t5_neg_prompt_embeds], dim=-2)
-    
+    sd3_neg_prompt_embeds = torch.cat([clip_neg_prompt_embeds.to(device), t5_neg_prompt_embeds.to(device)], dim=-2)
+
+    # Free VRAM
+    clip_neg_prompt_embeds.cpu()
+    t5_neg_prompt_embeds.cpu()
+    del clip_neg_prompt_embeds, \
+        t5_neg_prompt_embeds
+    torch.cuda.empty_cache()
+
     # padding 
     import torch.nn.functional as F
     size_diff = sd3_neg_prompt_embeds.size(1) - sd3_prompt_embeds.size(1)
@@ -1349,5 +1478,5 @@ def get_weighted_text_embeddings_sd3(
     elif size_diff < 0:
         padding = (0, 0, 0, abs(size_diff), 0, 0)
         sd3_neg_prompt_embeds = F.pad(sd3_neg_prompt_embeds, padding)
-    
+
     return sd3_prompt_embeds, sd3_neg_prompt_embeds, pooled_prompt_embeds, negative_pooled_prompt_embeds
