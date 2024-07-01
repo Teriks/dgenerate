@@ -5015,7 +5015,7 @@ Referencing for writing prompt weighters can be found in the `compel <https://gi
 and `sd-embed <https://github.com/Teriks/dgenerate/blob/v3.9.0/dgenerate/promptweighters/sdembedpromptweighter.py>`_ internal prompt weighter implementations.
  
 A plugin skeleton file for prompt weighters can be found in the 
-`"writing_plugins/prompt_weighters" <https://github.com/Teriks/dgenerate/tree/v3.9.0/examples/writing_plugins/prompt_weighters>`_
+`"writing_plugins/prompt_weighter" <https://github.com/Teriks/dgenerate/tree/v3.9.0/examples/writing_plugins/prompt_weighter>`_
 example folder.
 
 ~~~~
