@@ -36,6 +36,7 @@ RECIPES = {
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
         @string[{"label":"Output Size", "arg":"--output-size", "default":"512x512"}]
         @device[{}]
+        @promptweighter[{}]
         --prompts "add your prompt here"
         """,
     "Stable Diffusion 3":
@@ -63,6 +64,7 @@ RECIPES = {
         @string[{"label":"Output Size", "arg":"--output-size", "default":"1024x1024"}]
         --model-sequential-offload
         @device[{}]
+        @promptweighter[{}]
         --prompts "add your prompt here"
         """,
     "Stable Diffusion XL":
@@ -88,6 +90,7 @@ RECIPES = {
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
         @string[{"label":"Output Size", "arg":"--output-size", "default":"1024x1024"}]
         @device[{}]
+        @promptweighter[{}]
         --prompts "add your prompt here"
         """,
     "Stable Diffusion XL (no refiner)":
@@ -109,6 +112,7 @@ RECIPES = {
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
         @string[{"label":"Output Size", "arg":"--output-size", "default":"1024x1024"}]
         @device[{}]
+        @promptweighter[{}]
         --prompts "add your prompt here"
         """,
     "Stable Diffusion XL (LCM UNet no refiner)":
@@ -131,6 +135,7 @@ RECIPES = {
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
         @string[{"label":"Output Size", "arg":"--output-size", "default":"1024x1024"}]
         @device[{}]
+        @promptweighter[{}]
         --prompts "add your prompt here"
         """,
     "Stable Diffusion XL (LCM UNet cooperative refiner)":
@@ -158,6 +163,7 @@ RECIPES = {
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
         @string[{"label":"Output Size", "arg":"--output-size", "default":"1024x1024"}]
         @device[{}]
+        @promptweighter[{}]
         --prompts "add your prompt here"
         """,
     "Stable Diffusion XL (LCM UNet refiner edit mode)":
@@ -186,6 +192,7 @@ RECIPES = {
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
         @string[{"label":"Output Size", "arg":"--output-size", "default":"1024x1024"}]
         @device[{}]
+        @promptweighter[{}]
         --prompts "add your prompt here"
         """,
     "Stable Diffusion XL (LCM LoRA no refiner)":
@@ -208,6 +215,7 @@ RECIPES = {
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
         @string[{"label":"Output Size", "arg":"--output-size", "default":"1024x1024"}]
         @device[{}]
+        @promptweighter[{}]
         --prompts "add your prompt here"
         """,
     "Stable Diffusion XL (LCM LoRA cooperative refiner)":
@@ -235,6 +243,7 @@ RECIPES = {
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
         @string[{"label":"Output Size", "arg":"--output-size", "default":"1024x1024"}]
         @device[{}]
+        @promptweighter[{}]
         --prompts "add your prompt here"
         """,
     "Stable Diffusion XL (LCM LoRA refiner edit mode)":
@@ -263,6 +272,7 @@ RECIPES = {
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
         @string[{"label":"Output Size", "arg":"--output-size", "default":"1024x1024"}]
         @device[{}]
+        @promptweighter[{}]
         --prompts "add your prompt here"
         """,
     "Deep Floyd": r"""
@@ -405,12 +415,21 @@ RECIPES = {
         @int[{"label":"Number Of Seeds", "arg":"--gen-seeds", "default":1, "min":1}]
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
         @device[{}]
+        @promptweighter[{}]
         --prompts "your prompt here"
         """,
     "Upscaling [openmodeldb.info] (Spandrel / chaiNNer)":
         """
         \\image_process @file[{"label":"Input Image File", "optional":false, "mode":"input"}]
         @file[{"label":"Output Image File", "default":"output.png", "arg":"--output", "mode":"output"}]
+        @int[{"label":"Image Alignment", "arg":"--align", "default":1, "min":1}]
+        @file[{"label":"Upscaler Model / URL", "arg":"--processors", "before":"upscaler;model=", "file-types":"models", "default": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth", "optional":false}]
+        @device[{}]
+        """,
+    "Upscaling (to directory) [openmodeldb.info] (Spandrel / chaiNNer)":
+        """
+        \\image_process @file[{"label":"Input Image File", "optional":false, "mode":"input"}]
+        @dir[{"label":"Output Directory", "default":"output", "arg":"--output", "after":"/", "mode":"output"}]
         @int[{"label":"Image Alignment", "arg":"--align", "default":1, "min":1}]
         @file[{"label":"Upscaler Model / URL", "arg":"--processors", "before":"upscaler;model=", "file-types":"models", "default": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth", "optional":false}]
         @device[{}]
