@@ -2908,8 +2908,6 @@ The syntax that ``sd-embed`` uses is the more wide spread prompt syntax used by 
 Quite notably, the ``sd-embed`` prompt weighter supports Stable Diffusion 3, where
 as the ``compel`` prompt weighter currently does not.
 
-The ``sd_embded`` prompt weighter also supports the use of ``--sdxl-second-prompts``.
-
 
 .. code-block:: bash
 
