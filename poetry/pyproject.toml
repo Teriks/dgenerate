@@ -48,6 +48,7 @@ tklinenums = "^1.7.1"
 pyrfc6266 = "^1.0.2"
 protobuf = "^5.27.1"
 compel = "^2.0.2"
+lark = "^1.1.9"
 
 [tool.poetry.extras]
 flax = ["flax", "jax"]
