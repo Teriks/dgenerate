@@ -2769,6 +2769,59 @@ For instance, you can prevent Stable Diffusion 3 from loading and using the T5 e
     --output-path output \
     --model-sequential-offload \
     --prompts "a horse outside a barn"
+    
+    
+Any text encoder shared via the ``\use_modules`` directive in a config files is considered a default 
+value for the text encoder in the next pipeline that runs, using ``+`` will maintain this value
+and using ``null`` will override it.
+
+.. code-block:: jinja
+
+    #! dgenerate --file
+    #! dgenerate 3.9.0
+    
+    # this model will load all three text encoders,
+    # they are not cached individually as we did not explicitly
+    # specify any of them, they are cached with the pipeline
+    # as a whole
+
+    stabilityai/stable-diffusion-3-medium
+    --model-type torch-sd3
+    --variant fp16
+    --dtype float16
+    --inference-steps 30
+    --guidance-scales 5.00
+    --clip-skips 0
+    --gen-seeds 2
+    --output-path output
+    --model-sequential-offload
+    --prompts "a horse outside a barn"
+    
+    # store all the text encoders from the last pipeline
+    # into the variable "encoders"
+    
+    \save_modules encoders text_encoder text_encoder_2 text_encoder_3
+    
+    # share them with the next pipeline
+    
+    \use_modules encoders
+    
+    # use all of the encoders except the T5 encoder (third encoder)
+    # sharing modules this way saves a significant amount 
+    # of memory
+
+    stabilityai/stable-diffusion-3-medium
+    --model-type torch-sd3
+    --variant fp16
+    --dtype float16
+    --inference-steps 30
+    --guidance-scales 5.00
+    --clip-skips 0
+    --text-encoders + + null 
+    --gen-seeds 2
+    --output-path output
+    --model-sequential-offload
+    --prompts "a horse outside a barn"
 
 
 Prompt Weighting and Enhancement
