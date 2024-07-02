@@ -262,8 +262,8 @@ def estimate_pipeline_memory_use(
         textual_inversion_uris: _types.OptionalUris = None,
         text_encoder_uris: _types.OptionalUris = None,
         safety_checker: bool = False,
-        auth_token: str = None,
-        extra_args: dict[str, typing.Any] = None,
+        auth_token: str | None = None,
+        extra_args: dict[str, typing.Any] | None = None,
         local_files_only: bool = False):
     """
     Estimate the CPU side memory use of a pipeline.
@@ -354,7 +354,7 @@ def estimate_pipeline_memory_use(
             uri_parser_class = _uris.FlaxTextEncoderUri
 
         for text_encoder_uri in text_encoder_uris:
-            if not _text_encoder_not_null(text_encoder_uri):
+            if not _text_encoder_not_default(text_encoder_uri):
                 continue
 
             parsed = uri_parser_class.parse(text_encoder_uri)
@@ -880,7 +880,9 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     :param vae_uri: Optional ``--vae`` URI string for specifying a specific VAE
     :param lora_uris: Optional ``--loras`` URI strings for specifying LoRA weights
     :param textual_inversion_uris: Optional ``--textual-inversions`` URI strings for specifying Textual Inversion weights
-    :param text_encoder_uris: optional user specified ``--text-encoders`` URIs that will be loaded on to the pipeline in order
+    :param text_encoder_uris: optional user specified ``--text-encoders`` URIs that will be loaded on to the
+        pipeline in order. A uri value of ``+`` or ``None`` indicates use default, a string value of ``null``
+        indicates to explicitly not load any encoder all
     :param control_net_uris: Optional ``--control-nets`` URI strings for specifying ControlNet models
     :param scheduler: Optional scheduler (sampler) class name, unqualified, or "help" / "helpargs" to print supported values
         to STDOUT and raise :py:exc:`dgenerate.pipelinewrapper.SchedulerHelpException`.  Dgenerate URI syntax is supported
@@ -975,8 +977,12 @@ def _text_encoder_help(pipeline_class):
     raise ArgumentHelpException()
 
 
-def _text_encoder_not_null(uri):
+def _text_encoder_not_default(uri):
     return uri and uri != '+'
+
+
+def _text_encoder_null(uri):
+    return uri and uri.lower() == 'null'
 
 
 def _torch_args_hasher(args):
@@ -986,6 +992,9 @@ def _torch_args_hasher(args):
 
         if uri.strip() == 'help':
             return 'help'
+
+        if uri.strip() == 'null':
+            return 'null'
 
         return _uris.TorchTextEncoderUri.parse(uri)
 
@@ -1211,27 +1220,39 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             except ValueError:
                 _messages.debug_log(
                     f'Unable to get device of {module[0]} = {module[1].__class__}')
+        extra_modules = extra_modules.copy()
+    else:
+        extra_modules = dict()
 
-    unet_override = extra_modules and 'unet' in extra_modules
-    vae_override = extra_modules and 'vae' in extra_modules
-    controlnet_override = extra_modules and 'controlnet' in extra_modules
-    safety_checker_override = extra_modules and 'safety_checker' in extra_modules
-    scheduler_override = extra_modules and 'scheduler' in extra_modules
+    unet_override = 'unet' in extra_modules
+    vae_override = 'vae' in extra_modules
+    controlnet_override = 'controlnet' in extra_modules
+    safety_checker_override = 'safety_checker' in extra_modules
+    scheduler_override = 'scheduler' in extra_modules
 
-    if extra_modules and 'text_encoder' in extra_modules and text_encoder_count == 0:
+    if 'text_encoder' in extra_modules and text_encoder_count == 0:
         raise UnsupportedPipelineConfigError('To many text encoders specified.')
 
-    if extra_modules and 'text_encoder_2' in extra_modules and text_encoder_count < 2:
+    if 'text_encoder_2' in extra_modules and text_encoder_count < 2:
         raise UnsupportedPipelineConfigError('To many text encoders specified.')
 
-    if extra_modules and 'text_encoder_3' in extra_modules and text_encoder_count < 3:
+    if 'text_encoder_3' in extra_modules and text_encoder_count < 3:
         raise UnsupportedPipelineConfigError('To many text encoders specified.')
 
-    text_encoder_override = extra_modules and 'text_encoder' in extra_modules
-    text_encoder_2_override = extra_modules and 'text_encoder_2' in extra_modules
-    text_encoder_3_override = extra_modules and 'text_encoder_3' in extra_modules
+    # noinspection PyTypeChecker
+    text_encoders: list[str] = list(text_encoder_uris)
 
-    text_encoders = list(text_encoder_uris)
+    if len(text_encoders) > 0 and _text_encoder_null(text_encoders[0]):
+        extra_modules['text_encoder'] = None
+    if len(text_encoders) > 1 and _text_encoder_null(text_encoders[1]):
+        extra_modules['text_encoder_2'] = None
+    if len(text_encoders) > 2 and _text_encoder_null(text_encoders[2]):
+        extra_modules['text_encoder_3'] = None
+
+    text_encoder_override = 'text_encoder' in extra_modules
+    text_encoder_2_override = 'text_encoder_2' in extra_modules
+    text_encoder_3_override = 'text_encoder_3' in extra_modules
+
     if len(text_encoders) > 0 and text_encoder_override:
         text_encoders[0] = None
     if len(text_encoders) > 1 and text_encoder_2_override:
@@ -1291,15 +1312,15 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                     model_cpu_offload_member=model_cpu_offload)
 
             if not text_encoder_override and (len(text_encoder_uris) > 0) and \
-                    _text_encoder_not_null(text_encoder_uris[0]):
+                    _text_encoder_not_default(text_encoder_uris[0]):
                 creation_kwargs['text_encoder'] = load_text_encoder(
                     _uris.TorchTextEncoderUri.parse(text_encoder_uris[0]))
             if not text_encoder_2_override and (len(text_encoder_uris) > 1) and \
-                    _text_encoder_not_null(text_encoder_uris[1]):
+                    _text_encoder_not_default(text_encoder_uris[1]):
                 creation_kwargs['text_encoder_2'] = load_text_encoder(
                     _uris.TorchTextEncoderUri.parse(text_encoder_uris[1]))
             if not text_encoder_3_override and (len(text_encoder_uris) > 2) and \
-                    _text_encoder_not_null(text_encoder_uris[2]):
+                    _text_encoder_not_default(text_encoder_uris[2]):
                 creation_kwargs['text_encoder_3'] = load_text_encoder(
                     _uris.TorchTextEncoderUri.parse(text_encoder_uris[2]))
 
@@ -1390,8 +1411,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     if not safety_checker and not _enums.model_type_is_sdxl(model_type) and not safety_checker_override:
         creation_kwargs['safety_checker'] = None
 
-    if extra_modules is not None:
-        creation_kwargs.update(extra_modules)
+    creation_kwargs.update(extra_modules)
 
     if _hfutil.is_single_file_model_load(model_path):
         if subfolder is not None:
@@ -1597,7 +1617,9 @@ def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     :param unet_uri: Optional Flax specific ``--unet`` URI string for specifying a specific UNet
     :param vae_uri: Optional Flax specific ``--vae`` URI string for specifying a specific VAE
     :param control_net_uris: Optional ``--control-nets`` URI strings for specifying ControlNet models
-    :param text_encoder_uris: optional user specified ``--text-encoders`` URIs that will be loaded on to the pipeline in order
+    :param text_encoder_uris: optional user specified ``--text-encoders`` URIs that will be loaded on to the
+        pipeline in order. A uri value of ``+`` or ``None`` indicates use default, a string value of ``null``
+        indicates to explicitly not load any encoder all
     :param scheduler: Optional scheduler (sampler) class name, unqualified, or "help" to print supported values
         to STDOUT and raise :py:exc:`dgenerate.pipelinewrapper.SchedulerHelpException`
     :param safety_checker: Safety checker enabled? default is ``False``
@@ -1662,6 +1684,9 @@ def _flax_args_hasher(args):
 
         if uri.strip() == 'help':
             return 'help'
+
+        if uri.strip() == 'null':
+            return 'null'
 
         return _uris.FlaxTextEncoderUri.parse(uri)
 
@@ -1737,27 +1762,41 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     if len(text_encoder_uris) > text_encoder_count:
         raise UnsupportedPipelineConfigError('To many text encoder URIs specified.')
 
-    unet_override = extra_modules and 'unet' in extra_modules
-    vae_override = extra_modules and 'vae' in extra_modules
-    controlnet_override = extra_modules and 'controlnet' in extra_modules
-    safety_checker_override = extra_modules and 'safety_checker' in extra_modules
-    scheduler_override = extra_modules and 'scheduler' in extra_modules
-    feature_extractor_override = extra_modules and 'feature_extractor' in extra_modules
+    if extra_modules is None:
+        extra_modules = dict()
+    else:
+        extra_modules = extra_modules.copy()
 
-    if extra_modules and 'text_encoder' in extra_modules and text_encoder_count == 0:
+    unet_override = 'unet' in extra_modules
+    vae_override = 'vae' in extra_modules
+    controlnet_override = 'controlnet' in extra_modules
+    safety_checker_override = 'safety_checker' in extra_modules
+    scheduler_override = 'scheduler' in extra_modules
+    feature_extractor_override = 'feature_extractor' in extra_modules
+
+    if 'text_encoder' in extra_modules and text_encoder_count == 0:
         raise UnsupportedPipelineConfigError('To many text encoders specified.')
 
-    if extra_modules and 'text_encoder_2' in extra_modules and text_encoder_count < 2:
+    if 'text_encoder_2' in extra_modules and text_encoder_count < 2:
         raise UnsupportedPipelineConfigError('To many text encoders specified.')
 
-    if extra_modules and 'text_encoder_3' in extra_modules and text_encoder_count < 3:
+    if 'text_encoder_3' in extra_modules and text_encoder_count < 3:
         raise UnsupportedPipelineConfigError('To many text encoders specified.')
 
-    text_encoder_override = extra_modules and 'text_encoder' in extra_modules
-    text_encoder_2_override = extra_modules and 'text_encoder_2' in extra_modules
-    text_encoder_3_override = extra_modules and 'text_encoder_3' in extra_modules
+    # noinspection PyTypeChecker
+    text_encoders: list[str] = list(text_encoder_uris)
 
-    text_encoders = list(text_encoder_uris)
+    if len(text_encoders) > 0 and _text_encoder_null(text_encoders[0]):
+        extra_modules['text_encoder'] = None
+    if len(text_encoders) > 1 and _text_encoder_null(text_encoders[1]):
+        extra_modules['text_encoder_2'] = None
+    if len(text_encoders) > 2 and _text_encoder_null(text_encoders[2]):
+        extra_modules['text_encoder_3'] = None
+
+    text_encoder_override = 'text_encoder' in extra_modules
+    text_encoder_2_override = 'text_encoder_2' in extra_modules
+    text_encoder_3_override = 'text_encoder_3' in extra_modules
+
     if len(text_encoders) > 0 and text_encoder_override:
         text_encoders[0] = None
     if len(text_encoders) > 1 and text_encoder_2_override:
@@ -1813,15 +1852,15 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                     local_files_only=local_files_only)
 
             if not text_encoder_override and (len(text_encoder_uris) > 0) and \
-                    _text_encoder_not_null(text_encoder_uris[0]):
+                    _text_encoder_not_default(text_encoder_uris[0]):
                 creation_kwargs['text_encoder'], text_encoder_params = load_text_encoder(
                     _uris.FlaxTextEncoderUri.parse(text_encoder_uris[0]))
             if not text_encoder_2_override and (len(text_encoder_uris) > 1) and \
-                    _text_encoder_not_null(text_encoder_uris[1]):
+                    _text_encoder_not_default(text_encoder_uris[1]):
                 creation_kwargs['text_encoder_2'], text_encoder_2_params = load_text_encoder(
                     _uris.FlaxTextEncoderUri.parse(text_encoder_uris[1]))
             if not text_encoder_3_override and (len(text_encoder_uris) > 2) and \
-                    _text_encoder_not_null(text_encoder_uris[2]):
+                    _text_encoder_not_default(text_encoder_uris[2]):
                 creation_kwargs['text_encoder_3'], text_encoder_3_params = load_text_encoder(
                     _uris.FlaxTextEncoderUri.parse(text_encoder_uris[2]))
 
@@ -1863,8 +1902,7 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
 
         creation_kwargs['controlnet'] = control_net
 
-    if extra_modules is not None:
-        creation_kwargs.update(extra_modules)
+    creation_kwargs.update(extra_modules)
 
     if not safety_checker and not safety_checker_override:
         creation_kwargs['safety_checker'] = None

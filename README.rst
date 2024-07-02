@@ -2747,6 +2747,26 @@ repository on huggingface.
     --output-path output \
     --model-sequential-offload \
     --prompts "a horse outside a barn"
+    
+    
+You may also use the URI value ``null``, to indicate that you do not want to ever load a specific text encoder at all plugins.
+
+For instance, you can prevent Stable Diffusion 3 from loading and using the T5 encoder all together.
+
+.. code-block:: bash
+
+    dgenerate https://huggingface.co/stabilityai/stable-diffusion-3-medium/blob/main/sd3_medium_incl_clips.safetensors \
+    --model-type torch-sd3 \
+    --variant fp16 \
+    --dtype float16 \
+    --inference-steps 30 \
+    --guidance-scales 5.00 \
+    --text-encoders + + null \
+    --clip-skips 0 \
+    --gen-seeds 2 \
+    --output-path output \
+    --model-sequential-offload \
+    --prompts "a horse outside a barn"
 
 
 Prompt Weighting and Enhancement

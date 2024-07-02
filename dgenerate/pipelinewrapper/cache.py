@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import gc
+import inspect
 
 import diffusers
 
@@ -540,7 +541,15 @@ def uri_hash_with_parser(parser):
             # None gets hashed to 'None' string
             return str(path)
 
-        return _d_memoize.struct_hasher(parser(path))
+        parser_result = parser(path)
+
+        if isinstance(parser_result, str):
+            return f"{parser_result}"
+
+        if not inspect.isclass(parser_result):
+            return str(parser_result)
+
+        return _d_memoize.struct_hasher(parser_result)
 
     return hasher
 
