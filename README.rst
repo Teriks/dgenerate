@@ -2757,7 +2757,7 @@ For instance, you can prevent Stable Diffusion 3 from loading and using the T5 e
 
 .. code-block:: bash
 
-    dgenerate stabilityai/stable-diffusion-3-medium \
+    dgenerate stabilityai/stable-diffusion-3-medium-diffusers \
     --model-type torch-sd3 \
     --variant fp16 \
     --dtype float16 \
@@ -2785,7 +2785,7 @@ and using ``null`` will override it.
     # specify any of them, they are cached with the pipeline
     # as a whole
 
-    stabilityai/stable-diffusion-3-medium
+    stabilityai/stable-diffusion-3-medium-diffusers
     --model-type torch-sd3
     --variant fp16
     --dtype float16
@@ -2810,7 +2810,7 @@ and using ``null`` will override it.
     # sharing modules this way saves a significant amount 
     # of memory
 
-    stabilityai/stable-diffusion-3-medium
+    stabilityai/stable-diffusion-3-medium-diffusers
     --model-type torch-sd3
     --variant fp16
     --dtype float16
