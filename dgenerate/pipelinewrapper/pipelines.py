@@ -977,6 +977,16 @@ def _text_encoder_help(pipeline_class):
     raise ArgumentHelpException()
 
 
+def _pipeline_creation_args_debug(backend, cls, method, model, **kwargs):
+    _messages.debug_log(
+        lambda:
+        f'Creating {backend} Pipeline: {cls.__name__}.{method.__name__}("{model}", ' +
+        ', '.join(k + '=' + (v.__class__.__name__
+                             if v.__class__.__module__ != 'builtins' else str(v))
+                  for k, v in kwargs.items()) + ')')
+    return method(model, **kwargs)
+
+
 def _text_encoder_not_default(uri):
     return uri and uri != '+'
 
@@ -1418,8 +1428,11 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             raise UnsupportedPipelineConfigError(
                 'Single file model loads do not support the subfolder option.')
         try:
-            pipeline = pipeline_class.from_single_file(
-                model_path,
+            pipeline = _pipeline_creation_args_debug(
+                backend='Torch',
+                cls=pipeline_class,
+                method=pipeline_class.from_single_file,
+                model=model_path,
                 token=auth_token,
                 revision=revision,
                 variant=variant,
@@ -1443,8 +1456,11 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             raise InvalidModelFileError(e)
     else:
         try:
-            pipeline = pipeline_class.from_pretrained(
-                model_path,
+            pipeline = _pipeline_creation_args_debug(
+                backend='Torch',
+                cls=pipeline_class,
+                method=pipeline_class.from_pretrained,
+                model=model_path,
                 token=auth_token,
                 revision=revision,
                 variant=variant,
@@ -1908,8 +1924,11 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         creation_kwargs['safety_checker'] = None
 
     try:
-        pipeline, params = pipeline_class.from_pretrained(
-            model_path,
+        pipeline, params = _pipeline_creation_args_debug(
+            backend='Flax',
+            cls=pipeline_class,
+            method=pipeline_class.from_pretrained,
+            model=model_path,
             revision=revision,
             dtype=flax_dtype,
             subfolder=subfolder,
@@ -1926,8 +1945,15 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         if not feature_extractor_override:
             creation_kwargs['feature_extractor'] = None
 
-        pipeline, params = pipeline_class.from_pretrained(
-            model_path,
+        _messages.debug_log(
+            'Flax feature_extractor workaround triggered, '
+            'attempting to create pipeline again.')
+
+        pipeline, params = _pipeline_creation_args_debug(
+            backend='Flax',
+            cls=pipeline_class,
+            method=pipeline_class.from_pretrained,
+            model=model_path,
             revision=revision,
             dtype=flax_dtype,
             subfolder=subfolder,
