@@ -279,14 +279,15 @@ Help Output
                             multiple text encoders, the + symbol may be used to indicate that a default value
                             should be used for a particular text encoder, for example: --text-encoders + +
                             huggingface/encoder3. Any trailing text encoders which are not specified are given
-                            their default value. Blob links / single file loads are not supported for Text
-                            Encoders. The "revision" argument specifies the model revision to use for the Text
-                            Encoder when loading from huggingface repository, (The git branch / tag, default is
-                            "main"). The "variant" argument specifies the Text Encoder model variant, it is only
-                            supported for torch type models it is not supported for flax. If "variant" is
-                            specified when loading from a huggingface repository or folder, weights will be
-                            loaded from "variant" filename, e.g. "pytorch_model.<variant>.safetensors. "variant"
-                            defaults to the value of --variant if it is not specified in the URI. The
+                            their default value. The value "null" may be used to indicate that a specific text
+                            encoder should not be loaded Blob links / single file loads are not supported for
+                            Text Encoders. The "revision" argument specifies the model revision to use for the
+                            Text Encoder when loading from huggingface repository, (The git branch / tag,
+                            default is "main"). The "variant" argument specifies the Text Encoder model variant,
+                            it is only supported for torch type models it is not supported for flax. If
+                            "variant" is specified when loading from a huggingface repository or folder, weights
+                            will be loaded from "variant" filename, e.g. "pytorch_model.<variant>.safetensors.
+                            "variant" defaults to the value of --variant if it is not specified in the URI. The
                             "subfolder" argument specifies the UNet model subfolder, if specified when loading
                             from a huggingface repository or folder, weights from the specified subfolder. The
                             "dtype" argument specifies the Text Encoder model precision, it defaults to the
@@ -969,6 +970,7 @@ Help Output
                             Example, and default value: "text_encoder_size > (available * 0.75)" For Syntax See:
                             [https://dgenerate.readthedocs.io/en/v3.9.0/dgenerate_submodules.html#dgenerate.pipe
                             linewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS]
+
 
 
 Windows Install

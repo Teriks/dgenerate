@@ -526,6 +526,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             for example: --text-encoders + + huggingface/encoder3.  Any trailing text 
             encoders which are not specified are given their default value.
             
+            The value "null" may be used to indicate that a specific text 
+            encoder should not be loaded
+            
             Blob links / single file loads are not supported for Text Encoders.
             
             The "revision" argument specifies the model revision to use for the Text Encoder
