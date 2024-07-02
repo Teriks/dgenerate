@@ -985,7 +985,7 @@ def _format_pipeline_creation_arg(v):
         return f'"{v}"'
 
     if v.__class__.__module__ != 'builtins':
-        return v.__class__.__name__
+        return _types.class_and_id_string(v)
 
     return str(v)
 
