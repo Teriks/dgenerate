@@ -194,8 +194,11 @@ class DiffusionPipelineWrapper:
         :param vae_slicing: use VAE slicing?
         :param lora_uris: One or more LoRA URI strings
         :param textual_inversion_uris: One or more Textual Inversion URI strings
-        :param text_encoder_uris: One or more Text Encoder URIs (or "+", or None) for the main model
-        :param second_text_encoder_uris:  One or more Text Encoder URIs (or "+", or None) for the secondary model (SDXL Refiner or Stable Cascade decoder)
+        :param text_encoder_uris: One or more Text Encoder URIs
+            ("+", or None for default. Or "null" indicating do not load) for the main model
+        :param second_text_encoder_uris:  One or more Text Encoder URIs
+            ("+", or None for default. Or "null" indicating do not load) for the secondary
+            model (SDXL Refiner or Stable Cascade decoder)
         :param control_net_uris: One or more ControlNet URI strings
         :param scheduler: Scheduler URI string for the main model
         :param sdxl_refiner_uri: SDXL Refiner model URI string
