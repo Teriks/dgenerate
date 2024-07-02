@@ -2757,7 +2757,7 @@ For instance, you can prevent Stable Diffusion 3 from loading and using the T5 e
 
 .. code-block:: bash
 
-    dgenerate https://huggingface.co/stabilityai/stable-diffusion-3-medium/blob/main/sd3_medium_incl_clips.safetensors \
+    dgenerate stabilityai/stable-diffusion-3-medium \
     --model-type torch-sd3 \
     --variant fp16 \
     --dtype float16 \
