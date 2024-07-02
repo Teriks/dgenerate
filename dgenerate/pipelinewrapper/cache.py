@@ -532,6 +532,9 @@ def uri_hash_with_parser(parser):
     The URI is parsed and then the object that results from parsing is hashed with
     :py:func:`dgenerate.memoize.struct_hasher`.
 
+    If the parser returns a string, it is regarded as the hash value instead of being
+    passed to :py:func:`dgenerate.memoize.struct_hasher`.
+
     :param parser: The URI parser function
     :return: a hash function compatible with :py:func:`dgenerate.memoize.memoize`
     """
@@ -544,10 +547,8 @@ def uri_hash_with_parser(parser):
         parser_result = parser(path)
 
         if isinstance(parser_result, str):
-            return f"{parser_result}"
-
-        if not inspect.isclass(parser_result):
-            return str(parser_result)
+            # user returned string, override the hash value
+            return parser_result
 
         return _d_memoize.struct_hasher(parser_result)
 
