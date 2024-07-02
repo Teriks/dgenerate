@@ -2751,7 +2751,7 @@ repository on huggingface.
     --prompts "a horse outside a barn"
     
     
-You may also use the URI value ``null``, to indicate that you do not want to ever load a specific text encoder at all plugins.
+You may also use the URI value ``null``, to indicate that you do not want to ever load a specific text encoder at all.
 
 For instance, you can prevent Stable Diffusion 3 from loading and using the T5 encoder all together.
 
