@@ -977,13 +977,26 @@ def _text_encoder_help(pipeline_class):
     raise ArgumentHelpException()
 
 
+def _format_pipeline_creation_arg(v):
+    if isinstance(v, torch.dtype):
+        return str(v)
+
+    if isinstance(v, str):
+        return f'"{v}"'
+
+    if v.__class__.__module__ != 'builtins':
+        return v.__class__.__name__
+
+    return str(v)
+
+
 def _pipeline_creation_args_debug(backend, cls, method, model, **kwargs):
+
     _messages.debug_log(
         lambda:
-        f'Creating {backend} Pipeline: {cls.__name__}.{method.__name__}("{model}", ' +
-        ', '.join(k + '=' + (v.__class__.__name__
-                             if v.__class__.__module__ != 'builtins' else str(v))
-                  for k, v in kwargs.items()) + ')')
+        f'{backend} Pipeline Creation Call: {cls.__name__}.{method.__name__}("{model}", ' +
+        (', '.join(k + '=' + _format_pipeline_creation_arg(v) for k, v in kwargs.items())) + ')')
+
     return method(model, **kwargs)
 
 
