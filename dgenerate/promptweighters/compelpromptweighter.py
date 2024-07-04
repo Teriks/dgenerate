@@ -270,7 +270,8 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
                         compel1 = compel.Compel(
                             tokenizer=pipeline.tokenizer,
                             text_encoder=pipeline.text_encoder,
-                            returned_embeddings_type=compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
+                            returned_embeddings_type=
+                            compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
                             requires_pooled=False,
                             truncate_long_prompts=False,
                             device=device
