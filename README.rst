@@ -53,6 +53,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v3.9.0/>`_.
 * How to install
     * `Windows Install`_
     * `Linux or WSL Install`_
+    * `Google Collab Install`_
 
 * Usage Examples
     * `Basic Usage`_
@@ -1206,6 +1207,34 @@ Run ``dgenerate`` to generate images:
     --output-path output \
     --inference-steps 40 \
     --guidance-scales 10
+    
+
+Google Collab Install
+=====================
+
+The following cell entries will get you started in a Google Collab environment.
+
+Make sure you select a GPU runtime for your notebook, such as the T4 runtime.
+
+
+In the first cell install venv
+
+``!apt install python3-venv``
+
+Then create a virtual environment
+
+``!python3 -m venv venv``
+
+Then install dgenerate, you must activate the virtual environment in the same cell
+
+``!source /content/venv/bin/activate; pip install dgenerate==3.9.0 --extra-index-url https://download.pytorch.org/whl/cu121``
+
+
+Finally you can run dgenerate, you must prefix all calls to dgenerate with an activation of the virtual environment, as
+the virtual environment is not preserved between cells.  For brevity, and as an example, just print the help text here.
+
+``!source /content/venv/bin/activate; dgenerate --help``
+
 
 Basic Usage
 ===========
