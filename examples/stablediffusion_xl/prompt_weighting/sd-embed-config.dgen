@@ -12,4 +12,4 @@ stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
 --output-size 1024
 --prompt-weighter sd-embed
 --prompts "(Photo) of a (horse) standing near the (open door) of a (red barn), (high resolution:1.2); artwork"
---output-path sd-embed
+--output-path sd_embed

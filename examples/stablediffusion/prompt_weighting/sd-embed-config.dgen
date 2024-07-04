@@ -10,4 +10,4 @@ stabilityai/stable-diffusion-2
 --gen-seeds 1
 --prompt-weighter sd-embed
 --prompts "(Photo) of a (horse) standing near the (open door) of a (red barn), (high resolution:1.2); artwork"
---output-path sd-embed
+--output-path sd_embed
