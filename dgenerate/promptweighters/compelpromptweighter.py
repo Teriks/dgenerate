@@ -193,7 +193,8 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
                 f'in mode: {_enums.get_pipeline_type_string(self.pipeline_type)}')
 
         if not (pipeline.__class__.__name__.startswith('StableDiffusionXL')
-                or pipeline.__class__.__name__.startswith('StableDiffusion')):
+                or pipeline.__class__.__name__.startswith('StableDiffusion')) or \
+                _enums.model_type_is_sd3(self.model_type):
             raise _exceptions.PromptWeightingUnsupported(
                 f'Prompt weighting not supported for --model-type: {_enums.get_model_type_string(self.model_type)}, '
                 f'in mode: {_enums.get_pipeline_type_string(self.pipeline_type)}')
