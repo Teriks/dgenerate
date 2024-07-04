@@ -475,7 +475,8 @@ def _disable_to(module):
         pass
 
     module.to = dummy
-    _messages.debug_log(f'Disabled .to() on meta tensor: {_types.fullname(module)}')
+    _messages.debug_log(
+        f'Disabled .to() on module / model containing meta tensors: {_types.fullname(module)}')
 
 
 def enable_sequential_cpu_offload(pipeline: diffusers.DiffusionPipeline,
@@ -655,6 +656,14 @@ def pipeline_to(pipeline, device: torch.device | str | None):
         value.to(device)
 
 
+def _call_args_debug_transformer(key, value):
+    if isinstance(value, torch.Generator):
+        return f'torch.Generator(seed={value.initial_seed()})'
+    if isinstance(value, torch.Tensor):
+        return f'torch.Tensor({value.shape})'
+    return value
+
+
 _LAST_CALLED_PIPELINE = None
 
 
@@ -678,24 +687,56 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
         this argument is ignored.
 
     :param kwargs: diffusers pipeline keyword arguments
+
+    :raise UnsupportedPipelineConfiguration:
+        If the pipeline is missing certain required modules, such as text encoders.
+
     :return: the result of calling the diffusers pipeline
     """
 
     global _LAST_CALLED_PIPELINE
 
-    _messages.debug_log(f'Calling Pipeline: "{pipeline.__class__.__name__}",',
-                        f'Device: "{device}",',
-                        'Args:',
-                        lambda: _textprocessing.debug_format_args(kwargs,
-                                                                  value_transformer=lambda key, value:
-                                                                  f'torch.Generator(seed={value.initial_seed()})'
-                                                                  if isinstance(value, torch.Generator) else value))
+    _messages.debug_log(
+        f'Calling Pipeline: "{pipeline.__class__.__name__}",',
+        f'Device: "{device}",',
+        'Args:',
+        lambda: _textprocessing.debug_format_args(
+            kwargs, value_transformer=_call_args_debug_transformer))
+
+    def _call(args):
+        try:
+            return pipeline(**args)
+        except TypeError as e:
+            null_call_name = _types.get_null_call_name(e)
+            if null_call_name:
+                raise UnsupportedPipelineConfigError(
+                    'Missing pipeline module?, cannot call: ' + null_call_name)
+            raise
+        except AttributeError as e:
+            null_attr_name = _types.get_null_attr_name(e)
+            if null_attr_name:
+                raise UnsupportedPipelineConfigError(
+                    'Missing pipeline module?, cannot access: ' + null_attr_name)
+            raise
+
+    def _call_prompt_weighter():
+        translated = prompt_weighter.translate_to_embeds(pipeline, device, kwargs)
+
+        def _debug_string_func():
+            return f'{prompt_weighter.__class__.__name__} translated pipeline call args to: ' + \
+                _textprocessing.debug_format_args(
+                    translated,
+                    value_transformer=_call_args_debug_transformer)
+
+        _messages.debug_log(_debug_string_func)
+
+        return translated
 
     if pipeline is _LAST_CALLED_PIPELINE:
         if prompt_weighter is None:
-            return pipeline(**kwargs)
+            return _call(kwargs)
         else:
-            result = pipeline(**prompt_weighter.translate_to_embeds(pipeline, device, kwargs))
+            result = _call(_call_prompt_weighter())
             prompt_weighter.cleanup()
             return result
 
@@ -711,9 +752,9 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
     pipeline_to(pipeline, device)
 
     if prompt_weighter is None:
-        result = pipeline(**kwargs)
+        result = _call(kwargs)
     else:
-        result = pipeline(**prompt_weighter.translate_to_embeds(pipeline, device, kwargs))
+        result = _call(_call_prompt_weighter())
         prompt_weighter.cleanup()
 
     _LAST_CALLED_PIPELINE = pipeline
@@ -991,7 +1032,6 @@ def _format_pipeline_creation_arg(v):
 
 
 def _pipeline_creation_args_debug(backend, cls, method, model, **kwargs):
-
     _messages.debug_log(
         lambda:
         f'{backend} Pipeline Creation Call: {cls.__name__}.{method.__name__}("{model}", ' +
@@ -1238,7 +1278,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             _messages.debug_log(f'Checking extra module {module[0]} = {module[1].__class__}...')
             try:
                 if get_torch_device(module[1]).type == 'meta':
-                    _messages.debug_log(f'"{module[0]}" is a meta tensor.')
+                    _messages.debug_log(f'"{module[0]}" has meta tensors.')
                     _disable_to(module[1])
             except ValueError:
                 _messages.debug_log(

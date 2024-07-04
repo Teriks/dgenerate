@@ -233,14 +233,6 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
                 'negative_pooled_prompt_embeds': neg_pooled,
             })
 
-        def debug_string():
-            debug_args = ", ".join(
-                f"{k}={v if not isinstance(v, torch.Tensor) else f'torch.Tensor({v.shape})'}" for k, v in
-                output.items())
-            return 'SdEmbedPromptWeighter translated pipeline args: {' + debug_args + '}'
-
-        _messages.debug_log(debug_string)
-
         return output
 
     def cleanup(self):

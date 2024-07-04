@@ -25,6 +25,6 @@ https://huggingface.co/stabilityai/stable-diffusion-3-medium/blob/main/sd3_mediu
     T5EncoderModel;model=stabilityai/stable-diffusion-3-medium-diffusers;subfolder=text_encoder_3 \
 --clip-skips 0
 --gen-seeds 2
---output-path output
+--output-path specify_encoders
 --model-sequential-offload
 --prompts "a horse outside a barn"
