@@ -102,8 +102,7 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
                 or pipeline.__class__.__name__.startswith('StableDiffusion')
                 or pipeline.__class__.__name__.startswith('StableDiffusion3')):
             raise _exceptions.PromptWeightingUnsupported(
-                f'Prompt weighting not supported for --model-type: {_enums.get_model_type_string(self.model_type)}, '
-                f'in mode: {_enums.get_pipeline_type_string(self.pipeline_type)}')
+                f'Prompt weighting not supported for --model-type: {_enums.get_model_type_string(self.model_type)}')
 
         output = dict(args)
 
