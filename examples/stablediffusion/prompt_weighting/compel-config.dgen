@@ -19,4 +19,4 @@ stabilityai/stable-diffusion-2
 --gen-seeds 1
 --prompt-weighter compel;syntax=sdwui
 --prompts "(Photo) of a (horse) standing near the (open door) of a (red barn), (high resolution:1.2); artwork"
---output-path compel
+--output-path compel_sdwui
