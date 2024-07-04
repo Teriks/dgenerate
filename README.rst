@@ -53,7 +53,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v3.9.0/>`_.
 * How to install
     * `Windows Install`_
     * `Linux or WSL Install`_
-    * `Google Collab Install`_
+    * `Google Colab Install`_
 
 * Usage Examples
     * `Basic Usage`_
@@ -1209,8 +1209,8 @@ Run ``dgenerate`` to generate images:
     --guidance-scales 10
     
 
-Google Collab Install
-=====================
+Google Colab Install
+====================
 
 The following cell entries will get you started in a Google Collab environment.
 
