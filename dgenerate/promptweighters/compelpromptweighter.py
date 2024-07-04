@@ -220,16 +220,16 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
         if self._syntax == 'sdwui':
             if positive:
                 positive = _translate_sdwui_to_compel(positive)
-                _messages.log(f'Positive prompt translated to compel: "{positive}"')
+                _messages.debug_log(f'Positive prompt translated to compel: "{positive}"')
             if negative:
                 negative = _translate_sdwui_to_compel(negative)
-                _messages.log(f'Negative prompt translated to compel: "{negative}"')
+                _messages.debug_log(f'Negative prompt translated to compel: "{negative}"')
             if positive_2:
                 positive_2 = _translate_sdwui_to_compel(positive_2)
-                _messages.log(f'Positive prompt 2 translated to compel: "{positive_2}"')
+                _messages.debug_log(f'Positive prompt 2 translated to compel: "{positive_2}"')
             if negative_2:
                 negative_2 = _translate_sdwui_to_compel(negative_2)
-                _messages.log(f'Negative prompt 2 translated to compel: "{negative_2}"')
+                _messages.debug_log(f'Negative prompt 2 translated to compel: "{negative_2}"')
 
         if hasattr(pipeline, 'maybe_convert_prompt'):
             # support refiner, which only has tokenizer_2
