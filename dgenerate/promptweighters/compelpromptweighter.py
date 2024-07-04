@@ -332,20 +332,39 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
                     [pos_conditioning, neg_conditioning])
 
         elif pipeline.__class__.__name__.startswith('StableDiffusion'):
-            compel1 = compel.Compel(
-                tokenizer=pipeline.tokenizer,
-                text_encoder=pipeline.text_encoder,
-                truncate_long_prompts=False,
-                returned_embeddings_type=
-                compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NORMALIZED
-                if args.get('clip_skip', 0) > 0 and pipeline.text_encoder.hidden_act == 'quick_gelu'
-                else compel.ReturnedEmbeddingsType.LAST_HIDDEN_STATES_NORMALIZED,
-                device=device)
+            clip_skip = args.get('clip_skip')
 
-            torch.cuda.empty_cache()
+            embedding_type = \
+                compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NORMALIZED \
+                if clip_skip > 0 and pipeline.text_encoder.config.hidden_act == 'quick_gelu'\
+                else compel.ReturnedEmbeddingsType.LAST_HIDDEN_STATES_NORMALIZED
 
-            pos_conditioning = compel1(positive)
-            neg_conditioning = compel1(negative)
+            _messages.debug_log('Compel Clip Skip:', args.get('clip_skip', 0))
+            _messages.debug_log('Compel text_encoder.config.hidden_act:', pipeline.text_encoder.config.hidden_act)
+            _messages.debug_log('Compel Embedding Type:', embedding_type)
+
+            original_clip_layers = pipeline.text_encoder.text_model.encoder.layers
+
+            try:
+                if clip_skip > 0:
+                    pipeline.text_encoder.text_model.encoder.layers = original_clip_layers[:-clip_skip]
+
+                compel1 = compel.Compel(
+                    tokenizer=pipeline.tokenizer,
+                    text_encoder=pipeline.text_encoder,
+                    truncate_long_prompts=False,
+                    returned_embeddings_type=embedding_type,
+                    device=device)
+
+                torch.cuda.empty_cache()
+
+                pos_conditioning = compel1(positive)
+                neg_conditioning = compel1(negative)
+
+            finally:
+                # leaving this modified would really
+                # screw up other stuff in dgenerate :)
+                pipeline.text_encoder.text_model.encoder.layers = original_clip_layers
 
             pos_conditioning, neg_conditioning = compel1.pad_conditioning_tensors_to_same_length(
                 [pos_conditioning, neg_conditioning])
