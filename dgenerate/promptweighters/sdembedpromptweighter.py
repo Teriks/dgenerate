@@ -60,6 +60,9 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
     The secondary prompt option for SDXL --sdxl-second-prompts is supported by this prompt weighter
     implementation. However, --sdxl-refiner-second-prompts is not supported and will be ignored
     with a warning message.
+
+    The secondary prompt option for SD3 --sd3-second-prompts is not supported by this prompt weighter
+    implementation.  Neither is --sd3-third-prompts. The prompts from these arguments will be ignored.
     """
 
     NAMES = ['sd-embed']
@@ -112,6 +115,12 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
         positive_2 = args.get('prompt_2')
         negative_2 = args.get('negative_prompt_2')
 
+        if args.get('prompt_3') or args.get('negative_prompt_3'):
+            _messages.log(
+                f'Prompt weighting is not supported by --prompt-weighter '
+                f'"sd-embed" for --sd3-third-prompts, that prompt is being ignored.',
+                level=_messages.WARNING)
+
         prompt_args = re.compile(r'^(prompt|negative_prompt)(_\d+)?$')
 
         for name in args.keys():
@@ -145,6 +154,12 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
         neg_pooled = None
 
         if pipeline.__class__.__name__.startswith('StableDiffusion3'):
+
+            if positive_2 or negative_2:
+                _messages.log(
+                    f'Prompt weighting is not supported by --prompt-weighter '
+                    f'"sd-embed" for --sd3-second-prompts, that prompt is being ignored.',
+                    level=_messages.WARNING)
 
             pos_conditioning, \
                 neg_conditioning, \

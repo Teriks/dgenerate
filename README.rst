@@ -3056,6 +3056,9 @@ as the ``compel`` prompt weighter currently does not.
         The secondary prompt option for SDXL --sdxl-second-prompts is supported by this prompt weighter
         implementation. However, --sdxl-refiner-second-prompts is not supported and will be ignored with
         a warning message.
+        
+        The secondary prompt option for SD3 --sd3-second-prompts is not supported by this prompt weighter
+        implementation.  Neither is --sd3-third-prompts. The prompts from these arguments will be ignored.
 
     ====================================================================================================
 
