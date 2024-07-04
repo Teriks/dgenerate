@@ -1,0 +1,28 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.9.0
+
+stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
+--variant fp16 --dtype float16
+--sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
+--sdxl-high-noise-fractions 0.8
+--inference-steps 40
+--gen-seeds 1
+--output-size 1024
+--prompt-weighter compel
+--prompts "Photo+ of a horse+ standing near the (open door)+ of a (red barn)+, (high resolution)++; artwork"
+--sdxl-second-prompts "In the style of (picasso)1.3"
+--output-path compel
+
+# Translate our prompt into compel from Stable Diffusion Web UI syntax
+
+stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
+--variant fp16 --dtype float16
+--sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
+--sdxl-high-noise-fractions 0.8
+--inference-steps 40
+--gen-seeds 1
+--output-size 1024
+--prompt-weighter compel;syntax=sdwui
+--prompts "(Photo) of a (horse) standing near the (open door) of a (red barn), (high resolution:1.2); artwork"
+--sdxl-second-prompts "In the style of (picasso:1.3)"
+--output-path compel_sdwui
