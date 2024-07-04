@@ -18,9 +18,12 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import ast
 import collections.abc
 import inspect
 import itertools
+import os.path
+import traceback
 import types
 import typing
 
@@ -540,3 +543,216 @@ def format_function_signature(func: typing.Callable,
         name = alternate_name
 
     return f"{name}({', '.join(param_strs)}){return_type_str}"
+
+
+def get_null_call_name(e):
+    """
+    If a ``TypeError`` occurred due to calling a ``NoneType`` value, get the exact
+    name of the value (variable ID) that was ``None``
+
+    For the most accurate result, sources must be present. If sources are not
+    present the line of code where the issue occurred is returned instead.
+
+    :param e: The exception
+    :return: Name or ``None`` if not found.
+    """
+
+    if "'NoneType' object is not callable" not in str(e):
+        return None
+
+    class FunctionCallVisitor(ast.NodeVisitor):
+        def __init__(self):
+            self.calls = []
+
+        def visit_Call(self, node):
+            if isinstance(node.func, ast.Name):
+                self.calls.append(node.func.id)
+            elif isinstance(node.func, ast.Attribute):
+                self.calls.append(self._get_full_attr_name(node.func))
+            self.generic_visit(node)
+
+        def _get_full_attr_name(self, node):
+            if isinstance(node, ast.Attribute):
+                return self._get_full_attr_name(node.value) + '.' + node.attr
+            elif isinstance(node, ast.Name):
+                return node.id
+            else:
+                return ''
+
+    tb = traceback.extract_tb(e.__traceback__)
+
+    # Extract the last frame from the traceback
+    offending_frame_info = tb[-1]
+    file_name, line_number, function_name, text = offending_frame_info
+
+    # Initialize variables for reading the code
+    code_lines = []
+    current_line = 0
+
+    if not os.path.exists(file_name):
+        return text.strip()
+
+    with open(file_name, 'r') as file:
+        for line in file:
+            current_line += 1
+            if current_line >= line_number:
+                indent = len(line) - len(line.lstrip())
+                code_lines.append(line[indent:])
+                break
+
+        # Continuously get more lines until the AST can be parsed
+        while True:
+            try:
+                code = ''.join(code_lines)
+                tree = ast.parse(code, mode='exec')
+                break
+            except SyntaxError:
+                next_line = next(file, None)
+                if next_line is None:
+                    return None
+                code_lines.append(next_line[indent:])
+
+    # Use inspect to get the current frame
+    current_frame = None
+    for frame_info in inspect.trace():
+        if frame_info.frame.f_code.co_filename == file_name and frame_info.lineno == line_number:
+            current_frame = frame_info.frame
+            break
+
+    if current_frame is None:
+        # If direct match doesn't work, try finding a frame close to the line number
+        for frame_info in inspect.trace():
+            if frame_info.frame.f_code.co_filename == file_name and frame_info.lineno >= line_number - 1:
+                current_frame = frame_info.frame
+                break
+
+    if current_frame:
+        local_variables = current_frame.f_locals
+
+        visitor = FunctionCallVisitor()
+        visitor.visit(tree)
+        function_calls = visitor.calls
+
+        # Check which function calls are None
+        for func in function_calls:
+            parts = func.split('.')
+            if len(parts) == 1:
+                if func in local_variables and local_variables[func] is None:
+                    return func
+            else:
+                # Method or attribute call
+                base = parts[0]
+                if base in local_variables:
+                    base_obj = local_variables[base]
+                    for part in parts[1:]:
+                        if base_obj is None:
+                            return f"{base}.{part}"
+                        base_obj = getattr(base_obj, part, None)
+                        if base_obj is None:
+                            return f"{base}.{part}"
+
+    return None
+
+
+def get_null_attr_name(e):
+    """
+    If an ``AttributeError`` occurred due to accessing an attribute of a ``NoneType`` value, 
+    get the exact name of the value (variable ID) that was ``None``.
+
+    For the most accurate result, sources must be present. If sources are not
+    present the line of code where the issue occurred is returned instead.
+
+    :param e: The exception
+    :return: Name or ``None`` if not found.
+    """
+
+    if "'NoneType' object has no attribute" not in str(e):
+        return None
+
+    class AttributeAccessVisitor(ast.NodeVisitor):
+        def __init__(self):
+            self.attributes = []
+
+        def visit_Attribute(self, node):
+            self.attributes.append(self._get_full_attr_name(node))
+            self.generic_visit(node)
+
+        def _get_full_attr_name(self, node):
+            if isinstance(node, ast.Attribute):
+                return self._get_full_attr_name(node.value) + '.' + node.attr
+            elif isinstance(node, ast.Name):
+                return node.id
+            else:
+                return ''
+
+    tb = traceback.extract_tb(e.__traceback__)
+
+    # Extract the last frame from the traceback
+    offending_frame_info = tb[-1]
+    file_name, line_number, function_name, text = offending_frame_info
+
+    # Initialize variables for reading the code
+    code_lines = []
+    current_line = 0
+
+    if not os.path.exists(file_name):
+        return text.strip()
+
+    with open(file_name, 'r') as file:
+        for line in file:
+            current_line += 1
+            if current_line >= line_number:
+                indent = len(line) - len(line.lstrip())
+                code_lines.append(line[indent:])
+                break
+
+        # Continuously get more lines until the AST can be parsed
+        while True:
+            try:
+                code = ''.join(code_lines)
+                tree = ast.parse(code, mode='exec')
+                break
+            except SyntaxError:
+                next_line = next(file, None)
+                if next_line is None:
+                    return None
+                code_lines.append(next_line[indent:])
+
+    # Use inspect to get the current frame
+    current_frame = None
+    for frame_info in inspect.trace():
+        if frame_info.frame.f_code.co_filename == file_name and frame_info.lineno == line_number:
+            current_frame = frame_info.frame
+            break
+
+    if current_frame is None:
+        # If direct match doesn't work, try finding a frame close to the line number
+        for frame_info in inspect.trace():
+            if frame_info.frame.f_code.co_filename == file_name and frame_info.lineno >= line_number - 1:
+                current_frame = frame_info.frame
+                break
+
+    if current_frame:
+        local_variables = current_frame.f_locals
+
+        visitor = AttributeAccessVisitor()
+        visitor.visit(tree)
+        attribute_accesses = visitor.attributes
+
+        # Check which base object of attribute accesses is None
+        for attr in attribute_accesses:
+            parts = attr.split('.')
+            base = parts[0]
+            if base in local_variables:
+                base_obj = local_variables[base]
+                if base_obj is None:
+                    return base
+                # Check if any nested attribute access leads to None
+                for part in parts[1:]:
+                    if base_obj is None:
+                        return base
+                    base_obj = getattr(base_obj, part, None)
+                    if base_obj is None:
+                        return f"{base}.{part}"
+
+    return None

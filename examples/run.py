@@ -108,7 +108,7 @@ for config in configs:
     if 'deepfloyd' in c:
         if known_args.skip_deepfloyd:
             log(f'SKIPPING DEEPFLOYD: {config}')
-        continue
+            continue
 
     extra_args = []
     if known_args.short_animations and 'animation' in c:
