@@ -29,15 +29,27 @@ Library logging / informational output.
 """
 
 LEVEL = 0
-"""Current Log Level (set-able)"""
+"""
+Current Log Level (set-able)
 
-INFO = 0
+Setting to INFO means print all messages except DEBUG messages.
+
+Setting to ERROR means only print ERROR messages.
+
+Setting to WARNING means only print WARNING messages.
+
+Setting to DEBUG means print every message.
+
+Levels are a bitfield, so you can set: ``LEVEL = WARNING | ERROR`` etc.
+"""
+
+INFO = 1
 """Log level INFO"""
-WARNING = 1
+WARNING = 2
 """Log Level WARNING"""
-ERROR = 2
+ERROR = 4
 """Log Level ERROR"""
-DEBUG = 3
+DEBUG = 8
 """Log Level DEBUG"""
 
 _ERROR_FILE = sys.stderr
@@ -167,9 +179,19 @@ def log(*args: typing.Any, level=INFO, underline=False, underline_char='='):
 
     file = _ERROR_FILE if level == ERROR else _MESSAGE_FILE
 
-    if level != INFO and LEVEL == INFO:
-        if level != ERROR and level != WARNING:
-            return
+    allowed = set()
+
+    if LEVEL & INFO:
+        allowed.update({INFO, ERROR, WARNING})
+    if LEVEL & ERROR:
+        allowed.update({ERROR})
+    if LEVEL & WARNING:
+        allowed.update({WARNING})
+    if LEVEL & DEBUG:
+        allowed.update({INFO, ERROR, WARNING, DEBUG})
+
+    if level not in allowed:
+        return
 
     prefix = ''
     if level == DEBUG:
