@@ -4130,7 +4130,7 @@ The following is output from ``\functions_help`` showing every implemented templ
     Available config template functions:
     
         abs(args, kwargs)
-        align_size(size: str | tuple, align: int, format_size: bool = True)
+        align_size(size: str | tuple, align: int, format_size: bool = True) -> str | tuple
         all(args, kwargs)
         any(args, kwargs)
         ascii(args, kwargs)
@@ -4173,15 +4173,15 @@ The following is output from ``\functions_help`` showing every implemented templ
         oct(args, kwargs)
         ord(args, kwargs)
         pow(args, kwargs)
-        pow2_size(size: str | tuple, format_size: bool = True)
+        pow2_size(size: str | tuple, format_size: bool = True) -> str | tuple
         quote(strings: str | collections.abc.Iterable[typing.Any]) -> str
         range(args, kwargs)
         repr(args, kwargs)
         reversed(args, kwargs)
         round(args, kwargs)
         set(args, kwargs)
-        size_is_aligned(size: str | tuple, align: int)
-        size_is_pow2(size: str | tuple)
+        size_is_aligned(size: str | tuple, align: int) -> bool
+        size_is_pow2(size: str | tuple) -> bool
         slice(args, kwargs)
         sorted(args, kwargs)
         str(args, kwargs)

@@ -302,7 +302,7 @@ def _download(url: str,
     return file_path
 
 
-def _align_size(size: str | tuple, align: int, format_size: bool = True):
+def _align_size(size: str | tuple, align: int, format_size: bool = True) -> str | tuple:
     """
     Align a string dimension such as "700x700", or a tuple dimension such as (700, 700) to a
     specific alignment value ("align") and format the result to a string dimension recognized by dgenerate.
@@ -329,7 +329,7 @@ def _align_size(size: str | tuple, align: int, format_size: bool = True):
     return _textprocessing.format_size(aligned)
 
 
-def _pow2_size(size: str | tuple, format_size: bool = True):
+def _pow2_size(size: str | tuple, format_size: bool = True) -> str | tuple:
     """
     Round a string dimension such as "700x700", or a tuple dimension such as (700, 700) to
     the nearest power of 2 and format the result to a string dimension recognized by dgenerate.
@@ -353,7 +353,7 @@ def _pow2_size(size: str | tuple, format_size: bool = True):
     return _textprocessing.format_size(aligned)
 
 
-def _size_is_aligned(size: str | tuple, align: int):
+def _size_is_aligned(size: str | tuple, align: int) -> bool:
     """
     Check if a string dimension such as "700x700", or a tuple dimension such as (700, 700)
     is aligned to a specific ("align") value. Returns True or False.
@@ -373,7 +373,7 @@ def _size_is_aligned(size: str | tuple, align: int):
     return aligned
 
 
-def _size_is_pow2(size: str | tuple):
+def _size_is_pow2(size: str | tuple) -> bool:
     """
     Check if a string dimension such as "700x700", or a tuple dimension such as (700, 700)
     is a power of 2 dimension. Returns True or False.
