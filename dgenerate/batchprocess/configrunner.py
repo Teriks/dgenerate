@@ -309,7 +309,7 @@ def _align_size(size: str | tuple, align: int, format_size: bool = True):
 
     This function expects a string with the format WIDTHxHEIGHT, or just WIDTH, or a tuple of dimensions.
 
-    It returns a string in the same format with the dimension aligned to 
+    It returns a string in the same format with the dimension aligned to
     the specified amount, unless "format_size" is False, in which case it will
     return a tuple.
     """
