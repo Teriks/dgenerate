@@ -968,7 +968,7 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     :param vae_uri: Optional ``--vae`` URI string for specifying a specific VAE
     :param lora_uris: Optional ``--loras`` URI strings for specifying LoRA weights
     :param textual_inversion_uris: Optional ``--textual-inversions`` URI strings for specifying Textual Inversion weights
-    :param text_encoder_uris: optional user specified ``--text-encoders`` URIs that will be loaded on to the
+    :param text_encoder_uris: Optional user specified ``--text-encoders`` URIs that will be loaded on to the
         pipeline in order. A uri value of ``+`` or ``None`` indicates use default, a string value of ``null``
         indicates to explicitly not load any encoder all
     :param control_net_uris: Optional ``--control-nets`` URI strings for specifying ControlNet models
@@ -1743,7 +1743,7 @@ def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     :param unet_uri: Optional Flax specific ``--unet`` URI string for specifying a specific UNet
     :param vae_uri: Optional Flax specific ``--vae`` URI string for specifying a specific VAE
     :param control_net_uris: Optional ``--control-nets`` URI strings for specifying ControlNet models
-    :param text_encoder_uris: optional user specified ``--text-encoders`` URIs that will be loaded on to the
+    :param text_encoder_uris: Optional user specified ``--text-encoders`` URIs that will be loaded on to the
         pipeline in order. A uri value of ``+`` or ``None`` indicates use default, a string value of ``null``
         indicates to explicitly not load any encoder all
     :param scheduler: Optional scheduler (sampler) class name, unqualified, or "help" to print supported values
