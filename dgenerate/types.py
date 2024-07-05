@@ -656,7 +656,7 @@ def get_null_call_name(e):
 
 def get_null_attr_name(e):
     """
-    If an ``AttributeError`` occurred due to accessing an attribute of a ``NoneType`` value, 
+    If an ``AttributeError`` occurred due to accessing an attribute of a ``NoneType`` value,
     get the exact name of the value (variable ID) that was ``None``.
 
     For the most accurate result, sources must be present. If sources are not
