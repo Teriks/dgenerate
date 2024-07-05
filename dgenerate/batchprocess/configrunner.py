@@ -353,6 +353,44 @@ def _pow2_size(size: str | tuple, format_size=True):
     return _textprocessing.format_size(aligned)
 
 
+def _size_is_aligned(size: str | tuple, align):
+    """
+    Check if a string dimension such as "700x700", or a tuple dimension such as (700, 700)
+    is aligned to a specific ("align") value. Returns True or False.
+
+    This function expects a string with the format WIDTHxHEIGHT, or just WIDTH, or a tuple of dimensions.
+    """
+    if align < 1:
+        raise ValueError('Argument "align" of size_is_aligned may not be less than 1.')
+
+    if isinstance(size, str):
+        aligned = _image.is_aligned(_textprocessing.parse_dimensions(size), align)
+    elif isinstance(size, tuple):
+        aligned = _image.is_aligned(size, align)
+    else:
+        raise ValueError('Unsupported type passed to size_is_aligned.')
+
+    return aligned
+
+
+def _size_is_pow2(size: str | tuple):
+    """
+    Check if a string dimension such as "700x700", or a tuple dimension such as (700, 700)
+    is a power of 2 dimension. Returns True or False.
+
+    This function expects a string with the format WIDTHxHEIGHT, or just WIDTH, or a tuple of dimensions.
+    """
+
+    if isinstance(size, str):
+        aligned = _image.is_power_of_two(_textprocessing.parse_dimensions(size))
+    elif isinstance(size, tuple):
+        aligned = _image.is_power_of_two(size)
+    else:
+        raise ValueError('Unsupported type passed to size_is_pow2.')
+
+    return aligned
+
+
 class ConfigRunner(_batchprocessor.BatchProcessor):
     """
     A :py:class:`.BatchProcessor` that can run dgenerate batch processing configs from a string or file.
@@ -439,6 +477,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'format_size': _format_size,
             'align_size': _align_size,
             'pow2_size': _pow2_size,
+            'size_is_aligned': _size_is_aligned,
+            'size_is_pow2': _size_is_pow2,
             'format_model_type': _format_model_type,
             'format_dtype': _format_dtype,
             'last': _last,
