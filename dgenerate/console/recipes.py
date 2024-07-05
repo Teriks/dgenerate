@@ -36,7 +36,7 @@ RECIPES = {
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
         @string[{"label":"Output Size", "arg":"--output-size", "default":"512x512"}]
         @device[{}]
-        @promptweighter[{}]
+        @dropdown[{"arg":"--prompt-weighter", "options":"compel,compel;syntax=sdwui,sd-embed"}]
         --prompts "add your prompt here"
         """,
     "Stable Diffusion 3":
@@ -64,7 +64,7 @@ RECIPES = {
         @string[{"label":"Output Size", "arg":"--output-size", "default":"1024x1024"}]
         --model-sequential-offload
         @device[{}]
-        @promptweighter[{}]
+        @dropdown[{"arg":"--prompt-weighter", "options":"sd-embed"}]
         --prompts "add your prompt here"
         """,
     "Stable Diffusion XL":
@@ -90,7 +90,7 @@ RECIPES = {
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
         @string[{"label":"Output Size", "arg":"--output-size", "default":"1024x1024"}]
         @device[{}]
-        @promptweighter[{}]
+        @dropdown[{"arg":"--prompt-weighter", "options":"compel,compel;syntax=sdwui,sd-embed"}]
         --prompts "add your prompt here"
         """,
     "Stable Diffusion XL (no refiner)":
@@ -112,7 +112,7 @@ RECIPES = {
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
         @string[{"label":"Output Size", "arg":"--output-size", "default":"1024x1024"}]
         @device[{}]
-        @promptweighter[{}]
+        @dropdown[{"arg":"--prompt-weighter", "options":"compel,compel;syntax=sdwui,sd-embed"}]
         --prompts "add your prompt here"
         """,
     "Stable Diffusion XL (LCM UNet no refiner)":
@@ -135,7 +135,7 @@ RECIPES = {
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
         @string[{"label":"Output Size", "arg":"--output-size", "default":"1024x1024"}]
         @device[{}]
-        @promptweighter[{}]
+        @dropdown[{"arg":"--prompt-weighter", "options":"compel,compel;syntax=sdwui,sd-embed"}]
         --prompts "add your prompt here"
         """,
     "Stable Diffusion XL (LCM UNet cooperative refiner)":
@@ -163,7 +163,7 @@ RECIPES = {
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
         @string[{"label":"Output Size", "arg":"--output-size", "default":"1024x1024"}]
         @device[{}]
-        @promptweighter[{}]
+        @dropdown[{"arg":"--prompt-weighter", "options":"compel,compel;syntax=sdwui,sd-embed"}]
         --prompts "add your prompt here"
         """,
     "Stable Diffusion XL (LCM UNet refiner edit mode)":
@@ -192,7 +192,7 @@ RECIPES = {
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
         @string[{"label":"Output Size", "arg":"--output-size", "default":"1024x1024"}]
         @device[{}]
-        @promptweighter[{}]
+        @dropdown[{"arg":"--prompt-weighter", "options":"compel,compel;syntax=sdwui,sd-embed"}]
         --prompts "add your prompt here"
         """,
     "Stable Diffusion XL (LCM LoRA no refiner)":
@@ -215,7 +215,7 @@ RECIPES = {
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
         @string[{"label":"Output Size", "arg":"--output-size", "default":"1024x1024"}]
         @device[{}]
-        @promptweighter[{}]
+        @dropdown[{"arg":"--prompt-weighter", "options":"compel,compel;syntax=sdwui,sd-embed"}]
         --prompts "add your prompt here"
         """,
     "Stable Diffusion XL (LCM LoRA cooperative refiner)":
@@ -243,7 +243,7 @@ RECIPES = {
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
         @string[{"label":"Output Size", "arg":"--output-size", "default":"1024x1024"}]
         @device[{}]
-        @promptweighter[{}]
+        @dropdown[{"arg":"--prompt-weighter", "options":"compel,compel;syntax=sdwui,sd-embed"}]
         --prompts "add your prompt here"
         """,
     "Stable Diffusion XL (LCM LoRA refiner edit mode)":
@@ -272,7 +272,7 @@ RECIPES = {
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
         @string[{"label":"Output Size", "arg":"--output-size", "default":"1024x1024"}]
         @device[{}]
-        @promptweighter[{}]
+        @dropdown[{"arg":"--prompt-weighter", "options":"compel,compel;syntax=sdwui,sd-embed"}]
         --prompts "add your prompt here"
         """,
     "Deep Floyd": r"""

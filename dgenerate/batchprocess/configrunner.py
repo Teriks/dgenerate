@@ -46,16 +46,17 @@ import dgenerate.batchprocess.batchprocessor as _batchprocessor
 import dgenerate.batchprocess.configrunnerpluginloader as _configrunnerpluginloader
 import dgenerate.batchprocess.util as _util
 import dgenerate.files as _files
+import dgenerate.image as _image
 import dgenerate.invoker as _invoker
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
+import dgenerate.plugin as _plugin
 import dgenerate.prompt as _prompt
 import dgenerate.renderloop as _renderloop
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 import dgenerate.webcache as _webcache
-import dgenerate.plugin as _plugin
 
 
 def _format_prompt_single(prompt):
@@ -301,6 +302,57 @@ def _download(url: str,
     return file_path
 
 
+def _align_size(size: str | tuple, align, format_size=True):
+    """
+    Align a string dimension such as "700x700", or a tuple dimension such as (700, 700) to a
+    specific alignment value ("align") and format the result to a string dimension recognized by dgenerate.
+
+    This function expects a string with the format WIDTHxHEIGHT, or just WIDTH, or a tuple of dimensions.
+
+    It returns a string in the same format with the dimension aligned to 
+    the specified amount, unless "format_size" is False, in which case it will
+    return a tuple.
+    """
+    if align < 1:
+        raise ValueError('Argument "align" of align_size may not be less than 1.')
+
+    if isinstance(size, str):
+        aligned = _image.align_by(_textprocessing.parse_dimensions(size), align)
+    elif isinstance(size, tuple):
+        aligned = _image.align_by(size, align)
+    else:
+        raise ValueError('Unsupported type passed to align_size.')
+
+    if not format_size:
+        return aligned
+
+    return _textprocessing.format_size(aligned)
+
+
+def _pow2_size(size: str | tuple, format_size=True):
+    """
+    Align a string dimension such as "700x700", or a tuple dimension such as (700, 700) to
+    the nearest power of 2 and format the result to a string dimension recognized by dgenerate.
+
+    This function expects a string with the format WIDTHxHEIGHT, or just WIDTH, or a tuple of dimensions.
+
+    It returns a string in the same format with the dimension aligned to
+    the nearest power of 2, unless "format_size" is False, in which case it will
+    return a tuple.
+    """
+    if isinstance(size, str):
+        aligned = _image.nearest_power_of_two(_textprocessing.parse_dimensions(size))
+    elif isinstance(size, tuple):
+        aligned = _image.nearest_power_of_two(size)
+    else:
+        raise ValueError('Unsupported type passed to pow2_size.')
+
+    if not format_size:
+        return aligned
+
+    return _textprocessing.format_size(aligned)
+
+
 class ConfigRunner(_batchprocessor.BatchProcessor):
     """
     A :py:class:`.BatchProcessor` that can run dgenerate batch processing configs from a string or file.
@@ -385,6 +437,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'quote': _quote,
             'format_prompt': _format_prompt,
             'format_size': _format_size,
+            'align_size': _align_size,
+            'pow2_size': _pow2_size,
             'format_model_type': _format_model_type,
             'format_dtype': _format_dtype,
             'last': _last,
