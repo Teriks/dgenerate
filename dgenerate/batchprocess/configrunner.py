@@ -331,12 +331,12 @@ def _align_size(size: str | tuple, align: int, format_size: bool = True):
 
 def _pow2_size(size: str | tuple, format_size: bool = True):
     """
-    Align a string dimension such as "700x700", or a tuple dimension such as (700, 700) to
+    Round a string dimension such as "700x700", or a tuple dimension such as (700, 700) to
     the nearest power of 2 and format the result to a string dimension recognized by dgenerate.
 
     This function expects a string with the format WIDTHxHEIGHT, or just WIDTH, or a tuple of dimensions.
 
-    It returns a string in the same format with the dimension aligned to
+    It returns a string in the same format with the dimension rounded to
     the nearest power of 2, unless "format_size" is False, in which case it will
     return a tuple.
     """
