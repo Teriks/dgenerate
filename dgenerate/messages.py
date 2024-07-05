@@ -32,25 +32,25 @@ LEVEL = 1
 """
 Current Log Level (set-able)
 
-Setting to INFO means print all messages except DEBUG messages.
+Setting to ``INFO`` means print all messages except ``DEBUG`` messages.
 
-Setting to ERROR means only print ERROR messages.
+Setting to ``ERROR`` means only print ``ERROR`` messages.
 
-Setting to WARNING means only print WARNING messages.
+Setting to ``WARNING`` means only print ``WARNING`` messages.
 
-Setting to DEBUG means print every message.
+Setting to ``DEBUG`` means print every message.
 
 Levels are a bitfield, so you can set: ``LEVEL = WARNING | ERROR`` etc.
 """
 
 INFO = 1
-"""Log level INFO"""
+"""Log level ``INFO``"""
 WARNING = 2
-"""Log Level WARNING"""
+"""Log Level ``WARNING``"""
 ERROR = 4
-"""Log Level ERROR"""
+"""Log Level ``ERROR``"""
 DEBUG = 8
-"""Log Level DEBUG"""
+"""Log Level ``DEBUG``"""
 
 _ERROR_FILE = sys.stderr
 _MESSAGE_FILE = sys.stdout
