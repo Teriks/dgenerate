@@ -32,13 +32,13 @@ LEVEL = 1
 """
 Current Log Level (set-able)
 
-Setting to ``INFO`` means print all messages except ``DEBUG`` messages.
+Setting to :py:attr:`INFO` means print all messages except :py:attr:`DEBUG` messages.
 
-Setting to ``ERROR`` means only print ``ERROR`` messages.
+Setting to :py:attr:`ERROR` means only print :py:attr:`ERROR` messages.
 
-Setting to ``WARNING`` means only print ``WARNING`` messages.
+Setting to :py:attr:`WARNING` means only print :py:attr:`WARNING` messages.
 
-Setting to ``DEBUG`` means print every message.
+Setting to :py:attr:`DEBUG` means print every message.
 
 Levels are a bitfield, so you can set: ``LEVEL = WARNING | ERROR`` etc.
 """
