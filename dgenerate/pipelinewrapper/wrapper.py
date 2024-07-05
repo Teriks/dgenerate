@@ -1079,12 +1079,7 @@ class DiffusionPipelineWrapper:
             if self._pipeline_type == _enums.PipelineType.TXT2IMG:
                 if _enums.model_type_is_sd3(self._model_type):
                     # Handle SD3 model specifics for control images
-                    if self.vae_tiling:
-                        # must be a power of 2 for tiling
-                        processed_control_images = self._sd3_force_control_to_p2(args, control_images, user_args)
-                    else:
-                        processed_control_images = self._sd3_force_control_to_a16(args, control_images, user_args)
-                    args['control_image'] = processed_control_images
+                    args['control_image'] = self._sd3_force_control_to_a16(args, control_images, user_args)
                 else:
                     args['image'] = control_images
             elif self._pipeline_type in {_enums.PipelineType.IMG2IMG, _enums.PipelineType.INPAINT}:
@@ -1208,23 +1203,13 @@ class DiffusionPipelineWrapper:
                 args['height'] = _types.default(user_args.height, size[1])
 
             if self._model_type == _enums.ModelType.TORCH_SD3:
-                if self.vae_tiling:
-                    if not _image.is_power_of_two(image.size):
-                        size = _image.nearest_power_of_two(image.size)
-                        _messages.log(
-                            f'Input image size {image.size} is not a power of 2. '
-                            f'Output dimensions will be forcefully resized to the nearest power of 2: {size}. '
-                            f'This is due to vae tiling being enabled.',
-                            level=_messages.WARNING)
-                        args['image'] = image.resize(size, PIL.Image.Resampling.LANCZOS)
-                else:
-                    if not _image.is_aligned(image.size, 16):
-                        size = _image.align_by(image.size, 16)
-                        _messages.log(
-                            f'Input image size {image.size} is not aligned by 16. '
-                            f'Output dimensions will be forcefully aligned to 16: {size}.',
-                            level=_messages.WARNING)
-                        args['image'] = image.resize(size, PIL.Image.Resampling.LANCZOS)
+                if not _image.is_aligned(image.size, 16):
+                    size = _image.align_by(image.size, 16)
+                    _messages.log(
+                        f'Input image size {image.size} is not aligned by 16. '
+                        f'Output dimensions will be forcefully aligned to 16: {size}.',
+                        level=_messages.WARNING)
+                    args['image'] = image.resize(size, PIL.Image.Resampling.LANCZOS)
 
         def set_txt2img_defaults():
             if _enums.model_type_is_sdxl(self._model_type):
@@ -1244,15 +1229,9 @@ class DiffusionPipelineWrapper:
                 args['height'] = _types.default(user_args.height, _constants.DEFAULT_SD3_OUTPUT_HEIGHT)
                 args['width'] = _types.default(user_args.width, _constants.DEFAULT_SD3_OUTPUT_WIDTH)
 
-                if self.vae_tiling:
-                    if not _image.is_power_of_two((args['width'], args['height'])):
-                        raise _pipelines.UnsupportedPipelineConfigError(
-                            'Stable Diffusion 3 requires an output dimension that is a '
-                            'power of 2 when vae tiling is enabled.')
-                else:
-                    if not _image.is_aligned((args['width'], args['height']), 16):
-                        raise _pipelines.UnsupportedPipelineConfigError(
-                            'Stable Diffusion 3 requires an output dimension that is aligned by 16.')
+                if not _image.is_aligned((args['width'], args['height']), 16):
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        'Stable Diffusion 3 requires an output dimension that is aligned by 16.')
             else:
                 args['height'] = _types.default(user_args.height, _constants.DEFAULT_OUTPUT_HEIGHT)
                 args['width'] = _types.default(user_args.width, _constants.DEFAULT_OUTPUT_WIDTH)
@@ -1289,37 +1268,6 @@ class DiffusionPipelineWrapper:
                 _messages.log(
                     f'Control image size {img.size} is not aligned by 16. '
                     f'Output dimensions will be forcefully aligned by 16: {size}.',
-                    level=_messages.WARNING)
-
-                processed_control_images[idx] = img.resize(size, PIL.Image.Resampling.LANCZOS)
-        return processed_control_images
-
-    @staticmethod
-    def _sd3_force_control_to_p2(args, control_images, user_args):
-        processed_control_images = list(control_images)
-        for idx, img in enumerate(processed_control_images):
-            if not _image.is_power_of_two(img.size):
-                size = _image.nearest_power_of_two(img.size)
-
-                if user_args.width and user_args.width > 0:
-                    if not (user_args.width & (user_args.width - 1)) == 0:
-                        raise _pipelines.UnsupportedPipelineConfigError(
-                            'Stable Diffusion 3 requires an output dimension that is a power of 2 '
-                            'when vae tiling is enabled.')
-
-                if user_args.height and user_args.height > 0:
-                    if not (user_args.height & (user_args.height - 1)) == 0:
-                        raise _pipelines.UnsupportedPipelineConfigError(
-                            'Stable Diffusion 3 requires an output dimension that is a power of 2 '
-                            'when vae tiling is enabled.')
-
-                args['width'] = _types.default(user_args.width, size[0])
-                args['height'] = _types.default(user_args.height, size[1])
-
-                _messages.log(
-                    f'Control image size {img.size} is not a power of 2. '
-                    f'Output dimensions will be forcefully resized to the nearest power of 2: {size}. '
-                    f'This is due to usage of vae tiling.',
                     level=_messages.WARNING)
 
                 processed_control_images[idx] = img.resize(size, PIL.Image.Resampling.LANCZOS)

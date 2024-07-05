@@ -1534,6 +1534,14 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                        model_path=model_path,
                        scheduler_name=scheduler)
 
+    if hasattr(pipeline, 'vae') and \
+            _enums.model_type_is_sd3(model_type):
+        # patch to enable tiling at all resolutions
+        if pipeline.vae.quant_conv is None:
+            pipeline.vae.quant_conv = lambda x: x
+        if pipeline.vae.post_quant_conv is None:
+            pipeline.vae.post_quant_conv = lambda x: x
+
     # Textual Inversions and LoRAs
 
     parsed_textual_inversion_uris = []
