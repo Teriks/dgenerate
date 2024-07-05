@@ -1291,8 +1291,32 @@ class DiffusionPipelineWrapper:
         return [p.end for p in self._parsed_control_net_uris] if \
             len(self._parsed_control_net_uris) > 1 else self._parsed_control_net_uris[0].end
 
+    def _check_for_invalid_model_specific_opts(self, user_args: DiffusionArguments):
+        if not _enums.model_type_is_sdxl(self.model_type):
+            for arg, val in _types.get_public_attributes(user_args).items():
+                if arg.startswith('sdxl') and val is not None:
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        f'{arg} may only be used with SDXL models.')
+
+        if not _enums.model_type_is_sd3(self.model_type):
+            for arg, val in _types.get_public_attributes(user_args).items():
+                if arg.startswith('sd3') and val is not None:
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        f'{arg} may only be used with Stable Diffusion 3 models.')
+
+        if not _enums.model_type_is_s_cascade(self.model_type):
+            for arg, val in _types.get_public_attributes(user_args).items():
+                if arg.startswith('s_cascade') and val is not None:
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        f'{arg} may only be used with Stable Cascade models.')
+
     def _call_flax_control_net(self, positive_prompt, negative_prompt, pipeline_args, user_args: DiffusionArguments):
         # Only works with txt2image
+
+        self._check_for_invalid_model_specific_opts(user_args)
+
+        if user_args.clip_skip is not None and user_args.clip_skip > 0:
+            raise _pipelines.UnsupportedPipelineConfigError('flax does not support clip skip.')
 
         device_count = jax.device_count()
 
@@ -1353,10 +1377,10 @@ class DiffusionPipelineWrapper:
         return text_input.input_ids
 
     def _call_flax(self, pipeline_args, user_args: DiffusionArguments):
-        for arg, val in _types.get_public_attributes(user_args).items():
-            if arg.startswith('sdxl') and val is not None:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    f'{arg} may only be used with SDXL models.')
+        self._check_for_invalid_model_specific_opts(user_args)
+
+        if user_args.clip_skip is not None and user_args.clip_skip > 0:
+            raise _pipelines.UnsupportedPipelineConfigError('flax does not support clip skip.')
 
         if user_args.guidance_rescale is not None:
             raise _pipelines.UnsupportedPipelineConfigError(
@@ -1509,6 +1533,7 @@ class DiffusionPipelineWrapper:
         pipeline_args.pop('negative_crops_coords_top_left', None)
 
     def _call_torch_s_cascade(self, pipeline_args, user_args: DiffusionArguments):
+        self._check_for_invalid_model_specific_opts(user_args)
 
         if user_args.clip_skip is not None and user_args.clip_skip > 0:
             raise _pipelines.UnsupportedPipelineConfigError('Stable Cascade does not support clip skip.')
@@ -1556,6 +1581,8 @@ class DiffusionPipelineWrapper:
             **pipeline_args).images)
 
     def _call_torch(self, pipeline_args, user_args: DiffusionArguments):
+        self._check_for_invalid_model_specific_opts(user_args)
+
         prompt: _prompt.Prompt() = _types.default(user_args.prompt, _prompt.Prompt())
 
         pipeline_args['prompt'] = prompt.positive if prompt.positive else ''
