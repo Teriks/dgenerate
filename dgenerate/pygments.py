@@ -30,14 +30,14 @@ This can be used for syntax highlighting.
 """
 
 _DGENERATE_FUNCTIONS = sorted((
-    'abs', 'all', 'any', 'ascii', 'bin', 'bool', 'bytearray', 'bytes',
-    'callable', 'chr', 'complex', 'cwd', 'dict', 'divmod', 'enumerate',
-    'filter', 'first', 'float', 'format', 'format_prompt', 'format_size',
-    'frozenset', 'gen_seeds', 'getattr', 'hasattr', 'hash', 'hex', 'int',
-    'iter', 'last', 'len', 'list', 'map', 'max', 'min', 'next', 'object',
-    'oct', 'ord', 'pow', 'quote', 'range', 'repr', 'reversed', 'round',
-    'set', 'slice', 'sorted', 'str', 'sum', 'tuple', 'type', 'unquote',
-    'zip', 'download'
+    "abs", "align_size", "all", "any", "ascii", "bin", "bool", "bytearray", "bytes",
+    "callable", "chr", "complex", "cwd", "dict", "divmod", "download", "enumerate",
+    "filter", "first", "float", "format", "format_dtype", "format_model_type",
+    "format_prompt", "format_size", "frozenset", "gen_seeds", "getattr", "hasattr",
+    "hash", "hex", "int", "iter", "last", "len", "list", "map", "max", "min", "next",
+    "object", "oct", "ord", "pow", "pow2_size", "quote", "range", "repr", "reversed",
+    "round", "set", "size_is_aligned", "size_is_pow2", "slice", "sorted", "str",
+    "sum", "tuple", "type", "unquote", "zip"
 ), key=lambda s: len(s), reverse=True)
 
 _DGENERATE_FUNCTIONS_NS = sorted(map(lambda x: '({})(.)({})'.format(*x.split('.')), (
