@@ -914,16 +914,22 @@ class TorchPipelineCreationResult(PipelineCreationResult):
         self.parsed_textual_inversion_uris = parsed_textual_inversion_uris
         self.parsed_control_net_uris = parsed_control_net_uris
 
-    def call(self, device, *args, **kwargs) -> diffusers.utils.BaseOutput:
+    def call(self,
+             device: str | None = 'cuda',
+             prompt_weighter: _promptweighters.PromptWeighter | None = None,
+             **kwargs) -> diffusers.utils.BaseOutput:
         """
         Call **pipeline**, see: :py:func:`.call_pipeline`
 
         :param device: move the pipeline to this device before calling
-        :param args: forward args to pipeline
+        :param prompt_weighter: Optional prompt weighter for weighted prompt syntaxes
         :param kwargs: forward kwargs to pipeline
         :return: A subclass of :py:class:`diffusers.utils.BaseOutput`
         """
-        return call_pipeline(self.pipeline, device, *args, **kwargs)
+        return call_pipeline(self.pipeline,
+                             device,
+                             prompt_weighter,
+                             **kwargs)
 
 
 def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
@@ -1696,15 +1702,14 @@ class FlaxPipelineCreationResult(PipelineCreationResult):
         self.flax_vae_params = flax_vae_params
         self.flax_control_net_params = flax_control_net_params
 
-    def call(self, *args, **kwargs) -> diffusers.utils.BaseOutput:
+    def call(self, **kwargs) -> diffusers.utils.BaseOutput:
         """
         Call **pipeline**, see: :py:func:`.call_pipeline`
 
-        :param args: forward args to pipeline
         :param kwargs: forward kwargs to pipeline
         :return: A subclass of :py:class:`diffusers.utils.BaseOutput`
         """
-        return call_pipeline(self.pipeline, None, *args, **kwargs)
+        return call_pipeline(self.pipeline, None, **kwargs)
 
 
 def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
