@@ -1329,7 +1329,8 @@ class DiffusionPipelineWrapper:
 
         images = _pipelines.call_pipeline(
             pipeline=self._pipeline,
-            device=self.device,
+            device=None,
+            prompt_weighter=self._prompt_weighter,
             prompt_ids=prompt_ids,
             image=processed_image,
             params=p_params,
@@ -1413,6 +1414,7 @@ class DiffusionPipelineWrapper:
         images = _pipelines.call_pipeline(
             pipeline=self._pipeline,
             device=None,
+            prompt_weighter=self._prompt_weighter,
             prompt_ids=_flax_shard(prompt_ids),
             neg_prompt_ids=negative_prompt_ids,
             params=_flax_replicate(self._flax_params),
@@ -1507,6 +1509,10 @@ class DiffusionPipelineWrapper:
         pipeline_args.pop('negative_crops_coords_top_left', None)
 
     def _call_torch_s_cascade(self, pipeline_args, user_args: DiffusionArguments):
+
+        if user_args.clip_skip is not None and user_args.clip_skip > 0:
+            raise _pipelines.UnsupportedPipelineConfigError('Stable Cascade does not support clip skip.')
+
         prompt: _prompt.Prompt() = _types.default(user_args.prompt, _prompt.Prompt())
         pipeline_args['prompt'] = prompt.positive if prompt.positive else ''
         pipeline_args['negative_prompt'] = prompt.negative
@@ -1520,6 +1526,7 @@ class DiffusionPipelineWrapper:
         prior = _pipelines.call_pipeline(
             pipeline=self._pipeline,
             device=self._device,
+            prompt_weighter=self._prompt_weighter,
             **pipeline_args)
 
         pipeline_args['num_inference_steps'] = user_args.s_cascade_decoder_inference_steps
@@ -1545,6 +1552,7 @@ class DiffusionPipelineWrapper:
             image_embeddings=image_embeddings,
             pipeline=self._s_cascade_decoder_pipeline,
             device=self._device,
+            prompt_weighter=self._prompt_weighter,
             **pipeline_args).images)
 
     def _call_torch(self, pipeline_args, user_args: DiffusionArguments):
@@ -2091,15 +2099,16 @@ class DiffusionPipelineWrapper:
 
         _cache.enforce_cache_constraints()
 
-        loaded_new = self._lazy_init_pipeline(
-            copy_args.determine_pipeline_type())
+        pipeline_type = copy_args.determine_pipeline_type()
 
         if self._prompt_weighter_uri:
             self._prompt_weighter = self._prompt_weighter_loader.load(
                 self._prompt_weighter_uri,
                 model_type=self.model_type,
-                pipeline_type=self._pipeline_type,
+                pipeline_type=pipeline_type,
                 dtype=self._dtype)
+
+        loaded_new = self._lazy_init_pipeline(pipeline_type)
 
         if loaded_new:
             _cache.enforce_cache_constraints()

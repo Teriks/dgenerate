@@ -69,6 +69,20 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+        supported = {
+            _enums.ModelType.TORCH,
+            _enums.ModelType.TORCH_PIX2PIX,
+            _enums.ModelType.TORCH_UPSCALER_X4,
+            _enums.ModelType.TORCH_SDXL,
+            _enums.ModelType.TORCH_SDXL_PIX2PIX,
+            _enums.ModelType.TORCH_SD3
+        }
+
+        if self.model_type not in supported:
+            raise _exceptions.PromptWeightingUnsupported(
+                f'Prompt weighting not supported for --model-type: {_enums.get_model_type_string(self.model_type)}')
+
         self._tensors = list()
 
     @torch.no_grad()

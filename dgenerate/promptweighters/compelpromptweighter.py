@@ -154,13 +154,26 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
 
     def __init__(self, syntax: str = 'compel', **kwargs):
         super().__init__(**kwargs)
-        self._tensors = list()
-        self._syntax = syntax
+
+        supported = {
+            _enums.ModelType.TORCH,
+            _enums.ModelType.TORCH_PIX2PIX,
+            _enums.ModelType.TORCH_UPSCALER_X4,
+            _enums.ModelType.TORCH_SDXL,
+            _enums.ModelType.TORCH_SDXL_PIX2PIX
+        }
+
+        if self.model_type not in supported:
+            raise _exceptions.PromptWeightingUnsupported(
+                f'Prompt weighting not supported for --model-type: {_enums.get_model_type_string(self.model_type)}')
 
         if syntax not in {'compel', 'sdwui'}:
             raise self.argument_error(
                 f'Compel prompt weighter does not support the syntax: "{syntax}", '
                 f'must be one of: "compel" or "sdwui".')
+
+        self._tensors = list()
+        self._syntax = syntax
 
     @torch.no_grad()
     def translate_to_embeds(self,
@@ -363,8 +376,8 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
         elif pipeline.__class__.__name__.startswith('StableDiffusion'):
             embedding_type = \
                 compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NORMALIZED \
-                if clip_skip > 0 and pipeline.text_encoder.config.hidden_act == 'quick_gelu' \
-                else compel.ReturnedEmbeddingsType.LAST_HIDDEN_STATES_NORMALIZED
+                    if clip_skip > 0 and pipeline.text_encoder.config.hidden_act == 'quick_gelu' \
+                    else compel.ReturnedEmbeddingsType.LAST_HIDDEN_STATES_NORMALIZED
 
             _messages.debug_log('Compel Clip Skip:', args.get('clip_skip', 0))
             _messages.debug_log('Compel text_encoder.config.hidden_act:', pipeline.text_encoder.config.hidden_act)
