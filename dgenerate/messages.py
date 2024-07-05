@@ -28,7 +28,7 @@ __doc__ = """
 Library logging / informational output.
 """
 
-LEVEL = 0
+LEVEL = 1
 """
 Current Log Level (set-able)
 
