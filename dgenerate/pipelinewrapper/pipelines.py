@@ -664,6 +664,50 @@ def _call_args_debug_transformer(key, value):
     return value
 
 
+def _warn_prompt_lengths(pipeline, **kwargs):
+    prompt = kwargs.get('prompt')
+    neg_prompt = kwargs.get('negative_prompt')
+
+    prompt_2 = kwargs.get('prompt_2')
+    neg_prompt_2 = kwargs.get('negative_prompt_2')
+
+    prompt_3 = kwargs.get('prompt_3')
+    neg_prompt_3 = kwargs.get('negative_prompt_3')
+
+    if getattr(pipeline, 'tokenizer', None) is not None:
+        if prompt and len(pipeline.tokenizer.tokenize(prompt)) > pipeline.tokenizer.model_max_length:
+            _messages.log(f'Positive prompt exceeds max token length '
+                          f'of {pipeline.tokenizer.model_max_length} for the models tokenizer '
+                          f'and will be truncated: "{prompt}"', level=_messages.WARNING)
+
+        if neg_prompt and len(pipeline.tokenizer.tokenize(neg_prompt)) > pipeline.tokenizer.model_max_length:
+            _messages.log(f'Negative prompt exceeds max token length '
+                          f'of {pipeline.tokenizer.model_max_length} for the models tokenizer '
+                          f'and will be truncated: "{neg_prompt}"', level=_messages.WARNING)
+
+    if getattr(pipeline, 'tokenizer_2', None) is not None:
+        if prompt_2 and len(pipeline.tokenizer_2.tokenize(prompt_2)) > pipeline.tokenizer_2.model_max_length:
+            _messages.log(f'Secondary positive prompt exceeds max token length '
+                          f'of {pipeline.tokenizer_2.model_max_length} for the models tokenizer '
+                          f'and will be truncated: "{prompt_2}"', level=_messages.WARNING)
+
+        if neg_prompt_2 and len(pipeline.tokenizer_2.tokenize(neg_prompt_2)) > pipeline.tokenizer_2.model_max_length:
+            _messages.log(f'Secondary negative prompt exceeds max token length '
+                          f'of {pipeline.tokenizer_2.model_max_length} for the models tokenizer '
+                          f'and will be truncated: "{neg_prompt_2}"', level=_messages.WARNING)
+
+    if getattr(pipeline, 'tokenizer_3', None) is not None:
+        if prompt_3 and len(pipeline.tokenizer_3.tokenize(prompt_3)) > pipeline.tokenizer_3.model_max_length:
+            _messages.log(f'Tertiary positive prompt exceeds max token length '
+                          f'of {pipeline.tokenizer_3.model_max_length} for the models tokenizer '
+                          f'and will be truncated: "{prompt_3}"', level=_messages.WARNING)
+
+        if neg_prompt_3 and len(pipeline.tokenizer_3.tokenize(neg_prompt_3)) > pipeline.tokenizer_3.model_max_length:
+            _messages.log(f'Tertiary negative prompt exceeds max token length '
+                          f'of {pipeline.tokenizer_3.model_max_length} for the models tokenizer '
+                          f'and will be truncated: "{neg_prompt_3}"', level=_messages.WARNING)
+
+
 _LAST_CALLED_PIPELINE = None
 
 
@@ -679,14 +723,14 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
 
     :param pipeline: The pipeline
 
-    :param prompt_weighter: Optional prompt weighter for weighted prompt syntaxes
-
     :param device: The device to move the pipeline to before calling, it will be
         moved to this device if it is not already on the device. If the pipeline
-        does not support moving to a device, such as with flax pipelines,
-        this argument is ignored.
+        does not support moving to a device, such as with flax pipelines, or
+        with sequentially offloaded or cpu offloaded models,this argument is ignored.
 
     :param kwargs: diffusers pipeline keyword arguments
+
+    :param prompt_weighter: Optional prompt weighter for weighted prompt syntaxes
 
     :raise UnsupportedPipelineConfiguration:
         If the pipeline is missing certain required modules, such as text encoders.
@@ -703,22 +747,6 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
         lambda: _textprocessing.debug_format_args(
             kwargs, value_transformer=_call_args_debug_transformer))
 
-    def _call(args):
-        try:
-            return pipeline(**args)
-        except TypeError as e:
-            null_call_name = _types.get_null_call_name(e)
-            if null_call_name:
-                raise UnsupportedPipelineConfigError(
-                    'Missing pipeline module?, cannot call: ' + null_call_name)
-            raise
-        except AttributeError as e:
-            null_attr_name = _types.get_null_attr_name(e)
-            if null_attr_name:
-                raise UnsupportedPipelineConfigError(
-                    'Missing pipeline module?, cannot access: ' + null_attr_name)
-            raise
-
     def _call_prompt_weighter():
         translated = prompt_weighter.translate_to_embeds(pipeline, device, kwargs)
 
@@ -732,13 +760,30 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
 
         return translated
 
+    def _call_pipeline():
+        try:
+            if prompt_weighter is None:
+                _warn_prompt_lengths(pipeline, **kwargs)
+                pipe_result = pipeline(**kwargs)
+            else:
+                pipe_result = pipeline(**_call_prompt_weighter())
+                prompt_weighter.cleanup()
+            return pipe_result
+        except TypeError as e:
+            null_call_name = _types.get_null_call_name(e)
+            if null_call_name:
+                raise UnsupportedPipelineConfigError(
+                    'Missing pipeline module?, cannot call: ' + null_call_name)
+            raise
+        except AttributeError as e:
+            null_attr_name = _types.get_null_attr_name(e)
+            if null_attr_name:
+                raise UnsupportedPipelineConfigError(
+                    'Missing pipeline module?, cannot access: ' + null_attr_name)
+            raise
+
     if pipeline is _LAST_CALLED_PIPELINE:
-        if prompt_weighter is None:
-            return _call(kwargs)
-        else:
-            result = _call(_call_prompt_weighter())
-            prompt_weighter.cleanup()
-            return result
+        return _call_pipeline()
 
     if hasattr(_LAST_CALLED_PIPELINE, 'to'):
         _messages.debug_log(
@@ -751,11 +796,7 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
 
     pipeline_to(pipeline, device)
 
-    if prompt_weighter is None:
-        result = _call(kwargs)
-    else:
-        result = _call(_call_prompt_weighter())
-        prompt_weighter.cleanup()
+    result = _call_pipeline()
 
     _LAST_CALLED_PIPELINE = pipeline
     return result
