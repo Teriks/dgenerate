@@ -161,20 +161,20 @@ class _DeviceEntry(_Entry):
         return self._template(content, self.text_var.get().strip())
 
 
-class _PromptWeighterEntry(_Entry):
+class _DropDownEntry(_Entry):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs, widget_rows=1)
 
         if self.arg is None:
-            self.arg = '--prompt-weighter'
+            self.arg = ''
 
-        weighters = ['sd-embed', 'compel', 'compel;syntax=sdwui']
+        options = [o.strip() for o in self.config.get('options', '').split(',')]
 
         if self.optional:
-            weighters = [''] + weighters
+            options = [''] + options
 
         self.text_var = tk.StringVar(
-            value=self.config.get('default', weighters[0]))
+            value=self.config.get('default', options[0]))
 
         self.label_widget = tk.Label(
             self.master,
@@ -182,7 +182,7 @@ class _PromptWeighterEntry(_Entry):
 
         self.entry = tk.OptionMenu(self.master,
                                    self.text_var,
-                                   *weighters)
+                                   *options)
 
         self.label_widget.grid(row=self.row, column=0, padx=(5, 2), sticky='e')
         self.entry.grid(row=self.row, column=1, padx=(5, 2), sticky='ew')
@@ -569,7 +569,7 @@ class _RecipesForm(tk.Toplevel):
             'int': _IntEntry,
             'float': _FloatEntry,
             'device': _DeviceEntry,
-            'promptweighter': _PromptWeighterEntry
+            'dropdown': _DropDownEntry
         }
 
         self.minsize(600, 0)

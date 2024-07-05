@@ -787,9 +787,9 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(
                     f'Stable Cascade does not currently support the use of {a_namer("control_net_uris")}.')
 
-            if self.output_size is not None and not _image.is_power_of_two(self.output_size):
+            if self.output_size is not None and not _image.is_aligned(self.output_size, 128):
                 raise RenderLoopConfigError(
-                    f'Stable Cascade requires {a_namer("output_size")} to be a power of 2.')
+                    f'Stable Cascade requires {a_namer("output_size")} to be aligned by 128.')
 
         elif self.s_cascade_decoder_uri:
             raise RenderLoopConfigError(
