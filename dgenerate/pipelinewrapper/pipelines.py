@@ -697,14 +697,19 @@ def _warn_prompt_lengths(pipeline, **kwargs):
                           f'and will be truncated: "{neg_prompt_2}"', level=_messages.WARNING)
 
     if getattr(pipeline, 'tokenizer_3', None) is not None:
-        if prompt_3 and len(pipeline.tokenizer_3.tokenize(prompt_3)) > pipeline.tokenizer_3.model_max_length:
+        if pipeline.__class__.__name__.startswith('StableDiffusion3'):
+            max_length = min(kwargs.get('max_sequence_length', 256), pipeline.tokenizer_3.model_max_length)
+        else:
+            max_length = pipeline.tokenize_3.model_max_length
+
+        if prompt_3 and len(pipeline.tokenizer_3.tokenize(prompt_3)) > max_length:
             _messages.log(f'Tertiary positive prompt exceeds max token length '
-                          f'of {pipeline.tokenizer_3.model_max_length} for the models tokenizer '
+                          f'of {max_length} for the models tokenizer '
                           f'and will be truncated: "{prompt_3}"', level=_messages.WARNING)
 
-        if neg_prompt_3 and len(pipeline.tokenizer_3.tokenize(neg_prompt_3)) > pipeline.tokenizer_3.model_max_length:
+        if neg_prompt_3 and len(pipeline.tokenizer_3.tokenize(neg_prompt_3)) > max_length:
             _messages.log(f'Tertiary negative prompt exceeds max token length '
-                          f'of {pipeline.tokenizer_3.model_max_length} for the models tokenizer '
+                          f'of {max_length} for the models tokenizer '
                           f'and will be truncated: "{neg_prompt_3}"', level=_messages.WARNING)
 
 
