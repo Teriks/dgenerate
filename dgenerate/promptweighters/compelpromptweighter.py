@@ -200,7 +200,7 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
 
         output = dict(args)
 
-        clip_skip = args.get('clip_skip')
+        clip_skip = args.get('clip_skip', 0)
 
         positive = args.get('prompt')
         negative = args.get('negative_prompt')
