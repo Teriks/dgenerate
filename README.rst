@@ -3765,6 +3765,10 @@ Some available custom jinja2 functions/filters are:
 * ``{{ quote('escape-me') }}`` (shell quote, works on strings and lists)
 * ``{{ format_prompt(prompt_object) }}`` (Format and quote one or more prompt objects with their delimiter, works on single prompts and lists)
 * ``{{ format_size(size_tuple) }}`` (Format a size tuple / iterable, join with "x" character)
+* ``{{ align_size('700x700', 8) }}`` (Align a size string or tuple to a specific alignment, return a formatted string by default)
+* ``{{ pow2_size('700x700', 8) }}`` (Round a size string or tuple to the nearest power of 2, return a formatted string by default)
+* ``{{ size_is_aligned('700x700', 8) }}`` (Check if a size string or tuple is aligned to a specific alignment, return True or False)
+* ``{{ size_is_pow2('700x700') }}`` (Check if a size string or tuple is a power of 2 dimension, return True or False)
 * ``{{ format_model_type(last_model_type) }}`` (Format a ``ModelType`` enum to a value to ``--model-type``)
 * ``{{ format_dtype(last_dtype) }}`` (Format a ``DataType`` enum to a value to ``--dtype``)
 * ``{{ gen_seeds(n) }}`` (Return a list of random integer seeds in the form of strings)
@@ -4124,8 +4128,9 @@ The following is output from ``\functions_help`` showing every implemented templ
 .. code-block:: text
 
     Available config template functions:
-
+    
         abs(args, kwargs)
+        align_size(size: str | tuple, align: int, format_size: bool = True)
         all(args, kwargs)
         any(args, kwargs)
         ascii(args, kwargs)
@@ -4168,12 +4173,15 @@ The following is output from ``\functions_help`` showing every implemented templ
         oct(args, kwargs)
         ord(args, kwargs)
         pow(args, kwargs)
+        pow2_size(size: str | tuple, format_size: bool = True)
         quote(strings: str | collections.abc.Iterable[typing.Any]) -> str
         range(args, kwargs)
         repr(args, kwargs)
         reversed(args, kwargs)
         round(args, kwargs)
         set(args, kwargs)
+        size_is_aligned(size: str | tuple, align: int)
+        size_is_pow2(size: str | tuple)
         slice(args, kwargs)
         sorted(args, kwargs)
         str(args, kwargs)
