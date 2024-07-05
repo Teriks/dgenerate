@@ -1070,7 +1070,7 @@ def _text_encoder_help(pipeline_class):
     raise ArgumentHelpException()
 
 
-def _format_pipeline_creation_arg(v):
+def _format_pipeline_creation_debug_arg(v):
     if isinstance(v, torch.dtype):
         return str(v)
 
@@ -1080,6 +1080,15 @@ def _format_pipeline_creation_arg(v):
     if v.__class__.__module__ != 'builtins':
         return _types.class_and_id_string(v)
 
+    if isinstance(v, list):
+        return '[' + ', '.join(_format_pipeline_creation_debug_arg(v) for v in v) + ']'
+
+    if isinstance(v, (set, frozenset)):
+        return '{' + ', '.join(_format_pipeline_creation_debug_arg(v) for v in v) + '}'
+
+    if isinstance(v, dict):
+        return '{' + ', '.join(f'"{k}"={_format_pipeline_creation_debug_arg(v)}' for k, v in v.items()) + '}'
+
     return str(v)
 
 
@@ -1087,7 +1096,7 @@ def _pipeline_creation_args_debug(backend, cls, method, model, **kwargs):
     _messages.debug_log(
         lambda:
         f'{backend} Pipeline Creation Call: {cls.__name__}.{method.__name__}("{model}", ' +
-        (', '.join(k + '=' + _format_pipeline_creation_arg(v) for k, v in kwargs.items())) + ')')
+        (', '.join(k + '=' + _format_pipeline_creation_debug_arg(v) for k, v in kwargs.items())) + ')')
 
     return method(model, **kwargs)
 
