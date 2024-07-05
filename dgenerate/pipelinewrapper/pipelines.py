@@ -1702,14 +1702,17 @@ class FlaxPipelineCreationResult(PipelineCreationResult):
         self.flax_vae_params = flax_vae_params
         self.flax_control_net_params = flax_control_net_params
 
-    def call(self, **kwargs) -> diffusers.utils.BaseOutput:
+    def call(self,
+             prompt_weighter: _promptweighters.PromptWeighter | None = None,
+             **kwargs) -> diffusers.utils.BaseOutput:
         """
         Call **pipeline**, see: :py:func:`.call_pipeline`
 
+        :param prompt_weighter: Optional prompt weighter for weighted prompt syntaxes
         :param kwargs: forward kwargs to pipeline
         :return: A subclass of :py:class:`diffusers.utils.BaseOutput`
         """
-        return call_pipeline(self.pipeline, None, **kwargs)
+        return call_pipeline(self.pipeline, None, prompt_weighter, **kwargs)
 
 
 def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
