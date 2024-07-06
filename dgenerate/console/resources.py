@@ -18,11 +18,12 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
+import enum
 import importlib.resources
 import io
 import os
 import platform
+import re
 import subprocess
 import tkinter
 import tkinter as tk
@@ -30,7 +31,56 @@ import webbrowser
 
 import PIL.Image
 import PIL.ImageTk
+import requests
 import toml
+
+
+class ReleaseInfo:
+    tag_name: str
+    release_name: str
+    release_url: str
+
+    def __init__(self,
+                 tag_name: str,
+                 release_name: str,
+                 release_url: str):
+        self.tag_name = tag_name
+        self.release_name = release_name
+        self.release_url = release_url
+
+    def __str__(self):
+        return str(self.__dict__)
+
+    def __repr__(self):
+        return repr(self.__dict__)
+
+
+def check_latest_release() -> ReleaseInfo | None:
+    """
+    Get the latest software release for this software.
+
+    :return: :py:class:`ReleaseInfo`
+    """
+
+    url = f"https://api.github.com/repos/Teriks/dgenerate/releases/latest"
+
+    headers = {
+        "Accept": "application/vnd.github.v3+json"
+    }
+
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        latest_release = response.json()
+
+        tag_name = latest_release['tag_name']
+        release_name = latest_release['name']
+        release_url = latest_release['html_url']
+
+        return ReleaseInfo(tag_name, release_name, release_url)
+
+    except requests.exceptions.RequestException:
+        return None
 
 
 def set_window_icon(window: tkinter.Tk | tkinter.Toplevel):
@@ -106,15 +156,53 @@ def supported_torch_model_formats_open():
     return ['safetensors', 'pt', 'pth', 'cpkt', 'bin']
 
 
-def add_help_menu_links(menu: tk.Menu):
+def release_version():
     import dgenerate
-    ver = dgenerate.__version__
+    value = dgenerate.__version__
+    if value[0] != 'v':
+        return 'v' + value
+    else:
+        return value
+
+
+class VersionComparison(enum.Enum):
+    V1_NEWER = 0
+    V2_NEWER = 1
+    SAME = 2
+
+
+def compare_versions(version1, version2) -> VersionComparison:
+    def parse_version(version):
+        # Remove any non-alphanumeric characters except dots
+        version = re.sub(r'[^0-9a-zA-Z.]+', '', version)
+        # Remove leading 'v' if present
+        if version.startswith('v'):
+            version = version[1:]
+        # Remove any suffix
+        if '-' in version:
+            version = version.split('-')[0]
+        major, minor, patch = version.split('.')
+        return int(major), int(minor), int(patch)
+
+    v1_major, v1_minor, v1_patch = parse_version(version1)
+    v2_major, v2_minor, v2_patch = parse_version(version2)
+
+    if (v1_major, v1_minor, v1_patch) > (v2_major, v2_minor, v2_patch):
+        return VersionComparison.V1_NEWER
+    elif (v1_major, v1_minor, v1_patch) < (v2_major, v2_minor, v2_patch):
+        return VersionComparison.V2_NEWER
+    else:
+        return VersionComparison.SAME
+
+
+def add_help_menu_links(menu: tk.Menu):
+    ver = release_version()
 
     menu.add_command(
-        label='Homepage',
+        label=f'Homepage ({ver})',
         command=lambda:
         webbrowser.open(
-            f'https://github.com/Teriks/dgenerate/tree/v{ver}'))
+            f'https://github.com/Teriks/dgenerate/tree/{ver}'))
 
     menu.add_separator()
 
@@ -122,16 +210,29 @@ def add_help_menu_links(menu: tk.Menu):
         label='Config Examples',
         command=lambda:
         webbrowser.open(
-            f'https://github.com/Teriks/dgenerate/tree/v{ver}/examples'))
+            f'https://github.com/Teriks/dgenerate/tree/{ver}/examples'))
 
     menu.add_command(
         label='Config Documentation',
         command=lambda:
         webbrowser.open(
-            f'https://dgenerate.readthedocs.io/en/v{ver}/readme.html#writing-and-running-configs'))
+            f'https://dgenerate.readthedocs.io/en/{ver}/readme.html#writing-and-running-configs'))
 
     menu.add_command(
         label='Project Documentation',
         command=lambda:
         webbrowser.open(
-            f'https://dgenerate.readthedocs.io/en/v{ver}/readme.html'))
+            f'https://dgenerate.readthedocs.io/en/{ver}/readme.html'))
+
+    release_info = check_latest_release()
+
+    if release_info is not None:
+
+        if compare_versions(release_info.tag_name, release_version()) == VersionComparison.V1_NEWER:
+            menu.add_separator()
+
+            menu.add_command(
+                label=f'Newer Release Available! ({release_info.tag_name})',
+                command=lambda:
+                webbrowser.open(
+                    release_info.release_url))
