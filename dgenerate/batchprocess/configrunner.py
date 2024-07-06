@@ -122,6 +122,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             if injected_plugin_modules:
                 self._plugin_module_paths.update(injected_plugin_modules)
                 _plugin.import_plugins(self._plugin_module_paths)
+            else:
+                injected_plugin_modules = []
 
         self.render_loop = render_loop
 
