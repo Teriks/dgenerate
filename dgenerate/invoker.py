@@ -176,7 +176,8 @@ def invoke_dgenerate_events(
         yield rethrow_with_message(e)
         return
 
-    _plugin.import_plugins(plugin_module_paths)
+    if plugin_module_paths:
+        _plugin.import_plugins(plugin_module_paths)
 
     try:
         prompt_weighter_help, _ = _arguments.parse_prompt_weighter_help(

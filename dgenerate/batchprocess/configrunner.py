@@ -113,13 +113,23 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         if render_loop is None:
             render_loop = _renderloop.RenderLoop()
 
+        self._plugin_module_paths = set()
+
+        injected_plugin_modules = []
+
+        if injected_args:
+            injected_plugin_modules = _arguments.parse_plugin_modules(injected_args)[0]
+            if injected_plugin_modules:
+                self._plugin_module_paths.update(injected_plugin_modules)
+                _plugin.import_plugins(self._plugin_module_paths)
+
         self.render_loop = render_loop
 
         self.template_variables = {
             'injected_args': self.injected_args,
             'injected_device': _arguments.parse_device(self.injected_args)[0],
             'injected_verbose': _arguments.parse_verbose(self.injected_args)[0],
-            'injected_plugin_modules': _arguments.parse_plugin_modules(self.injected_args)[0],
+            'injected_plugin_modules': injected_plugin_modules,
             'saved_modules': dict(),
             'glob': glob,
             'path': os.path,
@@ -205,12 +215,6 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         self.plugin_loader = \
             _configrunnerpluginloader.ConfigRunnerPluginLoader() if \
                 plugin_loader is None else plugin_loader
-
-        self._plugin_module_paths = set()
-
-        if injected_args:
-            self._plugin_module_paths.update(_arguments.parse_plugin_modules(injected_args)[0])
-            _plugin.import_plugins(self._plugin_module_paths)
 
         for plugin_class in self.plugin_loader.get_available_classes():
             self.plugin_loader.load(plugin_class.get_names()[0],

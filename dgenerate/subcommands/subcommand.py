@@ -39,7 +39,7 @@ class SubCommand(_plugin.Plugin):
                          argument_error_type=_exceptions.SubCommandArgumentError,
                          **kwargs)
         self.__args = list(args)
-        self.__plugin_module_paths = frozenset(plugin_module_paths)
+        self.__plugin_module_paths = frozenset(plugin_module_paths) if plugin_module_paths else frozenset()
 
     @property
     def plugin_module_paths(self) -> frozenset[str]:

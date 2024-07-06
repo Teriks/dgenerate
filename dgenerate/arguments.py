@@ -1735,7 +1735,7 @@ def _check_unknown_args(args: typing.Sequence[str], log_error: bool):
 def parse_templates_help(
         args: collections.abc.Sequence[str] | None = None,
         throw_unknown: bool = False,
-        log_error: bool = False) -> tuple[list[str], list[str]]:
+        log_error: bool = False) -> tuple[list[str] | None, list[str]]:
     """
     Retrieve the ``--templates-help`` argument value
 
@@ -1748,13 +1748,13 @@ def parse_templates_help(
 
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
 
-    :return: (value, unknown_args_list)
+    :return: (values | ``None``, unknown_args_list)
     """
     parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
     parser.add_argument('--templates-help', nargs='*', default=None)
     parsed, unknown = parser.parse_known_args(args)
 
-    if parsed.templates_help and throw_unknown:
+    if parsed.templates_help is not None and throw_unknown:
         _check_unknown_args(unknown, log_error)
 
     return parsed.templates_help, unknown
@@ -1763,7 +1763,7 @@ def parse_templates_help(
 def parse_directives_help(
         args: collections.abc.Sequence[str] | None = None,
         throw_unknown: bool = False,
-        log_error: bool = False) -> tuple[list[str], list[str]]:
+        log_error: bool = False) -> tuple[list[str] | None, list[str]]:
     """
     Retrieve the ``--directives-help`` argument value
 
@@ -1776,13 +1776,13 @@ def parse_directives_help(
 
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
 
-    :return: (value, unknown_args_list)
+    :return: (values | ``None``, unknown_args_list)
     """
     parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
     parser.add_argument('--directives-help', nargs='*', default=None)
     parsed, unknown = parser.parse_known_args(args)
 
-    if parsed.directives_help and throw_unknown:
+    if parsed.directives_help is not None and throw_unknown:
         _check_unknown_args(unknown, log_error)
 
     return parsed.directives_help, unknown
@@ -1791,7 +1791,7 @@ def parse_directives_help(
 def parse_functions_help(
         args: collections.abc.Sequence[str] | None = None,
         throw_unknown: bool = False,
-        log_error: bool = False) -> tuple[list[str], list[str]]:
+        log_error: bool = False) -> tuple[list[str] | None, list[str]]:
     """
     Retrieve the ``--functions-help`` argument value
 
@@ -1804,13 +1804,13 @@ def parse_functions_help(
 
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
 
-    :return: (value, unknown_args_list)
+    :return: (values | ``None``, unknown_args_list)
     """
     parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
     parser.add_argument('--functions-help', nargs='*', default=None)
     parsed, unknown = parser.parse_known_args(args)
 
-    if parsed.functions_help and throw_unknown:
+    if parsed.functions_help is not None and throw_unknown:
         _check_unknown_args(unknown, log_error)
 
     return parsed.functions_help, unknown
@@ -1819,7 +1819,7 @@ def parse_functions_help(
 def parse_plugin_modules(
         args: collections.abc.Sequence[str] | None = None,
         throw_unknown: bool = False,
-        log_error: bool = False) -> tuple[list[str], list[str]]:
+        log_error: bool = False) -> tuple[list[str] | None, list[str]]:
     """
     Retrieve the ``--plugin-modules`` argument value
 
@@ -1834,17 +1834,17 @@ def parse_plugin_modules(
 
     :raise DgenerateUsageError: If no argument values were provided.
 
-    :return: (values, unknown_args_list)
+    :return: (values | ``None``, unknown_args_list)
     """
 
     try:
         parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
-        parser.add_argument('--plugin-modules', action='store', default=[], nargs="+")
+        parser.add_argument('--plugin-modules', action='store', default=None, nargs="+")
         parsed, unknown = parser.parse_known_args(args)
     except argparse.ArgumentError as e:
         raise DgenerateUsageError(e)
 
-    if parsed.plugin_modules and throw_unknown:
+    if parsed.plugin_modules is not None and throw_unknown:
         _check_unknown_args(unknown, log_error)
 
     return parsed.plugin_modules, unknown
@@ -1853,7 +1853,7 @@ def parse_plugin_modules(
 def parse_image_processor_help(
         args: collections.abc.Sequence[str] | None = None,
         throw_unknown: bool = False,
-        log_error: bool = False) -> tuple[list[str], list[str]]:
+        log_error: bool = False) -> tuple[list[str] | None, list[str]]:
     """
     Retrieve the ``--image-processor-help`` argument value
 
@@ -1866,14 +1866,14 @@ def parse_image_processor_help(
 
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
 
-    :return: (values, unknown_args_list)
+    :return: (values | ``None``, unknown_args_list)
     """
 
     parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
     parser.add_argument('--image-processor-help', action='store', nargs='*', default=None)
     parsed, unknown = parser.parse_known_args(args)
 
-    if parsed.image_processor_help and throw_unknown:
+    if parsed.image_processor_help is not None and throw_unknown:
         _check_unknown_args(unknown, log_error)
 
     return parsed.image_processor_help, unknown
@@ -1882,7 +1882,7 @@ def parse_image_processor_help(
 def parse_prompt_weighter_help(
         args: collections.abc.Sequence[str] | None = None,
         throw_unknown: bool = False,
-        log_error: bool = False) -> tuple[list[str], list[str]]:
+        log_error: bool = False) -> tuple[list[str] | None, list[str]]:
     """
     Retrieve the ``--prompt-weighter-help`` argument value
 
@@ -1895,21 +1895,21 @@ def parse_prompt_weighter_help(
 
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
 
-    :return: (values, unknown_args_list)
+    :return: (values | ``None``, unknown_args_list)
     """
 
     parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
     parser.add_argument('--prompt-weighter-help', action='store', nargs='*', default=None)
     parsed, unknown = parser.parse_known_args(args)
 
-    if parsed.prompt_weighter_help and throw_unknown:
+    if parsed.prompt_weighter_help is not None and throw_unknown:
         _check_unknown_args(unknown, log_error)
 
     return parsed.prompt_weighter_help, unknown
 
 
 def parse_sub_command(
-        args: collections.abc.Sequence[str] | None = None) -> tuple[str, list[str]]:
+        args: collections.abc.Sequence[str] | None = None) -> tuple[str | None, list[str]]:
     """
     Retrieve the ``--sub-command`` argument value
 
@@ -1917,7 +1917,7 @@ def parse_sub_command(
 
     :raise DgenerateUsageError: If no argument value was provided.
 
-    :return: (value, unknown_args_list)
+    :return: (value | ``None``, unknown_args_list)
     """
 
     try:
@@ -1933,7 +1933,7 @@ def parse_sub_command(
 def parse_sub_command_help(
         args: collections.abc.Sequence[str] | None = None,
         throw_unknown: bool = False,
-        log_error: bool = False) -> tuple[list[str], list[str]]:
+        log_error: bool = False) -> tuple[list[str] | None, list[str]]:
     """
     Retrieve the ``--sub-command-help`` argument value
 
@@ -1946,14 +1946,14 @@ def parse_sub_command_help(
 
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
 
-    :return: (values, unknown_args_list)
+    :return: (values | ``None``, unknown_args_list)
     """
 
     parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
     parser.add_argument('--sub-command-help', action='store', nargs='*', default=None)
     parsed, unknown = parser.parse_known_args(args)
 
-    if parsed.sub_command_help and throw_unknown:
+    if parsed.sub_command_help is not None and throw_unknown:
         _check_unknown_args(unknown, log_error)
 
     return parsed.sub_command_help, unknown
@@ -1962,7 +1962,7 @@ def parse_sub_command_help(
 def parse_device(
         args: collections.abc.Sequence[str] | None = None,
         throw_unknown: bool = False,
-        log_error: bool = False) -> tuple[str, list[str]]:
+        log_error: bool = False) -> tuple[str | None, list[str]]:
     """
     Retrieve the ``-d/--device`` argument value
 
@@ -1977,17 +1977,17 @@ def parse_device(
 
     :raise DgenerateUsageError: If no argument value was provided.
 
-    :return: (value, unknown_args_list)
+    :return: (value | ``None``, unknown_args_list)
     """
 
     try:
         parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
-        parser.add_argument('-d', '--device', type=_type_device)
+        parser.add_argument('-d', '--device', type=_type_device, default=None)
         parsed, unknown = parser.parse_known_args(args)
     except argparse.ArgumentError as e:
         raise DgenerateUsageError(e)
 
-    if parsed.device and throw_unknown:
+    if parsed.device is not None and throw_unknown:
         _check_unknown_args(unknown, log_error)
 
     return parsed.device, unknown
