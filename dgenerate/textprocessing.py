@@ -1134,7 +1134,7 @@ def parse_image_size(string):
 def debug_format_args(args_dict: dict[str, typing.Any],
                       value_transformer: typing.Callable[[str, typing.Any], str] | None = None,
                       max_value_len: int = 256,
-                      as_kwargs=False):
+                      as_kwargs: bool = False):
     """
     Format function arguments in a way that can be printed for debug messages.
 
