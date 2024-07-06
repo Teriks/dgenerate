@@ -81,6 +81,23 @@ class PluginArg:
             return self.type.__name__
         return str(self.type).replace('typing.', '')
 
+    def validate_non_parsed(self, value: typing.Any):
+        if (self.is_hinted_optional or (self.have_default and self.default is None)) \
+                and value is None:
+            return None
+
+        if self.base_type is typing.Any:
+            return value
+
+        if not isinstance(value, self.base_type):
+            raise ValueError(
+                f'Literal type "{value.__class__.__name__}" '
+                f'does not match plugin argument "{self.name}" type '
+                f'hint "{self.type_string()}".'
+            )
+
+        return value
+
     def parse_by_type(self, value: str | typing.Any):
         if not isinstance(value, str):
             return value
@@ -720,12 +737,24 @@ class PluginLoader:
                     f'Argument "{reserved_arg.name}" must match type: "{reserved_arg.type_string()}". '
                     f'Failure cause: {str(e).strip()}')
 
-        # plugin load user arguments
-        args_dict.update(kwargs)
-
         accepted_args = {_textprocessing.dashup(n.name): n for n in
                          itertools.chain(plugin_class.get_accepted_args(loaded_by_name=call_by_name),
                                          self.__reserved_args)}
+
+        # plugin user in code arguments
+        for k, v in kwargs.items():
+            try:
+                arg = accepted_args[_textprocessing.dashup(k)]
+            except KeyError:
+                raise self.__argument_error_type(
+                    f'Unknown plugin argument: "{k}"'
+                )
+            try:
+                args_dict[k] = arg.validate_non_parsed(v)
+            except ValueError as e:
+                raise self.__argument_error_type(
+                    f'Argument "{k}" must match type: "{arg.type_string()}". '
+                    f'Failure cause: {str(e).strip()}')
 
         for k, v in parsed_args.items():
             # URI overrides everything
