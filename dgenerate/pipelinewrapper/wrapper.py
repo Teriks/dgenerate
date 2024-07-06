@@ -39,7 +39,7 @@ import dgenerate.prompt as _prompt
 import dgenerate.promptweighters as _promptweighters
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-from dgenerate.pipelinewrapper.wrapperarguments import DiffusionArguments
+from dgenerate.pipelinewrapper.diffusionarguments import DiffusionArguments
 
 try:
     import jax
