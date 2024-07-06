@@ -1133,25 +1133,34 @@ def parse_image_size(string):
 
 def debug_format_args(args_dict: dict[str, typing.Any],
                       value_transformer: typing.Callable[[str, typing.Any], str] | None = None,
-                      max_value_len: int = 256):
+                      max_value_len: int = 256,
+                      as_kwargs=False):
     """
     Format function arguments in a way that can be printed for debug messages.
 
     :param args_dict: argument dictionary
     :param value_transformer: transform values in the argument dictionary
     :param max_value_len: Max length of a formatted value before it is turned into a class and id string only
+    :param as_kwargs: Format the string as python keyword arguments instead of a dictionary
     :return: formatted string
     """
 
     def _value_transformer(key, value):
         if value_transformer is not None:
-            return value_transformer(key, value)
-        return value
+            output = value_transformer(key, value)
+        else:
+            output = value
 
-    return str(
-        {k: str(_value_transformer(k, v)) if
-        len(str(_value_transformer(k, v))) < max_value_len
-        else _types.class_and_id_string(v) for k, v in args_dict.items()})
+        if len(str(output)) > max_value_len:
+            return _types.class_and_id_string(value)
+
+        return str(output)
+
+    if not as_kwargs:
+        return str(
+            {k: str(_value_transformer(k, v)) for k, v in args_dict.items()})
+    else:
+        return ', '.join(f'{k}={_value_transformer(k, v)}' for k, v in args_dict.items())
 
 
 class TimeDeltaParseError(Exception):
