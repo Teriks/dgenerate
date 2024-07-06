@@ -39,7 +39,8 @@ class SubCommandLoader(_plugin.PluginLoader):
 
         super().__init__(base_class=_subcommand.SubCommand,
                          description='sub-command',
-                         reserved_args=[_Pa('args', type=list), _Pa('plugin-module-paths', type=list, default=None)],
+                         reserved_args=[_Pa('args', type=list), 
+                                        _Pa('plugin-module-paths', type=typing.Optional[list], default=None)],
                          argument_error_type=_exceptions.SubCommandArgumentError,
                          not_found_error_type=_exceptions.SubCommandNotFoundError)
 
