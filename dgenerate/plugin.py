@@ -780,11 +780,6 @@ class PluginLoader:
 
         try:
             return plugin_class(**args_dict)
-        except TypeError as e:
-            msg = str(e)
-            if 'required positional argument' in msg:
-                raise self.__argument_error_type(msg)
-            raise e
         except self.__argument_error_type as e:
             raise self.__argument_error_type(
                 f'Invalid argument given to {self.__description} '
