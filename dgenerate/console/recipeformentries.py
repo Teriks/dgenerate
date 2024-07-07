@@ -689,6 +689,17 @@ class _ImageProcessor(_Entry):
                               yscrollcommand=v_scrollbar.set,
                               xscrollcommand=h_scrollbar.set)
 
+        if self.recipe_form.master and \
+                hasattr(self.recipe_form.master, '_input_text'):
+
+            bg = self.recipe_form.master._input_text.text.cget('bg')
+            fg = self.recipe_form.master._input_text.text.cget('fg')
+
+            text_widget.configure(
+                bg=bg,
+                fg=fg
+            )
+
         text_widget.config(state='normal')
         text_widget.insert(tk.END, self.current_help_text)
         text_widget.config(state='disabled')
