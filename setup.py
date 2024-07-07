@@ -245,10 +245,11 @@ if __name__ != 'setup_as_library':
           author_email='Teriks@users.noreply.github.com',
           url='https://github.com/Teriks/dgenerate',
           version=VERSION,
-          packages=find_packages() + ['dgenerate.console.themes'],
+          packages=find_packages() + ['dgenerate.console.themes', 'dgenerate.console.schemas'],
           package_data={
               'dgenerate': ['icon.ico', 'config_icon.ico'],
               'dgenerate.console.themes': ['*.toml'],
+              'dgenerate.console.schemas': ['*.toml'],
           },
           include_package_data=True,
           license='BSD 3-Clause',

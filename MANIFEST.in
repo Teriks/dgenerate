@@ -1,3 +1,4 @@
 include dgenerate/icon.ico
 include dgenerate/config_icon.ico
 recursive-include dgenerate/console/themes *.toml
+recursive-include dgenerate/console/schemas *.toml

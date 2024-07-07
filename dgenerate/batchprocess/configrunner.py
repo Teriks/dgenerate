@@ -961,7 +961,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         return 0
 
     def _config_generate_template_variables_with_types(self) -> dict[str, tuple[type, typing.Any]]:
-        template_variables = {}
+        template_variables = dict()
 
         variable_prefix = 'last_'
 
@@ -1034,11 +1034,11 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         if len(directive_names) == 0:
             help_string = f'Available config directives:' + '\n\n'
-            help_string += '\n'.join((' ' * 4) + _textprocessing.quote('\\' + i) for i in directives.keys())
+            help_string += '\n'.join((' ' * 4) + _textprocessing.quote('\\' + i) for i in sorted(directives.keys()))
         else:
             help_string = ''
 
-            directive_names = {n.lstrip('\\') for n in directive_names}
+            directive_names = [n.lstrip('\\') for n in directive_names]
 
             if directive_names is not None and len(directive_names) > 0:
                 found = dict()
@@ -1090,7 +1090,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         functions: dict[str, str | typing.Callable] = self.builtins.copy()
         functions.update(self.template_functions)
 
-        functions = dict(sorted(functions.items()))
+        functions = dict(sorted(functions.items(), key=lambda f: f[0]))
 
         if len(function_names) == 0:
 
@@ -1174,6 +1174,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                 raise ValueError(
                     f'No template variables named: {_textprocessing.oxford_comma(not_found, "or")}')
             values = found
+        else:
+            values = dict(sorted(values.items(), key=lambda x: x[0]))
 
         if len(values) > 1:
             header = 'Config template variables are'

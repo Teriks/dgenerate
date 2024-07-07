@@ -155,7 +155,8 @@ class PluginArg:
             raise ValueError(f'Syntax Error: {e.text[:offset]}[ERROR HERE>]{e.text[offset:]}')
 
     def __str__(self):
-        return f'{self.__class__.__name__}(name="{self.name}", type={self.type}, default={repr(self.default)})'
+        default_part = f', default={repr(self.default)}' if self.have_default else ''
+        return f'{self.__class__.__name__}(name="{self.name}", type={self.type}{default_part})'
 
     def __repr__(self):
         return str(self)
@@ -295,7 +296,58 @@ class Plugin:
                 cls.get_accepted_args(loaded_by_name) if a.have_default]
 
     @classmethod
-    def get_accepted_args(cls, loaded_by_name) -> list[PluginArg]:
+    def get_accepted_args_schema(cls, loaded_by_name: str):
+        """
+        Reduce the accepted arguments to a schema dict.
+
+        Keyed by argument ``name``, content keys include:
+
+        ``default`` contains any default value, this key may not exist if the argument has no default value.
+
+        ``types`` contains all accepted types for the argument in string form.
+
+        ``optional`` can the argument accept the value ``None``?
+
+        :param loaded_by_name: Plugin loaded by name
+        :return: dict
+        """
+        schema = dict()
+        for arg in cls.get_accepted_args(loaded_by_name):
+            entry = {}
+            schema[arg.name] = entry
+
+            def _type_name(t):
+                return (str(t) if t.__module__ != 'builtins' else t.__name__).strip()
+
+            def _resolve_union(t):
+                name = _type_name(t)
+                if name.startswith('typing.Union') or \
+                        name.startswith('typing.Optional'):
+                    return set(itertools.chain.from_iterable(
+                        [_resolve_union(t) for t in arg.type.__args__]))
+                return [name]
+
+            type_name = _type_name(arg.type)
+
+            if type_name.startswith('typing.Union') or \
+                    type_name.startswith('typing.Optional'):
+                union_args = _resolve_union(arg.type)
+                if 'NoneType' in union_args:
+                    entry['optional'] = True
+                    union_args.remove('NoneType')
+
+                entry['types'] = list(union_args)
+
+            else:
+                entry['optional'] = False
+                entry['types'] = [type_name]
+
+            if arg.have_default:
+                schema[arg.name]['default'] = arg.default
+        return schema
+
+    @classmethod
+    def get_accepted_args(cls, loaded_by_name: str) -> list[PluginArg]:
         """
         Retrieve the argument signature of a plugin implementation.
 
@@ -638,6 +690,18 @@ class PluginLoader:
 
         return list(self.__classes_by_name.keys())
 
+    def get_accepted_args_schema(self) -> dict[str, dict[str, typing.Any]]:
+        """
+        Get a :py:meth:`Plugin.get_accepted_args_schema` for every plugin class, keyed by callable plugin name.
+
+        :return: dict
+        """
+        schema = dict()
+
+        for name in self.get_all_names():
+            schema[name] = self.get_class_by_name(name).get_accepted_args_schema(name)
+        return schema
+
     def get_help(self, plugin_name: _types.Name) -> str:
         """
         Get a formatted help string for a plugin by one of its loadable names.
@@ -825,7 +889,7 @@ class PluginLoader:
                 return 1
 
         if len(names) == 0:
-            available = ('\n' + ' ' * 4).join(_textprocessing.quote(name) for name in self.get_all_names())
+            available = ('\n' + ' ' * 4).join(_textprocessing.quote(name) for name in sorted(self.get_all_names()))
             _messages.log(
                 f'Available {title_plural}:\n\n{" " * 4}{available}')
             return 0

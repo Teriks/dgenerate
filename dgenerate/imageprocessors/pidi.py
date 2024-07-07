@@ -64,7 +64,7 @@ class PidiNetProcessor(_imageprocessor.ImageProcessor):
 
     def __init__(self,
                  apply_filter: bool = False,
-                 safe=False,
+                 safe: bool = False,
                  detect_resolution: typing.Optional[str] = None,
                  detect_aspect: bool = True,
                  detect_align: int = 1,

@@ -21,6 +21,7 @@
 import enum
 import importlib.resources
 import io
+import json
 import os
 import platform
 import re
@@ -99,6 +100,11 @@ def set_window_icon(window: tkinter.Tk | tkinter.Toplevel):
 def get_themes():
     for file in importlib.resources.files('dgenerate.console').joinpath('themes').iterdir():
         yield os.path.splitext(file.name)[0], toml.loads(file.read_text())
+
+
+def get_schema(name):
+    with importlib.resources.open_text('dgenerate.console.schemas', f'{name}.json') as file:
+        return json.load(file)
 
 
 def get_karras_schedulers():
