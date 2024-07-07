@@ -712,7 +712,7 @@ class _ImageProcessor(_Entry):
 
             if len(param_types) == 1:
                 param_type = param_types[0]
-                if param_type in ['int', 'float'] and default_value != "" and not (param_type == 'float' and optional):
+                if param_type in ['int', 'float'] and default_value != "":
 
                     variable = tk.StringVar(value=default_value)
 
@@ -737,8 +737,7 @@ class _ImageProcessor(_Entry):
                                    increment=increment,
                                    format='%.15f' if param_type == 'float' else None)
 
-                    if param_type == 'int':
-                        entry.optional = optional
+                    entry.optional = optional
 
                     entry.bind("<MouseWheel>", on_mouse_wheel)
                     entry.bind("<Button-4>", on_mouse_wheel)  # For Linux systems

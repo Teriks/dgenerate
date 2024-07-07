@@ -58,8 +58,6 @@ class IntSpinbox(tk.Spinbox):
 class RealSpinbox(tk.Spinbox):
     """
     Spinbox for doubles where the accuracy of the value retrieved is important.
-
-    This value cannot be optional.
     """
 
     def __init__(self, master=None, textvariable: tk.StringVar | None = None, **kwargs):
@@ -87,7 +85,7 @@ class RealSpinbox(tk.Spinbox):
         self.optional = False
 
     def _format_display_value(self):
-        return repr(self.real_value.get())
+        return str(self.real_value.get())
 
     def _validate(self, value_if_allowed):
         try:
