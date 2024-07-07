@@ -29,16 +29,18 @@ import dgenerate.console.recipeformentries as _recipeformentries
 
 
 class _RecipesForm(tk.Toplevel):
-    def __init__(self, master=None, position: tuple[int, int] = None, width: int = None):
+    def __init__(self, master=None, position: tuple[int, int] = None, size: tuple[int, int] = None):
         super().__init__(master)
         self.title('Insert Recipe')
 
+        # Get all entry classes
         self._entry_classes = {
             c.NAME: c for c in
             _recipeformentries.__dict__.values()
-            if inspect.isclass(c) and issubclass(c, _recipeformentries._Entry)}
+            if inspect.isclass(c) and issubclass(c, _recipeformentries._Entry)
+        }
 
-        self.minsize(600, 0)
+        self.minsize(width=600, height=200)
 
         self._templates = None
         self._dropdown = None
@@ -46,14 +48,15 @@ class _RecipesForm(tk.Toplevel):
         self._template_names: list[str] = list(_recipes.RECIPES.keys())
 
         self._current_template = tk.StringVar(value=self._template_names[0])
-        self._entries: typing.List[_recipeformentries._Entry] = []
-        self._content: str | None = None
+        self._entries: list[_recipeformentries._Entry] = []
+        self._content: typing.Optional[str] = None
 
         self._ok: bool = False
+        self._on_submit: list[typing.Callable[[], None]] = []
+
         self.transient(master)
         self.grab_set()
-        self._create_form()
-        self.resizable(True, False)
+        self._create_scrollable_form()
 
         self.withdraw()
         self.update_idletasks()
@@ -67,23 +70,24 @@ class _RecipesForm(tk.Toplevel):
             position_top = self.master.winfo_y() + window_height // 2 - top_level_height // 2
             position_left = self.master.winfo_x() + window_width // 2 - top_level_width // 2
 
-            if width is not None:
-                self.geometry(f"{width}x{self.winfo_reqheight()}+{position_left}+{position_top}")
-            else:
-                self.geometry(f"+{position_left}+{position_top}")
+            self.geometry(f"+{position_left}+{position_top}")
 
         else:
-            if width is not None:
-                self.geometry("{}x{}+{}+{}".format(width, self.winfo_reqheight(), *position))
-            else:
-                self.geometry("+{}+{}".format(*position))
+            self.geometry("+{}+{}".format(*position))
+
+        if size:
+            self.geometry(f'{size[0]}x{size[1]}')
+        else:
+            self.geometry('600x600')
 
         self.deiconify()
 
-    def on_submit(self, callback):
+    def on_submit(self, callback: typing.Callable[[], None]) -> None:
+        """Register a callback to be called when the form is submitted."""
         self._on_submit.append(callback)
 
-    def _apply_templates(self):
+    def _apply_templates(self) -> None:
+        """Apply the templates to the form entries."""
         content = self._content
         missing_fields = False
 
@@ -104,23 +108,69 @@ class _RecipesForm(tk.Toplevel):
             self.master.focus_set()
             self.destroy()
 
-    def _create_form(self):
-        self._on_submit = []
-        self._dropdown = tk.OptionMenu(self,
-                                       self._current_template, *self._template_names,
+    def _create_scrollable_form(self) -> None:
+        """Create a scrollable form for the template entries."""
+        outer_frame = tk.Frame(self, bd=3, relief="sunken")
+        outer_frame.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
+
+        self.canvas = tk.Canvas(outer_frame)
+        self.scrollbar = tk.Scrollbar(outer_frame, orient="vertical", command=self.canvas.yview)
+        self.scrollable_frame = tk.Frame(self.canvas, padx=10, pady=10)
+
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(
+                scrollregion=self.canvas.bbox("all")
+            )
+        )
+
+        self.canvas_window = self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+
+        self.canvas.grid(row=0, column=0, sticky='nsew')
+        self.scrollbar.grid(row=0, column=1, sticky='ns')
+
+        outer_frame.grid_rowconfigure(0, weight=1)
+        outer_frame.grid_columnconfigure(0, weight=1)
+
+        self.grid_rowconfigure(1, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+
+        self.bind("<Configure>", self._on_resize)
+
+        self._dropdown = tk.OptionMenu(self, self._current_template, *self._template_names,
                                        command=lambda s: self._update_form(s, preserve_width=True))
-        self._dropdown.grid(row=0, column=0, columnspan=3, sticky='ew', padx=(5, 5), pady=(5, 5))
+        self._dropdown.grid(row=0, column=0, columnspan=2, sticky='ew', padx=5, pady=5)
+
+        # Bind mouse wheel events
+        self.canvas.bind_all("<MouseWheel>", self._on_mouse_wheel)
+        self.canvas.bind_all("<Button-4>", self._on_mouse_wheel)  # Linux
+        self.canvas.bind_all("<Button-5>", self._on_mouse_wheel)  # Linux
+
         self._update_form(self._current_template.get())
 
-    def _update_form(self, selection, preserve_width=False):
-        for widget in self.winfo_children():
+    def _on_mouse_wheel(self, event):
+        """Scroll the canvas with the mouse wheel."""
+        if event.num == 4 or event.delta > 0:
+            self.canvas.yview_scroll(-1, "units")
+        elif event.num == 5 or event.delta < 0:
+            self.canvas.yview_scroll(1, "units")
+
+    def _on_resize(self, event):
+        """Update the canvas width to match the new window width."""
+        canvas_width = self.winfo_width() - self.scrollbar.winfo_width() - 20
+        self.canvas.itemconfig(self.canvas_window, width=canvas_width)
+
+    def _update_form(self, selection: str, preserve_width: bool = False) -> None:
+        """Update the form based on the selected template."""
+        for widget in self.scrollable_frame.winfo_children():
             if widget != self._dropdown:
                 widget.destroy()
 
         self._entries = []
         self._content = self._templates_dict[selection]
         self._templates = re.findall(r'(@(.*?)\[(.*)\])', self._content)
-        self.grid_columnconfigure(1, weight=1)
+        self.scrollable_frame.grid_columnconfigure(1, weight=1)
 
         row_offset = 1
         for template in self._templates:
@@ -130,10 +180,11 @@ class _RecipesForm(tk.Toplevel):
                 try:
                     entry = self._entry_classes[ttype](
                         recipe_form=self,
-                        master=self,
+                        master=self.scrollable_frame,
                         row=row_offset,
                         config=json.loads(config),
-                        placeholder=template[0])
+                        placeholder=template[0]
+                    )
                 except json.JSONDecodeError as e:
                     raise RuntimeError(f'json decode error in {ttype}: {e}')
                 row_offset += entry.widget_rows
@@ -143,17 +194,7 @@ class _RecipesForm(tk.Toplevel):
             self._entries.append(entry)
 
         apply_button = tk.Button(self, text='Insert', command=self._apply_templates)
-        apply_button.grid(row=row_offset, column=0, padx=(5, 5), pady=(5, 5), columnspan=3)
-
-        self.update_size(preserve_width)
-
-    def update_size(self, preserve_width=False):
-        old_form_width = self.winfo_width()
-        if preserve_width:
-            self.update_idletasks()
-            self.geometry(f"{old_form_width}x{self.winfo_reqheight()}")
-        else:
-            self.geometry('')
+        apply_button.grid(row=3, column=0, padx=5, pady=5, columnspan=2)
 
     def get_recipe(self):
         self.wait_window(self)
@@ -161,20 +202,20 @@ class _RecipesForm(tk.Toplevel):
 
 
 _last_pos = None
-_last_width = None
+_last_size = None
 
 
 def request_recipe(master):
-    global _last_width, _last_pos
+    global _last_size, _last_pos
 
-    window = _RecipesForm(master, position=_last_pos, width=_last_width)
+    window = _RecipesForm(master, position=_last_pos, size=_last_size)
 
     og_destroy = window.destroy
 
     def destroy():
-        global _last_width, _last_pos
-        _last_width = window.winfo_width()
-        _last_pos = _last_size = (window.winfo_x(), window.winfo_y())
+        global _last_size, _last_pos
+        _last_size = (window.winfo_width(), window.winfo_height())
+        _last_pos = (window.winfo_x(), window.winfo_y())
         og_destroy()
 
     window.destroy = destroy
