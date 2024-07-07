@@ -131,7 +131,7 @@ class _RecipesForm(tk.Toplevel):
                     entry = self._entry_classes[ttype](
                         recipe_form=self,
                         master=self,
-                        row=row_offset,
+:q                        row=row_offset,
                         config=json.loads(config),
                         placeholder=template[0])
                 except json.JSONDecodeError as e:

@@ -249,7 +249,7 @@ if __name__ != 'setup_as_library':
           package_data={
               'dgenerate': ['icon.ico', 'config_icon.ico'],
               'dgenerate.console.themes': ['*.toml'],
-              'dgenerate.console.schemas': ['*.toml'],
+              'dgenerate.console.schemas': ['*.json'],
           },
           include_package_data=True,
           license='BSD 3-Clause',
