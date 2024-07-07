@@ -259,7 +259,7 @@ class LetterboxProcessor(_imageprocessor.ImageProcessor):
     The "box-is-padding" argument can be used to indicate that "letterbox_size" should be interpreted as padding.
 
     The "box-color" argument specifies the color to use for the letter box background, the default is black.
-    This should be specified in as a HEX color code.
+    This should be specified as a HEX color code.
 
     The "inner-size" argument specifies the size of the inner image.
 

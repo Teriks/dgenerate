@@ -19,11 +19,13 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import shlex
+import sys
 import tkinter as tk
 import typing
 
 import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.resources as _resources
+from dgenerate.console.spinbox import IntSpinbox, RealSpinbox
 
 
 def _replace_first(text, old, new):
@@ -54,7 +56,8 @@ _ROW_PAD = (5, 2)
 class _Entry:
     NAME = None
 
-    def __init__(self, recipe_form,  master, row: int, config: dict[str, typing.Any], placeholder: str, widget_rows: int):
+    def __init__(self, recipe_form, master, row: int, config: dict[str, typing.Any], placeholder: str,
+                 widget_rows: int):
         self.recipe_form = recipe_form
         self.master = master
         self.widget_rows = widget_rows
@@ -246,8 +249,8 @@ class _IntEntry(_Entry):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs, widget_rows=1)
 
-        self.min = self.config.get('min', float('-inf'))
-        self.max = self.config.get('max', float('inf'))
+        self.min = self.config.get('min', -sys.maxsize)
+        self.max = self.config.get('max', sys.maxsize)
 
         self.text_var = tk.StringVar(
             value=self.config.get('default', ''))
@@ -256,17 +259,7 @@ class _IntEntry(_Entry):
             self.master,
             text=self.get_label('Int'), anchor='e')
 
-        def validate_input(event):
-            t = self.text_var.get()
-            if not t.isdigit():
-                self.text_var.set(self.min)
-            elif int(t) < self.min:
-                self.text_var.set(self.min)
-            elif int(t) > self.max:
-                self.text_var.set(self.max)
-
         def increment(delta):
-            validate_input(None)
             value = int(self.text_var.get())
             value = max(self.min, min(self.max, value + delta))
             self.text_var.set(value)
@@ -276,17 +269,14 @@ class _IntEntry(_Entry):
             increment(delta)
             return "break"
 
-        self.entry = tk.Spinbox(self.master,
+        self.entry = IntSpinbox(self.master,
                                 from_=self.min,
                                 to=self.max,
                                 textvariable=self.text_var)
 
-        self.entry.bind('<Return>', validate_input)
-        self.entry.bind('<FocusOut>', validate_input)
         self.entry.bind("<MouseWheel>", on_mouse_wheel)
         self.entry.bind("<Button-4>", on_mouse_wheel)  # For Linux systems
         self.entry.bind("<Button-5>", on_mouse_wheel)  # For Linux systems
-        self.recipe_form.on_submit(lambda: validate_input(None))
 
         self.label_widget.grid(row=self.row, column=0, padx=_ROW_PAD, sticky='e')
         self.entry.grid(row=self.row, column=1, padx=_ROW_PAD, sticky='ew')
@@ -323,19 +313,9 @@ class _FloatEntry(_Entry):
             self.master,
             text=self.get_label('Float'), anchor='e')
 
-        def validate_input(event):
-            t = self.text_var.get()
-            try:
-                if float(t) < self.min:
-                    self.text_var.set(self.min)
-                elif float(t) > self.max:
-                    self.text_var.set(self.max)
-            except ValueError:
-                self.text_var.set(self.min)
-
         def increment(delta):
-            validate_input(None)
-            value = float(self.text_var.get())
+            cur_value = self.text_var.get().strip()
+            value = float(cur_value if cur_value != '' else 0.0)
             value = max(self.min, min(self.max, round(value + (delta * 0.01), 2)))
             self.text_var.set(value)
 
@@ -350,16 +330,26 @@ class _FloatEntry(_Entry):
                                 format="%.2f", increment=0.01,
                                 textvariable=self.text_var)
 
-        self.entry.bind('<Return>', validate_input)
-        self.entry.bind('<FocusOut>', validate_input)
+        self.entry.config(validate='all', validatecommand=(self.entry.register(self._validate), '%P'))
+
         self.entry.bind("<MouseWheel>", on_mouse_wheel)
         self.entry.bind("<Button-4>", on_mouse_wheel)  # For Linux systems
         self.entry.bind("<Button-5>", on_mouse_wheel)  # For Linux systems
-        self.recipe_form.on_submit(lambda: validate_input(None))
 
         self.label_widget.grid(row=self.row, column=0, padx=_ROW_PAD, sticky='e')
         self.entry.grid(row=self.row, column=1, padx=_ROW_PAD, sticky='ew')
         self.entry.bind('<Key>', lambda e: self.valid())
+
+    def _validate(self, value_if_allowed):
+        try:
+            # Validate if the input is a valid float string
+            float(value_if_allowed)
+            return True
+        except ValueError:
+            # Allow for empty if optional
+            if self.optional:
+                return value_if_allowed.strip() == ''
+            return False
 
     def invalid(self):
         self.entry.config(highlightbackground="red",
@@ -616,37 +606,28 @@ class _ImageProcessor(_Entry):
 
     def __init__(self, *args, **kwargs):
         self.schema = _resources.get_schema('imageprocessors')
-
-        # reserve as many rows as we could ever need
-        super().__init__(*args, **kwargs, widget_rows=max(len(args) for args in self.schema.values()) + 1)
+        max_rows = max(len(args) for args in self.schema.values()) + 1
+        super().__init__(*args, **kwargs, widget_rows=max_rows)
 
         self.declared_optional = self.config.get('optional', True)
+        label = f'(Optional) {self.config.get("label", "Image Processor")}' if self.declared_optional else self.config.get(
+            "label", "Image Processor")
 
-        label = f'(Optional) {self.config.get("label", "Image Processor")}' \
-            if self.declared_optional else self.config.get("label", "Image Processor")
-
-        # Custom validation
         self.optional = False
-
         self.processor_name_var = tk.StringVar(self.master)
-
         values = list(self.schema.keys())
 
-        # Create and place the label for the dropdown
         self.dropdown_label = tk.Label(self.master, text=label)
 
-        # Create and place the dropdown
-
         if self.declared_optional:
-            self.algorithm_dropdown = tk.OptionMenu(
-                self.master, self.processor_name_var, '', *values, command=self._on_processor_change)
+            self.algorithm_dropdown = tk.OptionMenu(self.master, self.processor_name_var, '', *values,
+                                                    command=self._on_processor_change)
         else:
             self.processor_name_var.set(values[0])
-            self.algorithm_dropdown = tk.OptionMenu(
-                self.master, self.processor_name_var, *values, command=self._on_processor_change)
+            self.algorithm_dropdown = tk.OptionMenu(self.master, self.processor_name_var, *values,
+                                                    command=self._on_processor_change)
 
         self.processor_help_button = tk.Button(self.master, text='Help', command=self._show_help)
-
         self.dropdown_label.grid(row=self.row, column=0, padx=_ROW_PAD, sticky="e")
         self.algorithm_dropdown.grid(row=self.row, column=1, padx=_ROW_PAD, sticky="ew")
 
@@ -654,60 +635,39 @@ class _ImageProcessor(_Entry):
             self._show_help_button()
 
         self.entries = {}
-
         self.dynamic_widgets = []
-
-        # arguments with these names get a file select
-        # this is argument name to file select file_types value
-
         self.file_arguments = {
             'model': [('Models', ' *.'.join(['*.' + ext for ext in _resources.supported_torch_model_formats_open()]))]}
 
     def _show_help(self):
         top = tk.Toplevel(self.master)
         top.title(f'Image Processor Help: {self.processor_name_var.get()}')
-
-        # disable window focus stealing
         top.attributes('-topmost', 1)
         top.attributes('-topmost', 0)
 
-        # create a frame to hold the text widget and scrollbars
         frame = tk.Frame(top)
         frame.pack(expand=True, fill='both')
 
-        # create vertical scrollbar
         v_scrollbar = tk.Scrollbar(frame, orient=tk.VERTICAL)
         v_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        # create horizontal scrollbar
         h_scrollbar = tk.Scrollbar(frame, orient=tk.HORIZONTAL)
         h_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
 
-        # create a scrolled text widget
-        text_widget = tk.Text(frame, wrap=tk.NONE,
-                              state='disabled',
-                              yscrollcommand=v_scrollbar.set,
+        text_widget = tk.Text(frame, wrap=tk.NONE, state='disabled', yscrollcommand=v_scrollbar.set,
                               xscrollcommand=h_scrollbar.set)
 
-        if self.recipe_form.master and \
-                hasattr(self.recipe_form.master, '_input_text'):
-
+        if self.recipe_form.master and hasattr(self.recipe_form.master, '_input_text'):
             bg = self.recipe_form.master._input_text.text.cget('bg')
             fg = self.recipe_form.master._input_text.text.cget('fg')
-
-            text_widget.configure(
-                bg=bg,
-                fg=fg
-            )
+            text_widget.configure(bg=bg, fg=fg)
 
         text_widget.config(state='normal')
         text_widget.insert(tk.END, self.current_help_text)
         text_widget.config(state='disabled')
 
-        # configure scrollbars
         v_scrollbar.config(command=text_widget.yview)
         h_scrollbar.config(command=text_widget.xview)
-
         text_widget.pack(expand=True, fill='both')
 
         top.geometry("800x600")
@@ -724,7 +684,6 @@ class _ImageProcessor(_Entry):
 
         self.dynamic_widgets.clear()
         self.entries.clear()
-
         algorithm_name = self.processor_name_var.get()
 
         if algorithm_name == '':
@@ -732,7 +691,6 @@ class _ImageProcessor(_Entry):
             return
 
         self._show_help_button()
-
         parameters = self.schema[algorithm_name]
 
         for i, (param_name, param_info) in enumerate(parameters.items()):
@@ -743,88 +701,122 @@ class _ImageProcessor(_Entry):
             row = self.row + i + 1
 
             optional_label_part = '(Optional) ' if param_info.get('optional', False) else ''
-
-            label = tk.Label(self.master, text=f"{optional_label_part}{param_name} ({', '.join(param_info['types'])})")
-            self.dynamic_widgets.append(label)
-
-            label.grid(row=row, column=0, padx=_ROW_PAD, sticky="e")
+            label_text = f"{optional_label_part}{param_name} ({', '.join(param_info['types'])})"
 
             default_value = param_info.get('default', "")
+            param_types = param_info['types']
             optional = param_info.get('optional', False)
 
-            entry = tk.Entry(self.master)
+            sticky_entry = 'we'
+            padx_entry = _ROW_PAD
+
+            if len(param_types) == 1:
+                param_type = param_types[0]
+                if param_type in ['int', 'float'] and default_value != "" and not (param_type == 'float' and optional):
+
+                    variable = tk.StringVar(value=default_value) if \
+                        param_type == 'int' else tk.DoubleVar(value=default_value)
+
+                    increment = 1 if param_type == 'int' else 0.01
+                    typ = int if param_type == 'int' else float
+
+                    def on_mouse_wheel(e, var=variable, typ=typ, inc=increment):
+                        delta = -1 if e.delta < 0 else 1
+                        new_value = round(typ(var.get()) + (delta * inc), 2)
+                        var.set(str(new_value))
+                        return "break"
+
+                    min_spin = -sys.maxsize if param_type == 'int' else float('-inf')
+                    max_spin = sys.maxsize if param_type == 'int' else float('inf')
+
+                    sp_typ = IntSpinbox if param_type == 'int' else RealSpinbox
+
+                    entry = sp_typ(master=self.master,
+                                   from_=min_spin,
+                                   to=max_spin,
+                                   textvariable=variable,
+                                   increment=increment,
+                                   format='%.15f' if param_type == 'float' else None)
+
+                    if param_type == 'int':
+                        entry.optional = optional
+
+                    entry.bind("<MouseWheel>", on_mouse_wheel)
+                    entry.bind("<Button-4>", on_mouse_wheel)  # For Linux systems
+                    entry.bind("<Button-5>", on_mouse_wheel)  # For Linux systems
+
+                    label_text = f"{optional_label_part}{param_name}"
+                elif param_type == 'bool' and default_value != "" and not optional:
+                    variable = tk.BooleanVar(value=default_value)
+                    entry = tk.Checkbutton(self.master,
+                                           variable=variable)
+                    label_text = f"{optional_label_part}{param_name}"
+                    sticky_entry = 'w'
+                    padx_entry = None
+                else:
+                    variable = tk.StringVar(value=default_value)
+                    entry = tk.Entry(self.master, textvariable=variable)
+            else:
+                variable = tk.StringVar(value=default_value)
+                entry = tk.Entry(self.master, textvariable=variable)
+
+            label = tk.Label(self.master, text=label_text)
+            self.dynamic_widgets.append(label)
+            label.grid(row=row, column=0, padx=_ROW_PAD, sticky="e")
+
             self.dynamic_widgets.append(entry)
 
-            if default_value != "":
-                entry.insert(0, str(default_value))
-
-            entry.grid(row=row, column=1, padx=_ROW_PAD, sticky="we")
+            entry.grid(row=row, column=1, padx=padx_entry, sticky=sticky_entry)
 
             if param_name in self.file_arguments:
                 file_types = self.file_arguments[param_name]
-                file_select = tk.Button(
-                    self.master, text='Select File',
-                    command=lambda current_entry=entry,
-                                   file_types=file_types:
-                    self._select_model_command(current_entry, file_types))
-
+                file_select = tk.Button(self.master, text='Select File',
+                                        command=lambda e=entry, f=file_types: self._select_model_command(e, f))
                 file_select.grid(row=row, column=2, padx=_ROW_PAD, sticky='w')
-
                 self.dynamic_widgets.append(file_select)
 
-            self.entries[param_name] = (entry, default_value, optional)
+            self.entries[param_name] = (entry, variable, default_value, optional)
 
     def invalid(self):
-        for entry, default_value, optional in self.entries.values():
-            if optional is False and not entry.get():
+        for entry, variable, default_value, optional in self.entries.values():
+            if optional is False and not str(variable.get()):
                 entry.config(
                     highlightbackground="red",
                     highlightcolor="red",
                     highlightthickness=2)
 
     def is_empty(self):
-        for entry, default_value, optional in self.entries.values():
-            if optional is False and not entry.get():
+        for entry, variable, default_value, optional in self.entries.values():
+            if optional is False and not str(variable.get()):
                 return True
         return False
 
     def valid(self):
-        for entry, default_value, optional in self.entries.values():
+        for entry, variable, default_value, optional in self.entries.values():
             if optional:
                 entry.config(highlightthickness=0)
 
     @staticmethod
-    def _select_model_command(entry_ref, file_types):
-        r = _filedialog.open_file_dialog(filetypes=file_types)
-        if r is not None:
-            entry_ref.delete(0, tk.END)
-            entry_ref.insert(0, r)
+    def _select_model_command(entry, file_types):
+        file_path = _filedialog.open_file_dialog(filetypes=file_types)
+        if file_path:
+            entry.delete(0, tk.END)
+            entry.insert(0, file_path)
 
     @staticmethod
     def _normalize_value(value):
-        value = str(value)
-        if value.lower() == 'none':
-            return 'None'
-        elif value.lower() == 'true':
-            return 'True'
-        elif value.lower() == 'false':
-            return 'False'
-        return value
+        value = str(value).lower()
+        return {'none': 'None', 'true': 'True', 'false': 'False'}.get(value, value)
 
     def _format_uri(self):
         algorithm_name = self.processor_name_var.get()
-
-        if algorithm_name == '':
+        if not algorithm_name:
             return ''
-
         uri_parts = [algorithm_name]
-
-        for param_name, (entry, default_value, _) in self.entries.items():
-            current_value = self._normalize_value(entry.get())
-            normalized_default_value = self._normalize_value(str(default_value))
-            if current_value != normalized_default_value and current_value.strip():
+        for param_name, (entry, variable, default_value, _) in self.entries.items():
+            current_value = self._normalize_value(variable.get())
+            if current_value != self._normalize_value(default_value) and current_value.strip():
                 uri_parts.append(f"{param_name}={current_value}")
-
         return ';'.join(uri_parts)
 
     def template(self, content):
