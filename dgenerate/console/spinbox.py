@@ -62,14 +62,14 @@ class RealSpinbox(tk.Spinbox):
     This value cannot be optional.
     """
 
-    def __init__(self, master=None, textvariable: tk.DoubleVar | None = None, **kwargs):
+    def __init__(self, master=None, textvariable: tk.StringVar | None = None, **kwargs):
 
         if 'from_' in kwargs:
-            initial_value = float(kwargs['from_'])
+            initial_value = str(kwargs['from_'])
         else:
-            initial_value = 0.0
+            initial_value = '0.0'
 
-        self.real_value = textvariable if textvariable is not None else tk.DoubleVar(value=initial_value)
+        self.real_value = textvariable if textvariable is not None else tk.StringVar(value=initial_value)
         self.display_value = tk.StringVar()
 
         self.display_value.set(self._format_display_value())
@@ -82,15 +82,20 @@ class RealSpinbox(tk.Spinbox):
 
         self.config(validate='all', validatecommand=(self.register(self._validate), '%P'))
 
-        self.display_value.trace_add('write', lambda *a: self.real_value.set(
-            float(self.display_value.get() if self.display_value.get().strip() else '0')))
+        self.display_value.trace_add('write', lambda *a: self.real_value.set(self.display_value.get()))
+
+        self.optional = False
 
     def _format_display_value(self):
         return repr(self.real_value.get())
 
     def _validate(self, value_if_allowed):
         try:
+            # Validate if the input is a valid float string
             float(value_if_allowed)
             return True
         except ValueError:
+            # Allow for empty if optional
+            if self.optional:
+                return value_if_allowed.strip() == ''
             return False
