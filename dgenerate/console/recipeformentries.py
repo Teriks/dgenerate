@@ -700,12 +700,13 @@ class _ImageProcessor(_Entry):
 
             row = self.row + i + 1
 
-            optional_label_part = '(Optional) ' if param_info.get('optional', False) else ''
+            optional = param_info.get('optional', False)
+
+            optional_label_part = '(Optional) ' if optional else ''
             label_text = f"{optional_label_part}{param_name} ({', '.join(param_info['types'])})"
 
             default_value = param_info.get('default', "")
             param_types = param_info['types']
-            optional = param_info.get('optional', False)
 
             sticky_entry = 'we'
             padx_entry = _ROW_PAD
@@ -751,11 +752,19 @@ class _ImageProcessor(_Entry):
                     label_text = f"{optional_label_part}{param_name}"
                     sticky_entry = 'w'
                     padx_entry = None
+                elif param_type == 'bool' and optional:
+                    variable = tk.StringVar(value=str(default_value))
+                    values = {'True', 'False', 'None'}
+                    values.remove(str(default_value))
+                    entry = tk.OptionMenu(self.master,
+                                          variable,
+                                          str(default_value),
+                                          *values)
                 else:
-                    variable = tk.StringVar(value=default_value)
+                    variable = tk.StringVar(value=str(default_value))
                     entry = tk.Entry(self.master, textvariable=variable)
             else:
-                variable = tk.StringVar(value=default_value)
+                variable = tk.StringVar(value=str(default_value))
                 entry = tk.Entry(self.master, textvariable=variable)
 
             label = tk.Label(self.master, text=label_text)
