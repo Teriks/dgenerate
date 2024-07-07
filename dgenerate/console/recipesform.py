@@ -196,6 +196,12 @@ class _RecipesForm(tk.Toplevel):
         apply_button = tk.Button(self, text='Insert', command=self._apply_templates)
         apply_button.grid(row=3, column=0, padx=5, pady=5, columnspan=2)
 
+    def destroy(self) -> None:
+        self.canvas.unbind_all("<MouseWheel>")
+        self.canvas.unbind_all("<Button-4>")  # Linux
+        self.canvas.unbind_all("<Button-5>")  # Linux
+        super().destroy()
+
     def get_recipe(self):
         self.wait_window(self)
         return ('\n'.join(line.lstrip() for line in self._content.splitlines())).strip() if self._ok else None
