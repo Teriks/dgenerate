@@ -714,8 +714,7 @@ class _ImageProcessor(_Entry):
                 param_type = param_types[0]
                 if param_type in ['int', 'float'] and default_value != "" and not (param_type == 'float' and optional):
 
-                    variable = tk.StringVar(value=default_value) if \
-                        param_type == 'int' else tk.DoubleVar(value=default_value)
+                    variable = tk.StringVar(value=default_value)
 
                     increment = 1 if param_type == 'int' else 0.01
                     typ = int if param_type == 'int' else float
