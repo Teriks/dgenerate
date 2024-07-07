@@ -763,8 +763,6 @@ class _ImageProcessor(_Entry):
 
             self.entries[param_name] = (entry, default_value, optional)
 
-        self.recipe_form.update_size(preserve_width=True)
-
     def invalid(self):
         for entry, default_value, optional in self.entries.values():
             if optional is False and not entry.get():
