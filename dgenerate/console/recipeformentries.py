@@ -299,7 +299,7 @@ class _FloatEntry(_Entry):
         self.max = self.config.get('max', float('inf'))
 
         self.text_var = tk.StringVar(
-            value='')
+            value=self.config.get('default', ''))
 
         self.label_widget = tk.Label(
             self.master,
@@ -651,95 +651,114 @@ class _ImageProcessor(_Entry):
         self.processor_help_button.grid_forget()
 
     def _on_processor_change(self, event):
-        for widget in self.dynamic_widgets:
-            widget.destroy()
+        self._clear_dynamic_widgets()
 
-        self.dynamic_widgets.clear()
-        self.entries.clear()
         algorithm_name = self.processor_name_var.get()
-
-        if algorithm_name == '':
+        if not algorithm_name:
             self._hide_help_button()
             return
 
         self._show_help_button()
-        parameters = self.schema[algorithm_name]
+        parameters = self.schema.get(algorithm_name, {})
 
         for i, (param_name, param_info) in enumerate(parameters.items()):
             if param_name == 'PROCESSOR_HELP':
                 self.current_help_text = param_info
                 continue
 
-            row = self.row + i + 1
+            self._create_widget_for_param(param_name, param_info, self.row + i + 1)
 
-            optional = param_info.get('optional', False)
+    def _clear_dynamic_widgets(self):
+        for widget in self.dynamic_widgets:
+            widget.destroy()
+        self.dynamic_widgets.clear()
+        self.entries.clear()
 
-            optional_label_part = '(Optional) ' if optional else ''
-            label_text = f"{optional_label_part}{param_name} ({', '.join(param_info['types'])})"
+    def _create_widget_for_param(self, param_name, param_info, row):
+        optional: bool = param_info.get('optional', False)
+        default_value: typing.Any = param_info.get('default', "")
+        param_types: list[str] = param_info['types']
 
-            default_value = param_info.get('default', "")
-            param_types = param_info['types']
+        optional_label = '(Optional) ' if optional else ''
+        label_text = f"{optional_label}{param_name} ({', '.join(param_info['types'])})"
 
-            sticky_entry = 'we'
-            padx_entry = _ROW_PAD
+        label = tk.Label(self.master, text=label_text)
+        self.dynamic_widgets.append(label)
+        label.grid(row=row, column=0, padx=_ROW_PAD, sticky="e")
 
-            if len(param_types) == 1:
-                param_type = param_types[0]
-                if param_type in ['int', 'float'] and default_value != "":
+        entry, variable, sticky, padx = self._create_entry(param_types, default_value, optional)
+        self.dynamic_widgets.append(entry)
+        entry.grid(row=row, column=1, padx=padx, sticky=sticky)
 
-                    variable = tk.StringVar(value=default_value)
+        if param_name in self.file_arguments:
+            self._add_file_button(row, entry, self.file_arguments[param_name])
 
-                    increment = 1 if param_type == 'int' else 0.01
-                    typ = int if param_type == 'int' else float
+        # editing resets invalid border
+        variable.trace_add('write', lambda *a, e=entry: e.config(highlightthickness=0))
 
-                    sp_typ = IntSpinbox if param_type == 'int' else FloatSpinbox
+        self.entries[param_name] = (entry, variable, default_value, optional)
 
-                    entry = sp_typ(master=self.master,
-                                   textvariable=variable,
-                                   increment=increment,
-                                   format='%.15f' if param_type == 'float' else None)
+    def _create_entry(self, param_types, default_value, optional) -> \
+            tuple[tk.Widget, tk.Variable, str, tuple[int, int] | None]:
+        """
+        :param param_types: parameter accepted types, as strings
+        :param default_value: default value, possibly empty string
+        :param optional: can accept None?
+        :return: (entry widget, entry data variable, widget sticky coords, xpad)
+        """
 
-                    label_text = f"{optional_label_part}{param_name}"
-                elif param_type == 'bool' and default_value != "" and not optional:
-                    variable = tk.BooleanVar(value=default_value)
-                    entry = tk.Checkbutton(self.master,
-                                           variable=variable)
-                    label_text = f"{optional_label_part}{param_name}"
-                    sticky_entry = 'w'
-                    padx_entry = None
-                elif param_type == 'bool' and optional:
-                    variable = tk.StringVar(value=str(default_value))
-                    values = {'True', 'False', 'None'}
-                    values.remove(str(default_value))
-                    entry = tk.OptionMenu(self.master,
-                                          variable,
-                                          str(default_value),
-                                          *values)
-                else:
-                    variable = tk.StringVar(value=str(default_value))
-                    entry = tk.Entry(self.master, textvariable=variable)
+        if len(param_types) == 1:
+            param_type = param_types[0]
+            return self._create_single_type_entry(param_type, default_value, optional)
+        else:
+            variable = tk.StringVar(value=str(default_value))
+            entry = tk.Entry(self.master, textvariable=variable)
+            return entry, variable, 'we', _ROW_PAD
+
+    def _create_single_type_entry(self, param_type, default_value, optional) -> \
+            tuple[tk.Widget, tk.Variable, str, tuple[int, int] | None]:
+        """
+        :param param_type: parameter accepted type, as string
+        :param default_value: default value, possibly empty string
+        :param optional: can accept None?
+        :return: (entry widget, entry text variable, widget sticky coords, xpad)
+        """
+
+        if param_type in ['int', 'float'] and default_value != "":
+
+            variable = tk.StringVar(value=default_value)
+            increment = 1 if param_type == 'int' else 0.01
+            entry_class = IntSpinbox if param_type == 'int' else FloatSpinbox
+            entry = entry_class(self.master, textvariable=variable, increment=increment,
+                                format='%.15f' if param_type == 'float' else None)
+
+            return entry, variable, 'we', _ROW_PAD
+
+        elif param_type == 'bool' and default_value != "":
+
+            if optional:
+                variable = tk.StringVar(value=default_value)
+                values = ['True', 'False', 'None']
+                values.remove(str(default_value))
+                entry = tk.OptionMenu(self.master, variable, str(default_value), *values)
+                return entry, variable, 'we', _ROW_PAD
             else:
-                variable = tk.StringVar(value=str(default_value))
-                entry = tk.Entry(self.master, textvariable=variable)
+                variable = tk.BooleanVar(value=default_value)
+                entry = tk.Checkbutton(self.master, variable=variable)
+                return entry, variable, 'w', None
 
-            label = tk.Label(self.master, text=label_text)
-            self.dynamic_widgets.append(label)
-            label.grid(row=row, column=0, padx=_ROW_PAD, sticky="e")
+        else:
 
-            self.dynamic_widgets.append(entry)
+            variable = tk.StringVar(value=str(default_value))
+            entry = tk.Entry(self.master, textvariable=variable)
+            return entry, variable, 'we', _ROW_PAD
 
-            entry.grid(row=row, column=1, padx=padx_entry, sticky=sticky_entry)
+    def _add_file_button(self, row, entry, file_types):
 
-            if param_name in self.file_arguments:
-                file_types = self.file_arguments[param_name]
-                file_select = tk.Button(self.master, text='Select File',
-                                        command=lambda e=entry, f=file_types: self._select_model_command(e, f))
-                file_select.grid(row=row, column=2, padx=_ROW_PAD, sticky='w')
-                self.dynamic_widgets.append(file_select)
-
-            variable.trace_add('write', lambda *a, entry=entry: entry.config(highlightthickness=0))
-
-            self.entries[param_name] = (entry, variable, default_value, optional)
+        file_button = tk.Button(self.master, text='Select File',
+                                command=lambda e=entry, f=file_types: self._select_model_command(e, f))
+        file_button.grid(row=row, column=2, padx=_ROW_PAD, sticky='w')
+        self.dynamic_widgets.append(file_button)
 
     def invalid(self):
         for entry, variable, default_value, optional in self.entries.values():
