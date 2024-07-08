@@ -58,14 +58,28 @@ class IntSpinbox(tk.Entry):
 
         bind_mousewheel(self.bind, self._on_mouse_wheel)
 
-    def _on_mouse_wheel(self, e):
-        delta = -1 if e.delta < 0 else 1
+        self.bind('<Up>', self._on_up_arrow)
+        self.bind('<Down>', self._on_down_arrow)
+
+    def _increment(self, delta):
         try:
-            new_value = max(self.from_, min(self.to, int(self.display_value.get()) + (delta * self.increment)))
+            new_value = max(self.from_,
+                            min(self.to, int(self.display_value.get()) + (delta * self.increment)))
             self.display_value.set(str(new_value))
         except ValueError:
             self.display_value.set(self.get_midpoint())
 
+    def _on_up_arrow(self, e):
+        self._increment(1)
+        return "break"
+
+    def _on_down_arrow(self, e):
+        self._increment(-1)
+        return "break"
+
+    def _on_mouse_wheel(self, e):
+        delta = -1 if e.delta < 0 else 1
+        self._increment(delta)
         return "break"
 
     def _setup_validation(self):
@@ -146,8 +160,10 @@ class FloatSpinbox(tk.Entry):
 
         bind_mousewheel(self.bind, self._on_mouse_wheel)
 
-    def _on_mouse_wheel(self, e):
-        delta = -1 if e.delta < 0 else 1
+        self.bind('<Up>', self._on_up_arrow)
+        self.bind('<Down>', self._on_down_arrow)
+
+    def _increment(self, delta):
         try:
             new_value = max(self.from_,
                             min(self.to, round(float(self.display_value.get()) + (delta * self.increment), 2)))
@@ -155,6 +171,17 @@ class FloatSpinbox(tk.Entry):
         except ValueError:
             self.display_value.set(self.get_midpoint())
 
+    def _on_up_arrow(self, e):
+        self._increment(1)
+        return "break"
+
+    def _on_down_arrow(self, e):
+        self._increment(-1)
+        return "break"
+
+    def _on_mouse_wheel(self, e):
+        delta = -1 if e.delta < 0 else 1
+        self._increment(delta)
         return "break"
 
     def _setup_validation(self):
