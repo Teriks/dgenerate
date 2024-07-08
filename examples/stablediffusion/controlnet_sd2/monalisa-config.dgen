@@ -1,6 +1,8 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 3.9.0
 
+\clear_control_net_cache
+
 # Use the built in mirror and canny processor action to process
 # the image for you before using it for generation. This mirrors
 # the image horizontally and then runs canny edge detection on it
@@ -9,6 +11,8 @@ stabilityai/stable-diffusion-2-1
 --inference-steps 40
 --guidance-scales 8
 --gen-seeds 2
+--vae-tiling
+--vae-slicing
 --prompts "Detailed watercolor painting of a woman sitting, facing the viewer, bright; dark"
 --control-nets thibaud/controlnet-sd21-canny-diffusers;scale=0.8
 --image-seeds "../../media/monalisa.png"
