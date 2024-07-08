@@ -98,7 +98,30 @@ class _ImageProcessorEntry(_entry._Entry):
         h_scrollbar.config(command=text_widget.xview)
         text_widget.pack(expand=True, fill='both')
 
-        top.geometry("850x600")
+        width = 850
+        height = 600
+
+        # Centering logic 
+
+        # master_x = self.recipe_form.winfo_rootx()
+        # master_y = self.recipe_form.winfo_rooty()
+        # master_width = self.recipe_form.winfo_width()
+        # master_height = self.recipe_form.winfo_height()
+
+        # # Calculate position x, y
+        # x = master_x + (master_width // 2) - (width // 2)
+        # y = master_y + (master_height // 2) - (height // 2)
+
+        # Dock right
+        master_x = self.recipe_form.winfo_rootx()
+        master_y = self.recipe_form.winfo_rooty()
+        master_width = self.recipe_form.winfo_width()
+
+        # Calculate position x, y to dock the help window to the right of recipe_form
+        x = master_x + master_width
+        y = master_y
+
+        top.geometry(f'{width}x{height}+{x}+{y}')
 
         bind_mousewheel(top.bind, self._on_help_mouse_wheel)
 
