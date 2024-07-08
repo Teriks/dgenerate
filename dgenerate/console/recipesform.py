@@ -24,8 +24,8 @@ import re
 import tkinter as tk
 import typing
 
-import dgenerate.console.recipes as _recipes
 import dgenerate.console.recipeformentries as _recipeformentries
+import dgenerate.console.recipes as _recipes
 from dgenerate.console.mousewheelbind import bind_mousewheel, un_bind_mousewheel
 
 
@@ -114,9 +114,9 @@ class _RecipesForm(tk.Toplevel):
         outer_frame = tk.Frame(self, bd=3, relief="sunken")
         outer_frame.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
 
-        self.canvas = tk.Canvas(outer_frame)
+        self.canvas = tk.Canvas(outer_frame, highlightthickness=0)
         self.scrollbar = tk.Scrollbar(outer_frame, orient="vertical", command=self.canvas.yview)
-        self.scrollable_frame = tk.Frame(self.canvas, padx=10, pady=10)
+        self.scrollable_frame = tk.Frame(self.canvas, padx=10, pady=10, highlightthickness=0)
 
         self.scrollable_frame.bind(
             "<Configure>",

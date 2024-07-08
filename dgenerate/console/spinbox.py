@@ -18,9 +18,10 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-
+import sys
 import tkinter as tk
+
+from dgenerate.console.mousewheelbind import bind_mousewheel
 
 
 class IntSpinbox(tk.Spinbox):
@@ -28,72 +29,188 @@ class IntSpinbox(tk.Spinbox):
     Spin box for integer values.
     """
 
-    def __init__(self, master=None, **kwargs):
-        # Ensure the from_ and to values are integers
-        if 'from_' in kwargs:
-            kwargs['from_'] = int(kwargs['from_'])
-        if 'to' in kwargs:
-            kwargs['to'] = int(kwargs['to'])
-        if 'increment' in kwargs:
-            kwargs['increment'] = int(kwargs['increment'])
+    def __init__(self,
+                 master=None,
+                 textvariable: tk.StringVar = None,
+                 from_: int | None = None,
+                 to: int | None = None,
+                 **kwargs):
 
-        super().__init__(master, **kwargs)
+        from_ = from_ if from_ is not None else -sys.maxsize
+        to = to if to is not None else sys.maxsize
 
-        self.config(validate='all', validatecommand=(self.register(self._validate), '%P'))
+        if not isinstance(from_, int):
+            raise ValueError('from must be int.')
 
-        self.optional = False
+        if not isinstance(to, int):
+            raise ValueError('to must be int.')
+
+        self.display_value = textvariable if textvariable is not None else tk.StringVar()
+
+        self.increment = kwargs.get('increment', 1)
+
+        self.from_ = from_
+        self.to = to
+
+        super().__init__(master, textvariable=self.display_value, **kwargs)
+        self._setup_validation()
+
+        bind_mousewheel(self.bind, self._on_mouse_wheel)
+
+    def _on_mouse_wheel(self, e):
+        delta = -1 if e.delta < 0 else 1
+        try:
+            new_value = max(self.from_, min(self.to, int(self.display_value.get()) + (delta * self.increment)))
+            self.display_value.set(str(new_value))
+        except ValueError:
+            self.display_value.set(self.get_midpoint())
+
+        return "break"
+
+    def _setup_validation(self):
+        self.config(validate='key', validatecommand=(self.register(self._validate), '%P'))
+
+    def get_midpoint(self) -> str:
+        """
+        Calculate the midpoint of the range defined by `from_` and `to`.
+
+        :return: Midpoint as a string.
+        """
+        if self.to == sys.maxsize and self.from_ != -sys.maxsize:
+            return str(self.from_)
+
+        if self.from_ == -sys.maxsize and self.to != sys.maxsize:
+            return str(self.to)
+
+        return str(round((self.from_ + self.to) / 2))
 
     def _validate(self, value_if_allowed):
+
+        if value_if_allowed == "":  # Allow empty string for deletion
+            return True
         try:
-            # Validate if the input is a valid float string
-            int(value_if_allowed)
+            value = int(value_if_allowed)  # Validate as float
+
+            if value < self.from_ or value > self.to:
+                self.delete(0, tk.END)
+                self.insert(0, self.get_midpoint())
+                # Validation gets blown out by the edits for
+                # god knows what reason, this took ages to figure out
+                self._setup_validation()
+                return False
+
             return True
         except ValueError:
-            # Allow for empty if optional
-            if self.optional:
-                return value_if_allowed.strip() == ''
             return False
 
 
-class RealSpinbox(tk.Spinbox):
+class FloatSpinbox(tk.Spinbox):
     """
-    Spinbox for doubles where the accuracy of the value retrieved is important.
+    Spinbox for floats where the accuracy of the value retrieved is important.
     """
 
-    def __init__(self, master=None, textvariable: tk.StringVar | None = None, **kwargs):
+    def __init__(self,
+                 master=None,
+                 textvariable: tk.StringVar = None,
+                 from_: float | None = None,
+                 to: float | None = None,
+                 **kwargs):
 
-        if 'from_' in kwargs:
-            initial_value = str(kwargs['from_'])
+        if from_ is None:
+            self.from_ = float('-inf')
         else:
-            initial_value = '0.0'
+            self.from_ = float(from_)
 
-        self.real_value = textvariable if textvariable is not None else tk.StringVar(value=initial_value)
-        self.display_value = tk.StringVar()
+        if to is None:
+            self.to = float('inf')
+        else:
+            self.to = float(to)
 
-        self.display_value.set(self._format_display_value())
+        self.real_value = textvariable if textvariable else tk.StringVar()
+        self.display_value = tk.StringVar(value=self._format_real_to_display_value())
 
-        self.real_value.trace_add('write', lambda *a: self.display_value.set(self._format_display_value()))
+        # Trace real_value changes to update display_value
+        self._real_trace_id = self.real_value.trace_add('write', self._update_display_value)
 
         self.increment = kwargs.get('increment', 1.0)
 
-        super().__init__(master, textvariable=self.display_value, **kwargs)
+        super().__init__(master,
+                         textvariable=self.display_value,
+                         **kwargs)
 
-        self.config(validate='all', validatecommand=(self.register(self._validate), '%P'))
+        self._setup_validation()
 
-        self.display_value.trace_add('write', lambda *a: self.real_value.set(self.display_value.get()))
+        self._display_trace_id = self.display_value.trace_add('write', self._update_real_value)
 
-        self.optional = False
+        bind_mousewheel(self.bind, self._on_mouse_wheel)
 
-    def _format_display_value(self):
-        return str(self.real_value.get())
+    def _on_mouse_wheel(self, e):
+        delta = -1 if e.delta < 0 else 1
+        try:
+            new_value = max(self.from_,
+                            min(self.to, round(float(self.display_value.get()) + (delta * self.increment), 2)))
+            self.display_value.set(str(new_value))
+        except ValueError:
+            self.display_value.set(self.get_midpoint())
+
+        return "break"
+
+    def _setup_validation(self):
+        self.config(validate='key', validatecommand=(self.register(self._validate), '%P'))
+
+    def _format_real_to_display_value(self):
+        """
+        Format the display value based on the real_value.
+        """
+        if self.real_value.get() == '':
+            return ''
+        return str(float(self.real_value.get()))
+
+    def get_midpoint(self) -> str:
+        """
+        Calculate the midpoint of the range defined by `from_` and `to`.
+
+        :return: Midpoint as a string.
+        """
+        if self.to == float('inf') and self.from_ != float('-inf'):
+            return str(self.from_)
+
+        if self.from_ == float('-inf') and self.to != float('inf'):
+            return str(self.to)
+
+        if self.to == float('inf') and self.from_ == float('-inf'):
+            return '0'  # Midpoint of infinite range can be arbitrarily chosen as 0
+
+        return str((self.from_ + self.to) / 2)
 
     def _validate(self, value_if_allowed):
+        if value_if_allowed == "":  # Allow empty string for deletion
+            return True
         try:
-            # Validate if the input is a valid float string
-            float(value_if_allowed)
+            value = float(value_if_allowed)  # Validate as float
+
+            if value < self.from_ or value > self.to:
+                self.delete(0, tk.END)
+                self.insert(0, self.get_midpoint())
+                # Validation gets blown out by the edits for
+                # god knows what reason, this took ages to figure out
+                self._setup_validation()
+                return False
+
             return True
         except ValueError:
-            # Allow for empty if optional
-            if self.optional:
-                return value_if_allowed.strip() == ''
             return False
+
+    def _update_display_value(self, *args):
+        """
+        Update the display value based on the real value.
+        """
+        self.display_value.set(self._format_real_to_display_value())
+
+    def _update_real_value(self, *args):
+        """
+        Update the real value based on the display value.
+        """
+        self.real_value.trace_remove('write', self._real_trace_id)
+        self.real_value.set(self.display_value.get())
+        self._real_trace_id = self.real_value.trace_add('write', self._update_display_value)
