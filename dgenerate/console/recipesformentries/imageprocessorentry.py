@@ -277,8 +277,9 @@ class _ImageProcessorEntry(_entry._Entry):
 
     @staticmethod
     def _normalize_value(value):
+        str_val = str(value)
         return {'none': 'None', 'true': 'True', 'false': 'False'}.get(
-            str(value).lower(), str(value))
+            str_val.lower(), str_val)
 
     def _format_uri(self):
         algorithm_name = self.processor_name_var.get()
