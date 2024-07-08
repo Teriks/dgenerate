@@ -24,7 +24,7 @@ import re
 import tkinter as tk
 import typing
 
-import dgenerate.console.recipeformentries as _recipeformentries
+import dgenerate.console.recipesformentries as _recipesformentries
 import dgenerate.console.recipes as _recipes
 from dgenerate.console.mousewheelbind import bind_mousewheel, un_bind_mousewheel
 
@@ -37,8 +37,8 @@ class _RecipesForm(tk.Toplevel):
         # Get all entry classes
         self._entry_classes = {
             c.NAME: c for c in
-            _recipeformentries.__dict__.values()
-            if inspect.isclass(c) and issubclass(c, _recipeformentries._Entry)
+            _recipesformentries.__dict__.values()
+            if inspect.isclass(c) and issubclass(c, _recipesformentries._Entry)
         }
 
         self.minsize(width=600, height=200)
@@ -49,7 +49,7 @@ class _RecipesForm(tk.Toplevel):
         self._template_names: list[str] = list(_recipes.RECIPES.keys())
 
         self._current_template = tk.StringVar(value=self._template_names[0])
-        self._entries: list[_recipeformentries._Entry] = []
+        self._entries: list[_recipesformentries._Entry] = []
         self._content: typing.Optional[str] = None
 
         self._ok: bool = False
