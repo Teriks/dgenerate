@@ -218,10 +218,11 @@ class _ImageProcessorEntry(_entry._Entry):
             variable = tk.StringVar(value=default_value)
             increment = 1 if param_type == 'int' else 0.01
             entry_class = IntSpinbox if param_type == 'int' else FloatSpinbox
-            entry = entry_class(self.master, textvariable=variable, increment=increment,
-                                format='%.15f' if param_type == 'float' else None)
+            entry = entry_class(self.master,
+                                textvariable=variable,
+                                increment=increment)
 
-            return False, entry, variable, 'we', _entry.ROW_XPAD
+            return True, entry, variable, 'we', _entry.ROW_XPAD
 
         elif param_type == 'bool' and default_value != "":
 
