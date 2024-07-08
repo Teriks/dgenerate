@@ -33,7 +33,8 @@ from dgenerate.imageprocessors import imageprocessor as _imageprocessor
 
 class CannyEdgeDetectProcessor(_imageprocessor.ImageProcessor):
     """
-    Process the input image with the Canny edge detection algorithm for use with a ControlNet.
+    Process the input image with the Canny edge detection algorithm
+    .
     The "lower" argument indicates the lower threshold value for the algorithm, and the "upper"
     argument indicates the upper threshold. "aperture-size" is the size of Sobel kernel used for find image gradients,
     it must be an odd integer from 3 to 7. "L2-gradient" specifies the equation for finding gradient magnitude,
