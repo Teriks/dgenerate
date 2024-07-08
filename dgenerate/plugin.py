@@ -216,7 +216,7 @@ class Plugin:
             return [_types.fullname(cls)]
 
     @classmethod
-    def get_help(cls, loaded_by_name: str) -> str:
+    def get_help(cls, loaded_by_name: str, wrap_width: int | None = None) -> str:
         """
         Get formatted help information about the plugin.
 
@@ -227,6 +227,8 @@ class Plugin:
             Help may vary depending on how many names the plugin
             implementation handles and what loading it by a certain
             name does.
+
+        :param wrap_width: wrap paragraphs to this width.
 
         :return: Formatted help string
         """
@@ -263,7 +265,8 @@ class Plugin:
                     help_str,
                     initial_indent=' ' * 4,
                     subsequent_indent=' ' * 4,
-                    width=_textprocessing.long_text_wrap_width())
+                    width=_textprocessing.long_text_wrap_width()
+                    if wrap_width is None else wrap_width)
 
             return loaded_by_name + f':{args_part}\n' + wrap
         else:
@@ -702,18 +705,20 @@ class PluginLoader:
             schema[name] = self.get_class_by_name(name).get_accepted_args_schema(name)
         return schema
 
-    def get_help(self, plugin_name: _types.Name) -> str:
+    def get_help(self, plugin_name: _types.Name, wrap_width: int | None = None) -> str:
         """
         Get a formatted help string for a plugin by one of its loadable names.
 
         :param plugin_name: a name associated with the plugin class
+
+        :param wrap_width: wrap paragraphs to this width.
 
         :raises PluginNotFoundError: If the plugin name could not be found.
 
         :return: formatted string
         """
 
-        return self.get_class_by_name(plugin_name).get_help(plugin_name)
+        return self.get_class_by_name(plugin_name).get_help(plugin_name, wrap_width=wrap_width)
 
     def load(self, uri: _types.Uri, **kwargs) -> Plugin:
         """

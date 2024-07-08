@@ -670,7 +670,7 @@ class _ImageProcessor(_Entry):
         h_scrollbar.config(command=text_widget.xview)
         text_widget.pack(expand=True, fill='both')
 
-        top.geometry("800x600")
+        top.geometry("850x600")
 
     def _show_help_button(self):
         self.processor_help_button.grid(row=self.row, column=2, padx=_ROW_PAD, sticky="w")
