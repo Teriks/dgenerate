@@ -38,12 +38,12 @@ class _FloatEntry(_entry._Entry):
 
         self.label_widget = tk.Label(
             self.master,
-            text=self.get_label('Float'), anchor='e')
+            text=self.get_label('Float') + ' (float)', anchor='e')
 
         self.entry = FloatSpinbox(self.master,
                                   from_=self.min,
                                   to=self.max,
-                                  format="%.2f", increment=0.01,
+                                  increment=0.01,
                                   textvariable=self.text_var)
 
         self.label_widget.grid(row=self.row, column=0, padx=_entry.ROW_XPAD, sticky='e')

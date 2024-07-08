@@ -39,7 +39,7 @@ class _IntEntry(_entry._Entry):
 
         self.label_widget = tk.Label(
             self.master,
-            text=self.get_label('Int'), anchor='e')
+            text=self.get_label('Int') + ' (int)', anchor='e')
 
         self.entry = IntSpinbox(self.master,
                                 from_=self.min,

@@ -24,7 +24,7 @@ import tkinter as tk
 from dgenerate.console.mousewheelbind import bind_mousewheel
 
 
-class IntSpinbox(tk.Spinbox):
+class IntSpinbox(tk.Entry):
     """
     Spin box for integer values.
     """
@@ -34,6 +34,7 @@ class IntSpinbox(tk.Spinbox):
                  textvariable: tk.StringVar = None,
                  from_: int | None = None,
                  to: int | None = None,
+                 increment: int = 1,
                  **kwargs):
 
         from_ = from_ if from_ is not None else -sys.maxsize
@@ -47,7 +48,7 @@ class IntSpinbox(tk.Spinbox):
 
         self.display_value = textvariable if textvariable is not None else tk.StringVar()
 
-        self.increment = kwargs.get('increment', 1)
+        self.increment = increment
 
         self.from_ = from_
         self.to = to
@@ -104,7 +105,7 @@ class IntSpinbox(tk.Spinbox):
             return False
 
 
-class FloatSpinbox(tk.Spinbox):
+class FloatSpinbox(tk.Entry):
     """
     Spinbox for floats where the accuracy of the value retrieved is important.
     """
@@ -114,6 +115,7 @@ class FloatSpinbox(tk.Spinbox):
                  textvariable: tk.StringVar = None,
                  from_: float | None = None,
                  to: float | None = None,
+                 increment: float = 0.01,
                  **kwargs):
 
         if from_ is None:
@@ -132,7 +134,7 @@ class FloatSpinbox(tk.Spinbox):
         # Trace real_value changes to update display_value
         self._real_trace_id = self.real_value.trace_add('write', self._update_display_value)
 
-        self.increment = kwargs.get('increment', 1.0)
+        self.increment = increment
 
         super().__init__(master,
                          textvariable=self.display_value,
