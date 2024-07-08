@@ -25,8 +25,8 @@ import typing
 
 import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.resources as _resources
-from dgenerate.console.spinbox import IntSpinbox, RealSpinbox
-from dgenerate.console.mousewheelbind import bind_mousewheel, un_bind_mousewheel
+from dgenerate.console.mousewheelbind import bind_mousewheel
+from dgenerate.console.spinbox import IntSpinbox, FloatSpinbox
 
 
 def _replace_first(text, old, new):
@@ -66,6 +66,10 @@ class _Entry:
         self.config = config
         self.placeholder = placeholder
         self.optional = config.get('optional', True)
+
+        if not isinstance(self.optional, bool):
+            raise RuntimeError('Recipe used optional = str instead of bool.')
+
         self.arg = config.get('arg', None)
         self.before = config.get('before', None)
         self.after = config.get('after', None)
@@ -260,34 +264,20 @@ class _IntEntry(_Entry):
             self.master,
             text=self.get_label('Int'), anchor='e')
 
-        def increment(delta):
-            cur_value = self.text_var.get().strip()
-            value = int(cur_value if cur_value != '' else 0)
-            value = max(self.min, min(self.max, value + delta))
-            self.text_var.set(value)
-
-        def on_mouse_wheel(event):
-            delta = -1 if event.delta < 0 else 1
-            increment(delta)
-            return "break"
-
         self.entry = IntSpinbox(self.master,
                                 from_=self.min,
                                 to=self.max,
                                 textvariable=self.text_var)
 
-        self.entry.optional = self.optional
-
-        bind_mousewheel(self.entry.bind, on_mouse_wheel)
-
         self.label_widget.grid(row=self.row, column=0, padx=_ROW_PAD, sticky='e')
         self.entry.grid(row=self.row, column=1, padx=_ROW_PAD, sticky='ew')
-        self.entry.bind('<Key>', lambda e: self.valid())
+        self.text_var.trace_add('write', lambda *e: self.valid())
 
     def invalid(self):
-        self.entry.config(highlightbackground="red",
-                          highlightcolor="red",
-                          highlightthickness=2)
+        self.entry.config(
+            highlightbackground="red",
+            highlightcolor="red",
+            highlightthickness=2)
 
     def valid(self):
         self.entry.config(highlightthickness=0)
@@ -309,54 +299,27 @@ class _FloatEntry(_Entry):
         self.max = self.config.get('max', float('inf'))
 
         self.text_var = tk.StringVar(
-            value=self.config.get('default', ''))
+            value='')
 
         self.label_widget = tk.Label(
             self.master,
             text=self.get_label('Float'), anchor='e')
 
-        def increment(delta):
-            cur_value = self.text_var.get().strip()
-            value = float(cur_value if cur_value != '' else 0.0)
-            value = max(self.min, min(self.max, round(value + (delta * 0.01), 2)))
-            self.text_var.set(value)
-
-        def on_mouse_wheel(event):
-            delta = -1 if event.delta < 0 else 1
-            increment(delta)
-            return "break"
-
-        self.entry = tk.Spinbox(self.master,
-                                from_=self.min,
-                                to=self.max,
-                                format="%.2f", increment=0.01,
-                                textvariable=self.text_var)
-        
-        self.entry.optional = self.optional
-
-        self.entry.config(validate='all', validatecommand=(self.entry.register(self._validate), '%P'))
-
-        bind_mousewheel(self.entry.bind, on_mouse_wheel)
+        self.entry = FloatSpinbox(self.master,
+                                  from_=self.min,
+                                  to=self.max,
+                                  format="%.2f", increment=0.01,
+                                  textvariable=self.text_var)
 
         self.label_widget.grid(row=self.row, column=0, padx=_ROW_PAD, sticky='e')
         self.entry.grid(row=self.row, column=1, padx=_ROW_PAD, sticky='ew')
-        self.entry.bind('<Key>', lambda e: self.valid())
-
-    def _validate(self, value_if_allowed):
-        try:
-            # Validate if the input is a valid float string
-            float(value_if_allowed)
-            return True
-        except ValueError:
-            # Allow for empty if optional
-            if self.optional:
-                return value_if_allowed.strip() == ''
-            return False
+        self.text_var.trace_add('write', lambda *e: self.valid())
 
     def invalid(self):
-        self.entry.config(highlightbackground="red",
-                          highlightcolor="red",
-                          highlightthickness=2)
+        self.entry.config(
+            highlightbackground="red",
+            highlightcolor="red",
+            highlightthickness=2)
 
     def valid(self):
         self.entry.config(highlightthickness=0)
@@ -660,6 +623,7 @@ class _ImageProcessor(_Entry):
                               xscrollcommand=h_scrollbar.set)
 
         if self.recipe_form.master and hasattr(self.recipe_form.master, '_input_text'):
+            # get the colors from the main editor text box
             bg = self.recipe_form.master._input_text.text.cget('bg')
             fg = self.recipe_form.master._input_text.text.cget('fg')
             text_widget.configure(bg=bg, fg=fg)
@@ -728,28 +692,12 @@ class _ImageProcessor(_Entry):
                     increment = 1 if param_type == 'int' else 0.01
                     typ = int if param_type == 'int' else float
 
-                    def on_mouse_wheel(e, var=variable, typ=typ, inc=increment):
-                        delta = -1 if e.delta < 0 else 1
-                        new_value = round(typ(var.get()) + (delta * inc), 2)
-                        var.set(str(new_value))
-                        return "break"
-
-                    min_spin = -sys.maxsize if param_type == 'int' else float('-inf')
-                    max_spin = sys.maxsize if param_type == 'int' else float('inf')
-
-                    sp_typ = IntSpinbox if param_type == 'int' else RealSpinbox
+                    sp_typ = IntSpinbox if param_type == 'int' else FloatSpinbox
 
                     entry = sp_typ(master=self.master,
-                                   from_=min_spin,
-                                   to=max_spin,
                                    textvariable=variable,
                                    increment=increment,
                                    format='%.15f' if param_type == 'float' else None)
-
-                    entry.optional = optional
-
-                    bind_mousewheel(entry.bind, on_mouse_wheel)
-
 
                     label_text = f"{optional_label_part}{param_name}"
                 elif param_type == 'bool' and default_value != "" and not optional:
@@ -788,6 +736,8 @@ class _ImageProcessor(_Entry):
                                         command=lambda e=entry, f=file_types: self._select_model_command(e, f))
                 file_select.grid(row=row, column=2, padx=_ROW_PAD, sticky='w')
                 self.dynamic_widgets.append(file_select)
+
+            variable.trace_add('write', lambda *a, entry=entry: entry.config(highlightthickness=0))
 
             self.entries[param_name] = (entry, variable, default_value, optional)
 
