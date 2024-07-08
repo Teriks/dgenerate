@@ -50,6 +50,13 @@ class _IntEntry(_entry._Entry):
         self.entry.grid(row=self.row, column=1, padx=_entry.ROW_XPAD, sticky='ew')
         self.text_var.trace_add('write', lambda *e: self.valid())
 
+        self.button_frame = tk.Frame(self.master)
+        self.inc = tk.Button(self.button_frame, text='+', command=lambda: self.entry.do_increment(1))
+        self.inc.pack(side=tk.LEFT)
+        self.dec = tk.Button(self.button_frame, text='-', command=lambda: self.entry.do_increment(-1))
+        self.dec.pack(side=tk.RIGHT)
+        self.button_frame.grid(row=self.row, column=2, sticky='w')
+
     def invalid(self):
         self.entry.config(
             highlightbackground="red",
