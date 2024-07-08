@@ -55,7 +55,10 @@ def _load_upscaler_model(model_path) -> spandrel.ImageModelDescriptor:
 
     try:
         model = spandrel.ModelLoader().load_from_file(model_path).eval()
-    except ValueError as e:
+    except (ValueError,
+            RuntimeError,
+            TypeError,
+            AttributeError) as e:
         raise _UnsupportedModelError(e)
 
     if not isinstance(model, spandrel.ImageModelDescriptor):
