@@ -67,7 +67,7 @@ class _ImageProcessorEntry(_entry._Entry):
             'model': [('Models', ' *.'.join(['*.' + ext for ext in _resources.supported_torch_model_formats_open()]))]}
 
     def _show_help(self):
-        top = tk.Toplevel(self.master)
+        top = tk.Toplevel(self.recipe_form)
         top.title(f'Image Processor Help: {self.processor_name_var.get()}')
         top.attributes('-topmost', 1)
         top.attributes('-topmost', 0)
