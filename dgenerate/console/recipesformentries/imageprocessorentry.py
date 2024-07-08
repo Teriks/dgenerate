@@ -164,7 +164,9 @@ class _ImageProcessorEntry(_entry._Entry):
         default_value: typing.Any = param_info.get('default', "")
         param_types: list[str] = param_info['types']
 
-        raw, entry, variable = self._create_entry(param_types, default_value, optional, row)
+        raw, widgets, variable = self._create_entry(param_types, default_value, optional, row)
+
+        entry = widgets[0]
 
         optional_label = '(Optional) ' if optional else ''
 
@@ -176,7 +178,8 @@ class _ImageProcessorEntry(_entry._Entry):
         self.dynamic_widgets.append(label)
         label.grid(row=row, column=0, padx=_entry.ROW_XPAD, sticky="e")
 
-        self.dynamic_widgets.append(entry)
+        for widget in widgets:
+            self.dynamic_widgets.append(widget)
 
         if param_name in self.file_arguments:
             self._add_file_button(row, entry, self.file_arguments[param_name])
@@ -187,7 +190,7 @@ class _ImageProcessorEntry(_entry._Entry):
         self.entries[param_name] = (entry, variable, default_value, optional)
 
     def _create_entry(self, param_types, default_value, optional, row) -> \
-            tuple[bool, tk.Widget, tk.Variable]:
+            tuple[bool, list[tk.Widget], tk.Variable]:
         """
         :param param_types: parameter accepted types, as strings
         :param default_value: default value, possibly empty string
@@ -202,10 +205,10 @@ class _ImageProcessorEntry(_entry._Entry):
             variable = tk.StringVar(value=str(default_value))
             entry = tk.Entry(self.master, textvariable=variable)
             entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
-            return True, entry, variable
+            return True, [entry], variable
 
     def _create_single_type_entry(self, param_type, default_value, optional, row) -> \
-            tuple[bool, tk.Widget, tk.Variable]:
+            tuple[bool, list[tk.Widget], tk.Variable]:
         """
         :param param_type: parameter accepted type, as string
         :param default_value: default value, possibly empty string
@@ -232,7 +235,7 @@ class _ImageProcessorEntry(_entry._Entry):
             entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
             button_frame.grid(row=row, column=2, sticky='w')
 
-            return True, entry, variable
+            return True, [entry, button_frame], variable
 
         elif param_type == 'bool' and default_value != "":
 
@@ -242,19 +245,19 @@ class _ImageProcessorEntry(_entry._Entry):
                 values.remove(str(default_value))
                 entry = tk.OptionMenu(self.master, variable, str(default_value), *values)
                 entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
-                return False, entry, variable
+                return False, [entry], variable
             else:
                 variable = tk.BooleanVar(value=default_value)
                 entry = tk.Checkbutton(self.master, variable=variable)
                 entry.grid(row=row, column=1, sticky='w')
-                return False, entry, variable
+                return False, [entry], variable
 
         else:
 
             variable = tk.StringVar(value=str(default_value))
             entry = tk.Entry(self.master, textvariable=variable)
             entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
-            return True, entry, variable
+            return True, [entry], variable
 
     def _add_file_button(self, row, entry, file_types):
 
@@ -264,7 +267,7 @@ class _ImageProcessorEntry(_entry._Entry):
         self.dynamic_widgets.append(file_button)
 
     def invalid(self):
-        for entry, variable, default_value, optional in self.entries.values():
+        for entry, variable, _, optional in self.entries.values():
             if optional is False and not str(variable.get()):
                 entry.config(
                     highlightbackground="red",
@@ -272,13 +275,13 @@ class _ImageProcessorEntry(_entry._Entry):
                     highlightthickness=2)
 
     def is_empty(self):
-        for entry, variable, default_value, optional in self.entries.values():
+        for _, variable, _, optional in self.entries.values():
             if optional is False and not str(variable.get()):
                 return True
         return False
 
     def valid(self):
-        for entry, variable, default_value, optional in self.entries.values():
+        for entry, _, _, optional in self.entries.values():
             if optional:
                 entry.config(highlightthickness=0)
 
@@ -300,7 +303,7 @@ class _ImageProcessorEntry(_entry._Entry):
         if not algorithm_name:
             return ''
         uri_parts = [algorithm_name]
-        for param_name, (entry, variable, default_value, _) in self.entries.items():
+        for param_name, (_, variable, default_value, _) in self.entries.items():
             current_value = self._normalize_value(variable.get())
             if current_value != self._normalize_value(default_value) and current_value.strip():
                 uri_parts.append(f"{param_name}={current_value}")
