@@ -213,7 +213,7 @@ class _ImageProcessorEntry(_entry._Entry):
         :return: (entry widget, entry text variable, widget sticky coords, xpad)
         """
 
-        if param_type in ['int', 'float'] and default_value != "":
+        if param_type in ['int', 'float']:
 
             variable = tk.StringVar(value=default_value)
             increment = 1 if param_type == 'int' else 0.01
