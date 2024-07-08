@@ -195,7 +195,10 @@ class _ImageProcessorEntry(_entry._Entry):
         :param param_types: parameter accepted types, as strings
         :param default_value: default value, possibly empty string
         :param optional: can accept None?
-        :return: (raw? label requires type info, entry widget, entry data variable, widget sticky coords, xpad)
+        :return:
+            (raw? label requires type info,
+            dynamic widgets list first widget should be the entry field,
+            entry data variable)
         """
 
         if len(param_types) == 1:
@@ -213,7 +216,10 @@ class _ImageProcessorEntry(_entry._Entry):
         :param param_type: parameter accepted type, as string
         :param default_value: default value, possibly empty string
         :param optional: can accept None?
-        :return: (entry widget, entry text variable, widget sticky coords, xpad)
+        :return:
+            (raw? label requires type info,
+            dynamic widgets list first widget should be the entry field,
+            entry data variable)
         """
 
         if param_type in ['int', 'float']:
