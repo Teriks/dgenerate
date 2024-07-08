@@ -655,6 +655,9 @@ def pipeline_to(pipeline, device: torch.device | str | None):
 
         value.to(device)
 
+    if device == 'cpu':
+        torch.cuda.empty_cache()
+
 
 def _call_args_debug_transformer(key, value):
     if isinstance(value, torch.Generator):
