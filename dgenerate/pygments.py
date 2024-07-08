@@ -101,8 +101,8 @@ _http_pattern = (r'(?<!\w)(https?://(?:'  # Protocol
                  r'(?:\d{1,3}\.){3}\d{1,3}|'  # IPv4
                  r'\[[a-fA-F0-9:]+\])'  # IPv6
                  r'(?::\d+)?'  # Optional port
-                 r'(?:/[a-zA-Z0-9\-._~%!$&\'()*+,;=:@/]*)?'  # Path
-                 r'(?:\?[a-zA-Z0-9\-._~%!$&\'()*+,;=:@/?]*)?'  # Query parameters
+                 r'(?:/[a-zA-Z0-9\-._~%!$&\'()*+,=:@/]*)?'  # Path
+                 r'(?:\?[a-zA-Z0-9\-._~%!$&\'()*+,=:@/?]*)?'  # Query parameters
                  r')',
                  _token.String)
 
