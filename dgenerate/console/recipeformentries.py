@@ -261,7 +261,8 @@ class _IntEntry(_Entry):
             text=self.get_label('Int'), anchor='e')
 
         def increment(delta):
-            value = int(self.text_var.get())
+            cur_value = self.text_var.get().strip()
+            value = int(cur_value if cur_value != '' else 0)
             value = max(self.min, min(self.max, value + delta))
             self.text_var.set(value)
 
@@ -274,6 +275,8 @@ class _IntEntry(_Entry):
                                 from_=self.min,
                                 to=self.max,
                                 textvariable=self.text_var)
+
+        self.entry.optional = self.optional
 
         bind_mousewheel(self.entry.bind, on_mouse_wheel)
 
@@ -328,6 +331,8 @@ class _FloatEntry(_Entry):
                                 to=self.max,
                                 format="%.2f", increment=0.01,
                                 textvariable=self.text_var)
+        
+        self.entry.optional = self.optional
 
         self.entry.config(validate='all', validatecommand=(self.entry.register(self._validate), '%P'))
 
