@@ -26,6 +26,7 @@ import typing
 import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.resources as _resources
 from dgenerate.console.spinbox import IntSpinbox, RealSpinbox
+from dgenerate.console.mousewheelbind import bind_mousewheel, un_bind_mousewheel
 
 
 def _replace_first(text, old, new):
@@ -274,9 +275,7 @@ class _IntEntry(_Entry):
                                 to=self.max,
                                 textvariable=self.text_var)
 
-        self.entry.bind("<MouseWheel>", on_mouse_wheel)
-        self.entry.bind("<Button-4>", on_mouse_wheel)  # For Linux systems
-        self.entry.bind("<Button-5>", on_mouse_wheel)  # For Linux systems
+        bind_mousewheel(self.entry.bind, on_mouse_wheel)
 
         self.label_widget.grid(row=self.row, column=0, padx=_ROW_PAD, sticky='e')
         self.entry.grid(row=self.row, column=1, padx=_ROW_PAD, sticky='ew')
@@ -332,9 +331,7 @@ class _FloatEntry(_Entry):
 
         self.entry.config(validate='all', validatecommand=(self.entry.register(self._validate), '%P'))
 
-        self.entry.bind("<MouseWheel>", on_mouse_wheel)
-        self.entry.bind("<Button-4>", on_mouse_wheel)  # For Linux systems
-        self.entry.bind("<Button-5>", on_mouse_wheel)  # For Linux systems
+        bind_mousewheel(self.entry.bind, on_mouse_wheel)
 
         self.label_widget.grid(row=self.row, column=0, padx=_ROW_PAD, sticky='e')
         self.entry.grid(row=self.row, column=1, padx=_ROW_PAD, sticky='ew')
@@ -672,6 +669,12 @@ class _ImageProcessor(_Entry):
 
         top.geometry("850x600")
 
+        bind_mousewheel(top.bind, self._on_help_mouse_wheel)
+
+    @staticmethod
+    def _on_help_mouse_wheel(event):
+        return "break"
+
     def _show_help_button(self):
         self.processor_help_button.grid(row=self.row, column=2, padx=_ROW_PAD, sticky="w")
 
@@ -740,9 +743,8 @@ class _ImageProcessor(_Entry):
 
                     entry.optional = optional
 
-                    entry.bind("<MouseWheel>", on_mouse_wheel)
-                    entry.bind("<Button-4>", on_mouse_wheel)  # For Linux systems
-                    entry.bind("<Button-5>", on_mouse_wheel)  # For Linux systems
+                    bind_mousewheel(entry.bind, on_mouse_wheel)
+
 
                     label_text = f"{optional_label_part}{param_name}"
                 elif param_type == 'bool' and default_value != "" and not optional:

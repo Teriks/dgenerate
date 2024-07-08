@@ -26,6 +26,7 @@ import typing
 
 import dgenerate.console.recipes as _recipes
 import dgenerate.console.recipeformentries as _recipeformentries
+from dgenerate.console.mousewheelbind import bind_mousewheel, un_bind_mousewheel
 
 
 class _RecipesForm(tk.Toplevel):
@@ -143,9 +144,7 @@ class _RecipesForm(tk.Toplevel):
         self._dropdown.grid(row=0, column=0, columnspan=2, sticky='ew', padx=5, pady=5)
 
         # Bind mouse wheel events
-        self.canvas.bind_all("<MouseWheel>", self._on_mouse_wheel)
-        self.canvas.bind_all("<Button-4>", self._on_mouse_wheel)  # Linux
-        self.canvas.bind_all("<Button-5>", self._on_mouse_wheel)  # Linux
+        bind_mousewheel(self.canvas.bind_all, self._on_mouse_wheel)
 
         self._update_form(self._current_template.get())
 
@@ -197,9 +196,7 @@ class _RecipesForm(tk.Toplevel):
         apply_button.grid(row=3, column=0, padx=5, pady=5, columnspan=2)
 
     def destroy(self) -> None:
-        self.canvas.unbind_all("<MouseWheel>")
-        self.canvas.unbind_all("<Button-4>")  # Linux
-        self.canvas.unbind_all("<Button-5>")  # Linux
+        un_bind_mousewheel(self.canvas.unbind_all)
         super().destroy()
 
     def get_recipe(self):
