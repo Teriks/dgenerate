@@ -71,6 +71,12 @@ class _ImageProcessorSelect(tk.Toplevel):
         else:
             self.geometry("+{}+{}".format(*position))
 
+        def processor_updated():
+            self.update_idletasks()
+            self.minsize(self.winfo_reqwidth(), self.winfo_reqheight())
+
+        self.processor.on_updated_callback = processor_updated
+
         self.deiconify()
 
     def _insert_action(self):

@@ -67,6 +67,8 @@ class _ImageProcessorEntry(_entry._Entry):
         self.dynamic_widgets = []
         self.file_arguments = {
             'model': [('Models', ' *.'.join(['*.' + ext for ext in _resources.supported_torch_model_formats_open()]))]}
+        
+        self.on_updated_callback = None
 
     def _show_help(self):
         top = tk.Toplevel(self.recipe_form)
@@ -154,6 +156,9 @@ class _ImageProcessorEntry(_entry._Entry):
                 continue
 
             self._create_widget_for_param(param_name, param_info, self.row + i + 1)
+
+        if self.on_updated_callback is not None:
+            self.on_updated_callback()
 
     def _clear_dynamic_widgets(self):
         for widget in self.dynamic_widgets:
