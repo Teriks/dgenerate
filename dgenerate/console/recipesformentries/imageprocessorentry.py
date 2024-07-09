@@ -279,6 +279,12 @@ class _ImageProcessorEntry(_entry._Entry):
                 return True
         return False
 
+    def is_valid(self):
+        for _, variable, _, optional in self.entries.values():
+            if optional is False and not str(variable.get()):
+                return False
+        return True
+
     def valid(self):
         for entry, _, _, optional in self.entries.values():
             if optional:

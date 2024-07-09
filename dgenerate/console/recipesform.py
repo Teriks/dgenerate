@@ -100,6 +100,9 @@ class _RecipesForm(tk.Toplevel):
             if entry.is_empty() and not entry.optional:
                 entry.invalid()
                 missing_fields = True
+            elif not entry.is_valid():
+                entry.invalid()
+                missing_fields = True
             else:
                 entry.valid()
 

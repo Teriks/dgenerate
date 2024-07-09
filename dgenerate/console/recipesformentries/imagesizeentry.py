@@ -19,18 +19,49 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from .argswitchcheckbox import _ArgSwitchCheckbox
-from .deviceentry import _DeviceEntry
-from .directoryentry import _DirectoryEntry
-from .dropdownentry import _DropDownEntry
-from .entry import _Entry
-from .fileentry import _FileEntry
-from .floatentry import _FloatEntry
-from .imageprocessorentry import _ImageProcessorEntry
-from .intentry import _IntEntry
-from .karrasschedulerentry import _KarrasSchedulerEntry
-from .stringentry import _StringEntry
-from .torchvaeentry import _TorchVaeEntry
-from .uriwithscaleentry import _UriWithScale
-from .seedsentry import _SeedsEntry
-from .imagesizeentry import _ImageSizeEntry
+import tkinter as tk
+
+import dgenerate.console.recipesformentries.entry as _entry
+import dgenerate.textprocessing as _textprocessing
+
+
+class _ImageSizeEntry(_entry._Entry):
+    NAME = 'imagesize'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs, widget_rows=1)
+
+        self.text_var = tk.StringVar(
+            value=self.config.get('default', ''))
+
+        self.label_widget = tk.Label(
+            self.master,
+            text=self.get_label('Size'), anchor='e')
+
+        self.entry = tk.Entry(self.master, textvariable=self.text_var)
+
+        self.label_widget.grid(row=self.row, column=0, padx=_entry.ROW_XPAD, sticky='e')
+        self.entry.grid(row=self.row, column=1, padx=_entry.ROW_XPAD, sticky='ew')
+        self.entry.bind('<Key>', lambda e: self.valid())
+
+    def invalid(self):
+        _entry.invalid_colors(self.entry)
+
+    def valid(self):
+        _entry.valid_colors(self.entry)
+
+    def is_empty(self):
+        return self.text_var.get().strip() == ''
+
+    def is_valid(self):
+        if self.optional and self.is_empty():
+            return True
+
+        try:
+            _textprocessing.parse_image_size(self.text_var.get().strip())
+            return True
+        except ValueError:
+            return False
+
+    def template(self, content):
+        return self._template(content, _entry.shell_quote_if(self.text_var.get().strip()))
