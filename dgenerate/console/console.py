@@ -44,6 +44,7 @@ import psutil
 import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.finddialog as _finddialog
 import dgenerate.console.karrasschedulerselect as _karrasschedulerselect
+import dgenerate.console.imageprocessorselect as _imageprocessorselect
 import dgenerate.console.recipesform as _recipesform
 import dgenerate.console.resources as _resources
 import dgenerate.files as _files
@@ -150,8 +151,10 @@ class DgenerateConsole(tk.Tk):
 
         self._edit_menu.add_command(label='Insert Recipe',
                                     command=self._input_text_insert_recipe)
-        self._edit_menu.add_command(label='Insert Karras Scheduler',
+        self._edit_menu.add_command(label='Insert Karras Scheduler URI',
                                     command=self._input_text_insert_karras_scheduler)
+        self._edit_menu.add_command(label='Insert Image Processor URI',
+                                    command=self._input_text_insert_image_processor)
 
         # Run menu
 
@@ -677,6 +680,15 @@ class DgenerateConsole(tk.Tk):
 
     def _input_text_insert_karras_scheduler(self):
         s = _karrasschedulerselect.request_scheduler(
+            master=self)
+
+        if s is None or not s.strip():
+            return
+
+        self._insert_or_replace_input_text(s)
+
+    def _input_text_insert_image_processor(self):
+        s = _imageprocessorselect.request_uri(
             master=self)
 
         if s is None or not s.strip():
