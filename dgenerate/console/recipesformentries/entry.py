@@ -43,7 +43,10 @@ def replace_first(text, old, new):
 
 
 def shell_quote_if(text):
-    if text and " " in text:
+    if text and ' ' in text \
+            and '{%' not in text \
+            and '{{' not in text \
+            and '{#' not in text:
         return shlex.quote(text)
     return text
 
