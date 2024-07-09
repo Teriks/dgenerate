@@ -61,7 +61,7 @@ class _KarrasSchedulerSelect(tk.Toplevel):
         self._scheduler_dropdown.grid(row=0, column=1, sticky="we")
         self._prediction_type_label.grid(row=1, column=0)
         self._prediction_type_dropdown.grid(row=1, column=1, sticky="we")
-        self._insert_button.grid(row=2, column=0, columnspan=2, pady=(5,0))
+        self._insert_button.grid(row=2, column=0, columnspan=2, pady=(5, 0))
 
         self._frame.pack(pady=(5, 5), padx=(5, 5))
 
