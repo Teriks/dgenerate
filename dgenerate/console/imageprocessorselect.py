@@ -74,6 +74,12 @@ class _ImageProcessorSelect(tk.Toplevel):
         self.deiconify()
 
     def _insert_action(self):
+        if not self.processor.is_valid():
+            self.processor.invalid()
+            return
+        else:
+            self.processor.valid()
+
         self._insert = True
         self.destroy()
 
