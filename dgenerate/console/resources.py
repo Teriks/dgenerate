@@ -146,8 +146,8 @@ def supported_torch_model_formats_open():
 
 
 def release_version():
-    import dgenerate
-    value = dgenerate.__version__
+    from dgenerate.console import __version__
+    value = __version__
     if value[0] != 'v':
         return 'v' + value
     else:
