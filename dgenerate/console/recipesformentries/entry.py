@@ -43,9 +43,21 @@ def replace_first(text, old, new):
 
 
 def shell_quote_if(text):
-    if text:
+    if text and " " in text:
         return shlex.quote(text)
     return text
+
+
+def valid_colors(widget):
+    widget.config(
+        highlightthickness=0)
+
+
+def invalid_colors(widget):
+    widget.config(
+        highlightbackground="red",
+        highlightcolor="red",
+        highlightthickness=2)
 
 
 class _Entry:

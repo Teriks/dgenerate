@@ -232,16 +232,12 @@ class _ImageProcessorEntry(_entry._Entry):
                                 textvariable=variable,
                                 increment=increment)
 
-            button_frame = tk.Frame(self.master)
-            inc = tk.Button(button_frame, text='+', command=lambda e=entry: e.do_increment(1))
-            inc.pack(side=tk.LEFT)
-            dec = tk.Button(button_frame, text='-', command=lambda e=entry: e.do_increment(-1))
-            dec.pack(side=tk.RIGHT)
+            spin_buttons = entry.create_spin_buttons(self.master)
 
             entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
-            button_frame.grid(row=row, column=2, sticky='w')
+            spin_buttons.grid(row=row, column=2, sticky='w')
 
-            return True, [entry, button_frame], variable
+            return True, [entry, spin_buttons], variable
 
         elif param_type == 'bool' and default_value != "":
 
@@ -275,10 +271,7 @@ class _ImageProcessorEntry(_entry._Entry):
     def invalid(self):
         for entry, variable, _, optional in self.entries.values():
             if optional is False and not str(variable.get()):
-                entry.config(
-                    highlightbackground="red",
-                    highlightcolor="red",
-                    highlightthickness=2)
+                _entry.invalid_colors(entry)
 
     def is_empty(self):
         for _, variable, _, optional in self.entries.values():
@@ -289,7 +282,7 @@ class _ImageProcessorEntry(_entry._Entry):
     def valid(self):
         for entry, _, _, optional in self.entries.values():
             if optional:
-                entry.config(highlightthickness=0)
+                _entry.valid_colors(entry)
 
     @staticmethod
     def _select_model_command(entry, file_types):
@@ -316,4 +309,4 @@ class _ImageProcessorEntry(_entry._Entry):
         return ';'.join(uri_parts)
 
     def template(self, content):
-        return self._template(content, self._format_uri())
+        return self._template(content, _entry.shell_quote_if(self._format_uri()))

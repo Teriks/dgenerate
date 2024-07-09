@@ -68,16 +68,13 @@ class _KarrasSchedulerEntry(_entry._Entry):
         self.prediction_type_entry.grid(row=self.row + 1, column=1, padx=_entry.ROW_XPAD, sticky='ew')
 
     def invalid(self):
-        self.scheduler_name_entry.config(
-            highlightbackground="red",
-            highlightcolor="red",
-            highlightthickness=2)
+        _entry.invalid_colors(self.scheduler_name_entry)
+
+    def valid(self):
+        _entry.valid_colors(self.scheduler_name_entry)
 
     def is_empty(self):
         return self.scheduler_name_text_var.get().strip() == ''
-
-    def valid(self):
-        self.scheduler_name_entry.config(highlightthickness=0)
 
     def template(self, content):
         value = self.scheduler_name_text_var.get().strip()

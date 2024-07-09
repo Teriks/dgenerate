@@ -44,12 +44,10 @@ class _StringEntry(_entry._Entry):
         self.entry.bind('<Key>', lambda e: self.valid())
 
     def invalid(self):
-        self.entry.config(highlightbackground="red",
-                          highlightcolor="red",
-                          highlightthickness=2)
+        _entry.invalid_colors(self.entry)
 
     def valid(self):
-        self.entry.config(highlightthickness=0)
+        _entry.valid_colors(self.entry)
 
     def is_empty(self):
         return self.text_var.get().strip() == ''

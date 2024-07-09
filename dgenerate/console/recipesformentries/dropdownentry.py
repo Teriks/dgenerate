@@ -52,12 +52,10 @@ class _DropDownEntry(_entry._Entry):
         self.entry.grid(row=self.row, column=1, padx=_entry.ROW_XPAD, sticky='ew')
 
     def invalid(self):
-        self.entry.config(highlightbackground="red",
-                          highlightcolor="red",
-                          highlightthickness=2)
+        _entry.invalid_colors(self.entry)
 
     def valid(self):
-        self.entry.config(highlightthickness=0)
+        _entry.valid_colors(self.entry)
 
     def is_empty(self):
         return self.text_var.get().strip() == ''

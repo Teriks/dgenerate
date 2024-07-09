@@ -77,16 +77,13 @@ class _TorchVaeEntry(_entry._Entry):
         self.vae_uri_entry.bind('<Key>', lambda e: self.valid())
 
     def invalid(self):
-        self.vae_uri_entry.config(
-            highlightbackground="red",
-            highlightcolor="red",
-            highlightthickness=2)
+        _entry.invalid_colors(self.vae_uri_entry)
+
+    def valid(self):
+        _entry.valid_colors(self.vae_uri_entry)
 
     def is_empty(self):
         return self.vae_uri_entry.get().strip() == ''
-
-    def valid(self):
-        self.vae_uri_entry.config(highlightthickness=0)
 
     def template(self, content):
         vae_uri = self.vae_uri_var.get().strip()
