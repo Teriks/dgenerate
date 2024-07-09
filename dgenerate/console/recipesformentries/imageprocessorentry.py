@@ -45,12 +45,14 @@ class _ImageProcessorEntry(_entry._Entry):
         values = list(self.schema.keys())
 
         self.dropdown_label = tk.Label(self.master, text=label)
+        self.current_help_text = ''
 
         if self.declared_optional:
             self.algorithm_dropdown = tk.OptionMenu(self.master, self.processor_name_var, '', *values,
                                                     command=self._on_processor_change)
         else:
             self.processor_name_var.set(values[0])
+            self.current_help_text = self.schema[values[0]]['PROCESSOR_HELP']
             self.algorithm_dropdown = tk.OptionMenu(self.master, self.processor_name_var, *values,
                                                     command=self._on_processor_change)
 
