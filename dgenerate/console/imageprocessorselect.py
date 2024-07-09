@@ -28,7 +28,7 @@ import dgenerate.console.recipesformentries as _entries
 class _ImageProcessorSelect(tk.Toplevel):
     def __init__(self, master=None, position: tuple[int, int] = None, size: tuple[int, int] = None):
         super().__init__(master)
-        self.title('Insert Processor URI')
+        self.title('Insert Image Processor URI')
 
         self.transient(master)
         self.grab_set()
