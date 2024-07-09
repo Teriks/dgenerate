@@ -61,6 +61,14 @@ class IntSpinbox(tk.Entry):
         self.bind('<Up>', self._on_up_arrow)
         self.bind('<Down>', self._on_down_arrow)
 
+    def create_spin_buttons(self, master) -> tk.Frame:
+        button_frame = tk.Frame(master)
+        inc = tk.Button(button_frame, text='+', command=lambda: self.do_increment(1))
+        inc.pack(side=tk.LEFT)
+        dec = tk.Button(button_frame, text='-', command=lambda: self.do_increment(-1))
+        dec.pack(side=tk.RIGHT)
+        return button_frame
+
     def do_increment(self, delta):
         try:
             new_value = max(self.from_,
@@ -162,6 +170,14 @@ class FloatSpinbox(tk.Entry):
 
         self.bind('<Up>', self._on_up_arrow)
         self.bind('<Down>', self._on_down_arrow)
+
+    def create_spin_buttons(self, master) -> tk.Frame:
+        button_frame = tk.Frame(master)
+        inc = tk.Button(button_frame, text='+', command=lambda: self.do_increment(1))
+        inc.pack(side=tk.LEFT)
+        dec = tk.Button(button_frame, text='-', command=lambda: self.do_increment(-1))
+        dec.pack(side=tk.RIGHT)
+        return button_frame
 
     def do_increment(self, delta):
         try:

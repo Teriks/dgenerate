@@ -31,3 +31,4 @@ from .intentry import _IntEntry
 from .karrasschedulerentry import _KarrasSchedulerEntry
 from .stringentry import _StringEntry
 from .torchvaeentry import _TorchVaeEntry
+from .uriwithscaleentry import _UriWithScale

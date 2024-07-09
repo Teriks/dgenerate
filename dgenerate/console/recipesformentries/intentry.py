@@ -50,21 +50,14 @@ class _IntEntry(_entry._Entry):
         self.entry.grid(row=self.row, column=1, padx=_entry.ROW_XPAD, sticky='ew')
         self.text_var.trace_add('write', lambda *e: self.valid())
 
-        self.button_frame = tk.Frame(self.master)
-        self.inc = tk.Button(self.button_frame, text='+', command=lambda: self.entry.do_increment(1))
-        self.inc.pack(side=tk.LEFT)
-        self.dec = tk.Button(self.button_frame, text='-', command=lambda: self.entry.do_increment(-1))
-        self.dec.pack(side=tk.RIGHT)
-        self.button_frame.grid(row=self.row, column=2, sticky='w')
+        spin_buttons = self.entry.create_spin_buttons(self.master)
+        spin_buttons.grid(row=self.row, column=2, sticky='w')
 
     def invalid(self):
-        self.entry.config(
-            highlightbackground="red",
-            highlightcolor="red",
-            highlightthickness=2)
+        _entry.invalid_colors(self.entry)
 
     def valid(self):
-        self.entry.config(highlightthickness=0)
+        _entry.valid_colors(self.entry)
 
     def is_empty(self):
         return self.text_var.get().strip() == ''
