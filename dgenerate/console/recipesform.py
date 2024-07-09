@@ -143,6 +143,8 @@ class _RecipesForm(tk.Toplevel):
                                        command=lambda s: self._update_form(s, preserve_width=True))
         self._dropdown.grid(row=0, column=0, columnspan=2, sticky='ew', padx=5, pady=5)
 
+        self.grid_columnconfigure(0, weight=1)
+
         # Bind mouse wheel events
         bind_mousewheel(self.canvas.bind_all, self._on_mouse_wheel)
 
@@ -150,10 +152,21 @@ class _RecipesForm(tk.Toplevel):
 
     def _on_mouse_wheel(self, event):
         """Scroll the canvas with the mouse wheel."""
-        if event.num == 4 or event.delta > 0:
-            self.canvas.yview_scroll(-1, "units")
-        elif event.num == 5 or event.delta < 0:
-            self.canvas.yview_scroll(1, "units")
+        viewable_region = self.canvas.bbox("all")
+        if viewable_region is not None:
+            canvas_height = self.canvas.winfo_height()
+            content_height = viewable_region[3] - viewable_region[1]
+
+            if content_height <= canvas_height:
+                return  # Do nothing if there's no overflow
+
+            if event.delta:
+                self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+            else:
+                if event.num == 4:
+                    self.canvas.yview_scroll(-1, "units")
+                elif event.num == 5:
+                    self.canvas.yview_scroll(1, "units")
 
     def _on_resize(self, event):
         """Update the canvas width to match the new window width."""
@@ -162,6 +175,8 @@ class _RecipesForm(tk.Toplevel):
 
     def _update_form(self, selection: str, preserve_width: bool = False) -> None:
         """Update the form based on the selected template."""
+        self.canvas.yview_moveto(0)
+
         for widget in self.scrollable_frame.winfo_children():
             if widget != self._dropdown:
                 widget.destroy()
