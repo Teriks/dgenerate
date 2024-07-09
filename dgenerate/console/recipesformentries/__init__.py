@@ -32,3 +32,5 @@ from .karrasschedulerentry import _KarrasSchedulerEntry
 from .stringentry import _StringEntry
 from .torchvaeentry import _TorchVaeEntry
 from .uriwithscaleentry import _UriWithScale
+from .seedsentry import _SeedsEntry
+from .imagesizeentry import _ImageSizeEntry

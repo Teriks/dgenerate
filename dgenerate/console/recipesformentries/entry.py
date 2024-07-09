@@ -92,8 +92,11 @@ class _Entry:
             new_content = self.arg + ' ' + new_content
         return replace_first(content, self.placeholder, new_content)
 
-    def is_empty(self):
-        pass
+    def is_empty(self) -> bool:
+        return False
+
+    def is_valid(self) -> bool:
+        return True
 
     def invalid(self):
         pass
