@@ -19,51 +19,40 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+
 import tkinter as tk
 
-import dgenerate.console.resources as _resources
+import dgenerate.console.recipesformentries as _entries
 
 
-class _KarrasSchedulerSelect(tk.Toplevel):
-    def __init__(self, master=None, position: tuple[int, int] = None):
+class _ImageProcessorSelect(tk.Toplevel):
+    def __init__(self, master=None, position: tuple[int, int] = None, size: tuple[int, int] = None):
         super().__init__(master)
-        self.title('Insert Karras Scheduler')
-        self._templates = None
-        self._dropdown = None
-        self._scheduler_names = _resources.get_karras_schedulers()
-        self._current_scheduler = tk.StringVar(value=self._scheduler_names[0])
-        self._prediction_types = [''] + _resources.get_karras_scheduler_prediction_types()
-        self._current_prediction_type = tk.StringVar(value=self._prediction_types[0])
-        self._entries = []
-        self._content = None
-        self._ok = False
+        self.title('Insert Processor URI')
+
         self.transient(master)
         self.grab_set()
-        self.resizable(False, False)
+        self.resizable(True, False)
+
         self._insert = False
 
-        self._frame = tk.Frame(self)
+        self.processor_frame = tk.Frame(self)
 
-        # Create labels
-        self._scheduler_label = tk.Label(self._frame, text="Scheduler Name")
-        self._prediction_type_label = tk.Label(self._frame, text="Prediction Type")
+        self.processor = _entries._ImageProcessorEntry(
+            recipe_form=self,
+            master=self.processor_frame,
+            config={"optional": False},
+            placeholder='URI',
+            row=1)
 
-        # Create dropdowns
-        self._scheduler_dropdown = tk.OptionMenu(self._frame, self._current_scheduler, *self._scheduler_names)
-        self._prediction_type_dropdown = tk.OptionMenu(self._frame, self._current_prediction_type,
-                                                       *self._prediction_types)
+        self.processor_frame.grid(row=0, pady=(5, 5), padx=(5, 5), sticky='nsew')
 
-        # Create Insert button
-        self._insert_button = tk.Button(self._frame, text="Insert", command=self._insert_action)
+        self.button = tk.Button(self, text='Insert', command=self._insert_action)
 
-        # Grid layout
-        self._scheduler_label.grid(row=0, column=0)
-        self._scheduler_dropdown.grid(row=0, column=1, sticky="we")
-        self._prediction_type_label.grid(row=1, column=0)
-        self._prediction_type_dropdown.grid(row=1, column=1, sticky="we")
-        self._insert_button.grid(row=2, column=0, columnspan=2, pady=(5,0))
+        self.button.grid(row=1, pady=(0, 5))
 
-        self._frame.pack(pady=(5, 5), padx=(5, 5))
+        self.processor_frame.grid_columnconfigure(1, weight=1)
+        self.grid_columnconfigure(0, weight=1)
 
         self.withdraw()
         self.update_idletasks()
@@ -88,24 +77,20 @@ class _KarrasSchedulerSelect(tk.Toplevel):
         self._insert = True
         self.destroy()
 
-    def get_scheduler(self):
+    def get_uri(self):
         self.wait_window(self)
         if not self._insert:
             return None
-        prediction_type = self._current_prediction_type.get()
-        if prediction_type:
-            return self._current_scheduler.get() + ';prediction-type=' + self._current_prediction_type.get()
-        else:
-            return self._current_scheduler.get()
+        return self.processor.template('URI')
 
 
 _last_pos = None
 
 
-def request_scheduler(master):
+def request_uri(master):
     global _last_pos
 
-    window = _KarrasSchedulerSelect(master, position=_last_pos)
+    window = _ImageProcessorSelect(master, position=_last_pos)
 
     og_destroy = window.destroy
 
@@ -121,4 +106,4 @@ def request_scheduler(master):
 
     window.protocol("WM_DELETE_WINDOW", on_closing)
 
-    return window.get_scheduler()
+    return window.get_uri()

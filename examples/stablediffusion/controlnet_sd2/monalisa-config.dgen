@@ -1,8 +1,6 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 3.9.0
 
-\clear_control_net_cache
-
 # Use the built in mirror and canny processor action to process
 # the image for you before using it for generation. This mirrors
 # the image horizontally and then runs canny edge detection on it
