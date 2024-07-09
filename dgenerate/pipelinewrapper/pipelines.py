@@ -800,8 +800,6 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
 
     pipeline_to(_LAST_CALLED_PIPELINE, 'cpu')
 
-    torch.cuda.empty_cache()
-
     pipeline_to(pipeline, device)
 
     result = _call_pipeline()
