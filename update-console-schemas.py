@@ -10,6 +10,7 @@ import json
 import os
 
 import dgenerate.imageprocessors.imageprocessorloader as _loader
+import diffusers
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
@@ -24,5 +25,17 @@ with open('dgenerate/console/schemas/imageprocessors.json', 'w') as file:
 
     for plugin in schema.keys():
         schema[plugin].update({'PROCESSOR_HELP': plugin_loader.get_help(plugin, wrap_width=100)})
+
+    json.dump(schema, file)
+
+
+with open('dgenerate/console/schemas/karrasschedulers.json', 'w') as file:
+
+    schema = dict()
+
+    # sort by name, this affects json output
+    schema['names'] = sorted(
+        [e.name for e in diffusers.schedulers.scheduling_utils.KarrasDiffusionSchedulers] +
+        ['LCMScheduler'])
 
     json.dump(schema, file)

@@ -108,24 +108,7 @@ def get_schema(name):
 
 
 def get_karras_schedulers():
-    return [
-        "DDIMScheduler",
-        "DDPMScheduler",
-        "DEISMultistepScheduler",
-        "DPMSolverMultistepScheduler",
-        "DPMSolverSDEScheduler",
-        "DPMSolverSinglestepScheduler",
-        "EDMEulerScheduler",
-        "EulerAncestralDiscreteScheduler",
-        "EulerDiscreteScheduler",
-        "HeunDiscreteScheduler",
-        "KDPM2AncestralDiscreteScheduler",
-        "KDPM2DiscreteScheduler",
-        "LCMScheduler",
-        "LMSDiscreteScheduler",
-        "PNDMScheduler",
-        "UniPCMultistepScheduler"
-    ]
+    return get_schema('karrasschedulers')['names']
 
 
 def get_torch_vae_types():
