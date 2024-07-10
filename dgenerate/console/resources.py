@@ -94,7 +94,7 @@ def check_latest_release() -> ReleaseInfo | None:
     }
 
     try:
-        response = requests.get(url, headers=headers, timeout=1)
+        response = requests.get(url, headers=headers, timeout=2)
         response.raise_for_status()
         latest_release = response.json()
 

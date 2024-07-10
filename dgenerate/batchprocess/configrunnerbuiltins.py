@@ -204,7 +204,8 @@ def download(url: str,
         try:
             with requests.get(url, headers={
                 'User-Agent': fake_useragent.UserAgent().chrome},
-                              stream=True) as response:
+                              stream=True,
+                              timeout=5) as response:
                 response.raise_for_status()
 
                 content_type = response.headers.get('content-type', 'unknown')
