@@ -96,7 +96,7 @@ class _UriWithScaleEntry(_entry._Entry):
                 c.config(state=tk.DISABLED)
 
     def _check_scale_active(self):
-        if self.uri_entry.get():
+        if self.uri_var.get():
             self.scale_entry.config(state=tk.NORMAL)
             for c in self.spin_buttons.children.values():
                 c.config(state=tk.NORMAL)
