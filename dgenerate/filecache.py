@@ -444,7 +444,7 @@ class WebFileCache(FileCache):
 
         headers = {'User-Agent': fake_useragent.UserAgent().chrome}
 
-        with requests.get(url, headers=headers, stream=True) as req:
+        with requests.get(url, headers=headers, stream=True, timeout=5) as req:
             req.raise_for_status()
             mime_type = req.headers['content-type']
 
@@ -494,7 +494,10 @@ class WebFileCache(FileCache):
                 if cached_file is not None and os.path.exists(cached_file.path):
                     return cached_file
 
-        with requests.get(url, headers={'User-Agent': fake_useragent.UserAgent().chrome}, stream=True) as response:
+        with requests.get(url,
+                          headers={'User-Agent': fake_useragent.UserAgent().chrome},
+                          stream=True,
+                          timeout=5) as response:
             response.raise_for_status()
 
             mime_type = response.headers.get('content-type', 'unknown')
