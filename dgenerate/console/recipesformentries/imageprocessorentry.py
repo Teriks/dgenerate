@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import tkinter as tk
+import tkinter.ttk as ttk
 import typing
 
 import dgenerate.console.filedialog as _filedialog
@@ -33,12 +34,20 @@ class _ImageProcessorEntry(_entry._Entry):
 
     def __init__(self, *args, **kwargs):
         self.schema = _resources.get_schema('imageprocessors')
-        max_rows = max(len(args) for args in self.schema.values()) + 1
+
+        config = kwargs.get('config', {})
+
+        self.internal_divider = config.get(
+            'internal-divider', not config.get('divider-after', False))
+
+        max_rows = max(len(args) for args in self.schema.values()) + (1 if not self.internal_divider else 2)
+
         super().__init__(*args, **kwargs, widget_rows=max_rows)
 
         self.declared_optional = self.config.get('optional', True)
-        label = f'(Optional) {self.config.get("label", "Image Processor")}' if self.declared_optional else self.config.get(
-            "label", "Image Processor")
+
+        label = f'(Optional) {self.config.get("label", "Image Processor")}' \
+            if self.declared_optional else self.config.get("label", "Image Processor")
 
         self.optional = False
         self.processor_name_var = tk.StringVar(self.master)
@@ -150,12 +159,19 @@ class _ImageProcessorEntry(_entry._Entry):
         self._show_help_button()
         parameters = self.schema.get(algorithm_name, {})
 
+        i = 0
+
         for i, (param_name, param_info) in enumerate(parameters.items()):
             if param_name == 'PROCESSOR_HELP':
                 self.current_help_text = param_info
                 continue
 
             self._create_widget_for_param(param_name, param_info, self.row + i + 1)
+
+        if self.internal_divider:
+            separator = ttk.Separator(self.master, orient='horizontal')
+            separator.grid(row=self.row+i+2, column=0, sticky='ew', columnspan=100, pady=_entry.DIVIDER_YPAD)
+            self.dynamic_widgets.append(separator)
 
         if self.on_updated_callback is not None:
             self.on_updated_callback()

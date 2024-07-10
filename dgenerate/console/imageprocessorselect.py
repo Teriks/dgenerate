@@ -41,7 +41,7 @@ class _ImageProcessorSelect(tk.Toplevel):
         self.processor = _entries._ImageProcessorEntry(
             recipe_form=self,
             master=self.processor_frame,
-            config={"optional": False},
+            config={"optional": False, "internal-divider": False},
             placeholder='URI',
             row=1)
 

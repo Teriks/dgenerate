@@ -24,6 +24,7 @@ import shlex
 import typing
 
 ROW_XPAD = (5, 2)
+DIVIDER_YPAD = (5, 5)
 
 
 def replace_first(text, old, new):
