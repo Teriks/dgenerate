@@ -30,8 +30,6 @@ class _UriWithFloatArgEntry(_uriwithfloatentry._UriWithFloatEntry):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.float_arg = self.config.get('float-arg', '')
-
     def template(self, content):
         uri = self.uri_var.get().strip()
         float_val = self.float_var.get().strip()

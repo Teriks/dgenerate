@@ -37,7 +37,7 @@ class _UriWithFloatEntry(_urientry._UriEntry):
 
         self.default_float = str(self.config.get('float', '1.0'))
 
-        self.float_arg = self.config.get('float-arg', 'scale')
+        self.float_arg = self.config.get('float-arg', 'float')
 
         self.float_var = \
             tk.StringVar(value=self.default_float)
