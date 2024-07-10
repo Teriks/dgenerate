@@ -45,7 +45,7 @@ RECIPES = {
         @imagesize[{"label":"Batch Grid Size (CxR)", "arg":"--batch-grid-size", "default":""}]
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
         @imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"512x512"}]
-        @dropdown[{"arg":"--prompt-weighter", "options":["compel", "compel;syntax=sdwui", "sd-embed"]}]
+        @dropdown[{"label":"Prompt Weighter", "arg":"--prompt-weighter", "options":["compel", "compel;syntax=sdwui", "sd-embed"]}]
         @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
         @device[{}]
         --prompts "add your prompt here"
@@ -80,7 +80,7 @@ RECIPES = {
         @imagesize[{"label":"Batch Grid Size (CxR)", "arg":"--batch-grid-size", "default":""}]
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
         @imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"1024x1024"}]
-        @dropdown[{"arg":"--prompt-weighter", "options":["sd-embed"]}]
+        @dropdown[{"label":"Prompt Weighter", "arg":"--prompt-weighter", "options":["sd-embed"]}]
         @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
         @device[{}]
         --prompts "add your prompt here"
@@ -115,7 +115,7 @@ RECIPES = {
         @int[{"label":"Number Of Seeds", "arg":"--gen-seeds", "default":1, "min":0}]
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
         @imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"1024x1024"}]
-        @dropdown[{"arg":"--prompt-weighter", "options":["compel", "compel;syntax=sdwui", "sd-embed"]}]
+        @dropdown[{"label":"Prompt Weighter", "arg":"--prompt-weighter", "options":["compel", "compel;syntax=sdwui", "sd-embed"]}]
         @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
         @device[{}]
         --prompts "add your prompt here"
@@ -146,7 +146,7 @@ RECIPES = {
         @imagesize[{"label":"Batch Grid Size (CxR)", "arg":"--batch-grid-size", "default":""}]
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
         @imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"1024x1024"}]
-        @dropdown[{"arg":"--prompt-weighter", "options":["compel", "compel;syntax=sdwui", "sd-embed"]}]
+        @dropdown[{"label":"Prompt Weighter", "arg":"--prompt-weighter", "options":["compel", "compel;syntax=sdwui", "sd-embed"]}]
         @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
         @device[{}]
         --prompts "add your prompt here"
@@ -184,7 +184,7 @@ RECIPES = {
         @imagesize[{"label":"Batch Grid Size (CxR)", "arg":"--batch-grid-size", "default":""}]
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
         @imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"1024x1024"}]
-        @dropdown[{"arg":"--prompt-weighter", "options":["compel", "compel;syntax=sdwui", "sd-embed"]}]
+        @dropdown[{"label":"Prompt Weighter", "arg":"--prompt-weighter", "options":["compel", "compel;syntax=sdwui", "sd-embed"]}]
         @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
         @device[{}]
         --prompts "add your prompt here"
@@ -215,7 +215,7 @@ RECIPES = {
         @imagesize[{"label":"Batch Grid Size (CxR)", "arg":"--batch-grid-size", "default":""}]
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
         @imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"1024x1024"}]
-        @dropdown[{"arg":"--prompt-weighter", "options":["compel", "compel;syntax=sdwui", "sd-embed"]}]
+        @dropdown[{"label":"Prompt Weighter", "arg":"--prompt-weighter", "options":["compel", "compel;syntax=sdwui", "sd-embed"]}]
         @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
         @device[{}]
         --prompts "add your prompt here"
@@ -253,7 +253,7 @@ RECIPES = {
         @imagesize[{"label":"Batch Grid Size (CxR)", "arg":"--batch-grid-size", "default":""}]
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
         @imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"1024x1024"}]
-        @dropdown[{"arg":"--prompt-weighter", "options":["compel", "compel;syntax=sdwui", "sd-embed"]}]
+        @dropdown[{"label":"Prompt Weighter", "arg":"--prompt-weighter", "options":["compel", "compel;syntax=sdwui", "sd-embed"]}]
         @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
         @device[{}]
         --prompts "add your prompt here"
@@ -284,7 +284,7 @@ RECIPES = {
         @imagesize[{"label":"Batch Grid Size (CxR)", "arg":"--batch-grid-size", "default":""}]
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
         @imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"1024x1024"}]
-        @dropdown[{"arg":"--prompt-weighter", "options":["compel", "compel;syntax=sdwui", "sd-embed"]}]
+        @dropdown[{"label":"Prompt Weighter", "arg":"--prompt-weighter", "options":["compel", "compel;syntax=sdwui", "sd-embed"]}]
         @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
         @device[{}]
         --prompts "add your prompt here"
@@ -451,7 +451,7 @@ RECIPES = {
         @int[{"label":"Batch Size", "arg":"--batch-size", "default":"", "min":1}]
         @imagesize[{"label":"Batch Grid Size (CxR)", "arg":"--batch-grid-size", "default":""}]
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
-        @dropdown[{"arg":"--prompt-weighter", "options":["compel", "compel;syntax=sdwui", "sd-embed"]}]
+        @dropdown[{"label":"Prompt Weighter", "arg":"--prompt-weighter", "options":["compel", "compel;syntax=sdwui", "sd-embed"]}]
         @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
         @device[{}]
         --prompts "your prompt here"
