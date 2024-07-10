@@ -1131,12 +1131,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument('-hnf', '--sdxl-high-noise-fractions', action='store', nargs='+', default=None,
                             metavar="FLOAT",
                             type=_type_sdxl_high_noise_fractions,
-                            help="""One or more high-noise-fraction values for Stable Diffusion XL (torch-sdxl), 
-                            this fraction of inference steps will be processed by the base model, while the rest 
-                            will be processed by the refiner model. Multiple values to this argument will result in 
-                            additional generation steps for each value. In certain situations when the mixture of denoisers 
-                            algorithm is not supported, such as when using --control-nets and inpainting with SDXL, the inverse 
-                            proportion of this value IE: (1.0 - high-noise-fraction) becomes the --image-seed-strengths 
+                            help="""One or more high-noise-fraction values for Stable Diffusion XL (torch-sdxl),
+                            this fraction of inference steps will be processed by the base model, while the rest
+                            will be processed by the refiner model. Multiple values to this argument will result in
+                            additional generation steps for each value. In certain situations when the mixture of denoisers
+                            algorithm is not supported, such as when using --control-nets and inpainting with SDXL, the inverse
+                            proportion of this value IE: (1.0 - high-noise-fraction) becomes the --image-seed-strengths
                             input to the SDXL refiner. (default: [0.8])"""))
 
     actions.append(
@@ -1461,7 +1461,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                                            help=f"""One or more image strength values to try when using --image-seeds for 
                                            img2img or inpaint mode. Closer to 0 means high usage of the seed image (less noise convolution), 
                                            1 effectively means no usage (high noise convolution). Low values will produce something closer 
-                                           or more relevant to the input image, high values will give the AI more creative freedom. (default: [0.8])"""))
+                                           or more relevant to the input image, high values will give the AI more creative freedom. This 
+                                           value must be greater than 0 and less than or equal to 1. (default: [0.8])"""))
 
     actions.append(
         image_seed_noise_opts.add_argument('-uns', '--upscaler-noise-levels', action='store', nargs='+', default=None,
