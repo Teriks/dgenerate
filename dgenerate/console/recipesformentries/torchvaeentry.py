@@ -76,6 +76,22 @@ class _TorchVaeEntry(_entry._Entry):
 
         self.vae_uri_entry.bind('<Key>', lambda e: self.valid())
 
+        self._vae_type_enabled_color = self.vae_type_entry.cget('bg')
+
+        if not self.vae_uri_var.get():
+            self.vae_type_entry.config(bg='darkgray')
+            self.vae_type_entry.config(state=tk.DISABLED)
+
+        self.vae_uri_var.trace_add('write', lambda *a: self._check_vae_type_active())
+
+    def _check_vae_type_active(self):
+        if self.vae_uri_var.get():
+            self.vae_type_entry.config(bg=self._vae_type_enabled_color)
+            self.vae_type_entry.config(state=tk.NORMAL)
+        else:
+            self.vae_type_entry.config(bg='darkgray')
+            self.vae_type_entry.config(state=tk.DISABLED)
+
     def invalid(self):
         _entry.invalid_colors(self.vae_uri_entry)
 
