@@ -431,6 +431,7 @@ RECIPES = {
         @int[{"label":"Batch Size", "arg":"--batch-size", "default":"", "min":1}]
         @imagesize[{"label":"Batch Grid Size (CxR)", "arg":"--batch-grid-size", "default":"", "divider-after":true}]
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+        @imagesize[{"label":"Input Resize (WxH)", "arg":"--output-size", "default":""}]
         @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
         @device[{}]
         --prompts "your prompt here"
@@ -453,6 +454,7 @@ RECIPES = {
         @int[{"label":"Batch Size", "arg":"--batch-size", "default":"", "min":1}]
         @imagesize[{"label":"Batch Grid Size (CxR)", "arg":"--batch-grid-size", "default":"", "divider-after":true}]
         @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+        @imagesize[{"label":"Input Resize (WxH)", "arg":"--output-size", "default":""}]
         @dropdown[{"label":"Prompt Weighter", "arg":"--prompt-weighter", "options":["compel", "compel;syntax=sdwui", "sd-embed"]}]
         @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
         @device[{}]
