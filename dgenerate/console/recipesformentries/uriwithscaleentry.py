@@ -26,7 +26,7 @@ import dgenerate.console.resources as _resources
 from dgenerate.console.spinbox import FloatSpinbox
 
 
-class _UriWithScale(_entry._Entry):
+class _UriWithScaleEntry(_entry._Entry):
     NAME = 'uriwithscale'
 
     def __init__(self, *args, **kwargs):
@@ -61,14 +61,17 @@ class _UriWithScale(_entry._Entry):
             from_=0.0,
             to=1.0)
 
-        buttons = self.scale_entry.create_spin_buttons(self.master)
-        buttons.grid(row=self.row + 1, column=2, sticky='w')
+        self.spin_buttons = self.scale_entry.create_spin_buttons(self.master)
+        self.spin_buttons.grid(row=self.row + 1, column=2, sticky='w')
 
         if self.config.get('file', True):
+
+            file_types = self.config.get('file-types', [])
+
+            dialog_args = _resources.get_file_dialog_args(file_types)
+
             def select_command():
-                file_globs = ['*.' + ext for ext in _resources.supported_torch_model_formats_open()]
-                r = _filedialog.open_file_dialog(
-                    filetypes=[('Models', ' *.'.join(file_globs))])
+                r = _filedialog.open_file_dialog(**dialog_args)
                 if r is not None:
                     self.uri_var.set(r)
 
@@ -84,6 +87,23 @@ class _UriWithScale(_entry._Entry):
         self.scale_entry.grid(row=self.row + 1, column=1, padx=_entry.ROW_XPAD, sticky='ew')
 
         self.uri_entry.bind('<Key>', lambda e: self.valid())
+
+        self.uri_var.trace_add('write', lambda *a: self._check_scale_active())
+
+        if not self.uri_entry.get():
+            self.scale_entry.config(state=tk.DISABLED)
+            for c in self.spin_buttons.children.values():
+                c.config(state=tk.DISABLED)
+
+    def _check_scale_active(self):
+        if self.uri_entry.get():
+            self.scale_entry.config(state=tk.NORMAL)
+            for c in self.spin_buttons.children.values():
+                c.config(state=tk.NORMAL)
+        else:
+            self.scale_entry.config(state=tk.DISABLED)
+            for c in self.spin_buttons.children.values():
+                c.config(state=tk.DISABLED)
 
     def invalid(self):
         _entry.invalid_colors(self.uri_entry)

@@ -52,7 +52,7 @@ class _KarrasSchedulerEntry(_entry._Entry):
             self.master, text=scheduler_name_label_text, anchor='e')
 
         self.scheduler_name_entry = tk.OptionMenu(
-            self.master, self.scheduler_name_text_var, *schedulers)
+            self.master, self.scheduler_name_text_var, *schedulers, command=self._scheduler_name_changed)
 
         self.prediction_type_label = tk.Label(
             self.master, text=scheduler_name_label_text + ' Prediction Type', anchor='e'
@@ -61,11 +61,26 @@ class _KarrasSchedulerEntry(_entry._Entry):
         self.prediction_type_entry = tk.OptionMenu(
             self.master, self.prediction_type_entry_text_var, *prediction_types)
 
+        self._pred_enabled_color = self.prediction_type_entry.cget('bg')
+
+        if not self.scheduler_name_text_var.get():
+            self.prediction_type_entry.config(bg='darkgray')
+            self.prediction_type_entry.config(state=tk.DISABLED)
+
         self.scheduler_name_label.grid(row=self.row, column=0, padx=_entry.ROW_XPAD, sticky='e')
         self.scheduler_name_entry.grid(row=self.row, column=1, padx=_entry.ROW_XPAD, sticky='ew')
 
         self.prediction_type_label.grid(row=self.row + 1, column=0, padx=_entry.ROW_XPAD, sticky='e')
         self.prediction_type_entry.grid(row=self.row + 1, column=1, padx=_entry.ROW_XPAD, sticky='ew')
+
+    def _scheduler_name_changed(self, e):
+        if self.scheduler_name_text_var.get():
+            self.prediction_type_entry.config(bg=self._pred_enabled_color)
+            self.prediction_type_entry.config(state=tk.NORMAL)
+        else:
+            self.prediction_type_entry.config(bg='darkgray')
+            self.prediction_type_entry.config(state=tk.DISABLED)
+            self.prediction_type_entry_text_var.set('')
 
     def invalid(self):
         _entry.invalid_colors(self.scheduler_name_entry)

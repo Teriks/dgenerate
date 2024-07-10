@@ -66,8 +66,8 @@ class _ImageProcessorEntry(_entry._Entry):
         self.entries = {}
         self.dynamic_widgets = []
         self.file_arguments = {
-            'model': [('Models', ' *.'.join(['*.' + ext for ext in _resources.supported_torch_model_formats_open()]))]}
-        
+            'model': _resources.get_file_dialog_args(['models'])}
+
         self.on_updated_callback = None
 
     def _show_help(self):
@@ -268,10 +268,10 @@ class _ImageProcessorEntry(_entry._Entry):
             entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
             return True, [entry], variable
 
-    def _add_file_button(self, row, entry, file_types):
+    def _add_file_button(self, row, entry, dialog_args):
 
         file_button = tk.Button(self.master, text='Select File',
-                                command=lambda e=entry, f=file_types: self._select_model_command(e, f))
+                                command=lambda e=entry, d=dialog_args: self._select_model_command(e, d))
         file_button.grid(row=row, column=2, padx=_entry.ROW_XPAD, sticky='w')
         self.dynamic_widgets.append(file_button)
 
@@ -298,8 +298,8 @@ class _ImageProcessorEntry(_entry._Entry):
                 _entry.valid_colors(entry)
 
     @staticmethod
-    def _select_model_command(entry, file_types):
-        file_path = _filedialog.open_file_dialog(filetypes=file_types)
+    def _select_model_command(entry, dialog_args):
+        file_path = _filedialog.open_file_dialog(**dialog_args)
         if file_path:
             entry.delete(0, tk.END)
             entry.insert(0, file_path)

@@ -39,12 +39,9 @@ class _FileEntry(_entry._Entry):
 
         self.entry = tk.Entry(self.master, textvariable=self.text_var)
         self.select_mode = self.config.get('mode', 'input')
-        self.file_types = self.config.get('file-types', None)
+        self.file_types = self.config.get('file-types', [])
 
-        dialog_args = dict()
-        if self.file_types == 'models':
-            file_globs = ['*.' + ext for ext in _resources.supported_torch_model_formats_open()]
-            dialog_args['filetypes'] = [('Models', ' '.join(file_globs))]
+        dialog_args = _resources.get_file_dialog_args(self.file_types)
 
         def select_command():
             if 'output' in self.select_mode:

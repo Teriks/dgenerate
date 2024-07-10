@@ -70,6 +70,9 @@ class IntSpinbox(tk.Entry):
         return button_frame
 
     def do_increment(self, delta):
+        if self.cget('state') == tk.DISABLED:
+            return
+
         try:
             new_value = max(self.from_,
                             min(self.to, int(self.display_value.get()) + (delta * self.increment)))
@@ -180,6 +183,9 @@ class FloatSpinbox(tk.Entry):
         return button_frame
 
     def do_increment(self, delta):
+        if self.cget('state') == tk.DISABLED:
+            return
+
         try:
             new_value = max(self.from_,
                             min(self.to, round(float(self.display_value.get()) + (delta * self.increment), 2)))

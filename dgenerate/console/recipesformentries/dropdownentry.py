@@ -32,7 +32,7 @@ class _DropDownEntry(_entry._Entry):
         if self.arg is None:
             self.arg = ''
 
-        options = [o.strip() for o in self.config.get('options', '').split(',')]
+        options = self.config.get('options', [])
 
         if self.optional:
             options = [''] + options
@@ -42,7 +42,7 @@ class _DropDownEntry(_entry._Entry):
 
         self.label_widget = tk.Label(
             self.master,
-            text=self.get_label('Prompt Weighter'), anchor='e')
+            text=self.get_label('Dropdown'), anchor='e')
 
         self.entry = tk.OptionMenu(self.master,
                                    self.text_var,

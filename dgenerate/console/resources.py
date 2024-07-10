@@ -56,6 +56,30 @@ class ReleaseInfo:
         return repr(self.__dict__)
 
 
+def get_file_dialog_args(file_types: list):
+    dialog_args = dict()
+    schema = get_schema('mediaformats')
+
+    if file_types:
+        type_desc = []
+        dialog_args['filetypes'] = type_desc
+        file_type_mappings = {
+            'models': ('Models', supported_torch_model_formats_open),
+            'images-in': ('Images', lambda: schema['images-in']),
+            'videos-in': ('Videos', lambda: schema['videos-in']),
+            'images-out': ('Images', lambda: schema['images-out']),
+            'videos-out': ('Videos', lambda: schema['videos-out']),
+        }
+
+        for file_type in file_types:
+            if file_type in file_type_mappings:
+                label, get_extensions = file_type_mappings[file_type]
+                file_globs = ['*.' + ext for ext in get_extensions()]
+                type_desc.append((label, ' '.join(file_globs)))
+
+    return dialog_args
+
+
 def check_latest_release() -> ReleaseInfo | None:
     """
     Get the latest software release for this software.
@@ -70,7 +94,7 @@ def check_latest_release() -> ReleaseInfo | None:
     }
 
     try:
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, timeout=1)
         response.raise_for_status()
         latest_release = response.json()
 
@@ -102,9 +126,17 @@ def get_themes():
         yield os.path.splitext(file.name)[0], toml.loads(file.read_text())
 
 
+_LOADED_SCHEMAS = dict()
+
+
 def get_schema(name):
+    if name in _LOADED_SCHEMAS:
+        return _LOADED_SCHEMAS.get(name)
+
     with importlib.resources.open_text('dgenerate.console.schemas', f'{name}.json') as file:
-        return json.load(file)
+        schema = json.load(file)
+        _LOADED_SCHEMAS[name] = schema
+        return schema
 
 
 def get_karras_schedulers():
