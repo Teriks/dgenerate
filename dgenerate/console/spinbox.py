@@ -243,7 +243,7 @@ class FloatSpinbox(tk.Entry):
         if action != '-1':
             # inserting or deleting
             try:
-                if self.from_ > 0:
+                if self.from_ >= 0:
                     return re.match(r'^[0-9.]+$', value_if_allowed) is not None and value_if_allowed.count('.') < 2
                 else:
                     some_float = re.match(r'^[0-9.-]+$', value_if_allowed) is not None and value_if_allowed.count('.') < 2
