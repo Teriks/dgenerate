@@ -120,7 +120,8 @@ class IntSpinbox(tk.Entry):
 
             if value < self.from_ or value > self.to:
                 self.delete(0, tk.END)
-                self.insert(0, self.get_midpoint())
+                self.insert(0, str(max(self.from_,
+                                       min(self.to, value))))
                 # Validation gets blown out by the edits for
                 # god knows what reason, this took ages to figure out
                 self._setup_validation()
