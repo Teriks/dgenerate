@@ -96,7 +96,6 @@ def get_recipes():
     return _RECIPES
 
 
-
 def check_latest_release() -> ReleaseInfo | None:
     """
     Get the latest software release for this software.
