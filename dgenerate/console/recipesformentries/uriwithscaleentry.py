@@ -67,18 +67,27 @@ class _UriWithScaleEntry(_entry._Entry):
         self.spin_buttons = self.scale_entry.create_spin_buttons(self.master)
         self.spin_buttons.grid(row=self.row + 1, column=2, sticky='w')
 
-        if self.config.get('file', True):
+        is_file = self.config.get('file', False)
+        is_dir = self.config.get('dir', False)
 
-            file_types = self.config.get('file-types', [])
+        if is_file and is_dir:
+            raise RuntimeError('URI cannot be both file and dir selectable.')
 
-            dialog_args = _resources.get_file_dialog_args(file_types)
+        if is_file or is_dir:
 
             def select_command():
-                r = _filedialog.open_file_dialog(**dialog_args)
+                if is_file:
+                    file_types = self.config.get('file-types', [])
+                    dialog_args = _resources.get_file_dialog_args(file_types)
+                    r = _filedialog.open_file_dialog(**dialog_args)
+                else:
+                    r = _filedialog.open_directory_dialog()
+
                 if r is not None:
                     self.uri_var.set(r)
 
-            self.button = tk.Button(self.master, text="Select File",
+            self.button = tk.Button(self.master,
+                                    text="Select File" if is_file else "Select Directory",
                                     command=select_command)
 
             self.button.grid(row=self.row, column=2, padx=(2, 5), sticky='w')
