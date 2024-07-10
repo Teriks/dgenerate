@@ -159,14 +159,14 @@ Help Output
                      [-ifs INTEGER [INTEGER ...]] [-mc EXPR [EXPR ...]] [-pmc EXPR [EXPR ...]]
                      [-umc EXPR [EXPR ...]] [-vmc EXPR [EXPR ...]] [-cmc EXPR [EXPR ...]] [-tmc EXPR [EXPR ...]]
                      model_path
-    
+
     Batch image generation and manipulation tool supporting Stable Diffusion and related techniques /
     algorithms, with support for video and animated image processing.
-    
+
     positional arguments:
       model_path            huggingface model repository slug, huggingface blob link to a model file, path to
                             folder on disk, or path to a .pt, .pth, .bin, .ckpt, or .safetensors file.
-    
+
     options:
       -h, --help            show this help message and exit
       -v, --verbose         Output information useful for debugging, such as pipeline call and model load
@@ -887,7 +887,8 @@ Help Output
                             inpaint mode. Closer to 0 means high usage of the seed image (less noise
                             convolution), 1 effectively means no usage (high noise convolution). Low values will
                             produce something closer or more relevant to the input image, high values will give
-                            the AI more creative freedom. (default: [0.8])
+                            the AI more creative freedom. This value must be greater than 0 and less than or
+                            equal to 1. (default: [0.8])
       -uns INTEGER [INTEGER ...], --upscaler-noise-levels INTEGER [INTEGER ...]
                             One or more upscaler noise level values to try when using the super resolution
                             upscaler --model-type torch-upscaler-x4 or torch-ifs. Specifying this option for
@@ -971,7 +972,6 @@ Help Output
                             Example, and default value: "text_encoder_size > (available * 0.75)" For Syntax See:
                             [https://dgenerate.readthedocs.io/en/v3.9.0/dgenerate_submodules.html#dgenerate.pipe
                             linewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS]
-
 
 
 Windows Install
