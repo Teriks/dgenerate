@@ -22,18 +22,18 @@
 RECIPES = {
     "Stable Diffusion":
         """
-        @file[{"label":"Model File / HF Slug", "default": "stabilityai/stable-diffusion-2-1", "optional":false, "file-types":["models"]}]
+        @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "stabilityai/stable-diffusion-2-1", "optional":false, "file-types":["models"]}]
         @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "float32"]}]
         @dropdown[{"label":"Model variant", "arg":"--variant", "options":["fp16"]}]
         @karrasscheduler[{}]
         @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "divider-after":true}]
-        @torchvae[{"label":"VAE File / URI"}]
+        @torchvae[{"label":"VAE Path / URI", "dir":true, "file-types":["models"]}]
         @switch[{"label":"VAE Tiling", "arg":"--vae-tiling"}]
         @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
-        @uriwithscale[{"label":"LoRa File / URI", "scale_label":"LoRA Scale", "arg":"--loras", "file":true, "file-types":["models"]}]
-        @uriwithscale[{"label":"ControlNet Directory / URI", "scale_label":"ControlNet Scale", "arg":"--control-nets", "dir":true}]
+        @uriwithscale[{"label":"LoRA Path / URI", "scale_label":"LoRA Scale", "arg":"--loras", "dir":true, "file-types":["models"]}]
+        @uriwithscale[{"label":"ControlNet Path / URI", "scale_label":"ControlNet Scale", "arg":"--control-nets", "dir":true, "file-types":["models"]}]
         @dir[{"label":"UNet Directory / URI", "arg":"--unet", "divider-after":true}]
-        @uriwithargscale[{"label":"Image Seed", "arg":"--image-seeds", "file":true, "file-types":["images-in", "videos-in"], "scale_label":"Image Seed Strength", "scale_arg":"--image-seed-strengths", "min":0.01, "max":1, "default":""}]
+        @uriwithargscale[{"label":"Image Seed", "arg":"--image-seeds", "file-types":["images-in", "videos-in"], "scale_label":"Image Seed Strength", "scale_arg":"--image-seed-strengths", "min":0.01, "max":1, "default":""}]
         @imageprocessor[{"arg":"--seed-image-processors", "label":"Seed Image Processor"}]
         @imageprocessor[{"arg":"--control-image-processors", "label":"Control Image Processor"}]
         @imageprocessor[{"arg":"--mask-image-processors", "label":"Inpaint Mask Processor", "divider-after":true}]
@@ -59,17 +59,17 @@ RECIPES = {
 
         \set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
 
-        @file[{"label":"Model File / HF Slug", "default": "stabilityai/stable-diffusion-3-medium-diffusers", "optional":false, "file-types":["models"]}]
+        @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "stabilityai/stable-diffusion-3-medium-diffusers", "optional":false, "file-types":["models"]}]
         --model-type torch-sd3 {{ auth_token }}
         @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "float32"], "default":"float16"}]
         @dropdown[{"label":"Model variant", "arg":"--variant", "options":["fp16"], "default":"fp16"}]
         @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":1, "divider-after":true}]
-        @torchvae[{"label":"VAE File / URI"}]
+        @torchvae[{"label":"VAE Path / URI", "dir":true, "file-types":["models"]}]
         @switch[{"label":"VAE Tiling", "arg":"--vae-tiling"}]
         @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
-        @uriwithscale[{"label":"LoRa File / URI", "scale_label":"LoRA Scale", "arg":"--loras", "file":true, "file-types":["models"]}]
-        @uriwithscale[{"label":"ControlNet Directory / URI", "scale_label":"ControlNet Scale", "arg":"--control-nets", "dir":true, "divider-after":true}]
-        @uriwithargscale[{"label":"Image Seed", "arg":"--image-seeds", "file":true, "file-types":["images-in", "videos-in"], "scale_label":"Image Seed Strength", "scale_arg":"--image-seed-strengths", "min":0.01, "max":1, "default":""}]
+        @uriwithscale[{"label":"LoRA Path / URI", "scale_label":"LoRA Scale", "arg":"--loras", "dir":true, "file-types":["models"]}]
+        @uriwithscale[{"label":"ControlNet Path / URI", "scale_label":"ControlNet Scale", "arg":"--control-nets", "dir":true, "file-types":["models"], "divider-after":true}]
+        @uriwithargscale[{"label":"Image Seed", "arg":"--image-seeds", "file-types":["images-in", "videos-in"], "scale_label":"Image Seed Strength", "scale_arg":"--image-seed-strengths", "min":0.01, "max":1, "default":""}]
         @imageprocessor[{"arg":"--seed-image-processors", "label":"Seed Image Processor"}]
         @imageprocessor[{"arg":"--control-image-processors", "label":"Control Image Processor", "divider-after":true}]
         @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":30, "min":1}]
@@ -87,24 +87,24 @@ RECIPES = {
         """,
     "Stable Diffusion XL":
         """
-        @file[{"label":"Model File / HF Slug", "default": "stabilityai/stable-diffusion-xl-base-1.0", "optional":false, "file-types":["models"]}]
+        @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "stabilityai/stable-diffusion-xl-base-1.0", "optional":false, "file-types":["models"]}]
         --model-type torch-sdxl
         @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "float32"], "default":"float16"}]
         @dropdown[{"label":"Model variant", "arg":"--variant", "options":["fp16"], "default":"fp16"}]
         @karrasscheduler[{}]
         @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "divider-after":true}]
-        @file[{"label":"Refiner File / URI", "arg":"--sdxl-refiner", "default":"stabilityai/stable-diffusion-xl-refiner-1.0", "file-types":["models"]}]
+        @uri[{"label":"Refiner Path / URI", "dir":true, "arg":"--sdxl-refiner", "default":"stabilityai/stable-diffusion-xl-refiner-1.0", "file-types":["models"]}]
         @karrasscheduler[{"label":"Refiner Scheduler", "arg":"--sdxl-refiner-scheduler"}]
         @switchradio[{"labels":["Refiner CPU Offload", "Refiner Sequential Offload"], "args":["--sdxl-refiner-cpu-offload", "--sdxl-refiner-sequential-offload"]}]
         @switch[{"label":"Refiner Edit Mode", "arg":"--sdxl-refiner-edit", "divider-after":true}]
-        @torchvae[{"label":"VAE File / URI"}]
+        @torchvae[{"label":"VAE Path / URI", "dir":true, "file-types":["models"]}]
         @switch[{"label":"VAE Tiling", "arg":"--vae-tiling"}]
         @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
-        @uriwithscale[{"label":"LoRa File / URI", "scale_label":"LoRA Scale", "arg":"--loras", "file":true, "file-types":["models"]}]
-        @uriwithscale[{"label":"ControlNet Directory / URI", "scale_label":"ControlNet Scale", "arg":"--control-nets", "dir":true}]
+        @uriwithscale[{"label":"LoRA Path / URI", "scale_label":"LoRA Scale", "arg":"--loras", "dir":true, "file-types":["models"]}]
+        @uriwithscale[{"label":"ControlNet Path / URI", "scale_label":"ControlNet Scale", "arg":"--control-nets", "dir":true, "file-types":["models"]}]
         @dir[{"label":"UNet Directory / URI", "arg":"--unet"}]
         @dir[{"label":"Refiner UNet Directory / URI", "arg":"--unet2", "divider-after":true}]
-        @uriwithargscale[{"label":"Image Seed", "arg":"--image-seeds", "file":true, "file-types":["images-in", "videos-in"], "scale_label":"Image Seed Strength", "scale_arg":"--image-seed-strengths", "min":0.01, "max":1, "default":""}]
+        @uriwithargscale[{"label":"Image Seed", "arg":"--image-seeds", "file-types":["images-in", "videos-in"], "scale_label":"Image Seed Strength", "scale_arg":"--image-seed-strengths", "min":0.01, "max":1, "default":""}]
         @imageprocessor[{"arg":"--seed-image-processors", "label":"Seed Image Processor"}]
         @imageprocessor[{"arg":"--control-image-processors", "label":"Control Image Processor"}]
         @imageprocessor[{"arg":"--mask-image-processors", "label":"Inpaint Mask Processor", "divider-after":true}]
@@ -124,19 +124,19 @@ RECIPES = {
         """,
     "Stable Diffusion XL (no refiner)":
         """
-        @file[{"label":"Model File / HF Slug", "default": "stabilityai/stable-diffusion-xl-base-1.0", "optional":false, "file-types":["models"]}]
+        @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "stabilityai/stable-diffusion-xl-base-1.0", "optional":false, "file-types":["models"]}]
         --model-type torch-sdxl
         @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "float32"], "default":"float16"}]
         @dropdown[{"label":"Model variant", "arg":"--variant", "options":["fp16"], "default":"fp16"}]
         @karrasscheduler[{}]
         @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "divider-after":true}]
-        @torchvae[{"label":"VAE File / URI"}]
+        @torchvae[{"label":"VAE Path / URI", "dir":true, "file-types":["models"]}]
         @switch[{"label":"VAE Tiling", "arg":"--vae-tiling"}]
         @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
-        @uriwithscale[{"label":"LoRa File / URI", "scale_label":"LoRA Scale", "arg":"--loras", "file":true, "file-types":["models"]}]
-        @uriwithscale[{"label":"ControlNet Directory / URI", "scale_label":"ControlNet Scale", "arg":"--control-nets", "dir":true}]
+        @uriwithscale[{"label":"LoRA Path / URI", "scale_label":"LoRA Scale", "arg":"--loras", "dir":true, "file-types":["models"]}]
+        @uriwithscale[{"label":"ControlNet Path / URI", "scale_label":"ControlNet Scale", "arg":"--control-nets", "dir":true, "file-types":["models"]}]
         @dir[{"label":"UNet Directory / URI", "arg":"--unet", "divider-after":true}]
-        @uriwithargscale[{"label":"Image Seed", "arg":"--image-seeds", "file":true, "file-types":["images-in", "videos-in"], "scale_label":"Image Seed Strength", "scale_arg":"--image-seed-strengths", "min":0.01, "max":1, "default":""}]
+        @uriwithargscale[{"label":"Image Seed", "arg":"--image-seeds", "file-types":["images-in", "videos-in"], "scale_label":"Image Seed Strength", "scale_arg":"--image-seed-strengths", "min":0.01, "max":1, "default":""}]
         @imageprocessor[{"arg":"--seed-image-processors", "label":"Seed Image Processor"}]
         @imageprocessor[{"arg":"--control-image-processors", "label":"Control Image Processor"}]
         @imageprocessor[{"arg":"--mask-image-processors", "label":"Inpaint Mask Processor", "divider-after":true}]
@@ -155,24 +155,24 @@ RECIPES = {
         """,
     "Stable Diffusion XL (LCM UNet)":
         """
-        @file[{"label":"Model File / HF Slug", "default": "stabilityai/stable-diffusion-xl-base-1.0", "optional":false, "file-types":["models"]}]
+        @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "stabilityai/stable-diffusion-xl-base-1.0", "optional":false, "file-types":["models"]}]
         --model-type torch-sdxl
         @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "float32"], "default":"float16"}]
         @dropdown[{"label":"Model variant", "arg":"--variant", "options":["fp16"], "default":"fp16"}]
         @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":0, "divider-after":true}]
         --scheduler LCMScheduler
-        @file[{"label":"Refiner File / URI", "arg":"--sdxl-refiner", "default":"stabilityai/stable-diffusion-xl-refiner-1.0", "file-types":["models"]}]
+        @uri[{"label":"Refiner Path / URI", "dir":true, "arg":"--sdxl-refiner", "default":"stabilityai/stable-diffusion-xl-refiner-1.0", "file-types":["models"]}]
         @karrasscheduler[{"label":"Refiner Scheduler", "arg":"--sdxl-refiner-scheduler", "default":"UniPCMultistepScheduler"}]
         @switchradio[{"labels":["Refiner CPU Offload", "Refiner Sequential Offload"], "args":["--sdxl-refiner-cpu-offload", "--sdxl-refiner-sequential-offload"]}]
         @switch[{"label":"Refiner Edit Mode", "arg":"--sdxl-refiner-edit", "divider-after":true}]
-        @torchvae[{"label":"VAE File / URI"}]
+        @torchvae[{"label":"VAE Path / URI", "dir":true, "file-types":["models"]}]
         @switch[{"label":"VAE Tiling", "arg":"--vae-tiling"}]
         @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
-        @uriwithscale[{"label":"LoRa File / URI", "scale_label":"LoRA Scale", "arg":"--loras", "file":true, "file-types":["models"]}]
-        @uriwithscale[{"label":"ControlNet Directory / URI", "scale_label":"ControlNet Scale", "arg":"--control-nets", "dir":true}]
+        @uriwithscale[{"label":"LoRA Path / URI", "scale_label":"LoRA Scale", "arg":"--loras", "dir":true, "file-types":["models"]}]
+        @uriwithscale[{"label":"ControlNet Path / URI", "scale_label":"ControlNet Scale", "arg":"--control-nets", "dir":true, "file-types":["models"]}]
         @dir[{"label":"UNet Directory / URI", "arg":"--unet", "default":"latent-consistency/lcm-sdxl"}]
         @dir[{"label":"Refiner UNet Directory / URI", "arg":"--unet2", "divider-after":true}]
-        @uriwithargscale[{"label":"Image Seed", "arg":"--image-seeds", "file":true, "file-types":["images-in", "videos-in"], "scale_label":"Image Seed Strength", "scale_arg":"--image-seed-strengths", "min":0.01, "max":1, "default":""}]
+        @uriwithargscale[{"label":"Image Seed", "arg":"--image-seeds", "file-types":["images-in", "videos-in"], "scale_label":"Image Seed Strength", "scale_arg":"--image-seed-strengths", "min":0.01, "max":1, "default":""}]
         @imageprocessor[{"arg":"--seed-image-processors", "label":"Seed Image Processor"}]
         @imageprocessor[{"arg":"--control-image-processors", "label":"Control Image Processor"}]
         @imageprocessor[{"arg":"--mask-image-processors", "label":"Inpaint Mask Processor", "divider-after":true}]
@@ -193,19 +193,19 @@ RECIPES = {
         """,
     "Stable Diffusion XL (LCM UNet no refiner)":
         """
-        @file[{"label":"Model File / HF Slug", "default": "stabilityai/stable-diffusion-xl-base-1.0", "optional":false, "file-types":["models"]}]
+        @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "stabilityai/stable-diffusion-xl-base-1.0", "optional":false, "file-types":["models"]}]
         --model-type torch-sdxl
         @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "float32"], "default":"float16"}]
         @dropdown[{"label":"Model variant", "arg":"--variant", "options":["fp16"], "default":"fp16"}]
         @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":0, "divider-after":true}]
         --scheduler LCMScheduler
-        @torchvae[{"label":"VAE File / URI"}]
+        @torchvae[{"label":"VAE Path / URI", "dir":true, "file-types":["models"]}]
         @switch[{"label":"VAE Tiling", "arg":"--vae-tiling"}]
         @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
-        @uriwithscale[{"label":"LoRa File / URI", "scale_label":"LoRA Scale", "arg":"--loras", "file":true, "file-types":["models"]}]
-        @uriwithscale[{"label":"ControlNet Directory / URI", "scale_label":"ControlNet Scale", "arg":"--control-nets", "dir":true}]
+        @uriwithscale[{"label":"LoRA Path / URI", "scale_label":"LoRA Scale", "arg":"--loras", "dir":true, "file-types":["models"]}]
+        @uriwithscale[{"label":"ControlNet Path / URI", "scale_label":"ControlNet Scale", "arg":"--control-nets", "dir":true, "file-types":["models"]}]
         @dir[{"label":"UNet Directory / URI", "arg":"--unet", "default":"latent-consistency/lcm-sdxl", "divider-after":true}]
-        @uriwithargscale[{"label":"Image Seed", "arg":"--image-seeds", "file":true, "file-types":["images-in", "videos-in"], "scale_label":"Image Seed Strength", "scale_arg":"--image-seed-strengths", "min":0.01, "max":1, "default":""}]
+        @uriwithargscale[{"label":"Image Seed", "arg":"--image-seeds", "file-types":["images-in", "videos-in"], "scale_label":"Image Seed Strength", "scale_arg":"--image-seed-strengths", "min":0.01, "max":1, "default":""}]
         @imageprocessor[{"arg":"--seed-image-processors", "label":"Seed Image Processor"}]
         @imageprocessor[{"arg":"--control-image-processors", "label":"Control Image Processor"}]
         @imageprocessor[{"arg":"--mask-image-processors", "label":"Inpaint Mask Processor", "divider-after":true}]
@@ -224,24 +224,24 @@ RECIPES = {
         """,
     "Stable Diffusion XL (LCM LoRA)":
         """
-        @file[{"label":"Model File / HF Slug", "default": "stabilityai/stable-diffusion-xl-base-1.0", "optional":false, "file-types":["models"]}]
+        @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "stabilityai/stable-diffusion-xl-base-1.0", "optional":false, "file-types":["models"]}]
         --model-type torch-sdxl
         @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "float32"], "default":"float16"}]
         @dropdown[{"label":"Model variant", "arg":"--variant", "options":["fp16"], "default":"fp16"}]
         @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":0, "divider-after":true}]
         --scheduler LCMScheduler
-        @file[{"label":"Refiner File / URI", "arg":"--sdxl-refiner", "default":"stabilityai/stable-diffusion-xl-refiner-1.0", "file-types":["models"]}]
+        @uri[{"label":"Refiner Path / URI", "dir":true, "arg":"--sdxl-refiner", "default":"stabilityai/stable-diffusion-xl-refiner-1.0", "file-types":["models"]}]
         @karrasscheduler[{"label":"Refiner Scheduler", "arg":"--sdxl-refiner-scheduler", "default":"UniPCMultistepScheduler"}]
         @switchradio[{"labels":["Refiner CPU Offload", "Refiner Sequential Offload"], "args":["--sdxl-refiner-cpu-offload", "--sdxl-refiner-sequential-offload"]}]
         @switch[{"label":"Refiner Edit Mode", "arg":"--sdxl-refiner-edit", "divider-after":true}]
-        @torchvae[{"label":"VAE File / URI"}]
+        @torchvae[{"label":"VAE Path / URI", "dir":true, "file-types":["models"]}]
         @switch[{"label":"VAE Tiling", "arg":"--vae-tiling"}]
         @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
-        @uriwithscale[{"label":"LoRa File / URI", "scale_label":"LoRA Scale", "arg":"--loras", "default":"latent-consistency/lcm-lora-sdxl", "file":true, "file-types":["models"]}]
-        @uriwithscale[{"label":"ControlNet Directory / URI", "scale_label":"ControlNet Scale", "arg":"--control-nets", "dir":true}]
+        @uriwithscale[{"label":"LoRA Path / URI", "scale_label":"LoRA Scale", "arg":"--loras", "default":"latent-consistency/lcm-lora-sdxl", "dir":true, "file-types":["models"]}]
+        @uriwithscale[{"label":"ControlNet Path / URI", "scale_label":"ControlNet Scale", "arg":"--control-nets", "dir":true, "file-types":["models"]}]
         @dir[{"label":"UNet Directory / URI", "arg":"--unet"}]
         @dir[{"label":"Refiner UNet Directory / URI", "arg":"--unet2", "divider-after":true}]
-        @uriwithargscale[{"label":"Image Seed", "arg":"--image-seeds", "file":true, "file-types":["images-in", "videos-in"], "scale_label":"Image Seed Strength", "scale_arg":"--image-seed-strengths", "min":0.01, "max":1, "default":""}]
+        @uriwithargscale[{"label":"Image Seed", "arg":"--image-seeds", "file-types":["images-in", "videos-in"], "scale_label":"Image Seed Strength", "scale_arg":"--image-seed-strengths", "min":0.01, "max":1, "default":""}]
         @imageprocessor[{"arg":"--seed-image-processors", "label":"Seed Image Processor"}]
         @imageprocessor[{"arg":"--control-image-processors", "label":"Control Image Processor"}]
         @imageprocessor[{"arg":"--mask-image-processors", "label":"Inpaint Mask Processor", "divider-after":true}]
@@ -262,19 +262,19 @@ RECIPES = {
         """,
     "Stable Diffusion XL (LCM LoRA no refiner)":
         """
-        @file[{"label":"Model File / HF Slug", "default": "stabilityai/stable-diffusion-xl-base-1.0", "optional":false, "file-types":["models"]}]
+        @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "stabilityai/stable-diffusion-xl-base-1.0", "optional":false, "file-types":["models"]}]
         --model-type torch-sdxl
         @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "float32"], "default":"float16"}]
         @dropdown[{"label":"Model variant", "arg":"--variant", "options":["fp16"], "default":"fp16"}]
         @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":0, "divider-after":true}]
         --scheduler LCMScheduler
-        @torchvae[{"label":"VAE File / URI"}]
+        @torchvae[{"label":"VAE Path / URI", "dir":true, "file-types":["models"]}]
         @switch[{"label":"VAE Tiling", "arg":"--vae-tiling"}]
         @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
-        @uriwithscale[{"label":"LoRa File / URI", "scale_label":"LoRA Scale", "arg":"--loras", "default":"latent-consistency/lcm-lora-sdxl", "file":true, "file-types":["models"]}]
-        @uriwithscale[{"label":"ControlNet Directory / URI", "scale_label":"ControlNet Scale", "arg":"--control-nets", "dir":true}]
+        @uriwithscale[{"label":"LoRA Path / URI", "scale_label":"LoRA Scale", "arg":"--loras", "default":"latent-consistency/lcm-lora-sdxl", "dir":true, "file-types":["models"]}]
+        @uriwithscale[{"label":"ControlNet Path / URI", "scale_label":"ControlNet Scale", "arg":"--control-nets", "dir":true, "file-types":["models"]}]
         @dir[{"label":"UNet Directory / URI", "arg":"--unet", "divider-after":true}]
-        @uriwithargscale[{"label":"Image Seed", "arg":"--image-seeds", "file":true, "file-types":["images-in", "videos-in"], "scale_label":"Image Seed Strength", "scale_arg":"--image-seed-strengths", "min":0.01, "max":1, "default":""}]
+        @uriwithargscale[{"label":"Image Seed", "arg":"--image-seeds", "file-types":["images-in", "videos-in"], "scale_label":"Image Seed Strength", "scale_arg":"--image-seed-strengths", "min":0.01, "max":1, "default":""}]
         @imageprocessor[{"arg":"--seed-image-processors", "label":"Seed Image Processor"}]
         @imageprocessor[{"arg":"--control-image-processors", "label":"Control Image Processor"}]
         @imageprocessor[{"arg":"--mask-image-processors", "label":"Inpaint Mask Processor", "divider-after":true}]
@@ -314,7 +314,7 @@ RECIPES = {
         
         \set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
         
-        @file[{"label":"Stage 1 Model File / HF Slug", "default": "DeepFloyd/IF-I-M-v1.0", "optional":false, "file-types":["models"]}]
+        @file[{"label":"Stage 1 Model Path / HF Slug", "default": "DeepFloyd/IF-I-M-v1.0", "optional":false, "file-types":["models"]}]
         --variant fp16
         --dtype float16
         --model-type torch-if
@@ -328,7 +328,7 @@ RECIPES = {
         
         \save_modules stage_1_modules feature_extractor
         
-        @file[{"label":"Stage 2 Model File / HF Slug", "default": "DeepFloyd/IF-II-M-v1.0", "optional":false, "file-types":["models"]}]
+        @file[{"label":"Stage 2 Model Path / HF Slug", "default": "DeepFloyd/IF-II-M-v1.0", "optional":false, "file-types":["models"]}]
         --variant fp16
         --dtype float16
         --model-type torch-ifs
@@ -344,7 +344,7 @@ RECIPES = {
         
         \use_modules stage_1_modules
         
-        @file[{"label":"Stage 3 - x4 Upscaler Model File / HF Slug", "default": "stabilityai/stable-diffusion-x4-upscaler", "optional":false, "file-types":["models"]}]
+        @file[{"label":"Stage 3 - x4 Upscaler Model Path / HF Slug", "default": "stabilityai/stable-diffusion-x4-upscaler", "optional":false, "file-types":["models"]}]
         --variant fp16
         --dtype float16
         --model-type torch-upscaler-x4
@@ -365,12 +365,12 @@ RECIPES = {
 
     "Stable Cascade":
         """
-        @file[{"label":"Model File / HF Slug", "default": "stabilityai/stable-cascade-prior", "optional":false, "file-types":["models"]}]
+        @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "stabilityai/stable-cascade-prior", "optional":false, "file-types":["models"]}]
         @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":0, "divider-after":true}]
         --model-type torch-s-cascade
         --variant bf16
         --dtype bfloat16
-        @file[{"label":"Decoder File / URI", "arg":"--s-cascade-decoder", "default":"stabilityai/stable-cascade;dtype=float16", "file-types":["models"]}]
+        @uri[{"label":"Decoder Path / URI", "dir":true, "arg":"--s-cascade-decoder", "default":"stabilityai/stable-cascade;dtype=float16", "file-types":["models"]}]
         @switchradio[{"labels":["Decoder CPU Offload", "Decoder Sequential Offload"], "args":["--s-cascade-decoder-cpu-offload", "--s-cascade-decoder-sequential-offload"], "default":0, "divider-after":true}]
         @dir[{"label":"UNet Directory / URI", "arg":"--unet"}]
         @dir[{"label":"Decoder UNet Directory / URI", "arg":"--unet2", "divider-after":true}]
@@ -391,12 +391,12 @@ RECIPES = {
         """,
     "Stable Cascade (UNet lite)":
         """
-        @file[{"label":"Model File / HF Slug", "default": "stabilityai/stable-cascade-prior", "optional":false, "file-types":["models"]}]
+        @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "stabilityai/stable-cascade-prior", "optional":false, "file-types":["models"]}]
         @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":0, "divider-after":true}]
         --model-type torch-s-cascade
         --variant bf16
         --dtype bfloat16
-        @file[{"label":"Decoder File / URI", "arg":"--s-cascade-decoder", "default":"stabilityai/stable-cascade;dtype=float16", "file-types":["models"]}]
+        @uri[{"label":"Decoder Path / URI", "dir":true, "arg":"--s-cascade-decoder", "default":"stabilityai/stable-cascade;dtype=float16", "file-types":["models"]}]
         @switchradio[{"labels":["Decoder CPU Offload", "Decoder Sequential Offload"], "args":["--s-cascade-decoder-cpu-offload", "--s-cascade-decoder-sequential-offload"], "default":0, "divider-after":true}]
         @dir[{"label":"UNet Directory / URI", "arg":"--unet", "default":"stabilityai/stable-cascade-prior;subfolder=prior_lite"}]
         @dir[{"label":"Decoder UNet Directory / URI", "arg":"--unet2", "default":"stabilityai/stable-cascade;subfolder=decoder_lite", "divider-after":true}]

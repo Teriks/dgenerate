@@ -80,7 +80,7 @@ class _RecipesForm(tk.Toplevel):
         if size:
             self.geometry(f'{size[0]}x{size[1]}')
         else:
-            self.geometry('600x600')
+            self.geometry('700x600')
 
         self.deiconify()
 

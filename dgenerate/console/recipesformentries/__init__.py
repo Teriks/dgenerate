@@ -36,5 +36,6 @@ from .uriwithargscaleentry import _UriWithArgScaleEntry
 from .seedsentry import _SeedsEntry
 from .imagesizeentry import _ImageSizeEntry
 from .argswitchradio import _ArgSwitchRadio
+from .urientry import _UriEntry
 
 from .entry import DIVIDER_YPAD, ROW_XPAD

@@ -21,12 +21,12 @@
 import shlex
 import tkinter as tk
 
-import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.recipesformentries.entry as _entry
+import dgenerate.console.recipesformentries.urientry as _urientry
 import dgenerate.console.resources as _resources
 
 
-class _TorchVaeEntry(_entry._Entry):
+class _TorchVaeEntry(_urientry._UriEntry):
     NAME = 'torchvae'
 
     def __init__(self, *args, **kwargs):
@@ -34,17 +34,6 @@ class _TorchVaeEntry(_entry._Entry):
 
         if self.arg is None:
             self.arg = '--vae'
-
-        self.vae_uri_var = \
-            tk.StringVar(value=self.config.get('default', ''))
-
-        vae_uri_label_text = self.get_label('VAE')
-
-        self.vae_uri_label = tk.Label(
-            self.master, text=vae_uri_label_text, anchor='e')
-
-        self.vae_uri_entry = \
-            tk.Entry(self.master, textvariable=self.vae_uri_var)
 
         vae_types = _resources.get_torch_vae_types()
 
@@ -57,52 +46,27 @@ class _TorchVaeEntry(_entry._Entry):
         self.vae_type_entry = tk.OptionMenu(
             self.master, self.vae_type_var, *vae_types)
 
-        def select_command():
-            file_globs = ['*.' + ext for ext in _resources.supported_torch_model_formats_open()]
-            r = _filedialog.open_file_dialog(
-                filetypes=[('Models', ' *.'.join(file_globs))])
-            if r is not None:
-                self.vae_uri_var.set(r)
-
-        self.button = tk.Button(self.master, text="Select File",
-                                command=select_command)
-
-        self.vae_uri_label.grid(row=self.row, column=0, padx=_entry.ROW_XPAD, sticky='e')
-        self.vae_uri_entry.grid(row=self.row, column=1, padx=_entry.ROW_XPAD, sticky='ew')
-        self.button.grid(row=self.row, column=2, padx=(2, 5), sticky='w')
-
         self.vae_type_label.grid(row=self.row + 1, column=0, padx=_entry.ROW_XPAD, sticky='e')
         self.vae_type_entry.grid(row=self.row + 1, column=1, padx=_entry.ROW_XPAD, sticky='ew')
 
-        self.vae_uri_entry.bind('<Key>', lambda e: self.valid())
-
         self._vae_type_enabled_color = self.vae_type_entry.cget('bg')
 
-        if not self.vae_uri_var.get():
+        if not self.uri_var.get():
             self.vae_type_entry.config(bg='darkgray')
             self.vae_type_entry.config(state=tk.DISABLED)
 
-        self.vae_uri_var.trace_add('write', lambda *a: self._check_vae_type_active())
+        self.uri_var.trace_add('write', lambda *a: self._check_vae_type_active())
 
     def _check_vae_type_active(self):
-        if self.vae_uri_var.get():
+        if self.uri_var.get():
             self.vae_type_entry.config(bg=self._vae_type_enabled_color)
             self.vae_type_entry.config(state=tk.NORMAL)
         else:
             self.vae_type_entry.config(bg='darkgray')
             self.vae_type_entry.config(state=tk.DISABLED)
 
-    def invalid(self):
-        _entry.invalid_colors(self.vae_uri_entry)
-
-    def valid(self):
-        _entry.valid_colors(self.vae_uri_entry)
-
-    def is_empty(self):
-        return self.vae_uri_entry.get().strip() == ''
-
     def template(self, content):
-        vae_uri = self.vae_uri_var.get().strip()
+        vae_uri = self.uri_var.get().strip()
         vae_type = self.vae_type_var.get().strip()
 
         value = ''
