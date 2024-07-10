@@ -55,11 +55,14 @@ class _UriWithScaleEntry(_entry._Entry):
             text=self.get_label('URI', key='scale_label'),
             anchor='e')
 
+        self.min = self.config.get('min', float('-inf'))
+        self.max = self.config.get('max', float('inf'))
+
         self.scale_entry = FloatSpinbox(
             self.master,
             self.scale_var,
-            from_=0.0,
-            to=1.0)
+            from_=self.min,
+            to=self.max)
 
         self.spin_buttons = self.scale_entry.create_spin_buttons(self.master)
         self.spin_buttons.grid(row=self.row + 1, column=2, sticky='w')
