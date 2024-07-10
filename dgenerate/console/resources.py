@@ -91,7 +91,7 @@ def get_recipes():
                        key=lambda f: int(os.path.splitext(f.name)[0])):
         text = file.read_text()
         title, rest = text.split('\n', 1)
-        _RECIPES[title.split(':')[1].strip()] = rest.strip()
+        _RECIPES[title.split(':', 1)[1].strip()] = rest.strip()
 
     return _RECIPES
 
