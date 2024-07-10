@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import inspect
 import json
+import platform
 import re
 import tkinter as tk
 import tkinter.ttk as ttk
@@ -81,7 +82,11 @@ class _RecipesForm(tk.Toplevel):
         if size:
             self.geometry(f'{size[0]}x{size[1]}')
         else:
-            self.geometry('700x600')
+            if platform.system() == 'Windows':
+                self.geometry('700x600')
+            else:
+                # button widgets are wider on nix
+                self.geometry('800x600')
 
         self.deiconify()
 
