@@ -22,6 +22,7 @@ import inspect
 import json
 import re
 import tkinter as tk
+import tkinter.ttk as ttk
 import typing
 
 import dgenerate.console.recipesformentries as _recipesformentries
@@ -192,14 +193,20 @@ class _RecipesForm(tk.Toplevel):
         row_offset = 1
         for template in self._templates:
             ttype = template[1]
-            config = template[2]
+            config = json.loads(template[2])
+
+            if config.get('divider-before', False):
+                separator = ttk.Separator(self.scrollable_frame, orient='horizontal')
+                separator.grid(row=row_offset, column=0, sticky='ew', columnspan=100, pady=_recipesformentries.DIVIDER_YPAD)
+                row_offset += 1
+
             if ttype in self._entry_classes:
                 try:
                     entry = self._entry_classes[ttype](
                         recipe_form=self,
                         master=self.scrollable_frame,
                         row=row_offset,
-                        config=json.loads(config),
+                        config=config,
                         placeholder=template[0]
                     )
                 except json.JSONDecodeError as e:
@@ -207,6 +214,11 @@ class _RecipesForm(tk.Toplevel):
                 row_offset += entry.widget_rows
             else:
                 raise RuntimeError(f'Unknown template placeholder: {ttype}')
+
+            if config.get('divider-after', False):
+                separator = ttk.Separator(self.scrollable_frame, orient='horizontal')
+                separator.grid(row=row_offset, column=0, sticky='ew', columnspan=100, pady=_recipesformentries.DIVIDER_YPAD)
+                row_offset += 1
 
             self._entries.append(entry)
 
