@@ -54,6 +54,8 @@ class _UriWithScaleEntry(_urientry._UriEntry):
             from_=self.min,
             to=self.max)
 
+        self.scale_var.trace_add('write', lambda *e: self.valid())
+
         self.spin_buttons = self.scale_entry.create_spin_buttons(self.master)
         self.spin_buttons.grid(row=self.row + 1, column=2, sticky='w')
 
@@ -68,6 +70,23 @@ class _UriWithScaleEntry(_urientry._UriEntry):
             self.scale_entry.config(state=tk.DISABLED)
             for c in self.spin_buttons.children.values():
                 c.config(state=tk.DISABLED)
+
+    def is_valid(self):
+        return self.scale_entry.is_valid()
+
+    def invalid(self):
+        if not self.optional and not self.uri_entry():
+            _entry.invalid_colors(self.uri_entry)
+
+        if not self.scale_entry.is_valid():
+            _entry.invalid_colors(self.scale_entry)
+
+    def valid(self):
+        if not self.optional and self.uri_entry():
+            _entry.valid_colors(self.uri_entry)
+
+        if self.scale_entry.is_valid():
+            _entry.valid_colors(self.scale_entry)
 
     def _check_scale_active(self):
         if self.uri_var.get():

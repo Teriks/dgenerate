@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import re
 import sys
 import tkinter as tk
 
@@ -207,7 +208,7 @@ class FloatSpinbox(tk.Entry):
         return "break"
 
     def _setup_validation(self):
-        self.config(validate='key', validatecommand=(self.register(self._validate), '%P'))
+        self.config(validate='all', validatecommand=(self.register(self._validate), '%d', '%P'))
 
     def _format_real_to_display_value(self):
         """
@@ -234,18 +235,53 @@ class FloatSpinbox(tk.Entry):
 
         return str((self.from_ + self.to) / 2)
 
-    def _validate(self, value_if_allowed):
+    def _validate(self, action, value_if_allowed):
         if value_if_allowed == "":  # Allow empty string for deletion
             return True
-        try:
-            value = float(value_if_allowed)  # Validate as float
 
-            if value < self.from_ or value > self.to:
+        if action != '-1':
+            # inserting or deleting
+            try:
+                if self.from_ > 0:
+                    return re.match(r'^[0-9.]+$', value_if_allowed) is not None and value_if_allowed.count('.') < 2
+                else:
+                    some_float = re.match(r'^[0-9.-]+$', value_if_allowed) is not None and value_if_allowed.count('.') < 2
+                    neg = value_if_allowed.find('-')
+                    return some_float and (neg == 0 or neg == -1) and value_if_allowed.count('-') < 2
+            except ValueError:
+                return False
+        else:
+            # gain or lose focus
+            try:
+                value = float(value_if_allowed)  # Validate as float
+
+                if value < self.from_ or value > self.to:
+                    self.delete(0, tk.END)
+                    self.insert(0, str(max(self.from_,
+                                       min(self.to, round(value, 2)))))
+                    # Validation gets blown out by the edits for
+                    # god knows what reason, this took ages to figure out
+                    self._setup_validation()
+                    return False
+
+                return True
+            except ValueError:
                 self.delete(0, tk.END)
                 self.insert(0, self.get_midpoint())
                 # Validation gets blown out by the edits for
                 # god knows what reason, this took ages to figure out
                 self._setup_validation()
+                return False
+
+    def is_valid(self):
+        display_value = self.display_value.get()
+        if display_value == '':
+            return True
+
+        try:
+            value = float(display_value)  # Validate as float
+
+            if value < self.from_ or value > self.to:
                 return False
 
             return True
