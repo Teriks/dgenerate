@@ -25,6 +25,7 @@ import tkinter as tk
 import tkinter.ttk as ttk
 import typing
 
+import dgenerate.console.resources as _resources
 import dgenerate.console.recipesformentries as _recipesformentries
 import dgenerate.console.recipes as _recipes
 from dgenerate.console.mousewheelbind import bind_mousewheel, un_bind_mousewheel
@@ -46,8 +47,8 @@ class _RecipesForm(tk.Toplevel):
 
         self._templates = None
         self._dropdown = None
-        self._templates_dict: dict[str, str] = _recipes.RECIPES
-        self._template_names: list[str] = list(_recipes.RECIPES.keys())
+        self._templates_dict: dict[str, str] = _resources.get_recipes()
+        self._template_names: list[str] = list(_resources.get_recipes().keys())
 
         self._current_template = tk.StringVar(value=self._template_names[0])
         self._entries: list[_recipesformentries._Entry] = []

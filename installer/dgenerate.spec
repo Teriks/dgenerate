@@ -79,6 +79,13 @@ datas += collect_data_files('fake_useragent', include_py_files=False, includes=[
 # themes
 datas += collect_data_files('dgenerate', subdir='console/themes', includes=['*.toml'])
 
+# schemas
+datas += collect_data_files('dgenerate', subdir='console/schemas', includes=['*.json'])
+
+# recipes
+datas += collect_data_files('dgenerate', subdir='console/recipes', includes=['*.recipe'])
+
+
 a = Analysis(
     ['../dgenerate/dgenerate.py'],
     pathex=[],
