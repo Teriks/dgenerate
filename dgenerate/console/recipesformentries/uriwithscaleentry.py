@@ -35,7 +35,7 @@ class _UriWithScaleEntry(_urientry._UriEntry):
 
         super().__init__(*args, **kwargs)
 
-        self.default_scale = str(self.config.get('scale', '1.0'))
+        self.default_scale = str(self.config.get('default', '1.0'))
 
         self.scale_var = \
             tk.StringVar(value=self.default_scale)
