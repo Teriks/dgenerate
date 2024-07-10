@@ -9,8 +9,11 @@
 import json
 import os
 
-import dgenerate.imageprocessors.imageprocessorloader as _loader
 import diffusers
+
+import dgenerate.imageprocessors.imageprocessorloader as _loader
+import dgenerate.mediainput as _mediainput
+import dgenerate.mediaoutput as _mediaoutput
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
@@ -28,14 +31,25 @@ with open('dgenerate/console/schemas/imageprocessors.json', 'w') as file:
 
     json.dump(schema, file)
 
-
 with open('dgenerate/console/schemas/karrasschedulers.json', 'w') as file:
-
     schema = dict()
 
     # sort by name, this affects json output
     schema['names'] = sorted(
         [e.name for e in diffusers.schedulers.scheduling_utils.KarrasDiffusionSchedulers] +
         ['LCMScheduler'])
+
+    json.dump(schema, file)
+
+with open('dgenerate/console/schemas/mediaformats.json', 'w') as file:
+    schema = dict()
+
+    schema['images-in'] = _mediainput.supported_image_formats()
+
+    schema['images-out'] = _mediaoutput.supported_static_image_formats()
+
+    schema['videos-in'] = _mediainput.supported_animation_reader_formats()
+
+    schema['videos-out'] = _mediaoutput.supported_animation_writer_formats()
 
     json.dump(schema, file)

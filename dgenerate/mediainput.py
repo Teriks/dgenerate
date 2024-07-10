@@ -531,39 +531,150 @@ def get_supported_animated_image_mimetypes() -> list[str]:
     return ['image/gif', 'image/webp', 'image/apng']
 
 
+def _get_supported_read_video_codecs():
+    supported_codecs = []
+
+    for codec_name in av.codecs_available:
+        try:
+            codec = av.codec.Codec(codec_name, 'r')
+        except:
+            continue
+        if codec.type == 'video':
+            supported_codecs.append(codec_name)
+
+    return supported_codecs
+
+
+def _get_read_video_file_extensions() -> list[str]:
+    common_extensions = {
+        "mp4": ["h264", "hevc", "mpeg4"],
+        "mkv": ["h264", "hevc", "mpeg4", "vp8", "vp9"],
+        "avi": ["mpeg4", "msmpeg4v3"],
+        "mov": ["h264", "mpeg4"],
+        "flv": ["flv1"],
+        "wmv": ["wmv1", "wmv2", "wmv3"],
+        "webm": ["vp8", "vp9"],
+        "m4v": ["h264", "mpeg4"],
+        "ts": ["h264", "hevc", "mpeg2video"],
+        "mpg": ["mpeg1video", "mpeg2video"],
+        "3gp": ["h263"],
+        "ogv": ["theora"],
+        "rm": ["rv10", "rv20", "rv30", "rv40"],
+        "asf": ["msmpeg4v1", "msmpeg4v2", "msmpeg4v3", "wmv1", "wmv2", "wmv3"],
+        "f4v": ["h264"],
+        "h264": ["h264"],
+        "hevc": ["hevc"],
+        "mjpeg": ["mjpeg", "mjpeg2000"],
+        "vp8": ["vp8"],
+        "vp9": ["vp9"],
+        "vob": ["mpeg2video"],
+        "divx": ["mpeg4"],
+        "xvid": ["mpeg4"],
+        "dv": ["dvvideo"],
+        "amv": ["amv"],
+        "mxf": ["mjpeg"],
+        "m2ts": ["h264", "mpeg2video"],
+        "mpeg": ["mpeg1video", "mpeg2video"],
+        "mpv": ["mpeg1video", "mpeg2video"]
+    }
+
+    supported_codecs = _get_supported_read_video_codecs()
+    supported_extensions = set()
+
+    for ext, codecs in common_extensions.items():
+        for codec in codecs:
+            if codec in supported_codecs:
+                supported_extensions.add(ext)
+
+    return list(supported_extensions)
+
+
+def supported_animation_reader_formats():
+    """
+    Supported animation reader formats, file extensions with no period.
+
+    :return: list of file extensions.
+    """
+    PIL.Image.init()
+
+    return _get_read_video_file_extensions() + [
+        ext for ext in (ext.lstrip('.').lower() for ext, file_format
+                        in PIL.Image.EXTENSION.items() if
+                        file_format in PIL.Image.OPEN) if
+        ext in {'gif', 'webp', 'apng'}]
+
+
+def supported_image_formats():
+    """
+    What file extensions does PIL/Pillow support for reading?
+
+    File extensions are returned without a period.
+
+    :return: list of file extensions
+    """
+    PIL.Image.init()
+
+    return [ext.lstrip('.').lower() for ext, fmt in PIL.Image.EXTENSION.items() if fmt in PIL.Image.OPEN]
+
+
 def get_supported_static_image_mimetypes() -> list[str]:
     """
     Get a list of mimetypes that are considered to be supported static image mimetypes.
 
     :return: list of mimetype strings.
     """
-    return ['image/png',
-            'application/png',
-            'application/x-png',
-            'image/jpeg',
-            'image/jpg',
-            'application/jpg',
-            'application/x-jpg',
-            'image/jp2',
-            'image/jpx',
-            'image/j2k',
-            'image/jpeg2000',
-            'image/jpeg2000-image',
-            'image/x-jpeg2000-image',
-            'image/bmp',
-            'image/x-bitmap',
-            'image/x-bmp',
-            'application/bmp',
-            'application/x-bmp',
-            'image/x-targa',
-            'image/x-tga',
-            'image/targa',
-            'image/tga',
-            'image/vnd.adobe.photoshop',
-            'application/x-photoshop',
-            'application/photoshop',
-            'application/psd',
-            'image/psd']
+    return [
+        "image/psd",  # psd
+        "image/palm",  # palm
+        "application/photoshop",  # psd alternative
+        "application/psd",  # psd alternative
+        "application/octet-stream",  # bufr, pfm (generic binary stream)
+        "application/x-hdf",  # h5, hdf
+        "image/vnd.ms-dds",  # dds
+        "application/jpg",  # jpg alternative
+        "image/x-bw",  # bw
+        "image/jpx",  # jp2 alternative
+        "application/x-bmp",  # bmp alternative
+        "image/x-icon",  # ico alternative
+        "image/x-icns",  # icns
+        "application/x-im",  # im
+        "image/bmp",  # bmp, dib
+        "image/x-tga",  # tga alternative
+        "image/pipeg",  # jfif
+        "image/jpeg2000-image",  # jp2 alternative
+        "application/x-msmetafile",  # wmf, emf
+        "application/x-grib",  # grib
+        "image/png",  # png
+        "image/vnd.microsoft.icon",  # ico
+        "image/x-targa",  # tga, icb, vda, vst
+        "application/postscript",  # ps, eps
+        "image/blp",  # blp
+        "application/pdf",  # pdf
+        "application/x-photoshop",  # psd alternative
+        "image/jpg",  # jpg alternative
+        "image/j2k",  # jp2 alternative
+        "application/png",  # png alternative
+        "image/jpeg2000",  # jp2 alternative
+        "image/x-pcx",  # pcx
+        "image/tga",  # tga alternative
+        "image/x-portable-anymap",  # pbm, pgm, ppm, pnm
+        "image/sgi",  # sgi
+        "application/bmp",  # bmp alternative
+        "image/targa",  # tga alternative
+        "image/vnd.adobe.photoshop",  # psd
+        "application/x-jpg",  # jpg alternative
+        "image/x-bitmap",  # bmp alternative
+        "image/x-bmp",  # bmp alternative
+        "image/x-mspaint",  # msp
+        "image/x-rgb",  # rgb, rgba
+        "image/jp2",  # jp2, j2k, jpc, jpf, jpx, j2c
+        "image/mpo",  # mpo
+        "image/x-jpeg2000-image",  # jp2 alternative
+        "image/jpeg",  # jpg, jpeg, jpe
+        "application/x-png",  # png alternative
+        "image/tiff",  # tif, tiff
+        "image/x-xbitmap"  # xbm
+    ]
 
 
 def get_supported_image_mimetypes() -> list[str]:

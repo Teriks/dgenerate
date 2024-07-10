@@ -18,47 +18,31 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import tkinter as tk
+
 
 import dgenerate.console.recipesformentries.entry as _entry
+import dgenerate.console.recipesformentries.uriwithscaleentry as _uriwithscaleentry
 
 
-class _DropDownEntry(_entry._Entry):
-    NAME = 'dropdown'
+class _UriWithArgScaleEntry(_uriwithscaleentry._UriWithScaleEntry):
+    NAME = 'uriwithargscale'
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs, widget_rows=1)
+        super().__init__(*args, **kwargs)
 
-        if self.arg is None:
-            self.arg = ''
-
-        options = self.config.get('options', [])
-
-        if self.optional:
-            options = [''] + options
-
-        self.text_var = tk.StringVar(
-            value=self.config.get('default', options[0]))
-
-        self.label_widget = tk.Label(
-            self.master,
-            text=self.get_label('Dropdown'), anchor='e')
-
-        self.entry = tk.OptionMenu(self.master,
-                                   self.text_var,
-                                   *options)
-
-        self.label_widget.grid(row=self.row, column=0, padx=_entry.ROW_XPAD, sticky='e')
-        self.entry.grid(row=self.row, column=1, padx=_entry.ROW_XPAD, sticky='ew')
-
-    def invalid(self):
-        _entry.invalid_colors(self.entry)
-
-    def valid(self):
-        _entry.valid_colors(self.entry)
-
-    def is_empty(self):
-        return self.text_var.get().strip() == ''
+        self.scale_arg = self.config.get('scale_arg', '')
 
     def template(self, content):
-        return self._template(content, self.text_var.get().strip())
+        uri = self.uri_var.get().strip()
+        scale = self.scale_var.get().strip()
+
+        new_content = ''
+
+        if uri:
+            new_content = self.arg if self.arg else ''
+            new_content += (' ' if self.arg else '') + _entry.shell_quote_if(uri)
+            if scale:
+                arg_part = (self.scale_arg if self.scale_arg else '')
+                new_content += '\n' + arg_part + (' ' if arg_part else '') + scale
+
+        return _entry.replace_first(content, self.placeholder, new_content)

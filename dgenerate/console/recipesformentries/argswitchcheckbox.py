@@ -36,9 +36,8 @@ class _ArgSwitchCheckbox(_entry._Entry):
 
         # create label widget
         self.label_widget = tk.Label(self.master,
-                                     text=self.config.get(
-                                         'label',
-                                         self.arg if self.arg else 'Switch Option'), anchor='e')
+                                     text=self.get_label(
+                                            self.arg if self.arg else 'Switch Option'), anchor='e')
 
         # create checkbox widget with boolean variable
         self.checkbox = tk.Checkbutton(self.master, variable=self.bool_var)
