@@ -642,7 +642,7 @@ def is_single_file_model_load(path):
     if path.startswith('http://') or path.startswith('https://'):
         return True
 
-    if os.path.isdir(path):
+    if os.path.isfile(path):
         return True
 
     if not ext:

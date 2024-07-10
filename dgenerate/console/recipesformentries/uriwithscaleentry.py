@@ -20,30 +20,20 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import tkinter as tk
 
-import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.recipesformentries.entry as _entry
-import dgenerate.console.resources as _resources
+import dgenerate.console.recipesformentries.urientry as _urientry
 from dgenerate.console.spinbox import FloatSpinbox
 
 
-class _UriWithScaleEntry(_entry._Entry):
+class _UriWithScaleEntry(_urientry._UriEntry):
     NAME = 'uriwithscale'
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs, widget_rows=2)
 
-        self.uri_var = \
-            tk.StringVar(value=self.config.get('default', ''))
+        if 'widget_rows' not in kwargs:
+            kwargs['widget_rows'] = 2
 
-        uri_label_text = self.get_label('URI')
-
-        self.uri_label = tk.Label(
-            self.master,
-            text=uri_label_text,
-            anchor='e')
-
-        self.uri_entry = \
-            tk.Entry(self.master, textvariable=self.uri_var)
+        super().__init__(*args, **kwargs)
 
         self.default_scale = str(self.config.get('scale', '1.0'))
 
@@ -67,34 +57,6 @@ class _UriWithScaleEntry(_entry._Entry):
         self.spin_buttons = self.scale_entry.create_spin_buttons(self.master)
         self.spin_buttons.grid(row=self.row + 1, column=2, sticky='w')
 
-        is_file = self.config.get('file', False)
-        is_dir = self.config.get('dir', False)
-
-        if is_file and is_dir:
-            raise RuntimeError('URI cannot be both file and dir selectable.')
-
-        if is_file or is_dir:
-
-            def select_command():
-                if is_file:
-                    file_types = self.config.get('file-types', [])
-                    dialog_args = _resources.get_file_dialog_args(file_types)
-                    r = _filedialog.open_file_dialog(**dialog_args)
-                else:
-                    r = _filedialog.open_directory_dialog()
-
-                if r is not None:
-                    self.uri_var.set(r)
-
-            self.button = tk.Button(self.master,
-                                    text="Select File" if is_file else "Select Directory",
-                                    command=select_command)
-
-            self.button.grid(row=self.row, column=2, padx=(2, 5), sticky='w')
-
-        self.uri_label.grid(row=self.row, column=0, padx=_entry.ROW_XPAD, sticky='e')
-        self.uri_entry.grid(row=self.row, column=1, padx=_entry.ROW_XPAD, sticky='ew')
-
         self.scale_label.grid(row=self.row + 1, column=0, padx=_entry.ROW_XPAD, sticky='e')
         self.scale_entry.grid(row=self.row + 1, column=1, padx=_entry.ROW_XPAD, sticky='ew')
 
@@ -116,15 +78,6 @@ class _UriWithScaleEntry(_entry._Entry):
             self.scale_entry.config(state=tk.DISABLED)
             for c in self.spin_buttons.children.values():
                 c.config(state=tk.DISABLED)
-
-    def invalid(self):
-        _entry.invalid_colors(self.uri_entry)
-
-    def valid(self):
-        _entry.valid_colors(self.uri_entry)
-
-    def is_empty(self):
-        return self.uri_entry.get().strip() == ''
 
     def template(self, content):
         uri = self.uri_var.get().strip()
