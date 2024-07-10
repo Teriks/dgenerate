@@ -293,24 +293,32 @@ class _ImageProcessorEntry(_entry._Entry):
 
     def invalid(self):
         for entry, variable, _, optional in self.entries.values():
-            if optional is False and not str(variable.get()):
+            if not optional and not str(variable.get()):
+                _entry.invalid_colors(entry)
+
+            if isinstance(entry, FloatSpinbox) and not entry.is_valid():
                 _entry.invalid_colors(entry)
 
     def is_empty(self):
         for _, variable, _, optional in self.entries.values():
-            if optional is False and not str(variable.get()):
+            if not optional and not str(variable.get()):
                 return True
         return False
 
     def is_valid(self):
-        for _, variable, _, optional in self.entries.values():
-            if optional is False and not str(variable.get()):
+        for entry, variable, _, optional in self.entries.values():
+            if not optional and not str(variable.get()):
+                return False
+            if isinstance(entry, FloatSpinbox) and not entry.is_valid():
                 return False
         return True
 
     def valid(self):
-        for entry, _, _, optional in self.entries.values():
-            if optional:
+        for entry, variable, _, optional in self.entries.values():
+            if not optional and str(variable.get()):
+                _entry.valid_colors(entry)
+
+            if isinstance(entry, FloatSpinbox) and entry.is_valid():
                 _entry.valid_colors(entry)
 
     @staticmethod

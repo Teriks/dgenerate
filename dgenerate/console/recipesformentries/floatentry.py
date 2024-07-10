@@ -59,6 +59,9 @@ class _FloatEntry(_entry._Entry):
     def valid(self):
         _entry.valid_colors(self.entry)
 
+    def is_valid(self):
+        return self.entry.is_valid()
+
     def is_empty(self):
         return self.text_var.get().strip() == ''
 
