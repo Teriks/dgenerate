@@ -1,0 +1,7 @@
+title: Upscaling [openmodeldb.info] (Spandrel / chaiNNer)
+
+\image_process @file[{"label":"Input Image File", "optional":false, "mode":"input", "file-types":["images-in", "videos-in"]}]
+@file[{"label":"Output Image File", "default":"output.png", "arg":"--output", "mode":"output", "file-types":["images-out", "videos-out"]}]
+@int[{"label":"Image Alignment", "arg":"--align", "default":1, "min":1}]
+@file[{"label":"Upscaler Model / URL", "arg":"--processors", "before":"upscaler;model=", "file-types":["models"], "default": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth", "optional":false}]
+@device[{}]

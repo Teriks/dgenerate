@@ -1,0 +1,25 @@
+title: Stable Cascade
+
+@uri[{"label":"Model Path / HF Slug", "dir":true, "default": "stabilityai/stable-cascade-prior", "optional":false, "file-types":["models"]}]
+@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":0, "divider-after":true}]
+--model-type torch-s-cascade
+--variant bf16
+--dtype bfloat16
+@uri[{"label":"Decoder Path / URI", "dir":true, "arg":"--s-cascade-decoder", "default":"stabilityai/stable-cascade;dtype=float16", "file-types":["models"]}]
+@switchradio[{"labels":["Decoder CPU Offload", "Decoder Sequential Offload"], "args":["--s-cascade-decoder-cpu-offload", "--s-cascade-decoder-sequential-offload"], "default":0, "divider-after":true}]
+@dir[{"label":"UNet Directory / URI", "arg":"--unet"}]
+@dir[{"label":"Decoder UNet Directory / URI", "arg":"--unet2", "divider-after":true}]
+@file[{"label":"Image Seed", "arg":"--image-seeds", "file-types":["images-in", "videos-in"]}]
+@imageprocessor[{"arg":"--seed-image-processors", "label":"Seed Image Processor", "divider-after":true}]
+@int[{"label":"Inference Steps", "arg":"--inference-steps", "default":20, "min":1}]
+@float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":4, "min":0}]
+@int[{"label":"Decoder Inference Steps", "arg":"--s-cascade-decoder-inference-steps", "default":10, "min":1}]
+@float[{"label":"Decoder Guidance Scale", "arg":"--s-cascade-decoder-guidance-scales", "default":0, "min":0}]
+@seeds[{"label":"Seeds"}]
+@int[{"label":"Batch Size", "arg":"--batch-size", "default":"", "min":1}]
+@imagesize[{"label":"Batch Grid Size (CxR)", "arg":"--batch-grid-size", "default":"", "divider-after":true}]
+@dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+@imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"1024x1024"}]
+@imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
+@device[{}]
+--prompts "add your prompt here"

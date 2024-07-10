@@ -80,6 +80,23 @@ def get_file_dialog_args(file_types: list):
     return dialog_args
 
 
+_RECIPES = dict()
+
+
+def get_recipes():
+    if _RECIPES:
+        return _RECIPES
+
+    for file in sorted(importlib.resources.files('dgenerate.console').joinpath('recipes').iterdir(),
+                       key=lambda f: int(os.path.splitext(f.name)[0])):
+        text = file.read_text()
+        title, rest = text.split('\n', 1)
+        _RECIPES[title.split(':')[1].strip()] = rest.strip()
+
+    return _RECIPES
+
+
+
 def check_latest_release() -> ReleaseInfo | None:
     """
     Get the latest software release for this software.
