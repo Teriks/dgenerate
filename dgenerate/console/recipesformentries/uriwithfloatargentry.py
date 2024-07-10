@@ -21,28 +21,28 @@
 
 
 import dgenerate.console.recipesformentries.entry as _entry
-import dgenerate.console.recipesformentries.uriwithscaleentry as _uriwithscaleentry
+import dgenerate.console.recipesformentries.uriwithfloatentry as _uriwithfloatentry
 
 
-class _UriWithArgScaleEntry(_uriwithscaleentry._UriWithScaleEntry):
-    NAME = 'uriwithargscale'
+class _UriWithFloatArgEntry(_uriwithfloatentry._UriWithFloatEntry):
+    NAME = 'uriwithfloatarg'
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.scale_arg = self.config.get('scale_arg', '')
+        self.float_arg = self.config.get('float-arg', '')
 
     def template(self, content):
         uri = self.uri_var.get().strip()
-        scale = self.scale_var.get().strip()
+        float_val = self.float_var.get().strip()
 
         new_content = ''
 
         if uri:
             new_content = self.arg if self.arg else ''
             new_content += (' ' if self.arg else '') + _entry.shell_quote_if(uri)
-            if scale:
-                arg_part = (self.scale_arg if self.scale_arg else '')
-                new_content += '\n' + arg_part + (' ' if arg_part else '') + scale
+            if float_val:
+                arg_part = (self.float_arg if self.float_arg else '')
+                new_content += '\n' + arg_part + (' ' if arg_part else '') + float_val
 
         return _entry.replace_first(content, self.placeholder, new_content)
