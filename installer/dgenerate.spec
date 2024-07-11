@@ -73,8 +73,8 @@ for package_name in required_package_names:
                                           '**/*.cu',
                                           '**/*.cuh',
                                           '**/*.h',
-                                          '*.json',
-                                          '*.toml'])
+                                          '**/*.json',
+                                          '**/*.toml'])
     binaries += collect_dynamic_libs(package_name, search_patterns=['*.dll', '*.pyd'])
 
 # recipes
