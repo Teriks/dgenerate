@@ -105,7 +105,7 @@ class LineArtAnimeProcessor(_imageprocessor.ImageProcessor):
         ]
         return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
 
-    def _process(self, image, resize_resolution, return_to_original_size=False):
+    def _process(self, image, resize_resolution):
         original_size = image.size
 
         with image:
@@ -118,8 +118,7 @@ class LineArtAnimeProcessor(_imageprocessor.ImageProcessor):
 
         image = resized
 
-        input_image = numpy.array(image, dtype=numpy.uint8)
-        input_image = _cna_util.HWC3(input_image)
+        input_image = _cna_util.HWC3(numpy.array(image, dtype=numpy.uint8))
 
         H, W, C = input_image.shape
         Hn = 256 * int(numpy.ceil(float(H) / 256.0))
@@ -144,7 +143,7 @@ class LineArtAnimeProcessor(_imageprocessor.ImageProcessor):
 
         if resize_resolution is not None:
             detected_map = cv2.resize(detected_map, resize_resolution, interpolation=cv2.INTER_LINEAR)
-        elif self._detect_resolution is not None and return_to_original_size:
+        elif self._detect_resolution is not None:
             detected_map = cv2.resize(detected_map, original_size, interpolation=cv2.INTER_LINEAR)
 
         return PIL.Image.fromarray(detected_map)
@@ -159,7 +158,7 @@ class LineArtAnimeProcessor(_imageprocessor.ImageProcessor):
         """
 
         if self._pre_resize:
-            return self._process(image, resize_resolution, return_to_original_size=True)
+            return self._process(image, resize_resolution)
         return image
 
     def impl_post_resize(self, image: PIL.Image.Image):
