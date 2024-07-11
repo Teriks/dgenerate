@@ -36,7 +36,7 @@ from dgenerate.imageprocessors import imageprocessor as _imageprocessor
 
 class ZoeDepthProcessor(_imageprocessor.ImageProcessor):
     """
-    zoe depth detector, a SOTA depth estimation model which produces high-quality depth maps
+    zoe depth detector, a SOTA depth estimation model which produces high-quality depth maps.
 
     The argument "gamma-corrected" determines if gamma correction is preformed on the produced depth math.
 
