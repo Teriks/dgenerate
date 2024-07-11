@@ -86,6 +86,9 @@ class LineArtStandardProcessor(_imageprocessor.ImageProcessor):
         if detect_align < 1:
             raise self.argument_error('Argument "detect-align" may not be less than 1.')
 
+        if gaussian_sigma < 0:
+            raise self.argument_error('Argument "gaussian-sigma" may not be less than 0.')
+
         if intensity_threshold < 0:
             raise self.argument_error('Argument "intensity-threshold" may not be less than 0.')
 
