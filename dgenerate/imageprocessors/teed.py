@@ -38,7 +38,7 @@ class TEEDProcessor(_imageprocessor.ImageProcessor):
     """
     teed, a (tiny efficient edge detector).
 
-    The "safe" argument enables or disables numerically safe / more precise stepping
+    The "safe" argument enables or disables numerically safe / more precise stepping.
 
     The argument "detect-resolution" is the resolution the image is resized to internal to the processor before
     detection is run on it. It should be a single dimension for example: "detect-resolution=512" or the X/Y dimensions
