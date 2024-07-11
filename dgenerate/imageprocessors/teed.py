@@ -34,11 +34,11 @@ import dgenerate.types as _types
 from dgenerate.imageprocessors import imageprocessor as _imageprocessor
 
 
-class ZoeDepthProcessor(_imageprocessor.ImageProcessor):
+class TEEDProcessor(_imageprocessor.ImageProcessor):
     """
-    zoe depth detector, a SOTA depth estimation model which produces high-quality depth maps
+    teed, a (tiny efficient edge detector).
 
-    The argument "gamma-corrected" determines if gamma correction is preformed on the produced depth math.
+    The argument "safe-steps" specifies the number of safe steps.
 
     The argument "detect-resolution" is the resolution the image is resized to internal to the processor before
     detection is run on it. It should be a single dimension for example: "detect-resolution=512" or the X/Y dimensions
@@ -55,16 +55,16 @@ class ZoeDepthProcessor(_imageprocessor.ImageProcessor):
     This defaults to False, meaning the image is processed after dgenerate is done resizing it.
     """
 
-    NAMES = ['zoe']
+    NAMES = ['teed']
 
     def __init__(self,
-                 gamma_corrected: bool = False,
+                 safe_steps: int = 2,
                  detect_resolution: typing.Optional[str] = None,
                  detect_aspect: bool = True,
                  pre_resize: bool = False,
                  **kwargs):
         """
-        :param gamma_corrected: preform gamma correction on the depth map?
+        :param safe_steps: number of safe steps.
         :param detect_resolution: the input image is resized to this dimension before being processed,
             providing ``None`` indicates it is not to be resized.  If there is no resize requested during
             the processing action via ``resize_resolution`` it will be resized back to its original size.
@@ -78,7 +78,7 @@ class ZoeDepthProcessor(_imageprocessor.ImageProcessor):
 
         self._detect_aspect = detect_aspect
         self._pre_resize = pre_resize
-        self._gamma_corrected = gamma_corrected
+        self._safe_steps = safe_steps
 
         if detect_resolution is not None:
             try:
@@ -88,12 +88,12 @@ class ZoeDepthProcessor(_imageprocessor.ImageProcessor):
         else:
             self._detect_resolution = None
 
-        self._zoe = _cna.ZoeDetector.from_pretrained("lllyasviel/Annotators")
-        self.register_module(self._zoe)
+        self._teed = _cna.TEEDdetector.from_pretrained("fal-ai/teed", filename="5_model.pth")
+        self.register_module(self._teed)
 
     def __str__(self):
         args = [
-            ('gamma_corrected', self._gamma_corrected),
+            ('safe_steps', self._safe_steps),
             ('detect_resolution', self._detect_resolution),
             ('detect_aspect', self._detect_aspect),
             ('pre_resize', self._pre_resize)
@@ -111,32 +111,26 @@ class ZoeDepthProcessor(_imageprocessor.ImageProcessor):
                 align=8
             )
 
-        image_depth = numpy.array(resized, dtype=numpy.uint8)
+        input_image = _cna_util.HWC3(numpy.array(resized, dtype=numpy.uint8))
 
-        image_depth = _cna_util.HWC3(image_depth)
+        height, width, _ = input_image.shape
 
         with torch.no_grad():
-            image_depth = torch.from_numpy(image_depth).float().to(self.device)
-            image_depth = image_depth / 255.0
-            image_depth = einops.rearrange(image_depth, 'h w c -> 1 c h w')
-            depth = self._zoe.model.infer(image_depth)
+            image_teed = torch.from_numpy(input_image.copy()).float().to(self.device)
+            image_teed = einops.rearrange(image_teed, "h w c -> 1 c h w")
+            edges = self._teed.model(image_teed)
+            edges = [e.detach().cpu().numpy().astype(numpy.float32)[0, 0] for e in edges]
+            edges = [
+                cv2.resize(e, (width, height), interpolation=cv2.INTER_LINEAR)
+                for e in edges
+            ]
+            edges = numpy.stack(edges, axis=2)
+            edge = 1 / (1 + numpy.exp(-numpy.mean(edges, axis=2).astype(numpy.float64)))
+            if self._safe_steps != 0:
+                edge = _cna_util.safe_step(edge, self._safe_steps)
+            edge = (edge * 255.0).clip(0, 255).astype(numpy.uint8)
 
-            depth = depth[0, 0].cpu().numpy()
-
-            vmin = numpy.percentile(depth, 2)
-            vmax = numpy.percentile(depth, 85)
-
-            depth -= vmin
-            depth /= vmax - vmin
-            depth = 1.0 - depth
-
-            if self._gamma_corrected:
-                depth = numpy.power(depth, 2.2)
-            depth_image = (depth * 255.0).clip(0, 255).astype(numpy.uint8)
-
-            image_depth.cpu()
-
-        detected_map = depth_image
+        detected_map = edge
         detected_map = _cna_util.HWC3(detected_map)
 
         if resize_resolution is not None:
@@ -152,7 +146,7 @@ class ZoeDepthProcessor(_imageprocessor.ImageProcessor):
 
         :param image: image to process
         :param resize_resolution: resize resolution
-        :return: possibly a zoe depth detected image, or the input image
+        :return: possibly a teed edge detected image, or the input image
         """
 
         if self._pre_resize:
@@ -164,7 +158,7 @@ class ZoeDepthProcessor(_imageprocessor.ImageProcessor):
         Post resize.
 
         :param image: image
-        :return: possibly a zoe depth detected image, or the input image
+        :return: possibly a teed edge detected image, or the input image
         """
 
         if not self._pre_resize:
