@@ -138,6 +138,9 @@ try:
         PluginNotFoundError, \
         PluginArgumentError
 
+    from dgenerate.textprocessing import \
+        format_image_seed_uri
+
     import dgenerate.messages
     import dgenerate.types
     import dgenerate.files
