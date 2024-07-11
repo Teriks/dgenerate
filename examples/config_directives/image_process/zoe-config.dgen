@@ -1,0 +1,10 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.9.0
+
+# run the zoe depth detector
+
+\set device_switch {{ '--device '+injected_device if injected_device else '' }}
+
+\image_process "../../media/horse2.jpeg"
+-o horse2-zoe-depth.png
+--processors zoe {{ device_switch }}
