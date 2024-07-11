@@ -1202,6 +1202,14 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         is_control_guidance_spec = self.control_net_uris and parsed.is_single_spec
 
+        has_additional_control = parsed.control_path and not parsed.is_single_spec
+
+        if has_additional_control and not self.control_net_uris:
+            raise RenderLoopConfigError(
+                f'Cannot use the "control" argument in an image seed without '
+                f'specifying {a_namer("control_net_uris")}.'
+            )
+
         if is_control_guidance_spec and self.image_seed_strengths:
             if image_seed_strengths_default_set:
                 # check() set this default that isn't valid
