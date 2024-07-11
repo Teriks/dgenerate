@@ -133,7 +133,7 @@ class _ImageSeedSelect(tk.Toplevel):
         self.result = _textprocessing.format_image_seed_uri(
             seed_image=image_seed,
             inpaint_image=inpaint_image,
-            control_image=control_image,
+            control_images=control_image,
             resize=resize_value,
             aspect=aspect_value
         )
