@@ -111,14 +111,10 @@ class ZoeDepthProcessor(_imageprocessor.ImageProcessor):
                 align=8
             )
 
-        image = resized
+        image_depth = numpy.array(resized, dtype=numpy.uint8)
 
-        input_image = numpy.array(image, dtype=numpy.uint8)
+        image_depth = _cna_util.HWC3(image_depth)
 
-        input_image = _cna_util.HWC3(input_image)
-
-        assert input_image.ndim == 3
-        image_depth = input_image
         with torch.no_grad():
             image_depth = torch.from_numpy(image_depth).float().to(self.device)
             image_depth = image_depth / 255.0

@@ -47,6 +47,7 @@ from .pidi import PidiNetProcessor
 from .sam import SegmentAnythingProcessor
 from .upscaler import UpscalerProcessor
 from .zoe import ZoeDepthProcessor
+from .teed import TEEDProcessor
 
 __doc__ = """
 Image processors implemented by dgenerate.
