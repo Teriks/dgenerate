@@ -33,8 +33,9 @@ class _ImageSeedSelect(tk.Toplevel):
 
         self.grid_columnconfigure(1, weight=1)
 
-        self.resizable(True, False)
         self.transient(parent)
+        self.grab_set()
+        self.resizable(True, False)
 
         self.entries = []
         self._create_widgets()
