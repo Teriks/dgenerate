@@ -38,7 +38,7 @@ class TEEDProcessor(_imageprocessor.ImageProcessor):
     """
     teed, a (tiny efficient edge detector).
 
-    The argument "safe-steps" specifies the number of safe steps.
+    The "safe" argument enables or disables numerically safe / more precise stepping
 
     The argument "detect-resolution" is the resolution the image is resized to internal to the processor before
     detection is run on it. It should be a single dimension for example: "detect-resolution=512" or the X/Y dimensions
@@ -58,13 +58,13 @@ class TEEDProcessor(_imageprocessor.ImageProcessor):
     NAMES = ['teed']
 
     def __init__(self,
-                 safe_steps: int = 2,
+                 safe: bool = True,
                  detect_resolution: typing.Optional[str] = None,
                  detect_aspect: bool = True,
                  pre_resize: bool = False,
                  **kwargs):
         """
-        :param safe_steps: number of safe steps.
+        :param safe: enables or disables numerically safe / more precise stepping
         :param detect_resolution: the input image is resized to this dimension before being processed,
             providing ``None`` indicates it is not to be resized.  If there is no resize requested during
             the processing action via ``resize_resolution`` it will be resized back to its original size.
@@ -78,7 +78,7 @@ class TEEDProcessor(_imageprocessor.ImageProcessor):
 
         self._detect_aspect = detect_aspect
         self._pre_resize = pre_resize
-        self._safe_steps = safe_steps
+        self._safe = safe
 
         if detect_resolution is not None:
             try:
@@ -93,7 +93,7 @@ class TEEDProcessor(_imageprocessor.ImageProcessor):
 
     def __str__(self):
         args = [
-            ('safe_steps', self._safe_steps),
+            ('safe', self._safe),
             ('detect_resolution', self._detect_resolution),
             ('detect_aspect', self._detect_aspect),
             ('pre_resize', self._pre_resize)
@@ -126,8 +126,8 @@ class TEEDProcessor(_imageprocessor.ImageProcessor):
             ]
             edges = numpy.stack(edges, axis=2)
             edge = 1 / (1 + numpy.exp(-numpy.mean(edges, axis=2).astype(numpy.float64)))
-            if self._safe_steps != 0:
-                edge = _cna_util.safe_step(edge, self._safe_steps)
+            if self._safe:
+                edge = _cna_util.safe_step(edge)
             edge = (edge * 255.0).clip(0, 255).astype(numpy.uint8)
 
         detected_map = edge
