@@ -1305,7 +1305,7 @@ def remove_tail_comments(string) -> tuple[bool, str]:
 
 def format_image_seed_uri(seed_image: str | None,
                           inpaint_image: str | None = None,
-                          control_image: str | None = None,
+                          control_images: str | None = None,
                           resize: str | None = None,
                           aspect: bool = True) -> str:
     """
@@ -1313,7 +1313,7 @@ def format_image_seed_uri(seed_image: str | None,
 
     :param seed_image: Seed image path
     :param inpaint_image: Inpaint image path
-    :param control_image: Control image path
+    :param control_images: Single control image path, or a paths string seperated with the ``,`` character.
     :param resize: Optional resize dimension (WxH string)
     :param aspect: Preserve aspect ratio?
     :return: The generated ``--image-seeds`` URI string
@@ -1332,7 +1332,7 @@ def format_image_seed_uri(seed_image: str | None,
     use_keyword_args = aspect is False
 
     # Case 1: Only image seed provided
-    if seed_image and not inpaint_image and not control_image:
+    if seed_image and not inpaint_image and not control_images:
         components.append(seed_image)
         if resize:
             if use_keyword_args:
@@ -1341,7 +1341,7 @@ def format_image_seed_uri(seed_image: str | None,
                 components.append(resize)
 
     # Case 2: Inpaint image without control image
-    elif seed_image and inpaint_image and not control_image:
+    elif seed_image and inpaint_image and not control_images:
         components.append(seed_image)
         if use_keyword_args:
             add_component_if_valid(inpaint_image, "mask")
@@ -1352,17 +1352,17 @@ def format_image_seed_uri(seed_image: str | None,
                 components.append(resize)
 
     # Case 3: Inpaint image with control image
-    elif seed_image and inpaint_image and control_image:
+    elif seed_image and inpaint_image and control_images:
         components.append(seed_image)
         add_component_if_valid(inpaint_image, "mask")
-        add_component_if_valid(control_image, "control")
+        add_component_if_valid(control_images, "control")
         if resize:
             add_component_if_valid(resize, "resize")
 
     # Case 4: Control image with image seed
-    elif seed_image and not inpaint_image and control_image:
+    elif seed_image and not inpaint_image and control_images:
         components.append(seed_image)
-        add_component_if_valid(control_image, "control")
+        add_component_if_valid(control_images, "control")
         if resize:
             add_component_if_valid(resize, "resize")
 
