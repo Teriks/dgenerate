@@ -3192,6 +3192,7 @@ Output:
 
     Available image processors:
 
+        "anyline"
         "canny"
         "flip"
         "grayscale"
@@ -3201,6 +3202,7 @@ Output:
         "letterbox"
         "lineart"
         "lineart-anime"
+        "lineart-standard"
         "midas"
         "mirror"
         "mlsd"
@@ -3210,6 +3212,7 @@ Output:
         "posterize"
         "sam"
         "solarize"
+        "teed"
         "upscaler"
         "zoe"
 
