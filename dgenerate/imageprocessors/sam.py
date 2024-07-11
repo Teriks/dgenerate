@@ -26,8 +26,8 @@ import cv2
 import huggingface_hub
 import numpy
 
-import dgenerate.extras.controlnet_aux as _cna
-import dgenerate.extras.controlnet_aux.util as _cna_util
+import controlnet_aux as _cna
+import controlnet_aux.util as _cna_util
 import dgenerate.image as _image
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types

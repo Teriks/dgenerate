@@ -3186,30 +3186,32 @@ Using the option ``--image-processor-help`` with no arguments will yield a list 
 
     dgenerate --image-processor-help
 
-    # Output:
-    #
-    # Available image processors:
-    # 
-    #     "canny"
-    #     "flip"
-    #     "grayscale"
-    #     "hed"
-    #     "invert"
-    #     "leres"
-    #     "letterbox"
-    #     "lineart"
-    #     "lineart-anime"
-    #     "midas"
-    #     "mirror"
-    #     "mlsd"
-    #     "normal-bae"
-    #     "openpose"
-    #     "pidi"
-    #     "posterize"
-    #     "sam"
-    #     "solarize"
-    #     "upscaler"
+Output:
 
+.. code-block::
+
+    Available image processors:
+
+        "canny"
+        "flip"
+        "grayscale"
+        "hed"
+        "invert"
+        "leres"
+        "letterbox"
+        "lineart"
+        "lineart-anime"
+        "midas"
+        "mirror"
+        "mlsd"
+        "normal-bae"
+        "openpose"
+        "pidi"
+        "posterize"
+        "sam"
+        "solarize"
+        "upscaler"
+        "zoe"
 
 
 Specifying one or more specific processors for example: ``--image-processor-help canny openpose`` will yield

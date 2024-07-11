@@ -21,26 +21,24 @@
 import typing
 
 import PIL.Image
+import controlnet_aux as _cna
+import controlnet_aux.util as _cna_util
 import cv2
 import einops
 import numpy
 import torch
 
-import controlnet_aux as _cna
-import controlnet_aux.util as _cna_util
 import dgenerate.image as _image
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.imageprocessors import imageprocessor as _imageprocessor
 
 
-class PidiNetProcessor(_imageprocessor.ImageProcessor):
+class ZoeDepthProcessor(_imageprocessor.ImageProcessor):
     """
-    PidiNet (Pixel Difference Networks for Efficient Edge Detection) edge detector.
+    zoe depth detector, a SOTA depth estimation model which produces high-quality depth maps
 
-    The "apply-filter" argument enables possibly crisper edges / less noise.
-
-    The "safe" argument enables numerically safe / more precise stepping
+    The argument "gamma-corrected" determines if gamma correction is preformed on the produced depth math.
 
     The argument "detect-resolution" is the resolution the image is resized to internal to the processor before
     detection is run on it. It should be a single dimension for example: "detect-resolution=512" or the X/Y dimensions
@@ -50,51 +48,37 @@ class PidiNetProcessor(_imageprocessor.ImageProcessor):
     image-process sub-command, if you have not requested any resizing the output will be resized back to the original
     size of the input image.
 
-    The argument "detect-aspect" determines if the image resize requested by "detect-resolution" before
+    The argument "detect-aspect" determines if the image resize requested by "detect_resolution" before
     detection runs is aspect correct, this defaults to true.
-
-    The argument "detect-align" determines the pixel alignment of the image resize requested by
-    "detect-resolution", it defaults to 1 indicating no requested alignment.
 
     The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
     This defaults to False, meaning the image is processed after dgenerate is done resizing it.
     """
 
-    NAMES = ['pidi']
+    NAMES = ['zoe']
 
     def __init__(self,
-                 apply_filter: bool = False,
-                 safe: bool = False,
+                 gamma_corrected: bool = False,
                  detect_resolution: typing.Optional[str] = None,
                  detect_aspect: bool = True,
-                 detect_align: int = 1,
                  pre_resize: bool = False,
                  **kwargs):
         """
-
-        :param apply_filter: enables possibly crisper edges / less noise
-        :param safe: enables numerically safe / more precise stepping
+        :param gamma_corrected: preform gamma correction on the depth map?
         :param detect_resolution: the input image is resized to this dimension before being processed,
             providing ``None`` indicates it is not to be resized.  If there is no resize requested during
             the processing action via ``resize_resolution`` it will be resized back to its original size.
         :param detect_aspect: if the input image is resized by ``detect_resolution`` or ``detect_align``
             before processing, will it be an aspect correct resize?
-        :param detect_align: the input image is forcefully aligned to this amount of pixels
-            before being processed.
         :param pre_resize: process the image before it is resized, or after? default is ``False`` (after).
         :param kwargs: forwarded to base class
         """
 
         super().__init__(**kwargs)
 
-        if detect_align < 1:
-            raise self.argument_error('Argument "detect-align" may not be less than 1.')
-
         self._detect_aspect = detect_aspect
-        self._detect_align = detect_align
         self._pre_resize = pre_resize
-        self._apply_filter = apply_filter
-        self._safe = safe
+        self._gamma_corrected = gamma_corrected
 
         if detect_resolution is not None:
             try:
@@ -104,16 +88,14 @@ class PidiNetProcessor(_imageprocessor.ImageProcessor):
         else:
             self._detect_resolution = None
 
-        self._pidi = _cna.PidiNetDetector.from_pretrained("lllyasviel/Annotators")
-        self.register_module(self._pidi)
+        self._zoe = _cna.ZoeDetector.from_pretrained("lllyasviel/Annotators")
+        self.register_module(self._zoe)
 
     def __str__(self):
         args = [
-            ('apply_filter', self._apply_filter),
-            ('safe', self._safe),
+            ('gamma_corrected', self._gamma_corrected),
             ('detect_resolution', self._detect_resolution),
             ('detect_aspect', self._detect_aspect),
-            ('detect_align', self._detect_align),
             ('pre_resize', self._pre_resize)
         ]
         return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
@@ -126,28 +108,40 @@ class PidiNetProcessor(_imageprocessor.ImageProcessor):
                 image,
                 self._detect_resolution,
                 aspect_correct=self._detect_aspect,
-                align=self._detect_align
+                align=8
             )
 
         image = resized
 
         input_image = numpy.array(image, dtype=numpy.uint8)
+
         input_image = _cna_util.HWC3(input_image)
 
-        input_image = input_image[:, :, ::-1].copy()
+        assert input_image.ndim == 3
+        image_depth = input_image
         with torch.no_grad():
-            image_pidi = torch.from_numpy(input_image).float().to(self.modules_device)
-            image_pidi = image_pidi / 255.0
-            image_pidi = einops.rearrange(image_pidi, 'h w c -> 1 c h w')
-            edge = self._pidi.netNetwork(image_pidi)[-1]
-            edge = edge.cpu().numpy()
-            if self._apply_filter:
-                edge = edge > 0.5
-            if self._safe:
-                edge = _cna_util.safe_step(edge)
-            edge = (edge * 255.0).clip(0, 255).astype(numpy.uint8)
+            image_depth = torch.from_numpy(image_depth).float().to(self.device)
+            image_depth = image_depth / 255.0
+            image_depth = einops.rearrange(image_depth, 'h w c -> 1 c h w')
+            depth = self._zoe.model.infer(image_depth)
 
-        detected_map = _cna_util.HWC3(edge[0, 0])
+            depth = depth[0, 0].cpu().numpy()
+
+            vmin = numpy.percentile(depth, 2)
+            vmax = numpy.percentile(depth, 85)
+
+            depth -= vmin
+            depth /= vmax - vmin
+            depth = 1.0 - depth
+
+            if self._gamma_corrected:
+                depth = numpy.power(depth, 2.2)
+            depth_image = (depth * 255.0).clip(0, 255).astype(numpy.uint8)
+
+            image_depth.cpu()
+
+        detected_map = depth_image
+        detected_map = _cna_util.HWC3(detected_map)
 
         if resize_resolution is not None:
             detected_map = cv2.resize(detected_map, resize_resolution, interpolation=cv2.INTER_LINEAR)
@@ -162,7 +156,7 @@ class PidiNetProcessor(_imageprocessor.ImageProcessor):
 
         :param image: image to process
         :param resize_resolution: resize resolution
-        :return: possibly an edge detected image, or the input image
+        :return: possibly a zoe depth detected image, or the input image
         """
 
         if self._pre_resize:
@@ -174,7 +168,7 @@ class PidiNetProcessor(_imageprocessor.ImageProcessor):
         Post resize.
 
         :param image: image
-        :return: possibly an edge detected image, or the input image
+        :return: possibly a zoe depth detected image, or the input image
         """
 
         if not self._pre_resize:
