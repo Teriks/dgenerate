@@ -26,8 +26,8 @@ import einops
 import numpy
 import torch
 
-import dgenerate.extras.controlnet_aux as _cna
-import dgenerate.extras.controlnet_aux.util as _cna_util
+import controlnet_aux as _cna
+import controlnet_aux.util as _cna_util
 import dgenerate.image as _image
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
@@ -105,6 +105,9 @@ class MidasDepthProcessor(_imageprocessor.ImageProcessor):
 
     def __str__(self):
         args = [
+            ('normals', self._normals),
+            ('alpha', self._alpha),
+            ('background_threshold', self._background_threshold),
             ('detect_resolution', self._detect_resolution),
             ('detect_aspect', self._detect_aspect),
             ('pre_resize', self._pre_resize)

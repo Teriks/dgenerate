@@ -25,6 +25,8 @@ exclude_from_forced_collection = {'triton', 'cmake', 'lit', 'opencv-python', 'op
 
 requires_extra_data_forced = [
     'dgenerate',
+    'controlnet_aux',
+    'fake_useragent',
     'skimage',
     'fontTools',
     'antlr4',
@@ -70,17 +72,10 @@ for package_name in required_package_names:
                                           '**/*.cpp',
                                           '**/*.cu',
                                           '**/*.cuh',
-                                          '**/*.h'])
+                                          '**/*.h',
+                                          '*.json',
+                                          '*.toml'])
     binaries += collect_dynamic_libs(package_name, search_patterns=['*.dll', '*.pyd'])
-
-# need the browser data
-datas += collect_data_files('fake_useragent', include_py_files=False, includes=['**/*.json'])
-
-# themes
-datas += collect_data_files('dgenerate', subdir='console/themes', includes=['*.toml'])
-
-# schemas
-datas += collect_data_files('dgenerate', subdir='console/schemas', includes=['*.json'])
 
 # recipes
 datas += collect_data_files('dgenerate', subdir='console/recipes', includes=['*.recipe'])

@@ -46,6 +46,7 @@ from .openpose import OpenPoseProcessor
 from .pidi import PidiNetProcessor
 from .sam import SegmentAnythingProcessor
 from .upscaler import UpscalerProcessor
+from .zoe import ZoeDepthProcessor
 
 __doc__ = """
 Image processors implemented by dgenerate.
