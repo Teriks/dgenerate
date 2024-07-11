@@ -20,7 +20,7 @@ dgenerate.batchprocess module
    :special-members: __call__, __init__
 
 dgenerate.renderloop module
-------------------------------
+---------------------------
 
 .. automodule:: dgenerate.renderloop
    :members:
@@ -50,7 +50,7 @@ dgenerate.filelock module
 
 
 dgenerate.files module
--------------------------
+----------------------
 
 .. automodule:: dgenerate.files
    :members:
@@ -154,7 +154,7 @@ dgenerate.plugin module
 
 
 dgenerate.promptweighters module
------------------------
+--------------------------------
 
 .. automodule:: dgenerate.promptweighters
    :members:
