@@ -1,0 +1,11 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.9.0
+
+# run the lineart-standard processor
+
+\set device_switch {{ '--device '+injected_device if injected_device else '' }}
+
+\image_process "../../media/horse2.jpeg"
+-o horse2-lineart-standard.png
+--processors lineart-standard
+--align 1 {{ device_switch }}
