@@ -44,7 +44,8 @@ class _UriWithFloatEntry(_urientry._UriEntry):
 
         self.float_label = tk.Label(
             self.master,
-            text=self.get_label('URI', key='float-label'),
+            text=self.get_label(
+                'URI Float', key='float-label') + ' (float)',
             anchor='e')
 
         self.min = self.config.get('min', float('-inf'))
