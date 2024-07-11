@@ -71,6 +71,6 @@ class _TorchVaeEntry(_urientry._UriEntry):
 
         value = ''
         if vae_uri and vae_type:
-            value = f'{vae_type};model={shlex.quote(vae_uri)}'
+            value = f'{vae_type};model={_entry.shell_quote_if(vae_uri)}'
 
         return self._template(content, value)
