@@ -101,7 +101,7 @@ class _UriWithFloatEntry(_urientry._UriEntry):
                 c.config(state=tk.DISABLED)
 
     def template(self, content):
-        uri = self.uri_var.get().strip()
+        uri = _entry.shell_quote_if(self.uri_var.get().strip())
         float_val = self.float_var.get().strip()
 
         value = ''
@@ -110,4 +110,4 @@ class _UriWithFloatEntry(_urientry._UriEntry):
         elif uri:
             value = uri
 
-        return self._template(content, _entry.shell_quote_if(value))
+        return self._template(content, value)

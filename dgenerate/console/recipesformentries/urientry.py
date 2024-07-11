@@ -65,19 +65,19 @@ class _UriEntry(_entry._Entry):
                 if r is not None:
                     self.uri_var.set(r)
 
-            selection_frame = tk.Frame(self.master)
+            self.button_frame = tk.Frame(self.master)
 
-            file_button = tk.Button(selection_frame,
+            file_button = tk.Button(self.button_frame,
                                     text="Select File",
                                     command=select_file_command)
             file_button.pack(side=tk.LEFT)
 
-            directory_button = tk.Button(selection_frame,
+            directory_button = tk.Button(self.button_frame,
                                          text="Select Directory",
                                          command=select_dir_command)
-            directory_button.pack(side=tk.RIGHT)
+            directory_button.pack(side=tk.LEFT)
 
-            selection_frame.grid(row=self.row, column=2, padx=(2, 5), sticky='w')
+            self.button_frame.grid(row=self.row, column=2, padx=(2, 5), sticky='w')
 
         elif file_types or is_dir:
 
@@ -91,11 +91,14 @@ class _UriEntry(_entry._Entry):
                 if r is not None:
                     self.uri_var.set(r)
 
-            button = tk.Button(self.master,
+            self.button_frame = tk.Frame(self.master)
+
+            button = tk.Button(self.button_frame,
                                text="Select File" if file_types else "Select Directory",
                                command=select_command)
+            button.pack(side=tk.LEFT)
 
-            button.grid(row=self.row, column=2, padx=(2, 5), sticky='w')
+            self.button_frame.grid(row=self.row, column=2, padx=(2, 5), sticky='w')
 
         self.uri_label.grid(row=self.row, column=0, padx=_entry.ROW_XPAD, sticky='e')
         self.uri_entry.grid(row=self.row, column=1, padx=_entry.ROW_XPAD, sticky='ew')
