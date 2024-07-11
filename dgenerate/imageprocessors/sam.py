@@ -125,7 +125,7 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
         ]
         return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
 
-    def _process(self, image, resize_resolution, return_to_original_size=False):
+    def _process(self, image, resize_resolution):
         original_size = image.size
 
         with image:
@@ -149,7 +149,7 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
             # but not with linear interpolation, so we will do it here, dgenerate will
             # see that it is already at the requested size and not resize it any further
             detected_map = cv2.resize(detected_map, resize_resolution, interpolation=cv2.INTER_LINEAR)
-        elif self._detect_resolution is not None and return_to_original_size:
+        elif self._detect_resolution is not None:
             # resize it to its original size since we changed its size before detection
             # and dgenerate did not request a resize
             detected_map = cv2.resize(detected_map, original_size, interpolation=cv2.INTER_LINEAR)
@@ -166,7 +166,7 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
         """
 
         if self._pre_resize:
-            return self._process(image, resize_resolution, return_to_original_size=True)
+            return self._process(image, resize_resolution)
         return image
 
     def impl_post_resize(self, image: PIL.Image.Image):
