@@ -4101,7 +4101,7 @@ This option is also available as the config directive ``\directives_help``.
 
 Example output:
 
-.. code-block:: txt
+.. code-block::
 
     Available config directives:
     
