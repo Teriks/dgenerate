@@ -116,9 +116,13 @@ class TEEDProcessor(_imageprocessor.ImageProcessor):
         height, width, _ = input_image.shape
 
         with torch.no_grad():
-            image_teed = torch.from_numpy(input_image.copy()).float().to(self.device)
+            image_teed = torch.from_numpy(input_image.copy()).float().to(self.modules_device)
             image_teed = einops.rearrange(image_teed, "h w c -> 1 c h w")
             edges = self._teed.model(image_teed)
+
+            image_teed.cpu()
+            del image_teed
+
             edges = [e.detach().cpu().numpy().astype(numpy.float32)[0, 0] for e in edges]
             edges = [
                 cv2.resize(e, (width, height), interpolation=cv2.INTER_LINEAR)
@@ -130,8 +134,7 @@ class TEEDProcessor(_imageprocessor.ImageProcessor):
                 edge = _cna_util.safe_step(edge)
             edge = (edge * 255.0).clip(0, 255).astype(numpy.uint8)
 
-        detected_map = edge
-        detected_map = _cna_util.HWC3(detected_map)
+        detected_map = _cna_util.HWC3(edge)
 
         if resize_resolution is not None:
             detected_map = cv2.resize(detected_map, resize_resolution, interpolation=cv2.INTER_LINEAR)

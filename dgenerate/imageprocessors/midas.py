@@ -140,6 +140,9 @@ class MidasDepthProcessor(_imageprocessor.ImageProcessor):
             image_depth = einops.rearrange(image_depth, 'h w c -> 1 c h w')
             depth = self._midas.model(image_depth)[0]
 
+            image_depth.cpu()
+            del image_depth
+
             depth_pt = depth.clone()
             depth_pt -= torch.min(depth_pt)
             depth_pt /= torch.max(depth_pt)
@@ -159,7 +162,6 @@ class MidasDepthProcessor(_imageprocessor.ImageProcessor):
 
                 detected_map = _cna_util.HWC3(normal_image)
             else:
-
                 detected_map = _cna_util.HWC3(depth_image)
 
         if resize_resolution is not None:

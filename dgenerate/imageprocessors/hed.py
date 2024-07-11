@@ -139,6 +139,10 @@ class HEDProcessor(_imageprocessor.ImageProcessor):
             image_hed = torch.from_numpy(input_image.copy()).float().to(self.modules_device)
             image_hed = einops.rearrange(image_hed, 'h w c -> 1 c h w')
             edges = self._hed.netNetwork(image_hed)
+
+            image_hed.cpu()
+            del image_hed
+
             edges = [e.detach().cpu().numpy().astype(numpy.float32)[0, 0] for e in edges]
             edges = [cv2.resize(e, (W, H), interpolation=cv2.INTER_LINEAR) for e in edges]
             edges = numpy.stack(edges, axis=2)

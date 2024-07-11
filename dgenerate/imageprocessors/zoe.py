@@ -116,10 +116,13 @@ class ZoeDepthProcessor(_imageprocessor.ImageProcessor):
         image_depth = _cna_util.HWC3(image_depth)
 
         with torch.no_grad():
-            image_depth = torch.from_numpy(image_depth).float().to(self.device)
+            image_depth = torch.from_numpy(image_depth).float().to(self.modules_device)
             image_depth = image_depth / 255.0
             image_depth = einops.rearrange(image_depth, 'h w c -> 1 c h w')
             depth = self._zoe.model.infer(image_depth)
+
+            image_depth.cpu()
+            del image_depth
 
             depth = depth[0, 0].cpu().numpy()
 
@@ -134,10 +137,7 @@ class ZoeDepthProcessor(_imageprocessor.ImageProcessor):
                 depth = numpy.power(depth, 2.2)
             depth_image = (depth * 255.0).clip(0, 255).astype(numpy.uint8)
 
-            image_depth.cpu()
-
-        detected_map = depth_image
-        detected_map = _cna_util.HWC3(detected_map)
+        detected_map = _cna_util.HWC3(depth_image)
 
         if resize_resolution is not None:
             detected_map = cv2.resize(detected_map, resize_resolution, interpolation=cv2.INTER_LINEAR)
