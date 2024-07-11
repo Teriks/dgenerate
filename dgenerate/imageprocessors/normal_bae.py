@@ -120,6 +120,10 @@ class NormalBaeProcessor(_imageprocessor.ImageProcessor):
             image_normal = self._normal_bae.norm(image_normal)
 
             normal = self._normal_bae.model(image_normal)
+
+            image_normal.cpu()
+            del image_normal
+
             normal = normal[0][-1][:, :3]
             normal = ((normal + 1) * 0.5).clip(0, 1)
 

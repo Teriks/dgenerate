@@ -131,6 +131,10 @@ class LineArtAnimeProcessor(_imageprocessor.ImageProcessor):
             image_feed = einops.rearrange(image_feed, 'h w c -> 1 c h w')
 
             line = self._lineart.model(image_feed)[0, 0] * 127.5 + 127.5
+
+            image_feed.cpu()
+            del image_feed
+
             line = line.cpu().numpy()
 
             line = cv2.resize(line, (W, H), interpolation=cv2.INTER_CUBIC)

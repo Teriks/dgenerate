@@ -137,6 +137,9 @@ class LineArtProcessor(_imageprocessor.ImageProcessor):
             image = einops.rearrange(image, 'h w c -> 1 c h w')
             line = model(image)[0][0]
 
+            image.cpu()
+            del image
+
             line = line.cpu().numpy()
             line = (line * 255.0).clip(0, 255).astype(numpy.uint8)
 

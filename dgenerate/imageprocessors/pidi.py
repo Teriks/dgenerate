@@ -140,6 +140,10 @@ class PidiNetProcessor(_imageprocessor.ImageProcessor):
             image_pidi = image_pidi / 255.0
             image_pidi = einops.rearrange(image_pidi, 'h w c -> 1 c h w')
             edge = self._pidi.netNetwork(image_pidi)[-1]
+
+            image_pidi.cpu()
+            del image_pidi
+
             edge = edge.cpu().numpy()
             if self._apply_filter:
                 edge = edge > 0.5
