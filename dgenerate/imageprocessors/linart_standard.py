@@ -120,7 +120,6 @@ class LineArtStandardProcessor(_imageprocessor.ImageProcessor):
         ]
         return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
 
-    # noinspection PyTypeChecker
     def _process(self, image, resize_resolution):
         original_size = image.size
 
@@ -137,6 +136,7 @@ class LineArtStandardProcessor(_imageprocessor.ImageProcessor):
         x = input_image.astype(numpy.float32)
         g = cv2.GaussianBlur(x, (0, 0), self._gaussian_sigma)
         intensity = numpy.min(g - x, axis=2).clip(0, 255)
+        # noinspection PyTypeChecker
         intensity /= max(16, numpy.median(intensity[intensity > self._intensity_threshold]))
         intensity *= 127
         detected_map = intensity.clip(0, 255).astype(numpy.uint8)
