@@ -24,6 +24,7 @@ import tkinter as tk
 import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.recipesformentries.entry as _entry
 import dgenerate.console.resources as _resources
+import dgenerate.textprocessing as _textprocessing
 
 
 class _ImageSeedSelect(tk.Toplevel):
@@ -32,6 +33,8 @@ class _ImageSeedSelect(tk.Toplevel):
         self.title("Insert Image Seed URI")
 
         self.grid_columnconfigure(1, weight=1)
+
+        self.configure(pady=5, padx=5)
 
         self.transient(parent)
         self.grab_set()
@@ -65,21 +68,41 @@ class _ImageSeedSelect(tk.Toplevel):
             self.geometry("+{}+{}".format(*position))
 
     def _create_widgets(self):
+
         labels = ["(Required If Inpainting) Seed Image", "(Optional) Inpaint Image", "(Optional) Control Image"]
 
         for i, label in enumerate(labels):
-            tk.Label(self, text=label).grid(row=i, column=0, padx=5, pady=5, sticky=tk.E)
+            tk.Label(self, text=label).grid(row=i, column=0, sticky=tk.E)
 
             entry = tk.Entry(self)
             entry.grid(row=i, column=1, padx=(2, 5), sticky=tk.EW)
-            entry.bind("<KeyRelease>", self._valid)
+            entry.bind("<Key>", self._valid)
             self.entries.append(entry)
 
             button = tk.Button(self, text="Open File", command=lambda e=entry: self._open_file(e))
             button.grid(row=i, column=2, padx=(0, 5), sticky=tk.W)
 
+        self.seed_image_entry = self.entries[0]
+        self.inpaint_image_entry = self.entries[1]
+        self.control_image_entry = self.entries[2]
+
+        tk.Label(self, text='(Optional) Resize Dimension (WxH)').grid(
+            row=3, column=0, sticky=tk.E)
+
+        self.resize_entry = tk.Entry(self)
+        self.resize_entry.grid(row=3, column=1, padx=(2, 5), sticky=tk.EW)
+        self.resize_entry.bind("<Key>", self._valid)
+
+        tk.Label(self, text='Resize Preserves Aspect?').grid(
+            row=4, column=0, sticky=tk.E)
+
+        self.aspect_entry_var = tk.BooleanVar(value=True)
+
+        self.aspect_entry = tk.Checkbutton(self, variable=self.aspect_entry_var)
+        self.aspect_entry.grid(row=4, column=1, sticky=tk.W)
+
         self.insert_button = tk.Button(self, text="Insert", command=self._insert_click)
-        self.insert_button.grid(row=3, column=0, columnspan=3, pady=5)
+        self.insert_button.grid(row=5, column=0, columnspan=3, pady=5)
 
     def _open_file(self, entry):
         file_path = _filedialog.open_file_dialog(
@@ -89,37 +112,51 @@ class _ImageSeedSelect(tk.Toplevel):
             entry.insert(0, file_path)
 
     def _insert_click(self):
-        image_seed = _entry.shell_quote_if(self.entries[0].get().strip())
-        inpaint_image = _entry.shell_quote_if(self.entries[1].get().strip())
-        control_image = _entry.shell_quote_if(self.entries[2].get().strip())
+
+        image_seed = _entry.shell_quote_if(self.seed_image_entry.get().strip())
+        inpaint_image = _entry.shell_quote_if(self.inpaint_image_entry.get().strip())
+        control_image = _entry.shell_quote_if(self.control_image_entry.get().strip())
 
         # Validate that image seed is specified if inpaint image is provided
         if inpaint_image and not image_seed:
             _entry.invalid_colors(self.entries[0])
             return
 
-        components = []
-        if image_seed:
-            components.append(image_seed)
-        if inpaint_image:
-            if control_image:
-                components.append(f"mask={inpaint_image}")
-            else:
-                components.append(inpaint_image)
-        if control_image:
-            if image_seed:
-                components.append(f"control={control_image}")
-            else:
-                components.append(control_image)
+        # Validate resize entry
+        if not self._resize_entry_valid():
+            _entry.invalid_colors(self.resize_entry)
+            return
 
-        self.result = ";".join(components)
+        resize_value = self.resize_entry.get().strip()
+        aspect_value = self.aspect_entry_var.get()
+
+        self.result = _textprocessing.format_image_seed_uri(
+            seed_image=image_seed,
+            inpaint_image=inpaint_image,
+            control_image=control_image,
+            resize=resize_value,
+            aspect=aspect_value
+        )
 
         self.destroy()
+
+    def _resize_entry_valid(self):
+        value = self.resize_entry.get().strip()
+        if value == '':
+            return True
+        try:
+            _textprocessing.parse_image_size(value)
+            return True
+        except ValueError:
+            return False
 
     def _valid(self, event):
         for entry in self.entries:
             if entry.get().strip():
                 _entry.valid_colors(entry)
+
+        if self._resize_entry_valid():
+            _entry.valid_colors(self.resize_entry)
 
     def get_uri(self):
         self.wait_window(self)

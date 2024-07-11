@@ -1303,6 +1303,76 @@ def remove_tail_comments(string) -> tuple[bool, str]:
         return False, _remove_tail_comments_unlexable(string)
 
 
+def format_image_seed_uri(seed_image: str | None,
+                          inpaint_image: str | None = None,
+                          control_image: str | None = None,
+                          resize: str | None = None,
+                          aspect: bool = True) -> str:
+    """
+    Formats a dgenerate ``--image-seeds`` URI to its shortest possible string form.
+
+    :param seed_image: Seed image path
+    :param inpaint_image: Inpaint image path
+    :param control_image: Control image path
+    :param resize: Optional resize dimension (WxH string)
+    :param aspect: Preserve aspect ratio?
+    :return: The generated ``--image-seeds`` URI string
+    """
+
+    components = []
+
+    def add_component_if_valid(component, prefix=""):
+        if component:
+            if prefix:
+                components.append(f"{prefix}={component}")
+            else:
+                components.append(component)
+
+    # aspect=True by default
+    use_keyword_args = aspect is False
+
+    # Case 1: Only image seed provided
+    if seed_image and not inpaint_image and not control_image:
+        components.append(seed_image)
+        if resize:
+            if use_keyword_args:
+                add_component_if_valid(resize, "resize")
+            else:
+                components.append(resize)
+
+    # Case 2: Inpaint image without control image
+    elif seed_image and inpaint_image and not control_image:
+        components.append(seed_image)
+        if use_keyword_args:
+            add_component_if_valid(inpaint_image, "mask")
+            add_component_if_valid(resize, "resize")
+        else:
+            components.append(inpaint_image)
+            if resize:
+                components.append(resize)
+
+    # Case 3: Inpaint image with control image
+    elif seed_image and inpaint_image and control_image:
+        components.append(seed_image)
+        add_component_if_valid(inpaint_image, "mask")
+        add_component_if_valid(control_image, "control")
+        if resize:
+            add_component_if_valid(resize, "resize")
+
+    # Case 4: Control image with image seed
+    elif seed_image and not inpaint_image and control_image:
+        components.append(seed_image)
+        add_component_if_valid(control_image, "control")
+        if resize:
+            add_component_if_valid(resize, "resize")
+
+    # Handle aspect ratio setting if applicable (only add if aspect=False)
+    if aspect is False:
+        add_component_if_valid(str(aspect), "aspect")
+
+    return ";".join(components)
+
+
 def format_dgenerate_config(lines: typing.Iterator[str], indentation=' ' * 4) -> typing.Iterator[str]:
     """
     A very rudimentary code formatter for dgenerate configuration / script.
