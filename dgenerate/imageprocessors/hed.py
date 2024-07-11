@@ -39,9 +39,9 @@ class HEDProcessor(_imageprocessor.ImageProcessor):
     HED detection (holistically-nested edge detection), this is an edge detection algorithm
     that can produced something akin to thick lineart.
 
-    The "scribble" argument determines whether or not scribble mode is enabled, this produces thicker lines.
+    The "scribble" argument determines whether scribble mode is enabled, this produces thicker lines.
 
-    The "safe" argument enables numerically safe / more precise stepping
+    The "safe" argument enables or disables numerically safe / more precise stepping.
 
     The argument "detect-resolution" is the resolution the image is resized to internal to the processor before
     detection is run on it. It should be a single dimension for example: "detect-resolution=512" or the X/Y dimensions
