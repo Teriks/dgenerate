@@ -21,9 +21,13 @@
 import typing
 
 import PIL.Image
+import controlnet_aux as _cna
 import controlnet_aux.util as _cna_util
 import cv2
+import einops
 import numpy
+import skimage
+import torch
 
 import dgenerate.image as _image
 import dgenerate.textprocessing as _textprocessing
@@ -31,9 +35,11 @@ import dgenerate.types as _types
 from dgenerate.imageprocessors import imageprocessor as _imageprocessor
 
 
-class LineArtStandardProcessor(_imageprocessor.ImageProcessor):
+class AnylineProcessor(_imageprocessor.ImageProcessor):
     """
-    Standard lineart detector, generate lineart from an image.
+    anyline, MistoLine Control Every Line image preprocessor, see: https://huggingface.co/TheMistoAI/MistoLine
+
+    This is an edge detector based on TEED.
 
     The argument "gaussian-sigma" is the gaussian filter sigma value.
 
@@ -47,21 +53,18 @@ class LineArtStandardProcessor(_imageprocessor.ImageProcessor):
     image-process sub-command, if you have not requested any resizing the output will be resized back to the original
     size of the input image.
 
-    The argument "detect-aspect" determines if the image resize requested by "detect-resolution" before
+    The argument "detect-aspect" determines if the image resize requested by "detect_resolution" before
     detection runs is aspect correct, this defaults to true.
-
-    The argument "detect-align" determines the pixel alignment of the image resize requested by
-    "detect-resolution", it defaults to 1 indicating no requested alignment.
 
     The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
     This defaults to False, meaning the image is processed after dgenerate is done resizing it.
     """
 
-    NAMES = ['lineart-standard']
+    NAMES = ['anyline']
 
     def __init__(self,
-                 gaussian_sigma: float = 6.0,
-                 intensity_threshold: int = 8,
+                 gaussian_sigma: float = 2.0,
+                 intensity_threshold: int = 2,
                  detect_resolution: typing.Optional[str] = None,
                  detect_aspect: bool = True,
                  detect_align: int = 1,
@@ -109,6 +112,11 @@ class LineArtStandardProcessor(_imageprocessor.ImageProcessor):
         else:
             self._detect_resolution = None
 
+        self._anyline = _cna.AnylineDetector.from_pretrained(
+            'TheMistoAI/MistoLine', filename='MTEED.pth', subfolder='Anyline')
+
+        self.register_module(self._anyline)
+
     def __str__(self):
         args = [
             ('gaussian_sigma', self._gaussian_sigma),
@@ -128,20 +136,55 @@ class LineArtStandardProcessor(_imageprocessor.ImageProcessor):
                 image,
                 self._detect_resolution,
                 aspect_correct=self._detect_aspect,
-                align=self._detect_align
+                align=8
             )
 
         input_image = _cna_util.HWC3(numpy.array(resized, dtype=numpy.uint8))
+        height, width, _ = input_image.shape
+
+        with torch.no_grad():
+            image_teed = torch.from_numpy(input_image.copy()).float().to(self.modules_device)
+            image_teed = einops.rearrange(image_teed, "h w c -> 1 c h w")
+            edges = self._anyline.model(image_teed)
+
+            image_teed.cpu()
+            del image_teed
+
+            edges = [e.detach().cpu().numpy().astype(numpy.float32)[0, 0] for e in edges]
+            edges = [
+                cv2.resize(e, (width, height), interpolation=cv2.INTER_LINEAR)
+                for e in edges
+            ]
+            edges = numpy.stack(edges, axis=2)
+            edge = 1 / (1 + numpy.exp(-numpy.mean(edges, axis=2).astype(numpy.float64)))
+            edge = _cna_util.safe_step(edge, 2)
+            edge = (edge * 255.0).clip(0, 255).astype(numpy.uint8)
+
+        mteed_result = _cna_util.HWC3(edge)
 
         x = input_image.astype(numpy.float32)
         g = cv2.GaussianBlur(x, (0, 0), self._gaussian_sigma)
+
         intensity = numpy.min(g - x, axis=2).clip(0, 255)
+
         # noinspection PyTypeChecker
         intensity /= max(16, numpy.median(intensity[intensity > self._intensity_threshold]))
         intensity *= 127
-        detected_map = intensity.clip(0, 255).astype(numpy.uint8)
 
-        detected_map = _cna_util.HWC3(detected_map)
+        lineart_result = intensity.clip(0, 255).astype(numpy.uint8)
+
+        lineart_result = _cna_util.HWC3(lineart_result)
+
+        lineart_result = self._anyline.get_intensity_mask(
+            lineart_result, lower_bound=0, upper_bound=255
+        )
+
+        cleaned = skimage.morphology.remove_small_objects(
+            lineart_result.astype(bool), min_size=36, connectivity=1
+        )
+
+        lineart_result = lineart_result * cleaned
+        detected_map = self._anyline.combine_layers(mteed_result, lineart_result)
 
         if resize_resolution is not None:
             detected_map = cv2.resize(detected_map, resize_resolution, interpolation=cv2.INTER_LINEAR)
@@ -156,7 +199,7 @@ class LineArtStandardProcessor(_imageprocessor.ImageProcessor):
 
         :param image: image to process
         :param resize_resolution: resize resolution
-        :return: possibly a lineart image, or the input image
+        :return: possibly an anyline detected image, or the input image
         """
 
         if self._pre_resize:
@@ -168,7 +211,7 @@ class LineArtStandardProcessor(_imageprocessor.ImageProcessor):
         Post resize.
 
         :param image: image
-        :return: possibly a lineart image, or the input image
+        :return: possibly an anyline detected image, or the input image
         """
 
         if not self._pre_resize:
