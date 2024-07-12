@@ -1219,21 +1219,28 @@ Make sure you select a GPU runtime for your notebook, such as the T4 runtime.
 
 1.) Install venv.
 
-``!apt install python3-venv``
+.. code-block:: bash
+
+    !apt install python3-venv
 
 2.) Create a virtual environment.
 
-``!python3 -m venv venv``
+.. code-block:: bash
+
+    !python3 -m venv venv
 
 3.) Install dgenerate, you must activate the virtual environment in the same cell.
 
-``!source /content/venv/bin/activate; pip install dgenerate==3.9.0 --extra-index-url https://download.pytorch.org/whl/cu121``
+.. code-block:: bash
 
+    !source /content/venv/bin/activate; pip install dgenerate==3.9.0 --extra-index-url https://download.pytorch.org/whl/cu121
 
 4.) Finally you can run dgenerate, you must prefix all calls to dgenerate with an activation of the virtual environment, as
 the virtual environment is not preserved between cells.  For brevity, and as an example, just print the help text here.
 
-``!source /content/venv/bin/activate; dgenerate --help``
+.. code-block:: bash
+
+    !source /content/venv/bin/activate; dgenerate --help
 
 
 Basic Usage
