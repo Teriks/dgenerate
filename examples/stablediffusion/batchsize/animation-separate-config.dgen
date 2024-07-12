@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 3.9.0
+#! dgenerate 3.9.1
 
 # Generate 4 images simultaneously on the GPU, write to 4 different animations
 

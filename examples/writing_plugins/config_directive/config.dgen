@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 3.9.0
+#! dgenerate 3.9.1
 
 # the import_plugins directive can receive multiple plugin paths as arguments
 

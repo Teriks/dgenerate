@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 3.9.0
+#! dgenerate 3.9.1
 
 # Place the variations side by side on an image grid
 # That is 2 wide and 1 high

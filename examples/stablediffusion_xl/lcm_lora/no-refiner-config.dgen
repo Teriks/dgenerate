@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 3.9.0
+#! dgenerate 3.9.1
 
 # The simplest use case is without a refiner, good results are achieved with very few inference steps
 
