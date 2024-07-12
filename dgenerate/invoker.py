@@ -396,7 +396,6 @@ def invoke_dgenerate_events(
             _promptweighters.PromptWeightingUnsupported,
             _plugin.PluginNotFoundError,
             _plugin.PluginArgumentError,
-            torch.cuda.OutOfMemoryError,
             EnvironmentError) as e:
         yield rethrow_with_message(e)
         return
