@@ -1,0 +1,1 @@
+from .pidi import PidiNetDetector
