@@ -33,8 +33,8 @@ def position_toplevel(master,
 
     :param master: the parent window
     :param toplevel: the toplevel
-    :param size: optional toplevel size, or function returning size
-    :param position: optional toplevel position, or function returning position
+    :param size: optional toplevel size
+    :param position: optional toplevel position
     :return:
     """
 
