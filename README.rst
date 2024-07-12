@@ -5035,8 +5035,8 @@ sub-command implementation, and a plugin skeleton file for sub-commands can be f
 Prompt weighter plugins
 -----------------------
 
-Reference for writing prompt weighters can be found in the `compel <https://github.com/Teriks/dgenerate/blob/v3.9.0/dgenerate/promptweighters/compelpromptweighter.py>`_
-and `sd-embed <https://github.com/Teriks/dgenerate/blob/v3.9.0/dgenerate/promptweighters/sdembedpromptweighter.py>`_ internal prompt weighter implementations.
+Reference for writing prompt weighters can be found in the `CompelPromptWeighter <https://github.com/Teriks/dgenerate/blob/v3.9.0/dgenerate/promptweighters/compelpromptweighter.py>`_
+and `SdEmbedPromptWeighter <https://github.com/Teriks/dgenerate/blob/v3.9.0/dgenerate/promptweighters/sdembedpromptweighter.py>`_ internal prompt weighter implementations.
  
 A plugin skeleton file for prompt weighters can be found in the 
 `"writing_plugins/prompt_weighter" <https://github.com/Teriks/dgenerate/tree/v3.9.0/examples/writing_plugins/prompt_weighter>`_
