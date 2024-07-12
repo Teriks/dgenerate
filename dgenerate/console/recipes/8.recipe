@@ -57,7 +57,7 @@ title: Deep Floyd
 --dtype float16
 --model-type torch-upscaler-x4
 @karrasscheduler[{"label":"Stage 3 Scheduler"}]
-@torchvae[{"label":"Stage 3 VAE File / URI"}]
+@torchvae[{"label":"Stage 3 VAE File / URI", "dir":true, "file-types":["models"]}]
 @int[{"label":"Stage 3 Inference Steps", "arg":"--inference-steps", "default":30, "min":1}]
 @float[{"label":"Stage 3 Guidance Scale", "arg":"--guidance-scales", "default":9, "min":0}]
 --prompts {{ format_prompt(last_prompts) }}
