@@ -26,7 +26,7 @@ import einops
 import numpy
 import torch
 
-import controlnet_aux as _cna
+import dgenerate.extras.controlnet_aux as _cna
 import controlnet_aux.util as _cna_util
 import dgenerate.image as _image
 import dgenerate.textprocessing as _textprocessing
