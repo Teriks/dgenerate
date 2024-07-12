@@ -104,6 +104,7 @@ class _FindDialog(tk.Toplevel):
         self.resizable(True, False)
 
         if width is not None:
+            self.withdraw()
             self.update_idletasks()
             size = (width, self.winfo_reqheight())
         else:

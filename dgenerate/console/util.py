@@ -40,22 +40,22 @@ def position_toplevel(master,
 
     toplevel.withdraw()
 
-    if size:
-        toplevel.geometry(f'{size[0]}x{size[1]}')
-
+    master.update_idletasks()
     toplevel.update_idletasks()
+
+    prefix = '' if size is None else f'{size[0]}x{size[1]}'
 
     if position is None:
         window_width = master.winfo_width()
         window_height = master.winfo_height()
-        top_level_width = toplevel.winfo_width()
-        top_level_height = toplevel.winfo_height()
+        top_level_width = toplevel.winfo_reqwidth() if not size else size[0]
+        top_level_height = toplevel.winfo_reqheight() if not size else size[1]
 
         position_top = master.winfo_y() + (window_height // 2) - (top_level_height // 2)
         position_left = master.winfo_x() + (window_width // 2) - (top_level_width // 2)
 
-        toplevel.geometry(f"+{position_left}+{position_top}")
+        toplevel.geometry(f"{prefix}+{position_left}+{position_top}")
     else:
-        toplevel.geometry("+{}+{}".format(*position))
+        toplevel.geometry(f"{prefix}+{position[0]}+{position[1]}")
 
     toplevel.deiconify()
