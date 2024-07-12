@@ -22,7 +22,7 @@ title: Deep Floyd
 
 \set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
 
-@file[{"label":"Stage 1 Model Path / HF Slug", "default": "DeepFloyd/IF-I-M-v1.0", "optional":false, "file-types":["models"]}]
+@uri[{"label":"Stage 1 Model Path / HF Slug", "default": "DeepFloyd/IF-I-M-v1.0", "optional":false, "dir":true, "file-types":["models"]}]
 --variant fp16
 --dtype float16
 --model-type torch-if
@@ -36,7 +36,7 @@ title: Deep Floyd
 
 \save_modules stage_1_modules feature_extractor
 
-@file[{"label":"Stage 2 Model Path / HF Slug", "default": "DeepFloyd/IF-II-M-v1.0", "optional":false, "file-types":["models"]}]
+@uri[{"label":"Stage 2 Model Path / HF Slug", "default": "DeepFloyd/IF-II-M-v1.0", "optional":false, "dir":true, "file-types":["models"]}]
 --variant fp16
 --dtype float16
 --model-type torch-ifs
@@ -52,7 +52,7 @@ title: Deep Floyd
 
 \use_modules stage_1_modules
 
-@file[{"label":"Stage 3 - x4 Upscaler Model Path / HF Slug", "default": "stabilityai/stable-diffusion-x4-upscaler", "optional":false, "file-types":["models"]}]
+@uri[{"label":"Stage 3 - x4 Upscaler Model Path / HF Slug", "default": "stabilityai/stable-diffusion-x4-upscaler", "optional":false, "dir":true, "file-types":["models"]}]
 --variant fp16
 --dtype float16
 --model-type torch-upscaler-x4

@@ -21,6 +21,8 @@
 import collections.abc
 import typing
 
+import torch.cuda
+
 import dgenerate.arguments as _arguments
 import dgenerate.events as _event
 import dgenerate.imageprocessors as _imageprocessors
@@ -394,6 +396,7 @@ def invoke_dgenerate_events(
             _promptweighters.PromptWeightingUnsupported,
             _plugin.PluginNotFoundError,
             _plugin.PluginArgumentError,
+            torch.cuda.OutOfMemoryError,
             EnvironmentError) as e:
         yield rethrow_with_message(e)
         return
