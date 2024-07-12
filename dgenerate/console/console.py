@@ -68,13 +68,16 @@ class DgenerateConsole(tk.Tk):
         width = 1000
         height = 800
 
-        screen_width = self.winfo_screenwidth()
-        screen_height = self.winfo_screenheight()
+        if platform.system() == 'Windows':
+            screen_width = self.winfo_screenwidth()
+            screen_height = self.winfo_screenheight()
 
-        position_left = (screen_width // 2) - (width // 2)
-        position_top = (screen_height // 2) - (height // 2)
+            position_left = (screen_width // 2) - (width // 2)
+            position_top = (screen_height // 2) - (height // 2)
 
-        self.geometry(f"{width}x{height}+{position_left}+{position_top}")
+            self.geometry(f"{width}x{height}+{position_left}+{position_top}")
+        else:
+            self.geometry(f"{width}x{height}")
 
         _resources.set_window_icon(self)
 
