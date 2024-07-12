@@ -79,6 +79,9 @@ class _ImageProcessorEntry(_entry._Entry):
 
         self.on_updated_callback = None
 
+        if not self.declared_optional:
+            self._on_processor_change(None)
+
     def _show_help(self):
         top = tk.Toplevel(self.recipe_form)
         top.title(f'Image Processor Help: {self.processor_name_var.get()}')
