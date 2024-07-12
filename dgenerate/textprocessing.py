@@ -1332,6 +1332,11 @@ def format_image_seed_uri(seed_image: str | None,
     # aspect=True by default
     use_keyword_args = aspect is False
 
+    if control_images and not seed_image and not inpaint_image:
+        # we can specify a control image alone
+        seed_image = control_images
+        control_images = None
+
     # Case 1: Only image seed provided
     if seed_image and not inpaint_image and not control_images:
         components.append(seed_image)
