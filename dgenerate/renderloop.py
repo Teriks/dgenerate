@@ -29,7 +29,9 @@ import typing
 
 import PIL.Image
 import PIL.PngImagePlugin
+import torch.cuda
 
+import dgenerate
 import dgenerate.filelock as _filelock
 import dgenerate.files as _files
 import dgenerate.imageprocessors as _imageprocessors
@@ -748,6 +750,8 @@ class RenderLoop:
         try:
             for _ in self._run():
                 continue
+        except torch.cuda.OutOfMemoryError as e:
+            raise dgenerate.OutOfMemoryError(e)
         except _pipelinewrapper.ArgumentHelpException:
             pass
 
@@ -768,6 +772,8 @@ class RenderLoop:
         """
         try:
             yield from self._run()
+        except torch.cuda.OutOfMemoryError as e:
+            raise dgenerate.OutOfMemoryError(e)
         except _pipelinewrapper.ArgumentHelpException:
             pass
 
