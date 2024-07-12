@@ -1311,9 +1311,11 @@ def format_image_seed_uri(seed_image: str | None,
     """
     Formats a dgenerate ``--image-seeds`` URI to its shortest possible string form.
 
-    A control image can be specified alone.
+    A control image / images specifier can be specified alone.
 
     An inpaint image must have an accompanying seed image.
+
+    :raise ValueError: if ``inpaint_image`` is specified without ``seed_image``.
 
     :param seed_image: Seed image path
     :param inpaint_image: Inpaint image path
