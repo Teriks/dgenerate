@@ -23,6 +23,7 @@
 import tkinter as tk
 
 import dgenerate.console.recipesformentries as _entries
+import dgenerate.console.util as _util
 
 
 class _ImageProcessorSelect(tk.Toplevel):
@@ -54,30 +55,13 @@ class _ImageProcessorSelect(tk.Toplevel):
         self.processor_frame.grid_columnconfigure(1, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
-        self.withdraw()
-        self.update_idletasks()
-
-        if position is None:
-            window_width = self.master.winfo_width()
-            window_height = self.master.winfo_height()
-            top_level_width = self.winfo_width()
-            top_level_height = self.winfo_height()
-
-            position_top = self.master.winfo_y() + window_height // 2 - top_level_height // 2
-            position_left = self.master.winfo_x() + window_width // 2 - top_level_width // 2
-
-            self.geometry(f"+{position_left}+{position_top}")
-
-        else:
-            self.geometry("+{}+{}".format(*position))
-
         def processor_updated():
             self.update_idletasks()
             self.minsize(self.winfo_reqwidth(), self.winfo_reqheight())
 
         self.processor.on_updated_callback = processor_updated
 
-        self.deiconify()
+        _util.position_toplevel(master, self, position=position)
 
     def _insert_action(self):
         if not self.processor.is_valid():

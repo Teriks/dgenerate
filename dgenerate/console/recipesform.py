@@ -28,7 +28,7 @@ import typing
 
 import dgenerate.console.resources as _resources
 import dgenerate.console.recipesformentries as _recipesformentries
-import dgenerate.console.recipes as _recipes
+import dgenerate.console.util as _util
 from dgenerate.console.mousewheelbind import bind_mousewheel, un_bind_mousewheel
 
 
@@ -60,35 +60,20 @@ class _RecipesForm(tk.Toplevel):
 
         self.transient(master)
         self.grab_set()
+
         self._create_scrollable_form()
 
-        self.withdraw()
-        self.update_idletasks()
-
-        if position is None:
-            window_width = self.master.winfo_width()
-            window_height = self.master.winfo_height()
-            top_level_width = self.winfo_width()
-            top_level_height = self.winfo_height()
-
-            position_top = self.master.winfo_y() + window_height // 2 - top_level_height // 2
-            position_left = self.master.winfo_x() + window_width // 2 - top_level_width // 2
-
-            self.geometry(f"+{position_left}+{position_top}")
-
+        if platform.system() == 'Windows':
+            default_size = (700, 600)
         else:
-            self.geometry("+{}+{}".format(*position))
+            default_size = (800, 600)
 
-        if size:
-            self.geometry(f'{size[0]}x{size[1]}')
-        else:
-            if platform.system() == 'Windows':
-                self.geometry('700x600')
-            else:
-                # button widgets are wider on nix
-                self.geometry('800x600')
-
-        self.deiconify()
+        _util.position_toplevel(
+            master=master,
+            toplevel=self,
+            size=size if size else default_size,
+            position=position
+        )
 
     def on_submit(self, callback: typing.Callable[[], None]) -> None:
         """Register a callback to be called when the form is submitted."""

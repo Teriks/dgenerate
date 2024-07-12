@@ -22,7 +22,7 @@
 
 import re
 import tkinter as tk
-
+import dgenerate.console.util as _util
 
 class _FindDialog(tk.Toplevel):
     def __init__(self,
@@ -103,32 +103,16 @@ class _FindDialog(tk.Toplevel):
 
         self.resizable(True, False)
 
-        self.withdraw()
-
-        self.master.update_idletasks()
-        self.update_idletasks()
-
-        self.minsize(self.winfo_reqwidth(), 0)
-
-        if position is None:
-            window_width = self.master.winfo_width()
-            window_height = self.master.winfo_height()
-            top_level_width = self.winfo_width()
-            top_level_height = self.winfo_height()
-
-            position_top = self.master.winfo_y() + window_height // 2 - top_level_height // 2
-            position_left = self.master.winfo_x() + window_width // 2 - top_level_width // 2
-            if width is None:
-                self.geometry(f"+{position_left}+{position_top}")
-            else:
-                self.geometry(f"{width}x{self.winfo_reqheight()}+{position_left}+{position_top}")
+        if width is not None:
+            self.update_idletasks()
+            size = (width, self.winfo_reqheight())
         else:
-            if width is None:
-                self.geometry("+{}+{}".format(*position))
-            else:
-                self.geometry(f"{width}x{self.winfo_reqheight()}+{position[0]}+{position[1]}")
+            size = None
 
-        self.deiconify()
+        _util.position_toplevel(master=master,
+                                toplevel=self,
+                                size=size,
+                                position=position)
 
         self.find_entry.focus_set()
 
