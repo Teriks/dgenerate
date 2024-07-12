@@ -24,48 +24,31 @@ import tkinter as tk
 import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.recipesformentries.entry as _entry
 import dgenerate.console.resources as _resources
+import dgenerate.console.util as _util
 import dgenerate.textprocessing as _textprocessing
 
 
 class _ImageSeedSelect(tk.Toplevel):
-    def __init__(self, parent, position=None):
-        super().__init__(parent)
+    def __init__(self, master=None, position=None):
+        super().__init__(master)
         self.title("Insert Image Seed URI")
 
         self.grid_columnconfigure(1, weight=1)
 
         self.configure(pady=5, padx=5)
 
-        self.transient(parent)
+        self.transient(master)
         self.grab_set()
         self.resizable(True, False)
 
         self.entries = []
         self._create_widgets()
 
-        self.withdraw()
-        self.update_idletasks()
-
         self.minsize(500, self.winfo_height())
 
-        self._set_position(position)
-
-        self.deiconify()
         self.result = None
 
-    def _set_position(self, position):
-        if position is None:
-            window_width = self.master.winfo_width()
-            window_height = self.master.winfo_height()
-            top_level_width = self.winfo_width()
-            top_level_height = self.winfo_height()
-
-            position_top = self.master.winfo_y() + window_height // 2 - top_level_height // 2
-            position_left = self.master.winfo_x() + window_width // 2 - top_level_width // 2
-
-            self.geometry(f"+{position_left}+{position_top}")
-        else:
-            self.geometry("+{}+{}".format(*position))
+        _util.position_toplevel(master, self, position=position)
 
     def _create_widgets(self):
 
@@ -104,7 +87,8 @@ class _ImageSeedSelect(tk.Toplevel):
         self.insert_button = tk.Button(self, text="Insert", command=self._insert_click)
         self.insert_button.grid(row=5, column=0, columnspan=3, pady=5)
 
-    def _open_file(self, entry):
+    @staticmethod
+    def _open_file(entry):
         file_path = _filedialog.open_file_dialog(
             **_resources.get_file_dialog_args(['images-in']))
         if file_path:

@@ -22,12 +22,13 @@
 import tkinter as tk
 
 import dgenerate.console.resources as _resources
+import dgenerate.console.util as _util
 
 
 class _KarrasSchedulerSelect(tk.Toplevel):
     def __init__(self, master=None, position: tuple[int, int] = None):
         super().__init__(master)
-        self.title('Insert Karras Scheduler')
+        self.title('Insert Karras Scheduler URI')
         self._templates = None
         self._dropdown = None
         self._scheduler_names = _resources.get_karras_schedulers()
@@ -65,24 +66,7 @@ class _KarrasSchedulerSelect(tk.Toplevel):
 
         self._frame.pack(pady=(5, 5), padx=(5, 5))
 
-        self.withdraw()
-        self.update_idletasks()
-
-        if position is None:
-            window_width = self.master.winfo_width()
-            window_height = self.master.winfo_height()
-            top_level_width = self.winfo_width()
-            top_level_height = self.winfo_height()
-
-            position_top = self.master.winfo_y() + window_height // 2 - top_level_height // 2
-            position_left = self.master.winfo_x() + window_width // 2 - top_level_width // 2
-
-            self.geometry(f"+{position_left}+{position_top}")
-
-        else:
-            self.geometry("+{}+{}".format(*position))
-
-        self.deiconify()
+        _util.position_toplevel(master, self, position=position)
 
     def _insert_action(self):
         self._insert = True

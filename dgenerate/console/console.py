@@ -392,8 +392,13 @@ class DgenerateConsole(tk.Tk):
         self._input_text_context.add_separator()
         self._input_text_context.add_command(label='Insert Recipe',
                                              command=self._input_text_insert_recipe)
-        self._input_text_context.add_command(label='Insert Karras Scheduler',
+
+        self._input_text_context.add_command(label='Insert Image Seed URI',
+                                             command=self._input_text_insert_image_seed)
+        self._input_text_context.add_command(label='Insert Karras Scheduler URI',
                                              command=self._input_text_insert_karras_scheduler)
+        self._input_text_context.add_command(label='Insert Image Processor URI',
+                                             command=self._input_text_insert_image_processor)
 
         self._paned_window_vertical.add(self._input_text)
 
