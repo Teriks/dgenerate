@@ -1313,7 +1313,8 @@ def format_image_seed_uri(seed_image: str | None,
 
     :param seed_image: Seed image path
     :param inpaint_image: Inpaint image path
-    :param control_images: Single control image path, or a paths string seperated with the ``,`` character.
+    :param control_images: Single control image path, or a paths string with
+        multiple paths seperated by the ``,`` character.
     :param resize: Optional resize dimension (WxH string)
     :param aspect: Preserve aspect ratio?
     :return: The generated ``--image-seeds`` URI string
