@@ -2902,7 +2902,7 @@ features not mentioned in this documentation, that are worth reading about in th
     dgenerate --prompt-weighter-help compel
 
 
-.. code-block::
+.. code-block:: text
 
     compel:
         arguments:
@@ -3032,7 +3032,7 @@ as the ``compel`` prompt weighter currently does not.
     dgenerate --prompt-weighter-help sd-embed
 
 
-.. code-block::
+.. code-block:: text
 
     sd-embed:
 
@@ -3195,7 +3195,7 @@ Using the option ``--image-processor-help`` with no arguments will yield a list 
 
 Output:
 
-.. code-block::
+.. code-block:: text
 
     Available image processors:
 
@@ -4108,7 +4108,7 @@ This option is also available as the config directive ``\directives_help``.
 
 Example output:
 
-.. code-block::
+.. code-block:: text
 
     Available config directives:
     
