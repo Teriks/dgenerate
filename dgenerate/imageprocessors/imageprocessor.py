@@ -150,7 +150,7 @@ class ImageProcessor(_plugin.Plugin):
                     torch.cuda.empty_cache()
                     gc.collect()
                     raise _pipelines.OutOfMemoryError(e)
-        except MemoryError as e:
+        except MemoryError:
             gc.collect()
             raise _pipelines.OutOfMemoryError('cpu (system memory)')
         except Exception:
