@@ -152,7 +152,7 @@ class ImageProcessor(_plugin.Plugin):
                     raise _pipelines.OutOfMemoryError(e)
         except MemoryError as e:
             gc.collect()
-            raise _pipelines.OutOfMemoryError(e)
+            raise _pipelines.OutOfMemoryError('cpu (system memory)')
         except Exception:
             try:
                 self.to('cpu')
@@ -474,7 +474,7 @@ class ImageProcessor(_plugin.Plugin):
                 except MemoryError as e:
                     # out of cpu side memory
                     gc.collect()
-                    raise _pipelines.OutOfMemoryError(e)
+                    raise _pipelines.OutOfMemoryError('cpu (system memory)')
 
         return self
 

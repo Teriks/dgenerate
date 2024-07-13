@@ -684,7 +684,7 @@ def pipeline_to(pipeline, device: torch.device | str | None):
         # probably out of RAM on a back
         # to CPU move nothing we can do
 
-        raise OutOfMemoryError(e)
+        raise OutOfMemoryError('cpu (system memory)')
 
 
 def _call_args_debug_transformer(key, value):
