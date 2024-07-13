@@ -481,7 +481,9 @@ class ImageProcessRenderLoop:
         """
         Run the render loop, this calls :py:meth:`ImageProcessRenderLoopConfig.check` prior to running.
 
-        :raises ImageProcessRenderLoopConfigError:
+        :raises dgenerate.OutOfMemoryError: if the execution device runs out of memory
+
+        :raises ImageProcessRenderLoopConfigError: on config errors
         """
         for _ in self._run():
             continue
@@ -495,7 +497,9 @@ class ImageProcessRenderLoop:
         The exceptions mentioned here are those you may encounter upon iterating,
         they will not occur upon simple acquisition of the event stream iterator.
 
-        :raises ImageProcessRenderLoopConfigError:
+        :raises dgenerate.OutOfMemoryError: if the execution device runs out of memory
+
+        :raises ImageProcessRenderLoopConfigError: on config errors
 
         :return: :py:class:`.RenderLoopEventStream`
         """

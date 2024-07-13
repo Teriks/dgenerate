@@ -212,7 +212,7 @@ class ImageProcessor(_plugin.Plugin):
         use the input image in a ``with`` context, if you need to retain a
         copy, pass a copy.
 
-        :raise: :py:class:`dgenerate.OutOfMemoryError` if the execution device runs out of memory
+        :raise dgenerate.OutOfMemoryError: if the execution device runs out of memory
 
         :param self: :py:class:`.ImageProcessor` implementation instance
         :param image: the image to pass
@@ -276,7 +276,7 @@ class ImageProcessor(_plugin.Plugin):
         use the input image in a ``with`` context, if you need to retain a
         copy, pass a copy.
 
-        :raise: :py:class:`dgenerate.OutOfMemoryError` if the execution device runs out of memory
+        :raise dgenerate.OutOfMemoryError: if the execution device runs out of memory
 
         :param self: :py:class:`.ImageProcessor` implementation instance
         :param image: the image to pass
@@ -376,7 +376,7 @@ class ImageProcessor(_plugin.Plugin):
         use the input image in a ``with`` context, if you need to retain a
         copy, pass a copy.
 
-        :raise: :py:class:`dgenerate.OutOfMemoryError` if the execution device runs out of memory
+        :raise dgenerate.OutOfMemoryError: if the execution device runs out of memory
 
         :param image: image to process
         :param resize_resolution: image will be resized to this dimension by this method.
@@ -447,7 +447,7 @@ class ImageProcessor(_plugin.Plugin):
         Move all :py:class:`torch.nn.Module` modules registered
         to this image processor to a specific device.
 
-        :raise: :py:class:`dgenerate.OutOfMemoryError` if there is not enough memory on the specified device
+        :raise dgenerate.OutOfMemoryError: if there is not enough memory on the specified device
 
         :param device: The device string, or torch device object
         :return: the image processor itself
