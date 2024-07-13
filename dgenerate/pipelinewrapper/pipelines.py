@@ -852,7 +852,7 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
                 # nothing we can do for flax, the process
                 # is left dirty by the library
                 _messages.log(
-                    'Flax encountered an OOM condition, if you are running interactively is '
+                    'Flax encountered an OOM condition, if you are running interactively it is '
                     'recommended that you restart the dgenerate process.', level=_messages.WARNING)
                 raise OutOfMemoryError(e)
         else:
