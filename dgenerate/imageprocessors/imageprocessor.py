@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import gc
 import itertools
 import os
 
@@ -28,9 +29,16 @@ import dgenerate.filelock as _filelock
 import dgenerate.image as _image
 import dgenerate.imageprocessors.exceptions as _exceptions
 import dgenerate.messages as _messages
+# avoid recursive import for OOM exception
+import dgenerate.pipelinewrapper.pipelines as _pipelines
 import dgenerate.pipelinewrapper.util as _util
 import dgenerate.plugin as _plugin
 import dgenerate.types
+
+try:
+    import jaxlib
+except ImportError:
+    jaxlib = None
 
 
 class ImageProcessor(_plugin.Plugin):
@@ -113,6 +121,69 @@ class ImageProcessor(_plugin.Plugin):
             image.save(filename)
             _messages.debug_log(f'{debug_header}: "{filename}"')
 
+    def __with_memory_safety(self, func, *args, **kwargs):
+        if jaxlib is not None:
+            try:
+                return func(*args, **kwargs)
+            except jaxlib.xla_extension.XlaRuntimeError as e:
+                _messages.log(
+                    'Flax encountered an OOM condition, if you are running interactively it is '
+                    'recommended that you restart the dgenerate process.', level=_messages.WARNING)
+                raise _pipelines.OutOfMemoryError(e)
+            except torch.cuda.OutOfMemoryError as e:
+                try:
+                    self.to('cpu')
+                except:
+                    pass
+                torch.cuda.empty_cache()
+                gc.collect()
+                raise _pipelines.OutOfMemoryError(e)
+        else:
+            try:
+                return func(*args, **kwargs)
+            except torch.cuda.OutOfMemoryError as e:
+                try:
+                    self.to('cpu')
+                except:
+                    pass
+                torch.cuda.empty_cache()
+                gc.collect()
+                raise _pipelines.OutOfMemoryError(e)
+
+    def __pre_resize(self,
+                     image: PIL.Image.Image,
+                     resize_resolution: dgenerate.types.OptionalSize = None) -> PIL.Image.Image:
+
+        self.to(self.device)
+
+        img_copy = image.copy()
+
+        processed = self.impl_pre_resize(image, resize_resolution)
+        if processed is not image:
+            image.close()
+
+            self.__save_debug_image(
+                processed,
+                'Wrote Processor Debug Image (because copied)')
+
+            processed.filename = _image.get_filename(image)
+            return processed
+
+        # Not copied but may be modified
+
+        identical = all(a == b for a, b in
+                        itertools.zip_longest(processed.getdata(),
+                                              img_copy.getdata(),
+                                              fillvalue=None))
+
+        if not identical:
+            # Write the debug output if it was modified in place
+            self.__save_debug_image(
+                processed,
+                'Wrote Processor Debug Image (because modified)')
+
+        return processed
+
     def pre_resize(self,
                    image: PIL.Image.Image,
                    resize_resolution: dgenerate.types.OptionalSize = None) -> PIL.Image.Image:
@@ -129,6 +200,8 @@ class ImageProcessor(_plugin.Plugin):
         use the input image in a ``with`` context, if you need to retain a
         copy, pass a copy.
 
+        :raise: :py:class:`dgenerate.OutOfMemoryError` if the execution device runs out of memory
+
         :param self: :py:class:`.ImageProcessor` implementation instance
         :param image: the image to pass
         :param resize_resolution: the size that the image is going to be resized
@@ -136,12 +209,21 @@ class ImageProcessor(_plugin.Plugin):
 
         :return: processed image, may be the same image or a copy.
         """
+        return self.__with_memory_safety(
+            self.__pre_resize,
+            image=image,
+            resize_resolution=resize_resolution)
 
-        self.to(self.device)
+    def __post_resize(self,
+                      image: PIL.Image.Image) -> PIL.Image.Image:
 
         img_copy = image.copy()
 
-        processed = self.impl_pre_resize(image, resize_resolution)
+        processed = self.impl_post_resize(image)
+
+        if self.__model_offload:
+            self.to('cpu')
+
         if processed is not image:
             image.close()
 
@@ -182,43 +264,17 @@ class ImageProcessor(_plugin.Plugin):
         use the input image in a ``with`` context, if you need to retain a
         copy, pass a copy.
 
+        :raise: :py:class:`dgenerate.OutOfMemoryError` if the execution device runs out of memory
+
         :param self: :py:class:`.ImageProcessor` implementation instance
         :param image: the image to pass
 
         :return: processed image, may be the same image or a copy.
         """
 
-        img_copy = image.copy()
-
-        processed = self.impl_post_resize(image)
-
-        if self.__model_offload:
-            self.to('cpu')
-
-        if processed is not image:
-            image.close()
-
-            self.__save_debug_image(
-                processed,
-                'Wrote Processor Debug Image (because copied)')
-
-            processed.filename = _image.get_filename(image)
-            return processed
-
-        # Not copied but may be modified
-
-        identical = all(a == b for a, b in
-                        itertools.zip_longest(processed.getdata(),
-                                              img_copy.getdata(),
-                                              fillvalue=None))
-
-        if not identical:
-            # Write the debug output if it was modified in place
-            self.__save_debug_image(
-                processed,
-                'Wrote Processor Debug Image (because modified)')
-
-        return processed
+        return self.__with_memory_safety(
+            self.__post_resize,
+            image=image)
 
     def _process_pre_resize(self, image: PIL.Image.Image, resize_resolution: dgenerate.types.OptionalSize):
         filename = _image.get_filename(image)
@@ -254,32 +310,11 @@ class ImageProcessor(_plugin.Plugin):
         """
         return None
 
-    def process(self,
-                image: PIL.Image.Image,
-                resize_resolution: dgenerate.types.OptionalSize = None,
-                aspect_correct: bool = True,
-                align: int | None = 8):
-        """
-        Preform image processing on an image, including the requested resizing step.
-
-        Invokes the image processor pre and post resizing with
-        appropriate arguments and correct resource management.
-
-        The original image will be closed if the implementation returns a new image
-        instead of modifying it in place, you should not count on the original image
-        being open and usable once this function completes though it is safe to
-        use the input image in a ``with`` context, if you need to retain a
-        copy, pass a copy.
-
-        :param image: image to process
-        :param resize_resolution: image will be resized to this dimension by this method.
-        :param aspect_correct: Should the resize operation be aspect correct?
-        :param align: Align by this amount of pixels, if the input image is not aligned
-            to this amount of pixels, it will be aligned by resizing. Passing ``None``
-            or ``1`` disables alignment.
-
-        :return: the processed image
-        """
+    def __process(self,
+                  image: PIL.Image.Image,
+                  resize_resolution: dgenerate.types.OptionalSize = None,
+                  aspect_correct: bool = True,
+                  align: int | None = 8):
 
         forced_alignment = self.get_alignment()
         if forced_alignment is not None:
@@ -311,6 +346,42 @@ class ImageProcessor(_plugin.Plugin):
             pre_processed.close()
 
         return self._process_post_resize(image)
+
+    def process(self,
+                image: PIL.Image.Image,
+                resize_resolution: dgenerate.types.OptionalSize = None,
+                aspect_correct: bool = True,
+                align: int | None = 8):
+        """
+        Preform image processing on an image, including the requested resizing step.
+
+        Invokes the image processor pre and post resizing with
+        appropriate arguments and correct resource management.
+
+        The original image will be closed if the implementation returns a new image
+        instead of modifying it in place, you should not count on the original image
+        being open and usable once this function completes though it is safe to
+        use the input image in a ``with`` context, if you need to retain a
+        copy, pass a copy.
+
+        :raise: :py:class:`dgenerate.OutOfMemoryError` if the execution device runs out of memory
+
+        :param image: image to process
+        :param resize_resolution: image will be resized to this dimension by this method.
+        :param aspect_correct: Should the resize operation be aspect correct?
+        :param align: Align by this amount of pixels, if the input image is not aligned
+            to this amount of pixels, it will be aligned by resizing. Passing ``None``
+            or ``1`` disables alignment.
+
+        :return: the processed image
+        """
+
+        return self.__with_memory_safety(
+            self.__process,
+            image=image,
+            resize_resolution=resize_resolution,
+            aspect_correct=aspect_correct,
+            align=align)
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: dgenerate.types.OptionalSize):
         """
@@ -364,6 +435,8 @@ class ImageProcessor(_plugin.Plugin):
         Move all :py:class:`torch.nn.Module` modules registered
         to this image processor to a specific device.
 
+        :raise: :py:class:`dgenerate.OutOfMemoryError` if there is not enough memory on the specified device
+
         :param device: The device string, or torch device object
         :return: the image processor itself
         """
@@ -377,7 +450,15 @@ class ImageProcessor(_plugin.Plugin):
                 m._DGENERATE_IMAGE_PROCESSOR_DEVICE = device
                 _messages.debug_log(
                     f'Moving ImageProcessor registered module: {dgenerate.types.fullname(m)}.to("{device}")')
-                m.to(device)
+
+                try:
+                    m.to(device)
+                except torch.cuda.OutOfMemoryError as e:
+                    m.to('cpu')
+                    m._DGENERATE_IMAGE_PROCESSOR_DEVICE = 'cpu'
+                    torch.cuda.empty_cache()
+                    gc.collect()
+                    raise _pipelines.OutOfMemoryError(e)
 
         return self
 
