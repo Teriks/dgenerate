@@ -86,6 +86,7 @@ def invoke_image_process(
     :raises dgenerate.ImageProcessorNotFoundError:
     :raises dgenerate.FrameStartOutOfBounds:
     :raises dgenerate.MediaIdentificationError:
+    :raises dgenerate.OutOfMemoryError:
     :raises EnvironmentError:
 
     :return: integer return-code, anything other than 0 is failure
@@ -129,6 +130,7 @@ def invoke_image_process_events(
     :raises dgenerate.ImageProcessorNotFoundError:
     :raises dgenerate.FrameStartOutOfBounds:
     :raises dgenerate.MediaIdentificationError:
+    :raises dgenerate.OutOfMemoryError:
     :raises EnvironmentError:
 
     :return: :py:data:`.InvokeImageProcessEventStream`
