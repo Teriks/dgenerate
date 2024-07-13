@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import ast
 import collections.abc
+import gc
 import inspect
 import typing
 
@@ -42,6 +43,11 @@ import dgenerate.promptweighters as _promptweighters
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
+
+try:
+    import jaxlib
+except ImportError:
+    jaxlib = None
 
 
 class OutOfMemoryError(Exception):
@@ -580,29 +586,7 @@ def get_torch_device_string(component: diffusers.DiffusionPipeline | torch.nn.Mo
     return str(get_torch_device(component))
 
 
-def pipeline_to(pipeline, device: torch.device | str | None):
-    """
-    Move a diffusers pipeline to a device if possible, in a way that dgenerate can keep track of.
-
-    This calls methods associated with updating the cache statistics such as
-    :py:func:`dgenerate.pipelinewrapper.pipeline_off_cpu_update_cache_info` and
-    :py:func:`dgenerate.pipelinewrapper.pipeline_to_cpu_update_cache_info` for you,
-    as well as the associated cache update functions for the pipelines individual
-    components as needed.
-
-    If the pipeline does not possess the ``.to()`` method (such as with flax pipelines), this is a no-op.
-
-    If ``device==None`` this is a no-op.
-
-    Modules which are meta tensors will not be moved (sequentially offloaded modules)
-
-    Modules which have model cpu offload enabled will not be moved unless they are moving to "cpu"
-
-    :param pipeline: the pipeline
-    :param device: the device
-
-    :return: the moved pipeline
-    """
+def _pipeline_to(pipeline, device: torch.device | str | None):
     if device is None:
         return
 
@@ -657,6 +641,50 @@ def pipeline_to(pipeline, device: torch.device | str | None):
 
     if device == 'cpu':
         torch.cuda.empty_cache()
+
+
+def pipeline_to(pipeline, device: torch.device | str | None):
+    """
+    Move a diffusers pipeline to a device if possible, in a way that dgenerate can keep track of.
+
+    This calls methods associated with updating the cache statistics such as
+    :py:func:`dgenerate.pipelinewrapper.pipeline_off_cpu_update_cache_info` and
+    :py:func:`dgenerate.pipelinewrapper.pipeline_to_cpu_update_cache_info` for you,
+    as well as the associated cache update functions for the pipelines individual
+    components as needed.
+
+    If the pipeline does not possess the ``.to()`` method (such as with flax pipelines), this is a no-op.
+
+    If ``device==None`` this is a no-op.
+
+    Modules which are meta tensors will not be moved (sequentially offloaded modules)
+
+    Modules which have model cpu offload enabled will not be moved unless they are moving to "cpu"
+
+    :raise: :py:class:`OutOfMemoryError` if there is not enough memory on the specified device
+
+    :param pipeline: the pipeline
+    :param device: the device
+
+    :return: the moved pipeline
+    """
+
+    try:
+        _pipeline_to(pipeline=pipeline, device=device)
+    except torch.cuda.OutOfMemoryError as e:
+        # attempt to recover VRAM before rethrowing
+        # move any modules back to cpu which have entered VRAM
+
+        _pipeline_to(pipeline=pipeline, device='cpu')
+        torch.cuda.empty_cache()
+        gc.collect()
+
+        raise OutOfMemoryError(e)
+    except MemoryError as e:
+        # probably out of RAM on a back
+        # to CPU move nothing we can do
+
+        raise OutOfMemoryError(e)
 
 
 def _call_args_debug_transformer(key, value):
@@ -728,6 +756,7 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
     Call a diffusers pipeline, offload the last called pipeline to CPU before
     doing so if the last pipeline is not being called in succession
 
+    :raise: :py:class:`OutOfMemoryError` if there is not enough memory on the specified device
 
     :param pipeline: The pipeline
 
@@ -756,7 +785,14 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
             kwargs, value_transformer=_call_args_debug_transformer))
 
     def _call_prompt_weighter():
-        translated = prompt_weighter.translate_to_embeds(pipeline, device, kwargs)
+        try:
+            translated = prompt_weighter.translate_to_embeds(pipeline, device, kwargs)
+        except Exception:
+            try:
+                prompt_weighter.cleanup()
+            except:
+                pass
+            raise
 
         def _debug_string_func():
             return f'{prompt_weighter.__class__.__name__} translated pipeline call args to: ' + \
@@ -768,7 +804,7 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
 
         return translated
 
-    def _call_pipeline():
+    def _call_pipeline_raw():
         try:
             if prompt_weighter is None:
                 _warn_prompt_lengths(pipeline, **kwargs)
@@ -789,6 +825,42 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
                 raise UnsupportedPipelineConfigError(
                     'Missing pipeline module?, cannot access: ' + null_attr_name)
             raise
+
+    def _torch_oom_handler():
+        global _LAST_CALLED_PIPELINE
+
+        if pipeline is _LAST_CALLED_PIPELINE:
+            _LAST_CALLED_PIPELINE = None
+
+        # move the torch pipeline back to the CPU
+        pipeline_to(pipeline, 'cpu')
+
+        # empty the CUDA cache
+        torch.cuda.empty_cache()
+
+        # force garbage collection
+        gc.collect()
+
+    def _call_pipeline():
+        if jaxlib is not None:
+            try:
+                return _call_pipeline_raw()
+            except torch.cuda.OutOfMemoryError as e:
+                _torch_oom_handler()
+                raise OutOfMemoryError(e)
+            except jaxlib.xla_extension.XlaRuntimeError as e:
+                # nothing we can do for flax, the process
+                # is left dirty by the library
+                _messages.log(
+                    'Flax encountered an OOM condition, if you are running interactively is '
+                    'recommended that you restart the dgenerate process.', level=_messages.WARNING)
+                raise OutOfMemoryError(e)
+        else:
+            try:
+                return _call_pipeline_raw()
+            except torch.cuda.OutOfMemoryError as e:
+                _torch_oom_handler()
+                raise OutOfMemoryError(e)
 
     if pipeline is _LAST_CALLED_PIPELINE:
         return _call_pipeline()

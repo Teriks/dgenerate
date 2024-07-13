@@ -2144,24 +2144,15 @@ class DiffusionPipelineWrapper:
             self._get_pipeline_defaults(user_args=copy_args)
 
         if self._model_type == _enums.ModelType.FLAX:
-            try:
-                result = self._call_flax(pipeline_args=pipeline_args,
-                                         user_args=copy_args)
-            except jaxlib.xla_extension.XlaRuntimeError as e:
-                raise _pipelines.OutOfMemoryError(e)
+            result = self._call_flax(pipeline_args=pipeline_args,
+                                     user_args=copy_args)
         elif self.model_type == _enums.ModelType.TORCH_S_CASCADE:
-            try:
-                result = self._call_torch_s_cascade(
-                    pipeline_args=pipeline_args,
-                    user_args=copy_args)
-            except torch.cuda.OutOfMemoryError as e:
-                raise _pipelines.OutOfMemoryError(e)
+            result = self._call_torch_s_cascade(
+                pipeline_args=pipeline_args,
+                user_args=copy_args)
         else:
-            try:
-                result = self._call_torch(pipeline_args=pipeline_args,
-                                          user_args=copy_args)
-            except torch.cuda.OutOfMemoryError as e:
-                raise _pipelines.OutOfMemoryError(e)
+            result = self._call_torch(pipeline_args=pipeline_args,
+                                      user_args=copy_args)
 
         return result
 
