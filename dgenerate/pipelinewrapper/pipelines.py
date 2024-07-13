@@ -785,8 +785,27 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
             kwargs, value_transformer=_call_args_debug_transformer))
 
     def _call_prompt_weighter():
+        # this is horrific
         try:
-            translated = prompt_weighter.translate_to_embeds(pipeline, device, kwargs)
+            if jaxlib is not None:
+                try:
+                    translated = prompt_weighter.translate_to_embeds(pipeline, device, kwargs)
+                except (jaxlib.xla_extension.XlaRuntimeError,
+                        torch.cuda.OutOfMemoryError) as e:
+                    try:
+                        prompt_weighter.cleanup()
+                    except:
+                        pass
+                    raise OutOfMemoryError(e)
+            else:
+                try:
+                    translated = prompt_weighter.translate_to_embeds(pipeline, device, kwargs)
+                except torch.cuda.OutOfMemoryError as e:
+                    try:
+                        prompt_weighter.cleanup()
+                    except:
+                        pass
+                    raise OutOfMemoryError(e)
         except Exception:
             try:
                 prompt_weighter.cleanup()
