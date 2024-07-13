@@ -661,7 +661,7 @@ def pipeline_to(pipeline, device: torch.device | str | None):
 
     Modules which have model cpu offload enabled will not be moved unless they are moving to "cpu"
 
-    :raise: :py:class:`OutOfMemoryError` if there is not enough memory on the specified device
+    :raise OutOfMemoryError: if there is not enough memory on the specified device
 
     :param pipeline: the pipeline
     :param device: the device
@@ -756,7 +756,7 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
     Call a diffusers pipeline, offload the last called pipeline to CPU before
     doing so if the last pipeline is not being called in succession
 
-    :raise: :py:class:`OutOfMemoryError` if there is not enough memory on the specified device
+
 
     :param pipeline: The pipeline
 
@@ -769,7 +769,9 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
 
     :param prompt_weighter: Optional prompt weighter for weighted prompt syntaxes
 
-    :raise UnsupportedPipelineConfiguration:
+    :raises OutOfMemoryError: if there is not enough memory on the specified device
+
+    :raises UnsupportedPipelineConfiguration:
         If the pipeline is missing certain required modules, such as text encoders.
 
     :return: the result of calling the diffusers pipeline
