@@ -2330,9 +2330,6 @@ LoRAs are supported for these model types:
 When multiple specifications are given, all mentioned models will be fused into
 the main model at a given scale.
 
-The plural form of the argument is identical to the non-plural version, which only
-exists for backward compatibility.
-
 You can provide a huggingface repository slug, .pt, .pth, .bin, .ckpt, or .safetensors files.
 Blob links are not accepted, for that use ``subfolder`` and ``weight-name`` described below.
 
