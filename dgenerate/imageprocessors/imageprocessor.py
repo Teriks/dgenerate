@@ -122,33 +122,44 @@ class ImageProcessor(_plugin.Plugin):
             _messages.debug_log(f'{debug_header}: "{filename}"')
 
     def __with_memory_safety(self, func, *args, **kwargs):
-        if jaxlib is not None:
-            try:
-                return func(*args, **kwargs)
-            except jaxlib.xla_extension.XlaRuntimeError as e:
-                _messages.log(
-                    'Flax encountered an OOM condition, if you are running interactively it is '
-                    'recommended that you restart the dgenerate process.', level=_messages.WARNING)
-                raise _pipelines.OutOfMemoryError(e)
-            except torch.cuda.OutOfMemoryError as e:
+        try:
+            if jaxlib is not None:
                 try:
-                    self.to('cpu')
-                except:
-                    pass
-                torch.cuda.empty_cache()
-                gc.collect()
-                raise _pipelines.OutOfMemoryError(e)
-        else:
-            try:
-                return func(*args, **kwargs)
-            except torch.cuda.OutOfMemoryError as e:
+                    return func(*args, **kwargs)
+                except jaxlib.xla_extension.XlaRuntimeError as e:
+                    _messages.log(
+                        'Flax encountered an OOM condition, if you are running interactively it is '
+                        'recommended that you restart the dgenerate process.', level=_messages.WARNING)
+                    raise _pipelines.OutOfMemoryError(e)
+                except torch.cuda.OutOfMemoryError as e:
+                    try:
+                        self.to('cpu')
+                    except:
+                        pass
+                    torch.cuda.empty_cache()
+                    gc.collect()
+                    raise _pipelines.OutOfMemoryError(e)
+            else:
                 try:
-                    self.to('cpu')
-                except:
-                    pass
-                torch.cuda.empty_cache()
-                gc.collect()
-                raise _pipelines.OutOfMemoryError(e)
+                    return func(*args, **kwargs)
+                except torch.cuda.OutOfMemoryError as e:
+                    try:
+                        self.to('cpu')
+                    except:
+                        pass
+                    torch.cuda.empty_cache()
+                    gc.collect()
+                    raise _pipelines.OutOfMemoryError(e)
+        except MemoryError as e:
+            raise _pipelines.OutOfMemoryError(e)
+        except Exception:
+            try:
+                self.to('cpu')
+            except:
+                pass
+            torch.cuda.empty_cache()
+            gc.collect()
+            raise
 
     def __pre_resize(self,
                      image: PIL.Image.Image,
@@ -458,6 +469,9 @@ class ImageProcessor(_plugin.Plugin):
                     m._DGENERATE_IMAGE_PROCESSOR_DEVICE = 'cpu'
                     torch.cuda.empty_cache()
                     gc.collect()
+                    raise _pipelines.OutOfMemoryError(e)
+                except MemoryError as e:
+                    # out of cpu side memory
                     raise _pipelines.OutOfMemoryError(e)
 
         return self
