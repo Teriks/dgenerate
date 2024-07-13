@@ -882,25 +882,29 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
         gc.collect()
 
     def _call_pipeline():
-        if jaxlib is not None:
-            try:
-                return _call_pipeline_raw()
-            except torch.cuda.OutOfMemoryError as e:
-                _torch_oom_handler()
-                raise OutOfMemoryError(e)
-            except jaxlib.xla_extension.XlaRuntimeError as e:
-                # nothing we can do for flax, the process
-                # is left dirty by the library
-                _messages.log(
-                    'Flax encountered an OOM condition, if you are running interactively it is '
-                    'recommended that you restart the dgenerate process.', level=_messages.WARNING)
-                raise OutOfMemoryError(e)
-        else:
-            try:
-                return _call_pipeline_raw()
-            except torch.cuda.OutOfMemoryError as e:
-                _torch_oom_handler()
-                raise OutOfMemoryError(e)
+        try:
+            if jaxlib is not None:
+                try:
+                    return _call_pipeline_raw()
+                except torch.cuda.OutOfMemoryError as e:
+                    _torch_oom_handler()
+                    raise OutOfMemoryError(e)
+                except jaxlib.xla_extension.XlaRuntimeError as e:
+                    # nothing we can do for flax, the process
+                    # is left dirty by the library
+                    _messages.log(
+                        'Flax encountered an OOM condition, if you are running interactively it is '
+                        'recommended that you restart the dgenerate process.', level=_messages.WARNING)
+                    raise OutOfMemoryError(e)
+            else:
+                try:
+                    return _call_pipeline_raw()
+                except torch.cuda.OutOfMemoryError as e:
+                    _torch_oom_handler()
+                    raise OutOfMemoryError(e)
+        except MemoryError:
+            gc.collect()
+            raise OutOfMemoryError('cpu (system memory)')
 
     if pipeline is _LAST_CALLED_PIPELINE:
         return _call_pipeline()
