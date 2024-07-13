@@ -151,6 +151,7 @@ class ImageProcessor(_plugin.Plugin):
                     gc.collect()
                     raise _pipelines.OutOfMemoryError(e)
         except MemoryError as e:
+            gc.collect()
             raise _pipelines.OutOfMemoryError(e)
         except Exception:
             try:
@@ -472,6 +473,7 @@ class ImageProcessor(_plugin.Plugin):
                     raise _pipelines.OutOfMemoryError(e)
                 except MemoryError as e:
                     # out of cpu side memory
+                    gc.collect()
                     raise _pipelines.OutOfMemoryError(e)
 
         return self
