@@ -680,10 +680,10 @@ def pipeline_to(pipeline, device: torch.device | str | None):
         gc.collect()
 
         raise OutOfMemoryError(e)
-    except MemoryError as e:
+    except MemoryError:
         # probably out of RAM on a back
-        # to CPU move nothing we can do
-
+        # to CPU move not much we can do
+        gc.collect()
         raise OutOfMemoryError('cpu (system memory)')
 
 
@@ -818,6 +818,13 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
                     torch.cuda.empty_cache()
                     gc.collect()
                     raise OutOfMemoryError(e)
+        except MemoryError:
+            try:
+                prompt_weighter.cleanup()
+            except:
+                pass
+            gc.collect()
+            raise OutOfMemoryError('cpu (system memory)')
         except Exception:
             try:
                 prompt_weighter.cleanup()
