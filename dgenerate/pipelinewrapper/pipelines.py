@@ -790,12 +790,22 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
             if jaxlib is not None:
                 try:
                     translated = prompt_weighter.translate_to_embeds(pipeline, device, kwargs)
-                except (jaxlib.xla_extension.XlaRuntimeError,
-                        torch.cuda.OutOfMemoryError) as e:
+                except jaxlib.xla_extension.XlaRuntimeError as e:
+                    _messages.log(
+                        'Flax encountered an OOM condition, if you are running interactively it is '
+                        'recommended that you restart the dgenerate process.', level=_messages.WARNING)
                     try:
                         prompt_weighter.cleanup()
                     except:
                         pass
+                    raise OutOfMemoryError(e)
+                except torch.cuda.OutOfMemoryError as e:
+                    try:
+                        prompt_weighter.cleanup()
+                    except:
+                        pass
+                    torch.cuda.empty_cache()
+                    gc.collect()
                     raise OutOfMemoryError(e)
             else:
                 try:
@@ -805,12 +815,16 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
                         prompt_weighter.cleanup()
                     except:
                         pass
+                    torch.cuda.empty_cache()
+                    gc.collect()
                     raise OutOfMemoryError(e)
         except Exception:
             try:
                 prompt_weighter.cleanup()
             except:
                 pass
+            torch.cuda.empty_cache()
+            gc.collect()
             raise
 
         def _debug_string_func():
