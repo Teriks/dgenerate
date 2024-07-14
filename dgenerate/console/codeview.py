@@ -118,6 +118,37 @@ class DgenerateCodeView(tk.Frame):
 
         self.text.delete = delete_new
 
+    def gen_undo_event(self):
+        self.text.event_generate('<<Undo>>')
+        if self._highlighting:
+            self._syntax_highlighter.highlight_visible()
+
+    def gen_redo_event(self):
+        self.text.event_generate('<<Redo>>')
+        if self._highlighting:
+            self._syntax_highlighter.highlight_visible()
+
+    def gen_cut_event(self):
+        self.text.event_generate('<<Cut>>')
+        if self._highlighting:
+            self._syntax_highlighter.highlight_visible()
+
+    def gen_paste_event(self):
+        self.text.event_generate('<<Paste>>')
+        if self._highlighting:
+            self._syntax_highlighter.highlight_visible()
+
+    def gen_delete_event(self):
+        self.text.event_generate('<Delete>')
+        if self._highlighting:
+            self._syntax_highlighter.highlight_visible()
+
+    def gen_selectall_event(self):
+        self.text.event_generate('<<SelectAll>>')
+
+    def gen_copy_event(self):
+        self.text.event_generate('<<Copy>>')
+
     def format_code(self):
         text = self.text.get("1.0", "end-1c")
         self.text.replace("1.0", "end-1c",
