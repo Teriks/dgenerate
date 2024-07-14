@@ -970,25 +970,25 @@ class DgenerateConsole(tk.Tk):
             f.close()
 
     def _undo_input_entry(self):
-        self._input_text.text.event_generate('<<Undo>>')
+        self._input_text.gen_undo_event()
 
     def _redo_input_entry(self):
-        self._input_text.text.event_generate('<<Redo>>')
+        self._input_text.gen_redo_event()
 
     def _cut_input_entry_selection(self):
-        self._input_text.text.event_generate('<<Cut>>')
+        self._input_text.gen_cut_event()
 
     def _copy_input_entry_selection(self):
-        self._input_text.text.event_generate('<<Copy>>')
+        self._input_text.gen_copy_event()
 
     def _paste_input_entry(self):
-        self._input_text.text.event_generate('<<Paste>>')
+        self._input_text.gen_paste_event()
 
     def _delete_input_entry_selection(self):
-        self._input_text.text.event_generate('<Delete>')
+        self._input_text.gen_delete_event()
 
     def _select_all_input_entry(self):
-        self._input_text.text.event_generate('<<SelectAll>>')
+        self._input_text.gen_selectall_event()
 
     def _copy_output_text_selection(self):
         self._output_text.text.event_generate('<<Copy>>')
