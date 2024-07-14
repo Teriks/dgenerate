@@ -14,7 +14,7 @@ title: Deep Floyd
 
 \set prompt "add your prompt here"
 
-\setp auth_token @string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]
+\setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
 
 \set device @device[{"optional":false}]
 
