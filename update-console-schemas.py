@@ -44,12 +44,12 @@ with open('dgenerate/console/schemas/karrasschedulers.json', 'w') as file:
 with open('dgenerate/console/schemas/mediaformats.json', 'w') as file:
     schema = dict()
 
-    schema['images-in'] = _mediainput.supported_image_formats()
+    schema['images-in'] = sorted(_mediainput.supported_image_formats())
 
-    schema['images-out'] = _mediaoutput.supported_static_image_formats()
+    schema['images-out'] = sorted(_mediaoutput.supported_static_image_formats())
 
-    schema['videos-in'] = _mediainput.supported_animation_reader_formats()
+    schema['videos-in'] = sorted(_mediainput.supported_animation_reader_formats())
 
-    schema['videos-out'] = _mediaoutput.supported_animation_writer_formats()
+    schema['videos-out'] = sorted(_mediaoutput.supported_animation_writer_formats())
 
     json.dump(schema, file)

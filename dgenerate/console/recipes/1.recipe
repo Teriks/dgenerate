@@ -3,7 +3,7 @@ title: Stable Diffusion 3
 # Stable Diffusion 3 requires a huggingface auth token to access
 # you must request access to the repository
 
-\setp auth_token @string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]
+\setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
 
 \set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
 
