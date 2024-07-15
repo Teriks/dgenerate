@@ -397,7 +397,7 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
                 pbar.close()
                 tile //= 2
                 _messages.log(
-                    f'Reducing tile size to {tile} and retrying due to GPU running out of memory.',
+                    f'Reducing tile size to {tile} and retrying due to running out of memory.',
                     level=_messages.WARNING)
                 if tile < 128:
                     raise e
