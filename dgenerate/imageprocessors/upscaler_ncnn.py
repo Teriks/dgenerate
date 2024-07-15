@@ -25,6 +25,7 @@ import PIL.Image
 import PIL.Image
 import ncnn
 import numpy
+import psutil
 import tqdm.auto
 
 import dgenerate
@@ -255,7 +256,9 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
     The "factor" argument should be set to the upscale factor, such as 4. This
     value must be correct for the supplied model to ensure correct operation.
 
-    The "cpu-threads" argument determines the number of cpu threads used.
+    The "cpu-threads" argument determines the number of cpu threads used, the
+    default value is "auto" which uses the maximum amount. You may also pass
+    "half" to use half the cpus logical thread count.
 
     The "use-gpu" argument determines if the gpu is used, this defaults to
     False for reasons outlined below.
@@ -290,7 +293,7 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
                  model: str,
                  params: str,
                  factor: int,
-                 cpu_threads: int = 4,
+                 cpu_threads: int | str = "auto",
                  use_gpu: bool = False,
                  gpu_index: int = 0,
                  tile: typing.Union[int, str] = 512,
@@ -301,6 +304,7 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
         :param model: NCNN compatible upscaler model on disk, or at a URL
         :param params: NCNN model params file on disk, or at a URL
         :param factor: upscale factor
+        :param cpu_threads: Number of CPU threads, or "auto"
         :param use_gpu: use a GPU?
         :param gpu_index: which GPU to use, zero indexed.
         :param channels: number of image channels, 1 through 4, default is 3
@@ -337,8 +341,9 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
         if gpu_index < 0:
             raise self.argument_error('Argument "gpu-index" must be greater than or equal to 0.')
 
-        if cpu_threads < 1:
-            raise self.argument_error('Argument "cpu-threads" must be greater than or equal to 1.')
+        if isinstance(cpu_threads, int) and cpu_threads < 1:
+            raise self.argument_error(
+                'Argument "cpu-threads" must be greater than or equal to 1, or "auto" or "half".')
 
         if _webcache.is_downloadable_url(model):
             self._model_path = _webcache.create_web_cache_file(model)
@@ -356,7 +361,13 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
         self._use_gpu = use_gpu
         self._gpu_index = gpu_index
         self._factor = factor
-        self._threads = cpu_threads
+        self._threads = cpu_threads if isinstance(cpu_threads, int) else psutil.cpu_count(logical=True)
+
+        if cpu_threads == "half":
+            self._threads = self._threads // 2
+
+        _messages.debug_log(
+            f'NCNN upscaler using thread count: {self._threads}')
 
     def _process_upscale(self, image, model):
 
