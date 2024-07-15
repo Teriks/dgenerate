@@ -366,9 +366,6 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
         if cpu_threads == "half":
             self._threads = self._threads // 2
 
-        _messages.debug_log(
-            f'NCNN upscaler using thread count: {self._threads}')
-
     def _process_upscale(self, image, model):
 
         oom = True
