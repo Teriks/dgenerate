@@ -32,7 +32,6 @@ import dgenerate.imageprocessors.upscaler as _t_upscaler
 import dgenerate.messages as _messages
 import dgenerate.types as _types
 import dgenerate.webcache as _webcache
-import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 
 
 class _UnsupportedModelError(Exception):
@@ -48,6 +47,14 @@ class _NCNNIncorrectScaleFactor(Exception):
     pass
 
 
+class _NCNNGPUIndexError(Exception):
+    pass
+
+
+class _NCNNNoGPUError(Exception):
+    pass
+
+
 class NCNNUpscaleModel:
     def __init__(self, param_file: str, bin_file: str, use_gpu=True, gpu_index=0):
         self.net = ncnn.Net()
@@ -58,7 +65,11 @@ class NCNNUpscaleModel:
             ncnn.destroy_gpu_instance()
 
             if gpu_count > 0:
+                if gpu_index > gpu_count:
+                    raise _NCNNGPUIndexError('specified gpu index is not visible to NCNN.')
                 self.net.opt.use_vulkan_compute = True
+            else:
+                raise _NCNNNoGPUError('NCNN cannot find any gpus.')
 
         self.net.load_param(param_file)
         self.net.load_model(bin_file)
@@ -236,6 +247,10 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
     The "factor" argument should be set to the upscale factor, such as 4. This
     value must be correct for the supplied model to ensure correct operation.
 
+    The "use-gpu" argument determines if the gpu is used.
+
+    The "gpu-index" argument determines which gpu is used, it is 0 indexed.
+
     The "channels" argument should be set to the number of image channels the model
     accepts, the default value is 3 (RGB).
 
@@ -260,6 +275,8 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
                  model: str,
                  params: str,
                  factor: int,
+                 use_gpu=True,
+                 gpu_index=0,
                  tile: typing.Union[int, str] = 512,
                  overlap: int = 32,
                  pre_resize: bool = False,
@@ -268,6 +285,8 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
         :param model: NCNN compatible upscaler model on disk, or at a URL
         :param params: NCNN model params file on disk, or at a URL
         :param factor: upscale factor
+        :param use_gpu: use a GPU?
+        :param gpu_index: which GPU to use, zero indexed.
         :param channels: number of image channels, 1 through 4, default is 3
         :param tile: specifies the tile size for tiled upscaling, it must be divisible by 2, and defaults to 512.
             Specifying 0 disable tiling entirely.
@@ -299,6 +318,9 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
         if factor < 1:
             raise self.argument_error('Argument "factor" must be greater than or equal to 1.')
 
+        if gpu_index < 0:
+            raise self.argument_error('Argument "gpu_index" must be greater than or equal to 0.')
+
         if _webcache.is_downloadable_url(model):
             self._model_path = _webcache.create_web_cache_file(model)
         else:
@@ -310,21 +332,14 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
             self._params_path = params
 
         try:
-            try:
-                _pipelinewrapper_util.is_valid_device_string(self.device)
-            except _pipelinewrapper_util.InvalidDeviceOrdinalException as e:
-                raise self.argument_error('Argument "device" does not represent a valid device.')
-
-            gpu_index = self.device.split(':')
-            if len(gpu_index) == 1:
-                gpu_index = 0
-            else:
-                gpu_index = gpu_index[1]
-
             self._model = NCNNUpscaleModel(self._params_path,
                                            self._model_path,
-                                           use_gpu=self.device.startswith('cuda'),
+                                           use_gpu=use_gpu,
                                            gpu_index=gpu_index)
+        except _NCNNGPUIndexError as e:
+            raise self.argument_error(str(e))
+        except _NCNNNoGPUError as e:
+            raise self.argument_error(str(e))
         except Exception as e:
             raise self.argument_error(f'Unsupported model file format: {e}')
 
