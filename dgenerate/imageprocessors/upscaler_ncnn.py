@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import gc
 import typing
 
 import PIL.Image
@@ -60,9 +61,7 @@ class NCNNUpscaleModel:
         self.net = ncnn.Net()
 
         if use_gpu:
-            ncnn.create_gpu_instance()
             gpu_count = ncnn.get_gpu_count()
-            ncnn.destroy_gpu_instance()
 
             if gpu_count > 0:
                 if gpu_index > gpu_count:
@@ -149,13 +148,6 @@ class NCNNUpscaleModel:
             results.append(numpy.array(mat_out))
 
         return numpy.array(results)
-
-    def __del__(self):
-        self.net.clear()
-        del self.net
-
-        if self.use_gpu:
-            ncnn.destroy_gpu_instance()
 
 
 def _tiled_scale(samples,
@@ -392,29 +384,24 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
 
     def _process(self, image):
 
-        model = None
         try:
-            try:
-                model = NCNNUpscaleModel(self._params_path,
-                                         self._model_path,
-                                         use_gpu=self._use_gpu,
-                                         gpu_index=self._gpu_index)
-            except _NCNNGPUIndexError as e:
-                raise self.argument_error(str(e))
-            except _NCNNNoGPUError as e:
-                raise self.argument_error(str(e))
-            except Exception as e:
-                raise self.argument_error(f'Unsupported model file format: {e}')
+            model = NCNNUpscaleModel(self._params_path,
+                                     self._model_path,
+                                     use_gpu=self._use_gpu,
+                                     gpu_index=self._gpu_index)
+        except _NCNNGPUIndexError as e:
+            raise self.argument_error(str(e))
+        except _NCNNNoGPUError as e:
+            raise self.argument_error(str(e))
+        except Exception as e:
+            raise self.argument_error(f'Unsupported model file format: {e}')
 
-            try:
-                return self._process_upscale(image, model)
-            except _NCNNExtractionFailure as e:
-                raise dgenerate.OutOfMemoryError(e)
-            except _NCNNIncorrectScaleFactor as e:
-                raise self.argument_error(f'argument "factor" is incorrect: {e}')
-        finally:
-            if model is not None:
-                del model
+        try:
+            return self._process_upscale(image, model)
+        except _NCNNExtractionFailure as e:
+            raise dgenerate.OutOfMemoryError(e)
+        except _NCNNIncorrectScaleFactor as e:
+            raise self.argument_error(f'argument "factor" is incorrect: {e}')
 
     def __str__(self):
         args = [
