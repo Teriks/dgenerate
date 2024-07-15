@@ -220,6 +220,9 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
             if tile % 2 != 0:
                 raise self.argument_error('Argument "tile" must be divisible by 2.')
 
+        if tile < overlap:
+            raise self.argument_error('Argument "tile" must be greater than "overlap".')
+
         if overlap < 0:
             raise self.argument_error('Argument "overlap" must be greater than or equal to 0.')
 
