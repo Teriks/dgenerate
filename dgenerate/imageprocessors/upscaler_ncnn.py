@@ -57,7 +57,12 @@ class _NCNNNoGPUError(Exception):
 
 
 class NCNNUpscaleModel:
-    def __init__(self, param_file: str, bin_file: str, use_gpu=True, gpu_index=0):
+    def __init__(self,
+                 param_file: str,
+                 bin_file: str,
+                 use_gpu: bool = False,
+                 gpu_index: int = 0,
+                 threads: int = 4):
         self.net = ncnn.Net()
 
         if use_gpu:
@@ -74,10 +79,13 @@ class NCNNUpscaleModel:
         self.net.load_model(bin_file)
         self.use_gpu = use_gpu
         self.gpu_index = gpu_index
+        self.threads = threads
         self.input, self.output = self._get_input_output(param_file)
 
         if self.use_gpu:
             self.net.set_vulkan_device(self.gpu_index)
+        else:
+            ncnn.set_omp_num_threads(threads)
 
     @staticmethod
     def _parse_param_layer(layer_str: str) -> tuple:
@@ -241,18 +249,28 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
 
     The "params" argument should be a path to the NCNN params file for the model.
 
+    Downloaded model / param files are cached in the dgenerate web cache on disk until the
+    cache expiry time for the file is met.
+
     The "factor" argument should be set to the upscale factor, such as 4. This
     value must be correct for the supplied model to ensure correct operation.
 
-    The "use-gpu" argument determines if the gpu is used.
+    The "cpu-threads" argument determines the number of cpu threads used.
+
+    The "use-gpu" argument determines if the gpu is used, this defaults to
+    False for reasons outlined below.
+
+    Using the GPU is not recommended if you are trying to use this processor
+    as a preprocessor or postprocessor for diffusion, as the vulkan allocator
+    really does not play nice with the torch cuda allocator, and it is almost
+    guaranteed to fail with an out of memory error.  It is fine to use if you are
+    doing a one shot upscale from the command line, or if you are only
+    ever using the "upscaler-ncnn" image processor in your config or from
+    the console UI. Initializing the vulkan allocator on the GPU will cause
+    other torch operations to fail, or NCNN operations to fail if a torch cuda
+    allocator exists in memory, and process crashes / segfaults are likely.
 
     The "gpu-index" argument determines which gpu is used, it is 0 indexed.
-
-    The "channels" argument should be set to the number of image channels the model
-    accepts, the default value is 3 (RGB).
-
-    Downloaded model / param files are cached in the dgenerate web cache on disk until the
-    cache expiry time for the file is met.
 
     The "tile" argument can be used to specify the tile size for tiled upscaling, it must be divisible by 2, and
     defaults to 512. Specifying 0 disables tiling entirely.
@@ -272,8 +290,9 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
                  model: str,
                  params: str,
                  factor: int,
-                 use_gpu=True,
-                 gpu_index=0,
+                 cpu_threads: int = 4,
+                 use_gpu: bool = False,
+                 gpu_index: int = 0,
                  tile: typing.Union[int, str] = 512,
                  overlap: int = 32,
                  pre_resize: bool = False,
@@ -316,7 +335,10 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
             raise self.argument_error('Argument "factor" must be greater than or equal to 1.')
 
         if gpu_index < 0:
-            raise self.argument_error('Argument "gpu_index" must be greater than or equal to 0.')
+            raise self.argument_error('Argument "gpu-index" must be greater than or equal to 0.')
+
+        if cpu_threads < 1:
+            raise self.argument_error('Argument "cpu-threads" must be greater than or equal to 1.')
 
         if _webcache.is_downloadable_url(model):
             self._model_path = _webcache.create_web_cache_file(model)
@@ -334,6 +356,7 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
         self._use_gpu = use_gpu
         self._gpu_index = gpu_index
         self._factor = factor
+        self._threads = cpu_threads
 
     def _process_upscale(self, image, model):
 
@@ -388,7 +411,8 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
             model = NCNNUpscaleModel(self._params_path,
                                      self._model_path,
                                      use_gpu=self._use_gpu,
-                                     gpu_index=self._gpu_index)
+                                     gpu_index=self._gpu_index,
+                                     threads=self._threads)
         except _NCNNGPUIndexError as e:
             raise self.argument_error(str(e))
         except _NCNNNoGPUError as e:
@@ -414,6 +438,9 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
             ('model', self._model_path),
             ('params', self._params_path),
             ('factor', self._factor),
+            ('cpu-threads', self._threads),
+            ('use-gpu', self._use_gpu),
+            ('gpu-index', self._gpu_index),
             ('tile', self._tile),
             ('overlap', self._overlap),
             ('pre_resize', self._pre_resize)
