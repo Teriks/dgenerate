@@ -117,13 +117,12 @@ class NCNNUpscaleModel:
         ex = self.net.create_extractor()
 
         results = []
+
         for img in images:
             # expect normalized values 0.0 to 1.0
 
-            # Convert from RGB to BGR and into h, w, c from c, h, w
-            img = img.transpose((1, 2, 0)) * 255.0
-            img = img[..., ::-1]
-            img = img.astype(numpy.uint8)
+            # Convert into h, w, c from c, h, w and 0.0 - 0.1 -> 0 - 255
+            img = (img.transpose((1, 2, 0)) * 255.0).astype(numpy.uint8)
 
             # Convert image to ncnn Mat
             mat_in = ncnn.Mat.from_pixels(
@@ -142,15 +141,21 @@ class NCNNUpscaleModel:
 
             ex.input(self.input, mat_in)
             ret, mat_out = ex.extract(self.output)
+
             if ret != 0:
                 raise _NCNNExtractionFailure("Extraction failed, GPU OOM?")
 
-            output = numpy.array(mat_out)
-
-            # convert to RGB, return c, h, w
-            results.append(output[::-1, :, :])
+            # return c, h, w
+            results.append(numpy.array(mat_out))
 
         return numpy.array(results)
+
+    def __del__(self):
+        self.net.clear()
+        del self.net
+
+        if self.use_gpu:
+            ncnn.destroy_gpu_instance()
 
 
 def _tiled_scale(samples,
@@ -331,25 +336,14 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
         else:
             self._params_path = params
 
-        try:
-            self._model = NCNNUpscaleModel(self._params_path,
-                                           self._model_path,
-                                           use_gpu=use_gpu,
-                                           gpu_index=gpu_index)
-        except _NCNNGPUIndexError as e:
-            raise self.argument_error(str(e))
-        except _NCNNNoGPUError as e:
-            raise self.argument_error(str(e))
-        except Exception as e:
-            raise self.argument_error(f'Unsupported model file format: {e}')
-
         self._tile = tile
         self._overlap = overlap
         self._pre_resize = pre_resize
-
+        self._use_gpu = use_gpu
+        self._gpu_index = gpu_index
         self._factor = factor
 
-    def _process_upscale(self, image):
+    def _process_upscale(self, image, model):
 
         oom = True
 
@@ -358,7 +352,7 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
         in_img = _stack_images([image])
 
         if tile == 0:
-            output = self._model(in_img)[0]
+            output = model(in_img)[0]
             return PIL.Image.fromarray(
                 (output.transpose(1, 2, 0) * 255).astype(numpy.uint8))
 
@@ -380,7 +374,7 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
                     upscale_amount=self._factor,
                     out_channels=3,
                     overlap=self._overlap,
-                    upscale_model=self._model,
+                    upscale_model=model,
                     pbar=pbar)[0]
 
                 oom = False
@@ -397,12 +391,30 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
             (output.transpose(1, 2, 0) * 255).astype(numpy.uint8))
 
     def _process(self, image):
+
+        model = None
         try:
-            return self._process_upscale(image)
-        except _NCNNExtractionFailure as e:
-            raise dgenerate.OutOfMemoryError(e)
-        except _NCNNIncorrectScaleFactor as e:
-            raise self.argument_error(f'argument "factor" is incorrect: {e}')
+            try:
+                model = NCNNUpscaleModel(self._params_path,
+                                         self._model_path,
+                                         use_gpu=self._use_gpu,
+                                         gpu_index=self._gpu_index)
+            except _NCNNGPUIndexError as e:
+                raise self.argument_error(str(e))
+            except _NCNNNoGPUError as e:
+                raise self.argument_error(str(e))
+            except Exception as e:
+                raise self.argument_error(f'Unsupported model file format: {e}')
+
+            try:
+                return self._process_upscale(image, model)
+            except _NCNNExtractionFailure as e:
+                raise dgenerate.OutOfMemoryError(e)
+            except _NCNNIncorrectScaleFactor as e:
+                raise self.argument_error(f'argument "factor" is incorrect: {e}')
+        finally:
+            if model is not None:
+                del model
 
     def __str__(self):
         args = [
