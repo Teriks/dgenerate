@@ -309,7 +309,7 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
             if tile % 2 != 0:
                 raise self.argument_error('Argument "tile" must be divisible by 2.')
 
-        if tile < overlap:
+        if tile != 0 and tile < overlap:
             raise self.argument_error('Argument "tile" must be greater than "overlap".')
 
         if overlap < 0:
