@@ -51,6 +51,13 @@ from .teed import TEEDProcessor
 from .linart_standard import LineArtStandardProcessor
 from .anyline import AnylineProcessor
 
+try:
+    import ncnn
+    from .upscaler_ncnn import UpscalerNCNNProcessor
+except ImportError:
+    pass
+
+
 __doc__ = """
 Image processors implemented by dgenerate.
 
