@@ -77,6 +77,9 @@ class NCNNUpscaleModel:
         self.gpu_index = gpu_index
         self.input, self.output = self._get_input_output(param_file)
 
+        if self.use_gpu:
+            self.net.set_vulkan_device(self.gpu_index)
+
     @staticmethod
     def _parse_param_layer(layer_str: str) -> tuple:
         param_list = layer_str.strip().split()
@@ -112,9 +115,6 @@ class NCNNUpscaleModel:
         """
 
         ex = self.net.create_extractor()
-
-        if self.use_gpu:
-            ex.set_vulkan_device(self.gpu_index)
 
         results = []
         for img in images:
