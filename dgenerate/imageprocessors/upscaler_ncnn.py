@@ -32,6 +32,7 @@ import dgenerate.imageprocessors.upscaler as _t_upscaler
 import dgenerate.messages as _messages
 import dgenerate.types as _types
 import dgenerate.webcache as _webcache
+import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 
 
 class _UnsupportedModelError(Exception):
@@ -48,9 +49,8 @@ class _NCNNIncorrectScaleFactor(Exception):
 
 
 class NCNNUpscaleModel:
-    def __init__(self, param_file: str, bin_file: str, use_gpu=True):
+    def __init__(self, param_file: str, bin_file: str, use_gpu=True, gpu_index=0):
         self.net = ncnn.Net()
-
 
         if use_gpu:
             ncnn.create_gpu_instance()
@@ -62,6 +62,8 @@ class NCNNUpscaleModel:
 
         self.net.load_param(param_file)
         self.net.load_model(bin_file)
+        self.use_gpu = use_gpu
+        self.gpu_index = gpu_index
         self.input, self.output = self._get_input_output(param_file)
 
     @staticmethod
@@ -99,6 +101,9 @@ class NCNNUpscaleModel:
         """
 
         ex = self.net.create_extractor()
+
+        if self.use_gpu:
+            ex.set_vulkan_device(self.gpu_index)
 
         results = []
         for img in images:
@@ -305,9 +310,21 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
             self._params_path = params
 
         try:
+            try:
+                _pipelinewrapper_util.is_valid_device_string(self.device)
+            except _pipelinewrapper_util.InvalidDeviceOrdinalException as e:
+                raise self.argument_error('Argument "device" does not represent a valid device.')
+
+            gpu_index = self.device.split(':')
+            if len(gpu_index) == 1:
+                gpu_index = 0
+            else:
+                gpu_index = gpu_index[1]
+
             self._model = NCNNUpscaleModel(self._params_path,
                                            self._model_path,
-                                           use_gpu=self.device.startswith('cuda'))
+                                           use_gpu=self.device.startswith('cuda'),
+                                           gpu_index=gpu_index)
         except Exception as e:
             raise self.argument_error(f'Unsupported model file format: {e}')
 
