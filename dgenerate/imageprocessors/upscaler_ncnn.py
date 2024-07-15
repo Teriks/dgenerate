@@ -382,7 +382,7 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
         return PIL.Image.fromarray(
             (output.transpose(1, 2, 0) * 255).astype(numpy.uint8))
 
-    def _process(self, image):
+    def _process_scope(self, image):
 
         try:
             model = NCNNUpscaleModel(self._params_path,
@@ -402,6 +402,12 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
             raise dgenerate.OutOfMemoryError(e)
         except _NCNNIncorrectScaleFactor as e:
             raise self.argument_error(f'argument "factor" is incorrect: {e}')
+
+    def _process(self, image):
+        try:
+            return self._process_scope(image)
+        finally:
+            gc.collect()
 
     def __str__(self):
         args = [
