@@ -26,6 +26,7 @@ import ncnn
 import numpy
 import tqdm.auto
 
+import dgenerate
 import dgenerate.imageprocessors.imageprocessor as _imageprocessor
 import dgenerate.imageprocessors.upscaler as _t_upscaler
 import dgenerate.messages as _messages
@@ -47,15 +48,17 @@ class _NCNNIncorrectScaleFactor(Exception):
 
 
 class NCNNUpscaleModel:
-    def __init__(self, param_file: str, bin_file: str):
+    def __init__(self, param_file: str, bin_file: str, use_gpu=True):
         self.net = ncnn.Net()
 
-        ncnn.create_gpu_instance()
-        gpu_count = ncnn.get_gpu_count()
-        ncnn.destroy_gpu_instance()
 
-        if gpu_count > 0:
-            self.net.opt.use_vulkan_compute = True
+        if use_gpu:
+            ncnn.create_gpu_instance()
+            gpu_count = ncnn.get_gpu_count()
+            ncnn.destroy_gpu_instance()
+
+            if gpu_count > 0:
+                self.net.opt.use_vulkan_compute = True
 
         self.net.load_param(param_file)
         self.net.load_model(bin_file)
@@ -302,7 +305,9 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
             self._params_path = params
 
         try:
-            self._model = NCNNUpscaleModel(self._params_path, self._model_path)
+            self._model = NCNNUpscaleModel(self._params_path,
+                                           self._model_path,
+                                           use_gpu=self.device.startswith('cuda'))
         except Exception as e:
             raise self.argument_error(f'Unsupported model file format: {e}')
 
@@ -362,6 +367,8 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
     def _process(self, image):
         try:
             return self._process_upscale(image)
+        except _NCNNExtractionFailure as e:
+            raise dgenerate.OutOfMemoryError(e)
         except _NCNNIncorrectScaleFactor as e:
             raise self.argument_error(f'argument "factor" is incorrect: {e}')
 
