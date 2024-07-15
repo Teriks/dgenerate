@@ -252,7 +252,6 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
                  model: str,
                  params: str,
                  factor: int,
-                 channels: int = 3,
                  tile: typing.Union[int, str] = 512,
                  overlap: int = 32,
                  pre_resize: bool = False,
@@ -292,10 +291,6 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
         if factor < 1:
             raise self.argument_error('Argument "factor" must be greater than or equal to 1.')
 
-        if channels < 1 or channels > 4:
-            raise self.argument_error(
-                'Argument "channels" must be greater than or equal to 1 and less than or equal to 4.')
-
         if _webcache.is_downloadable_url(model):
             self._model_path = _webcache.create_web_cache_file(model)
         else:
@@ -314,8 +309,6 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
         self._tile = tile
         self._overlap = overlap
         self._pre_resize = pre_resize
-
-        self._input_channels = channels
 
         self._factor = factor
 
