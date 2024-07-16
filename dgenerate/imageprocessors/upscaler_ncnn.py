@@ -231,9 +231,9 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
             self._model_path = model
 
         if _webcache.is_downloadable_url(param):
-            self._params_path = _webcache.create_web_cache_file(param)[1]
+            self._param_path = _webcache.create_web_cache_file(param)[1]
         else:
-            self._params_path = param
+            self._param_path = param
 
         self._tile = tile
         self._overlap = overlap
@@ -282,7 +282,7 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
 
         try:
             model = _ncnn_model.NCNNUpscaleModel(
-                self._params_path,
+                self._param_path,
                 self._model_path,
                 use_gpu=self._use_gpu,
                 gpu_index=self._gpu_index,
@@ -307,7 +307,7 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
     def __str__(self):
         args = [
             ('model', self._model_path),
-            ('params', self._params_path),
+            ('param', self._param_path),
             ('cpu-threads', self._threads),
             ('use-gpu', self._use_gpu),
             ('gpu-index', self._gpu_index),
