@@ -249,9 +249,9 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
         args = [
             ('model', self._model_path),
             ('param', self._param_path),
-            ('cpu-threads', self._threads),
             ('use-gpu', self._use_gpu),
             ('gpu-index', self._gpu_index),
+            ('cpu-threads', self._threads),
             ('tile', self._tile),
             ('overlap', self._overlap),
             ('pre_resize', self._pre_resize)
