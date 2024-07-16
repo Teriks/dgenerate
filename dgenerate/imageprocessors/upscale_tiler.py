@@ -41,6 +41,13 @@ def get_tiled_scale_steps(width: int, height: int, tile_x: int, tile_y: int, ove
     :param overlap: tile overlap
     :return: step count
     """
+
+    if tile_x < overlap:
+        raise ValueError('tile_x may not be less than overlap.')
+
+    if tile_y < overlap:
+        raise ValueError('tile_y may not be less than overlap.')
+
     return math.ceil((height / (tile_y - overlap))) * math.ceil((width / (tile_x - overlap)))
 
 
