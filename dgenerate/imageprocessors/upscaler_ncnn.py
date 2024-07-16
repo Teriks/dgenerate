@@ -93,7 +93,7 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
     x4.bin: https://github.com/nihui/realsr-ncnn-vulkan/blob/master/models/models-DF2K/x4.bin
     x4.param: https://github.com/nihui/realsr-ncnn-vulkan/blob/master/models/models-DF2K/x4.param
 
-    Example: "upscaler-ncnn;model=x4.bin;param=x4.param;factor=4;tile=256;overlap=16;use-gpu=True"
+    Example: "upscaler-ncnn;model=x4.bin;param=x4.param;tile=256;overlap=16;use-gpu=True"
     """
 
     NAMES = ['upscaler-ncnn']
