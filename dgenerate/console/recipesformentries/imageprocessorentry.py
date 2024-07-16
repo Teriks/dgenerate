@@ -35,6 +35,11 @@ class _ImageProcessorEntry(_entry._Entry):
     def __init__(self, *args, **kwargs):
         self.schema = _resources.get_schema('imageprocessors')
 
+        try:
+            import ncnn
+        except ImportError:
+            self.schema.pop('upscaler-ncnn', None)
+
         config = kwargs.get('config', {})
 
         self.internal_divider = config.get(
