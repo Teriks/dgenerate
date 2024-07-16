@@ -75,7 +75,8 @@ class _ImageProcessorEntry(_entry._Entry):
         self.entries = {}
         self.dynamic_widgets = []
         self.file_arguments = {
-            'model': _resources.get_file_dialog_args(['models'])}
+            'model': _resources.get_file_dialog_args(['models']),
+            'param': {'filetypes': [('param', ('*.param'))]}}
 
         self.on_updated_callback = None
 
