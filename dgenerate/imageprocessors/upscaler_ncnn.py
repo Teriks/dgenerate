@@ -276,7 +276,7 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
 
         return _output_to_pil(output)
 
-    def _process_scope(self, image):
+    def _process(self, image):
 
         try:
             model = _ncnn_model.NCNNUpscaleModel(
@@ -293,21 +293,13 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
             raise self.argument_error(f'Unsupported NCNN model: {e}')
 
         try:
-            result = self._process_upscale(image, model)
-            del model
-            return result
+            return self._process_upscale(image, model)
         except _ncnn_model.NCNNExtractionFailure as e:
             raise dgenerate.OutOfMemoryError(e)
         except _ncnn_model.NCNNIncorrectScaleFactor as e:
             raise self.argument_error(f'argument "factor" is incorrect: {e}')
-
-    def _process(self, image):
-        try:
-            return self._process_scope(image)
         finally:
-            gc.collect()
-            if self._use_gpu:
-                ncnn.destroy_gpu_instance()
+            del model
 
     def __str__(self):
         args = [
