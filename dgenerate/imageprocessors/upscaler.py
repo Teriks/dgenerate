@@ -33,6 +33,7 @@ import dgenerate.imageprocessors.imageprocessor as _imageprocessor
 import dgenerate.messages as _messages
 import dgenerate.types as _types
 import dgenerate.webcache as _webcache
+import dgenerate.imageprocessors.upscale_tiler as _upscale_tiler
 
 spandrel.MAIN_REGISTRY.add(*spandrel_extra_arches.EXTRA_REGISTRY)
 
@@ -68,75 +69,6 @@ def _load_upscaler_model(model_path) -> spandrel.ImageModelDescriptor:
         f'{_types.fullname(_load_upscaler_model)}("{model_path}") -> {model.__class__.__name__}')
 
     return model
-
-
-def _get_tiled_scale_steps(width, height, tile_x, tile_y, overlap):
-    return math.ceil((height / (tile_y - overlap))) * math.ceil((width / (tile_x - overlap)))
-
-
-def _tiled_scale(samples: torch.Tensor, upscale_model: spandrel.ImageModelDescriptor, tile_x=64, tile_y=64, overlap=8,
-                 upscale_amount=4,
-                 out_channels=3, pbar=None):
-    # Pre-calculate the scaled dimensions
-    scaled_height = round(samples.shape[2] * upscale_amount)
-    scaled_width = round(samples.shape[3] * upscale_amount)
-
-    # Initialize the output tensor on CPU
-    output = torch.empty((samples.shape[0], out_channels, scaled_height, scaled_width), device="cpu")
-
-    tile_blending = overlap > 0
-
-    # Pre-calculate the feathering factor
-    if tile_blending:
-        feather = round(overlap * upscale_amount)
-        feather_factor = 1.0 / feather
-
-    # Iterate over each sample
-    for b in range(samples.shape[0]):
-        s = samples[b:b + 1]
-        out = torch.zeros((s.shape[0], out_channels, scaled_height, scaled_width), device="cpu")
-        out_div = torch.zeros_like(out)
-
-        # Iterate over the tiles
-        for y in range(0, s.shape[2], tile_y - overlap):
-            for x in range(0, s.shape[3], tile_x - overlap):
-                s_in = s[:, :, y:y + tile_y, x:x + tile_x]
-                ps = upscale_model(s_in).cpu()
-
-                if tile_blending:
-                    mask = torch.ones_like(ps)
-
-                    # Apply feathering to the mask
-                    for t in range(feather):
-                        mask[:, :, t:1 + t, :] *= (feather_factor * (t + 1))
-                        mask[:, :, -1 - t: -t, :] *= (feather_factor * (t + 1))
-                        mask[:, :, :, t:1 + t] *= (feather_factor * (t + 1))
-                        mask[:, :, :, -1 - t: -t] *= (feather_factor * (t + 1))
-
-                # Calculate the indices for the output tensor
-                y_start = round(y * upscale_amount)
-                y_end = y_start + round(tile_y * upscale_amount)
-                x_start = round(x * upscale_amount)
-                x_end = x_start + round(tile_x * upscale_amount)
-
-                # Update the output tensor
-                if tile_blending:
-                    out[:, :, y_start:y_end, x_start:x_end] += ps * mask
-                    out_div[:, :, y_start:y_end, x_start:x_end] += mask
-                else:
-                    out[:, :, y_start:y_end, x_start:x_end] += ps
-
-                # Update progress bar if provided
-                if pbar is not None:
-                    pbar.update(1)
-
-        # Divide the accumulated output by the mask to get the final result
-        if tile_blending:
-            output[b:b + 1] = out / out_div
-        else:
-            output[b:b + 1] = out
-
-    return output
 
 
 class UpscalerProcessor(_imageprocessor.ImageProcessor):
@@ -335,7 +267,8 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
 
         while oom:
             try:
-                steps = in_img.shape[0] * _get_tiled_scale_steps(
+                steps = \
+                    in_img.shape[0] * _upscale_tiler.get_tiled_scale_steps(
                     in_img.shape[3],
                     in_img.shape[2],
                     tile_x=tile,
@@ -344,14 +277,14 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
 
                 pbar = tqdm.auto.tqdm(total=steps)
 
-                output = _tiled_scale(
+                output = _upscale_tiler.tiled_scale(
                     in_img,
                     self._model,
                     tile_x=tile,
                     tile_y=tile,
                     overlap=self._overlap,
                     upscale_amount=self._model.scale,
-                    pbar=pbar)
+                    pbar=pbar.update)
 
                 oom = False
             except torch.cuda.OutOfMemoryError as e:
