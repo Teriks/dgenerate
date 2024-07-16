@@ -29,9 +29,7 @@ import typing
 
 import PIL.Image
 import PIL.PngImagePlugin
-import torch.cuda
 
-import dgenerate
 import dgenerate.filelock as _filelock
 import dgenerate.files as _files
 import dgenerate.imageprocessors as _imageprocessors
@@ -39,6 +37,7 @@ import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
+import dgenerate.promptweighters as _promptweighters
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.events import \
@@ -285,6 +284,11 @@ class RenderLoop:
     Responsible for loading any image processors referenced in the render loop configuration.
     """
 
+    prompt_weighter_loader: _promptweighters.PromptWeighterLoader
+    """
+    Responsible for loading any prompt weighters referenced in the render loop configuration.
+    """
+
     config: RenderLoopConfig
     """
     Render loop configuration.
@@ -303,7 +307,8 @@ class RenderLoop:
         return self._pipeline_wrapper
 
     def __init__(self, config: RenderLoopConfig | None = None,
-                 image_processor_loader: _imageprocessors.ImageProcessorLoader | None = None):
+                 image_processor_loader: _imageprocessors.ImageProcessorLoader | None = None,
+                 prompt_weighter_loader: _promptweighters.PromptWeighterLoader | None = None):
         """
         :param config: :py:class:`.RenderLoopConfig` or :py:class:`dgenerate.arguments.DgenerateArguments`.
             If ``None`` is provided, a :py:class:`.RenderLoopConfig` instance will be created and
@@ -312,6 +317,10 @@ class RenderLoop:
         :param image_processor_loader: :py:class:`dgenerate.imageprocessors.ImageProcessorLoader`.
             If ``None`` is provided, an instance will be created and assigned to
             :py:attr:`.RenderLoop.image_processor_loader`.
+
+        :param prompt_weighter_loader: :py:class:`dgenerate.promptweighters.PromptWeighterLoader`.
+            If ``None`` is provided, an instance will be created and assigned to
+            :py:attr:`.RenderLoop.prompt_weighter_loader`.
         """
 
         self._generation_step = -1
@@ -327,6 +336,10 @@ class RenderLoop:
         self.image_processor_loader = \
             _imageprocessors.ImageProcessorLoader() if \
                 image_processor_loader is None else image_processor_loader
+
+        self.prompt_weighter_loader = \
+            _promptweighters.PromptWeighterLoader() if \
+                prompt_weighter_loader is None else prompt_weighter_loader
 
         self._post_processor = None
 
@@ -810,7 +823,8 @@ class RenderLoop:
             model_sequential_offload=self.config.model_sequential_offload,
             sdxl_refiner_cpu_offload=bool(self.config.sdxl_refiner_cpu_offload),
             sdxl_refiner_sequential_offload=bool(self.config.sdxl_refiner_sequential_offload),
-            prompt_weighter_uri=self.config.prompt_weighter_uri)
+            prompt_weighter_uri=self.config.prompt_weighter_uri,
+            prompt_weighter_loader=self.prompt_weighter_loader)
         return self._pipeline_wrapper
 
     def _ensure_output_path(self):
