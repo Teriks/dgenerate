@@ -206,6 +206,9 @@ class NCNNUpscaleModel:
         last = self._parse_param_layer(param_lines[-1])
         return first[-2][0], last[-2][0]
 
+    def __del__(self):
+        del self.net
+
     def __call__(self, images: numpy.ndarray) -> numpy.ndarray:
         """
         Upscale with NCNN

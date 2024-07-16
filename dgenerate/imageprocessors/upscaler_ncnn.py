@@ -293,7 +293,9 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
             raise self.argument_error(f'Unsupported NCNN model: {e}')
 
         try:
-            return self._process_upscale(image, model)
+            result = self._process_upscale(image, model)
+            del model
+            return result
         except _ncnn_model.NCNNExtractionFailure as e:
             raise dgenerate.OutOfMemoryError(e)
         except _ncnn_model.NCNNIncorrectScaleFactor as e:
