@@ -83,6 +83,13 @@ class NCNNUpscaleModel:
             net.opt.use_fp16_arithmetic = False
 
         if use_gpu:
+            gpu_count = ncnn.get_gpu_count()
+
+            if gpu_count == 0:
+                raise NCNNNoGPUError('NCNN could not find any gpus.')
+            if gpu_index > gpu_count:
+                raise NCNNGPUIndexError(f'GPU index {gpu_index} does not exist.')
+
             net.opt.use_vulkan_compute = True
             net.set_vulkan_device(gpu_index)
         else:
