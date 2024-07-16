@@ -30,6 +30,31 @@ import dgenerate.types as _types
 T = typing.TypeVar('T', numpy.ndarray, torch.Tensor)
 
 
+def _bounds_check(width: int, height: int, tile_x: int, tile_y: int, overlap: int):
+    # the tile can be larger than the image
+
+    if overlap < 0:
+        raise ValueError('overlap must be greater than or equal to 0.')
+
+    if tile_x < 2:
+        raise ValueError('tile_x may not be less than 2.')
+
+    if tile_y < 2:
+        raise ValueError('tile_y may not be less than 2.')
+
+    if tile_x < overlap:
+        raise ValueError('tile_x may not be less than overlap.')
+
+    if tile_y < overlap:
+        raise ValueError('tile_y may not be less than overlap.')
+
+    if tile_x % 2 != 0:
+        raise ValueError('tile_x must be divisible by 2.')
+
+    if tile_y % 2 != 0:
+        raise ValueError('tile_y must be divisible by 2.')
+
+
 def get_tiled_scale_steps(width: int, height: int, tile_x: int, tile_y: int, overlap: int):
     """
     Determine the number of progress tile steps required.
@@ -42,11 +67,7 @@ def get_tiled_scale_steps(width: int, height: int, tile_x: int, tile_y: int, ove
     :return: step count
     """
 
-    if tile_x < overlap:
-        raise ValueError('tile_x may not be less than overlap.')
-
-    if tile_y < overlap:
-        raise ValueError('tile_y may not be less than overlap.')
+    _bounds_check(width, height, tile_x, tile_y, overlap)
 
     return math.ceil((height / (tile_y - overlap))) * math.ceil((width / (tile_x - overlap)))
 
@@ -75,6 +96,9 @@ def tiled_scale(
     :param pbar: optional progress bar callback
     :return: upscaled images in the form (b, c, h, w) 0.0 - 1.0
     """
+
+    _bounds_check(samples.shape[3], samples.shape[2], tile_x, tile_y, overlap)
+
     is_torch = isinstance(samples, torch.Tensor)
 
     if is_torch:
