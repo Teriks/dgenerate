@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import gc
+import os.path
 import typing
 
 import PIL.Image
@@ -161,6 +162,12 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
             self._param_path = _webcache.create_web_cache_file(param)[1]
         else:
             self._param_path = param
+
+        if not os.path.exists(self._model_path):
+            raise self.argument_error(f'Model file does not exist: {self._model_path}')
+
+        if not os.path.exists(self._param_path):
+            raise self.argument_error(f'Param file does not exist: {self._param_path}')
 
         self._tile = tile
         self._overlap = overlap
