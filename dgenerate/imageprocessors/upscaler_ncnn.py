@@ -300,6 +300,7 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
             raise self.argument_error(f'argument "factor" is incorrect: {e}')
         finally:
             del model
+            gc.collect()
 
     def __str__(self):
         args = [
