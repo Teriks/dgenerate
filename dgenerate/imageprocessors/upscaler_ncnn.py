@@ -24,7 +24,6 @@ import typing
 
 import PIL.Image
 import PIL.Image
-import ncnn
 import numpy
 import psutil
 import tqdm.auto
