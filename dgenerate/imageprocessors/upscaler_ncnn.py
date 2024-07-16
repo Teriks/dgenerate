@@ -143,7 +143,7 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
 
     The "model" argument should be a path or URL to a NCNN compatible upscaler model.
 
-    The "params" argument should be a path or URL to the NCNN params file for the model.
+    The "param" argument should be a path or URL to the NCNN params file for the model.
 
     The "use-gpu" argument determines if the gpu is used, defaults to False, see note below.
 
@@ -163,14 +163,17 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
     The "pre-resize" argument is a boolean value determining if the processing
     should take place before or after the image is resized by dgenerate.
 
-    Example: "upscaler-ncnn;model=x4.bin;params=x4.params;factor=4;tile=256;overlap=16;use-gpu=True"
+    x4.bin: https://github.com/nihui/realsr-ncnn-vulkan/blob/master/models/models-DF2K/x4.bin
+    x4.param: https://github.com/nihui/realsr-ncnn-vulkan/blob/master/models/models-DF2K/x4.param
+
+    Example: "upscaler-ncnn;model=x4.bin;param=x4.param;factor=4;tile=256;overlap=16;use-gpu=True"
     """
 
     NAMES = ['upscaler-ncnn']
 
     def __init__(self,
                  model: str,
-                 params: str,
+                 param: str,
                  use_gpu: bool = False,
                  gpu_index: int = 0,
                  cpu_threads: int | str = "auto",
@@ -180,7 +183,7 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
                  **kwargs):
         """
         :param model: NCNN compatible upscaler model on disk, or at a URL
-        :param params: NCNN model params file on disk, or at a URL
+        :param param: NCNN model param file on disk, or at a URL
         :param factor: upscale factor
         :param use_gpu: use a GPU?
         :param gpu_index: which GPU to use, zero indexed.
@@ -227,10 +230,10 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
         else:
             self._model_path = model
 
-        if _webcache.is_downloadable_url(params):
-            self._params_path = _webcache.create_web_cache_file(params)[1]
+        if _webcache.is_downloadable_url(param):
+            self._params_path = _webcache.create_web_cache_file(param)[1]
         else:
-            self._params_path = params
+            self._params_path = param
 
         self._tile = tile
         self._overlap = overlap
