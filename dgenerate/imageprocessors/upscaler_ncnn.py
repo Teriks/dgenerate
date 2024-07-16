@@ -19,7 +19,6 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import gc
-import math
 import typing
 
 import PIL.Image
@@ -34,6 +33,7 @@ import dgenerate.imageprocessors.ncnn_model as _ncnn_model
 import dgenerate.types as _types
 import dgenerate.webcache as _webcache
 import dgenerate.imageprocessors.upscale_tiler as _upscale_tiler
+import dgenerate.messages as _messages
 
 
 class _UnsupportedModelError(Exception):
@@ -184,26 +184,40 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
 
         in_img = _stack_images([image])
 
-        steps = _upscale_tiler.get_tiled_scale_steps(
-            in_img.shape[3],
-            in_img.shape[2],
-            tile_x=tile,
-            tile_y=tile,
-            overlap=self._overlap)
+        oom = True
 
-        pbar = tqdm.auto.tqdm(total=steps)
+        while oom:
+            try:
+                steps = \
+                    in_img.shape[0] * _upscale_tiler.get_tiled_scale_steps(
+                        in_img.shape[3],
+                        in_img.shape[2],
+                        tile_x=tile,
+                        tile_y=tile,
+                        overlap=self._overlap)
 
-        output = _upscale_tiler.tiled_scale(
-            samples=_stack_images([image]),
-            tile_y=self._tile,
-            tile_x=self._tile,
-            upscale_amount=model.broadcast_data.scale,
-            out_channels=3,
-            overlap=self._overlap,
-            upscale_model=model,
-            pbar=pbar.update)[0]
+                pbar = tqdm.auto.tqdm(total=steps)
 
-        return _output_to_pil(output)
+                output = _upscale_tiler.tiled_scale(
+                    in_img,
+                    model,
+                    tile_x=tile,
+                    tile_y=tile,
+                    overlap=self._overlap,
+                    upscale_amount=model.broadcast_data.scale,
+                    pbar=pbar.update)
+
+                oom = False
+            except _ncnn_model.NCNNExtractionFailure as e:
+                pbar.close()
+                tile //= 2
+                _messages.log(
+                    f'Reducing tile size to {tile} and retrying due to running out of memory.',
+                    level=_messages.WARNING)
+                if tile < 128:
+                    raise e
+
+        return _output_to_pil(output[0])
 
     def _process(self, image):
 
