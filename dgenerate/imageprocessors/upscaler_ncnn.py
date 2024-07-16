@@ -132,7 +132,7 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
     """
     Implements tiled upscaling with NCNN upscaler models.
 
-    It is not recommended to use this as a preprocessor or postprocessor
+    It is not recommended to use this as a pre-processor or post-processor
     on the same gpu that diffusion is being preformed on. The vulkan allocator
     does not play nice with the torch cuda allocator and it will likely hard
     crash your entire system. If you want to use it that way, set "gpu-index"
