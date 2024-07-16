@@ -145,7 +145,7 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
 
     The "param" argument should be a path or URL to the NCNN param file for the model.
 
-    The "use-gpu" argument determines if the gpu is used, defaults to False, see note below.
+    The "use-gpu" argument determines if the gpu is used, defaults to False.
 
     The "gpu-index" argument determines which gpu is used, it is 0 indexed.
 
