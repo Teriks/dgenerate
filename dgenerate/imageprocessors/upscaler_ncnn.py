@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import gc
+import math
 import typing
 
 import PIL.Image
@@ -30,8 +31,7 @@ import tqdm.auto
 
 import dgenerate
 import dgenerate.imageprocessors.imageprocessor as _imageprocessor
-import dgenerate.imageprocessors.upscaler as _t_upscaler
-import dgenerate.messages as _messages
+import dgenerate.imageprocessors.ncnn_model as _ncnn_model
 import dgenerate.types as _types
 import dgenerate.webcache as _webcache
 
@@ -41,122 +41,22 @@ class _UnsupportedModelError(Exception):
     pass
 
 
-class _NCNNExtractionFailure(Exception):
-    pass
+def _stack_images(images: list) -> numpy.ndarray:
+    out = []
+    for img in images:
+        img = img.convert('RGB')
+        img = (numpy.array(img).transpose((2, 0, 1)) / 255.0).astype(numpy.float32)  # Convert to (c, h, w) format
+        out.append(img)
+    return numpy.stack(out)
 
 
-class _NCNNIncorrectScaleFactor(Exception):
-    pass
+def _output_to_pil(output):
+    return PIL.Image.fromarray(
+        (output.transpose(1, 2, 0) * 255).astype(numpy.uint8))
 
 
-class _NCNNGPUIndexError(Exception):
-    pass
-
-
-class _NCNNNoGPUError(Exception):
-    pass
-
-
-class NCNNUpscaleModel:
-    def __init__(self,
-                 param_file: str,
-                 bin_file: str,
-                 use_gpu: bool = False,
-                 gpu_index: int = 0,
-                 threads: int = 4):
-        self.net = ncnn.Net()
-
-        if use_gpu:
-            gpu_count = ncnn.get_gpu_count()
-
-            if gpu_count > 0:
-                if gpu_index > gpu_count:
-                    raise _NCNNGPUIndexError('specified gpu index is not visible to NCNN.')
-                self.net.opt.use_vulkan_compute = True
-            else:
-                raise _NCNNNoGPUError('NCNN cannot find any gpus.')
-
-        self.net.load_param(param_file)
-        self.net.load_model(bin_file)
-        self.use_gpu = use_gpu
-        self.gpu_index = gpu_index
-        self.threads = threads
-        self.input, self.output = self._get_input_output(param_file)
-
-        if self.use_gpu:
-            self.net.set_vulkan_device(self.gpu_index)
-        else:
-            ncnn.set_omp_num_threads(threads)
-
-    @staticmethod
-    def _parse_param_layer(layer_str: str) -> tuple:
-        param_list = layer_str.strip().split()
-        op_type, name = param_list[:2]
-        if op_type == "MemoryData":
-            raise ValueError("This NCNN param file contains invalid layers")
-        num_inputs = int(param_list[2])
-        num_outputs = int(param_list[3])
-        input_end = 4 + num_inputs
-        output_end = input_end + num_outputs
-        inputs = list(param_list[4:input_end])
-        outputs = list(param_list[input_end:output_end])
-        return op_type, name, num_inputs, num_outputs, inputs, outputs
-
-    def _get_input_output(self, param_file: str) -> tuple:
-        first = None
-        last = None
-        with open(param_file, 'rt') as file:
-            next(file)
-            next(file)
-            first = self._parse_param_layer(next(file))
-            for line in file:
-                last = self._parse_param_layer(line)
-        return first[-1][0], last[-1][0]
-
-    def __call__(self, images: numpy.ndarray) -> numpy.ndarray:
-        """
-        Upscale with NCNN
-
-        :param images: (batch, c, h, w) float32 pixels 0.0 to 1.0 normalized
-
-        :return: same as input
-        """
-
-        ex = self.net.create_extractor()
-
-        results = []
-
-        for img in images:
-            # expect normalized values 0.0 to 1.0
-
-            # Convert into h, w, c from c, h, w and 0.0 - 0.1 -> 0 - 255
-            img = (img.transpose((1, 2, 0)) * 255.0).astype(numpy.uint8)
-
-            # Convert image to ncnn Mat
-            mat_in = ncnn.Mat.from_pixels(
-                img,
-                ncnn.Mat.PixelType.PIXEL_BGR,
-                img.shape[1],
-                img.shape[0]
-            )
-
-            # Normalize image (required)
-            mean_vals = [0, 0, 0]
-            norm_vals = [1 / 255.0, 1 / 255.0, 1 / 255.0]
-            mat_in.substract_mean_normalize(mean_vals, norm_vals)
-
-            # Make sure the input and output names match the param file
-
-            ex.input(self.input, mat_in)
-            ret, mat_out = ex.extract(self.output)
-
-            if ret != 0:
-                raise _NCNNExtractionFailure("Extraction failed, GPU OOM?")
-
-            # return c, h, w
-            results.append(numpy.array(mat_out))
-
-        return numpy.array(results)
+def _get_tiled_scale_steps(width, height, tile_x, tile_y, overlap):
+    return math.ceil((height / (tile_y - overlap))) * math.ceil((width / (tile_x - overlap)))
 
 
 def _tiled_scale(samples,
@@ -210,15 +110,11 @@ def _tiled_scale(samples,
                 x_end = x_start + round(tile_x * upscale_amount)
 
                 # Update the output tensor
-                try:
-                    if tile_blending:
-                        out[:, :, y_start:y_end, x_start:x_end] += ps * mask
-                        out_div[:, :, y_start:y_end, x_start:x_end] += mask
-                    else:
-                        out[:, :, y_start:y_end, x_start:x_end] += ps
-                except ValueError:
-                    raise _NCNNIncorrectScaleFactor(
-                        f'scaling factor value {upscale_amount} is not correct for this NCNN model.')
+                if tile_blending:
+                    out[:, :, y_start:y_end, x_start:x_end] += ps * mask
+                    out_div[:, :, y_start:y_end, x_start:x_end] += mask
+                else:
+                    out[:, :, y_start:y_end, x_start:x_end] += ps
 
                 # Update progress bar if provided
                 if pbar is not None:
@@ -233,58 +129,42 @@ def _tiled_scale(samples,
     return output
 
 
-def _stack_images(images: list) -> numpy.ndarray:
-    out = []
-    for img in images:
-        img = img.convert('RGB')
-        img = (numpy.array(img).transpose((2, 0, 1)) / 255.0).astype(numpy.float32)  # Convert to (c, h, w) format
-        out.append(img)
-    return numpy.stack(out)
-
-
 class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
     """
     Implements tiled upscaling with NCNN upscaler models.
 
-    The "model" argument should be a path to a NCNN compatible upscaler model.
+    It is not recommended to use this as a preprocessor or postprocessor
+    on the same gpu that diffusion is being preformed on. The vulkan allocator
+    does not play nice with the torch cuda allocator and it will likely hard
+    crash your entire system. If you want to use it that way, set "gpu-index"
+    to a gpu that diffusion is not going to be running on.
 
-    The "params" argument should be a path to the NCNN params file for the model.
+    Downloaded model / param files are cached in the dgenerate web cache on disk
+    until the cache expiry time for the file is met.
 
-    Downloaded model / param files are cached in the dgenerate web cache on disk until the
-    cache expiry time for the file is met.
+    The "model" argument should be a path or URL to a NCNN compatible upscaler model.
 
-    The "factor" argument should be set to the upscale factor, such as 4. This
-    value must be correct for the supplied model to ensure correct operation.
+    The "params" argument should be a path or URL to the NCNN params file for the model.
+
+    The "use-gpu" argument determines if the gpu is used, defaults to False, see note below.
+
+    The "gpu-index" argument determines which gpu is used, it is 0 indexed.
 
     The "cpu-threads" argument determines the number of cpu threads used, the
     default value is "auto" which uses the maximum amount. You may also pass
     "half" to use half the cpus logical thread count.
 
-    The "use-gpu" argument determines if the gpu is used, this defaults to
-    False for reasons outlined below.
+    The "tile" argument can be used to specify the tile size for tiled upscaling, it
+    must be divisible by 2 and less than or equal to 400. The default is 400. Tile size
+    is limited to a max of 400 due to memory allocator issues in ncnn.
 
-    Using the GPU is not recommended if you are trying to use this processor
-    as a preprocessor or postprocessor for diffusion, as the vulkan allocator
-    really does not play nice with the torch cuda allocator, and it is almost
-    guaranteed to fail with an out of memory error.  It is fine to use if you are
-    doing a one shot upscale from the command line, or if you are only
-    ever using the "upscaler-ncnn" image processor in your config or from
-    the console UI. Initializing the vulkan allocator on the GPU will cause
-    other torch operations to fail, or NCNN operations to fail if a torch cuda
-    allocator exists in memory, and process crashes / segfaults are likely.
+    The "overlap" argument can be used to specify the overlap amount of each
+    tile in pixels, it must be greater than or equal to 0, and defaults to 8.
 
-    The "gpu-index" argument determines which gpu is used, it is 0 indexed.
+    The "pre-resize" argument is a boolean value determining if the processing
+    should take place before or after the image is resized by dgenerate.
 
-    The "tile" argument can be used to specify the tile size for tiled upscaling, it must be divisible by 2, and
-    defaults to 512. Specifying 0 disables tiling entirely.
-
-    The "overlap" argument can be used to specify the overlap amount of each tile in pixels, it must be
-    greater than or equal to 0, and defaults to 32.
-
-    The "pre-resize" argument is a boolean value determining if the processing should take place before or
-    after the image is resized by dgenerate.
-
-    Example: "upscaler-ncnn;model=x4.bin;params=x4.params;factor=4;tile=256;overlap=16"
+    Example: "upscaler-ncnn;model=x4.bin;params=x4.params;factor=4;tile=256;overlap=16;use-gpu=True"
     """
 
     NAMES = ['upscaler-ncnn']
@@ -292,25 +172,23 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
     def __init__(self,
                  model: str,
                  params: str,
-                 factor: int,
-                 cpu_threads: int | str = "auto",
                  use_gpu: bool = False,
                  gpu_index: int = 0,
-                 tile: typing.Union[int, str] = 512,
-                 overlap: int = 32,
+                 cpu_threads: int | str = "auto",
+                 tile: typing.Union[int, str] = 400,
+                 overlap: int = 8,
                  pre_resize: bool = False,
                  **kwargs):
         """
         :param model: NCNN compatible upscaler model on disk, or at a URL
         :param params: NCNN model params file on disk, or at a URL
         :param factor: upscale factor
-        :param cpu_threads: Number of CPU threads, or "auto"
         :param use_gpu: use a GPU?
         :param gpu_index: which GPU to use, zero indexed.
-        :param channels: number of image channels, 1 through 4, default is 3
-        :param tile: specifies the tile size for tiled upscaling, it must be divisible by 2, and defaults to 512.
-            Specifying 0 disable tiling entirely.
-        :param overlap: the overlap amount of each tile in pixels, it must be greater than or equal to 0, and defaults to 32.
+        :param cpu_threads: Number of CPU threads, or "auto", or "half"
+        :param tile: specifies the tile size for tiled upscaling, it must be divisible by 2, and defaults to 400.
+            Specifying values over 400 is not supported.
+        :param overlap: the overlap amount of each tile in pixels, it must be greater than or equal to 0, and defaults to 8.
         :param pre_resize: process the image before it is resized, or after? default is ``False`` (after).
         :param kwargs: forwarded to base class
         """
@@ -329,14 +207,14 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
             if tile % 2 != 0:
                 raise self.argument_error('Argument "tile" must be divisible by 2.')
 
-        if tile != 0 and tile < overlap:
-            raise self.argument_error('Argument "tile" must be greater than "overlap".')
+        if tile > 400:
+            raise self.argument_error('Argument "tile" may not be greater than 400.')
 
         if overlap < 0:
             raise self.argument_error('Argument "overlap" must be greater than or equal to 0.')
 
-        if factor < 1:
-            raise self.argument_error('Argument "factor" must be greater than or equal to 1.')
+        if tile < overlap:
+            raise self.argument_error('Argument "tile" must be greater than "overlap".')
 
         if gpu_index < 0:
             raise self.argument_error('Argument "gpu-index" must be greater than or equal to 0.')
@@ -346,12 +224,12 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
                 'Argument "cpu-threads" must be greater than or equal to 1, or "auto" or "half".')
 
         if _webcache.is_downloadable_url(model):
-            self._model_path = _webcache.create_web_cache_file(model)
+            self._model_path = _webcache.create_web_cache_file(model)[1]
         else:
             self._model_path = model
 
         if _webcache.is_downloadable_url(params):
-            self._params_path = _webcache.create_web_cache_file(params)
+            self._params_path = _webcache.create_web_cache_file(params)[1]
         else:
             self._params_path = params
 
@@ -360,7 +238,6 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
         self._pre_resize = pre_resize
         self._use_gpu = use_gpu
         self._gpu_index = gpu_index
-        self._factor = factor
         self._threads = cpu_threads if isinstance(cpu_threads, int) else psutil.cpu_count(logical=True)
 
         if cpu_threads == "half":
@@ -368,71 +245,58 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
 
     def _process_upscale(self, image, model):
 
-        oom = True
+        if model.broadcast_data.input_channels != 3 or model.broadcast_data.output_channels != 3:
+            raise ValueError(
+                f'No support for input channels or output channels not equal to 3. '
+                f'model input channels: {model.broadcast_data.input_channels}, '
+                f'model output channels: {model.broadcast_data.output_channels}')
 
         tile = self._tile
 
         in_img = _stack_images([image])
 
-        if tile == 0:
-            output = model(in_img)[0]
-            return PIL.Image.fromarray(
-                (output.transpose(1, 2, 0) * 255).astype(numpy.uint8))
+        steps = _get_tiled_scale_steps(
+            in_img.shape[3],
+            in_img.shape[2],
+            tile_x=tile,
+            tile_y=tile,
+            overlap=self._overlap)
 
-        while oom:
-            try:
-                steps = _t_upscaler._get_tiled_scale_steps(
-                    in_img.shape[3],
-                    in_img.shape[2],
-                    tile_x=tile,
-                    tile_y=tile,
-                    overlap=self._overlap)
+        pbar = tqdm.auto.tqdm(total=steps)
 
-                pbar = tqdm.auto.tqdm(total=steps)
+        output = _tiled_scale(
+            samples=_stack_images([image]),
+            tile_y=self._tile,
+            tile_x=self._tile,
+            upscale_amount=model.broadcast_data.scale,
+            out_channels=3,
+            overlap=self._overlap,
+            upscale_model=model,
+            pbar=pbar)[0]
 
-                output = _tiled_scale(
-                    samples=_stack_images([image]),
-                    tile_y=self._tile,
-                    tile_x=self._tile,
-                    upscale_amount=self._factor,
-                    out_channels=3,
-                    overlap=self._overlap,
-                    upscale_model=model,
-                    pbar=pbar)[0]
-
-                oom = False
-            except _NCNNExtractionFailure as e:
-                pbar.close()
-                tile //= 2
-                _messages.log(
-                    f'Reducing tile size to {tile} and retrying due to running out of memory.',
-                    level=_messages.WARNING)
-                if tile < 128:
-                    raise e
-
-        return PIL.Image.fromarray(
-            (output.transpose(1, 2, 0) * 255).astype(numpy.uint8))
+        return _output_to_pil(output)
 
     def _process_scope(self, image):
 
         try:
-            model = NCNNUpscaleModel(self._params_path,
-                                     self._model_path,
-                                     use_gpu=self._use_gpu,
-                                     gpu_index=self._gpu_index,
-                                     threads=self._threads)
-        except _NCNNGPUIndexError as e:
+            model = _ncnn_model.NCNNUpscaleModel(
+                self._params_path,
+                self._model_path,
+                use_gpu=self._use_gpu,
+                gpu_index=self._gpu_index,
+                threads=self._threads)
+        except _ncnn_model.NCNNGPUIndexError as e:
             raise self.argument_error(str(e))
-        except _NCNNNoGPUError as e:
+        except _ncnn_model.NCNNNoGPUError as e:
             raise self.argument_error(str(e))
-        except Exception as e:
-            raise self.argument_error(f'Unsupported model file format: {e}')
+        except ValueError as e:
+            raise self.argument_error(f'Unsupported NCNN model: {e}')
 
         try:
             return self._process_upscale(image, model)
-        except _NCNNExtractionFailure as e:
+        except _ncnn_model.NCNNExtractionFailure as e:
             raise dgenerate.OutOfMemoryError(e)
-        except _NCNNIncorrectScaleFactor as e:
+        except _ncnn_model.NCNNIncorrectScaleFactor as e:
             raise self.argument_error(f'argument "factor" is incorrect: {e}')
 
     def _process(self, image):
@@ -440,12 +304,13 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
             return self._process_scope(image)
         finally:
             gc.collect()
+            if self._use_gpu:
+                ncnn.destroy_gpu_instance()
 
     def __str__(self):
         args = [
             ('model', self._model_path),
             ('params', self._params_path),
-            ('factor', self._factor),
             ('cpu-threads', self._threads),
             ('use-gpu', self._use_gpu),
             ('gpu-index', self._gpu_index),
