@@ -57,7 +57,7 @@ def create_portable_environment():
 
     os.chdir('..')
     subprocess.run([python_exe,
-                    '-m', 'pip', 'install', '.[win-installer]',
+                    '-m', 'pip', 'install', '.[win-installer, ncnn]',
                     '--extra-index-url', 'https://download.pytorch.org/whl/cu121/'], env=env)
     os.chdir(script_dir)
 
