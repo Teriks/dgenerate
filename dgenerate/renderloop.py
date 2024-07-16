@@ -1022,23 +1022,22 @@ class RenderLoop:
                 yield from self._pre_generation_step(diffusion_arguments)
 
                 with next(image_seed_iterator()) as image_seed:
-                    with image_seed:
-                        if not is_control_guidance_spec:
-                            diffusion_arguments.image = image_seed.image
+                    if not is_control_guidance_spec:
+                        diffusion_arguments.image = image_seed.image
 
-                        if image_seed.mask_image is not None:
-                            diffusion_arguments.mask_image = image_seed.mask_image
+                    if image_seed.mask_image is not None:
+                        diffusion_arguments.mask_image = image_seed.mask_image
 
-                        if image_seed.control_images:
-                            diffusion_arguments.control_images = image_seed.control_images
+                    if image_seed.control_images:
+                        diffusion_arguments.control_images = image_seed.control_images
 
-                        elif image_seed.floyd_image:
-                            diffusion_arguments.floyd_image = image_seed.floyd_image
+                    elif image_seed.floyd_image:
+                        diffusion_arguments.floyd_image = image_seed.floyd_image
 
-                        with image_seed, pipeline_wrapper(diffusion_arguments) as generation_result:
-                            self._run_postprocess(generation_result)
-                            yield from self._write_image_seed_gen_image(diffusion_arguments, image_seed,
-                                                                        generation_result)
+                    with pipeline_wrapper(diffusion_arguments) as generation_result:
+                        self._run_postprocess(generation_result)
+                        yield from self._write_image_seed_gen_image(
+                            diffusion_arguments, image_seed, generation_result)
 
     def _gen_animation_filename(self,
                                 diffusion_args: _pipelinewrapper.DiffusionArguments,
