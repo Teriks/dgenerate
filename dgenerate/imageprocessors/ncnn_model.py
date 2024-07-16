@@ -207,7 +207,8 @@ class NCNNUpscaleModel:
         return first[-2][0], last[-2][0]
 
     def __del__(self):
-        del self.net
+        if hasattr(self, 'net'):
+            del self.net
 
     def __call__(self, images: numpy.ndarray) -> numpy.ndarray:
         """
