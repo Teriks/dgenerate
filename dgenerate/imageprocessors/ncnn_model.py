@@ -24,6 +24,8 @@ import gc
 import ncnn
 import numpy
 
+import dgenerate.types as _types
+
 
 class NCNNExtractionFailure(Exception):
     pass
@@ -258,3 +260,6 @@ class NCNNUpscaleModel:
             gc.collect()
 
         return numpy.array(results)
+
+
+__all__ = _types.module_all()
