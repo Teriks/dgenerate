@@ -41,6 +41,10 @@ class MirrorFlipProcessor(_imageprocessor.ImageProcessor):
 
     NAMES = ['mirror', 'flip']
 
+    # hide inherited arguments
+    # that are device related
+    HIDE_ARGS = ['device', 'model-offload']
+
     @staticmethod
     def help(loaded_by_name):
         if loaded_by_name == 'mirror':
@@ -102,6 +106,10 @@ class SimpleColorProcessor(_imageprocessor.ImageProcessor):
 
     NAMES = ['grayscale', 'invert']
 
+    # hide inherited arguments
+    # that are device related
+    HIDE_ARGS = ['device', 'model-offload']
+
     @staticmethod
     def help(loaded_by_name):
         if loaded_by_name == 'grayscale':
@@ -162,6 +170,10 @@ class PosterizeProcessor(_imageprocessor.ImageProcessor):
 
     NAMES = ['posterize']
 
+    # hide inherited arguments
+    # that are device related
+    HIDE_ARGS = ['device', 'model-offload']
+
     def __init__(self, bits: int, pre_resize: bool = False, **kwargs):
         """
         :param bits: required argument, integer value from 1 to 8
@@ -211,6 +223,10 @@ class SolarizeProcessor(_imageprocessor.ImageProcessor):
     """
 
     NAMES = ['solarize']
+
+    # hide inherited arguments
+    # that are device related
+    HIDE_ARGS = ['device', 'model-offload']
 
     def __init__(self, threshold: int = 128, pre_resize: bool = False, **kwargs):
         """
@@ -271,6 +287,10 @@ class LetterboxProcessor(_imageprocessor.ImageProcessor):
     """
 
     NAMES = ['letterbox']
+
+    # hide inherited arguments
+    # that are device related
+    HIDE_ARGS = ['device', 'model-offload']
 
     @staticmethod
     def _match_hex_color(color):
