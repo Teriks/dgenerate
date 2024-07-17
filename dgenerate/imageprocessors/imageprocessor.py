@@ -63,7 +63,7 @@ class ImageProcessor(_plugin.Plugin):
         if 'output-overwrite' not in hidden_args:
             help_str += \
                 'The "output-overwrite" argument can be used to enable ' \
-                'overwrite for a processor debug image, if this is not enabled ' \
+                'overwrite for a processor debug image. If this is not enabled, ' \
                 'new images written by the processor while it is being used ' \
                 'will be written with a numbered suffix instead of being overwritten.\n\n'
         if 'model-offload' not in hidden_args:
