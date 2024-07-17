@@ -3228,7 +3228,7 @@ processor module and a description of what the module does.
 Custom image processor modules can also be loaded through the ``--plugin-modules`` option as discussed
 in the `Writing Plugins`_ section.
 
-All processors posses the arguments: ``output-file``, ``output-overwrite``, ``device``, and ``model-offload``
+All processors posses the arguments: ``output-file`` and  ``output-overwrite``.
 
 The ``output-file`` argument can be used to write the processed image to a specific file, if multiple
 processing steps occur such as when rendering an animation or multiple generation steps, a numbered suffix
@@ -3238,6 +3238,8 @@ is being fed into diffusion or a ControlNet.
 
 The ``output-overwrite`` is a boolean argument can be used to tell the processor that you do not want numbered
 suffixes to be generated for ``output-file`` and to simply overwrite it.
+
+Some processors inherit the arguments: ``device``, and ``model-offload``.
 
 The ``device`` argument can be used to override what device any hardware accelerated image processing
 occurs on if any. It defaults to the value of ``--device`` and has the same syntax for specifying device
