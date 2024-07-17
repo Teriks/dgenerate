@@ -216,7 +216,9 @@ class Plugin:
             return [_types.fullname(cls)]
 
     @classmethod
-    def get_help(cls, loaded_by_name: str, wrap_width: int | None = None) -> str:
+    def get_help(cls, loaded_by_name: str,
+                 wrap_width: int | None = None,
+                 include_bases: bool = False) -> str:
         """
         Get formatted help information about the plugin.
 
@@ -230,6 +232,8 @@ class Plugin:
 
         :param wrap_width: wrap paragraphs to this width.
 
+        :param include_bases: include argument names and inherited help from base classes?
+
         :return: Formatted help string
         """
 
@@ -241,7 +245,21 @@ class Plugin:
         elif cls.__doc__:
             help_str = inspect.cleandoc(cls.__doc__).strip()
 
-        args_with_defaults = cls.get_accepted_args(loaded_by_name)
+        if include_bases:
+            base_help = []
+            for base in cls.get_bases():
+                if hasattr(base, 'inherited_help'):
+                    bhelp_val = base.inherited_help(cls, loaded_by_name)
+                    if bhelp_val:
+                        base_help.append(inspect.cleandoc(bhelp_val).strip())
+                elif base.__doc__:
+                    base_help.append(inspect.cleandoc(base.__doc__).strip())
+            if base_help:
+                help_str = help_str + '\n\n' + ('\n\n'.join(base_help))
+
+        args_with_defaults = cls.get_accepted_args(
+            loaded_by_name, include_bases=include_bases)
+
         arg_descriptors = []
 
         for arg in args_with_defaults:
@@ -299,13 +317,13 @@ class Plugin:
                 cls.get_accepted_args(loaded_by_name) if a.have_default]
 
     @classmethod
-    def get_bases(cls) -> set[typing.Type]:
+    def get_bases(cls) -> list[typing.Type['Plugin']]:
         """
         Return a list of base classes, except for :py:class:`Plugin`
 
         :return: list of class type objects
         """
-        return set(c for c in _types.get_all_base_classes(cls) if issubclass(c, Plugin) and c is not Plugin)
+        return list(c for c in _types.get_all_base_classes(cls) if issubclass(c, Plugin) and c is not Plugin)
 
     @classmethod
     def get_accepted_args_schema(cls, loaded_by_name: str, include_bases: bool = False):
@@ -776,7 +794,10 @@ class PluginLoader:
                 name, include_bases=include_bases)
         return schema
 
-    def get_help(self, plugin_name: _types.Name, wrap_width: int | None = None) -> str:
+    def get_help(self,
+                 plugin_name: _types.Name,
+                 wrap_width: int | None = None,
+                 include_bases: bool = False) -> str:
         """
         Get a formatted help string for a plugin by one of its loadable names.
 
@@ -784,12 +805,15 @@ class PluginLoader:
 
         :param wrap_width: wrap paragraphs to this width.
 
+        :param include_bases: include argument names and inherited help from base classes?
+
         :raises PluginNotFoundError: If the plugin name could not be found.
 
         :return: formatted string
         """
 
-        return self.get_class_by_name(plugin_name).get_help(plugin_name, wrap_width=wrap_width)
+        return self.get_class_by_name(plugin_name).get_help(
+            plugin_name, wrap_width=wrap_width, include_bases=include_bases)
 
     def load(self, uri: _types.Uri, **kwargs) -> Plugin:
         """
@@ -936,7 +960,8 @@ class PluginLoader:
                     title='plugin',
                     title_plural='plugins',
                     throw=False,
-                    log_error=True):
+                    log_error=True,
+                    include_bases: bool = False):
         """
         Implements ``--sub-command-help`` and ``--image-processor-help``
         command line options for example.
@@ -948,6 +973,7 @@ class PluginLoader:
         :param title_plural: plural plugin title, used in messages
         :param throw: throw on error?
         :param log_error: log errors to stderr?
+        :param include_bases: include argument names from base classes?
 
         :raises PluginNotFoundError: ``names`` contained an unknown plugin name
         :raises ModuleFileNotFoundError: ``plugin_module_paths`` contained a missing module
@@ -978,7 +1004,7 @@ class PluginLoader:
         help_strs = []
         for name in names:
             try:
-                help_strs.append(self.get_help(name))
+                help_strs.append(self.get_help(name, include_bases=include_bases))
             except PluginNotFoundError:
                 if log_error:
                     _messages.log(

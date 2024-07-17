@@ -12,6 +12,10 @@ class FooBarImageProcessor(dgenerate.imageprocessors.ImageProcessor):
     # This static property defines what names this module can be invoked by
     NAMES = ['foobar']
 
+    # you can hide base class arguments or any argument from URI usage
+    # if your processor does not support the argument
+    HIDE_ARGS = ['device']
+
     # You can force a specific image alignment to be obeyed by overriding get_alignment
     # the input image is forcefully aligned to the returned value, the user will be warned
     # about this if forced alignment takes place
@@ -111,6 +115,11 @@ class BooFabImageProcessor(dgenerate.imageprocessors.ImageProcessor):
                 _Pa('my_argument_2', type=float, default=2.0),
                 _Pa('my_argument_3', type=bool, default=False)]
     }
+
+    # you can hide base class arguments or any argument from URI usage
+    # if your processor does not support the argument, this indicates
+    # calling this processor by the name boo disables the device argument
+    HIDE_ARGS = {'boo': 'device'}
 
     # Defining the static method "help" allows you to provide a help string
     # for each invokable name, for --image-processor-help "boo" and --image-processor-help "foo"
