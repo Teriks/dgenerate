@@ -59,6 +59,10 @@ class LineArtStandardProcessor(_imageprocessor.ImageProcessor):
 
     NAMES = ['lineart-standard']
 
+    # hide inherited arguments
+    # that are device related
+    HIDE_ARGS = ['device', 'model-offload']
+
     def __init__(self,
                  gaussian_sigma: float = 6.0,
                  intensity_threshold: int = 8,
