@@ -308,7 +308,8 @@ class _ImageProcessorEntry(_entry._Entry):
                 value=default_value if default_value != 'None' else '')
             entry = tk.Entry(self.master, textvariable=variable)
             entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
-            return True, [entry], variable
+            return param_name not in self.file_in_arguments and \
+                   param_name not in self.file_out_arguments, [entry], variable
 
     def _add_file_in_button(self, row, entry, dialog_args):
 
