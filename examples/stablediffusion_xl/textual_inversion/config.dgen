@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 3.9.3
+#! dgenerate 3.10.0
 
 # you need to have a civitai.com account and to set up an API token
 # in your account settings in order to be able to download these models
