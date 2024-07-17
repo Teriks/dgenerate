@@ -21,6 +21,7 @@
 import collections.abc
 import inspect
 import io
+import os
 import re
 import typing
 
@@ -232,24 +233,38 @@ class BatchProcessor:
         """
 
         return {
+            'env': 'Sets environmental variables, example: \\env VAR_1=value VAR_2=value. '
+                   'Using without arguments will print the current environment. Indirect '
+                   'expansion is allowed, for example: \\env %VAR_NAME%=value, or '
+                   '\\env {{ var_name }}=value',
             'set': 'Sets a template variable, accepts two arguments, the variable name and the value. '
                    'Attempting to set a reserved template variable such as those pre-defined by dgenerate '
-                   'will result in an error. The second argument is accepted as a raw value, it is not shell '
-                   'parsed in any way, only stripped of leading and trailing whitespace after templating and '
-                   'environmental variable expansion.',
+                   'will result in an error. The first argument is the variable name, which may be an identifier '
+                   'or a template / environmental variable that expands to an identifier. The second argument is '
+                   'accepted as a raw value, it is not shell parsed in any way, only stripped of leading and trailing '
+                   'whitespace after templating and environmental variable expansion.',
             'sete': 'Sets a template variable to an array of shell arguments using shell parsing and expansion. '
-                    'For example, this could be utilized for convenient shell globbing: '
-                    '\\sete my_files my_directory1/* my_directory2/*',
+                    'The variable name may be an identifier or an identifier expanded from a '
+                    'template / environmental variable. For example, this could be utilized for '
+                    'convenient shell globbing: \\sete my_files my_directory1/* my_directory2/*',
             'setp': 'Sets a template variable to a (safely) evaluated Python expression, accepts two arguments, '
                     'the variable name and the value. Attempting to set a reserved template variable such '
-                    'as those pre-defined by dgenerate will result in an error. Template variables can be '
-                    'referred to by name within a definition, EG: \\setp my_list [1, 2, my_var, 4]. Template '
-                    'functions are also available, EG: \\setp working_dir cwd(). Python unary and binary '
-                    'expression operators, python list slicing, and comprehensions are supported. '
+                    'as those pre-defined by dgenerate will result in an error. The first argument is the '
+                    'variable name, which may be an identifier or a template / environmental variable '
+                    'that expands to an identifier. The second argument is a python expression that undergoes '
+                    'template and environmental variable expansion. Template variables can be referred to '
+                    'by name within a definition, EG: \\setp my_list [1, 2, my_var, 4]. Template functions '
+                    'are also available, EG: \\setp working_dir cwd(). Python unary and binary expression '
+                    'operators, python list slicing, and comprehensions are supported. '
                     'This functionality is provided by the asteval package.',
             'unset': 'Undefines a template variable previously set with \\set or \\setp, accepts one argument, '
-                     'the variable name. Attempting to unset a reserved variable such as those '
+                     'the variable name. The variable name may be an identifier or a template / environmental '
+                     'variable that expands to an identifier. Attempting to unset a reserved variable such as those '
                      'pre-defined by dgenerate will result in an error.',
+            'unset_env': 'Undefines environmental variables previously set with \\env, accepts multiple arguments, '
+                     'each argument is an environmental variable name, or a template / environmental variable '
+                     'that expands to the name of an environmental variable. Attempting to unset a variable '
+                     'that does not exist is a no-op.',
             'print': 'Prints all content to the right to stdout, no shell parsing of the argument occurs.',
             'echo': 'Echo shell arguments with shell parsing and expansion.'
         }
@@ -459,11 +474,44 @@ class BatchProcessor:
             raise BatchProcessError(f'\\setp eval error: {e}')
 
     def _directive_handlers(self, line):
-        if line.startswith('\\setp'):
+        if line.startswith('\\env'):
+            directive_args = line.split(' ', 1)
+            if len(directive_args) == 2:
+                opts = _textprocessing.shell_parse(
+                    self.render_template(directive_args[1].strip()),
+                    expand_glob=False,
+                    expand_home=False,
+                    expand_vars=False)
+                for opt in opts:
+                    assignment = opt.split('=', 1)
+                    if len(assignment) == 1:
+                        # set empty
+                        value = ''
+                    else:
+                        value = self.render_template(assignment[1])
+                    os.environ[assignment[0]] = value
+            else:
+                for key, value in os.environ.items():
+                    _messages.log(f'\\env "{key}={value}"')
+            return True
+        elif line.startswith('\\unset_env'):
+            directive_args = line.split(' ', 1)
+            if len(directive_args) == 2:
+                opts = _textprocessing.shell_parse(
+                    self.render_template(directive_args[1].strip()),
+                    expand_vars=False,
+                    expand_home=False,
+                    expand_glob=False)
+                for opt in opts:
+                    os.environ.pop(opt, None)
+            else:
+                raise BatchProcessError('\\unset_env was provided no arguments.')
+            return True
+        elif line.startswith('\\setp'):
             directive_args = line.split(' ', 2)
             if len(directive_args) == 3:
                 self.user_define(
-                    directive_args[1].strip(),
+                    self.render_template(directive_args[1].strip()),
                     self._intepret_setp_value(
                         self.render_template(directive_args[2].strip())))
                 return True
@@ -476,10 +524,10 @@ class BatchProcessor:
             if len(directive_args) == 3:
                 try:
                     self.user_define(
-                        directive_args[1].strip(),
+                        self.render_template(directive_args[1].strip()),
                         _textprocessing.shell_parse(
                             self.render_template(directive_args[2].strip()),
-                            expand_vars_func=self.expand_vars))
+                            expand_vars=False))
                 except _textprocessing.ShellParseSyntaxError as e:
                     raise BatchProcessError(e)
                 return True
@@ -491,7 +539,7 @@ class BatchProcessor:
             directive_args = line.split(' ', 2)
             if len(directive_args) == 3:
                 self.user_define(
-                    directive_args[1].strip(),
+                    self.render_template(directive_args[1].strip()),
                     self.render_template(directive_args[2].strip()))
                 return True
             else:
@@ -501,7 +549,8 @@ class BatchProcessor:
         elif line.startswith('\\unset'):
             directive_args = line.split(' ', 1)
             if len(directive_args) == 2:
-                self.user_undefine(directive_args[1].strip())
+                self.user_undefine(self.render_template(
+                    directive_args[1].strip()))
                 return True
             else:
                 raise BatchProcessError(
@@ -513,9 +562,8 @@ class BatchProcessor:
                 _messages.log(self.render_template(directive_args[1].strip()))
                 return True
             else:
-                raise BatchProcessError(
-                    f'\\print directive received no arguments, '
-                    f'syntax is: \\print value')
+                _messages.log()
+            return True
         elif line.startswith('\\echo'):
             directive_args = line.split(' ', 1)
             if len(directive_args) == 2:
@@ -525,11 +573,9 @@ class BatchProcessor:
                         expand_vars=False))
                 except _textprocessing.ShellParseSyntaxError as e:
                     raise BatchProcessError(e)
-                return True
             else:
-                raise BatchProcessError(
-                    f'\\echo directive received no arguments, '
-                    f'syntax is: \\echo args...')
+                _messages.log()
+            return True
         if line.startswith('{'):
             try:
                 self._running_template_continuation = True

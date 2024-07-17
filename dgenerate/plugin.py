@@ -402,11 +402,8 @@ class Plugin:
         args_hidden = []
         if hasattr(cls, 'HIDE_ARGS'):
             if isinstance(cls.HIDE_ARGS, dict):
-                if loaded_by_name not in cls.HIDE_ARGS:
-                    raise RuntimeError(
-                        'Plugin module implementation bug, args for '
-                        f'"{loaded_by_name}" not specified in ARGS dictionary.')
-                args_hidden = cls.HIDE_ARGS[loaded_by_name]
+                if loaded_by_name in cls.HIDE_ARGS:
+                    args_hidden = cls.HIDE_ARGS[loaded_by_name]
             else:
                 args_hidden = cls.HIDE_ARGS
 
@@ -449,12 +446,10 @@ class Plugin:
     @classmethod
     def _get_accepted_args(cls, loaded_by_name: str) -> list[PluginArg]:
         if hasattr(cls, 'ARGS'):
+            args_with_defaults = []
             if isinstance(cls.ARGS, dict):
-                if loaded_by_name not in cls.ARGS:
-                    raise RuntimeError(
-                        'Plugin module implementation bug, args for '
-                        f'"{loaded_by_name}" not specified in ARGS dictionary.')
-                args_with_defaults = cls.ARGS.get(loaded_by_name)
+                if loaded_by_name in cls.ARGS:
+                    args_with_defaults = cls.ARGS.get(loaded_by_name)
             else:
                 args_with_defaults = cls.ARGS
 
