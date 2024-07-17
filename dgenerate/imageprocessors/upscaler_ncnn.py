@@ -109,7 +109,7 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
                  use_gpu: bool = False,
                  gpu_index: int = 0,
                  cpu_threads: typing.Union[int, str] = "auto",
-                 tile: typing.Union[int, str] = 400,
+                 tile: int = 400,
                  overlap: int = 8,
                  pre_resize: bool = False,
                  **kwargs):
