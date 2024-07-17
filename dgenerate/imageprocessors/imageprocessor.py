@@ -72,7 +72,7 @@ class ImageProcessor(_plugin.Plugin):
                 'cpu model offloading for a processor, if this is disabled ' \
                 'any torch tensors or modules placed on the gpu will remain there until ' \
                 'the processor is done being used, instead of them being moved back to the cpu ' \
-                'after each image. Enabling this may help save VRAM when using an image processor' \
+                'after each image. Enabling this may help save VRAM when using an image processor ' \
                 'as a preprocessor or postprocessor for diffusion with dgenerate but will impact ' \
                 'rendering speed when generating many images.'
         return help_str
