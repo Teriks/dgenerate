@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import importlib.util
 import tkinter as tk
 import tkinter.ttk as ttk
 import typing
@@ -35,9 +36,7 @@ class _ImageProcessorEntry(_entry._Entry):
     def __init__(self, *args, **kwargs):
         self.schema = _resources.get_schema('imageprocessors')
 
-        try:
-            import ncnn
-        except ImportError:
+        if importlib.util.find_spec('ncnn') is None:
             self.schema.pop('upscaler-ncnn', None)
 
         config = kwargs.get('config', {})
@@ -79,9 +78,13 @@ class _ImageProcessorEntry(_entry._Entry):
 
         self.entries = {}
         self.dynamic_widgets = []
-        self.file_arguments = {
+        self.file_in_arguments = {
             'model': _resources.get_file_dialog_args(['models']),
             'param': {'filetypes': [('param', ('*.param'))]}}
+
+        self.file_out_arguments = {
+            'output-file': _resources.get_file_dialog_args(['images-out'])
+        }
 
         self.on_updated_callback = None
 
@@ -196,7 +199,7 @@ class _ImageProcessorEntry(_entry._Entry):
         default_value: typing.Any = param_info.get('default', "")
         param_types: list[str] = param_info['types']
 
-        raw, widgets, variable = self._create_entry(param_types, default_value, optional, row)
+        raw, widgets, variable = self._create_entry(param_name, param_types, default_value, optional, row)
 
         entry = widgets[0]
 
@@ -213,17 +216,21 @@ class _ImageProcessorEntry(_entry._Entry):
         for widget in widgets:
             self.dynamic_widgets.append(widget)
 
-        if param_name in self.file_arguments:
-            self._add_file_button(row, entry, self.file_arguments[param_name])
+        if param_name in self.file_in_arguments:
+            self._add_file_in_button(row, entry, self.file_in_arguments[param_name])
+
+        if param_name in self.file_out_arguments:
+            self._add_file_out_button(row, entry, self.file_out_arguments[param_name])
 
         # editing resets invalid border
         variable.trace_add('write', lambda *a, e=entry: e.config(highlightthickness=0))
 
         self.entries[param_name] = (entry, variable, default_value, optional)
 
-    def _create_entry(self, param_types, default_value, optional, row) -> \
+    def _create_entry(self, param_name, param_types, default_value, optional, row) -> \
             tuple[bool, list[tk.Widget], tk.Variable]:
         """
+        :param param_name: parameter name
         :param param_types: parameter accepted types, as strings
         :param default_value: default value, possibly empty string
         :param optional: can accept None?
@@ -235,16 +242,17 @@ class _ImageProcessorEntry(_entry._Entry):
 
         if len(param_types) == 1:
             param_type = param_types[0]
-            return self._create_single_type_entry(param_type, default_value, optional, row)
+            return self._create_single_type_entry(param_name, param_type, default_value, optional, row)
         else:
             variable = tk.StringVar(value=str(default_value))
             entry = tk.Entry(self.master, textvariable=variable)
             entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
             return True, [entry], variable
 
-    def _create_single_type_entry(self, param_type, default_value, optional, row) -> \
+    def _create_single_type_entry(self, param_name, param_type, default_value, optional, row) -> \
             tuple[bool, list[tk.Widget], tk.Variable]:
         """
+        :param param_name: parameter name
         :param param_type: parameter accepted type, as string
         :param default_value: default value, possibly empty string
         :param optional: can accept None?
@@ -286,17 +294,33 @@ class _ImageProcessorEntry(_entry._Entry):
                 entry.grid(row=row, column=1, sticky='w')
                 return False, [entry], variable
 
+        elif param_name == 'device':
+            variable = tk.StringVar(value='')
+            values = _resources.get_torch_devices()
+            if optional:
+                values = [''] + values
+            entry = tk.OptionMenu(self.master, variable, *values)
+            entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
+            return False, [entry], variable
         else:
-
-            variable = tk.StringVar(value=str(default_value))
+            default_value = str(default_value)
+            variable = tk.StringVar(
+                value=default_value if default_value != 'None' else '')
             entry = tk.Entry(self.master, textvariable=variable)
             entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
             return True, [entry], variable
 
-    def _add_file_button(self, row, entry, dialog_args):
+    def _add_file_in_button(self, row, entry, dialog_args):
 
         file_button = tk.Button(self.master, text='Select File',
-                                command=lambda e=entry, d=dialog_args: self._select_model_command(e, d))
+                                command=lambda e=entry, d=dialog_args: self._select_in_file_command(e, d))
+        file_button.grid(row=row, column=2, padx=_entry.ROW_XPAD, sticky='w')
+        self.dynamic_widgets.append(file_button)
+
+    def _add_file_out_button(self, row, entry, dialog_args):
+
+        file_button = tk.Button(self.master, text='Save File',
+                                command=lambda e=entry, d=dialog_args: self._select_out_file_command(e, d))
         file_button.grid(row=row, column=2, padx=_entry.ROW_XPAD, sticky='w')
         self.dynamic_widgets.append(file_button)
 
@@ -331,8 +355,15 @@ class _ImageProcessorEntry(_entry._Entry):
                 _entry.valid_colors(entry)
 
     @staticmethod
-    def _select_model_command(entry, dialog_args):
+    def _select_in_file_command(entry, dialog_args):
         file_path = _filedialog.open_file_dialog(**dialog_args)
+        if file_path:
+            entry.delete(0, tk.END)
+            entry.insert(0, file_path)
+
+    @staticmethod
+    def _select_out_file_command(entry, dialog_args):
+        file_path = _filedialog.open_file_save_dialog(**dialog_args)
         if file_path:
             entry.delete(0, tk.END)
             entry.insert(0, file_path)

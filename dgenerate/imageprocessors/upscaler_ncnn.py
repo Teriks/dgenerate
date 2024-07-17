@@ -99,6 +99,9 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
 
     NAMES = ['upscaler-ncnn']
 
+    # hide inherited argument device
+    HIDE_ARGS = ['device']
+
     def __init__(self,
                  model: str,
                  param: str,

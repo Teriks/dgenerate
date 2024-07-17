@@ -21,6 +21,7 @@
 import gc
 import itertools
 import os
+import typing
 
 import PIL.Image
 import torch
@@ -48,14 +49,14 @@ class ImageProcessor(_plugin.Plugin):
 
     def __init__(self,
                  loaded_by_name: str,
-                 device: str = 'cpu',
+                 device: typing.Optional[str] = None,
                  output_file: dgenerate.types.OptionalPath = None,
                  output_overwrite: bool = False,
                  model_offload: bool = False,
                  **kwargs):
         """
         :param loaded_by_name: The name the processor was loaded by
-        :param device: the device the processor will run on
+        :param device: the device the processor will run on, for example: cpu, cuda, cuda:1
         :param output_file: output a debug image to this path
         :param output_overwrite: can the debug image output path be overwritten?
         :param model_offload: if ``True``, any torch modules that the processor
@@ -78,7 +79,7 @@ class ImageProcessor(_plugin.Plugin):
 
         self.__output_file = output_file
         self.__output_overwrite = output_overwrite
-        self.__device = device
+        self.__device = device if device else 'cpu'
         self.__modules = []
         self.__modules_device = torch.device('cpu')
         self.__model_offload = model_offload

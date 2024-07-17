@@ -166,7 +166,7 @@ def get_torch_vae_types():
             "ConsistencyDecoderVAE"]
 
 
-def get_cuda_devices():
+def get_torch_devices():
     try:
         extra_kwargs = dict()
         if platform.system() == 'Windows':
