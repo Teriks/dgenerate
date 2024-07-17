@@ -52,7 +52,7 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
     The argument "detect-align" determines the pixel alignment of the image resize requested by
     "detect-resolution", it defaults to 1 indicating no requested alignment.
 
-    The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
+    The argument "pre-resize" determines if the processing occurs before or after dgenerate resizes the image.
     This defaults to False, meaning the image is processed after dgenerate is done resizing it.
     """
 
