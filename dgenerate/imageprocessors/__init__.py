@@ -79,9 +79,6 @@ def image_processor_help(names: _types.Names,
     """
     Implements ``--image-processor-help`` command line option
 
-
-
-
     :param names: arguments (processor names, or empty list)
     :param plugin_module_paths: extra plugin module paths to search
     :param throw: throw on error? or simply print to stderr and return a return code.
