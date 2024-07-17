@@ -17,7 +17,7 @@ loader = ImageProcessorLoader()
 # we can print out the canny edge detect processor plugin help for reference
 print(loader.get_help('canny'))
 
-canny = loader.load('canny;lower=50;upper=100', device=device)
+canny = loader.load('canny;lower=50;upper=100')
 
 with PIL.Image.open('../../media/man-fighting-pose.jpg') as img:
     # please note that img will most likely be closed by this
