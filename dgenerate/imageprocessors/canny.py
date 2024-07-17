@@ -70,6 +70,9 @@ class CannyEdgeDetectProcessor(_imageprocessor.ImageProcessor):
 
     NAMES = ['canny']
 
+    # always CPU based
+    HIDE_ARGS = ['device']
+
     # noinspection PyPep8Naming
     def __init__(self,
                  lower: int = 50,
