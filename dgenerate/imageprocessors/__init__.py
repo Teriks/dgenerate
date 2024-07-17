@@ -99,7 +99,8 @@ def image_processor_help(names: _types.Names,
             title='image processor',
             title_plural='image processors',
             throw=True,
-            log_error=log_error)
+            log_error=log_error,
+            include_bases=True)
     except (ImageProcessorNotFoundError, _plugin.ModuleFileNotFoundError) as e:
         if throw:
             raise ImageProcessorHelpUsageError(str(e).strip())

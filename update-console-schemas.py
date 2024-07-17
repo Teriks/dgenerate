@@ -27,7 +27,8 @@ with open('dgenerate/console/schemas/imageprocessors.json', 'w') as file:
     schema = dict(sorted(schema.items(), key=lambda x: x[0]))
 
     for plugin in schema.keys():
-        schema[plugin].update({'PROCESSOR_HELP': plugin_loader.get_help(plugin, wrap_width=100)})
+        schema[plugin].update({'PROCESSOR_HELP': plugin_loader.get_help(
+            plugin, wrap_width=100, include_bases=True)})
 
     json.dump(schema, file)
 

@@ -758,7 +758,7 @@ def get_null_attr_name(e):
     return None
 
 
-def get_all_base_classes(cls) -> set[typing.Type]:
+def get_all_base_classes(cls) -> list[typing.Type]:
     """
     Get all base classes of a given class recursively.
 
@@ -766,6 +766,7 @@ def get_all_base_classes(cls) -> set[typing.Type]:
     :return: A list of all base classes.
     """
     base_classes = set()
+    base_classes_seq = list()
     stack = [cls]
 
     while stack:
@@ -773,6 +774,7 @@ def get_all_base_classes(cls) -> set[typing.Type]:
         for base in current_cls.__bases__:
             if base not in base_classes:
                 base_classes.add(base)
+                base_classes_seq.append(base)
                 stack.append(base)
 
-    return base_classes
+    return base_classes_seq
