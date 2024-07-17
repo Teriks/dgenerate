@@ -33,7 +33,7 @@ class _DeviceEntry(_entry._Entry):
         if self.arg is None:
             self.arg = '--device'
 
-        devices = _resources.get_cuda_devices()
+        devices = _resources.get_torch_devices()
 
         if self.optional:
             devices = [''] + devices

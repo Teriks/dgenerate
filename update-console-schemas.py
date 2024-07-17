@@ -21,7 +21,7 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 with open('dgenerate/console/schemas/imageprocessors.json', 'w') as file:
     plugin_loader = _loader.ImageProcessorLoader()
-    schema = plugin_loader.get_accepted_args_schema()
+    schema = plugin_loader.get_accepted_args_schema(include_bases=True)
 
     # sort by processor name, this affects json output
     schema = dict(sorted(schema.items(), key=lambda x: x[0]))

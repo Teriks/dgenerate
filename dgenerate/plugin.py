@@ -299,7 +299,16 @@ class Plugin:
                 cls.get_accepted_args(loaded_by_name) if a.have_default]
 
     @classmethod
-    def get_accepted_args_schema(cls, loaded_by_name: str):
+    def get_bases(cls) -> set[typing.Type]:
+        """
+        Return a list of base classes, except for :py:class:`Plugin`
+
+        :return: list of class type objects
+        """
+        return set(c for c in _types.get_all_base_classes(cls) if issubclass(c, Plugin) and c is not Plugin)
+
+    @classmethod
+    def get_accepted_args_schema(cls, loaded_by_name: str, include_bases: bool = False):
         """
         Reduce the accepted arguments to a schema dict.
 
@@ -312,10 +321,12 @@ class Plugin:
         ``optional`` can the argument accept the value ``None``?
 
         :param loaded_by_name: Plugin loaded by name
+        :param include_bases: Include all base classes except :py:class:`Plugin`?
+
         :return: dict
         """
         schema = dict()
-        for arg in cls.get_accepted_args(loaded_by_name):
+        for arg in cls.get_accepted_args(loaded_by_name, include_bases=include_bases):
             entry = {}
             schema[arg.name] = entry
 
@@ -350,16 +361,69 @@ class Plugin:
         return schema
 
     @classmethod
-    def get_accepted_args(cls, loaded_by_name: str) -> list[PluginArg]:
+    def get_hidden_args(cls, loaded_by_name: str) -> set[str]:
+        """
+        Get argument names that have been explicitly
+        hidden from use or disabled by the plugin.
+
+        These may be unsupported arguments inherited
+        from a base class, or just arguments the plugin
+        does not want you to use via a URI.
+
+        :param loaded_by_name: The name used to load the plugin.
+            Argument signature may vary by name used to load.
+
+        :return: hidden argument names
+        """
+        args_hidden = []
+        if hasattr(cls, 'HIDE_ARGS'):
+            if isinstance(cls.HIDE_ARGS, dict):
+                if loaded_by_name not in cls.HIDE_ARGS:
+                    raise RuntimeError(
+                        'Plugin module implementation bug, args for '
+                        f'"{loaded_by_name}" not specified in ARGS dictionary.')
+                args_hidden = cls.HIDE_ARGS[loaded_by_name]
+            else:
+                args_hidden = cls.HIDE_ARGS
+
+        return set(_textprocessing.dashup(name) for name in args_hidden)
+
+    @classmethod
+    def get_accepted_args(cls, loaded_by_name: str, include_bases: bool = False):
         """
         Retrieve the argument signature of a plugin implementation.
 
         :param loaded_by_name: The name used to load the plugin.
             Argument signature may vary by name used to load.
 
+        :param include_bases: Include all base classes except :py:class:`Plugin`?
+
         :return: List of argument descriptors, :py:class:`.PluginArg`
         """
+        if include_bases:
+            rest = itertools.chain.from_iterable(
+                c._get_accepted_args(loaded_by_name)
+                for c in cls.get_bases())
+        else:
+            rest = []
 
+        arg_name_set = dict()
+        hidden_args = cls.get_hidden_args(loaded_by_name)
+        for a in itertools.chain(cls._get_accepted_args(loaded_by_name), rest):
+            if a.name == 'loaded-by-name':
+                continue
+            if a.name in hidden_args:
+                continue
+            if a.name in arg_name_set:
+                raise RuntimeError(
+                    'Cannot handle base classes with shadowed constructor arguments.')
+            else:
+                arg_name_set[a.name] = a
+
+        return list(arg_name_set.values())
+
+    @classmethod
+    def _get_accepted_args(cls, loaded_by_name: str) -> list[PluginArg]:
         if hasattr(cls, 'ARGS'):
             if isinstance(cls.ARGS, dict):
                 if loaded_by_name not in cls.ARGS:
@@ -693,16 +757,18 @@ class PluginLoader:
 
         return list(self.__classes_by_name.keys())
 
-    def get_accepted_args_schema(self) -> dict[str, dict[str, typing.Any]]:
+    def get_accepted_args_schema(self, include_bases: bool = False) -> dict[str, dict[str, typing.Any]]:
         """
         Get a :py:meth:`Plugin.get_accepted_args_schema` for every plugin class, keyed by callable plugin name.
 
+        :param include_bases: Include base class arguments? This excludes the base :py:class:`Plugin`
         :return: dict
         """
         schema = dict()
 
         for name in self.get_all_names():
-            schema[name] = self.get_class_by_name(name).get_accepted_args_schema(name)
+            schema[name] = self.get_class_by_name(name).get_accepted_args_schema(
+                name, include_bases=include_bases)
         return schema
 
     def get_help(self, plugin_name: _types.Name, wrap_width: int | None = None) -> str:
@@ -740,13 +806,13 @@ class PluginLoader:
 
         self.load_plugin_modules(PLUGIN_PATHS)
 
-        call_by_name = uri.split(';', 1)[0].strip()
+        loaded_by_name = uri.split(';', 1)[0].strip()
 
-        plugin_class = self.get_class_by_name(call_by_name)
+        plugin_class = self.get_class_by_name(loaded_by_name)
 
-        parser_accepted_args = [a.name for a in plugin_class.get_accepted_args(call_by_name)]
+        parser_accepted_args = [a.name for a in plugin_class.get_accepted_args(loaded_by_name)]
 
-        parser_raw_args = [a.name for a in plugin_class.get_accepted_args(call_by_name)
+        parser_raw_args = [a.name for a in plugin_class.get_accepted_args(loaded_by_name)
                            if a.base_type not in (int, str, float, bool)]
 
         if 'loaded-by-name' in parser_accepted_args:
@@ -755,6 +821,8 @@ class PluginLoader:
             raise RuntimeError(f'"loaded-by-name" is a reserved {self.__description} module argument, '
                                'chose another argument name for your module.')
 
+        hidden_args = plugin_class.get_hidden_args(loaded_by_name)
+
         for module_arg in self.__reserved_args:
             # reserved args always go into **kwargs
             # inheritors of base_class
@@ -762,6 +830,9 @@ class PluginLoader:
             if module_arg.name in parser_accepted_args:
                 raise RuntimeError(f'"{module_arg}" is a reserved {self.__description} module argument, '
                                    'chose another argument name for your module.')
+
+            if module_arg.name in hidden_args:
+                continue
 
             parser_accepted_args.append(module_arg.name)
 
@@ -777,7 +848,7 @@ class PluginLoader:
 
         args_dict = {}
 
-        for arg in plugin_class.get_default_args(call_by_name):
+        for arg in plugin_class.get_default_args(loaded_by_name):
             # defaults specified by the implementation class
             args_dict[_textprocessing.dashdown(arg.name)] = arg.default
 
@@ -800,14 +871,14 @@ class PluginLoader:
                         else:
                             raise self.__argument_error_type(
                                 f'Missing required argument "{reserved_arg.name}" for {self.__description} '
-                                f'"{call_by_name}".')
+                                f'"{loaded_by_name}".')
             except ValueError as e:
                 raise self.__argument_error_type(
                     f'Argument "{reserved_arg.name}" must match type: "{reserved_arg.type_string()}". '
                     f'Failure cause: {str(e).strip()}')
 
         accepted_args = {_textprocessing.dashup(n.name): n for n in
-                         itertools.chain(plugin_class.get_accepted_args(loaded_by_name=call_by_name),
+                         itertools.chain(plugin_class.get_accepted_args(loaded_by_name=loaded_by_name),
                                          self.__reserved_args)}
 
         # plugin user in code arguments
@@ -836,7 +907,7 @@ class PluginLoader:
                     f'Failure cause: {str(e).strip()}')
 
         # Automagic argument
-        args_dict['loaded_by_name'] = call_by_name
+        args_dict['loaded_by_name'] = loaded_by_name
 
         for arg_name, plugin_arg in ((k, v) for k, v in accepted_args.items() if not v.have_default):
             snake_case = _textprocessing.dashdown(arg_name)
@@ -845,14 +916,14 @@ class PluginLoader:
                     args_dict[snake_case] = None
                 else:
                     raise self.__argument_error_type(
-                        f'Missing required argument "{arg_name}" for {self.__description} "{call_by_name}".')
+                        f'Missing required argument "{arg_name}" for {self.__description} "{loaded_by_name}".')
 
         try:
             return plugin_class(**args_dict)
         except self.__argument_error_type as e:
             raise self.__argument_error_type(
                 f'Invalid argument given to {self.__description} '
-                f'"{call_by_name}": {str(e).strip()}')
+                f'"{loaded_by_name}": {str(e).strip()}')
 
     def loader_help(self,
                     names: _types.Names,

@@ -69,7 +69,7 @@ class NCNNUpscaleModel:
         Initialize the NCNN upscale model.
         """
         with open(param_file, 'rt') as file:
-            lines = file.readlines()
+            lines = [line for line in file if line.strip()]
             self.input_layer_name, self.output_layer_name = self._get_input_output(lines)
             self.broadcast_data = self._get_broadcast_data(lines)
 
@@ -109,7 +109,7 @@ class NCNNUpscaleModel:
     def _parse_param_layer(layer_str: str) -> tuple:
         param_list = layer_str.strip().split()
         if len(param_list) < 4:
-            raise ValueError("Layer string does not have enough elements.")
+            raise ValueError(f"Layer string does not have enough elements: {layer_str}")
 
         op_type, name = param_list[:2]
         if op_type == "MemoryData":
