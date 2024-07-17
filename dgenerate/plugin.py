@@ -364,11 +364,16 @@ class Plugin:
     def get_hidden_args(cls, loaded_by_name: str) -> set[str]:
         """
         Get argument names that have been explicitly
-        hidden from use or disabled by the plugin.
+        hidden from use or disabled by the plugin for
+        URI use.
 
         These may be unsupported arguments inherited
         from a base class, or just arguments the plugin
         does not want you to use via a URI.
+
+        These arguments can still be passed manually from
+        code in the interest od maintaining a generic
+        interface, but they will be ignored by the processor.
 
         :param loaded_by_name: The name used to load the plugin.
             Argument signature may vary by name used to load.
