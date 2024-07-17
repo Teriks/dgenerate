@@ -54,7 +54,11 @@ class ImageProcessor(_plugin.Plugin):
         if 'device' not in hidden_args:
             help_str += \
                 'The argument "device" can be used to set the device ' \
-                'the processor will run on, for example: cpu, cuda, cuda:1\n\n'
+                'the processor will run on, for example: cpu, cuda, cuda:1. ' \
+                'If you are using this image processor as a preprocess or ' \
+                'postprocess step for dgenerate, or with the image-process ' \
+                'subcommand, or \\image_process directive, this argument will ' \
+                'default to the value of --device.\n\n'
         if 'output-file' not in hidden_args:
             help_str += \
                 'The argument "output-file" can be used to set the output ' \
