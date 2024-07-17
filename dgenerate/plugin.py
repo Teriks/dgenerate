@@ -248,8 +248,8 @@ class Plugin:
         if include_bases:
             base_help = []
             for base in cls.get_bases():
-                if hasattr(base, 'inherited_help'):
-                    bhelp_val = base.inherited_help(cls, loaded_by_name)
+                if hasattr(base, 'inheritable_help'):
+                    bhelp_val = base.inheritable_help(cls, loaded_by_name)
                     if bhelp_val:
                         base_help.append(inspect.cleandoc(bhelp_val).strip())
                 elif base.__doc__:
