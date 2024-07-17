@@ -49,29 +49,29 @@ class ImageProcessor(_plugin.Plugin):
 
     @classmethod
     def inherited_help(cls, subclass, loaded_by_name):
-        help = ''
+        help_str = ''
         hidden_args = subclass.get_hidden_args(loaded_by_name)
         if 'device' not in hidden_args:
-            help += 'The "device" argument can be used to set the device ' \
+            help_str += 'The "device" argument can be used to set the device ' \
                     'the processor will run on, for example: cpu, cuda, cuda:1\n\n'
         if 'output-file' not in hidden_args:
-            help += 'The "output-file" argument can be used to set the output ' \
+            help_str += 'The "output-file" argument can be used to set the output ' \
                     'path for a processor debug image, this will save the ' \
                     'processed image to a path of your choosing.\n\n'
         if 'output-overwrite' not in hidden_args:
-            help += 'The "output-overwrite" argument can be used to enable ' \
+            help_str += 'The "output-overwrite" argument can be used to enable ' \
                     'overwrite for a processor debug image, if this is not enabled ' \
                     'new images written by the processor while it is being used ' \
                     'will be written with a numbered suffix instead of overwritten.\n\n'
         if 'model-offload' not in hidden_args:
-            help += 'The "model-offload" argument can be used to enable ' \
+            help_str += 'The "model-offload" argument can be used to enable ' \
                     'cpu model offloading for a processor, if this is disabled ' \
                     'any torch tensors or modules placed on the gpu will remain there until ' \
                     'the processor is done being used, instead of them being moved back to the cpu ' \
                     'after each image. Enabling this may help save VRAM when using as a preprocessor or ' \
                     'postprocessor but will impact execution speed when processing many ' \
                     'images during an invocation of dgenerate.'
-        return help
+        return help_str
 
     def __init__(self,
                  loaded_by_name: str,
