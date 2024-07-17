@@ -51,7 +51,7 @@ class TEEDProcessor(_imageprocessor.ImageProcessor):
     The argument "detect-aspect" determines if the image resize requested by "detect_resolution" before
     detection runs is aspect correct, this defaults to true.
 
-    The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
+    The argument "pre-resize" determines if the processing occurs before or after dgenerate resizes the image.
     This defaults to False, meaning the image is processed after dgenerate is done resizing it.
     """
 
