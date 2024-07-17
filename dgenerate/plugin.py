@@ -390,8 +390,9 @@ class Plugin:
         does not want you to use via a URI.
 
         These arguments can still be passed manually from
-        code in the interest od maintaining a generic
-        interface, but they will be ignored by the processor.
+        code in the interest of maintaining a generic
+        interface, but they will be ignored by the plugin
+        implementation.
 
         :param loaded_by_name: The name used to load the plugin.
             Argument signature may vary by name used to load.
