@@ -103,13 +103,14 @@ class ImageProcessor(_plugin.Plugin):
                          argument_error_type=_exceptions.ImageProcessorArgumentError,
                          **kwargs)
 
-        try:
-            if not _util.is_valid_device_string(device):
+        if device is not None:
+            try:
+                if not _util.is_valid_device_string(device):
+                    raise _exceptions.ImageProcessorArgumentError(
+                        f'Invalid device argument: "{device}" is not a valid device string.')
+            except _util.InvalidDeviceOrdinalException as e:
                 raise _exceptions.ImageProcessorArgumentError(
-                    f'Invalid device argument: "{device}" is not a valid device string.')
-        except _util.InvalidDeviceOrdinalException as e:
-            raise _exceptions.ImageProcessorArgumentError(
-                f'Invalid device argument: {e}')
+                    f'Invalid device argument: {e}')
 
         self.__output_file = output_file
         self.__output_overwrite = output_overwrite
