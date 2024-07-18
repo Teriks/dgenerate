@@ -38,7 +38,7 @@ class NormalBaeProcessor(_imageprocessor.ImageProcessor):
     """
     Normal Bae Detector, generate a normal map from an image.
 
-    The argument "detect-resolution" is the resolution the image is resized to internal to the processor before
+    The "detect-resolution" argument is the resolution the image is resized to internal to the processor before
     detection is run on it. It should be a single dimension for example: "detect-resolution=512" or the X/Y dimensions
     seperated by an "x" character, like so: "detect-resolution=1024x512". If you do not specify this argument,
     the detector runs on the input image at its full resolution. After processing the image will be resized to
@@ -46,10 +46,10 @@ class NormalBaeProcessor(_imageprocessor.ImageProcessor):
     image-process sub-command, if you have not requested any resizing the output will be resized back to the original
     size of the input image.
 
-    The argument "detect-aspect" determines if the image resize requested by "detect-resolution" before
+    The "detect-aspect" argument determines if the image resize requested by "detect-resolution" before
     detection runs is aspect correct, this defaults to true.
 
-    The argument "pre-resize" determines if the processing occurs before or after dgenerate resizes the image.
+    The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
     This defaults to False, meaning the image is processed after dgenerate is done resizing it.
     """
 

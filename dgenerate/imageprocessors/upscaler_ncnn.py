@@ -69,26 +69,26 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
     Downloaded model / param files are cached in the dgenerate web cache on disk
     until the cache expiry time for the file is met.
 
-    The argument "model" should be a path or URL to a NCNN compatible upscaler model.
+    The "model" argument should be a path or URL to a NCNN compatible upscaler model.
 
-    The argument "param" should be a path or URL to the NCNN param file for the model.
+    The "param" argument should be a path or URL to the NCNN param file for the model.
 
-    The argument "use-gpu" determines if the gpu is used, defaults to False.
+    The "use-gpu" argument determines if the gpu is used, defaults to False.
 
-    The argument "gpu-index" determines which gpu is used, it is 0 indexed.
+    The "gpu-index" argument determines which gpu is used, it is 0 indexed.
 
-    The argument "cpu-threads" determines the number of cpu threads used, the
+    The "cpu-threads" argument determines the number of cpu threads used, the
     default value is "auto" which uses the maximum amount. You may also pass
     "half" to use half the cpus logical thread count.
 
-    The argument "tile" can be used to specify the tile size for tiled upscaling, it
+    The "tile" argument can be used to specify the tile size for tiled upscaling, it
     must be divisible by 2 and less than or equal to 400. The default is 400. Tile size
     is limited to a max of 400 due to memory allocator issues in ncnn.
 
-    The argument "overlap" can be used to specify the overlap amount of each
+    The "overlap" argument can be used to specify the overlap amount of each
     tile in pixels, it must be greater than or equal to 0, and defaults to 8.
 
-    The argument "pre-resize" is a boolean value determining if the processing
+    The "pre-resize" argument is a boolean value determining if the processing
     should take place before or after the image is resized by dgenerate.
 
     x4.bin: https://github.com/nihui/realsr-ncnn-vulkan/blob/master/models/models-DF2K/x4.bin

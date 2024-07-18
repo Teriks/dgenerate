@@ -35,7 +35,7 @@ class MirrorFlipProcessor(_imageprocessor.ImageProcessor):
     Implements the "mirror" and "flip" PIL.ImageOps operations
     as an image imageprocessor
 
-    The argument "pre-resize" determines if the processing occurs before or after dgenerate resizes the image.
+    The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
     This defaults to False, meaning the image is processed after dgenerate is done resizing it.
     """
 
@@ -100,7 +100,7 @@ class SimpleColorProcessor(_imageprocessor.ImageProcessor):
     Implements the "grayscale" and "invert" PIL.ImageOps operations
     as an image imageprocessor.
 
-    The argument "pre-resize" determines if the processing occurs before or after dgenerate resizes the image.
+    The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
     This defaults to False, meaning the image is processed after dgenerate is done resizing it.
     """
 
@@ -164,7 +164,7 @@ class PosterizeProcessor(_imageprocessor.ImageProcessor):
 
     Accepts the argument 'bits', an integer value from 1 to 8.
 
-    The argument "pre-resize" determines if the processing occurs before or after dgenerate resizes the image.
+    The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
     This defaults to False, meaning the image is processed after dgenerate is done resizing it.
     """
 
@@ -218,7 +218,7 @@ class SolarizeProcessor(_imageprocessor.ImageProcessor):
 
     Accepts the argument "threshold" which is an integer value from 0 to 255.
 
-    The argument "pre-resize" determines if the processing occurs before or after dgenerate resizes the image.
+    The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
     This defaults to False, meaning the image is processed after dgenerate is done resizing it.
     """
 
@@ -282,7 +282,7 @@ class LetterboxProcessor(_imageprocessor.ImageProcessor):
     The "aspect-correct" argument can be used to determine if the aspect ratio
     of the inner image is maintained or not.
 
-    The argument "pre-resize" determines if the processing occurs before or after dgenerate resizes the image.
+    The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
     This defaults to False, meaning the image is processed after dgenerate is done resizing it.
     """
 
