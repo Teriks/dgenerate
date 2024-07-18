@@ -586,7 +586,7 @@ def get_torch_device_string(component: diffusers.DiffusionPipeline | torch.nn.Mo
     return str(get_torch_device(component))
 
 
-def _pipeline_to(pipeline, device: torch.device | str | None):
+def _pipeline_to_raw(pipeline, device: torch.device | str | None, cache_tracking=True):
     if device is None:
         return
 
@@ -598,10 +598,11 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
     if get_torch_device(pipeline) == to_device:
         return
 
-    if to_device.type != 'cpu':
-        _cache.pipeline_off_cpu_update_cache_info(pipeline)
-    else:
-        _cache.pipeline_to_cpu_update_cache_info(pipeline)
+    if cache_tracking:
+        if to_device.type != 'cpu':
+            _cache.pipeline_off_cpu_update_cache_info(pipeline)
+        else:
+            _cache.pipeline_to_cpu_update_cache_info(pipeline)
 
     for name, value in get_torch_pipeline_modules(pipeline).items():
 
@@ -617,21 +618,22 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
         if is_model_cpu_offload_enabled(value) and to_device.type != 'cpu':
             continue
 
-        cache_meth = None
-        if current_device.type == 'cpu' and to_device.type != 'cpu':
-            cache_meth = '_off_cpu_update_cache_info'
-        elif current_device.type != 'cpu' and to_device.type == 'cpu':
-            cache_meth = '_to_cpu_update_cache_info'
+        if cache_tracking:
+            cache_meth = None
+            if current_device.type == 'cpu' and to_device.type != 'cpu':
+                cache_meth = '_off_cpu_update_cache_info'
+            elif current_device.type != 'cpu' and to_device.type == 'cpu':
+                cache_meth = '_to_cpu_update_cache_info'
 
-        if cache_meth:
-            if name.startswith('text_encoder'):
-                getattr(_cache, 'text_encoder' + cache_meth)(value)
-            else:
-                try:
-                    getattr(_cache, name + cache_meth)(value)
-                except AttributeError:
-                    _messages.debug_log(
-                        f'No cache update method for module "{name}".')
+            if cache_meth:
+                if name.startswith('text_encoder'):
+                    getattr(_cache, 'text_encoder' + cache_meth)(value)
+                else:
+                    try:
+                        getattr(_cache, name + cache_meth)(value)
+                    except AttributeError:
+                        _messages.debug_log(
+                            f'No cache update method for module "{name}".')
 
         _messages.debug_log(
             f'Moving module "{name}" of pipeline {_types.fullname(pipeline)} '
@@ -641,6 +643,25 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
 
     if device == 'cpu':
         torch.cuda.empty_cache()
+
+
+def _pipeline_to(pipeline, device: torch.device | str | None, cache_tracking: bool = True):
+    try:
+        _pipeline_to_raw(pipeline=pipeline, device=device, cache_tracking=cache_tracking)
+    except torch.cuda.OutOfMemoryError as e:
+        # attempt to recover VRAM before rethrowing
+        # move any modules back to cpu which have entered VRAM
+
+        _pipeline_to_raw(pipeline=pipeline, device='cpu', cache_tracking=cache_tracking)
+        torch.cuda.empty_cache()
+        gc.collect()
+
+        raise OutOfMemoryError(e)
+    except MemoryError:
+        # probably out of RAM on a back
+        # to CPU move not much we can do
+        gc.collect()
+        raise OutOfMemoryError('cpu (system memory)')
 
 
 def pipeline_to(pipeline, device: torch.device | str | None):
@@ -669,22 +690,7 @@ def pipeline_to(pipeline, device: torch.device | str | None):
     :return: the moved pipeline
     """
 
-    try:
-        _pipeline_to(pipeline=pipeline, device=device)
-    except torch.cuda.OutOfMemoryError as e:
-        # attempt to recover VRAM before rethrowing
-        # move any modules back to cpu which have entered VRAM
-
-        _pipeline_to(pipeline=pipeline, device='cpu')
-        torch.cuda.empty_cache()
-        gc.collect()
-
-        raise OutOfMemoryError(e)
-    except MemoryError:
-        # probably out of RAM on a back
-        # to CPU move not much we can do
-        gc.collect()
-        raise OutOfMemoryError('cpu (system memory)')
+    return _pipeline_to(pipeline=pipeline, device=device)
 
 
 def _call_args_debug_transformer(key, value):
@@ -745,6 +751,30 @@ def _warn_prompt_lengths(pipeline, **kwargs):
 
 
 _LAST_CALLED_PIPELINE = None
+
+
+def get_last_called_pipeline():
+    """
+    Get a reference to the globally cached pipeline last called with :py:func:`call_pipeline`.
+
+    :return: diffusion pipeline object
+    """
+    return _LAST_CALLED_PIPELINE
+
+
+def _destroy_last_called_pipeline(cache_tracking: bool = True):
+    global _LAST_CALLED_PIPELINE
+
+    _pipeline_to(_LAST_CALLED_PIPELINE, 'cpu', cache_tracking=cache_tracking)
+
+    _LAST_CALLED_PIPELINE = None
+
+
+def destroy_last_called_pipeline():
+    """
+    Move to CPU and dereference the globally cached pipeline last called with :py:func:`call_pipeline`.
+    """
+    _destroy_last_called_pipeline()
 
 
 # noinspection PyCallingNonCallable

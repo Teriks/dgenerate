@@ -31,6 +31,13 @@
     --prompts "A fancy car sitting in the driveway of a mansion"
     --output-size 1024x1024
 
+    # having this model in memory will make it difficult
+    # for the next set of examples in the image_process
+    # directory to run when running all of the examples
+    # in the same process :)
+
+    \clear_model_cache
+
 {% else %}
 
     \print Must set CIVIT_AI_TOKEN environmental variable for this example!

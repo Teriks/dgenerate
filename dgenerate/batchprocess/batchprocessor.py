@@ -234,7 +234,7 @@ class BatchProcessor:
             self.builtins = builtins
 
     @property
-    def directives_builtins_help(self):
+    def directives_builtins_help(self) -> dict[str, str]:
         """
         Returns a dictionary of help strings for directives that are
         built into the :py:class:`BatchProcessor` base class.
@@ -323,7 +323,7 @@ class BatchProcessor:
                         buffer += piece
                         while '\n' in buffer:
                             line, buffer = buffer.split('\n', 1)
-                            yield self.expand_vars(line)
+                            yield self.expand_vars(line) + '\n'
                     if buffer:
                         yield self.expand_vars(buffer)
                 except Exception as e:
@@ -339,31 +339,33 @@ class BatchProcessor:
                 raise BatchProcessError(f'Template Render Error: {str(e).strip()}')
 
     def _look_for_version_mismatch(self, line_idx, line):
-        versioning = re.match(r'#!\s+' + self.name + r'\s+([0-9]+\.[0-9]+\.[0-9]+)', line)
+        versioning = re.match(r'#!\s+' + re.escape(self.name) + r'\s+([0-9]+\.[0-9]+\.[0-9]+)', line)
         if versioning:
             config_file_version = versioning.group(1)
-            config_file_version_parts = config_file_version.split('.')
+            config_file_version_parts = [int(part) for part in config_file_version.split('.')]
 
             cur_major_version = self.version[0]
-            config_major_version = int(config_file_version_parts[0])
+            config_major_version = config_file_version_parts[0]
             cur_minor_version = self.version[1]
-            config_minor_version = int(config_file_version_parts[1])
+            config_minor_version = config_file_version_parts[1]
 
             version_str = '.'.join(str(i) for i in self.version)
 
             if cur_major_version != config_major_version:
                 _messages.log(
-                    f'Failed version check (major version missmatch) on line {line_idx}, '
+                    f'Failed version check (major version mismatch) on line {line_idx}, '
                     f'running an incompatible version of {self.name}! You are running version {version_str} '
-                    f'and the config file specifies the required version: {config_file_version}'
-                    , underline=True, level=_messages.WARNING)
+                    f'and the config file specifies the required version: {config_file_version}',
+                    underline=True, level=_messages.WARNING
+                )
             elif cur_minor_version < config_minor_version:
                 _messages.log(
                     f'Failed version check (current minor version less than requested) '
                     f'on line {line_idx}, running an incompatible version of {self.name}! '
                     f'You are running version {version_str} and the config file specifies '
-                    f'the required version: {".".join(config_file_version)}'
-                    , underline=True, level=_messages.WARNING)
+                    f'the required version: {config_file_version}',
+                    underline=True, level=_messages.WARNING
+                )
 
     def user_define_check(self, name: str):
         """

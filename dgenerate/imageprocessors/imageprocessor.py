@@ -483,6 +483,16 @@ class ImageProcessor(_plugin.Plugin):
         """
         self.__modules.append(module)
 
+    def __del__(self):
+        device = torch.device('cpu')
+        for m in self.__modules:
+            if not hasattr(m, '_DGENERATE_IMAGE_PROCESSOR_DEVICE') or m._DGENERATE_IMAGE_PROCESSOR_DEVICE != device:
+                m._DGENERATE_IMAGE_PROCESSOR_DEVICE = device
+                _messages.debug_log(
+                    f'Moving ImageProcessor registered module '
+                    f'due to ImageProcessor garbage collection: {dgenerate.types.fullname(m)}.to("cpu")')
+                m.to('cpu')
+
     def to(self, device: torch.device | str):
         """
         Move all :py:class:`torch.nn.Module` modules registered
@@ -508,7 +518,7 @@ class ImageProcessor(_plugin.Plugin):
                     m.to(device)
                 except torch.cuda.OutOfMemoryError as e:
                     m.to('cpu')
-                    m._DGENERATE_IMAGE_PROCESSOR_DEVICE = 'cpu'
+                    m._DGENERATE_IMAGE_PROCESSOR_DEVICE = torch.device('cpu')
                     torch.cuda.empty_cache()
                     gc.collect()
                     raise _pipelines.OutOfMemoryError(e)
