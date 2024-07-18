@@ -23,7 +23,9 @@
 \sete {{ var_name }} ./*
 \sete $ENV_VAR_NAMED ./*
 
-# print everything in this directory
+# print everything in this directory,
+# they will be printed as a python array
+# IE: ['file1', 'file2', ...]
 
 \print {{ template_variable }}
 \print {{ env_var_named }}
