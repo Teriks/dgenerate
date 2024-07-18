@@ -43,9 +43,9 @@ import psutil
 
 import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.finddialog as _finddialog
-import dgenerate.console.karrasschedulerselect as _karrasschedulerselect
 import dgenerate.console.imageprocessorselect as _imageprocessorselect
 import dgenerate.console.imageseedselect as _imageseedselect
+import dgenerate.console.karrasschedulerselect as _karrasschedulerselect
 import dgenerate.console.recipesform as _recipesform
 import dgenerate.console.resources as _resources
 import dgenerate.files as _files
@@ -612,6 +612,8 @@ class DgenerateConsole(tk.Tk):
             bg=bg,
             fg=fg
         )
+
+        _resources.set_textbox_theme(bg=bg, fg=fg)
 
         error_color = fg
 
@@ -1349,7 +1351,3 @@ def main(args: collections.abc.Sequence[str]):
             sys.exit(1)
 
     app.mainloop()
-
-
-
-

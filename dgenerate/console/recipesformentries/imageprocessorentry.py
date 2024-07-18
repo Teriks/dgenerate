@@ -109,11 +109,7 @@ class _ImageProcessorEntry(_entry._Entry):
         text_widget = tk.Text(frame, wrap=tk.NONE, state='disabled', yscrollcommand=v_scrollbar.set,
                               xscrollcommand=h_scrollbar.set)
 
-        if self.recipe_form.master and hasattr(self.recipe_form.master, '_input_text'):
-            # get the colors from the main editor text box
-            bg = self.recipe_form.master._input_text.text.cget('bg')
-            fg = self.recipe_form.master._input_text.text.cget('fg')
-            text_widget.configure(bg=bg, fg=fg)
+        text_widget.configure(**_resources.get_textbox_theme())
 
         text_widget.config(state='normal')
         text_widget.insert(tk.END, self.current_help_text + '\n\n')
@@ -182,7 +178,7 @@ class _ImageProcessorEntry(_entry._Entry):
 
         if self.internal_divider:
             separator = ttk.Separator(self.master, orient='horizontal')
-            separator.grid(row=self.row+i+2, column=0, sticky='ew', columnspan=100, pady=_entry.DIVIDER_YPAD)
+            separator.grid(row=self.row + i + 2, column=0, sticky='ew', columnspan=100, pady=_entry.DIVIDER_YPAD)
             self.dynamic_widgets.append(separator)
 
         if self.on_updated_callback is not None:
