@@ -28,6 +28,7 @@ import re
 import subprocess
 import tkinter
 import tkinter as tk
+import typing
 import webbrowser
 
 import PIL.Image
@@ -200,6 +201,36 @@ def release_version():
         return 'v' + value
     else:
         return value
+
+
+_textbox_theme = dict()
+
+
+def get_textbox_theme() -> dict[str, typing.Any]:
+    """
+    Get textbox configuration arguments that are applied
+    To all text boxes which wish to appear the same as the
+    editor / console main input textbox.
+
+    Usage: text_widget.configure(**resources.get_textbox_theme())
+
+    :return: config argument dict
+    """
+    return dict(_textbox_theme)
+
+
+def set_textbox_theme(**kwargs):
+    """
+    Set textbox configuration arguments that are applied
+    To all text boxes which wish to appear the same as the
+    editor / console main input textbox.
+
+    Usage: resources.set_textbox_theme(bg='white', fg='black')
+
+    :param kwargs: tk.config arguments
+    """
+    global _textbox_theme
+    _textbox_theme = dict(kwargs)
 
 
 class VersionComparison(enum.Enum):
