@@ -91,6 +91,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v3.10.0/>`_.
         * `Built in template variables and functions`_
         * `Directives, and applying templating`_
         * `Setting template variables, in depth`_
+        * `Setting environmental variables, in depth`_
         * `Globbing and path manipulation`_
         * `The \\print and \\echo directive`_
         * `The \\image_process directive`_
@@ -4413,6 +4414,19 @@ This is for assigning literal text values to a template variable.
 
     \print {{ my_variable }}
 
+    # indirect expansion is allowed
+
+    \env ENV_VAR_NAMED=env_var_named
+    \set var_name template_variable
+
+    \set {{ var_name }} Hello!
+    \set $ENV_VAR_NAMED Hi!
+
+    # prints Hello!, Hi!
+
+    \print {{ template_variable }}
+    \print {{ env_var_named }}
+
 
 The ``\sete`` directive can be used to assign the result of shell parsing and expansion to a
 template variable, the value provided will be shell parsed into tokens as if it were a line of
@@ -4438,6 +4452,19 @@ feature to assign template variables.
     \set directory my_files
 
     \sete my_variable --argument {{ directory }}/*
+
+    # indirect expansion is allowed
+
+    \env ENV_VAR_NAMED=env_var_named
+    \set var_name template_variable
+
+    \sete {{ var_name }} my_files/*
+    \sete $ENV_VAR_NAMED my_files/*
+
+    # both print ['my_files/file1', 'my_files/file2', ...]
+
+    \print {{ template_variable }}
+    \print {{ env_var_named }}
 
 
 The ``\setp`` directive can be used to assign the result of evaluating a limited subset of python
@@ -4498,6 +4525,69 @@ implemented by dgenerate are available for use in the evaluated expressions.
     {% for value in my_variable %}
         \print {{ value }}
     {% endfor %} !END
+
+    # indirect expansion is allowed
+
+    \env ENV_VAR_NAMED=env_var_named
+    \set var_name template_variable
+
+    \setp {{ var_name }} "Hello!"
+    \setp $ENV_VAR_NAMED [template_variable]
+
+    # prints "Hello!", ["Hello!"]
+
+    \print {{ template_variable }}
+    \print {{ env_var_named }}
+
+
+Setting environmental variables, in depth
+-----------------------------------------
+
+The directives ``\env`` and ``\unset_env`` can be used to
+manipulate multiple environmental variables at once.
+
+Indirect expansion is allowed just like with ``\set``, ``\sete``, and ``\setp``.
+
+
+.. code-block:: jinja
+
+    \env MY_ENV_VAR=1 MY_ENV_VAR2=1
+
+    # prints 1 2
+
+    \print $MY_ENV_VAR $MY_ENV_VAR2
+
+    # indirect expansion is allowed
+
+    \set name env_var_name
+    \set value Hello!
+
+    \set name_holder {{ name }}
+
+    \env {{ name_holder }}={{ value }}
+
+    # this treats the expansion of {{ name }} as a an environmental variable name
+
+    \set output ${{ name }}
+
+    # prints Hello!
+
+    \print {{ output }}
+
+    # unset an environmental variable, the names
+    # undergo expansion, and are undefined in order
+
+    \env NAME_HOLDER=MY_ENV_VAR2
+
+    \unset_env MY_ENV_VAR $NAME_HOLDER {{ name }} NAME_HOLDER
+
+
+    # prints every defined environmental variable
+    # we have undefined everything that we defined
+    # above so the names from this script will not
+    # be present
+
+    \env
 
 
 Globbing and path manipulation

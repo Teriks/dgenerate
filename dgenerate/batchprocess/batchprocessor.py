@@ -262,9 +262,9 @@ class BatchProcessor:
                      'variable that expands to an identifier. Attempting to unset a reserved variable such as those '
                      'pre-defined by dgenerate will result in an error.',
             'unset_env': 'Undefines environmental variables previously set with \\env, accepts multiple arguments, '
-                     'each argument is an environmental variable name, or a template / environmental variable '
-                     'that expands to the name of an environmental variable. Attempting to unset a variable '
-                     'that does not exist is a no-op.',
+                         'each argument is an environmental variable name, or a template / environmental variable '
+                         'that expands to the name of an environmental variable. Attempting to unset a variable '
+                         'that does not exist is a no-op.',
             'print': 'Prints all content to the right to stdout, no shell parsing of the argument occurs.',
             'echo': 'Echo shell arguments with shell parsing and expansion.'
         }
@@ -473,6 +473,35 @@ class BatchProcessor:
         except Exception as e:
             raise BatchProcessError(f'\\setp eval error: {e}')
 
+    def _set_split(self, directive_args, line):
+        name_part = directive_args[1]
+        if not name_part.startswith('{{'):
+            return directive_args[1].strip(), directive_args[2].strip()
+
+        # Handle the case where the name_part starts with '{{'
+        without_directive = line.split(' ', 1)[1]
+        t_depth = 0
+        var_name = ''
+        value_part = ''
+        idx = 0
+        var_mode = True
+
+        while idx < len(without_directive):
+            char = without_directive[idx]
+            if var_mode:
+                var_name += char
+                if char == '{':
+                    t_depth += 1
+                elif char == '}':
+                    t_depth -= 1
+                if t_depth == 0 and var_name.endswith('}}'):
+                    var_mode = False
+            else:
+                value_part += char
+            idx += 1
+
+        return var_name.strip(), value_part.strip()
+
     def _directive_handlers(self, line):
         if line.startswith('\\env'):
             directive_args = line.split(' ', 1)
@@ -489,7 +518,14 @@ class BatchProcessor:
                         value = ''
                     else:
                         value = self.render_template(assignment[1])
-                    os.environ[assignment[0]] = value
+                    try:
+                        os.environ[assignment[0]] = value
+                    except ValueError:
+                        if not assignment[0].strip():
+                            raise BatchProcessError(
+                                f'Environmental variable name expanded to nothing!')
+                        raise BatchProcessError(
+                            f'Illegal environmental variable name value: {assignment[0]}')
             else:
                 for key, value in os.environ.items():
                     _messages.log(f'\\env "{key}={value}"')
@@ -510,10 +546,11 @@ class BatchProcessor:
         elif line.startswith('\\setp'):
             directive_args = line.split(' ', 2)
             if len(directive_args) == 3:
+                var, value = self._set_split(directive_args, line)
                 self.user_define(
-                    self.render_template(directive_args[1].strip()),
+                    self.render_template(var),
                     self._intepret_setp_value(
-                        self.render_template(directive_args[2].strip())))
+                        self.render_template(value)))
                 return True
             else:
                 raise BatchProcessError(
@@ -523,10 +560,11 @@ class BatchProcessor:
             directive_args = line.split(' ', 2)
             if len(directive_args) == 3:
                 try:
+                    var, value = self._set_split(directive_args, line)
                     self.user_define(
-                        self.render_template(directive_args[1].strip()),
+                        self.render_template(var),
                         _textprocessing.shell_parse(
-                            self.render_template(directive_args[2].strip()),
+                            self.render_template(value),
                             expand_vars=False))
                 except _textprocessing.ShellParseSyntaxError as e:
                     raise BatchProcessError(e)
@@ -538,9 +576,10 @@ class BatchProcessor:
         elif line.startswith('\\set'):
             directive_args = line.split(' ', 2)
             if len(directive_args) == 3:
+                var, value = self._set_split(directive_args, line)
                 self.user_define(
-                    self.render_template(directive_args[1].strip()),
-                    self.render_template(directive_args[2].strip()))
+                    self.render_template(var),
+                    self.render_template(value))
                 return True
             else:
                 raise BatchProcessError(
