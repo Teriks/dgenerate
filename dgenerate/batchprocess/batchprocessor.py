@@ -50,14 +50,14 @@ class BatchProcessor:
     This is the bare-bones implementation of the shell with nothing
     implemented for you except for:
 
-    * ``\\env``
-    * ``\\set``
-    * ``\\sete``
-    * ``\\setp``
-    * ``\\unset``
-    * ``\\unset_env``
-    * ``\\print``
-    * ``\\echo``
+        * ``\\env``
+        * ``\\set``
+        * ``\\sete``
+        * ``\\setp``
+        * ``\\unset``
+        * ``\\unset_env``
+        * ``\\print``
+        * ``\\echo``
 
     If you wish to create this object to run a dgenerate configuration, use
     :py:class:`dgenerate.batchprocess.ConfigRunner`
