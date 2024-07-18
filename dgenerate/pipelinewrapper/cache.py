@@ -19,9 +19,9 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import gc
-import inspect
 
 import diffusers
+import torch
 
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
@@ -193,11 +193,19 @@ def clear_pipeline_cache(collect=True):
     """
     Clear DiffusionPipeline cache and then garbage collect.
 
-    :param collect: Call :py:func:`gc.collect` ?
+    :param collect: Call :py:func:`gc.collect` and :py:func`torch.cuda.empty_cache` ?
     """
+    from dgenerate.pipelinewrapper.pipelines import _pipeline_to, _destroy_last_called_pipeline
+
     global _TORCH_PIPELINE_CACHE, \
         _FLAX_PIPELINE_CACHE, \
         _PIPELINE_CACHE_SIZE
+
+    for p in _TORCH_PIPELINE_CACHE.values():
+        _pipeline_to(p.pipeline, 'cpu', cache_tracking=False)
+
+    # Get this out of memory and out of VRAM as well
+    _destroy_last_called_pipeline(cache_tracking=False)
 
     _TORCH_PIPELINE_CACHE.clear()
     _FLAX_PIPELINE_CACHE.clear()
@@ -205,20 +213,27 @@ def clear_pipeline_cache(collect=True):
 
     if collect:
         _messages.debug_log(
-            f'{_types.fullname(clear_pipeline_cache)} calling gc.collect() by request')
+            f'{_types.fullname(clear_pipeline_cache)} calling gc.collect() & torch.cuda.empty_cache() by request')
 
         gc.collect()
+        torch.cuda.empty_cache()
 
 
 def clear_control_net_cache(collect=True):
     """
     Clear ControlNet cache and then garbage collect.
 
-    :param collect: Call :py:func:`gc.collect` ?
+    :param collect: Call :py:func:`gc.collect` and :py:func`torch.cuda.empty_cache` ?
     """
+    from dgenerate.pipelinewrapper.pipelines import get_torch_device
+
     global _TORCH_CONTROL_NET_CACHE, \
         _FLAX_CONTROL_NET_CACHE, \
         _CONTROL_NET_CACHE_SIZE
+
+    for cn in _TORCH_CONTROL_NET_CACHE.values():
+        if get_torch_device(cn).type != 'meta':
+            cn.to('cpu')
 
     _TORCH_CONTROL_NET_CACHE.clear()
     _FLAX_CONTROL_NET_CACHE.clear()
@@ -227,20 +242,27 @@ def clear_control_net_cache(collect=True):
 
     if collect:
         _messages.debug_log(
-            f'{_types.fullname(clear_control_net_cache)} calling gc.collect() by request')
+            f'{_types.fullname(clear_control_net_cache)} calling gc.collect() & torch.cuda.empty_cache() by request')
 
         gc.collect()
+        torch.cuda.empty_cache()
 
 
 def clear_vae_cache(collect=True):
     """
     Clear VAE cache and then garbage collect.
 
-    :param collect: Call :py:func:`gc.collect` ?
+    :param collect: Call :py:func:`gc.collect` and :py:func`torch.cuda.empty_cache` ?
     """
+    from dgenerate.pipelinewrapper.pipelines import get_torch_device
+
     global _TORCH_VAE_CACHE, \
         _FLAX_VAE_CACHE, \
         _VAE_CACHE_SIZE
+
+    for vae in _TORCH_VAE_CACHE.values():
+        if get_torch_device(vae).type != 'meta':
+            vae.to('cpu')
 
     _TORCH_VAE_CACHE.clear()
     _FLAX_VAE_CACHE.clear()
@@ -249,20 +271,27 @@ def clear_vae_cache(collect=True):
 
     if collect:
         _messages.debug_log(
-            f'{_types.fullname(clear_vae_cache)} calling gc.collect() by request')
+            f'{_types.fullname(clear_vae_cache)} calling gc.collect() & torch.cuda.empty_cache() by request')
 
         gc.collect()
+        torch.cuda.empty_cache()
 
 
 def clear_text_encoder_cache(collect=True):
     """
     Clear Text Encoder cache and then garbage collect.
 
-    :param collect: Call :py:func:`gc.collect` ?
+    :param collect: Call :py:func:`gc.collect` and :py:func`torch.cuda.empty_cache` ?
     """
+    from dgenerate.pipelinewrapper.pipelines import get_torch_device
+
     global _TORCH_TEXT_ENCODER_CACHE, \
         _FLAX_TEXT_ENCODER_CACHE, \
         _TEXT_ENCODER_CACHE_SIZE
+
+    for te in _TORCH_TEXT_ENCODER_CACHE.values():
+        if get_torch_device(te).type != 'meta':
+            te.to('cpu')
 
     _TORCH_TEXT_ENCODER_CACHE.clear()
     _FLAX_TEXT_ENCODER_CACHE.clear()
@@ -271,20 +300,27 @@ def clear_text_encoder_cache(collect=True):
 
     if collect:
         _messages.debug_log(
-            f'{_types.fullname(clear_text_encoder_cache)} calling gc.collect() by request')
+            f'{_types.fullname(clear_text_encoder_cache)} calling gc.collect() & torch.cuda.empty_cache() by request')
 
         gc.collect()
+        torch.cuda.empty_cache()
 
 
 def clear_unet_cache(collect=True):
     """
     Clear UNet cache and then garbage collect.
 
-    :param collect: Call :py:func:`gc.collect` ?
+    :param collect: Call :py:func:`gc.collect` and :py:func`torch.cuda.empty_cache` ?
     """
+    from dgenerate.pipelinewrapper.pipelines import get_torch_device
+
     global _TORCH_UNET_CACHE, \
         _FLAX_UNET_CACHE, \
         _UNET_CACHE_SIZE
+
+    for un in _TORCH_UNET_CACHE.values():
+        if get_torch_device(un).type != 'meta':
+            un.to('cpu')
 
     _TORCH_UNET_CACHE.clear()
     _FLAX_UNET_CACHE.clear()
@@ -293,56 +329,31 @@ def clear_unet_cache(collect=True):
 
     if collect:
         _messages.debug_log(
-            f'{_types.fullname(clear_unet_cache)} calling gc.collect() by request')
+            f'{_types.fullname(clear_unet_cache)} calling gc.collect() & torch.cuda.empty_cache() by request')
 
         gc.collect()
+        torch.cuda.empty_cache()
 
 
 def clear_model_cache(collect=True):
     """
     Clear all in memory model caches and garbage collect.
 
-    :param collect: Call :py:func:`gc.collect` ?
+    :param collect: Call :py:func:`gc.collect` and :py:func`torch.cuda.empty_cache` ?
 
     """
-    global _TORCH_PIPELINE_CACHE, \
-        _FLAX_PIPELINE_CACHE, \
-        _TORCH_CONTROL_NET_CACHE, \
-        _FLAX_CONTROL_NET_CACHE, \
-        _TORCH_UNET_CACHE, \
-        _FLAX_UNET_CACHE, \
-        _TORCH_VAE_CACHE, \
-        _FLAX_VAE_CACHE, \
-        _PIPELINE_CACHE_SIZE, \
-        _CONTROL_NET_CACHE_SIZE, \
-        _UNET_CACHE_SIZE, \
-        _VAE_CACHE_SIZE, \
-        _FLAX_TEXT_ENCODER_CACHE, \
-        _TORCH_TEXT_ENCODER_CACHE, \
-        _TEXT_ENCODER_CACHE_SIZE
-
-    _TORCH_PIPELINE_CACHE.clear()
-    _FLAX_PIPELINE_CACHE.clear()
-    _TORCH_CONTROL_NET_CACHE.clear()
-    _FLAX_CONTROL_NET_CACHE.clear()
-    _TORCH_UNET_CACHE.clear()
-    _FLAX_UNET_CACHE.clear()
-    _TORCH_VAE_CACHE.clear()
-    _FLAX_VAE_CACHE.clear()
-    _TORCH_TEXT_ENCODER_CACHE.clear()
-    _FLAX_TEXT_ENCODER_CACHE.clear()
-
-    _PIPELINE_CACHE_SIZE = 0
-    _CONTROL_NET_CACHE_SIZE = 0
-    _UNET_CACHE_SIZE = 0
-    _VAE_CACHE_SIZE = 0
-    _TEXT_ENCODER_CACHE_SIZE = 0
+    clear_pipeline_cache(False)
+    clear_control_net_cache(False)
+    clear_unet_cache(False)
+    clear_vae_cache(False)
+    clear_text_encoder_cache(False)
 
     if collect:
         _messages.debug_log(
             f'{_types.fullname(clear_model_cache)} calling gc.collect() by request')
 
         gc.collect()
+        torch.cuda.empty_cache()
 
 
 def enforce_cache_constraints(collect=True):

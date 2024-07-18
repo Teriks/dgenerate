@@ -4034,7 +4034,8 @@ The following is output from ``\functions_help`` showing every implemented templ
 .. code-block:: text
 
     Available config template functions:
-    
+
+        END() -> str
         abs(args, kwargs)
         align_size(size: str | tuple, align: int, format_size: bool = True) -> str | tuple
         all(args, kwargs)
@@ -4065,6 +4066,7 @@ The following is output from ``\functions_help`` showing every implemented templ
         getattr(args, kwargs)
         hasattr(args, kwargs)
         hash(args, kwargs)
+        have_feature(feature_name: str) -> bool
         hex(args, kwargs)
         int(args, kwargs)
         iter(args, kwargs)
