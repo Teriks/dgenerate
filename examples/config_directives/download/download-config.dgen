@@ -10,9 +10,20 @@
 
     # dreamshaper: https://civitai.com/models/4384/dreamshaper
 
+    # we can download this model to a local directory and then use it
+
     \download model_path https://civitai.com/api/download/models/128713?type=Model&format=SafeTensor&size=pruned&fp=fp16&token={{civit_ai_token}} -o models/
 
     \print {{ quote(model_path) }}
+
+    # we can now render with the model, we do not need to put !END at the end
+    # because we are already in a template here doc in this case (the if statement)
+
+    {{ model_path }}
+    --inference-steps 30
+    --guidance-scales 8
+    --prompts "A fancy car sitting in the driveway of a mansion"
+    --output-size 1024x1024
 
 {% else %}
 
