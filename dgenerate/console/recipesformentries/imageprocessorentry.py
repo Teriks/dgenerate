@@ -116,7 +116,7 @@ class _ImageProcessorEntry(_entry._Entry):
             text_widget.configure(bg=bg, fg=fg)
 
         text_widget.config(state='normal')
-        text_widget.insert(tk.END, self.current_help_text)
+        text_widget.insert(tk.END, self.current_help_text + '\n\n')
         text_widget.config(state='disabled')
 
         v_scrollbar.config(command=text_widget.yview)
