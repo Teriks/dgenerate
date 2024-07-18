@@ -4419,8 +4419,8 @@ This is for assigning literal text values to a template variable.
 
     # indirect expansion is allowed
 
-    \env ENV_VAR_NAMED=env_var_named
     \set var_name template_variable
+    \env ENV_VAR_NAMED=env_var_named
 
     \set {{ var_name }} Hello!
     \set $ENV_VAR_NAMED Hi!
@@ -4458,8 +4458,8 @@ feature to assign template variables.
 
     # indirect expansion is allowed
 
-    \env ENV_VAR_NAMED=env_var_named
     \set var_name template_variable
+    \env ENV_VAR_NAMED=env_var_named
 
     \sete {{ var_name }} my_files/*
     \sete $ENV_VAR_NAMED my_files/*
@@ -4531,8 +4531,8 @@ implemented by dgenerate are available for use in the evaluated expressions.
 
     # indirect expansion is allowed
 
-    \env ENV_VAR_NAMED=env_var_named
     \set var_name template_variable
+    \env ENV_VAR_NAMED=env_var_named
 
     \setp {{ var_name }} "Hello!"
     \setp $ENV_VAR_NAMED [template_variable]
