@@ -48,8 +48,16 @@ class BatchProcessor:
     Implements dgenerates batch processing scripts in a generified manner.
 
     This is the bare-bones implementation of the shell with nothing
-    implemented for you except the ``\\print``,  ``\\set``, ``\\setp``,
-    and `\\unset`` directives.
+    implemented for you except for:
+
+    * ``\\env``
+    * ``\\set``
+    * ``\\sete``
+    * ``\\setp``
+    * ``\\unset``
+    * ``\\unset_env``
+    * ``\\print``
+    * ``\\echo``
 
     If you wish to create this object to run a dgenerate configuration, use
     :py:class:`dgenerate.batchprocess.ConfigRunner`
@@ -77,7 +85,7 @@ class BatchProcessor:
 
     reserved_template_variables: set[str]
     """
-    These template variables cannot be set with the ``\\set`` or ``\\setp`` 
+    These template variables cannot be set with the ``\\set``, ``\\sete``, or ``\\setp`` 
     directive, or un-defined with the ``\\unset`` directive.
     """
 
