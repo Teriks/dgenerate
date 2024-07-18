@@ -736,8 +736,12 @@ class BatchProcessor:
             elif line_strip.startswith('#') and not template_continuation:
                 self._look_for_version_mismatch(line_idx, line)
             elif line_strip.startswith('{') and not template_continuation and not normal_continuation:
-                continuation += line
-                template_continuation = True
+                line_rstrip = _textprocessing.remove_tail_comments(line)[1].rstrip()
+                if line_rstrip.endswith('!END'):
+                    run_continuation(line_rstrip.removesuffix('!END'))
+                else:
+                    continuation += line
+                    template_continuation = True
             elif not template_continuation and (line_strip.endswith('\\') or next_line
                                                 and next_line.lstrip().startswith('-')):
                 continuation += ' ' + line_strip.strip().removesuffix('\\').strip()
