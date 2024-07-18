@@ -156,7 +156,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'first': _configrunnerbuiltins.first,
             'gen_seeds': _configrunnerbuiltins.gen_seeds,
             'cwd': _configrunnerbuiltins.cwd,
-            'download': _configrunnerbuiltins.download
+            'download': _configrunnerbuiltins.download,
+            'have_feature': _configrunnerbuiltins.have_feature,
         }
 
         def return_zero(func, help_text):
