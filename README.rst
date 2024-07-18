@@ -4112,7 +4112,7 @@ Example output:
 .. code-block:: text
 
     Available config directives:
-    
+
         "\cd"
         "\clear_control_net_cache"
         "\clear_model_cache"
@@ -4125,6 +4125,7 @@ Example output:
         "\directives_help"
         "\download"
         "\echo"
+        "\env"
         "\exec"
         "\exit"
         "\functions_help"
@@ -4149,6 +4150,7 @@ Example output:
         "\setp"
         "\templates_help"
         "\unset"
+        "\unset_env"
         "\use_modules"
 
 
