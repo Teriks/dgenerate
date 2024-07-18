@@ -49,36 +49,40 @@ class ImageProcessor(_plugin.Plugin):
 
     @classmethod
     def inheritable_help(cls, subclass, loaded_by_name):
-        help_str = ''
         hidden_args = subclass.get_hidden_args(loaded_by_name)
-        if 'device' not in hidden_args:
-            help_str += \
-                'The argument "device" can be used to set the device ' \
-                'the processor will run on, for example: cpu, cuda, cuda:1. ' \
-                'If you are using this image processor as a preprocess or ' \
-                'postprocess step for dgenerate, or with the image-process ' \
-                'subcommand, or \\image_process directive, this argument will ' \
-                'default to the value of --device.\n\n'
-        if 'output-file' not in hidden_args:
-            help_str += \
-                'The argument "output-file" can be used to set the output ' \
-                'path for a processor debug image, this will save the ' \
-                'processed image to a path of your choosing.\n\n'
-        if 'output-overwrite' not in hidden_args:
-            help_str += \
-                'The argument "output-overwrite" can be used to enable ' \
-                'overwrite for a processor debug image. If this is not enabled, ' \
-                'new images written by the processor while it is being used ' \
-                'will be written with a numbered suffix instead of being overwritten.\n\n'
-        if 'model-offload' not in hidden_args:
-            help_str += \
-                'The argument "model-offload" can be used to enable ' \
-                'cpu model offloading for a processor, if this is disabled ' \
-                'any torch tensors or modules placed on the gpu will remain there until ' \
-                'the processor is done being used, instead of them being moved back to the cpu ' \
-                'after each image. Enabling this may help save VRAM when using an image processor ' \
-                'as a preprocessor or postprocessor for diffusion with dgenerate but will impact ' \
+        help_messages = {
+            'device': (
+                'The "device" argument can be used to set the device '
+                'the processor will run on, for example: cpu, cuda, cuda:1. '
+                'If you are using this image processor as a preprocess or '
+                'postprocess step for dgenerate, or with the image-process '
+                'subcommand, or \\image_process directive, this argument will '
+                'default to the value of --device.'
+            ),
+            'output-file': (
+                'The "output-file" argument can be used to set the output '
+                'path for a processor debug image, this will save the '
+                'processed image to a path of your choosing.'
+            ),
+            'output-overwrite': (
+                'The "output-overwrite" argument can be used to enable '
+                'overwrite for a processor debug image. If this is not enabled, '
+                'new images written by the processor while it is being used '
+                'will be written with a numbered suffix instead of being overwritten.'
+            ),
+            'model-offload': (
+                'The "model-offload" argument can be used to enable '
+                'cpu model offloading for a processor. If this is disabled, '
+                'any torch tensors or modules placed on the GPU will remain there until '
+                'the processor is done being used, instead of them being moved back to the CPU '
+                'after each image. Enabling this may help save VRAM when using an image processor '
+                'as a preprocessor or postprocessor for diffusion with dgenerate but will impact '
                 'rendering speed when generating many images.'
+            )
+        }
+
+        help_str = '\n\n'.join(
+            message for arg, message in help_messages.items() if arg not in hidden_args)
         return help_str
 
     def __init__(self,
@@ -90,7 +94,8 @@ class ImageProcessor(_plugin.Plugin):
                  **kwargs):
         """
         :param loaded_by_name: The name the processor was loaded by
-        :param device: the device the processor will run on, for example: cpu, cuda, cuda:1
+        :param device: the device the processor will run on, for example: cpu, cuda, cuda:1.
+            Specifying ``None`` causes the device to default to cpu.
         :param output_file: output a debug image to this path
         :param output_overwrite: can the debug image output path be overwritten?
         :param model_offload: if ``True``, any torch modules that the processor
