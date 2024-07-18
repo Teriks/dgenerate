@@ -14,6 +14,8 @@
 
     \download model_path https://civitai.com/api/download/models/128713?type=Model&format=SafeTensor&size=pruned&fp=fp16&token={{civit_ai_token}} -o models/
 
+    # the path on disk to the model is not shell quoted, you should do that incase it has spaces
+
     \print {{ quote(model_path) }}
 
     # we can now render with the model, we do not need to put !END at the end
