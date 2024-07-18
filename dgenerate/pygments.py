@@ -229,7 +229,7 @@ def _create_wait_for_var(name, next_state):
     return {
         name: [
             ('([a-zA-Z_][a-zA-Z0-9_]*)',  _token.Name.Variable, next_state),
-            (r'\$([a-zA-Z_][a-zA-Z0-9_]*)', _token.Name.Constant, next_state),
+            _env_var_pattern,
             (r'(?<=\}\})\s', _token.Whitespace, next_state),
             (r'(?<=%\})\s', _token.Whitespace, next_state),
             (r'(?<=#\})\s', _token.Whitespace, next_state),
