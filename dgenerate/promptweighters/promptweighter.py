@@ -29,12 +29,22 @@ class PromptWeighter(_plugin.Plugin):
     Abstract base class for prompt weighter implementations.
     """
 
+    # you cannot specify these via a URI
+    HIDE_ARGS = ['model-type', 'pipeline-type', 'dtype']
+
     def __init__(self,
                  loaded_by_name: str,
                  model_type: _enums.ModelType,
                  pipeline_type: _enums.PipelineType,
                  dtype: _enums.DataType,
                  **kwargs):
+        """
+        :param loaded_by_name: The name the prompt weighter was loaded by
+        :param model_type: Model type enum :py:class:`dgenerate.ModelType`
+        :param pipeline_type: Pipeline type enum :py:class:`dgenerate.PipelineType`
+        :param dtype: Data type enum :py:class:`dgenerate.DataType`
+        :param kwargs: child class forwarded arguments
+        """
         super().__init__(loaded_by_name=loaded_by_name,
                          argument_error_type=_exceptions.PromptWeighterArgumentError,
                          **kwargs)

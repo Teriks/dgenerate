@@ -101,7 +101,7 @@ class ImageProcessor(_plugin.Plugin):
         :param model_offload: if ``True``, any torch modules that the processor
             has registered are offloaded to the CPU immediately after processing an
             image
-        :param kwargs: child class arguments
+        :param kwargs: child class forwarded arguments
         """
 
         super().__init__(loaded_by_name=loaded_by_name,
