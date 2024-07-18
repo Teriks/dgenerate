@@ -30,6 +30,9 @@ class SubCommand(_plugin.Plugin):
     Abstract base class for sub-command implementations.
     """
 
+    # you cannot specify these via a URI
+    HIDE_ARGS = ['plugin-module-paths', 'args']
+
     def __init__(self,
                  loaded_by_name: str,
                  plugin_module_paths: list[str],
