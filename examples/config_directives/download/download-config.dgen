@@ -19,7 +19,7 @@
     # we can now render with the model, we do not need to put !END at the end
     # because we are already in a template here doc in this case (the if statement)
 
-    {{ model_path }}
+    {{ quote(model_path) }}
     --inference-steps 30
     --guidance-scales 8
     --prompts "A fancy car sitting in the driveway of a mansion"
