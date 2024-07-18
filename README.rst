@@ -4546,6 +4546,10 @@ Setting environmental variables, in depth
 The directives ``\env`` and ``\unset_env`` can be used to
 manipulate multiple environmental variables at once.
 
+The directive ``\env`` can also be used without arguments to print out
+the values of all environment variables that exist in your environment
+for debugging purposes.
+
 Indirect expansion is allowed just like with ``\set``, ``\sete``, and ``\setp``.
 
 
