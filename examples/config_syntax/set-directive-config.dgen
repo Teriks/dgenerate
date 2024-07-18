@@ -1,0 +1,29 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.10.0
+
+\set my_variable "I am an incomplete string and this is completely fine because I am a raw value
+
+# prints exactly what is above, including the quote at the beginning
+
+\print {{ my_variable }}
+
+# add a quote to the end of the string using templates
+
+\set my_variable {{ my_variable }}"
+
+# prints a fully quoted string
+
+\print {{ my_variable }}
+
+# indirect expansion is allowed
+
+\set var_name template_variable
+\env ENV_VAR_NAMED=env_var_named
+
+\set {{ var_name }} Hello!
+\set $ENV_VAR_NAMED Hi!
+
+# prints Hello!, Hi!
+
+\print {{ template_variable }}
+\print {{ env_var_named }}

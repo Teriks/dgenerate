@@ -1,0 +1,30 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.10.0
+
+# lets pretend the directory "my_files" is full of files
+
+\sete my_variable --argument my_files/*
+
+# prints the python array ['--argument', 'my_files/file1', 'my_files/file2', ...]
+
+\print {{ my_variable }}
+
+# Templates and environmental variable references
+# are also parsed in the \sete directive, just as they are with \set
+
+\set directory my_files
+
+\sete my_variable --argument {{ directory }}/*
+
+# indirect expansion is allowed
+
+\set var_name template_variable
+\env ENV_VAR_NAMED=env_var_named
+
+\sete {{ var_name }} my_files/*
+\sete $ENV_VAR_NAMED my_files/*
+
+# both print ['my_files/file1', 'my_files/file2', ...]
+
+\print {{ template_variable }}
+\print {{ env_var_named }}
