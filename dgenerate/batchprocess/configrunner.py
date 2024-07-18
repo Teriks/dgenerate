@@ -274,9 +274,9 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         main model of a dgenerate invocation. The first argument is a variable name
         that the modules will be saved to, which can be reference later with \\use_modules.
         The rest of the arguments are names of pipeline modules that you want to save to this
-        variable as a set of modules that are kept together, usable names are: unet, vae, text_encoder,
-        text_encoder_2, tokenizer, tokenizer_2, safety_checker, feature_extractor, controlnet,
-        scheduler, unet
+        variable as a set of modules that are kept together, usable names are: unet, vae,
+        transformer, text_encoder, text_encoder_2, text_encoder_3, tokenizer, tokenizer_2,
+        tokenizer_3, safety_checker, feature_extractor, controlnet, scheduler, unet
         """
         saved_modules = self.template_variables.get('saved_modules')
 

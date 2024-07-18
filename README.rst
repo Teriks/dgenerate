@@ -4344,6 +4344,7 @@ such as VAEs etc. outside of relying on the caching system.
 
     # unet
     # vae
+    # transformer
     # text_encoder
     # text_encoder_2
     # text_encoder_3
