@@ -1,0 +1,21 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.10.0
+
+# you need to have a civitai.com account and to set up an API token
+# in your account settings in order to be able to download these models
+
+\set civit_ai_token %CIVIT_AI_TOKEN%
+
+{% if civit_ai_token.strip() %}
+
+    # dreamshaper: https://civitai.com/models/4384/dreamshaper
+
+    \download model_path https://civitai.com/api/download/models/128713?type=Model&format=SafeTensor&size=pruned&fp=fp16&token={{civit_ai_token}} -o models/
+
+    \print {{ quote(model_path) }}
+
+{% else %}
+
+    \print Must set CIVIT_AI_TOKEN environmental variable for this example!
+
+{% endif %} !END
