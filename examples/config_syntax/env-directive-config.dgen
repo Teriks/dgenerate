@@ -1,0 +1,40 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.10.0
+
+\env MY_ENV_VAR=1 MY_ENV_VAR2=1
+
+# prints 1 2
+
+\print $MY_ENV_VAR $MY_ENV_VAR2
+
+# indirect expansion is allowed
+
+\set name env_var_name
+\set value Hello!
+
+\set name_holder {{ name }}
+
+\env {{ name_holder }}={{ value }}
+
+# this treats the expansion of {{ name }} as a an environmental variable name
+
+\set output ${{ name }}
+
+# prints Hello!
+
+\print {{ output }}
+
+# unset an environmental variable, the names
+# undergo expansion, and are undefined in order
+
+\env NAME_HOLDER=MY_ENV_VAR2
+
+\unset_env MY_ENV_VAR $NAME_HOLDER {{ name }} NAME_HOLDER
+
+
+# prints every defined environmental variable
+# we have undefined everything that we defined
+# above so the names from this script will not
+# be present
+
+\env

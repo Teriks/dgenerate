@@ -1,0 +1,62 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.10.0
+
+\setp my_variable 10*10
+
+# prints 100
+
+\print {{ my_variable }}
+
+# you can reference variables defined in the environment
+
+\setp my_variable [my_variable, my_variable*2]
+
+# prints [100, 200]
+
+\print {{ my_variable }}
+
+# all forms of python comprehensions are supported
+# such as list, dict, and set comprehensions
+
+\setp my_variable [i for i in range(0,5)]
+
+# prints [0, 1, 2, 3, 4]
+
+\print {{ my_variable }}
+
+# declare a literal string value
+
+\setp my_variable "my string value"
+
+# prints the string without quotes included, the string was parsed
+
+\print {{ my_variable }}
+
+# templates and environmental variable references
+# are also expanded in \setp values
+
+\setp my_variable [my_variable, "{{ my_variable }}"]
+
+# prints ["my string value", "my string value"]
+
+\print {{ my_variable }}
+
+# my_variable is a literal list so it can be
+# looped over with a jinja template continuation
+
+{% for value in my_variable %}
+    \print {{ value }}
+{% endfor %} !END
+
+# indirect expansion is allowed
+
+\set var_name template_variable
+\env ENV_VAR_NAMED=env_var_named
+
+\setp {{ var_name }} "Hello!"
+\setp $ENV_VAR_NAMED [template_variable]
+
+# prints "Hello!", ["Hello!"]
+
+\print {{ template_variable }}
+\print {{ env_var_named }}
