@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import collections.abc
+import importlib.util
 import itertools
 import os
 import shlex
@@ -296,14 +297,16 @@ def align_size(size: str | tuple, align: int, format_size: bool = True) -> str |
     return a tuple.
     """
     if align < 1:
-        raise ValueError('Argument "align" of align_size may not be less than 1.')
+        raise _batchprocessor.BatchProcessError(
+            'Argument "align" of align_size may not be less than 1.')
 
     if isinstance(size, str):
         aligned = _image.align_by(_textprocessing.parse_dimensions(size), align)
     elif isinstance(size, tuple):
         aligned = _image.align_by(size, align)
     else:
-        raise ValueError('Unsupported type passed to align_size.')
+        raise _batchprocessor.BatchProcessError(
+            'Unsupported type passed to align_size.')
 
     if not format_size:
         return aligned
@@ -327,7 +330,8 @@ def pow2_size(size: str | tuple, format_size: bool = True) -> str | tuple:
     elif isinstance(size, tuple):
         aligned = _image.nearest_power_of_two(size)
     else:
-        raise ValueError('Unsupported type passed to pow2_size.')
+        raise _batchprocessor.BatchProcessError(
+            'Unsupported type passed to pow2_size.')
 
     if not format_size:
         return aligned
@@ -343,14 +347,16 @@ def size_is_aligned(size: str | tuple, align: int) -> bool:
     This function expects a string with the format WIDTHxHEIGHT, or just WIDTH, or a tuple of dimensions.
     """
     if align < 1:
-        raise ValueError('Argument "align" of size_is_aligned may not be less than 1.')
+        raise _batchprocessor.BatchProcessError(
+            'Argument "align" of size_is_aligned may not be less than 1.')
 
     if isinstance(size, str):
         aligned = _image.is_aligned(_textprocessing.parse_dimensions(size), align)
     elif isinstance(size, tuple):
         aligned = _image.is_aligned(size, align)
     else:
-        raise ValueError('Unsupported type passed to size_is_aligned.')
+        raise _batchprocessor.BatchProcessError(
+            'Unsupported type passed to size_is_aligned.')
 
     return aligned
 
@@ -368,6 +374,25 @@ def size_is_pow2(size: str | tuple) -> bool:
     elif isinstance(size, tuple):
         aligned = _image.is_power_of_two(size)
     else:
-        raise ValueError('Unsupported type passed to size_is_pow2.')
+        raise _batchprocessor.BatchProcessError(
+            'Unsupported type passed to size_is_pow2.')
 
     return aligned
+
+
+def have_feature(feature_name: str) -> bool:
+    """
+    Return a boolean value indicating if dgenerate has a specific feature available.
+
+    Currently accepted values are:
+
+    NOWRAP!
+    "flax": Do we have flax/jax installed?
+    "ncnn": Do we have ncnn installed?
+    """
+
+    if feature_name not in {'flax', 'ncnn'}:
+        raise _batchprocessor.BatchProcessError(
+            f'Feature "{feature_name}" is not a known feature flag.')
+
+    return importlib.util.find_spec(feature_name) is not None
