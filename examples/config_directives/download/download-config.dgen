@@ -16,8 +16,9 @@
 
     # the path on disk to the model is not shell quoted, you should do that incase it has spaces
     # we also must use a jinja escape template to get the value of model_path inside this
-    # if statement control structure, this applies to variables set inside here templates
-    # like we are doing in this example
+    # if statement control structure, this applies to variables set inside here-templates
+    # like we are doing in this example, this is because the retrieval of this value needs
+    # to be delayed until the shell processes the lines of the here-template
 
     \print {{ '{{ quote(model_path) }}' }}
 
