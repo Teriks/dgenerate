@@ -18,7 +18,6 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import gc
 import os.path
 import typing
 
@@ -31,10 +30,10 @@ import tqdm.auto
 import dgenerate
 import dgenerate.imageprocessors.imageprocessor as _imageprocessor
 import dgenerate.imageprocessors.ncnn_model as _ncnn_model
-import dgenerate.types as _types
-import dgenerate.webcache as _webcache
 import dgenerate.imageprocessors.upscale_tiler as _upscale_tiler
 import dgenerate.messages as _messages
+import dgenerate.types as _types
+import dgenerate.webcache as _webcache
 
 
 class _UnsupportedModelError(Exception):
@@ -175,12 +174,28 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
         self._tile = tile
         self._overlap = overlap
         self._pre_resize = pre_resize
-        self._use_gpu = use_gpu
-        self._gpu_index = gpu_index
+
         self._threads = cpu_threads if isinstance(cpu_threads, int) else psutil.cpu_count(logical=True)
 
         if cpu_threads == "half":
             self._threads = self._threads // 2
+
+        self._gpu_index = gpu_index
+        self._use_gpu = use_gpu
+
+        try:
+            self._model = _ncnn_model.NCNNUpscaleModel(
+                self._param_path,
+                self._model_path,
+                use_gpu=use_gpu,
+                gpu_index=gpu_index,
+                threads=self._threads)
+        except _ncnn_model.NCNNGPUIndexError as e:
+            raise self.argument_error(str(e))
+        except _ncnn_model.NCNNNoGPUError as e:
+            raise self.argument_error(str(e))
+        except _ncnn_model.NCNNModelLoadError as e:
+            raise self.argument_error(f'Unsupported NCNN model: {e}')
 
     def _process_upscale(self, image, model):
 
@@ -230,28 +245,10 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
         return _output_to_pil(output[0])
 
     def _process(self, image):
-
         try:
-            model = _ncnn_model.NCNNUpscaleModel(
-                self._param_path,
-                self._model_path,
-                use_gpu=self._use_gpu,
-                gpu_index=self._gpu_index,
-                threads=self._threads)
-        except _ncnn_model.NCNNGPUIndexError as e:
-            raise self.argument_error(str(e))
-        except _ncnn_model.NCNNNoGPUError as e:
-            raise self.argument_error(str(e))
-        except _ncnn_model.NCNNModelLoadError as e:
-            raise self.argument_error(f'Unsupported NCNN model: {e}')
-
-        try:
-            return self._process_upscale(image, model)
+            return self._process_upscale(image, self._model)
         except _ncnn_model.NCNNExtractionFailure as e:
             raise dgenerate.OutOfMemoryError(e)
-        finally:
-            del model
-            gc.collect()
 
     def __str__(self):
         args = [
