@@ -460,7 +460,7 @@ class ImageProcessRenderLoop:
                     base, ext = os.path.splitext(_mediainput.url_aware_basename(file))
                     output_file = os.path.normpath(
                         os.path.join(self.config.output[0], base + f'_processed_{idx + 1}{ext}'))
-                    yield from self._process_file(file, output_file, idx, total_generation_steps)
+                    yield from self._process_file(file, output_file, idx, total_generation_steps, processor)
             else:
                 for idx, file in enumerate(self.config.input):
                     file = _mediainput.url_aware_normpath(file)
@@ -477,7 +477,7 @@ class ImageProcessRenderLoop:
                         base, ext = os.path.splitext(_mediainput.url_aware_basename(file))
                         output_file = os.path.join(output_file, base + f'_processed_{idx + 1}{ext}')
 
-                    yield from self._process_file(file, output_file, idx, total_generation_steps)
+                    yield from self._process_file(file, output_file, idx, total_generation_steps, processor)
         finally:
             if processor is not None:
                 processor.to('cpu')
