@@ -39,10 +39,6 @@ class NCNNExtractionFailure(NCNNException):
     pass
 
 
-class NCNNIncorrectScaleFactor(NCNNException):
-    pass
-
-
 class NCNNGPUIndexError(NCNNException):
     pass
 

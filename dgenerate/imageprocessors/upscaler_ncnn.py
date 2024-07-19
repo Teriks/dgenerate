@@ -249,8 +249,6 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
             return self._process_upscale(image, model)
         except _ncnn_model.NCNNExtractionFailure as e:
             raise dgenerate.OutOfMemoryError(e)
-        except _ncnn_model.NCNNIncorrectScaleFactor as e:
-            raise self.argument_error(f'argument "factor" is incorrect: {e}')
         finally:
             del model
             gc.collect()
