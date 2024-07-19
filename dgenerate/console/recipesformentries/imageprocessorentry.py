@@ -284,7 +284,7 @@ class _ImageProcessorEntry(_entry._Entry):
                 def_v = str(default_value)
                 values.remove(def_v)
 
-                if def_v == "None":
+                if def_v == 'None':
                     entry = tk.OptionMenu(self.master, variable, '', *values)
                 else:
                     entry = tk.OptionMenu(self.master, variable, def_v, *values)
