@@ -3656,7 +3656,7 @@ since the ncnn upscaler can run on GPUs other than Nvidia GPUs, figuring out wha
 you need to use is platform specific, but for Nvidia users just use the ``nvidia-smi`` command
 from a terminal to get this value.
 
-If you do not specify a gpu index, index 0 is used, which is most likely your main GPU.
+If you do not specify a ``gpu-index``, index 0 is used, which is most likely your main GPU.
 
 The ``--device`` argument to dgenerate and the ``image-process`` subcommand / ``\image_process`` directive
 is ignored by this image processor.
