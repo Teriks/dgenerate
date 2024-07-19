@@ -20,12 +20,18 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import gc
+
 import ncnn
 import numpy
+
 import dgenerate.types as _types
 
 
 class NCNNException(Exception):
+    pass
+
+
+class NCNNModelLoadError(NCNNException):
     pass
 
 
@@ -99,9 +105,11 @@ class NCNNUpscaleModel:
         if self.use_gpu:
             gpu_count = ncnn.get_gpu_count()
             if gpu_count == 0:
-                raise NCNNNoGPUError('NCNN could not find any GPUs.')
+                raise NCNNNoGPUError(
+                    'NCNN could not find any GPUs.')
             if self.gpu_index > gpu_count:
-                raise NCNNGPUIndexError(f'GPU index {self.gpu_index} does not exist.')
+                raise NCNNGPUIndexError(
+                    f'GPU index {self.gpu_index} does not exist.')
 
             self.net.opt.use_vulkan_compute = True
             self.net.set_vulkan_device(self.gpu_index)
@@ -112,11 +120,13 @@ class NCNNUpscaleModel:
     def _parse_param_layer(layer_str: str) -> _ParamLayer:
         param_list = layer_str.strip().split()
         if len(param_list) < 4:
-            raise ValueError(f"Layer string does not have enough elements: {layer_str}")
+            raise NCNNModelLoadError(
+                f"Layer string does not have enough elements: {layer_str}")
 
         op_type, name = param_list[:2]
         if op_type == "MemoryData":
-            raise ValueError("This NCNN param file contains invalid layers.")
+            raise NCNNModelLoadError(
+                "This NCNN param file contains invalid layers.")
 
         num_inputs = int(param_list[2])
         num_outputs = int(param_list[3])
@@ -142,7 +152,8 @@ class NCNNUpscaleModel:
     @staticmethod
     def _get_nf_and_in_nc(param_dict: dict) -> tuple[int, int]:
         if 0 not in param_dict or 1 not in param_dict or 6 not in param_dict:
-            raise ValueError("Required parameters missing in the layer string.")
+            raise NCNNModelLoadError(
+                "Required parameters missing in the layer string.")
 
         nf = param_dict[0]
         kernel_w = param_dict[1]
@@ -150,7 +161,8 @@ class NCNNUpscaleModel:
         weight_data_size = param_dict[6]
 
         if not all(isinstance(x, int) for x in [nf, kernel_w, kernel_h, weight_data_size]):
-            raise TypeError("Out nc, kernel width and height, and weight data size must all be ints.")
+            raise NCNNModelLoadError(
+                "Out nc, kernel width and height, and weight data size must all be ints.")
 
         in_nc = weight_data_size // nf // kernel_w // kernel_h
 
@@ -195,12 +207,14 @@ class NCNNUpscaleModel:
                 current_conv = param_layer.param_dict
 
         if current_conv is None:
-            raise ValueError("Cannot broadcast; model has no Convolution layers.")
+            raise NCNNModelLoadError(
+                "Cannot broadcast, model has no Convolution layers.")
 
         out_nc = int(current_conv[0]) // (pixel_shuffle ** 2)
 
         if scale < 1 or scale % 1 != 0:
-            raise ValueError(f"Model not supported, scale {scale} is not an integer or is less than 1.")
+            raise NCNNModelLoadError(
+                f"Model not supported, scale {scale} is not an integer or is less than 1.")
 
         return NCNNBroadcastData(int(scale), in_nc, out_nc, nf, fp)
 
@@ -237,7 +251,8 @@ class NCNNUpscaleModel:
             ret, mat_out = ex.extract(self.output_layer_name)
 
             if ret != 0:
-                raise NCNNExtractionFailure("NCNN extraction failed, GPU out of memory.")
+                raise NCNNExtractionFailure(
+                    "NCNN extraction failed, GPU out of memory.")
 
             results.append(numpy.array(mat_out).astype(numpy.float32))
 
@@ -252,4 +267,3 @@ class NCNNUpscaleModel:
 
 
 __all__ = _types.module_all()
-

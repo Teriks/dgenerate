@@ -242,7 +242,7 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
             raise self.argument_error(str(e))
         except _ncnn_model.NCNNNoGPUError as e:
             raise self.argument_error(str(e))
-        except ValueError as e:
+        except _ncnn_model.NCNNModelLoadError as e:
             raise self.argument_error(f'Unsupported NCNN model: {e}')
 
         try:
