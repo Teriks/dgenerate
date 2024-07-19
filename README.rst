@@ -86,6 +86,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v3.10.0/>`_.
     * `Upscaling with Diffusion Upscaler Models`_
     * `Sub Commands (image-process)`_
     * `Upscaling with chaiNNer Compatible Upscaler Models`_
+    * `Upscaling with NCNN Upscaler Models`_
     * `Writing and Running Configs`_
         * `Basic config syntax`_
         * `Built in template variables and functions`_
