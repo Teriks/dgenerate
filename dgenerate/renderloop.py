@@ -942,6 +942,13 @@ class RenderLoop:
     def _render_with_image_seeds(self):
         pipeline_wrapper = self._create_pipeline_wrapper()
 
+        # unintuitive, but these should be long-lived and then
+        # garbage collected, if they are not specified by the user
+        # these will return None
+        seed_image_processor = self._load_seed_image_processors()
+        mask_image_processor = self._load_mask_image_processors()
+        control_image_processor = self._load_control_image_processors()
+
         def iterate_image_seeds():
             # image seeds have already had logical and syntax validation preformed
             for idx, uri_to_parsed in enumerate(zip(self.config.image_seeds, self.config.parsed_image_seeds)):
@@ -977,7 +984,7 @@ class RenderLoop:
                         frame_end=self.config.frame_end,
                         resize_resolution=self.config.output_size,
                         aspect_correct=not self.config.no_aspect,
-                        image_processor=self._load_control_image_processors())
+                        image_processor=control_image_processor)
 
             else:
                 def image_seed_iterator():
@@ -987,9 +994,9 @@ class RenderLoop:
                         frame_end=self.config.frame_end,
                         resize_resolution=self.config.output_size,
                         aspect_correct=not self.config.no_aspect,
-                        seed_image_processor=self._load_seed_image_processors(),
-                        mask_image_processor=self._load_mask_image_processors(),
-                        control_image_processor=self._load_control_image_processors())
+                        seed_image_processor=seed_image_processor,
+                        mask_image_processor=mask_image_processor,
+                        control_image_processor=control_image_processor)
 
             if seed_info.is_animation:
 
