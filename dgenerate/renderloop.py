@@ -940,14 +940,31 @@ class RenderLoop:
         return r
 
     def _render_with_image_seeds(self):
-        pipeline_wrapper = self._create_pipeline_wrapper()
-
         # unintuitive, but these should be long-lived and then
         # garbage collected, if they are not specified by the user
         # these will return None
         seed_image_processor = self._load_seed_image_processors()
         mask_image_processor = self._load_mask_image_processors()
         control_image_processor = self._load_control_image_processors()
+        try:
+            yield from self._render_with_image_seeds_unmanaged(
+                seed_image_processor,
+                mask_image_processor,
+                control_image_processor)
+        finally:
+            if seed_image_processor is not None:
+                seed_image_processor.to('cpu')
+            if mask_image_processor is not None:
+                mask_image_processor.to('cpu')
+            if control_image_processor is not None:
+                control_image_processor.to('cpu')
+
+    def _render_with_image_seeds_unmanaged(self,
+                                           seed_image_processor,
+                                           mask_image_processor,
+                                           control_image_processor):
+
+        pipeline_wrapper = self._create_pipeline_wrapper()
 
         def iterate_image_seeds():
             # image seeds have already had logical and syntax validation preformed
