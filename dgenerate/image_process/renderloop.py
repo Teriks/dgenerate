@@ -453,7 +453,6 @@ class ImageProcessRenderLoop:
             processor = None
 
         try:
-
             if self.config.output and len(self.config.output) == 1 and _is_dir_spec(self.config.output[0]):
                 for idx, file in enumerate(self.config.input):
                     file = _mediainput.url_aware_normpath(file)
