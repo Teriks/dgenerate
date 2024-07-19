@@ -483,7 +483,7 @@ class ImageProcessor(_plugin.Plugin):
         """
         self.__modules.append(module)
 
-    def to(self, device: torch.device | str):
+    def to(self, device: torch.device | str) -> "ImageProcessor":
         """
         Move all :py:class:`torch.nn.Module` modules registered
         to this image processor to a specific device.
