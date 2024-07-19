@@ -350,7 +350,7 @@ def clear_model_cache(collect=True):
 
     if collect:
         _messages.debug_log(
-            f'{_types.fullname(clear_model_cache)} calling gc.collect() by request')
+            f'{_types.fullname(clear_model_cache)} calling gc.collect() & torch.cuda.empty_cache() by request')
 
         gc.collect()
         torch.cuda.empty_cache()
