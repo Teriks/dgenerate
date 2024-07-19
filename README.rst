@@ -3664,8 +3664,8 @@ If you do not specify a gpu index, index 0 is used, which is most likely your ma
      # this auto downloads x2 upscaler models from the upscayl repository into
      # dgenerates web cache, and then use them
 
-     MODEL=https://github.com/upscayl/upscayl/blob/main/models/realesr-animevideov3-x2.bin
-     PARAM=https://github.com/upscayl/upscayl/blob/main/models/realesr-animevideov3-x2.param
+     MODEL=https://github.com/upscayl/upscayl/raw/main/models/realesr-animevideov3-x2.bin
+     PARAM=https://github.com/upscayl/upscayl/raw/main/models/realesr-animevideov3-x2.param
 
      dgenerate --sub-command image-process my-file.png \
      --output output/my-file-upscaled.png \
