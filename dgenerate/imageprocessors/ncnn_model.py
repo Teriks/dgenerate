@@ -162,7 +162,6 @@ class NCNNUpscaleModel:
         pixel_shuffle = 1
         found_first_conv = False
         in_nc = 0
-        out_nc = 0
         nf = 0
         fp = "fp32"
         current_conv = None
