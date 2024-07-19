@@ -280,8 +280,15 @@ class _ImageProcessorEntry(_entry._Entry):
             if optional:
                 variable = tk.StringVar(value=default_value)
                 values = ['True', 'False', 'None']
-                values.remove(str(default_value))
-                entry = tk.OptionMenu(self.master, variable, str(default_value), *values)
+
+                def_v = str(default_value)
+                values.remove(def_v)
+
+                if def_v == "None":
+                    entry = tk.OptionMenu(self.master, variable, '', *values)
+                else:
+                    entry = tk.OptionMenu(self.master, variable, def_v, *values)
+
                 entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
                 return False, [entry], variable
             else:
