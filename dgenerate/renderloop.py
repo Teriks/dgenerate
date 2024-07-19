@@ -957,7 +957,11 @@ class RenderLoop:
             if mask_image_processor is not None:
                 mask_image_processor.to('cpu')
             if control_image_processor is not None:
-                control_image_processor.to('cpu')
+                if isinstance(control_image_processor, list):
+                    for p in control_image_processor:
+                        p.to('cpu')
+                else:
+                    control_image_processor.to('cpu')
 
     def _render_with_image_seeds_unmanaged(self,
                                            seed_image_processor,
