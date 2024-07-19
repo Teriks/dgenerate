@@ -20,93 +20,96 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import gc
-
 import ncnn
 import numpy
-
 import dgenerate.types as _types
 
 
-class NCNNExtractionFailure(Exception):
+class NCNNException(Exception):
     pass
 
 
-class NCNNIncorrectScaleFactor(Exception):
+class NCNNExtractionFailure(NCNNException):
     pass
 
 
-class NCNNGPUIndexError(Exception):
+class NCNNIncorrectScaleFactor(NCNNException):
     pass
 
 
-class NCNNNoGPUError(Exception):
+class NCNNGPUIndexError(NCNNException):
+    pass
+
+
+class NCNNNoGPUError(NCNNException):
     pass
 
 
 class NCNNBroadcastData:
-    scale: int
-    input_channels: int
-    output_channels: int
-    number_of_filters: int
-    float_precision: str
-
     def __init__(self, scale, input_channels, output_channels, number_of_filters, float_precision):
         self.scale = scale
         self.input_channels = input_channels
+        self.output_channels = output_channels
         self.number_of_filters = number_of_filters
         self.float_precision = float_precision
-        self.output_channels = output_channels
+
+
+class _ParamLayer:
+    def __init__(self, op_type, name, num_inputs, num_outputs, inputs, outputs, param_dict):
+        self.op_type = op_type
+        self.name = name
+        self.num_inputs = num_inputs
+        self.num_outputs = num_outputs
+        self.inputs = inputs
+        self.outputs = outputs
+        self.param_dict = param_dict
 
 
 class NCNNUpscaleModel:
-    def __init__(self,
-                 param_file: str,
-                 bin_file: str,
-                 use_gpu: bool = False,
-                 gpu_index: int = 0,
-                 threads: int = 4):
+    def __init__(self, param_file: str, bin_file: str, use_gpu: bool = False, gpu_index: int = 0, threads: int = 4):
         """
         Initialize the NCNN upscale model.
         """
+        self.net = ncnn.Net()
+        self.use_gpu = use_gpu
+        self.gpu_index = gpu_index
+        self.threads = threads
+        self._load_model(param_file, bin_file)
+
+    def _load_model(self, param_file: str, bin_file: str):
         with open(param_file, 'rt') as file:
             lines = [line for line in file if line.strip()]
             self.input_layer_name, self.output_layer_name = self._get_input_output(lines)
             self.broadcast_data = self._get_broadcast_data(lines)
 
-        net = ncnn.Net()
-
-        if self.broadcast_data.float_precision == "fp16":
-            net.opt.use_fp16_packed = True
-            net.opt.use_fp16_storage = True
-            net.opt.use_fp16_arithmetic = True
-        else:
-            net.opt.use_fp16_packed = False
-            net.opt.use_fp16_storage = False
-            net.opt.use_fp16_arithmetic = False
-
-        if use_gpu:
-            gpu_count = ncnn.get_gpu_count()
-
-            if gpu_count == 0:
-                raise NCNNNoGPUError('NCNN could not find any gpus.')
-            if gpu_index > gpu_count:
-                raise NCNNGPUIndexError(f'GPU index {gpu_index} does not exist.')
-
-            net.opt.use_vulkan_compute = True
-            net.set_vulkan_device(gpu_index)
-        else:
-            net.opt.num_threads = threads
-
-        self.net = net
+        self._configure_net()
         self.net.load_param(param_file)
         self.net.load_model(bin_file)
 
-        self.use_gpu = use_gpu
-        self.gpu_index = gpu_index
-        self.threads = threads
+    def _configure_net(self):
+        if self.broadcast_data.float_precision == "fp16":
+            self.net.opt.use_fp16_packed = True
+            self.net.opt.use_fp16_storage = True
+            self.net.opt.use_fp16_arithmetic = True
+        else:
+            self.net.opt.use_fp16_packed = False
+            self.net.opt.use_fp16_storage = False
+            self.net.opt.use_fp16_arithmetic = False
+
+        if self.use_gpu:
+            gpu_count = ncnn.get_gpu_count()
+            if gpu_count == 0:
+                raise NCNNNoGPUError('NCNN could not find any GPUs.')
+            if self.gpu_index > gpu_count:
+                raise NCNNGPUIndexError(f'GPU index {self.gpu_index} does not exist.')
+
+            self.net.opt.use_vulkan_compute = True
+            self.net.set_vulkan_device(self.gpu_index)
+        else:
+            self.net.opt.num_threads = self.threads
 
     @staticmethod
-    def _parse_param_layer(layer_str: str) -> tuple:
+    def _parse_param_layer(layer_str: str) -> _ParamLayer:
         param_list = layer_str.strip().split()
         if len(param_list) < 4:
             raise ValueError(f"Layer string does not have enough elements: {layer_str}")
@@ -128,20 +131,13 @@ class NCNNUpscaleModel:
             ks, vs = param_str.split("=")
             k = int(ks)
             if k < 0:
-                v = []
-                for vi in vs.split(","):
-                    vi = float(vi) if "." in vi or "e" in vi else int(vi)
-                    v.append(vi)
+                v = [float(vi) if "." in vi or "e" in vi else int(vi) for vi in vs.split(",")]
                 k = abs(k + 23300)
-                ks = str(k)
-            elif "." in vs or "e" in vs:
-                v = float(vs)
             else:
-                v = int(vs)
-
+                v = float(vs) if "." in vs or "e" in vs else int(vs)
             param_dict[k] = v
 
-        return op_type, name, num_inputs, num_outputs, inputs, outputs, param_dict
+        return _ParamLayer(op_type, name, num_inputs, num_outputs, inputs, outputs, param_dict)
 
     @staticmethod
     def _get_nf_and_in_nc(param_dict: dict) -> tuple[int, int]:
@@ -172,38 +168,32 @@ class NCNNUpscaleModel:
         current_conv = None
 
         for i, line in enumerate(param_lines[2:]):
-            op_type, \
-                name, \
-                num_inputs, \
-                num_outputs, \
-                inputs, \
-                outputs, \
-                param_dict = NCNNUpscaleModel._parse_param_layer(line)
+            param_layer = NCNNUpscaleModel._parse_param_layer(line)
 
-            if op_type == "Interp":
+            if param_layer.op_type == "Interp":
                 try:
-                    if param_lines[i + 3].strip().split()[0] != "BinaryOp" and param_dict[0] != 0:
-                        scale *= float(param_dict[2])
+                    if param_lines[i + 3].strip().split()[0] != "BinaryOp" and param_layer.param_dict[0] != 0:
+                        scale *= float(param_layer.param_dict[2])
                 except IndexError:
-                    scale *= float(param_dict[2])
-            elif op_type == "PixelShuffle":
-                shuffle_factor = int(param_dict[0])
+                    scale *= float(param_layer.param_dict[2])
+            elif param_layer.op_type == "PixelShuffle":
+                shuffle_factor = int(param_layer.param_dict[0])
                 scale *= shuffle_factor
                 pixel_shuffle *= shuffle_factor
-            elif op_type in ("Convolution", "Convolution1D", "ConvolutionDepthWise"):
+            elif param_layer.op_type in ("Convolution", "Convolution1D", "ConvolutionDepthWise"):
                 if not found_first_conv:
-                    nf, in_nc = NCNNUpscaleModel._get_nf_and_in_nc(param_dict)
+                    nf, in_nc = NCNNUpscaleModel._get_nf_and_in_nc(param_layer.param_dict)
                     found_first_conv = True
-                stride = int(param_dict.get(3, 1))  # Use a default value of 1 if key 3 is not present
+                stride = int(param_layer.param_dict.get(3, 1))
                 scale /= stride
-                current_conv = param_dict
-            elif op_type in ("Deconvolution", "DeconvolutionDepthWise"):
+                current_conv = param_layer.param_dict
+            elif param_layer.op_type in ("Deconvolution", "DeconvolutionDepthWise"):
                 if not found_first_conv:
-                    nf, in_nc = NCNNUpscaleModel._get_nf_and_in_nc(param_dict)
+                    nf, in_nc = NCNNUpscaleModel._get_nf_and_in_nc(param_layer.param_dict)
                     found_first_conv = True
-                stride = int(param_dict.get(3, 1))  # Use a default value of 1 if key 3 is not present
+                stride = int(param_layer.param_dict.get(3, 1))
                 scale *= stride
-                current_conv = param_dict
+                current_conv = param_layer.param_dict
 
         if current_conv is None:
             raise ValueError("Cannot broadcast; model has no Convolution layers.")
@@ -218,27 +208,15 @@ class NCNNUpscaleModel:
     def _get_input_output(self, param_lines: list[str]) -> tuple[str, str]:
         first = self._parse_param_layer(param_lines[2])
         last = self._parse_param_layer(param_lines[-1])
-        return first[-2][0], last[-2][0]
-
-    def __del__(self):
-        if hasattr(self, 'net'):
-            del self.net
+        return first.outputs[0], last.outputs[0]
 
     def __call__(self, images: numpy.ndarray) -> numpy.ndarray:
-        """
-        Upscale with NCNN
-
-        :param images: (batch, c, h, w) float32 pixels 0.0 to 1.0 normalized
-        :return: same as input
-        """
         results = []
         for img in images:
             ex = self.net.create_extractor()
 
-            # Convert into h, w, c from c, h, w and 0.0 - 1.0 -> 0 - 255
             img = (img.transpose((1, 2, 0)) * 255.0).astype(numpy.uint8)
 
-            # Convert image to ncnn Mat
             mat_in = ncnn.Mat.from_pixels(
                 img,
                 ncnn.Mat.PixelType.PIXEL_BGR,
@@ -246,19 +224,16 @@ class NCNNUpscaleModel:
                 img.shape[0]
             )
 
-            # Normalize image (required)
             mean_vals = [0, 0, 0]
             norm_vals = [1 / 255.0, 1 / 255.0, 1 / 255.0]
             mat_in.substract_mean_normalize(mean_vals, norm_vals)
 
-            # Make sure the input and output names match the param file
             ex.input(self.input_layer_name, mat_in)
             ret, mat_out = ex.extract(self.output_layer_name)
 
             if ret != 0:
                 raise NCNNExtractionFailure("NCNN extraction failed, GPU out of memory.")
 
-            # Return c, h, w
             results.append(numpy.array(mat_out).astype(numpy.float32))
 
             del ex, mat_in, mat_out
@@ -266,5 +241,10 @@ class NCNNUpscaleModel:
 
         return numpy.array(results)
 
+    def __del__(self):
+        if hasattr(self, 'net'):
+            del self.net
+
 
 __all__ = _types.module_all()
+
