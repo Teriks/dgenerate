@@ -100,6 +100,8 @@ class NCNNUpscaleModel:
         if openmp_blocktime is not None:
             if openmp_blocktime < 0:
                 raise ValueError('openmp_blocktime may not be less than 0.')
+            if openmp_blocktime > 400:
+                raise ValueError('openmp_blocktime may not be greater than 400.')
             self.openmp_blocktime = openmp_blocktime
         else:
             self.openmp_blocktime = self.net.opt.openmp_blocktime
