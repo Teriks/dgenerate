@@ -3657,6 +3657,9 @@ you need to use is platform specific, but for Nvidia users just use ``nvidia-smi
 
 If you do not specify a gpu index, index 0 is used, which is most likely your main GPU.
 
+The ``--device`` argument to dgenerate and the ``image-process`` subcommand / ``\image_process`` directive
+is ignored by this image processor.
+
  .. code-block:: bash
 
      #! /usr/bin/env bash
