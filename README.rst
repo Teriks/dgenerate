@@ -3653,7 +3653,8 @@ the same GPU.
 
 You can set the GPU index that you wish the processor to run on using the ``gpu-index`` argument,
 since the ncnn upscaler can run on GPUs other than Nvidia GPUs, figuring out what index
-you need to use is platform specific, but for Nvidia users just use ``nvidia-smi`` to get this value.
+you need to use is platform specific, but for Nvidia users just use the ``nvidia-smi`` command
+from a terminal to get this value.
 
 If you do not specify a gpu index, index 0 is used, which is most likely your main GPU.
 
