@@ -3630,8 +3630,8 @@ will work with any named image processor implemented by dgenerate.
 Upscaling with NCNN Upscaler Models
 ===================================
 
-The `upscaler-ncnn` image processor will be available if you have manually installed dgenerate
-with the `[ncnn]` extra or if you are using dgenerate from the packaged windows installer or portable
+The ``upscaler-ncnn`` image processor will be available if you have manually installed dgenerate
+with the ``[ncnn]`` extra or if you are using dgenerate from the packaged windows installer or portable
 windows install zip from the releases page.
 
 NCNN can use Vulkan for hardware accelerated inference and is also heavily optimized for CPU use
@@ -3642,18 +3642,18 @@ invocation involving diffusion, as the Vulkan allocator in NCNN does not play ve
 torch allocator used in diffusion with dgenerate. It will likely hard crash your system unless
 you have another GPU available to run the ncnn upscaler on in parallel.
 
-When using the `upscaler-ncnn` processor, you must specify both the `model` and `param` arguments,
-these refer to the `model.bin` and `model.param` file associated with the model.
+When using the ``upscaler-ncnn`` processor, you must specify both the ``model`` and ``param`` arguments,
+these refer to the ``model.bin`` and ``model.param`` file associated with the model.
 
 These arguments may be a path to a file on disk or a hard link to a downloadable model in raw form.
 
-By default the `upscaler-ncnn` processor does not run on the GPU, you must enable this with the `use-gpu`
+By default the ``upscaler-ncnn`` processor does not run on the GPU, you must enable this with the `use-gpu`
 argument shown below, just be careful not to crash your system by using it along side diffusion on
 the GPU.
 
-You can set the GPU index that you wish the processor to run on using the `gpu-index` argument,
+You can set the GPU index that you wish the processor to run on using the ``gpu-index`` argument,
 since the ncnn upscaler can run on GPUs other than Nvidia GPUs, figurating out what index
-you need to use is platform specific, but for nvidia users just use `nvidia-smi` to get this value.
+you need to use is platform specific, but for nvidia users just use ``nvidia-smi`` to get this value.
 
 If you do not specify a gpu index, index 0 is used, which is most likely your main GPU.
 
