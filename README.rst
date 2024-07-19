@@ -3907,7 +3907,7 @@ Some available custom jinja2 functions/filters are:
 * ``{{ gen_seeds(n) }}`` (Return a list of random integer seeds in the form of strings)
 * ``{{ cwd() }}`` (Return the current working directory as a string)
 * ``{{ download(url) }}`` (Download from a url to the web cache and return the file path)
-* ``{{ have_feature(feature_name) }}`` (Check for feature and return bool, values: ``flax`` or ``ncnn``)
+* ``{{ have_feature(feature_name) }}`` (Check for feature and return bool, value examples: ``flax``, or ``ncnn``)
 
 The above functions which possess arguments can be used as either a function or filter IE: ``{{ "quote_me" | quote }}``
 
