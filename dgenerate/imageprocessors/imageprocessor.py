@@ -484,10 +484,9 @@ class ImageProcessor(_plugin.Plugin):
         self.__modules.append(module)
 
     def __del__(self):
-        device = torch.device('cpu')
         for m in self.__modules:
-            if not hasattr(m, '_DGENERATE_IMAGE_PROCESSOR_DEVICE') or m._DGENERATE_IMAGE_PROCESSOR_DEVICE != device:
-                m._DGENERATE_IMAGE_PROCESSOR_DEVICE = device
+            if not hasattr(m, '_DGENERATE_IMAGE_PROCESSOR_DEVICE') or \
+                    m._DGENERATE_IMAGE_PROCESSOR_DEVICE.type != 'cpu':
                 _messages.debug_log(
                     f'Moving ImageProcessor registered module '
                     f'due to ImageProcessor garbage collection: {dgenerate.types.fullname(m)}.to("cpu")')
