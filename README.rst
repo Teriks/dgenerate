@@ -3671,7 +3671,7 @@ If you do not specify a gpu index, index 0 is used, which is most likely your ma
      --output output/my-file-upscaled.png \
      --processors "upscaler-ncnn;model=${MODEL};param=${PARAM};use-gpu=true"
 
-If you are upscaling using the CPU, you can specify a thread count using the ``threads`` argument.purposes
+If you are upscaling using the CPU, you can specify a thread count using the ``threads`` argument.
 
 This argument can be an integer quantity of threads, the keyword ``auto``
 (max logical processors, max threads) or the keyword ``half`` (half your logical processors).
