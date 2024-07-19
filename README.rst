@@ -83,10 +83,11 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v3.10.0/>`_.
     * `Utilizing CivitAI links and Other Hosted Models`_
     * `Specifying Generation Batch Size`_
     * `Image Processors`_
-    * `Upscaling with Diffusion Upscaler Models`_
     * `Sub Commands (image-process)`_
-    * `Upscaling with chaiNNer Compatible Upscaler Models`_
-    * `Upscaling with NCNN Upscaler Models`_
+    * `Upscaling`_
+        * `Upscaling with Diffusion Upscaler Models`_
+        * `Upscaling with chaiNNer Compatible Upscaler Models`_
+        * `Upscaling with NCNN Upscaler Models`_
     * `Writing and Running Configs`_
         * `Basic config syntax`_
         * `Built in template variables and functions`_
@@ -3384,38 +3385,6 @@ The two + (plus symbol) arguments indicate that the first two images mentioned i
 specification in ``--image-seeds`` are not to be processed by any processor.
 
 
-Upscaling with Diffusion Upscaler Models
-========================================
-
-Stable diffusion image upscaling models can be used via the model types ``torch-upscaler-x2`` and ``torch-upscaler-x4``.
-
-The image used in the example below is this `low resolution cat <https://raw.githubusercontent.com/Teriks/dgenerate/v3.10.0/examples/media/low_res_cat.png>`_
-
-.. code-block:: bash
-
-    # The image produced with this model will be
-    # two times the --output-size dimension IE: 512x512 in this case
-    # The image is being resized to 256x256, and then upscaled by 2x
-
-    dgenerate stabilityai/sd-x2-latent-upscaler --variant fp16 --dtype float16 \
-    --model-type torch-upscaler-x2 \
-    --prompts "a picture of a white cat" \
-    --image-seeds low_res_cat.png \
-    --output-size 256
-
-
-    # The image produced with this model will be
-    # four times the --output-size dimension IE: 1024x1024 in this case
-    # The image is being resized to 256x256, and then upscaled by 4x
-
-    dgenerate stabilityai/stable-diffusion-x4-upscaler --variant fp16 --dtype float16 \
-     --model-type torch-upscaler-x4 \
-    --prompts "a picture of a white cat" \
-    --image-seeds low_res_cat.png \
-    --output-size 256 \
-    --upscaler-noise-levels 20
-
-
 Sub Commands (image-process)
 ============================
 
@@ -3579,8 +3548,53 @@ A few usage examples with processors:
     -o output/canny-video.mp4 --processors mirror "canny;blur=true;threshold-algo=otsu"
 
 
+Upscaling
+=========
+
+dgenerate implements four different methods of upscaling images, animated images, or video.
+
+Upscaling with the Stable Diffusion based x2 and x4 upscalers.
+
+With the `upscale` image processor which is compatible with models implemented in the `spandrel` module.
+
+And with the `upscaler-ncnn` image processor, which implements upscaling with NCNN upscaling models
+compatible with `upscayl` , or `chaAIner` and similar software.
+
+
+Upscaling with Diffusion Upscaler Models
+----------------------------------------
+
+Stable diffusion image upscaling models can be used via the model types ``torch-upscaler-x2`` and ``torch-upscaler-x4``.
+
+The image used in the example below is this `low resolution cat <https://raw.githubusercontent.com/Teriks/dgenerate/v3.10.0/examples/media/low_res_cat.png>`_
+
+.. code-block:: bash
+
+    # The image produced with this model will be
+    # two times the --output-size dimension IE: 512x512 in this case
+    # The image is being resized to 256x256, and then upscaled by 2x
+
+    dgenerate stabilityai/sd-x2-latent-upscaler --variant fp16 --dtype float16 \
+    --model-type torch-upscaler-x2 \
+    --prompts "a picture of a white cat" \
+    --image-seeds low_res_cat.png \
+    --output-size 256
+
+
+    # The image produced with this model will be
+    # four times the --output-size dimension IE: 1024x1024 in this case
+    # The image is being resized to 256x256, and then upscaled by 4x
+
+    dgenerate stabilityai/stable-diffusion-x4-upscaler --variant fp16 --dtype float16 \
+     --model-type torch-upscaler-x4 \
+    --prompts "a picture of a white cat" \
+    --image-seeds low_res_cat.png \
+    --output-size 256 \
+    --upscaler-noise-levels 20
+
+
 Upscaling with chaiNNer Compatible Upscaler Models
-==================================================
+--------------------------------------------------
 
 `chaiNNer <https://github.com/chaiNNer-org/chaiNNer>`_ compatible upscaler models from https://openmodeldb.info/
 and elsewhere can be utilized for tiled upscaling using dgenerates ``upscaler`` image processor and the
@@ -3629,7 +3643,7 @@ will work with any named image processor implemented by dgenerate.
 
 
 Upscaling with NCNN Upscaler Models
-===================================
+-----------------------------------
 
 The ``upscaler-ncnn`` image processor will be available if you have manually installed dgenerate
 with the ``[ncnn]`` extra, or if you are using dgenerate from the packaged windows installer or portable
