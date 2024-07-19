@@ -75,9 +75,25 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
 
     The "gpu-index" argument determines which gpu is used, it is 0 indexed.
 
-    The "cpu-threads" argument determines the number of cpu threads used, the
+    The "threads" argument determines the number of cpu threads used, the
     default value is "auto" which uses the maximum amount. You may also pass
     "half" to use half the cpus logical thread count.
+
+    The "blocktime" argument determines the blocktime in milliseconds
+    for OpenMP parallelization when running on the cpu, this value
+    should be between 0 and 400 milliseconds, if you do not specify
+    the NCNN default for your platform is used. You cannot use this
+    argument when running on the GPU, an argument error will be thrown.
+
+    The "winograd" argument determines if the winograd convolution
+    optimization is used when running on the CPU. If you do not specify
+    it, the NCNN default for you platform is used. You cannot use this
+    argument when running on the GPU, an argument error will be thrown.
+
+    The "sgemm" argument determines if the sgemm convolution
+    optimization is used when running on the CPU. If you do not specify
+    it, the NCNN default for you platform is used. You cannot use this
+    argument when running on the GPU, an argument error will be thrown.
 
     The "tile" argument can be used to specify the tile size for tiled upscaling, it
     must be divisible by 2 and less than or equal to 400. The default is 400. Tile size
@@ -106,7 +122,10 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
                  param: str,
                  use_gpu: bool = False,
                  gpu_index: int = 0,
-                 cpu_threads: typing.Union[int, str] = "auto",
+                 threads: typing.Union[int, str] = "auto",
+                 blocktime: typing.Optional[int] = None,
+                 winograd: typing.Optional[bool] = None,
+                 sgemm: typing.Optional[bool] = None,
                  tile: int = 400,
                  overlap: int = 8,
                  pre_resize: bool = False,
@@ -117,7 +136,7 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
         :param factor: upscale factor
         :param use_gpu: use a GPU?
         :param gpu_index: which GPU to use, zero indexed.
-        :param cpu_threads: Number of CPU threads, or "auto", or "half"
+        :param threads: Number of CPU threads, or "auto", or "half"
         :param tile: specifies the tile size for tiled upscaling, it must be divisible by 2, and defaults to 400.
             Specifying values over 400 is not supported.
         :param overlap: the overlap amount of each tile in pixels, it must be greater than or equal to 0, and defaults to 8.
@@ -151,9 +170,34 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
         if gpu_index < 0:
             raise self.argument_error('Argument "gpu-index" must be greater than or equal to 0.')
 
-        if isinstance(cpu_threads, int) and cpu_threads < 1:
+        if isinstance(threads, int) and threads < 1:
             raise self.argument_error(
                 'Argument "cpu-threads" must be greater than or equal to 1, or "auto" or "half".')
+
+        if use_gpu:
+            if winograd is not None:
+                raise self.argument_error(
+                    'Argument "winograd" cannot be specified when running on the gpu.'
+                )
+            if sgemm is not None:
+                raise self.argument_error(
+                    'Argument "sgemm" cannot be specified when running on the gpu.'
+                )
+            if blocktime is not None:
+                raise self.argument_error(
+                    'Argument "blocktime" cannot be specified when running on the gpu.'
+                )
+
+        if blocktime is not None:
+            if blocktime < 0:
+                raise self.argument_error(
+                    'Argument "blocktime" cannot be less than 0.'
+                )
+
+            if blocktime > 400:
+                raise self.argument_error(
+                    'Argument "blocktime" cannot be greater than 400.'
+                )
 
         if _webcache.is_downloadable_url(model):
             self._model_path = _webcache.create_web_cache_file(model)[1]
@@ -175,13 +219,23 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
         self._overlap = overlap
         self._pre_resize = pre_resize
 
-        self._threads = cpu_threads if isinstance(cpu_threads, int) else psutil.cpu_count(logical=True)
+        self._threads = threads if isinstance(threads, int) else psutil.cpu_count(logical=True)
 
-        if cpu_threads == "half":
+        if threads == "half":
             self._threads = self._threads // 2
 
         self._gpu_index = gpu_index
         self._use_gpu = use_gpu
+        self._winograd = winograd
+        self._sgemm = sgemm
+        self._blocktime = blocktime
+
+        def broadcast_check(data: _ncnn_model.NCNNBroadcastData):
+            if data.input_channels != 3 or data.output_channels != 3:
+                raise _ncnn_model.NCNNModelLoadError(
+                    f'No support for input channels or output channels not equal to 3. '
+                    f'model input channels: {data.input_channels}, '
+                    f'model output channels: {data.output_channels}')
 
         try:
             self._model = _ncnn_model.NCNNUpscaleModel(
@@ -189,7 +243,11 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
                 self._model_path,
                 use_gpu=use_gpu,
                 gpu_index=gpu_index,
-                threads=self._threads)
+                threads=self._threads,
+                openmp_blocktime=self._blocktime,
+                use_winograd_convolution=self._winograd,
+                use_sgemm_convolution=self._sgemm,
+                broadcast_data_check=broadcast_check)
         except _ncnn_model.NCNNGPUIndexError as e:
             raise self.argument_error(str(e))
         except _ncnn_model.NCNNNoGPUError as e:
@@ -198,12 +256,6 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
             raise self.argument_error(f'Unsupported NCNN model: {e}')
 
     def _process_upscale(self, image, model):
-
-        if model.broadcast_data.input_channels != 3 or model.broadcast_data.output_channels != 3:
-            raise ValueError(
-                f'No support for input channels or output channels not equal to 3. '
-                f'model input channels: {model.broadcast_data.input_channels}, '
-                f'model output channels: {model.broadcast_data.output_channels}')
 
         tile = self._tile
 
@@ -256,7 +308,10 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
             ('param', self._param_path),
             ('use-gpu', self._use_gpu),
             ('gpu-index', self._gpu_index),
-            ('cpu-threads', self._threads),
+            ('threads', self._threads),
+            ('blocktime', self._blocktime),
+            ('winograd', self._winograd),
+            ('sgemm', self._sgemm),
             ('tile', self._tile),
             ('overlap', self._overlap),
             ('pre_resize', self._pre_resize)

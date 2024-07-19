@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import gc
+import typing
 
 import ncnn
 import numpy
@@ -68,7 +69,16 @@ class _ParamLayer:
 
 
 class NCNNUpscaleModel:
-    def __init__(self, param_file: str, bin_file: str, use_gpu: bool = False, gpu_index: int = 0, threads: int = 4):
+    def __init__(self,
+                 param_file: str,
+                 bin_file: str,
+                 use_gpu: bool = False,
+                 gpu_index: int = 0,
+                 threads: int = 4,
+                 openmp_blocktime: int | None = None,
+                 use_winograd_convolution: bool | None = False,
+                 use_sgemm_convolution: bool | None = False,
+                 broadcast_data_check: typing.Callable[[NCNNBroadcastData], None] | None = None):
         """
         Initialize the NCNN upscale model.
         """
@@ -76,13 +86,39 @@ class NCNNUpscaleModel:
         self.use_gpu = use_gpu
         self.gpu_index = gpu_index
         self.threads = threads
-        self._load_model(param_file, bin_file)
 
-    def _load_model(self, param_file: str, bin_file: str):
+        if use_winograd_convolution is not None:
+            self.use_winograd_convolution = use_winograd_convolution
+        else:
+            self.use_winograd_convolution = self.net.opt.use_winograd_convolution
+
+        if use_sgemm_convolution is not None:
+            self.use_sgemm_convolution = use_sgemm_convolution
+        else:
+            self.use_sgemm_convolution = self.net.opt.use_sgemm_convolution
+
+        if openmp_blocktime is not None:
+            if openmp_blocktime < 0:
+                raise ValueError('openmp_blocktime may not be less than 0.')
+            self.openmp_blocktime = openmp_blocktime
+        else:
+            self.openmp_blocktime = self.net.opt.openmp_blocktime
+
+        self._load_model(param_file, bin_file, broadcast_data_check)
+
+    def _load_model(self,
+                    param_file: str,
+                    bin_file: str,
+                    broadcast_data_check: typing.Callable[[NCNNBroadcastData], None] | None = None):
+
         with open(param_file, 'rt') as file:
             lines = [line for line in file if line.strip()]
-            self.input_layer_name, self.output_layer_name = self._get_input_output(lines)
             self.broadcast_data = self._get_broadcast_data(lines)
+
+            if broadcast_data_check:
+                broadcast_data_check(self.broadcast_data)
+
+            self.input_layer_name, self.output_layer_name = self._get_input_output(lines)
 
         self._configure_net()
         self.net.load_param(param_file)
@@ -111,6 +147,9 @@ class NCNNUpscaleModel:
             self.net.set_vulkan_device(self.gpu_index)
         else:
             self.net.opt.num_threads = self.threads
+            self.net.opt.use_winograd_convolution = self.use_winograd_convolution
+            self.net.opt.use_sgemm_convolution = self.use_sgemm_convolution
+            self.net.opt.openmp_blocktime = self.openmp_blocktime
 
     @staticmethod
     def _parse_param_layer(layer_str: str) -> _ParamLayer:
