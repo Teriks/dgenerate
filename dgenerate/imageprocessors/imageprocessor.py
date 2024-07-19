@@ -483,15 +483,6 @@ class ImageProcessor(_plugin.Plugin):
         """
         self.__modules.append(module)
 
-    def __del__(self):
-        for m in self.__modules:
-            if not hasattr(m, '_DGENERATE_IMAGE_PROCESSOR_DEVICE') or \
-                    m._DGENERATE_IMAGE_PROCESSOR_DEVICE.type != 'cpu':
-                _messages.debug_log(
-                    f'Moving ImageProcessor registered module '
-                    f'due to ImageProcessor garbage collection: {dgenerate.types.fullname(m)}.to("cpu")')
-                m.to('cpu')
-
     def to(self, device: torch.device | str):
         """
         Move all :py:class:`torch.nn.Module` modules registered

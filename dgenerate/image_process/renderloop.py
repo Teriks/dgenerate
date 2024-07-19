@@ -30,13 +30,13 @@ import typing
 import PIL.Image
 
 import dgenerate.filelock as _filelock
+import dgenerate.files as _files
 import dgenerate.image_process.renderloopconfig as _renderloopconfig
 import dgenerate.imageprocessors as _imageprocessors
 import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.messages as _messages
 import dgenerate.types as _types
-import dgenerate.files as _files
 from dgenerate.events import \
     Event, \
     AnimationFinishedEvent, \
@@ -153,13 +153,13 @@ class ImageFileSavedEvent(Event):
 
 RenderLoopEvent = \
     typing.Union[ImageGeneratedEvent,
-                 StartingAnimationEvent,
-                 StartingAnimationFileEvent,
-                 AnimationFileFinishedEvent,
-                 ImageFileSavedEvent,
-                 AnimationFinishedEvent,
-                 StartingGenerationStepEvent,
-                 AnimationETAEvent]
+    StartingAnimationEvent,
+    StartingAnimationFileEvent,
+    AnimationFileFinishedEvent,
+    ImageFileSavedEvent,
+    AnimationFinishedEvent,
+    StartingGenerationStepEvent,
+    AnimationETAEvent]
 """
 Possible events from the event stream created by :py:meth:`.ImageProcessRenderLoop.events`
 """
@@ -415,11 +415,7 @@ class ImageProcessRenderLoop:
                 _messages.log(fr'{self.message_header}: Wrote File "{out_anim_name}"',
                               underline=True)
 
-    def _process_file(self, file, out_filename, generation_step, total_generation_steps):
-        if self.config.processors:
-            processor = self.image_processor_loader.load(self.config.processors, device=self.config.device)
-        else:
-            processor = None
+    def _process_file(self, file, out_filename, generation_step, total_generation_steps, processor):
 
         with _mediainput.MediaReader(
                 path=file,
@@ -429,7 +425,6 @@ class ImageProcessRenderLoop:
                 align=self.config.align,
                 frame_start=self.config.frame_start,
                 frame_end=self.config.frame_end) as reader:
-
             self._last_frame_time = 0
             self._frame_time_sum = 0
 
@@ -452,30 +447,40 @@ class ImageProcessRenderLoop:
         def _is_dir_spec(path):
             return os.path.isdir(path) or path[-1] in '/\\'
 
-        if self.config.output and len(self.config.output) == 1 and _is_dir_spec(self.config.output[0]):
-            for idx, file in enumerate(self.config.input):
-                file = _mediainput.url_aware_normpath(file)
-                base, ext = os.path.splitext(_mediainput.url_aware_basename(file))
-                output_file = os.path.normpath(
-                    os.path.join(self.config.output[0], base + f'_processed_{idx + 1}{ext}'))
-                yield from self._process_file(file, output_file, idx, total_generation_steps)
+        if self.config.processors:
+            processor = self.image_processor_loader.load(self.config.processors, device=self.config.device)
         else:
-            for idx, file in enumerate(self.config.input):
-                file = _mediainput.url_aware_normpath(file)
-                output_file = _mediainput.url_aware_normpath(
-                    self.config.output[idx] if self.config.output else file)
+            processor = None
 
-                if file == output_file and not self.config.output_overwrite:
-                    if not _mediainput.is_downloadable_url(file):
-                        base, ext = os.path.splitext(output_file)
-                    else:
-                        base, ext = os.path.splitext(_mediainput.url_aware_basename(output_file))
-                    output_file = base + f'_processed_{idx + 1}{ext}'
-                elif _is_dir_spec(output_file):
+        try:
+
+            if self.config.output and len(self.config.output) == 1 and _is_dir_spec(self.config.output[0]):
+                for idx, file in enumerate(self.config.input):
+                    file = _mediainput.url_aware_normpath(file)
                     base, ext = os.path.splitext(_mediainput.url_aware_basename(file))
-                    output_file = os.path.join(output_file, base + f'_processed_{idx + 1}{ext}')
+                    output_file = os.path.normpath(
+                        os.path.join(self.config.output[0], base + f'_processed_{idx + 1}{ext}'))
+                    yield from self._process_file(file, output_file, idx, total_generation_steps)
+            else:
+                for idx, file in enumerate(self.config.input):
+                    file = _mediainput.url_aware_normpath(file)
+                    output_file = _mediainput.url_aware_normpath(
+                        self.config.output[idx] if self.config.output else file)
 
-                yield from self._process_file(file, output_file, idx, total_generation_steps)
+                    if file == output_file and not self.config.output_overwrite:
+                        if not _mediainput.is_downloadable_url(file):
+                            base, ext = os.path.splitext(output_file)
+                        else:
+                            base, ext = os.path.splitext(_mediainput.url_aware_basename(output_file))
+                        output_file = base + f'_processed_{idx + 1}{ext}'
+                    elif _is_dir_spec(output_file):
+                        base, ext = os.path.splitext(_mediainput.url_aware_basename(file))
+                        output_file = os.path.join(output_file, base + f'_processed_{idx + 1}{ext}')
+
+                    yield from self._process_file(file, output_file, idx, total_generation_steps)
+        finally:
+            if processor is not None:
+                processor.to('cpu')
 
     def run(self):
         """
