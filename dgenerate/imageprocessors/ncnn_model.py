@@ -172,8 +172,13 @@ class NCNNUpscaleModel:
         current_conv = None
 
         for i, line in enumerate(param_lines[2:]):
-            op_type, name, num_inputs, num_outputs, inputs, outputs, param_dict = NCNNUpscaleModel._parse_param_layer(
-                line)
+            op_type, \
+                name, \
+                num_inputs, \
+                num_outputs, \
+                inputs, \
+                outputs, \
+                param_dict = NCNNUpscaleModel._parse_param_layer(line)
 
             if op_type == "Interp":
                 try:

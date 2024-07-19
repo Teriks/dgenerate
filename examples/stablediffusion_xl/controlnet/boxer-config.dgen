@@ -14,6 +14,7 @@ stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
 --guidance-scales 8
 --output-path boxer
 --output-size 1024
+--model-cpu-offload
 --vae-tiling
 --vae-slicing
 --prompts "A boxer throwing a punch in the ring"
