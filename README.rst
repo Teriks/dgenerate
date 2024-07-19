@@ -3647,7 +3647,7 @@ these refer to the ``model.bin`` and ``model.param`` file associated with the mo
 
 These arguments may be a path to a file on disk or a hard link to a downloadable model in raw form.
 
-By default the ``upscaler-ncnn`` processor does not run on the GPU, you must enable this with the `use-gpu`
+By default the ``upscaler-ncnn`` processor does not run on the GPU, you must enable this with the ``use-gpu``
 argument shown below, just be careful not to crash your system by using it along side diffusion on
 the same GPU.
 
