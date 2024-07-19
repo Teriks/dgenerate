@@ -22,6 +22,7 @@ import collections.abc
 import typing
 
 import PIL.Image
+import torch
 
 import dgenerate.imageprocessors.imageprocessor as _imageprocessor
 import dgenerate.types as _types
@@ -115,6 +116,21 @@ class ImageProcessorChain(_imageprocessor.ImageProcessor):
             return p_image
         else:
             return image
+
+    def to(self, device: torch.device | str) -> "ImageProcessorChain":
+        """
+        Move all :py:class:`torch.nn.Module` modules registered
+        to this image processor to a specific device.
+
+        :raise dgenerate.OutOfMemoryError: if there is not enough memory on the specified device
+
+        :param device: The device string, or torch device object
+        :return: the image processor itself
+        """
+        for p in self._image_processors:
+            p.to(device)
+
+        return self
 
 
 __all__ = _types.module_all()
