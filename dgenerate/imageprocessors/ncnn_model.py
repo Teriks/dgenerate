@@ -210,6 +210,12 @@ class NCNNUpscaleModel:
         return first.outputs[0], last.outputs[0]
 
     def __call__(self, images: numpy.ndarray) -> numpy.ndarray:
+        """
+        Upscale with NCNN
+
+        :param images: (batch, c, h, w) float32 pixels 0.0 to 1.0 normalized
+        :return: same as input
+        """
         results = []
         for img in images:
             ex = self.net.create_extractor()
