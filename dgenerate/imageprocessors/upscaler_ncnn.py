@@ -45,7 +45,6 @@ class _UnsupportedModelError(Exception):
 def _stack_images(images: list) -> numpy.ndarray:
     out = []
     for img in images:
-        img = img.convert('RGB')
         img = (numpy.array(img).transpose((2, 0, 1)) / 255.0).astype(numpy.float32)  # Convert to (c, h, w) format
         out.append(img)
     return numpy.stack(out)
