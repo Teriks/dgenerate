@@ -1029,14 +1029,28 @@ Install dgenerate:
     pipx install dgenerate ^
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu121/"
 
+    # with NCNN upscaler support
+
+    pipx install dgenerate[ncnn] ^
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu121/"
+
     # If you want a specific version
 
     pipx install dgenerate==3.10.0 ^
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu121/"
 
+    # with NCNN upscaler support and a specific version
+
+    pipx install dgenerate[ncnn]==3.10.0 ^
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu121/"
+
     # You can install without pipx into your own environment like so
 
     pip install dgenerate==3.10.0 --extra-index-url https://download.pytorch.org/whl/cu121/
+
+    # Or with NCNN
+
+    pip install dgenerate[ncnn]==3.10.0 --extra-index-url https://download.pytorch.org/whl/cu121/
 
 
 It is recommended to install dgenerate with pipx if you are just intending
@@ -1054,6 +1068,10 @@ a cloned repository like this:
     # Install with pip into the environment
 
     pip install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu121/
+
+    # Install with pip into the environment, include NCNN
+
+    pip install --editable .[dev, ncnn] --extra-index-url https://download.pytorch.org/whl/cu121/
 
 
 Run ``dgenerate`` to generate images:
@@ -1142,7 +1160,21 @@ Install dgenerate
 
 .. code-block:: bash
 
+    # install with just support for torch
+
     pipx install dgenerate \
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu121/"
+
+    # With NCNN upscaler support (pip extras can be combined)
+    # for instance [flax, ncnn] can be used, make sure to include
+    # the -f argument mentioned here in --pip-args for flax
+    # mentioned below
+
+    # be aware that the ncnn python package depends on the non headless
+    # version of python-opencv and it may cause issues
+    # on headless systems without a window manager
+
+    pipx install dgenerate[ncnn] \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu121/"
 
     # With flax/jax support
@@ -1166,9 +1198,18 @@ Install dgenerate
 
     pip3 install dgenerate==3.10.0 --extra-index-url https://download.pytorch.org/whl/cu121/
 
+    # Or with NCNN
+
+    pip3 install dgenerate[ncnn]==3.10.0 --extra-index-url https://download.pytorch.org/whl/cu121/
+
     # Or with flax
 
     pip3 install dgenerate[flax]==3.10.0 --extra-index-url https://download.pytorch.org/whl/cu121/ \
+    -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+
+    # With both
+
+    pip3 install dgenerate[flax, ncnn]==3.10.0 --extra-index-url https://download.pytorch.org/whl/cu121/ \
     -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 
@@ -3585,6 +3626,51 @@ will work with any named image processor implemented by dgenerate.
     --processors "upscaler;model=https://github.com/JingyunLiang/SwinIR/releases/download/v0.0/001_classicalSR_DIV2K_s48w8_SwinIR-M_x4.pth"
 
 
+Upscaling with NCNN Upscaler Models
+===================================
+
+The `upscaler-ncnn` image processor will be available if you have manually installed dgenerate
+with the `[ncnn]` extra or if you are using dgenerate from the packaged windows installer or portable
+windows install zip from the releases page.
+
+NCNN can use Vulkan for hardware accelerated inference and is also heavily optimized for CPU use
+if needed.
+
+It is not recommended to use this upscaler as a post-process or pre-process step on the GPU for a dgenerate
+invocation involving diffusion, as the Vulkan allocator in NCNN does not play very nice with the
+torch allocator used in diffusion with dgenerate. It will likely hard crash your system unless
+you have another GPU available to run the ncnn upscaler on in parallel.
+
+When using the `upscaler-ncnn` processor, you must specify both the `model` and `param` arguments,
+these refer to the `model.bin` and `model.param` file associated with the model.
+
+These arguments may be a path to a file on disk or a hard link to a downloadable model in raw form.
+
+By default the `upscaler-ncnn` processor does not run on the GPU, you must enable this with the `use-gpu`
+argument shown below, just be careful not to crash your system by using it along side diffusion on
+the GPU.
+
+You can set the GPU index that you wish the processor to run on using the `gpu-index` argument,
+since the ncnn upscaler can run on GPUs other than Nvidia GPUs, figurating out what index
+you need to use is platform specific, but for nvidia users just use `nvidia-smi` to get this value.
+
+If you do not specify a gpu index, index 0 is used, which is most likely your main GPU.
+
+ .. code-block:: bash
+
+     #! /usr/bin/env bash
+
+     # this auto downloads x2 upscaler models from the upscayl repository into
+     # dgenerates web cache, and then use them
+
+     MODEL=https://github.com/upscayl/upscayl/blob/main/models/realesr-animevideov3-x2.bin
+     PARAM=https://github.com/upscayl/upscayl/blob/main/models/realesr-animevideov3-x2.param
+
+     dgenerate --sub-command image-process my-file.png \
+     --output output/my-file-upscaled.png \
+     --processors "upscaler-ncnn;model=${MODEL};param=${PARAM};use-gpu=true"
+
+
 Writing and Running Configs
 ===========================
 
@@ -4035,7 +4121,6 @@ The following is output from ``\functions_help`` showing every implemented templ
 
     Available config template functions:
 
-        END() -> str
         abs(args, kwargs)
         align_size(size: str | tuple, align: int, format_size: bool = True) -> str | tuple
         all(args, kwargs)
@@ -5181,14 +5266,3 @@ for example on another disk, simply set ``HF_HOME`` to a new path in your enviro
 
 You can read more about environmental variables that affect huggingface libraries on this
 `huggingface documentation page <https://huggingface.co/docs/huggingface_hub/package_reference/environment_variables>`_.
-
-
-
-
-
-
-
-
-
-
-
