@@ -3694,6 +3694,17 @@ This argument can be an integer quantity of threads, the keyword ``auto``
      --processors "upscaler-ncnn;model=${MODEL};param=${PARAM};threads=half"
 
 
+The argument ``winograd=true`` can be used to enable the winograd convolution when running on CPU,
+similarly the ``sgemm=true`` argument can be used to enable the sgemm convolution optimization.
+
+In addition, you can control OpenMP blocktime using the ``blocktime`` argument, which should be
+an integer value between 0 and 400 inclusive, representing milliseconds.
+
+These arguments can only be used when running on the CPU and will throw an argument error otherwise.
+
+When they are not specified, optimal defaults from ncnn for your platform are used.
+
+
 Writing and Running Configs
 ===========================
 
