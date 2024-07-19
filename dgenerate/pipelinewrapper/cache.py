@@ -204,11 +204,10 @@ def clear_pipeline_cache(collect=True):
     for p in _TORCH_PIPELINE_CACHE.values():
         _pipeline_to(p.pipeline, 'cpu', cache_tracking=False)
 
-    _TORCH_PIPELINE_CACHE.clear()
-
     # Get this out of memory and out of VRAM as well
     _destroy_last_called_pipeline(cache_tracking=False)
 
+    _TORCH_PIPELINE_CACHE.clear()
     _FLAX_PIPELINE_CACHE.clear()
     _PIPELINE_CACHE_SIZE = 0
 
