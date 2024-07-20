@@ -87,7 +87,9 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v3.10.0/>`_.
     * `Utilizing CivitAI links and Other Hosted Models`_
     * `Specifying Generation Batch Size`_
     * `Image Processors`_
-    * `Sub Commands (image-process)`_
+    * `Sub Commands`_
+        * `image-process`_
+        * `civitai-links`_
     * `Upscaling`_
         * `Upscaling with Diffusion Upscaler Models`_
         * `Upscaling with chaiNNer Compatible Upscaler Models`_
