@@ -154,6 +154,11 @@ class ImageProcessor(_plugin.Plugin):
             # wipe out the cpu side diffusion pipelines cache
             # and do a GC pass to free up cpu side memory since
             # we are nearly out of memory anyway
+
+            _messages.debug_log(
+                f'Image processor "{self.__class__}" is clearing the entire CPU side diffusion '
+                f'model cache due to CPU side memory constraint evaluating to to True.')
+
             _m_cache.clear_model_cache()
 
     @property
@@ -524,6 +529,47 @@ class ImageProcessor(_plugin.Plugin):
         """
         self.__modules.append(module)
 
+    def __gpu_memory_fence_to(self, device: torch.device | str):
+        if (device.type == 'cuda' and _memory.cuda_memory_constraints(
+                _constants.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS,
+                extra_vars={'processor_size': self.size_estimate},
+                device=device)):
+
+            # if there is a diffusion pipeline cached in
+            # VRAM on the device we are moving to, it is guaranteed
+            # to be a huge chunk of VRAM.
+            #
+            # Catching the last called diffusion pipeline on the GPU is
+            # only to enhance the speed of execution, and it is
+            # not required to be on the GPU if we are running
+            # low on VRAM while trying to have it there next
+            # to an image processor
+            #
+            # So we can fence the GPU when it is low on memory
+            # IE: remove the pipeline and put the processor on
+            #
+            # when executing image processing after calling a large
+            # diffusion model, this can prevent OOM at the cost of
+            # execution speed for the next invocation of the diffusion
+            # model
+
+            active_pipe = _pipelines.get_last_called_pipeline()
+
+            if active_pipe is not None \
+                    and _pipelines.get_torch_device(active_pipe).index == device.index:
+                # get rid of this reference immediately
+                # noinspection PyUnusedLocal
+                active_pipe = None
+
+                _messages.debug_log(
+                    f'Image processor "{self.__class__}" is attempting to evacuate any previously '
+                    f'called diffusion pipline in VRAM due to cuda memory constraint evaluating '
+                    f'to True.')
+
+                # potentially free up VRAM on the GPU we are
+                # about to move to
+                _pipelines.destroy_last_called_pipeline()
+
     def to(self, device: torch.device | str) -> "ImageProcessor":
         """
         Move all :py:class:`torch.nn.Module` modules registered
@@ -542,18 +588,7 @@ class ImageProcessor(_plugin.Plugin):
         for m in self.__modules:
             if not hasattr(m, '_DGENERATE_IMAGE_PROCESSOR_DEVICE') or m._DGENERATE_IMAGE_PROCESSOR_DEVICE != device:
 
-                if (device.type == 'cuda' and _memory.cuda_memory_constraints(
-                        _constants.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS,
-                        extra_vars={'processor_size': self.size_estimate},
-                        device=device)):
-                    # if there is a diffusion pipeline cached in
-                    # VRAM, it is guaranteed to be a huge chunk of VRAM
-                    # if the pipeline gets used immediately after the
-                    # processor is moved to GPU and we are out of memory,
-                    # there is nothing we can do, it will respawn and crash.
-                    # There are a lot of edge cases where this is not going
-                    # to be the case that this can optimize
-                    _pipelines.destroy_last_called_pipeline()
+                self.__gpu_memory_fence_to(device)
 
                 m._DGENERATE_IMAGE_PROCESSOR_DEVICE = device
                 _messages.debug_log(
