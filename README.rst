@@ -3294,7 +3294,7 @@ Near the bottom of the page in the section: ``API Keys``
 
 You can use the `civitai-links <Sub Command: civitai-links_>`_ sub-command to fetch the necessary model
 links from a CivitAI model page. You may also use this sub-command in the form of the config
-directive ```\civitai_links`` from a config file or the Console UI.
+directive ``\civitai_links`` from a config file or the Console UI.
 
 If you plan to download many large models to the web cache in this manner you may wish
 to adjust the global cache expiry time so that they exist in the cache longer than the default of 12 hours.
