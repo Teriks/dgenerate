@@ -572,7 +572,7 @@ class ImageProcessor(_plugin.Plugin):
     def __flush_diffusion_pipeline_after_oom(self):
         _messages.debug_log(
             f'Image processor "{self.__class__}" is attempting to evacuate any previously '
-            f'called diffusion pipline in VRAM due initial cuda out of memory condition.')
+            f'called diffusion pipline in VRAM due to initial cuda out of memory condition.')
         _pipelines.destroy_last_called_pipeline()
 
     def __to(self, device: torch.device | str, attempt=0):
