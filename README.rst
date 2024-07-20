@@ -3561,7 +3561,7 @@ You only need to select which models you wish to use from the links listed by th
 
 See: `Utilizing CivitAI links and Other Hosted Models`_ for more information about how to use these links.
 
-To get direct links to civit AI models you can use the ``civitai-links`` subcommand
+To get direct links to CivitAI models you can use the ``civitai-links`` subcommand
 or the ``\civitai_links`` directive inside of a config to list all available models
 on a CivitAI model page.
 
