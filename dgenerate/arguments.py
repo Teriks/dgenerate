@@ -414,8 +414,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument('--sub-command-help', action='store', nargs='*', default=None,
                             metavar="SUB_COMMAND",
                             help="""Use this option alone (or with --plugin-modules) and no model specification
-                                    in order to list available sub-command names. Calling a subcommand with
-                                    "--sub-command name --help" will produce argument help output for that subcommand.
+                                    in order to list available sub-command names. Calling a sub-command with
+                                    "--sub-command name --help" will produce argument help output for that sub-command.
                                     When used with --plugin-modules, sub-commands implemented by the specified plugins
                                     will also be listed."""))
 
