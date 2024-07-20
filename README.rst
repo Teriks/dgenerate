@@ -88,8 +88,8 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v3.10.0/>`_.
     * `Specifying Generation Batch Size`_
     * `Image Processors`_
     * `Sub Commands`_
-        * `image-process`_
-        * `civitai-links`_
+        * `--sub-command image-process`_
+        * `--sub-command civitai-links`_
     * `Upscaling`_
         * `Upscaling with Diffusion Upscaler Models`_
         * `Upscaling with chaiNNer Compatible Upscaler Models`_
@@ -3402,8 +3402,8 @@ All sub-commands respect the ``--plugin-modules`` and ``--verbose`` arguments
 even if their help output does not specify them, these arguments are handled
 by dgenerate and not the sub-command.
 
-image-process
--------------
+--sub-command image-process
+---------------------------
 
 The ``image-process`` sub-command can be used to run image processors implemented
 by dgenerate on any file of your choosing including animated images and videos.
@@ -3550,8 +3550,8 @@ A few usage examples with processors:
     -o output/canny-video.mp4 --processors mirror "canny;blur=true;threshold-algo=otsu"
 
 
-civitai-links
--------------
+--sub-command civitai-links
+---------------------------
 
 This subcommand can be used to list all of the hard links for models available on a CivitAI model page.
 
