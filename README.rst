@@ -3443,7 +3443,7 @@ be used as preprocessors or postprocessors, the image processor object is garbag
 invocation completes, this is also true for the ``\image_process`` directive.  Using this argument
 with a preprocess specification, such as ``--control-image-processors`` may yield a noticeable memory
 overhead reduction when using a single GPU, as any models from the image processor will be moved to the
-CPU immediately when it is done, clearing up VRAM space before the diffusion models enter GPU VRAM.
+CPU immediately when it is done with an image, clearing up VRAM space before the diffusion models enter GPU VRAM.
 
 For an example, images can be processed with the canny edge detection algorithm or OpenPose (rigging generation)
 before being used for generation with a model + a ControlNet.
