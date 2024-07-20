@@ -24,6 +24,7 @@ import os
 
 import asteval
 import psutil
+import torch
 
 import dgenerate.messages as _messages
 import dgenerate.textprocessing as _textprocessing
@@ -359,3 +360,136 @@ def calculate_chunk_size(file_size):
     # If the file size is larger than 10% of the total memory, use 0.1% of the total memory as the chunk size
     else:
         return int(total_memory * 0.001)
+
+
+def cuda_memory_constraints(expressions: collections.abc.Iterable[str],
+                            extra_vars: dict[str, int | float] | None = None,
+                            mode=any,
+                            device: str | torch.device = 'cuda:0') -> bool:
+    """
+    Evaluate a user boolean expression involving the CUDA device's memory in bytes,
+    used memory percent, and available CUDA memory in bytes.
+
+    If you pass a non cuda device identifier to this method, it will always return ``False``
+
+    Available functions are:
+        * kb(bytes to kilobytes)
+        * mb(bytes to megabytes)
+        * gb(bytes to gigabytes)
+        * kib(bytes to kibibytes)
+        * mib(bytes to mebibytes)
+        * gib(bytes to gibibytes)
+
+    Available values are:
+        * used / u (memory currently used by the CUDA device in bytes)
+        * used_total_percent / utp (memory used by the CUDA device, as percent of total CUDA memory, example: 25.4)
+        * available / a (available memory remaining on the CUDA device in bytes that can be used)
+        * total / t (total memory on the CUDA device in bytes)
+
+    Example expressions:
+        * ``used > gb(1)`` (when the device has used more than 1GB of memory)
+        * ``used_total_percent > 25`` (when the device has used more than 25 percent of CUDA memory)
+        * ``available < gb(2)`` (when the available memory on the device is less than 2GB)
+
+    Expressions may not be longer than 128 characters. However, multiple expressions may be provided.
+
+    :raise ValueError: if extra_vars overwrites a reserved variable name,
+        or if ``device`` is not a ``str`` or ``torch.device`` object.
+
+    :raise MemoryConstraintSyntaxError: on syntax errors or if the return value
+        of an expression is not a boolean value.
+
+    :param expressions: a list of expressions, if expressions is ``None`` or empty this
+        function will return ``False``.
+    :param extra_vars: extra integer or float variables
+    :param mode: the standard library function 'any' (equating to OR all expressions) or
+        the standard library function 'all' (equating to AND all expressions). The default
+        is 'any' which ORs all expressions.
+    :param device: CUDA device string or torch.device object, defaults to 'cuda:0'.
+    :return: Boolean result of the expression
+    """
+
+    if not expressions:
+        return False
+
+    for expr in expressions:
+        memory_constraint_syntax_check(expr)
+
+    if isinstance(device, str):
+        if not device.startswith('cuda'):
+            return False
+        if ':' in device:
+            device_index = int(device.split(':')[1])
+        else:
+            device_index = 0  # default to device 0 if no index is specified
+    elif isinstance(device, torch.device):
+        if device.type != 'cuda':
+            return False
+        device_index = device.index if device.index is not None else 0
+    else:
+        raise ValueError('device must be a str or torch.device object.')
+
+    total_memory = torch.cuda.get_device_properties(device_index).total_memory
+
+    with torch.cuda.device(device_index):
+        reserved_memory = torch.cuda.memory_reserved()
+        allocated_memory = torch.cuda.memory_allocated()
+        free_memory = total_memory - reserved_memory
+
+    used = allocated_memory
+    used_total_percent = (used / total_memory) * 100.0
+    available = free_memory
+    total = total_memory
+
+    functions = {
+        'gb': lambda x: x * 1000 ** 3,
+        'mb': lambda x: x * 1000 ** 2,
+        'kb': lambda x: x * 1000,
+        'gib': lambda x: x * 1024 ** 3,
+        'mib': lambda x: x * 1024 ** 2,
+        'kib': lambda x: x * 1024
+    }
+
+    variables = {
+        'used': used,
+        'u': used,
+        'used_total_percent': used_total_percent,
+        'utp': used_total_percent,
+        'available': available,
+        'a': available,
+        'total': total,
+        't': total
+    }
+
+    if extra_vars:
+        for key, value in extra_vars.items():
+            if key in variables or key in functions:
+                raise ValueError(
+                    f'extra_vars cannot redefine reserved attribute: {key}')
+            variables[key] = value
+
+    interpreter = asteval.Interpreter(
+        minimal=True,
+        symtable=variables.copy())
+
+    if 'print' in interpreter.symtable:
+        del interpreter.symtable['print']
+
+    interpreter.symtable.update(functions)
+
+    _messages.debug_log(
+        f'{_types.fullname(cuda_memory_constraints)} constraint = '
+        f'[{", ".join(_textprocessing.quote_spaces(expressions))}], '
+        f'vars = {str(variables)}')
+
+    try:
+        value = mode(interpreter(
+            e, raise_errors=True, show_errors=False) for e in expressions)
+        if not isinstance(value, bool):
+            raise MemoryConstraintSyntaxError('Memory constraint must return a boolean value.')
+        return value
+    except (Exception, NameError) as e:
+        raise MemoryConstraintSyntaxError(
+            f'Memory constraint syntax error: {e}')
+
+

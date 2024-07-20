@@ -32,6 +32,7 @@ import dgenerate.imageprocessors.imageprocessor as _imageprocessor
 import dgenerate.imageprocessors.ncnn_model as _ncnn_model
 import dgenerate.imageprocessors.upscale_tiler as _upscale_tiler
 import dgenerate.messages as _messages
+import dgenerate.pipelinewrapper.pipelines as _pipelines
 import dgenerate.types as _types
 import dgenerate.webcache as _webcache
 
@@ -58,14 +59,32 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
     """
     Implements tiled upscaling with NCNN upscaler models.
 
-    It is not recommended to use this as a pre-processor or post-processor
-    on the same gpu that diffusion is being preformed on. The vulkan allocator
-    does not play nice with the torch cuda allocator and it will likely hard
-    crash your entire system. If you want to use it that way, set "gpu-index"
-    to a gpu that diffusion is not going to be running on.
-
     Downloaded model / param files are cached in the dgenerate web cache on disk
     until the cache expiry time for the file is met.
+
+    When using this processor as a pre-processor or post-processor for diffusion,
+    GPU memory will be fenced, any cached models related to diffusion on the GPU
+    will be evacuated entirely before this processor runs if they exist on the same GPU
+    as the processor, this is to prevent catastrophic interaction between the Vulkan
+    and Torch cuda allocators.
+
+    Once a Vulkan allocator exists on a specific GPU it cannot be destroyed except
+    via the process exiting due to issues with the ncnn python binding.  If you
+    create this processor on a GPU you intend to preform diffusion on, you are
+    going to run into memory errors after the first image generation and
+    there on out until the process exits.
+
+    Note that if any other process runs diffusion via torch on the same GPU as this image
+    processor while the image processor is preforming inference, you will likely encounter
+    a segfault in either of the processes and a very hard crash.
+
+    You can safely run this processor in parallel with diffusion with GPU acceleration
+    by placing it on a separate gpu using the "gpu-index" argument.
+
+    For these reasons, this processor runs on the CPU by default, you can enable
+    GPU usage with GPU related arguments mentioned in this documentation below.
+
+    -----
 
     The "model" argument should be a path or URL to a NCNN compatible upscaler model.
 
@@ -238,6 +257,9 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
                     f'model output channels: {data.output_channels}')
 
         try:
+            # destroy last diffusers pipeline in VRAM
+            self._pipeline_fence()
+
             self._model = _ncnn_model.NCNNUpscaleModel(
                 self._param_path,
                 self._model_path,
@@ -254,6 +276,20 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
             raise self.argument_error(str(e))
         except _ncnn_model.NCNNModelLoadError as e:
             raise self.argument_error(f'Unsupported NCNN model: {e}')
+
+    def _pipeline_fence(self):
+        if self._use_gpu:
+            active_pipe = _pipelines.get_last_called_pipeline()
+            if active_pipe is not None \
+                    and _pipelines.get_torch_device(active_pipe).index == self._gpu_index:
+                # get rid of this reference immediately
+                # noinspection PyUnusedLocal
+                active_pipe = None
+
+                # fence, a vulkan context cannot exist
+                # with a diffusers torch diffusion pipeline
+                # in VRAM without massive issues.
+                _pipelines.destroy_last_called_pipeline()
 
     def _process_upscale(self, image, model):
 
@@ -297,6 +333,9 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
         return _output_to_pil(output[0])
 
     def _process(self, image):
+        # destroy last diffusers pipeline in VRAM
+        self._pipeline_fence()
+
         try:
             return self._process_upscale(image, self._model)
         except _ncnn_model.NCNNExtractionFailure as e:

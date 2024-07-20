@@ -112,6 +112,8 @@ class AnylineProcessor(_imageprocessor.ImageProcessor):
         else:
             self._detect_resolution = None
 
+        self.set_size_estimate(248 * 1000)  # 248 KB -> bytes
+
         self._anyline = _cna.AnylineDetector.from_pretrained(
             'TheMistoAI/MistoLine', filename='MTEED.pth', subfolder='Anyline')
 

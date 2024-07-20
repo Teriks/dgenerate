@@ -93,6 +93,7 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
         else:
             self._detect_resolution = None
 
+        self.set_size_estimate(2564363480)  # 2.56436348 GB
         self._sam = self._from_pretrained('ybelkada/segment-anything', subfolder='checkpoints')
 
     def _from_pretrained(self,

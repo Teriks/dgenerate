@@ -18,7 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import math
+import os
 import typing
 
 import PIL.Image
@@ -30,10 +30,10 @@ import torchvision
 import tqdm.auto
 
 import dgenerate.imageprocessors.imageprocessor as _imageprocessor
+import dgenerate.imageprocessors.upscale_tiler as _upscale_tiler
 import dgenerate.messages as _messages
 import dgenerate.types as _types
 import dgenerate.webcache as _webcache
-import dgenerate.imageprocessors.upscale_tiler as _upscale_tiler
 
 spandrel.MAIN_REGISTRY.add(*spandrel_extra_arches.EXTRA_REGISTRY)
 
@@ -41,34 +41,6 @@ spandrel.MAIN_REGISTRY.add(*spandrel_extra_arches.EXTRA_REGISTRY)
 class _UnsupportedModelError(Exception):
     """chaiNNer model is not of a supported type."""
     pass
-
-
-def _load_upscaler_model(model_path) -> spandrel.ImageModelDescriptor:
-    """
-    Load an upscaler model from a file path or URL.
-
-    :param model_path: path
-    :return: model
-    """
-    if _webcache.is_downloadable_url(model_path):
-        # Any mimetype
-        _, model_path = _webcache.create_web_cache_file(model_path)
-
-    try:
-        model = spandrel.ModelLoader().load_from_file(model_path).eval()
-    except (ValueError,
-            RuntimeError,
-            TypeError,
-            AttributeError) as e:
-        raise _UnsupportedModelError(e)
-
-    if not isinstance(model, spandrel.ImageModelDescriptor):
-        raise _UnsupportedModelError("Upscale model must be a single-image model.")
-
-    _messages.debug_log(
-        f'{_types.fullname(_load_upscaler_model)}("{model_path}") -> {model.__class__.__name__}')
-
-    return model
 
 
 class UpscalerProcessor(_imageprocessor.ImageProcessor):
@@ -136,7 +108,7 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
         self._model_path = model
 
         try:
-            self._model = _load_upscaler_model(model)
+            self._model = self._load_upscaler_model(model)
         except _UnsupportedModelError as e:
             raise self.argument_error(f'Unsupported model file format: {e}')
 
@@ -185,6 +157,36 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
                         f'used with model file: "{model}"')
 
         self.register_module(UpscalerModel(self, self._model, self._dtype))
+
+    def _load_upscaler_model(self, model_path) -> spandrel.ImageModelDescriptor:
+        """
+        Load an upscaler model from a file path or URL.
+
+        :param model_path: path
+        :return: model
+        """
+        if _webcache.is_downloadable_url(model_path):
+            # Any mimetype
+            _, model_path = _webcache.create_web_cache_file(model_path)
+
+        # use the model file size as a heuristic
+        self.set_size_estimate(os.path.getsize(model_path))
+
+        try:
+            model = spandrel.ModelLoader().load_from_file(model_path).eval()
+        except (ValueError,
+                RuntimeError,
+                TypeError,
+                AttributeError) as e:
+            raise _UnsupportedModelError(e)
+
+        if not isinstance(model, spandrel.ImageModelDescriptor):
+            raise _UnsupportedModelError("Upscale model must be a single-image model.")
+
+        _messages.debug_log(
+            f'{_types.fullname(UpscalerProcessor._load_upscaler_model)}("{model_path}") -> {model.__class__.__name__}')
+
+        return model
 
     def _auto_tile_size(self, img: PIL.Image.Image) -> int:
         if self.modules_device.type == 'cpu':
@@ -269,11 +271,11 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
             try:
                 steps = \
                     in_img.shape[0] * _upscale_tiler.get_tiled_scale_steps(
-                    in_img.shape[3],
-                    in_img.shape[2],
-                    tile_x=tile,
-                    tile_y=tile,
-                    overlap=self._overlap)
+                        in_img.shape[3],
+                        in_img.shape[2],
+                        tile_x=tile,
+                        tile_y=tile,
+                        overlap=self._overlap)
 
                 pbar = tqdm.auto.tqdm(total=steps)
 
