@@ -134,9 +134,7 @@ from .pipelines import \
     pipeline_to, \
     enable_sequential_cpu_offload, \
     enable_model_cpu_offload, \
-    get_torch_device_string, \
-    get_last_called_pipeline, \
-    destroy_last_called_pipeline
+    get_torch_device_string
 from .uris import \
     InvalidModelUriError, \
     LoRAUri, \

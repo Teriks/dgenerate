@@ -26,11 +26,15 @@ import typing
 import PIL.Image
 import torch
 
+import dgenerate.exceptions as _d_exceptions
 import dgenerate.filelock as _filelock
 import dgenerate.image as _image
+import dgenerate.imageprocessors.constants as _constants
 import dgenerate.imageprocessors.exceptions as _exceptions
+import dgenerate.memory as _memory
 import dgenerate.messages as _messages
-import dgenerate.exceptions as _d_exceptions
+import dgenerate.pipelinewrapper.cache as _m_cache
+import dgenerate.pipelinewrapper.pipelines as _pipelines
 import dgenerate.pipelinewrapper.util as _util
 import dgenerate.plugin as _plugin
 import dgenerate.types
@@ -122,6 +126,44 @@ class ImageProcessor(_plugin.Plugin):
         self.__modules = []
         self.__modules_device = torch.device('cpu')
         self.__model_offload = model_offload
+        self.__size_estimate = 0
+
+    def set_size_estimate(self, size_bytes: int):
+        """
+        Set the estimated size of this model in bytes for memory management
+        heuristics, this is intended to be used by implementors of the
+        :py:class:`ImageProcessor` plugin class.
+
+        For the best memory optimization, this value should be set very
+        shortly before the model even enters CPU side ram, IE: before it
+        is loaded at all.
+
+        :raise ValueError: if ``size_bytes`` is less than zero.
+
+        :param size_bytes: the size in bytes
+        """
+        if size_bytes < 0:
+            raise ValueError(
+                'image processor size estimate cannot be less than zero.')
+
+        self.__size_estimate = int(size_bytes)
+
+        if (_memory.memory_constraints(
+                _constants.IMAGE_PROCESSOR_MEMORY_CONSTRAINTS,
+                extra_vars={'processor_size': self.__size_estimate})):
+            # wipe out the cpu side diffusion pipelines cache
+            # and do a GC pass to free up cpu side memory since
+            # we are nearly out of memory anyway
+            _m_cache.clear_model_cache()
+
+    @property
+    def size_estimate(self) -> int:
+        """
+        Get the estimated size of this model in bytes.
+
+        :return: size bytes
+        """
+        return self.__size_estimate
 
     @property
     def device(self) -> str:
@@ -499,6 +541,20 @@ class ImageProcessor(_plugin.Plugin):
 
         for m in self.__modules:
             if not hasattr(m, '_DGENERATE_IMAGE_PROCESSOR_DEVICE') or m._DGENERATE_IMAGE_PROCESSOR_DEVICE != device:
+
+                if (device.type == 'cuda' and _memory.cuda_memory_constraints(
+                        _constants.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS,
+                        extra_vars={'processor_size': self.size_estimate},
+                        device=device)):
+                    # if there is a diffusion pipeline cached in
+                    # VRAM, it is guaranteed to be a huge chunk of VRAM
+                    # if the pipeline gets used immediately after the
+                    # processor is moved to GPU and we are out of memory,
+                    # there is nothing we can do, it will respawn and crash.
+                    # There are a lot of edge cases where this is not going
+                    # to be the case that this can optimize
+                    _pipelines.destroy_last_called_pipeline()
+
                 m._DGENERATE_IMAGE_PROCESSOR_DEVICE = device
                 _messages.debug_log(
                     f'Moving ImageProcessor registered module: {dgenerate.types.fullname(m)}.to("{device}")')
@@ -508,8 +564,11 @@ class ImageProcessor(_plugin.Plugin):
                 except torch.cuda.OutOfMemoryError as e:
                     m.to('cpu')
                     m._DGENERATE_IMAGE_PROCESSOR_DEVICE = torch.device('cpu')
-                    torch.cuda.empty_cache()
-                    gc.collect()
+                    try:
+                        torch.cuda.empty_cache()
+                        gc.collect()
+                    except:
+                        pass
                     raise _d_exceptions.OutOfMemoryError(e)
                 except MemoryError as e:
                     # out of cpu side memory

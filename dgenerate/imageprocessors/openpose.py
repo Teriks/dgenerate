@@ -109,6 +109,7 @@ class OpenPoseProcessor(_imageprocessor.ImageProcessor):
         else:
             self._detect_resolution = None
 
+        self.set_size_estimate(510 * (1000 ** 2))  # 510 MB body_pose_model.pth + hand_pose_model.pth + facenet.pth
         self._openpose = _cna.OpenposeDetector.from_pretrained('lllyasviel/Annotators')
         self.register_module(self._openpose)
 

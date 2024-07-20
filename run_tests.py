@@ -27,7 +27,7 @@ import subprocess
 import sys
 import unittest
 
-os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__))))
 
 parser = argparse.ArgumentParser()
 

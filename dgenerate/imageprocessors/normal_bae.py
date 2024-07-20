@@ -83,6 +83,7 @@ class NormalBaeProcessor(_imageprocessor.ImageProcessor):
         else:
             self._detect_resolution = None
 
+        self.set_size_estimate(291 * (1000 ** 2))  # 6.34 MB scannet.pt
         self._normal_bae = _cna.NormalBaeDetector.from_pretrained("lllyasviel/Annotators")
         self.register_module(self._normal_bae)
 

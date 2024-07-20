@@ -104,6 +104,7 @@ class HEDProcessor(_imageprocessor.ImageProcessor):
         else:
             self._detect_resolution = None
 
+        self.set_size_estimate(29.4 * (1000 ** 2))  # 29.4 MB -> bytes
         self._hed = _cna.HEDdetector.from_pretrained("lllyasviel/Annotators")
         self.register_module(self._hed)
 

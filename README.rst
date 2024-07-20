@@ -3834,6 +3834,12 @@ will work with any named image processor implemented by dgenerate.
     --processors "upscaler;model=https://github.com/JingyunLiang/SwinIR/releases/download/v0.0/001_classicalSR_DIV2K_s48w8_SwinIR-M_x4.pth"
 
 
+For more information see: ``dgenerate --image-processor-help upscaler``
+
+Control over tiling parameters and specifics are discussed in the image processor
+help documentation from the above command.
+
+
 Upscaling with NCNN Upscaler Models
 -----------------------------------
 
@@ -3841,25 +3847,43 @@ The ``upscaler-ncnn`` image processor will be available if you have manually ins
 with the ``[ncnn]`` extra, or if you are using dgenerate from the packaged windows installer or portable
 windows install zip from the releases page.
 
-NCNN can use Vulkan for hardware accelerated inference and is also heavily optimized for CPU use
-if needed.
-
-It is not recommended to use this upscaler as a post-process or pre-process step on the GPU for a dgenerate
-invocation involving diffusion, as the Vulkan allocator in NCNN does not play very nice with the
-torch allocator used for diffusion with dgenerate. It will likely hard crash your system, unless
-you have another GPU available to run the ncnn upscaler on in parallel.
+NCNN can use Vulkan for hardware accelerated inference and is also heavily optimized
+for CPU use if needed.
 
 When using the ``upscaler-ncnn`` processor, you must specify both the ``model`` and ``param`` arguments,
 these refer to the ``model.bin`` and ``model.param`` file associated with the model.
 
 These arguments may be a path to a file on disk or a hard link to a downloadable model in raw form.
 
-By default the ``upscaler-ncnn`` processor does not run on the GPU, you must enable this with the ``use-gpu``
-argument shown below, just be careful not to crash your system by using it along side diffusion on
-the same GPU.
+This upscaler utilizes the same tiling algorithm as the ``upscaler`` image processor
+and features the same ``tile`` and ``overlap`` arguments, albeit with slightly different
+defaults and constraints.  The ``tile`` argument may not exceed 400 pixels and defaults
+to the max value of 400.
 
-You can set the GPU index that you wish the processor to run on using the ``gpu-index`` argument,
-since the ncnn upscaler can run on GPUs other than Nvidia GPUs, figuring out what index
+By default the ``upscaler-ncnn`` processor does not run on the GPU, you must
+enable this with the ``use-gpu`` argument.
+
+When using this processor as a pre-processor or post-processor for diffusion,
+GPU memory will be fenced, any cached models related to diffusion on the GPU
+will be evacuated entirely before this processor runs if they exist on the same GPU
+as the processor, this is to prevent catastrophic interaction between the Vulkan
+and Torch cuda allocators.
+
+Once a Vulkan allocator exists on a specific GPU it cannot be destroyed except
+via the process exiting due to issues with the ncnn python binding.  If you
+create this processor on a GPU you intend to preform diffusion on, you are
+going to run into memory errors after the first image generation and
+there on out until the process exits.
+
+Note that if any other process runs diffusion via torch on the same GPU
+as this image processor while the image processor is preforming inference,
+you will likely encounter a segfault in either of the processes and
+a very hard crash.
+
+You can safely run this processor in parallel with diffusion with GPU acceleration
+by placing it on a separate gpu using the "gpu-index" argument.
+
+Since the ncnn upscaler can run on GPUs other than Nvidia GPUs, figuring out what index
 you need to use is platform specific, but for Nvidia users just use the ``nvidia-smi`` command
 from a terminal to get this value.
 
@@ -3911,6 +3935,9 @@ an integer value between 0 and 400 inclusive, representing milliseconds.
 These arguments can only be used when running on the CPU and will throw an argument error otherwise.
 
 When they are not specified, optimal defaults from ncnn for your platform are used.
+
+
+For more information see: ``dgenerate --image-processor-help upscaler-ncnn``
 
 
 Writing and Running Configs

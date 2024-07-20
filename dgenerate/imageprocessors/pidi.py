@@ -104,6 +104,7 @@ class PidiNetProcessor(_imageprocessor.ImageProcessor):
         else:
             self._detect_resolution = None
 
+        self.set_size_estimate(2.87 * (1000 ** 2))  # 2.87 MB table5_pidinet.pth
         self._pidi = _cna.PidiNetDetector.from_pretrained("lllyasviel/Annotators")
         self.register_module(self._pidi)
 

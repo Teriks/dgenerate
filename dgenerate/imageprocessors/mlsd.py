@@ -103,6 +103,7 @@ class MLSDProcessor(_imageprocessor.ImageProcessor):
         else:
             self._detect_resolution = None
 
+        self.set_size_estimate(6.34 * (1000 ** 2))  # 6.34 MB mlsd_large_512_fp32.pth
         self._mlsd = _cna.MLSDdetector.from_pretrained("lllyasviel/Annotators")
         self.register_module(self._mlsd)
 

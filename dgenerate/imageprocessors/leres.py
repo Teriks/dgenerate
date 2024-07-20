@@ -103,6 +103,9 @@ class LeresDepthProcessor(_imageprocessor.ImageProcessor):
         else:
             self._detect_resolution = None
 
+        # this is the size of res101.pth['depth_model'] + latest_net_G.pth in bytes
+        self.set_size_estimate(780273156)
+
         self._leres = _cna.LeresDetector.from_pretrained("lllyasviel/Annotators")
         self.register_module(self._leres)
 
