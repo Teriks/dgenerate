@@ -3324,7 +3324,7 @@ You can see how to change the cache expiry time in this section `File Cache Cont
 
 
 This method can be used for VAEs, LoRAs, ControlNets, and Textual Inversions
-as well whenever single file loads are supported by the argument.
+as well, whenever single file loads are supported by the argument.
 
 
 Specifying Generation Batch Size
