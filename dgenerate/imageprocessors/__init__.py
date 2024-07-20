@@ -51,6 +51,12 @@ from .teed import TEEDProcessor
 from .linart_standard import LineArtStandardProcessor
 from .anyline import AnylineProcessor
 
+
+from .constants import \
+    IMAGE_PROCESSOR_MEMORY_CONSTRAINTS, \
+    IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS
+
+
 try:
     import ncnn
     from .upscaler_ncnn import UpscalerNCNNProcessor
