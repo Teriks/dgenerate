@@ -4297,6 +4297,7 @@ Example output:
     Available config directives:
 
         "\cd"
+        "\civitai_links"
         "\clear_control_net_cache"
         "\clear_model_cache"
         "\clear_modules"
