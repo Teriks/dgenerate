@@ -3750,7 +3750,10 @@ compatible with `upscayl <https://github.com/upscayl/upscayl>`_ , or `chaiNNer <
 Upscaling with Diffusion Upscaler Models
 ----------------------------------------
 
-Stable diffusion image upscaling models can be used via the model types ``torch-upscaler-x2`` and ``torch-upscaler-x4``.
+Stable diffusion image upscaling models can be used via the model types:
+
+    * ``--model-type torch-upscaler-x2``
+    * ``--model-type torch-upscaler-x4``
 
 The image used in the example below is this `low resolution cat <https://raw.githubusercontent.com/Teriks/dgenerate/v3.10.0/examples/media/low_res_cat.png>`_
 
