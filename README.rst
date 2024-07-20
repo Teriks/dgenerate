@@ -4940,7 +4940,7 @@ Indirect expansion is allowed just like with ``\set``, ``\sete``, and ``\setp``.
 
     \env {{ name_holder }}={{ value }}
 
-    # this treats the expansion of {{ name }} as a an environmental variable name
+    # this treats the expansion of {{ name }} as an environmental variable name
 
     \set output ${{ name }}
 
