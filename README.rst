@@ -3881,7 +3881,7 @@ you will likely encounter a segfault in either of the processes and
 a very hard crash.
 
 You can safely run this processor in parallel with diffusion with GPU acceleration
-by placing it on a separate gpu using the "gpu-index" argument.
+by placing it on a separate gpu using the ``gpu-index`` argument.
 
 Since the ncnn upscaler can run on GPUs other than Nvidia GPUs, figuring out what index
 you need to use is platform specific, but for Nvidia users just use the ``nvidia-smi`` command
