@@ -94,6 +94,14 @@ class MirrorFlipProcessor(_imageprocessor.ImageProcessor):
             return self._func(image)
         return image
 
+    def to(self, device: 'torch.device' | str) -> "ImageProcessor":
+        """
+        Does nothing for this processor.
+        :param device: the device
+        :return: this processor
+        """
+        return self
+
 
 class SimpleColorProcessor(_imageprocessor.ImageProcessor):
     """
@@ -157,6 +165,14 @@ class SimpleColorProcessor(_imageprocessor.ImageProcessor):
             return self._func(image)
         return image
 
+    def to(self, device: 'torch.device' | str) -> "ImageProcessor":
+        """
+        Does nothing for this processor.
+        :param device: the device
+        :return: this processor
+        """
+        return self
+
 
 class PosterizeProcessor(_imageprocessor.ImageProcessor):
     """
@@ -211,6 +227,14 @@ class PosterizeProcessor(_imageprocessor.ImageProcessor):
             return PIL.ImageOps.posterize(image, self._bits)
         return image
 
+    def to(self, device: 'torch.device' | str) -> "ImageProcessor":
+        """
+        Does nothing for this processor.
+        :param device: the device
+        :return: this processor
+        """
+        return self
+
 
 class SolarizeProcessor(_imageprocessor.ImageProcessor):
     """
@@ -264,6 +288,14 @@ class SolarizeProcessor(_imageprocessor.ImageProcessor):
         if not self._pre_resize:
             return PIL.ImageOps.solarize(image, self._threshold)
         return image
+
+    def to(self, device: 'torch.device' | str) -> "ImageProcessor":
+        """
+        Does nothing for this processor.
+        :param device: the device
+        :return: this processor
+        """
+        return self
 
 
 class LetterboxProcessor(_imageprocessor.ImageProcessor):
@@ -369,6 +401,14 @@ class LetterboxProcessor(_imageprocessor.ImageProcessor):
                                           inner_size=self._inner_size,
                                           aspect_correct=self._aspect_correct)
         return image
+
+    def to(self, device: 'torch.device' | str) -> "ImageProcessor":
+        """
+        Does nothing for this processor.
+        :param device: the device
+        :return: this processor
+        """
+        return self
 
 
 __all__ = _types.module_all()
