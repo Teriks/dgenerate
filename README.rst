@@ -3741,9 +3741,9 @@ dgenerate implements four different methods of upscaling images, animated images
 
 Upscaling with the Stable Diffusion based x2 and x4 upscalers.
 
-With the `upscale` image processor which is compatible with models implemented in the `spandrel <https://github.com/chaiNNer-org/spandrel>`_ module.
+With the ``upscale`` image processor which is compatible with models implemented in the `spandrel <https://github.com/chaiNNer-org/spandrel>`_ library.
 
-And with the `upscaler-ncnn` image processor, which implements upscaling with NCNN upscaling models
+And with the ``upscaler-ncnn`` image processor, which implements upscaling with NCNN upscaling models
 compatible with `upscayl <https://github.com/upscayl/upscayl>`_ , or `chaiNNer <chaiNNer_1_>`_ and similar software.
 
 
