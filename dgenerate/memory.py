@@ -175,7 +175,7 @@ def memory_constraints(expressions: collections.abc.Iterable[str],
     interpreter.symtable.update(functions)
 
     _messages.debug_log(
-        f'{_types.fullname(memory_constraints)} constraint = '
+        f'CPU MEMORY CONSTRAINT TEST: {_types.fullname(memory_constraints)} constraint = '
         f'[{", ".join(_textprocessing.quote_spaces(expressions))}], '
         f'vars = {str(variables)}')
 
@@ -184,6 +184,8 @@ def memory_constraints(expressions: collections.abc.Iterable[str],
             e, raise_errors=True, show_errors=False) for e in expressions)
         if not isinstance(value, bool):
             raise MemoryConstraintSyntaxError('Memory constraint must return a boolean value.')
+
+        _messages.debug_log(f'CPU MEMORY CONSTRAINT RESULT: {value}')
         return value
     except (Exception, NameError):
         raise MemoryConstraintSyntaxError(
@@ -478,7 +480,7 @@ def cuda_memory_constraints(expressions: collections.abc.Iterable[str],
     interpreter.symtable.update(functions)
 
     _messages.debug_log(
-        f'{_types.fullname(cuda_memory_constraints)} constraint = '
+        f'GPU MEMORY CONSTRAINT TEST: {_types.fullname(cuda_memory_constraints)} constraint = '
         f'[{", ".join(_textprocessing.quote_spaces(expressions))}], '
         f'vars = {str(variables)}')
 
@@ -487,6 +489,8 @@ def cuda_memory_constraints(expressions: collections.abc.Iterable[str],
             e, raise_errors=True, show_errors=False) for e in expressions)
         if not isinstance(value, bool):
             raise MemoryConstraintSyntaxError('Memory constraint must return a boolean value.')
+
+        _messages.debug_log(f'GPU MEMORY CONSTRAINT TEST RESULT: {value}')
         return value
     except (Exception, NameError) as e:
         raise MemoryConstraintSyntaxError(
