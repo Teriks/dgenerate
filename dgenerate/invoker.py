@@ -21,8 +21,8 @@
 import collections.abc
 import typing
 
-import torch.cuda
 
+import dgenerate.exceptions as _d_exceptions
 import dgenerate.arguments as _arguments
 import dgenerate.events as _event
 import dgenerate.imageprocessors as _imageprocessors
@@ -392,7 +392,7 @@ def invoke_dgenerate_events(
             _pipelinewrapper.ModelUriLoadError,
             _pipelinewrapper.InvalidSchedulerNameError,
             _pipelinewrapper.UnsupportedPipelineConfigError,
-            _pipelinewrapper.OutOfMemoryError,
+            _d_exceptions.OutOfMemoryError,
             _promptweighters.PromptWeightingUnsupported,
             _plugin.PluginNotFoundError,
             _plugin.PluginArgumentError,
