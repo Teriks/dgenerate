@@ -59,6 +59,10 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
     """
     Implements tiled upscaling with NCNN upscaler models.
 
+    The "model" argument should be a path or URL to a NCNN compatible upscaler model.
+
+    The "param" argument should be a path or URL to the NCNN param file for the model.
+
     Downloaded model / param files are cached in the dgenerate web cache on disk
     until the cache expiry time for the file is met.
 
@@ -85,10 +89,6 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
     GPU usage with GPU related arguments mentioned in this documentation below.
 
     -----
-
-    The "model" argument should be a path or URL to a NCNN compatible upscaler model.
-
-    The "param" argument should be a path or URL to the NCNN param file for the model.
 
     The "use-gpu" argument determines if the gpu is used, defaults to False.
 
