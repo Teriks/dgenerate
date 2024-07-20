@@ -208,8 +208,12 @@ class ImageProcessor(_plugin.Plugin):
             image.save(filename)
             _messages.debug_log(f'{debug_header}: "{filename}"')
 
-    def __with_memory_safety(self, func, *args, **kwargs):
+    def __with_memory_safety(self, func, __attempt=0, *args, **kwargs):
+
+        raise_exc = None
+
         try:
+            try_again = False
             if jaxlib is not None:
                 try:
                     return func(*args, **kwargs)
@@ -217,37 +221,55 @@ class ImageProcessor(_plugin.Plugin):
                     _messages.log(
                         'Flax encountered an OOM condition, if you are running interactively it is '
                         'recommended that you restart the dgenerate process.', level=_messages.WARNING)
-                    raise _d_exceptions.OutOfMemoryError(e)
+                    raise_exc = _d_exceptions.OutOfMemoryError(e)
                 except torch.cuda.OutOfMemoryError as e:
-                    try:
-                        self.to('cpu')
-                    except:
-                        pass
-                    torch.cuda.empty_cache()
-                    gc.collect()
-                    raise _d_exceptions.OutOfMemoryError(e)
+
+                    if __attempt == 0:
+
+                        self.__flush_diffusion_pipeline_after_oom()
+                        try_again = True
+                    else:
+                        try:
+                            self.to('cpu')
+                        except:
+                            pass
+                        torch.cuda.empty_cache()
+                        gc.collect()
+                        raise_exc = _d_exceptions.OutOfMemoryError(e)
             else:
                 try:
                     return func(*args, **kwargs)
                 except torch.cuda.OutOfMemoryError as e:
-                    try:
-                        self.to('cpu')
-                    except:
-                        pass
-                    torch.cuda.empty_cache()
-                    gc.collect()
-                    raise _d_exceptions.OutOfMemoryError(e)
+
+                    if __attempt == 0:
+                        self.__flush_diffusion_pipeline_after_oom()
+                        try_again = True
+                    else:
+                        try:
+                            self.to('cpu')
+                        except:
+                            pass
+                        torch.cuda.empty_cache()
+                        gc.collect()
+                        raise_exc = _d_exceptions.OutOfMemoryError(e)
+            if try_again:
+                self.__with_memory_safety(func, __attempt=1, *args, **kwargs)
+
         except MemoryError:
             gc.collect()
             raise _d_exceptions.OutOfMemoryError('cpu (system memory)')
-        except Exception:
-            try:
-                self.to('cpu')
-            except:
-                pass
-            torch.cuda.empty_cache()
-            gc.collect()
+        except Exception as e:
+            if not isinstance(e, _d_exceptions.OutOfMemoryError):
+                try:
+                    self.to('cpu')
+                except:
+                    pass
+                torch.cuda.empty_cache()
+                gc.collect()
             raise
+
+        if raise_exc is not None:
+            raise raise_exc
 
     def __pre_resize(self,
                      image: PIL.Image.Image,
@@ -570,20 +592,18 @@ class ImageProcessor(_plugin.Plugin):
                 # about to move to
                 _pipelines.destroy_last_called_pipeline()
 
-    def to(self, device: torch.device | str) -> "ImageProcessor":
-        """
-        Move all :py:class:`torch.nn.Module` modules registered
-        to this image processor to a specific device.
+    def __flush_diffusion_pipeline_after_oom(self):
+        _messages.debug_log(
+            f'Image processor "{self.__class__}" is attempting to evacuate any previously '
+            f'called diffusion pipline in VRAM due initial cuda out of memory condition.')
+        _pipelines.destroy_last_called_pipeline()
 
-        :raise dgenerate.OutOfMemoryError: if there is not enough memory on the specified device
-
-        :param device: The device string, or torch device object
-        :return: the image processor itself
-        """
-
+    def __to(self, device: torch.device | str, attempt=0):
         device = torch.device(device)
 
         self.__modules_device = device
+
+        try_again = False
 
         for m in self.__modules:
             if not hasattr(m, '_DGENERATE_IMAGE_PROCESSOR_DEVICE') or m._DGENERATE_IMAGE_PROCESSOR_DEVICE != device:
@@ -597,20 +617,42 @@ class ImageProcessor(_plugin.Plugin):
                 try:
                     m.to(device)
                 except torch.cuda.OutOfMemoryError as e:
-                    m.to('cpu')
-                    m._DGENERATE_IMAGE_PROCESSOR_DEVICE = torch.device('cpu')
-                    try:
-                        torch.cuda.empty_cache()
-                        gc.collect()
-                    except:
-                        pass
-                    raise _d_exceptions.OutOfMemoryError(e)
+                    if attempt == 0:
+                        # hail marry
+                        self.__flush_diffusion_pipeline_after_oom()
+                        try_again = True
+                        break
+                    else:
+                        m.to('cpu')
+                        m._DGENERATE_IMAGE_PROCESSOR_DEVICE = torch.device('cpu')
+                        try:
+                            torch.cuda.empty_cache()
+                            gc.collect()
+                        except:
+                            pass
+                        raise _d_exceptions.OutOfMemoryError(e)
                 except MemoryError as e:
                     # out of cpu side memory
                     gc.collect()
                     raise _d_exceptions.OutOfMemoryError('cpu (system memory)')
 
+        if try_again:
+            self.__to(device, attempt=1)
+
         return self
+
+    def to(self, device: torch.device | str) -> "ImageProcessor":
+        """
+        Move all :py:class:`torch.nn.Module` modules registered
+        to this image processor to a specific device.
+
+        :raise dgenerate.OutOfMemoryError: if there is not enough memory on the specified device
+
+        :param device: The device string, or torch device object
+        :return: the image processor itself
+        """
+
+        return self.__to(device)
 
 
 __all__ = dgenerate.types.module_all()

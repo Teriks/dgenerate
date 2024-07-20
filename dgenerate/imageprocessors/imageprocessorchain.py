@@ -30,7 +30,7 @@ import dgenerate.types as _types
 
 class ImageProcessorChain(_imageprocessor.ImageProcessor):
     """
-    Implements chainable image image processors.
+    Implements chainable image processors.
 
     Chains processing steps together in a sequence.
     """

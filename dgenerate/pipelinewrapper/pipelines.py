@@ -853,13 +853,14 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
                 pass
             gc.collect()
             raise _d_exceptions.OutOfMemoryError('cpu (system memory)')
-        except Exception:
-            try:
-                prompt_weighter.cleanup()
-            except:
-                pass
-            torch.cuda.empty_cache()
-            gc.collect()
+        except Exception as e:
+            if not isinstance(e, _d_exceptions.OutOfMemoryError):
+                try:
+                    prompt_weighter.cleanup()
+                except:
+                    pass
+                torch.cuda.empty_cache()
+                gc.collect()
             raise
 
         def _debug_string_func():
@@ -933,6 +934,11 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
         except MemoryError:
             gc.collect()
             raise _d_exceptions.OutOfMemoryError('cpu (system memory)')
+        except Exception as e:
+            if not isinstance(e, _d_exceptions.OutOfMemoryError):
+                # same cleanup
+                _torch_oom_handler()
+            raise
 
     if pipeline is _LAST_CALLED_PIPELINE:
         return _call_pipeline()
