@@ -3553,7 +3553,7 @@ A few usage examples with processors:
 --sub-command civitai-links
 ---------------------------
 
-This subcommand can be used to list all of the hard links for models available on a CivitAI model page.
+The ``civitai-links`` subcommand can be used to list all of the hard links for models available on a CivitAI model page.
 
 These links can be used directly with dgenerate, it will automatically download the model for you.
 
