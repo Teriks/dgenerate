@@ -1835,7 +1835,7 @@ Generated configuration can be read back into dgenerate via a pipe or file redir
 
 Specifying a seed directly and changing the prompt slightly, or parameters such as image seed strength
 if using a seed image, guidance scale, or inference steps, will allow for generating variations close
-to the original image which may possess all of the original qualities about the image that you liked as well as
+to the original image which may possess all the original qualities about the image that you liked as well as
 additional qualities.  You can further manipulate the AI into producing results that you want with this method.
 
 Changing output resolution will drastically affect image content when reusing a seed to the point where trying to
@@ -3011,7 +3011,7 @@ and using ``null`` will override it.
 
     \use_modules encoders
 
-    # use all of the encoders except the T5 encoder (third encoder)
+    # use all the encoders except the T5 encoder (third encoder)
     # sharing modules this way saves a significant amount
     # of memory
 
@@ -3691,7 +3691,7 @@ A few usage examples with processors:
 Sub Command: civitai-links
 --------------------------
 
-The ``civitai-links`` sub-command can be used to list all of the hard links for models available on a CivitAI model page.
+The ``civitai-links`` sub-command can be used to list the hard links for models available on a CivitAI model page.
 
 These links can be used directly with dgenerate, it will automatically download the model for you.
 
@@ -4126,7 +4126,7 @@ will print documentation for those specific functions.
 
 To receive information about Jinja2 template variables that are set after a dgenerate invocation.
 You can use the ``\templates_help`` directive which is similar to the ``--templates-help`` option
-except it will print out all of the template variables assigned values instead of just their
+except it will print out all the template variables assigned values instead of just their
 names and types. This is useful for figuring out the values of template variables set after
 a dgenerate invocation in a config file for debugging purposes. You can specify one or
 more template variable names as arguments to ``\templates_help`` to receive help for only
