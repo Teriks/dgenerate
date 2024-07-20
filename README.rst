@@ -3555,9 +3555,11 @@ civitai-links
 
 This subcommand can be used to list all of the hard links for models available on a CivitAI model page.
 
-Which can be given to dgenerate as a hard link to a model to download for you.
+These links can be used directly with dgenerate, it will automatically download the model for you.
 
-This can be utilized to download CivitAI models with dgenerate, see: `Utilizing CivitAI links and Other Hosted Models`_
+You only need to select which models you wish to use from the links listed by this command.
+
+See: `Utilizing CivitAI links and Other Hosted Models`_ for more information about how to use these links.
 
 To get direct links to civit AI models you can use the ``civitai-links`` subcommand
 or the ``\civitai_links`` directive inside of a config to list all available models
@@ -3572,6 +3574,8 @@ For example:
     dgenerate --sub-command civitai-links https://civitai.com/models/122822?modelVersionId=133832
 
     # you can also automatically append your API token to the end of the URLs with --token
+    # some models will require that you authenticate to download, this will add your token
+    # to the URL for you
 
     dgenerate --sub-command civitai-links https://civitai.com/models/122822?modelVersionId=133832 --token $MY_API_TOKEN
 
