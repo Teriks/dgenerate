@@ -3160,7 +3160,9 @@ Your API token can be created on this page: https://civitai.com/user/account
 
 Near the bottom of the page in the section: ``API Keys``
 
-You can use the `civitai-links`_ sub-command to fetch the necessary model links from a CivitAI model page.
+You can use the sub-command `dgenerate --sub-command civitai-links`_ to fetch the necessary model
+links from a CivitAI model page. You may also use this sub-command in the form of the config
+directive `\civitai_links` from a config file or the Console UI.
 
 If you plan to download many large models to the web cache in this manner you may wish
 to adjust the global cache expiry time so that they exist in the cache longer than the default of 12 hours.
@@ -3571,13 +3573,13 @@ For example:
 
     # get links for the Crystal Clear XL model on CivitAI
 
-    dgenerate --sub-command civitai-links https://civitai.com/models/122822?modelVersionId=133832
+    dgenerate --sub-command civitai-links "https://civitai.com/models/122822?modelVersionId=133832"
 
     # you can also automatically append your API token to the end of the URLs with --token
     # some models will require that you authenticate to download, this will add your token
     # to the URL for you
 
-    dgenerate --sub-command civitai-links https://civitai.com/models/122822?modelVersionId=133832 --token $MY_API_TOKEN
+    dgenerate --sub-command civitai-links "https://civitai.com/models/122822?modelVersionId=133832" --token $MY_API_TOKEN
 
 
 This will list every model link on the page, with title, there may be many model links
