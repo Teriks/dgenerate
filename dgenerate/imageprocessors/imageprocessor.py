@@ -539,7 +539,7 @@ class ImageProcessor(_plugin.Plugin):
             # VRAM on the device we are moving to, it is guaranteed
             # to be a huge chunk of VRAM.
             #
-            # Catching the last called diffusion pipeline on the GPU is
+            # Cacheing the last called diffusion pipeline on the GPU is
             # only to enhance the speed of execution, and it is
             # not required to be on the GPU if we are running
             # low on VRAM while trying to have it there next
