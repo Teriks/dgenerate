@@ -6,6 +6,7 @@ import os
 import re
 from collections import defaultdict
 
+# Change to the parent directory of the script location
 os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 
@@ -16,9 +17,9 @@ def find_and_condense_links(file_path):
     # regex pattern to match links in rst format starting with http or https
     link_pattern = re.compile(r'`([^`]+) <(https?://[^>]+)>`_')
 
-    # dictionary to hold titles and their corresponding URLs
     links = defaultdict(list)
 
+    # find all links in the file and populate the dictionary
     for line in lines:
         for match in re.findall(link_pattern, line):
             title, url = match
@@ -31,7 +32,7 @@ def find_and_condense_links(file_path):
         print("No duplicate links found.")
         return
 
-    # prepare the condensed links
+    # prepare the condensed links and reference map
     condensed_links = []
     ref_map = {}
     for title, urls in duplicates.items():
@@ -47,11 +48,11 @@ def find_and_condense_links(file_path):
         for match in re.findall(link_pattern, line):
             title, url = match
             if url in ref_map:
-                new_ref = f"`{title} <{ref_map[url]}>`_"
+                new_ref = f"`{title} <{ref_map[url]}_>`_"
                 new_line = new_line.replace(f"`{title} <{url}>`_", new_ref)
         new_lines.append(new_line)
 
-    # write the condensed links at the top of the file
+    # write the condensed links at the top of the file and update the file content
     with open(file_path, 'w', encoding='utf-8') as file:
         file.write('\n'.join(condensed_links) + '\n\n')
         file.writelines(new_lines)
@@ -59,4 +60,5 @@ def find_and_condense_links(file_path):
     print("Duplicate links condensed, and local usages updated.")
 
 
+# Run the function on README.rst
 find_and_condense_links('README.rst')
