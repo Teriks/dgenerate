@@ -216,8 +216,8 @@ Help Output
                             commands and help.
       --sub-command-help [SUB_COMMAND ...]
                             Use this option alone (or with --plugin-modules) and no model specification in order
-                            to list available sub-command names. Calling a subcommand with "--sub-command name
-                            --help" will produce argument help output for that subcommand. When used with
+                            to list available sub-command names. Calling a sub-command with "--sub-command name
+                            --help" will produce argument help output for that sub-command. When used with
                             --plugin-modules, sub-commands implemented by the specified plugins will also be
                             listed.
       -ofm, --offline-mode  Whether dgenerate should try to download huggingface models that do not exist in the
@@ -3691,7 +3691,7 @@ A few usage examples with processors:
 Sub Command: civitai-links
 --------------------------
 
-The ``civitai-links`` subcommand can be used to list all of the hard links for models available on a CivitAI model page.
+The ``civitai-links`` sub-command can be used to list all of the hard links for models available on a CivitAI model page.
 
 These links can be used directly with dgenerate, it will automatically download the model for you.
 
@@ -3699,7 +3699,7 @@ You only need to select which models you wish to use from the links listed by th
 
 See: `Utilizing CivitAI links and Other Hosted Models`_ for more information about how to use these links.
 
-To get direct links to CivitAI models you can use the ``civitai-links`` subcommand
+To get direct links to CivitAI models you can use the ``civitai-links`` sub-command
 or the ``\civitai_links`` directive inside of a config to list all available models
 on a CivitAI model page.
 
@@ -3821,7 +3821,7 @@ will work with any named image processor implemented by dgenerate.
     #!/usr/bin/env bash
 
     # print the help output of the sub command "image-process"
-    # the image-process subcommand can process multiple files and do
+    # the image-process sub-command can process multiple files and do
     # and several other things, it is worth reading :)
 
     dgenerate --sub-command image-process --help
@@ -3864,7 +3864,7 @@ from a terminal to get this value.
 
 If you do not specify a ``gpu-index``, index 0 is used, which is most likely your main GPU.
 
-The ``--device`` argument to dgenerate and the ``image-process`` subcommand / ``\image_process`` directive
+The ``--device`` argument to dgenerate and the ``image-process`` sub-command / ``\image_process`` directive
 is ignored by this image processor.
 
  .. code-block:: bash
