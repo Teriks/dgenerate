@@ -117,6 +117,7 @@ class MLSDProcessor(_imageprocessor.ImageProcessor):
         ]
         return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
 
+    @torch.inference_mode()
     def _process(self, image, resize_resolution):
         original_size = image.size
 

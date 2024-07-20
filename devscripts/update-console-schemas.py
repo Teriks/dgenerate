@@ -15,7 +15,7 @@ import dgenerate.imageprocessors.imageprocessorloader as _loader
 import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
 
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
+os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 # Schema for image processors and accepted arguments
 

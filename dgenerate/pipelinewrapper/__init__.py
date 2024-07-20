@@ -129,7 +129,6 @@ from .pipelines import \
     get_torch_pipeline_modules, \
     is_model_cpu_offload_enabled, \
     is_sequential_cpu_offload_enabled, \
-    OutOfMemoryError, \
     call_pipeline, \
     get_torch_device, \
     pipeline_to, \

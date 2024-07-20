@@ -27,6 +27,7 @@ from .configrunnerpluginloader import ConfigRunnerPluginLoader, \
     ConfigRunnerPluginNotFoundError, \
     ConfigRunnerPluginArgumentError
 from .image_process_directive import ImageProcessDirective
+from .civitai_links_directive import CivitAILinksDirective
 
 __doc__ = """
 Batch processing / dgenerate config scripts.

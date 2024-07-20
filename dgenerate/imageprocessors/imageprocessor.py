@@ -30,8 +30,7 @@ import dgenerate.filelock as _filelock
 import dgenerate.image as _image
 import dgenerate.imageprocessors.exceptions as _exceptions
 import dgenerate.messages as _messages
-# avoid recursive import for OOM exception
-import dgenerate.pipelinewrapper.pipelines as _pipelines
+import dgenerate.exceptions as _d_exceptions
 import dgenerate.pipelinewrapper.util as _util
 import dgenerate.plugin as _plugin
 import dgenerate.types
@@ -171,7 +170,7 @@ class ImageProcessor(_plugin.Plugin):
                     _messages.log(
                         'Flax encountered an OOM condition, if you are running interactively it is '
                         'recommended that you restart the dgenerate process.', level=_messages.WARNING)
-                    raise _pipelines.OutOfMemoryError(e)
+                    raise _d_exceptions.OutOfMemoryError(e)
                 except torch.cuda.OutOfMemoryError as e:
                     try:
                         self.to('cpu')
@@ -179,7 +178,7 @@ class ImageProcessor(_plugin.Plugin):
                         pass
                     torch.cuda.empty_cache()
                     gc.collect()
-                    raise _pipelines.OutOfMemoryError(e)
+                    raise _d_exceptions.OutOfMemoryError(e)
             else:
                 try:
                     return func(*args, **kwargs)
@@ -190,10 +189,10 @@ class ImageProcessor(_plugin.Plugin):
                         pass
                     torch.cuda.empty_cache()
                     gc.collect()
-                    raise _pipelines.OutOfMemoryError(e)
+                    raise _d_exceptions.OutOfMemoryError(e)
         except MemoryError:
             gc.collect()
-            raise _pipelines.OutOfMemoryError('cpu (system memory)')
+            raise _d_exceptions.OutOfMemoryError('cpu (system memory)')
         except Exception:
             try:
                 self.to('cpu')
@@ -511,11 +510,11 @@ class ImageProcessor(_plugin.Plugin):
                     m._DGENERATE_IMAGE_PROCESSOR_DEVICE = torch.device('cpu')
                     torch.cuda.empty_cache()
                     gc.collect()
-                    raise _pipelines.OutOfMemoryError(e)
+                    raise _d_exceptions.OutOfMemoryError(e)
                 except MemoryError as e:
                     # out of cpu side memory
                     gc.collect()
-                    raise _pipelines.OutOfMemoryError('cpu (system memory)')
+                    raise _d_exceptions.OutOfMemoryError('cpu (system memory)')
 
         return self
 

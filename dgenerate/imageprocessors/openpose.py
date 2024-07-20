@@ -19,7 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import typing
-
+import torch
 import PIL.Image
 import cv2
 import numpy
@@ -125,6 +125,7 @@ class OpenPoseProcessor(_imageprocessor.ImageProcessor):
         ]
         return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
 
+    @torch.inference_mode()
     def _process(self, image, resize_resolution):
         original_size = image.size
 

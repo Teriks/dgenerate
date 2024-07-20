@@ -20,7 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import os
 import typing
-
+import torch
 import PIL.Image
 import cv2
 import huggingface_hub
@@ -125,6 +125,7 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
         ]
         return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
 
+    @torch.inference_mode()
     def _process(self, image, resize_resolution):
         original_size = image.size
 

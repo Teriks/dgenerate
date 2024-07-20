@@ -85,7 +85,7 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
 
         self._tensors = list()
 
-    @torch.no_grad()
+    @torch.inference_mode()
     def translate_to_embeds(self,
                             pipeline,
                             device: str,

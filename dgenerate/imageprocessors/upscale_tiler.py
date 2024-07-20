@@ -72,6 +72,7 @@ def get_tiled_scale_steps(width: int, height: int, tile_x: int, tile_y: int, ove
     return math.ceil((height / (tile_y - overlap))) * math.ceil((width / (tile_x - overlap)))
 
 
+@torch.inference_mode()
 def tiled_scale(
         samples: T,
         upscale_model: typing.Callable[[T], T],
