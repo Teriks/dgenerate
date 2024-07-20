@@ -3033,8 +3033,8 @@ Prompt Weighting and Enhancement
 ================================
 
 By default, the prompt token weighting syntax that you may be familiar with from other software such as
-`ComfyUI <https://github.com/comfyanonymous/ComfyUI>`_, `Stable Diffusion Web UI <Stable_Diffusion_Web_UI_1>`_,
-and `CivitAI <CivitAI_1>`_ etc. is not enabled, and prompts over ``77`` tokens in length are not supported.
+`ComfyUI <https://github.com/comfyanonymous/ComfyUI>`_, `Stable Diffusion Web UI <Stable_Diffusion_Web_UI_1_>`_,
+and `CivitAI <CivitAI_1_>`_ etc. is not enabled, and prompts over ``77`` tokens in length are not supported.
 
 However! dgenerate implements prompt weighting and prompt enhancements through internal plugins
 called prompt weighters, which can be selectively enabled to process your prompts. They support
@@ -3059,7 +3059,7 @@ Stable Diffusion 1/2, and Stable Diffusion XL.
 
 You can read about InvokeAI prompt syntax here: `Invoke AI prompting documentation <https://invoke-ai.github.io/InvokeAI/features/PROMPTS/>`_
 
-It is a bit different than `Stable Diffusion Web UI <Stable_Diffusion_Web_UI_1>`_ syntax,
+It is a bit different than `Stable Diffusion Web UI <Stable_Diffusion_Web_UI_1_>`_ syntax,
 which is a syntax used by the majority of other image generation software. It possesses some neat
 features not mentioned in this documentation, that are worth reading about in the links provided above.
 
@@ -3188,12 +3188,12 @@ The sd-embed prompt weighter
 ----------------------------
 
 The ``sd-embed`` prompt weighter uses the `sd_embed <https://github.com/xhinker/sd_embed>`_ library to support
-`Stable Diffusion Web UI <Stable_Diffusion_Web_UI_1>`_ style prompt token
+`Stable Diffusion Web UI <Stable_Diffusion_Web_UI_1_>`_ style prompt token
 weighting syntax for Stable Diffusion 1/2, Stable Diffusion XL, and Stable Diffusion 3.
 
 
 The syntax that ``sd-embed`` uses is the more wide spread prompt syntax used by software such as
-`Stable Diffusion Web UI <Stable_Diffusion_Web_UI_1>`_ and `CivitAI <CivitAI_1>`_
+`Stable Diffusion Web UI <Stable_Diffusion_Web_UI_1_>`_ and `CivitAI <CivitAI_1_>`_
 
 
 Quite notably, the ``sd-embed`` prompt weighter supports Stable Diffusion 3, where
@@ -3747,7 +3747,7 @@ Upscaling with the Stable Diffusion based x2 and x4 upscalers.
 With the `upscale` image processor which is compatible with models implemented in the `spandrel <https://github.com/chaiNNer-org/spandrel>`_ module.
 
 And with the `upscaler-ncnn` image processor, which implements upscaling with NCNN upscaling models
-compatible with `upscayl <https://github.com/upscayl/upscayl>`_ , or `chaiNNer <chaiNNer_1>`_ and similar software.
+compatible with `upscayl <https://github.com/upscayl/upscayl>`_ , or `chaiNNer <chaiNNer_1_>`_ and similar software.
 
 
 Upscaling with Diffusion Upscaler Models
@@ -3787,7 +3787,7 @@ The image used in the example below is this `low resolution cat <https://raw.git
 Upscaling with chaiNNer Compatible Upscaler Models
 --------------------------------------------------
 
-`chaiNNer <chaiNNer_1>`_ compatible upscaler models from https://openmodeldb.info/
+`chaiNNer <chaiNNer_1_>`_ compatible upscaler models from https://openmodeldb.info/
 and elsewhere can be utilized for tiled upscaling using dgenerates ``upscaler`` image processor and the
 ``--post-processors`` option.  The ``upscaler`` image processor can also be used for processing
 input images via the other options mentioned in `Image Processors`_ such as ``--seed-image-processors``
