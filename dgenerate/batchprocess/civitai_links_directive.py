@@ -18,19 +18,34 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import collections.abc
 
-import dgenerate.types as _types
-from .batchprocessor import BatchProcessor, BatchProcessError
-from .configrunner import ConfigRunner
-from .configrunnerplugin import ConfigRunnerPlugin
-from .configrunnerpluginloader import ConfigRunnerPluginLoader, \
-    ConfigRunnerPluginNotFoundError, \
-    ConfigRunnerPluginArgumentError
-from .image_process_directive import ImageProcessDirective
-from .civitai_links_directive import CivitAILinksDirective
+import dgenerate.batchprocess.configrunnerplugin as _configrunnerplugin
+import dgenerate.subcommands.subcommandloader as _subcommandloader
 
-__doc__ = """
-Batch processing / dgenerate config scripts.
-"""
 
-__all__ = _types.module_all()
+class CivitAILinksDirective(_configrunnerplugin.ConfigRunnerPlugin):
+    def __init__(self, **kwargs):
+        """
+        :param kwargs: plugin base class arguments
+        """
+
+        super().__init__(**kwargs)
+
+        self.register_directive('civitai_links', self._directive)
+
+    def _directive(self, args: collections.abc.Sequence[str]) -> int:
+        """
+        Alias for: --sub-command civitai-links
+
+        This allows listing all the hard links to models on a CivitAI model page.
+
+        See: \\civitai_links --help
+
+        This does not cause the config to exit.
+        """
+
+        subcommand = _subcommandloader.SubCommandLoader().load(
+            'civitai-links', args=args, program_name='\\civitai_links')
+
+        return subcommand()

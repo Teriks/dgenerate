@@ -2106,7 +2106,7 @@ class DiffusionPipelineWrapper:
         :raises UnsupportedPipelineConfigError:
         :raises InvalidModelUriError:
         :raises InvalidSchedulerNameError:
-        :raises OutOfMemoryError:
+        :raises dgenerate.OutOfMemoryError:
 
 
         :return: :py:class:`.PipelineWrapperResult`

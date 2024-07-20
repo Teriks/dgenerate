@@ -170,7 +170,7 @@ def group_tokens_and_weights(
         
     return new_token_ids, new_weights
 
-@torch.no_grad()
+@torch.inference_mode()
 def get_weighted_text_embeddings_sd15(
         pipe: StableDiffusionPipeline
         , prompt : str          = ""
@@ -320,7 +320,7 @@ def get_weighted_text_embeddings_sd15(
 
     return prompt_embeds, neg_prompt_embeds
 
-@torch.no_grad()
+@torch.inference_mode()
 def get_weighted_text_embeddings_sdxl(
         pipe: StableDiffusionXLPipeline
         , prompt : str          = ""
@@ -594,7 +594,7 @@ def get_weighted_text_embeddings_sdxl(
     
     return prompt_embeds, negative_prompt_embeds, pooled_prompt_embeds, negative_pooled_prompt_embeds
 
-@torch.no_grad()
+@torch.inference_mode()
 def get_weighted_text_embeddings_sdxl_refiner(
         pipe: StableDiffusionXLPipeline
         , prompt : str       = ""
@@ -805,7 +805,7 @@ def get_weighted_text_embeddings_sdxl_refiner(
 
     return prompt_embeds, negative_prompt_embeds, pooled_prompt_embeds, negative_pooled_prompt_embeds
 
-@torch.no_grad()
+@torch.inference_mode()
 def get_weighted_text_embeddings_sdxl_2p(
         pipe: StableDiffusionXLPipeline
         , prompt : str       = ""
@@ -1101,7 +1101,7 @@ def get_weighted_text_embeddings_sdxl_2p(
     
     return prompt_embeds, negative_prompt_embeds, pooled_prompt_embeds, negative_pooled_prompt_embeds
 
-@torch.no_grad()
+@torch.inference_mode()
 def get_weighted_text_embeddings_sd3(
     pipe: StableDiffusion3Pipeline
     , prompt : str      = ""

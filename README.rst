@@ -1,3 +1,7 @@
+.. _Stable_Diffusion_Web_UI_1: https://github.com/AUTOMATIC1111/stable-diffusion-webui
+.. _CivitAI_1: https://civitai.com/
+.. _chaiNNer_1: https://github.com/chaiNNer-org/chaiNNer
+
 .. |Documentation| image:: https://readthedocs.org/projects/dgenerate/badge/?version=v3.10.0
    :target: http://dgenerate.readthedocs.io/en/v3.10.0/
 
@@ -1251,7 +1255,7 @@ Run ``dgenerate`` to generate images:
     --output-path output \
     --inference-steps 40 \
     --guidance-scales 10
-    
+
 
 Google Colab Install
 ====================
@@ -1344,8 +1348,8 @@ recommended to prevent out of memory conditions on the average GPU :)
     --prompts "real photo of an astronaut riding a horse on the moon" \
     --variant fp16 --dtype float16 \
     --output-size 1024
-    
-    
+
+
 Negative Prompt
 ===============
 
@@ -1368,22 +1372,22 @@ or ``horse wearing a saddle`` etc.
     --inference-steps 50 \
     --guidance-scales 10 \
     --output-size 512x512
-    
-    
+
+
 Multiple Prompts
 ================
- 
+
 Multiple prompts can be specified one after another in quotes in order
 to generate images using multiple prompt variations.
- 
-The following command generates 10 uniquely named images using two 
+
+The following command generates 10 uniquely named images using two
 prompts and five random seeds ``(2x5)``
- 
+
 5 of them will be from the first prompt and 5 of them from the second prompt.
- 
+
 All using 50 inference steps, and 10 for guidance scale value.
- 
- 
+
+
 .. code-block:: bash
 
     dgenerate stabilityai/stable-diffusion-2-1 \
@@ -1637,9 +1641,9 @@ generation step.
 
 
 .. code-block:: bash
-    
+
     # Generate using only the first frame
-    
+
     dgenerate stabilityai/stable-diffusion-2-1 \
     --prompts "an astronaut riding a horse" \
     --image-seeds https://upload.wikimedia.org/wikipedia/commons/7/7b/Muybridge_race_horse_~_big_transp.gif \
@@ -1748,7 +1752,7 @@ them together.
 
     # etc...
 
-    
+
 
 Deterministic Output
 ====================
@@ -2826,8 +2830,8 @@ repository on huggingface.
     --output-path output \
     --model-sequential-offload \
     --prompts "a horse outside a barn"
-    
-    
+
+
 You may also use the URI value ``null``, to indicate that you do not want to ever load a specific text encoder at all.
 
 For instance, you can prevent Stable Diffusion 3 from loading and using the T5 encoder all together.
@@ -2846,9 +2850,9 @@ For instance, you can prevent Stable Diffusion 3 from loading and using the T5 e
     --output-path output \
     --model-sequential-offload \
     --prompts "a horse outside a barn"
-    
-    
-Any text encoder shared via the ``\use_modules`` directive in a config files is considered a default 
+
+
+Any text encoder shared via the ``\use_modules`` directive in a config files is considered a default
 value for the text encoder in the next pipeline that runs, using ``+`` will maintain this value
 and using ``null`` will override it.
 
@@ -2856,7 +2860,7 @@ and using ``null`` will override it.
 
     #! dgenerate --file
     #! dgenerate 3.10.0
-    
+
     # this model will load all three text encoders,
     # they are not cached individually as we did not explicitly
     # specify any of them, they are cached with the pipeline
@@ -2873,18 +2877,18 @@ and using ``null`` will override it.
     --output-path output
     --model-sequential-offload
     --prompts "a horse outside a barn"
-    
+
     # store all the text encoders from the last pipeline
     # into the variable "encoders"
-    
+
     \save_modules encoders text_encoder text_encoder_2 text_encoder_3
-    
+
     # share them with the next pipeline
-    
+
     \use_modules encoders
-    
+
     # use all of the encoders except the T5 encoder (third encoder)
-    # sharing modules this way saves a significant amount 
+    # sharing modules this way saves a significant amount
     # of memory
 
     stabilityai/stable-diffusion-3-medium-diffusers
@@ -2894,7 +2898,7 @@ and using ``null`` will override it.
     --inference-steps 30
     --guidance-scales 5.00
     --clip-skips 0
-    --text-encoders + + null 
+    --text-encoders + + null
     --gen-seeds 2
     --output-path output
     --model-sequential-offload
@@ -2905,8 +2909,8 @@ Prompt Weighting and Enhancement
 ================================
 
 By default, the prompt token weighting syntax that you may be familiar with from other software such as
-`ComfyUI <https://github.com/comfyanonymous/ComfyUI>`_, `Stable Diffusion Web UI <https://github.com/AUTOMATIC1111/stable-diffusion-webui>`_,
-and `CivitAI <https://civitai.com/>`_ etc. is not enabled, and prompts over ``77`` tokens in length are not supported.
+`ComfyUI <https://github.com/comfyanonymous/ComfyUI>`_, `Stable Diffusion Web UI <Stable_Diffusion_Web_UI_1>`_,
+and `CivitAI <CivitAI_1>`_ etc. is not enabled, and prompts over ``77`` tokens in length are not supported.
 
 However! dgenerate implements prompt weighting and prompt enhancements through internal plugins
 called prompt weighters, which can be selectively enabled to process your prompts. They support
@@ -2931,7 +2935,7 @@ Stable Diffusion 1/2, and Stable Diffusion XL.
 
 You can read about InvokeAI prompt syntax here: `Invoke AI prompting documentation <https://invoke-ai.github.io/InvokeAI/features/PROMPTS/>`_
 
-It is a bit different than `Stable Diffusion Web UI <https://github.com/AUTOMATIC1111/stable-diffusion-webui>`_ syntax,
+It is a bit different than `Stable Diffusion Web UI <Stable_Diffusion_Web_UI_1>`_ syntax,
 which is a syntax used by the majority of other image generation software. It possesses some neat
 features not mentioned in this documentation, that are worth reading about in the links provided above.
 
@@ -3054,12 +3058,12 @@ The sd-embed prompt weighter
 ----------------------------
 
 The ``sd-embed`` prompt weighter uses the `sd_embed <https://github.com/xhinker/sd_embed>`_ library to support
-`Stable Diffusion Web UI <https://github.com/AUTOMATIC1111/stable-diffusion-webui>`_ style prompt token
+`Stable Diffusion Web UI <Stable_Diffusion_Web_UI_1>`_ style prompt token
 weighting syntax for Stable Diffusion 1/2, Stable Diffusion XL, and Stable Diffusion 3.
 
 
 The syntax that ``sd-embed`` uses is the more wide spread prompt syntax used by software such as
-`Stable Diffusion Web UI <https://github.com/AUTOMATIC1111/stable-diffusion-webui>`_ and `CivitAI <https://civitai.com/>`_
+`Stable Diffusion Web UI <Stable_Diffusion_Web_UI_1>`_ and `CivitAI <CivitAI_1>`_
 
 
 Quite notably, the ``sd-embed`` prompt weighter supports Stable Diffusion 3, where
@@ -3101,7 +3105,7 @@ as the ``compel`` prompt weighter currently does not.
         The secondary prompt option for SDXL --sdxl-second-prompts is supported by this prompt weighter
         implementation. However, --sdxl-refiner-second-prompts is not supported and will be ignored with
         a warning message.
-        
+
         The secondary prompt option for SD3 --sd3-second-prompts is not supported by this prompt weighter
         implementation.  Neither is --sd3-third-prompts. The prompts from these arguments will be ignored.
 
@@ -3154,14 +3158,10 @@ Your API token can be created on this page: https://civitai.com/user/account
 
 Near the bottom of the page in the section: ``API Keys``
 
-To get a direct link to a CivitAI model, in your browser
-(``right click -> Copy link address...``) on the download link for the
-specific file on the model page. This will yield a link that points
-directly at the model file, which is what dgenerate needs.
+You can use the `civitai-links`_ sub-command to fetch the necessary model links from a CivitAI model page.
 
-If you plan to download many large models to the web cache in
-this manner you may wish to adjust the global cache expiry time
-so that they exist in the cache longer than the default of 12 hours.
+If you plan to download many large models to the web cache in this manner you may wish
+to adjust the global cache expiry time so that they exist in the cache longer than the default of 12 hours.
 
 You can see how to change the cache expiry time in this section `File Cache Control`_
 
@@ -3385,8 +3385,8 @@ The two + (plus symbol) arguments indicate that the first two images mentioned i
 specification in ``--image-seeds`` are not to be processed by any processor.
 
 
-Sub Commands (image-process)
-============================
+Sub Commands
+============
 
 dgenerate implements additional functionality through the option ``--sub-command``.
 
@@ -3400,8 +3400,8 @@ All sub-commands respect the ``--plugin-modules`` and ``--verbose`` arguments
 even if their help output does not specify them, these arguments are handled
 by dgenerate and not the sub-command.
 
-currently the only implemented sub-command is ``image-process``, which you can
-read the help output of using ``dgenerate --sub-command image-process --help``
+image-process
+-------------
 
 The ``image-process`` sub-command can be used to run image processors implemented
 by dgenerate on any file of your choosing including animated images and videos.
@@ -3484,7 +3484,7 @@ Overview of specifying ``image-process`` inputs and outputs
 .. code-block:: bash
 
     # Overview of specifying outputs, image-process can do simple operations
-    # like resizing images and forcing image alignment with --align, without the 
+    # like resizing images and forcing image alignment with --align, without the
     # need to specify any other processing operations with --processors. Running
     # image-process on an image with no other arguments simply aligns it to 8 pixels,
     # given the defaults for its command line arguments
@@ -3548,6 +3548,45 @@ A few usage examples with processors:
     -o output/canny-video.mp4 --processors mirror "canny;blur=true;threshold-algo=otsu"
 
 
+civitai-links
+-------------
+
+This subcommand can be used to list all of the hard links for models available on a CivitAI model page.
+
+Which can be given to dgenerate as a hard link to a model to download for you.
+
+This can be utilized to download CivitAI models with dgenerate, see: `Utilizing CivitAI links and Other Hosted Models`_
+
+To get direct links to civit AI models you can use the ``civitai-links`` subcommand
+or the ``\civitai_links`` directive inside of a config to list all available models
+on a CivitAI model page.
+
+For example:
+
+.. code-block:: bash
+
+    # get links for the Crystal Clear XL model on CivitAI
+
+    dgenerate --sub-command civitai-links https://civitai.com/models/122822?modelVersionId=133832
+
+    # you can also automatically append your API token to the end of the URLs with --token
+
+    dgenerate --sub-command civitai-links https://civitai.com/models/122822?modelVersionId=133832 --token $MY_API_TOKEN
+
+
+This will list every model link on the page, with title, there may be many model links
+depending on what the page has available for download.
+
+Output from the above example:
+
+.. code-block:: txt
+
+    Models at: https://civitai.com/models/122822?modelVersionId=133832
+    ==================================================================
+
+    CCXL (Model): https://civitai.com/api/download/models/133832?format=SafeTensor&size=full&fp=fp16
+
+
 Upscaling
 =========
 
@@ -3558,7 +3597,7 @@ Upscaling with the Stable Diffusion based x2 and x4 upscalers.
 With the `upscale` image processor which is compatible with models implemented in the `spandrel <https://github.com/chaiNNer-org/spandrel>`_ module.
 
 And with the `upscaler-ncnn` image processor, which implements upscaling with NCNN upscaling models
-compatible with `upscayl <https://github.com/upscayl/upscayl>`_ , or `chaiNNer <https://github.com/chaiNNer-org/chaiNNer>`_ and similar software.
+compatible with `upscayl <https://github.com/upscayl/upscayl>`_ , or `chaiNNer <chaiNNer_1>`_ and similar software.
 
 
 Upscaling with Diffusion Upscaler Models
@@ -3596,7 +3635,7 @@ The image used in the example below is this `low resolution cat <https://raw.git
 Upscaling with chaiNNer Compatible Upscaler Models
 --------------------------------------------------
 
-`chaiNNer <https://github.com/chaiNNer-org/chaiNNer>`_ compatible upscaler models from https://openmodeldb.info/
+`chaiNNer <chaiNNer_1>`_ compatible upscaler models from https://openmodeldb.info/
 and elsewhere can be utilized for tiled upscaling using dgenerates ``upscaler`` image processor and the
 ``--post-processors`` option.  The ``upscaler`` image processor can also be used for processing
 input images via the other options mentioned in `Image Processors`_ such as ``--seed-image-processors``

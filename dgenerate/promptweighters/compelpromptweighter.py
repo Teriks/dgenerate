@@ -175,7 +175,7 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
         self._tensors = list()
         self._syntax = syntax
 
-    @torch.no_grad()
+    @torch.inference_mode()
     def translate_to_embeds(self,
                             pipeline,
                             device: str,

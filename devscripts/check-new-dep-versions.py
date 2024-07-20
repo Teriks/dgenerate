@@ -1,7 +1,10 @@
 # helper script for listing the latest version of all dependencies
-
+import os
 from importlib.machinery import SourceFileLoader
+
 import requests
+
+os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 setup = SourceFileLoader('setup_as_library', 'setup.py').load_module()
 

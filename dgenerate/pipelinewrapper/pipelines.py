@@ -32,6 +32,7 @@ import huggingface_hub
 import torch.nn
 import torch.nn
 
+import dgenerate.exceptions as _d_exceptions
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
@@ -48,15 +49,6 @@ try:
     import jaxlib
 except ImportError:
     jaxlib = None
-
-
-class OutOfMemoryError(Exception):
-    """
-    Raised when a GPU or processing device runs out of memory.
-    """
-
-    def __init__(self, message):
-        super().__init__(f'Device Out Of Memory: {message}')
 
 
 class UnsupportedPipelineConfigError(Exception):
@@ -656,12 +648,12 @@ def _pipeline_to(pipeline, device: torch.device | str | None, cache_tracking: bo
         torch.cuda.empty_cache()
         gc.collect()
 
-        raise OutOfMemoryError(e)
+        raise _d_exceptions.OutOfMemoryError(e)
     except MemoryError:
         # probably out of RAM on a back
         # to CPU move not much we can do
         gc.collect()
-        raise OutOfMemoryError('cpu (system memory)')
+        raise _d_exceptions.OutOfMemoryError('cpu (system memory)')
 
 
 def pipeline_to(pipeline, device: torch.device | str | None):
@@ -682,7 +674,7 @@ def pipeline_to(pipeline, device: torch.device | str | None):
 
     Modules which have model cpu offload enabled will not be moved unless they are moving to "cpu"
 
-    :raise OutOfMemoryError: if there is not enough memory on the specified device
+    :raise dgenerate.OutOfMemoryError: if there is not enough memory on the specified device
 
     :param pipeline: the pipeline
     :param device: the device
@@ -778,6 +770,7 @@ def destroy_last_called_pipeline():
 
 
 # noinspection PyCallingNonCallable
+@torch.inference_mode()
 def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusionPipeline,
                   device: torch.device | str | None = 'cuda',
                   prompt_weighter: _promptweighters.PromptWeighter = None,
@@ -799,7 +792,7 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
 
     :param prompt_weighter: Optional prompt weighter for weighted prompt syntaxes
 
-    :raises OutOfMemoryError: if there is not enough memory on the specified device
+    :raises dgenerate.OutOfMemoryError: if there is not enough memory on the specified device
 
     :raises UnsupportedPipelineConfiguration:
         If the pipeline is missing certain required modules, such as text encoders.
@@ -830,7 +823,7 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
                         prompt_weighter.cleanup()
                     except:
                         pass
-                    raise OutOfMemoryError(e)
+                    raise _d_exceptions.OutOfMemoryError(e)
                 except torch.cuda.OutOfMemoryError as e:
                     try:
                         prompt_weighter.cleanup()
@@ -838,7 +831,7 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
                         pass
                     torch.cuda.empty_cache()
                     gc.collect()
-                    raise OutOfMemoryError(e)
+                    raise _d_exceptions.OutOfMemoryError(e)
             else:
                 try:
                     translated = prompt_weighter.translate_to_embeds(pipeline, device, kwargs)
@@ -849,14 +842,14 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
                         pass
                     torch.cuda.empty_cache()
                     gc.collect()
-                    raise OutOfMemoryError(e)
+                    raise _d_exceptions.OutOfMemoryError(e)
         except MemoryError:
             try:
                 prompt_weighter.cleanup()
             except:
                 pass
             gc.collect()
-            raise OutOfMemoryError('cpu (system memory)')
+            raise _d_exceptions.OutOfMemoryError('cpu (system memory)')
         except Exception:
             try:
                 prompt_weighter.cleanup()
@@ -920,23 +913,23 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
                     return _call_pipeline_raw()
                 except torch.cuda.OutOfMemoryError as e:
                     _torch_oom_handler()
-                    raise OutOfMemoryError(e)
+                    raise _d_exceptions.OutOfMemoryError(e)
                 except jaxlib.xla_extension.XlaRuntimeError as e:
                     # nothing we can do for flax, the process
                     # is left dirty by the library
                     _messages.log(
                         'Flax encountered an OOM condition, if you are running interactively it is '
                         'recommended that you restart the dgenerate process.', level=_messages.WARNING)
-                    raise OutOfMemoryError(e)
+                    raise _d_exceptions.OutOfMemoryError(e)
             else:
                 try:
                     return _call_pipeline_raw()
                 except torch.cuda.OutOfMemoryError as e:
                     _torch_oom_handler()
-                    raise OutOfMemoryError(e)
+                    raise _d_exceptions.OutOfMemoryError(e)
         except MemoryError:
             gc.collect()
-            raise OutOfMemoryError('cpu (system memory)')
+            raise _d_exceptions.OutOfMemoryError('cpu (system memory)')
 
     if pipeline is _LAST_CALLED_PIPELINE:
         return _call_pipeline()

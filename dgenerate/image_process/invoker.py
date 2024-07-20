@@ -22,7 +22,7 @@
 import collections.abc
 import typing
 
-import torch.cuda
+import dgenerate.exceptions as _d_exceptions
 
 import dgenerate.events as _event
 import dgenerate.image_process.arguments as _arguments
@@ -162,7 +162,7 @@ def invoke_image_process_events(
             _imageprocessors.ImageProcessorNotFoundError,
             _mediainput.FrameStartOutOfBounds,
             _mediainput.MediaIdentificationError,
-            torch.cuda.OutOfMemoryError,
+            _d_exceptions.OutOfMemoryError,
             EnvironmentError) as e:
         if log_error:
             _messages.log(f'{help_name}: error: {str(e).strip()}', level=_messages.ERROR)

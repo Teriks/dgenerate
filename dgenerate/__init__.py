@@ -98,9 +98,10 @@ try:
         UnsupportedPipelineConfigError, \
         ModelType, \
         DataType, \
-        OutOfMemoryError, \
         ModelNotFoundError, \
         PipelineType
+
+    from dgenerate.exceptions import OutOfMemoryError
 
     from dgenerate.promptweighters \
         import PromptWeightingUnsupported

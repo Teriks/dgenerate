@@ -19,18 +19,13 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import dgenerate.types as _types
-from .batchprocessor import BatchProcessor, BatchProcessError
-from .configrunner import ConfigRunner
-from .configrunnerplugin import ConfigRunnerPlugin
-from .configrunnerpluginloader import ConfigRunnerPluginLoader, \
-    ConfigRunnerPluginNotFoundError, \
-    ConfigRunnerPluginArgumentError
-from .image_process_directive import ImageProcessDirective
-from .civitai_links_directive import CivitAILinksDirective
+__doc__ = 'Common exceptions'
 
-__doc__ = """
-Batch processing / dgenerate config scripts.
-"""
 
-__all__ = _types.module_all()
+class OutOfMemoryError(Exception):
+    """
+    Raised when a GPU or processing device runs out of memory.
+    """
+
+    def __init__(self, message):
+        super().__init__(f'Device Out Of Memory: {message}')
