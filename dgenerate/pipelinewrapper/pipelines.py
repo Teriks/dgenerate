@@ -876,10 +876,15 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
 
         return translated
 
+    prompt_warning_issued = False
+
     def _call_pipeline_raw():
+        nonlocal prompt_warning_issued
         try:
             if prompt_weighter is None:
-                _warn_prompt_lengths(pipeline, **kwargs)
+                if not prompt_warning_issued:
+                    _warn_prompt_lengths(pipeline, **kwargs)
+                    prompt_warning_issued = True
                 pipe_result = pipeline(**kwargs)
             else:
                 pipe_result = pipeline(**_call_prompt_weighter())
@@ -955,9 +960,18 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
 
     pipeline_to(_LAST_CALLED_PIPELINE, 'cpu')
 
-    pipeline_to(pipeline, device)
-
-    result = _call_pipeline()
+    try:
+        pipeline_to(pipeline, device)
+        result = _call_pipeline()
+    except _d_exceptions.OutOfMemoryError:
+        _messages.debug_log(
+            f'Attempting to call pipeline '
+            f'"{pipeline.__class__.__name__}" again after out '
+            f'of memory condition and cleanup.')
+        # allow for memory cleanup and try again
+        # might be able to run now
+        pipeline_to(pipeline, device)
+        result = _call_pipeline()
 
     _LAST_CALLED_PIPELINE = pipeline
     return result
