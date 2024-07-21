@@ -235,27 +235,36 @@ class ImageProcessor(_plugin.Plugin):
                         'Flax encountered an OOM condition, if you are running interactively it is '
                         'recommended that you restart the dgenerate process.', level=_messages.WARNING)
                     raise_exc = _d_exceptions.OutOfMemoryError(e)
-                except torch.cuda.OutOfMemoryError as e:
+                except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
+                    _d_exceptions.raise_if_not_cuda_oom(e)
 
                     if oom_attempt == 0:
                         self.__flush_diffusion_pipeline_after_oom()
                         try_again = True
                     else:
+                        _messages.debug_log(
+                            f'ImageProcessor {self.__class__} failed attempt at '
+                            f'OOM recovery in {dgenerate.types.fullname(func)}()')
                         self.__to_cpu_ignore_error()
                         self.__flush_mem_ignore_error()
                         raise_exc = _d_exceptions.OutOfMemoryError(e)
             else:
                 try:
                     return func(**args)
-                except torch.cuda.OutOfMemoryError as e:
+                except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
+                    _d_exceptions.raise_if_not_cuda_oom(e)
 
                     if oom_attempt == 0:
                         self.__flush_diffusion_pipeline_after_oom()
                         try_again = True
                     else:
+                        _messages.debug_log(
+                            f'ImageProcessor {self.__class__} failed attempt at '
+                            f'OOM recovery in {dgenerate.types.fullname(func)}()')
                         self.__to_cpu_ignore_error()
                         self.__flush_mem_ignore_error()
                         raise_exc = _d_exceptions.OutOfMemoryError(e)
+
             if try_again:
                 return self.__with_memory_safety(func, args, oom_attempt=1)
 
@@ -593,13 +602,17 @@ class ImageProcessor(_plugin.Plugin):
 
                 try:
                     m.to(device)
-                except torch.cuda.OutOfMemoryError as e:
+                except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
+                    _d_exceptions.raise_if_not_cuda_oom(e)
+
                     if attempt == 0:
                         # hail marry
                         self.__flush_diffusion_pipeline_after_oom()
                         try_again = True
                         break
                     else:
+                        _messages.debug_log(
+                            f'ImageProcessor {self.__class__} failed attempt at OOM recovery in to({device})')
                         m._DGENERATE_IMAGE_PROCESSOR_DEVICE = torch.device('cpu')
                         self.__to_cpu_ignore_error()
                         self.__flush_mem_ignore_error()

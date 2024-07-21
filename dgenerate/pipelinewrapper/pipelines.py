@@ -663,7 +663,8 @@ def pipeline_to(pipeline, device: torch.device | str | None):
 
     try:
         _pipeline_to(pipeline=pipeline, device=device)
-    except torch.cuda.OutOfMemoryError as e:
+    except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
+        _d_exceptions.raise_if_not_cuda_oom(e)
         # attempt to recover VRAM before rethrowing
         # move any modules back to cpu which have entered VRAM
 
@@ -827,7 +828,8 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
                     except:
                         pass
                     raise _d_exceptions.OutOfMemoryError(e)
-                except torch.cuda.OutOfMemoryError as e:
+                except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
+                    _d_exceptions.raise_if_not_cuda_oom(e)
                     try:
                         prompt_weighter.cleanup()
                     except:
@@ -838,7 +840,8 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
             else:
                 try:
                     translated = prompt_weighter.translate_to_embeds(pipeline, device, kwargs)
-                except torch.cuda.OutOfMemoryError as e:
+                except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
+                    _d_exceptions.raise_if_not_cuda_oom(e)
                     try:
                         prompt_weighter.cleanup()
                     except:
@@ -915,7 +918,8 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
             if jaxlib is not None:
                 try:
                     return _call_pipeline_raw()
-                except torch.cuda.OutOfMemoryError as e:
+                except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
+                    _d_exceptions.raise_if_not_cuda_oom(e)
                     _torch_oom_handler()
                     raise _d_exceptions.OutOfMemoryError(e)
                 except jaxlib.xla_extension.XlaRuntimeError as e:
@@ -928,7 +932,8 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
             else:
                 try:
                     return _call_pipeline_raw()
-                except torch.cuda.OutOfMemoryError as e:
+                except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
+                    _d_exceptions.raise_if_not_cuda_oom(e)
                     _torch_oom_handler()
                     raise _d_exceptions.OutOfMemoryError(e)
         except MemoryError:
