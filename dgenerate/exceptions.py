@@ -21,6 +21,8 @@
 
 __doc__ = 'Common exceptions'
 
+import torch.cuda
+
 
 class OutOfMemoryError(Exception):
     """
@@ -29,3 +31,23 @@ class OutOfMemoryError(Exception):
 
     def __init__(self, message):
         super().__init__(f'Device Out Of Memory: {message}')
+
+
+TORCH_CUDA_OOM_EXCEPTIONS = (torch.cuda.OutOfMemoryError, RuntimeError)
+"""Exceptions which can be raised by ``torch.cuda`` for OOM conditions."""
+
+
+def raise_if_not_cuda_oom(e):
+    """
+    Decide if a :py:attr:`TORCH_CUDA_OOM_EXCEPTIONS` exception was caused by OOM
+    and re-raise it if not.
+
+    :param e: the exception
+    """
+    if isinstance(e, RuntimeError):
+        msg = str(e).lower()
+        if 'cuda' in msg and 'memory' in msg:
+            return
+    if isinstance(e, torch.cuda.OutOfMemoryError):
+        return
+    raise e

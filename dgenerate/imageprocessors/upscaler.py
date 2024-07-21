@@ -34,6 +34,7 @@ import dgenerate.imageprocessors.upscale_tiler as _upscale_tiler
 import dgenerate.messages as _messages
 import dgenerate.types as _types
 import dgenerate.webcache as _webcache
+import dgenerate.exceptions as _d_exceptions
 
 spandrel.MAIN_REGISTRY.add(*spandrel_extra_arches.EXTRA_REGISTRY)
 
@@ -289,7 +290,9 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
                     pbar=pbar.update)
 
                 oom = False
-            except torch.cuda.OutOfMemoryError as e:
+            except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
+                _d_exceptions.raise_if_not_cuda_oom(e)
+
                 pbar.close()
                 tile //= 2
                 _messages.log(

@@ -90,7 +90,6 @@ class TestFormatImageSeedURI(unittest.TestCase):
         with self.assertRaises(ValueError):
             format_image_seed_uri(seed_image="seed.png", resize="8a00x600")
 
-    # Additional tests to challenge the function
     def test_none_values(self):
         result = format_image_seed_uri(seed_image="seed.png", inpaint_image=None, control_images=None, resize=None,
                                        aspect=True, frame_start=None, frame_end=None)
