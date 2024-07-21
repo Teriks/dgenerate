@@ -182,56 +182,62 @@ class BatchProcessor:
         self.expand_vars = _textprocessing.shell_expandvars
 
         if builtins is None:
-            self.builtins = {
-                'abs': abs,
-                'all': all,
-                'any': any,
-                'ascii': ascii,
-                'bin': bin,
-                'bool': bool,
-                'bytearray': bytearray,
-                'bytes': bytes,
-                'callable': callable,
-                'chr': chr,
-                'complex': complex,
-                'dict': dict,
-                'divmod': divmod,
-                'enumerate': enumerate,
-                'filter': filter,
-                'float': float,
-                'format': format,
-                'frozenset': frozenset,
-                'getattr': getattr,
-                'hasattr': hasattr,
-                'hash': hash,
-                'hex': hex,
-                'int': int,
-                'iter': iter,
-                'len': len,
-                'list': list,
-                'map': map,
-                'max': max,
-                'min': min,
-                'next': next,
-                'object': object,
-                'oct': oct,
-                'ord': ord,
-                'pow': pow,
-                'range': range,
-                'repr': repr,
-                'reversed': reversed,
-                'round': round,
-                'set': set,
-                'slice': slice,
-                'sorted': sorted,
-                'str': str,
-                'sum': sum,
-                'tuple': tuple,
-                'type': type,
-                'zip': zip,
-            }
+            self.builtins = self.default_builtins()
         else:
             self.builtins = builtins
+
+    @staticmethod
+    def default_builtins() -> dict[str, typing.Callable[[typing.Any], typing.Any]]:
+        """Return the default builtins available as template functions."""
+
+        return {
+            'abs': abs,
+            'all': all,
+            'any': any,
+            'ascii': ascii,
+            'bin': bin,
+            'bool': bool,
+            'bytearray': bytearray,
+            'bytes': bytes,
+            'callable': callable,
+            'chr': chr,
+            'complex': complex,
+            'dict': dict,
+            'divmod': divmod,
+            'enumerate': enumerate,
+            'filter': filter,
+            'float': float,
+            'format': format,
+            'frozenset': frozenset,
+            'getattr': getattr,
+            'hasattr': hasattr,
+            'hash': hash,
+            'hex': hex,
+            'int': int,
+            'iter': iter,
+            'len': len,
+            'list': list,
+            'map': map,
+            'max': max,
+            'min': min,
+            'next': next,
+            'object': object,
+            'oct': oct,
+            'ord': ord,
+            'pow': pow,
+            'range': range,
+            'repr': repr,
+            'reversed': reversed,
+            'round': round,
+            'set': set,
+            'slice': slice,
+            'sorted': sorted,
+            'str': str,
+            'sum': sum,
+            'tuple': tuple,
+            'type': type,
+            'zip': zip,
+        }
 
     @property
     def directives_builtins_help(self) -> dict[str, str]:
@@ -512,153 +518,189 @@ class BatchProcessor:
 
         return var_name.strip(), value_part.strip()
 
-    def _directive_handlers(self, line):
+    def _directive_handlers(self, line: str) -> bool:
+        """Handle shell directives."""
         if line.startswith('\\env'):
-            directive_args = line.split(' ', 1)
-            if len(directive_args) == 2:
-                opts = _textprocessing.shell_parse(
-                    self.render_template(directive_args[1].strip()),
-                    expand_glob=False,
-                    expand_home=False,
-                    expand_vars=False)
-                for opt in opts:
-                    assignment = opt.split('=', 1)
-                    if len(assignment) == 1:
-                        # set empty
-                        value = ''
-                    else:
-                        value = self.render_template(assignment[1])
-                    try:
-                        os.environ[assignment[0]] = value
-                    except ValueError:
-                        if not assignment[0].strip():
-                            raise BatchProcessError(
-                                f'Environmental variable name expanded to nothing!')
-                        raise BatchProcessError(
-                            f'Illegal environmental variable name value: {assignment[0]}')
-            else:
-                for key, value in os.environ.items():
-                    _messages.log(f'\\env "{key}={value}"')
-            return True
+            return self._handle_env_directive(line)
         elif line.startswith('\\unset_env'):
-            directive_args = line.split(' ', 1)
-            if len(directive_args) == 2:
-                opts = _textprocessing.shell_parse(
-                    self.render_template(directive_args[1].strip()),
-                    expand_vars=False,
-                    expand_home=False,
-                    expand_glob=False)
-                for opt in opts:
-                    os.environ.pop(opt, None)
-            else:
-                raise BatchProcessError('\\unset_env was provided no arguments.')
-            return True
+            return self._handle_unset_env_directive(line)
         elif line.startswith('\\setp'):
-            directive_args = line.split(' ', 2)
-            if len(directive_args) == 3:
-                var, value = self._set_split(directive_args, line)
-                self.user_define(
-                    self.render_template(var),
-                    self._intepret_setp_value(
-                        self.render_template(value)))
-                return True
-            else:
-                raise BatchProcessError(
-                    f'\\setp directive received less than 2 arguments, '
-                    f'syntax is: \\setp name value')
+            return self._handle_setp_directive(line)
         elif line.startswith('\\sete'):
-            directive_args = line.split(' ', 2)
-            if len(directive_args) == 3:
-                try:
-                    var, value = self._set_split(directive_args, line)
-                    self.user_define(
-                        self.render_template(var),
-                        _textprocessing.shell_parse(
-                            self.render_template(value),
-                            expand_vars=False))
-                except _textprocessing.ShellParseSyntaxError as e:
-                    raise BatchProcessError(e)
-                return True
-            else:
-                raise BatchProcessError(
-                    f'\\sete directive received less than 2 arguments, '
-                    f'syntax is: \\sete name args...')
+            return self._handle_sete_directive(line)
         elif line.startswith('\\set'):
-            directive_args = line.split(' ', 2)
-            if len(directive_args) == 3:
-                var, value = self._set_split(directive_args, line)
-                self.user_define(
-                    self.render_template(var),
-                    self.render_template(value))
-                return True
-            else:
-                raise BatchProcessError(
-                    f'\\set directive received less than 2 arguments, '
-                    f'syntax is: \\set name value')
+            return self._handle_set_directive(line)
         elif line.startswith('\\unset'):
-            directive_args = line.split(' ', 1)
-            if len(directive_args) == 2:
-                self.user_undefine(
-                    self.render_template(directive_args[1].strip()))
-                return True
-            else:
-                raise BatchProcessError(
-                    f'\\unset directive received less than 1 arguments, '
-                    f'syntax is: \\unset name')
+            return self._handle_unset_directive(line)
         elif line.startswith('\\print'):
-            directive_args = line.split(' ', 1)
-            if len(directive_args) == 2:
-                _messages.log(self.render_template(directive_args[1].strip()))
-                return True
-            else:
-                _messages.log()
-            return True
+            return self._handle_print_directive(line)
         elif line.startswith('\\echo'):
-            directive_args = line.split(' ', 1)
-            if len(directive_args) == 2:
-                try:
-                    _messages.log(*_textprocessing.shell_parse(
-                        self.render_template(directive_args[1].strip()),
-                        expand_vars=False))
-                except _textprocessing.ShellParseSyntaxError as e:
-                    raise BatchProcessError(e)
-            else:
-                _messages.log()
-            return True
-        if line.startswith('{'):
-            try:
-                self._running_template_continuation = True
-                self.run_file(self.render_template(line, stream=True))
-            finally:
-                self._running_template_continuation = False
-            return True
+            return self._handle_echo_directive(line)
+        elif line.startswith('{'):
+            return self._handle_template_continuation(line)
         elif line.startswith('\\'):
-            directive_args = line.split(' ', 1)
-
-            directive = directive_args[0].lstrip('\\')
-            impl = self.directives.get(directive)
-            if impl is None:
-                raise BatchProcessError(f'Unknown directive "\\{directive}".')
-            directive_args = directive_args[1:]
-            try:
-                if directive_args:
-                    return_code = impl(
-                        _textprocessing.shell_parse(
-                            self.render_template(directive_args[0].strip()),
-                            expand_vars=False))
-                else:
-                    return_code = impl([])
-                if return_code != 0:
-                    raise BatchProcessError(
-                        f'Directive error return code: {return_code}')
-            except Exception as e:
-                if self._directive_exceptions:
-                    raise e
-                raise BatchProcessError(e)
-            return True
+            return self._handle_custom_directive(line)
         return False
 
-    def _lex_and_run_invocation(self, invocation_string):
+    def _handle_env_directive(self, line: str) -> bool:
+        """Handle the \\env directive."""
+        directive_args = line.split(' ', 1)
+        if len(directive_args) == 2:
+            opts = _textprocessing.shell_parse(
+                self.render_template(directive_args[1].strip()),
+                expand_glob=False,
+                expand_home=False,
+                expand_vars=False)
+            for opt in opts:
+                assignment = opt.split('=', 1)
+                value = self.render_template(assignment[1]) if len(assignment) > 1 else ''
+                try:
+                    os.environ[assignment[0]] = value
+                except ValueError:
+                    if not assignment[0].strip():
+                        raise BatchProcessError(
+                            f'Environmental variable name expanded to nothing!')
+                    raise BatchProcessError(
+                        f'Illegal environmental variable name value: {assignment[0]}')
+        else:
+            for key, value in os.environ.items():
+                _messages.log(f'\\env "{key}={value}"')
+        return True
+
+    def _handle_unset_env_directive(self, line: str) -> bool:
+        """Handle the \\unset_env directive."""
+        directive_args = line.split(' ', 1)
+        if len(directive_args) == 2:
+            opts = _textprocessing.shell_parse(
+                self.render_template(directive_args[1].strip()),
+                expand_vars=False,
+                expand_home=False,
+                expand_glob=False)
+            for opt in opts:
+                os.environ.pop(opt, None)
+        else:
+            raise BatchProcessError('\\unset_env was provided no arguments.')
+        return True
+
+    def _handle_setp_directive(self, line: str) -> bool:
+        """Handle the \\setp directive."""
+        directive_args = line.split(' ', 2)
+        if len(directive_args) == 3:
+            var, value = self._set_split(directive_args, line)
+            self.user_define(
+                self.render_template(var),
+                self._intepret_setp_value(
+                    self.render_template(value)))
+            return True
+        else:
+            raise BatchProcessError(
+                f'\\setp directive received less than 2 arguments, '
+                f'syntax is: \\setp name value')
+
+    def _handle_sete_directive(self, line: str) -> bool:
+        """Handle the \\sete directive."""
+        directive_args = line.split(' ', 2)
+        if len(directive_args) == 3:
+            try:
+                var, value = self._set_split(directive_args, line)
+                self.user_define(
+                    self.render_template(var),
+                    _textprocessing.shell_parse(
+                        self.render_template(value),
+                        expand_vars=False))
+            except _textprocessing.ShellParseSyntaxError as e:
+                raise BatchProcessError(e)
+            return True
+        else:
+            raise BatchProcessError(
+                f'\\sete directive received less than 2 arguments, '
+                f'syntax is: \\sete name args...')
+
+    def _handle_set_directive(self, line: str) -> bool:
+        """Handle the \\set directive."""
+        directive_args = line.split(' ', 2)
+        if len(directive_args) == 3:
+            var, value = self._set_split(directive_args, line)
+            self.user_define(
+                self.render_template(var),
+                self.render_template(value))
+            return True
+        else:
+            raise BatchProcessError(
+                f'\\set directive received less than 2 arguments, '
+                f'syntax is: \\set name value')
+
+    def _handle_unset_directive(self, line: str) -> bool:
+        """Handle the \\unset directive."""
+        directive_args = line.split(' ', 1)
+        if len(directive_args) == 2:
+            self.user_undefine(
+                self.render_template(directive_args[1].strip()))
+            return True
+        else:
+            raise BatchProcessError(
+                f'\\unset directive received less than 1 arguments, '
+                f'syntax is: \\unset name')
+
+    def _handle_print_directive(self, line: str) -> bool:
+        """Handle the \\print directive."""
+        directive_args = line.split(' ', 1)
+        if len(directive_args) == 2:
+            _messages.log(self.render_template(directive_args[1].strip()))
+        else:
+            _messages.log()
+        return True
+
+    def _handle_echo_directive(self, line: str) -> bool:
+        """Handle the \\echo directive."""
+        directive_args = line.split(' ', 1)
+        if len(directive_args) == 2:
+            try:
+                _messages.log(*_textprocessing.shell_parse(
+                    self.render_template(directive_args[1].strip()),
+                    expand_vars=False))
+            except _textprocessing.ShellParseSyntaxError as e:
+                raise BatchProcessError(e)
+        else:
+            _messages.log()
+        return True
+
+    def _handle_template_continuation(self, line: str) -> bool:
+        """Handle template continuation directive."""
+        try:
+            self._running_template_continuation = True
+            self.run_file(self.render_template(line, stream=True))
+        finally:
+            self._running_template_continuation = False
+        return True
+
+    def _handle_custom_directive(self, line: str) -> bool:
+        """Handle custom directives defined by the user."""
+        directive_args = line.split(' ', 1)
+        directive = directive_args[0].lstrip('\\')
+        impl = self.directives.get(directive)
+        if impl is None:
+            raise BatchProcessError(f'Unknown directive "\\{directive}".')
+        directive_args = directive_args[1:]
+        try:
+            if directive_args:
+                return_code = impl(
+                    _textprocessing.shell_parse(
+                        self.render_template(directive_args[0].strip()),
+                        expand_vars=False))
+            else:
+                return_code = impl([])
+            if return_code != 0:
+                raise BatchProcessError(
+                    f'Directive error return code: {return_code}')
+        except Exception as e:
+            if self._directive_exceptions:
+                raise e
+            raise BatchProcessError(e)
+        return True
+
+    def _lex_and_run_invocation(self, invocation_string: str):
+        """Run a line of shell code"""
         raw_templated_string = self.render_template(invocation_string)
 
         try:

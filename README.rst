@@ -4943,7 +4943,7 @@ Indirect expansion is allowed just like with ``\set``, ``\sete``, and ``\setp``.
     #! /usr/bin/env dgenerate --file
     #! dgenerate 3.10.0
 
-    \env MY_ENV_VAR=1 MY_ENV_VAR2=1
+    \env MY_ENV_VAR=1 MY_ENV_VAR2=2
 
     # prints 1 2
 
