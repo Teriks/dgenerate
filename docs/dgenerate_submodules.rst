@@ -19,16 +19,6 @@ dgenerate.batchprocess module
    :show-inheritance:
    :special-members: __call__, __init__
 
-dgenerate.renderloop module
----------------------------
-
-.. automodule:: dgenerate.renderloop
-   :members:
-   :undoc-members:
-   :show-inheritance:
-   :special-members: __call__, __init__
-
-
 dgenerate.filecache module
 --------------------------
 
@@ -37,7 +27,6 @@ dgenerate.filecache module
    :undoc-members:
    :show-inheritance:
    :special-members: __call__, __init__
-
 
 dgenerate.filelock module
 -------------------------
@@ -48,7 +37,6 @@ dgenerate.filelock module
    :show-inheritance:
    :special-members: __call__, __init__
 
-
 dgenerate.files module
 ----------------------
 
@@ -57,7 +45,6 @@ dgenerate.files module
    :undoc-members:
    :show-inheritance:
    :special-members: __call__, __init__
-
 
 dgenerate.image module
 ----------------------
@@ -75,6 +62,22 @@ dgenerate.image_process module
    :members:
    :undoc-members:
    :show-inheritance:
+   :special-members: __call__, __init__
+
+dgenerate.imageprocessors module
+--------------------------------
+
+Image processors implemented by dgenerate.
+
+This includes many image processing tasks useful for creating diffusion input images, or for postprocessing.
+
+.. include:: imageprocessors_constants.rst
+
+.. automodule:: dgenerate.imageprocessors
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :exclude-members: __doc__
    :special-members: __call__, __init__
 
 dgenerate.invoker module
@@ -134,14 +137,18 @@ dgenerate.messages module
 dgenerate.pipelinewrapper module
 --------------------------------
 
+huggingface diffusers pipeline wrapper / driver interface.
+
+All functionality needed from the diffusers library is behind this interface.
+
 .. include:: pipeline_wrapper_constants.rst
 
 .. automodule:: dgenerate.pipelinewrapper
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: __doc__
    :special-members: __call__, __init__
-
 
 dgenerate.plugin module
 -----------------------
@@ -152,6 +159,14 @@ dgenerate.plugin module
    :show-inheritance:
    :special-members: __call__, __init__
 
+dgenerate.prompt module
+-----------------------
+
+.. automodule:: dgenerate.prompt
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :special-members: __call__, __init__, __str__
 
 dgenerate.promptweighters module
 --------------------------------
@@ -161,7 +176,6 @@ dgenerate.promptweighters module
    :undoc-members:
    :show-inheritance:
    :special-members: __call__, __init__
-
 
 dgenerate.pygments module
 -------------------------
@@ -176,28 +190,14 @@ dgenerate.pygments module
 
    .. automethod:: get_tokens_unprocessed
 
+dgenerate.renderloop module
+---------------------------
 
-
-dgenerate.imageprocessors module
---------------------------------
-
-.. include:: imageprocessors_constants.rst
-
-.. automodule:: dgenerate.imageprocessors
+.. automodule:: dgenerate.renderloop
    :members:
    :undoc-members:
    :show-inheritance:
    :special-members: __call__, __init__
-
-
-dgenerate.prompt module
------------------------
-
-.. automodule:: dgenerate.prompt
-   :members:
-   :undoc-members:
-   :show-inheritance:
-   :special-members: __call__, __init__, __str__
 
 dgenerate.textprocessing module
 -------------------------------
