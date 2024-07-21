@@ -28,6 +28,7 @@ from argparse import Action
 import diffusers.schedulers
 
 import dgenerate
+import dgenerate.imageprocessors.constants as _imgp_constants
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.memoize as _memoize
 import dgenerate.memory as _memory
@@ -1598,6 +1599,32 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                                  f' For Syntax See: [https://dgenerate.readthedocs.io/en/v{dgenerate.__version__}/'
                                  f'dgenerate_submodules.html#dgenerate.pipelinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS]'))
 
+    actions.append(
+        parser.add_argument('-imc', '--image-processor-memory-constraints', action='store', nargs='+',
+                            default=None,
+                            type=_type_expression,
+                            metavar="EXPR",
+                            help=f"""Cache constraint expressions describing when to automatically clear the entire in memory 
+                                    diffusion model cache considering current memory usage, and estimated memory usage of new 
+                                    image processor models that are about to enter memory. If any of these constraint expressions 
+                                    are met all diffusion related models cached in memory will be cleared. Example, and default 
+                                    value: {' '.join(_textprocessing.quote_spaces(_imgp_constants.IMAGE_PROCESSOR_MEMORY_CONSTRAINTS))}"""
+                                 f' For Syntax See: [https://dgenerate.readthedocs.io/en/v{dgenerate.__version__}/'
+                                 f'dgenerate_submodules.html#dgenerate.imageprocessors.IMAGE_PROCESSOR_MEMORY_CONSTRAINTS]'))
+
+    actions.append(
+        parser.add_argument('-icc', '--image-processor-cuda-memory-constraints', action='store', nargs='+',
+                            default=None,
+                            type=_type_expression,
+                            metavar="EXPR",
+                            help=f"""Cache constraint expressions describing when to automatically clear the last active 
+                                    diffusion model from VRAM considering current GPU memory usage, and estimated GPU memory 
+                                    usage of new image processor models that are about to enter VRAM. If any of these 
+                                    constraint expressions are met the last active diffusion model in VRAM will be destroyed. 
+                                    Example, and default value: {' '.join(_textprocessing.quote_spaces(_imgp_constants.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS))}"""
+                                 f' For Syntax See: [https://dgenerate.readthedocs.io/en/v{dgenerate.__version__}/'
+                                 f'dgenerate_submodules.html#dgenerate.imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS]'))
+
     return parser, actions
 
 
@@ -1652,6 +1679,16 @@ class DgenerateArguments(dgenerate.RenderLoopConfig):
     text_encoder_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
     """
     See: :py:attr:`dgenerate.pipelinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS`
+    """
+
+    image_processor_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
+    """
+    See: :py:attr:`dgenerate.imageprocessors.IMAGE_PROCESSOR_MEMORY_CONSTRAINTS`
+    """
+
+    image_processor_cuda_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
+    """
+    See: :py:attr:`dgenerate.imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS`
     """
 
     def __init__(self):

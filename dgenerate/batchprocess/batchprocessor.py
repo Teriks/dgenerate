@@ -598,8 +598,8 @@ class BatchProcessor:
         elif line.startswith('\\unset'):
             directive_args = line.split(' ', 1)
             if len(directive_args) == 2:
-                self.user_undefine(self.render_template(
-                    directive_args[1].strip()))
+                self.user_undefine(
+                    self.render_template(directive_args[1].strip()))
                 return True
             else:
                 raise BatchProcessError(

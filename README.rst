@@ -167,6 +167,7 @@ Help Output
                      [INTEGER ...]] [-gs FLOAT [FLOAT ...]] [-igs FLOAT [FLOAT ...]] [-gr FLOAT [FLOAT ...]]
                      [-ifs INTEGER [INTEGER ...]] [-mc EXPR [EXPR ...]] [-pmc EXPR [EXPR ...]]
                      [-umc EXPR [EXPR ...]] [-vmc EXPR [EXPR ...]] [-cmc EXPR [EXPR ...]] [-tmc EXPR [EXPR ...]]
+                     [-imc EXPR [EXPR ...]] [-icc EXPR [EXPR ...]]
                      model_path
 
     Batch image generation and manipulation tool supporting Stable Diffusion and related techniques /
@@ -939,48 +940,65 @@ Help Output
                             (DiffusionPipeline, UNet, VAE, ControlNet, and Text Encoder) considering current
                             memory usage. If any of these constraint expressions are met all models cached in
                             memory will be cleared. Example, and default value: "used_percent > 70" For Syntax
-                            See: [https://dgenerate.readthedocs.io/en/v3.10.0/dgenerate_submodules.html#dgenerate
-                            .pipelinewrapper.CACHE_MEMORY_CONSTRAINTS]
+                            See: [https://dgenerate.readthedocs.io/en/v3.10.0/dgenerate_submodules.html#dgenerat
+                            e.pipelinewrapper.CACHE_MEMORY_CONSTRAINTS]
       -pmc EXPR [EXPR ...], --pipeline-cache-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the in memory
                             DiffusionPipeline cache considering current memory usage, and estimated memory usage
                             of new models that are about to enter memory. If any of these constraint expressions
                             are met all DiffusionPipeline objects cached in memory will be cleared. Example, and
                             default value: "pipeline_size > (available * 0.75)" For Syntax See: [https://dgenera
-                            te.readthedocs.io/en/v3.10.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.PIPE
-                            LINE_CACHE_MEMORY_CONSTRAINTS]
+                            te.readthedocs.io/en/v3.10.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.PIP
+                            ELINE_CACHE_MEMORY_CONSTRAINTS]
       -umc EXPR [EXPR ...], --unet-cache-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the in memory
                             UNet cache considering current memory usage, and estimated memory usage of new UNet
                             models that are about to enter memory. If any of these constraint expressions are
                             met all UNet models cached in memory will be cleared. Example, and default value:
                             "unet_size > (available * 0.75)" For Syntax See: [https://dgenerate.readthedocs.io/e
-                            n/v3.10.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.UNET_CACHE_MEMORY_CONST
-                            RAINTS]
+                            n/v3.10.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.UNET_CACHE_MEMORY_CONS
+                            TRAINTS]
       -vmc EXPR [EXPR ...], --vae-cache-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the in memory
                             VAE cache considering current memory usage, and estimated memory usage of new VAE
                             models that are about to enter memory. If any of these constraint expressions are
                             met all VAE models cached in memory will be cleared. Example, and default value:
                             "vae_size > (available * 0.75)" For Syntax See: [https://dgenerate.readthedocs.io/en
-                            /v3.10.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.VAE_CACHE_MEMORY_CONSTRA
-                            INTS]
+                            /v3.10.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.VAE_CACHE_MEMORY_CONSTR
+                            AINTS]
       -cmc EXPR [EXPR ...], --control-net-cache-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the in memory
                             ControlNet cache considering current memory usage, and estimated memory usage of new
                             ControlNet models that are about to enter memory. If any of these constraint
                             expressions are met all ControlNet models cached in memory will be cleared. Example,
                             and default value: "control_net_size > (available * 0.75)" For Syntax See: [https://
-                            dgenerate.readthedocs.io/en/v3.10.0/dgenerate_submodules.html#dgenerate.pipelinewrapp
-                            er.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS]
+                            dgenerate.readthedocs.io/en/v3.10.0/dgenerate_submodules.html#dgenerate.pipelinewrap
+                            per.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS]
       -tmc EXPR [EXPR ...], --text-encoder-cache-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the in memory
                             Text Encoder cache considering current memory usage, and estimated memory usage of
                             new Text Encoder models that are about to enter memory. If any of these constraint
                             expressions are met all Text Encoder models cached in memory will be cleared.
                             Example, and default value: "text_encoder_size > (available * 0.75)" For Syntax See:
-                            [https://dgenerate.readthedocs.io/en/v3.10.0/dgenerate_submodules.html#dgenerate.pipe
-                            linewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS]
+                            [https://dgenerate.readthedocs.io/en/v3.10.0/dgenerate_submodules.html#dgenerate.pip
+                            elinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS]
+      -imc EXPR [EXPR ...], --image-processor-memory-constraints EXPR [EXPR ...]
+                            Cache constraint expressions describing when to automatically clear the entire in
+                            memory diffusion model cache considering current memory usage, and estimated memory
+                            usage of new image processor models that are about to enter memory. If any of these
+                            constraint expressions are met all diffusion related models cached in memory will be
+                            cleared. Example, and default value: "processor_size > (available * 0.70)" For
+                            Syntax See: [https://dgenerate.readthedocs.io/en/v3.10.0/dgenerate_submodules.html#d
+                            generate.imageprocessors.IMAGE_PROCESSOR_MEMORY_CONSTRAINTS]
+      -icc EXPR [EXPR ...], --image-processor-cuda-memory-constraints EXPR [EXPR ...]
+                            Cache constraint expressions describing when to automatically clear the last active
+                            diffusion model from VRAM considering current GPU memory usage, and estimated GPU
+                            memory usage of new image processor models that are about to enter VRAM. If any of
+                            these constraint expressions are met the last active diffusion model in VRAM will be
+                            destroyed. Example, and default value: "processor_size > (available * 0.70)" For
+                            Syntax See: [https://dgenerate.readthedocs.io/en/v3.10.0/dgenerate_submodules.html#d
+                            generate.imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS]
+
 
 
 Windows Install

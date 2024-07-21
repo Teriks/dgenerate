@@ -371,6 +371,14 @@ def invoke_dgenerate_events(
             constraint_lists.append(_pipelinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS)
             _pipelinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS = arguments.text_encoder_cache_memory_constraints
 
+        if arguments.image_processor_memory_constraints:
+            constraint_lists.append(_imageprocessors.IMAGE_PROCESSOR_MEMORY_CONSTRAINTS)
+            _imageprocessors.IMAGE_PROCESSOR_MEMORY_CONSTRAINTS = arguments.image_processor_memory_constraints
+
+        if arguments.image_processor_cuda_memory_constraints:
+            constraint_lists.append(_imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS)
+            _imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS = arguments.image_processor_cuda_memory_constraints
+
         render_loop.config = arguments
 
         if arguments.verbose:
@@ -403,6 +411,13 @@ def invoke_dgenerate_events(
         _messages.pop_level()
 
         if arguments is not None:
+
+            if arguments.image_processor_cuda_memory_constraints:
+                _imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS = constraint_lists.pop()
+
+            if arguments.image_processor_memory_constraints:
+                _imageprocessors.IMAGE_PROCESSOR_MEMORY_CONSTRAINTS = constraint_lists.pop()
+
             if arguments.text_encoder_cache_memory_constraints:
                 _pipelinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()
 
