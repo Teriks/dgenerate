@@ -823,7 +823,7 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
         except Exception as e:
             _messages.debug_log(
                 f'Ignoring prompt weighter cleanup '
-                f'exception in "{prompt_weighter.__class__.__name__}.cleanup(): {e}"')
+                f'exception in "{prompt_weighter.__class__.__name__}.cleanup()": {e}')
             pass
 
     def _call_prompt_weighter():
