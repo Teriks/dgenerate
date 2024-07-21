@@ -1306,8 +1306,10 @@ def remove_tail_comments(string) -> tuple[bool, str]:
 def format_image_seed_uri(seed_image: str | None,
                           inpaint_image: str | None = None,
                           control_images: str | None = None,
-                          resize: str | None = None,
-                          aspect: bool = True) -> str:
+                          resize: str | tuple[int | str, int | str] | None = None,
+                          aspect: bool = True,
+                          frame_start: int | None = None,
+                          frame_end: int | None = None) -> str:
     """
     Formats a dgenerate ``--image-seeds`` URI to its shortest possible string form.
 
@@ -1316,38 +1318,71 @@ def format_image_seed_uri(seed_image: str | None,
     An inpaint image must have an accompanying seed image.
 
     :raise ValueError: if ``inpaint_image`` is specified without ``seed_image``.
+                       if keyword arguments are present without ``seed_image`` or ``control_images``.
+                       if ``frame_start`` or ``frame_end`` are negative values.
+                       if ``frame_start`` is greater than ``frame_end``.
 
     :param seed_image: Seed image path
     :param inpaint_image: Inpaint image path
     :param control_images: Single control image path, or a paths string with
-        multiple paths seperated by the ``,`` character.
+        multiple paths separated by the ``,`` character.
     :param resize: Optional resize dimension (WxH string)
     :param aspect: Preserve aspect ratio?
+    :param frame_start: Optional frame start index
+    :param frame_end: Optional frame end index
     :return: The generated ``--image-seeds`` URI string
     """
 
     components = []
 
     def add_component_if_valid(component, prefix=""):
-        if component:
+        if component is not None:
             if prefix:
                 components.append(f"{prefix}={component}")
             else:
-                components.append(component)
+                components.append(str(component))
 
     # aspect=True by default
-    use_keyword_args = aspect is False
+    use_keyword_args = aspect is False or frame_start is not None or frame_end is not None
 
     if inpaint_image and not seed_image:
-        raise ValueError(
-            'inpaint_image cannot be specified without seed_image.')
+        raise ValueError('inpaint_image cannot be specified without seed_image.')
+
+    if use_keyword_args and not seed_image and not control_images:
+        raise ValueError('Keyword arguments present without seed_image or control_images.')
+
+    if frame_start is not None and frame_start < 0:
+        raise ValueError('frame_start cannot be negative.')
+
+    if frame_end is not None and frame_end < 0:
+        raise ValueError('frame_end cannot be negative.')
+
+    if frame_start is not None and frame_end is not None and frame_start > frame_end:
+        raise ValueError('frame_start cannot be greater than frame_end.')
+
+    if resize is not None:
+        if isinstance(resize, str):
+            resize = resize.strip()
+            if resize:
+                # can be an empty string
+                try:
+                    parse_image_size(resize)
+                except ValueError as e:
+                    raise ValueError(f'invalid resize value: {e}')
+        elif isinstance(resize, tuple):
+            try:
+                resize = format_size(tuple(int(i) for i in resize))
+            except ValueError as e:
+                raise ValueError(f'invalid resize value: {e}')
+        else:
+            raise ValueError('resize argument expects a string or a tuple.')
 
     if control_images and not seed_image and not inpaint_image:
         # we can specify a control image alone
         seed_image = control_images
         control_images = None
 
-    # Case 1: Only image seed provided
+    # case 1: Only image seed provided
     if seed_image and not inpaint_image and not control_images:
         components.append(seed_image)
         if resize:
@@ -1356,7 +1391,7 @@ def format_image_seed_uri(seed_image: str | None,
             else:
                 components.append(resize)
 
-    # Case 2: Inpaint image without control image
+    # case 2: Inpaint image without control image
     elif seed_image and inpaint_image and not control_images:
         components.append(seed_image)
         if use_keyword_args:
@@ -1367,7 +1402,7 @@ def format_image_seed_uri(seed_image: str | None,
             if resize:
                 components.append(resize)
 
-    # Case 3: Inpaint image with control image
+    # case 3: Inpaint image with control image
     elif seed_image and inpaint_image and control_images:
         components.append(seed_image)
         add_component_if_valid(inpaint_image, "mask")
@@ -1375,16 +1410,21 @@ def format_image_seed_uri(seed_image: str | None,
         if resize:
             add_component_if_valid(resize, "resize")
 
-    # Case 4: Control image with image seed
+    # case 4: Control image with image seed
     elif seed_image and not inpaint_image and control_images:
         components.append(seed_image)
         add_component_if_valid(control_images, "control")
         if resize:
             add_component_if_valid(resize, "resize")
 
-    # Handle aspect ratio setting if applicable (only add if aspect=False)
+    # handle aspect ratio setting if applicable (only add if aspect=False)
     if aspect is False:
         add_component_if_valid(str(aspect), "aspect")
+
+    # handle frame_start and frame_end arguments
+    if use_keyword_args:
+        add_component_if_valid(frame_start, "frame_start")
+        add_component_if_valid(frame_end, "frame_end")
 
     return ";".join(components)
 

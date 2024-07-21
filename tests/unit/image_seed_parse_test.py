@@ -212,3 +212,7 @@ class TestImageSeedParser(unittest.TestCase):
         with self.assertRaises(_mi.ImageSeedParseError):
             _mi.parse_image_seed_uri("examples/media/earth.jpg;floyd= ")
 
+
+if __name__ == '__main__':
+    unittest.main()
+

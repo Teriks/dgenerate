@@ -495,3 +495,7 @@ class TestPluginLoading(unittest.TestCase):
         loader.load('typed-arguments;arg7="string";pos1=pos1;pos2="reserved"')
         loader.load('typed-arguments;arg7=string', pos1='pos1', pos2='reserved')
         loader.load('typed-arguments;arg7=\'string\';pos2="reserved"', pos1='pos1', pos2='overriden')
+
+
+if __name__ == '__main__':
+    unittest.main()
