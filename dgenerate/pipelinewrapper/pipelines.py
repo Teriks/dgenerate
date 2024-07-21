@@ -963,6 +963,11 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
             if not enable_retry_pipe:
                 raise
 
+            _messages.debug_log(
+                f'Attempting to call pipeline '
+                f'"{pipeline.__class__.__name__}" again after out '
+                f'of memory condition and cleanup.')
+
             # retry after memory cleanup
             pipeline_to(pipeline, device)
             result = _call_pipeline()
