@@ -240,9 +240,9 @@ class CannyEdgeDetectProcessor(_imageprocessor.ImageProcessor):
             return self._process(image, None)
         return image
 
-    def to(self, device: 'torch.device' | str) -> "ImageProcessor":
+    def to(self, device) -> "CannyEdgeDetectProcessor":
         """
-        Does nothing for this processor..
+        Does nothing for this processor.
         :param device: the device
         :return: this processor
         """

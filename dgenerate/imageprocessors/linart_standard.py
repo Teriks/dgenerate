@@ -179,7 +179,7 @@ class LineArtStandardProcessor(_imageprocessor.ImageProcessor):
             return self._process(image, None)
         return image
 
-    def to(self, device: 'torch.device' | str) -> "ImageProcessor":
+    def to(self, device) -> "LineArtStandardProcessor":
         """
         Does nothing for this processor.
         :param device: the device

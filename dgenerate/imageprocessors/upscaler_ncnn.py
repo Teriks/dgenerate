@@ -368,7 +368,7 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
             return self._process(image)
         return image
 
-    def to(self, device: 'torch.device' | str) -> "ImageProcessor":
+    def to(self, device) -> "UpscalerNCNNProcessor":
         """
         Does nothing for this processor.
         :param device: the device

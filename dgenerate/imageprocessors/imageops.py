@@ -94,7 +94,7 @@ class MirrorFlipProcessor(_imageprocessor.ImageProcessor):
             return self._func(image)
         return image
 
-    def to(self, device: 'torch.device' | str) -> "ImageProcessor":
+    def to(self, device) -> "MirrorFlipProcessor":
         """
         Does nothing for this processor.
         :param device: the device
@@ -165,7 +165,7 @@ class SimpleColorProcessor(_imageprocessor.ImageProcessor):
             return self._func(image)
         return image
 
-    def to(self, device: 'torch.device' | str) -> "ImageProcessor":
+    def to(self, device) -> "SimpleColorProcessor":
         """
         Does nothing for this processor.
         :param device: the device
@@ -227,7 +227,7 @@ class PosterizeProcessor(_imageprocessor.ImageProcessor):
             return PIL.ImageOps.posterize(image, self._bits)
         return image
 
-    def to(self, device: 'torch.device' | str) -> "ImageProcessor":
+    def to(self, device) -> "PosterizeProcessor":
         """
         Does nothing for this processor.
         :param device: the device
@@ -289,7 +289,7 @@ class SolarizeProcessor(_imageprocessor.ImageProcessor):
             return PIL.ImageOps.solarize(image, self._threshold)
         return image
 
-    def to(self, device: 'torch.device' | str) -> "ImageProcessor":
+    def to(self, device) -> "SolarizeProcessor":
         """
         Does nothing for this processor.
         :param device: the device
@@ -402,7 +402,7 @@ class LetterboxProcessor(_imageprocessor.ImageProcessor):
                                           aspect_correct=self._aspect_correct)
         return image
 
-    def to(self, device: 'torch.device' | str) -> "ImageProcessor":
+    def to(self, device) -> "LetterboxProcessor":
         """
         Does nothing for this processor.
         :param device: the device
