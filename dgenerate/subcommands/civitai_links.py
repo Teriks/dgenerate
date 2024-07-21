@@ -1,7 +1,7 @@
-from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+import urllib.parse
 
 import requests
-from requests.exceptions import HTTPError, RequestException
+import requests.exceptions
 
 import dgenerate.batchprocess.util as _b_util
 import dgenerate.messages as _messages
@@ -39,10 +39,10 @@ class CivitAILinksSubCommand(_subcommand.SubCommand):
             response = requests.get(url)
             response.raise_for_status()  # Check for request errors
             return response.json()
-        except HTTPError as http_err:
+        except requests.exceptions.HTTPError as http_err:
             _messages.log(f"HTTP error occurred: {http_err}", level=_messages.ERROR)
             raise
-        except RequestException as req_err:
+        except requests.exceptions.RequestException as req_err:
             _messages.log(f"Error occurred during the request: {req_err}", level=_messages.ERROR)
             raise
 
@@ -64,8 +64,8 @@ class CivitAILinksSubCommand(_subcommand.SubCommand):
                 metadata = file.get("metadata", {})
 
                 # parse the base URL
-                url_parts = urlparse(base_url)
-                query_params = parse_qs(url_parts.query)
+                url_parts = urllib.parse.urlparse(base_url)
+                query_params = urllib.parse.parse_qs(url_parts.query)
 
                 # add metadata and token to query parameters
                 for k, v in metadata.items():
@@ -76,9 +76,9 @@ class CivitAILinksSubCommand(_subcommand.SubCommand):
                 # reconstruct the URL with sanitized query parameters
                 # the api sometimes returns duplicate parameters
                 # which does not result in a usable link
-                sanitized_query = urlencode(query_params, doseq=True)
+                sanitized_query = urllib.parse.urlencode(query_params, doseq=True)
 
-                sanitized_url = urlunparse(
+                sanitized_url = urllib.parse.urlunparse(
                     (url_parts.scheme,
                      url_parts.netloc,
                      url_parts.path,
@@ -114,20 +114,37 @@ class CivitAILinksSubCommand(_subcommand.SubCommand):
             return self._parser.return_code
 
         try:
-            url_parts = args.url.strip('/').split('/')
-            if len(url_parts) < 5:
-                _messages.log(f"Failed to process URL: {args.url}, could not extract model id.", level=_messages.ERROR)
+            parsed_url = urllib.parse.urlparse(args.url)
+        except Exception as e:
+            _messages.log(f'URL Parsing syntax error: {e}',
+                          level=_messages.ERROR)
+            return 1
+
+        if parsed_url.netloc != 'civitai.com':
+            _messages.log(f'Invalid non civitai.com URL given: {args.url}',
+                          level=_messages.ERROR)
+            return 1
+
+        try:
+            url_parts = parsed_url.path.strip('/').split('/')
+
+            if len(url_parts) < 2:
+                _messages.log(
+                    f"Failed to process URL: {args.url}, "
+                    f"could not extract model id.", level=_messages.ERROR)
                 return 1
 
-            model_id = url_parts[4].strip()
+            model_id = url_parts[1].strip()
             if not model_id:
-                _messages.log(f"Failed to process URL: {args.url}, could not extract model id.", level=_messages.ERROR)
+                _messages.log(f"Failed to process URL: {args.url}, "
+                              f"could not extract model id.", level=_messages.ERROR)
                 return 1
 
             data = self._get_model_data(model_id)
             links = self._extract_links(data, args.token[0] if args.token else None)
 
-        except (HTTPError, RequestException) as e:
+        except (requests.exceptions.HTTPError,
+                requests.exceptions.RequestException) as e:
             _messages.log(f"Failed API request for: {args.url}", level=_messages.ERROR)
             return 1
 
