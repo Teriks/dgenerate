@@ -815,6 +815,17 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
 
     enable_retry_pipe = True
 
+    def _cleanup_prompt_weighter():
+        try:
+            _messages.debug_log(
+                f'Executing prompt weighter cleanup for "{prompt_weighter.__class__.__name__}"')
+            prompt_weighter.cleanup()
+        except Exception as e:
+            _messages.debug_log(
+                f'Ignoring prompt weighter cleanup '
+                f'exception in "{prompt_weighter.__class__.__name__}.cleanup(): {e}"')
+            pass
+
     def _call_prompt_weighter():
         nonlocal enable_retry_pipe
         # this is horrific
@@ -827,17 +838,11 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
                     _messages.log(
                         'Flax encountered an OOM condition, if you are running interactively it is '
                         'recommended that you restart the dgenerate process.', level=_messages.WARNING)
-                    try:
-                        prompt_weighter.cleanup()
-                    except:
-                        pass
+                    _cleanup_prompt_weighter()
                     raise _d_exceptions.OutOfMemoryError(e)
                 except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
                     _d_exceptions.raise_if_not_cuda_oom(e)
-                    try:
-                        prompt_weighter.cleanup()
-                    except:
-                        pass
+                    _cleanup_prompt_weighter()
                     torch.cuda.empty_cache()
                     gc.collect()
                     raise _d_exceptions.OutOfMemoryError(e)
@@ -846,26 +851,17 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
                     translated = prompt_weighter.translate_to_embeds(pipeline, device, kwargs)
                 except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
                     _d_exceptions.raise_if_not_cuda_oom(e)
-                    try:
-                        prompt_weighter.cleanup()
-                    except:
-                        pass
+                    _cleanup_prompt_weighter()
                     torch.cuda.empty_cache()
                     gc.collect()
                     raise _d_exceptions.OutOfMemoryError(e)
         except MemoryError:
-            try:
-                prompt_weighter.cleanup()
-            except:
-                pass
+            _cleanup_prompt_weighter()
             gc.collect()
             raise _d_exceptions.OutOfMemoryError('cpu (system memory)')
         except Exception as e:
             if not isinstance(e, _d_exceptions.OutOfMemoryError):
-                try:
-                    prompt_weighter.cleanup()
-                except:
-                    pass
+                _cleanup_prompt_weighter()
                 torch.cuda.empty_cache()
                 gc.collect()
             raise
