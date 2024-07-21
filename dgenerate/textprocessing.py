@@ -541,7 +541,7 @@ def unquote(string: str, escapes_in_quoted=True, escapes_in_unquoted=False) -> s
 
 def shell_expandvars(string: str):
     """
-    Expand shell variables of form $var, ${var}, %var% in a string.
+    Expand shell variables of form ``$var``, ``${var}``, ``%var%`` in a string.
 
     Unknown variables expand to nothing.
 

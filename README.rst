@@ -3744,7 +3744,7 @@ depending on what the page has available for download.
 
 Output from the above example:
 
-.. code-block:: txt
+.. code-block:: text
 
     Models at: https://civitai.com/models/122822?modelVersionId=133832
     ==================================================================

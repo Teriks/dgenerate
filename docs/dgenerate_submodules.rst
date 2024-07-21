@@ -181,6 +181,8 @@ dgenerate.pygments module
 dgenerate.imageprocessors module
 --------------------------------
 
+.. include:: imageprocessors_constants.rst
+
 .. automodule:: dgenerate.imageprocessors
    :members:
    :undoc-members:
