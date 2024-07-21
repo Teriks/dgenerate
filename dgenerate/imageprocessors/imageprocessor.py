@@ -156,7 +156,7 @@ class ImageProcessor(_plugin.Plugin):
             # we are nearly out of memory anyway
 
             _messages.debug_log(
-                f'Image processor "{self.__class__}" is clearing the entire CPU side diffusion '
+                f'Image processor "{self.__class__.__name__}" is clearing the entire CPU side diffusion '
                 f'model cache due to CPU side memory constraint evaluating to to True.')
 
             _m_cache.clear_model_cache()
@@ -243,8 +243,9 @@ class ImageProcessor(_plugin.Plugin):
                         try_again = True
                     else:
                         _messages.debug_log(
-                            f'ImageProcessor {self.__class__} failed attempt at '
+                            f'ImageProcessor "{self.__class__.__name__}" failed attempt at '
                             f'OOM recovery in {dgenerate.types.fullname(func)}()')
+
                         self.__to_cpu_ignore_error()
                         self.__flush_mem_ignore_error()
                         raise_exc = _d_exceptions.OutOfMemoryError(e)
@@ -259,8 +260,9 @@ class ImageProcessor(_plugin.Plugin):
                         try_again = True
                     else:
                         _messages.debug_log(
-                            f'ImageProcessor {self.__class__} failed attempt at '
+                            f'ImageProcessor "{self.__class__.__name__}" failed attempt at '
                             f'OOM recovery in {dgenerate.types.fullname(func)}()')
+
                         self.__to_cpu_ignore_error()
                         self.__flush_mem_ignore_error()
                         raise_exc = _d_exceptions.OutOfMemoryError(e)
@@ -570,7 +572,7 @@ class ImageProcessor(_plugin.Plugin):
                 active_pipe = None
 
                 _messages.debug_log(
-                    f'Image processor "{self.__class__}" is attempting to evacuate any previously '
+                    f'Image processor "{self.__class__.__name__}" is attempting to evacuate any previously '
                     f'called diffusion pipline in VRAM due to cuda memory constraint evaluating '
                     f'to True.')
 
@@ -580,7 +582,7 @@ class ImageProcessor(_plugin.Plugin):
 
     def __flush_diffusion_pipeline_after_oom(self):
         _messages.debug_log(
-            f'Image processor "{self.__class__}" is attempting to evacuate any previously '
+            f'Image processor "{self.__class__.__name__}" is attempting to evacuate any previously '
             f'called diffusion pipline in VRAM due to initial cuda out of memory condition.')
         _pipelines.destroy_last_called_pipeline()
 
@@ -612,8 +614,11 @@ class ImageProcessor(_plugin.Plugin):
                         break
                     else:
                         _messages.debug_log(
-                            f'ImageProcessor {self.__class__} failed attempt at OOM recovery in to({device})')
+                            f'ImageProcessor "{self.__class__.__name__}" failed attempt '
+                            f'at OOM recovery in to({device})')
+
                         m._DGENERATE_IMAGE_PROCESSOR_DEVICE = torch.device('cpu')
+
                         self.__to_cpu_ignore_error()
                         self.__flush_mem_ignore_error()
                         raise _d_exceptions.OutOfMemoryError(e)
