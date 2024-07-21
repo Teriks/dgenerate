@@ -242,3 +242,7 @@ class TestConceptUriParser(unittest.TestCase):
 
         with self.assertRaises(_tp.ConceptUriParseError):
             p.parse('concept3;arg1="cant"  intermix \'strings\'')
+
+
+if __name__ == '__main__':
+    unittest.main()

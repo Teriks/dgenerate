@@ -24,6 +24,7 @@ import tkinter as tk
 import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.recipesformentries.entry as _entry
 import dgenerate.console.resources as _resources
+import dgenerate.console.spinbox as _spinbox
 import dgenerate.console.util as _util
 import dgenerate.textprocessing as _textprocessing
 
@@ -75,6 +76,7 @@ class _ImageSeedSelect(tk.Toplevel):
         self.resize_entry = tk.Entry(self)
         self.resize_entry.grid(row=3, column=1, padx=(2, 5), sticky=tk.EW)
         self.resize_entry.bind("<Key>", self._valid)
+        self.entries.append(self.resize_entry)
 
         tk.Label(self, text='Resize Preserves Aspect?').grid(
             row=4, column=0, sticky=tk.E)
@@ -84,8 +86,26 @@ class _ImageSeedSelect(tk.Toplevel):
         self.aspect_entry = tk.Checkbutton(self, variable=self.aspect_entry_var)
         self.aspect_entry.grid(row=4, column=1, sticky=tk.W)
 
+        tk.Label(self, text='(Optional) Frame Start').grid(
+            row=5, column=0, sticky=tk.E)
+
+        self.frame_start_entry = _spinbox.IntSpinbox(self, from_=0, textvariable=tk.StringVar(value=''))
+        self.frame_start_entry.create_spin_buttons(self).grid(row=5, column=2, sticky=tk.W)
+        self.frame_start_entry.grid(row=5, column=1, padx=(2, 5), sticky=tk.EW)
+        self.frame_start_entry.bind("<Key>", self._valid)
+        self.entries.append(self.frame_start_entry)
+
+        tk.Label(self, text='(Optional) Frame End').grid(
+            row=6, column=0, sticky=tk.E)
+
+        self.frame_end_entry = _spinbox.IntSpinbox(self, from_=0, textvariable=tk.StringVar(value=''))
+        self.frame_end_entry.create_spin_buttons(self).grid(row=6, column=2, sticky=tk.W)
+        self.frame_end_entry.grid(row=6, column=1, padx=(2, 5), sticky=tk.EW)
+        self.frame_end_entry.bind("<Key>", self._valid)
+        self.entries.append(self.frame_end_entry)
+
         self.insert_button = tk.Button(self, text="Insert", command=self._insert_click)
-        self.insert_button.grid(row=5, column=0, columnspan=3, pady=5)
+        self.insert_button.grid(row=7, column=0, columnspan=3, pady=5)
 
     @staticmethod
     def _open_file(entry):
@@ -114,12 +134,29 @@ class _ImageSeedSelect(tk.Toplevel):
         resize_value = self.resize_entry.get().strip()
         aspect_value = self.aspect_entry_var.get()
 
+        frame_start_value = self.frame_start_entry.get().strip()
+        frame_end_value = self.frame_end_entry.get().strip()
+
+        frame_start = int(frame_start_value) if frame_start_value else None
+        frame_end = int(frame_end_value) if frame_end_value else None
+
+        # validate that seed_image or control_image is specified if any keyword arguments are provided
+        if (frame_start is not None or
+            frame_end is not None or
+            aspect_value is False or resize_value) and not (
+                image_seed or control_image):
+            _entry.invalid_colors(self.entries[0])
+            _entry.invalid_colors(self.entries[2])
+            return
+
         self.result = _textprocessing.format_image_seed_uri(
             seed_image=image_seed,
             inpaint_image=inpaint_image,
             control_images=control_image,
             resize=resize_value,
-            aspect=aspect_value
+            aspect=aspect_value,
+            frame_start=frame_start,
+            frame_end=frame_end
         )
 
         self.destroy()
@@ -136,11 +173,7 @@ class _ImageSeedSelect(tk.Toplevel):
 
     def _valid(self, event):
         for entry in self.entries:
-            if entry.get().strip():
-                _entry.valid_colors(entry)
-
-        if self._resize_entry_valid():
-            _entry.valid_colors(self.resize_entry)
+            _entry.valid_colors(entry)
 
     def get_uri(self):
         self.wait_window(self)
