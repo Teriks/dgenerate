@@ -44,10 +44,11 @@ def raise_if_not_cuda_oom(e):
 
     :param e: the exception
     """
+    if isinstance(e, torch.cuda.OutOfMemoryError):
+        return
     if isinstance(e, RuntimeError):
         msg = str(e).lower()
         if 'cuda' in msg and 'memory' in msg:
             return
-    if isinstance(e, torch.cuda.OutOfMemoryError):
-        return
     raise e
+
