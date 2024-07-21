@@ -813,13 +813,17 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
         lambda: _textprocessing.debug_format_args(
             kwargs, value_transformer=_call_args_debug_transformer))
 
+    enable_retry_pipe = True
+
     def _call_prompt_weighter():
+        nonlocal enable_retry_pipe
         # this is horrific
         try:
             if jaxlib is not None:
                 try:
                     translated = prompt_weighter.translate_to_embeds(pipeline, device, kwargs)
                 except jaxlib.xla_extension.XlaRuntimeError as e:
+                    enable_retry_pipe = False
                     _messages.log(
                         'Flax encountered an OOM condition, if you are running interactively it is '
                         'recommended that you restart the dgenerate process.', level=_messages.WARNING)
@@ -919,6 +923,7 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
         gc.collect()
 
     def _call_pipeline():
+        nonlocal enable_retry_pipe
         try:
             if jaxlib is not None:
                 try:
@@ -928,6 +933,7 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
                     _torch_oom_handler()
                     raise _d_exceptions.OutOfMemoryError(e)
                 except jaxlib.xla_extension.XlaRuntimeError as e:
+                    enable_retry_pipe = False
                     # nothing we can do for flax, the process
                     # is left dirty by the library
                     _messages.log(
@@ -951,7 +957,17 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
             raise
 
     if pipeline is _LAST_CALLED_PIPELINE:
-        return _call_pipeline()
+        try:
+            return _call_pipeline()
+        except _d_exceptions.OutOfMemoryError:
+            if not enable_retry_pipe:
+                raise
+
+            # retry after memory cleanup
+            pipeline_to(pipeline, device)
+            result = _call_pipeline()
+            _LAST_CALLED_PIPELINE = pipeline
+            return result
 
     if hasattr(_LAST_CALLED_PIPELINE, 'to'):
         _messages.debug_log(
@@ -964,6 +980,8 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
         pipeline_to(pipeline, device)
         result = _call_pipeline()
     except _d_exceptions.OutOfMemoryError:
+        if not enable_retry_pipe:
+            raise
         _messages.debug_log(
             f'Attempting to call pipeline '
             f'"{pipeline.__class__.__name__}" again after out '
