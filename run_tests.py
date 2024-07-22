@@ -77,7 +77,7 @@ if runner.run(unittest.defaultTestLoader.discover("tests", pattern='*_test.py'))
     subprocess_only = ' --subprocess-only' if args.subprocess_only else ''
     skip_deepfloyd = ' --skip-deepfloyd' if args.skip_deepfloyd else ''
     skip_library = ' --skip-library' if args.skip_library_examples else ''
-    run_string = f'{sys.executable} examples/run.py --device {args.device} --short-animations --output-configs --output-metadata{offline}{subprocess_only}{skip_deepfloyd}{skip_library} -v > {args.examples_log} 2>&1'
+    run_string = f'{sys.executable} examples/run.py --device {args.device} --torch-debug --short-animations --output-configs --output-metadata{offline}{subprocess_only}{skip_deepfloyd}{skip_library} -v > {args.examples_log} 2>&1'
     print('running:', run_string)
     subprocess.run(run_string, shell=True)
 else:

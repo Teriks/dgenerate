@@ -268,7 +268,8 @@ if __name__ != 'setup_as_library':
                       'sphinx==7.2.6',
                       'sphinx_rtd_theme==2.0.0',
                       'build==1.0.3',
-                      'poetry~=1.8.3'],
+                      'poetry~=1.8.3',
+                      'graphviz~=0.20.3'],
               'win-installer': ['pyinstaller==6.2.0'],
               'readthedocs': ['sphinx==7.2.6',
                               'sphinx_rtd_theme==2.0.0']

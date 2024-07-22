@@ -94,6 +94,7 @@ def invoke_dgenerate(args: collections.abc.Sequence[str],
     :raises dgenerate.ImageProcessorNotFoundError:
     :raises dgenerate.InvalidModelFileError:
     :raises dgenerate.InvalidModelUriError:
+    :raises dgenerate.ModelUriLoadError:
     :raises dgenerate.InvalidSchedulerNameError:
     :raises dgenerate.OutOfMemoryError:
     :raises dgenerate.ModelNotFoundError:
@@ -158,18 +159,20 @@ def invoke_dgenerate_events(
     :raises dgenerate.PromptWeightingUnsupported:
     :raises EnvironmentError:
 
-
     :return: :py:data:`.InvokeDgenerateEventStream`
     """
     if render_loop is None:
         render_loop = _renderloop.RenderLoop()
 
-    def rethrow_with_message(error):
+    def rethrow_with_message(error, usage_error=False):
         if log_error:
             _messages.log(f'dgenerate: error: {str(error).strip()}',
                           level=_messages.ERROR)
         if throw:
-            raise _arguments.DgenerateUsageError(error)
+            if usage_error:
+                raise _arguments.DgenerateUsageError(error)
+            else:
+                raise error
         return DgenerateExitEvent(invoke_dgenerate_events, 1)
 
     try:
@@ -200,7 +203,7 @@ def invoke_dgenerate_events(
                     throw=True))
 
         except _promptweighters.PromptWeighterHelpUsageError as e:
-            yield rethrow_with_message(e)
+            yield rethrow_with_message(e, usage_error=True)
         return
 
     try:
@@ -222,7 +225,7 @@ def invoke_dgenerate_events(
                     throw=True))
 
         except _imageprocessors.ImageProcessorHelpUsageError as e:
-            yield rethrow_with_message(e)
+            yield rethrow_with_message(e, usage_error=True)
         return
 
     try:
@@ -243,7 +246,7 @@ def invoke_dgenerate_events(
                     log_error=False,
                     throw=True))
         except _subcommands.SubCommandHelpUsageError as e:
-            yield rethrow_with_message(e)
+            yield rethrow_with_message(e, usage_error=True)
         return
 
     try:
@@ -268,7 +271,7 @@ def invoke_dgenerate_events(
                     args=verbose_rest)())
         except (_plugin.PluginNotFoundError,
                 _plugin.PluginArgumentError) as e:
-            yield rethrow_with_message(e)
+            yield rethrow_with_message(e, usage_error=True)
         finally:
             _messages.pop_level()
         return
@@ -299,7 +302,7 @@ def invoke_dgenerate_events(
         try:
             config_runner = dgenerate.batchprocess.ConfigRunner(**config_runner_args)
         except _plugin.ModuleFileNotFoundError as e:
-            yield rethrow_with_message(e)
+            yield rethrow_with_message(e, usage_error=True)
             return
 
         if template_help_variable_names is not None:
@@ -309,7 +312,7 @@ def invoke_dgenerate_events(
                         template_help_variable_names,
                         show_values=False))
             except ValueError as e:
-                yield rethrow_with_message(e)
+                yield rethrow_with_message(e, usage_error=True)
                 return
         if directives_help_variable_names is not None:
             try:
@@ -317,7 +320,7 @@ def invoke_dgenerate_events(
                     config_runner.generate_directives_help(
                         directives_help_variable_names))
             except ValueError as e:
-                yield rethrow_with_message(e)
+                yield rethrow_with_message(e, usage_error=True)
                 return
         if functions_help_variable_names is not None:
             try:
@@ -325,7 +328,7 @@ def invoke_dgenerate_events(
                     config_runner.generate_functions_help(
                         functions_help_variable_names))
             except ValueError as e:
-                yield rethrow_with_message(e)
+                yield rethrow_with_message(e, usage_error=True)
                 return
 
         yield DgenerateExitEvent(invoke_dgenerate_events, 0)
@@ -389,6 +392,10 @@ def invoke_dgenerate_events(
 
         yield from render_loop.events()
 
+    except (_plugin.PluginNotFoundError,
+            _plugin.PluginArgumentError) as e:
+        yield rethrow_with_message(e, usage_error=True)
+        return
     except (_mediainput.ImageSeedError,
             _mediainput.UnknownMimetypeError,
             _mediainput.MediaIdentificationError,
@@ -402,8 +409,6 @@ def invoke_dgenerate_events(
             _pipelinewrapper.UnsupportedPipelineConfigError,
             _d_exceptions.OutOfMemoryError,
             _promptweighters.PromptWeightingUnsupported,
-            _plugin.PluginNotFoundError,
-            _plugin.PluginArgumentError,
             EnvironmentError) as e:
         yield rethrow_with_message(e)
         return
