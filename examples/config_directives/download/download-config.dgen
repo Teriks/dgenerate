@@ -1,0 +1,45 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.10.0
+
+# you need to have a civitai.com account and to set up an API token
+# in your account settings in order to be able to download these models
+
+\set civit_ai_token %CIVIT_AI_TOKEN%
+
+{% if civit_ai_token.strip() %}
+
+    # dreamshaper: https://civitai.com/models/4384/dreamshaper
+
+    # we can download this model to a local directory and then use it
+
+    \download model_path https://civitai.com/api/download/models/128713?type=Model&format=SafeTensor&size=pruned&fp=fp16&token={{civit_ai_token}} -o models/
+
+    # the path on disk to the model is not shell quoted, you should do that incase it has spaces
+    # we also must use a jinja escape template to get the value of model_path inside this
+    # if statement control structure, this applies to variables set inside here-templates
+    # like we are doing in this example, this is because the retrieval of this value needs
+    # to be delayed until the shell processes the lines of the here-template
+
+    \print {{ '{{ quote(model_path) }}' }}
+
+    # we can now render with the model, we do not need to put !END at the end
+    # because we are already in a template here doc in this case (the if statement)
+
+    {{ '{{ quote(model_path) }}' }}
+    --inference-steps 30
+    --guidance-scales 8
+    --prompts "A fancy car sitting in the driveway of a mansion"
+    --output-size 1024x1024
+
+    # having this model in memory will make it difficult
+    # for the next set of examples in the image_process
+    # directory to run when running all of the examples
+    # in the same process :)
+
+    \clear_model_cache
+
+{% else %}
+
+    \print Must set CIVIT_AI_TOKEN environmental variable for this example!
+
+{% endif %} !END
