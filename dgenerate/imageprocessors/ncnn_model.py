@@ -161,10 +161,6 @@ class NCNNUpscaleModel:
                 f"Layer string does not have enough elements: {layer_str}")
 
         op_type, name = param_list[:2]
-        if op_type == "MemoryData":
-            raise NCNNModelLoadError(
-                "This NCNN param file contains invalid layers.")
-
         num_inputs = int(param_list[2])
         num_outputs = int(param_list[3])
         input_end = 4 + num_inputs
