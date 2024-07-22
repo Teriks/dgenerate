@@ -1,19 +1,15 @@
 #! /usr/bin/env python3
 
 # Copyright (c) 2023, Teriks
-#
 # dgenerate is distributed under the following BSD 3-Clause License
-#
+
 # Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
-#
 # 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
-#
 # 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in
 #    the documentation and/or other materials provided with the distribution.
-#
 # 3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived
 #    from this software without specific prior written permission.
-#
+
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 # LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
 # HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
@@ -25,12 +21,13 @@ import argparse
 import gc
 import glob
 import inspect
-import os.path
+import os
 import subprocess
 import sys
 import traceback
 
 import graphviz
+import torch.multiprocessing as mp
 
 try:
     import dgenerate
@@ -40,35 +37,27 @@ except ImportError:
 
 try:
     import torch
-except:
+except ImportError:
     torch = None
-
-import torch
 
 cwd = os.path.dirname(os.path.abspath(__file__))
 
-parser = argparse.ArgumentParser(prog='run')
+LIB_EXAMPLES_GLOB = '*main.py'
+CONFIG_GLOB = '*config.dgen'
 
-parser.add_argument('--paths', nargs='*',
-                    help='example paths, do not include the working directory (examples parent directory).')
+# Argument parsing
+parser = argparse.ArgumentParser(prog='run')
+parser.add_argument('--paths', nargs='*', help='Example paths, relative to the working directory.')
 parser.add_argument('--subprocess-only', action='store_true', default=False,
                     help='Use a different subprocess for every example.')
-parser.add_argument('--skip-animations', action='store_true', default=False, help='Entirely skip rendering animations.')
-parser.add_argument('--skip-library', action='store_true', default=False, help='Entirely skip library usage examples.')
-parser.add_argument('--skip-flax', action='store_true', default=False, help='Entirely skip flax examples on linux.')
-
-parser.add_argument('--skip-deepfloyd', action='store_true', default=False,
-                    help='Entirely skip deep floyd examples '
-                         '(they use a lot of memory and may cause problems occasionally).')
-
+parser.add_argument('--skip-animations', action='store_true', default=False, help='Skip rendering animations.')
+parser.add_argument('--skip-library', action='store_true', default=False, help='Skip library usage examples.')
+parser.add_argument('--skip-flax', action='store_true', default=False, help='Skip flax examples on Linux.')
+parser.add_argument('--skip-deepfloyd', action='store_true', default=False, help='Skip deep floyd examples.')
 parser.add_argument('--short-animations', action='store_true', default=False,
-                    help='Reduce animation examples to rendering only 3 frames.')
-
+                    help='Render only 3 frames for animations.')
 parser.add_argument('--torch-debug', action='store_true', default=False,
-                    help='Track torch objects for extensive CUDA OOM debug output. '
-                         'This does not work with --subprocess-only or the included library examples. '
-                         'This will detect any torch objects that identify as on the GPU after cleanup '
-                         'is supposed to have occurred, in order to detect VRAM leakage and its origin.')
+                    help='Track torch objects for extensive CUDA OOM debug output.')
 
 
 def log(*args):
@@ -91,11 +80,9 @@ def patch_torch_functions():
         'empty', 'zeros', 'ones', 'rand', 'randn', 'randint', 'tensor',
         'as_tensor', 'from_numpy', 'sparse_coo_tensor'
     ]
-
     for func_name in tensor_creation_funcs:
         if hasattr(torch, func_name):
             setattr(torch, func_name, add_creation_stack_trace(getattr(torch, func_name)))
-
     if torch.cuda.is_available():
         cuda_tensor_types = [
             'FloatTensor', 'DoubleTensor', 'HalfTensor', 'ByteTensor',
@@ -104,7 +91,6 @@ def patch_torch_functions():
         for tensor_type in cuda_tensor_types:
             if hasattr(torch.cuda, tensor_type):
                 setattr(torch.cuda, tensor_type, add_creation_stack_trace(getattr(torch.cuda, tensor_type)))
-
         cuda_creation_funcs = [
             'empty', 'zeros', 'ones', 'rand', 'randn', 'randint', 'tensor',
         ]
@@ -187,118 +173,144 @@ def find_gpu_tensors_in_gc():
                         dot.node(str(ref_id), ref_info)
                         dot.edge(str(obj_id), str(ref_id))
                         log(f'Refers To: {ref}')
-
                     log(f"Stack Trace:\n{obj._DGENERATE_TORCH_OOM_STACK_TRACE}")
-        except Exception as e:
+        except Exception:
             pass
 
     try:
-
         dot.save(os.path.join(os.path.dirname(__file__), 'torch_object_graph.dot'))
-
         dot.render('torch_object_graph', format='svg',
                    outfile=os.path.join(os.path.dirname(__file__), 'torch_object_graph.svg'))
-
     except subprocess.SubprocessError:
         log('Cannot render torch object graph, graphviz binary not found.')
 
 
-known_args, injected_args = parser.parse_known_args()
-
-library_installed = _batchprocess is not None and not known_args.skip_library
-
-debug_torch = not known_args.subprocess_only and torch is not None and known_args.torch_debug
-
-if debug_torch:
-    # apply torch patches
-    patch_torch_functions()
-    patch_module_and_optimizers()
-
-if known_args.paths:
-    configs = []
-
-    for path in known_args.paths:
-        _, ext = os.path.splitext(path)
-        if ext:
-            configs += [path]
-        else:
-            if library_installed:
-                configs += glob.glob(
-                    os.path.join(cwd, *os.path.split(path), '**', '*main.py'),
-                    recursive=True)
-
-            configs += glob.glob(
-                os.path.join(cwd, *os.path.split(path), '**', '*config.dgen'),
-                recursive=True)
-
-else:
-    configs = []
-
-    if library_installed:
-        configs = glob.glob(
-            os.path.join(cwd, '**', '*main.py'),
-            recursive=True)
-
-    configs += glob.glob(
-        os.path.join(cwd, '**', '*config.dgen'),
-        recursive=True)
-
-for config in configs:
+def should_skip_config(config, known_args):
     c = os.path.relpath(config, cwd)
-
     if known_args.skip_animations and 'animation' in c:
         log(f'SKIPPING ANIMATION: {config}')
-        continue
-
+        return True
     if 'flax' in c:
         if os.name == 'nt':
             log(f'SKIPPING FLAX ON WINDOWS: {config}')
-            continue
+            return True
         if known_args.skip_flax:
             log(f'SKIPPING FLAX: {config}')
-            continue
+            return True
+    if 'deepfloyd' in c and known_args.skip_deepfloyd:
+        log(f'SKIPPING DEEPFLOYD: {config}')
+        return True
+    return False
 
-    if 'deepfloyd' in c:
-        if known_args.skip_deepfloyd:
-            log(f'SKIPPING DEEPFLOYD: {config}')
-            continue
 
-    extra_args = []
-    if known_args.short_animations and 'animation' in c:
-        log(f'SHORTENING ANIMATION TO 3 FRAMES MAX: {config}')
-        extra_args = ['--frame-end', '2']
+def run_config(config, injected_args, extra_args, debug_torch, use_subprocess=False):
+    log(f'RUNNING{" IN SUBPROCESS" if use_subprocess else ""}: {config}')
+    dirname = os.path.dirname(config)
+    _, ext = os.path.splitext(config)
 
-    log(f'RUNNING: {config}')
+    if debug_torch and not use_subprocess:
+        patch_torch_functions()
+        patch_module_and_optimizers()
 
-    with open(config, mode='rt' if _batchprocess else 'rb') as f:
-        dirname = os.path.dirname(config)
-        _, ext = os.path.splitext(config)
+    if use_subprocess:
         if ext == '.dgen':
-            try:
-                if _batchprocess is not None and not known_args.subprocess_only:
-                    log('ENTERING DIRECTORY:', dirname)
-                    os.chdir(dirname)
-                    content = f.read()
-                    try:
-                        _batchprocess.ConfigRunner(injected_args + extra_args,
-                                                   throw=debug_torch).run_string(content)
-                    except dgenerate.OutOfMemoryError as e:
-                        log(e)
-                        # see if anything is still stuck
-                        find_gpu_tensors_in_gc()
-                        sys.exit(1)
-                    except SystemExit as e:
-                        if e.code != 0:
-                            raise
-                    except _batchprocess.BatchProcessError as e:
-                        log(e)
-                        sys.exit(1)
-                else:
-                    subprocess.run(["dgenerate"] + injected_args + extra_args, stdin=f, cwd=dirname, check=True)
-            except KeyboardInterrupt:
-                sys.exit(1)
+            subprocess.run(["dgenerate"] + injected_args + extra_args, cwd=dirname, check=True)
         elif ext == '.py':
-            try:
-                subprocess.run([sys.executable] + [config] + injected_args, stdin=f, cwd=dirname, check=True)
-            except KeyboardInterrupt:
-                sys.exit(1)
+            subprocess.run([sys.executable] + [config] + injected_args, cwd=dirname, check=True)
+    else:
+        with open(config, mode='rt' if _batchprocess else 'rb') as f:
+            if ext == '.dgen':
+                try:
+                    if _batchprocess is not None:
+                        log('ENTERING DIRECTORY:', dirname)
+                        os.chdir(dirname)
+                        content = f.read()
+                        try:
+                            _batchprocess.ConfigRunner(injected_args + extra_args, throw=debug_torch).run_string(
+                                content)
+                        except dgenerate.OutOfMemoryError as e:
+                            log(e)
+                            find_gpu_tensors_in_gc()
+                            sys.exit(1)
+                        except SystemExit as e:
+                            if e.code != 0:
+                                raise
+                        except _batchprocess.BatchProcessError as e:
+                            log(e)
+                            sys.exit(1)
+                except KeyboardInterrupt:
+                    sys.exit(1)
+            elif ext == '.py':
+                try:
+                    subprocess.run([sys.executable] + [config] + injected_args, stdin=f, cwd=dirname, check=True)
+                except KeyboardInterrupt:
+                    sys.exit(1)
+
+
+def run_directory(directory, injected_args, extra_args, debug_torch, known_args):
+    configs = glob.glob(os.path.join(directory, '**', LIB_EXAMPLES_GLOB), recursive=True) + \
+              glob.glob(os.path.join(directory, '**', CONFIG_GLOB), recursive=True)
+
+    for config in configs:
+        if should_skip_config(config, known_args):
+            continue
+
+        run_config(config, injected_args, extra_args, debug_torch)
+
+
+def main():
+    known_args, injected_args = parser.parse_known_args()
+    library_installed = _batchprocess is not None and not known_args.skip_library
+    debug_torch = not known_args.subprocess_only and torch is not None and known_args.torch_debug
+
+    if known_args.paths:
+        configs = []
+        for path in known_args.paths:
+            _, ext = os.path.splitext(path)
+            if ext:
+                configs.append(path)
+            else:
+                if library_installed:
+                    configs.extend(
+                        glob.glob(os.path.join(cwd, *os.path.split(path), '**', LIB_EXAMPLES_GLOB), recursive=True))
+                configs.extend(
+                    glob.glob(os.path.join(cwd, *os.path.split(path), '**', CONFIG_GLOB), recursive=True))
+    else:
+        configs = []
+        if library_installed:
+            configs.extend(
+                glob.glob(os.path.join(cwd, '**', LIB_EXAMPLES_GLOB), recursive=True))
+        configs.extend(
+            glob.glob(os.path.join(cwd, '**', CONFIG_GLOB), recursive=True))
+
+    top_level_dirs = sorted(set(os.path.join(cwd, os.path.relpath(config, cwd).split(os.sep)[0]) for config in configs))
+
+    if known_args.subprocess_only:
+        for config in configs:
+            if should_skip_config(config, known_args):
+                continue
+
+            extra_args = []
+            if known_args.short_animations and 'animation' in config:
+                log(f'SHORTENING ANIMATION TO 3 FRAMES MAX: {config}')
+                extra_args = ['--frame-end', '2']
+
+            run_config(config, injected_args, extra_args, debug_torch, use_subprocess=True)
+    else:
+        for top_dir in top_level_dirs:
+            log(f'RUNNING CONFIGURATIONS IN DIRECTORY: {top_dir}')
+            extra_args = []
+            if known_args.short_animations:
+                log(f'SHORTENING ANIMATIONS IN DIRECTORY TO 3 FRAMES MAX: {top_dir}')
+                extra_args = ['--frame-end', '2']
+
+            p = mp.Process(target=run_directory, args=(top_dir, injected_args, extra_args, debug_torch, known_args))
+            p.start()
+            p.join()
+            if p.exitcode != 0:
+                log(f"Process for directory {p.name} exited with error code {p.exitcode}")
+                sys.exit(p.exitcode)
+
+
+if __name__ == "__main__":
+    main()
