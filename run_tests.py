@@ -54,6 +54,7 @@ parser.add_argument('-o', '--offline-mode', default=False, action='store_true')
 parser.add_argument('-s', '--subprocess-only', default=False, action='store_true')
 parser.add_argument('--skip-deepfloyd', default=False, action='store_true')
 parser.add_argument('--skip-library-examples', default=False, action='store_true')
+parser.add_argument('--torch-debug', default=False,  action='store_true')
 parser.add_argument('--examples-log', default='examples/examples.log')
 
 args = parser.parse_args()
@@ -77,8 +78,13 @@ if runner.run(unittest.defaultTestLoader.discover("tests", pattern='*_test.py'))
     subprocess_only = ' --subprocess-only' if args.subprocess_only else ''
     skip_deepfloyd = ' --skip-deepfloyd' if args.skip_deepfloyd else ''
     skip_library = ' --skip-library' if args.skip_library_examples else ''
-    run_string = f'{sys.executable} examples/run.py --device {args.device} --torch-debug --short-animations --output-configs --output-metadata{offline}{subprocess_only}{skip_deepfloyd}{skip_library} -v > {args.examples_log} 2>&1'
+    torch_debug = ' --torch-debug' if args.torch_debug else ''
+
+    run_string = f'{sys.executable} examples/run.py --device {args.device} --short-animations --output-configs --output-metadata' \
+                 f'{offline}{torch_debug}{subprocess_only}{skip_deepfloyd}{skip_library} -v > {args.examples_log} 2>&1'
+
     print('running:', run_string)
+
     subprocess.run(run_string, shell=True)
 else:
     exit(1)
