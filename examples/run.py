@@ -21,17 +21,29 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import argparse
+import gc
 import glob
+import inspect
 import os.path
 import subprocess
 import sys
+import traceback
 
-import argparse
+import graphviz
 
 try:
+    import dgenerate
     import dgenerate.batchprocess as _batchprocess
 except ImportError:
     _batchprocess = None
+
+try:
+    import torch
+except:
+    torch = None
+
+import torch
 
 cwd = os.path.dirname(os.path.abspath(__file__))
 
@@ -52,9 +64,155 @@ parser.add_argument('--skip-deepfloyd', action='store_true', default=False,
 parser.add_argument('--short-animations', action='store_true', default=False,
                     help='Reduce animation examples to rendering only 3 frames.')
 
+parser.add_argument('--torch-debug', action='store_true', default=False,
+                    help='Track torch objects for extensive CUDA OOM debug output. '
+                         'This does not work with --subprocess-only or the included library examples. '
+                         'This will detect any torch objects that identify as on the GPU after cleanup '
+                         'is supposed to have occurred, in order to detect VRAM leakage and its origin.')
+
+
+def log(*args):
+    print(*args, flush=True)
+
+
+def add_creation_stack_trace(func):
+    def wrapper(*args, **kwargs):
+        obj = func(*args, **kwargs)
+        frame = inspect.currentframe().f_back
+        obj._DGENERATE_TORCH_OOM_DEBUG_INFO = f"{frame.f_code.co_filename}:{frame.f_lineno}"
+        obj._DGENERATE_TORCH_OOM_STACK_TRACE = ''.join(traceback.format_stack(frame))
+        return obj
+
+    return wrapper
+
+
+def patch_torch_functions():
+    tensor_creation_funcs = [
+        'empty', 'zeros', 'ones', 'rand', 'randn', 'randint', 'tensor',
+        'as_tensor', 'from_numpy', 'sparse_coo_tensor'
+    ]
+
+    for func_name in tensor_creation_funcs:
+        if hasattr(torch, func_name):
+            setattr(torch, func_name, add_creation_stack_trace(getattr(torch, func_name)))
+
+    if torch.cuda.is_available():
+        cuda_tensor_types = [
+            'FloatTensor', 'DoubleTensor', 'HalfTensor', 'ByteTensor',
+            'CharTensor', 'ShortTensor', 'IntTensor', 'LongTensor'
+        ]
+        for tensor_type in cuda_tensor_types:
+            if hasattr(torch.cuda, tensor_type):
+                setattr(torch.cuda, tensor_type, add_creation_stack_trace(getattr(torch.cuda, tensor_type)))
+
+        cuda_creation_funcs = [
+            'empty', 'zeros', 'ones', 'rand', 'randn', 'randint', 'tensor',
+        ]
+        for func_name in cuda_creation_funcs:
+            if hasattr(torch.cuda, func_name):
+                setattr(torch.cuda, func_name, add_creation_stack_trace(getattr(torch.cuda, func_name)))
+
+
+def patch_module_and_optimizers():
+    original_module_init = torch.nn.Module.__init__
+
+    def new_module_init(self, *args, **kwargs):
+        frame = inspect.currentframe().f_back
+        self._DGENERATE_TORCH_OOM_DEBUG_INFO = f"{frame.f_code.co_filename}:{frame.f_lineno}"
+        self._DGENERATE_TORCH_OOM_STACK_TRACE = ''.join(traceback.format_stack(frame))
+        original_module_init(self, *args, **kwargs)
+
+    torch.nn.Module.__init__ = new_module_init
+
+    original_optimizer_init = torch.optim.Optimizer.__init__
+
+    def new_optimizer_init(self, *args, **kwargs):
+        frame = inspect.currentframe().f_back
+        self._DGENERATE_TORCH_OOM_DEBUG_INFO = f"{frame.f_code.co_filename}:{frame.f_lineno}"
+        self._DGENERATE_TORCH_OOM_STACK_TRACE = ''.join(traceback.format_stack(frame))
+        original_optimizer_init(self, *args, **kwargs)
+
+    torch.optim.Optimizer.__init__ = new_optimizer_init
+
+    original_storage_init = torch.storage._StorageBase.__init__
+
+    def new_storage_init(self, *args, **kwargs):
+        frame = inspect.currentframe().f_back
+        self._DGENERATE_TORCH_OOM_DEBUG_INFO = f"{frame.f_code.co_filename}:{frame.f_lineno}"
+        self._DGENERATE_TORCH_OOM_STACK_TRACE = ''.join(traceback.format_stack(frame))
+        original_storage_init(self, *args, **kwargs)
+
+    torch.storage._StorageBase.__init__ = new_storage_init
+
+
+def find_gpu_tensors_in_gc():
+    dot = graphviz.Digraph(comment='Torch GPU Object Reference Graph')
+    dot.graph_attr.update(size="100,100!", ratio="expand", layout="sfdp", splines="true", nodesep="1.5", ranksep="2.0")
+    dot.node_attr.update(style="filled", fillcolor="lightgrey", shape="box")
+
+    def is_on_gpu(obj):
+        if isinstance(obj, torch.Tensor):
+            return obj.is_cuda
+        elif isinstance(obj, torch.nn.Module):
+            return any(param.is_cuda for param in obj.parameters())
+        elif isinstance(obj, torch.optim.Optimizer):
+            return any(param.is_cuda for group in obj.param_groups for param in group['params'])
+        elif isinstance(obj, torch.storage._StorageBase):
+            return obj.device.type == 'cuda'
+        return False
+
+    total_memory = torch.cuda.get_device_properties(0).total_memory
+    allocated_memory = torch.cuda.memory_allocated(0)
+    reserved_memory = torch.cuda.memory_reserved(0)
+
+    log(f"Total CUDA memory: {total_memory} bytes")
+    log(f"Allocated CUDA memory: {allocated_memory} bytes")
+    log(f"Reserved CUDA memory: {reserved_memory} bytes")
+
+    for obj in gc.get_objects():
+        try:
+            if isinstance(obj, (torch.Tensor, torch.nn.Module, torch.optim.Optimizer, torch.storage._StorageBase)):
+                if hasattr(obj, '_DGENERATE_TORCH_OOM_DEBUG_INFO') and is_on_gpu(obj):
+                    obj_id = id(obj)
+                    obj_info = f"{obj.__class__.__name__} created at {obj._DGENERATE_TORCH_OOM_DEBUG_INFO}\n"
+                    if isinstance(obj, torch.Tensor):
+                        obj_info += f"Allocated: {obj.numel() * obj.element_size()} bytes\n"
+                    obj_info += f"Device: {obj.device}\n"
+                    dot.node(str(obj_id), obj_info)
+
+                    log(f"Object: {obj.__class__.__name__} created at {obj._DGENERATE_TORCH_OOM_DEBUG_INFO}")
+                    for ref in gc.get_referents(obj):
+                        ref_id = id(ref)
+                        ref_info = f"{ref.__class__.__name__}"
+                        dot.node(str(ref_id), ref_info)
+                        dot.edge(str(obj_id), str(ref_id))
+                        log(f'Refers To: {ref}')
+
+                    log(f"Stack Trace:\n{obj._DGENERATE_TORCH_OOM_STACK_TRACE}")
+        except Exception as e:
+            pass
+
+    try:
+
+        dot.save(os.path.join(os.path.dirname(__file__), 'torch_object_graph.dot'))
+
+        dot.render('torch_object_graph', format='svg',
+                   outfile=os.path.join(os.path.dirname(__file__), 'torch_object_graph.svg'))
+
+    except subprocess.SubprocessError:
+        log('Cannot render torch object graph, graphviz binary not found.')
+
+
 known_args, injected_args = parser.parse_known_args()
 
 library_installed = _batchprocess is not None and not known_args.skip_library
+
+debug_torch = not known_args.subprocess_only and torch is not None and known_args.torch_debug
+
+if debug_torch:
+    # apply torch patches
+    patch_torch_functions()
+    patch_module_and_optimizers()
 
 if known_args.paths:
     configs = []
@@ -84,11 +242,6 @@ else:
     configs += glob.glob(
         os.path.join(cwd, '**', '*config.dgen'),
         recursive=True)
-
-
-def log(*args):
-    print(*args, flush=True)
-
 
 for config in configs:
     c = os.path.relpath(config, cwd)
@@ -127,7 +280,13 @@ for config in configs:
                     os.chdir(dirname)
                     content = f.read()
                     try:
-                        _batchprocess.ConfigRunner(injected_args + extra_args).run_string(content)
+                        _batchprocess.ConfigRunner(injected_args + extra_args,
+                                                   throw=debug_torch).run_string(content)
+                    except dgenerate.OutOfMemoryError as e:
+                        log(e)
+                        # see if anything is still stuck
+                        find_gpu_tensors_in_gc()
+                        sys.exit(1)
                     except SystemExit as e:
                         if e.code != 0:
                             raise
