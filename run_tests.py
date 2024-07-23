@@ -23,6 +23,7 @@
 
 import argparse
 import os
+import shlex
 import subprocess
 import sys
 import unittest
@@ -44,20 +45,13 @@ os.environ["PYTORCH_NO_CUDA_MEMORY_CACHING"] = "0"
 # Keep CUDA fuser enabled (default behavior)
 os.environ["PYTORCH_CUDA_FUSER_DISABLE"] = "0"
 
-
 parser = argparse.ArgumentParser()
 
-parser.add_argument('-d', '--device', default='cuda')
 parser.add_argument('-c', '--clean', default=False, action='store_true')
 parser.add_argument('-e', '--examples', default=False, action='store_true')
-parser.add_argument('-o', '--offline-mode', default=False, action='store_true')
-parser.add_argument('-s', '--subprocess-only', default=False, action='store_true')
-parser.add_argument('--skip-deepfloyd', default=False, action='store_true')
-parser.add_argument('--skip-library-examples', default=False, action='store_true')
-parser.add_argument('--torch-debug', default=False,  action='store_true')
 parser.add_argument('--examples-log', default='examples/examples.log')
 
-args = parser.parse_args()
+args, unknown_args = parser.parse_known_args()
 
 runner = unittest.TextTestRunner()
 
@@ -74,14 +68,8 @@ if runner.run(unittest.defaultTestLoader.discover("tests", pattern='*_test.py'))
         subprocess.run('git clean -f -d -x', shell=True)
         os.chdir('..')
 
-    offline = ' --offline-mode' if args.offline_mode else ''
-    subprocess_only = ' --subprocess-only' if args.subprocess_only else ''
-    skip_deepfloyd = ' --skip-deepfloyd' if args.skip_deepfloyd else ''
-    skip_library = ' --skip-library' if args.skip_library_examples else ''
-    torch_debug = ' --torch-debug' if args.torch_debug else ''
-
-    run_string = f'{sys.executable} examples/run.py --device {args.device} --short-animations --output-configs --output-metadata' \
-                 f'{offline}{torch_debug}{subprocess_only}{skip_deepfloyd}{skip_library} -v > {args.examples_log} 2>&1'
+    run_string = f'{sys.executable} examples/run.py {shlex.join(unknown_args)} ' \
+                 f'--short-animations --output-configs --output-metadata -v > {args.examples_log} 2>&1'
 
     print('running:', run_string)
 

@@ -1,0 +1,10 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.10.0
+
+\set model ../../x4.bin
+\set param ../../x4.param
+
+\image_process "../media/kitten.gif"
+--output kitten-upscale-gpu/
+--align 1
+--processors upscaler-ncnn;model={{ model }};param={{ param }};use-gpu=True

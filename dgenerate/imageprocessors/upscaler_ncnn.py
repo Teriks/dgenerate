@@ -78,6 +78,12 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
     going to run into memory errors after the first image generation and
     there on out until the process exits.
 
+    When the process exits it is very likely to exit with a non-zero return
+    code after using this processor even if the upscale operations were successful,
+    this is due to problems with the ncnn python binding creating a segfault at exit.
+    If you are using dgenerate interactively in shell mode or from the Console UI,
+    this will occur without consequence when the interpreter process exits.
+
     Note that if any other process runs diffusion via torch on the same GPU as this image
     processor while the image processor is preforming inference, you will likely encounter
     a segfault in either of the processes and a very hard crash.

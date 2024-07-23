@@ -3896,6 +3896,12 @@ create this processor on a GPU you intend to preform diffusion on, you are
 going to run into memory errors after the first image generation and
 there on out until the process exits.
 
+When the process exits it is very likely to exit with a non-zero return
+code after using this processor even if the upscale operations were successful,
+this is due to problems with the ncnn python binding creating a segfault at exit.
+If you are using dgenerate interactively in shell mode or from the Console UI,
+this will occur without consequence when the interpreter process exits.
+
 Note that if any other process runs diffusion via torch on the same GPU
 as this image processor while the image processor is preforming inference,
 you will likely encounter a segfault in either of the processes and
@@ -4165,6 +4171,7 @@ Some available custom jinja2 functions/filters are:
 * ``{{ cwd() }}`` (Return the current working directory as a string)
 * ``{{ download(url) }}`` (Download from a url to the web cache and return the file path)
 * ``{{ have_feature(feature_name) }}`` (Check for feature and return bool, value examples: ``flax``, or ``ncnn``)
+* ``{{ platform() }}`` (Return platform.system())
 
 The above functions which possess arguments can be used as either a function or filter IE: ``{{ "quote_me" | quote }}``
 
@@ -4459,6 +4466,7 @@ The following is output from ``\functions_help`` showing every implemented templ
         object(args, kwargs)
         oct(args, kwargs)
         ord(args, kwargs)
+        platform() -> str
         pow(args, kwargs)
         pow2_size(size: str | tuple, format_size: bool = True) -> str | tuple
         quote(strings: str | collections.abc.Iterable[typing.Any]) -> str
