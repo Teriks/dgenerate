@@ -230,7 +230,7 @@ def run_config(config, injected_args, extra_args, debug_torch, use_subprocess=Fa
     if use_subprocess:
         result = None
         if ext == '.dgen':
-            result = subprocess.run(["dgenerate"] + injected_args + extra_args, cwd=dirname)
+            result = subprocess.run(["dgenerate", '--file', config] + injected_args + extra_args, cwd=dirname)
         elif ext == '.py':
             result = subprocess.run([sys.executable] + [config] + injected_args, cwd=dirname)
 
