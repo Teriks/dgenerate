@@ -1,0 +1,11 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.10.0
+
+\set model https://github.com/TNTwise/SPAN-ncnn-vulkan/raw/master/custom_models/4xNomos8k_span_otf_medium.bin
+\set param https://github.com/TNTwise/SPAN-ncnn-vulkan/raw/master/custom_models/4xNomos8k_span_otf_medium.param
+
+
+\image_process "../media/earth.jpg"
+--output earth-upscale-cpu/
+--align 1
+--processors upscaler-ncnn;model={{ model }};param={{ param }};winograd=True;sgemm=True

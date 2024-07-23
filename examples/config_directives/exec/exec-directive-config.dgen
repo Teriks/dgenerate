@@ -1,0 +1,24 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.9.3
+
+# run dgenerate as a subprocess, read a config
+# and send stdout and stderr to a file
+# in a platform independent way
+
+\exec dgenerate < subprocess.dgen &> log.txt
+
+
+{% if platform() == 'Windows' %}
+
+    # chaining processes together with pipes is supported
+    # this example emulates 'cat' on Windows using cmd
+
+    \exec cmd /c "type subprocess.dgen" | dgenerate &> log2.txt
+
+{% else %}
+
+    # on a Unix platform you could simply use cat
+
+    \exec cat subprocess.dgen | dgenerate &> log2.txt
+
+{% endif %} !END

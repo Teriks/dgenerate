@@ -21,13 +21,13 @@ import argparse
 import gc
 import glob
 import inspect
+import multiprocessing as mp
 import os
 import subprocess
 import sys
 import traceback
 
 import graphviz
-import torch.multiprocessing as mp
 
 try:
     import dgenerate
@@ -54,6 +54,7 @@ parser.add_argument('--skip-animations', action='store_true', default=False, hel
 parser.add_argument('--skip-library', action='store_true', default=False, help='Skip library usage examples.')
 parser.add_argument('--skip-flax', action='store_true', default=False, help='Skip flax examples on Linux.')
 parser.add_argument('--skip-deepfloyd', action='store_true', default=False, help='Skip deep floyd examples.')
+parser.add_argument('--skip-ncnn', action='store_true', default=False, help='Skip examples involving ncnn.')
 parser.add_argument('--short-animations', action='store_true', default=False,
                     help='Render only 3 frames for animations.')
 parser.add_argument('--torch-debug', action='store_true', default=False,
@@ -200,7 +201,22 @@ def should_skip_config(config, known_args):
     if 'deepfloyd' in c and known_args.skip_deepfloyd:
         log(f'SKIPPING DEEPFLOYD: {config}')
         return True
+    if 'ncnn' in c and known_args.skip_ncnn:
+        log(f'SKIPPING NCNN: {config}')
+        return True
     return False
+
+
+def check_return_code(configs, exitcode):
+    # ncnn often exits with a segfault because
+    # the python binding is not that comprehensive
+    # and it cannot clean itself up properly after doing work
+    # we do not want to stop all of the tests
+    # just for that
+    if exitcode != 0:
+        if not any('ncnn' in os.path.relpath(c, cwd).lower() for c in configs):
+            log(f"Process exited with error code {exitcode}")
+            sys.exit(exitcode)
 
 
 def run_config(config, injected_args, extra_args, debug_torch, use_subprocess=False):
@@ -213,10 +229,14 @@ def run_config(config, injected_args, extra_args, debug_torch, use_subprocess=Fa
         patch_module_and_optimizers()
 
     if use_subprocess:
+        result = None
         if ext == '.dgen':
-            subprocess.run(["dgenerate"] + injected_args + extra_args, cwd=dirname, check=True)
+            result = subprocess.run(["dgenerate"] + injected_args + extra_args, cwd=dirname)
         elif ext == '.py':
-            subprocess.run([sys.executable] + [config] + injected_args, cwd=dirname, check=True)
+            result = subprocess.run([sys.executable] + [config] + injected_args, cwd=dirname)
+
+        if result is not None:
+            check_return_code([config], result.returncode)
     else:
         with open(config, mode='rt' if _batchprocess else 'rb') as f:
             if ext == '.dgen':
@@ -242,15 +262,13 @@ def run_config(config, injected_args, extra_args, debug_torch, use_subprocess=Fa
                     sys.exit(1)
             elif ext == '.py':
                 try:
-                    subprocess.run([sys.executable] + [config] + injected_args, stdin=f, cwd=dirname, check=True)
+                    result = subprocess.run([sys.executable] + [config] + injected_args, stdin=f, cwd=dirname)
+                    check_return_code([config], result.returncode)
                 except KeyboardInterrupt:
                     sys.exit(1)
 
 
-def run_directory(directory, injected_args, extra_args, debug_torch, known_args):
-    configs = glob.glob(os.path.join(directory, '**', LIB_EXAMPLES_GLOB), recursive=True) + \
-              glob.glob(os.path.join(directory, '**', CONFIG_GLOB), recursive=True)
-
+def run_directory_subprocess(configs, injected_args, extra_args, debug_torch, known_args):
     for config in configs:
         if should_skip_config(config, known_args):
             continue
@@ -283,6 +301,14 @@ def main():
         configs.extend(
             glob.glob(os.path.join(cwd, '**', CONFIG_GLOB), recursive=True))
 
+    for i in configs:
+        missing_file = False
+        if not os.path.exists(i):
+            log(f'Config path "{i}" does not exist.')
+            missing_file = True
+        if missing_file:
+            sys.exit(1)
+
     top_level_dirs = sorted(set(os.path.join(cwd, os.path.relpath(config, cwd).split(os.sep)[0]) for config in configs))
 
     if known_args.subprocess_only:
@@ -304,12 +330,11 @@ def main():
                 log(f'SHORTENING ANIMATIONS IN DIRECTORY TO 3 FRAMES MAX: {top_dir}')
                 extra_args = ['--frame-end', '2']
 
-            p = mp.Process(target=run_directory, args=(top_dir, injected_args, extra_args, debug_torch, known_args))
+            p = mp.Process(target=run_directory_subprocess,
+                           args=(configs, injected_args, extra_args, debug_torch, known_args))
             p.start()
             p.join()
-            if p.exitcode != 0:
-                log(f"Process for directory {p.name} exited with error code {p.exitcode}")
-                sys.exit(p.exitcode)
+            check_return_code(configs, p.exitcode)
 
 
 if __name__ == "__main__":

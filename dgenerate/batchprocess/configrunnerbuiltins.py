@@ -29,6 +29,7 @@ import fake_useragent
 import pyrfc6266
 import requests
 import tqdm
+import platform as _platform
 
 import dgenerate.batchprocess.batchprocessor as _batchprocessor
 import dgenerate.image as _image
@@ -396,3 +397,15 @@ def have_feature(feature_name: str) -> bool:
             f'Feature "{feature_name}" is not a known feature flag.')
 
     return importlib.util.find_spec(feature_name) is not None
+
+
+def platform() -> str:
+    """
+    Return platform.system()
+
+    Returns the system/OS name, such as 'Linux', 'Darwin', 'Java', 'Windows'.
+
+    An empty string is returned if the value cannot be determined.
+    """
+
+    return _platform.system()
