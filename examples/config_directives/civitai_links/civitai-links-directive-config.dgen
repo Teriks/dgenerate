@@ -1,0 +1,24 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.10.0
+
+# CivitAI has recently made a change to their website UI
+# which prevents you from right clicking and copying
+# a direct link to a model file as offered by their api
+
+# so I wrote --sub-command civitai-links and this
+# directive to fetch the hard links off of a page for the
+# models and list them out with their titles
+
+
+\print Listing CivitAI links without token:
+\print
+
+\civitai_links https://civitai.com/models/4384/dreamshaper
+
+
+# you can also append your API token automatically to the generated links if you want
+
+\print Listing CivitAI links with token:
+\print
+
+\civitai_links https://civitai.com/models/4384/dreamshaper --token YOUR_API_TOKEN
