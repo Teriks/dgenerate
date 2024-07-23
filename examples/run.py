@@ -209,10 +209,9 @@ def should_skip_config(config, known_args):
 
 def check_return_code(configs, exitcode):
     # ncnn often exits with a segfault because
-    # the python binding is not that comprehensive
-    # and it cannot clean itself up properly after doing work
-    # we do not want to stop all of the tests
-    # just for that
+    # the python binding is not that comprehensive,
+    # and it cannot clean itself up properly after doing work.
+    # We do not want to stop all the tests just for that
     if exitcode != 0:
         if not any('ncnn' in os.path.relpath(c, cwd).lower() for c in configs):
             log(f"Process exited with error code {exitcode}")
