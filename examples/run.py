@@ -275,6 +275,11 @@ def run_directory_subprocess(configs, injected_args, extra_args, debug_torch, kn
         run_config(config, injected_args, extra_args, debug_torch)
 
 
+def filter_to_directories_under_top_level(directories, top_level_directory):
+    top_level_directory = os.path.abspath(top_level_directory)
+    return [d for d in directories if os.path.abspath(d).startswith(top_level_directory)]
+
+
 def main():
     known_args, injected_args = parser.parse_known_args()
     library_installed = _batchprocess is not None and not known_args.skip_library
@@ -330,7 +335,8 @@ def main():
                 extra_args = ['--frame-end', '2']
 
             p = mp.Process(target=run_directory_subprocess,
-                           args=(configs, injected_args, extra_args, debug_torch, known_args))
+                           args=(filter_to_directories_under_top_level(configs, top_dir),
+                                 injected_args, extra_args, debug_torch, known_args))
             p.start()
             p.join()
             check_return_code(configs, p.exitcode)
