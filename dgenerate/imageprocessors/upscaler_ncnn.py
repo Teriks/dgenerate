@@ -85,12 +85,14 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
     If you are using dgenerate interactively in shell mode or from the Console UI,
     this will occur without consequence when the interpreter process exits.
 
-    Note that if any other process runs diffusion via torch on the same GPU as this image
-    processor while the image processor is preforming inference, you will likely encounter
-    a segfault in either of the processes and a very hard crash.
+    Note that if any other process runs diffusion / inference via torch on
+    the same GPU as this image processor while ncnn is preforming inference,
+    you will likely encounter a segfault in either of the processes and
+    a very hard crash.
 
-    You can safely run this processor in parallel with diffusion with GPU acceleration
-    by placing it on a separate gpu using the "gpu-index" argument.
+    You can safely run this processor in parallel with diffusion, or other torch
+    based image processors with GPU acceleration, by placing it on a separate gpu
+    using the ``gpu-index`` argument.
 
     For these reasons, this processor runs on the CPU by default, you can enable
     GPU usage with GPU related arguments mentioned in this documentation below.
