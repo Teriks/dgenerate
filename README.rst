@@ -1210,9 +1210,12 @@ Install dgenerate
     # the -f argument mentioned here in --pip-args for flax
     # mentioned below
 
-    # be aware that the ncnn python package depends on the non headless
-    # version of python-opencv and it may cause issues
-    # on headless systems without a window manager
+    # be aware that the ncnn python package depends on
+    # the non headless version of python-opencv and it may
+    # cause issues on headless systems without a window manager such
+    # as not being able to find the native library: libGL
+    # in addition you are going to probably have to do some work
+    # to get Vulkan driver support
 
     pipx install dgenerate[ncnn] \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu121/"
@@ -3879,7 +3882,8 @@ These arguments may be a path to a file on disk or a hard link to a downloadable
 This upscaler utilizes the same tiling algorithm as the ``upscaler`` image processor
 and features the same ``tile`` and ``overlap`` arguments, albeit with slightly different
 defaults and constraints.  The ``tile`` argument may not exceed 400 pixels and defaults
-to the max value of 400.
+to the max value of 400. Tiling can be disabled for input images under 400 pixels by
+passing ``tile=0``.
 
 By default the ``upscaler-ncnn`` processor does not run on the GPU, you must
 enable this with the ``use-gpu`` argument.
@@ -3902,13 +3906,14 @@ this is due to problems with the ncnn python binding creating a segfault at exit
 If you are using dgenerate interactively in shell mode or from the Console UI,
 this will occur without consequence when the interpreter process exits.
 
-Note that if any other process runs diffusion via torch on the same GPU
-as this image processor while the image processor is preforming inference,
+Note that if any other process runs diffusion / inference via torch on
+the same GPU as this image processor while ncnn is preforming inference,
 you will likely encounter a segfault in either of the processes and
 a very hard crash.
 
-You can safely run this processor in parallel with diffusion with GPU acceleration
-by placing it on a separate gpu using the ``gpu-index`` argument.
+You can safely run this processor in parallel with diffusion, or other torch
+based image processors with GPU acceleration, by placing it on a separate gpu
+using the ``gpu-index`` argument.
 
 Since the ncnn upscaler can run on GPUs other than Nvidia GPUs, figuring out what index
 you need to use is platform specific, but for Nvidia users just use the ``nvidia-smi`` command
