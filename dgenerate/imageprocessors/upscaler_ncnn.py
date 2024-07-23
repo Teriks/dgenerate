@@ -122,8 +122,11 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
     argument when running on the GPU, an argument error will be thrown.
 
     The "tile" argument can be used to specify the tile size for tiled upscaling, it
-    must be divisible by 2 and less than or equal to 400. The default is 400. Tile size
-    is limited to a max of 400 due to memory allocator issues in ncnn.
+    must be divisible by 2 and be less than or equal to 400, the default is 400.
+    Tile size is limited to a max of 400 due to memory allocator issues in ncnn.
+    You may disable tiling by setting "tile=0" however, you can only do this for
+    images under 400 pixels in both dimensions, if the image is over 400 pixels
+    in any dimension, and you disabled tiling, a usage error will be thrown.
 
     The "overlap" argument can be used to specify the overlap amount of each
     tile in pixels, it must be greater than or equal to 0, and defaults to 8.
@@ -305,6 +308,11 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
         in_img = _stack_images([image])
 
         if tile == 0:
+            if image.width > 400 or image.height > 400:
+                raise self.argument_error(
+                    'upscaler-ncnn cannot handle argument value "tile=0" '
+                    'with images larger than 400 pixels.')
+
             return _output_to_pil(self._model(in_img)[0])
 
         oom = True

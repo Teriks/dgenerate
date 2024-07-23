@@ -135,7 +135,9 @@ def tiled_scale(
     for b in range(samples.shape[0]):
         s = samples[b:b + 1]
         out = zeros((s.shape[0], out_channels, scaled_height, scaled_width))
-        out_div = zeros_like(out)
+
+        if tile_blending:
+            out_div = zeros_like(out)
 
         # Iterate over the tiles
         for y in range(0, s.shape[2], tile_y - overlap):
