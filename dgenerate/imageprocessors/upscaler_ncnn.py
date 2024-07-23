@@ -45,8 +45,9 @@ class _UnsupportedModelError(Exception):
 def _stack_images(images: list) -> numpy.ndarray:
     out = []
     for img in images:
-        img = (numpy.array(img).transpose((2, 0, 1)) / 255.0).astype(numpy.float32)  # Convert to (c, h, w) format
-        out.append(img)
+        normalized = numpy.array(img, dtype=numpy.float32) / 255.0
+        # Convert to (c, h, w) format
+        out.append(normalized.transpose((2, 0, 1)))
     return numpy.stack(out)
 
 
@@ -189,7 +190,7 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
         if overlap < 0:
             raise self.argument_error('Argument "overlap" must be greater than or equal to 0.')
 
-        if tile < overlap:
+        if tile != 0 and tile < overlap:
             raise self.argument_error('Argument "tile" must be greater than "overlap".')
 
         if gpu_index < 0:
@@ -302,6 +303,9 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
         tile = self._tile
 
         in_img = _stack_images([image])
+
+        if tile == 0:
+            return _output_to_pil(self._model(in_img)[0])
 
         oom = True
 

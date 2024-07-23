@@ -256,6 +256,11 @@ class NCNNUpscaleModel:
         last = self._parse_param_layer(param_lines[-1])
         return first.outputs[0], last.outputs[0]
 
+    @staticmethod
+    def _convert_to_uint8(image: numpy.ndarray):
+        # Ensure the values are in the correct range
+        return (numpy.clip(image, 0.0, 1.0) * 255).round().astype(numpy.uint8)
+
     def __call__(self, images: numpy.ndarray) -> numpy.ndarray:
         """
         Upscale with NCNN
@@ -267,16 +272,16 @@ class NCNNUpscaleModel:
         for img in images:
             ex = self.net.create_extractor()
 
-            img = (img.transpose((1, 2, 0)) * 255.0).astype(numpy.uint8)
+            img = self._convert_to_uint8(img.transpose((1, 2, 0)))
 
             mat_in = ncnn.Mat.from_pixels(
                 img,
-                ncnn.Mat.PixelType.PIXEL_BGR,
+                ncnn.Mat.PixelType.PIXEL_RGB,
                 img.shape[1],
                 img.shape[0]
             )
 
-            mean_vals = [0, 0, 0]
+            mean_vals = []
             norm_vals = [1 / 255.0, 1 / 255.0, 1 / 255.0]
             mat_in.substract_mean_normalize(mean_vals, norm_vals)
 
@@ -287,7 +292,7 @@ class NCNNUpscaleModel:
                 raise NCNNExtractionFailure(
                     "NCNN extraction failed, GPU out of memory.")
 
-            results.append(numpy.array(mat_out).astype(numpy.float32))
+            results.append(numpy.clip(mat_out, 0.0, 1.0, dtype=numpy.float32))
 
             del ex, mat_in, mat_out
             gc.collect()
