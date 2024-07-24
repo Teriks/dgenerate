@@ -10,5 +10,5 @@ title: Generic Image Process (to directory)
 @int[{"label":"Frame End (inclusive)", "arg":"--frame-end", "min":0, "default":""}]
 @switch[{"label":"Don't Output Frames", "arg":"--no-frames"}]
 @switch[{"label":"Don't Output Animation File", "arg":"--no-animation-file", "divider-after":true}]
-@imageprocessor[{"arg":"--processors", "label":"Image Processor"}]
+@imageprocessor[{"arg":"--processors", "label":"Image Processor", "hide-device":true}]
 @device[{}]
