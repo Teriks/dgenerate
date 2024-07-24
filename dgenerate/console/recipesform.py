@@ -247,16 +247,13 @@ class _RecipesForm(tk.Toplevel):
                 row_offset += 1
 
             if classname in self._entry_classes:
-                try:
-                    entry = self._entry_classes[classname](
-                        recipe_form=self,
-                        master=self.scrollable_frame,
-                        row=row_offset,
-                        config=config,
-                        placeholder=template.placeholder
-                    )
-                except json.JSONDecodeError as e:
-                    raise RuntimeError(f'json decode error in {classname}: {e}')
+                entry = self._entry_classes[classname](
+                    recipe_form=self,
+                    master=self.scrollable_frame,
+                    row=row_offset,
+                    config=config,
+                    placeholder=template.placeholder
+                )
                 row_offset += entry.widget_rows
             else:
                 raise RuntimeError(f'Unknown template placeholder: {classname}')
