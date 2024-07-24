@@ -322,7 +322,7 @@ class ImageProcessor(_plugin.Plugin):
         """
         if image.mode not in self.image_modes:
             raise _exceptions.ImageProcessorImageModeError(
-                f'Invalid image format: {image.mode}')
+                f'Invalid image mode: {image.mode}')
 
         self.to(self.device)
 
@@ -383,7 +383,7 @@ class ImageProcessor(_plugin.Plugin):
         """
         if image.mode not in self.image_modes:
             raise _exceptions.ImageProcessorImageModeError(
-                f'Invalid image format: {image.mode}')
+                f'Invalid image mode: {image.mode}')
 
         img_copy = image.copy()
 
