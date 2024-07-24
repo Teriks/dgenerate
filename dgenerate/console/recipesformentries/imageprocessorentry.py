@@ -50,6 +50,8 @@ class _ImageProcessorEntry(_entry._Entry):
 
         self.declared_optional = self.config.get('optional', True)
 
+        self.hide_device = self.config.get('hide-device', False)
+
         label = f'(Optional) {self.config.get("label", "Image Processor")}' \
             if self.declared_optional else self.config.get("label", "Image Processor")
 
@@ -172,6 +174,9 @@ class _ImageProcessorEntry(_entry._Entry):
         for i, (param_name, param_info) in enumerate(parameters.items()):
             if param_name == 'PROCESSOR_HELP':
                 self.current_help_text = param_info
+                continue
+
+            if param_name == 'device' and self.hide_device:
                 continue
 
             self._create_widget_for_param(param_name, param_info, self.row + i + 1)
