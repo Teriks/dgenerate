@@ -45,6 +45,8 @@ class ImageProcessorNotFoundError(_plugin.PluginNotFoundError, ImageProcessorErr
 
 class ImageProcessorImageModeError(ImageProcessorError):
     """
-    Raised when an image processor cannot support an images format.
+    Raised when an image processor cannot support a PIL images reported mode.
+
+    A mode being a mode string such as ``RGB``, ``BGR``, etc.
     """
     pass
