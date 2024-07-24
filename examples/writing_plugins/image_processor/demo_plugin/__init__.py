@@ -20,8 +20,17 @@ class FooBarImageProcessor(dgenerate.imageprocessors.ImageProcessor):
     # the input image is forcefully aligned to the returned value, the user will be warned
     # about this if forced alignment takes place
 
-    # def get_alignment(self):
+    # def get_alignment(self) -> int:
     #    return 64
+
+    # You can specify which PIL image modes the image processor
+    # supports, this is mostly for library use of the image processor
+    # as dgenerate will always pass it an RGB image, the default
+    # implementation of this property returns ['RGB']
+
+    # @property
+    # def image_modes(self) -> list[str]:
+    #    return ['RGB']
 
     # All argument names will have _ replaced with - on the command line.
     # Argument signature correctness (missing arguments, unknown arguments) etc.
