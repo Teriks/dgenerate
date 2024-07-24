@@ -128,6 +128,18 @@ class ImageProcessor(_plugin.Plugin):
         self.__model_offload = model_offload
         self.__size_estimate = 0
 
+    # noinspection PyMethodMayBeStatic
+    @property
+    def image_modes(self) -> list[str]:
+        """
+        Returns a list of PIL image modes that this processor can handle.
+
+        This may be overridden by implementers
+
+        :return: ``['RGB']``
+        """
+        return ['RGB']
+
     def set_size_estimate(self, size_bytes: int):
         """
         Set the estimated size of this model in bytes for memory management
@@ -299,6 +311,7 @@ class ImageProcessor(_plugin.Plugin):
         copy, pass a copy.
 
         :raise dgenerate.OutOfMemoryError: if the execution device runs out of memory
+        :raise dgenerate.ImageProcessorImageFormatError: if a passed image has an invalid format
 
         :param self: :py:class:`.ImageProcessor` implementation instance
         :param image: the image to pass
@@ -307,6 +320,10 @@ class ImageProcessor(_plugin.Plugin):
 
         :return: processed image, may be the same image or a copy.
         """
+        if image.mode not in self.image_modes():
+            raise _exceptions.ImageProcessorImageFormatError(
+                f'Invalid image format: {image.mode}')
+
         self.to(self.device)
 
         img_copy = image.copy()
@@ -357,12 +374,16 @@ class ImageProcessor(_plugin.Plugin):
         copy, pass a copy.
 
         :raise dgenerate.OutOfMemoryError: if the execution device runs out of memory
+        :raise dgenerate.ImageProcessorImageFormatError: if a passed image has an invalid format
 
         :param self: :py:class:`.ImageProcessor` implementation instance
         :param image: the image to pass
 
         :return: processed image, may be the same image or a copy.
         """
+        if image.mode not in self.image_modes():
+            raise _exceptions.ImageProcessorImageFormatError(
+                f'Invalid image format: {image.mode}')
 
         img_copy = image.copy()
 
@@ -450,6 +471,7 @@ class ImageProcessor(_plugin.Plugin):
         copy, pass a copy.
 
         :raise dgenerate.OutOfMemoryError: if the execution device runs out of memory
+        :raise dgenerate.ImageProcessorImageFormatError: if a passed image has an invalid format
 
         :param image: image to process
         :param resize_resolution: image will be resized to this dimension by this method.
