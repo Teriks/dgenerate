@@ -5,7 +5,7 @@
 
 \set device_switch {{ '--device '+injected_device if injected_device else '' }}
 
-\image_process "../../media/horse2.jpeg"
+\image_process "../media/horse2.jpeg"
 -o horse2-midas-normals.png
 --processors midas;normals=True
 --align 64 {{ device_switch }}

@@ -13,14 +13,14 @@
 # resize to 1024x568
 
 
-\image_process "../../media/horse1.jpg"
+\image_process "../media/horse1.jpg"
 -o horse-resized-aligned-8.png
 --resize 1026
 --align 8 {{ device_switch }}
 
 # resize to 1024x1024
 
-\image_process "../../media/horse1.jpg"
+\image_process "../media/horse1.jpg"
 -o horse-resized-aligned-8-no-aspect.png
 --resize 1026
 --align 8
@@ -28,6 +28,6 @@
 
 # resize to 1272x712, force alignment
 
-\image_process "../../media/horse1.jpg"
+\image_process "../media/horse1.jpg"
 -o horse-aligned-8.png
 --align 8 {{ device_switch }}

@@ -7,12 +7,12 @@
 \set device_switch {{ '--device '+injected_device if injected_device else '' }}
 
 
-\image_process "../../media/horse2.jpeg"
+\image_process "../media/horse2.jpeg"
 -o horse2-hed.png
 --processors hed
 --align 1 {{ device_switch }}
 
-\image_process "../../media/horse2.jpeg"
+\image_process "../media/horse2.jpeg"
 -o horse2-hed-scribble.png
 --processors hed;scribble=True
 --align 1 {{ device_switch }}

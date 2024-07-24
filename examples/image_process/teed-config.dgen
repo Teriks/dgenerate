@@ -5,6 +5,6 @@
 
 \set device_switch {{ '--device '+injected_device if injected_device else '' }}
 
-\image_process "../../media/horse2.jpeg"
+\image_process "../media/horse2.jpeg"
 -o horse2-teed-edge.png
 --processors teed {{ device_switch }}
