@@ -58,6 +58,26 @@ class FooBarImageProcessor(dgenerate.imageprocessors.ImageProcessor):
 
         # raise self.argument_error('My argument error message')
 
+        # if we are using a large model of some sort
+        # we can set a size estimate before proceeding to
+        # load it into memory, dgenerate will try to
+        # free up space for it if any image processor
+        # cpu side memory constraints have been met
+        #
+        # it will also use this estimate to try
+        # to free up cached objects in VRAM when
+        # the processor is moving modules to a device
+
+        # self.set_size_estimate(1024)
+
+        # register anything that needs to
+        # move onto the device requested by the user
+        # anything registered should have a .to(device)
+        # argument accepting at least one argument,
+        # a torch.device reference or device string
+
+        # self.register_module(have_to)
+
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: tuple | None):
 
         # This step runs before dgenerate resizes an image to the value of --output-size
