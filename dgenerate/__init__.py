@@ -144,7 +144,7 @@ try:
     from dgenerate.imageprocessors import \
         ImageProcessorArgumentError, \
         ImageProcessorNotFoundError, \
-        ImageProcessorImageFormatError, \
+        ImageProcessorImageModeError, \
         ImageProcessorError
 
     from dgenerate.plugin import \
