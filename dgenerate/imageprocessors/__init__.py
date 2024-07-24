@@ -24,7 +24,9 @@ import dgenerate.types as _types
 from .canny import CannyEdgeDetectProcessor
 from .exceptions import \
     ImageProcessorNotFoundError, \
-    ImageProcessorArgumentError
+    ImageProcessorArgumentError, \
+    ImageProcessorImageFormatError, \
+    ImageProcessorError
 from .hed import HEDProcessor
 from .imageops import \
     PosterizeProcessor, \

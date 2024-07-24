@@ -22,15 +22,29 @@
 import dgenerate.plugin as _plugin
 
 
-class ImageProcessorArgumentError(_plugin.PluginArgumentError):
+class ImageProcessorError(Exception):
+    """
+    Generic image processor error base exception.
+    """
+    pass
+
+
+class ImageProcessorArgumentError(_plugin.PluginArgumentError, ImageProcessorError):
     """
     Raised when an image processor receives invalid arguments.
     """
     pass
 
 
-class ImageProcessorNotFoundError(_plugin.PluginNotFoundError):
+class ImageProcessorNotFoundError(_plugin.PluginNotFoundError, ImageProcessorError):
     """
     Raised when a reference to an unknown image processor name is made.
+    """
+    pass
+
+
+class ImageProcessorImageFormatError(ImageProcessorError):
+    """
+    Raised when an image processor cannot support an images format.
     """
     pass
