@@ -21,6 +21,7 @@
 
 from tkinter import filedialog
 
+
 def open_file_dialog(*args, **kwargs):
     f = filedialog.askopenfilename(*args, **kwargs)
     if isinstance(f, tuple):

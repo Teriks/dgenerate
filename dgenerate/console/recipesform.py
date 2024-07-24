@@ -26,10 +26,64 @@ import tkinter as tk
 import tkinter.ttk as ttk
 import typing
 
-import dgenerate.console.resources as _resources
 import dgenerate.console.recipesformentries as _recipesformentries
+import dgenerate.console.resources as _resources
 import dgenerate.console.util as _util
 from dgenerate.console.mousewheelbind import bind_mousewheel, un_bind_mousewheel
+
+
+class _RecipeTemplateTag:
+    classname: str
+    config: dict
+    placeholder: str
+
+    def __init__(self, classname, config, placeholder):
+        self.classname = classname
+        self.config = config
+        self.placeholder = placeholder
+
+
+def _find_template_tags(text) -> list[_RecipeTemplateTag]:
+    tag_pattern = r'@(\w+)\[\{'
+
+    potential_starts = [(m.start(), m.group(1)) for m in re.finditer(tag_pattern, text)]
+
+    tags = []
+
+    for start_pos, classname in potential_starts:
+        stack = []
+        json_start = start_pos + len(classname) + 2
+        json_end = json_start
+
+        while json_end < len(text):
+            char = text[json_end]
+            if char == '{':
+                stack.append(char)
+            elif char == '}':
+                stack.pop()
+                if not stack:
+                    break
+            json_end += 1
+
+        if not stack:
+            json_content = text[json_start:json_end + 1]
+            try:
+                parsed_json = json.loads(json_content)
+
+                full_tag = text[start_pos:json_end + 2]
+
+                tags.append(
+                    _RecipeTemplateTag(
+                        classname,
+                        parsed_json,
+                        full_tag,
+                    ))
+
+            except json.JSONDecodeError:
+                raise RuntimeError(
+                    f"Invalid JSON in recipe template: {text[start_pos:json_end + 1]}")
+
+    return tags
 
 
 class _RecipesForm(tk.Toplevel):
@@ -156,7 +210,7 @@ class _RecipesForm(tk.Toplevel):
                 return  # Do nothing if there's no overflow
 
             if event.delta:
-                self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+                self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
             else:
                 if event.num == 4:
                     self.canvas.yview_scroll(-1, "units")
@@ -178,37 +232,39 @@ class _RecipesForm(tk.Toplevel):
 
         self._entries = []
         self._content = self._templates_dict[selection]
-        self._templates = re.findall(r'(@(.*?)\[(.*)\])', self._content)
+        self._templates = _find_template_tags(self._content)
         self.scrollable_frame.grid_columnconfigure(1, weight=1)
 
         row_offset = 1
         for template in self._templates:
-            ttype = template[1]
-            config = json.loads(template[2])
+            classname = template.classname
+            config = template.config
 
             if config.get('divider-before', False):
                 separator = ttk.Separator(self.scrollable_frame, orient='horizontal')
-                separator.grid(row=row_offset, column=0, sticky='ew', columnspan=100, pady=_recipesformentries.DIVIDER_YPAD)
+                separator.grid(row=row_offset, column=0, sticky='ew', columnspan=100,
+                               pady=_recipesformentries.DIVIDER_YPAD)
                 row_offset += 1
 
-            if ttype in self._entry_classes:
+            if classname in self._entry_classes:
                 try:
-                    entry = self._entry_classes[ttype](
+                    entry = self._entry_classes[classname](
                         recipe_form=self,
                         master=self.scrollable_frame,
                         row=row_offset,
                         config=config,
-                        placeholder=template[0]
+                        placeholder=template.placeholder
                     )
                 except json.JSONDecodeError as e:
-                    raise RuntimeError(f'json decode error in {ttype}: {e}')
+                    raise RuntimeError(f'json decode error in {classname}: {e}')
                 row_offset += entry.widget_rows
             else:
-                raise RuntimeError(f'Unknown template placeholder: {ttype}')
+                raise RuntimeError(f'Unknown template placeholder: {classname}')
 
             if config.get('divider-after', False):
                 separator = ttk.Separator(self.scrollable_frame, orient='horizontal')
-                separator.grid(row=row_offset, column=0, sticky='ew', columnspan=100, pady=_recipesformentries.DIVIDER_YPAD)
+                separator.grid(row=row_offset, column=0, sticky='ew', columnspan=100,
+                               pady=_recipesformentries.DIVIDER_YPAD)
                 row_offset += 1
 
             self._entries.append(entry)
