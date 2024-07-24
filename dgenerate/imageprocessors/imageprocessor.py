@@ -311,7 +311,7 @@ class ImageProcessor(_plugin.Plugin):
         copy, pass a copy.
 
         :raise dgenerate.OutOfMemoryError: if the execution device runs out of memory
-        :raise dgenerate.ImageProcessorImageFormatError: if a passed image has an invalid format
+        :raise dgenerate.ImageProcessorImageModeError: if a passed image has an invalid format
 
         :param self: :py:class:`.ImageProcessor` implementation instance
         :param image: the image to pass
@@ -320,8 +320,8 @@ class ImageProcessor(_plugin.Plugin):
 
         :return: processed image, may be the same image or a copy.
         """
-        if image.mode not in self.image_modes():
-            raise _exceptions.ImageProcessorImageFormatError(
+        if image.mode not in self.image_modes:
+            raise _exceptions.ImageProcessorImageModeError(
                 f'Invalid image format: {image.mode}')
 
         self.to(self.device)
@@ -374,15 +374,15 @@ class ImageProcessor(_plugin.Plugin):
         copy, pass a copy.
 
         :raise dgenerate.OutOfMemoryError: if the execution device runs out of memory
-        :raise dgenerate.ImageProcessorImageFormatError: if a passed image has an invalid format
+        :raise dgenerate.ImageProcessorImageModeError: if a passed image has an invalid format
 
         :param self: :py:class:`.ImageProcessor` implementation instance
         :param image: the image to pass
 
         :return: processed image, may be the same image or a copy.
         """
-        if image.mode not in self.image_modes():
-            raise _exceptions.ImageProcessorImageFormatError(
+        if image.mode not in self.image_modes:
+            raise _exceptions.ImageProcessorImageModeError(
                 f'Invalid image format: {image.mode}')
 
         img_copy = image.copy()
@@ -471,7 +471,7 @@ class ImageProcessor(_plugin.Plugin):
         copy, pass a copy.
 
         :raise dgenerate.OutOfMemoryError: if the execution device runs out of memory
-        :raise dgenerate.ImageProcessorImageFormatError: if a passed image has an invalid format
+        :raise dgenerate.ImageProcessorImageModeError: if a passed image has an invalid format
 
         :param image: image to process
         :param resize_resolution: image will be resized to this dimension by this method.

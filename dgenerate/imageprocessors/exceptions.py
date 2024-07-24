@@ -43,7 +43,7 @@ class ImageProcessorNotFoundError(_plugin.PluginNotFoundError, ImageProcessorErr
     pass
 
 
-class ImageProcessorImageFormatError(ImageProcessorError):
+class ImageProcessorImageModeError(ImageProcessorError):
     """
     Raised when an image processor cannot support an images format.
     """

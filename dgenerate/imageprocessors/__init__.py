@@ -25,7 +25,7 @@ from .canny import CannyEdgeDetectProcessor
 from .exceptions import \
     ImageProcessorNotFoundError, \
     ImageProcessorArgumentError, \
-    ImageProcessorImageFormatError, \
+    ImageProcessorImageModeError, \
     ImageProcessorError
 from .hed import HEDProcessor
 from .imageops import \
