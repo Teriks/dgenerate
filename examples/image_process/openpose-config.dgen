@@ -11,7 +11,7 @@
 # generate a gif without rendering intermediate frames
 # do not align the resolution to 8 pixels
 
-\image_process "../../media/rickroll-roll.gif"
+\image_process "../media/rickroll-roll.gif"
 -o rickroll-openpose.gif
 --processors openpose
 --align 1

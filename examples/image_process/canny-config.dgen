@@ -13,7 +13,7 @@
 # generate a gif without rendering intermediate frames
 # do not align the resolution to 8 pixels
 
-\image_process "../../media/rickroll-roll.gif"
+\image_process "../media/rickroll-roll.gif"
 -o rickroll-canny.gif
 --processors "canny;threshold-algo=otsu;blur=true;gray=true"
 --align 1
