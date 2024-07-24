@@ -328,7 +328,7 @@ def main():
             run_config(config, injected_args, extra_args, debug_torch, use_subprocess=True)
     else:
         for top_dir in top_level_dirs:
-            log(f'RUNNING CONFIGURATIONS IN DIRECTORY: {top_dir}')
+            log(f'RUNNING CONFIGURATIONS IN DIRECTORY IN SUBPROCESS: {top_dir}')
             extra_args = []
             if known_args.short_animations:
                 log(f'SHORTENING ANIMATIONS IN DIRECTORY TO 3 FRAMES MAX: {top_dir}')
