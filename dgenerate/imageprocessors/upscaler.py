@@ -113,7 +113,7 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
         except _UnsupportedModelError as e:
             raise self.argument_error(f'Unsupported model file format: {e}')
 
-        if type(tile) is str:
+        if isinstance(tile, str):
             tile = tile.lower()
             if tile != 'auto':
                 raise self.argument_error(

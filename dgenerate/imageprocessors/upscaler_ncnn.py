@@ -177,7 +177,7 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
 
         super().__init__(**kwargs)
 
-        if type(tile) is str:
+        if isinstance(tile, str):
             tile = tile.lower()
             if tile != 'auto':
                 raise self.argument_error(
