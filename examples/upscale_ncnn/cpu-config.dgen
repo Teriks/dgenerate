@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 3.10.0
+#! dgenerate 3.10.1
 
 \set model https://github.com/TNTwise/SPAN-ncnn-vulkan/raw/master/custom_models/4xNomos8k_span_otf_medium.bin
 \set param https://github.com/TNTwise/SPAN-ncnn-vulkan/raw/master/custom_models/4xNomos8k_span_otf_medium.param
