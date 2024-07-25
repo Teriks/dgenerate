@@ -43,11 +43,11 @@ class TestFormatImageSeedURI(unittest.TestCase):
 
     def test_frame_start_and_end_with_seed_image(self):
         result = format_image_seed_uri(seed_image="seed.png", frame_start=0, frame_end=10)
-        self.assertEqual(result, "seed.png;frame_start=0;frame_end=10")
+        self.assertEqual(result, "seed.png;frame-start=0;frame-end=10")
 
     def test_keyword_arguments_without_seed_or_control_image(self):
         result = format_image_seed_uri(seed_image="seed.png", frame_start=0)
-        self.assertEqual(result, "seed.png;frame_start=0")
+        self.assertEqual(result, "seed.png;frame-start=0")
 
     def test_inpaint_image_without_seed_image(self):
         with self.assertRaises(ValueError):
@@ -68,7 +68,7 @@ class TestFormatImageSeedURI(unittest.TestCase):
             frame_end=10
         )
         self.assertEqual(result,
-                         "seed.png;mask=inpaint.png;control=control.png;resize=800x600;aspect=False;frame_start=0;frame_end=10")
+                         "seed.png;mask=inpaint.png;control=control.png;resize=800x600;aspect=False;frame-start=0;frame-end=10")
 
     def test_invalid_resize(self):
         with self.assertRaises(ValueError):
@@ -111,7 +111,7 @@ class TestFormatImageSeedURI(unittest.TestCase):
 
     def test_zero_frame_values(self):
         result = format_image_seed_uri(seed_image="seed.png", frame_start=0, frame_end=0)
-        self.assertEqual(result, "seed.png;frame_start=0;frame_end=0")
+        self.assertEqual(result, "seed.png;frame-start=0;frame-end=0")
 
     def test_negative_frame_values(self):
         with self.assertRaises(ValueError):
@@ -132,7 +132,7 @@ class TestFormatImageSeedURI(unittest.TestCase):
     def test_all_keyword_arguments(self):
         result = format_image_seed_uri(seed_image="seed.png", resize="800x600", aspect=False, frame_start=0,
                                        frame_end=10)
-        self.assertEqual(result, "seed.png;resize=800x600;aspect=False;frame_start=0;frame_end=10")
+        self.assertEqual(result, "seed.png;resize=800x600;aspect=False;frame-start=0;frame-end=10")
 
     def test_incorrect_resize_format(self):
         with self.assertRaises(ValueError):
@@ -144,11 +144,11 @@ class TestFormatImageSeedURI(unittest.TestCase):
 
     def test_frame_start_without_frame_end(self):
         result = format_image_seed_uri(seed_image="seed.png", frame_start=10)
-        self.assertEqual(result, "seed.png;frame_start=10")
+        self.assertEqual(result, "seed.png;frame-start=10")
 
     def test_frame_end_without_frame_start(self):
         result = format_image_seed_uri(seed_image="seed.png", frame_end=10)
-        self.assertEqual(result, "seed.png;frame_end=10")
+        self.assertEqual(result, "seed.png;frame-end=10")
 
 
 if __name__ == '__main__':
