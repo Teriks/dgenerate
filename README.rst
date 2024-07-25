@@ -3771,7 +3771,7 @@ And with the ``upscaler-ncnn`` image processor, which implements upscaling with 
 
 The `spandrel <spandrel_1_>`_ library supports the use of most torch models on: https://openmodeldb.info/
 
-The `ncnn <ncnn_1_>`_ library supports models compatible with `upscayl <https://github.com/upscayl/upscayl>` as well as `chaiNNer <chaiNNer_1_>`_.
+The `ncnn <ncnn_1_>`_ library supports models compatible with `upscayl <https://github.com/upscayl/upscayl>`_ as well as `chaiNNer <chaiNNer_1_>`_.
 
 ONNX upscaler models can be converted to NCNN format for use with the ``upscaler-ncnn`` image processor.
 
