@@ -1423,8 +1423,8 @@ def format_image_seed_uri(seed_image: str | None,
 
     # handle frame_start and frame_end arguments
     if use_keyword_args:
-        add_component_if_valid(frame_start, "frame_start")
-        add_component_if_valid(frame_end, "frame_end")
+        add_component_if_valid(frame_start, "frame-start")
+        add_component_if_valid(frame_end, "frame-end")
 
     return ";".join(components)
 
