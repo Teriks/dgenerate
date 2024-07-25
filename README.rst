@@ -95,7 +95,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v3.10.0/>`_.
         * `Sub Command: civitai-links`_
     * `Upscaling`_
         * `Upscaling with Diffusion Upscaler Models`_
-        * `Upscaling with chaiNNer Compatible Upscaler Models`_
+        * `Upscaling with chaiNNer Compatible Torch Upscaler Models`_
         * `Upscaling with NCNN Upscaler Models`_
     * `Writing and Running Configs`_
         * `Basic config syntax`_
@@ -3813,8 +3813,8 @@ The image used in the example below is this `low resolution cat <https://raw.git
     --upscaler-noise-levels 20
 
 
-Upscaling with chaiNNer Compatible Upscaler Models
---------------------------------------------------
+Upscaling with chaiNNer Compatible Torch Upscaler Models
+--------------------------------------------------------
 
 `chaiNNer <chaiNNer_1_>`_ compatible torch upscaler models from https://openmodeldb.info/
 and elsewhere can be utilized for tiled upscaling using dgenerates ``upscaler`` image processor and the
