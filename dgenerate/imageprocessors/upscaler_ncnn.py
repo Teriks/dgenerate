@@ -92,7 +92,7 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
 
     You can safely run this processor in parallel with diffusion, or other torch
     based image processors with GPU acceleration, by placing it on a separate gpu
-    using the ``gpu-index`` argument.
+    using the "gpu-index" argument.
 
     For these reasons, this processor runs on the CPU by default, you can enable
     GPU usage with GPU related arguments mentioned in this documentation below.
@@ -101,7 +101,8 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
 
     The "use-gpu" argument determines if the gpu is used, defaults to False.
 
-    The "gpu-index" argument determines which gpu is used, it is 0 indexed.
+    The "gpu-index" argument determines which gpu is used, it is 0 indexed,
+    and defaults to 0 which is most likely your main GPU.
 
     The "threads" argument determines the number of cpu threads used, the
     default value is "auto" which uses the maximum amount. You may also pass
