@@ -56,6 +56,10 @@ def create_portable_environment():
     # Install a dgenerate into VENV
 
     os.chdir('..')
+
+    subprocess.run([python_exe,
+                    '-m', 'pip', 'cache', 'purge'], env=env)
+
     subprocess.run([python_exe,
                     '-m', 'pip', 'install', '.[win-installer, ncnn]',
                     '--extra-index-url', 'https://download.pytorch.org/whl/cu121/'], env=env)
