@@ -1,8 +1,8 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 3.10.0
 
-\set model ../../x4.bin
-\set param ../../x4.param
+\set model https://github.com/TNTwise/SPAN-ncnn-vulkan/raw/master/custom_models/4xNomos8k_span_otf_medium.bin
+\set param https://github.com/TNTwise/SPAN-ncnn-vulkan/raw/master/custom_models/4xNomos8k_span_otf_medium.param
 
 \image_process "../media/kitten.gif"
 --output kitten-upscale-gpu/
