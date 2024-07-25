@@ -90,8 +90,6 @@ def invoke_dgenerate(args: collections.abc.Sequence[str],
     :raises dgenerate.UnknownMimetypeError:
     :raises dgenerate.MediaIdentificationError:
     :raises dgenerate.FrameStartOutOfBounds:
-    :raises dgenerate.ImageProcessorArgumentError:
-    :raises dgenerate.ImageProcessorNotFoundError:
     :raises dgenerate.InvalidModelFileError:
     :raises dgenerate.InvalidModelUriError:
     :raises dgenerate.ModelUriLoadError:
@@ -145,8 +143,6 @@ def invoke_dgenerate_events(
     :raises dgenerate.UnknownMimetypeError:
     :raises dgenerate.MediaIdentificationError:
     :raises dgenerate.FrameStartOutOfBounds:
-    :raises dgenerate.ImageProcessorArgumentError:
-    :raises dgenerate.ImageProcessorNotFoundError:
     :raises dgenerate.InvalidModelFileError:
     :raises dgenerate.InvalidModelUriError:
     :raises dgenerate.ModelUriLoadError:
