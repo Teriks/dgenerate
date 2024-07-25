@@ -57,9 +57,13 @@ def create_portable_environment():
 
     os.chdir('..')
 
+    if os.path.exists('build'):
+        shutil.rmtree('build')
+
     subprocess.run([python_exe,
-                    '-m', 'pip', 'install', '--no-cache-dir', '.[win-installer, ncnn]',
+                    '-m', 'pip', 'install', '.[win-installer, ncnn]',
                     '--extra-index-url', 'https://download.pytorch.org/whl/cu121/'], env=env)
+
     os.chdir(script_dir)
 
     # Build a executable and distributable environment
