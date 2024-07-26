@@ -203,6 +203,22 @@ def download(url: str,
         return mimetype is None or not mimetype.startswith('text/')
 
     if output:
+        cache_key = f'download pointer: {url}, output: {os.path.abspath(output)}'
+
+        if not overwrite:
+            with _webcache.cache as web_cache:
+                cache_pointer = _webcache.cache.get(cache_key)
+                if cache_pointer is not None:
+                    with open(cache_pointer.path, 'rt', encoding='utf8') as pointer_file:
+                        downloaded_file = pointer_file.read().strip()
+                        if os.path.exists(downloaded_file):
+                            _messages.log(
+                                f'Downloaded file already exists, using: '
+                                f'{os.path.relpath(downloaded_file)}', underline=True)
+                            return downloaded_file
+                        else:
+                            del web_cache[cache_key]
+
         try:
             with requests.get(url, headers={
                 'User-Agent': fake_useragent.UserAgent().chrome},
@@ -225,8 +241,12 @@ def download(url: str,
                 total_size = int(response.headers.get('content-length', 0))
 
                 if not overwrite and os.path.exists(output):
-                    _messages.log(f'Downloaded file already exists, using: {output}',
+                    _messages.log(f'Downloaded file already exists, using: '
+                                  f'{os.path.normpath(output)}',
                                   underline=True)
+                    _webcache.cache.add(
+                        cache_key,
+                        os.path.abspath(output).encode('utf8'))
                     return output
 
                 _messages.log(f'Downloading: "{url}"\n'
@@ -254,14 +274,19 @@ def download(url: str,
                         file.write(content)
                         file.flush()
 
-                file_path = output
-
                 if total_size != 0 and downloaded_size != total_size:
                     raise _batchprocessor.BatchProcessError(
                         'Download failure, something went wrong '
                         f'downloading "{url}".', )
 
                 os.replace(current_dl, output)
+
+                file_path = os.path.abspath(output)
+
+                _webcache.cache.add(
+                    cache_key,
+                    file_path.encode('utf8'))
+
         except requests.RequestException as e:
             raise _batchprocessor.BatchProcessError(
                 f'Failed to download "{url}": {e}')
