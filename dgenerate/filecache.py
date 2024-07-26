@@ -261,8 +261,20 @@ class FileCache:
     def __delitem__(self, key):
         """
         Deletes the item with the specified key from the key-value store.
+
+        This also deletes the associated file in the cache.
         """
         with self.kv_store:
+            if key not in self.kv_store:
+                raise KeyError(key)
+
+            file = CachedFile(json.loads(self.kv_store[key]))
+
+            try:
+                os.unlink(file.path)
+            except OSError:
+                pass
+
             del self.kv_store[key]
 
     def items(self) -> typing.Iterator[CachedFile]:
