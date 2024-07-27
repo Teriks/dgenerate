@@ -21,7 +21,6 @@
 import os
 import queue
 import threading
-import time
 
 
 class StdinPipeFullError(Exception):
@@ -52,16 +51,15 @@ class StdinPipe:
                     except BlockingIOError:
                         if self._stop_event.is_set():
                             break
-                        time.sleep(0.01)
                 self._fifo_queue.task_done()
             except queue.Empty:
                 continue
 
     def write(self, data):
-        if self._fifo_queue.full():
+        try:
+            self._fifo_queue.put(data, block=False)
+        except queue.Full:
             raise StdinPipeFullError('stdin pipe is full.')
-
-        self._fifo_queue.put(data)
 
     def close(self):
         self._stop_event.set()
