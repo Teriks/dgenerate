@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 3.10.2
+#! dgenerate 3.10.3
 
 \set image_to_vary ../../media/dog-on-bench.png
 \set mask_image ../../media/dog-on-bench-mask.png
