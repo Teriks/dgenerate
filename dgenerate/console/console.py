@@ -35,6 +35,7 @@ import sys
 import threading
 import time
 import tkinter as tk
+import tkinter.messagebox as messagebox
 import typing
 
 import PIL.Image
@@ -52,6 +53,7 @@ import dgenerate.files as _files
 import dgenerate.textprocessing as _textprocessing
 from dgenerate.console.codeview import DgenerateCodeView
 from dgenerate.console.scrolledtext import ScrolledText
+from dgenerate.console.stdinpipe import StdinPipe, StdinPipeFullError
 
 DGENERATE_EXE = \
     os.path.splitext(
@@ -501,6 +503,9 @@ class DgenerateConsole(tk.Tk):
 
         self._termination_lock = threading.Lock()
 
+        self._shell_process = None
+        self._shell_stdin_pipe = None
+
         self._start_shell_process()
 
         self._output_text_stdout_queue = queue.Queue()
@@ -867,30 +872,35 @@ class DgenerateConsole(tk.Tk):
 
     def kill_shell_process(self, restart=False):
         with self._termination_lock:
-            if self._shell_process is None:
-                return
-
             try:
-                self._shell_process.terminate()
-            except psutil.NoSuchProcess:
-                return
+                if self._shell_process is None:
+                    return
 
-            return_code = -1
+                try:
+                    self._shell_process.terminate()
+                except psutil.NoSuchProcess:
+                    return
 
-            try:
-                return_code = self._shell_process.wait(timeout=5)
-            except psutil.TimeoutExpired:
-                self._shell_process.kill()
+                return_code = -1
+
                 try:
                     return_code = self._shell_process.wait(timeout=5)
                 except psutil.TimeoutExpired:
-                    self._write_stderr_output(
-                        'WARNING: Could not kill interpreter process, possible zombie process.')
+                    self._shell_process.kill()
+                    try:
+                        return_code = self._shell_process.wait(timeout=5)
+                    except psutil.TimeoutExpired:
+                        self._write_stderr_output(
+                            'WARNING: Could not kill interpreter process, possible zombie process.')
 
-            self._shell_return_code_message(return_code)
+                self._shell_return_code_message(return_code)
 
-            del self._shell_process
-            self._shell_process = None
+                del self._shell_process
+                self._shell_process = None
+            finally:
+                if self._shell_stdin_pipe is not None:
+                    self._shell_stdin_pipe.close()
+                    self._shell_stdin_pipe = None
 
             if restart:
                 self._shell_restarting_commence_message()
@@ -906,7 +916,7 @@ class DgenerateConsole(tk.Tk):
         for thread in self._shell_reader_threads:
             # there is no better way than to raise an exception on the thread,
             # the threads will live forever if they are blocking on read even if they are daemon threads,
-            # and there is no platform independent non-blocking IO with a subprocess
+            # and there is no platform independent non-blocking read IO with a subprocess
             res = ctypes.pythonapi.PyThreadState_SetAsyncExc(thread.native_id, ctypes.py_object(SystemExit))
             if res > 1:
                 ctypes.pythonapi.PyThreadState_SetAsyncExc(thread.native_id, 0)
@@ -924,17 +934,20 @@ class DgenerateConsole(tk.Tk):
                                   '======================\n')
 
     def _start_shell_process(self):
+        self._shell_stdin_pipe = StdinPipe()
+
         env = os.environ.copy()
         env['PYTHONIOENCODING'] = 'utf-8'
         env['PYTHONUNBUFFERED'] = '1'
         env['COLUMNS'] = '100'
+
         cwd = os.getcwd()
         self._shell_process = psutil.Popen(
             [DGENERATE_EXE, '--shell'] +
             (['-v'] if self._debug_mode_var.get() else []),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            stdin=subprocess.PIPE,
+            stdin=self._shell_stdin_pipe.pipe_read,
             env=env)
 
         self._update_cwd_title(cwd)
@@ -1161,6 +1174,11 @@ class DgenerateConsole(tk.Tk):
 
                     del self._shell_process
                     self._shell_process = None
+
+                    if self._shell_stdin_pipe is not None:
+                        self._shell_stdin_pipe.close()
+                        self._shell_stdin_pipe = None
+
                     line_reader.pushback_byte = None
 
                     self._shell_return_code_message(return_code)
@@ -1283,9 +1301,14 @@ class DgenerateConsole(tk.Tk):
             self._output_text.text.see(tk.END)
 
         with self._termination_lock:
-            self._shell_process.stdin.write(
-                (user_input + '\n\n').encode('utf-8'))
-            self._shell_process.stdin.flush()
+            try:
+                self._shell_stdin_pipe.write(
+                    (user_input + '\n\n').encode('utf-8'))
+            except StdinPipeFullError:
+                self._write_stderr_output(
+                    'WARNING: The command queue is full, '
+                    'please wait before submitting more commands, '
+                    'or kill the interpreter.')
 
         if self._command_history:
             if self._command_history[-1] != user_input:
