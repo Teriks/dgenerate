@@ -364,6 +364,10 @@ def invoke_dgenerate_events(
             constraint_lists.append(_pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS)
             _pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS = arguments.control_net_cache_memory_constraints
 
+        if arguments.adapter_cache_memory_constraints:
+            constraint_lists.append(_pipelinewrapper.ADAPTER_CACHE_MEMORY_CONSTRAINTS)
+            _pipelinewrapper.ADAPTER_CACHE_MEMORY_CONSTRAINTS = arguments.adapter_cache_memory_constraints
+
         if arguments.text_encoder_cache_memory_constraints:
             constraint_lists.append(_pipelinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS)
             _pipelinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS = arguments.text_encoder_cache_memory_constraints
@@ -419,6 +423,9 @@ def invoke_dgenerate_events(
 
             if arguments.text_encoder_cache_memory_constraints:
                 _pipelinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()
+
+            if arguments.adapter_cache_memory_constraints:
+                _pipelinewrapper.ADAPTER_CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()
 
             if arguments.control_net_cache_memory_constraints:
                 _pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()

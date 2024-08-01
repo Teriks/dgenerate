@@ -63,6 +63,19 @@
     and ``control_net_size`` (the estimated size of the new ControlNet before it is brought into memory, in bytes)
 
 
+.. data:: ADAPTER_CACHE_MEMORY_CONSTRAINTS
+    :annotation: = ['adapter_size > (available * 0.75)']
+
+    Cache constraint expressions for when to clear the T2IAdapter cache,
+    syntax provided via :py:func:`dgenerate.memory.memory_constraints`
+
+    If any of these constraints are met, a call to :py:func:`.enforce_adapter_cache_constraints` will call
+    :py:func:`.clear_adapter_cache` and force a garbage collection.
+
+    Extra variables include: ``cache_size`` (the current estimated cache size in bytes),
+    and ``adapter_size`` (the estimated size of the new T2IAdapter before it is brought into memory, in bytes)
+
+
 .. data:: TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS
     :annotation: = ['text_encoder_size > (available * 0.75)']
 

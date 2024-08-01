@@ -749,11 +749,11 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         image_guidance_group.add_argument(
-                            '-cn', '--control-nets', nargs='+', action='store', default=None,
-                            metavar="CONTROL_NET_URI",
-                            dest='control_net_uris',
-                            help=
-                            f"""Specify one or more ControlNet models using URIs. This should be a
+            '-cn', '--control-nets', nargs='+', action='store', default=None,
+            metavar="CONTROL_NET_URI",
+            dest='control_net_uris',
+            help=
+            f"""Specify one or more ControlNet models using URIs. This should be a
                             huggingface repository slug / blob link, path to model file on disk 
                             (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model 
                             folder containing model files.
@@ -810,11 +810,11 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         image_guidance_group.add_argument(
-                            '-t2i', '--t2i-adapters', nargs='+', action='store', default=None,
-                            metavar="T2I_ADAPTER_URI",
-                            dest='t2i_adapter_uris',
-                            help=
-                            f"""Specify one or more T2IAdapter models using URIs. This should be a
+            '-t2i', '--t2i-adapters', nargs='+', action='store', default=None,
+            metavar="T2I_ADAPTER_URI",
+            dest='t2i_adapter_uris',
+            help=
+            f"""Specify one or more T2IAdapter models using URIs. This should be a
                             huggingface repository slug / blob link, path to model file on disk 
                             (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model 
                             folder containing model files.
@@ -1054,7 +1054,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                             specified with the same syntax as --prompts"""))
 
     actions.append(
-        parser.add_argument('--sdxl-t2i-adapter-factors', nargs='+', action='store', metavar="PROMPT",
+        parser.add_argument('--sdxl-t2i-adapter-factors', nargs='+', action='store', metavar="FLOAT",
                             default=None,
                             type=_type_adapter_factor,
                             help="""One or more SDXL specific T2I adapter factors to try, this controls the amount of
@@ -1674,6 +1674,19 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                                  f'dgenerate_submodules.html#dgenerate.pipelinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS]'))
 
     actions.append(
+        parser.add_argument('-amc', '--adapter-cache-memory-constraints', action='store', nargs='+',
+                            default=None,
+                            type=_type_expression,
+                            metavar="EXPR",
+                            help=f"""Cache constraint expressions describing when to automatically clear the in memory T2I Adapter
+                                    cache considering current memory usage, and estimated memory usage of new T2I Adapter models that 
+                                    are about to enter memory. If any of these constraint expressions are met all T2I Adapter
+                                    models cached in memory will be cleared. Example, and default 
+                                    value: {' '.join(_textprocessing.quote_spaces(_pipelinewrapper.ADAPTER_CACHE_MEMORY_CONSTRAINTS))}"""
+                                 f' For Syntax See: [https://dgenerate.readthedocs.io/en/v{dgenerate.__version__}/'
+                                 f'dgenerate_submodules.html#dgenerate.pipelinewrapper.ADAPTER_CACHE_MEMORY_CONSTRAINTS]'))
+
+    actions.append(
         parser.add_argument('-imc', '--image-processor-memory-constraints', action='store', nargs='+',
                             default=None,
                             type=_type_expression,
@@ -1748,6 +1761,11 @@ class DgenerateArguments(dgenerate.RenderLoopConfig):
     control_net_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
     """
     See: :py:attr:`dgenerate.pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS`
+    """
+
+    adapter_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
+    """
+    See: :py:attr:`dgenerate.pipelinewrapper.ADAPTER_CACHE_MEMORY_CONSTRAINTS`
     """
 
     text_encoder_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
