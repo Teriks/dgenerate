@@ -45,6 +45,12 @@ _PIPELINE_CACHE_SIZE = 0
 _TORCH_CONTROL_NET_CACHE = dict()
 """Global in memory cache for torch ControlNet models"""
 
+_ADAPTER_CACHE = dict()
+"""Global in memory cache for torch T2IAdapter models"""
+
+_ADAPTER_CACHE_SIZE = 0
+"""Estimated memory consumption in bytes of all T2IAdapter models cached in memory"""
+
 _FLAX_CONTROL_NET_CACHE = dict()
 """Global in memory cache for flax ControlNet models"""
 
@@ -107,6 +113,15 @@ def control_net_cache_size() -> int:
     :return:  memory usage in bytes.
     """
     return _CONTROL_NET_CACHE_SIZE
+
+
+def adapter_cache_size() -> int:
+    """
+    Return the estimated memory usage in bytes of all user specified T2IAdapter models currently cached in memory.
+
+    :return:  memory usage in bytes.
+    """
+    return _ADAPTER_CACHE_SIZE
 
 
 def text_encoder_cache_size() -> int:
@@ -175,6 +190,18 @@ Extra variables include: ``cache_size`` (the current estimated cache size in byt
 and ``control_net_size`` (the estimated size of the new ControlNet before it is brought into memory, in bytes)
 """
 
+ADAPTER_CACHE_MEMORY_CONSTRAINTS: list[str] = ['adapter_size > (available * 0.75)']
+"""
+Cache constraint expressions for when to clear the T2IAdapter cache, 
+syntax provided via :py:func:`dgenerate.memory.memory_constraints`
+
+If any of these constraints are met, a call to :py:func:`.enforce_adapter_cache_constraints` will call
+:py:func:`.clear_adapter_cache` and force a garbage collection.
+
+Extra variables include: ``cache_size`` (the current estimated cache size in bytes), 
+and ``adapter_size`` (the estimated size of the new T2IAdapter before it is brought into memory, in bytes)
+"""
+
 TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS: list[str] = ['text_encoder_size > (available * 0.75)']
 """
 Cache constraint expressions for when to clear the Text Encoder cache, 
@@ -227,6 +254,26 @@ def clear_control_net_cache(collect=True):
     if collect:
         _messages.debug_log(
             f'{_types.fullname(clear_control_net_cache)} calling gc.collect() by request')
+
+        gc.collect()
+
+
+def clear_adapter_cache(collect=True):
+    """
+    Clear T2IAdapter cache and then garbage collect.
+
+    :param collect: Call :py:func:`gc.collect` ?
+    """
+    global _ADAPTER_CACHE, \
+        _ADAPTER_CACHE_SIZE
+
+    _ADAPTER_CACHE.clear()
+
+    _ADAPTER_CACHE_SIZE = 0
+
+    if collect:
+        _messages.debug_log(
+            f'{_types.fullname(clear_adapter_cache)} calling gc.collect() by request')
 
         gc.collect()
 
@@ -318,7 +365,9 @@ def clear_model_cache(collect=True):
         _VAE_CACHE_SIZE, \
         _FLAX_TEXT_ENCODER_CACHE, \
         _TORCH_TEXT_ENCODER_CACHE, \
-        _TEXT_ENCODER_CACHE_SIZE
+        _TEXT_ENCODER_CACHE_SIZE, \
+        _ADAPTER_CACHE, \
+        _ADAPTER_CACHE_SIZE
 
     _TORCH_PIPELINE_CACHE.clear()
     _FLAX_PIPELINE_CACHE.clear()
@@ -330,12 +379,14 @@ def clear_model_cache(collect=True):
     _FLAX_VAE_CACHE.clear()
     _TORCH_TEXT_ENCODER_CACHE.clear()
     _FLAX_TEXT_ENCODER_CACHE.clear()
+    _ADAPTER_CACHE.clear()
 
     _PIPELINE_CACHE_SIZE = 0
     _CONTROL_NET_CACHE_SIZE = 0
     _UNET_CACHE_SIZE = 0
     _VAE_CACHE_SIZE = 0
     _TEXT_ENCODER_CACHE_SIZE = 0
+    _ADAPTER_CACHE_SIZE = 0
 
     if collect:
         _messages.debug_log(
@@ -524,6 +575,37 @@ def enforce_control_net_cache_constraints(new_control_net_size, collect=True):
     return False
 
 
+def enforce_adapter_cache_constraints(new_adapter_size, collect=True):
+    """
+    Enforce :py:attr:`dgenerate.pipelinewrapper.ADAPTER_CACHE_MEMORY_CONSTRAINTS` and clear the
+    ControlNet cache if needed.
+
+    :param new_adapter_size: estimated size in bytes of any new t2i adapter that is about to enter memory
+    :param collect: Call :py:func:`gc.collect` after a cache clear ?
+    :return: Whether the cache was cleared due to constraint expressions.
+    """
+
+    m_name = __name__
+
+    _messages.debug_log(f'Enforcing {m_name}.ADAPTER_CACHE_MEMORY_CONSTRAINTS =',
+                        ADAPTER_CACHE_MEMORY_CONSTRAINTS,
+                        f'(cache_size = {_memory.bytes_best_human_unit(adapter_cache_size())},',
+                        f'adapter_size = {_memory.bytes_best_human_unit(new_adapter_size)})')
+
+    _messages.debug_log(_memory.memory_use_debug_string())
+
+    if _memory.memory_constraints(ADAPTER_CACHE_MEMORY_CONSTRAINTS,
+                                  extra_vars={'cache_size': adapter_cache_size(),
+                                              'adapter_size': new_adapter_size}):
+        _messages.debug_log(f'{m_name}.ADAPTER_CACHE_MEMORY_CONSTRAINTS '
+                            f'{ADAPTER_CACHE_MEMORY_CONSTRAINTS} met, '
+                            f'calling {_types.fullname(clear_adapter_cache)}.')
+
+        clear_adapter_cache(collect=collect)
+        return True
+    return False
+
+
 def uri_hash_with_parser(parser):
     """
     Create a hash function from a particular URI parser function that hashes a URI string.
@@ -604,6 +686,22 @@ def controlnet_create_update_cache_info(controlnet, estimated_size: int):
 
     # Tag for internal use
     controlnet.DGENERATE_SIZE_ESTIMATE = estimated_size
+
+
+def adapter_create_update_cache_info(adapter, estimated_size: int):
+    """
+    Add additional information about the size of a newly created T2IAdapter model to the cache.
+
+    Tag the object with an internal tag.
+
+    :param adapter: the T2IAdapter object
+    :param estimated_size: size bytes
+    """
+    global _ADAPTER_CACHE_SIZE
+    _ADAPTER_CACHE_SIZE += estimated_size
+
+    # Tag for internal use
+    adapter.DGENERATE_SIZE_ESTIMATE = estimated_size
 
 
 def vae_create_update_cache_info(vae, estimated_size: int):
@@ -787,6 +885,47 @@ def controlnet_to_cpu_update_cache_info(
                             f'({_memory.bytes_best_human_unit(control_net_cache_size())})')
 
 
+def adapter_to_cpu_update_cache_info(adapter: diffusers.T2IAdapter | diffusers.MultiAdapter):
+    """
+    Update CPU side cache size information when a T2IAdapter module is moved to the CPU
+
+    :param adapter: the adapter, or multi adapter
+    """
+
+    global _ADAPTER_CACHE_SIZE
+
+    if isinstance(adapter, diffusers.MultiAdapter):
+
+        total_size = 0
+        for adapter in adapter.adapters:
+            total_size += adapter.DGENERATE_SIZE_ESTIMATE
+
+            _messages.debug_log(f'Cached T2IAdapter {_types.class_and_id_string(adapter)} '
+                                f'Size = {adapter.DGENERATE_SIZE_ESTIMATE} Bytes '
+                                f'({_memory.bytes_best_human_unit(adapter.DGENERATE_SIZE_ESTIMATE)}) '
+                                f'from "MultiAdapter" is entering CPU side memory.')
+
+        enforce_adapter_cache_constraints(total_size)
+        _ADAPTER_CACHE_SIZE += total_size
+
+        _messages.debug_log(f'"MultiAdapter" size fully estimated, '
+                            f'{_types.fullname(adapter_cache_size)}() '
+                            f'is now {adapter_cache_size()} Bytes '
+                            f'({_memory.bytes_best_human_unit(adapter_cache_size())})')
+
+    elif isinstance(adapter, diffusers.T2IAdapter):
+
+        enforce_adapter_cache_constraints(adapter.DGENERATE_SIZE_ESTIMATE)
+        _ADAPTER_CACHE_SIZE += adapter.DGENERATE_SIZE_ESTIMATE
+
+        _messages.debug_log(f'Cached T2IAdapter {_types.class_and_id_string(adapter)} '
+                            f'Size = {adapter.DGENERATE_SIZE_ESTIMATE} Bytes '
+                            f'({_memory.bytes_best_human_unit(adapter.DGENERATE_SIZE_ESTIMATE)}) '
+                            f'is entering CPU side memory, {_types.fullname(adapter_cache_size)}() '
+                            f'is now {adapter_cache_size()} Bytes '
+                            f'({_memory.bytes_best_human_unit(adapter_cache_size())})')
+
+
 def pipeline_off_cpu_update_cache_info(
         pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusionPipeline):
     """
@@ -920,6 +1059,45 @@ def controlnet_off_cpu_update_cache_info(
                             f'is leaving CPU side memory, {_types.fullname(control_net_cache_size)}() '
                             f'is now {control_net_cache_size()} Bytes '
                             f'({_memory.bytes_best_human_unit(control_net_cache_size())})')
+
+
+def adapter_off_cpu_update_cache_info(adapter: diffusers.T2IAdapter | diffusers.MultiAdapter):
+    """
+    Update CPU side cache size information when a T2IAdapter module is moved to a device that is not the CPU
+
+    :param adapter: the adapter, or multi adapter
+    """
+    global _ADAPTER_CACHE_SIZE
+
+    if isinstance(adapter, diffusers.MultiAdapter):
+
+        for adapter in adapter.adapters:
+            _ADAPTER_CACHE_SIZE -= adapter.DGENERATE_SIZE_ESTIMATE
+
+            if _ADAPTER_CACHE_SIZE < 0:
+                _ADAPTER_CACHE_SIZE = 0
+
+            _messages.debug_log(f'Cached T2IAdapter {_types.class_and_id_string(adapter)} Size = '
+                                f'{adapter.DGENERATE_SIZE_ESTIMATE} Bytes '
+                                f'({_memory.bytes_best_human_unit(adapter.DGENERATE_SIZE_ESTIMATE)}) '
+                                f'from "MultiAdapter" is leaving CPU side memory, '
+                                f'{_types.fullname(adapter_cache_size)}() is now '
+                                f'{adapter_cache_size()} Bytes '
+                                f'({_memory.bytes_best_human_unit(adapter_cache_size())})')
+
+    elif isinstance(adapter, diffusers.T2IAdapter):
+
+        _ADAPTER_CACHE_SIZE -= adapter.DGENERATE_SIZE_ESTIMATE
+
+        if _ADAPTER_CACHE_SIZE < 0:
+            _ADAPTER_CACHE_SIZE = 0
+
+        _messages.debug_log(f'Cached T2IAdapter {_types.class_and_id_string(adapter)} '
+                            f'Size = {adapter.DGENERATE_SIZE_ESTIMATE} Bytes '
+                            f'({_memory.bytes_best_human_unit(adapter.DGENERATE_SIZE_ESTIMATE)}) '
+                            f'is leaving CPU side memory, {_types.fullname(adapter_cache_size)}() '
+                            f'is now {adapter_cache_size()} Bytes '
+                            f'({_memory.bytes_best_human_unit(adapter_cache_size())})')
 
 
 __all__ = _types.module_all()

@@ -1022,6 +1022,7 @@ class PipelineCreationResult:
             * ``tokenizer_3``
             * ``safety_checker``
             * ``feature_extractor``
+            * ``adapter``
             * ``controlnet``
             * ``scheduler``
 
@@ -1049,6 +1050,7 @@ class PipelineCreationResult:
             'tokenizer_3',
             'safety_checker',
             'feature_extractor',
+            'adapter',
             'controlnet',
             'scheduler'
         }
@@ -1096,19 +1098,26 @@ class TorchPipelineCreationResult(PipelineCreationResult):
     Parsed ControlNet URIs if any were present
     """
 
+    parsed_t2i_adapter_uris: collections.abc.Sequence[_uris.T2IAdapterUri]
+    """
+    Parsed T2IAdapter URIs if any were present
+    """
+
     def __init__(self,
                  pipeline: diffusers.DiffusionPipeline,
                  parsed_unet_uri: _uris.TorchUNetUri | None,
                  parsed_vae_uri: _uris.TorchVAEUri | None,
                  parsed_lora_uris: collections.abc.Sequence[_uris.LoRAUri],
                  parsed_textual_inversion_uris: collections.abc.Sequence[_uris.TextualInversionUri],
-                 parsed_control_net_uris: collections.abc.Sequence[_uris.TorchControlNetUri]):
+                 parsed_control_net_uris: collections.abc.Sequence[_uris.TorchControlNetUri],
+                 parsed_t2i_adapter_uris: collections.abc.Sequence[_uris.T2IAdapterUri]):
         super().__init__(pipeline)
         self.parsed_unet_uri = parsed_unet_uri
         self.parsed_vae_uri = parsed_vae_uri
         self.parsed_lora_uris = parsed_lora_uris
         self.parsed_textual_inversion_uris = parsed_textual_inversion_uris
         self.parsed_control_net_uris = parsed_control_net_uris
+        self.parsed_t2i_adapter_uris = parsed_t2i_adapter_uris
 
     def call(self,
              device: str | None = 'cuda',
@@ -1141,6 +1150,7 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                                     textual_inversion_uris: _types.OptionalUris = None,
                                     text_encoder_uris: _types.OptionalUris = None,
                                     control_net_uris: _types.OptionalUris = None,
+                                    t2i_adapter_uris: _types.OptionalUris = None,
                                     scheduler: _types.OptionalString = None,
                                     safety_checker: bool = False,
                                     auth_token: _types.OptionalString = None,
@@ -1168,6 +1178,7 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         pipeline in order. A uri value of ``+`` or ``None`` indicates use default, a string value of ``null``
         indicates to explicitly not load any encoder all
     :param control_net_uris: Optional ``--control-nets`` URI strings for specifying ControlNet models
+    :param t2i_adapter_uris: Optional ``--t2i-adapters`` URI strings for specifying T2IAdapter models
     :param scheduler: Optional scheduler (sampler) class name, unqualified, or "help" / "helpargs" to print supported values
         to STDOUT and raise :py:exc:`dgenerate.pipelinewrapper.SchedulerHelpException`.  Dgenerate URI syntax is supported
         for overriding the schedulers constructor parameter defaults.
@@ -1215,6 +1226,7 @@ class TorchPipelineFactory:
                  lora_uris: _types.OptionalUris = None,
                  textual_inversion_uris: _types.OptionalUris = None,
                  control_net_uris: _types.OptionalUris = None,
+                 t2i_adapter_uris: _types.OptionalUris = None,
                  text_encoder_uris: _types.OptionalUris = None,
                  scheduler: _types.OptionalString = None,
                  safety_checker: bool = False,
@@ -1349,6 +1361,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                                      textual_inversion_uris: _types.OptionalUris = None,
                                      text_encoder_uris: _types.OptionalUris = None,
                                      control_net_uris: _types.OptionalUris = None,
+                                     t2i_adapter_uris: _types.OptionalUris = None,
                                      scheduler: _types.OptionalString = None,
                                      safety_checker: bool = False,
                                      auth_token: _types.OptionalString = None,
@@ -1364,6 +1377,9 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         if control_net_uris:
             raise UnsupportedPipelineConfigError(
                 'Deep Floyd --model-type values are not compatible with --control-nets.')
+        if t2i_adapter_uris:
+            raise UnsupportedPipelineConfigError(
+                'Deep Floyd --model-type values are not compatible with --t2i-adapters.')
         if textual_inversion_uris:
             raise UnsupportedPipelineConfigError(
                 'Deep Floyd --model-type values are not compatible with --textual-inversions.')
@@ -1375,6 +1391,9 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         if control_net_uris:
             raise UnsupportedPipelineConfigError(
                 'Stable Cascade --model-type values are not compatible with --control-nets.')
+        if t2i_adapter_uris:
+            raise UnsupportedPipelineConfigError(
+                'Stable Cascade --model-type values are not compatible with --t2i-adapters.')
         if textual_inversion_uris:
             raise UnsupportedPipelineConfigError(
                 'Stable Cascade --model-type values are not compatible with --textual-inversions.')
@@ -1386,6 +1405,10 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                 'Stable Cascade --model-type values are not compatible with --vae.')
 
     if model_type == model_type.TORCH_SD3:
+        if t2i_adapter_uris:
+            raise UnsupportedPipelineConfigError(
+                '--model-type torch-sd3 is not compatible with --t2i-adapters.')
+
         if unet_uri:
             raise UnsupportedPipelineConfigError(
                 '--model-type torch-sd3 is not compatible with --unet.'
@@ -1394,12 +1417,31 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             raise UnsupportedPipelineConfigError(
                 '--model-type torch-sd3 is not compatible with --textual-inversions.')
 
+    if control_net_uris and t2i_adapter_uris:
+        raise UnsupportedPipelineConfigError(
+            '--control-nets and --t2i-adapters can not be used together.')
+
+    is_sdxl = _enums.model_type_is_sdxl(model_type)
+    is_pix2pix = _enums.model_type_is_pix2pix(model_type)
+
+    if is_pix2pix:
+        if control_net_uris:
+            raise UnsupportedPipelineConfigError(
+                'Pix2Pix --model-type values are not compatible with --control-nets.')
+        if t2i_adapter_uris:
+            raise UnsupportedPipelineConfigError(
+                'Pix2Pix --model-type values are not compatible with --t2i-adapters.')
+
     # Pipeline class selection
 
     if _enums.model_type_is_upscaler(model_type):
         if control_net_uris:
             raise UnsupportedPipelineConfigError(
                 'Upscaler models are not compatible with --control-nets.')
+
+        if t2i_adapter_uris:
+            raise UnsupportedPipelineConfigError(
+                'Upscaler models are not compatible with --t2i-adapters.')
 
         if pipeline_type != _enums.PipelineType.IMG2IMG and not scheduler_is_help(scheduler):
             raise UnsupportedPipelineConfigError(
@@ -1414,17 +1456,14 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             diffusers.StableDiffusionUpscalePipeline if model_type == _enums.ModelType.TORCH_UPSCALER_X4
             else diffusers.StableDiffusionLatentUpscalePipeline)
     else:
-        sdxl = _enums.model_type_is_sdxl(model_type)
-        pix2pix = _enums.model_type_is_pix2pix(model_type)
-
         if pipeline_type == _enums.PipelineType.TXT2IMG:
 
-            if pix2pix:
+            if is_pix2pix:
                 if not (scheduler_is_help(scheduler) or text_encoder_is_help(text_encoder_uris)):
                     raise UnsupportedPipelineConfigError(
                         'pix2pix models only work in img2img mode and cannot work without --image-seeds.')
                 else:
-                    pipeline_class = diffusers.StableDiffusionXLInstructPix2PixPipeline if sdxl \
+                    pipeline_class = diffusers.StableDiffusionXLInstructPix2PixPipeline if is_sdxl \
                         else diffusers.StableDiffusionInstructPix2PixPipeline
 
             if model_type == _enums.ModelType.TORCH_IF:
@@ -1443,20 +1482,23 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             elif model_type == _enums.ModelType.TORCH_SD3:
                 pipeline_class = diffusers.StableDiffusion3Pipeline if not \
                     control_net_uris else diffusers.StableDiffusion3ControlNetPipeline
+            elif t2i_adapter_uris:
+                pipeline_class = diffusers.StableDiffusionXLAdapterPipeline if is_sdxl \
+                    else diffusers.StableDiffusionAdapterPipeline
             elif control_net_uris:
-                pipeline_class = diffusers.StableDiffusionXLControlNetPipeline if sdxl \
+                pipeline_class = diffusers.StableDiffusionXLControlNetPipeline if is_sdxl \
                     else diffusers.StableDiffusionControlNetPipeline
             else:
-                pipeline_class = diffusers.StableDiffusionXLPipeline if sdxl else diffusers.StableDiffusionPipeline
+                pipeline_class = diffusers.StableDiffusionXLPipeline if is_sdxl else diffusers.StableDiffusionPipeline
 
         elif pipeline_type == _enums.PipelineType.IMG2IMG:
             if control_net_uris:
-                if pix2pix:
+                if is_pix2pix:
                     raise UnsupportedPipelineConfigError(
                         'pix2pix models are not compatible with --control-nets.')
 
-            if pix2pix:
-                pipeline_class = diffusers.StableDiffusionXLInstructPix2PixPipeline if sdxl \
+            if is_pix2pix:
+                pipeline_class = diffusers.StableDiffusionXLInstructPix2PixPipeline if is_sdxl \
                     else diffusers.StableDiffusionInstructPix2PixPipeline
             elif model_type == _enums.ModelType.TORCH_IF:
                 pipeline_class = diffusers.IFImg2ImgPipeline
@@ -1478,15 +1520,18 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                     raise UnsupportedPipelineConfigError(
                         '--model-type torch-sd3 does not currently support --loras in img2img mode.')
                 pipeline_class = diffusers.StableDiffusion3Img2ImgPipeline
+            elif t2i_adapter_uris:
+                raise UnsupportedPipelineConfigError(
+                    'img2img mode is not supported with --t2i-adapters.')
             elif control_net_uris:
-                if sdxl:
+                if is_sdxl:
                     pipeline_class = diffusers.StableDiffusionXLControlNetImg2ImgPipeline
                 else:
                     pipeline_class = diffusers.StableDiffusionControlNetImg2ImgPipeline
             else:
-                pipeline_class = diffusers.StableDiffusionXLImg2ImgPipeline if sdxl else diffusers.StableDiffusionImg2ImgPipeline
+                pipeline_class = diffusers.StableDiffusionXLImg2ImgPipeline if is_sdxl else diffusers.StableDiffusionImg2ImgPipeline
         elif pipeline_type == _enums.PipelineType.INPAINT:
-            if pix2pix:
+            if is_pix2pix:
                 raise UnsupportedPipelineConfigError(
                     'pix2pix models only work in img2img mode and cannot work in inpaint mode (with a mask).')
             if _enums.model_type_is_s_cascade(model_type):
@@ -1500,13 +1545,16 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                 pipeline_class = diffusers.IFInpaintingPipeline
             elif model_type == _enums.ModelType.TORCH_IFS:
                 pipeline_class = diffusers.IFInpaintingSuperResolutionPipeline
+            elif t2i_adapter_uris:
+                raise UnsupportedPipelineConfigError(
+                    'inpaint mode is not supported with --t2i-adapters.')
             elif control_net_uris:
-                if sdxl:
+                if is_sdxl:
                     pipeline_class = diffusers.StableDiffusionXLControlNetInpaintPipeline
                 else:
                     pipeline_class = diffusers.StableDiffusionControlNetInpaintPipeline
             else:
-                pipeline_class = diffusers.StableDiffusionXLInpaintPipeline if sdxl else diffusers.StableDiffusionInpaintPipeline
+                pipeline_class = diffusers.StableDiffusionXLInpaintPipeline if is_sdxl else diffusers.StableDiffusionInpaintPipeline
         else:
             # Should be impossible
             raise UnsupportedPipelineConfigError('Pipeline type not implemented.')
@@ -1542,6 +1590,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     unet_override = 'unet' in extra_modules
     vae_override = 'vae' in extra_modules
     controlnet_override = 'controlnet' in extra_modules
+    adapter_override = 'adapter' in extra_modules
     safety_checker_override = 'safety_checker' in extra_modules
     scheduler_override = 'scheduler' in extra_modules
 
@@ -1610,6 +1659,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     torch_dtype = _enums.get_torch_dtype(dtype)
 
     parsed_control_net_uris = []
+    parsed_t2i_adapter_uris = []
     parsed_unet_uri = None
     parsed_vae_uri = None
 
@@ -1679,11 +1729,39 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             _messages.debug_log(lambda:
                                 f'Added Torch UNet: "{unet_uri}" to pipeline: "{pipeline_class.__name__}"')
 
-    if control_net_uris and not controlnet_override:
-        if _enums.model_type_is_pix2pix(model_type):
-            raise UnsupportedPipelineConfigError(
-                'Using ControlNets with pix2pix models is not supported.'
+    if t2i_adapter_uris and not adapter_override:
+        t2i_adapters = None
+
+        for t2i_adapter_uri in t2i_adapter_uris:
+            parsed_t2i_adapter_uri = _uris.T2IAdapterUri.parse(t2i_adapter_uri)
+            parsed_t2i_adapter_uris.append(parsed_t2i_adapter_uri)
+
+            new_adapter = parsed_t2i_adapter_uri.load(
+                use_auth_token=auth_token,
+                dtype_fallback=dtype,
+                local_files_only=local_files_only,
+                sequential_cpu_offload_member=sequential_cpu_offload,
+                model_cpu_offload_member=model_cpu_offload
             )
+
+            _messages.debug_log(lambda:
+                                f'Added Torch T2IAdapter: "{t2i_adapter_uri}" '
+                                f'to pipeline: "{pipeline_class.__name__}"')
+
+            if t2i_adapters is not None:
+                if not isinstance(t2i_adapters, list):
+                    t2i_adapters = [t2i_adapters, new_adapter]
+                else:
+                    t2i_adapters.append(new_adapter)
+            else:
+                t2i_adapters = new_adapter
+
+        if isinstance(t2i_adapters, list):
+            creation_kwargs['adapter'] = diffusers.MultiAdapter(t2i_adapters)
+        else:
+            creation_kwargs['adapter'] = t2i_adapters
+
+    if control_net_uris and not controlnet_override:
 
         control_nets = None
         control_net_model_class = diffusers.ControlNetModel if not \
@@ -1841,7 +1919,8 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         parsed_vae_uri=parsed_vae_uri,
         parsed_lora_uris=parsed_lora_uris,
         parsed_textual_inversion_uris=parsed_textual_inversion_uris,
-        parsed_control_net_uris=parsed_control_net_uris
+        parsed_control_net_uris=parsed_control_net_uris,
+        parsed_t2i_adapter_uris=parsed_t2i_adapter_uris
     )
 
 

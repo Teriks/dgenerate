@@ -182,6 +182,14 @@ class DiffusionArguments(_types.SetFromMixin):
     1.0 the less the image is used for generation, IE. the more creative freedom the AI has.
     """
 
+    sdxl_t2i_adapter_factor: _types.OptionalFloat = None
+    """
+    SDXL specific T2I adapter factor, this controls the amount of time-steps for which a T2I adapter applies
+    guidance to an image, this is a value between 0.0 and 1.0. A value of 0.5 for example
+    indicates that the T2I adapter is only active for half the amount of time-steps it takes
+    to completely render an image. 
+    """
+
     upscaler_noise_level: _types.OptionalInteger = None
     """
     Upscaler noise level for the :py:attr:`dgenerate.pipelinewrapper.ModelType.TORCH_UPSCALER_X4` model type only.
@@ -495,6 +503,7 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.s_cascade_decoder_inference_steps, 'Stable Cascade Decoder Inference Steps:'),
             (self.s_cascade_decoder_guidance_scale, 'Stable Cascade Decoder Guidance Scale:'),
             (self.sdxl_high_noise_fraction, "SDXL High Noise Fraction:"),
+            (self.sdxl_t2i_adapter_factor, "SDXL T2I Adapter Factor:"),
             (self.sdxl_refiner_inference_steps, "SDXL Refiner Inference Steps:"),
             (self.sdxl_refiner_guidance_scale, "SDXL Refiner Guidance Scale:"),
             (self.sdxl_refiner_guidance_rescale, "SDXL Refiner Guidance Rescale:"),

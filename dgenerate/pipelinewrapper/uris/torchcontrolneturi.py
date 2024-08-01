@@ -273,7 +273,7 @@ class TorchControlNetUri:
 
         :raise InvalidControlNetUriError:
 
-        :return: :py:class:`.TorchControlNetPath`
+        :return: :py:class:`.TorchControlNetUri`
         """
         try:
             r = _torch_control_net_uri_parser.parse(uri)

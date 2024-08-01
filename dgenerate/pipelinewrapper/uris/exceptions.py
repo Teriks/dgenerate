@@ -73,6 +73,13 @@ class InvalidControlNetUriError(InvalidModelUriError):
     pass
 
 
+class InvalidT2IAdapterUriError(InvalidModelUriError):
+    """
+    Error in ``--t2i-adapters`` uri
+    """
+    pass
+
+
 class InvalidLoRAUriError(InvalidModelUriError):
     """
     Error in ``--loras`` uri
@@ -104,6 +111,13 @@ class TextEncoderUriLoadError(InvalidModelUriError):
 class ControlNetUriLoadError(ModelUriLoadError):
     """
     Error while loading model file in ``--control-nets`` uri
+    """
+    pass
+
+
+class T2IAdapterUriLoadError(ModelUriLoadError):
+    """
+    Error while loading model file in ``--t2i-adapters`` uri
     """
     pass
 

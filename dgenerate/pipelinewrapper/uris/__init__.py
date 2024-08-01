@@ -36,7 +36,9 @@ from .exceptions import \
     InvalidLoRAUriError, \
     InvalidUNetUriError, \
     TextEncoderUriLoadError, \
-    InvalidTextEncoderUriError
+    InvalidTextEncoderUriError, \
+    T2IAdapterUriLoadError, \
+    InvalidT2IAdapterUriError
 from .flaxcontrolneturi import FlaxControlNetUri
 from .flaxtextencoderuri import FlaxTextEncoderUri
 from .flaxuneturi import FlaxUNetUri
@@ -49,5 +51,6 @@ from .torchcontrolneturi import TorchControlNetUri
 from .torchtextencoderuri import TorchTextEncoderUri
 from .torchuneturi import TorchUNetUri
 from .torchvaeuri import TorchVAEUri
+from .t2iadapteruri import T2IAdapterUri
 
 __all__ = _types.module_all()

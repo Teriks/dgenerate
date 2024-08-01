@@ -128,6 +128,17 @@ def _type_clip_skip(val):
     return val
 
 
+def _type_adapter_factor(val):
+    try:
+        val = float(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be a float')
+
+    if val < 0.0 or val > 1.0:
+        raise argparse.ArgumentTypeError('Must be greater than 0.0 and less than 1.0')
+    return val
+
+
 def _type_inference_steps(val):
     try:
         val = int(val)
@@ -734,8 +745,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                             --textual-inversions "my_ti_model.safetensors", all other loading arguments 
                             are unused in this case and may produce an error message if used."""))
 
+    image_guidance_group = parser.add_mutually_exclusive_group()
+
     actions.append(
-        parser.add_argument('-cn', '--control-nets', nargs='+', action='store', default=None, metavar="CONTROL_NET_URI",
+        image_guidance_group.add_argument(
+                            '-cn', '--control-nets', nargs='+', action='store', default=None,
+                            metavar="CONTROL_NET_URI",
                             dest='control_net_uris',
                             help=
                             f"""Specify one or more ControlNet models using URIs. This should be a
@@ -784,12 +799,62 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                         
                             If you wish to load a weights file directly from disk, the simplest way is: 
                             --control-nets "my_controlnet.safetensors" or --control-nets "my_controlnet.safetensors;scale=1.0;dtype=float16", 
-                            all other loading arguments aside from "scale" and "dtype" are unused in this case and may produce
+                            all other loading arguments aside from "scale", "start", "end", and "dtype" are unused in this case and may produce
                             an error message if used ("from_torch" is available when using flax).
                             
                             If you wish to load a specific weight file from a huggingface repository, use the blob link
                             loading syntax: --control-nets 
                             "https://huggingface.co/UserName/repository-name/blob/main/controlnet.safetensors",
+                            the "revision" argument may be used with this syntax.
+                            """))
+
+    actions.append(
+        image_guidance_group.add_argument(
+                            '-t2i', '--t2i-adapters', nargs='+', action='store', default=None,
+                            metavar="T2I_ADAPTER_URI",
+                            dest='t2i_adapter_uris',
+                            help=
+                            f"""Specify one or more T2IAdapter models using URIs. This should be a
+                            huggingface repository slug / blob link, path to model file on disk 
+                            (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model 
+                            folder containing model files.
+                            
+                            If a T2IAdapter model file exists at a URL which serves the file as
+                            a raw download, you may provide an http/https link to it and it will be
+                            downloaded to dgenerates web cache.
+                            
+                            Optional arguments can be provided after the T2IAdapter model specification, for torch
+                            these include: "scale", "revision", "variant", "subfolder", and "dtype".
+
+                            They can be specified as so in any order, they are not positional:
+                            "huggingface/t2iadapter;scale=1.0;revision=main;variant=fp16;subfolder=repo_subfolder;dtype=float16".
+                            
+                            The "scale" argument specifies the scaling factor applied to the T2IAdapter model, 
+                            the default value is 1.0.
+                            
+                            The "revision" argument specifies the model revision to use for the T2IAdapter model
+                            when loading from huggingface repository, (The git branch / tag, default is "main").
+                            
+                            The "variant" argument specifies the T2IAdapter model variant, if "variant" is specified when 
+                            loading from a huggingface repository or folder, weights will be loaded from "variant" filename, 
+                            e.g. "pytorch_model.<variant>.safetensors. "variant"  defaults to automatic selection. 
+                            "variant" in the case of --t2i-adapters does not default to the value of --variant to 
+                            prevent failures during common use cases.
+                            
+                            The "subfolder" argument specifies the ControlNet model subfolder, if specified 
+                            when loading from a huggingface repository or folder, weights from the specified subfolder.
+                            
+                            The "dtype" argument specifies the T2IAdapter model precision, it defaults to the value of -t/--dtype
+                            and should be one of: {_SUPPORTED_DATA_TYPES_PRETTY}.
+
+                            If you wish to load a weights file directly from disk, the simplest way is: 
+                            --t2i-adapters "my_t2i_adapter.safetensors" or --t2i-adapters "my_t2i_adapter.safetensors;scale=1.0;dtype=float16", 
+                            all other loading arguments aside from "scale" and "dtype" are unused in this case and may produce
+                            an error message if used.
+                            
+                            If you wish to load a specific weight file from a huggingface repository, use the blob link
+                            loading syntax: --t2i-adapters
+                            "https://huggingface.co/UserName/repository-name/blob/main/t2i_adapter.safetensors",
                             the "revision" argument may be used with this syntax.
                             """))
 
@@ -987,6 +1052,15 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                             By default the model is passed the primary prompt for this value, this option
                             allows you to choose a different prompt. The negative prompt component can be
                             specified with the same syntax as --prompts"""))
+
+    actions.append(
+        parser.add_argument('--sdxl-t2i-adapter-factors', nargs='+', action='store', metavar="PROMPT",
+                            default=None,
+                            type=_type_adapter_factor,
+                            help="""One or more SDXL specific T2I adapter factors to try, this controls the amount of
+                            time-steps for which a T2I adapter applies guidance to an image, this is a value between 
+                            0.0 and 1.0. A value of 0.5 for example indicates that the T2I adapter is only active for 
+                            half the amount of time-steps it takes to completely render an image."""))
 
     actions.append(
         parser.add_argument('--sdxl-aesthetic-scores', metavar="FLOAT",
