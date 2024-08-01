@@ -10,6 +10,7 @@ title: Stable Diffusion
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
 @uriwithfloat[{"label":"LoRA Path / URI", "float-label":"LoRA Scale", "arg":"--loras", "float-arg":"scale", "dir":true, "file-types":["models"]}]
 @uriwithfloat[{"label":"ControlNet Path / URI", "float-label":"ControlNet Scale", "arg":"--control-nets", "float-arg":"scale", "dir":true, "file-types":["models"]}]
+@uriwithfloat[{"label":"T2I Adapter Path / URI", "float-label":"T2I Adapter Scale", "arg":"--t2i-adapters", "float-arg":"scale", "dir":true, "file-types":["models"]}]
 @dir[{"label":"UNet Directory / URI", "arg":"--unet", "divider-after":true}]
 @imageseed[{"label":"Image Seed", "arg":"--image-seeds", "file-types":["images-in", "videos-in"], "float-label":"Image Seed Strength", "float-arg":"--image-seed-strengths", "min":0.01, "max":1, "default":"", "float":""}]
 @imageprocessor[{"arg":"--seed-image-processors", "label":"Seed Image Processor"}]
