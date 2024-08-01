@@ -606,7 +606,7 @@ def enforce_adapter_cache_constraints(new_adapter_size, collect=True):
     return False
 
 
-def uri_hash_with_parser(parser):
+def uri_hash_with_parser(parser, exclude: set[str] | None = None):
     """
     Create a hash function from a particular URI parser function that hashes a URI string.
 
@@ -617,6 +617,7 @@ def uri_hash_with_parser(parser):
     passed to :py:func:`dgenerate.memoize.struct_hasher`.
 
     :param parser: The URI parser function
+    :param exclude: URI argument names to exclude from hashing
     :return: a hash function compatible with :py:func:`dgenerate.memoize.memoize`
     """
 
@@ -631,16 +632,18 @@ def uri_hash_with_parser(parser):
             # user returned string, override the hash value
             return parser_result
 
-        return _d_memoize.struct_hasher(parser_result)
+        return _d_memoize.struct_hasher(parser_result,
+                                        exclude=exclude)
 
     return hasher
 
 
-def uri_list_hash_with_parser(parser):
+def uri_list_hash_with_parser(parser, exclude: set[str] | None = None):
     """
     Create a hash function from a particular URI parser function that hashes a list of URIs.
 
     :param parser: The URI parser function
+    :param exclude: URI argument names to exclude from hashing
     :return: a hash function compatible with :py:func:`dgenerate.memoize.memoize`
 
     """
@@ -649,7 +652,7 @@ def uri_list_hash_with_parser(parser):
         if not paths:
             return '[]'
 
-        return '[' + ','.join(uri_hash_with_parser(parser)(path) for path in paths) + ']'
+        return '[' + ','.join(uri_hash_with_parser(parser, exclude=exclude)(path) for path in paths) + ']'
 
     return hasher
 
