@@ -1,0 +1,13 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 3.10.3
+
+# Use an already processed image with the canny control net
+
+runwayml/stable-diffusion-v1-5
+--inference-steps 40
+--guidance-scales 8
+--gen-seeds 2
+--prompts "Painting, Girl with a pearl earring by Leonardo Da Vinci, masterpiece; low quality, low resolution, blank eyeballs"
+--t2i-adapters TencentARC/t2iadapter_canny_sd15v2;scale=0.5
+--image-seeds "../../media/vermeer_canny_edged.png"
+--output-path pearlearring
