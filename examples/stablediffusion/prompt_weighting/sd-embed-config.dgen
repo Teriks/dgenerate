@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 3.10.3
+#! dgenerate 3.11.0
 
 # The sd-embed prompt weighter natively supports Stable Diffusion Web UI syntax
 
