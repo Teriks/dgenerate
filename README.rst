@@ -2952,7 +2952,7 @@ When using SDXL, the dgenerate argument ``--sdxl-t2i-adapter-factors`` can be us
 multiple adapter factors to try generating images with, the adapter factor is value between ``0.0`` and ``1.0``
 indicating the fraction of time-steps over which the T2I adapter guidance is applied.
 
-For example a ``--sdxl-t2i-adapter-factors`` value of ``0.5`` would mean to only apply guidance
+For example, a ``--sdxl-t2i-adapter-factors`` value of ``0.5`` would mean to only apply guidance
 over the first half of the time-steps needed to generate the image.
 
 When using multiple T2I Adapters, this value applies to all T2I Adapter models mentioned.
