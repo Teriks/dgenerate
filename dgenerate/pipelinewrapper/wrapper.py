@@ -1110,7 +1110,7 @@ class DiffusionPipelineWrapper:
                 args['mask_image'] = mask_image
 
         def set_t2iadapter_defaults():
-            adapter_control_images = user_args.control_images
+            adapter_control_images = list(user_args.control_images)
 
             if not adapter_control_images:
                 raise _pipelines.UnsupportedPipelineConfigError(
@@ -1133,6 +1133,15 @@ class DiffusionPipelineWrapper:
                 if img.size != first_control_image_size:
                     raise _pipelines.UnsupportedPipelineConfigError(
                         "All control guidance images must have the same dimension.")
+
+            if not _image.is_aligned(first_control_image_size, 16):
+                new_size = _image.align_by(first_control_image_size, 16)
+                _messages.log(
+                    f'T2I Adapter control image(s) of size {first_control_image_size} being forcefully '
+                    f'aligned by 16 to {new_size} to prevent errors.', level=_messages.WARNING)
+
+                for idx, img in enumerate(adapter_control_images):
+                    adapter_control_images[idx] = img.resize(new_size, PIL.Image.Resampling.LANCZOS)
 
             if _enums.model_type_is_sdxl(self.model_type) and user_args.sdxl_t2i_adapter_factor is not None:
                 args['adapter_conditioning_factor'] = user_args.sdxl_t2i_adapter_factor
