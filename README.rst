@@ -133,14 +133,15 @@ Help Output
                      [-bgs SIZE] [-te TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]]
                      [-te2 TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]] [-un UNET_URI] [-un2 UNET_URI]
                      [-vae VAE_URI] [-vt] [-vs] [-lra LORA_URI [LORA_URI ...]] [-ti URI [URI ...]]
-                     [-cn CONTROL_NET_URI [CONTROL_NET_URI ...]] [-sch SCHEDULER_URI] [-mqo | -mco]
-                     [--s-cascade-decoder MODEL_URI] [-dqo] [-dco]
+                     [-cn CONTROL_NET_URI [CONTROL_NET_URI ...] | -t2i T2I_ADAPTER_URI [T2I_ADAPTER_URI ...]]
+                     [-sch SCHEDULER_URI] [-mqo | -mco] [--s-cascade-decoder MODEL_URI] [-dqo] [-dco]
                      [--s-cascade-decoder-prompts PROMPT [PROMPT ...]]
                      [--s-cascade-decoder-inference-steps INTEGER [INTEGER ...]]
                      [--s-cascade-decoder-guidance-scales INTEGER [INTEGER ...]]
                      [--s-cascade-decoder-scheduler SCHEDULER_URI] [--sdxl-refiner MODEL_URI] [-rqo] [-rco]
                      [--sdxl-refiner-scheduler SCHEDULER_URI] [--sdxl-refiner-edit]
-                     [--sdxl-second-prompts PROMPT [PROMPT ...]] [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
+                     [--sdxl-second-prompts PROMPT [PROMPT ...]] [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]]
+                     [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-crops-coords-top-left COORD [COORD ...]] [--sdxl-original-size SIZE [SIZE ...]]
                      [--sdxl-target-size SIZE [SIZE ...]] [--sdxl-negative-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-negative-original-sizes SIZE [SIZE ...]]
@@ -170,7 +171,7 @@ Help Output
                      [INTEGER ...]] [-gs FLOAT [FLOAT ...]] [-igs FLOAT [FLOAT ...]] [-gr FLOAT [FLOAT ...]]
                      [-ifs INTEGER [INTEGER ...]] [-mc EXPR [EXPR ...]] [-pmc EXPR [EXPR ...]]
                      [-umc EXPR [EXPR ...]] [-vmc EXPR [EXPR ...]] [-cmc EXPR [EXPR ...]] [-tmc EXPR [EXPR ...]]
-                     [-imc EXPR [EXPR ...]] [-icc EXPR [EXPR ...]]
+                     [-amc EXPR [EXPR ...]] [-imc EXPR [EXPR ...]] [-icc EXPR [EXPR ...]]
                      model_path
 
     Batch image generation and manipulation tool supporting Stable Diffusion and related techniques /
@@ -462,12 +463,42 @@ Help Output
                             load a weights file directly from disk, the simplest way is: --control-nets
                             "my_controlnet.safetensors" or --control-nets
                             "my_controlnet.safetensors;scale=1.0;dtype=float16", all other loading arguments
-                            aside from "scale" and "dtype" are unused in this case and may produce an error
-                            message if used ("from_torch" is available when using flax). If you wish to load a
-                            specific weight file from a huggingface repository, use the blob link loading
-                            syntax: --control-nets "https://huggingface.co/UserName/repository-
+                            aside from "scale", "start", "end", and "dtype" are unused in this case and may
+                            produce an error message if used ("from_torch" is available when using flax). If you
+                            wish to load a specific weight file from a huggingface repository, use the blob link
+                            loading syntax: --control-nets "https://huggingface.co/UserName/repository-
                             name/blob/main/controlnet.safetensors", the "revision" argument may be used with
                             this syntax.
+      -t2i T2I_ADAPTER_URI [T2I_ADAPTER_URI ...], --t2i-adapters T2I_ADAPTER_URI [T2I_ADAPTER_URI ...]
+                            Specify one or more T2IAdapter models using URIs. This should be a huggingface
+                            repository slug / blob link, path to model file on disk (for example, a .pt, .pth,
+                            .bin, .ckpt, or .safetensors file), or model folder containing model files. If a
+                            T2IAdapter model file exists at a URL which serves the file as a raw download, you
+                            may provide an http/https link to it and it will be downloaded to dgenerates web
+                            cache. Optional arguments can be provided after the T2IAdapter model specification,
+                            for torch these include: "scale", "revision", "variant", "subfolder", and "dtype".
+                            They can be specified as so in any order, they are not positional: "huggingface/t2ia
+                            dapter;scale=1.0;revision=main;variant=fp16;subfolder=repo_subfolder;dtype=float16".
+                            The "scale" argument specifies the scaling factor applied to the T2IAdapter model,
+                            the default value is 1.0. The "revision" argument specifies the model revision to
+                            use for the T2IAdapter model when loading from huggingface repository, (The git
+                            branch / tag, default is "main"). The "variant" argument specifies the T2IAdapter
+                            model variant, if "variant" is specified when loading from a huggingface repository
+                            or folder, weights will be loaded from "variant" filename, e.g.
+                            "pytorch_model.<variant>.safetensors. "variant" defaults to automatic selection.
+                            "variant" in the case of --t2i-adapters does not default to the value of --variant
+                            to prevent failures during common use cases. The "subfolder" argument specifies the
+                            ControlNet model subfolder, if specified when loading from a huggingface repository
+                            or folder, weights from the specified subfolder. The "dtype" argument specifies the
+                            T2IAdapter model precision, it defaults to the value of -t/--dtype and should be one
+                            of: auto, bfloat16, float16, or float32. If you wish to load a weights file directly
+                            from disk, the simplest way is: --t2i-adapters "my_t2i_adapter.safetensors" or
+                            --t2i-adapters "my_t2i_adapter.safetensors;scale=1.0;dtype=float16", all other
+                            loading arguments aside from "scale" and "dtype" are unused in this case and may
+                            produce an error message if used. If you wish to load a specific weight file from a
+                            huggingface repository, use the blob link loading syntax: --t2i-adapters
+                            "https://huggingface.co/UserName/repository-name/blob/main/t2i_adapter.safetensors",
+                            the "revision" argument may be used with this syntax.
       -sch SCHEDULER_URI, --scheduler SCHEDULER_URI
                             Specify a scheduler (sampler) by URI. Passing "help" to this argument will print the
                             compatible schedulers for a model without generating any images. Passing "helpargs"
@@ -590,6 +621,12 @@ Help Output
                             the model is passed the primary prompt for this value, this option allows you to
                             choose a different prompt. The negative prompt component can be specified with the
                             same syntax as --prompts
+      --sdxl-t2i-adapter-factors FLOAT [FLOAT ...]
+                            One or more SDXL specific T2I adapter factors to try, this controls the amount of
+                            time-steps for which a T2I adapter applies guidance to an image, this is a value
+                            between 0.0 and 1.0. A value of 0.5 for example indicates that the T2I adapter is
+                            only active for half the amount of time-steps it takes to completely render an
+                            image.
       --sdxl-aesthetic-scores FLOAT [FLOAT ...]
                             One or more Stable Diffusion XL (torch-sdxl) "aesthetic-score" micro-conditioning
                             parameters. Used to simulate an aesthetic score of the generated image by
@@ -985,6 +1022,14 @@ Help Output
                             Example, and default value: "text_encoder_size > (available * 0.75)" For Syntax See:
                             [https://dgenerate.readthedocs.io/en/v3.10.3/dgenerate_submodules.html#dgenerate.pip
                             elinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS]
+      -amc EXPR [EXPR ...], --adapter-cache-memory-constraints EXPR [EXPR ...]
+                            Cache constraint expressions describing when to automatically clear the in memory
+                            T2I Adapter cache considering current memory usage, and estimated memory usage of
+                            new T2I Adapter models that are about to enter memory. If any of these constraint
+                            expressions are met all T2I Adapter models cached in memory will be cleared.
+                            Example, and default value: "adapter_size > (available * 0.75)" For Syntax See: [htt
+                            ps://dgenerate.readthedocs.io/en/v3.10.3/dgenerate_submodules.html#dgenerate.pipelin
+                            ewrapper.ADAPTER_CACHE_MEMORY_CONSTRAINTS]
       -imc EXPR [EXPR ...], --image-processor-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the entire in
                             memory diffusion model cache considering current memory usage, and estimated memory
