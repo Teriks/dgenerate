@@ -1331,7 +1331,11 @@ def _torch_args_hasher(args):
         'lora_uris': _cache.uri_list_hash_with_parser(_uris.LoRAUri.parse),
         'textual_inversion_uris': _cache.uri_list_hash_with_parser(_uris.TextualInversionUri.parse),
         'text_encoder_uris': _cache.uri_list_hash_with_parser(text_encoder_uri_parse),
-        'control_net_uris': _cache.uri_list_hash_with_parser(_uris.TorchControlNetUri.parse)}
+        'control_net_uris': _cache.uri_list_hash_with_parser(_uris.TorchControlNetUri.parse,
+                                                             exclude={'scale', 'start', 'end'}),
+        't2i_adapter_uris': _cache.uri_list_hash_with_parser(_uris.T2IAdapterUri.parse,
+                                                             exclude={'scale'})
+    }
     return _d_memoize.args_cache_key(args, custom_hashes=custom_hashes)
 
 
