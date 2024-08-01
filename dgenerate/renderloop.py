@@ -806,6 +806,8 @@ class RenderLoop:
             second_text_encoder_uris=self.config.second_text_encoder_uris,
             control_net_uris=
             self.config.control_net_uris if self.config.image_seeds else [],
+            t2i_adapter_uris=
+            self.config.t2i_adapter_uris if self.config.image_seeds else [],
             sdxl_refiner_uri=self.config.sdxl_refiner_uri,
             s_cascade_decoder_uri=self.config.s_cascade_decoder_uri,
             s_cascade_decoder_cpu_offload=bool(self.config.s_cascade_decoder_cpu_offload),
@@ -977,7 +979,8 @@ class RenderLoop:
 
         for image_seed_uri, parsed_image_seed, seed_to_image in list(iterate_image_seeds()):
 
-            is_control_guidance_spec = self.config.control_net_uris and parsed_image_seed.is_single_spec
+            is_control_guidance_spec = (self.config.control_net_uris or self.config.t2i_adapter_uris) \
+                                       and parsed_image_seed.is_single_spec
 
             if is_control_guidance_spec:
                 _messages.log(f'Processing Control Image: "{image_seed_uri}"', underline=True)

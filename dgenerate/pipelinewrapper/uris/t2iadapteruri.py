@@ -33,15 +33,17 @@ import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 
-_torch_control_net_uri_parser = _textprocessing.ConceptUriParser('ControlNet',
-                                                                 ['scale', 'start', 'end', 'revision', 'variant',
+_torch_t2i_adapter_uri_parser = _textprocessing.ConceptUriParser('T2IAdapter',
+                                                                 ['scale',
+                                                                  'revision',
+                                                                  'variant',
                                                                   'subfolder',
                                                                   'dtype'])
 
 
-class TorchControlNetUri:
+class T2IAdapterUri:
     """
-    Representation of ``--control-nets`` uri when ``--model-type`` torch*
+    Representation of ``--t2i-adapters`` uri when ``--model-type`` torch*
     """
 
     @property
@@ -82,23 +84,9 @@ class TorchControlNetUri:
     @property
     def scale(self) -> float:
         """
-        ControlNet guidance scale
+        T2IAdapter scale
         """
         return self._scale
-
-    @property
-    def start(self) -> float:
-        """
-        ControlNet guidance start point, fraction of inference / timesteps.
-        """
-        return self._start
-
-    @property
-    def end(self) -> float:
-        """
-        ControlNet guidance end point, fraction of inference / timesteps.
-        """
-        return self._end
 
     def __init__(self,
                  model: str,
@@ -106,20 +94,16 @@ class TorchControlNetUri:
                  variant: _types.OptionalString,
                  subfolder: _types.OptionalPath,
                  dtype: _enums.DataType | str | None = None,
-                 scale: float = 1.0,
-                 start: float = 0.0,
-                 end: float = 1.0):
+                 scale: float = 1.0):
         """
         :param model: model path
         :param revision: model revision (branch name)
         :param variant: model variant, for example ``fp16``
         :param subfolder: model subfolder
         :param dtype: model data type (precision)
-        :param scale: control net scale
-        :param start: control net guidance start value
-        :param end: control net guidance end value
+        :param scale: t2i adapter scale
 
-        :raises InvalidControlNetUriError: If ``dtype`` is passed an invalid data type string.
+        :raises InvalidT2IAdapterUriError: If ``dtype`` is passed an invalid data type string.
         """
 
         self._model = model
@@ -130,24 +114,19 @@ class TorchControlNetUri:
         try:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
         except ValueError:
-            raise _exceptions.InvalidControlNetUriError(
+            raise _exceptions.InvalidT2IAdapterUriError(
                 f'invalid dtype string, must be one of: {_textprocessing.oxford_comma(_enums.supported_data_type_strings(), "or")}')
 
         self._scale = scale
-        self._start = start
-        self._end = end
 
     def load(self,
              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
              use_auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
              sequential_cpu_offload_member: bool = False,
-             model_cpu_offload_member: bool = False,
-             model_class: type[diffusers.ControlNetModel] | type[
-                 diffusers.SD3ControlNetModel] = diffusers.ControlNetModel) -> \
-            diffusers.ControlNetModel | diffusers.SD3ControlNetModel:
+             model_cpu_offload_member: bool = False) -> diffusers.T2IAdapter:
         """
-        Load a :py:class:`diffusers.ControlNetModel` from this URI.
+        Load a :py:class:`diffusers.T2IAdapter` from this URI.
 
 
         :param dtype_fallback: Fallback datatype if ``dtype`` was not specified in the URI.
@@ -164,44 +143,36 @@ class TorchControlNetUri:
         :param model_cpu_offload_member: This model will be attached to a pipeline
             which will have model cpu offload enabled?
 
-        :param model_class: What class of control net model should be loaded?
-            :py:class:`diffusers.ControlNetModel` or :py:class:`diffusers.SD3ControlNetModel`.
-            The first class is for Stable Diffusion 1 & 2, and the second class is used for
-            Stable Diffusion 3.
-
         :raises ModelNotFoundError: If the model could not be found.
 
-        :return: :py:class:`diffusers.ControlNetModel` or :py:class:`diffusers.SD3ControlNetModel`
+        :return: :py:class:`diffusers.T2IAdapter`
         """
         try:
             return self._load(dtype_fallback,
                               use_auth_token,
                               local_files_only,
                               sequential_cpu_offload_member,
-                              model_cpu_offload_member,
-                              model_class)
+                              model_cpu_offload_member)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
         except Exception as e:
-            raise _exceptions.ControlNetUriLoadError(
-                f'error loading controlnet "{self.model}": {e}')
+            raise _exceptions.T2IAdapterUriLoadError(
+                f'error loading t2i adapter "{self.model}": {e}')
 
-    @_memoize(_cache._TORCH_CONTROL_NET_CACHE,
+    @_memoize(_cache._ADAPTER_CACHE,
               exceptions={'local_files_only'},
               hasher=lambda args: _d_memoize.args_cache_key(
                   args, {'self': lambda o: _d_memoize.struct_hasher(
-                      o, exclude={'scale', 'start', 'end'})}),
-              on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Torch ControlNet", key, hit),
-              on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Torch ControlNet", key, new))
+                      o, exclude={'scale'})}),
+              on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Torch T2IAdapter", key, hit),
+              on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Torch T2IAdapter", key, new))
     def _load(self,
               dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
               use_auth_token: _types.OptionalString = None,
               local_files_only: bool = False,
               sequential_cpu_offload_member: bool = False,
-              model_cpu_offload_member: bool = False,
-              model_class: type[diffusers.ControlNetModel] | type[
-                  diffusers.SD3ControlNetModel] = diffusers.ControlNetModel) -> diffusers.ControlNetModel | diffusers.SD3ControlNetModel:
+              model_cpu_offload_member: bool = False) -> diffusers.T2IAdapter:
 
         if sequential_cpu_offload_member and model_cpu_offload_member:
             # these are used for cache differentiation only
@@ -223,10 +194,10 @@ class TorchControlNetUri:
                 local_files_only=local_files_only
             )
 
-            _cache.enforce_control_net_cache_constraints(
-                new_control_net_size=estimated_memory_usage)
+            _cache.enforce_adapter_cache_constraints(
+                new_adapter_size=estimated_memory_usage)
 
-            new_net = model_class.from_single_file(
+            new_adapter = diffusers.T2IAdapter.from_single_file(
                 model_path,
                 revision=self.revision,
                 torch_dtype=torch_dtype,
@@ -243,10 +214,10 @@ class TorchControlNetUri:
                 local_files_only=local_files_only
             )
 
-            _cache.enforce_control_net_cache_constraints(
-                new_control_net_size=estimated_memory_usage)
+            _cache.enforce_adapter_cache_constraints(
+                new_adapter_size=estimated_memory_usage)
 
-            new_net = model_class.from_pretrained(
+            new_adapter = diffusers.T2IAdapter.from_pretrained(
                 model_path,
                 revision=self.revision,
                 variant=self.variant,
@@ -255,71 +226,52 @@ class TorchControlNetUri:
                 token=use_auth_token,
                 local_files_only=local_files_only)
 
-        _messages.debug_log('Estimated Torch ControlNet Memory Use:',
+        _messages.debug_log('Estimated Torch T2IAdapter Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_usage))
 
-        _cache.controlnet_create_update_cache_info(
-            controlnet=new_net,
+        _cache.adapter_create_update_cache_info(
+            adapter=new_adapter,
             estimated_size=estimated_memory_usage)
 
-        return new_net
+        return new_adapter
 
     @staticmethod
-    def parse(uri: _types.Uri) -> 'TorchControlNetUri':
+    def parse(uri: _types.Uri) -> 'T2IAdapterUri':
         """
-        Parse a ``--model-type`` torch* ``--control-nets`` uri specification and return an object representing its constituents
+        Parse a ``--model-type`` torch* ``--t2i-adapters`` uri specification and
+        return an object representing its constituents
 
-        :param uri: string with ``--control-nets`` uri syntax
+        :param uri: string with ``--t2i-adapters`` uri syntax
 
-        :raise InvalidControlNetUriError:
+        :raise InvalidT2IAdapterUriError:
 
-        :return: :py:class:`.TorchControlNetUri`
+        :return: :py:class:`.T2IAdapterUri`
         """
         try:
-            r = _torch_control_net_uri_parser.parse(uri)
+            r = _torch_t2i_adapter_uri_parser.parse(uri)
 
             dtype = r.args.get('dtype')
             scale = r.args.get('scale', 1.0)
-            start = r.args.get('start', 0.0)
-            end = r.args.get('end', 1.0)
 
             supported_dtypes = _enums.supported_data_type_strings()
             if dtype is not None and dtype not in supported_dtypes:
-                raise _exceptions.InvalidControlNetUriError(
-                    f'Torch ControlNet "dtype" must be {", ".join(supported_dtypes)}, '
+                raise _exceptions.InvalidT2IAdapterUriError(
+                    f'Torch T2IAdapter "dtype" must be {", ".join(supported_dtypes)}, '
                     f'or left undefined, received: {dtype}')
 
             try:
                 scale = float(scale)
             except ValueError:
-                raise _exceptions.InvalidControlNetUriError(
-                    f'Torch ControlNet "scale" must be a floating point number, received: {scale}')
+                raise _exceptions.InvalidT2IAdapterUriError(
+                    f'Torch T2IAdapter "scale" must be a floating point number, received: {scale}')
 
-            try:
-                start = float(start)
-            except ValueError:
-                raise _exceptions.InvalidControlNetUriError(
-                    f'Torch ControlNet "start" must be a floating point number, received: {start}')
-
-            try:
-                end = float(end)
-            except ValueError:
-                raise _exceptions.InvalidControlNetUriError(
-                    f'Torch ControlNet "end" must be a floating point number, received: {end}')
-
-            if start > end:
-                raise _exceptions.InvalidControlNetUriError(
-                    f'Torch ControlNet "start" must be less than or equal to "end".')
-
-            return TorchControlNetUri(
+            return T2IAdapterUri(
                 model=r.concept,
                 revision=r.args.get('revision', None),
                 variant=r.args.get('variant', None),
                 subfolder=r.args.get('subfolder', None),
                 dtype=dtype,
-                scale=scale,
-                start=start,
-                end=end)
+                scale=scale)
 
         except _textprocessing.ConceptUriParseError as e:
-            raise _exceptions.InvalidControlNetUriError(e)
+            raise _exceptions.InvalidT2IAdapterUriError(e)
