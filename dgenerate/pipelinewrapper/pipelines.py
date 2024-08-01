@@ -1483,8 +1483,13 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                 pipeline_class = diffusers.StableDiffusion3Pipeline if not \
                     control_net_uris else diffusers.StableDiffusion3ControlNetPipeline
             elif t2i_adapter_uris:
+                # the custom type is a hack to support from_single_file
+                # for SD1.5 - 2 models with the associated pipeline class
+                # which does not inherit the correct mixin to do so, but
+                # can use the mixin just fine
                 pipeline_class = diffusers.StableDiffusionXLAdapterPipeline if is_sdxl \
-                    else diffusers.StableDiffusionAdapterPipeline
+                    else type('StableDiffusionAdapterPipeline',
+                              (diffusers.loaders.FromSingleFileMixin, diffusers.StableDiffusionAdapterPipeline), {})
             elif control_net_uris:
                 pipeline_class = diffusers.StableDiffusionXLControlNetPipeline if is_sdxl \
                     else diffusers.StableDiffusionControlNetPipeline
