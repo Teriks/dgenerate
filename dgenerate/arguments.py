@@ -135,7 +135,8 @@ def _type_adapter_factor(val):
         raise argparse.ArgumentTypeError('Must be a float')
 
     if val < 0.0 or val > 1.0:
-        raise argparse.ArgumentTypeError('Must be greater than 0.0 and less than 1.0')
+        raise argparse.ArgumentTypeError(
+            'Must be greater than or equal to 0.0 and less than or equal to 1.0')
     return val
 
 
