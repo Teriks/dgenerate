@@ -606,6 +606,11 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
         # an OOM happened moving a pipeline to the GPU, which
         # is something we want to be able to recover from hence
         # the fall through above
+        #
+        # This also happens when the pipeline has cpu offload
+        # enabled, we can fall through that harmlessly as its
+        # modules can never be moved to anything but the CPU
+        # and that is accounted for below
         _messages.debug_log(
             f'Moving partially moved pipeline "{pipeline.__class__.__name__}" to "{device}", '
             f'pipeline_on_device={pipeline_on_device}, all_modules_on_device={all_modules_on_device}.')
