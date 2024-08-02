@@ -15,9 +15,10 @@ stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
 --output-path boxer
 --output-size 1024
 --model-cpu-offload
+--batch-size 4
 --vae-tiling
 --vae-slicing
 --prompts "A boxer throwing a punch in the ring"
---t2i-adapters TencentARC/t2i-adapter-openpose-sdxl-1.0;scale=1.0
+--t2i-adapters TencentARC/t2i-adapter-depth-zoe-sdxl-1.0;scale=1.0
 --image-seeds "../../media/man-fighting-pose.jpg"
---control-image-processors "openpose;include-hand=true;include-face=true;output-file=boxer/boxer-openpose.png"
+--control-image-processors zoe
