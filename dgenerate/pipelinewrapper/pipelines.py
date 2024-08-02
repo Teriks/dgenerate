@@ -581,12 +581,12 @@ def get_torch_device_string(component: diffusers.DiffusionPipeline | torch.nn.Mo
 def _pipeline_to(pipeline, device: torch.device | str | None):
     if device is None:
         _messages.debug_log(
-            f'Not moving pipeline "{pipeline.__class__.__name__}" as specified device was None.')
+            f'pipeline_to() Not moving pipeline "{pipeline.__class__.__name__}" as specified device was None.')
         return
 
     if not hasattr(pipeline, 'to'):
         _messages.debug_log(
-            f'Not moving pipeline "{pipeline.__class__.__name__}" to "{device}" as it has no to() method.')
+            f'pipeline_to() Not moving pipeline "{pipeline.__class__.__name__}" to "{device}" as it has no to() method.')
         return
 
     to_device = torch.device(device)
@@ -598,7 +598,7 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
 
     if pipeline_on_device and all_modules_on_device:
         _messages.debug_log(
-            f'Not moving pipeline "{pipeline.__class__.__name__}" to "{device}" as it is already on that device.')
+            f'pipeline_to() Not moving pipeline "{pipeline.__class__.__name__}" to "{device}" as it is already on that device.')
         return
 
     if pipeline_on_device != all_modules_on_device:
@@ -612,7 +612,7 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
         # modules can never be moved to anything but the CPU
         # and that is accounted for below
         _messages.debug_log(
-            f'Moving pipeline "{pipeline.__class__.__name__}" to "{device}", '
+            f'pipeline_to() Moving pipeline "{pipeline.__class__.__name__}" to "{device}", '
             f'pipeline_on_device={pipeline_on_device}, all_modules_on_device={all_modules_on_device}.')
 
     if pipeline_device != to_device:
@@ -627,18 +627,18 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
 
         if current_device.type == 'meta':
             _messages.debug_log(
-                f'Not moving module "{value.__class__.__name__}" to "{device}" as its device value is "meta".')
+                f'pipeline_to() Not moving module "{value.__class__.__name__}" to "{device}" as its device value is "meta".')
             _disable_to(value)
             continue
 
         if current_device == to_device:
             _messages.debug_log(
-                f'Not moving module "{value.__class__.__name__}" to "{device}" as it is already on that device.')
+                f'pipeline_to() Not moving module "{value.__class__.__name__}" to "{device}" as it is already on that device.')
             continue
 
         if is_model_cpu_offload_enabled(value) and to_device.type != 'cpu':
             _messages.debug_log(
-                f'Not moving module "{value.__class__.__name__}" to "{device}" '
+                f'pipeline_to() Not moving module "{value.__class__.__name__}" to "{device}" '
                 f'as it has cpu offload enabled and can only move to cpu.')
             continue
 
@@ -659,7 +659,7 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
                         f'No cache update method for module "{name}".')
 
         _messages.debug_log(
-            f'Moving module "{name}" of pipeline {_types.fullname(pipeline)} '
+            f'pipeline_to() Moving module "{name}" of pipeline {_types.fullname(pipeline)} '
             f'from device "{current_device}" to device "{to_device}"')
 
         value.to(device)
