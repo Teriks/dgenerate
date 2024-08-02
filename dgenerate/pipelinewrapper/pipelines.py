@@ -656,7 +656,7 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
                     getattr(_cache, name + cache_meth)(value)
                 except AttributeError:
                     _messages.debug_log(
-                        f'No cache update method for module "{name}".')
+                        f'pipeline_to() No cache update method for module "{name}".')
 
         _messages.debug_log(
             f'pipeline_to() Moving module "{name}" of pipeline {_types.fullname(pipeline)} '
