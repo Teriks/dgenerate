@@ -591,8 +591,10 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
 
     to_device = torch.device(device)
 
+    pipeline_device = get_torch_device(pipeline)
+
     all_modules_on_device = all(to_device == get_torch_device(m) for m in get_torch_pipeline_modules(pipeline).values())
-    pipeline_on_device = get_torch_device(pipeline) == to_device
+    pipeline_on_device = get_torch_device(pipeline) == pipeline_device
 
     if pipeline_on_device and all_modules_on_device:
         _messages.debug_log(
@@ -608,10 +610,11 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
             f'Moving partially moved pipeline "{pipeline.__class__.__name__}" to "{device}", '
             f'pipeline_on_device={pipeline_on_device}, all_modules_on_device={all_modules_on_device}.')
 
-    if to_device.type != 'cpu':
-        _cache.pipeline_off_cpu_update_cache_info(pipeline)
-    else:
-        _cache.pipeline_to_cpu_update_cache_info(pipeline)
+    if pipeline_device != to_device:
+        if to_device.type != 'cpu':
+            _cache.pipeline_off_cpu_update_cache_info(pipeline)
+        else:
+            _cache.pipeline_to_cpu_update_cache_info(pipeline)
 
     for name, value in get_torch_pipeline_modules(pipeline).items():
 
@@ -619,7 +622,7 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
 
         if current_device.type == 'meta':
             _messages.debug_log(
-                f'Not moving module "{value.__class__.__name__}" to "{device}" as its device value "meta".')
+                f'Not moving module "{value.__class__.__name__}" to "{device}" as its device value is "meta".')
             _disable_to(value)
             continue
 
