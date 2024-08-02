@@ -126,20 +126,20 @@ class LineArtAnimeProcessor(_imageprocessor.ImageProcessor):
         Hn = 256 * int(numpy.ceil(float(H) / 256.0))
         Wn = 256 * int(numpy.ceil(float(W) / 256.0))
         img = cv2.resize(input_image, (Wn, Hn), interpolation=cv2.INTER_CUBIC)
-        with torch.no_grad():
-            image_feed = torch.from_numpy(img).float().to(self.modules_device)
-            image_feed = image_feed / 127.5 - 1.0
-            image_feed = einops.rearrange(image_feed, 'h w c -> 1 c h w')
 
-            line = self._lineart.model(image_feed)[0, 0] * 127.5 + 127.5
+        image_feed = torch.from_numpy(img).float().to(self.modules_device)
+        image_feed = image_feed / 127.5 - 1.0
+        image_feed = einops.rearrange(image_feed, 'h w c -> 1 c h w')
 
-            image_feed.cpu()
-            del image_feed
+        line = self._lineart.model(image_feed)[0, 0] * 127.5 + 127.5
 
-            line = line.cpu().numpy()
+        image_feed.cpu()
+        del image_feed
 
-            line = cv2.resize(line, (W, H), interpolation=cv2.INTER_CUBIC)
-            line = line.clip(0, 255).astype(numpy.uint8)
+        line = line.cpu().numpy()
+
+        line = cv2.resize(line, (W, H), interpolation=cv2.INTER_CUBIC)
+        line = line.clip(0, 255).astype(numpy.uint8)
 
         detected_map = _cna_util.HWC3(line)
 

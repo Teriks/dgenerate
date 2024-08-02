@@ -847,8 +847,6 @@ class RenderLoop:
         self._written_animations = _files.GCFile(
             tempfile.TemporaryFile('w+t'))
 
-        self._init_post_processor()
-
         self._generation_step = -1
         self._frame_time_sum = 0
         self._last_frame_time = 0
@@ -861,32 +859,37 @@ class RenderLoop:
 
         _messages.log(f'Beginning {generation_steps} generation steps...', underline=True)
 
-        if self.config.image_seeds:
-            yield from self._render_with_image_seeds()
-        else:
-            pipeline_wrapper = self._create_pipeline_wrapper()
+        try:
+            self._init_post_processor()
 
-            sdxl_high_noise_fractions = \
-                self.config.sdxl_high_noise_fractions if \
-                    self.config.sdxl_refiner_uri is not None else None
+            if self.config.image_seeds:
+                yield from self._render_with_image_seeds()
+            else:
+                pipeline_wrapper = self._create_pipeline_wrapper()
 
-            for diffusion_arguments in self.config.iterate_diffusion_args(
-                    sdxl_high_noise_fraction=sdxl_high_noise_fractions,
-                    image_seed_strength=None,
-                    upscaler_noise_level=None):
+                sdxl_high_noise_fractions = \
+                    self.config.sdxl_high_noise_fractions if \
+                        self.config.sdxl_refiner_uri is not None else None
 
-                if self.config.output_size is not None:
-                    diffusion_arguments.width = self.config.output_size[0]
-                    diffusion_arguments.height = self.config.output_size[1]
+                for diffusion_arguments in self.config.iterate_diffusion_args(
+                        sdxl_high_noise_fraction=sdxl_high_noise_fractions,
+                        image_seed_strength=None,
+                        upscaler_noise_level=None):
 
-                diffusion_arguments.batch_size = self.config.batch_size
-                diffusion_arguments.sdxl_refiner_edit = self.config.sdxl_refiner_edit
+                    if self.config.output_size is not None:
+                        diffusion_arguments.width = self.config.output_size[0]
+                        diffusion_arguments.height = self.config.output_size[1]
 
-                yield from self._pre_generation_step(diffusion_arguments)
+                    diffusion_arguments.batch_size = self.config.batch_size
+                    diffusion_arguments.sdxl_refiner_edit = self.config.sdxl_refiner_edit
 
-                with pipeline_wrapper(diffusion_arguments) as generation_result:
-                    self._run_postprocess(generation_result)
-                    yield from self._write_prompt_only_image(diffusion_arguments, generation_result)
+                    yield from self._pre_generation_step(diffusion_arguments)
+
+                    with pipeline_wrapper(diffusion_arguments) as generation_result:
+                        self._run_postprocess(generation_result)
+                        yield from self._write_prompt_only_image(diffusion_arguments, generation_result)
+        finally:
+            self._destroy_post_processor()
 
     def _init_post_processor(self):
         if self.config.post_processors is None:
@@ -894,6 +897,14 @@ class RenderLoop:
         else:
             self._post_processor = self._load_image_processors(self.config.post_processors)
             _messages.debug_log('Loaded Post Processor:', self._post_processor)
+
+    def _destroy_post_processor(self):
+        if self._post_processor is None:
+            return
+
+        self._post_processor.to('cpu')
+        del self._post_processor
+        self._post_processor = None
 
     def _run_postprocess(self, generation_result: _pipelinewrapper.PipelineWrapperResult):
         if self._post_processor is not None and generation_result.images is not None:

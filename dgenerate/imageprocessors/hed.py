@@ -137,21 +137,21 @@ class HEDProcessor(_imageprocessor.ImageProcessor):
 
         input_image = _cna_util.HWC3(input_image)
         H, W, C = input_image.shape
-        with torch.no_grad():
-            image_hed = torch.from_numpy(input_image.copy()).float().to(self.modules_device)
-            image_hed = einops.rearrange(image_hed, 'h w c -> 1 c h w')
-            edges = self._hed.netNetwork(image_hed)
 
-            image_hed.cpu()
-            del image_hed
+        image_hed = torch.from_numpy(input_image.copy()).float().to(self.modules_device)
+        image_hed = einops.rearrange(image_hed, 'h w c -> 1 c h w')
+        edges = self._hed.netNetwork(image_hed)
 
-            edges = [e.detach().cpu().numpy().astype(numpy.float32)[0, 0] for e in edges]
-            edges = [cv2.resize(e, (W, H), interpolation=cv2.INTER_LINEAR) for e in edges]
-            edges = numpy.stack(edges, axis=2)
-            edge = 1 / (1 + numpy.exp(-numpy.mean(edges, axis=2).astype(numpy.float64)))
-            if self._safe:
-                edge = _cna_util.safe_step(edge)
-            edge = (edge * 255.0).clip(0, 255).astype(numpy.uint8)
+        image_hed.cpu()
+        del image_hed
+
+        edges = [e.detach().cpu().numpy().astype(numpy.float32)[0, 0] for e in edges]
+        edges = [cv2.resize(e, (W, H), interpolation=cv2.INTER_LINEAR) for e in edges]
+        edges = numpy.stack(edges, axis=2)
+        edge = 1 / (1 + numpy.exp(-numpy.mean(edges, axis=2).astype(numpy.float64)))
+        if self._safe:
+            edge = _cna_util.safe_step(edge)
+        edge = (edge * 255.0).clip(0, 255).astype(numpy.uint8)
 
         detected_map = edge
         detected_map = _cna_util.HWC3(detected_map)

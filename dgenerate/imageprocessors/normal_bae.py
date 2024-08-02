@@ -115,22 +115,21 @@ class NormalBaeProcessor(_imageprocessor.ImageProcessor):
 
         image_normal = input_image
 
-        with torch.no_grad():
-            image_normal = torch.from_numpy(image_normal).float().to(self.modules_device)
-            image_normal = image_normal / 255.0
-            image_normal = einops.rearrange(image_normal, 'h w c -> 1 c h w')
-            image_normal = self._normal_bae.norm(image_normal)
+        image_normal = torch.from_numpy(image_normal).float().to(self.modules_device)
+        image_normal = image_normal / 255.0
+        image_normal = einops.rearrange(image_normal, 'h w c -> 1 c h w')
+        image_normal = self._normal_bae.norm(image_normal)
 
-            normal = self._normal_bae.model(image_normal)
+        normal = self._normal_bae.model(image_normal)
 
-            image_normal.cpu()
-            del image_normal
+        image_normal.cpu()
+        del image_normal
 
-            normal = normal[0][-1][:, :3]
-            normal = ((normal + 1) * 0.5).clip(0, 1)
+        normal = normal[0][-1][:, :3]
+        normal = ((normal + 1) * 0.5).clip(0, 1)
 
-            normal = einops.rearrange(normal[0], 'c h w -> h w c').cpu().numpy()
-            normal_image = (normal * 255.0).clip(0, 255).astype(numpy.uint8)
+        normal = einops.rearrange(normal[0], 'c h w -> h w c').cpu().numpy()
+        normal_image = (normal * 255.0).clip(0, 255).astype(numpy.uint8)
 
         detected_map = normal_image
         detected_map = _cna_util.HWC3(detected_map)

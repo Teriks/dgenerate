@@ -139,43 +139,41 @@ class LeresDepthProcessor(_imageprocessor.ImageProcessor):
         input_image = _cna_util.HWC3(input_image)
         height, width, dim = input_image.shape
 
-        with torch.no_grad():
+        if self._boost:
+            depth = _cna.leres.estimateboost(input_image, self._leres.model, 0, self._leres.pix2pixmodel,
+                                             max(width, height))
+        else:
+            depth = _cna.leres.estimateleres(input_image, self._leres.model, width, height)
 
-            if self._boost:
-                depth = _cna.leres.estimateboost(input_image, self._leres.model, 0, self._leres.pix2pixmodel,
-                                                 max(width, height))
-            else:
-                depth = _cna.leres.estimateleres(input_image, self._leres.model, width, height)
+        numbytes = 2
+        depth_min = depth.min()
+        depth_max = depth.max()
+        max_val = (2 ** (8 * numbytes)) - 1
 
-            numbytes = 2
-            depth_min = depth.min()
-            depth_max = depth.max()
-            max_val = (2 ** (8 * numbytes)) - 1
+        # check output before normalizing and mapping to 16 bit
+        if depth_max - depth_min > numpy.finfo("float").eps:
+            out = max_val * (depth - depth_min) / (depth_max - depth_min)
+        else:
+            out = numpy.zeros(depth.shape)
 
-            # check output before normalizing and mapping to 16 bit
-            if depth_max - depth_min > numpy.finfo("float").eps:
-                out = max_val * (depth - depth_min) / (depth_max - depth_min)
-            else:
-                out = numpy.zeros(depth.shape)
+        # single channel, 16 bit image
+        depth_image = out.astype("uint16")
 
-            # single channel, 16 bit image
-            depth_image = out.astype("uint16")
+        # convert to uint8
+        depth_image = cv2.convertScaleAbs(depth_image, alpha=(255.0 / 65535.0))
 
-            # convert to uint8
-            depth_image = cv2.convertScaleAbs(depth_image, alpha=(255.0 / 65535.0))
+        # remove near
+        if self._threshold_near != 0:
+            threshold_near = ((self._threshold_near / 100) * 255)
+            depth_image = cv2.threshold(depth_image, threshold_near, 255, cv2.THRESH_TOZERO)[1]
 
-            # remove near
-            if self._threshold_near != 0:
-                threshold_near = ((self._threshold_near / 100) * 255)
-                depth_image = cv2.threshold(depth_image, threshold_near, 255, cv2.THRESH_TOZERO)[1]
+        # invert image
+        depth_image = cv2.bitwise_not(depth_image)
 
-            # invert image
-            depth_image = cv2.bitwise_not(depth_image)
-
-            # remove bg
-            if self._threshold_far != 0:
-                threshold_far = ((self._threshold_far / 100) * 255)
-                depth_image = cv2.threshold(depth_image, threshold_far, 255, cv2.THRESH_TOZERO)[1]
+        # remove bg
+        if self._threshold_far != 0:
+            threshold_far = ((self._threshold_far / 100) * 255)
+            depth_image = cv2.threshold(depth_image, threshold_far, 255, cv2.THRESH_TOZERO)[1]
 
         detected_map = _cna_util.HWC3(depth_image)
 
