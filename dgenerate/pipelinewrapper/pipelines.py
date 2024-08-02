@@ -580,15 +580,33 @@ def get_torch_device_string(component: diffusers.DiffusionPipeline | torch.nn.Mo
 
 def _pipeline_to(pipeline, device: torch.device | str | None):
     if device is None:
+        _messages.debug_log(
+            f'Not moving pipeline "{pipeline.__class__.__name__}" as specified device was None.')
         return
 
     if not hasattr(pipeline, 'to'):
+        _messages.debug_log(
+            f'Not moving pipeline "{pipeline.__class__.__name__}" to "{device}" as it has no to() method.')
         return
 
     to_device = torch.device(device)
 
-    if get_torch_device(pipeline) == to_device:
+    all_modules_on_device = all(to_device == get_torch_device(m) for m in get_torch_pipeline_modules(pipeline).values())
+    pipeline_on_device = get_torch_device(pipeline) == to_device
+
+    if pipeline_on_device and all_modules_on_device:
+        _messages.debug_log(
+            f'Not moving pipeline "{pipeline.__class__.__name__}" to "{device}" as it is already on that device.')
         return
+
+    if pipeline_on_device != all_modules_on_device:
+        # really the most likely way for this to occur is if
+        # an OOM happened moving a pipeline to the GPU, which
+        # is something we want to be able to recover from hence
+        # the fall through above
+        _messages.debug_log(
+            f'Moving partially moved pipeline "{pipeline.__class__.__name__}" to "{device}", '
+            f'pipeline_on_device={pipeline_on_device}, all_modules_on_device={all_modules_on_device}.')
 
     if to_device.type != 'cpu':
         _cache.pipeline_off_cpu_update_cache_info(pipeline)
@@ -600,13 +618,20 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
         current_device = get_torch_device(value)
 
         if current_device.type == 'meta':
+            _messages.debug_log(
+                f'Not moving module "{value.__class__.__name__}" to "{device}" as its device value "meta".')
             _disable_to(value)
             continue
 
         if current_device == to_device:
+            _messages.debug_log(
+                f'Not moving module "{value.__class__.__name__}" to "{device}" as it is already on that device.')
             continue
 
         if is_model_cpu_offload_enabled(value) and to_device.type != 'cpu':
+            _messages.debug_log(
+                f'Not moving module "{value.__class__.__name__}" to "{device}" '
+                f'as it has cpu offload enabled and can only move to cpu.')
             continue
 
         cache_meth = None
@@ -970,12 +995,12 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
             _LAST_CALLED_PIPELINE = pipeline
             return result
 
-    if hasattr(_LAST_CALLED_PIPELINE, 'to'):
+    if _LAST_CALLED_PIPELINE is not None and hasattr(_LAST_CALLED_PIPELINE, 'to'):
         _messages.debug_log(
             f'Moving previously called pipeline '
             f'"{_LAST_CALLED_PIPELINE.__class__.__name__}", back to the CPU.')
 
-    pipeline_to(_LAST_CALLED_PIPELINE, 'cpu')
+        pipeline_to(_LAST_CALLED_PIPELINE, 'cpu')
 
     try:
         pipeline_to(pipeline, device)
