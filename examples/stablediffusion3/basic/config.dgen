@@ -18,5 +18,4 @@ stabilityai/stable-diffusion-3-medium-diffusers
 --clip-skips 0
 --gen-seeds 2
 --output-path output
---model-sequential-offload
 --prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork"
