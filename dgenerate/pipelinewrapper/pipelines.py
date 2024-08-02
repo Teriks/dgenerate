@@ -612,7 +612,7 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
         # modules can never be moved to anything but the CPU
         # and that is accounted for below
         _messages.debug_log(
-            f'Moving partially moved pipeline "{pipeline.__class__.__name__}" to "{device}", '
+            f'Moving pipeline "{pipeline.__class__.__name__}" to "{device}", '
             f'pipeline_on_device={pipeline_on_device}, all_modules_on_device={all_modules_on_device}.')
 
     if pipeline_device != to_device:
