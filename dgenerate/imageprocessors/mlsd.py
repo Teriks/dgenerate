@@ -138,15 +138,14 @@ class MLSDProcessor(_imageprocessor.ImageProcessor):
         img = input_image
         img_output = numpy.zeros_like(img)
         try:
-            with torch.no_grad():
-                lines = _cna.mlsd.pred_lines(
-                    img, self._mlsd.model,
-                    [img.shape[0], img.shape[1]],
-                    self._threshold_score,
-                    self._threshold_distance)
-                for line in lines:
-                    x_start, y_start, x_end, y_end = [int(val) for val in line]
-                    cv2.line(img_output, (x_start, y_start), (x_end, y_end), [255, 255, 255], 1)
+            lines = _cna.mlsd.pred_lines(
+                img, self._mlsd.model,
+                [img.shape[0], img.shape[1]],
+                self._threshold_score,
+                self._threshold_distance)
+            for line in lines:
+                x_start, y_start, x_end, y_end = [int(val) for val in line]
+                cv2.line(img_output, (x_start, y_start), (x_end, y_end), [255, 255, 255], 1)
         except Exception as e:
             pass
 

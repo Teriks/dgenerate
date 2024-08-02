@@ -42,7 +42,8 @@ class ImageProcessorLoader(_plugin.PluginLoader):
                          description='image processor',
                          reserved_args=[_Pa('output-file', type=str, default=None),
                                         _Pa('output-overwrite', type=bool, default=False),
-                                        _Pa('device', type=str, default='cpu')],
+                                        _Pa('device', type=str, default='cpu'),
+                                        _Pa('model-offload', type=bool, default=False)],
                          argument_error_type=_exceptions.ImageProcessorArgumentError,
                          not_found_error_type=_exceptions.ImageProcessorNotFoundError)
 

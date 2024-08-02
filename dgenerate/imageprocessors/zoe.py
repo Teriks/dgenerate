@@ -115,27 +115,27 @@ class ZoeDepthProcessor(_imageprocessor.ImageProcessor):
 
         image_depth = _cna_util.HWC3(numpy.array(resized, dtype=numpy.uint8))
 
-        with torch.no_grad():
-            image_depth = torch.from_numpy(image_depth).float().to(self.modules_device)
-            image_depth = image_depth / 255.0
-            image_depth = einops.rearrange(image_depth, 'h w c -> 1 c h w')
-            depth = self._zoe.model.infer(image_depth)
+        image_depth = torch.from_numpy(image_depth).float().to(self.modules_device)
+        image_depth = image_depth / 255.0
+        image_depth = einops.rearrange(image_depth, 'h w c -> 1 c h w')
+        output = self._zoe.model.infer(image_depth).cpu()
 
-            image_depth.cpu()
-            del image_depth
+        image_depth.cpu()
+        del image_depth
 
-            depth = depth[0, 0].cpu().numpy()
+        depth = output[0, 0].numpy()
+        del output
 
-            vmin = numpy.percentile(depth, 2)
-            vmax = numpy.percentile(depth, 85)
+        vmin = numpy.percentile(depth, 2)
+        vmax = numpy.percentile(depth, 85)
 
-            depth -= vmin
-            depth /= vmax - vmin
-            depth = 1.0 - depth
+        depth -= vmin
+        depth /= vmax - vmin
+        depth = 1.0 - depth
 
-            if self._gamma_corrected:
-                depth = numpy.power(depth, 2.2)
-            depth_image = (depth * 255.0).clip(0, 255).astype(numpy.uint8)
+        if self._gamma_corrected:
+            depth = numpy.power(depth, 2.2)
+        depth_image = (depth * 255.0).clip(0, 255).astype(numpy.uint8)
 
         detected_map = _cna_util.HWC3(depth_image)
 

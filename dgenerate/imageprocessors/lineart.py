@@ -133,17 +133,17 @@ class LineArtProcessor(_imageprocessor.ImageProcessor):
         model = self._lineart.model_coarse if self._course else self._lineart.model
 
         image = input_image
-        with torch.no_grad():
-            image = torch.from_numpy(image).float().to(self.modules_device)
-            image = image / 255.0
-            image = einops.rearrange(image, 'h w c -> 1 c h w')
-            line = model(image)[0][0]
 
-            image.cpu()
-            del image
+        image = torch.from_numpy(image).float().to(self.modules_device)
+        image = image / 255.0
+        image = einops.rearrange(image, 'h w c -> 1 c h w')
+        line = model(image)[0][0]
 
-            line = line.cpu().numpy()
-            line = (line * 255.0).clip(0, 255).astype(numpy.uint8)
+        image.cpu()
+        del image
+
+        line = line.cpu().numpy()
+        line = (line * 255.0).clip(0, 255).astype(numpy.uint8)
 
         detected_map = _cna_util.HWC3(line)
 

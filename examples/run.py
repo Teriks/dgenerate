@@ -134,7 +134,7 @@ def patch_module_and_optimizers():
 
 def find_gpu_tensors_in_gc():
     dot = graphviz.Digraph(comment='Torch GPU Object Reference Graph')
-    dot.graph_attr.update(size="100,100!", ratio="expand", layout="sfdp", splines="true", nodesep="1.5", ranksep="2.0")
+    dot.graph_attr.update(size="100,100!", ratio="expand", layout="neato", splines="true", nodesep="1.5", ranksep="2.0")
     dot.node_attr.update(style="filled", fillcolor="lightgrey", shape="box")
 
     def is_on_gpu(obj):

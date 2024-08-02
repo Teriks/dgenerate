@@ -135,36 +135,35 @@ class MidasDepthProcessor(_imageprocessor.ImageProcessor):
 
         image_depth = input_image
 
-        with torch.no_grad():
-            image_depth = torch.from_numpy(image_depth).float()
-            image_depth = image_depth.to(self.modules_device)
-            image_depth = image_depth / 127.5 - 1.0
-            image_depth = einops.rearrange(image_depth, 'h w c -> 1 c h w')
-            depth = self._midas.model(image_depth)[0]
+        image_depth = torch.from_numpy(image_depth).float()
+        image_depth = image_depth.to(self.modules_device)
+        image_depth = image_depth / 127.5 - 1.0
+        image_depth = einops.rearrange(image_depth, 'h w c -> 1 c h w')
+        depth = self._midas.model(image_depth)[0]
 
-            image_depth.cpu()
-            del image_depth
+        image_depth.cpu()
+        del image_depth
 
-            depth_pt = depth.clone()
-            depth_pt -= torch.min(depth_pt)
-            depth_pt /= torch.max(depth_pt)
-            depth_pt = depth_pt.cpu().numpy()
-            depth_image = (depth_pt * 255.0).clip(0, 255).astype(numpy.uint8)
+        depth_pt = depth.clone()
+        depth_pt -= torch.min(depth_pt)
+        depth_pt /= torch.max(depth_pt)
+        depth_pt = depth_pt.cpu().numpy()
+        depth_image = (depth_pt * 255.0).clip(0, 255).astype(numpy.uint8)
 
-            if self._normals:
-                depth_np = depth.cpu().numpy()
-                x = cv2.Sobel(depth_np, cv2.CV_32F, 1, 0, ksize=3)
-                y = cv2.Sobel(depth_np, cv2.CV_32F, 0, 1, ksize=3)
-                z = numpy.ones_like(x) * self._alpha
-                x[depth_pt < self._background_threshold] = 0
-                y[depth_pt < self._background_threshold] = 0
-                normal = numpy.stack([x, y, z], axis=2)
-                normal /= numpy.sum(normal ** 2.0, axis=2, keepdims=True) ** 0.5
-                normal_image = (normal * 127.5 + 127.5).clip(0, 255).astype(numpy.uint8)[:, :, ::-1]
+        if self._normals:
+            depth_np = depth.cpu().numpy()
+            x = cv2.Sobel(depth_np, cv2.CV_32F, 1, 0, ksize=3)
+            y = cv2.Sobel(depth_np, cv2.CV_32F, 0, 1, ksize=3)
+            z = numpy.ones_like(x) * self._alpha
+            x[depth_pt < self._background_threshold] = 0
+            y[depth_pt < self._background_threshold] = 0
+            normal = numpy.stack([x, y, z], axis=2)
+            normal /= numpy.sum(normal ** 2.0, axis=2, keepdims=True) ** 0.5
+            normal_image = (normal * 127.5 + 127.5).clip(0, 255).astype(numpy.uint8)[:, :, ::-1]
 
-                detected_map = _cna_util.HWC3(normal_image)
-            else:
-                detected_map = _cna_util.HWC3(depth_image)
+            detected_map = _cna_util.HWC3(normal_image)
+        else:
+            detected_map = _cna_util.HWC3(depth_image)
 
         if resize_resolution is not None:
             detected_map = cv2.resize(detected_map, resize_resolution, interpolation=cv2.INTER_LINEAR)

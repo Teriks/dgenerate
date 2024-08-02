@@ -137,21 +137,21 @@ class PidiNetProcessor(_imageprocessor.ImageProcessor):
         input_image = _cna_util.HWC3(input_image)
 
         input_image = input_image[:, :, ::-1].copy()
-        with torch.no_grad():
-            image_pidi = torch.from_numpy(input_image).float().to(self.modules_device)
-            image_pidi = image_pidi / 255.0
-            image_pidi = einops.rearrange(image_pidi, 'h w c -> 1 c h w')
-            edge = self._pidi.netNetwork(image_pidi)[-1]
 
-            image_pidi.cpu()
-            del image_pidi
+        image_pidi = torch.from_numpy(input_image).float().to(self.modules_device)
+        image_pidi = image_pidi / 255.0
+        image_pidi = einops.rearrange(image_pidi, 'h w c -> 1 c h w')
+        edge = self._pidi.netNetwork(image_pidi)[-1]
 
-            edge = edge.cpu().numpy()
-            if self._apply_filter:
-                edge = edge > 0.5
-            if self._safe:
-                edge = _cna_util.safe_step(edge)
-            edge = (edge * 255.0).clip(0, 255).astype(numpy.uint8)
+        image_pidi.cpu()
+        del image_pidi
+
+        edge = edge.cpu().numpy()
+        if self._apply_filter:
+            edge = edge > 0.5
+        if self._safe:
+            edge = _cna_util.safe_step(edge)
+        edge = (edge * 255.0).clip(0, 255).astype(numpy.uint8)
 
         detected_map = _cna_util.HWC3(edge[0, 0])
 
