@@ -81,6 +81,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.0.0/>`_.
     * `Specifying an SDXL Refiner`_
     * `Specifying a Stable Cascade Decoder`_
     * `Specifying LoRAs`_
+    * `Specifying IP Adapters`_
     * `Specifying Textual Inversions`_
     * `Specifying Control Nets`_
     * `Specifying T2I Adapters`_
@@ -133,7 +134,8 @@ Help Output
                      [-mt MODEL_TYPE] [-rev BRANCH] [-var VARIANT] [-sbf SUBFOLDER] [-atk TOKEN] [-bs INTEGER]
                      [-bgs SIZE] [-te TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]]
                      [-te2 TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]] [-un UNET_URI] [-un2 UNET_URI]
-                     [-vae VAE_URI] [-vt] [-vs] [-lra LORA_URI [LORA_URI ...]] [-ti URI [URI ...]]
+                     [-vae VAE_URI] [-vt] [-vs] [-lra LORA_URI [LORA_URI ...]]
+                     [-ipa IP_ADAPTER_URI [IP_ADAPTER_URI ...]] [-ti URI [URI ...]]
                      [-cn CONTROL_NET_URI [CONTROL_NET_URI ...] | -t2i T2I_ADAPTER_URI [T2I_ADAPTER_URI ...]]
                      [-sch SCHEDULER_URI] [-mqo | -mco] [--s-cascade-decoder MODEL_URI] [-dqo] [-dco]
                      [--s-cascade-decoder-prompts PROMPT [PROMPT ...]]
@@ -403,6 +405,28 @@ Help Output
                             weights file directly from disk, the simplest way is: --loras "my_lora.safetensors",
                             or with a scale "my_lora.safetensors;scale=1.0", all other loading arguments are
                             unused in this case and may produce an error message if used.
+      -ipa IP_ADAPTER_URI [IP_ADAPTER_URI ...], --ip-adapters IP_ADAPTER_URI [IP_ADAPTER_URI ...]
+                            Specify one or more IP Adapter models using URIs (flax not supported). These should
+                            be a huggingface repository slug, path to model file on disk (for example, a .pt,
+                            .pth, .bin, .ckpt, or .safetensors file), or model folder containing model files. If
+                            an IP Adapter model file exists at a URL which serves the file as a raw download,
+                            you may provide an http/https link to it and it will be downloaded to dgenerates web
+                            cache. huggingface blob links are not supported, see "subfolder" and "weight-name"
+                            below instead. Optional arguments can be provided after an IP Adapter model
+                            specification, these include: "scale", "revision", "subfolder", and "weight-name".
+                            They can be specified as so in any order, they are not positional: "huggingface/ip-
+                            adapter;scale=1.0;revision=main;subfolder=repo_subfolder;weight-
+                            name=ip_adapter.safetensors". The "scale" argument indicates the scale factor of the
+                            IP Adapter. The "revision" argument specifies the model revision to use for the IP
+                            Adapter when loading from huggingface repository, (The git branch / tag, default is
+                            "main"). The "subfolder" argument specifies the IP Adapter model subfolder, if
+                            specified when loading from a huggingface repository or folder, weights from the
+                            specified subfolder. The "weight-name" argument indicates the name of the weights
+                            file to be loaded when loading from a huggingface repository or folder on disk. If
+                            you wish to load a weights file directly from disk, the simplest way is: --ip-
+                            adapters "ip_adapter.safetensors", or with a scale
+                            "ip_adapter.safetensors;scale=1.0", all other loading arguments are unused in this
+                            case and may produce an error message if used.
       -ti URI [URI ...], --textual-inversions URI [URI ...]
                             Specify one or more Textual Inversion models using URIs (flax and SDXL not
                             supported). These should be a huggingface repository slug, path to model file on
@@ -981,72 +1005,72 @@ Help Output
                             (DiffusionPipeline, UNet, VAE, ControlNet, and Text Encoder) considering current
                             memory usage. If any of these constraint expressions are met all models cached in
                             memory will be cleared. Example, and default value: "used_percent > 70" For Syntax
-                            See: [https://dgenerate.readthedocs.io/en/v4.0.0/dgenerate_submodules.html#dgenerat
-                            e.pipelinewrapper.CACHE_MEMORY_CONSTRAINTS]
+                            See: [https://dgenerate.readthedocs.io/en/v4.0.0/dgenerate_submodules.html#dgenerate
+                            .pipelinewrapper.CACHE_MEMORY_CONSTRAINTS]
       -pmc EXPR [EXPR ...], --pipeline-cache-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the in memory
                             DiffusionPipeline cache considering current memory usage, and estimated memory usage
                             of new models that are about to enter memory. If any of these constraint expressions
                             are met all DiffusionPipeline objects cached in memory will be cleared. Example, and
                             default value: "pipeline_size > (available * 0.75)" For Syntax See: [https://dgenera
-                            te.readthedocs.io/en/v4.0.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.PIP
-                            ELINE_CACHE_MEMORY_CONSTRAINTS]
+                            te.readthedocs.io/en/v4.0.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.PIPE
+                            LINE_CACHE_MEMORY_CONSTRAINTS]
       -umc EXPR [EXPR ...], --unet-cache-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the in memory
                             UNet cache considering current memory usage, and estimated memory usage of new UNet
                             models that are about to enter memory. If any of these constraint expressions are
                             met all UNet models cached in memory will be cleared. Example, and default value:
                             "unet_size > (available * 0.75)" For Syntax See: [https://dgenerate.readthedocs.io/e
-                            n/v4.0.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.UNET_CACHE_MEMORY_CONS
-                            TRAINTS]
+                            n/v4.0.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.UNET_CACHE_MEMORY_CONST
+                            RAINTS]
       -vmc EXPR [EXPR ...], --vae-cache-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the in memory
                             VAE cache considering current memory usage, and estimated memory usage of new VAE
                             models that are about to enter memory. If any of these constraint expressions are
                             met all VAE models cached in memory will be cleared. Example, and default value:
                             "vae_size > (available * 0.75)" For Syntax See: [https://dgenerate.readthedocs.io/en
-                            /v4.0.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.VAE_CACHE_MEMORY_CONSTR
-                            AINTS]
+                            /v4.0.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.VAE_CACHE_MEMORY_CONSTRA
+                            INTS]
       -cmc EXPR [EXPR ...], --control-net-cache-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the in memory
                             ControlNet cache considering current memory usage, and estimated memory usage of new
                             ControlNet models that are about to enter memory. If any of these constraint
                             expressions are met all ControlNet models cached in memory will be cleared. Example,
                             and default value: "control_net_size > (available * 0.75)" For Syntax See: [https://
-                            dgenerate.readthedocs.io/en/v4.0.0/dgenerate_submodules.html#dgenerate.pipelinewrap
-                            per.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS]
+                            dgenerate.readthedocs.io/en/v4.0.0/dgenerate_submodules.html#dgenerate.pipelinewrapp
+                            er.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS]
       -tmc EXPR [EXPR ...], --text-encoder-cache-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the in memory
                             Text Encoder cache considering current memory usage, and estimated memory usage of
                             new Text Encoder models that are about to enter memory. If any of these constraint
                             expressions are met all Text Encoder models cached in memory will be cleared.
                             Example, and default value: "text_encoder_size > (available * 0.75)" For Syntax See:
-                            [https://dgenerate.readthedocs.io/en/v4.0.0/dgenerate_submodules.html#dgenerate.pip
-                            elinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS]
+                            [https://dgenerate.readthedocs.io/en/v4.0.0/dgenerate_submodules.html#dgenerate.pipe
+                            linewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS]
       -amc EXPR [EXPR ...], --adapter-cache-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the in memory
                             T2I Adapter cache considering current memory usage, and estimated memory usage of
                             new T2I Adapter models that are about to enter memory. If any of these constraint
                             expressions are met all T2I Adapter models cached in memory will be cleared.
                             Example, and default value: "adapter_size > (available * 0.75)" For Syntax See: [htt
-                            ps://dgenerate.readthedocs.io/en/v4.0.0/dgenerate_submodules.html#dgenerate.pipelin
-                            ewrapper.ADAPTER_CACHE_MEMORY_CONSTRAINTS]
+                            ps://dgenerate.readthedocs.io/en/v4.0.0/dgenerate_submodules.html#dgenerate.pipeline
+                            wrapper.ADAPTER_CACHE_MEMORY_CONSTRAINTS]
       -imc EXPR [EXPR ...], --image-processor-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the entire in
                             memory diffusion model cache considering current memory usage, and estimated memory
                             usage of new image processor models that are about to enter memory. If any of these
                             constraint expressions are met all diffusion related models cached in memory will be
                             cleared. Example, and default value: "processor_size > (available * 0.70)" For
-                            Syntax See: [https://dgenerate.readthedocs.io/en/v4.0.0/dgenerate_submodules.html#d
-                            generate.imageprocessors.IMAGE_PROCESSOR_MEMORY_CONSTRAINTS]
+                            Syntax See: [https://dgenerate.readthedocs.io/en/v4.0.0/dgenerate_submodules.html#dg
+                            enerate.imageprocessors.IMAGE_PROCESSOR_MEMORY_CONSTRAINTS]
       -icc EXPR [EXPR ...], --image-processor-cuda-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the last active
                             diffusion model from VRAM considering current GPU memory usage, and estimated GPU
                             memory usage of new image processor models that are about to enter VRAM. If any of
                             these constraint expressions are met the last active diffusion model in VRAM will be
                             destroyed. Example, and default value: "processor_size > (available * 0.70)" For
-                            Syntax See: [https://dgenerate.readthedocs.io/en/v4.0.0/dgenerate_submodules.html#d
-                            generate.imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS]
+                            Syntax See: [https://dgenerate.readthedocs.io/en/v4.0.0/dgenerate_submodules.html#dg
+                            enerate.imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS]
 
 
 
