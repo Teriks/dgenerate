@@ -898,6 +898,9 @@ class DiffusionPipelineWrapper:
         if self._lora_uris:
             opts.append(('--loras', self._lora_uris))
 
+        if self._ip_adapter_uris:
+            opts.append(('--ip-adapters', self._ip_adapter_uris))
+
         if self._textual_inversion_uris:
             opts.append(('--textual-inversions', self._textual_inversion_uris))
 

@@ -3068,21 +3068,24 @@ This example nearly duplicates an image created with a code snippet in the diffu
     #! /usr/bin/env dgenerate --file
     #! dgenerate 4.0.0
 
-    stabilityai/stable-diffusion-xl-base-1.0 \
-    --model-type torch-sdxl \
-    --inference-steps 30 \
-    --guidance-scales 5.0 \
-    --seeds 0 \
-    --dtype float16 \
-    --prompts 'a polar bear sitting in a chair drinking a milkshake; deformed, ugly, \
-               wrong proportion, low res, bad anatomy, worst quality, low \
-               quality' \
-    --variant fp16 \
-    --model-cpu-offload \
-    --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
-    --sdxl-high-noise-fractions 0.8 \
-    --output-size 1024x1024 \
-    --image-seeds 'adapter: https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/ip_adapter_diner.png'
+    # this uses one IP Adapter input image with the IP Adapter h94/IP-Adapter
+
+    stabilityai/stable-diffusion-xl-base-1.0
+    --model-type torch-sdxl
+    --dtype float16
+    --variant fp16
+    --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
+    --inference-steps 30
+    --guidance-scales 5
+    --sdxl-high-noise-fractions 0.8
+    --seeds 0
+    --output-path basic
+    --model-cpu-offload
+    --image-seeds "adapter: https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/ip_adapter_diner.png"
+    --ip-adapters h94/IP-Adapter;subfolder=sdxl_models;weight-name=ip-adapter_sdxl.bin
+    --output-size 1024x1024
+    --prompts "a polar bear sitting in a chair drinking a milkshake; \
+               deformed, ugly, wrong proportion, low res, bad anatomy, worst quality, low quality"
 
 
 The main complexity of working with IP Adapters comes when specifying the ``--image-seeds`` URI for tasks other than the most basic usage
