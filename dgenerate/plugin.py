@@ -820,8 +820,8 @@ class PluginLoader:
 
         :raises ValueError: If uri is ``None``
         :raises RuntimeError: If a plugin is discovered to be using a reserved argument name upon loading it.
-        :raises PluginArgumentError: If there is an error in the loading arguments for the plugin.
-        :raises PluginNotFoundError: If the plugin name mentioned in the URI could not be found.
+        :raises dgenerate.plugin.PluginArgumentError: If there is an error in the loading arguments for the plugin.
+        :raises dgenerate.plugin.PluginNotFoundError: If the plugin name mentioned in the URI could not be found.
 
         :return: plugin instance
         """
