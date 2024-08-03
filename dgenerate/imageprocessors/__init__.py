@@ -73,13 +73,6 @@ This includes many image processing tasks useful for creating diffusion input im
 """
 
 
-class ImageProcessorHelpUsageError(Exception):
-    """
-    Raised on argument parse errors in :py:func:`.image_processor_help`
-    """
-    pass
-
-
 def image_processor_help(names: _types.Names,
                          plugin_module_paths: _types.OptionalPaths = None,
                          throw=False,
@@ -92,7 +85,8 @@ def image_processor_help(names: _types.Names,
     :param throw: throw on error? or simply print to stderr and return a return code.
     :param log_error: log errors to stderr?
 
-    :raises ImageProcessorHelpUsageError:
+    :raises ImageProcessorNotFoundError:
+    :raises dgenerate.ModuleFileNotFoundError:
 
     :return: return-code, anything other than 0 is failure
     """
@@ -108,7 +102,7 @@ def image_processor_help(names: _types.Names,
             include_bases=True)
     except (ImageProcessorNotFoundError, _plugin.ModuleFileNotFoundError) as e:
         if throw:
-            raise ImageProcessorHelpUsageError(str(e).strip())
+            raise e
         return 1
 
 

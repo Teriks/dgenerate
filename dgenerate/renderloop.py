@@ -551,9 +551,11 @@ class RenderLoop:
                                            batch_index=batch_index,
                                            generation_result=generation_result)
 
-        if image_seed is not None and image_seed.is_animation_frame:
-            extra_opts.append(('--frame-start', image_seed.frame_index))
-            extra_opts.append(('--frame-end', image_seed.frame_index))
+        if image_seed is not None:
+            if image_seed.is_animation_frame:
+                extra_opts.append(('--frame-start', image_seed.frame_index))
+                extra_opts.append(('--frame-end', image_seed.frame_index))
+            extra_opts.append(('--image-seeds', image_seed.uri))
 
         config_txt = \
             self._gen_dgenerate_config(
@@ -1195,6 +1197,7 @@ class RenderLoop:
                                             config_filenames.append(
                                                 self._write_animation_config_file(
                                                     filename=os.path.splitext(filename)[0] + '.dgen',
+                                                    image_seed_uri=image_seed_frame.uri,
                                                     batch_index=idx,
                                                     diffusion_args=diffusion_args,
                                                     generation_result=generation_result))
@@ -1234,6 +1237,7 @@ class RenderLoop:
 
     def _write_animation_config_file(self,
                                      filename: str,
+                                     image_seed_uri: str,
                                      batch_index: int,
                                      diffusion_args: _pipelinewrapper.DiffusionArguments,
                                      generation_result: _pipelinewrapper.PipelineWrapperResult):
@@ -1253,6 +1257,8 @@ class RenderLoop:
         if self.config.animation_format is not None:
             extra_opts.append(('--animation-format',
                                self.config.animation_format))
+
+        extra_opts.append(('--image-seeds', image_seed_uri))
 
         extra_comments = []
 

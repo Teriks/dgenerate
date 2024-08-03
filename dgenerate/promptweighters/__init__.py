@@ -19,7 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
+import dgenerate.plugin as _plugin
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.types as _types
 from .compelpromptweighter import CompelPromptWeighter
@@ -30,13 +30,6 @@ from .exceptions import \
 from .promptweighter import PromptWeighter
 from .promptweighterloader import PromptWeighterLoader
 from .sdembedpromptweighter import SdEmbedPromptWeighter
-
-
-class PromptWeighterHelpUsageError(Exception):
-    """
-    Raised on argument parse errors in :py:func:`.prompt_weighters_help`
-    """
-    pass
 
 
 def prompt_weighter_help(names: _types.Names,
@@ -51,7 +44,8 @@ def prompt_weighter_help(names: _types.Names,
     :param throw: throw on error? or simply print to stderr and return a return code.
     :param log_error: log errors to stderr?
 
-    :raises PromptWeighterHelpUsageError:
+    :raises PromptWeighterNotFoundError:
+    :raises dgenerate.ModuleFileNotFoundError:
 
     :return: return-code, anything other than 0 is failure
     """
@@ -64,9 +58,9 @@ def prompt_weighter_help(names: _types.Names,
             plugin_module_paths=plugin_module_paths,
             throw=True,
             log_error=log_error)
-    except PromptWeighterNotFoundError as e:
+    except (PromptWeighterNotFoundError, _plugin.ModuleFileNotFoundError) as e:
         if throw:
-            raise PromptWeighterHelpUsageError(str(e).strip())
+            raise e
         return 1
 
 

@@ -741,6 +741,10 @@ class DiffusionPipelineWrapper:
             list[tuple[str] | tuple[str, typing.Any]]:
         """
         Reconstruct dgenerates command line arguments from a particular set of pipeline wrapper call arguments.
+        
+        This does not reproduce ``--image-seeds``, you must include that value in ``extra_opts``, 
+        this is because there is not enough information in :py:class:`.DiffusionArguments` to
+        accurately reproduce it.
 
         :param args: :py:class:`.DiffusionArguments` object to take values from
 
@@ -976,33 +980,6 @@ class DiffusionPipelineWrapper:
         elif args.width is not None:
             opts.append(('--output-size', f'{args.width}'))
 
-        if args.image is not None:
-            seed_args = []
-
-            if args.mask_image is not None:
-                seed_args.append(f'mask={_image.get_filename(args.mask_image)}')
-            if args.control_images:
-                seed_args.append(f'control={", ".join(_image.get_filename(c) for c in args.control_images)}')
-            elif args.floyd_image is not None:
-                seed_args.append(f'floyd={_image.get_filename(args.floyd_image)}')
-
-            if not seed_args:
-                opts.append(('--image-seeds',
-                             _image.get_filename(args.image)))
-            else:
-                opts.append(('--image-seeds',
-                             _image.get_filename(args.image) + ';' + ';'.join(seed_args)))
-
-            if args.upscaler_noise_level is not None:
-                opts.append(('--upscaler-noise-levels', args.upscaler_noise_level))
-
-            if args.image_seed_strength is not None:
-                opts.append(('--image-seed-strengths', args.image_seed_strength))
-
-        elif args.control_images:
-            opts.append(('--image-seeds',
-                         ', '.join(_image.get_filename(c) for c in args.control_images)))
-
         if extra_opts is not None:
             for opt in extra_opts:
                 opts.append(opt)
@@ -1078,7 +1055,12 @@ class DiffusionPipelineWrapper:
                              omit_device: bool = False,
                              **kwargs):
         """
-        Generate a valid dgenerate config file with a single invocation that reproduces this result.
+        Generate a valid dgenerate config file with a single invocation that reproduces the 
+        arguments associated with :py:class:`.DiffusionArguments`.
+        
+        This does not reproduce ``--image-seeds``, you must include that value in ``extra_opts``, 
+        this is because there is not enough information in :py:class:`.DiffusionArguments` to
+        accurately reproduce it.
 
         :param args: :py:class:`.DiffusionArguments` object to take values from
         :param extra_opts: Extra option pairs to be added to the end of reconstructed options
@@ -1132,7 +1114,12 @@ class DiffusionPipelineWrapper:
                               omit_device=False,
                               **kwargs):
         """
-        Generate a valid dgenerate command line invocation that reproduces this result.
+        Generate a valid dgenerate command line invocation that reproduces the 
+        arguments associated with :py:class:`.DiffusionArguments`.
+        
+        This does not reproduce ``--image-seeds``, you must include that value in ``extra_opts``, 
+        this is because there is not enough information in :py:class:`.DiffusionArguments` to
+        accurately reproduce it.
 
         :param args: :py:class:`.DiffusionArguments` object to take values from
         :param extra_opts: Extra option pairs to be added to the end of reconstructed options
