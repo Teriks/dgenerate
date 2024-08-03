@@ -751,12 +751,36 @@ def mimetype_is_supported(mimetype: str) -> bool:
         mimetype_is_video(mimetype)
 
 
+class IPAdapterImageSpec:
+    path: str
+    scale: float
+    resize: str | None
+    aspect: bool
+    align: int
+
+    def __init__(self, path, resize, aspect, align):
+        self.path = path
+        self.resize = resize
+        self.aspect = aspect
+        self.align = align
+
+    def __str__(self):
+        result = f'path={self.path}'
+        if self.resize is not None:
+            result += f', resize={self.resize}'
+        result += f', aspect={self.aspect}, align={self.align}'
+        return f'IPAdapterImageSpec({result})'
+
+    def __repr__(self):
+        return str(self)
+
+
 class ImageSeedParseResult:
     """
     The result of parsing an ``--image-seeds`` uri
     """
 
-    seed_path: _types.Path | _types.Paths
+    seed_path: _types.Path | _types.Paths | None
     """
     The seed path, contains an image path that will be used for img2img operations
     or the base image in inpaint operations. Or a controlnet guidance path, or a sequence of controlnet guidance paths. 
@@ -780,6 +804,19 @@ class ImageSeedParseResult:
         * ``--image-seeds "img2img.png;mask=mask.png;control=control.png"``
         * ``--image-seeds "img2img.png;mask=mask.png;control=control1.png, control2.png"``
         
+    """
+
+    adapter_images: list[list[IPAdapterImageSpec]] | None = None
+    """
+    IPAdapter image specifications.
+
+    In parses such as:
+    
+        * ``--image-seeds "adapter: adapter-image1.png + adapter-image2.png"``
+        * ``--image-seeds "adapter: adapter-image1.png + adapter-image2.png;control=control.png"``
+        * ``--image-seeds "img2img.png;adapter=adapter-image1.png + adapter-image2.png"``
+        * ``--image-seeds "img2img.png;adapter=adapter-image1.png + adapter-image2.png;control=control.png"``
+        * ``--image-seeds "img2img.png;adapter=adapter-image1.png + adapter-image2.png;mask=inpaint-mask.png;control=control.png"``
     """
 
     floyd_path: _types.OptionalPath = None
@@ -848,6 +885,10 @@ class ImageSeedParseResult:
             return None
 
     @property
+    def has_ip_adapter_images(self) -> bool:
+        return self.adapter_images is not None
+
+    @property
     def is_single_spec(self) -> bool:
         """
         Is this ``--image-seeds`` uri a single resource or resource group specification existing
@@ -856,7 +897,7 @@ class ImageSeedParseResult:
         For instance could it be a single img2img image definition, or a controlnet guidance
         image or sequence of controlnet guidance images?
 
-        This requires that ``mask_path``, ``control_path``, and ``floyd_path`` are all undefined.
+        This requires that ``mask_path``, ``control_path``, ``floyd_path``, ``adapter_images`` are all undefined.
 
         Possible parses which trigger this condition are:
 
@@ -869,7 +910,61 @@ class ImageSeedParseResult:
 
         :return: bool
         """
-        return self.mask_path is None and self.control_path is None and self.floyd_path is None
+
+        return self.mask_path is None \
+            and self.control_path is None \
+            and self.floyd_path is None \
+            and self.adapter_images is None
+
+
+_ip_adapter_image_parser = _textprocessing.ConceptUriParser(
+    'Adapter Image', ['resize', 'aspect', 'align'], delimiter='|')
+
+
+def _parse_ip_adapter_uri(uri: str) -> IPAdapterImageSpec:
+    i_strip = uri.strip()
+    adapter_parts = i_strip.split('|')
+
+    resize = None
+    aspect = True
+    align = 8
+
+    if len(adapter_parts) == 1:
+        path = adapter_parts[0]
+    elif len(adapter_parts) == 2 and '=' not in i_strip:
+        path = adapter_parts[0]
+        try:
+            scale = float(adapter_parts[1])
+        except ValueError:
+            raise ImageSeedParseError(
+                f'Could not parse adapter image "scale" argument: {adapter_parts[1]}')
+    else:
+        result = _ip_adapter_image_parser.parse(uri)
+        path = result.concept
+
+        try:
+            resize = _textprocessing.parse_image_size(result.args.get('resize', None))
+        except ValueError:
+            raise ImageSeedParseError(
+                f'Could not parse adapter image "resize" argument: {result.args["resize"]}')
+
+        try:
+            aspect = _types.parse_bool(result.args.get('aspect', True))
+        except ValueError:
+            raise ImageSeedParseError(
+                f'Could not parse adapter image "aspect" argument: {result.args["aspect"]}')
+
+        try:
+            align = int(result.args.get('align', 8))
+        except ValueError:
+            raise ImageSeedParseError(
+                f'Could not parse adapter image "align" argument: {result.args["align"]}')
+
+    if not (is_downloadable_url(path) or os.path.exists(path)):
+        raise ImageSeedFileNotFoundError(
+            f'Adapter image file "{path}" does not exist.')
+
+    return IPAdapterImageSpec(path, resize, aspect, align)
 
 
 # noinspection HttpUrlsUsage
@@ -904,17 +999,32 @@ def _parse_image_seed_uri_legacy(uri: str, align: int = 8) -> ImageSeedParseResu
     else:
         first_parts = [first]
 
-    for part in first_parts:
-        if not (is_downloadable_url(part) or os.path.exists(part)):
-            if len(first_parts) > 1:
-                raise ImageSeedFileNotFoundError(
-                    f'Control image file "{part}" does not exist.')
-            else:
-                raise ImageSeedFileNotFoundError(
-                    f'Image seed file "{part}" does not exist.')
+    ip_adapter_mode = first_parts[0].strip().startswith('adapter:')
+    if ip_adapter_mode:
+        result.adapter_images = []
+        first_parts[0] = first_parts[0].strip().removeprefix('adapter:')
 
-    if len(first_parts) > 1:
+    for part in first_parts:
+        if ip_adapter_mode:
+            f_strip = part.strip()
+            result.adapter_images.append([])
+            adapter_images = _textprocessing.tokenized_split(f_strip, '+', remove_quotes=True)
+
+            for image in adapter_images:
+                result.adapter_images[-1].append(_parse_ip_adapter_uri(image))
+        else:
+            if not (is_downloadable_url(part) or os.path.exists(part)):
+                if len(first_parts) > 1:
+                    raise ImageSeedFileNotFoundError(
+                        f'Control image file "{part}" does not exist.')
+                else:
+                    raise ImageSeedFileNotFoundError(
+                        f'Image seed file "{part}" does not exist.')
+
+    if len(first_parts) > 1 and not ip_adapter_mode:
         result.seed_path = first_parts
+    elif ip_adapter_mode:
+        result.seed_path = None
 
     for idx, part in enumerate(parts_iter):
         if part == '':
@@ -946,6 +1056,12 @@ def _parse_image_seed_uri_legacy(uri: str, align: int = 8) -> ImageSeedParseResu
 
             result.resize_resolution = dimensions
 
+    if ip_adapter_mode:
+        if result.resize_resolution or result.mask_path:
+            raise ImageSeedParseError(
+                'Cannot use resize resolution or inpaint mask '
+                'syntax with IP adapter only image seed input.')
+
     return result
 
 
@@ -975,6 +1091,7 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
 
     keyword_args = ['mask',
                     'control',
+                    'adapter',
                     'floyd',
                     'resize',
                     'aspect',
@@ -1005,7 +1122,8 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
 
     seed_parser = _textprocessing.ConceptUriParser('Image Seed',
                                                    known_args=keyword_args,
-                                                   args_lists=['control'])
+                                                   args_lists=['control'],
+                                                   args_raw=['adapter'])
 
     try:
         parse_result = seed_parser.parse(uri)
@@ -1017,14 +1135,40 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
         if not (is_downloadable_url(path) or os.path.exists(path)):
             raise ImageSeedFileNotFoundError(f'{title} file "{path}" does not exist.')
 
+    def parse_adapters(adapter_path):
+        if adapter_path is not None:
+            result.adapter_images = []
+            adapter_path = _textprocessing.tokenized_split(
+                adapter_path, ',', strict=True, escapes_in_quoted=True)
+            for f in adapter_path:
+                f_strip = f.strip()
+                if not f_strip:
+                    raise ImageSeedParseError('Missing adapter image definition, stray comma?')
+                result.adapter_images.append([])
+                adapter_images = _textprocessing.tokenized_split(f_strip, '+', remove_quotes=True)
+                for image in adapter_images:
+                    result.adapter_images[-1].append(_parse_ip_adapter_uri(image))
+
     seed_path = parse_result.concept
-    _ensure_exists(seed_path, 'Image seed')
-    result.seed_path = seed_path
+
+    adapters_parsed = False
+
+    if seed_path.strip().startswith('adapter:'):
+        adapters_parsed = True
+        parse_adapters(seed_path.strip().removeprefix('adapter:'))
+        result.seed_path = None
+    else:
+        _ensure_exists(seed_path, 'Image seed')
+        result.seed_path = seed_path
 
     mask_path = parse_result.args.get('mask', None)
     if mask_path is not None:
         _ensure_exists(mask_path, 'Image mask')
         result.mask_path = mask_path
+
+    if result.seed_path is None and mask_path is not None:
+        raise ImageSeedParseError(
+            'Cannot use "mask" image seed argument when the only input is IP adapter images.')
 
     control_path = parse_result.args.get('control', None)
     if control_path is not None:
@@ -1039,8 +1183,23 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
 
         result.control_path = control_path
 
+    adapter_arg = parse_result.args.get('adapter', None)
+
+    if adapter_arg is not None:
+        if not adapters_parsed:
+            adapters_parsed = True
+            parse_adapters(adapter_arg)
+        else:
+            raise ImageSeedParseError('IP adapter images already defined, cannot be defined '
+                                      'again with the "adapter" uri argument.')
+
     floyd_path = parse_result.args.get('floyd', None)
+
     if floyd_path is not None:
+        if adapters_parsed:
+            raise ImageSeedParseError(
+                'Image seed IP adapter images not supported with floyd stage image.')
+
         _ensure_exists(floyd_path, 'Floyd image')
         if control_path is not None:
             raise ImageSeedArgumentError(
@@ -1768,6 +1927,11 @@ class ImageSeed:
     Control guidance images, or None.
     """
 
+    adapter_images: list[_types.Images] | None
+    """
+    IP Adapter images, or None.
+    """
+
     floyd_image: PIL.Image.Image | None
     """
     An optional image from a Deep Floyd IF stage, used for disambiguation in the case 
@@ -1789,7 +1953,8 @@ class ImageSeed:
                  image: PIL.Image.Image | None = None,
                  mask_image: PIL.Image.Image | None = None,
                  control_images: _types.Images | None = None,
-                 floyd_image: PIL.Image.Image | None = None):
+                 floyd_image: PIL.Image.Image | None = None,
+                 adapter_images: list[_types.Images] | None = None):
         self.image = image
         self.mask_image = mask_image
 
@@ -1798,8 +1963,14 @@ class ImageSeed:
                 'control_images and floyd_image arguments are incompatible '
                 'and cannot both be specified')
 
+        if adapter_images is not None and floyd_image is not None:
+            raise ValueError(
+                'adapter_images and floyd_image arguments are incompatible '
+                'and cannot both be specified')
+
         self.control_images = control_images
         self.floyd_image = floyd_image
+        self.adapter_images = adapter_images
 
     def __enter__(self):
         return self
@@ -1814,6 +1985,11 @@ class ImageSeed:
         if self.control_images:
             for i in self.control_images:
                 i.close()
+
+        if self.adapter_images:
+            for group in self.adapter_images:
+                for image in group:
+                    image.close()
 
 
 def _check_image_dimensions_match(images):
@@ -1848,6 +2024,18 @@ def _validate_control_image_processor_count(processors, guidance_images):
                          f'{num_guidance_images} control guidance image sources.')
 
 
+def _reshape_ip_adapter_image_seed(adapter_images, reader_output):
+    reshaped_list = []
+    start_index = 0
+    for sublist in adapter_images:
+        sublist_length = len(sublist)
+        reshaped_sublist = reader_output[start_index:start_index + sublist_length]
+        reshaped_list.append(reshaped_sublist)
+        start_index += sublist_length
+
+    return reshaped_list
+
+
 def iterate_image_seed(uri: str | ImageSeedParseResult,
                        frame_start: int = 0,
                        frame_end: _types.OptionalInteger = None,
@@ -1869,7 +2057,7 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
         * ``--image-seeds "img2img.png;mask.png"``
         * ``--image-seeds "img2img.png;mask.png;512x512"``
 
-    Additionally, controlnet guidance resources are handled via the secondary syntax:
+    Additionally, controlnet guidance resources are handled with keyword arguments:
 
         * ``--image-seeds "img2img.png;control=control1.png, control2.png"``
         * ``--image-seeds "img2img.png;control=control1.png, control2.png;resize=512x512"``
@@ -1878,16 +2066,30 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
         * ``--image-seeds "img2img.png;mask=mask.png;control=control1.png;frame-start=2"``
         * ``--image-seeds "img2img.png;mask=mask.png;control=control1.png;frame-start=2;frame-end=5"``
 
-    Deep Floyd img2img and inpainting mode are handled via a tertiary syntax:
+    IP Adapter Images can be specified in these ways:
+
+        * ``--image-seeds "adapter: image.png"``
+        * ``--image-seeds "adapter: adapter1-image.png, adapter2-image.png"``
+        * ``--image-seeds "adapter: image1.png + image2.png"``
+        * ``--image-seeds "adapter: adapter1-image1.png + adapter1-image2.png, adapter2-image1.png + adapter2-image2.png"``
+        * ``--image-seeds "img2img.png;adapter=image.png"``
+        * ``--image-seeds "img2img.png;adapter=adapter1-image.png, adapter2-image.png"``
+        * ``--image-seeds "img2img.png;adapter=image1.png + image2.png"``
+        * ``--image-seeds "img2img.png;adapter=adapter1-image1.png + adapter1-image2.png, adapter2-image1.png + adapter2-image2.png"``
+
+    The ``control`` argument is supported for any IP Adapter image specification.
+
+    The ``mask`` argument is also supported for img2img with additional IP Adapter images.
+
+    Deep Floyd img2img and inpainting mode can be specified in these ways:
 
         * ``--image-seeds "img2img.png;floyd=stage1-image.png"``
         * ``--image-seeds "img2img.png;mask=mask.png;floyd=stage2-image.png"``
 
-    Note that all keyword arguments mentioned above can be used together, with exception
-    of "control" and "floyd" which are mutually exclusive arguments.
+    Note that all keyword arguments mentioned above can be used together, except for
+    "control" and "floyd", or "adapter" and "floyd", which are mutually exclusive arguments.
 
     One or more :py:class:`.ImageSeed` objects may be yielded depending on whether an animation is being read.
-
 
     :param uri: ``--image-seeds`` uri or :py:class:`.ImageSeedParseResult`
     :param frame_start: starting frame, inclusive value
@@ -1931,7 +2133,7 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
     else:
         parse_result = parse_image_seed_uri(uri)
 
-    if isinstance(parse_result.seed_path, list):
+    if isinstance(parse_result.seed_path, list) and not parse_result.adapter_images:
         raise ValueError(
             'seed_path cannot contain multiple elements, use '
             f'{_types.fullname(iterate_control_image)} for that.')
@@ -1942,13 +2144,16 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
     if parse_result.aspect_correct is not None:
         aspect_correct = parse_result.aspect_correct
 
-    reader_specs = [
-        MediaReaderSpec(path=parse_result.seed_path,
-                        image_processor=seed_image_processor,
-                        resize_resolution=resize_resolution,
-                        aspect_correct=aspect_correct,
-                        align=align)
-    ]
+    if parse_result.seed_path is not None:
+        reader_specs = [
+            MediaReaderSpec(path=parse_result.seed_path,
+                            image_processor=seed_image_processor,
+                            resize_resolution=resize_resolution,
+                            aspect_correct=aspect_correct,
+                            align=align)
+        ]
+    else:
+        reader_specs = []
 
     if parse_result.mask_path is not None:
         reader_specs.append(MediaReaderSpec(
@@ -1957,6 +2162,8 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
             resize_resolution=resize_resolution,
             aspect_correct=aspect_correct,
             align=align))
+
+    control_guidance_image_count = 0
 
     if parse_result.control_path is not None:
         if not isinstance(control_image_processor, list):
@@ -1978,7 +2185,24 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
             for idx, p in enumerate(control_guidance_image_paths)
         ]
 
-    if parse_result.floyd_path is not None:
+        control_guidance_image_count = len(control_guidance_image_paths)
+
+    if parse_result.adapter_images is not None and parse_result.floyd_path is not None:
+        raise ValueError('IP adapter images not supported with floyd stage image.')
+
+    if parse_result.adapter_images is not None:
+        for adapter_images in parse_result.adapter_images:
+            for image in adapter_images:
+                reader_specs.append(
+                    MediaReaderSpec(
+                        path=image.path.strip(),
+                        resize_resolution=image.resize,
+                        aspect_correct=image.aspect,
+                        align=image.align
+                    )
+                )
+
+    elif parse_result.floyd_path is not None:
         # There should never be a reason to process floyd stage output
         # also do not resize it
         reader_specs.append(MediaReaderSpec(
@@ -2001,33 +2225,80 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
         dimensions_checked = False
 
         for frame in reader:
+            image_offset = 1 if parse_result.seed_path is not None else 0
+            image_value = frame[0] if parse_result.seed_path is not None else None
 
             if parse_result.mask_path is not None and parse_result.control_path is not None:
-                image_seed = ImageSeed(image=frame[0],
-                                       mask_image=frame[1],
-                                       control_images=frame[2:])
-            elif parse_result.mask_path is not None:
 
                 extra_images = dict()
-                if parse_result.floyd_path is not None:
+                if parse_result.adapter_images is not None:
+                    extra_images = {'adapter_images':
+                        _reshape_ip_adapter_image_seed(
+                            parse_result.adapter_images,
+                            frame[control_guidance_image_count + 1 + image_offset:])}
+
+                image_seed = ImageSeed(image=image_value,
+                                       mask_image=frame[image_offset],
+                                       control_images=
+                                       frame[image_offset + 1: image_offset + 1 + control_guidance_image_count],
+                                       **extra_images)
+
+            elif parse_result.mask_path is not None:
+                image_offset = 1 if parse_result.seed_path is not None else 0
+                image_value = frame[0] if parse_result.seed_path is not None else None
+
+                extra_images = dict()
+
+                if parse_result.adapter_images is not None:
+                    extra_images = {'adapter_images':
+                        _reshape_ip_adapter_image_seed(
+                            parse_result.adapter_images,
+                            frame[2 + image_offset:])}
+
+                elif parse_result.floyd_path is not None:
                     extra_images = {'floyd_image': frame[2]}
 
-                image_seed = ImageSeed(image=frame[0], mask_image=frame[1], **extra_images)
+                image_seed = ImageSeed(image=image_value,
+                                       mask_image=frame[image_offset],
+                                       **extra_images)
+
             elif parse_result.control_path is not None:
-                image_seed = ImageSeed(image=frame[0], control_images=frame[1:])
-            else:
+                image_offset = 1 if parse_result.seed_path is not None else 0
+                image_value = frame[0] if parse_result.seed_path is not None else None
+
                 extra_images = dict()
-                if parse_result.floyd_path is not None:
+                if parse_result.adapter_images is not None:
+                    extra_images = {'adapter_images':
+                        _reshape_ip_adapter_image_seed(
+                            parse_result.adapter_images,
+                            frame[control_guidance_image_count + image_offset:])}
+
+                image_seed = ImageSeed(image=image_value,
+                                       control_images=frame[image_offset:control_guidance_image_count + image_offset],
+                                       **extra_images)
+            else:
+                image_offset = 1 if parse_result.seed_path is not None else 0
+                image_value = frame[0] if parse_result.seed_path is not None else None
+
+                extra_images = dict()
+
+                if parse_result.adapter_images is not None:
+                    extra_images = {'adapter_images':
+                        _reshape_ip_adapter_image_seed(
+                            parse_result.adapter_images,
+                            frame[image_offset:])}
+
+                elif parse_result.floyd_path is not None:
                     extra_images = {'floyd_image': frame[1]}
 
-                image_seed = ImageSeed(image=frame[0], **extra_images)
+                image_seed = ImageSeed(image=image_value, **extra_images)
 
             if not dimensions_checked:
                 images = list(_flatten([image_seed.image if image_seed.image else [],
                                         image_seed.mask_image if image_seed.mask_image else [],
                                         image_seed.control_images if image_seed.control_images else []]))
 
-                _check_image_dimensions_match(images)
+                # _check_image_dimensions_match(images)
 
                 dimensions_checked = True
 

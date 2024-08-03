@@ -801,6 +801,7 @@ class RenderLoop:
             vae_tiling=self.config.vae_tiling,
             vae_slicing=self.config.vae_slicing,
             lora_uris=self.config.lora_uris,
+            ip_adapter_uris=self.config.ip_adapter_uris,
             textual_inversion_uris=self.config.textual_inversion_uris,
             text_encoder_uris=self.config.text_encoder_uris,
             second_text_encoder_uris=self.config.second_text_encoder_uris,
@@ -1042,12 +1043,15 @@ class RenderLoop:
                 else:
                     def set_extra_args(args: _pipelinewrapper.DiffusionArguments,
                                        ims_obj: _mediainput.ImageSeed):
-                        args.image = ims_obj.image
+                        if ims_obj.image is not None:
+                            args.image = ims_obj.image
                         if ims_obj.mask_image is not None:
                             args.mask_image = ims_obj.mask_image
                         if ims_obj.control_images is not None:
                             args.control_images = ims_obj.control_images
-                        elif ims_obj.floyd_image is not None:
+                        if ims_obj.adapter_images is not None:
+                            args.ip_adapter_images = ims_obj.adapter_images
+                        if ims_obj.floyd_image is not None:
                             args.floyd_image = ims_obj.floyd_image
 
                 yield from self._render_animation(pipeline_wrapper=pipeline_wrapper,
@@ -1064,16 +1068,19 @@ class RenderLoop:
                 yield from self._pre_generation_step(diffusion_arguments)
 
                 with next(image_seed_iterator()) as image_seed:
-                    if not is_control_guidance_spec:
+                    if not is_control_guidance_spec and image_seed.image is not None:
                         diffusion_arguments.image = image_seed.image
 
                     if image_seed.mask_image is not None:
                         diffusion_arguments.mask_image = image_seed.mask_image
 
-                    if image_seed.control_images:
+                    if image_seed.control_images is not None:
                         diffusion_arguments.control_images = image_seed.control_images
 
-                    elif image_seed.floyd_image:
+                    if image_seed.adapter_images is not None:
+                        diffusion_arguments.ip_adapter_images = image_seed.adapter_images
+
+                    if image_seed.floyd_image is not None:
                         diffusion_arguments.floyd_image = image_seed.floyd_image
 
                     with pipeline_wrapper(diffusion_arguments) as generation_result:

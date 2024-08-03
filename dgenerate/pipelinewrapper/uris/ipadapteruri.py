@@ -19,8 +19,6 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import os.path
-
 import diffusers
 import huggingface_hub
 
@@ -30,12 +28,12 @@ import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 
-_lora_uri_parser = _textprocessing.ConceptUriParser('LoRA', ['scale', 'revision', 'subfolder', 'weight-name'])
+_ip_adapter_uri_parser = _textprocessing.ConceptUriParser('IP Adapter', ['scale', 'revision', 'subfolder', 'weight-name'])
 
 
-class LoRAUri:
+class IPAdapterUri:
     """
-    Representation of a ``--loras`` uri
+    Representation of a ``--ip-adapters`` uri
     """
 
     @property
@@ -69,7 +67,7 @@ class LoRAUri:
     @property
     def scale(self) -> float:
         """
-        LoRA scale
+        IP Adapter scale
         """
         return self._scale
 
@@ -96,7 +94,7 @@ class LoRAUri:
                          use_auth_token: _types.OptionalString = None,
                          local_files_only: bool = False):
         """
-        Load LoRA weights on to a pipeline using this URI
+        Load IP Adapter weights on to a pipeline using this URI
 
         :param pipeline: :py:class:`diffusers.DiffusionPipeline`
         :param use_auth_token: optional huggingface auth token.
@@ -113,95 +111,61 @@ class LoRAUri:
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
         except Exception as e:
-            raise _exceptions.LoRAUriLoadError(
-                f'error loading lora "{self.model}": {e}')
+            raise _exceptions.IPAdapterUriLoadError(
+                f'error loading IP Adapter "{self.model}": {e}')
 
     def _load_on_pipeline(self,
                           pipeline: diffusers.DiffusionPipeline,
                           use_auth_token: _types.OptionalString = None,
                           local_files_only: bool = False):
 
-        if hasattr(pipeline, 'load_lora_weights'):
+        if hasattr(pipeline, 'load_ip_adapter'):
             debug_args = {k: v for k, v in locals().items() if k not in {'self', 'pipeline'}}
-            _messages.debug_log('pipeline.load_lora_weights('
+            _messages.debug_log('pipeline.load_ip_adapter('
                                 + str(_types.get_public_attributes(self) | debug_args) + ')')
 
             model_path = _hfutil.download_non_hf_model(self.model)
 
-            if local_files_only and not os.path.exists(model_path):
-                # Temporary fix for diffusers bug
-
-                subfolder = self.subfolder if self.subfolder else ''
-
-                probable_path_1 = os.path.join(
-                    subfolder, 'pytorch_lora_weights.safetensors' if
-                    self.weight_name is None else self.weight_name)
-
-                probable_path_2 = os.path.join(
-                    subfolder, 'pytorch_lora_weights.bin')
-
-                file_path = huggingface_hub.try_to_load_from_cache(self.model,
-                                                                   filename=probable_path_1,
-                                                                   revision=self.revision)
-
-                if not isinstance(file_path, str):
-                    file_path = huggingface_hub.try_to_load_from_cache(self.model,
-                                                                       filename=probable_path_2,
-                                                                       revision=self.revision)
-
-                if not isinstance(file_path, str):
-                    raise RuntimeError(
-                        f'LoRA model "{self.model}" '
-                        'was not available in the local huggingface cache.')
-
-                model_path = os.path.dirname(file_path)
-
             try:
-                pipeline.load_lora_weights(model_path,
-                                           revision=self.revision,
-                                           subfolder=self.subfolder,
-                                           weight_name=self.weight_name,
-                                           local_files_only=local_files_only,
-                                           use_safetensors=True,
-                                           token=use_auth_token)
+                pipeline.load_ip_adapter(model_path,
+                                         revision=self.revision,
+                                         subfolder=self.subfolder,
+                                         weight_name=self.weight_name,
+                                         local_files_only=local_files_only,
+                                         use_safetensors=True,
+                                         token=use_auth_token)
             except EnvironmentError:
                 # brute force, try for .bin files
-                pipeline.load_lora_weights(model_path,
-                                           revision=self.revision,
-                                           subfolder=self.subfolder,
-                                           weight_name=self.weight_name,
-                                           local_files_only=local_files_only,
-                                           token=use_auth_token)
+                pipeline.load_ip_adapter(model_path,
+                                         revision=self.revision,
+                                         subfolder=self.subfolder,
+                                         weight_name=self.weight_name,
+                                         local_files_only=local_files_only,
+                                         token=use_auth_token)
 
-            if hasattr(pipeline, 'fuse_lora'):
-                pipeline.fuse_lora(lora_scale=self.scale)
-            elif self.scale != 1.0:
-                _messages.log('lora scale argument not supported, ignored.',
-                              level=_messages.WARNING)
-
-            _messages.debug_log(f'Added LoRA: "{self}" to pipeline: "{pipeline.__class__.__name__}"')
+            _messages.debug_log(f'Added IP Adapter: "{self}" to pipeline: "{pipeline.__class__.__name__}"')
         else:
             raise RuntimeError(f'Pipeline: {pipeline.__class__.__name__} '
-                               f'does not support loading LoRAs.')
+                               f'does not support loading IP Adapters.')
 
     @staticmethod
-    def parse(uri: _types.Uri) -> 'LoRAUri':
+    def parse(uri: _types.Uri) -> 'IPAdapterUri':
         """
-        Parse a ``--loras`` uri and return an object representing its constituents
+        Parse a ``--ip-adapters`` uri and return an object representing its constituents
 
-        :param uri: string with ``--loras`` uri syntax
+        :param uri: string with ``--ip-adapters`` uri syntax
 
-        :raise InvalidLoRAUriError:
+        :raise InvalidIPAdapterUriError:
 
-        :return: :py:class:`.LoRAUri`
+        :return: :py:class:`.IPAdapterUri`
         """
         try:
-            r = _lora_uri_parser.parse(uri)
+            r = _ip_adapter_uri_parser.parse(uri)
 
-            return LoRAUri(model=r.concept,
-                           scale=float(r.args.get('scale', 1.0)),
-                           weight_name=r.args.get('weight-name', None),
-                           revision=r.args.get('revision', None),
-                           subfolder=r.args.get('subfolder', None))
+            return IPAdapterUri(model=r.concept,
+                                scale=float(r.args.get('scale', 1.0)),
+                                weight_name=r.args.get('weight-name', None),
+                                revision=r.args.get('revision', None),
+                                subfolder=r.args.get('subfolder', None))
         except _textprocessing.ConceptUriParseError as e:
-            raise _exceptions.InvalidLoRAUriError(e)
+            raise _exceptions.InvalidIPAdapterUriError(e)

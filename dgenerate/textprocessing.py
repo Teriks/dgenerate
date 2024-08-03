@@ -681,11 +681,17 @@ class ConceptUriParser:
     in :py:attr:`ConceptUri.args` will be that of a list.
     """
 
+    delimiter: str
+    """
+    URI argument delimiter, the default is semicolon.
+    """
+
     def __init__(self,
                  concept_name: _types.Name,
                  known_args: collections.abc.Iterable[str],
                  args_lists: bool | collections.abc.Iterable[str] | None = None,
-                 args_raw: bool | collections.abc.Iterable[str] | None = None):
+                 args_raw: bool | collections.abc.Iterable[str] | None = None,
+                 delimiter: str = ';'):
         """
         :raises ValueError: if duplicate argument names are specified.
 
@@ -721,6 +727,7 @@ class ConceptUriParser:
             self.args_raw = None
 
         self.concept_name = concept_name
+        self.delimiter = delimiter
 
     def parse(self, uri: _types.Uri) -> ConceptUri:
         """
@@ -742,7 +749,7 @@ class ConceptUriParser:
             raise ConceptUriParseError(f'Error parsing {self.concept_name} URI, URI was empty.')
 
         try:
-            parts = tokenized_split(uri, ';')
+            parts = tokenized_split(uri, self.delimiter)
         except TokenizedSplitSyntaxError as e:
             raise ConceptUriParseError(
                 f'Error parsing {self.concept_name} URI "{uri}": {str(e).strip()}')
@@ -754,7 +761,7 @@ class ConceptUriParser:
             if not vals or not vals[0]:
                 raise ConceptUriParseError(f'Error parsing path arguments for '
                                            f'{self.concept_name} concept "{concept}", Empty argument space, '
-                                           f'stray semicolon?')
+                                           f'stray "{self.delimiter}" delimiter?')
             name = vals[0].strip()
             if self.known_args is not None and name not in self.known_args:
                 raise ConceptUriParseError(

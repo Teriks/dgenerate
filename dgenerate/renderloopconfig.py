@@ -425,6 +425,12 @@ class RenderLoopConfig(_types.SetFromMixin):
     of the dgenerate command line tool.
     """
 
+    ip_adapter_uris: _types.OptionalUris = None
+    """
+    Optional user specified IP Adapter URIs, this corresponds to the ``--ip-adapters`` argument 
+    of the dgenerate command line tool.
+    """
+
     textual_inversion_uris: _types.OptionalUris = None
     """
     Optional user specified Textual Inversion URIs, this corresponds to the ``--textual-inversions``
