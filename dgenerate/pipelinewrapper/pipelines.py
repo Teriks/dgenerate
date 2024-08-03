@@ -257,6 +257,7 @@ def estimate_pipeline_memory_use(
         unet_uri: _types.OptionalUri = None,
         vae_uri: _types.OptionalUri = None,
         lora_uris: _types.OptionalUris = None,
+        ip_adapter_uris: _types.OptionalUris = None,
         textual_inversion_uris: _types.OptionalUris = None,
         text_encoder_uris: _types.OptionalUris = None,
         safety_checker: bool = False,
@@ -275,6 +276,7 @@ def estimate_pipeline_memory_use(
     :param unet_uri: optional user specified ``--unet`` URI that will be loaded on to the pipeline
     :param vae_uri: optional user specified ``--vae`` URI that will be loaded on to the pipeline
     :param lora_uris: optional user specified ``--loras`` URIs that will be loaded on to the pipeline
+    :param ip_adapter_uris: optional user specified ``--ip-adapters`` URIs that will be loaded on to the pipeline
     :param textual_inversion_uris: optional user specified ``--textual-inversion`` URIs that will be loaded on to the pipeline
     :param text_encoder_uris: optional user specified ``--text-encoders`` URIs that will be loaded on to the pipeline
     :param safety_checker: consider the safety checker? dgenerate usually loads the safety checker and then retroactively
@@ -320,6 +322,20 @@ def estimate_pipeline_memory_use(
     if lora_uris:
         for lora_uri in lora_uris:
             parsed = _uris.LoRAUri.parse(lora_uri)
+
+            usage += _hfutil.estimate_model_memory_use(
+                repo_id=_hfutil.download_non_hf_model(parsed.model),
+                revision=parsed.revision,
+                subfolder=parsed.subfolder,
+                weight_name=parsed.weight_name,
+                use_auth_token=auth_token,
+                local_files_only=local_files_only,
+                flax=_enums.model_type_is_flax(model_type)
+            )
+
+    if ip_adapter_uris:
+        for ip_adapter_uri in ip_adapter_uris:
+            parsed = _uris.IPAdapterUri.parse(ip_adapter_uri)
 
             usage += _hfutil.estimate_model_memory_use(
                 repo_id=_hfutil.download_non_hf_model(parsed.model),
@@ -1121,6 +1137,11 @@ class TorchPipelineCreationResult(PipelineCreationResult):
     Parsed LoRA URIs if any were present
     """
 
+    parsed_ip_adapter_uris: collections.abc.Sequence[_uris.IPAdapterUri]
+    """
+    Parsed IP Adapter URIs if any were present
+    """
+
     parsed_textual_inversion_uris: collections.abc.Sequence[_uris.TextualInversionUri]
     """
     Parsed Textual Inversion URIs if any were present
@@ -1141,6 +1162,7 @@ class TorchPipelineCreationResult(PipelineCreationResult):
                  parsed_unet_uri: _uris.TorchUNetUri | None,
                  parsed_vae_uri: _uris.TorchVAEUri | None,
                  parsed_lora_uris: collections.abc.Sequence[_uris.LoRAUri],
+                 parsed_ip_adapter_uris: collections.abc.Sequence[_uris.IPAdapterUri],
                  parsed_textual_inversion_uris: collections.abc.Sequence[_uris.TextualInversionUri],
                  parsed_control_net_uris: collections.abc.Sequence[_uris.TorchControlNetUri],
                  parsed_t2i_adapter_uris: collections.abc.Sequence[_uris.T2IAdapterUri]):
@@ -1151,6 +1173,7 @@ class TorchPipelineCreationResult(PipelineCreationResult):
         self.parsed_textual_inversion_uris = parsed_textual_inversion_uris
         self.parsed_control_net_uris = parsed_control_net_uris
         self.parsed_t2i_adapter_uris = parsed_t2i_adapter_uris
+        self.parsed_ip_adapter_uris = parsed_ip_adapter_uris
 
     def call(self,
              device: str | None = 'cuda',
@@ -1180,6 +1203,7 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                                     unet_uri: _types.OptionalUri = None,
                                     vae_uri: _types.OptionalUri = None,
                                     lora_uris: _types.OptionalUris = None,
+                                    ip_adapter_uris: _types.OptionalUris = None,
                                     textual_inversion_uris: _types.OptionalUris = None,
                                     text_encoder_uris: _types.OptionalUris = None,
                                     control_net_uris: _types.OptionalUris = None,
@@ -1206,6 +1230,7 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     :param unet_uri: Optional ``--unet`` URI string for specifying a specific UNet
     :param vae_uri: Optional ``--vae`` URI string for specifying a specific VAE
     :param lora_uris: Optional ``--loras`` URI strings for specifying LoRA weights
+    :param ip_adapter_uris: Optional ``--ip-adapters`` URI strings for specifying IP Adapter weights
     :param textual_inversion_uris: Optional ``--textual-inversions`` URI strings for specifying Textual Inversion weights
     :param text_encoder_uris: Optional user specified ``--text-encoders`` URIs that will be loaded on to the
         pipeline in order. A uri value of ``+`` or ``None`` indicates use default, a string value of ``null``
@@ -1233,6 +1258,11 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     :return: :py:class:`.TorchPipelineCreationResult`
     """
     __locals = locals()
+
+    for name, value in __locals.items():
+        if name.endswith('_uris') and isinstance(value, str):
+            __locals[name] = [value]
+
     try:
         return _create_torch_diffusion_pipeline(**__locals)
     except (huggingface_hub.utils.HFValidationError,
@@ -1257,6 +1287,7 @@ class TorchPipelineFactory:
                  unet_uri: _types.OptionalUri = None,
                  vae_uri: _types.OptionalUri = None,
                  lora_uris: _types.OptionalUris = None,
+                 ip_adapter_uris: _types.OptionalUris = None,
                  textual_inversion_uris: _types.OptionalUris = None,
                  control_net_uris: _types.OptionalUris = None,
                  t2i_adapter_uris: _types.OptionalUris = None,
@@ -1362,6 +1393,7 @@ def _torch_args_hasher(args):
         'unet_uri': _cache.uri_hash_with_parser(_uris.TorchUNetUri.parse),
         'vae_uri': _cache.uri_hash_with_parser(_uris.TorchVAEUri.parse),
         'lora_uris': _cache.uri_list_hash_with_parser(_uris.LoRAUri.parse),
+        'ip_adapter_uris': _cache.uri_list_hash_with_parser(_uris.IPAdapterUri),
         'textual_inversion_uris': _cache.uri_list_hash_with_parser(_uris.TextualInversionUri.parse),
         'text_encoder_uris': _cache.uri_list_hash_with_parser(text_encoder_uri_parse),
         'control_net_uris': _cache.uri_list_hash_with_parser(_uris.TorchControlNetUri.parse,
@@ -1395,6 +1427,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                                      unet_uri: _types.OptionalUri = None,
                                      vae_uri: _types.OptionalUri = None,
                                      lora_uris: _types.OptionalUris = None,
+                                     ip_adapter_uris: _types.OptionalUris = None,
                                      textual_inversion_uris: _types.OptionalUris = None,
                                      text_encoder_uris: _types.OptionalUris = None,
                                      control_net_uris: _types.OptionalUris = None,
@@ -1678,6 +1711,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         unet_uri=unet_uri if not unet_override else None,
         vae_uri=vae_uri if not vae_override else None,
         lora_uris=lora_uris,
+        ip_adapter_uris=ip_adapter_uris,
         text_encoder_uris=text_encoders,
         textual_inversion_uris=textual_inversion_uris,
         safety_checker=safety_checker and not safety_checker_override,
@@ -1914,10 +1948,11 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         if pipeline.vae.post_quant_conv is None:
             pipeline.vae.post_quant_conv = lambda x: x
 
-    # Textual Inversions and LoRAs
+    # Textual Inversions, LoRAs, IP Adapters
 
     parsed_textual_inversion_uris = []
     parsed_lora_uris = []
+    parsed_ip_adapter_uris = []
 
     if textual_inversion_uris:
         for inversion_uri in textual_inversion_uris:
@@ -1931,6 +1966,14 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         for lora_uri in lora_uris:
             parsed = _uris.LoRAUri.parse(lora_uri)
             parsed_lora_uris.append(parsed)
+            parsed.load_on_pipeline(pipeline,
+                                    use_auth_token=auth_token,
+                                    local_files_only=local_files_only)
+
+    if ip_adapter_uris:
+        for ip_adapter_uri in ip_adapter_uris:
+            parsed = _uris.IPAdapterUri.parse(ip_adapter_uri)
+            parsed_ip_adapter_uris.append(parsed)
             parsed.load_on_pipeline(pipeline,
                                     use_auth_token=auth_token,
                                     local_files_only=local_files_only)
@@ -1960,6 +2003,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         parsed_unet_uri=parsed_unet_uri,
         parsed_vae_uri=parsed_vae_uri,
         parsed_lora_uris=parsed_lora_uris,
+        parsed_ip_adapter_uris=parsed_ip_adapter_uris,
         parsed_textual_inversion_uris=parsed_textual_inversion_uris,
         parsed_control_net_uris=parsed_control_net_uris,
         parsed_t2i_adapter_uris=parsed_t2i_adapter_uris
@@ -2087,6 +2131,11 @@ def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     :return: :py:class:`.FlaxPipelineCreationResult`
     """
     __locals = locals()
+
+    for name, value in __locals.items():
+        if name.endswith('_uris') and isinstance(value, str):
+            __locals[name] = [value]
+
     try:
         return _create_flax_diffusion_pipeline(**__locals)
     except (huggingface_hub.utils.HFValidationError,

@@ -702,7 +702,42 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                             loading from a huggingface repository or folder on disk. 
                             
                             If you wish to load a weights file directly from disk, the simplest
-                            way is: --loras "my_lora.safetensors",  or with a scale "my_lora.safetensors;scale=1.0", 
+                            way is: --loras "my_lora.safetensors", or with a scale "my_lora.safetensors;scale=1.0", 
+                            all other loading arguments are unused in this case and may produce an error message if used."""))
+
+    actions.append(
+        parser.add_argument('-ipa', '--ip-adapters', nargs='+', action='store', default=None, metavar="IP_ADAPTER_URI",
+                            dest='ip_adapter_uris',
+                            help=
+                            """Specify one or more IP Adapter models using URIs (flax not supported). These should be a
+                            huggingface repository slug, path to model file on disk (for example, a .pt, .pth, .bin,
+                            .ckpt, or .safetensors file), or model folder containing model files.
+                            
+                            If an IP Adapter model file exists at a URL which serves the file as
+                            a raw download, you may provide an http/https link to it and it will be
+                            downloaded to dgenerates web cache.
+                            
+                            huggingface blob links are not supported, see "subfolder" and "weight-name" below instead.
+                            
+                            Optional arguments can be provided after an IP Adapter model specification, 
+                            these include: "scale", "revision", "subfolder", and "weight-name".
+                            
+                            They can be specified as so in any order, they are not positional:
+                            "huggingface/ip-adapter;scale=1.0;revision=main;subfolder=repo_subfolder;weight-name=ip_adapter.safetensors".
+                            
+                            The "scale" argument indicates the scale factor of the IP Adapter.
+                            
+                            The "revision" argument specifies the model revision to use for the IP Adapter 
+                            when loading from huggingface repository, (The git branch / tag, default is "main").
+                            
+                            The "subfolder" argument specifies the IP Adapter model subfolder, if specified when
+                            loading from a huggingface repository or folder, weights from the specified subfolder.
+                            
+                            The "weight-name" argument indicates the name of the weights file to be loaded when 
+                            loading from a huggingface repository or folder on disk. 
+                            
+                            If you wish to load a weights file directly from disk, the simplest
+                            way is: --ip-adapters "ip_adapter.safetensors", or with a scale "ip_adapter.safetensors;scale=1.0", 
                             all other loading arguments are unused in this case and may produce an error message if used."""))
 
     actions.append(

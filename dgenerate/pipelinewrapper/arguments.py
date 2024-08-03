@@ -61,6 +61,18 @@ class DiffusionArguments(_types.SetFromMixin):
     All input images involved in a generation must match in dimension and be aligned by 8 pixels.
     """
 
+    ip_adapter_images: list[_types.Images] | None = None
+    """
+    IP Adapter images to use if ``ip_adapter_uris`` were given to the
+    constructor of :py:class:`.DiffusionPipelineWrapper`.
+    
+    This should be a list of ``list[PIL.Image]``
+    
+    Each list entry corresponds to an IP adapter URI.
+    
+    Multiple IP Adapter URIs can be provided, each IP Adapter can get its own set of images.
+    """
+
     floyd_image: PIL.Image.Image | None = None
     """
     The output image of the last stage when preforming img2img or 

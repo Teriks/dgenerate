@@ -52,5 +52,6 @@ from .torchtextencoderuri import TorchTextEncoderUri
 from .torchuneturi import TorchUNetUri
 from .torchvaeuri import TorchVAEUri
 from .t2iadapteruri import T2IAdapterUri
+from .ipadapteruri import IPAdapterUri
 
 __all__ = _types.module_all()

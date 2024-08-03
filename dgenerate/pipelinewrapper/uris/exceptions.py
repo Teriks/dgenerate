@@ -87,6 +87,13 @@ class InvalidLoRAUriError(InvalidModelUriError):
     pass
 
 
+class InvalidIPAdapterUriError(InvalidModelUriError):
+    """
+    Error in ``--ip-adapters`` uri
+    """
+    pass
+
+
 class InvalidTextualInversionUriError(InvalidModelUriError):
     """
     Error in ``--textual-inversions`` uri
@@ -139,6 +146,13 @@ class UNetUriLoadError(ModelUriLoadError):
 class LoRAUriLoadError(ModelUriLoadError):
     """
     Error while loading model file in ``--loras`` uri
+    """
+    pass
+
+
+class IPAdapterUriLoadError(ModelUriLoadError):
+    """
+    Error while loading model file in ``--ip-adapters`` uri
     """
     pass
 

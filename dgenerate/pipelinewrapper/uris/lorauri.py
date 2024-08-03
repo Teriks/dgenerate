@@ -193,7 +193,7 @@ class LoRAUri:
 
         :raise InvalidLoRAUriError:
 
-        :return: :py:class:`.LoRAPath`
+        :return: :py:class:`.LoRAUri`
         """
         try:
             r = _lora_uri_parser.parse(uri)
