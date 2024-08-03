@@ -3203,7 +3203,7 @@ the image seed are duplicated across those frames.
 The IP Adapter syntax introduces a lot of possible combinations for ``--image-seeds`` input images, and
 not all possible combinations are covered in this documentation as it would be hard to do so.
 
-If you find a combination that behaves strangely or incorrectly, or that should work but don't, please submit an issue :)
+If you find a combination that behaves strangely or incorrectly, or that should work but doesn't, please submit an issue :)
 
 
 Specifying Text Encoders
