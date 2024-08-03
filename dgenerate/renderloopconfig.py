@@ -763,25 +763,22 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'{a_namer("s_cascade_decoder_cpu_offload")} and {a_namer("s_cascade_decoder_sequential_offload")} '
                 f'may not be enabled simultaneously.')
 
-        if _pipelinewrapper.model_type_is_flax(self.model_type):
-            if self.t2i_adapter_uris is not None:
-                raise RenderLoopConfigError(
-                    f'flax model types cannot use a {a_namer("t2i_adapter_uris")} value, '
-                    f'T2I adapters are not supported with flax.')
-
         if _pipelinewrapper.model_type_is_floyd(self.model_type):
             if self.vae_uri is not None:
                 raise RenderLoopConfigError(
                     f'Deep Floyd model types cannot use a {a_namer("vae_uri")} value.')
             if self.textual_inversion_uris is not None:
                 raise RenderLoopConfigError(
-                    f'Deep Floyd model types cannot use a {a_namer("textual_inversion_uris")} value.')
+                    f'Deep Floyd model types do not support {a_namer("textual_inversion_uris")}.')
             if self.control_net_uris is not None:
                 raise RenderLoopConfigError(
-                    f'Deep Floyd model types cannot use a {a_namer("control_net_uris")} value.')
+                    f'Deep Floyd model types do not support {a_namer("control_net_uris")}.')
             if self.t2i_adapter_uris is not None:
                 raise RenderLoopConfigError(
-                    f'Deep Floyd model types cannot use a {a_namer("t2i_adapter_uris")} value.')
+                    f'Deep Floyd model types do not support {a_namer("t2i_adapter_uris")}.')
+            if self.ip_adapter_uris is not None:
+                raise RenderLoopConfigError(
+                    f'Deep Floyd model types do not support {a_namer("ip_adapter_uris")}.')
 
         if self.model_type == _pipelinewrapper.ModelType.TORCH_S_CASCADE_DECODER:
             raise RenderLoopConfigError(
@@ -826,6 +823,10 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(
                     f'Stable Cascade does not currently support the use of {a_namer("t2i_adapter_uris")}.')
 
+            if self.ip_adapter_uris is not None:
+                raise RenderLoopConfigError(
+                    f'Stable Cascade does not currently support the use of {a_namer("ip_adapter_uris")}.')
+
             if self.output_size is not None and not _image.is_aligned(self.output_size, 128):
                 raise RenderLoopConfigError(
                     f'Stable Cascade requires {a_namer("output_size")} to be aligned by 128.')
@@ -865,6 +866,16 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(
                     f'{a_namer("vae_tiling")} and {a_namer("vae_slicing")} are not '
                     f'supported for flax, see: {a_namer("model_type")}.')
+
+            if self.t2i_adapter_uris is not None:
+                raise RenderLoopConfigError(
+                    f'{a_namer("t2i_adapter_uris")} is not supported for '
+                    f'flax, see: {a_namer("model_type")}.')
+
+            if self.ip_adapter_uris is not None:
+                raise RenderLoopConfigError(
+                    f'{a_namer("ip_adapter_uris")} is not supported for '
+                    f'flax, see: {a_namer("model_type")}.')
 
         if self.model_path is None:
             raise RenderLoopConfigError(
@@ -952,6 +963,10 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(
                     f'you cannot specify {a_namer("t2i_adapter_uris")} without {a_namer("image_seeds")}.')
 
+            if self.ip_adapter_uris:
+                raise RenderLoopConfigError(
+                    f'you cannot specify {a_namer("ip_adapter_uris")} without {a_namer("image_seeds")}.')
+
         if self.model_type == _pipelinewrapper.ModelType.TORCH_UPSCALER_X2:
             if self.lora_uris or self.textual_inversion_uris:
                 raise RenderLoopConfigError(
@@ -972,6 +987,10 @@ class RenderLoopConfig(_types.SetFromMixin):
         elif self.t2i_adapter_uris:
             raise RenderLoopConfigError(
                 f'{a_namer("t2i_adapter_uris")} is not compatible '
+                f'with upscaler models, see: {a_namer("model_type")}.')
+        elif self.ip_adapter_uris:
+            raise RenderLoopConfigError(
+                f'{a_namer("ip_adapter_uris")} is not compatible '
                 f'with upscaler models, see: {a_namer("model_type")}.')
         elif self.upscaler_noise_levels is None:
             if self.model_type == _pipelinewrapper.ModelType.TORCH_UPSCALER_X4:
@@ -997,6 +1016,10 @@ class RenderLoopConfig(_types.SetFromMixin):
             raise RenderLoopConfigError(
                 f'{a_namer("t2i_adapter_uris")} is not compatible with '
                 f'pix2pix models, see: {a_namer("model_type")}.')
+        elif self.ip_adapter_uris and self.model_type != _pipelinewrapper.ModelType.TORCH_PIX2PIX:
+            raise RenderLoopConfigError(
+                f'{a_namer("ip_adapter_uris")} is not compatible with '
+                f'SDXL pix2pix models, only SD1.5 & SD2, see: {a_namer("model_type")}.')
         elif not self.image_guidance_scales:
             self.image_guidance_scales = [_pipelinewrapper.DEFAULT_IMAGE_GUIDANCE_SCALE]
 
@@ -1048,11 +1071,14 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(
                     f'Stable Diffusion 3 does not currently support the '
                     f'use of {a_namer("textual_inversion_uris")}.')
-
             if self.t2i_adapter_uris:
                 raise RenderLoopConfigError(
                     f'Stable Diffusion 3 does not currently support the '
                     f'use of {a_namer("t2i_adapter_uris")}.')
+            if self.ip_adapter_uris:
+                raise RenderLoopConfigError(
+                    f'Stable Diffusion 3 does not currently support the '
+                    f'use of {a_namer("ip_adapter_uris")}.')
 
         if not _pipelinewrapper.model_type_is_sdxl(self.model_type):
             invalid_self = []
@@ -1199,7 +1225,6 @@ class RenderLoopConfig(_types.SetFromMixin):
         # ^ Used for nice messages about image seed keyword argument misuse
 
         if _pipelinewrapper.model_type_is_sd3(self.model_type):
-
             if not parsed.is_single_spec:
                 # inpainting is not currently supported for Stable Diffusion 3
                 raise RenderLoopConfigError(
@@ -1211,6 +1236,22 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(
                     f'{a_namer("image_seeds")} are currently not supported with {a_namer("lora_uris")} for {a_namer("model_type")} '
                     f'{_pipelinewrapper.get_model_type_string(self.model_type)}')
+
+        if parsed.adapter_images:
+            if not self.ip_adapter_uris:
+                raise RenderLoopConfigError(
+                    f'You may not use IP Adapter images in your {a_namer("image_seeds")} specification '
+                    f'without specifying {a_namer("ip_adapter_uris")}.')
+
+            number_of_ip_adapter_image_groups = len(parsed.adapter_images)
+            number_of_ip_adapter_uris = len(self.ip_adapter_uris)
+
+            if len(parsed.adapter_images) != number_of_ip_adapter_uris:
+                raise RenderLoopConfigError(
+                    f'The amount of IP Adapter image groups in your {a_namer("image_seeds")} specification "{uri}" '
+                    f'must equal the number of {a_namer("ip_adapter_uris")} supplied. You have supplied '
+                    f'{number_of_ip_adapter_image_groups} IP Adapter image groups for {number_of_ip_adapter_uris} IP '
+                    f'Adapter models.')
 
         if self.t2i_adapter_uris:
             control_image_paths = parsed.get_control_image_paths()
@@ -1226,7 +1267,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'Your {a_namer("image_seeds")} specification "{uri}" defines {num_control_images} '
                     f'control guidance image sources, and you have specified {len(self.t2i_adapter_uris)} '
                     f'{a_namer("t2i_adapter_uris")} URIs. The amount of guidance image sources and the '
-                    f'amount of T2IAdapter models must be equal.'
+                    f'amount of T2I Adapter models must be equal.'
                 )
 
         elif self.control_net_uris:
