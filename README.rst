@@ -3070,6 +3070,8 @@ particular way for the model to work.
 In addition, IP Adapter models can be used with Control Net and T2I Adapter models introducing additional complexities in specifying
 image input.
 
+----
+
 basic --image-seeds specification
 ---------------------------------
 
@@ -3094,7 +3096,7 @@ not affect the IP Adapter images.  Only the control images in the cases being di
 
 In order to resize IP adapter images from the ``--image-seeds`` URI, you must use a sub-uri syntax for each adapter image.
 
-This is always true for all adapter image specification syntaxes mentioned in this section.
+This is always true for all adapter image specification syntaxes.
 
 This sub-uri syntax uses the pipe ``|`` symbol to delimit its URI arguments for the specific IP Adapter image.
 
@@ -3103,6 +3105,16 @@ This sub-uri syntax uses the pipe ``|`` symbol to delimit its URI arguments for 
 
 
 This sub-uri syntax allows resizing each IP Adapter input image individually.
+
+This syntax supports the arguments ``resize``, ``align``, and ``aspect``, which refer to the resize
+dimension, image alignment, and whether or not the image resize that occurs is aspect correct.
+
+These arguments mirror the behavior of the top level ``--image-seeds`` arguments with the same names.
+
+However, alignment for IP Adapter images defaults to 1, meaning that there is no forced alignment
+unless you force it manually.
+
+----
 
 
 img2img --image-seeds specification
@@ -3121,6 +3133,7 @@ Including the ``+`` syntax and sub-uri resizing syntax.
     * ``--image-seeds "img2img-input.png;adapter=adapter-image.png;control=control-image.png"`` (img2img + Control Net or T2I Adapter)
 
 
+----
 
 inpainting --image-seeds specification
 --------------------------------------
