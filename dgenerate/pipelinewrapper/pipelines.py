@@ -1450,6 +1450,9 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         if t2i_adapter_uris:
             raise UnsupportedPipelineConfigError(
                 'Deep Floyd --model-type values are not compatible with --t2i-adapters.')
+        if ip_adapter_uris:
+            raise UnsupportedPipelineConfigError(
+                'Deep Floyd --model-type values are not compatible with --ip-adapters.')
         if textual_inversion_uris:
             raise UnsupportedPipelineConfigError(
                 'Deep Floyd --model-type values are not compatible with --textual-inversions.')
@@ -1464,6 +1467,9 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         if t2i_adapter_uris:
             raise UnsupportedPipelineConfigError(
                 'Stable Cascade --model-type values are not compatible with --t2i-adapters.')
+        if ip_adapter_uris:
+            raise UnsupportedPipelineConfigError(
+                'Stable Cascade --model-type values are not compatible with --ip-adapters.')
         if textual_inversion_uris:
             raise UnsupportedPipelineConfigError(
                 'Stable Cascade --model-type values are not compatible with --textual-inversions.')
@@ -1478,7 +1484,9 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         if t2i_adapter_uris:
             raise UnsupportedPipelineConfigError(
                 '--model-type torch-sd3 is not compatible with --t2i-adapters.')
-
+        if ip_adapter_uris:
+            raise UnsupportedPipelineConfigError(
+                '--model-type torch-sd3 is not compatible with --ip-adapters.')
         if unet_uri:
             raise UnsupportedPipelineConfigError(
                 '--model-type torch-sd3 is not compatible with --unet.'
@@ -1502,6 +1510,11 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             raise UnsupportedPipelineConfigError(
                 'Pix2Pix --model-type values are not compatible with --t2i-adapters.')
 
+        if ip_adapter_uris and model_type != _enums.ModelType.TORCH_PIX2PIX:
+            raise UnsupportedPipelineConfigError(
+                'Only Pix2Pix --model-type torch-pix2pix is compatible with --ip-adapters, '
+                'Pix2Pix SDXL is not supported.')
+
     # Pipeline class selection
 
     if _enums.model_type_is_upscaler(model_type):
@@ -1512,6 +1525,10 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         if t2i_adapter_uris:
             raise UnsupportedPipelineConfigError(
                 'Upscaler models are not compatible with --t2i-adapters.')
+
+        if ip_adapter_uris:
+            raise UnsupportedPipelineConfigError(
+                'Upscaler models are not compatible with --ip-adapters.')
 
         if pipeline_type != _enums.PipelineType.IMG2IMG and not scheduler_is_help(scheduler):
             raise UnsupportedPipelineConfigError(
@@ -1527,7 +1544,6 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             else diffusers.StableDiffusionLatentUpscalePipeline)
     else:
         if pipeline_type == _enums.PipelineType.TXT2IMG:
-
             if is_pix2pix:
                 if not (scheduler_is_help(scheduler) or text_encoder_is_help(text_encoder_uris)):
                     raise UnsupportedPipelineConfigError(
@@ -1604,7 +1620,8 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                 else:
                     pipeline_class = diffusers.StableDiffusionControlNetImg2ImgPipeline
             else:
-                pipeline_class = diffusers.StableDiffusionXLImg2ImgPipeline if is_sdxl else diffusers.StableDiffusionImg2ImgPipeline
+                pipeline_class = diffusers.StableDiffusionXLImg2ImgPipeline if is_sdxl \
+                    else diffusers.StableDiffusionImg2ImgPipeline
         elif pipeline_type == _enums.PipelineType.INPAINT:
             if is_pix2pix:
                 raise UnsupportedPipelineConfigError(
@@ -1629,7 +1646,8 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                 else:
                     pipeline_class = diffusers.StableDiffusionControlNetInpaintPipeline
             else:
-                pipeline_class = diffusers.StableDiffusionXLInpaintPipeline if is_sdxl else diffusers.StableDiffusionInpaintPipeline
+                pipeline_class = diffusers.StableDiffusionXLInpaintPipeline if is_sdxl \
+                    else diffusers.StableDiffusionInpaintPipeline
         else:
             # Should be impossible
             raise UnsupportedPipelineConfigError('Pipeline type not implemented.')
