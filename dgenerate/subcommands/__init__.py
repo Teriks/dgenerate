@@ -32,13 +32,6 @@ Sub-Commands implemented by the dgenerate command line tool.
 """
 
 
-class SubCommandHelpUsageError(Exception):
-    """
-    Raised on argument parse errors in :py:func:`.sub_command_help`
-    """
-    pass
-
-
 def sub_command_help(names: _types.Names,
                      plugin_module_paths: _types.OptionalPaths = None,
                      throw=False,
@@ -52,7 +45,8 @@ def sub_command_help(names: _types.Names,
     :param throw: throw on error? or simply print to stderr and return a return code.
     :param log_error: log errors to stderr?
 
-    :raises SubCommandHelpUsageError:
+    :raises SubCommandNotFoundError:
+    :raises dgenerate.ModuleFileNotFoundError:
 
     :return: return-code, anything other than 0 is failure
     """
@@ -66,7 +60,7 @@ def sub_command_help(names: _types.Names,
             log_error=log_error)
     except (SubCommandNotFoundError, _plugin.ModuleFileNotFoundError) as e:
         if throw:
-            raise SubCommandHelpUsageError(str(e).strip())
+            raise e
         return 1
 
 

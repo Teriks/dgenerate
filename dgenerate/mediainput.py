@@ -780,6 +780,11 @@ class ImageSeedParseResult:
     The result of parsing an ``--image-seeds`` uri
     """
 
+    uri: str
+    """
+    The original URI string the image seed was parsed from.
+    """
+
     seed_path: _types.Path | _types.Paths | None
     """
     The seed path, contains an image path that will be used for img2img operations
@@ -931,13 +936,6 @@ def _parse_ip_adapter_uri(uri: str) -> IPAdapterImageSpec:
 
     if len(adapter_parts) == 1:
         path = adapter_parts[0]
-    elif len(adapter_parts) == 2 and '=' not in i_strip:
-        path = adapter_parts[0]
-        try:
-            scale = float(adapter_parts[1])
-        except ValueError:
-            raise ImageSeedParseError(
-                f'Could not parse adapter image "scale" argument: {adapter_parts[1]}')
     else:
         result = _ip_adapter_image_parser.parse(uri)
         path = result.concept
@@ -977,6 +975,7 @@ def _parse_image_seed_uri_legacy(uri: str, align: int = 8) -> ImageSeedParseResu
             f'Parsing error in image seed URI "{uri}": {str(e).strip()}')
 
     result = ImageSeedParseResult()
+    result.uri = uri
 
     try:
         first = next(parts_iter)
@@ -1119,6 +1118,7 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
         return _parse_image_seed_uri_legacy(uri, align=align)
 
     result = ImageSeedParseResult()
+    result.uri = uri
 
     seed_parser = _textprocessing.ConceptUriParser('Image Seed',
                                                    known_args=keyword_args,
@@ -1892,6 +1892,11 @@ class ImageSeed:
     An ImageSeed with attached image data
     """
 
+    uri: str
+    """
+    The original URI string that this image seed originates from.
+    """
+
     frame_index: _types.OptionalInteger = None
     """
     Frame index in the case that :py:attr:`.ImageSeed.is_animation_frame` is True
@@ -2308,6 +2313,8 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
                 image_seed.frame_duration = reader.frame_duration
                 image_seed.frame_index = reader.frame_index
                 image_seed.total_frames = reader.total_frames if is_animation else None
+
+            image_seed.uri = parse_result.uri
             yield image_seed
 
 
@@ -2443,6 +2450,8 @@ def iterate_control_image(uri: str | ImageSeedParseResult,
                 image_seed.frame_duration = reader.frame_duration
                 image_seed.frame_index = reader.frame_index
                 image_seed.total_frames = reader.total_frames if is_animation else None
+
+            image_seed.uri = parse_result.uri
             yield image_seed
 
 
