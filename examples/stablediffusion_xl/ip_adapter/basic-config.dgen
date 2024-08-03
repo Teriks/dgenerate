@@ -1,6 +1,8 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 4.0.0
 
+# this uses one IP Adapter input image with the IP Adapter h94/IP-Adapter
+
 stabilityai/stable-diffusion-xl-base-1.0
 --model-type torch-sdxl
 --dtype float16
@@ -10,7 +12,7 @@ stabilityai/stable-diffusion-xl-base-1.0
 --guidance-scales 5
 --sdxl-high-noise-fractions 0.8
 --seeds 0
---output-path output
+--output-path basic
 --model-cpu-offload
 --image-seeds "adapter: https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/ip_adapter_diner.png"
 --ip-adapters h94/IP-Adapter;subfolder=sdxl_models;weight-name=ip-adapter_sdxl.bin
