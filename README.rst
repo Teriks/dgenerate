@@ -3144,8 +3144,22 @@ The ``mask`` argument in this case does not refer to IP Adapter mask images, but
 
 
     * ``--image-seeds "img2img-input.png;mask=inpaint-mask.png;adapter=adapter-image.png"`` (inpaint)
-    * ``--image-seeds "img2img-input.png;;mask=inpaint-mask.png;adapter=adapter-image.png;control=control-image.png"`` (inpaint + Control Net or T2I Adapter)
+    * ``--image-seeds "img2img-input.png;mask=inpaint-mask.png;adapter=adapter-image.png;control=control-image.png"`` (inpaint + Control Net or T2I Adapter)
 
+
+----
+
+animated inputs & combinatorics
+-------------------------------
+
+Animated inputs work for IP Adapter images, when you specify an image seed with animated components such as videos or gifs,
+the shortest animation dictates the amount of frames which will be processed in total, and any static images specified in
+the image seed are duplicated across those frames.
+
+The IP Adapter syntax introduces a lot of possible combinations for ``--image-seeds`` input images, and
+not all possible combinations are covered in this documentation and it would be hard to do so.
+
+If you find a combination that behaves strangely or incorrectly, or that should work but don't, please submit an issue :)
 
 
 Specifying Text Encoders
