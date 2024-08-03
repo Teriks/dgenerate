@@ -21,23 +21,31 @@
 
 import dgenerate.plugin as _plugin
 import dgenerate.types as _types
+
 from .canny import CannyEdgeDetectProcessor
-from .exceptions import \
-    ImageProcessorNotFoundError, \
-    ImageProcessorArgumentError, \
-    ImageProcessorImageModeError, \
-    ImageProcessorError
+
+from .exceptions import (
+    ImageProcessorNotFoundError,
+    ImageProcessorArgumentError,
+    ImageProcessorImageModeError,
+    ImageProcessorError,
+)
+
 from .hed import HEDProcessor
-from .imageops import \
-    PosterizeProcessor, \
-    SolarizeProcessor, \
-    MirrorFlipProcessor, \
-    SimpleColorProcessor, \
-    LetterboxProcessor
+
+from .imageops import (
+    PosterizeProcessor,
+    SolarizeProcessor,
+    MirrorFlipProcessor,
+    SimpleColorProcessor,
+    LetterboxProcessor,
+)
+
 from .imageprocessor import ImageProcessor
 from .imageprocessorchain import ImageProcessorChain
 from .imageprocessorloader import ImageProcessorLoader
 from .imageprocessormixin import ImageProcessorMixin
+
 from .leres import LeresDepthProcessor
 from .linart_anime import LineArtAnimeProcessor
 from .lineart import LineArtProcessor
@@ -53,18 +61,16 @@ from .teed import TEEDProcessor
 from .linart_standard import LineArtStandardProcessor
 from .anyline import AnylineProcessor
 
-
-from .constants import \
-    IMAGE_PROCESSOR_MEMORY_CONSTRAINTS, \
+from .constants import (
+    IMAGE_PROCESSOR_MEMORY_CONSTRAINTS,
     IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS
-
+)
 
 try:
     import ncnn
     from .upscaler_ncnn import UpscalerNCNNProcessor
 except ImportError:
     pass
-
 
 __doc__ = """
 Image processors implemented by dgenerate.

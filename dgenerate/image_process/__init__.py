@@ -21,35 +21,39 @@
 
 import dgenerate.types
 
-from .arguments import \
-    parse_args, \
-    ImageProcessHelpException, \
-    ImageProcessArgs, \
-    ImageProcessUsageError
+from .arguments import (
+    parse_args,
+    ImageProcessHelpException,
+    ImageProcessArgs,
+    ImageProcessUsageError,
+)
 
-from .invoker import \
-    invoke_image_process, \
-    invoke_image_process_events, \
-    InvokeImageProcessEvent, \
-    InvokeImageProcessEventStream
+from .invoker import (
+    invoke_image_process,
+    invoke_image_process_events,
+    InvokeImageProcessEvent,
+    InvokeImageProcessEventStream,
+)
 
 # noinspection PyUnresolvedReferences
-from .renderloop import \
-    ImageProcessRenderLoop, \
-    RenderLoopEventStream, \
-    RenderLoopEvent, \
-    ImageGeneratedEvent, \
-    StartingAnimationEvent, \
-    StartingAnimationFileEvent, \
-    AnimationFileFinishedEvent, \
-    ImageFileSavedEvent, \
-    AnimationFinishedEvent, \
-    AnimationETAEvent, \
-    StartingGenerationStepEvent
+from .renderloop import (
+    ImageProcessRenderLoop,
+    RenderLoopEventStream,
+    RenderLoopEvent,
+    ImageGeneratedEvent,
+    StartingAnimationEvent,
+    StartingAnimationFileEvent,
+    AnimationFileFinishedEvent,
+    ImageFileSavedEvent,
+    AnimationFinishedEvent,
+    AnimationETAEvent,
+    StartingGenerationStepEvent,
+)
 
-from .renderloopconfig import \
-    ImageProcessRenderLoopConfigError, \
-    ImageProcessRenderLoopConfig
+from .renderloopconfig import (
+    ImageProcessRenderLoopConfigError,
+    ImageProcessRenderLoopConfig,
+)
 
 __doc__ = """
 Implements the behaviors of dgenerates ``image-process`` sub-command and ``\\image_process`` config directive.

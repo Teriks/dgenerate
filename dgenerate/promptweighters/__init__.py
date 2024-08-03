@@ -23,10 +23,13 @@ import dgenerate.plugin as _plugin
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.types as _types
 from .compelpromptweighter import CompelPromptWeighter
-from .exceptions import \
-    PromptWeighterArgumentError, \
-    PromptWeighterNotFoundError, \
+
+from .exceptions import (
+    PromptWeighterArgumentError,
+    PromptWeighterNotFoundError,
     PromptWeightingUnsupported
+)
+
 from .promptweighter import PromptWeighter
 from .promptweighterloader import PromptWeighterLoader
 from .sdembedpromptweighter import SdEmbedPromptWeighter

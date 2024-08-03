@@ -20,13 +20,21 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import dgenerate.types as _types
+
 from .batchprocessor import BatchProcessor, BatchProcessError
+
 from .configrunner import ConfigRunner
+
 from .configrunnerplugin import ConfigRunnerPlugin
-from .configrunnerpluginloader import ConfigRunnerPluginLoader, \
-    ConfigRunnerPluginNotFoundError, \
-    ConfigRunnerPluginArgumentError
+
+from .configrunnerpluginloader import (
+    ConfigRunnerPluginLoader,
+    ConfigRunnerPluginNotFoundError,
+    ConfigRunnerPluginArgumentError,
+)
+
 from .image_process_directive import ImageProcessDirective
+
 from .civitai_links_directive import CivitAILinksDirective
 
 __doc__ = """

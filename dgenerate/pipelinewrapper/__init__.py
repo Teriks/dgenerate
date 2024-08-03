@@ -73,10 +73,20 @@ from .cache import (
     pipeline_off_cpu_update_cache_info,
     pipeline_to_cpu_update_cache_info,
     vae_create_update_cache_info,
+    vae_to_cpu_update_cache_info,
+    vae_off_cpu_update_cache_info,
     unet_create_update_cache_info,
+    unet_to_cpu_update_cache_info,
+    unet_off_cpu_update_cache_info,
     controlnet_create_update_cache_info,
+    controlnet_to_cpu_update_cache_info,
+    controlnet_off_cpu_update_cache_info,
     adapter_create_update_cache_info,
-    text_encoder_create_update_cache_info
+    adapter_to_cpu_update_cache_info,
+    adapter_off_cpu_update_cache_info,
+    text_encoder_create_update_cache_info,
+    text_encoder_to_cpu_update_cache_info,
+    text_encoder_off_cpu_update_cache_info
 )
 
 # Utility Functions
@@ -85,121 +95,149 @@ from .cache import (
     uri_list_hash_with_parser
 )
 
-from .constants import \
-    DEFAULT_SDXL_OUTPUT_WIDTH, \
-    DEFAULT_OUTPUT_HEIGHT, \
-    DEFAULT_SDXL_OUTPUT_HEIGHT, \
-    DEFAULT_FLOYD_IF_OUTPUT_HEIGHT, \
-    DEFAULT_FLOYD_IF_OUTPUT_WIDTH, \
-    DEFAULT_FLOYD_SUPERRESOLUTION_NOISE_LEVEL, \
-    DEFAULT_FLOYD_SUPERRESOLUTION_IMG2IMG_NOISE_LEVEL, \
-    DEFAULT_FLOYD_SUPERRESOLUTION_INPAINT_NOISE_LEVEL, \
-    DEFAULT_SEED, \
-    DEFAULT_OUTPUT_WIDTH, \
-    DEFAULT_GUIDANCE_SCALE, \
-    DEFAULT_INFERENCE_STEPS, \
-    DEFAULT_IMAGE_SEED_STRENGTH, \
-    DEFAULT_IMAGE_GUIDANCE_SCALE, \
-    DEFAULT_SDXL_HIGH_NOISE_FRACTION, \
-    DEFAULT_X4_UPSCALER_NOISE_LEVEL, \
-    DEFAULT_S_CASCADE_DECODER_GUIDANCE_SCALE, \
-    DEFAULT_S_CASCADE_DECODER_INFERENCE_STEPS, \
-    DEFAULT_S_CASCADE_OUTPUT_HEIGHT, \
-    DEFAULT_S_CASCADE_OUTPUT_WIDTH
+# Constants
+from .constants import (
+    DEFAULT_SDXL_OUTPUT_WIDTH,
+    DEFAULT_OUTPUT_HEIGHT,
+    DEFAULT_SDXL_OUTPUT_HEIGHT,
+    DEFAULT_FLOYD_IF_OUTPUT_HEIGHT,
+    DEFAULT_FLOYD_IF_OUTPUT_WIDTH,
+    DEFAULT_FLOYD_SUPERRESOLUTION_NOISE_LEVEL,
+    DEFAULT_FLOYD_SUPERRESOLUTION_IMG2IMG_NOISE_LEVEL,
+    DEFAULT_FLOYD_SUPERRESOLUTION_INPAINT_NOISE_LEVEL,
+    DEFAULT_SEED,
+    DEFAULT_OUTPUT_WIDTH,
+    DEFAULT_GUIDANCE_SCALE,
+    DEFAULT_INFERENCE_STEPS,
+    DEFAULT_IMAGE_SEED_STRENGTH,
+    DEFAULT_IMAGE_GUIDANCE_SCALE,
+    DEFAULT_SDXL_HIGH_NOISE_FRACTION,
+    DEFAULT_X4_UPSCALER_NOISE_LEVEL,
+    DEFAULT_S_CASCADE_DECODER_GUIDANCE_SCALE,
+    DEFAULT_S_CASCADE_DECODER_INFERENCE_STEPS,
+    DEFAULT_S_CASCADE_OUTPUT_HEIGHT,
+    DEFAULT_S_CASCADE_OUTPUT_WIDTH,
+    DEFAULT_SD3_OUTPUT_WIDTH,
+    DEFAULT_SD3_OUTPUT_HEIGHT
+)
 
-from .enums import \
-    ModelType, \
-    DataType, \
-    model_type_is_sd3, \
-    model_type_is_sdxl, \
-    model_type_is_floyd_if, \
-    model_type_is_pix2pix, \
-    model_type_is_upscaler, \
-    model_type_is_floyd_ifs, \
-    model_type_is_floyd, \
-    model_type_is_flax, \
-    model_type_is_s_cascade, \
-    PipelineType, \
-    get_model_type_enum, \
-    get_flax_dtype, \
-    get_torch_dtype, \
-    get_data_type_enum, \
-    have_jax_flax, \
-    supported_data_type_enums, \
-    model_type_is_torch, \
-    get_data_type_string, \
-    supported_data_type_strings, \
-    get_model_type_string, \
-    supported_model_type_enums, \
-    get_pipeline_type_string, \
-    get_pipeline_type_enum, \
+# Enums
+from .enums import (
+    ModelType,
+    DataType,
+    model_type_is_sd3,
+    model_type_is_sdxl,
+    model_type_is_floyd_if,
+    model_type_is_pix2pix,
+    model_type_is_upscaler,
+    model_type_is_floyd_ifs,
+    model_type_is_floyd,
+    model_type_is_flax,
+    model_type_is_s_cascade,
+    PipelineType,
+    get_model_type_enum,
+    get_flax_dtype,
+    get_torch_dtype,
+    get_data_type_enum,
+    have_jax_flax,
+    supported_data_type_enums,
+    model_type_is_torch,
+    get_data_type_string,
+    supported_data_type_strings,
+    get_model_type_string,
+    supported_model_type_enums,
+    get_pipeline_type_string,
+    get_pipeline_type_enum,
     supported_model_type_strings
+)
 
-from .hfutil import \
-    ModelNotFoundError, \
+# HF Utility Errors
+from .hfutil import (
+    ModelNotFoundError,
     NonHFModelDownloadError
+)
 
-from .pipelines import \
-    InvalidModelFileError, \
-    InvalidSchedulerNameError, \
-    TorchPipelineFactory, \
-    FlaxPipelineCreationResult, \
-    TorchPipelineCreationResult, \
-    PipelineCreationResult, \
-    FlaxPipelineFactory, \
-    ArgumentHelpException, \
-    SchedulerHelpException, \
-    TextEncodersHelpException, \
-    create_flax_diffusion_pipeline, \
-    set_vae_slicing_tiling, \
-    create_torch_diffusion_pipeline, \
-    estimate_pipeline_memory_use, \
-    load_scheduler, \
-    scheduler_is_help, \
-    text_encoder_is_help, \
-    UnsupportedPipelineConfigError, \
-    get_torch_pipeline_modules, \
-    is_model_cpu_offload_enabled, \
-    is_sequential_cpu_offload_enabled, \
-    call_pipeline, \
-    get_torch_device, \
-    pipeline_to, \
-    enable_sequential_cpu_offload, \
-    enable_model_cpu_offload, \
-    get_torch_device_string
+# Pipelines
+from .pipelines import (
+    InvalidModelFileError,
+    InvalidSchedulerNameError,
+    TorchPipelineFactory,
+    FlaxPipelineCreationResult,
+    TorchPipelineCreationResult,
+    PipelineCreationResult,
+    FlaxPipelineFactory,
+    ArgumentHelpException,
+    SchedulerHelpException,
+    TextEncodersHelpException,
+    create_flax_diffusion_pipeline,
+    set_vae_slicing_tiling,
+    create_torch_diffusion_pipeline,
+    estimate_pipeline_memory_use,
+    load_scheduler,
+    scheduler_is_help,
+    text_encoder_is_help,
+    UnsupportedPipelineConfigError,
+    get_torch_pipeline_modules,
+    is_model_cpu_offload_enabled,
+    is_sequential_cpu_offload_enabled,
+    call_pipeline,
+    get_torch_device,
+    pipeline_to,
+    enable_sequential_cpu_offload,
+    enable_model_cpu_offload,
+    get_torch_device_string,
+    get_last_called_pipeline,
+    destroy_last_called_pipeline
+)
 
-from .uris import \
-    InvalidModelUriError, \
-    LoRAUri, \
-    TextualInversionUri, \
-    FlaxVAEUri, \
-    FlaxControlNetUri, \
-    SDXLRefinerUri, \
-    ModelUriLoadError, \
-    InvalidControlNetUriError, \
-    ControlNetUriLoadError, \
-    InvalidLoRAUriError, \
-    LoRAUriLoadError, \
-    InvalidSDXLRefinerUriError, \
-    InvalidTextualInversionUriError, \
-    TextualInversionUriLoadError, \
-    InvalidUNetUriError, \
-    UNetUriLoadError, \
-    InvalidVaeUriError, \
-    VAEUriLoadError, \
-    TorchControlNetUri, \
-    TorchVAEUri, \
-    TorchUNetUri, \
-    FlaxUNetUri
+# URI Errors and Types
+from .uris import (
+    InvalidModelUriError,
+    LoRAUri,
+    TextualInversionUri,
+    FlaxVAEUri,
+    FlaxControlNetUri,
+    SDXLRefinerUri,
+    ModelUriLoadError,
+    InvalidControlNetUriError,
+    ControlNetUriLoadError,
+    InvalidLoRAUriError,
+    LoRAUriLoadError,
+    InvalidSDXLRefinerUriError,
+    InvalidTextualInversionUriError,
+    TextualInversionUriLoadError,
+    InvalidUNetUriError,
+    UNetUriLoadError,
+    InvalidVaeUriError,
+    VAEUriLoadError,
+    TorchControlNetUri,
+    TorchVAEUri,
+    TorchUNetUri,
+    FlaxUNetUri,
+    IPAdapterUri,
+    T2IAdapterUri,
+    T2IAdapterUriLoadError,
+    InvalidT2IAdapterUriError,
+    TextEncoderUriLoadError,
+    FlaxTextEncoderUri,
+    TorchTextEncoderUri,
+    InvalidSCascadeDecoderUriError,
+    InvalidTextEncoderUriError,
+    SCascadeDecoderUri
+)
 
-from .util import \
-    InvalidDeviceOrdinalException, \
+# Utility Functions
+from .util import (
+    InvalidDeviceOrdinalException,
     is_valid_device_string
+)
 
-from .wrapper import \
-    PipelineWrapperResult, \
-    DiffusionPipelineWrapper, \
+# Wrapper
+from .wrapper import (
+    PipelineWrapperResult,
+    DiffusionPipelineWrapper,
     DiffusionArguments
+)
 
 __doc__ = """
 huggingface diffusers pipeline wrapper / driver interface.
