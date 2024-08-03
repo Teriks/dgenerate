@@ -3176,6 +3176,23 @@ The ``mask`` argument in this case does not refer to IP Adapter mask images, but
 
 ----
 
+quoting IP Adapter image URLs with plus symbols
+-----------------------------------------------
+
+If you happen to need to download an IP Adapter image from a URL containing a plus symbol, the URL can be quoted
+using single or double quotes depending on context.
+
+There are quite a few different ways to quote the URI itself that will work, especially in config scripts where ``;`` is not
+considered to be any kind of significant operator, and ``|`` is only used as an operator with the ``\exec`` directive.
+
+
+    * ``--image-seeds "adapter: 'https://url.com?arg=hello+world' + image2.png"``
+    * ``--image-seeds 'adapter:"https://url.com?arg=hello+world" + image2.png'``
+    * ``--image-seeds "img2img.png;adapter='https://url.com?arg=hello+world' + image2.png"``
+    * ``--image-seeds 'img2img.png;adapter="https://url.com?arg=hello+world" + image2.png'``
+
+----
+
 animated inputs & combinatorics
 -------------------------------
 
