@@ -932,7 +932,7 @@ def _parse_ip_adapter_uri(uri: str) -> IPAdapterImageSpec:
 
     resize = None
     aspect = True
-    align = 8
+    align = 1
 
     if len(adapter_parts) == 1:
         path = adapter_parts[0]
@@ -953,7 +953,7 @@ def _parse_ip_adapter_uri(uri: str) -> IPAdapterImageSpec:
                 f'Could not parse adapter image "aspect" argument: {result.args["aspect"]}')
 
         try:
-            align = int(result.args.get('align', 8))
+            align = int(result.args.get('align', 1))
         except ValueError:
             raise ImageSeedParseError(
                 f'Could not parse adapter image "align" argument: {result.args["align"]}')
