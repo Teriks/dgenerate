@@ -1996,12 +1996,6 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                 raise InvalidModelFileError(f'invalid model file or repo slug: {model_path}')
             raise InvalidModelFileError(e)
 
-    if ip_adapter_uris and (not hasattr(pipeline, 'image_encoder') or pipeline.image_encoder is None):
-        raise UnsupportedPipelineConfigError(
-            'Using --ip-adapters but missing required --image-encoder specification, '
-            'your --ip-adapters specification did not include an image encoder model and '
-            'you must specify one manually.')
-
     # Select Scheduler
 
     if not scheduler_override:
@@ -2048,6 +2042,12 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             pipeline=pipeline,
             use_auth_token=auth_token,
             local_files_only=local_files_only)
+
+    if ip_adapter_uris and (not hasattr(pipeline, 'image_encoder') or pipeline.image_encoder is None):
+        raise UnsupportedPipelineConfigError(
+            'Using --ip-adapters but missing required --image-encoder specification, '
+            'your --ip-adapters specification did not include an image encoder model and '
+            'you must specify one manually.')
 
     # Safety Checker
 
