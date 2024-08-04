@@ -473,6 +473,7 @@ class BatchProcessor:
             with_listcomp=True,
             with_dictcomp=True,
             with_setcomp=True,
+            with_assign=False,
             symtable=self.template_variables.copy())
 
         if 'print' in interpreter.symtable:
