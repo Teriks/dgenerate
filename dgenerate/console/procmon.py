@@ -103,7 +103,12 @@ class ProcessMonitor:
     def process_events(self):
         return_code = None
 
-        for _ in range(self.events_per_tick // 2):
+        events = 0
+
+        while True:
+            if events > self.events_per_tick:
+                break
+
             return_code = self._process.poll()
             if return_code is not None:
                 break
@@ -111,10 +116,14 @@ class ProcessMonitor:
             try:
                 data = self._stdout_queue.get_nowait()
                 self.stdout_callback(data)
+                events += 1
             except queue.Empty:
-                continue
+                break
 
-        for _ in range(self.events_per_tick // 2):
+        while True:
+            if events > self.events_per_tick:
+                break
+
             return_code = self._process.poll()
             if return_code is not None:
                 break
@@ -122,8 +131,9 @@ class ProcessMonitor:
             try:
                 data = self._stderr_queue.get_nowait()
                 self.stderr_callback(data)
+                events += 1
             except queue.Empty:
-                continue
+                break
 
         if return_code is None:
             return_code = self._process.poll()
