@@ -473,7 +473,7 @@ class BatchProcessor:
             with_listcomp=True,
             with_dictcomp=True,
             with_setcomp=True,
-            symtable=self.template_variables)
+            symtable=self.template_variables.copy())
 
         if 'print' in interpreter.symtable:
             del interpreter.symtable['print']
