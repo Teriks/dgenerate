@@ -468,13 +468,12 @@ class BatchProcessor:
         self.template_variables.pop(name)
 
     def _intepret_setp_value(self, value):
-
         interpreter = asteval.Interpreter(
             minimal=True,
             with_listcomp=True,
             with_dictcomp=True,
             with_setcomp=True,
-            symtable=self.template_variables.copy())
+            symtable=self.template_variables)
 
         if 'print' in interpreter.symtable:
             del interpreter.symtable['print']

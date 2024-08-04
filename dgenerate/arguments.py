@@ -706,6 +706,41 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                             all other loading arguments are unused in this case and may produce an error message if used."""))
 
     actions.append(
+        parser.add_argument('-ie', '--image-encoder', action='store',
+                            default=None, metavar="IMAGE_ENCODER_URI", dest='image_encoder_uri',
+                            help=
+                            f"""Specify an Image Encoder using a URI.  
+                            
+                            Image Encoders are used with --ip-adapters models, and must be specified if none of the 
+                            loaded --ip-adapters contain one.  An error will be produced in this situation, which
+                            requires you to use this argument.
+                            
+                            Examples: "huggingface/image_encoder", "huggingface/image_encoder;revision=main", "image_encoder_folder_on_disk". 
+                            
+                            Blob links / single file loads are not supported for Image Encoders.
+                            
+                            The "revision" argument specifies the model revision to use for the Image Encoder when loading from 
+                            huggingface repository or blob link, (The git branch / tag, default is "main").
+                            
+                            The "variant" argument specifies the Image Encoder model variant, it is only supported for torch type models
+                            it is not supported for flax. If "variant" is specified when loading from a huggingface repository or 
+                            folder, weights will be loaded from "variant" filename, e.g. "pytorch_model.<variant>.safetensors. 
+                            
+                            Similar to --vae, "variant" does not default to the value of --variant in order to prevent 
+                            errors with common use cases.
+                            
+                            The "subfolder" argument specifies the Image Encoder model subfolder, if specified when loading from a 
+                            huggingface repository or folder, weights from the specified subfolder.
+                            
+                            The "dtype" argument specifies the Image Encoder model precision, it defaults to the value of -t/--dtype
+                            and should be one of: {_SUPPORTED_DATA_TYPES_PRETTY}.
+                            
+                            If you wish to load weights directly from a path on disk, you must point this argument at the folder
+                            they exist in, which should also contain the config.json file for the Image Encoder. For example, a downloaded
+                            repository folder from huggingface.
+                            """))
+
+    actions.append(
         parser.add_argument('-ipa', '--ip-adapters', nargs='+', action='store', default=None, metavar="IP_ADAPTER_URI",
                             dest='ip_adapter_uris',
                             help=

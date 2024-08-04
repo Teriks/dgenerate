@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import typing
 
 import diffusers
 import huggingface_hub
@@ -28,7 +29,8 @@ import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 
-_ip_adapter_uri_parser = _textprocessing.ConceptUriParser('IP Adapter', ['scale', 'revision', 'subfolder', 'weight-name'])
+_ip_adapter_uri_parser = _textprocessing.ConceptUriParser('IP Adapter',
+                                                          ['scale', 'revision', 'subfolder', 'weight-name'])
 
 
 class IPAdapterUri:
@@ -89,13 +91,15 @@ class IPAdapterUri:
     def __repr__(self):
         return str(self)
 
-    def load_on_pipeline(self,
+    @staticmethod
+    def load_on_pipeline(ip_adapter_uris: typing.Iterable["IPAdapterUri"] | typing.Iterable[str],
                          pipeline: diffusers.DiffusionPipeline,
                          use_auth_token: _types.OptionalString = None,
                          local_files_only: bool = False):
         """
         Load IP Adapter weights on to a pipeline using this URI
 
+        :param ip_adapter_uris: IP Adapter URIs to load on to the pipeline
         :param pipeline: :py:class:`diffusers.DiffusionPipeline`
         :param use_auth_token: optional huggingface auth token.
         :param local_files_only: avoid downloading files and only look for cached files
@@ -104,46 +108,60 @@ class IPAdapterUri:
         :raises ModelNotFoundError: If the model could not be found.
         """
         try:
-            self._load_on_pipeline(pipeline=pipeline,
-                                   use_auth_token=use_auth_token,
-                                   local_files_only=local_files_only)
+            IPAdapterUri._load_on_pipeline(ip_adapter_uris=ip_adapter_uris,
+                                           pipeline=pipeline,
+                                           use_auth_token=use_auth_token,
+                                           local_files_only=local_files_only)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
         except Exception as e:
             raise _exceptions.IPAdapterUriLoadError(
-                f'error loading IP Adapter "{self.model}": {e}')
+                f'error loading IP Adapter: {e}')
 
-    def _load_on_pipeline(self,
+    @staticmethod
+    def _load_on_pipeline(ip_adapter_uris: typing.Iterable["IPAdapterUri"] | typing.Iterable[str],
                           pipeline: diffusers.DiffusionPipeline,
                           use_auth_token: _types.OptionalString = None,
                           local_files_only: bool = False):
 
+        models = []
+        subfolders = []
+        weight_names = []
+        revisions = set()
+
+        for ip_adapter in ip_adapter_uris:
+            if isinstance(ip_adapter, str):
+                ip_adapter = IPAdapterUri.parse(ip_adapter)
+
+            models.append(_hfutil.download_non_hf_model(ip_adapter.model))
+            subfolders.append(ip_adapter.subfolder)
+            weight_names.append(ip_adapter.weight_name)
+            revisions.add(ip_adapter.revision)
+
+        if len(revisions) > 1:
+            raise _exceptions.IPAdapterUriLoadError(
+                f'All IP Adapter URIs must have matching "revision" URI argument values.')
+
         if hasattr(pipeline, 'load_ip_adapter'):
-            debug_args = {k: v for k, v in locals().items() if k not in {'self', 'pipeline'}}
-            _messages.debug_log('pipeline.load_ip_adapter('
-                                + str(_types.get_public_attributes(self) | debug_args) + ')')
-
-            model_path = _hfutil.download_non_hf_model(self.model)
-
             try:
-                pipeline.load_ip_adapter(model_path,
-                                         revision=self.revision,
-                                         subfolder=self.subfolder,
-                                         weight_name=self.weight_name,
+                pipeline.load_ip_adapter(models,
+                                         subfolder=subfolders,
+                                         revision=revisions.pop(),
+                                         weight_name=weight_names,
                                          local_files_only=local_files_only,
                                          use_safetensors=True,
                                          token=use_auth_token)
             except EnvironmentError:
                 # brute force, try for .bin files
-                pipeline.load_ip_adapter(model_path,
-                                         revision=self.revision,
-                                         subfolder=self.subfolder,
-                                         weight_name=self.weight_name,
+                pipeline.load_ip_adapter(models,
+                                         subfolder=subfolders,
+                                         revision=revisions.pop(),
+                                         weight_name=weight_names,
                                          local_files_only=local_files_only,
                                          token=use_auth_token)
 
-            _messages.debug_log(f'Added IP Adapter: "{self}" to pipeline: "{pipeline.__class__.__name__}"')
+            _messages.debug_log(f'Added IP Adapters to pipeline: "{pipeline.__class__.__name__}"')
         else:
             raise RuntimeError(f'Pipeline: {pipeline.__class__.__name__} '
                                f'does not support loading IP Adapters.')

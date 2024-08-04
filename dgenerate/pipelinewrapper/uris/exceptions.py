@@ -108,6 +108,13 @@ class InvalidTextEncoderUriError(InvalidModelUriError):
     pass
 
 
+class InvalidImageEncoderUriError(InvalidModelUriError):
+    """
+    Error in ``--image-encoder`` uri
+    """
+    pass
+
+
 class TextEncoderUriLoadError(InvalidModelUriError):
     """
     Error loading ``--text-encoder*`` uri
@@ -160,5 +167,12 @@ class IPAdapterUriLoadError(ModelUriLoadError):
 class TextualInversionUriLoadError(ModelUriLoadError):
     """
     Error while loading model file in ``--textual-inversions`` uri
+    """
+    pass
+
+
+class ImageEncoderUriLoadError(ModelUriLoadError):
+    """
+    Error while loading model file in ``--image-encoder`` uri
     """
     pass

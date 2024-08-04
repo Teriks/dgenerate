@@ -425,6 +425,15 @@ class RenderLoopConfig(_types.SetFromMixin):
     of the dgenerate command line tool.
     """
 
+    image_encoder_uri: _types.OptionalUri = None
+    """
+    Optional user specified Image Encoder URI when using IP Adapter models. 
+    This corresponds to the ``--image-encoder`` argument of the dgenerate command line tool.
+    
+    If none of your specified ``--ip-adapters`` URIs point to a model which contains an Image Encoder
+    model, you will need to specify one manually using this argument.
+    """
+
     ip_adapter_uris: _types.OptionalUris = None
     """
     Optional user specified IP Adapter URIs, this corresponds to the ``--ip-adapters`` argument 

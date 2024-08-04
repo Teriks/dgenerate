@@ -20,27 +20,21 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import collections.abc
-import ctypes
 import json
 import os
 import pathlib
 import platform
-import queue
 import re
 import shlex
 import shutil
 import signal
 import subprocess
 import sys
-import threading
-import time
 import tkinter as tk
-import tkinter.messagebox as messagebox
 import typing
 
 import PIL.Image
 import PIL.ImageTk
-import psutil
 
 import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.finddialog as _finddialog
@@ -49,11 +43,11 @@ import dgenerate.console.imageseedselect as _imageseedselect
 import dgenerate.console.karrasschedulerselect as _karrasschedulerselect
 import dgenerate.console.recipesform as _recipesform
 import dgenerate.console.resources as _resources
-import dgenerate.files as _files
 import dgenerate.textprocessing as _textprocessing
 from dgenerate.console.codeview import DgenerateCodeView
 from dgenerate.console.scrolledtext import ScrolledText
-from dgenerate.console.stdinpipe import StdinPipe, StdinPipeFullError
+from dgenerate.console.stdinpipe import StdinPipeFullError
+from dgenerate.console.procmon import ProcessMonitor
 
 DGENERATE_EXE = \
     os.path.splitext(
@@ -188,7 +182,7 @@ class DgenerateConsole(tk.Tk):
         self._debug_mode_var = tk.BooleanVar(value=False)
 
         self._debug_mode_var.trace_add('write',
-                                       lambda *a: self.kill_shell_process(restart=True))
+                                       lambda *a: self._update_debug_mode_state())
 
         self._run_menu.add_checkbutton(label='Debug Mode',
                                        variable=self._debug_mode_var)
@@ -501,19 +495,6 @@ class DgenerateConsole(tk.Tk):
 
         # Misc Config
 
-        self._termination_lock = threading.Lock()
-
-        self._shell_process = None
-        self._shell_stdin_pipe = None
-
-        self._start_shell_process()
-
-        self._output_text_stdout_queue = queue.Queue()
-        self._output_text_stderr_queue = queue.Queue()
-
-        self._shell_reader_threads = []
-        self._start_shell_reader_threads()
-
         self._find_dialog = None
 
         # output lines per refresh
@@ -602,7 +583,37 @@ class DgenerateConsole(tk.Tk):
         self._next_text_update_line_return = False
         self._next_text_update_line_escape = False
 
-        self._text_update()
+        self._shell_procmon = ProcessMonitor(events_per_tick=self._output_lines_per_refresh)
+        self._shell_procmon.stderr_callback = self._write_stderr_output
+        self._shell_procmon.stdout_callback = self._write_stdout_output
+        self._shell_procmon.process_exit_callback = self._shell_return_code_message
+        self._shell_procmon.process_restarting_callback = self._shell_restarting_commence_message
+        self._shell_procmon.process_restarted_callback = self._shell_restarting_finish_message
+
+        env = os.environ.copy()
+        env['PYTHONIOENCODING'] = 'utf-8'
+        env['PYTHONUNBUFFERED'] = '1'
+        env['COLUMNS'] = '100'
+
+        self._shell_procmon.popen([DGENERATE_EXE, '--shell'], env=env)
+
+        def process_monitor_events():
+            self._shell_procmon.process_events()
+
+            self.after(self._output_refresh_rate, process_monitor_events)
+
+        process_monitor_events()
+
+    def _update_debug_mode_state(self):
+        self._shell_procmon.popen_args = \
+            [[DGENERATE_EXE, '--shell'] + (['-v'] if self._debug_mode_var.get() else [])]
+        self.kill_shell_process(restart=True)
+
+    def kill_shell_process(self, restart=False):
+        if restart:
+            self._shell_procmon.restart()
+        else:
+            self._shell_procmon.close()
 
     def _format_code(self):
         self._input_text.format_code()
@@ -630,18 +641,6 @@ class DgenerateConsole(tk.Tk):
             'error', foreground=error_color)
 
         self.save_settings()
-
-    def _start_shell_reader_threads(self):
-
-        self._shell_reader_threads = [
-            threading.Thread(target=self._read_shell_output_stream_thread,
-                             args=(lambda p: p.stdout, self._write_stdout_output)),
-            threading.Thread(target=self._read_shell_output_stream_thread,
-                             args=(lambda p: p.stderr, self._write_stderr_output))
-        ]
-
-        for t in self._shell_reader_threads:
-            t.start()
 
     @staticmethod
     def _install_show_in_directory_entry(menu: tk.Menu, get_path: typing.Callable[[], str]):
@@ -735,7 +734,7 @@ class DgenerateConsole(tk.Tk):
 
     def _input_text_insert_directory_path(self):
         d = _filedialog.open_directory_dialog(
-            initialdir=self._get_cwd())
+            initialdir=self._shell_procmon.cwd())
 
         if d is None:
             return
@@ -744,7 +743,7 @@ class DgenerateConsole(tk.Tk):
 
     def _input_text_insert_file_path(self):
         f = _filedialog.open_file_dialog(
-            initialdir=self._get_cwd())
+            initialdir=self._shell_procmon.cwd())
 
         if f is None:
             return
@@ -753,7 +752,7 @@ class DgenerateConsole(tk.Tk):
 
     def _input_text_insert_file_path_save(self):
         f = _filedialog.open_file_save_dialog(
-            initialdir=self._get_cwd())
+            initialdir=self._shell_procmon.cwd())
 
         if f is None:
             return
@@ -870,58 +869,6 @@ class DgenerateConsole(tk.Tk):
         else:
             self._output_text.disable_word_wrap()
 
-    def kill_shell_process(self, restart=False):
-        with self._termination_lock:
-            try:
-                if self._shell_process is None:
-                    return
-
-                try:
-                    self._shell_process.terminate()
-                except psutil.NoSuchProcess:
-                    return
-
-                return_code = -1
-
-                try:
-                    return_code = self._shell_process.wait(timeout=5)
-                except psutil.TimeoutExpired:
-                    self._shell_process.kill()
-                    try:
-                        return_code = self._shell_process.wait(timeout=5)
-                    except psutil.TimeoutExpired:
-                        self._write_stderr_output(
-                            'WARNING: Could not kill interpreter process, possible zombie process.')
-
-                self._shell_return_code_message(return_code)
-
-                del self._shell_process
-                self._shell_process = None
-            finally:
-                if self._shell_stdin_pipe is not None:
-                    self._shell_stdin_pipe.close()
-                    self._shell_stdin_pipe = None
-
-            if restart:
-                self._shell_restarting_commence_message()
-                self._start_shell_process()
-
-            self._terminate_shell_reader_threads()
-
-            if restart:
-                self._start_shell_reader_threads()
-                self._shell_restarting_finish_message()
-
-    def _terminate_shell_reader_threads(self):
-        for thread in self._shell_reader_threads:
-            # there is no better way than to raise an exception on the thread,
-            # the threads will live forever if they are blocking on read even if they are daemon threads,
-            # and there is no platform independent non-blocking read IO with a subprocess
-            res = ctypes.pythonapi.PyThreadState_SetAsyncExc(thread.native_id, ctypes.py_object(SystemExit))
-            if res > 1:
-                ctypes.pythonapi.PyThreadState_SetAsyncExc(thread.native_id, 0)
-                raise SystemError('PyThreadState_SetAsyncExc failed')
-
     def _shell_return_code_message(self, return_code):
         self._write_stdout_output(
             f'\nShell Process Terminated, Exit Code: {return_code}\n')
@@ -932,25 +879,6 @@ class DgenerateConsole(tk.Tk):
     def _shell_restarting_finish_message(self):
         self._write_stdout_output('Shell Process Started.\n'
                                   '======================\n')
-
-    def _start_shell_process(self):
-        self._shell_stdin_pipe = StdinPipe()
-
-        env = os.environ.copy()
-        env['PYTHONIOENCODING'] = 'utf-8'
-        env['PYTHONUNBUFFERED'] = '1'
-        env['COLUMNS'] = '100'
-
-        cwd = os.getcwd()
-        self._shell_process = psutil.Popen(
-            [DGENERATE_EXE, '--shell'] +
-            (['-v'] if self._debug_mode_var.get() else []),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            stdin=self._shell_stdin_pipe.pipe_read,
-            env=env)
-
-        self._update_cwd_title(cwd)
 
     def _load_input_entry_text(self):
         fn = _filedialog.open_file_dialog(
@@ -1059,8 +987,13 @@ class DgenerateConsole(tk.Tk):
                 self._image_pane_load_image(mentioned_path)
             else:
                 path = os.path.join(
-                    self._get_cwd(deep=True), mentioned_path)
+                    self._shell_procmon.cwd(deep=True), mentioned_path)
                 self._image_pane_load_image(path)
+
+    def _update_cwd_title(self, directory=None):
+        if directory is None:
+            directory = self._shell_procmon.cwd()
+        self.title(f'Dgenerate Console: {directory}')
 
     def _add_output_line(self, text, tag=None):
         if text.startswith('Working Directory Changed To: '):
@@ -1101,45 +1034,13 @@ class DgenerateConsole(tk.Tk):
         if scroll:
             self._output_text.text.see(tk.END)
 
-    def _text_update(self):
-        lines = 0
-
-        self._output_text.text.config(state=tk.NORMAL)
-
-        while True:
-            if lines > self._output_lines_per_refresh:
-                break
-            try:
-                with self._termination_lock:
-                    # wait for possible submission of an exit message
-                    text = self._output_text_stdout_queue.get_nowait()
-                self._add_output_line(text)
-            except queue.Empty:
-                break
-            lines += 1
-
-        while True:
-            if lines > self._output_lines_per_refresh:
-                break
-            try:
-                with self._termination_lock:
-                    self._add_output_line(
-                        self._output_text_stderr_queue.get_nowait(),
-                        tag='error')
-            except queue.Empty:
-                break
-            lines += 1
-
-        self._output_text.text.config(state=tk.DISABLED)
-        self.after(self._output_refresh_rate, self._text_update)
-
     def _write_stdout_output(self, text: bytes | str):
         if isinstance(text, str):
             text = text.encode('utf-8')
 
         sys.stdout.buffer.write(text)
         sys.stdout.flush()
-        self._output_text_stdout_queue.put(text.decode('utf-8'))
+        self._add_output_line(text.decode('utf-8'))
 
     def _write_stderr_output(self, text: bytes | str):
         if isinstance(text, str):
@@ -1147,46 +1048,7 @@ class DgenerateConsole(tk.Tk):
 
         sys.stderr.buffer.write(text)
         sys.stderr.flush()
-        self._output_text_stderr_queue.put(text.decode('utf-8'))
-
-    def _read_shell_output_stream_thread(self, get_read_stream, write_out_handler):
-        exit_message = True
-
-        line_reader = _files.TerminalLineReader(
-            lambda: get_read_stream(self._shell_process))
-
-        while True:
-            with self._termination_lock:
-                if self._shell_process is None:
-                    # occurs on shutdown when the shell is
-                    # killed without restarting
-                    break
-                return_code = self._shell_process.poll()
-
-            if return_code is None:
-                exit_message = True
-                line = line_reader.readline()
-                if line is not None and line != b'':
-                    write_out_handler(line)
-            elif exit_message:
-                with self._termination_lock:
-                    exit_message = False
-
-                    del self._shell_process
-                    self._shell_process = None
-
-                    if self._shell_stdin_pipe is not None:
-                        self._shell_stdin_pipe.close()
-                        self._shell_stdin_pipe = None
-
-                    line_reader.pushback_byte = None
-
-                    self._shell_return_code_message(return_code)
-                    self._shell_restarting_commence_message()
-                    self._start_shell_process()
-                    self._shell_restarting_finish_message()
-            else:
-                time.sleep(1)
+        self._add_output_line(text.decode('utf-8'), tag='error')
 
     def _show_previous_command(self, event):
         if event.state & 0x0004:
@@ -1263,33 +1125,6 @@ class DgenerateConsole(tk.Tk):
         with history_path.open('w') as file:
             json.dump(self._command_history[-self._max_command_history:], file)
 
-    def _get_cwd(self, deep=False):
-        try:
-            with self._termination_lock:
-                if deep:
-                    p = self._shell_process
-                    while p.children():
-                        p = p.children()[0]
-                    return p.cwd()
-                else:
-                    if platform.system() == 'Windows':
-                        try:
-                            # pyinstaller console mode weirdness
-                            return self._shell_process.children()[0].children()[0].cwd()
-                        except IndexError:
-                            return self._shell_process.cwd()
-                    else:
-                        return self._shell_process.cwd()
-        except KeyboardInterrupt:
-            pass
-        except psutil.NoSuchProcess as e:
-            pass
-
-    def _update_cwd_title(self, directory=None):
-        if directory is None:
-            directory = self._get_cwd()
-        self.title(f'Dgenerate Console: {directory}')
-
     def _run_input_text(self):
 
         user_input = self._input_text.text.get('1.0', 'end-1c')
@@ -1300,15 +1135,14 @@ class DgenerateConsole(tk.Tk):
         if self._auto_scroll_on_run_check_var.get():
             self._output_text.text.see(tk.END)
 
-        with self._termination_lock:
-            try:
-                self._shell_stdin_pipe.write(
-                    (user_input + '\n\n').encode('utf-8'))
-            except StdinPipeFullError:
-                self._write_stderr_output(
-                    'WARNING: The command queue is full, '
-                    'please wait before submitting more commands, '
-                    'or kill the interpreter.')
+        try:
+            self._shell_procmon.stdin_pipe.write(
+                (user_input + '\n\n').encode('utf-8'))
+        except StdinPipeFullError:
+            self._write_stderr_output(
+                'WARNING: The command queue is full, '
+                'please wait before submitting more commands, '
+                'or kill the interpreter.')
 
         if self._command_history:
             if self._command_history[-1] != user_input:
