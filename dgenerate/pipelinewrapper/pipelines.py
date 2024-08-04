@@ -257,6 +257,7 @@ def estimate_pipeline_memory_use(
         unet_uri: _types.OptionalUri = None,
         vae_uri: _types.OptionalUri = None,
         lora_uris: _types.OptionalUris = None,
+        image_encoder_uri: _types.OptionalUri = None,
         ip_adapter_uris: _types.OptionalUris = None,
         textual_inversion_uris: _types.OptionalUris = None,
         text_encoder_uris: _types.OptionalUris = None,
@@ -276,6 +277,7 @@ def estimate_pipeline_memory_use(
     :param unet_uri: optional user specified ``--unet`` URI that will be loaded on to the pipeline
     :param vae_uri: optional user specified ``--vae`` URI that will be loaded on to the pipeline
     :param lora_uris: optional user specified ``--loras`` URIs that will be loaded on to the pipeline
+    :param image_encoder_uri: optional user specified ``--image-encoder`` URI that will be loaded on to the pipeline
     :param ip_adapter_uris: optional user specified ``--ip-adapters`` URIs that will be loaded on to the pipeline
     :param textual_inversion_uris: optional user specified ``--textual-inversion`` URIs that will be loaded on to the pipeline
     :param text_encoder_uris: optional user specified ``--text-encoders`` URIs that will be loaded on to the pipeline
@@ -318,6 +320,17 @@ def estimate_pipeline_memory_use(
         flax=_enums.model_type_is_flax(model_type),
         sentencepiece=_enums.model_type_is_floyd(model_type)
     )
+
+    if image_encoder_uri:
+        parsed = _uris.ImageEncoderUri.parse(image_encoder_uri)
+        usage += _hfutil.estimate_model_memory_use(
+            repo_id=_hfutil.download_non_hf_model(parsed.model),
+            revision=parsed.revision,
+            subfolder=parsed.subfolder,
+            use_auth_token=auth_token,
+            local_files_only=local_files_only,
+            flax=_enums.model_type_is_flax(model_type)
+        )
 
     if lora_uris:
         for lora_uri in lora_uris:
@@ -597,12 +610,14 @@ def get_torch_device_string(component: diffusers.DiffusionPipeline | torch.nn.Mo
 def _pipeline_to(pipeline, device: torch.device | str | None):
     if device is None:
         _messages.debug_log(
-            f'pipeline_to() Not moving pipeline "{pipeline.__class__.__name__}" as specified device was None.')
+            f'pipeline_to() Not moving pipeline "{pipeline.__class__.__name__}" '
+            f'as specified device was None.')
         return
 
     if not hasattr(pipeline, 'to'):
         _messages.debug_log(
-            f'pipeline_to() Not moving pipeline "{pipeline.__class__.__name__}" to "{device}" as it has no to() method.')
+            f'pipeline_to() Not moving pipeline "{pipeline.__class__.__name__}" to '
+            f'"{device}" as it has no to() method.')
         return
 
     to_device = torch.device(device)
@@ -614,7 +629,8 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
 
     if pipeline_on_device and all_modules_on_device:
         _messages.debug_log(
-            f'pipeline_to() Not moving pipeline "{pipeline.__class__.__name__}" to "{device}" as it is already on that device.')
+            f'pipeline_to() Not moving pipeline "{pipeline.__class__.__name__}" to '
+            f'"{device}" as it is already on that device.')
         return
 
     if pipeline_on_device != all_modules_on_device:
@@ -643,18 +659,20 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
 
         if current_device.type == 'meta':
             _messages.debug_log(
-                f'pipeline_to() Not moving module "{value.__class__.__name__}" to "{device}" as its device value is "meta".')
+                f'pipeline_to() Not moving module "{name} = {value.__class__.__name__}" to "{device}" '
+                f'as its device value is "meta".')
             _disable_to(value)
             continue
 
         if current_device == to_device:
             _messages.debug_log(
-                f'pipeline_to() Not moving module "{value.__class__.__name__}" to "{device}" as it is already on that device.')
+                f'pipeline_to() Not moving module "{name} = {value.__class__.__name__}" to "{device}" '
+                f'as it is already on that device.')
             continue
 
         if is_model_cpu_offload_enabled(value) and to_device.type != 'cpu':
             _messages.debug_log(
-                f'pipeline_to() Not moving module "{value.__class__.__name__}" to "{device}" '
+                f'pipeline_to() Not moving module "{name} = {value.__class__.__name__}" to "{device}" '
                 f'as it has cpu offload enabled and can only move to cpu.')
             continue
 
@@ -1203,6 +1221,7 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                                     unet_uri: _types.OptionalUri = None,
                                     vae_uri: _types.OptionalUri = None,
                                     lora_uris: _types.OptionalUris = None,
+                                    image_encoder_uri: _types.OptionalUri = None,
                                     ip_adapter_uris: _types.OptionalUris = None,
                                     textual_inversion_uris: _types.OptionalUris = None,
                                     text_encoder_uris: _types.OptionalUris = None,
@@ -1230,6 +1249,7 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     :param unet_uri: Optional ``--unet`` URI string for specifying a specific UNet
     :param vae_uri: Optional ``--vae`` URI string for specifying a specific VAE
     :param lora_uris: Optional ``--loras`` URI strings for specifying LoRA weights
+    :param image_encoder_uri: Optional ``--image-encoder`` URI for use with IP Adapter weights
     :param ip_adapter_uris: Optional ``--ip-adapters`` URI strings for specifying IP Adapter weights
     :param textual_inversion_uris: Optional ``--textual-inversions`` URI strings for specifying Textual Inversion weights
     :param text_encoder_uris: Optional user specified ``--text-encoders`` URIs that will be loaded on to the
@@ -1287,6 +1307,7 @@ class TorchPipelineFactory:
                  unet_uri: _types.OptionalUri = None,
                  vae_uri: _types.OptionalUri = None,
                  lora_uris: _types.OptionalUris = None,
+                 image_encoder_uri: _types.OptionalUri = None,
                  ip_adapter_uris: _types.OptionalUris = None,
                  textual_inversion_uris: _types.OptionalUris = None,
                  control_net_uris: _types.OptionalUris = None,
@@ -1393,6 +1414,7 @@ def _torch_args_hasher(args):
         'unet_uri': _cache.uri_hash_with_parser(_uris.TorchUNetUri.parse),
         'vae_uri': _cache.uri_hash_with_parser(_uris.TorchVAEUri.parse),
         'lora_uris': _cache.uri_list_hash_with_parser(_uris.LoRAUri.parse),
+        'image_encoder_uri': _cache.uri_list_hash_with_parser(_uris.ImageEncoderUri),
         'ip_adapter_uris': _cache.uri_list_hash_with_parser(_uris.IPAdapterUri),
         'textual_inversion_uris': _cache.uri_list_hash_with_parser(_uris.TextualInversionUri.parse),
         'text_encoder_uris': _cache.uri_list_hash_with_parser(text_encoder_uri_parse),
@@ -1427,6 +1449,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                                      unet_uri: _types.OptionalUri = None,
                                      vae_uri: _types.OptionalUri = None,
                                      lora_uris: _types.OptionalUris = None,
+                                     image_encoder_uri: _types.OptionalUri = None,
                                      ip_adapter_uris: _types.OptionalUris = None,
                                      textual_inversion_uris: _types.OptionalUris = None,
                                      text_encoder_uris: _types.OptionalUris = None,
@@ -1498,6 +1521,11 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     if control_net_uris and t2i_adapter_uris:
         raise UnsupportedPipelineConfigError(
             '--control-nets and --t2i-adapters can not be used together.')
+
+    if image_encoder_uri and not ip_adapter_uris:
+        raise UnsupportedPipelineConfigError(
+            '--image-encoder cannot be specified without --ip-adapters'
+        )
 
     is_sdxl = _enums.model_type_is_sdxl(model_type)
     is_pix2pix = _enums.model_type_is_pix2pix(model_type)
@@ -1684,6 +1712,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     vae_override = 'vae' in extra_modules
     controlnet_override = 'controlnet' in extra_modules
     adapter_override = 'adapter' in extra_modules
+    image_encoder_override = 'image_encoder' in extra_modules
     safety_checker_override = 'safety_checker' in extra_modules
     scheduler_override = 'scheduler' in extra_modules
 
@@ -1729,6 +1758,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         unet_uri=unet_uri if not unet_override else None,
         vae_uri=vae_uri if not vae_override else None,
         lora_uris=lora_uris,
+        image_encoder_uri=image_encoder_uri,
         ip_adapter_uris=ip_adapter_uris,
         text_encoder_uris=text_encoders,
         textual_inversion_uris=textual_inversion_uris,
@@ -1822,6 +1852,21 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
 
             _messages.debug_log(lambda:
                                 f'Added Torch UNet: "{unet_uri}" to pipeline: "{pipeline_class.__name__}"')
+
+        if image_encoder_uri is not None and not image_encoder_override:
+            parsed_image_encoder_uri = _uris.ImageEncoderUri.parse(image_encoder_uri)
+
+            creation_kwargs['image_encoder'] = parsed_image_encoder_uri.load(
+                dtype_fallback=dtype,
+                use_auth_token=auth_token,
+                local_files_only=local_files_only,
+                sequential_cpu_offload_member=sequential_cpu_offload,
+                model_cpu_offload_member=model_cpu_offload,
+            )
+
+            _messages.debug_log(lambda:
+                                f'Added Torch Image Encoder: "{image_encoder_uri}" to '
+                                f'pipeline: "{pipeline_class.__name__}"')
 
     if t2i_adapter_uris and not adapter_override:
         t2i_adapters = None
@@ -1951,6 +1996,12 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                 raise InvalidModelFileError(f'invalid model file or repo slug: {model_path}')
             raise InvalidModelFileError(e)
 
+    if ip_adapter_uris and (not hasattr(pipeline, 'image_encoder') or pipeline.image_encoder is None):
+        raise UnsupportedPipelineConfigError(
+            'Using --ip-adapters but missing required --image-encoder specification, '
+            'your --ip-adapters specification did not include an image encoder model and '
+            'you must specify one manually.')
+
     # Select Scheduler
 
     if not scheduler_override:
@@ -1992,9 +2043,11 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         for ip_adapter_uri in ip_adapter_uris:
             parsed = _uris.IPAdapterUri.parse(ip_adapter_uri)
             parsed_ip_adapter_uris.append(parsed)
-            parsed.load_on_pipeline(pipeline,
-                                    use_auth_token=auth_token,
-                                    local_files_only=local_files_only)
+        _uris.IPAdapterUri.load_on_pipeline(
+            ip_adapter_uris=parsed_ip_adapter_uris,
+            pipeline=pipeline,
+            use_auth_token=auth_token,
+            local_files_only=local_files_only)
 
     # Safety Checker
 

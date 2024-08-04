@@ -78,6 +78,12 @@ _UNET_CACHE_SIZE = 0
 _TEXT_ENCODER_CACHE_SIZE = 0
 """Estimated memory consumption in bytes of all Text Encoder models cached in memory"""
 
+_IMAGE_ENCODER_CACHE = dict()
+"""Global in memory cache for image encoder models"""
+
+_IMAGE_ENCODER_CACHE_SIZE = 0
+"""Estimated memory consumption in bytes of all Image Encoder models cached in memory"""
+
 
 def pipeline_cache_size() -> int:
     """
@@ -131,6 +137,15 @@ def text_encoder_cache_size() -> int:
     :return:  memory usage in bytes.
     """
     return _TEXT_ENCODER_CACHE_SIZE
+
+
+def image_encoder_cache_size() -> int:
+    """
+    Return the estimated memory usage in bytes of all user specified Image Encoders currently cached in memory.
+
+    :return:  memory usage in bytes.
+    """
+    return _IMAGE_ENCODER_CACHE_SIZE
 
 
 CACHE_MEMORY_CONSTRAINTS: list[str] = ['used_percent > 70']
@@ -212,6 +227,18 @@ If any of these constraints are met, a call to :py:func:`.enforce_text_encoder_c
 
 Extra variables include: ``cache_size`` (the current estimated cache size in bytes), 
 and ``text_encoder_size`` (the estimated size of the new Text Encoder before it is brought into memory, in bytes)
+"""
+
+IMAGE_ENCODER_CACHE_MEMORY_CONSTRAINTS: list[str] = ['image_encoder_size > (available * 0.75)']
+"""
+Cache constraint expressions for when to clear the Image Encoder cache, 
+syntax provided via :py:func:`dgenerate.memory.memory_constraints`
+
+If any of these constraints are met, a call to :py:func:`.enforce_image_encoder_cache_constraints` will call
+:py:func:`.clear_image_encoder_cache` and force a garbage collection.
+
+Extra variables include: ``cache_size`` (the current estimated cache size in bytes), 
+and ``image_encoder_size`` (the estimated size of the new Image Encoder before it is brought into memory, in bytes)
 """
 
 
@@ -344,6 +371,25 @@ def clear_unet_cache(collect=True):
         gc.collect()
 
 
+def clear_image_encoder_cache(collect=True):
+    """
+    Clear Image Encoder cache and then garbage collect.
+
+    :param collect: Call :py:func:`gc.collect` ?
+    """
+    global _IMAGE_ENCODER_CACHE, \
+        _IMAGE_ENCODER_CACHE_SIZE
+
+    _IMAGE_ENCODER_CACHE.clear()
+    _IMAGE_ENCODER_CACHE_SIZE = 0
+
+    if collect:
+        _messages.debug_log(
+            f'{_types.fullname(clear_image_encoder_cache)} calling gc.collect() by request')
+
+        gc.collect()
+
+
 def clear_model_cache(collect=True):
     """
     Clear all in memory model caches and garbage collect.
@@ -367,7 +413,9 @@ def clear_model_cache(collect=True):
         _TORCH_TEXT_ENCODER_CACHE, \
         _TEXT_ENCODER_CACHE_SIZE, \
         _ADAPTER_CACHE, \
-        _ADAPTER_CACHE_SIZE
+        _ADAPTER_CACHE_SIZE, \
+        _IMAGE_ENCODER_CACHE, \
+        _IMAGE_ENCODER_CACHE_SIZE
 
     _TORCH_PIPELINE_CACHE.clear()
     _FLAX_PIPELINE_CACHE.clear()
@@ -380,6 +428,7 @@ def clear_model_cache(collect=True):
     _TORCH_TEXT_ENCODER_CACHE.clear()
     _FLAX_TEXT_ENCODER_CACHE.clear()
     _ADAPTER_CACHE.clear()
+    _IMAGE_ENCODER_CACHE.clear()
 
     _PIPELINE_CACHE_SIZE = 0
     _CONTROL_NET_CACHE_SIZE = 0
@@ -387,6 +436,7 @@ def clear_model_cache(collect=True):
     _VAE_CACHE_SIZE = 0
     _TEXT_ENCODER_CACHE_SIZE = 0
     _ADAPTER_CACHE_SIZE = 0
+    _IMAGE_ENCODER_CACHE_SIZE = 0
 
     if collect:
         _messages.debug_log(
@@ -606,6 +656,37 @@ def enforce_adapter_cache_constraints(new_adapter_size, collect=True):
     return False
 
 
+def enforce_image_encoder_cache_constraints(new_image_encoder_size, collect=True):
+    """
+    Enforce :py:attr:`dgenerate.pipelinewrapper.IMAGE_ENCODER_CACHE_MEMORY_CONSTRAINTS` and clear the
+    Image Encoder cache if needed.
+
+    :param new_image_encoder_size: estimated size in bytes of any new image encoder that is about to enter memory
+    :param collect: Call :py:func:`gc.collect` after a cache clear ?
+    :return: Whether the cache was cleared due to constraint expressions.
+    """
+
+    m_name = __name__
+
+    _messages.debug_log(f'Enforcing {m_name}.IMAGE_ENCODER_CACHE_MEMORY_CONSTRAINTS =',
+                        IMAGE_ENCODER_CACHE_MEMORY_CONSTRAINTS,
+                        f'(cache_size = {_memory.bytes_best_human_unit(image_encoder_cache_size())},',
+                        f'image_encoder_size = {_memory.bytes_best_human_unit(new_image_encoder_size)})')
+
+    _messages.debug_log(_memory.memory_use_debug_string())
+
+    if _memory.memory_constraints(IMAGE_ENCODER_CACHE_MEMORY_CONSTRAINTS,
+                                  extra_vars={'cache_size': image_encoder_cache_size(),
+                                              'image_encoder_size': new_image_encoder_size}):
+        _messages.debug_log(f'{m_name}.IMAGE_ENCODER_CACHE_MEMORY_CONSTRAINTS '
+                            f'{IMAGE_ENCODER_CACHE_MEMORY_CONSTRAINTS} met, '
+                            f'calling {_types.fullname(clear_image_encoder_cache)}.')
+
+        clear_image_encoder_cache(collect=collect)
+        return True
+    return False
+
+
 def uri_hash_with_parser(parser, exclude: set[str] | None = None):
     """
     Create a hash function from a particular URI parser function that hashes a URI string.
@@ -755,6 +836,22 @@ def unet_create_update_cache_info(unet, estimated_size: int):
     unet.DGENERATE_SIZE_ESTIMATE = estimated_size
 
 
+def image_encoder_create_update_cache_info(image_encoder, estimated_size: int):
+    """
+    Add additional information about the size of a newly created Image Encoder model to the cache.
+
+    Tag the object with an internal tag.
+
+    :param image_encoder: the Image Encoder object
+    :param estimated_size: size bytes
+    """
+    global _IMAGE_ENCODER_CACHE_SIZE
+    _IMAGE_ENCODER_CACHE_SIZE += estimated_size
+
+    # Tag for internal use
+    image_encoder.DGENERATE_SIZE_ESTIMATE = estimated_size
+
+
 def pipeline_to_cpu_update_cache_info(pipeline: diffusers.DiffusionPipeline):
     """
     Update CPU side cache size information when a diffusers pipeline is moved to the CPU
@@ -815,7 +912,7 @@ def vae_to_cpu_update_cache_info(vae):
                             f'({_memory.bytes_best_human_unit(vae.DGENERATE_SIZE_ESTIMATE)}) '
                             f'is entering CPU side memory, {_types.fullname(vae_cache_size)}() '
                             f'is now {vae_cache_size()} Bytes '
-                            f'({_memory.bytes_best_human_unit(vae.DGENERATE_SIZE_ESTIMATE)})')
+                            f'({_memory.bytes_best_human_unit(vae_cache_size())})')
 
 
 def text_encoder_to_cpu_update_cache_info(text_encoder):
@@ -836,7 +933,29 @@ def text_encoder_to_cpu_update_cache_info(text_encoder):
                             f'({_memory.bytes_best_human_unit(text_encoder.DGENERATE_SIZE_ESTIMATE)}) '
                             f'is entering CPU side memory, {_types.fullname(text_encoder_cache_size)}() '
                             f'is now {text_encoder_cache_size()} Bytes '
-                            f'({_memory.bytes_best_human_unit(text_encoder.DGENERATE_SIZE_ESTIMATE)})')
+                            f'({_memory.bytes_best_human_unit(text_encoder_cache_size())})')
+
+
+def image_encoder_to_cpu_update_cache_info(image_encoder):
+    """
+    Update CPU side cache size information when an Image Encoder module is moved to the CPU
+
+    :param image_encoder: the Image Encoder
+    """
+
+    global _IMAGE_ENCODER_CACHE_SIZE
+
+    if hasattr(image_encoder, 'DGENERATE_SIZE_ESTIMATE'):
+        # Image Encoder returning to CPU side memory
+        enforce_image_encoder_cache_constraints(image_encoder.DGENERATE_SIZE_ESTIMATE)
+        _IMAGE_ENCODER_CACHE_SIZE += image_encoder.DGENERATE_SIZE_ESTIMATE
+
+        _messages.debug_log(f'{_types.class_and_id_string(image_encoder)} '
+                            f'Size = {image_encoder.DGENERATE_SIZE_ESTIMATE} Bytes '
+                            f'({_memory.bytes_best_human_unit(image_encoder.DGENERATE_SIZE_ESTIMATE)}) '
+                            f'is entering CPU side memory, {_types.fullname(image_encoder_cache_size)}() '
+                            f'is now {image_encoder_cache_size()} Bytes '
+                            f'({_memory.bytes_best_human_unit(image_encoder_cache_size())})')
 
 
 def controlnet_to_cpu_update_cache_info(
@@ -1017,6 +1136,28 @@ def text_encoder_off_cpu_update_cache_info(text_encoder):
                             f'is leaving CPU side memory, {_types.fullname(text_encoder_cache_size)}() '
                             f'is now {text_encoder_cache_size()} Bytes '
                             f'({_memory.bytes_best_human_unit(text_encoder_cache_size())})')
+
+
+def image_encoder_off_cpu_update_cache_info(image_encoder):
+    """
+    Update CPU side cache size information when an Image Encoder module is moved to a device that is not the CPU
+
+    :param image_encoder: the Image Encoder
+    """
+    global _IMAGE_ENCODER_CACHE_SIZE
+
+    if hasattr(image_encoder, 'DGENERATE_SIZE_ESTIMATE'):
+        _IMAGE_ENCODER_CACHE_SIZE -= image_encoder.DGENERATE_SIZE_ESTIMATE
+
+        if _IMAGE_ENCODER_CACHE_SIZE < 0:
+            _IMAGE_ENCODER_CACHE_SIZE = 0
+
+        _messages.debug_log(f'Cached ImageEncoder {_types.class_and_id_string(image_encoder)} '
+                            f'Size = {image_encoder.DGENERATE_SIZE_ESTIMATE} Bytes '
+                            f'({_memory.bytes_best_human_unit(image_encoder.DGENERATE_SIZE_ESTIMATE)}) '
+                            f'is leaving CPU side memory, {_types.fullname(image_encoder_cache_size)}() '
+                            f'is now {image_encoder_cache_size()} Bytes '
+                            f'({_memory.bytes_best_human_unit(image_encoder_cache_size())})')
 
 
 def controlnet_off_cpu_update_cache_info(

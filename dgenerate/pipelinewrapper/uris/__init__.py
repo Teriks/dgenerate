@@ -40,6 +40,10 @@ from .exceptions import (
     InvalidTextEncoderUriError,
     T2IAdapterUriLoadError,
     InvalidT2IAdapterUriError,
+    ImageEncoderUriLoadError,
+    InvalidImageEncoderUriError,
+    IPAdapterUriLoadError,
+    InvalidIPAdapterUriError
 )
 
 from .flaxcontrolneturi import FlaxControlNetUri
@@ -56,5 +60,6 @@ from .torchuneturi import TorchUNetUri
 from .torchvaeuri import TorchVAEUri
 from .t2iadapteruri import T2IAdapterUri
 from .ipadapteruri import IPAdapterUri
+from .imageencoderuri import ImageEncoderUri
 
 __all__ = _types.module_all()

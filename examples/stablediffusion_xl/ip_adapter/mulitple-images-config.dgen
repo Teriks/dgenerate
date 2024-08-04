@@ -12,7 +12,7 @@ stabilityai/stable-diffusion-xl-base-1.0
 --guidance-scales 5
 --sdxl-high-noise-fractions 0.8
 --seeds 0
---output-path multiple
+--output-path multiple-images
 --model-cpu-offload
 --image-seeds "adapter: https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/ip_adapter_diner.png + \
                https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/ip_adapter_diner_2.png"

@@ -146,6 +146,7 @@ class DiffusionPipelineWrapper:
                  vae_tiling: bool = False,
                  vae_slicing: bool = False,
                  lora_uris: _types.OptionalUris = None,
+                 image_encoder_uri: _types.OptionalUri = None,
                  ip_adapter_uris: _types.OptionalUris = None,
                  textual_inversion_uris: _types.OptionalUris = None,
                  text_encoder_uris: _types.OptionalUris = None,
@@ -195,6 +196,7 @@ class DiffusionPipelineWrapper:
         :param vae_tiling: use VAE tiling?
         :param vae_slicing: use VAE slicing?
         :param lora_uris: One or more LoRA URI strings
+        :param image_encoder_uri: One or more Image Encoder URI strings, Image Encoders are used with IP Adapters
         :param ip_adapter_uris: One or more IP Adapter URI strings
         :param textual_inversion_uris: One or more Textual Inversion URI strings
         :param text_encoder_uris: One or more Text Encoder URIs
@@ -248,6 +250,7 @@ class DiffusionPipelineWrapper:
               vae_tiling: bool = False,
               vae_slicing: bool = False,
               lora_uris: _types.OptionalUris = None,
+              image_encoder_uri: _types.OptionalUri = None,
               ip_adapter_uris: _types.OptionalUris = None,
               textual_inversion_uris: _types.OptionalUris = None,
               text_encoder_uris: _types.OptionalUris = None,
@@ -308,6 +311,10 @@ class DiffusionPipelineWrapper:
         if control_net_uris and t2i_adapter_uris:
             raise _pipelines.UnsupportedPipelineConfigError(
                 f'Cannot use "control_net_uris" and "t2i_adapter_uris" together.')
+
+        if image_encoder_uri and not ip_adapter_uris:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'Cannot use "image_encoder_uri" without "ip_adapter_uris".')
 
         helps_used = [
             _pipelines.scheduler_is_help(scheduler),
@@ -407,6 +414,7 @@ class DiffusionPipelineWrapper:
         self._dtype = _enums.get_data_type_enum(dtype)
         self._device = device
         self._unet_uri = unet_uri
+        self._image_encoder_uri = image_encoder_uri
         self._second_unet_uri = second_unet_uri
         self._vae_uri = vae_uri
         self._vae_tiling = vae_tiling
@@ -897,6 +905,9 @@ class DiffusionPipelineWrapper:
 
         if self._lora_uris:
             opts.append(('--loras', self._lora_uris))
+
+        if self._image_encoder_uri:
+            opts.append(('--image-encoder', self._image_encoder_uri))
 
         if self._ip_adapter_uris:
             opts.append(('--ip-adapters', self._ip_adapter_uris))
@@ -2191,6 +2202,7 @@ class DiffusionPipelineWrapper:
                     unet_uri=self._unet_uri,
                     vae_uri=self._vae_uri,
                     lora_uris=self._lora_uris,
+                    image_encoder_uri=self._image_encoder_uri,
                     ip_adapter_uris=self._ip_adapter_uris,
                     textual_inversion_uris=self._textual_inversion_uris,
                     text_encoder_uris=self._text_encoder_uris,
@@ -2266,6 +2278,7 @@ class DiffusionPipelineWrapper:
                 unet_uri=self._unet_uri,
                 vae_uri=self._vae_uri,
                 lora_uris=self._lora_uris,
+                image_encoder_uri=self._image_encoder_uri,
                 ip_adapter_uris=self._ip_adapter_uris,
                 textual_inversion_uris=self._textual_inversion_uris,
                 text_encoder_uris=self._text_encoder_uris,
