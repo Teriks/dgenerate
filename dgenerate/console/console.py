@@ -604,6 +604,8 @@ class DgenerateConsole(tk.Tk):
 
         process_monitor_events()
 
+        self._update_cwd_title()
+
     def _update_debug_mode_state(self):
         self._shell_procmon.popen_args = \
             [[DGENERATE_EXE, '--shell'] + (['-v'] if self._debug_mode_var.get() else [])]
