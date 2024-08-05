@@ -335,12 +335,13 @@ def main():
                 log(f'SHORTENING ANIMATIONS IN DIRECTORY TO 3 FRAMES MAX: {top_dir}')
                 extra_args = ['--frame-end', '2']
 
+            directory_configs = filter_to_directories_under_top_level(configs, top_dir)
+
             p = mp.Process(target=run_directory_subprocess,
-                           args=(filter_to_directories_under_top_level(configs, top_dir),
-                                 injected_args, extra_args, debug_torch, known_args))
+                           args=(directory_configs, injected_args, extra_args, debug_torch, known_args))
             p.start()
             p.join()
-            check_return_code(configs, p.exitcode)
+            check_return_code(directory_configs, p.exitcode)
 
 
 if __name__ == "__main__":
