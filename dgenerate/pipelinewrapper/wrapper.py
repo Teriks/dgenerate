@@ -441,7 +441,7 @@ class DiffusionPipelineWrapper:
                     'vae_tiling / vae_slicing not supported for flax.'
                 )
 
-        if _enums.model_type_is_sd3(model_type):
+        if _enums.model_type_is_sd3(model_type) and image_encoder_uri:
             raise _pipelines.UnsupportedPipelineConfigError(
                 'ImageEncoder is not supported for stable diffusion 3.'
             )
