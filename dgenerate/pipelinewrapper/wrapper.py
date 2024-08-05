@@ -196,7 +196,8 @@ class DiffusionPipelineWrapper:
         :param vae_tiling: use VAE tiling?
         :param vae_slicing: use VAE slicing?
         :param lora_uris: One or more LoRA URI strings
-        :param image_encoder_uri: One or more Image Encoder URI strings, Image Encoders are used with IP Adapters
+        :param image_encoder_uri: One or more Image Encoder URI strings,
+            Image Encoders are used with IP Adapters and Stable Cascade
         :param ip_adapter_uris: One or more IP Adapter URI strings
         :param textual_inversion_uris: One or more Textual Inversion URI strings
         :param text_encoder_uris: One or more Text Encoder URIs
@@ -312,9 +313,11 @@ class DiffusionPipelineWrapper:
             raise _pipelines.UnsupportedPipelineConfigError(
                 f'Cannot use "control_net_uris" and "t2i_adapter_uris" together.')
 
-        if image_encoder_uri and not ip_adapter_uris:
+        if image_encoder_uri and not ip_adapter_uris \
+                and model_type != _enums.ModelType.TORCH_S_CASCADE:
             raise _pipelines.UnsupportedPipelineConfigError(
-                f'Cannot use "image_encoder_uri" without "ip_adapter_uris".')
+                f'Cannot use "image_encoder_uri" without "ip_adapter_uris" '
+                f'if "model_type" if not TORCH_S_CASCADE.')
 
         helps_used = [
             _pipelines.scheduler_is_help(scheduler),
@@ -349,6 +352,9 @@ class DiffusionPipelineWrapper:
             if t2i_adapter_uris:
                 raise _pipelines.UnsupportedPipelineConfigError('T2IAdapters not supported for Deep Floyd.')
 
+            if image_encoder_uri:
+                raise _pipelines.UnsupportedPipelineConfigError('ImageEncoder not supported for Deep Floyd.')
+
         if sdxl_refiner_uri is not None:
             if not _enums.model_type_is_sdxl(model_type):
                 raise _pipelines.UnsupportedPipelineConfigError(
@@ -365,8 +371,15 @@ class DiffusionPipelineWrapper:
             if textual_inversion_uris:
                 raise _pipelines.UnsupportedPipelineConfigError('Textual inversion not supported for flax.')
 
+            if image_encoder_uri:
+                raise _pipelines.UnsupportedPipelineConfigError('ImageEncoder not supported for flax.')
+
             if vae_tiling or vae_slicing:
                 raise _pipelines.UnsupportedPipelineConfigError('vae_tiling / vae_slicing not supported for flax.')
+
+        if _enums.model_type_is_sd3(model_type):
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'ImageEncoder is not supported for stable diffusion 3.')
 
         if lora_uris:
             if model_type == _enums.ModelType.FLAX:

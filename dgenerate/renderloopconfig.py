@@ -427,7 +427,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     image_encoder_uri: _types.OptionalUri = None
     """
-    Optional user specified Image Encoder URI when using IP Adapter models. 
+    Optional user specified Image Encoder URI when using IP Adapter models or Stable Cascade.
     This corresponds to the ``--image-encoder`` argument of the dgenerate command line tool.
     
     If none of your specified ``--ip-adapters`` URIs point to a model which contains an Image Encoder
@@ -741,7 +741,6 @@ class RenderLoopConfig(_types.SetFromMixin):
             raise RenderLoopConfigError(
                 f'You may not specify {a_namer("sdxl_t2i_adapter_factors")} '
                 f'without {a_namer("t2i_adapter_uris")}.')
-
         supported_dtypes = _pipelinewrapper.supported_data_type_strings()
         if self.dtype not in _pipelinewrapper.supported_data_type_enums():
             raise RenderLoopConfigError(
@@ -788,6 +787,9 @@ class RenderLoopConfig(_types.SetFromMixin):
             if self.ip_adapter_uris is not None:
                 raise RenderLoopConfigError(
                     f'Deep Floyd model types do not support {a_namer("ip_adapter_uris")}.')
+            if self.image_encoder_uri is not None:
+                raise RenderLoopConfigError(
+                    f'Deep Floyd model types do not support {a_namer("image_encoder_uri")}.')
 
         if self.model_type == _pipelinewrapper.ModelType.TORCH_S_CASCADE_DECODER:
             raise RenderLoopConfigError(
@@ -884,6 +886,11 @@ class RenderLoopConfig(_types.SetFromMixin):
             if self.ip_adapter_uris is not None:
                 raise RenderLoopConfigError(
                     f'{a_namer("ip_adapter_uris")} is not supported for '
+                    f'flax, see: {a_namer("model_type")}.')
+
+            if self.image_encoder_uri is not None:
+                raise RenderLoopConfigError(
+                    f'{a_namer("image_encoder_uri")} is not supported for '
                     f'flax, see: {a_namer("model_type")}.')
 
         if self.model_path is None:
@@ -1001,6 +1008,10 @@ class RenderLoopConfig(_types.SetFromMixin):
             raise RenderLoopConfigError(
                 f'{a_namer("ip_adapter_uris")} is not compatible '
                 f'with upscaler models, see: {a_namer("model_type")}.')
+        elif self.image_encoder_uri:
+            raise RenderLoopConfigError(
+                f'{a_namer("image_encoder_uri")} is not compatible '
+                f'with upscaler models, see: {a_namer("model_type")}.')
         elif self.upscaler_noise_levels is None:
             if self.model_type == _pipelinewrapper.ModelType.TORCH_UPSCALER_X4:
                 upscaler_noise_levels_default_set = True
@@ -1025,6 +1036,10 @@ class RenderLoopConfig(_types.SetFromMixin):
             raise RenderLoopConfigError(
                 f'{a_namer("t2i_adapter_uris")} is not compatible with '
                 f'pix2pix models, see: {a_namer("model_type")}.')
+        elif self.image_encoder_uri and self.model_type != _pipelinewrapper.ModelType.TORCH_PIX2PIX:
+            raise RenderLoopConfigError(
+                f'{a_namer("image_encoder_uri")} is not compatible with '
+                f'SDXL pix2pix models, only SD1.5 & SD2, see, see: {a_namer("model_type")}.')
         elif self.ip_adapter_uris and self.model_type != _pipelinewrapper.ModelType.TORCH_PIX2PIX:
             raise RenderLoopConfigError(
                 f'{a_namer("ip_adapter_uris")} is not compatible with '
@@ -1088,6 +1103,10 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(
                     f'Stable Diffusion 3 does not currently support the '
                     f'use of {a_namer("ip_adapter_uris")}.')
+            if self.image_encoder_uri:
+                raise RenderLoopConfigError(
+                    f'Stable Diffusion 3 does not currently support the '
+                    f'use of {a_namer("image_encoder_uri")}.')
 
         if not _pipelinewrapper.model_type_is_sdxl(self.model_type):
             invalid_self = []
