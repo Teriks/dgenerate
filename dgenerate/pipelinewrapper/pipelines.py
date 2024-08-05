@@ -1249,7 +1249,7 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     :param unet_uri: Optional ``--unet`` URI string for specifying a specific UNet
     :param vae_uri: Optional ``--vae`` URI string for specifying a specific VAE
     :param lora_uris: Optional ``--loras`` URI strings for specifying LoRA weights
-    :param image_encoder_uri: Optional ``--image-encoder`` URI for use with IP Adapter weights
+    :param image_encoder_uri: Optional ``--image-encoder`` URI for use with IP Adapter weights or Stable Cascade
     :param ip_adapter_uris: Optional ``--ip-adapters`` URI strings for specifying IP Adapter weights
     :param textual_inversion_uris: Optional ``--textual-inversions`` URI strings for specifying Textual Inversion weights
     :param text_encoder_uris: Optional user specified ``--text-encoders`` URIs that will be loaded on to the
@@ -1482,6 +1482,9 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         if vae_uri:
             raise UnsupportedPipelineConfigError(
                 'Deep Floyd --model-type values are not compatible with --vae.')
+        if image_encoder_uri:
+            raise UnsupportedPipelineConfigError(
+                'Deep Floyd --model-type values are not compatible with --image-encoder.')
 
     if _enums.model_type_is_s_cascade(model_type):
         if control_net_uris:
@@ -1517,14 +1520,19 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         if textual_inversion_uris:
             raise UnsupportedPipelineConfigError(
                 '--model-type torch-sd3 is not compatible with --textual-inversions.')
+        if image_encoder_uri:
+            raise UnsupportedPipelineConfigError(
+                '--model-type torch-sd3 is not compatible with --image-encoder.')
 
     if control_net_uris and t2i_adapter_uris:
         raise UnsupportedPipelineConfigError(
             '--control-nets and --t2i-adapters can not be used together.')
 
-    if image_encoder_uri and not ip_adapter_uris:
+    if image_encoder_uri and not ip_adapter_uris \
+            and model_type != _enums.ModelType.TORCH_S_CASCADE:
         raise UnsupportedPipelineConfigError(
-            '--image-encoder cannot be specified without --ip-adapters'
+            '--image-encoder cannot be specified without '
+            '--ip-adapters if --model-type is not torch-s-cascade.'
         )
 
     is_sdxl = _enums.model_type_is_sdxl(model_type)
@@ -1537,12 +1545,14 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         if t2i_adapter_uris:
             raise UnsupportedPipelineConfigError(
                 'Pix2Pix --model-type values are not compatible with --t2i-adapters.')
-
         if ip_adapter_uris and model_type != _enums.ModelType.TORCH_PIX2PIX:
             raise UnsupportedPipelineConfigError(
                 'Only Pix2Pix --model-type torch-pix2pix is compatible with --ip-adapters, '
                 'Pix2Pix SDXL is not supported.')
-
+        if image_encoder_uri and model_type != _enums.ModelType.TORCH_PIX2PIX:
+            raise UnsupportedPipelineConfigError(
+                'Only Pix2Pix --model-type torch-pix2pix is compatible with --image-encoder, '
+                'Pix2Pix SDXL is not supported.')
     # Pipeline class selection
 
     if _enums.model_type_is_upscaler(model_type):

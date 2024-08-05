@@ -715,6 +715,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                             loaded --ip-adapters contain one.  An error will be produced in this situation, which
                             requires you to use this argument.
                             
+                            An image encoder can also be manually specified for Stable Cascade models.
+                            
                             Examples: "huggingface/image_encoder", "huggingface/image_encoder;revision=main", "image_encoder_folder_on_disk". 
                             
                             Blob links / single file loads are not supported for Image Encoders.
