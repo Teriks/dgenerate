@@ -40,6 +40,7 @@ import dgenerate.promptweighters as _promptweighters
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.pipelinewrapper.arguments import DiffusionArguments
+import dgenerate.pipelinewrapper.util as _util
 
 try:
     import jax
@@ -238,86 +239,122 @@ class DiffusionPipelineWrapper:
 
         self._init(**__locals)
 
-    def _init(self,
-              model_path: _types.Path,
-              model_type: _enums.ModelType | str = _enums.ModelType.TORCH,
-              revision: _types.OptionalName = None,
-              variant: _types.OptionalName = None,
-              subfolder: _types.OptionalName = None,
-              dtype: _enums.DataType | str = _enums.DataType.AUTO,
-              unet_uri: _types.OptionalUri = None,
-              second_unet_uri: _types.OptionalUri = None,
-              vae_uri: _types.OptionalUri = None,
-              vae_tiling: bool = False,
-              vae_slicing: bool = False,
-              lora_uris: _types.OptionalUris = None,
-              image_encoder_uri: _types.OptionalUri = None,
-              ip_adapter_uris: _types.OptionalUris = None,
-              textual_inversion_uris: _types.OptionalUris = None,
-              text_encoder_uris: _types.OptionalUris = None,
-              second_text_encoder_uris: _types.OptionalUris = None,
-              control_net_uris: _types.OptionalUris = None,
-              t2i_adapter_uris: _types.OptionalUris = None,
-              scheduler: _types.OptionalUri = None,
-              sdxl_refiner_uri: _types.OptionalUri = None,
-              sdxl_refiner_scheduler: _types.OptionalUri = None,
-              s_cascade_decoder_uri: _types.OptionalUri = None,
-              s_cascade_decoder_scheduler: _types.OptionalUri = None,
-              device: str = 'cuda',
-              safety_checker: bool = False,
-              auth_token: _types.OptionalString = None,
-              local_files_only: bool = False,
-              model_extra_modules: dict[str, typing.Any] = None,
-              second_model_extra_modules: dict[str, typing.Any] = None,
-              model_cpu_offload: bool = False,
-              model_sequential_offload: bool = False,
-              sdxl_refiner_cpu_offload: bool = False,
-              sdxl_refiner_sequential_offload: bool = False,
-              s_cascade_decoder_cpu_offload: bool = False,
-              s_cascade_decoder_sequential_offload: bool = False,
-              prompt_weighter_uri: _types.OptionalUri = None,
-              prompt_weighter_loader: _promptweighters.PromptWeighterLoader | None = None):
+    def _init(
+            self,
+            model_path: _types.Path,
+            model_type: _enums.ModelType | str = _enums.ModelType.TORCH,
+            revision: _types.OptionalName = None,
+            variant: _types.OptionalName = None,
+            subfolder: _types.OptionalName = None,
+            dtype: _enums.DataType | str = _enums.DataType.AUTO,
+            unet_uri: _types.OptionalUri = None,
+            second_unet_uri: _types.OptionalUri = None,
+            vae_uri: _types.OptionalUri = None,
+            vae_tiling: bool = False,
+            vae_slicing: bool = False,
+            lora_uris: _types.OptionalUris = None,
+            image_encoder_uri: _types.OptionalUri = None,
+            ip_adapter_uris: _types.OptionalUris = None,
+            textual_inversion_uris: _types.OptionalUris = None,
+            text_encoder_uris: _types.OptionalUris = None,
+            second_text_encoder_uris: _types.OptionalUris = None,
+            control_net_uris: _types.OptionalUris = None,
+            t2i_adapter_uris: _types.OptionalUris = None,
+            scheduler: _types.OptionalUri = None,
+            sdxl_refiner_uri: _types.OptionalUri = None,
+            sdxl_refiner_scheduler: _types.OptionalUri = None,
+            s_cascade_decoder_uri: _types.OptionalUri = None,
+            s_cascade_decoder_scheduler: _types.OptionalUri = None,
+            device: str = 'cuda',
+            safety_checker: bool = False,
+            auth_token: _types.OptionalString = None,
+            local_files_only: bool = False,
+            model_extra_modules: dict[str, typing.Any] = None,
+            second_model_extra_modules: dict[str, typing.Any] = None,
+            model_cpu_offload: bool = False,
+            model_sequential_offload: bool = False,
+            sdxl_refiner_cpu_offload: bool = False,
+            sdxl_refiner_sequential_offload: bool = False,
+            s_cascade_decoder_cpu_offload: bool = False,
+            s_cascade_decoder_sequential_offload: bool = False,
+            prompt_weighter_uri: _types.OptionalUri = None,
+            prompt_weighter_loader: _promptweighters.PromptWeighterLoader | None = None
+    ):
 
         model_type = _enums.get_model_type_enum(model_type)
 
-        if second_text_encoder_uris and not \
-                (_enums.model_type_is_sdxl(model_type) or
-                 _enums.model_type_is_s_cascade(model_type)):
+        # Device check
+        if not _util.is_valid_device_string(device):
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'device" must be "cuda" (optionally with a device ordinal "cuda:N") or "cpu"')
+
+        # Second text encoder
+        if second_text_encoder_uris and not (
+                _enums.model_type_is_sdxl(model_type) or _enums.model_type_is_s_cascade(model_type)
+        ):
             raise _pipelines.UnsupportedPipelineConfigError(
                 f'Cannot use "second_text_encoder_uris" with "model_type" '
-                f'{_enums.get_model_type_string(model_type)}')
+                f'{_enums.get_model_type_string(model_type)}'
+            )
 
+        # Offload checks
+        if model_cpu_offload and model_sequential_offload:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                '"model_cpu_offload" and "model_sequential_offload" may not be enabled simultaneously.'
+            )
+
+        if sdxl_refiner_cpu_offload and sdxl_refiner_sequential_offload:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                '"sdxl_refiner_cpu_offload" and "sdxl_refiner_sequential_offload" '
+                'may not be enabled simultaneously.'
+            )
+
+        if s_cascade_decoder_cpu_offload and s_cascade_decoder_sequential_offload:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                '"s_cascade_decoder_cpu_offload" and "s_cascade_decoder_sequential_offload" '
+                'may not be enabled simultaneously.'
+            )
+
+        # Scheduler and encoder help checks
         if _pipelines.scheduler_is_help(sdxl_refiner_scheduler) and not sdxl_refiner_uri:
             raise _pipelines.UnsupportedPipelineConfigError(
                 f'Cannot use "sdxl_refiner_scheduler" value "help" / "helpargs" '
-                f'if no refiner is specified.')
+                f'if no refiner is specified.'
+            )
 
         if _pipelines.scheduler_is_help(s_cascade_decoder_scheduler) and not s_cascade_decoder_uri:
             raise _pipelines.UnsupportedPipelineConfigError(
                 f'Cannot use "s_cascade_decoder_scheduler" value "help" / "helpargs" '
-                f'if no decoder is specified.')
+                f'if no decoder is specified.'
+            )
 
-        if _enums.model_type_is_sdxl(model_type) and _pipelines.text_encoder_is_help(second_text_encoder_uris) \
-                and not sdxl_refiner_uri:
+        if _enums.model_type_is_sdxl(model_type) and _pipelines.text_encoder_is_help(
+                second_text_encoder_uris
+        ) and not sdxl_refiner_uri:
             raise _pipelines.UnsupportedPipelineConfigError(
                 f'Cannot use "second_text_encoder_uris" value '
-                f'"help" if no refiner is specified.')
+                f'"help" if no refiner is specified.'
+            )
 
-        if _enums.model_type_is_s_cascade(model_type) and _pipelines.text_encoder_is_help(second_text_encoder_uris) \
-                and not s_cascade_decoder_uri:
+        if _enums.model_type_is_s_cascade(model_type) and _pipelines.text_encoder_is_help(
+                second_text_encoder_uris
+        ) and not s_cascade_decoder_uri:
             raise _pipelines.UnsupportedPipelineConfigError(
                 f'Cannot use "second_text_encoder_uris" value '
-                f'"help" if no decoder is specified.')
+                f'"help" if no decoder is specified.'
+            )
 
+        # Incompatible combinations
         if control_net_uris and t2i_adapter_uris:
             raise _pipelines.UnsupportedPipelineConfigError(
-                f'Cannot use "control_net_uris" and "t2i_adapter_uris" together.')
+                f'Cannot use "control_net_uris" and "t2i_adapter_uris" together.'
+            )
 
-        if image_encoder_uri and not ip_adapter_uris \
-                and model_type != _enums.ModelType.TORCH_S_CASCADE:
+        if image_encoder_uri and not ip_adapter_uris and model_type != _enums.ModelType.TORCH_S_CASCADE:
             raise _pipelines.UnsupportedPipelineConfigError(
                 f'Cannot use "image_encoder_uri" without "ip_adapter_uris" '
-                f'if "model_type" if not TORCH_S_CASCADE.')
+                f'if "model_type" if not TORCH_S_CASCADE.'
+            )
 
         helps_used = [
             _pipelines.scheduler_is_help(scheduler),
@@ -330,91 +367,127 @@ class DiffusionPipelineWrapper:
         if helps_used.count(True) > 1:
             raise _pipelines.UnsupportedPipelineConfigError(
                 'Cannot use the "help" / "helpargs" option value '
-                'with multiple arguments simultaneously.')
+                'with multiple arguments simultaneously.'
+            )
 
+        # Model-specific restrictions
         if _enums.model_type_is_s_cascade(model_type):
             if textual_inversion_uris:
-                raise _pipelines.UnsupportedPipelineConfigError('Textual Inversions not supported for StableCascade.')
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Textual Inversions not supported for StableCascade.'
+                )
 
             if control_net_uris:
-                raise _pipelines.UnsupportedPipelineConfigError('ControlNets not supported for StableCascade.')
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'ControlNets not supported for StableCascade.'
+                )
 
             if t2i_adapter_uris:
-                raise _pipelines.UnsupportedPipelineConfigError('T2IAdapters not supported for StableCascade.')
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'T2IAdapters not supported for StableCascade.'
+                )
 
         if _enums.model_type_is_floyd(model_type):
             if textual_inversion_uris:
-                raise _pipelines.UnsupportedPipelineConfigError('Textual Inversions not supported for Deep Floyd.')
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Textual Inversions not supported for Deep Floyd.'
+                )
 
             if control_net_uris:
-                raise _pipelines.UnsupportedPipelineConfigError('ControlNets not supported for Deep Floyd.')
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'ControlNets not supported for Deep Floyd.'
+                )
 
             if t2i_adapter_uris:
-                raise _pipelines.UnsupportedPipelineConfigError('T2IAdapters not supported for Deep Floyd.')
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'T2IAdapters not supported for Deep Floyd.'
+                )
 
             if image_encoder_uri:
-                raise _pipelines.UnsupportedPipelineConfigError('ImageEncoder not supported for Deep Floyd.')
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'ImageEncoder not supported for Deep Floyd.'
+                )
 
         if sdxl_refiner_uri is not None:
             if not _enums.model_type_is_sdxl(model_type):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'Only Stable Diffusion XL models support refiners, '
-                    'please use model_type "torch-sdxl" if you are trying to load an sdxl model.')
+                    'please use model_type "torch-sdxl" if you are trying to load an sdxl model.'
+                )
 
         if model_type == _enums.ModelType.FLAX:
             if t2i_adapter_uris:
-                raise _pipelines.UnsupportedPipelineConfigError('T2IAdapters not supported for flax.')
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'T2IAdapters not supported for flax.'
+                )
 
             if not _enums.have_jax_flax():
-                raise _pipelines.UnsupportedPipelineConfigError('flax and jax are not installed.')
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'flax and jax are not installed.'
+                )
 
             if textual_inversion_uris:
-                raise _pipelines.UnsupportedPipelineConfigError('Textual inversion not supported for flax.')
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Textual inversion not supported for flax.'
+                )
 
             if image_encoder_uri:
-                raise _pipelines.UnsupportedPipelineConfigError('ImageEncoder not supported for flax.')
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'ImageEncoder not supported for flax.'
+                )
 
             if vae_tiling or vae_slicing:
-                raise _pipelines.UnsupportedPipelineConfigError('vae_tiling / vae_slicing not supported for flax.')
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'vae_tiling / vae_slicing not supported for flax.'
+                )
 
         if _enums.model_type_is_sd3(model_type):
             raise _pipelines.UnsupportedPipelineConfigError(
-                'ImageEncoder is not supported for stable diffusion 3.')
+                'ImageEncoder is not supported for stable diffusion 3.'
+            )
 
         if lora_uris:
             if model_type == _enums.ModelType.FLAX:
                 raise _pipelines.UnsupportedPipelineConfigError(
-                    'LoRA loading is not implemented for flax.')
+                    'LoRA loading is not implemented for flax.'
+                )
 
             if _enums.model_type_is_s_cascade(model_type):
                 raise _pipelines.UnsupportedPipelineConfigError(
-                    'LoRA loading is not implemented for stable cascade.')
+                    'LoRA loading is not implemented for stable cascade.'
+                )
 
         if ip_adapter_uris:
             if model_type == _enums.ModelType.FLAX:
                 raise _pipelines.UnsupportedPipelineConfigError(
-                    'IP Adapter loading is not implemented for flax.')
+                    'IP Adapter loading is not implemented for flax.'
+                )
 
             if _enums.model_type_is_s_cascade(model_type):
                 raise _pipelines.UnsupportedPipelineConfigError(
-                    'IP Adapter loading is not implemented for stable cascade.')
+                    'IP Adapter loading is not implemented for stable cascade.'
+                )
 
             if _enums.model_type_is_sd3(model_type):
                 raise _pipelines.UnsupportedPipelineConfigError(
-                    'IP Adapter loading is not implemented for stable diffusion 3.')
+                    'IP Adapter loading is not implemented for stable diffusion 3.'
+                )
 
         if textual_inversion_uris:
             if model_type == _enums.ModelType.FLAX:
                 raise _pipelines.UnsupportedPipelineConfigError(
-                    'Textual inversion loading is not implemented for flax.')
+                    'Textual inversion loading is not implemented for flax.'
+                )
 
             if _enums.model_type_is_s_cascade(model_type):
                 raise _pipelines.UnsupportedPipelineConfigError(
-                    'Textual inversion loading is not implemented for stable cascade.')
+                    'Textual inversion loading is not implemented for stable cascade.'
+                )
 
             if _enums.model_type_is_sd3(model_type):
                 raise _pipelines.UnsupportedPipelineConfigError(
-                    'Textual inversion loading is not implemented for stable diffusion 3.')
+                    'Textual inversion loading is not implemented for stable diffusion 3.'
+                )
 
         self._subfolder = subfolder
         self._device = device
@@ -577,6 +650,13 @@ class DiffusionPipelineWrapper:
         return list(self._t2i_adapter_uris) if self._t2i_adapter_uris else []
 
     @property
+    def ip_adapter_uris(self) -> _types.OptionalUris:
+        """
+        List of supplied ``--ip-adapters`` uri strings or an empty list
+        """
+        return list(self._ip_adapter_uris) if self._ip_adapter_uris else []
+
+    @property
     def text_encoder_uris(self) -> _types.OptionalUris:
         """
         List of supplied ``--text-encoders`` uri strings or an empty list
@@ -666,6 +746,13 @@ class DiffusionPipelineWrapper:
         Selected ``--vae`` uri for the main model or ``None``
         """
         return self._vae_uri
+
+    @property
+    def image_encoder_uri(self) -> _types.OptionalUri:
+        """
+        Selected ``--image-encoder`` uri for the main model or ``None``
+        """
+        return self._image_encoder_uri
 
     @property
     def unet_uri(self) -> _types.OptionalUri:

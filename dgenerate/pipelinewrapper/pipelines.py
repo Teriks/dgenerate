@@ -44,6 +44,7 @@ import dgenerate.promptweighters as _promptweighters
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
+import dgenerate.pipelinewrapper.util as _util
 
 try:
     import jaxlib
@@ -1414,7 +1415,7 @@ def _torch_args_hasher(args):
         'unet_uri': _cache.uri_hash_with_parser(_uris.TorchUNetUri.parse),
         'vae_uri': _cache.uri_hash_with_parser(_uris.TorchVAEUri.parse),
         'lora_uris': _cache.uri_list_hash_with_parser(_uris.LoRAUri.parse),
-        'image_encoder_uri': _cache.uri_list_hash_with_parser(_uris.ImageEncoderUri),
+        'image_encoder_uri': _cache.uri_hash_with_parser(_uris.ImageEncoderUri),
         'ip_adapter_uris': _cache.uri_list_hash_with_parser(_uris.IPAdapterUri),
         'textual_inversion_uris': _cache.uri_list_hash_with_parser(_uris.TextualInversionUri.parse),
         'text_encoder_uris': _cache.uri_list_hash_with_parser(text_encoder_uri_parse),
@@ -1439,33 +1440,51 @@ def _torch_on_create(key, new):
           hasher=_torch_args_hasher,
           on_hit=_torch_on_hit,
           on_create=_torch_on_create)
-def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
-                                     model_path: str,
-                                     model_type: _enums.ModelType = _enums.ModelType.TORCH,
-                                     revision: _types.OptionalString = None,
-                                     variant: _types.OptionalString = None,
-                                     subfolder: _types.OptionalString = None,
-                                     dtype: _enums.DataType = _enums.DataType.AUTO,
-                                     unet_uri: _types.OptionalUri = None,
-                                     vae_uri: _types.OptionalUri = None,
-                                     lora_uris: _types.OptionalUris = None,
-                                     image_encoder_uri: _types.OptionalUri = None,
-                                     ip_adapter_uris: _types.OptionalUris = None,
-                                     textual_inversion_uris: _types.OptionalUris = None,
-                                     text_encoder_uris: _types.OptionalUris = None,
-                                     control_net_uris: _types.OptionalUris = None,
-                                     t2i_adapter_uris: _types.OptionalUris = None,
-                                     scheduler: _types.OptionalString = None,
-                                     safety_checker: bool = False,
-                                     auth_token: _types.OptionalString = None,
-                                     device: str = 'cuda',
-                                     extra_modules: dict[str, typing.Any] | None = None,
-                                     model_cpu_offload: bool = False,
-                                     sequential_cpu_offload: bool = False,
-                                     local_files_only: bool = False) -> TorchPipelineCreationResult:
-    if not _enums.model_type_is_torch(model_type):
-        raise ValueError('model_type must be a TORCH ModelType enum value.')
+def _create_torch_diffusion_pipeline(
+        pipeline_type: _enums.PipelineType,
+        model_path: str,
+        model_type: _enums.ModelType = _enums.ModelType.TORCH,
+        revision: _types.OptionalString = None,
+        variant: _types.OptionalString = None,
+        subfolder: _types.OptionalString = None,
+        dtype: _enums.DataType = _enums.DataType.AUTO,
+        unet_uri: _types.OptionalUri = None,
+        vae_uri: _types.OptionalUri = None,
+        lora_uris: _types.OptionalUris = None,
+        image_encoder_uri: _types.OptionalUri = None,
+        ip_adapter_uris: _types.OptionalUris = None,
+        textual_inversion_uris: _types.OptionalUris = None,
+        text_encoder_uris: _types.OptionalUris = None,
+        control_net_uris: _types.OptionalUris = None,
+        t2i_adapter_uris: _types.OptionalUris = None,
+        scheduler: _types.OptionalString = None,
+        safety_checker: bool = False,
+        auth_token: _types.OptionalString = None,
+        device: str = 'cuda',
+        extra_modules: dict[str, typing.Any] | None = None,
+        model_cpu_offload: bool = False,
+        sequential_cpu_offload: bool = False,
+        local_files_only: bool = False
+) -> TorchPipelineCreationResult:
+    # Ensure model path is specified
+    if not model_path:
+        raise ValueError('model_path must be specified.')
 
+    # Ensure model type is a Torch ModelType
+    if not _enums.model_type_is_torch(model_type):
+        raise UnsupportedPipelineConfigError('model_type must be a TORCH ModelType enum value.')
+
+    # Offload checks
+    if model_cpu_offload and sequential_cpu_offload:
+        raise UnsupportedPipelineConfigError(
+            'model_cpu_offload and sequential_cpu_offload may not be enabled simultaneously.')
+
+    # Device check
+    if not _util.is_valid_device_string(device):
+        raise UnsupportedPipelineConfigError(
+            'device" must be "cuda" (optionally with a device ordinal "cuda:N") or "cpu"')
+
+    # Deep Floyd model restrictions
     if _enums.model_type_is_floyd(model_type):
         if control_net_uris:
             raise UnsupportedPipelineConfigError(
@@ -1486,6 +1505,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             raise UnsupportedPipelineConfigError(
                 'Deep Floyd --model-type values are not compatible with --image-encoder.')
 
+    # Stable Cascade model restrictions
     if _enums.model_type_is_s_cascade(model_type):
         if control_net_uris:
             raise UnsupportedPipelineConfigError(
@@ -1501,12 +1521,13 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                 'Stable Cascade --model-type values are not compatible with --textual-inversions.')
         if lora_uris:
             raise UnsupportedPipelineConfigError(
-                'Stable Cascade --model-type values are not compatible with --loras')
+                'Stable Cascade --model-type values are not compatible with --loras.')
         if vae_uri:
             raise UnsupportedPipelineConfigError(
                 'Stable Cascade --model-type values are not compatible with --vae.')
 
-    if model_type == model_type.TORCH_SD3:
+    # Torch SD3 restrictions
+    if model_type == _enums.ModelType.TORCH_SD3:
         if t2i_adapter_uris:
             raise UnsupportedPipelineConfigError(
                 '--model-type torch-sd3 is not compatible with --t2i-adapters.')
@@ -1515,8 +1536,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                 '--model-type torch-sd3 is not compatible with --ip-adapters.')
         if unet_uri:
             raise UnsupportedPipelineConfigError(
-                '--model-type torch-sd3 is not compatible with --unet.'
-            )
+                '--model-type torch-sd3 is not compatible with --unet.')
         if textual_inversion_uris:
             raise UnsupportedPipelineConfigError(
                 '--model-type torch-sd3 is not compatible with --textual-inversions.')
@@ -1524,18 +1544,16 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             raise UnsupportedPipelineConfigError(
                 '--model-type torch-sd3 is not compatible with --image-encoder.')
 
+    # Incompatible combinations
     if control_net_uris and t2i_adapter_uris:
         raise UnsupportedPipelineConfigError(
-            '--control-nets and --t2i-adapters can not be used together.')
+            '--control-nets and --t2i-adapters cannot be used together.')
 
-    if image_encoder_uri and not ip_adapter_uris \
-            and model_type != _enums.ModelType.TORCH_S_CASCADE:
+    if image_encoder_uri and not ip_adapter_uris and model_type != _enums.ModelType.TORCH_S_CASCADE:
         raise UnsupportedPipelineConfigError(
-            '--image-encoder cannot be specified without '
-            '--ip-adapters if --model-type is not torch-s-cascade.'
-        )
+            '--image-encoder cannot be specified without --ip-adapters if --model-type is not torch-s-cascade.')
 
-    is_sdxl = _enums.model_type_is_sdxl(model_type)
+    # Pix2Pix model restrictions
     is_pix2pix = _enums.model_type_is_pix2pix(model_type)
 
     if is_pix2pix:
@@ -1547,27 +1565,26 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                 'Pix2Pix --model-type values are not compatible with --t2i-adapters.')
         if ip_adapter_uris and model_type != _enums.ModelType.TORCH_PIX2PIX:
             raise UnsupportedPipelineConfigError(
-                'Only Pix2Pix --model-type torch-pix2pix is compatible with --ip-adapters, '
-                'Pix2Pix SDXL is not supported.')
+                'Only Pix2Pix --model-type torch-pix2pix is compatible '
+                'with --ip-adapters. Pix2Pix SDXL is not supported.')
         if image_encoder_uri and model_type != _enums.ModelType.TORCH_PIX2PIX:
             raise UnsupportedPipelineConfigError(
-                'Only Pix2Pix --model-type torch-pix2pix is compatible with --image-encoder, '
-                'Pix2Pix SDXL is not supported.')
-    # Pipeline class selection
+                'Only Pix2Pix --model-type torch-pix2pix is compatible '
+                'with --image-encoder. Pix2Pix SDXL is not supported.')
 
+    is_sdxl = _enums.model_type_is_sdxl(model_type)
+
+    # Pipeline class selection
     if _enums.model_type_is_upscaler(model_type):
         if control_net_uris:
             raise UnsupportedPipelineConfigError(
                 'Upscaler models are not compatible with --control-nets.')
-
         if t2i_adapter_uris:
             raise UnsupportedPipelineConfigError(
                 'Upscaler models are not compatible with --t2i-adapters.')
-
         if ip_adapter_uris:
             raise UnsupportedPipelineConfigError(
                 'Upscaler models are not compatible with --ip-adapters.')
-
         if pipeline_type != _enums.PipelineType.IMG2IMG and not scheduler_is_help(scheduler):
             raise UnsupportedPipelineConfigError(
                 'Upscaler models only work with img2img generation, IE: --image-seeds (with no image masks).')
@@ -1578,25 +1595,30 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                     '--model-type torch-upscaler-x2 is not compatible with --loras or --textual-inversions.')
 
         pipeline_class = (
-            diffusers.StableDiffusionUpscalePipeline if model_type == _enums.ModelType.TORCH_UPSCALER_X4
-            else diffusers.StableDiffusionLatentUpscalePipeline)
+            diffusers.StableDiffusionUpscalePipeline
+            if model_type == _enums.ModelType.TORCH_UPSCALER_X4
+            else diffusers.StableDiffusionLatentUpscalePipeline
+        )
     else:
         if pipeline_type == _enums.PipelineType.TXT2IMG:
             if is_pix2pix:
                 if not (scheduler_is_help(scheduler) or text_encoder_is_help(text_encoder_uris)):
                     raise UnsupportedPipelineConfigError(
-                        'pix2pix models only work in img2img mode and cannot work without --image-seeds.')
+                        'Pix2Pix models only work in img2img mode and cannot work without --image-seeds.')
                 else:
-                    pipeline_class = diffusers.StableDiffusionXLInstructPix2PixPipeline if is_sdxl \
+                    pipeline_class = (
+                        diffusers.StableDiffusionXLInstructPix2PixPipeline
+                        if is_sdxl
                         else diffusers.StableDiffusionInstructPix2PixPipeline
+                    )
 
             if model_type == _enums.ModelType.TORCH_IF:
                 pipeline_class = diffusers.IFPipeline
             elif model_type == _enums.ModelType.TORCH_IFS:
                 if not (scheduler_is_help(scheduler) or text_encoder_is_help(text_encoder_uris)):
                     raise UnsupportedPipelineConfigError(
-                        'Deep Floyd IF super resolution (IFS) only works in img2img '
-                        'mode and cannot work without --image-seeds.')
+                        'Deep Floyd IF super-resolution (IFS) only works in '
+                        'img2img mode and cannot work without --image-seeds.')
                 else:
                     pipeline_class = diffusers.IFSuperResolutionPipeline
             elif model_type == _enums.ModelType.TORCH_S_CASCADE:
@@ -1604,31 +1626,49 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             elif model_type == _enums.ModelType.TORCH_S_CASCADE_DECODER:
                 pipeline_class = diffusers.StableCascadeDecoderPipeline
             elif model_type == _enums.ModelType.TORCH_SD3:
-                pipeline_class = diffusers.StableDiffusion3Pipeline if not \
-                    control_net_uris else diffusers.StableDiffusion3ControlNetPipeline
+                pipeline_class = (
+                    diffusers.StableDiffusion3Pipeline
+                    if not control_net_uris
+                    else diffusers.StableDiffusion3ControlNetPipeline
+                )
             elif t2i_adapter_uris:
-                # the custom type is a hack to support from_single_file
-                # for SD1.5 - 2 models with the associated pipeline class
-                # which does not inherit the correct mixin to do so, but
-                # can use the mixin just fine
-                pipeline_class = diffusers.StableDiffusionXLAdapterPipeline if is_sdxl \
-                    else type('StableDiffusionAdapterPipeline',
-                              (diffusers.loaders.FromSingleFileMixin, diffusers.StableDiffusionAdapterPipeline), {})
+                # The custom type is a hack to support from_single_file for SD1.5 - 2
+                # models with the associated pipeline class which does not inherit
+                # the correct mixin to do so but can use the mixin just fine
+                pipeline_class = (
+                    diffusers.StableDiffusionXLAdapterPipeline
+                    if is_sdxl
+                    else type(
+                        'StableDiffusionAdapterPipeline',
+                        (diffusers.loaders.FromSingleFileMixin, diffusers.StableDiffusionAdapterPipeline),
+                        {},
+                    )
+                )
             elif control_net_uris:
-                pipeline_class = diffusers.StableDiffusionXLControlNetPipeline if is_sdxl \
+                pipeline_class = (
+                    diffusers.StableDiffusionXLControlNetPipeline
+                    if is_sdxl
                     else diffusers.StableDiffusionControlNetPipeline
+                )
             else:
-                pipeline_class = diffusers.StableDiffusionXLPipeline if is_sdxl else diffusers.StableDiffusionPipeline
+                pipeline_class = (
+                    diffusers.StableDiffusionXLPipeline
+                    if is_sdxl
+                    else diffusers.StableDiffusionPipeline
+                )
 
         elif pipeline_type == _enums.PipelineType.IMG2IMG:
             if control_net_uris:
                 if is_pix2pix:
                     raise UnsupportedPipelineConfigError(
-                        'pix2pix models are not compatible with --control-nets.')
+                        'Pix2Pix models are not compatible with --control-nets.')
 
             if is_pix2pix:
-                pipeline_class = diffusers.StableDiffusionXLInstructPix2PixPipeline if is_sdxl \
+                pipeline_class = (
+                    diffusers.StableDiffusionXLInstructPix2PixPipeline
+                    if is_sdxl
                     else diffusers.StableDiffusionInstructPix2PixPipeline
+                )
             elif model_type == _enums.ModelType.TORCH_IF:
                 pipeline_class = diffusers.IFImg2ImgPipeline
             elif model_type == _enums.ModelType.TORCH_IFS:
@@ -1643,8 +1683,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             elif model_type == _enums.ModelType.TORCH_SD3:
                 if control_net_uris:
                     raise UnsupportedPipelineConfigError(
-                        '--model-type torch-sd3 does not currently '
-                        'support img2img mode with ControlNet models.')
+                        '--model-type torch-sd3 does not currently support img2img mode with ControlNet models.')
                 if lora_uris:
                     raise UnsupportedPipelineConfigError(
                         '--model-type torch-sd3 does not currently support --loras in img2img mode.')
@@ -1653,17 +1692,22 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                 raise UnsupportedPipelineConfigError(
                     'img2img mode is not supported with --t2i-adapters.')
             elif control_net_uris:
-                if is_sdxl:
-                    pipeline_class = diffusers.StableDiffusionXLControlNetImg2ImgPipeline
-                else:
-                    pipeline_class = diffusers.StableDiffusionControlNetImg2ImgPipeline
+                pipeline_class = (
+                    diffusers.StableDiffusionXLControlNetImg2ImgPipeline
+                    if is_sdxl
+                    else diffusers.StableDiffusionControlNetImg2ImgPipeline
+                )
             else:
-                pipeline_class = diffusers.StableDiffusionXLImg2ImgPipeline if is_sdxl \
+                pipeline_class = (
+                    diffusers.StableDiffusionXLImg2ImgPipeline
+                    if is_sdxl
                     else diffusers.StableDiffusionImg2ImgPipeline
+                )
+
         elif pipeline_type == _enums.PipelineType.INPAINT:
             if is_pix2pix:
                 raise UnsupportedPipelineConfigError(
-                    'pix2pix models only work in img2img mode and cannot work in inpaint mode (with a mask).')
+                    'Pix2Pix models only work in img2img mode and cannot work in inpaint mode (with a mask).')
             if _enums.model_type_is_s_cascade(model_type):
                 raise UnsupportedPipelineConfigError(
                     'Stable Cascade model types do not currently support inpainting.')
@@ -1679,13 +1723,17 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                 raise UnsupportedPipelineConfigError(
                     'inpaint mode is not supported with --t2i-adapters.')
             elif control_net_uris:
-                if is_sdxl:
-                    pipeline_class = diffusers.StableDiffusionXLControlNetInpaintPipeline
-                else:
-                    pipeline_class = diffusers.StableDiffusionControlNetInpaintPipeline
+                pipeline_class = (
+                    diffusers.StableDiffusionXLControlNetInpaintPipeline
+                    if is_sdxl
+                    else diffusers.StableDiffusionControlNetInpaintPipeline
+                )
             else:
-                pipeline_class = diffusers.StableDiffusionXLInpaintPipeline if is_sdxl \
+                pipeline_class = (
+                    diffusers.StableDiffusionXLInpaintPipeline
+                    if is_sdxl
                     else diffusers.StableDiffusionInpaintPipeline
+                )
         else:
             # Should be impossible
             raise UnsupportedPipelineConfigError('Pipeline type not implemented.')
