@@ -354,42 +354,25 @@ def invoke_dgenerate_events(
         yield DgenerateExitEvent(invoke_dgenerate_events, 1)
         return
 
+    cache_memory_constraints = {
+            "cache_memory_constraints": "_pipelinewrapper.CACHE_MEMORY_CONSTRAINTS",
+            "pipeline_cache_memory_constraints": "_pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS",
+            "unet_cache_memory_constraints": "_pipelinewrapper.UNET_CACHE_MEMORY_CONSTRAINTS",
+            "vae_cache_memory_constraints": "_pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS",
+            "control_net_cache_memory_constraints": "_pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS",
+            "adapter_cache_memory_constraints": "_pipelinewrapper.ADAPTER_CACHE_MEMORY_CONSTRAINTS",
+            "text_encoder_cache_memory_constraints": "_pipelinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS",
+            "image_encoder_cache_memory_constraints": "_pipelinewrapper.IMAGE_ENCODER_CACHE_MEMORY_CONSTRAINTS",
+            "image_processor_memory_constraints": "_imageprocessors.IMAGE_PROCESSOR_MEMORY_CONSTRAINTS",
+            "image_processor_cuda_memory_constraints": "_imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS"
+        }
+
     try:
-        if arguments.cache_memory_constraints:
-            constraint_lists.append(_pipelinewrapper.CACHE_MEMORY_CONSTRAINTS)
-            _pipelinewrapper.CACHE_MEMORY_CONSTRAINTS = arguments.cache_memory_constraints
-
-        if arguments.pipeline_cache_memory_constraints:
-            constraint_lists.append(_pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS)
-            _pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS = arguments.pipeline_cache_memory_constraints
-
-        if arguments.unet_cache_memory_constraints:
-            constraint_lists.append(_pipelinewrapper.UNET_CACHE_MEMORY_CONSTRAINTS)
-            _pipelinewrapper.UNET_CACHE_MEMORY_CONSTRAINTS = arguments.unet_cache_memory_constraints
-
-        if arguments.vae_cache_memory_constraints:
-            constraint_lists.append(_pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS)
-            _pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS = arguments.vae_cache_memory_constraints
-
-        if arguments.control_net_cache_memory_constraints:
-            constraint_lists.append(_pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS)
-            _pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS = arguments.control_net_cache_memory_constraints
-
-        if arguments.adapter_cache_memory_constraints:
-            constraint_lists.append(_pipelinewrapper.ADAPTER_CACHE_MEMORY_CONSTRAINTS)
-            _pipelinewrapper.ADAPTER_CACHE_MEMORY_CONSTRAINTS = arguments.adapter_cache_memory_constraints
-
-        if arguments.text_encoder_cache_memory_constraints:
-            constraint_lists.append(_pipelinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS)
-            _pipelinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS = arguments.text_encoder_cache_memory_constraints
-
-        if arguments.image_processor_memory_constraints:
-            constraint_lists.append(_imageprocessors.IMAGE_PROCESSOR_MEMORY_CONSTRAINTS)
-            _imageprocessors.IMAGE_PROCESSOR_MEMORY_CONSTRAINTS = arguments.image_processor_memory_constraints
-
-        if arguments.image_processor_cuda_memory_constraints:
-            constraint_lists.append(_imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS)
-            _imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS = arguments.image_processor_cuda_memory_constraints
+        for arg_name, global_var in cache_memory_constraints.items():
+            arg_value = getattr(arguments, arg_name, None)
+            if arg_value is not None:
+                constraint_lists.append(eval(global_var))
+                exec(f"{global_var} = arg_value")
 
         render_loop.config = arguments
 
@@ -424,33 +407,9 @@ def invoke_dgenerate_events(
         _messages.pop_level()
 
         if arguments is not None:
-
-            if arguments.image_processor_cuda_memory_constraints:
-                _imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS = constraint_lists.pop()
-
-            if arguments.image_processor_memory_constraints:
-                _imageprocessors.IMAGE_PROCESSOR_MEMORY_CONSTRAINTS = constraint_lists.pop()
-
-            if arguments.text_encoder_cache_memory_constraints:
-                _pipelinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()
-
-            if arguments.adapter_cache_memory_constraints:
-                _pipelinewrapper.ADAPTER_CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()
-
-            if arguments.control_net_cache_memory_constraints:
-                _pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()
-
-            if arguments.unet_cache_memory_constraints:
-                _pipelinewrapper.UNET_CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()
-
-            if arguments.vae_cache_memory_constraints:
-                _pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()
-
-            if arguments.pipeline_cache_memory_constraints:
-                _pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()
-
-            if arguments.cache_memory_constraints:
-                _pipelinewrapper.CACHE_MEMORY_CONSTRAINTS = constraint_lists.pop()
+            for arg_name, global_var in reversed(cache_memory_constraints.items()):
+                if getattr(arguments, arg_name, None) is not None:
+                    exec(f"{global_var} = constraint_lists.pop()")
 
     # Return the template environment for pipelining
     yield DgenerateExitEvent(invoke_dgenerate_events, 0)
