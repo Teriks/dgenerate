@@ -200,6 +200,10 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'clear_adapter_cache': return_zero(
                 _pipelinewrapper.clear_adapter_cache,
                 help_text='Clear all user specified T2I adapter models from the in memory cache.'),
+            'clear_image_encoder_cache': return_zero(
+                _pipelinewrapper.clear_image_encoder_cache,
+                help_text='Clear all user specified ImageEncoder models from the in memory cache.'
+            ),
             'save_modules': self._save_modules_directive,
             'use_modules': self._use_modules_directive,
             'clear_modules': self._clear_modules_directive,

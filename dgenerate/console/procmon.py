@@ -33,6 +33,9 @@ from dgenerate.files import TerminalLineReader
 class ProcessMonitor:
     def __init__(self, events_per_tick=50):
         self.events_per_tick = events_per_tick
+
+        self._closed = False
+
         self._process: psutil.Popen | None = None
         self._read_stderr_thread: threading.Thread | None = None
         self._read_stdout_thread: threading.Thread | None = None
@@ -48,7 +51,6 @@ class ProcessMonitor:
         self.process_exit_callback = lambda return_code: None
         self.process_restarting_callback = lambda: None
         self.process_restarted_callback = lambda: None
-        self._closed = False
 
     def cwd(self, deep=False):
         try:
