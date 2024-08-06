@@ -1168,7 +1168,7 @@ class TorchPipelineCreationResult(PipelineCreationResult):
     Parsed Textual Inversion URIs if any were present
     """
 
-    parsed_control_net_uris: collections.abc.Sequence[_uris.TorchControlNetUri]
+    parsed_controlnet_uris: collections.abc.Sequence[_uris.TorchControlNetUri]
     """
     Parsed ControlNet URIs if any were present
     """
@@ -1191,14 +1191,14 @@ class TorchPipelineCreationResult(PipelineCreationResult):
                  parsed_lora_uris: collections.abc.Sequence[_uris.LoRAUri],
                  parsed_ip_adapter_uris: collections.abc.Sequence[_uris.IPAdapterUri],
                  parsed_textual_inversion_uris: collections.abc.Sequence[_uris.TextualInversionUri],
-                 parsed_control_net_uris: collections.abc.Sequence[_uris.TorchControlNetUri],
+                 parsed_controlnet_uris: collections.abc.Sequence[_uris.TorchControlNetUri],
                  parsed_t2i_adapter_uris: collections.abc.Sequence[_uris.T2IAdapterUri]):
         super().__init__(pipeline)
         self.parsed_unet_uri = parsed_unet_uri
         self.parsed_vae_uri = parsed_vae_uri
         self.parsed_lora_uris = parsed_lora_uris
         self.parsed_textual_inversion_uris = parsed_textual_inversion_uris
-        self.parsed_control_net_uris = parsed_control_net_uris
+        self.parsed_controlnet_uris = parsed_controlnet_uris
         self.parsed_t2i_adapter_uris = parsed_t2i_adapter_uris
         self.parsed_ip_adapter_uris = parsed_ip_adapter_uris
         self.parsed_image_encoder_uri = parsed_image_encoder_uri
@@ -1235,7 +1235,7 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                                     ip_adapter_uris: _types.OptionalUris = None,
                                     textual_inversion_uris: _types.OptionalUris = None,
                                     text_encoder_uris: _types.OptionalUris = None,
-                                    control_net_uris: _types.OptionalUris = None,
+                                    controlnet_uris: _types.OptionalUris = None,
                                     t2i_adapter_uris: _types.OptionalUris = None,
                                     scheduler: _types.OptionalString = None,
                                     safety_checker: bool = False,
@@ -1265,7 +1265,7 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     :param text_encoder_uris: Optional user specified ``--text-encoders`` URIs that will be loaded on to the
         pipeline in order. A uri value of ``+`` or ``None`` indicates use default, a string value of ``null``
         indicates to explicitly not load any encoder all
-    :param control_net_uris: Optional ``--control-nets`` URI strings for specifying ControlNet models
+    :param controlnet_uris: Optional ``--control-nets`` URI strings for specifying ControlNet models
     :param t2i_adapter_uris: Optional ``--t2i-adapters`` URI strings for specifying T2IAdapter models
     :param scheduler: Optional scheduler (sampler) class name, unqualified, or "help" / "helpargs" to print supported values
         to STDOUT and raise :py:exc:`dgenerate.pipelinewrapper.SchedulerHelpException`.  Dgenerate URI syntax is supported
@@ -1320,7 +1320,7 @@ class TorchPipelineFactory:
                  image_encoder_uri: _types.OptionalUri = None,
                  ip_adapter_uris: _types.OptionalUris = None,
                  textual_inversion_uris: _types.OptionalUris = None,
-                 control_net_uris: _types.OptionalUris = None,
+                 controlnet_uris: _types.OptionalUris = None,
                  t2i_adapter_uris: _types.OptionalUris = None,
                  text_encoder_uris: _types.OptionalUris = None,
                  scheduler: _types.OptionalString = None,
@@ -1428,8 +1428,8 @@ def _torch_args_hasher(args):
         'ip_adapter_uris': _cache.uri_list_hash_with_parser(_uris.IPAdapterUri),
         'textual_inversion_uris': _cache.uri_list_hash_with_parser(_uris.TextualInversionUri.parse),
         'text_encoder_uris': _cache.uri_list_hash_with_parser(text_encoder_uri_parse),
-        'control_net_uris': _cache.uri_list_hash_with_parser(_uris.TorchControlNetUri.parse,
-                                                             exclude={'scale', 'start', 'end'}),
+        'controlnet_uris': _cache.uri_list_hash_with_parser(_uris.TorchControlNetUri.parse,
+                                                            exclude={'scale', 'start', 'end'}),
         't2i_adapter_uris': _cache.uri_list_hash_with_parser(_uris.T2IAdapterUri.parse,
                                                              exclude={'scale'})
     }
@@ -1464,7 +1464,7 @@ def _create_torch_diffusion_pipeline(
         ip_adapter_uris: _types.OptionalUris = None,
         textual_inversion_uris: _types.OptionalUris = None,
         text_encoder_uris: _types.OptionalUris = None,
-        control_net_uris: _types.OptionalUris = None,
+        controlnet_uris: _types.OptionalUris = None,
         t2i_adapter_uris: _types.OptionalUris = None,
         scheduler: _types.OptionalString = None,
         safety_checker: bool = False,
@@ -1495,7 +1495,7 @@ def _create_torch_diffusion_pipeline(
 
     # Deep Floyd model restrictions
     if _enums.model_type_is_floyd(model_type):
-        if control_net_uris:
+        if controlnet_uris:
             raise UnsupportedPipelineConfigError(
                 'Deep Floyd --model-type values are not compatible with --control-nets.')
         if t2i_adapter_uris:
@@ -1516,7 +1516,7 @@ def _create_torch_diffusion_pipeline(
 
     # Stable Cascade model restrictions
     if _enums.model_type_is_s_cascade(model_type):
-        if control_net_uris:
+        if controlnet_uris:
             raise UnsupportedPipelineConfigError(
                 'Stable Cascade --model-type values are not compatible with --control-nets.')
         if t2i_adapter_uris:
@@ -1554,7 +1554,7 @@ def _create_torch_diffusion_pipeline(
                 '--model-type torch-sd3 is not compatible with --image-encoder.')
 
     # Incompatible combinations
-    if control_net_uris and t2i_adapter_uris:
+    if controlnet_uris and t2i_adapter_uris:
         raise UnsupportedPipelineConfigError(
             '--control-nets and --t2i-adapters cannot be used together.')
 
@@ -1566,7 +1566,7 @@ def _create_torch_diffusion_pipeline(
     is_pix2pix = _enums.model_type_is_pix2pix(model_type)
 
     if is_pix2pix:
-        if control_net_uris:
+        if controlnet_uris:
             raise UnsupportedPipelineConfigError(
                 'Pix2Pix --model-type values are not compatible with --control-nets.')
         if t2i_adapter_uris:
@@ -1585,7 +1585,7 @@ def _create_torch_diffusion_pipeline(
 
     # Pipeline class selection
     if _enums.model_type_is_upscaler(model_type):
-        if control_net_uris:
+        if controlnet_uris:
             raise UnsupportedPipelineConfigError(
                 'Upscaler models are not compatible with --control-nets.')
         if t2i_adapter_uris:
@@ -1640,7 +1640,7 @@ def _create_torch_diffusion_pipeline(
             elif model_type == _enums.ModelType.TORCH_SD3:
                 pipeline_class = (
                     diffusers.StableDiffusion3Pipeline
-                    if not control_net_uris
+                    if not controlnet_uris
                     else diffusers.StableDiffusion3ControlNetPipeline
                 )
             elif t2i_adapter_uris:
@@ -1656,7 +1656,7 @@ def _create_torch_diffusion_pipeline(
                         {},
                     )
                 )
-            elif control_net_uris:
+            elif controlnet_uris:
                 pipeline_class = (
                     diffusers.StableDiffusionXLControlNetPipeline
                     if is_sdxl
@@ -1670,7 +1670,7 @@ def _create_torch_diffusion_pipeline(
                 )
 
         elif pipeline_type == _enums.PipelineType.IMG2IMG:
-            if control_net_uris:
+            if controlnet_uris:
                 if is_pix2pix:
                     raise UnsupportedPipelineConfigError(
                         'Pix2Pix models are not compatible with --control-nets.')
@@ -1693,7 +1693,7 @@ def _create_torch_diffusion_pipeline(
                 raise UnsupportedPipelineConfigError(
                     'Stable Cascade decoder models do not support img2img.')
             elif model_type == _enums.ModelType.TORCH_SD3:
-                if control_net_uris:
+                if controlnet_uris:
                     raise UnsupportedPipelineConfigError(
                         '--model-type torch-sd3 does not currently support img2img mode with ControlNet models.')
                 if lora_uris:
@@ -1703,7 +1703,7 @@ def _create_torch_diffusion_pipeline(
             elif t2i_adapter_uris:
                 raise UnsupportedPipelineConfigError(
                     'img2img mode is not supported with --t2i-adapters.')
-            elif control_net_uris:
+            elif controlnet_uris:
                 pipeline_class = (
                     diffusers.StableDiffusionXLControlNetImg2ImgPipeline
                     if is_sdxl
@@ -1734,7 +1734,7 @@ def _create_torch_diffusion_pipeline(
             elif t2i_adapter_uris:
                 raise UnsupportedPipelineConfigError(
                     'inpaint mode is not supported with --t2i-adapters.')
-            elif control_net_uris:
+            elif controlnet_uris:
                 pipeline_class = (
                     diffusers.StableDiffusionXLControlNetInpaintPipeline
                     if is_sdxl
@@ -1852,7 +1852,7 @@ def _create_torch_diffusion_pipeline(
 
     torch_dtype = _enums.get_torch_dtype(dtype)
 
-    parsed_control_net_uris = []
+    parsed_controlnet_uris = []
     parsed_t2i_adapter_uris = []
     parsed_image_encoder_uri = None
     parsed_unet_uri = None
@@ -1971,42 +1971,42 @@ def _create_torch_diffusion_pipeline(
         else:
             creation_kwargs['adapter'] = t2i_adapters
 
-    if control_net_uris and not controlnet_override:
+    if controlnet_uris and not controlnet_override:
 
-        control_nets = None
-        control_net_model_class = diffusers.ControlNetModel if not \
+        controlnets = None
+        controlnet_model_class = diffusers.ControlNetModel if not \
             _enums.model_type_is_sd3(model_type) else diffusers.SD3ControlNetModel
 
-        for control_net_uri in control_net_uris:
-            parsed_control_net_uri = _uris.TorchControlNetUri.parse(control_net_uri)
+        for controlnet_uri in controlnet_uris:
+            parsed_controlnet_uri = _uris.TorchControlNetUri.parse(controlnet_uri)
 
-            parsed_control_net_uris.append(parsed_control_net_uri)
+            parsed_controlnet_uris.append(parsed_controlnet_uri)
 
-            new_net = parsed_control_net_uri.load(
+            new_net = parsed_controlnet_uri.load(
                 use_auth_token=auth_token,
                 dtype_fallback=dtype,
                 local_files_only=local_files_only,
                 sequential_cpu_offload_member=sequential_cpu_offload,
                 model_cpu_offload_member=model_cpu_offload,
-                model_class=control_net_model_class)
+                model_class=controlnet_model_class)
 
             _messages.debug_log(lambda:
-                                f'Added Torch ControlNet: "{control_net_uri}" '
+                                f'Added Torch ControlNet: "{controlnet_uri}" '
                                 f'to pipeline: "{pipeline_class.__name__}"')
 
-            if control_nets is not None:
-                if not isinstance(control_nets, list):
-                    control_nets = [control_nets, new_net]
+            if controlnets is not None:
+                if not isinstance(controlnets, list):
+                    controlnets = [controlnets, new_net]
                 else:
-                    control_nets.append(new_net)
+                    controlnets.append(new_net)
             else:
-                control_nets = new_net
+                controlnets = new_net
 
-        if _enums.model_type_is_sd3(model_type) and isinstance(control_nets, list):
+        if _enums.model_type_is_sd3(model_type) and isinstance(controlnets, list):
             # not handled internally for whatever reason like the other pipelines
-            creation_kwargs['controlnet'] = diffusers.SD3MultiControlNetModel(control_nets)
+            creation_kwargs['controlnet'] = diffusers.SD3MultiControlNetModel(controlnets)
         else:
-            creation_kwargs['controlnet'] = control_nets
+            creation_kwargs['controlnet'] = controlnets
 
     if _enums.model_type_is_floyd(model_type):
         creation_kwargs['watermarker'] = None
@@ -2148,7 +2148,7 @@ def _create_torch_diffusion_pipeline(
         parsed_image_encoder_uri=parsed_image_encoder_uri,
         parsed_ip_adapter_uris=parsed_ip_adapter_uris,
         parsed_textual_inversion_uris=parsed_textual_inversion_uris,
-        parsed_control_net_uris=parsed_control_net_uris,
+        parsed_controlnet_uris=parsed_controlnet_uris,
         parsed_t2i_adapter_uris=parsed_t2i_adapter_uris
     )
 
@@ -2186,12 +2186,12 @@ class FlaxPipelineCreationResult(PipelineCreationResult):
     Flax specific VAE params object
     """
 
-    parsed_control_net_uris: collections.abc.Sequence[_uris.FlaxControlNetUri]
+    parsed_controlnet_uris: collections.abc.Sequence[_uris.FlaxControlNetUri]
     """
     Parsed ControlNet URIs if any were present
     """
 
-    flax_control_net_params: dict[str, typing.Any] | None
+    flax_controlnet_params: dict[str, typing.Any] | None
     """
     Flax specific ControlNet params object
     """
@@ -2203,17 +2203,17 @@ class FlaxPipelineCreationResult(PipelineCreationResult):
                  flax_unet_params: dict[str, typing.Any] | None,
                  parsed_vae_uri: _uris.FlaxVAEUri | None,
                  flax_vae_params: dict[str, typing.Any] | None,
-                 parsed_control_net_uris: collections.abc.Sequence[_uris.FlaxControlNetUri],
-                 flax_control_net_params: dict[str, typing.Any] | None):
+                 parsed_controlnet_uris: collections.abc.Sequence[_uris.FlaxControlNetUri],
+                 flax_controlnet_params: dict[str, typing.Any] | None):
         super().__init__(pipeline)
 
         self.flax_params = flax_params
-        self.parsed_control_net_uris = parsed_control_net_uris
+        self.parsed_controlnet_uris = parsed_controlnet_uris
         self.parsed_unet_uri = parsed_unet_uri
         self.flax_unet_params = flax_unet_params
         self.parsed_vae_uri = parsed_vae_uri
         self.flax_vae_params = flax_vae_params
-        self.flax_control_net_params = flax_control_net_params
+        self.flax_controlnet_params = flax_controlnet_params
 
     def call(self,
              prompt_weighter: _promptweighters.PromptWeighter | None = None,
@@ -2236,7 +2236,7 @@ def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                                    dtype: _enums.DataType = _enums.DataType.AUTO,
                                    unet_uri: _types.OptionalUri = None,
                                    vae_uri: _types.OptionalUri = None,
-                                   control_net_uris: _types.OptionalUris = None,
+                                   controlnet_uris: _types.OptionalUris = None,
                                    text_encoder_uris: _types.OptionalUris = None,
                                    scheduler: _types.OptionalString = None,
                                    safety_checker: bool = False,
@@ -2255,7 +2255,7 @@ def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     :param dtype: Optional :py:class:`dgenerate.pipelinewrapper.DataType` enum value
     :param unet_uri: Optional Flax specific ``--unet`` URI string for specifying a specific UNet
     :param vae_uri: Optional Flax specific ``--vae`` URI string for specifying a specific VAE
-    :param control_net_uris: Optional ``--control-nets`` URI strings for specifying ControlNet models
+    :param controlnet_uris: Optional ``--control-nets`` URI strings for specifying ControlNet models
     :param text_encoder_uris: Optional user specified ``--text-encoders`` URIs that will be loaded on to the
         pipeline in order. A uri value of ``+`` or ``None`` indicates use default, a string value of ``null``
         indicates to explicitly not load any encoder all
@@ -2300,7 +2300,7 @@ class FlaxPipelineFactory:
                  dtype: _enums.DataType = _enums.DataType.AUTO,
                  unet_uri: _types.OptionalUri = None,
                  vae_uri: _types.OptionalUri = None,
-                 control_net_uris: _types.OptionalUris = None,
+                 controlnet_uris: _types.OptionalUris = None,
                  text_encoder_uris: _types.OptionalUris = None,
                  scheduler: _types.OptionalString = None,
                  safety_checker: bool = False,
@@ -2336,7 +2336,7 @@ def _flax_args_hasher(args):
 
     custom_hashes = {'unet_uri': _cache.uri_hash_with_parser(_uris.FlaxUNetUri.parse),
                      'vae_uri': _cache.uri_hash_with_parser(_uris.FlaxVAEUri.parse),
-                     'control_net_uris': _cache.uri_list_hash_with_parser(_uris.FlaxControlNetUri.parse),
+                     'controlnet_uris': _cache.uri_list_hash_with_parser(_uris.FlaxControlNetUri.parse),
                      'text_encoder_uris': _cache.uri_list_hash_with_parser(text_encoder_uri_parse)}
     return _d_memoize.args_cache_key(args, custom_hashes=custom_hashes)
 
@@ -2363,7 +2363,7 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
                                     unet_uri: _types.OptionalUri = None,
                                     vae_uri: _types.OptionalUri = None,
                                     text_encoder_uris: _types.OptionalUris = None,
-                                    control_net_uris: _types.OptionalUris = None,
+                                    controlnet_uris: _types.OptionalUris = None,
                                     scheduler: _types.OptionalString = None,
                                     safety_checker: bool = False,
                                     auth_token: _types.OptionalString = None,
@@ -2372,24 +2372,24 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     if not _enums.model_type_is_flax(model_type):
         raise ValueError('model_type must be a FLAX ModelType enum value.')
 
-    has_control_nets = False
-    if control_net_uris:
-        if len(control_net_uris) > 1:
+    has_controlnets = False
+    if controlnet_uris:
+        if len(controlnet_uris) > 1:
             raise UnsupportedPipelineConfigError('Flax does not support multiple --control-nets.')
-        if len(control_net_uris) == 1:
-            has_control_nets = True
+        if len(controlnet_uris) == 1:
+            has_controlnets = True
 
     if pipeline_type == _enums.PipelineType.TXT2IMG:
-        if has_control_nets:
+        if has_controlnets:
             pipeline_class = diffusers.FlaxStableDiffusionControlNetPipeline
         else:
             pipeline_class = diffusers.FlaxStableDiffusionPipeline
     elif pipeline_type == _enums.PipelineType.IMG2IMG:
-        if has_control_nets:
+        if has_controlnets:
             raise UnsupportedPipelineConfigError('Flax does not support img2img mode with --control-nets.')
         pipeline_class = diffusers.FlaxStableDiffusionImg2ImgPipeline
     elif pipeline_type == _enums.PipelineType.INPAINT:
-        if has_control_nets:
+        if has_controlnets:
             raise UnsupportedPipelineConfigError('Flax does not support inpaint mode with --control-nets.')
         pipeline_class = diffusers.FlaxStableDiffusionInpaintPipeline
     else:
@@ -2473,14 +2473,14 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     creation_kwargs = {}
     unet_params = None
     vae_params = None
-    control_net_params = None
+    controlnet_params = None
     text_encoder_params = None
     text_encoder_2_params = None
     text_encoder_3_params = None
 
     flax_dtype = _enums.get_flax_dtype(dtype)
 
-    parsed_control_net_uris = []
+    parsed_controlnet_uris = []
     parsed_flax_vae_uri = None
     parsed_flax_unet_uri = None
 
@@ -2528,23 +2528,23 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             _messages.debug_log(lambda:
                                 f'Added Flax UNet: "{unet_uri}" to pipeline: "{pipeline_class.__name__}"')
 
-    if control_net_uris and not controlnet_override:
-        control_net_uri = control_net_uris[0]
+    if controlnet_uris and not controlnet_override:
+        controlnet_uri = controlnet_uris[0]
 
-        parsed_flax_control_net_uri = _uris.FlaxControlNetUri.parse(control_net_uri)
+        parsed_flax_controlnet_uri = _uris.FlaxControlNetUri.parse(controlnet_uri)
 
-        parsed_control_net_uris.append(parsed_flax_control_net_uri)
+        parsed_controlnet_uris.append(parsed_flax_controlnet_uri)
 
-        control_net, control_net_params = parsed_flax_control_net_uri \
+        controlnet, controlnet_params = parsed_flax_controlnet_uri \
             .load(use_auth_token=auth_token,
                   dtype_fallback=dtype,
                   local_files_only=local_files_only)
 
         _messages.debug_log(lambda:
-                            f'Added Flax ControlNet: "{control_net_uri}" '
+                            f'Added Flax ControlNet: "{controlnet_uri}" '
                             f'to pipeline: "{pipeline_class.__name__}"')
 
-        creation_kwargs['controlnet'] = control_net
+        creation_kwargs['controlnet'] = controlnet
 
     creation_kwargs.update(extra_modules)
 
@@ -2595,8 +2595,8 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     if vae_params is not None:
         params['vae'] = vae_params
 
-    if control_net_params is not None:
-        params['controlnet'] = control_net_params
+    if controlnet_params is not None:
+        params['controlnet'] = controlnet_params
 
     if text_encoder_params is not None:
         params['text_encoder'] = text_encoder_params
@@ -2627,8 +2627,9 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         flax_unet_params=unet_params,
         parsed_vae_uri=parsed_flax_vae_uri,
         flax_vae_params=vae_params,
-        parsed_control_net_uris=parsed_control_net_uris,
-        flax_control_net_params=control_net_params
+        parsed_controlnet_uris=parsed_controlnet_uris,
+        flax_controlnet_params=controlnet_params
     )
+
 
 __all__ = _types.module_all()

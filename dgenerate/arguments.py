@@ -823,8 +823,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         image_guidance_group.add_argument(
             '-cn', '--control-nets', nargs='+', action='store', default=None,
-            metavar="CONTROL_NET_URI",
-            dest='control_net_uris',
+            metavar="CONTROLNET_URI",
+            dest='controlnet_uris',
             help=
             f"""Specify one or more ControlNet models using URIs. This should be a
                             huggingface repository slug / blob link, path to model file on disk 
@@ -1729,9 +1729,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                                     cache considering current memory usage, and estimated memory usage of new ControlNet models that 
                                     are about to enter memory. If any of these constraint expressions are met all ControlNet
                                     models cached in memory will be cleared. Example, and default 
-                                    value: {' '.join(_textprocessing.quote_spaces(_pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS))}"""
+                                    value: {' '.join(_textprocessing.quote_spaces(_pipelinewrapper.CONTROLNET_CACHE_MEMORY_CONSTRAINTS))}"""
                                  f' For Syntax See: [https://dgenerate.readthedocs.io/en/v{dgenerate.__version__}/'
-                                 f'dgenerate_submodules.html#dgenerate.pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS]'))
+                                 f'dgenerate_submodules.html#dgenerate.pipelinewrapper.CONTROLNET_CACHE_MEMORY_CONSTRAINTS]'))
 
     actions.append(
         parser.add_argument('-tmc', '--text-encoder-cache-memory-constraints', action='store', nargs='+',
@@ -1844,9 +1844,9 @@ class DgenerateArguments(dgenerate.RenderLoopConfig):
     See: :py:attr:`dgenerate.pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS`
     """
 
-    control_net_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
+    controlnet_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
     """
-    See: :py:attr:`dgenerate.pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS`
+    See: :py:attr:`dgenerate.pipelinewrapper.CONTROLNET_CACHE_MEMORY_CONSTRAINTS`
     """
 
     adapter_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None

@@ -33,10 +33,10 @@ import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 
-_torch_control_net_uri_parser = _textprocessing.ConceptUriParser('ControlNet',
-                                                                 ['scale', 'start', 'end', 'revision', 'variant',
-                                                                  'subfolder',
-                                                                  'dtype'])
+_torch_controlnet_uri_parser = _textprocessing.ConceptUriParser('ControlNet',
+                                                                ['scale', 'start', 'end', 'revision', 'variant',
+                                                                 'subfolder',
+                                                                 'dtype'])
 
 
 class TorchControlNetUri:
@@ -187,7 +187,7 @@ class TorchControlNetUri:
             raise _exceptions.ControlNetUriLoadError(
                 f'error loading controlnet "{self.model}": {e}')
 
-    @_memoize(_cache._TORCH_CONTROL_NET_CACHE,
+    @_memoize(_cache._TORCH_CONTROLNET_CACHE,
               exceptions={'local_files_only'},
               hasher=lambda args: _d_memoize.args_cache_key(
                   args, {'self': lambda o: _d_memoize.struct_hasher(
@@ -223,8 +223,8 @@ class TorchControlNetUri:
                 local_files_only=local_files_only
             )
 
-            _cache.enforce_control_net_cache_constraints(
-                new_control_net_size=estimated_memory_usage)
+            _cache.enforce_controlnet_cache_constraints(
+                new_controlnet_size=estimated_memory_usage)
 
             new_net = model_class.from_single_file(
                 model_path,
@@ -243,8 +243,8 @@ class TorchControlNetUri:
                 local_files_only=local_files_only
             )
 
-            _cache.enforce_control_net_cache_constraints(
-                new_control_net_size=estimated_memory_usage)
+            _cache.enforce_controlnet_cache_constraints(
+                new_controlnet_size=estimated_memory_usage)
 
             new_net = model_class.from_pretrained(
                 model_path,
@@ -276,7 +276,7 @@ class TorchControlNetUri:
         :return: :py:class:`.TorchControlNetUri`
         """
         try:
-            r = _torch_control_net_uri_parser.parse(uri)
+            r = _torch_controlnet_uri_parser.parse(uri)
 
             dtype = r.args.get('dtype')
             scale = r.args.get('scale', 1.0)

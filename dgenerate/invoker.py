@@ -21,7 +21,6 @@
 import collections.abc
 import typing
 
-
 import dgenerate.exceptions as _d_exceptions
 import dgenerate.arguments as _arguments
 import dgenerate.events as _event
@@ -355,17 +354,17 @@ def invoke_dgenerate_events(
         return
 
     cache_memory_constraints = {
-            "cache_memory_constraints": "_pipelinewrapper.CACHE_MEMORY_CONSTRAINTS",
-            "pipeline_cache_memory_constraints": "_pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS",
-            "unet_cache_memory_constraints": "_pipelinewrapper.UNET_CACHE_MEMORY_CONSTRAINTS",
-            "vae_cache_memory_constraints": "_pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS",
-            "control_net_cache_memory_constraints": "_pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS",
-            "adapter_cache_memory_constraints": "_pipelinewrapper.ADAPTER_CACHE_MEMORY_CONSTRAINTS",
-            "text_encoder_cache_memory_constraints": "_pipelinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS",
-            "image_encoder_cache_memory_constraints": "_pipelinewrapper.IMAGE_ENCODER_CACHE_MEMORY_CONSTRAINTS",
-            "image_processor_memory_constraints": "_imageprocessors.IMAGE_PROCESSOR_MEMORY_CONSTRAINTS",
-            "image_processor_cuda_memory_constraints": "_imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS"
-        }
+        "cache_memory_constraints": "_pipelinewrapper.CACHE_MEMORY_CONSTRAINTS",
+        "pipeline_cache_memory_constraints": "_pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS",
+        "unet_cache_memory_constraints": "_pipelinewrapper.UNET_CACHE_MEMORY_CONSTRAINTS",
+        "vae_cache_memory_constraints": "_pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS",
+        "controlnet_cache_memory_constraints": "_pipelinewrapper.CONTROLNET_CACHE_MEMORY_CONSTRAINTS",
+        "adapter_cache_memory_constraints": "_pipelinewrapper.ADAPTER_CACHE_MEMORY_CONSTRAINTS",
+        "text_encoder_cache_memory_constraints": "_pipelinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS",
+        "image_encoder_cache_memory_constraints": "_pipelinewrapper.IMAGE_ENCODER_CACHE_MEMORY_CONSTRAINTS",
+        "image_processor_memory_constraints": "_imageprocessors.IMAGE_PROCESSOR_MEMORY_CONSTRAINTS",
+        "image_processor_cuda_memory_constraints": "_imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS"
+    }
 
     try:
         for arg_name, global_var in cache_memory_constraints.items():

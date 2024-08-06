@@ -30,7 +30,7 @@ from .cache import (
     PIPELINE_CACHE_MEMORY_CONSTRAINTS,
     VAE_CACHE_MEMORY_CONSTRAINTS,
     UNET_CACHE_MEMORY_CONSTRAINTS,
-    CONTROL_NET_CACHE_MEMORY_CONSTRAINTS,
+    CONTROLNET_CACHE_MEMORY_CONSTRAINTS,
     TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS,
     ADAPTER_CACHE_MEMORY_CONSTRAINTS,
     IMAGE_ENCODER_CACHE_MEMORY_CONSTRAINTS
@@ -43,7 +43,7 @@ from .cache import (
     clear_text_encoder_cache,
     clear_model_cache,
     clear_pipeline_cache,
-    clear_control_net_cache,
+    clear_controlnet_cache,
     clear_adapter_cache,
     clear_image_encoder_cache
 )
@@ -54,7 +54,7 @@ from .cache import (
     unet_cache_size,
     text_encoder_cache_size,
     pipeline_cache_size,
-    control_net_cache_size,
+    controlnet_cache_size,
     adapter_cache_size,
     image_encoder_cache_size
 )
@@ -65,7 +65,7 @@ from .cache import (
     enforce_pipeline_cache_constraints,
     enforce_vae_cache_constraints,
     enforce_unet_cache_constraints,
-    enforce_control_net_cache_constraints,
+    enforce_controlnet_cache_constraints,
     enforce_adapter_cache_constraints,
     enforce_text_encoder_cache_constraints,
     enforce_image_encoder_cache_constraints

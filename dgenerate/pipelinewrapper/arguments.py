@@ -55,7 +55,7 @@ class DiffusionArguments(_types.SetFromMixin):
 
     control_images: _types.Images | None = None
     """
-    ControlNet guidance images to use if ``control_net_uris`` were given to the 
+    ControlNet guidance images to use if ``controlnet_uris`` were given to the 
     constructor of :py:class:`.DiffusionPipelineWrapper`.
     
     All input images involved in a generation must match in dimension and be aligned by 8 pixels.
@@ -392,7 +392,7 @@ class DiffusionArguments(_types.SetFromMixin):
     """
     Number of layers to be skipped from CLIP while computing the prompt embeddings. A value of 1 means that
     the output of the pre-final layer will be used for computing the prompt embeddings. Only supported for 
-    ``model_type`` values ``torch`` and ``torch-sdxl``, including with ``control_net_uris`` defined.
+    ``model_type`` values ``torch`` and ``torch-sdxl``, including with ``controlnet_uris`` defined.
     """
 
     sdxl_refiner_clip_skip: _types.OptionalInteger = None

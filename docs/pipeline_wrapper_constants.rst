@@ -45,17 +45,17 @@
     Extra variables include: ``cache_size`` (the current estimated cache size in bytes),
     and ``vae_size`` (the estimated size of the new VAE before it is brought into memory, in bytes)
 
-.. data:: CONTROL_NET_CACHE_MEMORY_CONSTRAINTS
-    :annotation: = ['control_net_size > (available * 0.75)']
+.. data:: CONTROLNET_CACHE_MEMORY_CONSTRAINTS
+    :annotation: = ['controlnet_size > (available * 0.75)']
 
     Cache constraint expressions for when to clear the ControlNet cache,
     syntax provided via :py:func:`dgenerate.memory.memory_constraints`
 
-    If any of these constraints are met, a call to :py:func:`.enforce_control_net_cache_constraints` will call
-    :py:func:`.clear_control_net_cache` and force a garbage collection.
+    If any of these constraints are met, a call to :py:func:`.enforce_controlnet_cache_constraints` will call
+    :py:func:`.clear_controlnet_cache` and force a garbage collection.
 
     Extra variables include: ``cache_size`` (the current estimated cache size in bytes),
-    and ``control_net_size`` (the estimated size of the new ControlNet before it is brought into memory, in bytes)
+    and ``controlnet_size`` (the estimated size of the new ControlNet before it is brought into memory, in bytes)
 
 .. data:: ADAPTER_CACHE_MEMORY_CONSTRAINTS
     :annotation: = ['adapter_size > (available * 0.75)']

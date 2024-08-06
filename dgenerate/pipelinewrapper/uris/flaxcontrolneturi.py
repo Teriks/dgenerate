@@ -35,9 +35,9 @@ import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 
-_flax_control_net_uri_parser = _textprocessing.ConceptUriParser('ControlNet',
-                                                                ['scale', 'revision', 'subfolder', 'dtype',
-                                                                 'from_torch'])
+_flax_controlnet_uri_parser = _textprocessing.ConceptUriParser('ControlNet',
+                                                               ['scale', 'revision', 'subfolder', 'dtype',
+                                                                'from_torch'])
 
 
 class FlaxControlNetUri:
@@ -139,7 +139,7 @@ class FlaxControlNetUri:
 
         :raises ModelNotFoundError: If the model could not be found.
 
-        :return: tuple (:py:class:`diffusers.FlaxControlNetModel`, flax_control_net_params)
+        :return: tuple (:py:class:`diffusers.FlaxControlNetModel`, flax_controlnet_params)
         """
         try:
             return self._load(dtype_fallback, use_auth_token, local_files_only)
@@ -150,7 +150,7 @@ class FlaxControlNetUri:
             raise _exceptions.ControlNetUriLoadError(
                 f'error loading controlnet "{self.model}": {e}')
 
-    @_memoize(_cache._FLAX_CONTROL_NET_CACHE,
+    @_memoize(_cache._FLAX_CONTROLNET_CACHE,
               exceptions={'local_files_only'},
               hasher=lambda args: _d_memoize.args_cache_key(
                   args, {'self': lambda o: _d_memoize.struct_hasher(
@@ -171,8 +171,8 @@ class FlaxControlNetUri:
             local_files_only=local_files_only
         )
 
-        _cache.enforce_control_net_cache_constraints(
-            new_control_net_size=estimated_memory_usage)
+        _cache.enforce_controlnet_cache_constraints(
+            new_controlnet_size=estimated_memory_usage)
 
         flax_dtype = _enums.get_flax_dtype(
             dtype_fallback if self.dtype is None else self.dtype)
@@ -207,7 +207,7 @@ class FlaxControlNetUri:
         :return: :py:class:`.FlaxControlNetPath`
         """
         try:
-            r = _flax_control_net_uri_parser.parse(uri)
+            r = _flax_controlnet_uri_parser.parse(uri)
 
             dtype = r.args.get('dtype')
             scale = r.args.get('scale', 1.0)
