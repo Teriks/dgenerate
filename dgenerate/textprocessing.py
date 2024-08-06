@@ -1313,26 +1313,28 @@ def remove_tail_comments(string) -> tuple[bool, str]:
 def format_image_seed_uri(seed_image: str | None,
                           inpaint_image: str | None = None,
                           control_images: str | None = None,
+                          adapter_images: list[str] | None = None,
+                          floyd_image: str | None = None,
                           resize: str | tuple[int | str, int | str] | None = None,
                           aspect: bool = True,
                           frame_start: int | None = None,
                           frame_end: int | None = None) -> str:
     """
-    Formats a dgenerate ``--image-seeds`` URI to its shortest possible string form.
-
-    A control image / images specifier can be specified alone.
-
-    An inpaint image must have an accompanying seed image.
+    Formats a ``--image-seeds`` URI to its shortest possible string form.
 
     :raise ValueError: if ``inpaint_image`` is specified without ``seed_image``.
                        if keyword arguments are present without ``seed_image`` or ``control_images``.
                        if ``frame_start`` or ``frame_end`` are negative values.
                        if ``frame_start`` is greater than ``frame_end``.
+                       if ``adapter_images`` are used with ``floyd_image``.
+                       if both ``control_images`` and ``floyd_image`` are specified.
 
     :param seed_image: Seed image path
     :param inpaint_image: Inpaint image path
     :param control_images: Single control image path, or a paths string with
         multiple paths separated by the ``,`` character.
+    :param adapter_images: List of adapter image paths
+    :param floyd_image: Path to a Floyd image
     :param resize: Optional resize dimension (WxH string)
     :param aspect: Preserve aspect ratio?
     :param frame_start: Optional frame start index
@@ -1389,6 +1391,12 @@ def format_image_seed_uri(seed_image: str | None,
         seed_image = control_images
         control_images = None
 
+    if adapter_images and floyd_image:
+        raise ValueError('adapter_images cannot be specified with floyd_image.')
+
+    if control_images and floyd_image:
+        raise ValueError('control_images cannot be specified with floyd_image.')
+
     # case 1: Only image seed provided
     if seed_image and not inpaint_image and not control_images:
         components.append(seed_image)
@@ -1423,6 +1431,22 @@ def format_image_seed_uri(seed_image: str | None,
         add_component_if_valid(control_images, "control")
         if resize:
             add_component_if_valid(resize, "resize")
+
+    # case 5: Adapter images only
+    elif adapter_images and not seed_image and not inpaint_image:
+        adapter_str = 'adapter:' + ' + '.join(adapter_images)
+        components.append(adapter_str)
+
+    # case 6: Seed image with adapter images
+    elif seed_image and adapter_images:
+        components.append(seed_image)
+        adapter_str = 'adapter=' + ' + '.join(adapter_images)
+        add_component_if_valid(adapter_str)
+
+    # case 7: Floyd image with seed image or inpaint image
+    elif floyd_image and (seed_image or inpaint_image):
+        components.append(seed_image or inpaint_image)
+        add_component_if_valid(floyd_image, "floyd")
 
     # handle aspect ratio setting if applicable (only add if aspect=False)
     if aspect is False:

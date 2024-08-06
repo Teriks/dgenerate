@@ -1,5 +1,4 @@
 import unittest
-
 from dgenerate.textprocessing import format_image_seed_uri
 
 
@@ -149,6 +148,31 @@ class TestFormatImageSeedURI(unittest.TestCase):
     def test_frame_end_without_frame_start(self):
         result = format_image_seed_uri(seed_image="seed.png", frame_end=10)
         self.assertEqual(result, "seed.png;frame-end=10")
+
+    # New tests for adapter and floyd images
+    def test_adapter_images_only(self):
+        result = format_image_seed_uri(seed_image=None, adapter_images=["adapter1.png", "adapter2.png"])
+        self.assertEqual(result, "adapter:adapter1.png + adapter2.png")
+
+    def test_seed_with_adapter_images(self):
+        result = format_image_seed_uri(seed_image="seed.png", adapter_images=["adapter1.png", "adapter2.png"])
+        self.assertEqual(result, "seed.png;adapter=adapter1.png + adapter2.png")
+
+    def test_floyd_image_with_seed(self):
+        result = format_image_seed_uri(seed_image="seed.png", floyd_image="floyd.png")
+        self.assertEqual(result, "seed.png;floyd=floyd.png")
+
+    def test_floyd_image_with_inpaint(self):
+        result = format_image_seed_uri(inpaint_image="inpaint.png", floyd_image="floyd.png")
+        self.assertEqual(result, "inpaint.png;floyd=floyd.png")
+
+    def test_floyd_and_control_image_conflict(self):
+        with self.assertRaises(ValueError):
+            format_image_seed_uri(seed_image="seed.png", floyd_image="floyd.png", control_images="control.png")
+
+    def test_adapter_and_floyd_image_conflict(self):
+        with self.assertRaises(ValueError):
+            format_image_seed_uri(seed_image="seed.png", adapter_images=["adapter1.png"], floyd_image="floyd.png")
 
 
 if __name__ == '__main__':
