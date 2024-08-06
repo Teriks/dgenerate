@@ -4341,8 +4341,7 @@ Diffusion Pipelines, user specified UNets, VAEs, Text Encoders, Image Encoders, 
 and IP Adapter models are cached individually.
 
 All user specifiable model objects can be reused by diffusion pipelines in certain
-situations when specified explicitly and this is taken advantage of by using an in
-memory cache of these objects.
+situations and this is taken advantage of by using an in memory cache of these objects.
 
 In effect, the creation of a diffusion pipeline is memoized, as well as the creation of
 any pipeline subcomponents when you have specified them explicitly with a URI.
