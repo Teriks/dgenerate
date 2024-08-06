@@ -1747,6 +1747,19 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                                  f'dgenerate_submodules.html#dgenerate.pipelinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS]'))
 
     actions.append(
+        parser.add_argument('-iemc', '--image-encoder-cache-memory-constraints', action='store', nargs='+',
+                            default=None,
+                            type=_type_expression,
+                            metavar="EXPR",
+                            help=f"""Cache constraint expressions describing when to automatically clear the in memory Image Encoder
+                                    cache considering current memory usage, and estimated memory usage of new Image Encoder models that 
+                                    are about to enter memory. If any of these constraint expressions are met all Image Encoder
+                                    models cached in memory will be cleared. Example, and default 
+                                    value: {' '.join(_textprocessing.quote_spaces(_pipelinewrapper.IMAGE_ENCODER_CACHE_MEMORY_CONSTRAINTS))}"""
+                                 f' For Syntax See: [https://dgenerate.readthedocs.io/en/v{dgenerate.__version__}/'
+                                 f'dgenerate_submodules.html#dgenerate.pipelinewrapper.IMAGE_ENCODER_CACHE_MEMORY_CONSTRAINTS]'))
+
+    actions.append(
         parser.add_argument('-amc', '--adapter-cache-memory-constraints', action='store', nargs='+',
                             default=None,
                             type=_type_expression,
@@ -1760,7 +1773,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                                  f'dgenerate_submodules.html#dgenerate.pipelinewrapper.ADAPTER_CACHE_MEMORY_CONSTRAINTS]'))
 
     actions.append(
-        parser.add_argument('-imc', '--image-processor-memory-constraints', action='store', nargs='+',
+        parser.add_argument('-ipmc', '--image-processor-memory-constraints', action='store', nargs='+',
                             default=None,
                             type=_type_expression,
                             metavar="EXPR",
@@ -1773,7 +1786,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                                  f'dgenerate_submodules.html#dgenerate.imageprocessors.IMAGE_PROCESSOR_MEMORY_CONSTRAINTS]'))
 
     actions.append(
-        parser.add_argument('-icc', '--image-processor-cuda-memory-constraints', action='store', nargs='+',
+        parser.add_argument('-ipcc', '--image-processor-cuda-memory-constraints', action='store', nargs='+',
                             default=None,
                             type=_type_expression,
                             metavar="EXPR",
@@ -1844,6 +1857,11 @@ class DgenerateArguments(dgenerate.RenderLoopConfig):
     text_encoder_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
     """
     See: :py:attr:`dgenerate.pipelinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS`
+    """
+
+    image_encoder_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
+    """
+    See: :py:attr:`dgenerate.pipelinewrapper.IMAGE_ENCODER_CACHE_MEMORY_CONSTRAINTS`
     """
 
     image_processor_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
