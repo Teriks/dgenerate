@@ -1090,6 +1090,7 @@ class PipelineCreationResult:
             * ``tokenizer_3``
             * ``safety_checker``
             * ``feature_extractor``
+            * ``image_encoder``
             * ``adapter``
             * ``controlnet``
             * ``scheduler``
@@ -1118,6 +1119,7 @@ class PipelineCreationResult:
             'tokenizer_3',
             'safety_checker',
             'feature_extractor',
+            'image_encoder',
             'adapter',
             'controlnet',
             'scheduler'
@@ -1421,8 +1423,8 @@ def _torch_args_hasher(args):
     custom_hashes = {
         'unet_uri': _cache.uri_hash_with_parser(_uris.TorchUNetUri.parse),
         'vae_uri': _cache.uri_hash_with_parser(_uris.TorchVAEUri.parse),
-        'lora_uris': _cache.uri_list_hash_with_parser(_uris.LoRAUri.parse),
         'image_encoder_uri': _cache.uri_hash_with_parser(_uris.ImageEncoderUri),
+        'lora_uris': _cache.uri_list_hash_with_parser(_uris.LoRAUri.parse),
         'ip_adapter_uris': _cache.uri_list_hash_with_parser(_uris.IPAdapterUri),
         'textual_inversion_uris': _cache.uri_list_hash_with_parser(_uris.TextualInversionUri.parse),
         'text_encoder_uris': _cache.uri_list_hash_with_parser(text_encoder_uri_parse),
@@ -1534,7 +1536,7 @@ def _create_torch_diffusion_pipeline(
                 'Stable Cascade --model-type values are not compatible with --vae.')
 
     # Torch SD3 restrictions
-    if model_type == _enums.ModelType.TORCH_SD3:
+    if _enums.model_type_is_sd3(model_type):
         if t2i_adapter_uris:
             raise UnsupportedPipelineConfigError(
                 '--model-type torch-sd3 is not compatible with --t2i-adapters.')
@@ -1592,6 +1594,9 @@ def _create_torch_diffusion_pipeline(
         if ip_adapter_uris:
             raise UnsupportedPipelineConfigError(
                 'Upscaler models are not compatible with --ip-adapters.')
+        if image_encoder_uri:
+            raise UnsupportedPipelineConfigError(
+                'Upscaler models are not compatible with --image-encoder.')
         if pipeline_type != _enums.PipelineType.IMG2IMG and not scheduler_is_help(scheduler):
             raise UnsupportedPipelineConfigError(
                 'Upscaler models only work with img2img generation, IE: --image-seeds (with no image masks).')
@@ -2625,6 +2630,5 @@ def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
         parsed_control_net_uris=parsed_control_net_uris,
         flax_control_net_params=control_net_params
     )
-
 
 __all__ = _types.module_all()
