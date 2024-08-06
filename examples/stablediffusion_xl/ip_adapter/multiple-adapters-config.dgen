@@ -35,7 +35,7 @@ stabilityai/stable-diffusion-xl-base-1.0
 --sdxl-high-noise-fractions 0.8
 --clip-skips 0
 --gen-seeds 1
---output-path output
+--output-path multiple-adapters
 --model-cpu-offload
 --output-size 1024
 --image-encoder h94/IP-Adapter;subfolder="models/image_encoder"

@@ -1369,6 +1369,12 @@ def format_image_seed_uri(seed_image: str | None,
     if frame_start is not None and frame_end is not None and frame_start > frame_end:
         raise ValueError('frame_start cannot be greater than frame_end.')
 
+    if adapter_images and floyd_image:
+        raise ValueError('adapter_images cannot be specified with floyd_image.')
+
+    if control_images and floyd_image:
+        raise ValueError('control_images cannot be specified with floyd_image.')
+
     if resize is not None:
         if isinstance(resize, str):
             resize = resize.strip()
@@ -1390,12 +1396,6 @@ def format_image_seed_uri(seed_image: str | None,
         # we can specify a control image alone
         seed_image = control_images
         control_images = None
-
-    if adapter_images and floyd_image:
-        raise ValueError('adapter_images cannot be specified with floyd_image.')
-
-    if control_images and floyd_image:
-        raise ValueError('control_images cannot be specified with floyd_image.')
 
     # case 1: Only image seed provided
     if seed_image and not inpaint_image and not control_images:

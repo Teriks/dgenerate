@@ -193,7 +193,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     List of clip skip values. Clip skip is the number of layers to be skipped from CLIP while computing the 
     prompt embeddings. A value of 1 means that the output of the pre-final layer will be used for computing 
     the prompt embeddings. Only supported for ``model_type`` values ``torch`` and ``torch-sdxl``, including with 
-    ``control_net_uris`` defined.
+    ``controlnet_uris`` defined.
     """
 
     sdxl_refiner_clip_skips: _types.OptionalIntegers = None
@@ -459,7 +459,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     refiner or Stable Cascade decoder.
     """
 
-    control_net_uris: _types.OptionalUris = None
+    controlnet_uris: _types.OptionalUris = None
     """
     Optional user specified ControlNet URIs, this corresponds to the ``--control-nets`` argument
     of the dgenerate command line tool.
@@ -778,9 +778,9 @@ class RenderLoopConfig(_types.SetFromMixin):
             if self.textual_inversion_uris is not None:
                 raise RenderLoopConfigError(
                     f'Deep Floyd model types do not support {a_namer("textual_inversion_uris")}.')
-            if self.control_net_uris is not None:
+            if self.controlnet_uris is not None:
                 raise RenderLoopConfigError(
-                    f'Deep Floyd model types do not support {a_namer("control_net_uris")}.')
+                    f'Deep Floyd model types do not support {a_namer("controlnet_uris")}.')
             if self.t2i_adapter_uris is not None:
                 raise RenderLoopConfigError(
                     f'Deep Floyd model types do not support {a_namer("t2i_adapter_uris")}.')
@@ -826,9 +826,9 @@ class RenderLoopConfig(_types.SetFromMixin):
                 self.s_cascade_decoder_inference_steps = [
                     _pipelinewrapper.DEFAULT_S_CASCADE_DECODER_INFERENCE_STEPS]
 
-            if self.control_net_uris is not None:
+            if self.controlnet_uris is not None:
                 raise RenderLoopConfigError(
-                    f'Stable Cascade does not currently support the use of {a_namer("control_net_uris")}.')
+                    f'Stable Cascade does not currently support the use of {a_namer("controlnet_uris")}.')
 
             if self.t2i_adapter_uris is not None:
                 raise RenderLoopConfigError(
@@ -971,9 +971,9 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(
                     f'{a_namer("seeds_to_images")} cannot be specified without {a_namer("image_seeds")}.')
 
-            if self.control_net_uris:
+            if self.controlnet_uris:
                 raise RenderLoopConfigError(
-                    f'you cannot specify {a_namer("control_net_uris")} without {a_namer("image_seeds")}.')
+                    f'you cannot specify {a_namer("controlnet_uris")} without {a_namer("image_seeds")}.')
 
             if self.t2i_adapter_uris:
                 raise RenderLoopConfigError(
@@ -996,9 +996,9 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(
                     f'you cannot specify {a_namer("upscaler_noise_levels")} for a '
                     f'non upscaler model type, see: {a_namer("model_type")}.')
-        elif self.control_net_uris:
+        elif self.controlnet_uris:
             raise RenderLoopConfigError(
-                f'{a_namer("control_net_uris")} is not compatible '
+                f'{a_namer("controlnet_uris")} is not compatible '
                 f'with upscaler models, see: {a_namer("model_type")}.')
         elif self.t2i_adapter_uris:
             raise RenderLoopConfigError(
@@ -1028,9 +1028,9 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(
                     f'argument {a_namer("image_guidance_scales")} only valid with '
                     f'pix2pix models, see: {a_namer("model_type")}.')
-        elif self.control_net_uris:
+        elif self.controlnet_uris:
             raise RenderLoopConfigError(
-                f'{a_namer("control_net_uris")} is not compatible with '
+                f'{a_namer("controlnet_uris")} is not compatible with '
                 f'pix2pix models, see: {a_namer("model_type")}.')
         elif self.t2i_adapter_uris:
             raise RenderLoopConfigError(
@@ -1071,10 +1071,10 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError('\n'.join(invalid_self))
         else:
             if self.sd3_max_sequence_length is not None:
-                if self.control_net_uris:
+                if self.controlnet_uris:
                     raise RenderLoopConfigError(
                         f'{a_namer("sd3_max_sequence_length")} is not supported when '
-                        f'{a_namer("control_net_uris")} is specified.')
+                        f'{a_namer("controlnet_uris")} is specified.')
 
                 if self.sd3_max_sequence_length < 1 or self.sd3_max_sequence_length > 512:
                     raise RenderLoopConfigError(
@@ -1298,20 +1298,20 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'amount of T2I Adapter models must be equal.'
                 )
 
-        elif self.control_net_uris:
+        elif self.controlnet_uris:
             control_image_paths = parsed.get_control_image_paths()
             num_control_images = len(control_image_paths) if control_image_paths is not None else 0
 
             if _pipelinewrapper.model_type_is_flax(self.model_type) and not parsed.is_single_spec:
                 raise RenderLoopConfigError(
                     f'img2img and inpainting are not supported for flax when '
-                    f'{a_namer("control_net_uris")} is specified.')
+                    f'{a_namer("controlnet_uris")} is specified.')
 
             if not parsed.is_single_spec and parsed.control_path is None:
                 raise RenderLoopConfigError(
                     f'You must specify a control image with the control argument '
                     f'IE: "my-seed.png;control=my-control.png" in your '
-                    f'{a_namer("image_seeds")} "{uri}" when using {a_namer("control_net_uris")} '
+                    f'{a_namer("image_seeds")} "{uri}" when using {a_namer("controlnet_uris")} '
                     f'in order to use inpainting. If you want to use the control image alone '
                     f'without a mask, use {a_namer("image_seeds")} "{parsed.seed_path}".')
 
@@ -1319,14 +1319,14 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(
                     f'You must specify control net guidance images in your {a_namer("image_seeds")} '
                     f'specification "{uri}" (for example: "img2img;{mask_part}control=control1.png, control2.png") '
-                    f'when using {a_namer("control_net_uris")}'
+                    f'when using {a_namer("controlnet_uris")}'
                 )
 
-            if num_control_images != len(self.control_net_uris):
+            if num_control_images != len(self.controlnet_uris):
                 raise RenderLoopConfigError(
                     f'Your {a_namer("image_seeds")} specification "{uri}" defines {num_control_images} '
-                    f'control guidance image sources, and you have specified {len(self.control_net_uris)} '
-                    f'{a_namer("control_net_uris")} URIs. The amount of guidance image sources and the '
+                    f'control guidance image sources, and you have specified {len(self.controlnet_uris)} '
+                    f'{a_namer("controlnet_uris")} URIs. The amount of guidance image sources and the '
                     f'amount of ControlNet models must be equal.'
                 )
 
@@ -1342,14 +1342,14 @@ class RenderLoopConfig(_types.SetFromMixin):
                         f'must not exceed the amount of control guidance images.'
                     )
 
-        is_control_guidance_spec = (self.control_net_uris or self.t2i_adapter_uris) and parsed.is_single_spec
+        is_control_guidance_spec = (self.controlnet_uris or self.t2i_adapter_uris) and parsed.is_single_spec
 
         has_additional_control = parsed.control_path and not parsed.is_single_spec
 
-        if has_additional_control and not self.control_net_uris:
+        if has_additional_control and not self.controlnet_uris:
             raise RenderLoopConfigError(
                 f'Cannot use the "control" argument in an image seed without '
-                f'specifying {a_namer("control_net_uris")}.'
+                f'specifying {a_namer("controlnet_uris")}.'
             )
 
         if is_control_guidance_spec and self.image_seed_strengths:
@@ -1361,7 +1361,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 # user set this
                 raise RenderLoopConfigError(
                     f'Cannot use {a_namer("image_seed_strengths")} with a control guidance image '
-                    f'specification "{uri}". IE: when {a_namer("control_net_uris")} is specified and '
+                    f'specification "{uri}". IE: when {a_namer("controlnet_uris")} is specified and '
                     f'your {a_namer("image_seeds")} specification has a single source or comma '
                     f'separated list of sources.')
 
@@ -1375,7 +1375,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 # user set this
                 raise RenderLoopConfigError(
                     f'Cannot use {a_namer("upscaler_noise_levels")} with a control guidance image '
-                    f'specification "{uri}". IE: when {a_namer("control_net_uris")} is specified and '
+                    f'specification "{uri}". IE: when {a_namer("controlnet_uris")} is specified and '
                     f'your {a_namer("image_seeds")} specification has a single source or comma '
                     f'separated list of sources.')
 

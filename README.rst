@@ -134,9 +134,9 @@ Help Output
                      [-mt MODEL_TYPE] [-rev BRANCH] [-var VARIANT] [-sbf SUBFOLDER] [-atk TOKEN] [-bs INTEGER]
                      [-bgs SIZE] [-te TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]]
                      [-te2 TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]] [-un UNET_URI] [-un2 UNET_URI]
-                     [-vae VAE_URI] [-vt] [-vs] [-lra LORA_URI [LORA_URI ...]]
+                     [-vae VAE_URI] [-vt] [-vs] [-lra LORA_URI [LORA_URI ...]] [-ie IMAGE_ENCODER_URI]
                      [-ipa IP_ADAPTER_URI [IP_ADAPTER_URI ...]] [-ti URI [URI ...]]
-                     [-cn CONTROL_NET_URI [CONTROL_NET_URI ...] | -t2i T2I_ADAPTER_URI [T2I_ADAPTER_URI ...]]
+                     [-cn CONTROLNET_URI [CONTROLNET_URI ...] | -t2i T2I_ADAPTER_URI [T2I_ADAPTER_URI ...]]
                      [-sch SCHEDULER_URI] [-mqo | -mco] [--s-cascade-decoder MODEL_URI] [-dqo] [-dco]
                      [--s-cascade-decoder-prompts PROMPT [PROMPT ...]]
                      [--s-cascade-decoder-inference-steps INTEGER [INTEGER ...]]
@@ -174,7 +174,8 @@ Help Output
                      [INTEGER ...]] [-gs FLOAT [FLOAT ...]] [-igs FLOAT [FLOAT ...]] [-gr FLOAT [FLOAT ...]]
                      [-ifs INTEGER [INTEGER ...]] [-mc EXPR [EXPR ...]] [-pmc EXPR [EXPR ...]]
                      [-umc EXPR [EXPR ...]] [-vmc EXPR [EXPR ...]] [-cmc EXPR [EXPR ...]] [-tmc EXPR [EXPR ...]]
-                     [-amc EXPR [EXPR ...]] [-imc EXPR [EXPR ...]] [-icc EXPR [EXPR ...]]
+                     [-iemc EXPR [EXPR ...]] [-amc EXPR [EXPR ...]] [-ipmc EXPR [EXPR ...]]
+                     [-ipcc EXPR [EXPR ...]]
                      model_path
 
     Batch image generation and manipulation tool supporting Stable Diffusion and related techniques /
@@ -405,6 +406,28 @@ Help Output
                             weights file directly from disk, the simplest way is: --loras "my_lora.safetensors",
                             or with a scale "my_lora.safetensors;scale=1.0", all other loading arguments are
                             unused in this case and may produce an error message if used.
+      -ie IMAGE_ENCODER_URI, --image-encoder IMAGE_ENCODER_URI
+                            Specify an Image Encoder using a URI. Image Encoders are used with --ip-adapters
+                            models, and must be specified if none of the loaded --ip-adapters contain one. An
+                            error will be produced in this situation, which requires you to use this argument.
+                            An image encoder can also be manually specified for Stable Cascade models. Examples:
+                            "huggingface/image_encoder", "huggingface/image_encoder;revision=main",
+                            "image_encoder_folder_on_disk". Blob links / single file loads are not supported for
+                            Image Encoders. The "revision" argument specifies the model revision to use for the
+                            Image Encoder when loading from huggingface repository or blob link, (The git branch
+                            / tag, default is "main"). The "variant" argument specifies the Image Encoder model
+                            variant, it is only supported for torch type models it is not supported for flax. If
+                            "variant" is specified when loading from a huggingface repository or folder, weights
+                            will be loaded from "variant" filename, e.g. "pytorch_model.<variant>.safetensors.
+                            Similar to --vae, "variant" does not default to the value of --variant in order to
+                            prevent errors with common use cases. The "subfolder" argument specifies the Image
+                            Encoder model subfolder, if specified when loading from a huggingface repository or
+                            folder, weights from the specified subfolder. The "dtype" argument specifies the
+                            Image Encoder model precision, it defaults to the value of -t/--dtype and should be
+                            one of: auto, bfloat16, float16, or float32. If you wish to load weights directly
+                            from a path on disk, you must point this argument at the folder they exist in, which
+                            should also contain the config.json file for the Image Encoder. For example, a
+                            downloaded repository folder from huggingface.
       -ipa IP_ADAPTER_URI [IP_ADAPTER_URI ...], --ip-adapters IP_ADAPTER_URI [IP_ADAPTER_URI ...]
                             Specify one or more IP Adapter models using URIs (flax not supported). These should
                             be a huggingface repository slug, path to model file on disk (for example, a .pt,
@@ -453,7 +476,7 @@ Help Output
                             directly from disk, the simplest way is: --textual-inversions
                             "my_ti_model.safetensors", all other loading arguments are unused in this case and
                             may produce an error message if used.
-      -cn CONTROL_NET_URI [CONTROL_NET_URI ...], --control-nets CONTROL_NET_URI [CONTROL_NET_URI ...]
+      -cn CONTROLNET_URI [CONTROLNET_URI ...], --control-nets CONTROLNET_URI [CONTROLNET_URI ...]
                             Specify one or more ControlNet models using URIs. This should be a huggingface
                             repository slug / blob link, path to model file on disk (for example, a .pt, .pth,
                             .bin, .ckpt, or .safetensors file), or model folder containing model files. If a
@@ -1036,9 +1059,9 @@ Help Output
                             ControlNet cache considering current memory usage, and estimated memory usage of new
                             ControlNet models that are about to enter memory. If any of these constraint
                             expressions are met all ControlNet models cached in memory will be cleared. Example,
-                            and default value: "control_net_size > (available * 0.75)" For Syntax See: [https://
-                            dgenerate.readthedocs.io/en/v4.0.0/dgenerate_submodules.html#dgenerate.pipelinewrapp
-                            er.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS]
+                            and default value: "controlnet_size > (available * 0.75)" For Syntax See: [https://d
+                            generate.readthedocs.io/en/v4.0.0/dgenerate_submodules.html#dgenerate.pipelinewrappe
+                            r.CONTROLNET_CACHE_MEMORY_CONSTRAINTS]
       -tmc EXPR [EXPR ...], --text-encoder-cache-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the in memory
                             Text Encoder cache considering current memory usage, and estimated memory usage of
@@ -1047,6 +1070,14 @@ Help Output
                             Example, and default value: "text_encoder_size > (available * 0.75)" For Syntax See:
                             [https://dgenerate.readthedocs.io/en/v4.0.0/dgenerate_submodules.html#dgenerate.pipe
                             linewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS]
+      -iemc EXPR [EXPR ...], --image-encoder-cache-memory-constraints EXPR [EXPR ...]
+                            Cache constraint expressions describing when to automatically clear the in memory
+                            Image Encoder cache considering current memory usage, and estimated memory usage of
+                            new Image Encoder models that are about to enter memory. If any of these constraint
+                            expressions are met all Image Encoder models cached in memory will be cleared.
+                            Example, and default value: "image_encoder_size > (available * 0.75)" For Syntax
+                            See: [https://dgenerate.readthedocs.io/en/v4.0.0/dgenerate_submodules.html#dgenerate
+                            .pipelinewrapper.IMAGE_ENCODER_CACHE_MEMORY_CONSTRAINTS]
       -amc EXPR [EXPR ...], --adapter-cache-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the in memory
                             T2I Adapter cache considering current memory usage, and estimated memory usage of
@@ -1055,7 +1086,7 @@ Help Output
                             Example, and default value: "adapter_size > (available * 0.75)" For Syntax See: [htt
                             ps://dgenerate.readthedocs.io/en/v4.0.0/dgenerate_submodules.html#dgenerate.pipeline
                             wrapper.ADAPTER_CACHE_MEMORY_CONSTRAINTS]
-      -imc EXPR [EXPR ...], --image-processor-memory-constraints EXPR [EXPR ...]
+      -ipmc EXPR [EXPR ...], --image-processor-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the entire in
                             memory diffusion model cache considering current memory usage, and estimated memory
                             usage of new image processor models that are about to enter memory. If any of these
@@ -1063,7 +1094,7 @@ Help Output
                             cleared. Example, and default value: "processor_size > (available * 0.70)" For
                             Syntax See: [https://dgenerate.readthedocs.io/en/v4.0.0/dgenerate_submodules.html#dg
                             enerate.imageprocessors.IMAGE_PROCESSOR_MEMORY_CONSTRAINTS]
-      -icc EXPR [EXPR ...], --image-processor-cuda-memory-constraints EXPR [EXPR ...]
+      -ipcc EXPR [EXPR ...], --image-processor-cuda-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the last active
                             diffusion model from VRAM considering current GPU memory usage, and estimated GPU
                             memory usage of new image processor models that are about to enter VRAM. If any of
@@ -1071,6 +1102,7 @@ Help Output
                             destroyed. Example, and default value: "processor_size > (available * 0.70)" For
                             Syntax See: [https://dgenerate.readthedocs.io/en/v4.0.0/dgenerate_submodules.html#dg
                             enerate.imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS]
+
 
 
 
@@ -4358,7 +4390,7 @@ individually using one of:
     * ``\clear_vae_cache``
     * ``\clear_text_encoder_cache``
     * ``\clear_image_encoder_cache``
-    * ``\clear_control_net_cache``
+    * ``\clear_controlnet_cache``
     * ``\clear_adapter_cache``
 
 dgenerate uses heuristics to clear the in memory cache automatically when needed, including a size estimation
@@ -4483,7 +4515,7 @@ The following is a config file example that covers the most basic syntax concept
 
     # Clear specifically ControlNet models
 
-    \clear_control_net_cache
+    \clear_controlnet_cache
 
 
     # This model was used before but will have to be fully instantiated from scratch again
@@ -4592,7 +4624,7 @@ The ``\templates_help`` output from the above example is:
             Type: typing.Optional[collections.abc.Sequence[int]]
         Name: "last_control_image_processors"
             Type: typing.Optional[collections.abc.Sequence[str]]
-        Name: "last_control_net_uris"
+        Name: "last_controlnet_uris"
             Type: typing.Optional[collections.abc.Sequence[str]]
         Name: "last_device"
             Type: <class 'str'>
@@ -4861,7 +4893,7 @@ Example output:
 
         "\cd"
         "\civitai_links"
-        "\clear_control_net_cache"
+        "\clear_controlnet_cache"
         "\clear_model_cache"
         "\clear_modules"
         "\clear_pipeline_cache"

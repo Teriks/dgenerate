@@ -75,7 +75,7 @@ stabilityai/stable-diffusion-2-1 --prompts "a martian riding a horse"
 
 # Clear specifically ControlNet models
 
-\clear_control_net_cache
+\clear_controlnet_cache
 
 
 # This model was used before but will have to be fully instantiated from scratch again

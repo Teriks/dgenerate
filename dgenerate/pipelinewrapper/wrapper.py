@@ -152,7 +152,7 @@ class DiffusionPipelineWrapper:
                  textual_inversion_uris: _types.OptionalUris = None,
                  text_encoder_uris: _types.OptionalUris = None,
                  second_text_encoder_uris: _types.OptionalUris = None,
-                 control_net_uris: _types.OptionalUris = None,
+                 controlnet_uris: _types.OptionalUris = None,
                  t2i_adapter_uris: _types.OptionalUris = None,
                  scheduler: _types.OptionalUri = None,
                  sdxl_refiner_uri: _types.OptionalUri = None,
@@ -206,7 +206,7 @@ class DiffusionPipelineWrapper:
         :param second_text_encoder_uris:  One or more Text Encoder URIs
             ("+", or None for default. Or "null" indicating do not load) for the secondary
             model (SDXL Refiner or Stable Cascade decoder)
-        :param control_net_uris: One or more ControlNet URI strings
+        :param controlnet_uris: One or more ControlNet URI strings
         :param t2i_adapter_uris: One or more T2IAdapter URI strings
         :param scheduler: Scheduler URI string for the main model
         :param sdxl_refiner_uri: SDXL Refiner model URI string
@@ -258,7 +258,7 @@ class DiffusionPipelineWrapper:
             textual_inversion_uris: _types.OptionalUris = None,
             text_encoder_uris: _types.OptionalUris = None,
             second_text_encoder_uris: _types.OptionalUris = None,
-            control_net_uris: _types.OptionalUris = None,
+            controlnet_uris: _types.OptionalUris = None,
             t2i_adapter_uris: _types.OptionalUris = None,
             scheduler: _types.OptionalUri = None,
             sdxl_refiner_uri: _types.OptionalUri = None,
@@ -343,9 +343,9 @@ class DiffusionPipelineWrapper:
             )
 
         # Incompatible combinations
-        if control_net_uris and t2i_adapter_uris:
+        if controlnet_uris and t2i_adapter_uris:
             raise _pipelines.UnsupportedPipelineConfigError(
-                'Cannot use "control_net_uris" and "t2i_adapter_uris" together.'
+                'Cannot use "controlnet_uris" and "t2i_adapter_uris" together.'
             )
 
         if image_encoder_uri and not ip_adapter_uris and model_type != _enums.ModelType.TORCH_S_CASCADE:
@@ -376,7 +376,7 @@ class DiffusionPipelineWrapper:
                     'Textual Inversions not supported for StableCascade.'
                 )
 
-            if control_net_uris:
+            if controlnet_uris:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'ControlNets not supported for StableCascade.'
                 )
@@ -412,7 +412,7 @@ class DiffusionPipelineWrapper:
                     'Textual Inversions not supported for Deep Floyd.'
                 )
 
-            if control_net_uris:
+            if controlnet_uris:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'ControlNets not supported for Deep Floyd.'
                 )
@@ -428,7 +428,7 @@ class DiffusionPipelineWrapper:
                 )
 
         if _enums.model_type_is_upscaler(model_type):
-            if control_net_uris:
+            if controlnet_uris:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'Upscaler models are not compatible with ControlNets.'
                 )
@@ -527,7 +527,7 @@ class DiffusionPipelineWrapper:
                 )
 
         if _enums.model_type_is_pix2pix(model_type):
-            if control_net_uris:
+            if controlnet_uris:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'Pix2Pix model types are not compatible with ControlNets.'
                 )
@@ -578,9 +578,9 @@ class DiffusionPipelineWrapper:
         self._textual_inversion_uris = textual_inversion_uris
         self._text_encoder_uris = text_encoder_uris
         self._second_text_encoder_uris = second_text_encoder_uris
-        self._control_net_uris = control_net_uris
+        self._controlnet_uris = controlnet_uris
         self._t2i_adapter_uris = t2i_adapter_uris
-        self._parsed_control_net_uris = []
+        self._parsed_controlnet_uris = []
         self._parsed_t2i_adapter_uris = []
         self._sdxl_refiner_pipeline = None
         self._s_cascade_decoder_pipeline = None
@@ -687,11 +687,11 @@ class DiffusionPipelineWrapper:
         return list(self._textual_inversion_uris) if self._textual_inversion_uris else []
 
     @property
-    def control_net_uris(self) -> _types.OptionalUris:
+    def controlnet_uris(self) -> _types.OptionalUris:
         """
         List of supplied ``--control-nets`` uri strings or an empty list
         """
-        return list(self._control_net_uris) if self._control_net_uris else []
+        return list(self._controlnet_uris) if self._controlnet_uris else []
 
     @property
     def t2i_adapter_uris(self) -> _types.OptionalUris:
@@ -1066,8 +1066,8 @@ class DiffusionPipelineWrapper:
         if self._textual_inversion_uris:
             opts.append(('--textual-inversions', self._textual_inversion_uris))
 
-        if self._control_net_uris:
-            opts.append(('--control-nets', self._control_net_uris))
+        if self._controlnet_uris:
+            opts.append(('--control-nets', self._controlnet_uris))
 
         if self._t2i_adapter_uris:
             opts.append(('--t2i-adapters', self._t2i_adapter_uris))
@@ -1343,13 +1343,13 @@ class DiffusionPipelineWrapper:
                     'Must provide control_images argument when using ControlNet models.')
 
             control_images_cnt = len(control_images)
-            control_net_uris_cnt = len(self._control_net_uris)
+            controlnet_uris_cnt = len(self._controlnet_uris)
 
-            if control_images_cnt != control_net_uris_cnt:
+            if control_images_cnt != controlnet_uris_cnt:
                 # User provided a mismatched number of ControlNet models and control_images, behavior is undefined.
                 raise _pipelines.UnsupportedPipelineConfigError(
                     f'You specified {control_images_cnt} control guidance images and '
-                    f'only {control_net_uris_cnt} ControlNet URIs. The amount of '
+                    f'only {controlnet_uris_cnt} ControlNet URIs. The amount of '
                     f'control guidance images must be equal to the amount of ControlNet URIs.')
 
             first_control_image_size = control_images[0].size
@@ -1572,7 +1572,7 @@ class DiffusionPipelineWrapper:
                 args['height'] = _types.default(user_args.height, _constants.DEFAULT_OUTPUT_HEIGHT)
                 args['width'] = _types.default(user_args.width, _constants.DEFAULT_OUTPUT_WIDTH)
 
-        if self._control_net_uris:
+        if self._controlnet_uris:
             set_controlnet_defaults()
         elif self._t2i_adapter_uris:
             set_t2iadapter_defaults()
@@ -1617,23 +1617,23 @@ class DiffusionPipelineWrapper:
         return [p.scale for p in self._parsed_t2i_adapter_uris] if \
             len(self._parsed_t2i_adapter_uris) > 1 else self._parsed_t2i_adapter_uris[0].scale
 
-    def _get_control_net_conditioning_scale(self):
-        if not self._parsed_control_net_uris:
+    def _get_controlnet_conditioning_scale(self):
+        if not self._parsed_controlnet_uris:
             return 1.0
-        return [p.scale for p in self._parsed_control_net_uris] if \
-            len(self._parsed_control_net_uris) > 1 else self._parsed_control_net_uris[0].scale
+        return [p.scale for p in self._parsed_controlnet_uris] if \
+            len(self._parsed_controlnet_uris) > 1 else self._parsed_controlnet_uris[0].scale
 
-    def _get_control_net_guidance_start(self):
-        if not self._parsed_control_net_uris:
+    def _get_controlnet_guidance_start(self):
+        if not self._parsed_controlnet_uris:
             return 0.0
-        return [p.start for p in self._parsed_control_net_uris] if \
-            len(self._parsed_control_net_uris) > 1 else self._parsed_control_net_uris[0].start
+        return [p.start for p in self._parsed_controlnet_uris] if \
+            len(self._parsed_controlnet_uris) > 1 else self._parsed_controlnet_uris[0].start
 
-    def _get_control_net_guidance_end(self):
-        if not self._parsed_control_net_uris:
+    def _get_controlnet_guidance_end(self):
+        if not self._parsed_controlnet_uris:
             return 1.0
-        return [p.end for p in self._parsed_control_net_uris] if \
-            len(self._parsed_control_net_uris) > 1 else self._parsed_control_net_uris[0].end
+        return [p.end for p in self._parsed_controlnet_uris] if \
+            len(self._parsed_controlnet_uris) > 1 else self._parsed_controlnet_uris[0].end
 
     def _check_for_invalid_model_specific_opts(self, user_args: DiffusionArguments):
         if not _enums.model_type_is_sdxl(self.model_type):
@@ -1654,7 +1654,7 @@ class DiffusionPipelineWrapper:
                     raise _pipelines.UnsupportedPipelineConfigError(
                         f'{arg} may only be used with Stable Cascade models.')
 
-    def _call_flax_control_net(self, positive_prompt, negative_prompt, pipeline_args, user_args: DiffusionArguments):
+    def _call_flax_controlnet(self, positive_prompt, negative_prompt, pipeline_args, user_args: DiffusionArguments):
         # Only works with txt2image
 
         self._check_for_invalid_model_specific_opts(user_args)
@@ -1680,11 +1680,11 @@ class DiffusionPipelineWrapper:
         else:
             negative_prompt_ids = None
 
-        control_net_image = pipeline_args.get('image')
-        if isinstance(control_net_image, list):
-            control_net_image = control_net_image[0]
+        controlnet_image = pipeline_args.get('image')
+        if isinstance(controlnet_image, list):
+            controlnet_image = controlnet_image[0]
 
-        processed_image = pipe.prepare_image_inputs([control_net_image] * device_count)
+        processed_image = pipe.prepare_image_inputs([controlnet_image] * device_count)
         pipeline_args.pop('image')
 
         p_params = _flax_replicate(self._flax_params)
@@ -1703,7 +1703,7 @@ class DiffusionPipelineWrapper:
             image=processed_image,
             params=p_params,
             neg_prompt_ids=negative_prompt_ids,
-            controlnet_conditioning_scale=self._get_control_net_conditioning_scale(),
+            controlnet_conditioning_scale=self._get_controlnet_conditioning_scale(),
             jit=True, **pipeline_args)[0]
 
         return PipelineWrapperResult(
@@ -1735,8 +1735,8 @@ class DiffusionPipelineWrapper:
         negative_prompt = prompt.negative
 
         if hasattr(self._pipeline, 'controlnet'):
-            return self._call_flax_control_net(positive_prompt, negative_prompt,
-                                               pipeline_args, user_args)
+            return self._call_flax_controlnet(positive_prompt, negative_prompt,
+                                              pipeline_args, user_args)
 
         device_count = jax.device_count()
 
@@ -2030,25 +2030,25 @@ class DiffusionPipelineWrapper:
             pipeline_args.pop('width')
             pipeline_args.pop('height')
 
-        has_control_net = hasattr(self._pipeline, 'controlnet')
+        has_controlnet = hasattr(self._pipeline, 'controlnet')
 
         has_t2i_adapter = hasattr(self._pipeline, 'adapter') and \
                           isinstance(self._pipeline.adapter,
                                      (diffusers.T2IAdapter, diffusers.MultiAdapter))
 
         sd_edit = user_args.sdxl_refiner_edit or \
-                  has_control_net or has_t2i_adapter or \
+                  has_controlnet or has_t2i_adapter or \
                   isinstance(self._pipeline, diffusers.StableDiffusionXLInpaintPipeline)
 
-        if has_control_net:
+        if has_controlnet:
             pipeline_args['controlnet_conditioning_scale'] = \
-                self._get_control_net_conditioning_scale()
+                self._get_controlnet_conditioning_scale()
 
             pipeline_args['control_guidance_start'] = \
-                self._get_control_net_guidance_start()
+                self._get_controlnet_guidance_start()
 
             pipeline_args['control_guidance_end'] = \
-                self._get_control_net_guidance_end()
+                self._get_controlnet_guidance_end()
 
         if has_t2i_adapter:
             pipeline_args['adapter_conditioning_scale'] = \
@@ -2247,7 +2247,7 @@ class DiffusionPipelineWrapper:
 
         if self._model_type == _enums.ModelType.FLAX:
 
-            if self._pipeline_type != _enums.PipelineType.TXT2IMG and self._control_net_uris:
+            if self._pipeline_type != _enums.PipelineType.TXT2IMG and self._controlnet_uris:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'Inpaint and Img2Img not supported for flax with ControlNet.')
 
@@ -2259,7 +2259,7 @@ class DiffusionPipelineWrapper:
                 dtype=self._dtype,
                 unet_uri=self._unet_uri,
                 vae_uri=self._vae_uri,
-                control_net_uris=self._control_net_uris,
+                controlnet_uris=self._controlnet_uris,
                 text_encoder_uris=self._text_encoder_uris,
                 scheduler=self._scheduler,
                 safety_checker=self._safety_checker,
@@ -2270,7 +2270,7 @@ class DiffusionPipelineWrapper:
             creation_result = self._recall_main_pipeline()
             self._pipeline = creation_result.pipeline
             self._flax_params = creation_result.flax_params
-            self._parsed_control_net_uris = creation_result.parsed_control_net_uris
+            self._parsed_controlnet_uris = creation_result.parsed_controlnet_uris
 
         elif self._model_type == _enums.ModelType.TORCH_S_CASCADE:
 
@@ -2357,7 +2357,7 @@ class DiffusionPipelineWrapper:
                     ip_adapter_uris=self._ip_adapter_uris,
                     textual_inversion_uris=self._textual_inversion_uris,
                     text_encoder_uris=self._text_encoder_uris,
-                    control_net_uris=self._control_net_uris,
+                    controlnet_uris=self._controlnet_uris,
                     t2i_adapter_uris=self._t2i_adapter_uris,
                     scheduler=self._scheduler,
                     safety_checker=self._safety_checker,
@@ -2372,7 +2372,7 @@ class DiffusionPipelineWrapper:
 
                 creation_result = self._recall_main_pipeline()
                 self._pipeline = creation_result.pipeline
-                self._parsed_control_net_uris = creation_result.parsed_control_net_uris
+                self._parsed_controlnet_uris = creation_result.parsed_controlnet_uris
                 self._parsed_t2i_adapter_uris = creation_result.parsed_t2i_adapter_uris
 
             refiner_pipeline_type = _enums.PipelineType.IMG2IMG if pipeline_type is _enums.PipelineType.TXT2IMG else pipeline_type
@@ -2433,7 +2433,7 @@ class DiffusionPipelineWrapper:
                 ip_adapter_uris=self._ip_adapter_uris,
                 textual_inversion_uris=self._textual_inversion_uris,
                 text_encoder_uris=self._text_encoder_uris,
-                control_net_uris=self._control_net_uris,
+                controlnet_uris=self._controlnet_uris,
                 t2i_adapter_uris=self._t2i_adapter_uris,
                 scheduler=self._scheduler,
                 safety_checker=self._safety_checker,
@@ -2448,7 +2448,7 @@ class DiffusionPipelineWrapper:
 
             creation_result = self._recall_main_pipeline()
             self._pipeline = creation_result.pipeline
-            self._parsed_control_net_uris = creation_result.parsed_control_net_uris
+            self._parsed_controlnet_uris = creation_result.parsed_controlnet_uris
             self._parsed_t2i_adapter_uris = creation_result.parsed_t2i_adapter_uris
 
         return True

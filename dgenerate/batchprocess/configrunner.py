@@ -194,8 +194,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'clear_text_encoder_cache': return_zero(
                 _pipelinewrapper.clear_text_encoder_cache,
                 help_text='Clear all user specified Text Encoder models from the in memory cache.'),
-            'clear_control_net_cache': return_zero(
-                _pipelinewrapper.clear_control_net_cache,
+            'clear_controlnet_cache': return_zero(
+                _pipelinewrapper.clear_controlnet_cache,
                 help_text='Clear all user specified ControlNet models from the in memory cache.'),
             'clear_adapter_cache': return_zero(
                 _pipelinewrapper.clear_adapter_cache,

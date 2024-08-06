@@ -42,7 +42,7 @@ _FLAX_PIPELINE_CACHE = dict()
 _PIPELINE_CACHE_SIZE = 0
 """Estimated memory consumption in bytes of all pipelines cached in memory"""
 
-_TORCH_CONTROL_NET_CACHE = dict()
+_TORCH_CONTROLNET_CACHE = dict()
 """Global in memory cache for torch ControlNet models"""
 
 _ADAPTER_CACHE = dict()
@@ -51,10 +51,10 @@ _ADAPTER_CACHE = dict()
 _ADAPTER_CACHE_SIZE = 0
 """Estimated memory consumption in bytes of all T2IAdapter models cached in memory"""
 
-_FLAX_CONTROL_NET_CACHE = dict()
+_FLAX_CONTROLNET_CACHE = dict()
 """Global in memory cache for flax ControlNet models"""
 
-_CONTROL_NET_CACHE_SIZE = 0
+_CONTROLNET_CACHE_SIZE = 0
 """Estimated memory consumption in bytes of all ControlNet models cached in memory"""
 
 _TORCH_VAE_CACHE = dict()
@@ -112,13 +112,13 @@ def unet_cache_size() -> int:
     return _UNET_CACHE_SIZE
 
 
-def control_net_cache_size() -> int:
+def controlnet_cache_size() -> int:
     """
     Return the estimated memory usage in bytes of all user specified ControlNet models currently cached in memory.
 
     :return:  memory usage in bytes.
     """
-    return _CONTROL_NET_CACHE_SIZE
+    return _CONTROLNET_CACHE_SIZE
 
 
 def adapter_cache_size() -> int:
@@ -193,16 +193,16 @@ Extra variables include: ``cache_size`` (the current estimated cache size in byt
 and ``vae_size`` (the estimated size of the new VAE before it is brought into memory, in bytes)
 """
 
-CONTROL_NET_CACHE_MEMORY_CONSTRAINTS: list[str] = ['control_net_size > (available * 0.75)']
+CONTROLNET_CACHE_MEMORY_CONSTRAINTS: list[str] = ['controlnet_size > (available * 0.75)']
 """
 Cache constraint expressions for when to clear the ControlNet cache, 
 syntax provided via :py:func:`dgenerate.memory.memory_constraints`
 
-If any of these constraints are met, a call to :py:func:`.enforce_control_net_cache_constraints` will call
-:py:func:`.clear_control_net_cache` and force a garbage collection.
+If any of these constraints are met, a call to :py:func:`.enforce_controlnet_cache_constraints` will call
+:py:func:`.clear_controlnet_cache` and force a garbage collection.
 
 Extra variables include: ``cache_size`` (the current estimated cache size in bytes), 
-and ``control_net_size`` (the estimated size of the new ControlNet before it is brought into memory, in bytes)
+and ``controlnet_size`` (the estimated size of the new ControlNet before it is brought into memory, in bytes)
 """
 
 ADAPTER_CACHE_MEMORY_CONSTRAINTS: list[str] = ['adapter_size > (available * 0.75)']
@@ -263,24 +263,24 @@ def clear_pipeline_cache(collect=True):
         gc.collect()
 
 
-def clear_control_net_cache(collect=True):
+def clear_controlnet_cache(collect=True):
     """
     Clear ControlNet cache and then garbage collect.
 
     :param collect: Call :py:func:`gc.collect` ?
     """
-    global _TORCH_CONTROL_NET_CACHE, \
-        _FLAX_CONTROL_NET_CACHE, \
-        _CONTROL_NET_CACHE_SIZE
+    global _TORCH_CONTROLNET_CACHE, \
+        _FLAX_CONTROLNET_CACHE, \
+        _CONTROLNET_CACHE_SIZE
 
-    _TORCH_CONTROL_NET_CACHE.clear()
-    _FLAX_CONTROL_NET_CACHE.clear()
+    _TORCH_CONTROLNET_CACHE.clear()
+    _FLAX_CONTROLNET_CACHE.clear()
 
-    _CONTROL_NET_CACHE_SIZE = 0
+    _CONTROLNET_CACHE_SIZE = 0
 
     if collect:
         _messages.debug_log(
-            f'{_types.fullname(clear_control_net_cache)} calling gc.collect() by request')
+            f'{_types.fullname(clear_controlnet_cache)} calling gc.collect() by request')
 
         gc.collect()
 
@@ -399,14 +399,14 @@ def clear_model_cache(collect=True):
     """
     global _TORCH_PIPELINE_CACHE, \
         _FLAX_PIPELINE_CACHE, \
-        _TORCH_CONTROL_NET_CACHE, \
-        _FLAX_CONTROL_NET_CACHE, \
+        _TORCH_CONTROLNET_CACHE, \
+        _FLAX_CONTROLNET_CACHE, \
         _TORCH_UNET_CACHE, \
         _FLAX_UNET_CACHE, \
         _TORCH_VAE_CACHE, \
         _FLAX_VAE_CACHE, \
         _PIPELINE_CACHE_SIZE, \
-        _CONTROL_NET_CACHE_SIZE, \
+        _CONTROLNET_CACHE_SIZE, \
         _UNET_CACHE_SIZE, \
         _VAE_CACHE_SIZE, \
         _FLAX_TEXT_ENCODER_CACHE, \
@@ -419,8 +419,8 @@ def clear_model_cache(collect=True):
 
     _TORCH_PIPELINE_CACHE.clear()
     _FLAX_PIPELINE_CACHE.clear()
-    _TORCH_CONTROL_NET_CACHE.clear()
-    _FLAX_CONTROL_NET_CACHE.clear()
+    _TORCH_CONTROLNET_CACHE.clear()
+    _FLAX_CONTROLNET_CACHE.clear()
     _TORCH_UNET_CACHE.clear()
     _FLAX_UNET_CACHE.clear()
     _TORCH_VAE_CACHE.clear()
@@ -431,7 +431,7 @@ def clear_model_cache(collect=True):
     _IMAGE_ENCODER_CACHE.clear()
 
     _PIPELINE_CACHE_SIZE = 0
-    _CONTROL_NET_CACHE_SIZE = 0
+    _CONTROLNET_CACHE_SIZE = 0
     _UNET_CACHE_SIZE = 0
     _VAE_CACHE_SIZE = 0
     _TEXT_ENCODER_CACHE_SIZE = 0
@@ -594,33 +594,33 @@ def enforce_unet_cache_constraints(new_unet_size, collect=True):
     return False
 
 
-def enforce_control_net_cache_constraints(new_control_net_size, collect=True):
+def enforce_controlnet_cache_constraints(new_controlnet_size, collect=True):
     """
-    Enforce :py:attr:`dgenerate.pipelinewrapper.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS` and clear the
+    Enforce :py:attr:`dgenerate.pipelinewrapper.CONTROLNET_CACHE_MEMORY_CONSTRAINTS` and clear the
     ControlNet cache if needed.
 
-    :param new_control_net_size: estimated size in bytes of any new control net that is about to enter memory
+    :param new_controlnet_size: estimated size in bytes of any new control net that is about to enter memory
     :param collect: Call :py:func:`gc.collect` after a cache clear ?
     :return: Whether the cache was cleared due to constraint expressions.
     """
 
     m_name = __name__
 
-    _messages.debug_log(f'Enforcing {m_name}.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS =',
-                        CONTROL_NET_CACHE_MEMORY_CONSTRAINTS,
-                        f'(cache_size = {_memory.bytes_best_human_unit(control_net_cache_size())},',
-                        f'control_net_size = {_memory.bytes_best_human_unit(new_control_net_size)})')
+    _messages.debug_log(f'Enforcing {m_name}.CONTROLNET_CACHE_MEMORY_CONSTRAINTS =',
+                        CONTROLNET_CACHE_MEMORY_CONSTRAINTS,
+                        f'(cache_size = {_memory.bytes_best_human_unit(controlnet_cache_size())},',
+                        f'controlnet_size = {_memory.bytes_best_human_unit(new_controlnet_size)})')
 
     _messages.debug_log(_memory.memory_use_debug_string())
 
-    if _memory.memory_constraints(CONTROL_NET_CACHE_MEMORY_CONSTRAINTS,
-                                  extra_vars={'cache_size': control_net_cache_size(),
-                                              'control_net_size': new_control_net_size}):
-        _messages.debug_log(f'{m_name}.CONTROL_NET_CACHE_MEMORY_CONSTRAINTS '
-                            f'{CONTROL_NET_CACHE_MEMORY_CONSTRAINTS} met, '
-                            f'calling {_types.fullname(clear_control_net_cache)}.')
+    if _memory.memory_constraints(CONTROLNET_CACHE_MEMORY_CONSTRAINTS,
+                                  extra_vars={'cache_size': controlnet_cache_size(),
+                                              'controlnet_size': new_controlnet_size}):
+        _messages.debug_log(f'{m_name}.CONTROLNET_CACHE_MEMORY_CONSTRAINTS '
+                            f'{CONTROLNET_CACHE_MEMORY_CONSTRAINTS} met, '
+                            f'calling {_types.fullname(clear_controlnet_cache)}.')
 
-        clear_control_net_cache(collect=collect)
+        clear_controlnet_cache(collect=collect)
         return True
     return False
 
@@ -765,8 +765,8 @@ def controlnet_create_update_cache_info(controlnet, estimated_size: int):
     :param controlnet: the ControlNet object
     :param estimated_size: size bytes
     """
-    global _CONTROL_NET_CACHE_SIZE
-    _CONTROL_NET_CACHE_SIZE += estimated_size
+    global _CONTROLNET_CACHE_SIZE
+    _CONTROLNET_CACHE_SIZE += estimated_size
 
     # Tag for internal use
     controlnet.DGENERATE_SIZE_ESTIMATE = estimated_size
@@ -969,42 +969,42 @@ def controlnet_to_cpu_update_cache_info(
     :param controlnet: the control net, or multi control net
     """
 
-    global _CONTROL_NET_CACHE_SIZE
+    global _CONTROLNET_CACHE_SIZE
 
     if isinstance(controlnet,
                   (diffusers.pipelines.controlnet.MultiControlNetModel,
                    diffusers.SD3MultiControlNetModel)):
 
         total_size = 0
-        for control_net in controlnet.nets:
-            total_size += control_net.DGENERATE_SIZE_ESTIMATE
+        for controlnet in controlnet.nets:
+            total_size += controlnet.DGENERATE_SIZE_ESTIMATE
 
-            _messages.debug_log(f'Cached ControlNetModel {_types.class_and_id_string(control_net)} '
-                                f'Size = {control_net.DGENERATE_SIZE_ESTIMATE} Bytes '
-                                f'({_memory.bytes_best_human_unit(control_net.DGENERATE_SIZE_ESTIMATE)}) '
+            _messages.debug_log(f'Cached ControlNetModel {_types.class_and_id_string(controlnet)} '
+                                f'Size = {controlnet.DGENERATE_SIZE_ESTIMATE} Bytes '
+                                f'({_memory.bytes_best_human_unit(controlnet.DGENERATE_SIZE_ESTIMATE)}) '
                                 f'from "MultiControlNetModel" is entering CPU side memory.')
 
-        enforce_control_net_cache_constraints(total_size)
-        _CONTROL_NET_CACHE_SIZE += total_size
+        enforce_controlnet_cache_constraints(total_size)
+        _CONTROLNET_CACHE_SIZE += total_size
 
         _messages.debug_log(f'"MultiControlNetModel" size fully estimated, '
-                            f'{_types.fullname(control_net_cache_size)}() '
-                            f'is now {control_net_cache_size()} Bytes '
-                            f'({_memory.bytes_best_human_unit(control_net_cache_size())})')
+                            f'{_types.fullname(controlnet_cache_size)}() '
+                            f'is now {controlnet_cache_size()} Bytes '
+                            f'({_memory.bytes_best_human_unit(controlnet_cache_size())})')
 
     elif isinstance(controlnet, (diffusers.models.ControlNetModel,
                                  diffusers.SD3ControlNetModel)):
 
         # ControlNet returning to CPU side memory
-        enforce_control_net_cache_constraints(controlnet.DGENERATE_SIZE_ESTIMATE)
-        _CONTROL_NET_CACHE_SIZE += controlnet.DGENERATE_SIZE_ESTIMATE
+        enforce_controlnet_cache_constraints(controlnet.DGENERATE_SIZE_ESTIMATE)
+        _CONTROLNET_CACHE_SIZE += controlnet.DGENERATE_SIZE_ESTIMATE
 
         _messages.debug_log(f'Cached ControlNetModel {_types.class_and_id_string(controlnet)} '
                             f'Size = {controlnet.DGENERATE_SIZE_ESTIMATE} Bytes '
                             f'({_memory.bytes_best_human_unit(controlnet.DGENERATE_SIZE_ESTIMATE)}) '
-                            f'is entering CPU side memory, {_types.fullname(control_net_cache_size)}() '
-                            f'is now {control_net_cache_size()} Bytes '
-                            f'({_memory.bytes_best_human_unit(control_net_cache_size())})')
+                            f'is entering CPU side memory, {_types.fullname(controlnet_cache_size)}() '
+                            f'is now {controlnet_cache_size()} Bytes '
+                            f'({_memory.bytes_best_human_unit(controlnet_cache_size())})')
 
 
 def adapter_to_cpu_update_cache_info(adapter: diffusers.T2IAdapter | diffusers.MultiAdapter):
@@ -1170,39 +1170,39 @@ def controlnet_off_cpu_update_cache_info(
 
     :param controlnet: the control net, or multi control net
     """
-    global _CONTROL_NET_CACHE_SIZE
+    global _CONTROLNET_CACHE_SIZE
 
     if isinstance(controlnet, (diffusers.pipelines.controlnet.MultiControlNetModel,
                                diffusers.SD3MultiControlNetModel)):
 
-        for control_net in controlnet.nets:
-            _CONTROL_NET_CACHE_SIZE -= control_net.DGENERATE_SIZE_ESTIMATE
+        for controlnet in controlnet.nets:
+            _CONTROLNET_CACHE_SIZE -= controlnet.DGENERATE_SIZE_ESTIMATE
 
-            if _CONTROL_NET_CACHE_SIZE < 0:
-                _CONTROL_NET_CACHE_SIZE = 0
+            if _CONTROLNET_CACHE_SIZE < 0:
+                _CONTROLNET_CACHE_SIZE = 0
 
-            _messages.debug_log(f'Cached ControlNetModel {_types.class_and_id_string(control_net)} Size = '
-                                f'{control_net.DGENERATE_SIZE_ESTIMATE} Bytes '
-                                f'({_memory.bytes_best_human_unit(control_net.DGENERATE_SIZE_ESTIMATE)}) '
+            _messages.debug_log(f'Cached ControlNetModel {_types.class_and_id_string(controlnet)} Size = '
+                                f'{controlnet.DGENERATE_SIZE_ESTIMATE} Bytes '
+                                f'({_memory.bytes_best_human_unit(controlnet.DGENERATE_SIZE_ESTIMATE)}) '
                                 f'from "MultiControlNetModel" is leaving CPU side memory, '
-                                f'{_types.fullname(control_net_cache_size)}() is now '
-                                f'{control_net_cache_size()} Bytes '
-                                f'({_memory.bytes_best_human_unit(control_net_cache_size())})')
+                                f'{_types.fullname(controlnet_cache_size)}() is now '
+                                f'{controlnet_cache_size()} Bytes '
+                                f'({_memory.bytes_best_human_unit(controlnet_cache_size())})')
 
     elif isinstance(controlnet, (diffusers.models.ControlNetModel,
                                  diffusers.SD3ControlNetModel)):
 
-        _CONTROL_NET_CACHE_SIZE -= controlnet.DGENERATE_SIZE_ESTIMATE
+        _CONTROLNET_CACHE_SIZE -= controlnet.DGENERATE_SIZE_ESTIMATE
 
-        if _CONTROL_NET_CACHE_SIZE < 0:
-            _CONTROL_NET_CACHE_SIZE = 0
+        if _CONTROLNET_CACHE_SIZE < 0:
+            _CONTROLNET_CACHE_SIZE = 0
 
         _messages.debug_log(f'Cached ControlNetModel {_types.class_and_id_string(controlnet)} '
                             f'Size = {controlnet.DGENERATE_SIZE_ESTIMATE} Bytes '
                             f'({_memory.bytes_best_human_unit(controlnet.DGENERATE_SIZE_ESTIMATE)}) '
-                            f'is leaving CPU side memory, {_types.fullname(control_net_cache_size)}() '
-                            f'is now {control_net_cache_size()} Bytes '
-                            f'({_memory.bytes_best_human_unit(control_net_cache_size())})')
+                            f'is leaving CPU side memory, {_types.fullname(controlnet_cache_size)}() '
+                            f'is now {controlnet_cache_size()} Bytes '
+                            f'({_memory.bytes_best_human_unit(controlnet_cache_size())})')
 
 
 def adapter_off_cpu_update_cache_info(adapter: diffusers.T2IAdapter | diffusers.MultiAdapter):

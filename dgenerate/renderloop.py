@@ -808,8 +808,8 @@ class RenderLoop:
             textual_inversion_uris=self.config.textual_inversion_uris,
             text_encoder_uris=self.config.text_encoder_uris,
             second_text_encoder_uris=self.config.second_text_encoder_uris,
-            control_net_uris=
-            self.config.control_net_uris if self.config.image_seeds else [],
+            controlnet_uris=
+            self.config.controlnet_uris if self.config.image_seeds else [],
             t2i_adapter_uris=
             self.config.t2i_adapter_uris if self.config.image_seeds else [],
             sdxl_refiner_uri=self.config.sdxl_refiner_uri,
@@ -994,7 +994,7 @@ class RenderLoop:
 
         for image_seed_uri, parsed_image_seed, seed_to_image in list(iterate_image_seeds()):
 
-            is_control_guidance_spec = (self.config.control_net_uris or self.config.t2i_adapter_uris) \
+            is_control_guidance_spec = (self.config.controlnet_uris or self.config.t2i_adapter_uris) \
                                        and parsed_image_seed.is_single_spec
 
             if is_control_guidance_spec:
