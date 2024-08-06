@@ -1176,10 +1176,16 @@ class TorchPipelineCreationResult(PipelineCreationResult):
     Parsed T2IAdapter URIs if any were present
     """
 
+    parsed_image_encoder_uri: _uris.ImageEncoderUri | None
+    """
+    Parsed ImageEncoder URI if one was present
+    """
+
     def __init__(self,
                  pipeline: diffusers.DiffusionPipeline,
                  parsed_unet_uri: _uris.TorchUNetUri | None,
                  parsed_vae_uri: _uris.TorchVAEUri | None,
+                 parsed_image_encoder_uri: _uris.ImageEncoderUri | None,
                  parsed_lora_uris: collections.abc.Sequence[_uris.LoRAUri],
                  parsed_ip_adapter_uris: collections.abc.Sequence[_uris.IPAdapterUri],
                  parsed_textual_inversion_uris: collections.abc.Sequence[_uris.TextualInversionUri],
@@ -1193,6 +1199,7 @@ class TorchPipelineCreationResult(PipelineCreationResult):
         self.parsed_control_net_uris = parsed_control_net_uris
         self.parsed_t2i_adapter_uris = parsed_t2i_adapter_uris
         self.parsed_ip_adapter_uris = parsed_ip_adapter_uris
+        self.parsed_image_encoder_uri = parsed_image_encoder_uri
 
     def call(self,
              device: str | None = 'cuda',
@@ -1842,6 +1849,7 @@ def _create_torch_diffusion_pipeline(
 
     parsed_control_net_uris = []
     parsed_t2i_adapter_uris = []
+    parsed_image_encoder_uri = None
     parsed_unet_uri = None
     parsed_vae_uri = None
 
@@ -2132,6 +2140,7 @@ def _create_torch_diffusion_pipeline(
         parsed_unet_uri=parsed_unet_uri,
         parsed_vae_uri=parsed_vae_uri,
         parsed_lora_uris=parsed_lora_uris,
+        parsed_image_encoder_uri=parsed_image_encoder_uri,
         parsed_ip_adapter_uris=parsed_ip_adapter_uris,
         parsed_textual_inversion_uris=parsed_textual_inversion_uris,
         parsed_control_net_uris=parsed_control_net_uris,
