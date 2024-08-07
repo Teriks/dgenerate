@@ -2252,9 +2252,9 @@ class DiffusionPipelineWrapper:
                     'Inpaint and Img2Img not supported for flax with ControlNet.')
 
             self._recall_main_pipeline = _pipelines.FlaxPipelineFactory(
-                pipeline_type=pipeline_type,
                 model_path=self._model_path,
                 model_type=self._model_type,
+                pipeline_type=pipeline_type,
                 revision=self._revision,
                 dtype=self._dtype,
                 unet_uri=self._unet_uri,
@@ -2283,9 +2283,9 @@ class DiffusionPipelineWrapper:
                 # Don't load this up if were just going to be getting
                 # information about compatible schedulers for the refiner
                 self._recall_main_pipeline = _pipelines.TorchPipelineFactory(
-                    pipeline_type=pipeline_type,
                     model_path=self._model_path,
                     model_type=self._model_type,
+                    pipeline_type=pipeline_type,
                     subfolder=self._subfolder,
                     revision=self._revision,
                     variant=self._variant,
@@ -2307,9 +2307,9 @@ class DiffusionPipelineWrapper:
                 self._pipeline = creation_result.pipeline
 
             self._recall_s_cascade_decoder_pipeline = _pipelines.TorchPipelineFactory(
-                pipeline_type=_enums.PipelineType.TXT2IMG,
                 model_path=self._parsed_s_cascade_decoder_uri.model,
                 model_type=_enums.ModelType.TORCH_S_CASCADE_DECODER,
+                pipeline_type=_enums.PipelineType.TXT2IMG,
                 subfolder=self._parsed_s_cascade_decoder_uri.subfolder,
                 revision=self._parsed_s_cascade_decoder_uri.revision,
                 unet_uri=self._second_unet_uri,
@@ -2343,9 +2343,9 @@ class DiffusionPipelineWrapper:
                 # Don't load this up if were just going to be getting
                 # information about compatible schedulers for the refiner
                 self._recall_main_pipeline = _pipelines.TorchPipelineFactory(
-                    pipeline_type=pipeline_type,
                     model_path=self._model_path,
                     model_type=self._model_type,
+                    pipeline_type=pipeline_type,
                     subfolder=self._subfolder,
                     revision=self._revision,
                     variant=self._variant,
@@ -2389,9 +2389,9 @@ class DiffusionPipelineWrapper:
                 refiner_extra_modules = self._second_model_extra_modules
 
             self._recall_refiner_pipeline = _pipelines.TorchPipelineFactory(
-                pipeline_type=refiner_pipeline_type,
                 model_path=self._parsed_sdxl_refiner_uri.model,
                 model_type=_enums.ModelType.TORCH_SDXL,
+                pipeline_type=refiner_pipeline_type,
                 subfolder=self._parsed_sdxl_refiner_uri.subfolder,
                 revision=self._parsed_sdxl_refiner_uri.revision,
                 unet_uri=self._second_unet_uri,
@@ -2419,9 +2419,9 @@ class DiffusionPipelineWrapper:
             self._sdxl_refiner_pipeline = self._recall_refiner_pipeline().pipeline
         else:
             self._recall_main_pipeline = _pipelines.TorchPipelineFactory(
-                pipeline_type=pipeline_type,
                 model_path=self._model_path,
                 model_type=self._model_type,
+                pipeline_type=pipeline_type,
                 subfolder=self._subfolder,
                 revision=self._revision,
                 variant=self._variant,
