@@ -249,9 +249,9 @@ def load_scheduler(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusi
 
 
 def estimate_pipeline_memory_use(
-        pipeline_type: _enums.PipelineType,
         model_path: str,
         model_type: _enums.ModelType,
+        pipeline_type: _enums.PipelineType = _enums.PipelineType.TXT2IMG,
         revision: _types.Name = 'main',
         variant: _types.OptionalName = None,
         subfolder: _types.OptionalPath = None,
@@ -269,9 +269,9 @@ def estimate_pipeline_memory_use(
     """
     Estimate the CPU side memory use of a pipeline.
 
-    :param pipeline_type: :py:class:`dgenerate.pipelinewrapper.PipelineType`
     :param model_path: huggingface slug, blob link, path to folder on disk, path to model file.
     :param model_type: :py:class:`dgenerate.pipelinewrapper.ModelType`
+    :param pipeline_type: :py:class:`dgenerate.pipelinewrapper.PipelineType`
     :param revision: huggingface repo revision if using a huggingface slug
     :param variant: model file variant desired, for example "fp16"
     :param subfolder: huggingface repo subfolder if using a huggingface slug
@@ -1221,9 +1221,9 @@ class TorchPipelineCreationResult(PipelineCreationResult):
                              **kwargs)
 
 
-def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
-                                    model_path: str,
+def create_torch_diffusion_pipeline(model_path: str,
                                     model_type: _enums.ModelType = _enums.ModelType.TORCH,
+                                    pipeline_type: _enums.PipelineType = _enums.PipelineType.TXT2IMG,
                                     revision: _types.OptionalString = None,
                                     variant: _types.OptionalString = None,
                                     subfolder: _types.OptionalString = None,
@@ -1248,10 +1248,9 @@ def create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
     """
     Create a :py:class:`diffusers.DiffusionPipeline` in dgenerates in memory cacheing system.
 
-
-    :param pipeline_type: :py:class:`dgenerate.pipelinewrapper.PipelineType` enum value
     :param model_type:  :py:class:`dgenerate.pipelinewrapper.ModelType` enum value
     :param model_path: huggingface slug, huggingface blob link, path to folder on disk, path to file on disk
+    :param pipeline_type: :py:class:`dgenerate.pipelinewrapper.PipelineType` enum value
     :param revision: huggingface repo revision (branch)
     :param variant: model weights name variant, for example 'fp16'
     :param subfolder: huggingface repo subfolder if applicable
@@ -1307,9 +1306,9 @@ class TorchPipelineFactory:
     """
 
     def __init__(self,
-                 pipeline_type: _enums.PipelineType,
                  model_path: str,
                  model_type: _enums.ModelType = _enums.ModelType.TORCH,
+                 pipeline_type: _enums.PipelineType = _enums.PipelineType.TXT2IMG,
                  revision: _types.OptionalString = None,
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
@@ -1450,9 +1449,9 @@ def _torch_on_create(key, new):
           on_hit=_torch_on_hit,
           on_create=_torch_on_create)
 def _create_torch_diffusion_pipeline(
-        pipeline_type: _enums.PipelineType,
         model_path: str,
         model_type: _enums.ModelType = _enums.ModelType.TORCH,
+        pipeline_type: _enums.PipelineType = _enums.PipelineType.TXT2IMG,
         revision: _types.OptionalString = None,
         variant: _types.OptionalString = None,
         subfolder: _types.OptionalString = None,
@@ -2228,28 +2227,29 @@ class FlaxPipelineCreationResult(PipelineCreationResult):
         return call_pipeline(self.pipeline, None, prompt_weighter, **kwargs)
 
 
-def create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
-                                   model_path: str,
-                                   model_type: _enums.ModelType = _enums.ModelType.FLAX,
-                                   revision: _types.OptionalString = None,
-                                   subfolder: _types.OptionalString = None,
-                                   dtype: _enums.DataType = _enums.DataType.AUTO,
-                                   unet_uri: _types.OptionalUri = None,
-                                   vae_uri: _types.OptionalUri = None,
-                                   controlnet_uris: _types.OptionalUris = None,
-                                   text_encoder_uris: _types.OptionalUris = None,
-                                   scheduler: _types.OptionalString = None,
-                                   safety_checker: bool = False,
-                                   auth_token: _types.OptionalString = None,
-                                   extra_modules: dict[str, typing.Any] | None = None,
-                                   local_files_only: bool = False) -> FlaxPipelineCreationResult:
+def create_flax_diffusion_pipeline(
+        model_path: str,
+        model_type: _enums.ModelType = _enums.ModelType.FLAX,
+        pipeline_type: _enums.PipelineType = _enums.PipelineType.TXT2IMG,
+        revision: _types.OptionalString = None,
+        subfolder: _types.OptionalString = None,
+        dtype: _enums.DataType = _enums.DataType.AUTO,
+        unet_uri: _types.OptionalUri = None,
+        vae_uri: _types.OptionalUri = None,
+        controlnet_uris: _types.OptionalUris = None,
+        text_encoder_uris: _types.OptionalUris = None,
+        scheduler: _types.OptionalString = None,
+        safety_checker: bool = False,
+        auth_token: _types.OptionalString = None,
+        extra_modules: dict[str, typing.Any] | None = None,
+        local_files_only: bool = False) -> FlaxPipelineCreationResult:
     """
     Create a :py:class:`diffusers.FlaxDiffusionPipeline` in dgenerates in memory cacheing system.
 
 
-    :param pipeline_type: :py:class:`dgenerate.pipelinewrapper.PipelineType` enum value
     :param model_path: huggingface slug, huggingface blob link, path to folder on disk, path to file on disk
     :param model_type: Currently only accepts :py:attr:`dgenerate.pipelinewrapper.ModelType.FLAX`
+    :param pipeline_type: :py:class:`dgenerate.pipelinewrapper.PipelineType` enum value
     :param revision: huggingface repo revision (branch)
     :param subfolder: huggingface repo subfolder if applicable
     :param dtype: Optional :py:class:`dgenerate.pipelinewrapper.DataType` enum value
@@ -2292,9 +2292,10 @@ class FlaxPipelineFactory:
     that can recreate the same Flax pipeline over again, possibly from cache.
     """
 
-    def __init__(self, pipeline_type: _enums.PipelineType,
+    def __init__(self,
                  model_path: str,
                  model_type: _enums.ModelType = _enums.ModelType.FLAX,
+                 pipeline_type: _enums.PipelineType = _enums.PipelineType.TXT2IMG,
                  revision: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
                  dtype: _enums.DataType = _enums.DataType.AUTO,
@@ -2354,21 +2355,22 @@ def _flax_on_create(key, new):
           hasher=_flax_args_hasher,
           on_hit=_flax_on_hit,
           on_create=_flax_on_create)
-def _create_flax_diffusion_pipeline(pipeline_type: _enums.PipelineType,
-                                    model_path: str,
-                                    model_type: _enums.ModelType = _enums.ModelType.FLAX,
-                                    revision: _types.OptionalString = None,
-                                    subfolder: _types.OptionalString = None,
-                                    dtype: _enums.DataType = _enums.DataType.AUTO,
-                                    unet_uri: _types.OptionalUri = None,
-                                    vae_uri: _types.OptionalUri = None,
-                                    text_encoder_uris: _types.OptionalUris = None,
-                                    controlnet_uris: _types.OptionalUris = None,
-                                    scheduler: _types.OptionalString = None,
-                                    safety_checker: bool = False,
-                                    auth_token: _types.OptionalString = None,
-                                    extra_modules: dict[str, typing.Any] | None = None,
-                                    local_files_only: bool = False) -> FlaxPipelineCreationResult:
+def _create_flax_diffusion_pipeline(
+        model_path: str,
+        model_type: _enums.ModelType = _enums.ModelType.FLAX,
+        pipeline_type: _enums.PipelineType = _enums.PipelineType.TXT2IMG,
+        revision: _types.OptionalString = None,
+        subfolder: _types.OptionalString = None,
+        dtype: _enums.DataType = _enums.DataType.AUTO,
+        unet_uri: _types.OptionalUri = None,
+        vae_uri: _types.OptionalUri = None,
+        text_encoder_uris: _types.OptionalUris = None,
+        controlnet_uris: _types.OptionalUris = None,
+        scheduler: _types.OptionalString = None,
+        safety_checker: bool = False,
+        auth_token: _types.OptionalString = None,
+        extra_modules: dict[str, typing.Any] | None = None,
+        local_files_only: bool = False) -> FlaxPipelineCreationResult:
     if not _enums.model_type_is_flax(model_type):
         raise ValueError('model_type must be a FLAX ModelType enum value.')
 
