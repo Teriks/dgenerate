@@ -14,7 +14,7 @@ stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
 --vae-tiling
 --vae-slicing
 --prompts "Taylor Swift, high quality, masterpiece, high resolution; low quality, bad quality, sketches"
---t2i-adapters TencentARC/t2i-adapter-canny-sdxl-1.0;scale=0.5
+--t2i-adapters TencentARC/t2i-adapter-canny-sdxl-1.0;scale=0.8
 --image-seeds "../../media/vermeer_canny_edged.png"
 --output-size 1024
 --output-path taylorswift
