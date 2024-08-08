@@ -121,20 +121,20 @@ def parse_scheduled_prompts(text,steps=30):
     if len(parse_result) == 1:
         # no scheduling
         return parse_result
-
+    
     prompts_list = []
-
+    
     for i in range(steps):
         current_prompt_step, current_prompt_content = parse_result[0][0],parse_result[0][1]
         step = i + 1
         if step < current_prompt_step:
             prompts_list.append(current_prompt_content)
             continue
-
+        
         if step == current_prompt_step:
             prompts_list.append(current_prompt_content)
             parse_result.pop(0)
-
+        
     return prompts_list
 
 
