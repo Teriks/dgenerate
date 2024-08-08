@@ -104,7 +104,7 @@ def patch_module_and_optimizers():
     original_module_init = torch.nn.Module.__init__
 
     def new_module_init(self, *args, **kwargs):
-        frame = inspect.currentframe().f_back
+        frame = inspect.currentframe().f_back.f_back
         self._DGENERATE_TORCH_OOM_DEBUG_INFO = f"{frame.f_code.co_filename}:{frame.f_lineno}"
         self._DGENERATE_TORCH_OOM_STACK_TRACE = ''.join(traceback.format_stack(frame))
         original_module_init(self, *args, **kwargs)
@@ -114,7 +114,7 @@ def patch_module_and_optimizers():
     original_optimizer_init = torch.optim.Optimizer.__init__
 
     def new_optimizer_init(self, *args, **kwargs):
-        frame = inspect.currentframe().f_back
+        frame = inspect.currentframe().f_back.f_back
         self._DGENERATE_TORCH_OOM_DEBUG_INFO = f"{frame.f_code.co_filename}:{frame.f_lineno}"
         self._DGENERATE_TORCH_OOM_STACK_TRACE = ''.join(traceback.format_stack(frame))
         original_optimizer_init(self, *args, **kwargs)
@@ -124,7 +124,7 @@ def patch_module_and_optimizers():
     original_storage_init = torch.storage._StorageBase.__init__
 
     def new_storage_init(self, *args, **kwargs):
-        frame = inspect.currentframe().f_back
+        frame = inspect.currentframe().f_back.f_back
         self._DGENERATE_TORCH_OOM_DEBUG_INFO = f"{frame.f_code.co_filename}:{frame.f_lineno}"
         self._DGENERATE_TORCH_OOM_STACK_TRACE = ''.join(traceback.format_stack(frame))
         original_storage_init(self, *args, **kwargs)
@@ -134,7 +134,7 @@ def patch_module_and_optimizers():
 
 def find_gpu_tensors_in_gc():
     dot = graphviz.Digraph(comment='Torch GPU Object Reference Graph')
-    dot.graph_attr.update(size="100,100!", ratio="expand", layout="sfdp", splines="true", nodesep="1.5", ranksep="2.0")
+    dot.graph_attr.update(size="100,100!", ratio="expand", layout="circo", splines="true", nodesep="1.5", ranksep="2.0")
     dot.node_attr.update(style="filled", fillcolor="lightgrey", shape="box")
 
     def is_on_gpu(obj):
@@ -160,14 +160,15 @@ def find_gpu_tensors_in_gc():
         try:
             if isinstance(obj, (torch.Tensor, torch.nn.Module, torch.optim.Optimizer, torch.storage._StorageBase)):
                 if hasattr(obj, '_DGENERATE_TORCH_OOM_DEBUG_INFO') and is_on_gpu(obj):
+                    debug_info = obj._DGENERATE_TORCH_OOM_DEBUG_INFO.replace('\\', '/')
                     obj_id = id(obj)
-                    obj_info = f"{obj.__class__.__name__} created at {obj._DGENERATE_TORCH_OOM_DEBUG_INFO}\n"
+                    obj_info = f"{obj.__class__.__name__} created at {debug_info}\n"
                     if isinstance(obj, torch.Tensor):
                         obj_info += f"Allocated: {obj.numel() * obj.element_size()} bytes\n"
                     obj_info += f"Device: {obj.device}\n"
                     dot.node(str(obj_id), obj_info)
 
-                    log(f"Object: {obj.__class__.__name__} created at {obj._DGENERATE_TORCH_OOM_DEBUG_INFO}")
+                    log(f"Object: {obj.__class__.__name__} created at {debug_info}")
                     for ref in gc.get_referents(obj):
                         ref_id = id(ref)
                         ref_info = f"{ref.__class__.__name__}"
@@ -334,12 +335,13 @@ def main():
                 log(f'SHORTENING ANIMATIONS IN DIRECTORY TO 3 FRAMES MAX: {top_dir}')
                 extra_args = ['--frame-end', '2']
 
+            directory_configs = filter_to_directories_under_top_level(configs, top_dir)
+
             p = mp.Process(target=run_directory_subprocess,
-                           args=(filter_to_directories_under_top_level(configs, top_dir),
-                                 injected_args, extra_args, debug_torch, known_args))
+                           args=(directory_configs, injected_args, extra_args, debug_torch, known_args))
             p.start()
             p.join()
-            check_return_code(configs, p.exitcode)
+            check_return_code(directory_configs, p.exitcode)
 
 
 if __name__ == "__main__":

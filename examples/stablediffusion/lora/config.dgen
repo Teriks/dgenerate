@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 3.10.3
+#! dgenerate 3.10.4
 
 CompVis/stable-diffusion-v1-4 
 --loras sayakpaul/sd-model-finetuned-lora-t4

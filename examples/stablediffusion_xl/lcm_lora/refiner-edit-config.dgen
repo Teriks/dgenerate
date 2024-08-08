@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 3.10.3
+#! dgenerate 3.10.4
 
 # This config forces the refiner into edit mode
 
