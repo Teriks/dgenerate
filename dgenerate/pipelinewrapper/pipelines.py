@@ -1385,7 +1385,7 @@ def _create_torch_diffusion_pipeline(pipeline_type: _enums.PipelineType,
             raise UnsupportedPipelineConfigError(
                 'Stable Cascade --model-type values are not compatible with --vae.')
 
-    if model_type == model_type.TORCH_SD3:
+    if model_type == _enums.ModelType.TORCH_SD3:
         if unet_uri:
             raise UnsupportedPipelineConfigError(
                 '--model-type torch-sd3 is not compatible with --unet.'
