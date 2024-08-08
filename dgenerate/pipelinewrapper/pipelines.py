@@ -187,7 +187,8 @@ def load_scheduler(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusi
 
     compatibles = list(pipeline.scheduler.compatibles)
 
-    if isinstance(pipeline, diffusers.loaders.LoraLoaderMixin):
+    if isinstance(pipeline, (diffusers.loaders.StableDiffusionLoraLoaderMixin,
+                             diffusers.loaders.StableDiffusionXLLoraLoaderMixin)):
         compatibles.append(diffusers.LCMScheduler)
 
     if isinstance(pipeline, diffusers.StableDiffusionLatentUpscalePipeline):
