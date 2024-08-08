@@ -39,13 +39,13 @@ _textual_inversion_uri_parser = _textprocessing.ConceptUriParser('Textual Invers
 
 def _load_textual_inversion_state_dict(pretrained_model_name_or_path, **kwargs):
     from diffusers.utils.hub_utils import _get_model_file
+    from diffusers.models.modeling_utils import load_state_dict
 
     text_inversion_name = "learned_embeds.bin"
     text_inversion_name_safe = "learned_embeds.safetensors"
 
     cache_dir = kwargs.pop("cache_dir", None)
     force_download = kwargs.pop("force_download", False)
-    resume_download = kwargs.pop("resume_download", False)
     proxies = kwargs.pop("proxies", None)
     local_files_only = kwargs.pop("local_files_only", None)
     token = kwargs.pop("token", None)
@@ -78,7 +78,6 @@ def _load_textual_inversion_state_dict(pretrained_model_name_or_path, **kwargs):
                 weights_name=weight_name or text_inversion_name_safe,
                 cache_dir=cache_dir,
                 force_download=force_download,
-                resume_download=resume_download,
                 proxies=proxies,
                 local_files_only=local_files_only,
                 token=token,
@@ -86,7 +85,7 @@ def _load_textual_inversion_state_dict(pretrained_model_name_or_path, **kwargs):
                 subfolder=subfolder,
                 user_agent=user_agent,
             )
-            state_dict = safetensors.torch.load_file(model_file, device="cpu")
+            state_dict = load_state_dict(model_file)
         except Exception as e:
             if not allow_pickle:
                 raise e
@@ -99,7 +98,6 @@ def _load_textual_inversion_state_dict(pretrained_model_name_or_path, **kwargs):
             weights_name=weight_name or text_inversion_name,
             cache_dir=cache_dir,
             force_download=force_download,
-            resume_download=resume_download,
             proxies=proxies,
             local_files_only=local_files_only,
             token=token,
@@ -107,7 +105,7 @@ def _load_textual_inversion_state_dict(pretrained_model_name_or_path, **kwargs):
             subfolder=subfolder,
             user_agent=user_agent,
         )
-        state_dict = torch.load(model_file, map_location="cpu")
+        state_dict = load_state_dict(model_file)
     return model_file, state_dict
 
 
