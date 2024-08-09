@@ -803,6 +803,7 @@ class RenderLoop:
             vae_tiling=self.config.vae_tiling,
             vae_slicing=self.config.vae_slicing,
             lora_uris=self.config.lora_uris,
+            lora_fuse_scale=self.config.lora_fuse_scale,
             image_encoder_uri=self.config.image_encoder_uri,
             ip_adapter_uris=self.config.ip_adapter_uris,
             textual_inversion_uris=self.config.textual_inversion_uris,

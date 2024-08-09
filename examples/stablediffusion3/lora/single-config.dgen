@@ -1,0 +1,27 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.0.0
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %} !END
+
+# multiple loras can be loaded with SD3 but lora scale
+# is currently not supported, there are very few loras
+# for SD3 on huggingface at the moment. This generates
+# a dog made out of yarn.
+
+stabilityai/stable-diffusion-3-medium-diffusers
+--model-type torch-sd3
+--variant fp16
+--dtype float16
+--loras linoyts/Yarn_art_SD3_LoRA
+--inference-steps 30
+--guidance-scales 5.00
+--clip-skips 0
+--gen-seeds 2
+--output-path single
+--model-sequential-offload
+--prompts "a photo of TOK yarn art dog"

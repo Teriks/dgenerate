@@ -23,7 +23,7 @@ import os.path
 
 import diffusers
 import huggingface_hub
-
+import typing
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.hfutil as _hfutil
 import dgenerate.textprocessing as _textprocessing
@@ -91,95 +91,116 @@ class LoRAUri:
     def __repr__(self):
         return str(self)
 
-    def load_on_pipeline(self,
-                         pipeline: diffusers.DiffusionPipeline,
+    @staticmethod
+    def load_on_pipeline(pipeline: diffusers.DiffusionPipeline,
+                         uris: typing.Iterable[typing.Union["LoRAUri", str]],
+                         fuse_scale: float = 1.0,
                          use_auth_token: _types.OptionalString = None,
                          local_files_only: bool = False):
         """
         Load LoRA weights on to a pipeline using this URI
 
+
         :param pipeline: :py:class:`diffusers.DiffusionPipeline`
+        :param uris: Iterable of :py:class:`LoRAUri` or ``str`` LoRA URIs to load
+        :param fuse_scale: Global scale for the fused LoRAs, all LoRAs are fused together
+            using their individual scale value, and then fused into the main model using this scale.
         :param use_auth_token: optional huggingface auth token.
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug
 
-        :raises ModelNotFoundError: If the model could not be found.
+        :raises dgenerate.ModelNotFoundError: If the model could not be found.
+        :raises dgenerate.pipelinewrapper.uris.exceptions.InvalidLoRAUriError: On URI parsing errors.
+        :raises dgenerate.pipelinewrapper.uris.exceptions.LoRAUriLoadError: On loading errors.
         """
         try:
-            self._load_on_pipeline(pipeline=pipeline,
-                                   use_auth_token=use_auth_token,
-                                   local_files_only=local_files_only)
+            LoRAUri._load_on_pipeline(pipeline,
+                                      uris=uris,
+                                      fuse_scale=fuse_scale,
+                                      use_auth_token=use_auth_token,
+                                      local_files_only=local_files_only)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
+        except _exceptions.InvalidLoRAUriError:
+            raise
         except Exception as e:
             raise _exceptions.LoRAUriLoadError(
-                f'error loading lora "{self.model}": {e}')
+                f'error loading LoRAs: {e}')
 
-    def _load_on_pipeline(self,
-                          pipeline: diffusers.DiffusionPipeline,
+    @staticmethod
+    def _load_on_pipeline(pipeline: diffusers.DiffusionPipeline,
+                          uris: typing.Iterable[typing.Union["LoRAUri", str]],
+                          fuse_scale: float = 1.0,
                           use_auth_token: _types.OptionalString = None,
                           local_files_only: bool = False):
 
         if hasattr(pipeline, 'load_lora_weights'):
-            debug_args = {k: v for k, v in locals().items() if k not in {'self', 'pipeline'}}
-            _messages.debug_log('pipeline.load_lora_weights('
-                                + str(_types.get_public_attributes(self) | debug_args) + ')')
+            adapter_names = []
+            adapter_weights = []
+            for adapter_index, lora_uri in enumerate(uris):
 
-            model_path = _hfutil.download_non_hf_model(self.model)
+                if not isinstance(lora_uri, LoRAUri):
+                    lora_uri = LoRAUri.parse(lora_uri)
 
-            if local_files_only and not os.path.exists(model_path):
-                # Temporary fix for diffusers bug
+                model_path = _hfutil.download_non_hf_model(lora_uri.model)
 
-                subfolder = self.subfolder if self.subfolder else ''
+                if local_files_only and not os.path.exists(model_path):
+                    # Temporary fix for diffusers bug
 
-                probable_path_1 = os.path.join(
-                    subfolder, 'pytorch_lora_weights.safetensors' if
-                    self.weight_name is None else self.weight_name)
+                    subfolder = lora_uri.subfolder if lora_uri.subfolder else ''
 
-                probable_path_2 = os.path.join(
-                    subfolder, 'pytorch_lora_weights.bin')
+                    probable_path_1 = os.path.join(
+                        subfolder, 'pytorch_lora_weights.safetensors' if
+                        lora_uri.weight_name is None else lora_uri.weight_name)
 
-                file_path = huggingface_hub.try_to_load_from_cache(self.model,
-                                                                   filename=probable_path_1,
-                                                                   revision=self.revision)
+                    probable_path_2 = os.path.join(
+                        subfolder, 'pytorch_lora_weights.bin')
 
-                if not isinstance(file_path, str):
-                    file_path = huggingface_hub.try_to_load_from_cache(self.model,
-                                                                       filename=probable_path_2,
-                                                                       revision=self.revision)
+                    file_path = huggingface_hub.try_to_load_from_cache(lora_uri.model,
+                                                                       filename=probable_path_1,
+                                                                       revision=lora_uri.revision)
 
-                if not isinstance(file_path, str):
-                    raise RuntimeError(
-                        f'LoRA model "{self.model}" '
-                        'was not available in the local huggingface cache.')
+                    if not isinstance(file_path, str):
+                        file_path = huggingface_hub.try_to_load_from_cache(lora_uri.model,
+                                                                           filename=probable_path_2,
+                                                                           revision=lora_uri.revision)
 
-                model_path = os.path.dirname(file_path)
+                    if not isinstance(file_path, str):
+                        raise RuntimeError(
+                            f'LoRA model "{lora_uri.model}" '
+                            'was not available in the local huggingface cache.')
 
-            try:
-                pipeline.load_lora_weights(model_path,
-                                           revision=self.revision,
-                                           subfolder=self.subfolder,
-                                           weight_name=self.weight_name,
-                                           local_files_only=local_files_only,
-                                           use_safetensors=True,
-                                           token=use_auth_token)
-            except EnvironmentError:
-                # brute force, try for .bin files
-                pipeline.load_lora_weights(model_path,
-                                           revision=self.revision,
-                                           subfolder=self.subfolder,
-                                           weight_name=self.weight_name,
-                                           local_files_only=local_files_only,
-                                           token=use_auth_token)
+                    model_path = os.path.dirname(file_path)
 
-            if hasattr(pipeline, 'fuse_lora'):
-                pipeline.fuse_lora(lora_scale=self.scale)
-            elif self.scale != 1.0:
-                _messages.log('lora scale argument not supported, ignored.',
-                              level=_messages.WARNING)
+                adapter_name = str(adapter_index)
+                adapter_names.append(adapter_name)
+                adapter_weights.append(lora_uri.scale)
 
-            _messages.debug_log(f'Added LoRA: "{self}" to pipeline: "{pipeline.__class__.__name__}"')
+                try:
+                    pipeline.load_lora_weights(model_path,
+                                               revision=lora_uri.revision,
+                                               subfolder=lora_uri.subfolder,
+                                               weight_name=lora_uri.weight_name,
+                                               local_files_only=local_files_only,
+                                               use_safetensors=True,
+                                               token=use_auth_token,
+                                               adapter_name=adapter_name)
+                except EnvironmentError:
+                    # brute force, try for .bin files
+                    pipeline.load_lora_weights(model_path,
+                                               revision=lora_uri.revision,
+                                               subfolder=lora_uri.subfolder,
+                                               weight_name=lora_uri.weight_name,
+                                               local_files_only=local_files_only,
+                                               token=use_auth_token,
+                                               adapter_name=adapter_name)
+
+                _messages.debug_log(f'Added LoRA: "{lora_uri}" to pipeline: "{pipeline.__class__.__name__}"')
+
+            _messages.debug_log(f'Fusing all LoRAs into pipeline with global scale: {fuse_scale}')
+            pipeline.set_adapters(adapter_names, adapter_weights=adapter_weights)
+            pipeline.fuse_lora(adapter_names=adapter_names, lora_scale=fuse_scale)
         else:
             raise RuntimeError(f'Pipeline: {pipeline.__class__.__name__} '
                                f'does not support loading LoRAs.')

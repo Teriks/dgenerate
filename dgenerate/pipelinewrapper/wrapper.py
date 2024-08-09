@@ -147,6 +147,7 @@ class DiffusionPipelineWrapper:
                  vae_tiling: bool = False,
                  vae_slicing: bool = False,
                  lora_uris: _types.OptionalUris = None,
+                 lora_fuse_scale: _types.OptionalFloat = None,
                  image_encoder_uri: _types.OptionalUri = None,
                  ip_adapter_uris: _types.OptionalUris = None,
                  textual_inversion_uris: _types.OptionalUris = None,
@@ -197,6 +198,9 @@ class DiffusionPipelineWrapper:
         :param vae_tiling: use VAE tiling?
         :param vae_slicing: use VAE slicing?
         :param lora_uris: One or more LoRA URI strings
+        :param lora_fuse_scale: Optional global LoRA fuse scale value. Once all LoRAs are merged with
+            their individual scales, the merged weights will be fused into the pipeline at this scale.
+            The default value is 1.0.
         :param image_encoder_uri: One or more Image Encoder URI strings,
             Image Encoders are used with IP Adapters and Stable Cascade
         :param ip_adapter_uris: One or more IP Adapter URI strings
@@ -253,6 +257,7 @@ class DiffusionPipelineWrapper:
             vae_tiling: bool = False,
             vae_slicing: bool = False,
             lora_uris: _types.OptionalUris = None,
+            lora_fuse_scale: _types.OptionalFloat = None,
             image_encoder_uri: _types.OptionalUri = None,
             ip_adapter_uris: _types.OptionalUris = None,
             textual_inversion_uris: _types.OptionalUris = None,
@@ -574,6 +579,7 @@ class DiffusionPipelineWrapper:
         self._s_cascade_decoder_sequential_offload = s_cascade_decoder_sequential_offload
 
         self._lora_uris = lora_uris
+        self._lora_fuse_scale = lora_fuse_scale
         self._ip_adapter_uris = ip_adapter_uris
         self._textual_inversion_uris = textual_inversion_uris
         self._text_encoder_uris = text_encoder_uris
@@ -839,6 +845,13 @@ class DiffusionPipelineWrapper:
         List of supplied ``--loras`` uri strings or an empty list
         """
         return list(self._lora_uris) if self._lora_uris else []
+
+    @property
+    def lora_fuse_scale(self) -> float:
+        """
+        Supplied ``--lora-fuse-scale`` value
+        """
+        return self._lora_fuse_scale
 
     @property
     def auth_token(self) -> _types.OptionalString:
@@ -2104,9 +2117,6 @@ class DiffusionPipelineWrapper:
                 pipeline_args.pop('width')
                 pipeline_args.pop('height')
 
-        # refiner does not use LoRA
-        pipeline_args.pop('cross_attention_kwargs', None)
-
         # Or any of these
         self._pop_sdxl_conditioning_args(pipeline_args)
         pipeline_args.pop('ip_adapter_image', None)
@@ -2293,6 +2303,7 @@ class DiffusionPipelineWrapper:
                     unet_uri=self._unet_uri,
                     vae_uri=self._vae_uri,
                     lora_uris=self._lora_uris,
+                    lora_fuse_scale=self._lora_fuse_scale,
                     scheduler=self._scheduler,
                     safety_checker=self._safety_checker,
                     auth_token=self._auth_token,
@@ -2353,6 +2364,7 @@ class DiffusionPipelineWrapper:
                     unet_uri=self._unet_uri,
                     vae_uri=self._vae_uri,
                     lora_uris=self._lora_uris,
+                    lora_fuse_scale=self._lora_fuse_scale,
                     image_encoder_uri=self._image_encoder_uri,
                     ip_adapter_uris=self._ip_adapter_uris,
                     textual_inversion_uris=self._textual_inversion_uris,
@@ -2429,6 +2441,7 @@ class DiffusionPipelineWrapper:
                 unet_uri=self._unet_uri,
                 vae_uri=self._vae_uri,
                 lora_uris=self._lora_uris,
+                lora_fuse_scale=self._lora_fuse_scale,
                 image_encoder_uri=self._image_encoder_uri,
                 ip_adapter_uris=self._ip_adapter_uris,
                 textual_inversion_uris=self._textual_inversion_uris,
