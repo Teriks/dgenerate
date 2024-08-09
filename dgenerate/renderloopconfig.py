@@ -425,6 +425,20 @@ class RenderLoopConfig(_types.SetFromMixin):
     of the dgenerate command line tool.
     """
 
+    lora_fuse_scale: _types.OptionalFloat = None
+    """
+    Optional global LoRA fuse scale, this corresponds to the ``--lora-fuse-scale`` argument
+    of the dgenerate command line tool.
+    
+    LoRA weights are merged into the main model at this scale. 
+     
+    When specifying multiple LoRA models, they are fused together into one set of 
+    weights using their individual scale values, after which they are fused into the 
+    main model at this scale value. 
+    
+    The default value when ``None`` is specified is ``1.0``.
+    """
+
     image_encoder_uri: _types.OptionalUri = None
     """
     Optional user specified Image Encoder URI when using IP Adapter models or Stable Cascade.

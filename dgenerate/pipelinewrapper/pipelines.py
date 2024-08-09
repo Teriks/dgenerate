@@ -1232,6 +1232,7 @@ def create_torch_diffusion_pipeline(model_path: str,
                                     unet_uri: _types.OptionalUri = None,
                                     vae_uri: _types.OptionalUri = None,
                                     lora_uris: _types.OptionalUris = None,
+                                    lora_fuse_scale: _types.OptionalFloat = None,
                                     image_encoder_uri: _types.OptionalUri = None,
                                     ip_adapter_uris: _types.OptionalUris = None,
                                     textual_inversion_uris: _types.OptionalUris = None,
@@ -1259,6 +1260,9 @@ def create_torch_diffusion_pipeline(model_path: str,
     :param unet_uri: Optional ``--unet`` URI string for specifying a specific UNet
     :param vae_uri: Optional ``--vae`` URI string for specifying a specific VAE
     :param lora_uris: Optional ``--loras`` URI strings for specifying LoRA weights
+    :param lora_fuse_scale: Optional ``--lora-fuse-scale`` global LoRA fuse scale value.
+        Once all LoRAs are merged with their individual scales, the merged weights will be fused
+        into the pipeline at this scale. The default value is 1.0.
     :param image_encoder_uri: Optional ``--image-encoder`` URI for use with IP Adapter weights or Stable Cascade
     :param ip_adapter_uris: Optional ``--ip-adapters`` URI strings for specifying IP Adapter weights
     :param textual_inversion_uris: Optional ``--textual-inversions`` URI strings for specifying Textual Inversion weights
@@ -1317,6 +1321,7 @@ class TorchPipelineFactory:
                  unet_uri: _types.OptionalUri = None,
                  vae_uri: _types.OptionalUri = None,
                  lora_uris: _types.OptionalUris = None,
+                 lora_fuse_scale: _types.OptionalFloat = None,
                  image_encoder_uri: _types.OptionalUri = None,
                  ip_adapter_uris: _types.OptionalUris = None,
                  textual_inversion_uris: _types.OptionalUris = None,
@@ -1460,6 +1465,7 @@ def _create_torch_diffusion_pipeline(
         unet_uri: _types.OptionalUri = None,
         vae_uri: _types.OptionalUri = None,
         lora_uris: _types.OptionalUris = None,
+        lora_fuse_scale: _types.OptionalFloat = None,
         image_encoder_uri: _types.OptionalUri = None,
         ip_adapter_uris: _types.OptionalUris = None,
         textual_inversion_uris: _types.OptionalUris = None,
@@ -2092,25 +2098,33 @@ def _create_torch_diffusion_pipeline(
         for inversion_uri in textual_inversion_uris:
             parsed = _uris.TextualInversionUri.parse(inversion_uri)
             parsed_textual_inversion_uris.append(parsed)
-            parsed.load_on_pipeline(pipeline,
-                                    use_auth_token=auth_token,
-                                    local_files_only=local_files_only)
+
+        _uris.TextualInversionUri.load_on_pipeline(
+            pipeline=pipeline,
+            uris=parsed_textual_inversion_uris,
+            use_auth_token=auth_token,
+            local_files_only=local_files_only)
 
     if lora_uris:
         for lora_uri in lora_uris:
             parsed = _uris.LoRAUri.parse(lora_uri)
             parsed_lora_uris.append(parsed)
-            parsed.load_on_pipeline(pipeline,
-                                    use_auth_token=auth_token,
-                                    local_files_only=local_files_only)
+
+        _uris.LoRAUri.load_on_pipeline(
+            pipeline=pipeline,
+            uris=parsed_lora_uris,
+            fuse_scale=lora_fuse_scale if lora_fuse_scale is not None else 1.0,
+            use_auth_token=auth_token,
+            local_files_only=local_files_only)
 
     if ip_adapter_uris:
         for ip_adapter_uri in ip_adapter_uris:
             parsed = _uris.IPAdapterUri.parse(ip_adapter_uri)
             parsed_ip_adapter_uris.append(parsed)
+
         _uris.IPAdapterUri.load_on_pipeline(
-            ip_adapter_uris=parsed_ip_adapter_uris,
             pipeline=pipeline,
+            uris=parsed_ip_adapter_uris,
             use_auth_token=auth_token,
             local_files_only=local_files_only)
 

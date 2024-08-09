@@ -540,7 +540,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             encoders which are not specified are given their default value.
             
             The value "null" may be used to indicate that a specific text 
-            encoder should not be loaded
+            encoder should not be loaded.
             
             Blob links / single file loads are not supported for Text Encoders.
             
@@ -704,6 +704,11 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                             If you wish to load a weights file directly from disk, the simplest
                             way is: --loras "my_lora.safetensors", or with a scale "my_lora.safetensors;scale=1.0", 
                             all other loading arguments are unused in this case and may produce an error message if used."""))
+
+    parser.add_argument('-lrfs', '--lora-fuse-scale', default=None, type=float, metavar="LORA_FUSE_SCALE",
+                        help="""LoRA weights are merged into the main model at this scale.  When specifying multiple
+                        LoRA models, they are fused together into one set of weights using their individual scale values, 
+                        after which they are fused into the main model at this scale value. (default: 1.0).""")
 
     actions.append(
         parser.add_argument('-ie', '--image-encoder', action='store',

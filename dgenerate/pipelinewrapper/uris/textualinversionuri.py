@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import os.path
+import typing
 
 import diffusers
 import huggingface_hub
@@ -167,95 +168,106 @@ class TextualInversionUri:
     def __repr__(self):
         return str(self)
 
-    def load_on_pipeline(self,
-                         pipeline: diffusers.DiffusionPipeline,
+    @staticmethod
+    def load_on_pipeline(pipeline: diffusers.DiffusionPipeline,
+                         uris: typing.Iterable[typing.Union["TextualInversionUri", str]],
                          use_auth_token: _types.OptionalString = None,
                          local_files_only: bool = False):
         """
-        Load Textual Inversion weights on to a pipeline using this URI
+        Load Textual Inversion weights on to a pipeline using on or more URIs
 
         :param pipeline: :py:class:`diffusers.DiffusionPipeline`
+        :param uris: Iterable of :py:class:`TextualInversionUri` or ``str``
+            Textual Inversion URIs to load
         :param use_auth_token: optional huggingface auth token.
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug
 
         :raises ModelNotFoundError: If the model could not be found.
+        :raises dgenerate.pipelinewrapper.uris.exceptions.InvalidTextualInversionUriError: On URI parsing errors.
+        :raises dgenerate.pipelinewrapper.uris.exceptions.TextualInversionUriLoadError: On loading errors.
         """
         try:
-            self._load_on_pipeline(pipeline=pipeline,
-                                   use_auth_token=use_auth_token,
-                                   local_files_only=local_files_only)
+            TextualInversionUri._load_on_pipeline(
+                uris=uris,
+                pipeline=pipeline,
+                use_auth_token=use_auth_token,
+                local_files_only=local_files_only)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
+        except _exceptions.InvalidTextualInversionUriError:
+            raise
         except Exception as e:
             raise _exceptions.TextualInversionUriLoadError(
-                f'error loading textual inversion "{self.model}": {e}')
+                f'error loading Textual Inversions: {e}')
 
-    def _load_on_pipeline(self,
-                          pipeline: diffusers.DiffusionPipeline,
+    @staticmethod
+    def _load_on_pipeline(pipeline: diffusers.DiffusionPipeline,
+                          uris: typing.Iterable[typing.Union["TextualInversionUri", str]],
                           use_auth_token: _types.OptionalString = None,
                           local_files_only: bool = False):
 
         if hasattr(pipeline, 'load_textual_inversion'):
-            debug_args = {k: v for k, v in locals().items() if k not in {'self', 'pipeline'}}
 
-            _messages.debug_log('pipeline.load_textual_inversion(' +
-                                str(_types.get_public_attributes(self) | debug_args) + ')')
+            for textual_inversion_uri in uris:
+                if not isinstance(textual_inversion_uri, TextualInversionUri):
+                    textual_inversion_uri = TextualInversionUri.parse(textual_inversion_uri)
 
-            model_path = _hfutil.download_non_hf_model(self.model)
+                model_path = _hfutil.download_non_hf_model(textual_inversion_uri.model)
 
-            # this is tricky because there is stupidly a positional argument named 'token'
-            # as well as an accepted kwargs value with the key 'token'
+                # this is tricky because there is stupidly a positional argument named 'token'
+                # as well as an accepted kwargs value with the key 'token'
 
-            old_token = os.environ.get('HF_TOKEN', None)
-            if use_auth_token is not None:
-                os.environ['HF_TOKEN'] = use_auth_token
+                old_token = os.environ.get('HF_TOKEN', None)
+                if use_auth_token is not None:
+                    os.environ['HF_TOKEN'] = use_auth_token
 
-            try:
-                if pipeline.__class__.__name__.startswith('StableDiffusionXL'):
-                    filename, dicts = _load_textual_inversion_state_dict(
-                        model_path,
-                        revision=self.revision,
-                        subfolder=self.subfolder,
-                        weight_name=self.weight_name,
-                        local_files_only=local_files_only
-                    )
+                try:
+                    if pipeline.__class__.__name__.startswith('StableDiffusionXL'):
+                        filename, dicts = _load_textual_inversion_state_dict(
+                            model_path,
+                            revision=textual_inversion_uri.revision,
+                            subfolder=textual_inversion_uri.subfolder,
+                            weight_name=textual_inversion_uri.weight_name,
+                            local_files_only=local_files_only
+                        )
 
-                    if 'clip_l' not in dicts or 'clip_g' not in dicts:
-                        raise RuntimeError(
-                            'clip_l or clip_g not found in SDXL textual '
-                            f'inversion model "{self.model}" state dict, '
-                            'unsupported model format.')
+                        if 'clip_l' not in dicts or 'clip_g' not in dicts:
+                            raise RuntimeError(
+                                'clip_l or clip_g not found in SDXL textual '
+                                f'inversion model "{textual_inversion_uri.model}" state dict, '
+                                'unsupported model format.')
 
-                    # token is the file name (no extension) with spaces
-                    # replaced by underscores when the user does not provide
-                    # a prompt token
-                    token = os.path.splitext(
-                        os.path.basename(filename))[0].replace(' ', '_') \
-                        if self.token is None else self.token
+                        # token is the file name (no extension) with spaces
+                        # replaced by underscores when the user does not provide
+                        # a prompt token
+                        token = os.path.splitext(
+                            os.path.basename(filename))[0].replace(' ', '_') \
+                            if textual_inversion_uri.token is None else textual_inversion_uri.token
 
-                    pipeline.load_textual_inversion(dicts['clip_l'],
-                                                    token=token,
-                                                    text_encoder=pipeline.text_encoder,
-                                                    tokenizer=pipeline.tokenizer)
+                        pipeline.load_textual_inversion(dicts['clip_l'],
+                                                        token=token,
+                                                        text_encoder=pipeline.text_encoder,
+                                                        tokenizer=pipeline.tokenizer)
 
-                    pipeline.load_textual_inversion(dicts['clip_g'],
-                                                    token=token,
-                                                    text_encoder=pipeline.text_encoder_2,
-                                                    tokenizer=pipeline.tokenizer_2)
-                else:
-                    pipeline.load_textual_inversion(model_path,
-                                                    token=self.token,
-                                                    revision=self.revision,
-                                                    subfolder=self.subfolder,
-                                                    weight_name=self.weight_name,
-                                                    local_files_only=local_files_only)
-            finally:
-                if old_token is not None:
-                    os.environ['HF_TOKEN'] = old_token
+                        pipeline.load_textual_inversion(dicts['clip_g'],
+                                                        token=token,
+                                                        text_encoder=pipeline.text_encoder_2,
+                                                        tokenizer=pipeline.tokenizer_2)
+                    else:
+                        pipeline.load_textual_inversion(model_path,
+                                                        token=textual_inversion_uri.token,
+                                                        revision=textual_inversion_uri.revision,
+                                                        subfolder=textual_inversion_uri.subfolder,
+                                                        weight_name=textual_inversion_uri.weight_name,
+                                                        local_files_only=local_files_only)
+                finally:
+                    if old_token is not None:
+                        os.environ['HF_TOKEN'] = old_token
 
-            _messages.debug_log(f'Added Textual Inversion: "{self}" to pipeline: "{pipeline.__class__.__name__}"')
+                _messages.debug_log(f'Added Textual Inversion: "{textual_inversion_uri}" '
+                                    f'to pipeline: "{pipeline.__class__.__name__}"')
         else:
             raise RuntimeError(f'Pipeline: {pipeline.__class__.__name__} '
                                f'does not support loading textual inversions.')

@@ -71,14 +71,15 @@ if __am_dgenerate_app and '--console' in sys.argv:
 import collections.abc
 import warnings
 
-warnings.filterwarnings('ignore', module='dgenerate.extras.controlnet_aux')
-warnings.filterwarnings('ignore', module='timm')
-warnings.filterwarnings('ignore', module='peft')
-warnings.filterwarnings('ignore', module='diffusers')
-warnings.filterwarnings('ignore', module='transformers')
-warnings.filterwarnings('ignore', module='huggingface_hub')
-warnings.filterwarnings('ignore', module='torch')
-warnings.filterwarnings('ignore', module='controlnet_aux')
+if os.environ.get('DGENERATE_BACKEND_WARNINGS', '0') == '0':
+    warnings.filterwarnings('ignore', module='dgenerate.extras.controlnet_aux')
+    warnings.filterwarnings('ignore', module='timm')
+    warnings.filterwarnings('ignore', module='peft')
+    warnings.filterwarnings('ignore', module='diffusers')
+    warnings.filterwarnings('ignore', module='transformers')
+    warnings.filterwarnings('ignore', module='huggingface_hub')
+    warnings.filterwarnings('ignore', module='torch')
+    warnings.filterwarnings('ignore', module='controlnet_aux')
 
 try:
     import diffusers

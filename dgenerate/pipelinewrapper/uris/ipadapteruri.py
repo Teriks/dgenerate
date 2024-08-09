@@ -92,58 +92,63 @@ class IPAdapterUri:
         return str(self)
 
     @staticmethod
-    def load_on_pipeline(ip_adapter_uris: typing.Iterable["IPAdapterUri"] | typing.Iterable[str],
-                         pipeline: diffusers.DiffusionPipeline,
+    def load_on_pipeline(pipeline: diffusers.DiffusionPipeline,
+                         uris: typing.Iterable[typing.Union["IPAdapterUri", str]],
                          use_auth_token: _types.OptionalString = None,
                          local_files_only: bool = False):
         """
         Load IP Adapter weights on to a pipeline using this URI
 
-        :param ip_adapter_uris: IP Adapter URIs to load on to the pipeline
         :param pipeline: :py:class:`diffusers.DiffusionPipeline`
+        :param uris: IP Adapter URIs to load on to the pipeline
         :param use_auth_token: optional huggingface auth token.
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug
 
         :raises ModelNotFoundError: If the model could not be found.
+        :raises dgenerate.pipelinewrapper.uris.exceptions.InvalidIPAdapterUriError: On URI parsing errors.
+        :raises dgenerate.pipelinewrapper.uris.exceptions.IPAdapterUriLoadError: On loading errors.
         """
         try:
-            IPAdapterUri._load_on_pipeline(ip_adapter_uris=ip_adapter_uris,
+            IPAdapterUri._load_on_pipeline(uris=uris,
                                            pipeline=pipeline,
                                            use_auth_token=use_auth_token,
                                            local_files_only=local_files_only)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
+        except _exceptions.InvalidIPAdapterUriError:
+            raise
         except Exception as e:
             raise _exceptions.IPAdapterUriLoadError(
                 f'error loading IP Adapter: {e}')
 
     @staticmethod
-    def _load_on_pipeline(ip_adapter_uris: typing.Iterable["IPAdapterUri"] | typing.Iterable[str],
-                          pipeline: diffusers.DiffusionPipeline,
+    def _load_on_pipeline(pipeline: diffusers.DiffusionPipeline,
+                          uris: typing.Iterable[typing.Union["IPAdapterUri", str]],
                           use_auth_token: _types.OptionalString = None,
                           local_files_only: bool = False):
 
-        models = []
-        subfolders = []
-        weight_names = []
-        revisions = set()
-
-        for ip_adapter in ip_adapter_uris:
-            if isinstance(ip_adapter, str):
-                ip_adapter = IPAdapterUri.parse(ip_adapter)
-
-            models.append(_hfutil.download_non_hf_model(ip_adapter.model))
-            subfolders.append(ip_adapter.subfolder)
-            weight_names.append(ip_adapter.weight_name)
-            revisions.add(ip_adapter.revision)
-
-        if len(revisions) > 1:
-            raise _exceptions.IPAdapterUriLoadError(
-                f'All IP Adapter URIs must have matching "revision" URI argument values.')
-
         if hasattr(pipeline, 'load_ip_adapter'):
+
+            models = []
+            subfolders = []
+            weight_names = []
+            revisions = set()
+
+            for ip_adapter_uri in uris:
+                if isinstance(ip_adapter_uri, str):
+                    ip_adapter_uri = IPAdapterUri.parse(ip_adapter_uri)
+
+                models.append(_hfutil.download_non_hf_model(ip_adapter_uri.model))
+                subfolders.append(ip_adapter_uri.subfolder)
+                weight_names.append(ip_adapter_uri.weight_name)
+                revisions.add(ip_adapter_uri.revision)
+
+            if len(revisions) > 1:
+                raise ValueError(
+                    f'All IP Adapter URIs must have matching "revision" URI argument values.')
+
             try:
                 pipeline.load_ip_adapter(models,
                                          subfolder=subfolders,
@@ -161,7 +166,7 @@ class IPAdapterUri:
                                          local_files_only=local_files_only,
                                          token=use_auth_token)
 
-            _messages.debug_log(f'Added IP Adapters to pipeline: "{pipeline.__class__.__name__}"')
+            _messages.debug_log(f'Added IP Adapters {list(uris)} to pipeline: "{pipeline.__class__.__name__}"')
         else:
             raise RuntimeError(f'Pipeline: {pipeline.__class__.__name__} '
                                f'does not support loading IP Adapters.')
