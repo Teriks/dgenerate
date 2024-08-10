@@ -78,6 +78,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.0.0/>`_.
     * `Specifying a VAE`_
     * `VAE Tiling and Slicing`_
     * `Specifying a UNet`_
+    * `Specifying an SD3 Transformer`_
     * `Specifying an SDXL Refiner`_
     * `Specifying a Stable Cascade Decoder`_
     * `Specifying LoRAs`_
@@ -2335,6 +2336,43 @@ UNet models which have a smaller memory footprint using ``--unet`` and ``--unet2
     --s-cascade-decoder-guidance-scales 0 \
     --gen-seeds 2 \
     --prompts "an image of a shiba inu, donning a spacesuit and helmet"
+
+
+Specifying an SD3 Transformer
+=============================
+
+Stable Diffusion 3 does not use a UNet architecture, and instead uses a
+Transformer model in place of a UNet.
+
+A specific transformer model can be specified using the ``--transformer`` argument.
+
+This argument is nearly identical to ``--unet``, however it can support single file loads
+from safetensor files or hugging face blob links if desired.
+
+There is currently not much reason to use this feature I believe, but in the future
+there could be uses for this feature as the SD3 implementation becomes more mature.
+
+Example:
+
+.. code-block:: bash
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 4.0.0
+
+    # This just loads the default transformer out of the repo on huggingface
+
+    stabilityai/stable-diffusion-3-medium-diffusers
+    --model-type torch-sd3
+    --transformer stabilityai/stable-diffusion-3-medium-diffusers;subfolder=transformer
+    --variant fp16
+    --dtype float16
+    --inference-steps 30
+    --guidance-scales 5.00
+    --clip-skips 0
+    --gen-seeds 2
+    --output-path output
+    --model-sequential-offload
+    --prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork"
 
 
 Specifying an SDXL Refiner
