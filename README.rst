@@ -2347,7 +2347,7 @@ Transformer model in place of a UNet.
 A specific transformer model can be specified using the ``--transformer`` argument.
 
 This argument is nearly identical to ``--unet``, however it can support single file loads
-from safetensors files or hugging face blob links if desired.
+from safetensors files or huggingface blob links if desired.
 
 There is currently not much reason to use this feature I believe, but in the future
 there could be uses for this feature as the SD3 implementation becomes more mature.
