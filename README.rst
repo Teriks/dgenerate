@@ -4322,6 +4322,7 @@ individually using one of:
     * ``\clear_image_encoder_cache``
     * ``\clear_controlnet_cache``
     * ``\clear_adapter_cache``
+    * ``\clear_transformer_cache``
 
 dgenerate uses heuristics to clear the in memory cache automatically when needed, including a size estimation
 of models before they enter system memory, however by default it will use system memory very aggressively
