@@ -566,7 +566,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                             Blob links / single file loads are not supported for UNets.
                             
                             The "revision" argument specifies the model revision to use for the UNet when loading from 
-                            huggingface repository or blob link, (The git branch / tag, default is "main").
+                            huggingface repository, (The git branch / tag, default is "main").
                             
                             The "variant" argument specifies the UNet model variant. If "variant" is specified 
                             when loading from a huggingface repository or folder, weights will be loaded from "variant" filename, 
@@ -589,6 +589,39 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                             help=
                             f"""Specify a second UNet, this is only valid when using SDXL or Stable Cascade 
                             model types. This UNet will be used for the SDXL refiner, or Stable Cascade decoder model."""))
+
+    actions.append(
+        parser.add_argument('-tf', '--transformer', action='store', default=None,
+                            metavar="TRANSFORMER_URI", dest='transformer_uri',
+                            help=
+                            f"""Specify a Stable Diffusion 3 Transformer model using a URI.
+                            
+                            Examples: "huggingface/transformer", "huggingface/transformer;revision=main", "transformer_folder_on_disk". 
+                            
+                            Blob links / single file loads are supported for SD3 Transformers.
+                            
+                            The "revision" argument specifies the model revision to use for the Transformer when loading from 
+                            huggingface repository or blob link, (The git branch / tag, default is "main").
+                            
+                            The "variant" argument specifies the Transformer model variant. If "variant" is specified 
+                            when loading from a huggingface repository or folder, weights will be loaded from "variant" filename, 
+                            e.g. "pytorch_model.<variant>.safetensors. For this argument, "variant" defaults to the value 
+                            of --variant if it is not specified in the URI.
+                            
+                            The "subfolder" argument specifies the Transformer model subfolder, if specified when loading from a 
+                            huggingface repository or folder, weights from the specified subfolder.
+                            
+                            The "dtype" argument specifies the Transformer model precision, it defaults to the value of -t/--dtype
+                            and should be one of: {_SUPPORTED_DATA_TYPES_PRETTY}.
+                            
+                            If you wish to load a weights file directly from disk, the simplest
+                            way is: --transformer "transformer.safetensors", or with a dtype "transformer.safetensors;dtype=float16". 
+                            All loading arguments except "dtype" are unused in this case and may produce an error message if used.
+                            
+                            If you wish to load a specific weight file from a huggingface repository, use the blob link
+                            loading syntax: --transformer "AutoencoderKL;https://huggingface.co/UserName/repository-name/blob/main/transformer.safetensors",
+                            the "revision" argument may be used with this syntax.
+                            """))
 
     actions.append(
         parser.add_argument('-vae', '--vae', action='store', default=None, metavar="VAE_URI", dest='vae_uri',
@@ -1751,6 +1784,19 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                                  f'dgenerate_submodules.html#dgenerate.pipelinewrapper.ADAPTER_CACHE_MEMORY_CONSTRAINTS]'))
 
     actions.append(
+        parser.add_argument('-tfmc', '--transformer-cache-memory-constraints', action='store', nargs='+',
+                            default=None,
+                            type=_type_expression,
+                            metavar="EXPR",
+                            help=f"""Cache constraint expressions describing when to automatically clear the in memory Transformer
+                                    cache considering current memory usage, and estimated memory usage of new Transformer models that 
+                                    are about to enter memory. If any of these constraint expressions are met all Transformer
+                                    models cached in memory will be cleared. Example, and default 
+                                    value: {' '.join(_textprocessing.quote_spaces(_pipelinewrapper.TRANSFORMER_CACHE_MEMORY_CONSTRAINTS))}"""
+                                 f' For Syntax See: [https://dgenerate.readthedocs.io/en/v{dgenerate.__version__}/'
+                                 f'dgenerate_submodules.html#dgenerate.pipelinewrapper.TRANSFORMER_CACHE_MEMORY_CONSTRAINTS]'))
+
+    actions.append(
         parser.add_argument('-ipmc', '--image-processor-memory-constraints', action='store', nargs='+',
                             default=None,
                             type=_type_expression,
@@ -1830,6 +1876,11 @@ class DgenerateArguments(dgenerate.RenderLoopConfig):
     adapter_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
     """
     See: :py:attr:`dgenerate.pipelinewrapper.ADAPTER_CACHE_MEMORY_CONSTRAINTS`
+    """
+
+    transformer_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
+    """
+    See: :py:attr:`dgenerate.pipelinewrapper.TRANSFORMER_CACHE_MEMORY_CONSTRAINTS`
     """
 
     text_encoder_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None

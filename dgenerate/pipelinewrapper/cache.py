@@ -69,6 +69,12 @@ _IMAGE_ENCODER_CACHE = dict()
 _IMAGE_ENCODER_CACHE_SIZE = 0
 """Estimated memory consumption in bytes of all Image Encoder models cached in memory"""
 
+_TRANSFORMER_CACHE = dict()
+"""Global in-memory cache for transformer models"""
+
+_TRANSFORMER_CACHE_SIZE = 0
+"""Estimated memory consumption in bytes of all transformer models cached in memory"""
+
 
 def pipeline_cache_size() -> int:
     """
@@ -131,6 +137,15 @@ def image_encoder_cache_size() -> int:
     :return:  memory usage in bytes.
     """
     return _IMAGE_ENCODER_CACHE_SIZE
+
+
+def transformer_cache_size() -> int:
+    """
+    Return the estimated memory usage in bytes of all transformer models currently cached in memory.
+
+    :return: memory usage in bytes.
+    """
+    return _TRANSFORMER_CACHE_SIZE
 
 
 CACHE_MEMORY_CONSTRAINTS: list[str] = ['used_percent > 70']
@@ -224,6 +239,18 @@ If any of these constraints are met, a call to :py:func:`.enforce_image_encoder_
 
 Extra variables include: ``cache_size`` (the current estimated cache size in bytes), 
 and ``image_encoder_size`` (the estimated size of the new Image Encoder before it is brought into memory, in bytes)
+"""
+
+TRANSFORMER_CACHE_MEMORY_CONSTRAINTS: list[str] = ['transformer_size > (available * 0.75)']
+"""
+Cache constraint expressions for when to clear the transformer model cache, 
+syntax provided via :py:func:`dgenerate.memory.memory_constraints`
+
+If any of these constraints are met, a call to :py:func:`.enforce_transformer_cache_constraints` will call
+:py:func:`.clear_transformer_cache` and force a garbage collection.
+
+Extra variables include: ``cache_size`` (the current estimated cache size in bytes), 
+and ``transformer_size`` (the estimated size of the new transformer model before it is brought into memory, in bytes)
 """
 
 
@@ -365,27 +392,45 @@ def clear_image_encoder_cache(collect=True):
         gc.collect()
 
 
-def clear_model_cache(collect=True):
+def clear_transformer_cache(collect=True):
     """
-    Clear all in memory model caches and garbage collect.
+    Clear transformer model cache and then garbage collect.
 
     :param collect: Call :py:func:`gc.collect` ?
+    """
+    global _TRANSFORMER_CACHE, _TRANSFORMER_CACHE_SIZE
 
+    _TRANSFORMER_CACHE.clear()
+    _TRANSFORMER_CACHE_SIZE = 0
+
+    if collect:
+        _messages.debug_log(
+            f'{_types.fullname(clear_transformer_cache)} calling gc.collect() by request')
+        gc.collect()
+
+
+def clear_model_cache(collect=True):
+    """
+    Clear all in-memory model caches and garbage collect.
+
+    :param collect: Call :py:func:`gc.collect` ?
     """
     global _PIPELINE_CACHE, \
         _CONTROLNET_CACHE, \
         _UNET_CACHE, \
         _VAE_CACHE, \
+        _TEXT_ENCODER_CACHE, \
+        _ADAPTER_CACHE, \
+        _IMAGE_ENCODER_CACHE, \
+        _TRANSFORMER_CACHE, \
         _PIPELINE_CACHE_SIZE, \
         _CONTROLNET_CACHE_SIZE, \
         _UNET_CACHE_SIZE, \
         _VAE_CACHE_SIZE, \
-        _TEXT_ENCODER_CACHE, \
         _TEXT_ENCODER_CACHE_SIZE, \
-        _ADAPTER_CACHE, \
         _ADAPTER_CACHE_SIZE, \
-        _IMAGE_ENCODER_CACHE, \
-        _IMAGE_ENCODER_CACHE_SIZE
+        _IMAGE_ENCODER_CACHE_SIZE, \
+        _TRANSFORMER_CACHE_SIZE
 
     _PIPELINE_CACHE.clear()
     _CONTROLNET_CACHE.clear()
@@ -394,6 +439,7 @@ def clear_model_cache(collect=True):
     _TEXT_ENCODER_CACHE.clear()
     _ADAPTER_CACHE.clear()
     _IMAGE_ENCODER_CACHE.clear()
+    _TRANSFORMER_CACHE.clear()
 
     _PIPELINE_CACHE_SIZE = 0
     _CONTROLNET_CACHE_SIZE = 0
@@ -402,6 +448,7 @@ def clear_model_cache(collect=True):
     _TEXT_ENCODER_CACHE_SIZE = 0
     _ADAPTER_CACHE_SIZE = 0
     _IMAGE_ENCODER_CACHE_SIZE = 0
+    _TRANSFORMER_CACHE_SIZE = 0
 
     if collect:
         _messages.debug_log(
@@ -652,6 +699,36 @@ def enforce_image_encoder_cache_constraints(new_image_encoder_size, collect=True
     return False
 
 
+def enforce_transformer_cache_constraints(new_transformer_size, collect=True):
+    """
+    Enforce :py:attr:`dgenerate.pipelinewrapper.TRANSFORMER_CACHE_MEMORY_CONSTRAINTS` and clear the
+    transformer model cache if needed.
+
+    :param new_transformer_size: estimated size in bytes of any new transformer model that is about to enter memory
+    :param collect: Call :py:func:`gc.collect` after a cache clear ?
+    :return: Whether the cache was cleared due to constraint expressions.
+    """
+
+    m_name = __name__
+
+    _messages.debug_log(f'Enforcing {m_name}.TRANSFORMER_CACHE_MEMORY_CONSTRAINTS =',
+                        TRANSFORMER_CACHE_MEMORY_CONSTRAINTS,
+                        f'(cache_size = {_memory.bytes_best_human_unit(transformer_cache_size())},',
+                        f'transformer_size = {_memory.bytes_best_human_unit(new_transformer_size)})')
+
+    _messages.debug_log(_memory.memory_use_debug_string())
+
+    if _memory.memory_constraints(TRANSFORMER_CACHE_MEMORY_CONSTRAINTS,
+                                  extra_vars={'cache_size': transformer_cache_size(),
+                                              'transformer_size': new_transformer_size}):
+        _messages.debug_log(f'{m_name}.TRANSFORMER_CACHE_MEMORY_CONSTRAINTS '
+                            f'{TRANSFORMER_CACHE_MEMORY_CONSTRAINTS} met, '
+                            f'calling {_types.fullname(clear_transformer_cache)}.')
+        clear_transformer_cache(collect=collect)
+        return True
+    return False
+
+
 def uri_hash_with_parser(parser, exclude: set[str] | None = None):
     """
     Create a hash function from a particular URI parser function that hashes a URI string.
@@ -815,6 +892,22 @@ def image_encoder_create_update_cache_info(image_encoder, estimated_size: int):
 
     # Tag for internal use
     image_encoder.DGENERATE_SIZE_ESTIMATE = estimated_size
+
+
+def transformer_create_update_cache_info(transformer, estimated_size: int):
+    """
+    Add additional information about the size of a newly created transformer model to the cache.
+
+    Tag the object with an internal tag.
+
+    :param transformer: the transformer object
+    :param estimated_size: size bytes
+    """
+    global _TRANSFORMER_CACHE_SIZE
+    _TRANSFORMER_CACHE_SIZE += estimated_size
+
+    # Tag for internal use
+    transformer.DGENERATE_SIZE_ESTIMATE = estimated_size
 
 
 def pipeline_to_cpu_update_cache_info(pipeline: diffusers.DiffusionPipeline):
@@ -1013,6 +1106,28 @@ def adapter_to_cpu_update_cache_info(adapter: diffusers.T2IAdapter | diffusers.M
                             f'({_memory.bytes_best_human_unit(adapter_cache_size())})')
 
 
+def transformer_to_cpu_update_cache_info(transformer):
+    """
+    Update CPU side cache size information when a transformer module is moved to the CPU
+
+    :param transformer: the transformer
+    """
+
+    global _TRANSFORMER_CACHE_SIZE
+
+    if hasattr(transformer, 'DGENERATE_SIZE_ESTIMATE'):
+        # Transformer returning to CPU side memory
+        enforce_transformer_cache_constraints(transformer.DGENERATE_SIZE_ESTIMATE)
+        _TRANSFORMER_CACHE_SIZE += transformer.DGENERATE_SIZE_ESTIMATE
+
+        _messages.debug_log(f'{_types.class_and_id_string(transformer)} '
+                            f'Size = {transformer.DGENERATE_SIZE_ESTIMATE} Bytes '
+                            f'({_memory.bytes_best_human_unit(transformer.DGENERATE_SIZE_ESTIMATE)}) '
+                            f'is entering CPU side memory, {_types.fullname(transformer_cache_size)}() '
+                            f'is now {transformer_cache_size()} Bytes '
+                            f'({_memory.bytes_best_human_unit(transformer_cache_size())})')
+
+
 def pipeline_off_cpu_update_cache_info(
         pipeline: diffusers.DiffusionPipeline):
     """
@@ -1207,6 +1322,29 @@ def adapter_off_cpu_update_cache_info(adapter: diffusers.T2IAdapter | diffusers.
                             f'is leaving CPU side memory, {_types.fullname(adapter_cache_size)}() '
                             f'is now {adapter_cache_size()} Bytes '
                             f'({_memory.bytes_best_human_unit(adapter_cache_size())})')
+
+
+def transformer_off_cpu_update_cache_info(transformer):
+    """
+    Update CPU side cache size information when a transformer module is moved to a device that is not the CPU
+
+    :param transformer: the transformer
+    """
+
+    global _TRANSFORMER_CACHE_SIZE
+
+    if hasattr(transformer, 'DGENERATE_SIZE_ESTIMATE'):
+        _TRANSFORMER_CACHE_SIZE -= transformer.DGENERATE_SIZE_ESTIMATE
+
+        if _TRANSFORMER_CACHE_SIZE < 0:
+            _TRANSFORMER_CACHE_SIZE = 0
+
+        _messages.debug_log(f'Cached Transformer {_types.class_and_id_string(transformer)} '
+                            f'Size = {transformer.DGENERATE_SIZE_ESTIMATE} Bytes '
+                            f'({_memory.bytes_best_human_unit(transformer.DGENERATE_SIZE_ESTIMATE)}) '
+                            f'is leaving CPU side memory, {_types.fullname(transformer_cache_size)}() '
+                            f'is now {transformer_cache_size()} Bytes '
+                            f'({_memory.bytes_best_human_unit(transformer_cache_size())})')
 
 
 __all__ = _types.module_all()

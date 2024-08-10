@@ -18,11 +18,9 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import typing
 
+import diffusers
 import huggingface_hub
-import transformers.models.clip
-
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
@@ -34,21 +32,14 @@ import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 
-_text_encoder_uri_parser = _textprocessing.ConceptUriParser(
-    'TextEncoder', ['model', 'revision', 'variant', 'subfolder', 'dtype'])
+_transformer_uri_parser = _textprocessing.ConceptUriParser(
+    'SD3Transformer', ['model', 'revision', 'variant', 'subfolder', 'dtype'])
 
 
-class TextEncoderUri:
+class SD3TransformerUri:
     """
-    Representation of ``--text-encoders*`` uri when ``--model-type`` torch*
+    Representation of ``--transformer`` uri when ``--model-type`` torch*
     """
-
-    @property
-    def encoder(self) -> str:
-        """
-        Encoder class name such as "CLIPTextModel"
-        """
-        return self._encoder
 
     @property
     def model(self) -> str:
@@ -85,54 +76,22 @@ class TextEncoderUri:
         """
         return self._dtype
 
-    _encoders = {
-        'CLIPTextModel': transformers.models.clip.CLIPTextModel,
-        'CLIPTextModelWithProjection': transformers.models.clip.CLIPTextModelWithProjection,
-        'T5EncoderModel': transformers.models.t5.T5EncoderModel
-    }
-
-    @staticmethod
-    def supported_encoder_names() -> list[str]:
-        return list(TextEncoderUri._encoders.keys())
-
     def __init__(self,
-                 encoder: str,
                  model: str,
                  revision: _types.OptionalString = None,
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
                  dtype: _enums.DataType | str | None = None):
         """
-        :param encoder: encoder class name, for example ``CLIPTextModel``
         :param model: model path
         :param revision: model revision (branch name)
         :param variant: model variant, for example ``fp16``
         :param subfolder: model subfolder
         :param dtype: model data type (precision)
 
-        :raises InvalidTextEncoderUriError: If ``dtype`` is passed an invalid data type string, or if
-            ``model`` points to a single file and the specified ``encoder`` class name does not
-            support loading from a single file.
+        :raises InvalidSD3TransformerUriError: If ``dtype`` is passed an invalid data type string.
         """
 
-        if encoder not in self._encoders:
-            raise _exceptions.InvalidTextEncoderUriError(
-                f'Unknown TextEncoder encoder class {encoder}, must be one of: {_textprocessing.oxford_comma(self._encoders.keys(), "or")}')
-
-        can_single_file_load = hasattr(self._encoders[encoder], 'from_single_file')
-        single_file_load_path = _hfutil.is_single_file_model_load(model)
-
-        if single_file_load_path and not can_single_file_load:
-            raise _exceptions.InvalidTextEncoderUriError(
-                f'{encoder} is not capable of loading from a single file, '
-                f'must be loaded from a huggingface repository slug or folder on disk.')
-
-        if single_file_load_path:
-            if subfolder is not None:
-                raise _exceptions.InvalidTextEncoderUriError(
-                    'Single file TextEncoder loads do not support the subfolder option.')
-
-        self._encoder = encoder
         self._model = model
         self._revision = revision
         self._variant = variant
@@ -141,24 +100,20 @@ class TextEncoderUri:
         try:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
         except ValueError:
-            raise _exceptions.InvalidTextEncoderUriError(
+            raise _exceptions.InvalidSD3TransformerUriError(
                 f'invalid dtype string, must be one of: {_textprocessing.oxford_comma(_enums.supported_data_type_strings(), "or")}')
 
     def load(self,
+             variant_fallback: _types.OptionalString = None,
              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
              use_auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
              sequential_cpu_offload_member: bool = False,
-             model_cpu_offload_member: bool = False) -> \
-            typing.Union[
-                transformers.models.clip.CLIPTextModel,
-                transformers.models.clip.CLIPTextModelWithProjection,
-                transformers.models.t5.T5EncoderModel]:
+             model_cpu_offload_member: bool = False) -> diffusers.SD3Transformer2DModel:
         """
-        Load a torch Text Encoder of type :py:class:`transformers.models.clip.CLIPTextModel`,
-        :py:class:`transformers.models.clip.CLIPTextModelWithProjection`, or
-        :py:class:`transformers.models.t5.T5EncoderModel` from this URI
+        Load a torch :py:class:`diffusers.SD3Transformer2DModel` from a URI.
 
+        :param variant_fallback: If the URI does not specify a variant, use this variant.
         :param dtype_fallback: If the URI does not specify a dtype, use this dtype.
         :param use_auth_token: optional huggingface auth token.
         :param local_files_only: avoid downloading files and only look for cached files
@@ -172,13 +127,12 @@ class TextEncoderUri:
 
         :raises ModelNotFoundError: If the model could not be found.
 
-        :return: :py:class:`transformers.models.clip.CLIPTextModel`,
-            :py:class:`transformers.models.clip.CLIPTextModelWithProjection`, or
-            :py:class:`transformers.models.t5.T5EncoderModel`
+        :return: :py:class:`diffusers.SD3Transformer2DModel`
         """
 
         try:
-            return self._load(dtype_fallback,
+            return self._load(variant_fallback,
+                              dtype_fallback,
                               use_auth_token,
                               local_files_only,
                               sequential_cpu_offload_member,
@@ -188,24 +142,21 @@ class TextEncoderUri:
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
         except Exception as e:
-            raise _exceptions.TextEncoderUriLoadError(
-                f'error loading text encoder "{self.model}": {e}')
+            raise _exceptions.SD3TransformerUriLoadError(
+                f'error loading sd3 transformer "{self.model}": {e}')
 
-    @_memoize(_cache._TEXT_ENCODER_CACHE,
+    @_memoize(_cache._TRANSFORMER_CACHE,
               exceptions={'local_files_only'},
               hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _d_memoize.struct_hasher}),
-              on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Torch TextEncoder", key, hit),
-              on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Torch TextEncoder", key, new))
+              on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Torch SD3Transformer", key, hit),
+              on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Torch SD3Transformer", key, new))
     def _load(self,
+              variant_fallback: _types.OptionalString = None,
               dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
               use_auth_token: _types.OptionalString = None,
               local_files_only: bool = False,
               sequential_cpu_offload_member: bool = False,
-              model_cpu_offload_member: bool = False) -> \
-            typing.Union[
-                transformers.models.clip.CLIPTextModel,
-                transformers.models.clip.CLIPTextModelWithProjection,
-                transformers.models.t5.T5EncoderModel]:
+              model_cpu_offload_member: bool = False) -> diffusers.SD3Transformer2DModel:
 
         if sequential_cpu_offload_member and model_cpu_offload_member:
             # these are used for cache differentiation only
@@ -216,7 +167,10 @@ class TextEncoderUri:
         else:
             torch_dtype = _enums.get_torch_dtype(self.dtype)
 
-        encoder = self._encoders[self.encoder]
+        if self.variant is None:
+            variant = variant_fallback
+        else:
+            variant = self.variant
 
         model_path = _hfutil.download_non_hf_model(self.model)
 
@@ -230,79 +184,74 @@ class TextEncoderUri:
                 use_auth_token=use_auth_token
             )
 
-            _cache.enforce_text_encoder_cache_constraints(
-                new_text_encoder_size=estimated_memory_use)
+            _cache.enforce_transformer_cache_constraints(
+                new_transformer_size=estimated_memory_use)
 
-            text_encoder = encoder.from_single_file(model_path,
-                                                    token=use_auth_token,
-                                                    revision=self.revision,
-                                                    torch_dtype=torch_dtype,
-                                                    local_files_only=local_files_only)
+            transformer = diffusers.SD3Transformer2DModel.from_single_file(
+                model_path,
+                token=use_auth_token,
+                revision=self.revision,
+                torch_dtype=torch_dtype,
+                local_files_only=local_files_only)
 
         else:
 
             estimated_memory_use = _hfutil.estimate_model_memory_use(
                 repo_id=model_path,
                 revision=self.revision,
-                variant=self.variant,
+                variant=variant,
                 subfolder=self.subfolder,
                 local_files_only=local_files_only,
                 use_auth_token=use_auth_token
             )
 
-            _cache.enforce_text_encoder_cache_constraints(
-                new_text_encoder_size=estimated_memory_use)
+            _cache.enforce_transformer_cache_constraints(
+                new_transformer_size=estimated_memory_use)
 
-            text_encoder = encoder.from_pretrained(
+            transformer = diffusers.SD3Transformer2DModel.from_pretrained(
                 model_path,
                 revision=self.revision,
-                variant=self.variant,
+                variant=variant,
                 torch_dtype=torch_dtype,
                 subfolder=self.subfolder if self.subfolder else "",
                 token=use_auth_token,
                 local_files_only=local_files_only)
 
-        _messages.debug_log('Estimated Torch TextEncoder Memory Use:',
+        _messages.debug_log('Estimated Torch SD3Transformer Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_use))
 
-        _cache.text_encoder_create_update_cache_info(
-            text_encoder=text_encoder,
+        _cache.transformer_create_update_cache_info(
+            transformer=transformer,
             estimated_size=estimated_memory_use)
 
-        return text_encoder
+        return transformer
 
     @staticmethod
-    def parse(uri: _types.Uri) -> 'TextEncoderUri':
+    def parse(uri: _types.Uri) -> 'SD3TransformerUri':
         """
-        Parse a ``--model-type`` torch* ``--text-encoders*`` uri and return an object representing its constituents
+        Parse a ``--model-type`` torch* ``--transformer`` uri and return an object representing its constituents
 
-        :param uri: string with ``--text-encoders*`` uri syntax
+        :param uri: string with ``--transformer`` uri syntax
 
-        :raise InvalidTextEncoderUriError:
+        :raise InvalidSD3TransformerUriError:
 
-        :return: :py:class:`.TorchTextEncoderUri`
+        :return: :py:class:`.TorchSD3TransformerUri`
         """
         try:
-            r = _text_encoder_uri_parser.parse(uri)
-
-            model = r.args.get('model')
-            if model is None:
-                raise _exceptions.InvalidTextEncoderUriError(
-                    'model argument for torch TextEncoder specification must be defined.')
+            r = _transformer_uri_parser.parse(uri)
 
             dtype = r.args.get('dtype')
 
             supported_dtypes = _enums.supported_data_type_strings()
             if dtype is not None and dtype not in supported_dtypes:
-                raise _exceptions.InvalidTextEncoderUriError(
-                    f'Torch TextEncoder "dtype" must be {", ".join(supported_dtypes)}, '
+                raise _exceptions.InvalidSD3TransformerUriError(
+                    f'Torch SD3Transformer "dtype" must be {", ".join(supported_dtypes)}, '
                     f'or left undefined, received: {dtype}')
 
-            return TextEncoderUri(encoder=r.concept,
-                                  model=model,
-                                  revision=r.args.get('revision', None),
-                                  variant=r.args.get('variant', None),
-                                  dtype=dtype,
-                                  subfolder=r.args.get('subfolder', None))
+            return SD3TransformerUri(model=r.concept,
+                                     revision=r.args.get('revision', None),
+                                     variant=r.args.get('variant', None),
+                                     dtype=dtype,
+                                     subfolder=r.args.get('subfolder', None))
         except _textprocessing.ConceptUriParseError as e:
-            raise _exceptions.InvalidTextEncoderUriError(e)
+            raise _exceptions.InvalidSD3TransformerUriError(e)

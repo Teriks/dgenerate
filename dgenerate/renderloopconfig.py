@@ -400,8 +400,16 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     second_unet_uri: _types.OptionalUri = None
     """
-    Optional user specified second UNet URI, this corresponds to the ``--unet2`` argument of the dgenerate command line tool.
-    This UNet uri will be used for the SDXL refiner or Stable Cascade decoder model.
+    Optional user specified second UNet URI, this corresponds to the ``--unet2`` argument of the dgenerate 
+    command line tool. This UNet uri will be used for the SDXL refiner or Stable Cascade decoder model.
+    """
+
+    transformer_uri: _types.OptionalUri = None
+    """
+    Optional user specified Transformer URI, this corresponds to the ``--transformer`` argument of the 
+    dgenerate command line tool.
+    
+    This is currently only supported for Stable Diffusion 3 models.
     """
 
     vae_uri: _types.OptionalUri = None
@@ -1037,6 +1045,11 @@ class RenderLoopConfig(_types.SetFromMixin):
                                     f'for a non SD3 model type, see: {a_namer("model_type")}.')
             if invalid_self:
                 raise RenderLoopConfigError('\n'.join(invalid_self))
+
+            if self.transformer_uri:
+                raise RenderLoopConfigError(
+                    f'You cannot specify {a_namer("transformer_uri")} '
+                    f'for a non SD3 model type, see: {a_namer("model_type")}.')
         else:
             if self.sd3_max_sequence_length is not None:
                 if self.controlnet_uris:
